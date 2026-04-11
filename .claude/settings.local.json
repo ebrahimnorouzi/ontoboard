@@ -20,7 +20,18 @@
       "Bash(python -m pytest tests/test_search.py tests/test_refactor.py -v --tb=short)",
       "Bash(python -m pytest tests/test_imports.py tests/test_version.py -v --tb=short)",
       "Bash(python -m pytest tests/test_metadata.py -v --tb=short)",
-      "Bash(python -m pytest tests/test_robot_commands.py -v --tb=short)"
+      "Bash(python -m pytest tests/test_robot_commands.py -v --tb=short)",
+      "Bash(python -c ':*)",
+      "Bash(python -m pytest tests/test_version.py::test_version_endpoint -v --tb=short)",
+      "Bash(python -m pytest tests/test_version.py::test_version_endpoint -v --tb=long)",
+      "Bash(python -m pytest tests/test_tree.py::test_create_entity_endpoint -v --tb=short)",
+      "Bash(python -m pytest tests/test_tree.py::test_create_entity_endpoint -v --tb=long)",
+      "Bash(python -m pytest tests/ --tb=line -q)",
+      "Bash(docker build:*)",
+      "Bash(python -m pytest tests/test_canvas.py::test_owl_to_canvas_auto_layout -v --tb=long)",
+      "Bash(python -m pytest tests/test_canvas.py::test_owl_to_canvas_auto_layout -v --tb=short)",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); s=d['statistics']; m=d['metadata']; print\\(f'  IRI: {m[\\\\\"ontology_iri\\\\\"][:50]}'\\); print\\(f'  Version: {m[\\\\\"version_iri\\\\\"]}'[:60]\\); print\\(f'  Classes: {s[\\\\\"classes\\\\\"]}, ObjProps: {s[\\\\\"object_properties\\\\\"]}, Inds: {s[\\\\\"individuals\\\\\"]}'\\)\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(f'Board: {d.get\\(\\\\\"board_id\\\\\",\\\\\"?\\\\\"\\)}'\\) if 'board_id' in d else print\\(f'Error: {d}'\\)\")"
     ]
   }
 }

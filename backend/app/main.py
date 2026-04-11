@@ -12,6 +12,7 @@ from app.routers import (
     task, csv_import, sparql, docs, jobs, invite, restrictions, characteristics,
     search, refactor, imports, version, robot_commands,
     dl_query, odk_config, quality, idranges, patterns, analysis,
+    odk_mediator, export,
 )
 from app.services.user import ensure_admin
 
@@ -61,6 +62,8 @@ app.include_router(quality.router,   prefix="/api/quality",   tags=["quality"])
 app.include_router(idranges.router,  prefix="/api/idranges",  tags=["idranges"])
 app.include_router(patterns.router,  prefix="/api/patterns",  tags=["patterns"])
 app.include_router(analysis.router,  prefix="/api/analysis",  tags=["analysis"])
+app.include_router(odk_mediator.router, prefix="/api/odk-mediator", tags=["odk-mediator"])
+app.include_router(export.router,       prefix="/api/export",       tags=["export"])
 
 
 @app.on_event("startup")

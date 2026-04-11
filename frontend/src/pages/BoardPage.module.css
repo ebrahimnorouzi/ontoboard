@@ -154,12 +154,92 @@
   overflow: hidden;
 }
 
-/* ── Canvas ────────────────────────────────────────────────── */
+/* ── Canvas (Epic 2: WHITE background) ─────────────────────── */
 .canvas {
   flex: 1;
   position: relative;
   overflow: hidden;
+  background: #ffffff;
 }
+
+/* ── App Menu (Epic 2: Protege-style) ──────────────────────── */
+.menuContainer {
+  position: relative;
+}
+.menuBtn {
+  padding: 0.3rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+}
+.menuBtn:hover { background: var(--bg-card-hover); color: var(--text-primary); }
+.menuOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99;
+}
+.menuDropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 4px;
+  z-index: 100;
+  min-width: 200px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  padding: 0.3rem;
+}
+.menuSection {
+  padding: 0.25rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.menuSection:last-child { border-bottom: none; }
+.menuLabel {
+  font-size: 0.6rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  padding: 0.3rem 0.6rem 0.15rem;
+}
+.menuItem {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0.4rem 0.6rem;
+  border: none;
+  background: none;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  font-family: inherit;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+}
+.menuItem:hover { background: var(--accent-glow); color: var(--accent-light); }
+
+/* ── Toast notification ────────────────────────────────────── */
+.toast {
+  position: fixed;
+  bottom: 1rem;
+  right: 1rem;
+  z-index: 200;
+  padding: 0.6rem 1rem;
+  background: rgba(255, 118, 117, 0.95);
+  color: #fff;
+  font-size: 0.82rem;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  cursor: pointer;
+  max-width: 400px;
+}
+.toast span { margin-left: 0.5rem; font-weight: 700; }
 
 /* ── Selected entity in axiom tab ──────────────────────────── */
 .selectedEntity {

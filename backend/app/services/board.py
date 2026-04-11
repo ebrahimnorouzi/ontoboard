@@ -224,28 +224,93 @@ def provision_directory(board_id: str) -> Path:
     ont_dir = board_dir / "src" / "ontology"
     ont_dir.mkdir(parents=True, exist_ok=True)
 
+    # Create edit OWL file with standard Protege-like defaults
     owl_content = textwrap.dedent(f"""\
         <?xml version="1.0"?>
         <rdf:RDF xmlns="http://example.org/{board_id}#"
              xml:base="http://example.org/{board_id}"
              xmlns:owl="http://www.w3.org/2002/07/owl#"
              xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-             xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#">
+             xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+             xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
+             xmlns:skos="http://www.w3.org/2004/02/skos/core#"
+             xmlns:dc="http://purl.org/dc/elements/1.1/"
+             xmlns:dcterms="http://purl.org/dc/terms/">
             <owl:Ontology rdf:about="http://example.org/{board_id}">
-                <rdfs:label>{board_id}</rdfs:label>
+                <rdfs:label xml:lang="en">{board_id}</rdfs:label>
+                <owl:versionInfo>0.1.0</owl:versionInfo>
+                <dc:description xml:lang="en">Ontology created with OntoBoard</dc:description>
             </owl:Ontology>
         </rdf:RDF>
     """)
     (ont_dir / f"{board_id}.owl").write_text(owl_content)
 
+    # ODK-style Makefile — targets work even without ODK seed
     makefile = textwrap.dedent(f"""\
         ONT_ID := {board_id}
-        .PHONY: all
+        ONT := $(ONT_ID)
+
+        .PHONY: all test clean prepare_release publish docs reason update_repo refresh-imports
+
         all:
-        \t@echo "Ontology: $(ONT_ID)"
-        \t@echo "Run ODK seed to generate full Makefile"
+        \t@echo "Build complete: $(ONT)"
+        \t@test -f $(ONT).owl && echo "  $(ONT).owl exists" || echo "  WARNING: $(ONT).owl not found"
+
+        test:
+        \t@echo "Running tests on $(ONT)..."
+
+        reason:
+        \t@echo "Running reasoner on $(ONT)..."
+        \trobot reason -r ELK -i $(ONT).owl -o $(ONT).owl || true
+
+        clean:
+        \t@rm -f tmp_* report.tsv *.bak
+
+        prepare_release: test
+        \t@echo "Preparing release for $(ONT)..."
+
+        publish: prepare_release
+        \t@echo "Publishing $(ONT)..."
+
+        docs:
+        \t@echo "Generating documentation for $(ONT)..."
+
+        update_repo:
+        \t@echo "Updating repository config..."
+
+        refresh-imports:
+        \t@echo "Refreshing imports..."
     """)
     (ont_dir / "Makefile").write_text(makefile)
+
+    # ODK config YAML
+    odk_yaml = textwrap.dedent(f"""\
+        id: {board_id}
+        title: {board_id}
+        github_org: ""
+        repo: {board_id}
+        release_artefacts:
+          - base: {board_id}
+            formats:
+              - owl
+              - ttl
+        import_group:
+          products: []
+        robot_report:
+          use_labels: true
+          fail_on: ERROR
+          custom_profile: false
+        robot_java_args: -Xmx8G
+    """)
+    (ont_dir / f"{board_id}-odk.yaml").write_text(odk_yaml)
+
+    # run.sh script for ODK Docker execution
+    run_sh = textwrap.dedent("""\
+        #!/bin/sh
+        # Wrapper script to run ODK commands inside Docker
+        docker run --rm -v $(pwd):/work -w /work obolibrary/odkfull "$@"
+    """)
+    (ont_dir / "run.sh").write_text(run_sh)
 
     catalog = textwrap.dedent(f"""\
         <?xml version="1.0" encoding="UTF-8" standalone="no"?>
@@ -254,7 +319,11 @@ def provision_directory(board_id: str) -> Path:
         </catalog>
     """)
     (ont_dir / "catalog-v001.xml").write_text(catalog)
+
+    # Create directories
     (board_dir / "uploads").mkdir(exist_ok=True)
+    (board_dir / "docs").mkdir(exist_ok=True)
+    (ont_dir / "imports").mkdir(exist_ok=True)
 
     return board_dir
 

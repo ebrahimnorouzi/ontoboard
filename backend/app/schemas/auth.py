@@ -17,3 +17,10 @@ class TokenPayload(BaseModel):
     sub: str  # username
     role: str
     user_id: int
+
+
+class SignupRequest(BaseModel):
+    username: str
+    email: str
+    password: str
+    display_name: str | None = None

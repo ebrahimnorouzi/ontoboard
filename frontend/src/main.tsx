@@ -9,6 +9,7 @@ import DashboardPage from "./pages/DashboardPage";
 import BoardPage from "./pages/BoardPage";
 import AdminPage from "./pages/AdminPage";
 import InvitePage from "./pages/InvitePage";
+import SignupPage from "./pages/SignupPage";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
@@ -17,6 +18,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/signup" element={<SignupPage />} />
           <Route path="/board" element={<DashboardPage />} />
           <Route path="/board/" element={<DashboardPage />} />
           <Route path="/board/:boardId" element={<BoardPage />} />

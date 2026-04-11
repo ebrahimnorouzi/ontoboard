@@ -11,6 +11,13 @@ from app.services import user as user_svc
 router = APIRouter()
 
 
+@router.get("/pending", response_model=list[UserOut])
+def list_pending(db: Session = Depends(get_db), _admin: User = Depends(require_admin)):
+    """List users awaiting admin approval (is_active=False)."""
+    all_users = user_svc.list_users(db)
+    return [UserOut.model_validate(u) for u in all_users if not u.is_active]
+
+
 @router.get("/", response_model=list[UserDetail])
 def list_users(db: Session = Depends(get_db), _admin: User = Depends(require_admin)):
     users = user_svc.list_users(db)

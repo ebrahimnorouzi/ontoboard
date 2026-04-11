@@ -75,6 +75,8 @@ export default function LoginPage() {
         </form>
 
         <p className={styles.footer}>
+          Don't have an account? <Link to="/signup">Sign up</Link>
+          <br />
           <Link to="/">&larr; Back to home</Link>
         </p>
       </div>

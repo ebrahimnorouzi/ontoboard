@@ -45,6 +45,22 @@ async def run_reasoning(board_dir: Path, reasoner: str = "ELK") -> dict:
         # Parse reasoning errors from stderr
         errors = _parse_reasoning_errors(result.stderr, board_dir)
         fixes = _suggest_fixes(errors, board_dir)
+
+        # Auto-run robot explain for justification tree
+        explanation = ""
+        try:
+            from app.services.robot import run_robot
+            explain_result = await run_robot(
+                board_dir,
+                f"robot explain -i /work/src/ontology/{owl_file.name} --reasoner {reasoner}",
+            )
+            if explain_result.stdout:
+                explanation = explain_result.stdout[-3000:]
+            elif explain_result.stderr:
+                explanation = explain_result.stderr[-3000:]
+        except Exception as exc:
+            explanation = f"Could not generate explanation: {exc}"
+
         output = {
             "success": False,
             "consistent": False,
@@ -53,6 +69,7 @@ async def run_reasoning(board_dir: Path, reasoner: str = "ELK") -> dict:
             "errors": errors,
             "fixes": fixes,
             "logs": result.stderr[-2000:],
+            "explanation": explanation,
             "duration_seconds": duration,
         }
         _reasoning_cache[board_id] = output

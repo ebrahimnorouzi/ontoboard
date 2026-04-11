@@ -108,11 +108,32 @@ def _extract_individuals(g: Graph, classes: list[CanvasClass]) -> list[CanvasInd
     return individuals
 
 
-def _auto_layout(classes: list[CanvasClass], cols: int = 4, gap_x: float = 220, gap_y: float = 120):
-    """Simple grid layout for classes."""
+def _auto_layout(classes: list[CanvasClass], cols: int = 0, gap_x: float = 200, gap_y: float = 100):
+    """Hierarchical grid layout — scales for large ontologies (400+ classes).
+
+    For small ontologies (<50 classes): 5 columns
+    For medium (50-200): 8 columns
+    For large (200+): 12 columns
+    This prevents white-screen crashes from overlapping/offscreen nodes.
+    """
+    n = len(classes)
+    if n == 0:
+        return
+    # Auto-determine columns based on ontology size
+    if cols == 0:
+        if n < 50:
+            cols = 5
+        elif n < 200:
+            cols = 8
+        else:
+            cols = 12
+    # Scale gaps for large ontologies
+    if n > 200:
+        gap_x = 180
+        gap_y = 80
     for i, cls in enumerate(classes):
-        cls.x = 80 + (i % cols) * gap_x
-        cls.y = 80 + (i // cols) * gap_y
+        cls.x = 60 + (i % cols) * gap_x
+        cls.y = 60 + (i // cols) * gap_y
 
 
 # ── Canvas → OWL ──────────────────────────────────────────────

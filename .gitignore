@@ -9,3 +9,6 @@ data/
 .mypy_cache/
 .pytest_cache/
 .claude/*
+playground.pptx
+mwo301.ttl
+test_upload.ttl

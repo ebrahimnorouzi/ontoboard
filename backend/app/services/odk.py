@@ -102,17 +102,18 @@ async def robot_template(board_dir: Path, template: Path, output: Path) -> None:
 
 
 async def stream_build(board_dir: Path, target: str):
-    """Generator that yields SSE lines from an ODK build."""
+    """Generator that yields SSE lines from an ODK build using sh run.sh make pattern."""
     loop = asyncio.get_event_loop()
     client = docker.from_env()
 
+    # Use the ODK pattern: run make inside odkfull container at /work/src/ontology
     container = await loop.run_in_executor(
         None,
         lambda: client.containers.run(
             image=ODK_IMAGE,
-            command=f"make {target}",
+            command=f"sh -c 'cd /work/src/ontology && make {target}'",
             volumes={str(board_dir): {"bind": "/work", "mode": "rw"}},
-            working_dir="/work/src/ontology",
+            working_dir="/work",
             remove=False,
             detach=True,
             stdout=True,

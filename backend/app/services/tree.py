@@ -157,6 +157,8 @@ def create_entity(board_dir: Path, entity_type: str, iri: str, label: str, paren
 
     g.add((entity, RDF.type, rdf_type))
     g.add((entity, RDFS.label, Literal(label, lang="en")))
+    # Default annotation: empty comment (Protege-style)
+    g.add((entity, RDFS.comment, Literal("", lang="en")))
 
     if parent_iri:
         parent = URIRef(parent_iri)

@@ -2,7 +2,7 @@
 
 import asyncio
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
 from sqlalchemy.orm import Session
 
 from app.deps import get_db, get_current_user, require_admin
@@ -101,6 +101,45 @@ async def create_board(
     # Background ODK seed
     task = asyncio.create_task(board_svc.try_odk_seed_background(slug))
     board_svc.register_seed_task(slug, task)
+
+    return _enrich(board, db, user)
+
+
+# ── Create board from file upload ──────────────────────────────
+@router.post("/{board_id}/from-file", response_model=BoardDetail, status_code=201)
+async def create_board_from_file(
+    board_id: str,
+    file: UploadFile = File(...),
+    is_public: bool = True,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Create a board by uploading an OWL/TTL/OBO/JSONLD/RDF file."""
+    slug = _sanitize_id(board_id)
+    if board_svc.get_board_by_slug(db, slug):
+        raise HTTPException(status_code=409, detail="Board already exists")
+
+    board = board_svc.create_board(db, slug, user, display_name=slug, is_public=is_public)
+
+    # Provision filesystem
+    loop = asyncio.get_event_loop()
+    board_dir = await loop.run_in_executor(None, board_svc.provision_directory, slug)
+    await loop.run_in_executor(None, board_svc.git_init, board_dir)
+
+    # Parse uploaded file and overwrite the scaffold OWL
+    contents = await file.read()
+    content_str = contents.decode("utf-8", errors="replace")
+
+    from app.services.conversion import parse_any_format
+    try:
+        g = parse_any_format(content_str, file.filename or "upload.owl")
+        if len(g) > 0:
+            owl_path = board_dir / "src" / "ontology" / f"{slug}.owl"
+            g.serialize(str(owl_path), format="xml")
+            board_svc.git_commit(board_dir, f"Imported from {file.filename}")
+    except Exception as exc:
+        # Board was created but file parsing failed — board still usable with empty scaffold
+        board_svc.log_activity(db, board, user, "import_error", str(exc)[:200])
 
     return _enrich(board, db, user)
 

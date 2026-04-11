@@ -91,8 +91,8 @@ def test_owl_to_canvas_auto_layout():
 
     # All classes should have been positioned (non-zero x/y)
     for cls in state.classes:
-        assert cls.x >= 80
-        assert cls.y >= 80
+        assert cls.x >= 60
+        assert cls.y >= 60
     # No two classes at the exact same position
     positions = [(c.x, c.y) for c in state.classes]
     assert len(positions) == len(set(positions))
