@@ -31,7 +31,9 @@
       "Bash(python -m pytest tests/test_canvas.py::test_owl_to_canvas_auto_layout -v --tb=long)",
       "Bash(python -m pytest tests/test_canvas.py::test_owl_to_canvas_auto_layout -v --tb=short)",
       "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); s=d['statistics']; m=d['metadata']; print\\(f'  IRI: {m[\\\\\"ontology_iri\\\\\"][:50]}'\\); print\\(f'  Version: {m[\\\\\"version_iri\\\\\"]}'[:60]\\); print\\(f'  Classes: {s[\\\\\"classes\\\\\"]}, ObjProps: {s[\\\\\"object_properties\\\\\"]}, Inds: {s[\\\\\"individuals\\\\\"]}'\\)\")",
-      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(f'Board: {d.get\\(\\\\\"board_id\\\\\",\\\\\"?\\\\\"\\)}'\\) if 'board_id' in d else print\\(f'Error: {d}'\\)\")"
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(f'Board: {d.get\\(\\\\\"board_id\\\\\",\\\\\"?\\\\\"\\)}'\\) if 'board_id' in d else print\\(f'Error: {d}'\\)\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(f'  Classes: {len\\(d[\\\\\"classes\\\\\"]\\)}, Properties: {len\\(d[\\\\\"properties\\\\\"]\\)}, Individuals: {len\\(d[\\\\\"individuals\\\\\"]\\)}'\\)\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(f'Canvas: {len\\(d[\\\\\"classes\\\\\"]\\)} classes, {len\\(d[\\\\\"properties\\\\\"]\\)} edges, {len\\(d[\\\\\"individuals\\\\\"]\\)} inds'\\)\")"
     ]
   }
 }

@@ -111,9 +111,9 @@ async def stream_build(board_dir: Path, target: str):
         None,
         lambda: client.containers.run(
             image=ODK_IMAGE,
-            command=f"sh -c 'cd /work/src/ontology && make {target}'",
+            command=f"make {target}",
             volumes={str(board_dir): {"bind": "/work", "mode": "rw"}},
-            working_dir="/work",
+            working_dir="/work/src/ontology",
             remove=False,
             detach=True,
             stdout=True,

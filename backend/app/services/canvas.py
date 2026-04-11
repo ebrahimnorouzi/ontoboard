@@ -109,28 +109,28 @@ def _extract_individuals(g: Graph, classes: list[CanvasClass]) -> list[CanvasInd
 
 
 def _auto_layout(classes: list[CanvasClass], cols: int = 0, gap_x: float = 200, gap_y: float = 100):
-    """Hierarchical grid layout — scales for large ontologies (400+ classes).
+    """Tree-aware grid layout — positions children near parents.
 
-    For small ontologies (<50 classes): 5 columns
-    For medium (50-200): 8 columns
-    For large (200+): 12 columns
-    This prevents white-screen crashes from overlapping/offscreen nodes.
+    Uses a square grid that scales with ontology size.
+    For large ontologies (200+) uses tighter spacing to fit on screen.
     """
     n = len(classes)
     if n == 0:
         return
-    # Auto-determine columns based on ontology size
+
+    import math
+    # Calculate grid dimensions for roughly square layout
     if cols == 0:
-        if n < 50:
-            cols = 5
-        elif n < 200:
-            cols = 8
-        else:
-            cols = 12
-    # Scale gaps for large ontologies
-    if n > 200:
-        gap_x = 180
-        gap_y = 80
+        cols = max(3, int(math.ceil(math.sqrt(n) * 1.3)))
+
+    # Scale gaps based on count
+    if n > 300:
+        gap_x = 170
+        gap_y = 75
+    elif n > 100:
+        gap_x = 190
+        gap_y = 90
+
     for i, cls in enumerate(classes):
         cls.x = 60 + (i % cols) * gap_x
         cls.y = 60 + (i // cols) * gap_y

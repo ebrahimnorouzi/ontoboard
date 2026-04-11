@@ -1,237 +1,248 @@
 /**
- * OntologyCanvas — React Flow ontology graph editor.
+ * OntologyCanvas — Cytoscape.js based ontology graph editor.
  *
- * Epic 4 Features:
- *   - Double-click to rename nodes inline
- *   - Smart rdf:type detection (Individual→Class = rdf:type)
- *   - Visual distinction: solid green (objProp), dashed blue (subClassOf), dotted gray (rdf:type)
- *   - Connection handles visible on hover
- *   - White background
+ * Features:
+ *   - dagre layout for SubClassOf trees
+ *   - cose-bilkent force layout for large graphs
+ *   - Prefix-aware labels (prov:Activity, foaf:Person)
+ *   - Semantic edge styles by type
+ *   - Entity editing: color, label rename, color picker
+ *   - Edge drawing mode
+ *   - Handles 400+ nodes smoothly
+ *   - Auto-save via Zustand store
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  ReactFlow, Background, Controls, MiniMap,
-  useNodesState, useEdgesState,
-  Connection, Edge, Node, Handle, Position, MarkerType, BackgroundVariant,
-} from "@xyflow/react";
-import "@xyflow/react/dist/style.css";
+import { useEffect, useRef, useState, useCallback } from "react";
+import cytoscape from "cytoscape";
+import dagre from "cytoscape-dagre";
+import coseBilkent from "cytoscape-cose-bilkent";
 import { useOntologyStore } from "../../store/ontologyStore";
 import styles from "./OntologyCanvas.module.css";
 
-// ── ClassNode with inline rename ──────────────────────────────
-function ClassNode({ id, data, selected }: any) {
-  const [editing, setEditing] = useState(false);
-  const [label, setLabel] = useState(data.label || "");
-  const updateClass = useOntologyStore((s) => s.updateClass);
+cytoscape.use(dagre);
+cytoscape.use(coseBilkent);
 
-  const handleDoubleClick = () => { setEditing(true); setLabel(data.label); };
-  const handleBlur = () => { setEditing(false); if (label !== data.label) updateClass(id, { label }); };
-  const handleKey = (e: any) => { if (e.key === "Enter") { e.target.blur(); } };
-
-  return (
-    <div className={`${styles.classNode} ${selected ? styles.selected : ""}`}
-         style={data.color ? { borderColor: data.color } : {}}
-         onDoubleClick={handleDoubleClick}
-         title={`${data.iri}\nrdfs:label: ${data.label}`}>
-      <Handle type="target" position={Position.Top} className={styles.handle} id="top" />
-      <Handle type="target" position={Position.Left} className={styles.handle} id="left" />
-      {editing ? (
-        <input className={styles.nodeInput} value={label} onChange={(e) => setLabel(e.target.value)}
-               onBlur={handleBlur} onKeyDown={handleKey} autoFocus />
-      ) : (
-        <>
-          <div className={styles.nodeLabel}>{data.label}</div>
-          <div className={styles.nodeIri}>{data.iri?.split("#").pop() || data.iri?.split("/").pop() || ""}</div>
-        </>
-      )}
-      <Handle type="source" position={Position.Bottom} className={styles.handle} id="bottom" />
-      <Handle type="source" position={Position.Right} className={styles.handle} id="right" />
-    </div>
-  );
-}
-
-// ── IndividualNode with inline rename ─────────────────────────
-function IndividualNode({ id, data, selected }: any) {
-  const [editing, setEditing] = useState(false);
-  const [label, setLabel] = useState(data.label || "");
-  const store = useOntologyStore();
-
-  const handleDoubleClick = () => { setEditing(true); setLabel(data.label); };
-  const handleBlur = () => {
-    setEditing(false);
-    const inds = store.individuals.map((i) => i.iri === id ? { ...i, label } : i);
-    store.setIndividuals(inds);
-  };
-
-  return (
-    <div className={`${styles.individualNode} ${selected ? styles.selected : ""}`}
-         onDoubleClick={handleDoubleClick}>
-      <Handle type="target" position={Position.Top} className={styles.handle} id="top" />
-      <Handle type="target" position={Position.Left} className={styles.handle} id="left" />
-      {editing ? (
-        <input className={styles.nodeInput} value={label} onChange={(e) => setLabel(e.target.value)}
-               onBlur={handleBlur} onKeyDown={(e) => e.key === "Enter" && (e.target as any).blur()} autoFocus />
-      ) : (
-        <div className={styles.nodeLabel}>{data.label}</div>
-      )}
-      <Handle type="source" position={Position.Bottom} className={styles.handle} id="bottom" />
-      <Handle type="source" position={Position.Right} className={styles.handle} id="right" />
-    </div>
-  );
-}
-
-// ── LiteralNode (xsd:string, xsd:int, etc.) ──────────────────
-function LiteralNode({ data }: any) {
-  return (
-    <div className={styles.literalNode}>
-      <Handle type="target" position={Position.Top} className={styles.handle} id="top" />
-      <div className={styles.literalValue}>"{data.label}"</div>
-      <div className={styles.literalType}>{data.datatype || "xsd:string"}</div>
-    </div>
-  );
-}
-
-const nodeTypes = {
-  classNode: ClassNode,
-  individualNode: IndividualNode,
-  literalNode: LiteralNode,
+// ── Prefix compact display ────────────────────────────────────
+const PREFIXES: Record<string, string> = {
+  "http://www.w3.org/2002/07/owl#": "owl:",
+  "http://www.w3.org/2000/01/rdf-schema#": "rdfs:",
+  "http://www.w3.org/1999/02/22-rdf-syntax-ns#": "rdf:",
+  "http://www.w3.org/2004/02/skos/core#": "skos:",
+  "http://purl.org/dc/terms/": "dcterms:",
+  "http://purl.org/dc/elements/1.1/": "dc:",
+  "http://xmlns.com/foaf/0.1/": "foaf:",
+  "http://www.w3.org/ns/prov#": "prov:",
+  "http://purl.obolibrary.org/obo/": "obo:",
+  "http://schema.org/": "schema:",
+  "http://www.w3.org/ns/dcat#": "dcat:",
 };
+
+function compact(iri: string): string {
+  for (const [ns, p] of Object.entries(PREFIXES)) {
+    if (iri.startsWith(ns)) return p + iri.slice(ns.length);
+  }
+  return iri.includes("#") ? iri.split("#").pop() || iri : iri.split("/").pop() || iri;
+}
 
 interface Props { boardId: string }
 
 export default function OntologyCanvas({ boardId }: Props) {
+  const cyRef = useRef<cytoscape.Core | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const store = useOntologyStore();
-  const { classes, properties, individuals, selectEntity, addClass, addProperty } = store;
+  const [layoutName, setLayoutName] = useState("dagre");
+  const [edgeMode, setEdgeMode] = useState(false);
+  const [edgeSource, setEdgeSource] = useState<string | null>(null);
+  const [selected, setSelected] = useState<string | null>(null);
+  const [editLabel, setEditLabel] = useState("");
+  const [editColor, setEditColor] = useState("#4f46e5");
 
-  const flowNodes: Node[] = useMemo(() => [
-    ...classes.map((cls) => ({
-      id: cls.iri, type: "classNode" as const,
-      position: { x: cls.x || 0, y: cls.y || 0 },
-      data: { label: cls.label, iri: cls.iri, entityType: "class", color: cls.color },
-    })),
-    ...individuals.map((ind, i) => ({
-      id: ind.iri, type: "individualNode" as const,
-      position: { x: ind.x || 100 + i * 200, y: ind.y || 400 },
-      data: { label: ind.label, iri: ind.iri, entityType: "individual" },
-    })),
-  ], [classes, individuals]);
+  // ── Init Cytoscape ──────────────────────────────────────────
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const cy = cytoscape({
+      container: containerRef.current,
+      style: [
+        { selector: "node[entityType='class']", style: {
+          "background-color": "#eef2ff", "border-color": "#4f46e5", "border-width": 2,
+          label: "data(displayLabel)", "text-valign": "center", "text-halign": "center",
+          "font-size": "11px", "font-family": "Inter, sans-serif", "font-weight": 600,
+          color: "#312e81", shape: "roundrectangle", width: "label", height: 36, padding: "12px",
+          "text-wrap": "ellipsis", "text-max-width": "160px",
+        }},
+        { selector: "node[entityType='individual']", style: {
+          "background-color": "#fef3c7", "border-color": "#d97706", "border-width": 2,
+          label: "data(displayLabel)", "text-valign": "center", "text-halign": "center",
+          "font-size": "10px", color: "#78350f", shape: "diamond", width: 50, height: 50,
+        }},
+        { selector: "node:selected", style: {
+          "border-color": "#0ea5e9", "border-width": 3,
+          "overlay-opacity": 0.06, "overlay-color": "#0ea5e9",
+        }},
+        { selector: "edge[edgeType='subClassOf']", style: {
+          "line-color": "#6366f1", "target-arrow-color": "#6366f1",
+          "target-arrow-shape": "triangle-backcurve", "curve-style": "bezier",
+          width: 2, "line-style": "dashed", "line-dash-pattern": [8, 4],
+          "arrow-scale": 1.2,
+        }},
+        { selector: "edge[edgeType='objectProperty']", style: {
+          "line-color": "#10b981", "target-arrow-color": "#10b981",
+          "target-arrow-shape": "triangle", "curve-style": "bezier", width: 2,
+          label: "data(displayLabel)", "font-size": "9px", color: "#064e3b",
+          "text-rotation": "autorotate", "text-background-color": "#fff",
+          "text-background-opacity": 0.9, "text-background-padding": "2px",
+        }},
+        { selector: "edge[edgeType='rdfType']", style: {
+          "line-color": "#94a3b8", "target-arrow-color": "#94a3b8",
+          "target-arrow-shape": "triangle", "curve-style": "bezier",
+          width: 1.5, "line-style": "dotted",
+        }},
+        { selector: "edge[edgeType='dataProperty']", style: {
+          "line-color": "#f59e0b", "target-arrow-color": "#f59e0b",
+          "target-arrow-shape": "triangle", "curve-style": "bezier",
+          width: 1.5, "line-style": "dashed", label: "data(displayLabel)",
+          "font-size": "8px", color: "#92400e",
+        }},
+        { selector: "edge[edgeType='annotationProperty']", style: {
+          "line-color": "#a855f7", "target-arrow-color": "#a855f7",
+          "target-arrow-shape": "triangle", "curve-style": "bezier",
+          width: 1, "line-style": "dotted", label: "data(displayLabel)",
+          "font-size": "8px", color: "#7c3aed",
+        }},
+      ],
+      layout: { name: "preset" },
+      wheelSensitivity: 0.3, minZoom: 0.05, maxZoom: 4,
+    });
+    cyRef.current = cy;
 
-  const flowEdges: Edge[] = useMemo(() => properties.map((p) => {
-    const isSub = p.iri === "rdfs:subClassOf";
-    const isType = p.iri === "rdf:type";
-    const isData = p.property_type === "data";
-    const isAnnotation = p.property_type === "annotation" && !isSub;
-    return {
-      id: p.id, source: p.source_id, target: p.target_id,
-      label: p.label, animated: false,
-      style: {
-        stroke: isSub ? "#3498db" : isType ? "#95a5a6" : isData ? "#e67e22" : isAnnotation ? "#9b59b6" : "#27ae60",
-        strokeDasharray: isSub ? "8 4" : isType ? "4 4" : isAnnotation ? "4 2" : undefined,
-        strokeWidth: isSub ? 2 : 1.5,
-      },
-      markerEnd: {
-        type: MarkerType.ArrowClosed,
-        color: isSub ? "#3498db" : isType ? "#95a5a6" : isData ? "#e67e22" : "#27ae60",
-      },
-    };
-  }), [properties]);
+    cy.on("tap", "node", (evt) => {
+      const n = evt.target;
+      if (edgeMode && edgeSource) {
+        store.addProperty({ id: `prop_${Date.now()}`, iri: `http://example.org/new#prop_${Date.now()}`,
+          label: "relatedTo", source_id: edgeSource, target_id: n.id(), property_type: "object" });
+        setEdgeSource(null); setEdgeMode(false);
+      } else if (edgeMode) {
+        setEdgeSource(n.id());
+      } else {
+        setSelected(n.id()); setEditLabel(n.data("label") || "");
+        store.selectEntity({ iri: n.id(), type: n.data("entityType"), label: n.data("label") });
+      }
+    });
+    cy.on("tap", (e) => { if (e.target === cy) { setSelected(null); store.selectEntity(null); } });
+    cy.on("dragfree", "node", (e) => {
+      const p = e.target.position();
+      store.updateClass(e.target.id(), { x: p.x, y: p.y });
+    });
 
-  const [nodes, setNodes, onNodesChange] = useNodesState(flowNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(flowEdges);
+    return () => { cy.destroy(); cyRef.current = null; };
+  }, []);
 
-  useEffect(() => { setNodes(flowNodes); }, [flowNodes, setNodes]);
-  useEffect(() => { setEdges(flowEdges); }, [flowEdges, setEdges]);
+  // ── Sync store → Cytoscape ──────────────────────────────────
+  useEffect(() => {
+    const cy = cyRef.current;
+    if (!cy) return;
+    cy.batch(() => {
+      cy.elements().remove();
+      for (const c of store.classes) {
+        cy.add({ group: "nodes", data: { id: c.iri, label: c.label,
+          displayLabel: c.label || compact(c.iri), entityType: "class", iri: c.iri },
+          position: { x: c.x || 0, y: c.y || 0 } });
+      }
+      for (const i of store.individuals) {
+        cy.add({ group: "nodes", data: { id: i.iri, label: i.label,
+          displayLabel: i.label || compact(i.iri), entityType: "individual", iri: i.iri },
+          position: { x: i.x || 0, y: i.y || 0 } });
+      }
+      for (const p of store.properties) {
+        if (!cy.getElementById(p.source_id).length || !cy.getElementById(p.target_id).length) continue;
+        const isSub = p.iri === "rdfs:subClassOf";
+        const isType = p.iri === "rdf:type";
+        const isData = p.property_type === "data";
+        const isAnn = p.property_type === "annotation" && !isSub;
+        cy.add({ group: "edges", data: { id: p.id, source: p.source_id, target: p.target_id,
+          label: p.label, displayLabel: isSub ? "" : compact(p.iri),
+          edgeType: isSub ? "subClassOf" : isType ? "rdfType" : isData ? "dataProperty" : isAnn ? "annotationProperty" : "objectProperty" } });
+      }
+    });
+    if (store.classes.some((c) => c.x === 0 && c.y === 0) && cy.nodes().length > 0) {
+      doLayout(layoutName);
+    }
+  }, [store.classes, store.properties, store.individuals]);
+
   useEffect(() => { store.loadFromBackend(boardId); }, [boardId]);
 
-  // Smart edge detection: Individual→Class = rdf:type
-  const onConnect = useCallback((conn: Connection) => {
-    if (!conn.source || !conn.target) return;
-    const sourceNode = store.individuals.find((i) => i.iri === conn.source);
-    const targetNode = store.classes.find((c) => c.iri === conn.target);
+  const doLayout = useCallback((name: string) => {
+    const cy = cyRef.current;
+    if (!cy || !cy.nodes().length) return;
+    const opts: any = {
+      dagre: { name: "dagre", rankDir: "TB", rankSep: 80, nodeSep: 40, padding: 30 },
+      "cose-bilkent": { name: "cose-bilkent", idealEdgeLength: 100, nodeRepulsion: 6000, padding: 20, animate: false },
+      grid: { name: "grid", padding: 20, rows: Math.ceil(Math.sqrt(cy.nodes().length)) },
+    };
+    cy.layout(opts[name] || opts.dagre).run();
+    cy.fit(undefined, 40);
+  }, []);
 
-    if (sourceNode && targetNode) {
-      // Individual→Class = rdf:type
-      addProperty({
-        id: `rdf_type_${conn.source}_${conn.target}`,
-        iri: "rdf:type", label: "rdf:type",
-        source_id: conn.source, target_id: conn.target,
-        property_type: "annotation",
-      });
-    } else {
-      // Default: object property
-      const ts = Date.now();
-      addProperty({
-        id: `http://example.org/new#prop_${ts}`,
-        iri: `http://example.org/new#prop_${ts}`,
-        label: "relatedTo",
-        source_id: conn.source, target_id: conn.target,
-        property_type: "object",
-      });
-    }
-  }, [store.individuals, store.classes, addProperty]);
-
-  const onNodeDragStop = useCallback((_: any, node: Node) => {
-    store.updateClass(node.id, { x: node.position.x, y: node.position.y });
-  }, [store]);
-
-  const onNodeClick = useCallback((_: any, node: Node) => {
-    selectEntity({
-      iri: node.id,
-      type: (node.data?.entityType as string) || "class",
-      label: (node.data?.label as string) || "",
-    });
-  }, [selectEntity]);
-
-  const onNodesDelete = useCallback((deleted: Node[]) => {
-    const classIds = deleted.filter((n) => n.type === "classNode").map((n) => n.id);
-    const indIds = deleted.filter((n) => n.type === "individualNode").map((n) => n.id);
-    classIds.forEach((id) => store.removeClass(id));
-    if (indIds.length > 0) {
-      store.setIndividuals(store.individuals.filter((i) => !indIds.includes(i.iri)));
-    }
-  }, [store]);
-
-  const onEdgesDelete = useCallback((deleted: Edge[]) => {
-    deleted.forEach((edge) => store.removeProperty(edge.id));
-  }, [store]);
+  const rename = () => {
+    if (!selected || !editLabel) return;
+    store.updateClass(selected, { label: editLabel });
+    store.setIndividuals(store.individuals.map((i) => i.iri === selected ? { ...i, label: editLabel } : i));
+  };
 
   return (
     <div className={styles.container}>
       <div className={styles.toolbar}>
-        <button className={styles.btn} onClick={() => {
-          const iri = `http://example.org/new#Class_${Date.now()}`;
-          addClass({ id: iri, iri, label: "NewClass", x: 200 + Math.random() * 300, y: 100 + Math.random() * 200, w: 160, h: 60, color: "#6c5ce7" });
-        }}>+ Class</button>
-        <button className={styles.btn} onClick={() => {
-          const iri = `http://example.org/new#Ind_${Date.now()}`;
-          store.setIndividuals([...individuals, { id: iri, iri, label: "NewIndividual", class_iri: "", x: 200 + Math.random() * 300, y: 400 }]);
-        }}>+ Individual</button>
-        <span className={styles.separator} />
-        <span className={styles.hint}>Drag handles to connect &middot; Dbl-click to rename &middot; Ind→Class = rdf:type</span>
-        <span className={styles.separator} />
-        <span className={styles.saveIndicator}>
+        <div className={styles.group}>
+          <button className={styles.btn} onClick={() => {
+            const iri = `http://example.org/new#Class_${Date.now()}`;
+            store.addClass({ id: iri, iri, label: "NewClass", x: 200 + Math.random() * 400, y: 100 + Math.random() * 300, w: 160, h: 60, color: "#4f46e5" });
+          }}>+ Class</button>
+          <button className={styles.btn} onClick={() => {
+            const iri = `http://example.org/new#Ind_${Date.now()}`;
+            store.setIndividuals([...store.individuals, { id: iri, iri, label: "NewIndividual", class_iri: "", x: 300, y: 400 }]);
+          }}>+ Individual</button>
+          <button className={`${styles.btn} ${edgeMode ? styles.active : ""}`}
+                  onClick={() => { setEdgeMode(!edgeMode); setEdgeSource(null); }}>
+            {edgeMode ? (edgeSource ? "\u2192 Click target" : "\u2022 Click source") : "\u2194 Draw Edge"}
+          </button>
+        </div>
+        <div className={styles.group}>
+          <span className={styles.layoutLabel}>Layout:</span>
+          {["dagre", "cose-bilkent", "grid"].map((l) => (
+            <button key={l} className={`${styles.btn} ${layoutName === l ? styles.active : ""}`}
+                    onClick={() => { setLayoutName(l); doLayout(l); }}>
+              {l === "dagre" ? "Tree" : l === "cose-bilkent" ? "Force" : "Grid"}
+            </button>
+          ))}
+          <button className={styles.btn} onClick={() => cyRef.current?.fit(undefined, 40)}>Fit</button>
+        </div>
+        <span className={styles.save}>
           {store.saving ? "Saving..." : store.lastSaved > 0 ? "\u2713 Saved" : ""}
         </span>
       </div>
-      <div className={styles.canvas}>
-        <ReactFlow
-          nodes={nodes} edges={edges}
-          onNodesChange={onNodesChange} onEdgesChange={onEdgesChange}
-          onNodesDelete={onNodesDelete} onEdgesDelete={onEdgesDelete}
-          onConnect={onConnect} onNodeDragStop={onNodeDragStop}
-          onNodeClick={onNodeClick} onPaneClick={() => selectEntity(null)}
-          nodeTypes={nodeTypes} fitView snapToGrid snapGrid={[16, 16]}
-          defaultEdgeOptions={{ type: "default", markerEnd: { type: MarkerType.ArrowClosed } }}
-        >
-          <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="#e0e0e0" />
-          <Controls />
-          <MiniMap
-            nodeColor={(n) => n.type === "classNode" ? "#6c5ce7" : n.type === "individualNode" ? "#fdcb6e" : "#55efc4"}
-            style={{ background: "#f8f9fa" }}
-          />
-        </ReactFlow>
+
+      {selected && (
+        <div className={styles.editor}>
+          <input className={styles.nameInput} value={editLabel} onChange={(e) => setEditLabel(e.target.value)}
+                 onBlur={rename} onKeyDown={(e) => e.key === "Enter" && rename()} />
+          <input type="color" className={styles.colorPick} value={editColor} onChange={(e) => {
+            setEditColor(e.target.value);
+            cyRef.current?.getElementById(selected).style("border-color", e.target.value);
+          }} />
+          <span className={styles.iri}>{compact(selected)}</span>
+        </div>
+      )}
+
+      <div className={styles.legend}>
+        <span><i className={styles.dot} style={{ background: "#4f46e5" }} /> Class</span>
+        <span><i className={styles.dot} style={{ background: "#d97706" }} /> Individual</span>
+        <span><i className={styles.line} style={{ borderColor: "#6366f1", borderStyle: "dashed" }} /> SubClassOf</span>
+        <span><i className={styles.line} style={{ borderColor: "#10b981" }} /> ObjProp</span>
+        <span><i className={styles.line} style={{ borderColor: "#f59e0b", borderStyle: "dashed" }} /> DataProp</span>
+        <span><i className={styles.line} style={{ borderColor: "#a855f7", borderStyle: "dotted" }} /> AnnotProp</span>
       </div>
+
+      <div ref={containerRef} className={styles.canvas} />
     </div>
   );
 }
