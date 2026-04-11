@@ -1,5 +1,6 @@
 """Shared test fixtures for the restructured backend."""
 
+import contextlib
 import os
 from unittest.mock import patch, MagicMock
 
@@ -13,26 +14,46 @@ os.environ["ADMIN_USERNAME"] = "admin"
 os.environ["ADMIN_PASSWORD"] = "admin123"
 os.environ["ADMIN_EMAIL"] = "admin@test.local"
 
+# All modules that import DATA_DIR from app.config — must be patched for tests
+_DATA_DIR_MODULES = [
+    "app.config",
+    "app.services.board",
+    "app.services.odk",
+    "app.services.ontology",
+    "app.routers.odk",
+    "app.routers.owl",
+    "app.routers.ontology",
+    "app.routers.axiom",
+    "app.routers.tree",
+    "app.routers.publish",
+    "app.routers.reasoning",
+    "app.routers.csv_import",
+    "app.routers.sparql",
+    "app.routers.docs",
+    "app.routers.restrictions",
+    "app.routers.characteristics",
+    "app.routers.search",
+    "app.routers.refactor",
+    "app.routers.imports",
+    "app.routers.version",
+    "app.routers.robot_commands",
+    "app.routers.dl_query",
+    "app.routers.odk_config",
+    "app.routers.quality",
+    "app.routers.idranges",
+    "app.routers.patterns",
+    "app.routers.analysis",
+]
+
 
 @pytest.fixture()
 def tmp_data_dir(tmp_path):
     data_dir = tmp_path / "data"
     data_dir.mkdir()
-    with patch("app.config.DATA_DIR", data_dir), \
-         patch("app.services.board.DATA_DIR", data_dir), \
-         patch("app.services.odk.DATA_DIR", data_dir), \
-         patch("app.services.ontology.DATA_DIR", data_dir), \
-         patch("app.routers.odk.DATA_DIR", data_dir), \
-         patch("app.routers.owl.DATA_DIR", data_dir), \
-         patch("app.routers.ontology.DATA_DIR", data_dir), \
-         patch("app.routers.axiom.DATA_DIR", data_dir), \
-         patch("app.routers.tree.DATA_DIR", data_dir), \
-         patch("app.routers.publish.DATA_DIR", data_dir), \
-         patch("app.routers.reasoning.DATA_DIR", data_dir), \
-         patch("app.routers.csv_import.DATA_DIR", data_dir), \
-         patch("app.routers.sparql.DATA_DIR", data_dir), \
-         patch("app.routers.docs.DATA_DIR", data_dir), \
-         patch("app.routers.invite.FRONTEND_URL", "http://test-frontend"):
+    with contextlib.ExitStack() as stack:
+        for mod in _DATA_DIR_MODULES:
+            stack.enter_context(patch(f"{mod}.DATA_DIR", data_dir))
+        stack.enter_context(patch("app.routers.invite.FRONTEND_URL", "http://test-frontend"))
         yield data_dir
 
 
@@ -70,7 +91,7 @@ def mock_docker():
 
 @pytest.fixture()
 async def client(db_session, mock_docker):
-    """Unauthenticated test client — fixtures are used via pytest dependency chain."""
+    """Unauthenticated test client."""
     from app.main import app
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:

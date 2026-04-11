@@ -16,7 +16,11 @@
       "Bash(curl -s \"http://localhost:8000/api/axiom/pizza/entity-names\")",
       "Bash(python -m pytest tests/ --tb=short -q)",
       "Bash(python -m pytest tests/ -v --tb=short -q)",
-      "Bash(curl -s -X POST http://localhost:8000/api/sparql/sparql-demo/visualize -H \"Content-Type: application/json\" -d '{\"query\":\"PREFIX owl: <http://www.w3.org/2002/07/owl#>\\\\nCONSTRUCT { ?s ?p ?o } WHERE { ?s a owl:Class . ?s ?p ?o }\"}')"
+      "Bash(curl -s -X POST http://localhost:8000/api/sparql/sparql-demo/visualize -H \"Content-Type: application/json\" -d '{\"query\":\"PREFIX owl: <http://www.w3.org/2002/07/owl#>\\\\nCONSTRUCT { ?s ?p ?o } WHERE { ?s a owl:Class . ?s ?p ?o }\"}')",
+      "Bash(python -m pytest tests/test_search.py tests/test_refactor.py -v --tb=short)",
+      "Bash(python -m pytest tests/test_imports.py tests/test_version.py -v --tb=short)",
+      "Bash(python -m pytest tests/test_metadata.py -v --tb=short)",
+      "Bash(python -m pytest tests/test_robot_commands.py -v --tb=short)"
     ]
   }
 }

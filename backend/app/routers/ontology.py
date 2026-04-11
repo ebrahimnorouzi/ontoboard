@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.config import DATA_DIR
-from app.deps import get_db, get_current_user_optional
+from app.deps import get_db, get_current_user, get_current_user_optional
 from app.models.user import User
 from app.schemas.ontology import (
     OntologyMetadata, OntologyStats, RobotReportResult, DashboardData, PrefixEntry,
@@ -134,3 +134,88 @@ def get_dashboard(
 def dict_to_violation(d: dict):
     from app.schemas.ontology import ReportViolation
     return ReportViolation(**d)
+
+
+# ── Metadata CRUD (Phase 17) ──────────────────────────────────
+from app.services import metadata as meta_svc
+from pydantic import BaseModel
+
+
+class MetadataUpdateBody(BaseModel):
+    fields: dict  # {title: "...", creator: "...", license: "...", ...}
+
+
+class PrefixCreateBody(BaseModel):
+    prefix: str
+    namespace: str
+
+
+class FindReplaceBody(BaseModel):
+    find: str
+    replace: str
+    property_iri: str | None = None
+
+
+@router.put("/{board_id}/metadata")
+def update_metadata(
+    board_id: str, body: MetadataUpdateBody,
+    db: Session = Depends(get_db), user: User = Depends(get_current_user),
+):
+    """Update DC/DCTERMS metadata on the ontology."""
+    board = board_svc.get_board_by_slug(db, board_id)
+    if not board:
+        raise HTTPException(status_code=404, detail="Board not found")
+    if not board_svc.can_edit(db, board, user):
+        raise HTTPException(status_code=403, detail="Edit access required")
+    result = meta_svc.update_metadata(DATA_DIR / board_id, body.fields)
+    board_svc.git_commit(DATA_DIR / board_id, "Updated ontology metadata")
+    board_svc.log_activity(db, board, user, "metadata_updated", str(list(body.fields.keys())))
+    return result
+
+
+@router.post("/{board_id}/prefixes", status_code=201)
+def add_prefix(
+    board_id: str, body: PrefixCreateBody,
+    db: Session = Depends(get_db), user: User = Depends(get_current_user),
+):
+    """Add a namespace prefix binding."""
+    board = board_svc.get_board_by_slug(db, board_id)
+    if not board:
+        raise HTTPException(status_code=404, detail="Board not found")
+    if not board_svc.can_edit(db, board, user):
+        raise HTTPException(status_code=403, detail="Edit access required")
+    meta_svc.add_prefix(DATA_DIR / board_id, body.prefix, body.namespace)
+    board_svc.git_commit(DATA_DIR / board_id, f"Added prefix {body.prefix}")
+    return {"success": True}
+
+
+@router.delete("/{board_id}/prefixes/{prefix}")
+def remove_prefix(
+    board_id: str, prefix: str,
+    db: Session = Depends(get_db), user: User = Depends(get_current_user),
+):
+    """Remove a namespace prefix binding."""
+    board = board_svc.get_board_by_slug(db, board_id)
+    if not board:
+        raise HTTPException(status_code=404, detail="Board not found")
+    if not board_svc.can_edit(db, board, user):
+        raise HTTPException(status_code=403, detail="Edit access required")
+    meta_svc.remove_prefix(DATA_DIR / board_id, prefix)
+    return {"success": True}
+
+
+@router.post("/{board_id}/find-replace")
+def find_replace(
+    board_id: str, body: FindReplaceBody,
+    db: Session = Depends(get_db), user: User = Depends(get_current_user),
+):
+    """Find and replace text across annotation values."""
+    board = board_svc.get_board_by_slug(db, board_id)
+    if not board:
+        raise HTTPException(status_code=404, detail="Board not found")
+    if not board_svc.can_edit(db, board, user):
+        raise HTTPException(status_code=403, detail="Edit access required")
+    count = meta_svc.find_replace_annotations(DATA_DIR / board_id, body.find, body.replace, body.property_iri)
+    if count > 0:
+        board_svc.git_commit(DATA_DIR / board_id, f"Find/replace: '{body.find}' → '{body.replace}' ({count} changes)")
+    return {"replaced": count}
