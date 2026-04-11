@@ -1,0 +1,105 @@
+.container {
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  overflow-y: auto;
+  height: 100%;
+}
+
+.section {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 0.75rem;
+}
+.sectionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+.sectionTitle {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.btn {
+  padding: 0.3rem 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-accent);
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn:hover:not(:disabled) { background: var(--accent); color: #fff; border-color: var(--accent); }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.publishBtn { background: var(--success); color: #000; border-color: var(--success); }
+.publishBtn:hover:not(:disabled) { opacity: 0.85; background: var(--success); color: #000; }
+
+/* Status grid */
+.statusGrid { display: flex; gap: 0.75rem; margin-bottom: 0.5rem; }
+.statusItem { display: flex; flex-direction: column; gap: 0.15rem; }
+.statusLabel { font-size: 0.6rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.03em; }
+.statusValue { font-size: 0.8rem; font-weight: 600; color: var(--text-primary); }
+
+.artifactList { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+.artifact {
+  font-size: 0.65rem; padding: 0.15rem 0.4rem; border-radius: var(--radius-sm);
+  background: var(--bg-primary); color: var(--text-muted);
+  font-family: "Cascadia Code", "Fira Code", monospace;
+}
+
+/* Check list */
+.checkList { display: flex; flex-direction: column; gap: 0.25rem; }
+.checkRow {
+  display: flex; align-items: center; gap: 0.4rem;
+  font-size: 0.75rem; padding: 0.3rem 0.4rem;
+  border-radius: var(--radius-sm); border-left: 3px solid transparent;
+}
+.checkPass { border-left-color: var(--success); background: rgba(0, 206, 201, 0.05); }
+.checkFail { border-left-color: var(--danger); background: rgba(255, 118, 117, 0.05); }
+.checkIcon { font-size: 0.8rem; width: 16px; text-align: center; }
+.checkPass .checkIcon { color: var(--success); }
+.checkFail .checkIcon { color: var(--danger); }
+.checkName { font-weight: 500; min-width: 100px; }
+.checkMsg { color: var(--text-muted); font-size: 0.7rem; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.hint { font-size: 0.72rem; color: var(--text-muted); margin-top: 0.25rem; }
+
+/* Progress */
+.progressBar {
+  height: 4px; background: var(--bg-primary); border-radius: 2px;
+  margin: 0.5rem 0; overflow: hidden;
+}
+.progressFill {
+  height: 100%; background: var(--accent); border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+/* Event log */
+.eventLog {
+  max-height: 200px; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 0.15rem; margin-top: 0.4rem;
+}
+.eventRow {
+  font-size: 0.7rem; padding: 0.2rem 0.3rem;
+  border-radius: var(--radius-sm); font-family: "Cascadia Code", "Fira Code", monospace;
+  color: var(--text-secondary);
+}
+.eventError { color: var(--danger); background: rgba(255, 118, 117, 0.05); }
+.eventDone { color: var(--success); }
+.eventStep { color: var(--text-muted); margin-right: 0.3rem; }
+
+.error {
+  padding: 0.5rem; border-radius: var(--radius-sm);
+  background: rgba(255, 118, 117, 0.1); border: 1px solid rgba(255, 118, 117, 0.3);
+  color: var(--danger); font-size: 0.75rem;
+}

@@ -1,0 +1,352 @@
+/* ── Splash / loading ──────────────────────────────────────── */
+.splash {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  gap: 1rem;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.splashText {
+  font-size: 1.1rem;
+  font-weight: 500;
+}
+
+.splashHint {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.errorIcon {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(255, 118, 117, 0.15);
+  color: var(--danger);
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.backLink {
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+}
+
+/* ── Layout ────────────────────────────────────────────────── */
+.layout {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ── Toolbar ───────────────────────────────────────────────── */
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 48px;
+  padding: 0 0.75rem;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.toolbarLeft {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.backBtn {
+  display: flex;
+  align-items: center;
+  padding: 0.3rem;
+  border-radius: var(--radius-sm);
+  transition: background 0.15s;
+}
+.backBtn:hover {
+  background: var(--bg-accent);
+}
+
+.boardTitle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.boardName {
+  font-weight: 600;
+  font-size: 0.95rem;
+  letter-spacing: -0.01em;
+}
+
+.statusDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--success);
+  box-shadow: 0 0 6px rgba(0, 206, 201, 0.6);
+}
+
+.toolbarActions {
+  display: flex;
+  gap: 0.3rem;
+}
+
+.toolBtn {
+  padding: 0.35rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  font-family: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.toolBtn:hover:not(:disabled) {
+  background: var(--bg-card-hover);
+  color: var(--text-primary);
+  border-color: var(--border-light);
+}
+.toolBtn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+.toolBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.buildBtn {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.buildBtn:hover:not(:disabled) {
+  background: #5a4bd6;
+  border-color: #5a4bd6;
+  color: #fff;
+}
+
+/* ── Main area ─────────────────────────────────────────────── */
+.main {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ── Canvas ────────────────────────────────────────────────── */
+.canvas {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+/* ── Selected entity in axiom tab ──────────────────────────── */
+.selectedEntity {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.4rem;
+}
+.entityType {
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  background: var(--accent-glow);
+  color: var(--accent-light);
+}
+.entityLabel {
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+.entityIri {
+  font-size: 0.7rem;
+  font-family: "Cascadia Code", "Fira Code", monospace;
+  color: var(--text-muted);
+  word-break: break-all;
+  margin-bottom: 0.75rem;
+}
+
+/* ── Side panel ────────────────────────────────────────────── */
+.side {
+  width: 340px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-secondary);
+  border-left: 1px solid var(--border);
+}
+
+.tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.tab {
+  flex: 1;
+  padding: 0.65rem 0;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.tab:hover {
+  color: var(--text-secondary);
+  background: var(--bg-accent);
+}
+.tabActive {
+  color: var(--accent-light);
+  border-bottom-color: var(--accent);
+}
+
+.tabContent {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.panel {
+  padding: 1rem;
+}
+
+.panelHint {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+  line-height: 1.6;
+}
+
+/* ── Axiom editor placeholder ──────────────────────────────── */
+.editorPlaceholder {
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 1rem;
+  font-size: 0.8rem;
+  line-height: 1.7;
+}
+.editorPlaceholder code {
+  color: var(--accent-light);
+  white-space: pre;
+  font-family: "Cascadia Code", "Fira Code", monospace;
+}
+
+/* ── CSV mapping ───────────────────────────────────────────── */
+.uploadBtn {
+  width: 100%;
+  padding: 0.6rem;
+  border: 1px dashed var(--border-light);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s;
+  margin-bottom: 1rem;
+}
+.uploadBtn:hover {
+  border-color: var(--accent);
+  color: var(--accent-light);
+  background: var(--bg-card-hover);
+}
+
+.mappingPlaceholder {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.mappingRow {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+}
+
+.colName {
+  color: var(--warning);
+  font-weight: 500;
+  font-family: "Cascadia Code", "Fira Code", monospace;
+}
+
+.arrow {
+  color: var(--text-muted);
+}
+
+.className {
+  color: var(--accent-light);
+  font-weight: 500;
+}
+
+.buildKgBtn {
+  width: 100%;
+  padding: 0.6rem;
+  border: none;
+  border-radius: var(--radius-md);
+  background: var(--success);
+  color: #000;
+  font-size: 0.82rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.buildKgBtn:hover {
+  opacity: 0.85;
+}
+
+/* ── Console ───────────────────────────────────────────────── */
+.consolePanel {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 0.75rem;
+}
+
+.consolePre {
+  flex: 1;
+  background: #000;
+  border-radius: var(--radius-md);
+  padding: 0.75rem;
+  font-family: "Cascadia Code", "Fira Code", monospace;
+  font-size: 0.75rem;
+  line-height: 1.6;
+  color: #0f0;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+}

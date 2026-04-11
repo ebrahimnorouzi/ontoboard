@@ -1,0 +1,80 @@
+# ─────────────────────────────────────────────────────────────
+# REBUILD NOTE: Docker Desktop's proxy blocks pip/npm during
+# compose build.  Build images individually first:
+#
+#   docker build --network host -t ontoboard-frontend ./frontend
+#   docker build --network host -t ontoboard-backend  ./backend
+#   docker build --network host -t ontoboard-collab   ./collab
+#   docker build --network host -t ontoboard-worker   ./worker
+#
+# Then run:  docker compose up
+# ─────────────────────────────────────────────────────────────
+
+services:
+  # ── React + Tldraw frontend ──────────────────────────────────
+  frontend:
+    image: ontoboard-frontend:latest
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+      - collab
+    environment:
+      - VITE_API_URL=http://localhost:8000
+      - VITE_COLLAB_URL=ws://localhost:1234
+
+  # ── FastAPI backend ──────────────────────────────────────────
+  backend:
+    image: ontoboard-backend:latest
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - redis
+    environment:
+      - DATA_DIR=/app/data
+      - DOCKER_HOST=unix:///var/run/docker.sock
+      - ODK_IMAGE=obolibrary/odkfull:latest
+      - SECRET_KEY=${SECRET_KEY:-change-me-in-production}
+      - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin}
+      - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@ontoboard.local}
+      - REDIS_URL=redis://redis:6379/0
+
+  # ── Hocuspocus / Yjs collaboration server ────────────────────
+  collab:
+    image: ontoboard-collab:latest
+    ports:
+      - "1234:1234"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - SECRET_KEY=${SECRET_KEY:-change-me-in-production}
+      - DATA_DIR=/app/data
+
+  # ── Worker: long-running ODK / ROBOT jobs via Redis queue ────
+  worker:
+    image: ontoboard-worker:latest
+    volumes:
+      - ./data:/app/data
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - redis
+    environment:
+      - DATA_DIR=/app/data
+      - DOCKER_HOST=unix:///var/run/docker.sock
+      - ODK_IMAGE=obolibrary/odkfull:latest
+      - REDIS_URL=redis://redis:6379/0
+
+  # ── Redis: job queue + pub/sub for progress ──────────────────
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+
+volumes:
+  redis-data:

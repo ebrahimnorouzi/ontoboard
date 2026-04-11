@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pip show:*)",
+      "Bash(python -m pytest tests/ -v)",
+      "Bash(curl -s -X POST http://localhost:8000/api/boards/my-test-board)",
+      "Bash(curl -s -X POST http://localhost:8000/api/auth/login -H \"Content-Type: application/json\" -d '{\"username\":\"admin\",\"password\":\"admin\"}')",
+      "Bash(python -m pytest tests/ -v --tb=short)",
+      "Bash(python -m json.tool)",
+      "Bash(curl -s http://localhost:8000/api/ontology/pizza/dashboard)",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(d.get\\('version','?'\\)\\)\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('tldraw version:', d.get\\('version','?'\\)\\); print\\('exports keys:', list\\(d.get\\('exports',{}\\).keys\\(\\)\\)[:10]\\)\")",
+      "Bash(curl -s http://localhost:8000/api/owl/pizza/load)",
+      "Bash(python -c 'import urllib.parse; print\\(urllib.parse.quote\\(\"http://ex.org/hasTopping\", safe=\"\"\\)\\)')",
+      "Bash(curl -s \"http://localhost:8000/api/axiom/pizza/manchester/$\\(python -c 'import urllib.parse; print\\(urllib.parse.quote\\(\"http://ex.org/hasTopping\", safe=\"\"\\)\\)'\\)\")",
+      "Bash(curl -s \"http://localhost:8000/api/axiom/pizza/entity-names\")",
+      "Bash(python -m pytest tests/ --tb=short -q)",
+      "Bash(python -m pytest tests/ -v --tb=short -q)",
+      "Bash(curl -s -X POST http://localhost:8000/api/sparql/sparql-demo/visualize -H \"Content-Type: application/json\" -d '{\"query\":\"PREFIX owl: <http://www.w3.org/2002/07/owl#>\\\\nCONSTRUCT { ?s ?p ?o } WHERE { ?s a owl:Class . ?s ?p ?o }\"}')"
+    ]
+  }
+}

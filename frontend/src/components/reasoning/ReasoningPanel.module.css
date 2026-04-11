@@ -1,0 +1,116 @@
+.container {
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  overflow-y: auto;
+  height: 100%;
+}
+
+/* Controls */
+.controls { display: flex; gap: 0.4rem; }
+.select {
+  flex: 1; padding: 0.4rem 0.5rem; border: 1px solid var(--border);
+  border-radius: var(--radius-sm); background: var(--bg-card); color: var(--text-primary);
+  font-size: 0.8rem; font-family: inherit; outline: none;
+}
+.select:focus { border-color: var(--accent); }
+.runBtn {
+  padding: 0.4rem 0.85rem; border: none; border-radius: var(--radius-sm);
+  background: var(--accent); color: #fff; font-size: 0.78rem; font-weight: 600;
+  font-family: inherit; cursor: pointer; white-space: nowrap;
+}
+.runBtn:hover:not(:disabled) { background: #5a4bd6; }
+.runBtn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.error {
+  padding: 0.5rem; border-radius: var(--radius-sm);
+  background: rgba(255, 118, 117, 0.1); border: 1px solid rgba(255, 118, 117, 0.3);
+  color: var(--danger); font-size: 0.75rem;
+}
+
+/* Banner */
+.banner {
+  display: flex; align-items: center; gap: 0.6rem;
+  padding: 0.65rem 0.85rem; border-radius: var(--radius-md); border-left: 4px solid;
+}
+.bannerOk { background: rgba(0, 206, 201, 0.08); border-left-color: var(--success); }
+.bannerFail { background: rgba(255, 118, 117, 0.08); border-left-color: var(--danger); }
+.bannerIcon { font-size: 1.2rem; }
+.bannerOk .bannerIcon { color: var(--success); }
+.bannerFail .bannerIcon { color: var(--danger); }
+.bannerTitle { font-size: 0.85rem; font-weight: 600; }
+.bannerOk .bannerTitle { color: var(--success); }
+.bannerFail .bannerTitle { color: var(--danger); }
+.bannerMeta { font-size: 0.7rem; color: var(--text-muted); margin-top: 0.15rem; }
+
+/* Section */
+.section {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius-md); padding: 0.65rem;
+}
+.sectionTitle {
+  font-size: 0.7rem; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.04em; color: var(--text-muted); margin-bottom: 0.4rem;
+}
+
+/* Error rows */
+.errorRow {
+  display: flex; align-items: flex-start; gap: 0.4rem;
+  padding: 0.35rem 0.4rem; border-radius: var(--radius-sm);
+  border-left: 3px solid var(--danger); background: rgba(255, 118, 117, 0.04);
+  margin-bottom: 0.25rem; cursor: pointer; font-size: 0.75rem;
+}
+.errorRow:hover { background: rgba(255, 118, 117, 0.08); }
+.errorIcon { color: var(--danger); font-size: 0.8rem; flex-shrink: 0; }
+.errorContent { display: flex; flex-direction: column; gap: 0.1rem; }
+.errorEntity { font-weight: 600; color: var(--danger); }
+.errorMsg { color: var(--text-secondary); }
+
+/* Fix rows */
+.fixRow {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0.3rem 0.4rem; font-size: 0.72rem; margin-bottom: 0.2rem;
+  border-radius: var(--radius-sm); background: rgba(253, 203, 110, 0.06);
+  border-left: 3px solid var(--warning);
+}
+.fixDesc { color: var(--text-secondary); flex: 1; }
+.fixBtn {
+  padding: 0.2rem 0.5rem; border: 1px solid var(--warning); border-radius: var(--radius-sm);
+  background: transparent; color: var(--warning); font-size: 0.65rem; font-weight: 600;
+  font-family: inherit; cursor: pointer;
+}
+.fixBtn:hover { background: var(--warning); color: #000; }
+
+/* Inference rows */
+.inferenceList { max-height: 250px; overflow-y: auto; }
+.inferenceRow {
+  display: flex; align-items: center; gap: 0.3rem;
+  padding: 0.25rem 0.3rem; font-size: 0.72rem;
+  border-radius: var(--radius-sm); cursor: pointer;
+}
+.inferenceRow:hover { background: var(--bg-primary); }
+.infType {
+  font-size: 0.6rem; font-weight: 600; text-transform: uppercase;
+  padding: 0.1rem 0.3rem; border-radius: 999px;
+  background: rgba(0, 206, 201, 0.12); color: var(--success);
+  flex-shrink: 0;
+}
+.infSubject { color: var(--accent-light); font-weight: 500; }
+.infArrow { color: var(--text-muted); }
+.infObject { color: var(--text-secondary); }
+.more { font-size: 0.7rem; color: var(--text-muted); text-align: center; padding: 0.3rem; }
+
+/* Logs */
+.logToggle {
+  background: none; border: none; color: var(--text-muted); font-size: 0.72rem;
+  font-family: inherit; cursor: pointer; text-decoration: underline;
+}
+.logToggle:hover { color: var(--text-secondary); }
+.logPre {
+  margin-top: 0.4rem; padding: 0.5rem; background: #000; border-radius: var(--radius-sm);
+  font-family: "Cascadia Code", "Fira Code", monospace; font-size: 0.65rem;
+  color: #0f0; max-height: 200px; overflow-y: auto; white-space: pre-wrap; word-break: break-all;
+}
+
+.hint { font-size: 0.82rem; color: var(--text-muted); line-height: 1.6; text-align: center; padding: 2rem 1rem; }

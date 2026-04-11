@@ -1,0 +1,64 @@
+.container {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-left: 0.5rem;
+  border-left: 1px solid var(--border);
+  margin-left: 0.25rem;
+}
+
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.dotConnected {
+  background: var(--success);
+  box-shadow: 0 0 6px rgba(0, 206, 201, 0.6);
+}
+.dotDisconnected {
+  background: var(--danger);
+  box-shadow: 0 0 6px rgba(255, 118, 117, 0.4);
+}
+
+.avatars {
+  display: flex;
+  margin-left: -4px;
+}
+
+.avatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: #fff;
+  border: 2px solid var(--bg-secondary);
+  margin-left: -6px;
+  flex-shrink: 0;
+}
+
+.avatarMore {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.5rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--bg-accent);
+  border: 2px solid var(--bg-secondary);
+  margin-left: -6px;
+}
+
+.count {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}

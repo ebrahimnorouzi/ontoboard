@@ -1,0 +1,188 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--bg-secondary);
+  border-right: 1px solid var(--border);
+  width: 260px;
+  flex-shrink: 0;
+}
+
+/* Tabs */
+.tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.tab {
+  flex: 1;
+  padding: 0.45rem 0;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: center;
+}
+.tab:hover { color: var(--text-secondary); background: var(--bg-accent); }
+.tabActive { color: var(--accent-light); border-bottom-color: var(--accent); }
+.refreshBtn {
+  padding: 0.45rem 0.5rem;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.refreshBtn:hover { color: var(--text-primary); }
+
+/* Search */
+.searchWrap { padding: 0.4rem; flex-shrink: 0; }
+.searchInput {
+  width: 100%;
+  padding: 0.35rem 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-size: 0.75rem;
+  font-family: inherit;
+  outline: none;
+}
+.searchInput::placeholder { color: var(--text-muted); }
+.searchInput:focus { border-color: var(--accent); }
+
+/* Tree area */
+.treeArea {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+.empty {
+  padding: 1.5rem;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.treeList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.nodeRow {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.28rem 8px;
+  cursor: pointer;
+  transition: background 0.1s;
+  font-size: 0.78rem;
+}
+.nodeRow:hover { background: var(--bg-card-hover); }
+.nodeSelected {
+  background: var(--accent-glow);
+  color: var(--accent-light);
+}
+
+.expandBtn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  cursor: pointer;
+  width: 14px;
+  padding: 0;
+  flex-shrink: 0;
+}
+.expandSpacer { width: 14px; flex-shrink: 0; }
+
+.nodeLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.annotBadge {
+  font-size: 0.55rem;
+  padding: 0.05rem 0.3rem;
+  border-radius: 999px;
+  background: var(--bg-accent);
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+/* Detail panel */
+.detailPanel {
+  border-top: 1px solid var(--border);
+  max-height: 280px;
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+
+.detail { padding: 0.6rem; }
+.detailHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.25rem;
+}
+.detailBadge {
+  font-size: 0.55rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.1rem 0.35rem;
+  border-radius: 999px;
+  background: var(--accent-glow);
+  color: var(--accent-light);
+}
+.detailLabel { font-size: 0.85rem; font-weight: 600; }
+.detailIri {
+  font-size: 0.65rem;
+  font-family: "Cascadia Code", "Fira Code", monospace;
+  color: var(--text-muted);
+  word-break: break-all;
+  margin-bottom: 0.5rem;
+}
+
+.detailSection { margin-bottom: 0.5rem; }
+.detailSectionTitle {
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  margin-bottom: 0.3rem;
+}
+.detailMeta { font-size: 0.72rem; color: var(--text-muted); }
+
+.annotationRow {
+  display: flex;
+  gap: 0.4rem;
+  font-size: 0.72rem;
+  padding: 0.15rem 0;
+}
+.annotProp { color: var(--accent-light); font-weight: 500; min-width: 50px; }
+.annotVal { color: var(--text-secondary); }
+.langTag { color: var(--text-muted); font-size: 0.6rem; margin-left: 0.2rem; }
+
+.usageRow {
+  display: flex;
+  gap: 0.3rem;
+  font-size: 0.72rem;
+  padding: 0.12rem 0;
+}
+.usageLink {
+  color: var(--accent-light);
+  cursor: pointer;
+  text-decoration: underline;
+}
+.usageLink:hover { color: var(--accent); }
+.usagePred { color: var(--text-muted); font-style: italic; }
