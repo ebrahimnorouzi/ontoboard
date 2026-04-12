@@ -1,18 +1,20 @@
 # ─────────────────────────────────────────────────────────────
 # OntoBoard — Docker Compose
 #
-# Usage:
-#   docker compose up --build        # Build + start everything
-#   docker compose up --build -d     # Build + start in background
-#   docker compose down              # Stop all services
+# If `docker compose up --build` fails with pip/npm timeouts,
+# build images individually first:
 #
-# For development with hot-reload (source mounted as volumes):
-#   docker compose -f docker-compose.dev.yml up --build
+#   docker build --network host -t ontoboard-frontend ./frontend
+#   docker build --network host -t ontoboard-backend  ./backend
+#   docker build --network host -t ontoboard-collab   ./collab
+#   docker build --network host -t ontoboard-worker   ./worker
+#   docker compose up -d
 # ─────────────────────────────────────────────────────────────
 
 services:
   # ── React + Cytoscape frontend ─────────────────────────────
   frontend:
+    image: ontoboard-frontend:latest
     build:
       context: ./frontend
       network: host
@@ -27,6 +29,7 @@ services:
 
   # ── FastAPI backend ─────────────────────────────────────────
   backend:
+    image: ontoboard-backend:latest
     build:
       context: ./backend
       network: host
@@ -49,6 +52,7 @@ services:
 
   # ── Hocuspocus / Yjs collaboration server ───────────────────
   collab:
+    image: ontoboard-collab:latest
     build:
       context: ./collab
       network: host
@@ -62,6 +66,7 @@ services:
 
   # ── Worker: long-running ODK / ROBOT jobs via Redis queue ───
   worker:
+    image: ontoboard-worker:latest
     build:
       context: ./worker
       network: host

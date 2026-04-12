@@ -1,23 +1,25 @@
 # ─────────────────────────────────────────────────────────────
-# Development Compose — builds from source with hot-reload
+# Development Compose — uses pre-built images + mounts source
+# for hot-reload. Build images first with:
 #
-# Usage:
-#   docker compose -f docker-compose.dev.yml up --build
+#   ./run.sh build
 #
-# This mounts source code as volumes so changes are reflected
-# immediately without rebuilding images.
+# Then:
+#   docker compose -f docker-compose.dev.yml up -d
+#
+# Or simply:
+#   ./run.sh dev
 # ─────────────────────────────────────────────────────────────
 
 services:
   frontend:
-    build: ./frontend
+    image: ontoboard-frontend:latest
     ports:
       - "3000:3000"
     volumes:
       - ./frontend/src:/app/src
       - ./frontend/public:/app/public
       - ./frontend/index.html:/app/index.html
-      - ./frontend/vite.config.ts:/app/vite.config.ts
     depends_on:
       - backend
       - collab
@@ -26,12 +28,11 @@ services:
       - VITE_COLLAB_URL=ws://localhost:1234
 
   backend:
-    build: ./backend
+    image: ontoboard-backend:latest
     ports:
       - "8000:8000"
     volumes:
       - ./backend/app:/app/app
-      - ./backend/tests:/app/tests
       - ./data:/app/data
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
@@ -47,7 +48,7 @@ services:
       - REDIS_URL=redis://redis:6379/0
 
   collab:
-    build: ./collab
+    image: ontoboard-collab:latest
     ports:
       - "1234:1234"
     volumes:
@@ -57,7 +58,7 @@ services:
       - DATA_DIR=/app/data
 
   worker:
-    build: ./worker
+    image: ontoboard-worker:latest
     volumes:
       - ./data:/app/data
       - /var/run/docker.sock:/var/run/docker.sock
