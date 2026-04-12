@@ -148,32 +148,7 @@ function buildClassTree(
   }];
 }
 
-/** Standard RDFS/OWL object properties that should always be listed */
-const DEFAULT_OBJECT_PROPERTIES: TreeNode[] = [
-  { iri: "http://www.w3.org/2000/01/rdf-schema#subClassOf", label: "rdfs:subClassOf", entity_type: "object-property", children: [], annotation_count: 0 },
-  { iri: "http://www.w3.org/2000/01/rdf-schema#subPropertyOf", label: "rdfs:subPropertyOf", entity_type: "object-property", children: [], annotation_count: 0 },
-  { iri: "http://www.w3.org/2000/01/rdf-schema#domain", label: "rdfs:domain", entity_type: "object-property", children: [], annotation_count: 0 },
-  { iri: "http://www.w3.org/2000/01/rdf-schema#range", label: "rdfs:range", entity_type: "object-property", children: [], annotation_count: 0 },
-  { iri: "http://www.w3.org/2000/01/rdf-schema#member", label: "rdfs:member", entity_type: "object-property", children: [], annotation_count: 0 },
-  { iri: "http://www.w3.org/1999/02/22-rdf-syntax-ns#type", label: "rdf:type", entity_type: "object-property", children: [], annotation_count: 0 },
-  { iri: "http://www.w3.org/2002/07/owl#inverseOf", label: "owl:inverseOf", entity_type: "object-property", children: [], annotation_count: 0 },
-  { iri: "http://www.w3.org/2002/07/owl#equivalentClass", label: "owl:equivalentClass", entity_type: "object-property", children: [], annotation_count: 0 },
-  { iri: "http://www.w3.org/2002/07/owl#disjointWith", label: "owl:disjointWith", entity_type: "object-property", children: [], annotation_count: 0 },
-  { iri: "http://www.w3.org/2002/07/owl#equivalentProperty", label: "owl:equivalentProperty", entity_type: "object-property", children: [], annotation_count: 0 },
-  { iri: "http://www.w3.org/2002/07/owl#sameAs", label: "owl:sameAs", entity_type: "object-property", children: [], annotation_count: 0 },
-  { iri: "http://www.w3.org/2002/07/owl#differentFrom", label: "owl:differentFrom", entity_type: "object-property", children: [], annotation_count: 0 },
-  { iri: "http://www.w3.org/2002/07/owl#imports", label: "owl:imports", entity_type: "object-property", children: [], annotation_count: 0 },
-];
-
-/** Standard OWL data properties */
-const DEFAULT_DATA_PROPERTIES: TreeNode[] = [
-  { iri: "http://www.w3.org/2002/07/owl#hasValue", label: "owl:hasValue", entity_type: "data-property", children: [], annotation_count: 0 },
-  { iri: "http://www.w3.org/2002/07/owl#minCardinality", label: "owl:minCardinality", entity_type: "data-property", children: [], annotation_count: 0 },
-  { iri: "http://www.w3.org/2002/07/owl#maxCardinality", label: "owl:maxCardinality", entity_type: "data-property", children: [], annotation_count: 0 },
-  { iri: "http://www.w3.org/2002/07/owl#cardinality", label: "owl:cardinality", entity_type: "data-property", children: [], annotation_count: 0 },
-];
-
-/** Build a property tree with built-in defaults, rooted under owl:topObjectProperty / owl:topDataProperty */
+/** Build a flat property list rooted under owl:topObjectProperty / owl:topDataProperty */
 function buildPropertyTree(
   properties: { id: string; iri: string; label: string; property_type: string }[],
   propType: "object" | "data",
@@ -181,11 +156,10 @@ function buildPropertyTree(
   const rootIri = propType === "object" ? OWL_TOP_OBJECT_PROPERTY : OWL_TOP_DATA_PROPERTY;
   const rootLabel = propType === "object" ? "owl:topObjectProperty" : "owl:topDataProperty";
   const entityType = propType === "object" ? "object-property" : "data-property";
-  const defaults = propType === "object" ? DEFAULT_OBJECT_PROPERTIES : DEFAULT_DATA_PROPERTIES;
 
-  // Start with built-in defaults
-  const seen = new Set<string>(defaults.map((d) => d.iri));
-  const children: TreeNode[] = [...defaults];
+  // Only show user-defined properties (flat, no hierarchy)
+  const seen = new Set<string>();
+  const children: TreeNode[] = [];
 
   // Add user-defined properties
   for (const p of properties) {

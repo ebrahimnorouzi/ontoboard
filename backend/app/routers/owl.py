@@ -67,7 +67,15 @@ def save_owl(
         raise HTTPException(status_code=403, detail="Edit access required")
 
     board_dir = DATA_DIR / board_id
-    output_owl = board_dir / "src" / "ontology" / f"{board_id}.owl"
+
+    # Ensure ODK scaffold exists (Makefile, edit.owl, release.sh, etc.)
+    from app.services.odk_setup import _create_manual_scaffold
+    ont_dir = board_dir / "src" / "ontology"
+    if not (ont_dir / "Makefile").exists():
+        _create_manual_scaffold(board_dir, board_id, board_id)
+
+    output_owl = ont_dir / f"{board_id}.owl"
+    edit_owl = ont_dir / f"{board_id}-edit.owl"
 
     # Determine base IRI from the board's current ontology, or use default
     base_iri = f"http://example.org/{board_id}"
@@ -83,6 +91,8 @@ def save_owl(
     owl_xml = canvas_svc.canvas_state_to_owl_xml(state, base_iri)
     output_owl.parent.mkdir(parents=True, exist_ok=True)
     output_owl.write_text(owl_xml)
+    # Also write to the -edit.owl file so ROBOT/ODK commands find it
+    edit_owl.write_text(owl_xml)
 
     # Persist sticky notes in a sidecar JSON (not part of OWL)
     if state.sticky_notes:
@@ -109,8 +119,9 @@ def save_owl(
             except Exception:
                 pass
 
-    board_svc.git_commit(board_dir, "Update ontology from canvas")
-    board_svc.log_activity(db, board, user, "saved", f"{len(state.classes)} classes, {len(state.properties)} properties")
+    username = user.display_name or user.username if user else "anonymous"
+    board_svc.git_commit(board_dir, f"Update ontology by {username}")
+    board_svc.log_activity(db, board, user, "saved", f"{len(state.classes)} classes, {len(state.properties)} properties by {username}")
 
     return {"detail": "Saved", "owl_path": str(output_owl)}
 

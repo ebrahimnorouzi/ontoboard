@@ -242,6 +242,34 @@ export default function OntologyDashboard({ boardId }: Props) {
         </div>
       </section>
 
+      {/* ── Provenance Settings ─────────────────────── */}
+      <section className={styles.section}>
+        <h3 className={styles.sectionTitle}>Provenance Tracking</h3>
+        <div className={styles.fieldGroup}>
+          <label className={styles.fieldLabel} style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <input type="checkbox"
+              checked={useOntologyStore.getState().trackProvenance}
+              onChange={(e) => useOntologyStore.getState().setTrackProvenance(e.target.checked)}
+            />
+            Track who creates and modifies entities
+          </label>
+        </div>
+        <div className={styles.fieldGroup}>
+          <label className={styles.fieldLabel}>Record provenance in</label>
+          <select className={styles.editInput} style={{ width: "100%" }}
+            value={useOntologyStore.getState().provenanceTarget}
+            onChange={(e) => useOntologyStore.getState().setProvenanceTarget(e.target.value as any)}
+          >
+            <option value="board">Board only (metadata)</option>
+            <option value="ontology">Ontology only (OWL annotations)</option>
+            <option value="both">Both board and ontology</option>
+          </select>
+          <div style={{ fontSize: "0.62rem", color: "var(--text-muted)", marginTop: "0.2rem" }}>
+            "Ontology" embeds dcterms:creator, dcterms:created, prov:wasAttributedTo as annotation properties on each entity in the OWL file.
+          </div>
+        </div>
+      </section>
+
       {/* ── ROBOT Report ──────────────────────────────── */}
       <section className={styles.section}>
         <div className={styles.sectionHeader}>

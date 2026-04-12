@@ -5,7 +5,7 @@ import asyncio
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
 from sqlalchemy.orm import Session
 
-from app.deps import get_db, get_current_user, require_admin
+from app.deps import get_db, get_current_user, get_current_user_optional, require_admin
 from app.models.user import User
 from app.schemas.board import (
     BoardCreate, BoardUpdate, BoardOut, BoardDetail,
@@ -260,6 +260,18 @@ def board_activity(
         )
         for a in activities
     ]
+
+
+# ── Sync check — lightweight poll for multi-user sync ─────────
+@router.get("/{board_id}/sync-check")
+def sync_check(board_id: str, db: Session = Depends(get_db),
+               user: User | None = Depends(get_current_user_optional)):
+    """Return the timestamp of the last 'saved' activity for polling sync."""
+    board = board_svc.get_board_by_slug(db, board_id)
+    if not board:
+        raise HTTPException(status_code=404, detail="Board not found")
+    last = board_svc.get_last_save_timestamp(db, board)
+    return {"last_saved": last}
 
 
 # ── Admin stats ────────────────────────────────────────────────

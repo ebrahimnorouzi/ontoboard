@@ -120,3 +120,76 @@ def apply_pattern(board_dir: Path, pattern_id: str, base_iri: str, x: float = 10
         })
 
     return {"classes": classes, "properties": properties, "individuals": []}
+
+
+def add_pattern(*, pattern_id: str, name: str, description: str = "",
+                category: str = "structural", scope: str = "",
+                competency_questions: str = "", references: str = "",
+                pattern_iri: str = "", owl_content: str | None = None) -> dict:
+    """Add a user-defined pattern to the in-memory library.
+
+    If owl_content is provided, try to extract classes/properties from it.
+    Otherwise create an empty pattern structure.
+    """
+    classes = []
+    properties = []
+
+    if owl_content:
+        # Try to parse OWL and extract classes/properties
+        try:
+            from rdflib import Graph, RDF, OWL, RDFS
+            g = Graph()
+            # Try multiple formats
+            for fmt in ("xml", "turtle", "n3"):
+                try:
+                    g.parse(data=owl_content, format=fmt)
+                    break
+                except Exception:
+                    continue
+
+            # Extract classes
+            for s in g.subjects(RDF.type, OWL.Class):
+                label = str(s).split("#")[-1].split("/")[-1]
+                for _, _, o in g.triples((s, RDFS.label, None)):
+                    label = str(o)
+                    break
+                classes.append({"iri": str(s).split("#")[-1], "label": label})
+
+            # Extract object properties
+            for s in g.subjects(RDF.type, OWL.ObjectProperty):
+                label = str(s).split("#")[-1].split("/")[-1]
+                for _, _, o in g.triples((s, RDFS.label, None)):
+                    label = str(o)
+                    break
+                source = ""
+                target = ""
+                for _, _, o in g.triples((s, RDFS.domain, None)):
+                    source = str(o).split("#")[-1]
+                for _, _, o in g.triples((s, RDFS.range, None)):
+                    target = str(o).split("#")[-1]
+                properties.append({
+                    "iri": str(s).split("#")[-1], "label": label,
+                    "source": source, "target": target, "type": "object",
+                })
+        except Exception:
+            pass
+
+    new_pattern = {
+        "id": pattern_id,
+        "name": name,
+        "description": description,
+        "category": category,
+        "scope": scope,
+        "competency_questions": competency_questions,
+        "references": references,
+        "pattern_iri": pattern_iri,
+        "classes": classes,
+        "properties": properties,
+    }
+    BUILTIN_PATTERNS.append(new_pattern)
+
+    return {
+        "id": pattern_id, "name": name, "description": description,
+        "category": category, "class_count": len(classes),
+        "property_count": len(properties),
+    }

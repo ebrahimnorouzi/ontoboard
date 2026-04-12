@@ -31,9 +31,6 @@ const PREFIXES: Record<string, string> = {
   "http://xmlns.com/foaf/0.1/": "foaf:", "http://www.w3.org/ns/prov#": "prov:",
   "http://purl.obolibrary.org/obo/": "obo:", "http://schema.org/": "schema:",
 };
-/** Auto-generated ID pattern: Class_123456, Ind_123456, prop_123456 etc. */
-const AUTO_ID_RE = /^(?:Class|Ind|prop|lit|edge|subClassOf|rdftype)_\d+/;
-
 function compact(iri: string): string {
   // Standard semantic web prefixes
   for (const [ns, p] of Object.entries(PREFIXES)) if (iri.startsWith(ns)) return p + iri.slice(ns.length);
@@ -41,13 +38,9 @@ function compact(iri: string): string {
   const exMatch = iri.match(/^https?:\/\/example\.org\/([^#/]+)#(.+)$/);
   if (exMatch) {
     const [, ns, local] = exMatch;
-    // If the local part is an auto-generated ID, don't show it
-    if (AUTO_ID_RE.test(local)) return "";
     return `${ns}:${local}`;
   }
-  const local = iri.includes("#") ? iri.split("#").pop() || iri : iri.split("/").pop() || iri;
-  if (AUTO_ID_RE.test(local)) return "";
-  return local;
+  return iri.includes("#") ? iri.split("#").pop() || iri : iri.split("/").pop() || iri;
 }
 
 /** Built-in labels for standard OWL/RDFS/RDF semantic entities */
@@ -84,14 +77,11 @@ const BUILTIN_LABELS: Record<string, string> = {
 
 /** Build two-line display label: "Label\nprefix:localname" */
 function displayLabel(label: string, iri: string): string {
-  const short = compact(iri);
   const builtinLabel = BUILTIN_LABELS[iri];
-  // For built-in entities, use their canonical prefix:localname form
   if (builtinLabel) {
-    return label && label !== builtinLabel && short !== label ? `${label}\n${builtinLabel}` : builtinLabel;
+    return label && label !== builtinLabel ? `${label}\n${builtinLabel}` : builtinLabel;
   }
-  // If compact returned empty (auto-generated ID), show just the label
-  if (!short) return label || iri;
+  const short = compact(iri);
   return label && short !== label ? `${label}\n${short}` : label || short;
 }
 
@@ -197,7 +187,7 @@ export default function OntologyCanvas({ boardId }: Props) {
         }},
         // Edgehandles
         { selector: ".eh-handle", style: {
-          "background-color": "#ef4444", width: 10, height: 10, shape: "ellipse",
+          "background-color": "#ef4444", width: 14, height: 14, shape: "ellipse",
           "overlay-opacity": 0, "border-width": 2, "border-color": "#fff",
         }},
         { selector: ".eh-hover", style: { "background-color": "#ef4444" }},
@@ -227,8 +217,8 @@ export default function OntologyCanvas({ boardId }: Props) {
       nodeLoopOffset: -50,
     });
     ehRef.current = eh;
-    // Do NOT enable draw mode — it hijacks node drag/double-click as edge creation.
-    // Users create edges by dragging from the red handle dot on each node instead.
+    // Edge handles use the red dot on each node — drag from the dot to create edges.
+    // Draw mode is OFF so normal node drag and double-click work correctly.
 
     // Edge complete → create property in store
     cy.on("ehcomplete", (_e: any, src: any, tgt: any, addedEdge: any) => {
@@ -316,19 +306,29 @@ export default function OntologyCanvas({ boardId }: Props) {
       }
     });
 
-    // ── Right-click context menu ─────────────────────────────
+    // ── Right-click context menu (with provenance lookup) ────
+    const getProvenance = (entityId: string) => {
+      const s = useOntologyStore.getState();
+      const cls = s.classes.find((c) => c.iri === entityId);
+      if (cls) return { created_by: cls.created_by, created_at: cls.created_at, modified_by: cls.modified_by, modified_at: cls.modified_at };
+      const ind = s.individuals.find((i) => i.iri === entityId);
+      if (ind) return { created_by: ind.created_by, created_at: ind.created_at, modified_by: ind.modified_by, modified_at: ind.modified_at };
+      const prop = s.properties.find((p) => p.id === entityId);
+      if (prop) return { created_by: prop.created_by, created_at: prop.created_at, modified_by: prop.modified_by, modified_at: prop.modified_at };
+      return undefined;
+    };
     cy.on("cxttap", "node", (evt) => {
       evt.originalEvent.preventDefault();
       const n = evt.target;
       const rp = n.renderedPosition();
-      setContextMenu({ x: rp.x, y: rp.y, target: "node", targetId: n.id(), targetType: n.data("entityType") });
+      setContextMenu({ x: rp.x, y: rp.y, target: "node", targetId: n.id(), targetType: n.data("entityType"), provenance: getProvenance(n.id()) });
     });
     cy.on("cxttap", "edge", (evt) => {
       evt.originalEvent.preventDefault();
       const e = evt.target;
       const mid = e.midpoint();
       const zoom = cy.zoom(); const pan = cy.pan();
-      setContextMenu({ x: mid.x * zoom + pan.x, y: mid.y * zoom + pan.y, target: "edge", targetId: e.id(), targetType: e.data("edgeType") });
+      setContextMenu({ x: mid.x * zoom + pan.x, y: mid.y * zoom + pan.y, target: "edge", targetId: e.id(), targetType: e.data("edgeType"), provenance: getProvenance(e.id()) });
     });
     cy.on("cxttap", (evt) => {
       if (evt.target === cy) {
@@ -562,7 +562,8 @@ export default function OntologyCanvas({ boardId }: Props) {
       if (edge.length) {
         edge.data("displayLabel", ed.label);
         edge.data("edgeType", ed.edgeType);
-        edge.style({ "line-color": ed.color, "target-arrow-color": ed.color, "line-style": ed.lineStyle });
+        // Clear any manual style overrides so the selector-based defaults apply
+        edge.removeStyle();
       }
       const prop = store.properties.find((p) => p.id === ed.id);
       if (prop) {
@@ -687,6 +688,66 @@ export default function OntologyCanvas({ boardId }: Props) {
       case "copy-iri": {
         const nodeId = contextMenu?.targetId;
         if (nodeId) navigator.clipboard?.writeText(nodeId);
+        break;
+      }
+      case "open-iri": {
+        const nodeId = contextMenu?.targetId;
+        if (nodeId && nodeId.startsWith("http")) window.open(nodeId, "_blank");
+        break;
+      }
+      case "edit-iri": {
+        const nodeId = contextMenu?.targetId;
+        if (nodeId) {
+          const newIri = prompt("Edit IRI:", nodeId);
+          if (newIri && newIri !== nodeId) {
+            const cls = store.classes.find((c) => c.iri === nodeId);
+            if (cls) {
+              store.removeClass(nodeId);
+              store.addClass({ ...cls, id: newIri, iri: newIri });
+              // Update edges referencing this node
+              store.setProperties(store.properties.map((p) => ({
+                ...p,
+                source_id: p.source_id === nodeId ? newIri : p.source_id,
+                target_id: p.target_id === nodeId ? newIri : p.target_id,
+              })));
+              store.selectEntity({ iri: newIri, type: "class", label: cls.label });
+            }
+          }
+        }
+        break;
+      }
+      case "add-superclass": {
+        const childId = contextMenu?.targetId;
+        if (childId) {
+          const parentIri = `http://example.org/new#Class_${ts}`;
+          store.addClass({ id: parentIri, iri: parentIri, label: "SuperClass", x: x - 40, y: y - 100, w: 160, h: 60, color: "#4f46e5" });
+          store.addSubClassOf(childId, parentIri);
+        }
+        break;
+      }
+      case "add-sibling": {
+        const nodeId = contextMenu?.targetId;
+        if (nodeId) {
+          // Find parent of this class
+          const parentEdge = store.properties.find((p) => p.iri === "rdfs:subClassOf" && p.source_id === nodeId);
+          const siblingIri = `http://example.org/new#Class_${ts}`;
+          store.addClass({ id: siblingIri, iri: siblingIri, label: "SiblingClass", x: x + 200, y: y, w: 160, h: 60, color: "#4f46e5" });
+          if (parentEdge) {
+            store.addSubClassOf(siblingIri, parentEdge.target_id);
+          }
+        }
+        break;
+      }
+      case "axiom-subclassof":
+      case "axiom-equivalent":
+      case "axiom-disjoint":
+      case "view-axioms": {
+        // Select the entity and switch to axiom tab
+        const nodeId = contextMenu?.targetId;
+        if (nodeId) {
+          const cls = store.classes.find((c) => c.iri === nodeId);
+          if (cls) store.selectEntity({ iri: nodeId, type: "class", label: cls.label });
+        }
         break;
       }
       case "delete": {

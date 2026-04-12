@@ -50,11 +50,38 @@ export default function BoardPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const selectedEntity = useOntologyStore((s) => s.selectedEntity);
+  const setCurrentUser = useOntologyStore((s) => s.setCurrentUser);
+
+  // Set current user for provenance tracking
+  useEffect(() => {
+    if (user) setCurrentUser(user.display_name || user.username || "anonymous");
+  }, [user, setCurrentUser]);
 
   const { connected, users: collabUsers } = useCollaboration(
     status === "ready" ? boardId : undefined,
     user?.display_name || user?.username || "anonymous",
   );
+
+  // Poll for changes by other users every 10 seconds
+  useEffect(() => {
+    if (status !== "ready" || !boardId) return;
+    const store = useOntologyStore.getState();
+    let lastKnownSave = store.lastSaved;
+    const interval = setInterval(async () => {
+      try {
+        const currentStore = useOntologyStore.getState();
+        // Skip if we're currently saving or dirty
+        if (currentStore.saving || currentStore.dirty) return;
+        const res = await apiJson<{ last_saved?: number }>(`/api/boards/${boardId}/sync-check`).catch(() => null);
+        if (res?.last_saved && res.last_saved > lastKnownSave && res.last_saved > currentStore.lastSaved) {
+          // Another user saved — reload
+          lastKnownSave = res.last_saved;
+          await currentStore.loadFromBackend(boardId);
+        }
+      } catch { /* ignore polling errors */ }
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [status, boardId]);
 
   useEffect(() => {
     if (!boardId) return;

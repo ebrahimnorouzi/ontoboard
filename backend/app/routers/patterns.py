@@ -1,6 +1,6 @@
 """ODP Pattern Library router."""
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Form, UploadFile, File
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -44,3 +44,39 @@ def apply_pattern(board_id: str, pattern_id: str, body: ApplyBody,
     result = pattern_svc.apply_pattern(DATA_DIR / board_id, pattern_id, body.base_iri, body.x, body.y)
     board_svc.log_activity(db, board, user, "pattern_applied", f"Pattern: {pattern_id}")
     return result
+
+
+@router.post("/upload", status_code=201)
+async def upload_pattern(
+    name: str = Form(...),
+    description: str = Form(""),
+    category: str = Form("structural"),
+    scope: str = Form(""),
+    competency_questions: str = Form(""),
+    references: str = Form(""),
+    pattern_iri: str = Form(""),
+    file: UploadFile | None = File(None),
+    user: User = Depends(get_current_user),
+):
+    """Upload a new ODP pattern with metadata."""
+    pattern_id = name.lower().replace(" ", "-").replace("/", "-")
+    # Check for duplicate
+    if pattern_svc.get_pattern(pattern_id):
+        raise HTTPException(status_code=409, detail="Pattern with this name already exists")
+
+    file_content = None
+    if file:
+        file_content = (await file.read()).decode("utf-8", errors="replace")
+
+    new_pattern = pattern_svc.add_pattern(
+        pattern_id=pattern_id,
+        name=name,
+        description=description,
+        category=category,
+        scope=scope,
+        competency_questions=competency_questions,
+        references=references,
+        pattern_iri=pattern_iri,
+        owl_content=file_content,
+    )
+    return new_pattern

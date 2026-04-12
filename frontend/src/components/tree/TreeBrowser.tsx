@@ -226,7 +226,27 @@ export default function TreeBrowser({ boardId }: Props) {
                 <button className={styles.detailDelete} onClick={() => setConfirmDelete(selectedIri)}
                         title="Delete entity">&#128465;</button>
               </div>
-              <div className={styles.detailIri}>{detail.iri}</div>
+              <div
+                className={styles.detailIri}
+                title="Click to edit IRI"
+                onClick={() => {
+                  const newIri = prompt("Edit IRI:", detail.iri);
+                  if (newIri && newIri !== detail.iri) {
+                    const cls = store.classes.find((c) => c.iri === detail.iri);
+                    if (cls) {
+                      store.removeClass(detail.iri);
+                      store.addClass({ ...cls, id: newIri, iri: newIri });
+                      store.setProperties(store.properties.map((p) => ({
+                        ...p,
+                        source_id: p.source_id === detail.iri ? newIri : p.source_id,
+                        target_id: p.target_id === detail.iri ? newIri : p.target_id,
+                      })));
+                      store.selectEntity({ iri: newIri, type: detail.entity_type, label: detail.label });
+                    }
+                  }
+                }}
+                style={{ cursor: "pointer" }}
+              >{detail.iri}</div>
 
               {detail.annotations.length > 0 && (
                 <div className={styles.detailSection}>
@@ -250,6 +270,45 @@ export default function TreeBrowser({ boardId }: Props) {
                   <span className={styles.detailMeta}>{detail.axiom_count} axiom(s)</span>
                 </div>
               )}
+
+              {/* Provenance info */}
+              {(() => {
+                const cls = store.classes.find((c) => c.iri === detail.iri);
+                const ind = store.individuals.find((i) => i.iri === detail.iri);
+                const entity = cls || ind;
+                if (!entity?.created_by && !entity?.modified_by) return null;
+                return (
+                  <div className={styles.detailSection}>
+                    <h4 className={styles.detailSectionTitle}>Provenance</h4>
+                    <div className={styles.annotationList}>
+                      {entity.created_by && (
+                        <div className={styles.annotationRow}>
+                          <span className={styles.annotProp}>Created by</span>
+                          <span className={styles.annotVal}>{entity.created_by}</span>
+                        </div>
+                      )}
+                      {entity.created_at && (
+                        <div className={styles.annotationRow}>
+                          <span className={styles.annotProp}>Created</span>
+                          <span className={styles.annotVal}>{new Date(entity.created_at).toLocaleString()}</span>
+                        </div>
+                      )}
+                      {entity.modified_by && entity.modified_by !== entity.created_by && (
+                        <div className={styles.annotationRow}>
+                          <span className={styles.annotProp}>Modified by</span>
+                          <span className={styles.annotVal}>{entity.modified_by}</span>
+                        </div>
+                      )}
+                      {entity.modified_at && entity.modified_at !== entity.created_at && (
+                        <div className={styles.annotationRow}>
+                          <span className={styles.annotProp}>Modified</span>
+                          <span className={styles.annotVal}>{new Date(entity.modified_at).toLocaleString()}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
 
               {detail.usages.length > 0 && (
                 <div className={styles.detailSection}>

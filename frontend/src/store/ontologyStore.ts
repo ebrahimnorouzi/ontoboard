@@ -10,14 +10,20 @@ import { apiJson } from "../api";
 interface OntClass {
   id: string; iri: string; label: string;
   x: number; y: number; w: number; h: number; color: string;
+  created_by?: string; created_at?: string;
+  modified_by?: string; modified_at?: string;
 }
 interface OntProperty {
   id: string; iri: string; label: string;
   source_id: string; target_id: string; property_type: string;
+  created_by?: string; created_at?: string;
+  modified_by?: string; modified_at?: string;
 }
 interface OntIndividual {
   id: string; iri: string; label: string;
   class_iri: string; x: number; y: number;
+  created_by?: string; created_at?: string;
+  modified_by?: string; modified_at?: string;
 }
 interface OntLiteral {
   id: string; value: string; datatype: string; language: string;
@@ -51,6 +57,10 @@ interface OntologyState {
   lastSaved: number;
   undoStack: CanvasSnapshot[];
   redoStack: CanvasSnapshot[];
+  // Provenance settings
+  currentUser: string;
+  trackProvenance: boolean;
+  provenanceTarget: "board" | "ontology" | "both";
 
   // Actions
   setBoardId: (id: string) => void;
@@ -82,6 +92,11 @@ interface OntologyState {
   updateStickyNote: (id: string, updates: Partial<StickyNote>) => void;
   removeStickyNote: (id: string) => void;
   setStickyNotes: (notes: StickyNote[]) => void;
+
+  // Provenance
+  setCurrentUser: (username: string) => void;
+  setTrackProvenance: (enabled: boolean) => void;
+  setProvenanceTarget: (target: "board" | "ontology" | "both") => void;
 }
 
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
@@ -107,6 +122,16 @@ function pushUndo(get: () => OntologyState, set: (partial: Partial<OntologyState
   set({ undoStack: [...undoStack.slice(-(MAX_UNDO - 1)), snapshot], redoStack: [] });
 }
 
+function provStamp(get: () => OntologyState): { created_by: string; created_at: string; modified_by: string; modified_at: string } {
+  const now = new Date().toISOString();
+  const user = get().currentUser || "anonymous";
+  return { created_by: user, created_at: now, modified_by: user, modified_at: now };
+}
+
+function modStamp(get: () => OntologyState): { modified_by: string; modified_at: string } {
+  return { modified_by: get().currentUser || "anonymous", modified_at: new Date().toISOString() };
+}
+
 export const useOntologyStore = create<OntologyState>((set, get) => ({
   boardId: null,
   classes: [],
@@ -120,6 +145,9 @@ export const useOntologyStore = create<OntologyState>((set, get) => ({
   lastSaved: 0,
   undoStack: [],
   redoStack: [],
+  currentUser: "",
+  trackProvenance: true,
+  provenanceTarget: "both",
 
   setBoardId: (id) => set({ boardId: id }),
 
@@ -145,13 +173,16 @@ export const useOntologyStore = create<OntologyState>((set, get) => ({
   },
 
   saveToBackend: async () => {
-    const { boardId, classes, properties, individuals, literals, stickyNotes, dirty } = get();
+    const { boardId, classes, properties, individuals, literals, stickyNotes, dirty, trackProvenance, provenanceTarget } = get();
     if (!boardId || !dirty) return;
     set({ saving: true });
     try {
       await apiJson(`/api/owl/${boardId}/save`, {
         method: "POST",
-        body: JSON.stringify({ classes, properties, individuals, literals, sticky_notes: stickyNotes }),
+        body: JSON.stringify({
+          classes, properties, individuals, literals, sticky_notes: stickyNotes,
+          track_provenance: trackProvenance, provenance_target: provenanceTarget,
+        }),
       });
       set({ dirty: false, saving: false, lastSaved: Date.now() });
     } catch {
@@ -205,13 +236,15 @@ export const useOntologyStore = create<OntologyState>((set, get) => ({
 
   addClass: (cls) => {
     pushUndo(get, set);
-    set((s) => ({ classes: [...s.classes, cls], dirty: true }));
+    const stamped = get().trackProvenance ? { ...cls, ...provStamp(get) } : cls;
+    set((s) => ({ classes: [...s.classes, stamped], dirty: true }));
     debouncedSave(get);
   },
 
   updateClass: (iri, updates) => {
+    const mod = get().trackProvenance ? modStamp(get) : {};
     set((s) => ({
-      classes: s.classes.map((c) => (c.iri === iri ? { ...c, ...updates } : c)),
+      classes: s.classes.map((c) => (c.iri === iri ? { ...c, ...updates, ...mod } : c)),
       dirty: true,
     }));
     debouncedSave(get);
@@ -229,7 +262,8 @@ export const useOntologyStore = create<OntologyState>((set, get) => ({
 
   addProperty: (prop) => {
     pushUndo(get, set);
-    set((s) => ({ properties: [...s.properties, prop], dirty: true }));
+    const stamped = get().trackProvenance ? { ...prop, ...provStamp(get) } : prop;
+    set((s) => ({ properties: [...s.properties, stamped], dirty: true }));
     debouncedSave(get);
   },
 
@@ -242,12 +276,14 @@ export const useOntologyStore = create<OntologyState>((set, get) => ({
   addSubClassOf: (childIri, parentIri) => {
     pushUndo(get, set);
     const id = `subClassOf_${childIri}_${parentIri}`;
+    const prov = get().trackProvenance ? provStamp(get) : {};
     set((s) => ({
       properties: [
         ...s.properties.filter((p) => p.id !== id),
         {
           id, iri: "rdfs:subClassOf", label: "rdfs:subClassOf",
           source_id: childIri, target_id: parentIri, property_type: "annotation",
+          ...prov,
         },
       ],
       dirty: true,
@@ -306,6 +342,11 @@ export const useOntologyStore = create<OntologyState>((set, get) => ({
     debouncedSave(get);
   },
   setStickyNotes: (notes) => set({ stickyNotes: notes, dirty: true }),
+
+  // Provenance settings
+  setCurrentUser: (username) => set({ currentUser: username }),
+  setTrackProvenance: (enabled) => set({ trackProvenance: enabled }),
+  setProvenanceTarget: (target) => set({ provenanceTarget: target }),
 }));
 
 export type { OntClass, OntProperty, OntIndividual, OntLiteral, StickyNote, SelectedEntity };

@@ -139,7 +139,11 @@ def _auto_layout(classes: list[CanvasClass], cols: int = 0, gap_x: float = 200, 
 # ── Canvas → OWL ──────────────────────────────────────────────
 
 def canvas_to_owl(state: CanvasState, base_iri: str) -> Graph:
-    """Convert a CanvasState into an rdflib Graph."""
+    """Convert a CanvasState into an rdflib Graph.
+
+    If provenance tracking is enabled and target includes 'ontology',
+    embeds PROV-O and Dublin Core provenance annotations on each entity.
+    """
     g = Graph()
     g.bind("owl", OWL)
     g.bind("rdfs", RDFS)
@@ -147,16 +151,45 @@ def canvas_to_owl(state: CanvasState, base_iri: str) -> Graph:
     ns = Namespace(base_iri + "#")
     g.bind("", ns)
 
+    # Provenance namespaces
+    PROV = Namespace("http://www.w3.org/ns/prov#")
+    DC = Namespace("http://purl.org/dc/terms/")
+    FOAF = Namespace("http://xmlns.com/foaf/0.1/")
+    g.bind("prov", PROV)
+    g.bind("dcterms", DC)
+    g.bind("foaf", FOAF)
+
+    embed_prov = state.track_provenance and state.provenance_target in ("ontology", "both")
+
     # Ontology declaration
     ont = URIRef(base_iri)
     g.add((ont, RDF.type, OWL.Ontology))
     g.add((ont, RDFS.label, Literal(base_iri.split("/")[-1])))
+
+    def _add_provenance(subject, created_by: str, created_at: str,
+                        modified_by: str, modified_at: str):
+        """Add PROV-O / Dublin Core provenance annotations to an entity."""
+        if not embed_prov:
+            return
+        if created_by:
+            g.add((subject, DC.creator, Literal(created_by)))
+        if created_at:
+            g.add((subject, DC.created, Literal(created_at)))
+            g.add((subject, PROV.generatedAtTime, Literal(created_at)))
+        if modified_by:
+            g.add((subject, DC.contributor, Literal(modified_by)))
+        if modified_at:
+            g.add((subject, DC.modified, Literal(modified_at)))
+        if created_by:
+            g.add((subject, PROV.wasAttributedTo, Literal(created_by)))
 
     # Classes
     for cls in state.classes:
         c = URIRef(cls.iri)
         g.add((c, RDF.type, OWL.Class))
         g.add((c, RDFS.label, Literal(cls.label, lang="en")))
+        _add_provenance(c, cls.created_by, cls.created_at,
+                        cls.modified_by, cls.modified_at)
 
     # Properties (object properties + subClassOf)
     for prop in state.properties:
@@ -168,10 +201,14 @@ def canvas_to_owl(state: CanvasState, base_iri: str) -> Graph:
             g.add((p, RDFS.label, Literal(prop.label, lang="en")))
             g.add((p, RDFS.domain, URIRef(prop.source_id)))
             g.add((p, RDFS.range, URIRef(prop.target_id)))
+            _add_provenance(p, prop.created_by, prop.created_at,
+                            prop.modified_by, prop.modified_at)
         elif prop.property_type == "data":
             p = URIRef(prop.iri)
             g.add((p, RDF.type, OWL.DatatypeProperty))
             g.add((p, RDFS.label, Literal(prop.label, lang="en")))
+            _add_provenance(p, prop.created_by, prop.created_at,
+                            prop.modified_by, prop.modified_at)
 
     # Individuals
     for ind in state.individuals:
@@ -180,6 +217,8 @@ def canvas_to_owl(state: CanvasState, base_iri: str) -> Graph:
         g.add((i, RDFS.label, Literal(ind.label, lang="en")))
         if ind.class_iri:
             g.add((i, RDF.type, URIRef(ind.class_iri)))
+        _add_provenance(i, ind.created_by, ind.created_at,
+                        ind.modified_by, ind.modified_at)
 
     return g
 

@@ -4,8 +4,15 @@
   display: flex; align-items: center; justify-content: space-between;
   padding: 0.6rem 0.8rem; border-bottom: 1px solid var(--border); flex-shrink: 0;
 }
-.title { font-size: 0.82rem; font-weight: 600; margin: 0; }
-.count { font-size: 0.65rem; color: var(--text-muted); }
+.title { font-size: 0.82rem; font-weight: 600; margin: 0; flex: 1; }
+.count { font-size: 0.65rem; color: var(--text-muted); margin-right: 0.4rem; }
+.uploadToggle {
+  width: 24px; height: 24px; border-radius: 50%; border: 1px solid var(--accent);
+  background: none; color: var(--accent); font-size: 1rem; font-weight: 700;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s; line-height: 1; padding: 0;
+}
+.uploadToggle:hover { background: var(--accent); color: #fff; }
 
 .error, .success {
   padding: 0.4rem 0.8rem; font-size: 0.72rem; cursor: pointer; flex-shrink: 0;
@@ -70,3 +77,42 @@
   font-size: 0.78rem; font-weight: 600; cursor: pointer; font-family: inherit;
 }
 .applyBtnLg:disabled { opacity: 0.4; }
+
+/* Upload form */
+.uploadForm {
+  padding: 0.6rem 0.8rem; border-bottom: 1px solid var(--border);
+  background: var(--bg-card); display: flex; flex-direction: column; gap: 0.35rem;
+}
+.uploadTitle { font-size: 0.78rem; font-weight: 600; margin: 0 0 0.2rem; }
+.uploadInput {
+  padding: 0.3rem 0.5rem; border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background: var(--bg-primary); color: var(--text-primary); font-size: 0.72rem; font-family: inherit;
+  outline: none;
+}
+.uploadInput:focus { border-color: var(--accent); }
+.uploadTextarea {
+  padding: 0.3rem 0.5rem; border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background: var(--bg-primary); color: var(--text-primary); font-size: 0.72rem; font-family: inherit;
+  outline: none; resize: vertical;
+}
+.uploadTextarea:focus { border-color: var(--accent); }
+.uploadSelect {
+  padding: 0.3rem 0.5rem; border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background: var(--bg-primary); color: var(--text-primary); font-size: 0.72rem; font-family: inherit;
+}
+.uploadFileLabel {
+  font-size: 0.68rem; color: var(--text-muted); display: flex; flex-direction: column; gap: 0.2rem;
+}
+.uploadFileLabel input[type="file"] { font-size: 0.68rem; }
+.uploadActions { display: flex; gap: 0.4rem; margin-top: 0.2rem; }
+.uploadBtn {
+  flex: 1; padding: 0.35rem; background: var(--accent); color: #fff; border: none;
+  border-radius: var(--radius-sm); font-size: 0.72rem; font-weight: 600; cursor: pointer;
+  font-family: inherit;
+}
+.uploadBtn:hover { opacity: 0.9; }
+.uploadCancel {
+  padding: 0.35rem 0.6rem; background: none; border: 1px solid var(--border);
+  border-radius: var(--radius-sm); color: var(--text-secondary); font-size: 0.72rem;
+  cursor: pointer; font-family: inherit;
+}

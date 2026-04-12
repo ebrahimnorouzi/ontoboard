@@ -216,6 +216,19 @@ def count_activities(db: Session) -> int:
     return db.query(Activity).count()
 
 
+def get_last_save_timestamp(db: Session, board) -> float:
+    """Return epoch timestamp of the last 'saved' activity for a board."""
+    last = (
+        db.query(Activity)
+        .filter(Activity.board_id == board.id, Activity.action == "saved")
+        .order_by(Activity.created_at.desc())
+        .first()
+    )
+    if last and last.created_at:
+        return last.created_at.timestamp()
+    return 0
+
+
 # ── Filesystem provisioning ───────────────────────────────────
 def provision_directory(board_id: str) -> Path:
     """Create board directory with minimal ODK scaffold. Returns the path."""

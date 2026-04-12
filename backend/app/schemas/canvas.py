@@ -1,4 +1,4 @@
-"""Canvas state schemas — richer than the old CanvasGraph."""
+"""Canvas state schemas with provenance tracking."""
 
 from pydantic import BaseModel
 
@@ -12,6 +12,11 @@ class CanvasClass(BaseModel):
     w: float = 160
     h: float = 60
     color: str = "violet"
+    # Provenance
+    created_by: str = ""
+    created_at: str = ""
+    modified_by: str = ""
+    modified_at: str = ""
 
 
 class CanvasProperty(BaseModel):
@@ -21,6 +26,11 @@ class CanvasProperty(BaseModel):
     source_id: str
     target_id: str
     property_type: str = "object"  # "object" | "data" | "annotation"
+    # Provenance
+    created_by: str = ""
+    created_at: str = ""
+    modified_by: str = ""
+    modified_at: str = ""
 
 
 class CanvasIndividual(BaseModel):
@@ -30,6 +40,11 @@ class CanvasIndividual(BaseModel):
     class_iri: str = ""
     x: float = 0
     y: float = 0
+    # Provenance
+    created_by: str = ""
+    created_at: str = ""
+    modified_by: str = ""
+    modified_at: str = ""
 
 
 class CanvasLiteral(BaseModel):
@@ -58,3 +73,6 @@ class CanvasState(BaseModel):
     individuals: list[CanvasIndividual] = []
     literals: list[CanvasLiteral] = []
     sticky_notes: list[CanvasStickyNote] = []
+    # Board-level provenance settings
+    track_provenance: bool = True
+    provenance_target: str = "both"  # "board" | "ontology" | "both"
