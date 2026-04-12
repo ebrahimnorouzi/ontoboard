@@ -3,7 +3,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.config import DATA_DIR
 from app.deps import get_db, get_current_user, get_current_user_optional
 from app.models.user import User
 from app.schemas.characteristics import (
@@ -35,7 +34,7 @@ def get_characteristics(
 ):
     _check(board_id, db, user)
     try:
-        g = load_graph(DATA_DIR / board_id)
+        g = load_graph(board_svc.get_board_dir(board_id))
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="No OWL file")
     return CharacteristicsInfo(**char_svc.get_characteristics(g, entity_iri))
@@ -47,8 +46,8 @@ def set_characteristics(
     db: Session = Depends(get_db), user: User = Depends(get_current_user),
 ):
     board = _check(board_id, db, user, need_edit=True)
-    result = char_svc.set_characteristics(DATA_DIR / board_id, entity_iri, body.model_dump(exclude_unset=True))
-    board_svc.git_commit(DATA_DIR / board_id, f"Updated characteristics for {entity_iri}")
+    result = char_svc.set_characteristics(board_svc.get_board_dir(board_id), entity_iri, body.model_dump(exclude_unset=True))
+    board_svc.git_commit(board_svc.get_board_dir(board_id), f"Updated characteristics for {entity_iri}")
     board_svc.log_activity(db, board, user, "characteristics_updated", entity_iri)
     return CharacteristicsInfo(**result)
 
@@ -59,10 +58,10 @@ def create_chain(
     db: Session = Depends(get_db), user: User = Depends(get_current_user),
 ):
     board = _check(board_id, db, user, need_edit=True)
-    ok = char_svc.create_property_chain(DATA_DIR / board_id, body.super_property, body.chain_properties)
+    ok = char_svc.create_property_chain(board_svc.get_board_dir(board_id), body.super_property, body.chain_properties)
     if not ok:
         raise HTTPException(status_code=400, detail="Chain needs at least 2 properties")
-    board_svc.git_commit(DATA_DIR / board_id, f"Created property chain for {body.super_property}")
+    board_svc.git_commit(board_svc.get_board_dir(board_id), f"Created property chain for {body.super_property}")
     return {"success": True}
 
 
@@ -72,10 +71,10 @@ def create_all_disjoint(
     db: Session = Depends(get_db), user: User = Depends(get_current_user),
 ):
     board = _check(board_id, db, user, need_edit=True)
-    ok = char_svc.create_all_disjoint_classes(DATA_DIR / board_id, body.class_iris)
+    ok = char_svc.create_all_disjoint_classes(board_svc.get_board_dir(board_id), body.class_iris)
     if not ok:
         raise HTTPException(status_code=400, detail="Need at least 2 classes")
-    board_svc.git_commit(DATA_DIR / board_id, f"Created AllDisjointClasses ({len(body.class_iris)} classes)")
+    board_svc.git_commit(board_svc.get_board_dir(board_id), f"Created AllDisjointClasses ({len(body.class_iris)} classes)")
     return {"success": True}
 
 
@@ -85,8 +84,8 @@ def create_disjoint_props(
     db: Session = Depends(get_db), user: User = Depends(get_current_user),
 ):
     board = _check(board_id, db, user, need_edit=True)
-    ok = char_svc.create_disjoint_properties(DATA_DIR / board_id, body.property_iris)
+    ok = char_svc.create_disjoint_properties(board_svc.get_board_dir(board_id), body.property_iris)
     if not ok:
         raise HTTPException(status_code=400, detail="Need at least 2 properties")
-    board_svc.git_commit(DATA_DIR / board_id, f"Created disjoint properties")
+    board_svc.git_commit(board_svc.get_board_dir(board_id), f"Created disjoint properties")
     return {"success": True}

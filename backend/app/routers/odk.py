@@ -4,7 +4,6 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
-from app.config import DATA_DIR
 from app.deps import get_db, get_current_user
 from app.models.user import User
 from app.services import board as board_svc
@@ -26,7 +25,7 @@ def run_odk_build(
     if not board_svc.can_edit(db, board, user):
         raise HTTPException(status_code=403, detail="Edit access required to run builds")
 
-    board_dir = DATA_DIR / board_id
+    board_dir = board_svc.get_board_dir(board_id)
     ont_dir = board_dir / "src" / "ontology"
     if not ont_dir.exists():
         raise HTTPException(status_code=400, detail="Board has no ODK ontology directory")

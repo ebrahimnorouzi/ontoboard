@@ -4,7 +4,6 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse, PlainTextResponse, HTMLResponse
 from sqlalchemy.orm import Session
 
-from app.config import DATA_DIR
 from app.deps import get_db, get_current_user, get_current_user_optional
 from app.models.user import User
 from app.schemas.docs import DocsStatus
@@ -27,7 +26,7 @@ async def build_docs(
     if not board_svc.can_edit(db, board, user):
         raise HTTPException(status_code=403, detail="Edit access required")
 
-    board_dir = DATA_DIR / board_id
+    board_dir = board_svc.get_board_dir(board_id)
     board_svc.log_activity(db, board, user, "docs_build", "Documentation generation started")
 
     return StreamingResponse(
@@ -48,7 +47,7 @@ def get_status(
         raise HTTPException(status_code=404, detail="Board not found")
     if not board_svc.can_view(db, board, user):
         raise HTTPException(status_code=403, detail="Access denied")
-    return DocsStatus(**docs_svc.get_docs_status(DATA_DIR / board_id))
+    return DocsStatus(**docs_svc.get_docs_status(board_svc.get_board_dir(board_id)))
 
 
 @router.get("/{board_id}/files")
@@ -63,7 +62,7 @@ def list_files(
         raise HTTPException(status_code=404, detail="Board not found")
     if not board_svc.can_view(db, board, user):
         raise HTTPException(status_code=403, detail="Access denied")
-    return docs_svc.list_docs_files(DATA_DIR / board_id)
+    return docs_svc.list_docs_files(board_svc.get_board_dir(board_id))
 
 
 @router.get("/{board_id}/serve/{file_path:path}")
@@ -80,7 +79,7 @@ def serve_file(
     if not board_svc.can_view(db, board, user):
         raise HTTPException(status_code=403, detail="Access denied")
 
-    content = docs_svc.get_docs_content(DATA_DIR / board_id, file_path)
+    content = docs_svc.get_docs_content(board_svc.get_board_dir(board_id), file_path)
     if content is None:
         raise HTTPException(status_code=404, detail="File not found")
 

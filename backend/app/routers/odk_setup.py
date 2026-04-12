@@ -1,11 +1,13 @@
 """ODK Setup Router — create ODK-compliant boards, manage files, edit YAML."""
 
+import shutil
+from pathlib import Path
+
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.config import DATA_DIR
 from app.deps import get_db, get_current_user
 from app.models.user import User
 from app.services import board as board_svc
@@ -35,14 +37,16 @@ async def create_odk_board(
 
     # Create board in DB
     board = board_svc.create_board(db, ont_id, user, display_name=body.title or ont_id)
-    board_dir = DATA_DIR / ont_id
+    # Provision under per-user directory
+    from app.config import DATA_DIR as _DATA_DIR
+    board_dir = _DATA_DIR / user.username / ont_id
+    board_dir.mkdir(parents=True, exist_ok=True)
 
     if body.mode == "odk":
         # Run full ODK seed
         result = odk_setup.run_odk_seed(board_dir, ont_id, body.title, body.versioning_strategy)
     else:
         # Blank board with minimal scaffold
-        board_dir.mkdir(parents=True, exist_ok=True)
         odk_setup._create_manual_scaffold(board_dir, ont_id, body.title or ont_id, body.versioning_strategy)
         result = {"success": True, "files": [], "edit_owl": f"src/ontology/{ont_id}-edit.owl",
                    "yaml_path": f"src/ontology/{ont_id}-odk.yaml", "ont_id": ont_id}
@@ -85,7 +89,9 @@ async def import_zip(
         raise HTTPException(status_code=409, detail="Board already exists")
 
     board = board_svc.create_board(db, ont_id, user, display_name=title or ont_id)
-    board_dir = DATA_DIR / ont_id
+    from app.config import DATA_DIR as _DATA_DIR
+    board_dir = _DATA_DIR / user.username / ont_id
+    board_dir.mkdir(parents=True, exist_ok=True)
 
     try:
         zip_content = await file.read()
@@ -120,7 +126,9 @@ async def import_github(
         raise HTTPException(status_code=409, detail="Board already exists")
 
     board = board_svc.create_board(db, ont_id, user, display_name=body.title or ont_id)
-    board_dir = DATA_DIR / ont_id
+    from app.config import DATA_DIR as _DATA_DIR
+    board_dir = _DATA_DIR / user.username / ont_id
+    board_dir.mkdir(parents=True, exist_ok=True)
 
     try:
         files = odk_setup.import_from_github(board_dir, body.url)
@@ -143,7 +151,7 @@ def get_yaml(board_id: str, db: Session = Depends(get_db), user: User = Depends(
     board = board_svc.get_board_by_slug(db, board_id)
     if not board:
         raise HTTPException(status_code=404, detail="Board not found")
-    content = odk_setup.get_odk_yaml(DATA_DIR / board_id, board_id)
+    content = odk_setup.get_odk_yaml(board_svc.get_board_dir(board_id), board_id)
     return PlainTextResponse(content or "# No ODK YAML config found")
 
 
@@ -159,8 +167,8 @@ def save_yaml(board_id: str, body: YamlSave, db: Session = Depends(get_db), user
         raise HTTPException(status_code=404, detail="Board not found")
     if not board_svc.can_edit(db, board, user):
         raise HTTPException(status_code=403, detail="Edit access required")
-    odk_setup.save_odk_yaml(DATA_DIR / board_id, board_id, body.content)
-    board_svc.git_commit(DATA_DIR / board_id, "Updated ODK YAML config")
+    odk_setup.save_odk_yaml(board_svc.get_board_dir(board_id), board_id, body.content)
+    board_svc.git_commit(board_svc.get_board_dir(board_id), "Updated ODK YAML config")
     return {"success": True}
 
 
@@ -170,7 +178,7 @@ def list_files(board_id: str, db: Session = Depends(get_db), user: User = Depend
     board = board_svc.get_board_by_slug(db, board_id)
     if not board:
         raise HTTPException(status_code=404, detail="Board not found")
-    return odk_setup.list_board_files(DATA_DIR / board_id)
+    return odk_setup.list_board_files(board_svc.get_board_dir(board_id))
 
 
 @router.get("/{board_id}/file/{file_path:path}")
@@ -179,7 +187,7 @@ def read_file(board_id: str, file_path: str, db: Session = Depends(get_db), user
     board = board_svc.get_board_by_slug(db, board_id)
     if not board:
         raise HTTPException(status_code=404, detail="Board not found")
-    content = odk_setup.read_board_file(DATA_DIR / board_id, file_path)
+    content = odk_setup.read_board_file(board_svc.get_board_dir(board_id), file_path)
     if content is None:
         raise HTTPException(status_code=404, detail="File not found")
     return PlainTextResponse(content)
@@ -187,6 +195,16 @@ def read_file(board_id: str, file_path: str, db: Session = Depends(get_db), user
 
 class FileWrite(BaseModel):
     content: str
+
+
+class RenameBody(BaseModel):
+    old_path: str
+    new_path: str
+
+
+class NewFileBody(BaseModel):
+    path: str
+    content: str = ""
 
 
 @router.put("/{board_id}/file/{file_path:path}")
@@ -198,8 +216,99 @@ def write_file(board_id: str, file_path: str, body: FileWrite,
         raise HTTPException(status_code=404, detail="Board not found")
     if not board_svc.can_edit(db, board, user):
         raise HTTPException(status_code=403, detail="Edit access required")
-    ok = odk_setup.write_board_file(DATA_DIR / board_id, file_path, body.content)
+    ok = odk_setup.write_board_file(board_svc.get_board_dir(board_id), file_path, body.content)
     if not ok:
         raise HTTPException(status_code=400, detail="Invalid file path")
-    board_svc.git_commit(DATA_DIR / board_id, f"Edited: {file_path}")
+    board_svc.git_commit(board_svc.get_board_dir(board_id), f"Edited: {file_path}")
     return {"success": True}
+
+
+def _resolve_board_dir(board_id: str) -> Path:
+    """Resolve the board directory — delegates to board_svc.get_board_dir."""
+    return board_svc.get_board_dir(board_id)
+
+
+@router.delete("/{board_id}/file/{file_path:path}")
+def delete_file(
+    board_id: str,
+    file_path: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Delete a file or folder from the board directory."""
+    board = board_svc.get_board_by_slug(db, board_id)
+    if not board:
+        raise HTTPException(status_code=404, detail="Board not found")
+    if not board_svc.can_edit(db, board, user):
+        raise HTTPException(status_code=403, detail="Edit access required")
+
+    board_dir = _resolve_board_dir(board_id)
+    full_path = board_dir / file_path
+
+    if not full_path.exists():
+        raise HTTPException(status_code=404, detail="File not found")
+
+    if full_path.is_dir():
+        shutil.rmtree(full_path)
+    else:
+        full_path.unlink()
+
+    board_svc.git_commit(board_dir, f"Deleted: {file_path}")
+    return {"deleted": True}
+
+
+@router.post("/{board_id}/rename")
+def rename_file(
+    board_id: str,
+    body: RenameBody,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Rename (move) a file or folder within the board directory."""
+    board = board_svc.get_board_by_slug(db, board_id)
+    if not board:
+        raise HTTPException(status_code=404, detail="Board not found")
+    if not board_svc.can_edit(db, board, user):
+        raise HTTPException(status_code=403, detail="Edit access required")
+
+    board_dir = _resolve_board_dir(board_id)
+    old = board_dir / body.old_path
+    new = board_dir / body.new_path
+
+    if not old.exists():
+        raise HTTPException(status_code=404, detail="Source path not found")
+    if new.exists():
+        raise HTTPException(status_code=409, detail="Target path already exists")
+
+    new.parent.mkdir(parents=True, exist_ok=True)
+    old.rename(new)
+
+    board_svc.git_commit(board_dir, f"Renamed: {body.old_path} -> {body.new_path}")
+    return {"renamed": True}
+
+
+@router.post("/{board_id}/new-file")
+def create_file(
+    board_id: str,
+    body: NewFileBody,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Create a new file in the board directory."""
+    board = board_svc.get_board_by_slug(db, board_id)
+    if not board:
+        raise HTTPException(status_code=404, detail="Board not found")
+    if not board_svc.can_edit(db, board, user):
+        raise HTTPException(status_code=403, detail="Edit access required")
+
+    board_dir = _resolve_board_dir(board_id)
+    path = board_dir / body.path
+
+    if path.exists():
+        raise HTTPException(status_code=409, detail="File already exists")
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(body.content or "", encoding="utf-8")
+
+    board_svc.git_commit(board_dir, f"Created: {body.path}")
+    return {"created": True}

@@ -9,7 +9,6 @@ from fastapi.responses import StreamingResponse, FileResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.config import DATA_DIR
 from app.deps import get_db, get_current_user
 from app.models.user import User
 from app.services import board as board_svc
@@ -33,7 +32,7 @@ def _check(board_id: str, db: Session, user: User):
 async def odk_seed(board_id: str, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     """Run ODK seed to scaffold a full standard ODK project."""
     board = _check(board_id, db, user)
-    board_dir = DATA_DIR / board_id
+    board_dir = board_svc.get_board_dir(board_id)
     board_svc.log_activity(db, board, user, "odk_seed", "ODK seed started")
     return StreamingResponse(mediator.stream_odk_seed(board_dir, board_id), media_type="text/event-stream")
 
@@ -42,7 +41,7 @@ async def odk_seed(board_id: str, db: Session = Depends(get_db), user: User = De
 async def update_repo(board_id: str, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     """Run `make update_repo` to reload config from edit-file.yaml."""
     board = _check(board_id, db, user)
-    board_dir = DATA_DIR / board_id
+    board_dir = board_svc.get_board_dir(board_id)
     board_svc.log_activity(db, board, user, "update_repo", "Repository config update started")
     return StreamingResponse(mediator.stream_update_repo(board_dir, board_id), media_type="text/event-stream")
 
@@ -58,7 +57,7 @@ async def refresh_imports(board_id: str, body: ImportRefreshRequest | None = Non
                            db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     """Run `make refresh-imports` to download/update import modules."""
     board = _check(board_id, db, user)
-    board_dir = DATA_DIR / board_id
+    board_dir = board_svc.get_board_dir(board_id)
     board_svc.log_activity(db, board, user, "refresh_imports", f"Refreshing imports")
     return StreamingResponse(mediator.stream_refresh_imports(board_dir, board_id=board_id), media_type="text/event-stream")
 
@@ -75,7 +74,7 @@ async def run_reason(board_id: str, body: ReasonRequest | None = None,
     """Run ROBOT reasoner (ELK/HermiT) with streaming output."""
     board = _check(board_id, db, user)
     body = body or ReasonRequest()
-    board_dir = DATA_DIR / board_id
+    board_dir = board_svc.get_board_dir(board_id)
     board_svc.log_activity(db, board, user, "odk_reason", f"Running {body.reasoner} reasoner")
     return StreamingResponse(mediator.stream_reason(board_dir, body.reasoner, board_id=board_id), media_type="text/event-stream")
 
@@ -84,7 +83,7 @@ async def run_reason(board_id: str, body: ReasonRequest | None = None,
 async def run_test(board_id: str, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     """Run `make test` — ontology test suite with SPARQL checks + reasoning."""
     board = _check(board_id, db, user)
-    board_dir = DATA_DIR / board_id
+    board_dir = board_svc.get_board_dir(board_id)
     board_svc.log_activity(db, board, user, "odk_test", "Running ontology test suite")
     return StreamingResponse(mediator.stream_test(board_dir, board_id=board_id), media_type="text/event-stream")
 
@@ -100,7 +99,7 @@ async def sparql_verify(board_id: str, body: SparqlVerifyRequest,
                          db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     """Run `robot verify` with a custom SPARQL check file."""
     board = _check(board_id, db, user)
-    board_dir = DATA_DIR / board_id
+    board_dir = board_svc.get_board_dir(board_id)
     board_svc.log_activity(db, board, user, "sparql_verify", f"Verifying: {body.sparql_file}")
     return StreamingResponse(mediator.stream_sparql_verify(board_dir, body.sparql_file, board_id=board_id), media_type="text/event-stream")
 
@@ -118,7 +117,7 @@ async def run_release(board_id: str, body: ReleaseBody | None = None,
     board = _check(board_id, db, user)
     if not board_svc.can_manage(db, board, user):
         raise HTTPException(status_code=403, detail="Owner or admin required for release")
-    board_dir = DATA_DIR / board_id
+    board_dir = board_svc.get_board_dir(board_id)
     version = body.version if body else None
     board_svc.log_activity(db, board, user, "odk_release", f"Release pipeline started (version={version})")
     return StreamingResponse(mediator.stream_release(board_dir, board_id, version=version), media_type="text/event-stream")
@@ -128,7 +127,7 @@ async def run_release(board_id: str, body: ReleaseBody | None = None,
 def list_artifacts(board_id: str, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     """List available release artifacts (download links)."""
     _check(board_id, db, user)
-    board_dir = DATA_DIR / board_id
+    board_dir = board_svc.get_board_dir(board_id)
     return mediator.get_release_artifacts(board_dir)
 
 
@@ -137,7 +136,7 @@ def download_artifact(board_id: str, filename: str,
                        db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     """Download a specific release artifact."""
     _check(board_id, db, user)
-    board_dir = DATA_DIR / board_id
+    board_dir = board_svc.get_board_dir(board_id)
     file_path = board_dir / "releases" / filename
     if not file_path.exists():
         raise HTTPException(status_code=404, detail="Artifact not found")
@@ -161,7 +160,7 @@ async def run_dosdp(board_id: str, body: DOSDPRequest,
                      db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     """Run DOSDP pattern instantiation via ROBOT template."""
     board = _check(board_id, db, user)
-    board_dir = DATA_DIR / board_id
+    board_dir = board_svc.get_board_dir(board_id)
     board_svc.log_activity(db, board, user, "dosdp_generate", f"Pattern: {body.pattern_file}")
     return StreamingResponse(
         mediator.stream_dosdp_generate(board_dir, body.pattern_file, body.data_file),

@@ -22,6 +22,54 @@ logger = logging.getLogger("ontoboard.board")
 _seed_tasks: dict[str, asyncio.Task] = {}
 
 
+# ── Board directory resolution (per-user layout) ─────────────
+def get_board_dir(board_id: str) -> Path:
+    """Resolve board directory, supporting both per-user and legacy flat layouts.
+
+    Search order:
+    1. Legacy flat layout:  DATA_DIR / board_id
+    2. Per-user layout:     DATA_DIR / <username> / board_id
+    Falls back to legacy path for boards that haven't been provisioned yet.
+    """
+    # Legacy flat layout
+    legacy = DATA_DIR / board_id
+    if legacy.exists():
+        return legacy
+    # Per-user layout: search user directories
+    if DATA_DIR.exists():
+        for user_dir in DATA_DIR.iterdir():
+            if user_dir.is_dir() and (user_dir / board_id).is_dir():
+                return user_dir / board_id
+    # Not found — return legacy path as default
+    return legacy
+
+
+def board_dir_path(board: Board) -> Path:
+    """Get the filesystem path for a board, using per-user directory structure."""
+    owner_name = board.owner.username if board.owner else "anonymous"
+    return DATA_DIR / owner_name / board.board_id
+
+
+def resolve_board_dir(db: Session, board_id: str) -> Path:
+    """Resolve the board directory, checking both new (per-user) and legacy (flat) layouts."""
+    board = get_board_by_slug(db, board_id)
+    if board:
+        # New per-user path
+        owner_name = board.owner.username if board.owner else "anonymous"
+        user_dir = DATA_DIR / owner_name / board_id
+        if user_dir.exists():
+            return user_dir
+    # Legacy fallback: flat layout
+    legacy = DATA_DIR / board_id
+    if legacy.exists():
+        return legacy
+    # Default to per-user path for new boards
+    if board:
+        owner_name = board.owner.username if board.owner else "anonymous"
+        return DATA_DIR / owner_name / board_id
+    return DATA_DIR / board_id
+
+
 # ── Queries ────────────────────────────────────────────────────
 def get_board_by_slug(db: Session, board_id: str) -> Board | None:
     return db.query(Board).filter(Board.board_id == board_id).first()
@@ -109,8 +157,8 @@ def delete_board(db: Session, board: Board, user: User) -> None:
     if slug in _seed_tasks and not _seed_tasks[slug].done():
         _seed_tasks[slug].cancel()
     _seed_tasks.pop(slug, None)
-    # Remove filesystem
-    board_dir = DATA_DIR / slug
+    # Remove filesystem (check both per-user and legacy paths)
+    board_dir = get_board_dir(slug)
     if board_dir.exists():
         shutil.rmtree(board_dir)
     db.delete(board)
@@ -230,9 +278,12 @@ def get_last_save_timestamp(db: Session, board) -> float:
 
 
 # ── Filesystem provisioning ───────────────────────────────────
-def provision_directory(board_id: str) -> Path:
+def provision_directory(board_id: str, username: str = "") -> Path:
     """Create board directory with minimal ODK scaffold. Returns the path."""
-    board_dir = DATA_DIR / board_id
+    if username:
+        board_dir = DATA_DIR / username / board_id
+    else:
+        board_dir = DATA_DIR / board_id
     board_dir.mkdir(parents=True, exist_ok=True)
 
     ont_dir = board_dir / "src" / "ontology"
@@ -374,7 +425,7 @@ def _stage_all(repo: DulwichRepo, board_dir: Path) -> None:
 
 async def try_odk_seed_background(board_id: str, versioning_strategy: str = "date") -> None:
     """Attempt ODK seed in background. Fails silently if odkfull unavailable."""
-    board_dir = DATA_DIR / board_id
+    board_dir = get_board_dir(board_id)
     loop = asyncio.get_event_loop()
     try:
         await loop.run_in_executor(None, _odk_seed_sync, board_id, board_dir, versioning_strategy)
@@ -409,7 +460,7 @@ def board_dir_info(board_id: str) -> dict:
     """Return filesystem info about a board."""
     from datetime import datetime
 
-    board_dir = DATA_DIR / board_id
+    board_dir = get_board_dir(board_id)
     info = {
         "odk_seeded": (board_dir / "src" / "ontology").is_dir(),
         "git_initialized": (board_dir / ".git").is_dir(),

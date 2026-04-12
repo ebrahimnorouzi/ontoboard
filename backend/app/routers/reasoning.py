@@ -3,7 +3,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.config import DATA_DIR
 from app.deps import get_db, get_current_user, get_current_user_optional
 from app.models.user import User
 from app.schemas.reasoning import ReasoningRequest, ReasoningResult, Inference
@@ -30,7 +29,7 @@ async def run_reasoning(
         raise HTTPException(status_code=403, detail="Edit access required")
 
     body = body or ReasoningRequest()
-    board_dir = DATA_DIR / board_id
+    board_dir = board_svc.get_board_dir(board_id)
     result = await reasoning_svc.run_reasoning(board_dir, body.reasoner)
 
     board_svc.log_activity(
@@ -80,7 +79,7 @@ def apply_fix(
     if not target_entity:
         raise HTTPException(status_code=400, detail="target_entity is required")
 
-    board_dir = DATA_DIR / board_id
+    board_dir = board_svc.get_board_dir(board_id)
 
     if action == "remove_axiom":
         # Remove all axioms of the given type from the entity

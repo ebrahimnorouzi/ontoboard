@@ -3,7 +3,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.config import DATA_DIR
 from app.deps import get_db, get_current_user
 from app.models.user import User
 from app.schemas.search import SearchRequest, SearchResult
@@ -25,7 +24,7 @@ def search_entities(
     if not board_svc.can_view(db, board, user):
         raise HTTPException(status_code=403, detail="Access denied")
     try:
-        g = load_graph(DATA_DIR / board_id)
+        g = load_graph(board_svc.get_board_dir(board_id))
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="No OWL file")
     results = search_svc.search_entities(g, body.query, body.entity_types, body.limit)

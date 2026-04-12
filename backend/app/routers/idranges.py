@@ -4,7 +4,6 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.config import DATA_DIR
 from app.deps import get_db, get_current_user
 from app.models.user import User
 from app.services import board as board_svc
@@ -18,7 +17,7 @@ def list_ranges(board_id: str, db: Session = Depends(get_db), user: User = Depen
     board = board_svc.get_board_by_slug(db, board_id)
     if not board:
         raise HTTPException(status_code=404, detail="Board not found")
-    return idrange_svc.parse_idranges(DATA_DIR / board_id)
+    return idrange_svc.parse_idranges(board_svc.get_board_dir(board_id))
 
 
 class AllocateBody(BaseModel):
@@ -33,8 +32,8 @@ def allocate_range(board_id: str, body: AllocateBody,
     board = board_svc.get_board_by_slug(db, board_id)
     if not board:
         raise HTTPException(status_code=404, detail="Board not found")
-    result = idrange_svc.allocate_range(DATA_DIR / board_id, user.username, body.prefix)
-    board_svc.git_commit(DATA_DIR / board_id, f"Allocated ID range for {user.username}")
+    result = idrange_svc.allocate_range(board_svc.get_board_dir(board_id), user.username, body.prefix)
+    board_svc.git_commit(board_svc.get_board_dir(board_id), f"Allocated ID range for {user.username}")
     return result
 
 
@@ -52,12 +51,12 @@ def update_range(board_id: str, owner: str, body: UpdateRangeBody,
     if not board:
         raise HTTPException(status_code=404, detail="Board not found")
     result = idrange_svc.update_range(
-        DATA_DIR / board_id, owner,
+        board_svc.get_board_dir(board_id), owner,
         prefix=body.prefix, lower=body.lower, upper=body.upper,
     )
     if not result:
         raise HTTPException(status_code=404, detail="Range not found for user")
-    board_svc.git_commit(DATA_DIR / board_id, f"Updated ID range for {owner}")
+    board_svc.git_commit(board_svc.get_board_dir(board_id), f"Updated ID range for {owner}")
     return result
 
 
@@ -68,10 +67,10 @@ def delete_range(board_id: str, owner: str,
     board = board_svc.get_board_by_slug(db, board_id)
     if not board:
         raise HTTPException(status_code=404, detail="Board not found")
-    deleted = idrange_svc.delete_range(DATA_DIR / board_id, owner)
+    deleted = idrange_svc.delete_range(board_svc.get_board_dir(board_id), owner)
     if not deleted:
         raise HTTPException(status_code=404, detail="Range not found for user")
-    board_svc.git_commit(DATA_DIR / board_id, f"Deleted ID range for {owner}")
+    board_svc.git_commit(board_svc.get_board_dir(board_id), f"Deleted ID range for {owner}")
     return {"deleted": True}
 
 
@@ -80,7 +79,7 @@ def reserve_id(board_id: str, db: Session = Depends(get_db), user: User = Depend
     board = board_svc.get_board_by_slug(db, board_id)
     if not board:
         raise HTTPException(status_code=404, detail="Board not found")
-    iri = idrange_svc.reserve_next_id(DATA_DIR / board_id, user.username)
+    iri = idrange_svc.reserve_next_id(board_svc.get_board_dir(board_id), user.username)
     if not iri:
         raise HTTPException(status_code=409, detail="No available IDs in range")
     return {"iri": iri}

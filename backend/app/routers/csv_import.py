@@ -3,7 +3,6 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
 
-from app.config import DATA_DIR
 from app.deps import get_db, get_current_user
 from app.models.user import User
 from app.schemas.csv_import import (
@@ -33,7 +32,7 @@ async def upload_csv(
 ):
     """Upload a CSV/TSV file and return analysis."""
     board = _get_board_edit(board_id, db, user)
-    board_dir = DATA_DIR / board_id
+    board_dir = board_svc.get_board_dir(board_id)
     upload_dir = board_dir / "uploads"
     upload_dir.mkdir(exist_ok=True)
 
@@ -61,7 +60,7 @@ def list_files(
 ):
     """List uploaded CSV files for this board."""
     _get_board_edit(board_id, db, user)
-    return csv_svc.list_csv_files(DATA_DIR / board_id)
+    return csv_svc.list_csv_files(board_svc.get_board_dir(board_id))
 
 
 @router.post("/{board_id}/preview")
@@ -73,7 +72,7 @@ def preview_kg(
 ):
     """Preview generated triples without building the full KG."""
     _get_board_edit(board_id, db, user)
-    csv_path = DATA_DIR / board_id / "uploads" / body.csv_file
+    csv_path = board_svc.get_board_dir(board_id) / "uploads" / body.csv_file
     if not csv_path.exists():
         raise HTTPException(status_code=404, detail="CSV file not found")
 
@@ -97,7 +96,7 @@ def build_kg(
 ):
     """Build a full knowledge graph from CSV + mappings."""
     board = _get_board_edit(board_id, db, user)
-    board_dir = DATA_DIR / board_id
+    board_dir = board_svc.get_board_dir(board_id)
 
     try:
         result = csv_svc.build_knowledge_graph(

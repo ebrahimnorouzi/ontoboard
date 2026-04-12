@@ -4,7 +4,6 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
-from app.config import DATA_DIR
 from app.deps import get_db, get_current_user
 from app.models.user import User
 from app.schemas.robot_commands import (
@@ -28,7 +27,7 @@ def _check_edit(board_id, db, user):
 
 
 def _owl_path(board_id):
-    board_dir = DATA_DIR / board_id
+    board_dir = board_svc.get_board_dir(board_id)
     owl = find_owl_file(board_dir)
     if not owl:
         raise HTTPException(status_code=404, detail="No OWL file")
@@ -158,7 +157,7 @@ async def robot_convert_format(board_id: str, body: ConvertRequest,
 async def robot_download_file(board_id: str, filename: str,
                                db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     """Serve a converted file from the board's src/ontology/ directory."""
-    board_dir = DATA_DIR / board_id
+    board_dir = board_svc.get_board_dir(board_id)
     file_path = board_dir / "src" / "ontology" / filename
     if not file_path.exists() or not file_path.is_file():
         raise HTTPException(status_code=404, detail=f"File not found: {filename}")

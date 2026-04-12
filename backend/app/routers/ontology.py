@@ -3,7 +3,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.config import DATA_DIR
 from app.deps import get_db, get_current_user, get_current_user_optional
 from app.models.user import User
 from app.schemas.ontology import (
@@ -35,7 +34,7 @@ def get_metadata(
 ):
     """Parse the board's OWL file and return ontology IRI, prefixes, imports, languages."""
     _require_board_view(board_id, db, user)
-    board_dir = DATA_DIR / board_id
+    board_dir = board_svc.get_board_dir(board_id)
     try:
         g = ont_svc.load_graph(board_dir)
     except FileNotFoundError:
@@ -58,7 +57,7 @@ def get_statistics(
 ):
     """Count classes, properties, individuals, and axioms in the ontology."""
     _require_board_view(board_id, db, user)
-    board_dir = DATA_DIR / board_id
+    board_dir = board_svc.get_board_dir(board_id)
     try:
         g = ont_svc.load_graph(board_dir)
     except FileNotFoundError:
@@ -74,7 +73,7 @@ async def run_report(
 ):
     """Run ROBOT report on the ontology. Requires odkfull Docker image."""
     _require_board_view(board_id, db, user)
-    board_dir = DATA_DIR / board_id
+    board_dir = board_svc.get_board_dir(board_id)
     owl_file = find_owl_file(board_dir)
     if not owl_file:
         raise HTTPException(status_code=404, detail="No OWL file found")
@@ -111,7 +110,7 @@ def get_dashboard(
 ):
     """Combined endpoint: metadata + statistics (report must be triggered separately)."""
     _require_board_view(board_id, db, user)
-    board_dir = DATA_DIR / board_id
+    board_dir = board_svc.get_board_dir(board_id)
     try:
         g = ont_svc.load_graph(board_dir)
     except FileNotFoundError:
@@ -180,8 +179,8 @@ def update_metadata(
         raise HTTPException(status_code=404, detail="Board not found")
     if not board_svc.can_edit(db, board, user):
         raise HTTPException(status_code=403, detail="Edit access required")
-    result = meta_svc.update_metadata(DATA_DIR / board_id, body.fields)
-    board_svc.git_commit(DATA_DIR / board_id, "Updated ontology metadata")
+    result = meta_svc.update_metadata(board_svc.get_board_dir(board_id), body.fields)
+    board_svc.git_commit(board_svc.get_board_dir(board_id), "Updated ontology metadata")
     board_svc.log_activity(db, board, user, "metadata_updated", str(list(body.fields.keys())))
     return result
 
@@ -197,8 +196,8 @@ def add_prefix(
         raise HTTPException(status_code=404, detail="Board not found")
     if not board_svc.can_edit(db, board, user):
         raise HTTPException(status_code=403, detail="Edit access required")
-    meta_svc.add_prefix(DATA_DIR / board_id, body.prefix, body.namespace)
-    board_svc.git_commit(DATA_DIR / board_id, f"Added prefix {body.prefix}")
+    meta_svc.add_prefix(board_svc.get_board_dir(board_id), body.prefix, body.namespace)
+    board_svc.git_commit(board_svc.get_board_dir(board_id), f"Added prefix {body.prefix}")
     return {"success": True}
 
 
@@ -213,7 +212,7 @@ def remove_prefix(
         raise HTTPException(status_code=404, detail="Board not found")
     if not board_svc.can_edit(db, board, user):
         raise HTTPException(status_code=403, detail="Edit access required")
-    meta_svc.remove_prefix(DATA_DIR / board_id, prefix)
+    meta_svc.remove_prefix(board_svc.get_board_dir(board_id), prefix)
     return {"success": True}
 
 
@@ -228,9 +227,9 @@ def find_replace(
         raise HTTPException(status_code=404, detail="Board not found")
     if not board_svc.can_edit(db, board, user):
         raise HTTPException(status_code=403, detail="Edit access required")
-    count = meta_svc.find_replace_annotations(DATA_DIR / board_id, body.find, body.replace, body.property_iri)
+    count = meta_svc.find_replace_annotations(board_svc.get_board_dir(board_id), body.find, body.replace, body.property_iri)
     if count > 0:
-        board_svc.git_commit(DATA_DIR / board_id, f"Find/replace: '{body.find}' → '{body.replace}' ({count} changes)")
+        board_svc.git_commit(board_svc.get_board_dir(board_id), f"Find/replace: '{body.find}' → '{body.replace}' ({count} changes)")
     return {"replaced": count}
 
 
@@ -249,7 +248,7 @@ def get_identity(
     """Get ontology IRI, version IRI, and version info."""
     _require_board_view(board_id, db, user)
     try:
-        g = ont_svc.load_graph(DATA_DIR / board_id)
+        g = ont_svc.load_graph(board_svc.get_board_dir(board_id))
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="No OWL file")
     return meta_svc.get_ontology_identity(g)
@@ -264,8 +263,8 @@ def set_identity(
     board = board_svc.get_board_by_slug(db, board_id)
     if not board or not board_svc.can_edit(db, board, user):
         raise HTTPException(status_code=403, detail="Edit access required")
-    result = meta_svc.set_ontology_identity(DATA_DIR / board_id, version_iri=body.version_iri, version_info=body.version_info)
-    board_svc.git_commit(DATA_DIR / board_id, "Updated ontology identity")
+    result = meta_svc.set_ontology_identity(board_svc.get_board_dir(board_id), version_iri=body.version_iri, version_info=body.version_info)
+    board_svc.git_commit(board_svc.get_board_dir(board_id), "Updated ontology identity")
     return result
 
 
@@ -279,7 +278,7 @@ def get_annotations(
     """Get ALL annotations on the ontology node (dcterms, bibo, vann, owl, rdfs, etc.)."""
     _require_board_view(board_id, db, user)
     try:
-        g = ont_svc.load_graph(DATA_DIR / board_id)
+        g = ont_svc.load_graph(board_svc.get_board_dir(board_id))
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="No OWL file")
     return meta_svc.get_all_ontology_annotations(g)
@@ -301,9 +300,9 @@ def add_annotation(
     board = board_svc.get_board_by_slug(db, board_id)
     if not board or not board_svc.can_edit(db, board, user):
         raise HTTPException(status_code=403, detail="Edit access required")
-    ok = meta_svc.add_ontology_annotation(DATA_DIR / board_id, body.property_iri, body.value, body.value_type, body.language)
+    ok = meta_svc.add_ontology_annotation(board_svc.get_board_dir(board_id), body.property_iri, body.value, body.value_type, body.language)
     if ok:
-        board_svc.git_commit(DATA_DIR / board_id, f"Added annotation: {body.property_iri}")
+        board_svc.git_commit(board_svc.get_board_dir(board_id), f"Added annotation: {body.property_iri}")
     return {"success": ok}
 
 
@@ -321,9 +320,9 @@ def remove_annotation(
     board = board_svc.get_board_by_slug(db, board_id)
     if not board or not board_svc.can_edit(db, board, user):
         raise HTTPException(status_code=403, detail="Edit access required")
-    ok = meta_svc.remove_ontology_annotation(DATA_DIR / board_id, body.property_iri, body.value)
+    ok = meta_svc.remove_ontology_annotation(board_svc.get_board_dir(board_id), body.property_iri, body.value)
     if ok:
-        board_svc.git_commit(DATA_DIR / board_id, f"Removed annotation: {body.property_iri}")
+        board_svc.git_commit(board_svc.get_board_dir(board_id), f"Removed annotation: {body.property_iri}")
     return {"success": ok}
 
 
@@ -337,7 +336,7 @@ def resolve_iri(
     """Resolve a compact IRI (e.g., prov:Activity) to its full IRI."""
     _require_board_view(board_id, db, user)
     try:
-        g = ont_svc.load_graph(DATA_DIR / board_id)
+        g = ont_svc.load_graph(board_svc.get_board_dir(board_id))
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="No OWL file")
     full = meta_svc.resolve_compact_iri(g, compact_iri)

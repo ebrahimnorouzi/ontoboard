@@ -27,6 +27,14 @@ from app.config import ODK_IMAGE
 logger = logging.getLogger("ontoboard.odk_mediator")
 
 
+def _docker_mount_path(host_path: Path) -> str:
+    """Convert a host path to a Docker-compatible mount path (Windows → /c/...)."""
+    p = str(host_path).replace("\\", "/")
+    if len(p) >= 2 and p[1] == ":":
+        p = "/" + p[0].lower() + p[2:]
+    return p
+
+
 def _sse(event_type: str, message: str, progress: float = 0) -> str:
     """Format a Server-Sent Event line."""
     return f"data: {json.dumps({'type': event_type, 'message': message, 'progress': progress, 'ts': time.time()})}\n\n"
@@ -94,10 +102,11 @@ def _run_container_streaming(board_dir: Path, command: str, working_dir: str = "
     yield _sse("start", f"Starting: {command}", 5)
 
     try:
+        # Use sh -c with double quotes to avoid nested quoting issues
         container = client.containers.run(
             image=ODK_IMAGE,
-            command=f"sh -c '{command}'",
-            volumes={str(board_dir): {"bind": "/work", "mode": "rw"}},
+            command=["sh", "-c", command],
+            volumes={_docker_mount_path(board_dir): {"bind": "/work", "mode": "rw"}},
             working_dir=working_dir,
             detach=True,
             stdout=True,
@@ -179,7 +188,7 @@ async def stream_odk_seed(board_dir: Path, board_id: str) -> AsyncGenerator[str,
     loop = asyncio.get_event_loop()
 
     if _docker_available():
-        cmd = f"/tools/odk.py seed --gitname 'OntoBoard' --gitemail 'ontoboard@local' -n {board_id} -t {board_id} -d 'Ontology {board_id}' -u https://example.org/{board_id}"
+        cmd = f'/tools/odk.py seed --gitname "OntoBoard" --gitemail "ontoboard@local" -n {board_id} -t {board_id} -d "Ontology {board_id}" -u https://example.org/{board_id}'
         for line in await loop.run_in_executor(None, lambda: list(_run_container_streaming(board_dir, cmd, "/work"))):
             yield line
     else:

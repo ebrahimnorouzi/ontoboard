@@ -1,6 +1,7 @@
 """Board router — CRUD, sharing, access control, activity."""
 
 import asyncio
+import functools
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
 from sqlalchemy.orm import Session
@@ -83,7 +84,10 @@ async def create_board(
 ):
     slug = _sanitize_id(board_id)
     if board_svc.get_board_by_slug(db, slug):
-        raise HTTPException(status_code=409, detail="Board already exists")
+        # Auto-disambiguate with username
+        slug = f"{slug}-{user.username}"
+        if board_svc.get_board_by_slug(db, slug):
+            raise HTTPException(status_code=409, detail=f"Board '{slug}' already exists")
 
     body = body or BoardCreate()
     board = board_svc.create_board(
@@ -94,9 +98,11 @@ async def create_board(
         tags=body.tags,
     )
 
-    # Provision filesystem
+    # Provision filesystem under per-user directory
     loop = asyncio.get_event_loop()
-    board_dir = await loop.run_in_executor(None, board_svc.provision_directory, slug)
+    board_dir = await loop.run_in_executor(
+        None, functools.partial(board_svc.provision_directory, slug, username=user.username)
+    )
     await loop.run_in_executor(None, board_svc.git_init, board_dir)
 
     # Background ODK seed (passes versioning strategy)
@@ -118,13 +124,18 @@ async def create_board_from_file(
     """Create a board by uploading an OWL/TTL/OBO/JSONLD/RDF file."""
     slug = _sanitize_id(board_id)
     if board_svc.get_board_by_slug(db, slug):
-        raise HTTPException(status_code=409, detail="Board already exists")
+        # Auto-disambiguate with username
+        slug = f"{slug}-{user.username}"
+        if board_svc.get_board_by_slug(db, slug):
+            raise HTTPException(status_code=409, detail=f"Board '{slug}' already exists")
 
     board = board_svc.create_board(db, slug, user, display_name=slug, is_public=is_public)
 
-    # Provision filesystem
+    # Provision filesystem under per-user directory
     loop = asyncio.get_event_loop()
-    board_dir = await loop.run_in_executor(None, board_svc.provision_directory, slug)
+    board_dir = await loop.run_in_executor(
+        None, functools.partial(board_svc.provision_directory, slug, username=user.username)
+    )
     await loop.run_in_executor(None, board_svc.git_init, board_dir)
 
     # Parse uploaded file and overwrite the scaffold OWL

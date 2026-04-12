@@ -3,7 +3,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.config import DATA_DIR
 from app.deps import get_db, get_current_user, get_current_user_optional
 from app.models.user import User
 from app.schemas.axiom import AxiomInfo, AxiomEditRequest, AxiomEditResult, ValidationError, EntityName
@@ -33,7 +32,7 @@ def get_entity_names(
 ):
     """List all named entities (for autocomplete)."""
     _require_board(board_id, db, user)
-    board_dir = DATA_DIR / board_id
+    board_dir = board_svc.get_board_dir(board_id)
     try:
         g = load_graph(board_dir)
     except FileNotFoundError:
@@ -50,7 +49,7 @@ def get_axioms(
 ):
     """Get all axioms involving the given entity."""
     _require_board(board_id, db, user)
-    board_dir = DATA_DIR / board_id
+    board_dir = board_svc.get_board_dir(board_id)
     try:
         g = load_graph(board_dir)
     except FileNotFoundError:
@@ -67,7 +66,7 @@ def get_manchester(
 ):
     """Get Manchester Syntax representation of an entity."""
     _require_board(board_id, db, user)
-    board_dir = DATA_DIR / board_id
+    board_dir = board_svc.get_board_dir(board_id)
     try:
         g = load_graph(board_dir)
     except FileNotFoundError:
@@ -86,7 +85,7 @@ def update_axioms(
 ):
     """Update axioms for an entity from Manchester Syntax text."""
     board = _require_board(board_id, db, user, need_edit=True)
-    board_dir = DATA_DIR / board_id
+    board_dir = board_svc.get_board_dir(board_id)
     result = axiom_svc.apply_manchester_edit(board_dir, entity_iri, body.manchester_text)
     if result["success"]:
         board_svc.git_commit(board_dir, f"Updated axioms for {entity_iri}")

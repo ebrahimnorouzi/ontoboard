@@ -325,7 +325,31 @@ export default function CsvImportWizard({ boardId }: Props) {
           <div className={styles.resultPath}>
             Output: <code>{buildResult.output_path}</code>
           </div>
-          <button className={styles.nextBtn} onClick={() => { setStep(0); }}>Import Another CSV</button>
+          <div className={styles.resultActions}>
+            <button className={styles.nextBtn} onClick={() => { setStep(0); }}>Import Another CSV</button>
+            <a
+              className={styles.openBoardBtn}
+              href={`/board/${boardId}-kg`}
+              onClick={async (e) => {
+                e.preventDefault();
+                const kgBoardId = `${boardId}-kg-${Date.now()}`;
+                try {
+                  const res = await fetch(`/api/boards/${kgBoardId}`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ display_name: `${boardId} Knowledge Graph` }),
+                  });
+                  if (res.ok || res.status === 409) {
+                    window.location.href = `/board/${res.ok ? kgBoardId : boardId + "-kg"}`;
+                  }
+                } catch {
+                  window.location.href = `/board/${boardId}`;
+                }
+              }}
+            >
+              Open as New Board
+            </a>
+          </div>
         </div>
       )}
     </div>

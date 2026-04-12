@@ -55,10 +55,16 @@ def _run_robot_sync(
         logger.warning("Docker unavailable: %s", exc)
         return RobotResult(exit_code=-1, stdout="", stderr=str(exc))
 
+    # On Windows, Docker needs forward slashes and may need /c/ style paths
+    mount_path = str(board_dir).replace("\\", "/")
+    # Convert C:/... to /c/... for Docker on Windows (Git Bash / MSYS2 style)
+    if len(mount_path) >= 2 and mount_path[1] == ":":
+        mount_path = "/" + mount_path[0].lower() + mount_path[2:]
+
     container = client.containers.run(
         image=ODK_IMAGE,
         command=command,
-        volumes={str(board_dir): {"bind": "/work", "mode": "rw"}},
+        volumes={mount_path: {"bind": "/work", "mode": "rw"}},
         working_dir=working_dir,
         detach=True,
         stdout=True,
@@ -95,6 +101,11 @@ async def run_robot(
     )
 
 
+def _posix_rel(child: Path, parent: Path) -> str:
+    """Get relative path as a POSIX string (forward slashes) for use in Docker."""
+    return str(child.relative_to(parent)).replace("\\", "/")
+
+
 async def robot_convert(
     board_dir: Path,
     owl_file: Path,
@@ -102,8 +113,8 @@ async def robot_convert(
     output_format: str = "json",
 ) -> RobotResult:
     """Convert an OWL file to another format via ROBOT."""
-    rel_in = owl_file.relative_to(board_dir)
-    rel_out = output_path.relative_to(board_dir)
+    rel_in = _posix_rel(owl_file, board_dir)
+    rel_out = _posix_rel(output_path, board_dir)
     return await run_robot(
         board_dir,
         f"robot convert -i /work/{rel_in} -o /work/{rel_out} --format {output_format}",
@@ -116,8 +127,8 @@ async def robot_template(
     output_path: Path,
 ) -> RobotResult:
     """Run ROBOT template to generate an OWL file from a CSV template."""
-    rel_t = template_path.relative_to(board_dir)
-    rel_o = output_path.relative_to(board_dir)
+    rel_t = _posix_rel(template_path, board_dir)
+    rel_o = _posix_rel(output_path, board_dir)
     return await run_robot(
         board_dir,
         f"robot template --template /work/{rel_t} -o /work/{rel_o}",
@@ -129,7 +140,7 @@ async def robot_report(
     owl_file: Path,
 ) -> RobotResult:
     """Run ROBOT report on an OWL file, producing a TSV report."""
-    rel_in = owl_file.relative_to(board_dir)
+    rel_in = _posix_rel(owl_file, board_dir)
     return await run_robot(
         board_dir,
         f"robot report -i /work/{rel_in} --output /work/report.tsv --format tsv",
@@ -143,8 +154,8 @@ async def robot_reason(
     reasoner: str = "ELK",
 ) -> RobotResult:
     """Run a reasoner on an OWL file."""
-    rel_in = owl_file.relative_to(board_dir)
-    rel_out = output_path.relative_to(board_dir)
+    rel_in = _posix_rel(owl_file, board_dir)
+    rel_out = _posix_rel(output_path, board_dir)
     return await run_robot(
         board_dir,
         f"robot reason -r {reasoner} -i /work/{rel_in} -o /work/{rel_out}",

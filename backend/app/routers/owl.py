@@ -4,10 +4,9 @@ import json
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
 
-from app.config import DATA_DIR
 from app.deps import get_db, get_current_user, get_current_user_optional
 from app.models.user import User
-from app.schemas.canvas import CanvasState, CanvasStickyNote, CanvasFrame
+from app.schemas.canvas import CanvasState, CanvasStickyNote, CanvasFrame, CanvasClass, CanvasProperty, CanvasIndividual, CanvasLiteral
 from app.services import board as board_svc
 from app.services import odk as odk_svc
 from app.services import canvas as canvas_svc
@@ -29,7 +28,28 @@ def load_owl(
     if not board_svc.can_view(db, board, user):
         raise HTTPException(status_code=403, detail="Access denied")
 
-    board_dir = DATA_DIR / board_id
+    board_dir = board_svc.get_board_dir(board_id)
+
+    # Try to load full canvas state from sidecar JSON first (lossless)
+    meta_file = board_dir / "canvas_meta.json"
+    if meta_file.exists():
+        try:
+            meta = json.loads(meta_file.read_text())
+            # If we have saved canvas entities, use them directly
+            if "classes" in meta and "properties" in meta:
+                state = CanvasState(
+                    classes=[CanvasClass(**c) for c in meta["classes"]],
+                    properties=[CanvasProperty(**p) for p in meta["properties"]],
+                    individuals=[CanvasIndividual(**i) for i in meta.get("individuals", [])],
+                    literals=[CanvasLiteral(**l) for l in meta.get("literals", [])] if meta.get("literals") else [],
+                    sticky_notes=[CanvasStickyNote(**n) for n in meta.get("sticky_notes", [])],
+                    frames=[CanvasFrame(**f) for f in meta.get("frames", [])],
+                )
+                return state
+        except Exception:
+            pass
+
+    # Fallback: extract from OWL graph (may lose some edge connections)
     try:
         g = load_graph(board_dir)
     except FileNotFoundError:
@@ -37,8 +57,7 @@ def load_owl(
 
     state = canvas_svc.owl_to_canvas(g)
 
-    # Merge sticky notes and frames from sidecar file (not part of OWL)
-    meta_file = board_dir / "canvas_meta.json"
+    # Merge sticky notes and frames from sidecar file
     if meta_file.exists():
         try:
             meta = json.loads(meta_file.read_text())
@@ -70,7 +89,7 @@ def save_owl(
     if not board_svc.can_edit(db, board, user):
         raise HTTPException(status_code=403, detail="Edit access required")
 
-    board_dir = DATA_DIR / board_id
+    board_dir = board_svc.get_board_dir(board_id)
 
     # Ensure ODK scaffold exists (Makefile, edit.owl, release.sh, etc.)
     from app.services.odk_setup import _create_manual_scaffold
@@ -98,7 +117,8 @@ def save_owl(
     # Also write to the -edit.owl file so ROBOT/ODK commands find it
     edit_owl.write_text(owl_xml)
 
-    # Persist sticky notes and frames in a sidecar JSON (not part of OWL)
+    # Persist the full canvas state JSON alongside OWL so edge connections,
+    # positions, and metadata survive round-trips without loss.
     meta_file = board_dir / "canvas_meta.json"
     meta = {}
     if meta_file.exists():
@@ -106,6 +126,13 @@ def save_owl(
             meta = json.loads(meta_file.read_text())
         except Exception:
             pass
+
+    # Save full canvas entities for lossless reload
+    meta["classes"] = [c.model_dump() for c in state.classes]
+    meta["properties"] = [p.model_dump() for p in state.properties]
+    meta["individuals"] = [i.model_dump() for i in state.individuals]
+    if state.literals:
+        meta["literals"] = [l.model_dump() for l in state.literals]
 
     # Update sticky notes
     if state.sticky_notes:
@@ -149,7 +176,7 @@ async def upload_csv(
     if not board_svc.can_edit(db, board, user):
         raise HTTPException(status_code=403, detail="Edit access required")
 
-    board_dir = DATA_DIR / board_id
+    board_dir = board_svc.get_board_dir(board_id)
     upload_dir = board_dir / "uploads"
     upload_dir.mkdir(exist_ok=True)
 
@@ -179,7 +206,7 @@ async def build_kg(
     if not board_svc.can_edit(db, board, user):
         raise HTTPException(status_code=403, detail="Edit access required")
 
-    board_dir = DATA_DIR / board_id
+    board_dir = board_svc.get_board_dir(board_id)
     csv_file = board_dir / "uploads" / mapping["csv_file"]
     if not csv_file.exists():
         raise HTTPException(status_code=404, detail="CSV file not found")

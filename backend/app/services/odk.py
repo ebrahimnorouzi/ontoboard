@@ -17,11 +17,38 @@ from app.services.robot import robot_convert as _robot_convert
 from app.services.robot import robot_template as _robot_template
 
 
+def _docker_mount_path(host_path: Path) -> str:
+    """Convert a host path to a Docker-compatible mount path.
+    On Windows, converts C:\\Users\\... to /c/Users/... for Docker Desktop.
+    """
+    p = str(host_path).replace("\\", "/")
+    if len(p) >= 2 and p[1] == ":":
+        p = "/" + p[0].lower() + p[2:]
+    return p
+
+
 # ── OWL helpers ────────────────────────────────────────────────
 def find_owl_file(board_dir: Path) -> Path | None:
+    """Find the best OWL file to use for ROBOT commands.
+
+    Prefers the -edit.owl file (working copy in ODK convention) over the
+    main release file, which often contains owl:imports that reference
+    the edit file and would cause ROBOT to fail if the import can't be
+    resolved.
+    """
     ont_dir = board_dir / "src" / "ontology"
     if not ont_dir.exists():
         return None
+    board_id = board_dir.name
+    # Prefer -edit.owl (ODK working copy)
+    edit_owl = ont_dir / f"{board_id}-edit.owl"
+    if edit_owl.exists():
+        return edit_owl
+    # Fallback: any -edit.owl
+    edit_files = list(ont_dir.glob("*-edit.owl"))
+    if edit_files:
+        return edit_files[0]
+    # Fallback: any .owl file
     owl_files = list(ont_dir.glob("*.owl"))
     return owl_files[0] if owl_files else None
 
@@ -135,7 +162,7 @@ async def stream_build(board_dir: Path, target: str):
         lambda: client.containers.run(
             image=ODK_IMAGE,
             command=f"make {target}",
-            volumes={str(board_dir): {"bind": "/work", "mode": "rw"}},
+            volumes={_docker_mount_path(board_dir): {"bind": "/work", "mode": "rw"}},
             working_dir=working_dir,
             remove=False,
             detach=True,

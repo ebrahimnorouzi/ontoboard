@@ -73,3 +73,10 @@
 .resultMeta { font-size: 0.72rem; color: var(--text-muted); }
 .resultPath { font-size: 0.7rem; color: var(--text-muted); margin-bottom: 0.5rem; }
 .resultPath code { background: var(--bg-accent); padding: 0.1rem 0.3rem; border-radius: 3px; font-size: 0.65rem; }
+.resultActions { display: flex; gap: 0.5rem; align-items: center; }
+.openBoardBtn {
+  padding: 0.45rem 0.8rem; background: var(--accent); color: #fff; border: none;
+  border-radius: var(--radius-md); font-size: 0.78rem; font-weight: 600;
+  cursor: pointer; font-family: inherit; text-decoration: none; text-align: center;
+}
+.openBoardBtn:hover { opacity: 0.9; }

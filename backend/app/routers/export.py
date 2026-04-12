@@ -4,7 +4,6 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
-from app.config import DATA_DIR
 from app.deps import get_db, get_current_user
 from app.models.user import User
 from app.services import board as board_svc
@@ -22,7 +21,7 @@ def export_repo(board_id: str, db: Session = Depends(get_db), user: User = Depen
     if not board_svc.can_view(db, board, user):
         raise HTTPException(status_code=403, detail="Access denied")
 
-    board_dir = DATA_DIR / board_id
+    board_dir = board_svc.get_board_dir(board_id)
     export_dir = export_odp_repo(board_dir, board_id)
 
     # List generated files
@@ -44,7 +43,7 @@ def export_repo_zip(board_id: str, db: Session = Depends(get_db), user: User = D
     if not board_svc.can_view(db, board, user):
         raise HTTPException(status_code=403, detail="Access denied")
 
-    board_dir = DATA_DIR / board_id
+    board_dir = board_svc.get_board_dir(board_id)
     zip_bytes = export_odp_repo_zip(board_dir, board_id)
 
     return Response(

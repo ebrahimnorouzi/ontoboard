@@ -4,7 +4,6 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.config import DATA_DIR
 from app.deps import get_db, get_current_user
 from app.models.user import User
 from app.services import board as board_svc
@@ -28,7 +27,7 @@ def _check(board_id, db, user):
 def list_imports(board_id: str, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     """List all declared imports with their status."""
     _check(board_id, db, user)
-    return imp_svc.list_declared_imports(DATA_DIR / board_id, board_id)
+    return imp_svc.list_declared_imports(board_svc.get_board_dir(board_id), board_id)
 
 
 # ── Step 1: Declare import ─────────────────────────────────────
@@ -47,10 +46,10 @@ def declare_import(board_id: str, body: DeclareImportBody,
                     db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     """Step 1: Declare an import in odk.yaml."""
     board = _check(board_id, db, user)
-    result = imp_svc.declare_import(DATA_DIR / board_id, board_id, body.model_dump())
+    result = imp_svc.declare_import(board_svc.get_board_dir(board_id), board_id, body.model_dump())
     if not result["success"]:
         raise HTTPException(status_code=400, detail=result.get("error", "Failed"))
-    board_svc.git_commit(DATA_DIR / board_id, f"Declared import: {body.id}")
+    board_svc.git_commit(board_svc.get_board_dir(board_id), f"Declared import: {body.id}")
     board_svc.log_activity(db, board, user, "import_declared", body.id)
     return result
 
@@ -61,7 +60,7 @@ def declare_import(board_id: str, body: DeclareImportBody,
 def check_makefile(board_id: str, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     """Step 2: Read the Makefile to verify import targets."""
     _check(board_id, db, user)
-    return imp_svc.check_makefile(DATA_DIR / board_id, board_id)
+    return imp_svc.check_makefile(board_svc.get_board_dir(board_id), board_id)
 
 
 # ── Step 3: Add terms ─────────────────────────────────────────
@@ -76,8 +75,8 @@ def add_terms(board_id: str, body: AddTermsBody,
                db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     """Step 3: Add term IRIs to the import's terms.txt file."""
     board = _check(board_id, db, user)
-    result = imp_svc.add_import_terms(DATA_DIR / board_id, body.import_id, body.term_iris)
-    board_svc.git_commit(DATA_DIR / board_id, f"Added {result['new_terms_added']} terms to {body.import_id}")
+    result = imp_svc.add_import_terms(board_svc.get_board_dir(board_id), body.import_id, body.term_iris)
+    board_svc.git_commit(board_svc.get_board_dir(board_id), f"Added {result['new_terms_added']} terms to {body.import_id}")
     return result
 
 
@@ -86,7 +85,7 @@ def get_terms(board_id: str, import_id: str,
                db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     """Get current terms for an import."""
     _check(board_id, db, user)
-    return imp_svc.get_import_terms(DATA_DIR / board_id, import_id)
+    return imp_svc.get_import_terms(board_svc.get_board_dir(board_id), import_id)
 
 
 # ── Step 4: Register import in edit.owl + catalog ──────────────
@@ -101,8 +100,8 @@ def register_import(board_id: str, body: RegisterImportBody,
                      db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     """Step 4: Add import URI to edit.owl and catalog-v001.xml."""
     board = _check(board_id, db, user)
-    result = imp_svc.register_import(DATA_DIR / board_id, board_id, body.import_id, body.import_iri)
-    board_svc.git_commit(DATA_DIR / board_id, f"Registered import: {body.import_id}")
+    result = imp_svc.register_import(board_svc.get_board_dir(board_id), board_id, body.import_id, body.import_iri)
+    board_svc.git_commit(board_svc.get_board_dir(board_id), f"Registered import: {body.import_id}")
     return result
 
 
@@ -113,8 +112,8 @@ def add_makefile_target(board_id: str, import_id: str,
                          db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     """Step 5: Add import schema to the custom .Makefile."""
     board = _check(board_id, db, user)
-    result = imp_svc.add_import_to_custom_makefile(DATA_DIR / board_id, board_id, import_id)
-    board_svc.git_commit(DATA_DIR / board_id, f"Added {import_id} to custom Makefile")
+    result = imp_svc.add_import_to_custom_makefile(board_svc.get_board_dir(board_id), board_id, import_id)
+    board_svc.git_commit(board_svc.get_board_dir(board_id), f"Added {import_id} to custom Makefile")
     return result
 
 
@@ -130,8 +129,8 @@ def configure_import(board_id: str, body: ConfigureBody,
                       db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     """Step 6: Set module_type in odk.yaml."""
     board = _check(board_id, db, user)
-    result = imp_svc.configure_import(DATA_DIR / board_id, board_id, body.import_id, body.module_type)
+    result = imp_svc.configure_import(board_svc.get_board_dir(board_id), board_id, body.import_id, body.module_type)
     if not result["success"]:
         raise HTTPException(status_code=400, detail=result.get("error", "Failed"))
-    board_svc.git_commit(DATA_DIR / board_id, f"Configured {body.import_id} as {body.module_type}")
+    board_svc.git_commit(board_svc.get_board_dir(board_id), f"Configured {body.import_id} as {body.module_type}")
     return result

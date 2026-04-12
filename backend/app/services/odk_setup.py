@@ -19,6 +19,14 @@ from pathlib import Path
 import docker
 from docker.errors import ImageNotFound, DockerException
 
+
+def _docker_mount_path(host_path: Path) -> str:
+    """Convert a host path to a Docker-compatible mount path (Windows → /c/...)."""
+    p = str(host_path).replace("\\", "/")
+    if len(p) >= 2 and p[1] == ":":
+        p = "/" + p[0].lower() + p[2:]
+    return p
+
 from app.config import DATA_DIR, ODK_IMAGE
 
 logger = logging.getLogger("ontoboard.odk_setup")
@@ -70,8 +78,8 @@ def run_odk_seed(board_dir: Path, ont_id: str, title: str = "",
         logger.info("Running ODK seed for '%s'...", ont_id)
         container = client.containers.run(
             image=ODK_IMAGE,
-            command=f"/tools/odk.py seed --gitname 'OntoBoard' --gitemail 'ontoboard@local' -n {ont_id} -t {ont_id} -d '{title}' -u http://example.org/{ont_id}",
-            volumes={str(board_dir): {"bind": "/work", "mode": "rw"}},
+            command=["/tools/odk.py", "seed", "--gitname", "OntoBoard", "--gitemail", "ontoboard@local", "-n", ont_id, "-t", ont_id, "-d", title or f"Ontology {ont_id}", "-u", f"http://example.org/{ont_id}"],
+            volumes={_docker_mount_path(board_dir): {"bind": "/work", "mode": "rw"}},
             working_dir="/work",
             detach=True,
             stdout=True,

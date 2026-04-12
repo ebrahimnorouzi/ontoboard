@@ -4,7 +4,6 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.config import DATA_DIR
 from app.deps import get_db, get_current_user
 from app.models.user import User
 from app.services import board as board_svc
@@ -20,7 +19,7 @@ def run_oops(board_id: str, db: Session = Depends(get_db), user: User = Depends(
     if not board:
         raise HTTPException(status_code=404, detail="Board not found")
     board_svc.log_activity(db, board, user, "oops_scan", "OOPS! scan started")
-    return quality_svc.run_oops_scan(DATA_DIR / board_id)
+    return quality_svc.run_oops_scan(board_svc.get_board_dir(board_id))
 
 
 @router.get("/{board_id}/oquare")
@@ -28,7 +27,7 @@ def get_oquare(board_id: str, db: Session = Depends(get_db), user: User = Depend
     board = board_svc.get_board_by_slug(db, board_id)
     if not board:
         raise HTTPException(status_code=404, detail="Board not found")
-    return quality_svc.calculate_oquare(DATA_DIR / board_id)
+    return quality_svc.calculate_oquare(board_svc.get_board_dir(board_id))
 
 
 @router.get("/{board_id}/compliance/{registry}")
@@ -37,7 +36,7 @@ def check_compliance(board_id: str, registry: str,
     board = board_svc.get_board_by_slug(db, board_id)
     if not board:
         raise HTTPException(status_code=404, detail="Board not found")
-    return quality_svc.check_registry_compliance(DATA_DIR / board_id, registry)
+    return quality_svc.check_registry_compliance(board_svc.get_board_dir(board_id), registry)
 
 
 class RegistrySubmitBody(BaseModel):
@@ -53,11 +52,11 @@ def submit_to_registry(board_id: str, body: RegistrySubmitBody,
         raise HTTPException(status_code=403, detail="Owner or admin required")
 
     if body.registry == "bioportal":
-        result = registry_svc.submit_to_bioportal(DATA_DIR / board_id, body.api_key)
+        result = registry_svc.submit_to_bioportal(board_svc.get_board_dir(board_id), body.api_key)
     elif body.registry == "ols":
-        result = {"config": registry_svc.generate_ols_config(DATA_DIR / board_id)}
+        result = {"config": registry_svc.generate_ols_config(board_svc.get_board_dir(board_id))}
     elif body.registry == "lov":
-        result = registry_svc.generate_lov_metadata(DATA_DIR / board_id)
+        result = registry_svc.generate_lov_metadata(board_svc.get_board_dir(board_id))
     else:
         raise HTTPException(status_code=400, detail=f"Unknown registry: {body.registry}")
 

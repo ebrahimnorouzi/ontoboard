@@ -4,7 +4,6 @@ from fastapi import APIRouter, Depends, HTTPException, Form, UploadFile, File
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.config import DATA_DIR
 from app.deps import get_db, get_current_user
 from app.models.user import User
 from app.services import board as board_svc
@@ -41,7 +40,7 @@ def apply_pattern(board_id: str, pattern_id: str, body: ApplyBody,
     board = board_svc.get_board_by_slug(db, board_id)
     if not board or not board_svc.can_edit(db, board, user):
         raise HTTPException(status_code=403, detail="Edit access required")
-    result = pattern_svc.apply_pattern(DATA_DIR / board_id, pattern_id, body.base_iri, body.x, body.y)
+    result = pattern_svc.apply_pattern(board_svc.get_board_dir(board_id), pattern_id, body.base_iri, body.x, body.y)
     board_svc.log_activity(db, board, user, "pattern_applied", f"Pattern: {pattern_id}")
     return result
 

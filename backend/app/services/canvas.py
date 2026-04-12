@@ -234,21 +234,38 @@ def canvas_to_owl(state: CanvasState, base_iri: str) -> Graph:
         _add_provenance(c, cls.created_by, cls.created_at,
                         cls.modified_by, cls.modified_at)
 
-    # Properties (object properties + subClassOf)
+    # Properties (object properties, data properties, subClassOf, rdf:type)
     for prop in state.properties:
         if prop.iri == "rdfs:subClassOf":
             g.add((URIRef(prop.source_id), RDFS.subClassOf, URIRef(prop.target_id)))
+        elif prop.iri == "rdf:type":
+            # rdf:type edge between individual and class
+            if prop.source_id and prop.target_id:
+                g.add((URIRef(prop.source_id), RDF.type, URIRef(prop.target_id)))
         elif prop.property_type == "object":
             p = URIRef(prop.iri)
             g.add((p, RDF.type, OWL.ObjectProperty))
             g.add((p, RDFS.label, Literal(prop.label, lang="en")))
-            g.add((p, RDFS.domain, URIRef(prop.source_id)))
-            g.add((p, RDFS.range, URIRef(prop.target_id)))
+            if prop.source_id:
+                g.add((p, RDFS.domain, URIRef(prop.source_id)))
+            if prop.target_id:
+                g.add((p, RDFS.range, URIRef(prop.target_id)))
             _add_provenance(p, prop.created_by, prop.created_at,
                             prop.modified_by, prop.modified_at)
         elif prop.property_type == "data":
             p = URIRef(prop.iri)
             g.add((p, RDF.type, OWL.DatatypeProperty))
+            g.add((p, RDFS.label, Literal(prop.label, lang="en")))
+            if prop.source_id:
+                g.add((p, RDFS.domain, URIRef(prop.source_id)))
+            if prop.target_id:
+                g.add((p, RDFS.range, URIRef(prop.target_id)))
+            _add_provenance(p, prop.created_by, prop.created_at,
+                            prop.modified_by, prop.modified_at)
+        elif prop.property_type == "annotation" and prop.iri not in ("rdfs:subClassOf", "rdf:type"):
+            # Annotation properties
+            p = URIRef(prop.iri)
+            g.add((p, RDF.type, OWL.AnnotationProperty))
             g.add((p, RDFS.label, Literal(prop.label, lang="en")))
             _add_provenance(p, prop.created_by, prop.created_at,
                             prop.modified_by, prop.modified_at)

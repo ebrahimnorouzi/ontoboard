@@ -3,7 +3,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.config import DATA_DIR
 from app.deps import get_db, get_current_user, get_current_user_optional
 from app.models.user import User
 from app.schemas.restrictions import (
@@ -36,7 +35,7 @@ def get_restrictions(
     """List all restrictions on an entity."""
     _check(board_id, db, user)
     try:
-        g = load_graph(DATA_DIR / board_id)
+        g = load_graph(board_svc.get_board_dir(board_id))
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="No OWL file found")
     restrictions = restr_svc.get_restrictions_for_entity(g, entity_iri)
@@ -52,7 +51,7 @@ def add_restriction(
 ):
     """Add a restriction to an entity."""
     board = _check(board_id, db, user, need_edit=True)
-    board_dir = DATA_DIR / board_id
+    board_dir = board_svc.get_board_dir(board_id)
     ok = restr_svc.add_restriction(board_dir, entity_iri, body.model_dump())
     if not ok:
         raise HTTPException(status_code=400, detail="Invalid restriction type")
@@ -71,7 +70,7 @@ def delete_restriction(
 ):
     """Remove a restriction from an entity."""
     board = _check(board_id, db, user, need_edit=True)
-    board_dir = DATA_DIR / board_id
+    board_dir = board_svc.get_board_dir(board_id)
     ok = restr_svc.remove_restriction(board_dir, entity_iri, body.model_dump())
     if not ok:
         raise HTTPException(status_code=404, detail="Restriction not found")
@@ -88,7 +87,7 @@ def add_complex_expression(
 ):
     """Add a complex class expression (union/intersection/complement)."""
     board = _check(board_id, db, user, need_edit=True)
-    board_dir = DATA_DIR / board_id
+    board_dir = board_svc.get_board_dir(board_id)
     ok = restr_svc.add_complex_expression(board_dir, entity_iri, body.model_dump())
     if not ok:
         raise HTTPException(status_code=400, detail="Invalid expression")

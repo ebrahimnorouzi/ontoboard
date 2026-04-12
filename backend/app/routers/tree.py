@@ -3,7 +3,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.config import DATA_DIR
 from app.deps import get_db, get_current_user, get_current_user_optional
 from app.models.user import User
 from app.schemas.tree import TreeNode, EntityDetail, AnnotationUpdate, EntityCreateRequest
@@ -23,7 +22,7 @@ def _load(board_id, db, user, need_edit=False):
     if not need_edit and not board_svc.can_view(db, board, user):
         raise HTTPException(status_code=403, detail="Access denied")
     try:
-        g = load_graph(DATA_DIR / board_id)
+        g = load_graph(board_svc.get_board_dir(board_id))
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="No OWL file found")
     return board, g
@@ -72,7 +71,7 @@ def update_annotations(
     db: Session = Depends(get_db), user: User = Depends(get_current_user),
 ):
     board, _ = _load(board_id, db, user, need_edit=True)
-    board_dir = DATA_DIR / board_id
+    board_dir = board_svc.get_board_dir(board_id)
     tree_svc.update_entity_annotations(board_dir, entity_iri, [u.model_dump() for u in updates])
     board_svc.git_commit(board_dir, f"Updated annotations for {entity_iri}")
     board_svc.log_activity(db, board, user, "annotation_edit", f"Entity: {entity_iri}")
@@ -85,7 +84,7 @@ def create_entity(
     db: Session = Depends(get_db), user: User = Depends(get_current_user),
 ):
     board, _ = _load(board_id, db, user, need_edit=True)
-    board_dir = DATA_DIR / board_id
+    board_dir = board_svc.get_board_dir(board_id)
     ok = tree_svc.create_entity(board_dir, body.entity_type, body.iri, body.label, body.parent_iri)
     if not ok:
         raise HTTPException(status_code=400, detail="Invalid entity type")
@@ -100,7 +99,7 @@ def delete_entity(
     db: Session = Depends(get_db), user: User = Depends(get_current_user),
 ):
     board, _ = _load(board_id, db, user, need_edit=True)
-    board_dir = DATA_DIR / board_id
+    board_dir = board_svc.get_board_dir(board_id)
     tree_svc.delete_entity(board_dir, entity_iri)
     board_svc.git_commit(board_dir, f"Deleted entity: {entity_iri}")
     board_svc.log_activity(db, board, user, "entity_deleted", f"Entity: {entity_iri}")

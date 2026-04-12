@@ -3,7 +3,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.config import DATA_DIR
 from app.deps import get_db, get_current_user_optional
 from app.models.user import User
 from app.schemas.sparql import SparqlQuery, SparqlResult, GraphVisualization
@@ -31,7 +30,7 @@ def run_query(
 ):
     """Execute a SPARQL query against the board's ontology + KG data."""
     _check_access(board_id, db, user)
-    board_dir = DATA_DIR / board_id
+    board_dir = board_svc.get_board_dir(board_id)
     result = sparql_svc.execute_sparql(board_dir, body.query)
     return SparqlResult(**result)
 
@@ -45,7 +44,7 @@ def visualize_query(
 ):
     """Execute a CONSTRUCT/DESCRIBE query and return a graph visualization."""
     _check_access(board_id, db, user)
-    board_dir = DATA_DIR / board_id
+    board_dir = board_svc.get_board_dir(board_id)
     result = sparql_svc.sparql_to_graph_visualization(board_dir, body.query)
     return GraphVisualization(**result)
 
@@ -58,5 +57,5 @@ def get_prefixes(
 ):
     """Return prefix bindings for SPARQL autocomplete."""
     _check_access(board_id, db, user)
-    board_dir = DATA_DIR / board_id
+    board_dir = board_svc.get_board_dir(board_id)
     return sparql_svc.get_common_prefixes(board_dir)

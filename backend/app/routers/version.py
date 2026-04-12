@@ -4,7 +4,6 @@ from pydantic import BaseModel
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.config import DATA_DIR
 from app.deps import get_db, get_current_user
 from app.models.user import User
 from app.schemas.version import VersionInfo, VersionUpdate
@@ -21,7 +20,7 @@ def get_version(board_id: str, db: Session = Depends(get_db), user: User = Depen
     if not board:
         raise HTTPException(status_code=404, detail="Board not found")
     try:
-        return VersionInfo(**version_svc.get_version_info(DATA_DIR / board_id))
+        return VersionInfo(**version_svc.get_version_info(board_svc.get_board_dir(board_id)))
     except FileNotFoundError:
         return VersionInfo()
 
@@ -33,8 +32,8 @@ def set_version(board_id: str, body: VersionUpdate, db: Session = Depends(get_db
         raise HTTPException(status_code=404, detail="Board not found")
     if not board_svc.can_edit(db, board, user):
         raise HTTPException(status_code=403, detail="Edit access required")
-    result = version_svc.set_version(DATA_DIR / board_id, body.version_iri, body.version, body.bump)
-    board_svc.git_commit(DATA_DIR / board_id, f"Updated version: {result.get('version', '')}")
+    result = version_svc.set_version(board_svc.get_board_dir(board_id), body.version_iri, body.version, body.bump)
+    board_svc.git_commit(board_svc.get_board_dir(board_id), f"Updated version: {result.get('version', '')}")
     board_svc.log_activity(db, board, user, "version_updated", str(result.get("version", "")))
     return VersionInfo(**result)
 
@@ -51,7 +50,7 @@ def get_strategy(board_id: str, db: Session = Depends(get_db), user: User = Depe
     board = board_svc.get_board_by_slug(db, board_id)
     if not board:
         raise HTTPException(status_code=404, detail="Board not found")
-    strategy = odk_setup.get_versioning_strategy(DATA_DIR / board_id)
+    strategy = odk_setup.get_versioning_strategy(board_svc.get_board_dir(board_id))
     return {"strategy": strategy}
 
 
@@ -65,7 +64,7 @@ def set_strategy(board_id: str, body: StrategyBody, db: Session = Depends(get_db
         raise HTTPException(status_code=403, detail="Edit access required")
     if body.strategy not in ("date", "semantic"):
         raise HTTPException(status_code=400, detail="Strategy must be 'date' or 'semantic'")
-    result = odk_setup.set_versioning_strategy(DATA_DIR / board_id, body.strategy, board_id)
-    board_svc.git_commit(DATA_DIR / board_id, f"Changed versioning strategy to {body.strategy}")
+    result = odk_setup.set_versioning_strategy(board_svc.get_board_dir(board_id), body.strategy, board_id)
+    board_svc.git_commit(board_svc.get_board_dir(board_id), f"Changed versioning strategy to {body.strategy}")
     board_svc.log_activity(db, board, user, "strategy_updated", body.strategy)
     return {"strategy": result}

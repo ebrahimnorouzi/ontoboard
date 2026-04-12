@@ -3,7 +3,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.config import DATA_DIR
 from app.deps import get_db, get_current_user
 from app.models.user import User
 from app.schemas.imports import ImportAdd, ImportInfo
@@ -19,7 +18,7 @@ def list_imports(board_id: str, db: Session = Depends(get_db), user: User = Depe
     if not board:
         raise HTTPException(status_code=404, detail="Board not found")
     try:
-        return [ImportInfo(**i) for i in imports_svc.list_imports(DATA_DIR / board_id)]
+        return [ImportInfo(**i) for i in imports_svc.list_imports(board_svc.get_board_dir(board_id))]
     except FileNotFoundError:
         return []
 
@@ -31,10 +30,10 @@ def add_import(board_id: str, body: ImportAdd, db: Session = Depends(get_db), us
         raise HTTPException(status_code=404, detail="Board not found")
     if not board_svc.can_edit(db, board, user):
         raise HTTPException(status_code=403, detail="Edit access required")
-    ok = imports_svc.add_import(DATA_DIR / board_id, body.iri, body.prefix)
+    ok = imports_svc.add_import(board_svc.get_board_dir(board_id), body.iri, body.prefix)
     if not ok:
         raise HTTPException(status_code=400, detail="Failed to add import")
-    board_svc.git_commit(DATA_DIR / board_id, f"Added import: {body.iri}")
+    board_svc.git_commit(board_svc.get_board_dir(board_id), f"Added import: {body.iri}")
     board_svc.log_activity(db, board, user, "import_added", body.iri)
     return {"success": True}
 
@@ -46,8 +45,8 @@ def remove_import(board_id: str, import_iri: str, db: Session = Depends(get_db),
         raise HTTPException(status_code=404, detail="Board not found")
     if not board_svc.can_edit(db, board, user):
         raise HTTPException(status_code=403, detail="Edit access required")
-    ok = imports_svc.remove_import(DATA_DIR / board_id, import_iri)
+    ok = imports_svc.remove_import(board_svc.get_board_dir(board_id), import_iri)
     if not ok:
         raise HTTPException(status_code=400, detail="Failed to remove import")
-    board_svc.git_commit(DATA_DIR / board_id, f"Removed import: {import_iri}")
+    board_svc.git_commit(board_svc.get_board_dir(board_id), f"Removed import: {import_iri}")
     return {"success": True}

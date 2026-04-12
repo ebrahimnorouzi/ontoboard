@@ -4,7 +4,6 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
-from app.config import DATA_DIR
 from app.deps import get_db, get_current_user
 from app.models.user import User
 from app.schemas.publish import CheckResult, PublishRequest, PublishStatus
@@ -27,7 +26,7 @@ async def run_checks(
     if not board_svc.can_edit(db, board, user):
         raise HTTPException(status_code=403, detail="Edit access required")
 
-    board_dir = DATA_DIR / board_id
+    board_dir = board_svc.get_board_dir(board_id)
     checks = await publish_svc.run_pre_checks(board_dir)
     board_svc.log_activity(db, board, user, "publish_check",
                            f"{sum(1 for c in checks if c['passed'])}/{len(checks)} passed")
@@ -48,7 +47,7 @@ async def run_publish(
     if not board_svc.can_manage(db, board, user):
         raise HTTPException(status_code=403, detail="Owner or admin required to publish")
 
-    board_dir = DATA_DIR / board_id
+    board_dir = board_svc.get_board_dir(board_id)
     ont_dir = board_dir / "src" / "ontology"
     if not ont_dir.exists():
         raise HTTPException(status_code=400, detail="No ontology directory")
@@ -76,5 +75,5 @@ def get_status(
     if not board_svc.can_view(db, board, user):
         raise HTTPException(status_code=403, detail="Access denied")
 
-    board_dir = DATA_DIR / board_id
+    board_dir = board_svc.get_board_dir(board_id)
     return PublishStatus(**publish_svc.get_publish_status(board_dir))
