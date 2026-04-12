@@ -131,19 +131,26 @@ async def robot_template(board_dir: Path, template: Path, output: Path) -> None:
 async def stream_build(board_dir: Path, target: str):
     """Generator that yields SSE lines from an ODK build using sh run.sh make pattern."""
     loop = asyncio.get_event_loop()
-    client = docker.from_env()
+
+    try:
+        client = docker.from_env()
+    except Exception as exc:
+        yield f"data: [ERROR] Docker unavailable: {exc}\n\n"
+        yield f"data: [EXIT 1]\n\n"
+        return
 
     # Determine the correct working directory by finding the Makefile
-    # ODK seed generates files at {board_dir}/src/ontology/ or {board_dir}/{board_id}/src/ontology/
     makefile_primary = board_dir / "src" / "ontology" / "Makefile"
     makefile_fallback = board_dir / "Makefile"
 
     if makefile_primary.exists():
         working_dir = "/work/src/ontology"
+        makefile_path = makefile_primary
     elif makefile_fallback.exists():
         working_dir = "/work"
+        makefile_path = makefile_fallback
     else:
-        # Search recursively for a Makefile that contains ODK-style targets
+        # Search recursively for a Makefile
         found = None
         for mf in board_dir.rglob("Makefile"):
             if ".git" not in str(mf):
@@ -152,17 +159,34 @@ async def stream_build(board_dir: Path, target: str):
         if found:
             rel = found.parent.relative_to(board_dir)
             working_dir = f"/work/{str(rel).replace(chr(92), '/')}"
+            makefile_path = found
         else:
-            yield f"data: [ERROR] No Makefile found in {board_dir}. Run 'ODK Seed' first to generate the project structure.\n\n"
+            yield f"data: [ERROR] No Makefile found in {board_dir}. Run 'ODK Seed' first.\n\n"
             yield f"data: [EXIT 1]\n\n"
             return
+
+    # Verify the target exists in the Makefile
+    try:
+        mk_content = makefile_path.read_text()
+        if target + ":" not in mk_content and target != "all":
+            targets = [line.split(":")[0] for line in mk_content.splitlines()
+                       if ":" in line and not line.startswith("#")
+                       and not line.startswith("\t") and not line.startswith(" ")]
+            targets_str = ", ".join(targets)
+            yield f"data: [WARN] Target '{target}' not found in Makefile. Available: {targets_str}\n\n"
+    except Exception:
+        pass
+
+    mount_path = _docker_mount_path(board_dir)
+    yield f"data: $ make {target}\n\n"
+    yield f"data: [mount: {mount_path} -> /work, cwd: {working_dir}]\n\n"
 
     container = await loop.run_in_executor(
         None,
         lambda: client.containers.run(
             image=ODK_IMAGE,
             command=f"make {target}",
-            volumes={_docker_mount_path(board_dir): {"bind": "/work", "mode": "rw"}},
+            volumes={mount_path: {"bind": "/work", "mode": "rw"}},
             working_dir=working_dir,
             remove=False,
             detach=True,
