@@ -371,20 +371,30 @@
   display: flex;
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  gap: 1px;
+  padding: 4px 6px 0;
+  background: var(--bg-primary);
 }
+.tabs::-webkit-scrollbar { display: none; }
 
 .tab {
-  flex: 1;
-  padding: 0.65rem 0;
+  padding: 0.45rem 0.65rem;
   background: none;
   border: none;
   border-bottom: 2px solid transparent;
+  border-radius: 6px 6px 0 0;
   color: var(--text-muted);
-  font-size: 0.8rem;
+  font-size: 0.72rem;
   font-weight: 500;
   font-family: inherit;
   cursor: pointer;
   transition: all 0.15s;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 .tab:hover {
   color: var(--text-secondary);
@@ -393,6 +403,7 @@
 .tabActive {
   color: var(--accent-light);
   border-bottom-color: var(--accent);
+  background: var(--bg-secondary);
 }
 
 .tabContent {

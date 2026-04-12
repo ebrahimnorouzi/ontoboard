@@ -10,8 +10,9 @@
  * - ROBOT report trigger
  */
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useOntologyDashboard } from "../hooks/useOntology";
+import { useOntologyStore } from "../store/ontologyStore";
 import { apiJson } from "../api";
 import styles from "./OntologyDashboard.module.css";
 
@@ -73,11 +74,27 @@ export default function OntologyDashboard({ boardId }: Props) {
     } catch {}
   }, [boardId]);
 
+  // Live statistics from Zustand store (updates instantly on graph changes)
+  const storeClasses = useOntologyStore((s) => s.classes);
+  const storeProperties = useOntologyStore((s) => s.properties);
+  const storeIndividuals = useOntologyStore((s) => s.individuals);
+
+  const liveStats = useMemo(() => ({
+    classes: storeClasses.length,
+    object_properties: new Set(storeProperties.filter((p) => p.property_type === "object").map((p) => p.iri)).size,
+    data_properties: new Set(storeProperties.filter((p) => p.property_type === "data").map((p) => p.iri)).size,
+    annotation_properties: new Set(storeProperties.filter((p) => p.property_type === "annotation" && p.iri !== "rdfs:subClassOf" && p.iri !== "rdf:type").map((p) => p.iri)).size,
+    individuals: storeIndividuals.length,
+    total_axioms: storeProperties.length,
+    subclass_axioms: storeProperties.filter((p) => p.iri === "rdfs:subClassOf").length,
+    total_triples: storeClasses.length + storeProperties.length + storeIndividuals.length,
+  }), [storeClasses, storeProperties, storeIndividuals]);
+
   if (loading) return <div className={styles.loading}>Loading ontology info...</div>;
   if (error) return <div className={styles.error}>{error}</div>;
   if (!data) return null;
 
-  const { metadata, statistics, report } = data;
+  const { metadata, report } = data;
 
   return (
     <div className={styles.dashboard}>
@@ -193,12 +210,12 @@ export default function OntologyDashboard({ boardId }: Props) {
       <section className={styles.section}>
         <h3 className={styles.sectionTitle}>Statistics</h3>
         <div className={styles.statsGrid}>
-          <StatCell label="Classes" value={statistics.classes} color="#6366f1" />
-          <StatCell label="Obj Props" value={statistics.object_properties} color="#10b981" />
-          <StatCell label="Data Props" value={statistics.data_properties} color="#f59e0b" />
-          <StatCell label="Individuals" value={statistics.individuals} color="#ef4444" />
-          <StatCell label="Axioms" value={statistics.total_axioms} color="#8b5cf6" />
-          <StatCell label="Triples" value={statistics.total_triples} color="#64748b" />
+          <StatCell label="Classes" value={liveStats.classes} color="#6366f1" />
+          <StatCell label="Obj Props" value={liveStats.object_properties} color="#10b981" />
+          <StatCell label="Data Props" value={liveStats.data_properties} color="#f59e0b" />
+          <StatCell label="Individuals" value={liveStats.individuals} color="#ef4444" />
+          <StatCell label="Axioms" value={liveStats.total_axioms} color="#8b5cf6" />
+          <StatCell label="Triples" value={liveStats.total_triples} color="#64748b" />
         </div>
       </section>
 

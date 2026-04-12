@@ -1,5 +1,6 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { apiJson } from "../api";
+import { useOntologyStore } from "../store/ontologyStore";
 
 interface TreeNode {
   iri: string;
@@ -35,37 +36,235 @@ interface EntityDetail {
 
 type TreeTab = "classes" | "object-properties" | "data-properties" | "annotation-properties" | "individuals";
 
+/** Top-level OWL super entities (not shown on graph, but act as tree roots) */
+const OWL_THING = "http://www.w3.org/2002/07/owl#Thing";
+const OWL_TOP_OBJECT_PROPERTY = "http://www.w3.org/2002/07/owl#topObjectProperty";
+const OWL_TOP_DATA_PROPERTY = "http://www.w3.org/2002/07/owl#topDataProperty";
+
+/** Standard annotation properties that should always be available */
+const DEFAULT_ANNOTATION_PROPERTIES: TreeNode[] = [
+  { iri: "http://www.w3.org/2000/01/rdf-schema#label", label: "rdfs:label", entity_type: "annotation-property", children: [], annotation_count: 0 },
+  { iri: "http://www.w3.org/2000/01/rdf-schema#comment", label: "rdfs:comment", entity_type: "annotation-property", children: [], annotation_count: 0 },
+  { iri: "http://www.w3.org/2000/01/rdf-schema#seeAlso", label: "rdfs:seeAlso", entity_type: "annotation-property", children: [], annotation_count: 0 },
+  { iri: "http://www.w3.org/2000/01/rdf-schema#isDefinedBy", label: "rdfs:isDefinedBy", entity_type: "annotation-property", children: [], annotation_count: 0 },
+  { iri: "http://www.w3.org/2002/07/owl#versionInfo", label: "owl:versionInfo", entity_type: "annotation-property", children: [], annotation_count: 0 },
+  { iri: "http://www.w3.org/2002/07/owl#deprecated", label: "owl:deprecated", entity_type: "annotation-property", children: [], annotation_count: 0 },
+  { iri: "http://www.w3.org/2002/07/owl#priorVersion", label: "owl:priorVersion", entity_type: "annotation-property", children: [], annotation_count: 0 },
+  { iri: "http://www.w3.org/2002/07/owl#backwardCompatibleWith", label: "owl:backwardCompatibleWith", entity_type: "annotation-property", children: [], annotation_count: 0 },
+  { iri: "http://www.w3.org/2002/07/owl#incompatibleWith", label: "owl:incompatibleWith", entity_type: "annotation-property", children: [], annotation_count: 0 },
+  { iri: "http://purl.org/dc/terms/title", label: "dcterms:title", entity_type: "annotation-property", children: [], annotation_count: 0 },
+  { iri: "http://purl.org/dc/terms/description", label: "dcterms:description", entity_type: "annotation-property", children: [], annotation_count: 0 },
+  { iri: "http://purl.org/dc/terms/creator", label: "dcterms:creator", entity_type: "annotation-property", children: [], annotation_count: 0 },
+  { iri: "http://purl.org/dc/terms/contributor", label: "dcterms:contributor", entity_type: "annotation-property", children: [], annotation_count: 0 },
+  { iri: "http://purl.org/dc/terms/license", label: "dcterms:license", entity_type: "annotation-property", children: [], annotation_count: 0 },
+  { iri: "http://www.w3.org/2004/02/skos/core#prefLabel", label: "skos:prefLabel", entity_type: "annotation-property", children: [], annotation_count: 0 },
+  { iri: "http://www.w3.org/2004/02/skos/core#altLabel", label: "skos:altLabel", entity_type: "annotation-property", children: [], annotation_count: 0 },
+  { iri: "http://www.w3.org/2004/02/skos/core#definition", label: "skos:definition", entity_type: "annotation-property", children: [], annotation_count: 0 },
+];
+
+/**
+ * Build tree data directly from the Zustand store for instant synchronization.
+ * Falls back to backend API for entity details.
+ */
 export function useTreeData(boardId: string | undefined) {
-  const [tree, setTree] = useState<TreeNode[]>([]);
   const [activeTab, setActiveTab] = useState<TreeTab>("classes");
-  const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
 
-  const fetchTree = useCallback(async () => {
-    if (!boardId) return;
-    setLoading(true);
-    try {
-      if (activeTab === "individuals") {
-        const groups = await apiJson<Record<string, TreeNode[]>>(`/api/tree/${boardId}/individuals`);
-        const nodes: TreeNode[] = Object.entries(groups).map(([cls, inds]) => ({
-          iri: cls, label: cls, entity_type: "class_group",
-          children: inds, annotation_count: 0,
-        }));
-        setTree(nodes);
-      } else {
-        const data = await apiJson<TreeNode[]>(`/api/tree/${boardId}/${activeTab}`);
-        setTree(data);
-      }
-    } catch {
-      setTree([]);
-    } finally {
-      setLoading(false);
+  const classes = useOntologyStore((s) => s.classes);
+  const properties = useOntologyStore((s) => s.properties);
+  const individuals = useOntologyStore((s) => s.individuals);
+
+  const tree = useMemo(() => {
+    switch (activeTab) {
+      case "classes":
+        return buildClassTree(classes, properties);
+      case "object-properties":
+        return buildPropertyTree(properties, "object");
+      case "data-properties":
+        return buildPropertyTree(properties, "data");
+      case "annotation-properties":
+        return buildAnnotationPropertyTree(properties);
+      case "individuals":
+        return buildIndividualTree(individuals, classes);
+      default:
+        return [];
     }
-  }, [boardId, activeTab]);
+  }, [activeTab, classes, properties, individuals]);
 
-  useEffect(() => { fetchTree(); }, [fetchTree]);
+  const refresh = useCallback(() => {
+    // No-op: tree is now derived from store and updates reactively
+  }, []);
 
-  return { tree, activeTab, setActiveTab, loading, search, setSearch, refresh: fetchTree };
+  return { tree, activeTab, setActiveTab, loading: false, search, setSearch, refresh };
+}
+
+/** Build a hierarchical class tree using subClassOf edges, rooted under owl:Thing */
+function buildClassTree(
+  classes: { iri: string; label: string }[],
+  properties: { iri: string; source_id: string; target_id: string }[],
+): TreeNode[] {
+  const subClassEdges = properties.filter((p) => p.iri === "rdfs:subClassOf");
+  // Map child → parent IRIs
+  const childToParent = new Map<string, string>();
+  for (const e of subClassEdges) {
+    childToParent.set(e.source_id, e.target_id);
+  }
+  // Map parent → children
+  const parentToChildren = new Map<string, string[]>();
+  for (const e of subClassEdges) {
+    const arr = parentToChildren.get(e.target_id) || [];
+    arr.push(e.source_id);
+    parentToChildren.set(e.target_id, arr);
+  }
+
+  const classMap = new Map(classes.map((c) => [c.iri, c]));
+
+  function buildNode(iri: string): TreeNode {
+    const cls = classMap.get(iri);
+    const childIris = parentToChildren.get(iri) || [];
+    return {
+      iri,
+      label: cls?.label || iri.split(/[#/]/).pop() || iri,
+      entity_type: "class",
+      children: childIris.map(buildNode),
+      annotation_count: 0,
+    };
+  }
+
+  // Root classes = those that have no parent (or parent is owl:Thing)
+  const rootIris = classes
+    .filter((c) => !childToParent.has(c.iri) || childToParent.get(c.iri) === OWL_THING)
+    .map((c) => c.iri);
+
+  const rootNodes = rootIris.map(buildNode);
+
+  // Wrap under owl:Thing
+  return [{
+    iri: OWL_THING,
+    label: "owl:Thing",
+    entity_type: "class",
+    children: rootNodes,
+    annotation_count: 0,
+  }];
+}
+
+/** Standard RDFS/OWL object properties that should always be listed */
+const DEFAULT_OBJECT_PROPERTIES: TreeNode[] = [
+  { iri: "http://www.w3.org/2000/01/rdf-schema#subClassOf", label: "rdfs:subClassOf", entity_type: "object-property", children: [], annotation_count: 0 },
+  { iri: "http://www.w3.org/2000/01/rdf-schema#subPropertyOf", label: "rdfs:subPropertyOf", entity_type: "object-property", children: [], annotation_count: 0 },
+  { iri: "http://www.w3.org/2000/01/rdf-schema#domain", label: "rdfs:domain", entity_type: "object-property", children: [], annotation_count: 0 },
+  { iri: "http://www.w3.org/2000/01/rdf-schema#range", label: "rdfs:range", entity_type: "object-property", children: [], annotation_count: 0 },
+  { iri: "http://www.w3.org/2000/01/rdf-schema#member", label: "rdfs:member", entity_type: "object-property", children: [], annotation_count: 0 },
+  { iri: "http://www.w3.org/1999/02/22-rdf-syntax-ns#type", label: "rdf:type", entity_type: "object-property", children: [], annotation_count: 0 },
+  { iri: "http://www.w3.org/2002/07/owl#inverseOf", label: "owl:inverseOf", entity_type: "object-property", children: [], annotation_count: 0 },
+  { iri: "http://www.w3.org/2002/07/owl#equivalentClass", label: "owl:equivalentClass", entity_type: "object-property", children: [], annotation_count: 0 },
+  { iri: "http://www.w3.org/2002/07/owl#disjointWith", label: "owl:disjointWith", entity_type: "object-property", children: [], annotation_count: 0 },
+  { iri: "http://www.w3.org/2002/07/owl#equivalentProperty", label: "owl:equivalentProperty", entity_type: "object-property", children: [], annotation_count: 0 },
+  { iri: "http://www.w3.org/2002/07/owl#sameAs", label: "owl:sameAs", entity_type: "object-property", children: [], annotation_count: 0 },
+  { iri: "http://www.w3.org/2002/07/owl#differentFrom", label: "owl:differentFrom", entity_type: "object-property", children: [], annotation_count: 0 },
+  { iri: "http://www.w3.org/2002/07/owl#imports", label: "owl:imports", entity_type: "object-property", children: [], annotation_count: 0 },
+];
+
+/** Standard OWL data properties */
+const DEFAULT_DATA_PROPERTIES: TreeNode[] = [
+  { iri: "http://www.w3.org/2002/07/owl#hasValue", label: "owl:hasValue", entity_type: "data-property", children: [], annotation_count: 0 },
+  { iri: "http://www.w3.org/2002/07/owl#minCardinality", label: "owl:minCardinality", entity_type: "data-property", children: [], annotation_count: 0 },
+  { iri: "http://www.w3.org/2002/07/owl#maxCardinality", label: "owl:maxCardinality", entity_type: "data-property", children: [], annotation_count: 0 },
+  { iri: "http://www.w3.org/2002/07/owl#cardinality", label: "owl:cardinality", entity_type: "data-property", children: [], annotation_count: 0 },
+];
+
+/** Build a property tree with built-in defaults, rooted under owl:topObjectProperty / owl:topDataProperty */
+function buildPropertyTree(
+  properties: { id: string; iri: string; label: string; property_type: string }[],
+  propType: "object" | "data",
+): TreeNode[] {
+  const rootIri = propType === "object" ? OWL_TOP_OBJECT_PROPERTY : OWL_TOP_DATA_PROPERTY;
+  const rootLabel = propType === "object" ? "owl:topObjectProperty" : "owl:topDataProperty";
+  const entityType = propType === "object" ? "object-property" : "data-property";
+  const defaults = propType === "object" ? DEFAULT_OBJECT_PROPERTIES : DEFAULT_DATA_PROPERTIES;
+
+  // Start with built-in defaults
+  const seen = new Set<string>(defaults.map((d) => d.iri));
+  const children: TreeNode[] = [...defaults];
+
+  // Add user-defined properties
+  for (const p of properties) {
+    if (p.property_type !== propType) continue;
+    if (seen.has(p.iri)) continue;
+    seen.add(p.iri);
+    children.push({
+      iri: p.iri,
+      label: p.label || p.iri.split(/[#/]/).pop() || p.iri,
+      entity_type: entityType,
+      children: [],
+      annotation_count: 0,
+    });
+  }
+
+  return [{
+    iri: rootIri,
+    label: rootLabel,
+    entity_type: entityType,
+    children,
+    annotation_count: 0,
+  }];
+}
+
+/** Build annotation properties tree with defaults always present */
+function buildAnnotationPropertyTree(
+  properties: { id: string; iri: string; label: string; property_type: string }[],
+): TreeNode[] {
+  const defaultIris = new Set(DEFAULT_ANNOTATION_PROPERTIES.map((d) => d.iri));
+  const result = [...DEFAULT_ANNOTATION_PROPERTIES];
+
+  // Add any user-defined annotation properties that aren't in defaults
+  const seen = new Set<string>(defaultIris);
+  for (const p of properties) {
+    if (p.property_type !== "annotation") continue;
+    // Skip subClassOf and rdf:type — they are relationship types, not annotation properties
+    if (p.iri === "rdfs:subClassOf" || p.iri === "rdf:type") continue;
+    if (seen.has(p.iri)) continue;
+    seen.add(p.iri);
+    result.push({
+      iri: p.iri,
+      label: p.label || p.iri.split(/[#/]/).pop() || p.iri,
+      entity_type: "annotation-property",
+      children: [],
+      annotation_count: 0,
+    });
+  }
+
+  return result;
+}
+
+/** Build individual tree grouped by class */
+function buildIndividualTree(
+  individuals: { iri: string; label: string; class_iri: string }[],
+  classes: { iri: string; label: string }[],
+): TreeNode[] {
+  const classMap = new Map(classes.map((c) => [c.iri, c.label]));
+  const groups = new Map<string, TreeNode[]>();
+
+  for (const ind of individuals) {
+    const groupKey = ind.class_iri || "(untyped)";
+    const arr = groups.get(groupKey) || [];
+    arr.push({
+      iri: ind.iri,
+      label: ind.label || ind.iri.split(/[#/]/).pop() || ind.iri,
+      entity_type: "individual",
+      children: [],
+      annotation_count: 0,
+    });
+    groups.set(groupKey, arr);
+  }
+
+  return Array.from(groups.entries()).map(([cls, inds]) => ({
+    iri: cls,
+    label: classMap.get(cls) || cls.split(/[#/]/).pop() || cls,
+    entity_type: "class_group",
+    children: inds,
+    annotation_count: 0,
+  }));
 }
 
 export function useEntityDetail(boardId: string | undefined, entityIri: string | undefined) {

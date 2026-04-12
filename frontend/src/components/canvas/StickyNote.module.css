@@ -91,3 +91,19 @@
   word-break: break-word;
   min-height: 40px;
 }
+
+.resizeHandle {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 14px;
+  height: 14px;
+  cursor: nwse-resize;
+  background: linear-gradient(135deg, transparent 50%, rgba(0, 0, 0, 0.15) 50%);
+  border-radius: 0 0 4px 0;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.sticky:hover .resizeHandle {
+  opacity: 1;
+}

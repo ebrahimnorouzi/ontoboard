@@ -246,7 +246,7 @@ export const useOntologyStore = create<OntologyState>((set, get) => ({
       properties: [
         ...s.properties.filter((p) => p.id !== id),
         {
-          id, iri: "rdfs:subClassOf", label: "subClassOf",
+          id, iri: "rdfs:subClassOf", label: "rdfs:subClassOf",
           source_id: childIri, target_id: parentIri, property_type: "annotation",
         },
       ],

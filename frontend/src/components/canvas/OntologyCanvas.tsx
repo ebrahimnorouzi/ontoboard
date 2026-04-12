@@ -31,13 +31,67 @@ const PREFIXES: Record<string, string> = {
   "http://xmlns.com/foaf/0.1/": "foaf:", "http://www.w3.org/ns/prov#": "prov:",
   "http://purl.obolibrary.org/obo/": "obo:", "http://schema.org/": "schema:",
 };
+/** Auto-generated ID pattern: Class_123456, Ind_123456, prop_123456 etc. */
+const AUTO_ID_RE = /^(?:Class|Ind|prop|lit|edge|subClassOf|rdftype)_\d+/;
+
 function compact(iri: string): string {
+  // Standard semantic web prefixes
   for (const [ns, p] of Object.entries(PREFIXES)) if (iri.startsWith(ns)) return p + iri.slice(ns.length);
-  return iri.includes("#") ? iri.split("#").pop() || iri : iri.split("/").pop() || iri;
+  // Board-local entities: resolve http://example.org/{ont}# as ont:localname
+  const exMatch = iri.match(/^https?:\/\/example\.org\/([^#/]+)#(.+)$/);
+  if (exMatch) {
+    const [, ns, local] = exMatch;
+    // If the local part is an auto-generated ID, don't show it
+    if (AUTO_ID_RE.test(local)) return "";
+    return `${ns}:${local}`;
+  }
+  const local = iri.includes("#") ? iri.split("#").pop() || iri : iri.split("/").pop() || iri;
+  if (AUTO_ID_RE.test(local)) return "";
+  return local;
 }
+
+/** Built-in labels for standard OWL/RDFS/RDF semantic entities */
+const BUILTIN_LABELS: Record<string, string> = {
+  "http://www.w3.org/2002/07/owl#Thing": "owl:Thing",
+  "http://www.w3.org/2002/07/owl#Nothing": "owl:Nothing",
+  "http://www.w3.org/2002/07/owl#Class": "owl:Class",
+  "http://www.w3.org/2002/07/owl#NamedIndividual": "owl:NamedIndividual",
+  "http://www.w3.org/2002/07/owl#ObjectProperty": "owl:ObjectProperty",
+  "http://www.w3.org/2002/07/owl#DatatypeProperty": "owl:DatatypeProperty",
+  "http://www.w3.org/2002/07/owl#AnnotationProperty": "owl:AnnotationProperty",
+  "http://www.w3.org/2002/07/owl#FunctionalProperty": "owl:FunctionalProperty",
+  "http://www.w3.org/2002/07/owl#InverseFunctionalProperty": "owl:InverseFunctionalProperty",
+  "http://www.w3.org/2002/07/owl#TransitiveProperty": "owl:TransitiveProperty",
+  "http://www.w3.org/2002/07/owl#SymmetricProperty": "owl:SymmetricProperty",
+  "http://www.w3.org/2002/07/owl#Ontology": "owl:Ontology",
+  "http://www.w3.org/2002/07/owl#topObjectProperty": "owl:topObjectProperty",
+  "http://www.w3.org/2002/07/owl#topDataProperty": "owl:topDataProperty",
+  "http://www.w3.org/2000/01/rdf-schema#Class": "rdfs:Class",
+  "http://www.w3.org/2000/01/rdf-schema#Resource": "rdfs:Resource",
+  "http://www.w3.org/2000/01/rdf-schema#Literal": "rdfs:Literal",
+  "http://www.w3.org/2000/01/rdf-schema#Datatype": "rdfs:Datatype",
+  "http://www.w3.org/2000/01/rdf-schema#subClassOf": "rdfs:subClassOf",
+  "http://www.w3.org/2000/01/rdf-schema#subPropertyOf": "rdfs:subPropertyOf",
+  "http://www.w3.org/2000/01/rdf-schema#domain": "rdfs:domain",
+  "http://www.w3.org/2000/01/rdf-schema#range": "rdfs:range",
+  "http://www.w3.org/2000/01/rdf-schema#label": "rdfs:label",
+  "http://www.w3.org/2000/01/rdf-schema#comment": "rdfs:comment",
+  "http://www.w3.org/2000/01/rdf-schema#seeAlso": "rdfs:seeAlso",
+  "http://www.w3.org/2000/01/rdf-schema#isDefinedBy": "rdfs:isDefinedBy",
+  "http://www.w3.org/1999/02/22-rdf-syntax-ns#type": "rdf:type",
+  "http://www.w3.org/1999/02/22-rdf-syntax-ns#Property": "rdf:Property",
+};
+
 /** Build two-line display label: "Label\nprefix:localname" */
 function displayLabel(label: string, iri: string): string {
   const short = compact(iri);
+  const builtinLabel = BUILTIN_LABELS[iri];
+  // For built-in entities, use their canonical prefix:localname form
+  if (builtinLabel) {
+    return label && label !== builtinLabel && short !== label ? `${label}\n${builtinLabel}` : builtinLabel;
+  }
+  // If compact returned empty (auto-generated ID), show just the label
+  if (!short) return label || iri;
   return label && short !== label ? `${label}\n${short}` : label || short;
 }
 
@@ -111,6 +165,9 @@ export default function OntologyCanvas({ boardId }: Props) {
           "line-color": "#6366f1", "target-arrow-color": "#6366f1",
           "target-arrow-shape": "triangle-backcurve", "curve-style": "bezier",
           width: 2, "line-style": "dashed", "line-dash-pattern": [8, 4], "arrow-scale": 1.2,
+          label: "data(displayLabel)", "font-size": "8px", color: "#4338ca",
+          "text-rotation": "autorotate", "text-background-color": "#fff",
+          "text-background-opacity": 0.9, "text-background-padding": "2px",
         }},
         { selector: "edge[edgeType='objectProperty']", style: {
           "line-color": "#10b981", "target-arrow-color": "#10b981",
@@ -170,7 +227,8 @@ export default function OntologyCanvas({ boardId }: Props) {
       nodeLoopOffset: -50,
     });
     ehRef.current = eh;
-    eh.enableDrawMode();
+    // Do NOT enable draw mode — it hijacks node drag/double-click as edge creation.
+    // Users create edges by dragging from the red handle dot on each node instead.
 
     // Edge complete → create property in store
     cy.on("ehcomplete", (_e: any, src: any, tgt: any, addedEdge: any) => {
@@ -180,7 +238,7 @@ export default function OntologyCanvas({ boardId }: Props) {
       const isSubClass = et === "subClassOf";
       const isRdfType = et === "rdfType";
       const iri = isSubClass ? "rdfs:subClassOf" : isRdfType ? "rdf:type" : `http://example.org/new#prop_${ts}`;
-      const label = isSubClass ? "subClassOf" : isRdfType ? "rdf:type" : "relatedTo";
+      const label = isSubClass ? "rdfs:subClassOf" : isRdfType ? "rdf:type" : "relatedTo";
       const propType = isSubClass ? "annotation" : isRdfType ? "annotation" : et === "data" ? "data" : et === "annotation" ? "annotation" : "object";
       store.addProperty({
         id: `edge_${ts}`, iri, label,
@@ -334,7 +392,7 @@ export default function OntologyCanvas({ boardId }: Props) {
       const isData = p.property_type === "data";
       const isAnn = p.property_type === "annotation" && !isSub;
       const edgeType = isSub ? "subClassOf" : isType ? "rdfType" : isData ? "dataProperty" : isAnn ? "annotationProperty" : "objectProperty";
-      expectedEdges.set(p.id, { source: p.source_id, target: p.target_id, displayLabel: isSub ? "" : isType ? "rdf:type" : compact(p.iri), edgeType });
+      expectedEdges.set(p.id, { source: p.source_id, target: p.target_id, displayLabel: isSub ? "rdfs:subClassOf" : isType ? "rdf:type" : compact(p.iri), edgeType });
     }
 
     cy.batch(() => {
@@ -736,13 +794,11 @@ export default function OntologyCanvas({ boardId }: Props) {
         <div className={styles.separator} />
 
         <div className={styles.group}>
-          {(["dagre", "cose-bilkent", "grid"] as const).map((l) => (
-            <button key={l} className={`${styles.btn} ${layoutName === l ? styles.active : ""}`}
-                    onClick={() => { setLayoutName(l); doLayout(l); }}
-                    title={l === "dagre" ? "Tree layout" : l === "cose-bilkent" ? "Force layout" : "Grid layout"}>
-              {l === "dagre" ? "Tree" : l === "cose-bilkent" ? "Force" : "Grid"}
-            </button>
-          ))}
+          <select className={styles.layoutSelect} value={layoutName} onChange={(e) => { const l = e.target.value; setLayoutName(l); doLayout(l); }}>
+            <option value="dagre">Tree Layout</option>
+            <option value="cose-bilkent">Force Layout</option>
+            <option value="grid">Grid Layout</option>
+          </select>
           <button className={styles.btn} onClick={() => cyRef.current?.fit(undefined, 40)} title="Fit to view">Fit</button>
           <button className={`${styles.btn} ${snapToGrid ? styles.active : ""}`}
                   onClick={() => { const v = !snapToGrid; setSnapToGrid(v); snapRef.current = v; }}

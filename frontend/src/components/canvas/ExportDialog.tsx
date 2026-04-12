@@ -1,14 +1,20 @@
 /**
  * ExportDialog — export graph as PNG/SVG with optional legend and prefixes.
+ * Legend and prefixes render as two separate, tidy boxes in the upper-right.
  */
 import { useState, useRef, useEffect } from "react";
 import styles from "./ExportDialog.module.css";
 
 const PREFIXES: Record<string, string> = {
-  "http://www.w3.org/2002/07/owl#": "owl:", "http://www.w3.org/2000/01/rdf-schema#": "rdfs:",
-  "http://www.w3.org/1999/02/22-rdf-syntax-ns#": "rdf:", "http://www.w3.org/2004/02/skos/core#": "skos:",
-  "http://purl.org/dc/terms/": "dcterms:", "http://xmlns.com/foaf/0.1/": "foaf:",
-  "http://www.w3.org/ns/prov#": "prov:", "http://purl.obolibrary.org/obo/": "obo:",
+  "http://www.w3.org/2002/07/owl#": "owl:",
+  "http://www.w3.org/2000/01/rdf-schema#": "rdfs:",
+  "http://www.w3.org/1999/02/22-rdf-syntax-ns#": "rdf:",
+  "http://www.w3.org/2004/02/skos/core#": "skos:",
+  "http://purl.org/dc/terms/": "dcterms:",
+  "http://purl.org/dc/elements/1.1/": "dc:",
+  "http://xmlns.com/foaf/0.1/": "foaf:",
+  "http://www.w3.org/ns/prov#": "prov:",
+  "http://purl.obolibrary.org/obo/": "obo:",
   "http://schema.org/": "schema:",
 };
 
@@ -46,74 +52,142 @@ export default function ExportDialog({ cyRef, onClose }: Props) {
     const graphDataUrl = cy.png({ scale, bg: "#ffffff", full: true });
     const img = new Image();
     img.onload = () => {
-      const legendH = includeLegend ? 60 : 0;
-      const prefixH = includePrefixes ? 50 : 0;
-      const totalH = img.height + legendH + prefixH + 20;
+      // Measure overlay boxes first to determine canvas size
+      const BOX_PADDING = 12;
+      const BOX_GAP = 10;
+      const BOX_MARGIN = 16;
+
+      // Measure legend box
+      const legendItems = [
+        { label: "Class", color: "#4f46e5", shape: "rect" as const },
+        { label: "Individual", color: "#d97706", shape: "diamond" as const },
+        { label: "Literal", color: "#16a34a", shape: "ellipse" as const },
+      ];
+      const edgeItems = [
+        { label: "SubClassOf", color: "#6366f1", dash: true },
+        { label: "ObjProp", color: "#10b981", dash: false },
+        { label: "DataProp", color: "#f59e0b", dash: true },
+        { label: "rdf:type", color: "#94a3b8", dash: true },
+      ];
+
+      // Calculate legend box dimensions
+      const legendLineH = 20;
+      const legendTitleH = 22;
+      const legendBoxW = 200;
+      const legendRows = legendItems.length + edgeItems.length;
+      const legendBoxH = legendTitleH + legendRows * legendLineH + BOX_PADDING * 2;
+
+      // Calculate prefix box dimensions
+      const prefixEntries = Object.entries(PREFIXES);
+      const prefixLineH = 16;
+      const prefixTitleH = 22;
+      const prefixBoxW = 360;
+      const prefixBoxH = prefixTitleH + prefixEntries.length * prefixLineH + BOX_PADDING * 2;
+
+      // Build right-side overlay width
+      const overlayW = Math.max(
+        includeLegend ? legendBoxW : 0,
+        includePrefixes ? prefixBoxW : 0,
+      );
+
+      // Canvas dimensions — ensure enough space for graph + overlay boxes
+      const canvasW = Math.max(img.width, overlayW + BOX_MARGIN * 2 + 200);
+      const canvasH = Math.max(
+        img.height,
+        BOX_MARGIN + (includeLegend ? legendBoxH + BOX_GAP : 0) + (includePrefixes ? prefixBoxH + BOX_GAP : 0) + BOX_MARGIN,
+      );
+
       const canvas = document.createElement("canvas");
-      canvas.width = Math.max(img.width, 600);
-      canvas.height = totalH;
+      canvas.width = canvasW;
+      canvas.height = canvasH;
       const ctx = canvas.getContext("2d")!;
       ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillRect(0, 0, canvasW, canvasH);
       ctx.drawImage(img, 0, 0);
 
-      let y = img.height + 10;
+      let boxY = BOX_MARGIN;
 
+      // ── Legend box (upper right) ──
       if (includeLegend) {
-        ctx.font = "bold 11px Inter, sans-serif";
-        ctx.fillStyle = "#64748b";
-        ctx.fillText("Legend:", 10, y + 12);
-        const items = [
-          { label: "Class", color: "#4f46e5", shape: "rect" },
-          { label: "Individual", color: "#d97706", shape: "diamond" },
-          { label: "Literal", color: "#16a34a", shape: "ellipse" },
-        ];
-        let lx = 70;
+        const boxX = canvasW - legendBoxW - BOX_MARGIN;
+        drawBox(ctx, boxX, boxY, legendBoxW, legendBoxH);
+
+        // Title
+        ctx.font = "bold 12px Inter, sans-serif";
+        ctx.fillStyle = "#1e293b";
+        ctx.fillText("Legend", boxX + BOX_PADDING, boxY + BOX_PADDING + 12);
+
+        let ly = boxY + BOX_PADDING + legendTitleH;
+
+        // Node items
         ctx.font = "11px Inter, sans-serif";
-        for (const it of items) {
+        for (const it of legendItems) {
+          const ix = boxX + BOX_PADDING;
           ctx.fillStyle = it.color;
-          if (it.shape === "rect") { ctx.fillRect(lx, y + 3, 12, 12); }
-          else if (it.shape === "diamond") { ctx.beginPath(); ctx.moveTo(lx + 6, y + 2); ctx.lineTo(lx + 12, y + 9); ctx.lineTo(lx + 6, y + 16); ctx.lineTo(lx, y + 9); ctx.fill(); }
-          else { ctx.beginPath(); ctx.arc(lx + 6, y + 9, 6, 0, Math.PI * 2); ctx.fill(); }
+          if (it.shape === "rect") {
+            ctx.fillRect(ix, ly + 2, 14, 14);
+          } else if (it.shape === "diamond") {
+            ctx.beginPath();
+            ctx.moveTo(ix + 7, ly + 1);
+            ctx.lineTo(ix + 14, ly + 9);
+            ctx.lineTo(ix + 7, ly + 17);
+            ctx.lineTo(ix, ly + 9);
+            ctx.fill();
+          } else {
+            ctx.beginPath();
+            ctx.arc(ix + 7, ly + 9, 6, 0, Math.PI * 2);
+            ctx.fill();
+          }
           ctx.fillStyle = "#334155";
-          ctx.fillText(it.label, lx + 16, y + 13);
-          lx += ctx.measureText(it.label).width + 36;
+          ctx.fillText(it.label, ix + 22, ly + 13);
+          ly += legendLineH;
         }
-        const edgeItems = [
-          { label: "SubClassOf", color: "#6366f1", dash: true },
-          { label: "ObjProp", color: "#10b981", dash: false },
-          { label: "DataProp", color: "#f59e0b", dash: true },
-          { label: "rdf:type", color: "#94a3b8", dash: true },
-        ];
-        lx += 10;
+
+        // Edge items
         for (const it of edgeItems) {
+          const ix = boxX + BOX_PADDING;
           ctx.strokeStyle = it.color;
           ctx.lineWidth = 2;
           ctx.setLineDash(it.dash ? [4, 3] : []);
           ctx.beginPath();
-          ctx.moveTo(lx, y + 9);
-          ctx.lineTo(lx + 20, y + 9);
+          ctx.moveTo(ix, ly + 9);
+          ctx.lineTo(ix + 20, ly + 9);
           ctx.stroke();
           ctx.setLineDash([]);
+          // Arrow head
+          ctx.fillStyle = it.color;
+          ctx.beginPath();
+          ctx.moveTo(ix + 20, ly + 9);
+          ctx.lineTo(ix + 15, ly + 5);
+          ctx.lineTo(ix + 15, ly + 13);
+          ctx.fill();
           ctx.fillStyle = "#334155";
-          ctx.fillText(it.label, lx + 24, y + 13);
-          lx += ctx.measureText(it.label).width + 44;
+          ctx.fillText(it.label, ix + 26, ly + 13);
+          ly += legendLineH;
         }
-        y += legendH;
+
+        boxY += legendBoxH + BOX_GAP;
       }
 
+      // ── Prefixes box (upper right, below legend) ──
       if (includePrefixes) {
-        ctx.font = "bold 10px Inter, sans-serif";
-        ctx.fillStyle = "#64748b";
-        ctx.fillText("Prefixes:", 10, y + 12);
-        ctx.font = "10px Cascadia Code, monospace";
-        ctx.fillStyle = "#475569";
-        let px = 70;
-        for (const [ns, prefix] of Object.entries(PREFIXES)) {
-          const text = `${prefix} <${ns}>`;
-          if (px + ctx.measureText(text).width > canvas.width - 10) { px = 70; y += 14; }
-          ctx.fillText(text, px, y + 12);
-          px += ctx.measureText(text).width + 16;
+        const boxX = canvasW - prefixBoxW - BOX_MARGIN;
+        drawBox(ctx, boxX, boxY, prefixBoxW, prefixBoxH);
+
+        // Title
+        ctx.font = "bold 12px Inter, sans-serif";
+        ctx.fillStyle = "#1e293b";
+        ctx.fillText("Prefixes", boxX + BOX_PADDING, boxY + BOX_PADDING + 12);
+
+        let py = boxY + BOX_PADDING + prefixTitleH;
+        ctx.font = "10px Cascadia Code, Consolas, monospace";
+        for (const [ns, prefix] of prefixEntries) {
+          ctx.fillStyle = "#6366f1";
+          ctx.fillText(prefix.replace(":", ""), boxX + BOX_PADDING, py + 10);
+          ctx.fillStyle = "#475569";
+          const prefixWidth = ctx.measureText(prefix.replace(":", "")).width;
+          ctx.fillText(`: <${ns}>`, boxX + BOX_PADDING + prefixWidth, py + 10);
+          py += prefixLineH;
         }
       }
 
@@ -175,4 +249,27 @@ export default function ExportDialog({ cyRef, onClose }: Props) {
       </div>
     </div>
   );
+}
+
+/** Draw a rounded box with border and semi-transparent white background */
+function drawBox(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number) {
+  const r = 6;
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+  ctx.fillStyle = "rgba(255, 255, 255, 0.95)";
+  ctx.fill();
+  ctx.strokeStyle = "#cbd5e1";
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  ctx.restore();
 }

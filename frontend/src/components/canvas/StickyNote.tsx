@@ -1,5 +1,5 @@
 /**
- * StickyNote — draggable, editable, colored note overlay on canvas.
+ * StickyNote — draggable, resizable, editable, colored note overlay on canvas.
  * Positioned using Cytoscape graph coordinates converted to screen.
  */
 
@@ -31,7 +31,9 @@ export default function StickyNote({ note, zoom, pan, onUpdate, onDelete }: Prop
   const [text, setText] = useState(note.text);
   const [showColors, setShowColors] = useState(false);
   const [dragging, setDragging] = useState(false);
+  const [resizing, setResizing] = useState(false);
   const dragStart = useRef({ mx: 0, my: 0, nx: 0, ny: 0 });
+  const resizeStart = useRef({ mx: 0, my: 0, w: 0, h: 0 });
   const noteRef = useRef<HTMLDivElement>(null);
 
   // Convert graph coords to screen coords
@@ -43,7 +45,7 @@ export default function StickyNote({ note, zoom, pan, onUpdate, onDelete }: Prop
   useEffect(() => { setText(note.text); }, [note.text]);
 
   const handleDragStart = useCallback((e: React.MouseEvent) => {
-    if (editing) return;
+    if (editing || resizing) return;
     e.preventDefault();
     e.stopPropagation();
     setDragging(true);
@@ -61,7 +63,29 @@ export default function StickyNote({ note, zoom, pan, onUpdate, onDelete }: Prop
     };
     document.addEventListener("mousemove", handleMove);
     document.addEventListener("mouseup", handleUp);
-  }, [editing, note.id, note.x, note.y, zoom, onUpdate]);
+  }, [editing, resizing, note.id, note.x, note.y, zoom, onUpdate]);
+
+  const handleResizeStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setResizing(true);
+    resizeStart.current = { mx: e.clientX, my: e.clientY, w: note.w, h: note.h };
+
+    const handleMove = (me: MouseEvent) => {
+      const dw = (me.clientX - resizeStart.current.mx) / zoom;
+      const dh = (me.clientY - resizeStart.current.my) / zoom;
+      const newW = Math.max(100, resizeStart.current.w + dw);
+      const newH = Math.max(60, resizeStart.current.h + dh);
+      onUpdate(note.id, { w: newW, h: newH });
+    };
+    const handleUp = () => {
+      setResizing(false);
+      document.removeEventListener("mousemove", handleMove);
+      document.removeEventListener("mouseup", handleUp);
+    };
+    document.addEventListener("mousemove", handleMove);
+    document.addEventListener("mouseup", handleUp);
+  }, [note.id, note.w, note.h, zoom, onUpdate]);
 
   const handleDoubleClick = () => {
     setEditing(true);
@@ -123,6 +147,9 @@ export default function StickyNote({ note, zoom, pan, onUpdate, onDelete }: Prop
           {note.text || "Double-click to edit..."}
         </div>
       )}
+
+      {/* Resize handle (bottom-right corner) */}
+      <div className={styles.resizeHandle} onMouseDown={handleResizeStart} />
     </div>
   );
 }

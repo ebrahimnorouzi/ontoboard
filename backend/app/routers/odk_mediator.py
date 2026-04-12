@@ -60,7 +60,7 @@ async def refresh_imports(board_id: str, body: ImportRefreshRequest | None = Non
     board = _check(board_id, db, user)
     board_dir = DATA_DIR / board_id
     board_svc.log_activity(db, board, user, "refresh_imports", f"Refreshing imports")
-    return StreamingResponse(mediator.stream_refresh_imports(board_dir), media_type="text/event-stream")
+    return StreamingResponse(mediator.stream_refresh_imports(board_dir, board_id=board_id), media_type="text/event-stream")
 
 
 # ── Workflow 3: Reasoning / Test ───────────────────────────────
@@ -77,7 +77,7 @@ async def run_reason(board_id: str, body: ReasonRequest | None = None,
     body = body or ReasonRequest()
     board_dir = DATA_DIR / board_id
     board_svc.log_activity(db, board, user, "odk_reason", f"Running {body.reasoner} reasoner")
-    return StreamingResponse(mediator.stream_reason(board_dir, body.reasoner), media_type="text/event-stream")
+    return StreamingResponse(mediator.stream_reason(board_dir, body.reasoner, board_id=board_id), media_type="text/event-stream")
 
 
 @router.post("/{board_id}/test")
@@ -86,7 +86,7 @@ async def run_test(board_id: str, db: Session = Depends(get_db), user: User = De
     board = _check(board_id, db, user)
     board_dir = DATA_DIR / board_id
     board_svc.log_activity(db, board, user, "odk_test", "Running ontology test suite")
-    return StreamingResponse(mediator.stream_test(board_dir), media_type="text/event-stream")
+    return StreamingResponse(mediator.stream_test(board_dir, board_id=board_id), media_type="text/event-stream")
 
 
 # ── Workflow 4: SPARQL Verification ────────────────────────────
@@ -102,7 +102,7 @@ async def sparql_verify(board_id: str, body: SparqlVerifyRequest,
     board = _check(board_id, db, user)
     board_dir = DATA_DIR / board_id
     board_svc.log_activity(db, board, user, "sparql_verify", f"Verifying: {body.sparql_file}")
-    return StreamingResponse(mediator.stream_sparql_verify(board_dir, body.sparql_file), media_type="text/event-stream")
+    return StreamingResponse(mediator.stream_sparql_verify(board_dir, body.sparql_file, board_id=board_id), media_type="text/event-stream")
 
 
 # ── Workflow 5: Release ────────────────────────────────────────

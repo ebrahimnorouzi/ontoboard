@@ -71,8 +71,7 @@ export default function TreeBrowser({ boardId }: Props) {
     }
     setNewLabel("");
     setAdding(false);
-    setTimeout(refresh, 500);
-  }, [newLabel, activeTab, store, selectedIri, refresh]);
+  }, [newLabel, activeTab, store, selectedIri]);
 
   // ── Delete entity ─────────────────────────────────────────
   const handleDelete = useCallback((iri: string) => {
@@ -82,15 +81,13 @@ export default function TreeBrowser({ boardId }: Props) {
       store.selectEntity(null);
     }
     setConfirmDelete(null);
-    setTimeout(refresh, 500);
-  }, [store, selectedIri, refresh]);
+  }, [store, selectedIri]);
 
   // ── Drag-drop: make child (SubClassOf) ────────────────────
   const handleMakeChild = useCallback((childIri: string, parentIri: string) => {
     if (childIri === parentIri) return;
     store.addSubClassOf(childIri, parentIri);
-    setTimeout(refresh, 500);
-  }, [store, refresh]);
+  }, [store]);
 
   // ── Inline rename ─────────────────────────────────────────
   const handleRename = useCallback((iri: string, newLbl: string) => {
@@ -104,8 +101,7 @@ export default function TreeBrowser({ boardId }: Props) {
     if (selectedIri === iri) {
       store.selectEntity({ iri, type: "class", label: newLbl.trim() });
     }
-    setTimeout(refresh, 500);
-  }, [store, selectedIri, refresh]);
+  }, [store, selectedIri]);
 
   const filtered = search ? filterTree(tree, search.toLowerCase()) : tree;
 
