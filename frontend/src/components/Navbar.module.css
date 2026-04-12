@@ -102,6 +102,127 @@
   border-color: var(--danger);
 }
 
+/* ── Notification Bell ────────────────────────────────────── */
+.bellContainer {
+  position: relative;
+}
+.bellBtn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.35rem;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.bellBtn:hover { background: var(--bg-accent); color: var(--text-primary); }
+.bellBadge {
+  position: absolute;
+  top: 0; right: -2px;
+  min-width: 16px; height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--danger);
+  color: #fff;
+  font-size: 0.58rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+.bellDropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  width: 340px;
+  max-height: 460px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.bellHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.bellTitle { font-size: 0.82rem; font-weight: 700; color: var(--text-primary); }
+.markAllBtn {
+  padding: 0.2rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--accent-light);
+  font-size: 0.68rem;
+  font-family: inherit;
+  cursor: pointer;
+}
+.markAllBtn:hover { background: var(--accent-glow); }
+.bellList {
+  flex: 1;
+  overflow-y: auto;
+}
+.bellEmpty {
+  padding: 2rem;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+.bellItem {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.6rem 0.75rem;
+  cursor: pointer;
+  transition: background 0.1s;
+  border-bottom: 1px solid var(--border);
+}
+.bellItem:last-child { border-bottom: none; }
+.bellItem:hover { background: var(--bg-accent); }
+.bellItemUnread { background: rgba(99, 102, 241, 0.04); }
+.bellItemUnread::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: var(--accent);
+}
+.bellIcon { font-size: 1.1rem; flex-shrink: 0; padding-top: 2px; }
+.bellContent { flex: 1; min-width: 0; }
+.bellItemTitle { font-size: 0.78rem; font-weight: 600; color: var(--text-primary); }
+.bellItemMsg {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bellItemTime { font-size: 0.62rem; color: var(--text-muted); margin-top: 2px; }
+.bellFooter {
+  border-top: 1px solid var(--border);
+  padding: 0.5rem;
+  text-align: center;
+  flex-shrink: 0;
+}
+.bellSeeAll {
+  font-size: 0.72rem;
+  color: var(--accent-light);
+  font-weight: 500;
+}
+.bellSeeAll:hover { text-decoration: underline; }
+
 .loginLink {
   background: var(--accent);
   color: #fff !important;

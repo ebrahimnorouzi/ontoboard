@@ -10,6 +10,7 @@ import BoardPage from "./pages/BoardPage";
 import AdminPage from "./pages/AdminPage";
 import InvitePage from "./pages/InvitePage";
 import SignupPage from "./pages/SignupPage";
+import FeedbackPage from "./pages/FeedbackPage";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
@@ -24,6 +25,8 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
           <Route path="/board/:boardId" element={<BoardPage />} />
           <Route path="/invite/:token" element={<InvitePage />} />
           <Route path="/admin" element={<AdminPage />} />
+          <Route path="/admin/:tab" element={<AdminPage />} />
+          <Route path="/feedback" element={<FeedbackPage />} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>

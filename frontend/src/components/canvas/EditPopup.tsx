@@ -19,7 +19,7 @@ export interface NodeEditData {
   type: "node";
   id: string;
   label: string;
-  entityType: "class" | "individual";
+  entityType: "class" | "individual" | "literal";
   shape: string;
   color: string;
   fontSize: number;
@@ -51,33 +51,50 @@ export default function EditPopup({ data, onSave, onDelete, onCancel }: Props) {
   const [local, setLocal] = useState<EditData>(data);
   const cardRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [pos, setPos] = useState({ x: data.screenX, y: data.screenY });
+  const dragging = useRef(false);
+  const dragOffset = useRef({ x: 0, y: 0 });
 
   useEffect(() => { inputRef.current?.focus(); inputRef.current?.select(); }, []);
 
-  // Close on Escape
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onCancel(); };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
   }, [onCancel]);
 
-  // Close on click outside
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (cardRef.current && !cardRef.current.contains(e.target as Node)) onCancel();
+      if (cardRef.current && !cardRef.current.contains(e.target as Node) && !dragging.current) onCancel();
     };
-    // delay to avoid closing immediately from the double-click that opened it
     const timer = setTimeout(() => document.addEventListener("mousedown", handler), 100);
     return () => { clearTimeout(timer); document.removeEventListener("mousedown", handler); };
   }, [onCancel]);
 
-  const update = (patch: Partial<EditData>) => setLocal((prev) => ({ ...prev, ...patch } as EditData));
+  // Drag logic
+  const handleDragStart = (e: React.MouseEvent) => {
+    dragging.current = true;
+    dragOffset.current = { x: e.clientX - pos.x, y: e.clientY - pos.y };
+    const onMove = (me: MouseEvent) => {
+      if (dragging.current) setPos({ x: me.clientX - dragOffset.current.x, y: me.clientY - dragOffset.current.y });
+    };
+    const onUp = () => { dragging.current = false; document.removeEventListener("mousemove", onMove); document.removeEventListener("mouseup", onUp); };
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+  };
 
+  const update = (patch: Partial<EditData>) => setLocal((prev) => ({ ...prev, ...patch } as EditData));
   const handleSave = () => onSave(local);
 
   return (
-    <div className={styles.overlay} style={{ left: data.screenX, top: data.screenY }}>
+    <div className={styles.overlay} style={{ left: pos.x, top: pos.y }}>
       <div className={styles.card} ref={cardRef}>
+        {/* Drag handle */}
+        <div className={styles.dragHandle} onMouseDown={handleDragStart}>
+          <span className={styles.dragTitle}>{local.type === "node" ? "Edit Node" : "Edit Edge"}</span>
+          <button className={styles.popupClose} onClick={onCancel}>&times;</button>
+        </div>
+        <div className={styles.cardBody}>
         {/* Label */}
         <div className={styles.row}>
           <span className={styles.label}>Label</span>
@@ -95,6 +112,7 @@ export default function EditPopup({ data, onSave, onDelete, onCancel }: Props) {
                       onChange={(e) => update({ entityType: e.target.value as "class" | "individual" })}>
                 <option value="class">Class</option>
                 <option value="individual">Individual</option>
+                <option value="literal">Literal</option>
               </select>
             </div>
 
@@ -140,6 +158,7 @@ export default function EditPopup({ data, onSave, onDelete, onCancel }: Props) {
                 <option value="objectProperty">Object Property</option>
                 <option value="subClassOf">SubClassOf</option>
                 <option value="dataProperty">Data Property</option>
+                <option value="rdfType">rdf:type</option>
                 <option value="annotationProperty">Annotation</option>
               </select>
             </div>
@@ -166,6 +185,8 @@ export default function EditPopup({ data, onSave, onDelete, onCancel }: Props) {
             </div>
           </>
         )}
+
+        </div>{/* end cardBody */}
 
         {/* Actions */}
         <div className={styles.actions}>

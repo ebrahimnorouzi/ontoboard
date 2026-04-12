@@ -32,6 +32,15 @@ class CanvasIndividual(BaseModel):
     y: float = 0
 
 
+class CanvasLiteral(BaseModel):
+    id: str
+    value: str = ""
+    datatype: str = "xsd:string"
+    language: str = ""
+    x: float = 0
+    y: float = 0
+
+
 class CanvasStickyNote(BaseModel):
     id: str
     text: str = ""
@@ -47,4 +56,5 @@ class CanvasState(BaseModel):
     classes: list[CanvasClass] = []
     properties: list[CanvasProperty] = []
     individuals: list[CanvasIndividual] = []
+    literals: list[CanvasLiteral] = []
     sticky_notes: list[CanvasStickyNote] = []

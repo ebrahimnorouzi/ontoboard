@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../auth";
 import { api, apiJson } from "../api";
 import Navbar from "../components/Navbar";
@@ -50,12 +50,15 @@ interface NotificationItem {
 export default function AdminPage() {
   const { user, isAdmin, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const { tab: urlTab } = useParams<{ tab?: string }>();
   const [stats, setStats] = useState<Stats | null>(null);
   const [users, setUsers] = useState<UserDetail[]>([]);
   const [boards, setBoards] = useState<BoardDetail[]>([]);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [tab, setTab] = useState<"overview" | "users" | "boards" | "notifications">("overview");
+  const validTabs = ["overview", "users", "boards", "notifications"] as const;
+  const initialTab = urlTab && validTabs.includes(urlTab as any) ? urlTab as typeof validTabs[number] : "overview";
+  const [tab, setTab] = useState<"overview" | "users" | "boards" | "notifications">(initialTab);
   const [showCreate, setShowCreate] = useState(false);
   const [newUser, setNewUser] = useState({ username: "", email: "", password: "", role: "user" });
   const [error, setError] = useState("");

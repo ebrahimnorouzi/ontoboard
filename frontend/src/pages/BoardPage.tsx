@@ -360,9 +360,6 @@ export default function BoardPage() {
           <button className={`${styles.toolBtn} ${styles.buildBtn}`} onClick={handleBuild} disabled={building}>
             {building ? "Building..." : "Build"}
           </button>
-          <button className={styles.toolBtn} onClick={() => setSideOpen(!sideOpen)}>
-            {sideOpen ? "Hide" : "Show"}
-          </button>
           <CollabStatus connected={connected} users={collabUsers}
                         currentUser={user?.display_name || user?.username || "anonymous"} />
         </div>
@@ -380,10 +377,22 @@ export default function BoardPage() {
           <TreeBrowser boardId={boardId} />
         )}
 
+        {/* Left panel toggle arrow */}
+        <button className={styles.panelToggle} onClick={() => setLeftOpen(!leftOpen)}
+                title={leftOpen ? "Hide left panel" : "Show left panel"}>
+          {leftOpen ? "\u25C0" : "\u25B6"}
+        </button>
+
         {/* Canvas */}
         <div className={styles.canvas}>
           {boardId && <OntologyCanvas boardId={boardId} />}
         </div>
+
+        {/* Right panel toggle arrow */}
+        <button className={styles.panelToggle} onClick={() => setSideOpen(!sideOpen)}
+                title={sideOpen ? "Hide right panel" : "Show right panel"}>
+          {sideOpen ? "\u25B6" : "\u25C0"}
+        </button>
 
         {/* Right Panel (Tabs) */}
         {sideOpen && (

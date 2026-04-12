@@ -154,6 +154,28 @@
   overflow: hidden;
 }
 
+/* ── Panel toggle arrows ──────────────────────────────────── */
+.panelToggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  flex-shrink: 0;
+  background: var(--bg-secondary);
+  border: none;
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 0.6rem;
+  cursor: pointer;
+  transition: all 0.15s;
+  padding: 0;
+}
+.panelToggle:hover {
+  background: var(--bg-accent);
+  color: var(--accent-light);
+}
+
 /* ── Canvas (Epic 2: WHITE background) ─────────────────────── */
 .canvas {
   flex: 1;

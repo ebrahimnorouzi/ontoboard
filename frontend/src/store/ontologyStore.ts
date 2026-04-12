@@ -19,6 +19,10 @@ interface OntIndividual {
   id: string; iri: string; label: string;
   class_iri: string; x: number; y: number;
 }
+interface OntLiteral {
+  id: string; value: string; datatype: string; language: string;
+  x: number; y: number;
+}
 interface StickyNote {
   id: string; text: string;
   x: number; y: number; w: number; h: number;
@@ -27,7 +31,7 @@ interface StickyNote {
 
 interface CanvasSnapshot {
   classes: OntClass[]; properties: OntProperty[];
-  individuals: OntIndividual[]; stickyNotes: StickyNote[];
+  individuals: OntIndividual[]; literals: OntLiteral[]; stickyNotes: StickyNote[];
 }
 
 interface SelectedEntity {
@@ -39,6 +43,7 @@ interface OntologyState {
   classes: OntClass[];
   properties: OntProperty[];
   individuals: OntIndividual[];
+  literals: OntLiteral[];
   stickyNotes: StickyNote[];
   selectedEntity: SelectedEntity | null;
   dirty: boolean;
@@ -65,6 +70,12 @@ interface OntologyState {
   setClasses: (classes: OntClass[]) => void;
   setProperties: (properties: OntProperty[]) => void;
   setIndividuals: (individuals: OntIndividual[]) => void;
+  updateIndividual: (iri: string, updates: Partial<OntIndividual>) => void;
+
+  // Literals
+  addLiteral: (lit: OntLiteral) => void;
+  updateLiteral: (id: string, updates: Partial<OntLiteral>) => void;
+  removeLiteral: (id: string) => void;
 
   // Sticky notes
   addStickyNote: (note: StickyNote) => void;
@@ -85,11 +96,12 @@ function debouncedSave(get: () => OntologyState) {
 const MAX_UNDO = 50;
 
 function pushUndo(get: () => OntologyState, set: (partial: Partial<OntologyState>) => void) {
-  const { classes, properties, individuals, stickyNotes, undoStack } = get();
+  const { classes, properties, individuals, literals, stickyNotes, undoStack } = get();
   const snapshot: CanvasSnapshot = {
     classes: classes.map((c) => ({ ...c })),
     properties: properties.map((p) => ({ ...p })),
     individuals: individuals.map((i) => ({ ...i })),
+    literals: literals.map((l) => ({ ...l })),
     stickyNotes: stickyNotes.map((s) => ({ ...s })),
   };
   set({ undoStack: [...undoStack.slice(-(MAX_UNDO - 1)), snapshot], redoStack: [] });
@@ -100,6 +112,7 @@ export const useOntologyStore = create<OntologyState>((set, get) => ({
   classes: [],
   properties: [],
   individuals: [],
+  literals: [],
   stickyNotes: [],
   selectedEntity: null,
   dirty: false,
@@ -112,7 +125,7 @@ export const useOntologyStore = create<OntologyState>((set, get) => ({
 
   loadFromBackend: async (boardId) => {
     try {
-      const data = await apiJson<{ classes: OntClass[]; properties: OntProperty[]; individuals: OntIndividual[]; sticky_notes?: StickyNote[] }>(
+      const data = await apiJson<{ classes: OntClass[]; properties: OntProperty[]; individuals: OntIndividual[]; literals?: OntLiteral[]; sticky_notes?: StickyNote[] }>(
         `/api/owl/${boardId}/load`
       );
       set({
@@ -120,24 +133,25 @@ export const useOntologyStore = create<OntologyState>((set, get) => ({
         classes: data.classes,
         properties: data.properties,
         individuals: data.individuals,
+        literals: data.literals || [],
         stickyNotes: data.sticky_notes || [],
         dirty: false,
         undoStack: [],
         redoStack: [],
       });
     } catch {
-      set({ boardId, classes: [], properties: [], individuals: [], stickyNotes: [], dirty: false });
+      set({ boardId, classes: [], properties: [], individuals: [], literals: [], stickyNotes: [], dirty: false });
     }
   },
 
   saveToBackend: async () => {
-    const { boardId, classes, properties, individuals, stickyNotes, dirty } = get();
+    const { boardId, classes, properties, individuals, literals, stickyNotes, dirty } = get();
     if (!boardId || !dirty) return;
     set({ saving: true });
     try {
       await apiJson(`/api/owl/${boardId}/save`, {
         method: "POST",
-        body: JSON.stringify({ classes, properties, individuals, sticky_notes: stickyNotes }),
+        body: JSON.stringify({ classes, properties, individuals, literals, sticky_notes: stickyNotes }),
       });
       set({ dirty: false, saving: false, lastSaved: Date.now() });
     } catch {
@@ -148,18 +162,19 @@ export const useOntologyStore = create<OntologyState>((set, get) => ({
   selectEntity: (entity) => set({ selectedEntity: entity }),
 
   undo: () => {
-    const { undoStack, classes, properties, individuals, stickyNotes } = get();
+    const { undoStack, classes, properties, individuals, literals, stickyNotes } = get();
     if (undoStack.length === 0) return;
     const prev = undoStack[undoStack.length - 1];
     const current: CanvasSnapshot = {
       classes: classes.map((c) => ({ ...c })),
       properties: properties.map((p) => ({ ...p })),
       individuals: individuals.map((i) => ({ ...i })),
+      literals: literals.map((l) => ({ ...l })),
       stickyNotes: stickyNotes.map((s) => ({ ...s })),
     };
     set({
       classes: prev.classes, properties: prev.properties,
-      individuals: prev.individuals, stickyNotes: prev.stickyNotes,
+      individuals: prev.individuals, literals: prev.literals, stickyNotes: prev.stickyNotes,
       undoStack: undoStack.slice(0, -1),
       redoStack: [...get().redoStack, current],
       dirty: true,
@@ -168,18 +183,19 @@ export const useOntologyStore = create<OntologyState>((set, get) => ({
   },
 
   redo: () => {
-    const { redoStack, classes, properties, individuals, stickyNotes } = get();
+    const { redoStack, classes, properties, individuals, literals, stickyNotes } = get();
     if (redoStack.length === 0) return;
     const next = redoStack[redoStack.length - 1];
     const current: CanvasSnapshot = {
       classes: classes.map((c) => ({ ...c })),
       properties: properties.map((p) => ({ ...p })),
       individuals: individuals.map((i) => ({ ...i })),
+      literals: literals.map((l) => ({ ...l })),
       stickyNotes: stickyNotes.map((s) => ({ ...s })),
     };
     set({
       classes: next.classes, properties: next.properties,
-      individuals: next.individuals, stickyNotes: next.stickyNotes,
+      individuals: next.individuals, literals: next.literals, stickyNotes: next.stickyNotes,
       redoStack: redoStack.slice(0, -1),
       undoStack: [...get().undoStack, current],
       dirty: true,
@@ -242,6 +258,35 @@ export const useOntologyStore = create<OntologyState>((set, get) => ({
   setClasses: (classes) => set({ classes, dirty: true }),
   setProperties: (properties) => set({ properties, dirty: true }),
   setIndividuals: (individuals) => set({ individuals, dirty: true }),
+  updateIndividual: (iri, updates) => {
+    set((s) => ({
+      individuals: s.individuals.map((i) => (i.iri === iri ? { ...i, ...updates } : i)),
+      dirty: true,
+    }));
+    debouncedSave(get);
+  },
+
+  addLiteral: (lit) => {
+    pushUndo(get, set);
+    set((s) => ({ literals: [...s.literals, lit], dirty: true }));
+    debouncedSave(get);
+  },
+  updateLiteral: (id, updates) => {
+    set((s) => ({
+      literals: s.literals.map((l) => (l.id === id ? { ...l, ...updates } : l)),
+      dirty: true,
+    }));
+    debouncedSave(get);
+  },
+  removeLiteral: (id) => {
+    pushUndo(get, set);
+    set((s) => ({
+      literals: s.literals.filter((l) => l.id !== id),
+      properties: s.properties.filter((p) => p.target_id !== id),
+      dirty: true,
+    }));
+    debouncedSave(get);
+  },
 
   addStickyNote: (note) => {
     pushUndo(get, set);
@@ -263,4 +308,4 @@ export const useOntologyStore = create<OntologyState>((set, get) => ({
   setStickyNotes: (notes) => set({ stickyNotes: notes, dirty: true }),
 }));
 
-export type { OntClass, OntProperty, OntIndividual, StickyNote, SelectedEntity };
+export type { OntClass, OntProperty, OntIndividual, OntLiteral, StickyNote, SelectedEntity };

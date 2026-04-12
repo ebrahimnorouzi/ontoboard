@@ -30,6 +30,9 @@ def run_odk_build(
     ont_dir = board_dir / "src" / "ontology"
     if not ont_dir.exists():
         raise HTTPException(status_code=400, detail="Board has no ODK ontology directory")
+    makefile = ont_dir / "Makefile"
+    if not makefile.exists():
+        raise HTTPException(status_code=400, detail="No Makefile found. Run 'ODK Seed' from the ODK panel first to generate the build files.")
 
     board_svc.log_activity(db, board, user, "build", f"make {target}")
 

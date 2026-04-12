@@ -88,7 +88,7 @@ def notify_admins_new_signup(db: Session, new_user: User):
             category="signup",
             title=f"New user signup: {new_user.username}",
             message=f"{new_user.username} ({new_user.email}) registered and is awaiting approval.",
-            link="/admin/users",
+            link="/admin/users",  # routed via /admin/:tab
         )
 
 
@@ -99,7 +99,18 @@ def notify_user_activated(db: Session, user: User):
         category="activated",
         title="Account approved",
         message="Your account has been activated. You can now create and edit boards.",
-        link="/boards",
+        link="/board",
+    )
+    # Also send a welcome notification with feedback prompt
+    create_notification(
+        db, user.id,
+        category="welcome",
+        title="Welcome to OntoBoard!",
+        message=(
+            "We're glad you're here! OntoBoard is an open-source collaborative ontology editor. "
+            "If you run into any issues or have suggestions, click here to let us know."
+        ),
+        link="/feedback",
     )
 
 
@@ -110,7 +121,7 @@ def notify_board_shared(db: Session, user_id: int, board_id: str, role: str, sha
         category="board_shared",
         title=f"Added to board: {board_id}",
         message=f"{sharer_name} added you as {role} on board '{board_id}'.",
-        link=f"/boards/{board_id}",
+        link=f"/board/{board_id}",
     )
 
 

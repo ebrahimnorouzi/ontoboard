@@ -8,7 +8,7 @@
  * Step 4: Success — shows generated files
  */
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiJson } from "../../api";
 import styles from "./CreateBoardWizard.module.css";
@@ -16,16 +16,27 @@ import styles from "./CreateBoardWizard.module.css";
 /* ── Help tooltip component ───────────────────────────────── */
 function HelpTip({ text }: { text: string }) {
   const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState({ top: 0, left: 0 });
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const handleClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (!open && btnRef.current) {
+      const rect = btnRef.current.getBoundingClientRect();
+      let left = rect.left + rect.width / 2 - 130; // center the 260px popup
+      let top = rect.bottom + 6;
+      // Keep within viewport
+      if (left < 8) left = 8;
+      if (left + 260 > window.innerWidth - 8) left = window.innerWidth - 268;
+      if (top + 160 > window.innerHeight) top = rect.top - 160;
+      setPos({ top, left });
+    }
+    setOpen(!open);
+  };
   return (
     <span className={styles.helpTip}>
-      <button
-        type="button"
-        className={styles.helpBtn}
-        onClick={(e) => { e.preventDefault(); setOpen(!open); }}
-        aria-label="Help"
-      >?</button>
+      <button ref={btnRef} type="button" className={styles.helpBtn} onClick={handleClick} aria-label="Help">?</button>
       {open && (
-        <div className={styles.helpPopup}>
+        <div className={styles.helpPopup} style={{ top: pos.top, left: pos.left }}>
           <div className={styles.helpText}>{text}</div>
           <button className={styles.helpClose} onClick={() => setOpen(false)}>&times;</button>
         </div>
