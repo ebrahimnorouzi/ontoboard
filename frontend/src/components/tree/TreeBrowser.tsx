@@ -5,7 +5,6 @@ import styles from "./TreeBrowser.module.css";
 
 interface Props {
   boardId: string;
-  onSelectEntity?: (entity: { iri: string; type: string; label: string } | null) => void;
 }
 
 const TAB_LABELS: { id: TreeTab; label: string; fullLabel: string }[] = [
@@ -16,9 +15,9 @@ const TAB_LABELS: { id: TreeTab; label: string; fullLabel: string }[] = [
   { id: "individuals", label: "Ind", fullLabel: "Individuals" },
 ];
 
-export default function TreeBrowser({ boardId, onSelectEntity }: Props) {
+export default function TreeBrowser({ boardId }: Props) {
   const { tree, activeTab, setActiveTab, loading, search, setSearch, refresh } = useTreeData(boardId);
-  const [selectedIri, setSelectedIri] = useState<string | null>(null);
+  const selectedIri = useOntologyStore((s) => s.selectedEntity?.iri ?? null);
   const { detail, loading: detailLoading } = useEntityDetail(boardId, selectedIri || undefined);
   const [adding, setAdding] = useState(false);
   const [newLabel, setNewLabel] = useState("");
@@ -28,8 +27,7 @@ export default function TreeBrowser({ boardId, onSelectEntity }: Props) {
   const store = useOntologyStore();
 
   const handleSelect = (node: TreeNode) => {
-    setSelectedIri(node.iri);
-    onSelectEntity?.({ iri: node.iri, type: node.entity_type, label: node.label });
+    store.selectEntity({ iri: node.iri, type: node.entity_type, label: node.label });
   };
 
   // ── Add entity — if a class is selected, new entity is its child ──
@@ -50,8 +48,7 @@ export default function TreeBrowser({ boardId, onSelectEntity }: Props) {
       if (selectedIri && store.classes.some(c => c.iri === selectedIri)) {
         store.addSubClassOf(iri, selectedIri);
       }
-      onSelectEntity?.({ iri, type: "class", label });
-      setSelectedIri(iri);
+      store.selectEntity({ iri, type: "class", label });
     } else if (activeTab === "individuals") {
       const iri = `http://example.org/new#${label.replace(/\s+/g, "_")}_${ts}`;
       // If a class is selected, assign the individual to that class
@@ -60,8 +57,7 @@ export default function TreeBrowser({ boardId, onSelectEntity }: Props) {
         id: iri, iri, label, class_iri: classIri,
         x: 300 + Math.random() * 200, y: 400 + Math.random() * 200,
       }]);
-      onSelectEntity?.({ iri, type: "individual", label });
-      setSelectedIri(iri);
+      store.selectEntity({ iri, type: "individual", label });
     } else if (activeTab === "object-properties" || activeTab === "data-properties" || activeTab === "annotation-properties") {
       const propType = activeTab === "object-properties" ? "object"
         : activeTab === "data-properties" ? "data" : "annotation";
@@ -71,24 +67,23 @@ export default function TreeBrowser({ boardId, onSelectEntity }: Props) {
         source_id: "", target_id: "",
         property_type: propType,
       });
-      onSelectEntity?.({ iri, type: propType + "-property", label });
+      store.selectEntity({ iri, type: propType + "-property", label });
     }
     setNewLabel("");
     setAdding(false);
     setTimeout(refresh, 500);
-  }, [newLabel, activeTab, store, selectedIri, onSelectEntity, refresh]);
+  }, [newLabel, activeTab, store, selectedIri, refresh]);
 
   // ── Delete entity ─────────────────────────────────────────
   const handleDelete = useCallback((iri: string) => {
     store.removeClass(iri);
     store.setIndividuals(store.individuals.filter(i => i.iri !== iri));
     if (selectedIri === iri) {
-      setSelectedIri(null);
-      onSelectEntity?.(null);
+      store.selectEntity(null);
     }
     setConfirmDelete(null);
     setTimeout(refresh, 500);
-  }, [store, selectedIri, onSelectEntity, refresh]);
+  }, [store, selectedIri, refresh]);
 
   // ── Drag-drop: make child (SubClassOf) ────────────────────
   const handleMakeChild = useCallback((childIri: string, parentIri: string) => {
@@ -107,10 +102,10 @@ export default function TreeBrowser({ boardId, onSelectEntity }: Props) {
     ));
     setRenamingIri(null);
     if (selectedIri === iri) {
-      onSelectEntity?.({ iri, type: "class", label: newLbl.trim() });
+      store.selectEntity({ iri, type: "class", label: newLbl.trim() });
     }
     setTimeout(refresh, 500);
-  }, [store, selectedIri, onSelectEntity, refresh]);
+  }, [store, selectedIri, refresh]);
 
   const filtered = search ? filterTree(tree, search.toLowerCase()) : tree;
 

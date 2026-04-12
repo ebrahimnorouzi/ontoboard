@@ -32,7 +32,19 @@ class CanvasIndividual(BaseModel):
     y: float = 0
 
 
+class CanvasStickyNote(BaseModel):
+    id: str
+    text: str = ""
+    x: float = 0
+    y: float = 0
+    w: float = 200
+    h: float = 150
+    color: str = "#fef3c7"
+    fontSize: int = 14
+
+
 class CanvasState(BaseModel):
     classes: list[CanvasClass] = []
     properties: list[CanvasProperty] = []
     individuals: list[CanvasIndividual] = []
+    sticky_notes: list[CanvasStickyNote] = []

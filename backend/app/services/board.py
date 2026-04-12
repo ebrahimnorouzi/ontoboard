@@ -44,10 +44,11 @@ def list_boards_for_user(db: Session, user: User | None) -> list[Board]:
             .subquery()
         )
         shared = db.query(Board).filter(Board.id.in_(shared_ids))
-        public = db.query(Board).filter(Board.is_public.is_(True))
-        return own.union(shared).union(public).order_by(Board.updated_at.desc()).all()
+        # Only show own boards + boards shared with the user (not all public boards)
+        return own.union(shared).order_by(Board.updated_at.desc()).all()
 
-    return db.query(Board).filter(Board.is_public.is_(True)).order_by(Board.updated_at.desc()).all()
+    # Anonymous: no boards (must sign in)
+    return []
 
 
 def list_all_boards(db: Session) -> list[Board]:

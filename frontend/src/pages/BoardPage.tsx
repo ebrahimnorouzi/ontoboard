@@ -27,9 +27,11 @@ import CsvImportWizard from "../components/csv/CsvImportWizard";
 import SparqlPanel from "../components/sparql/SparqlPanel";
 import DocsPanel from "../components/docs/DocsPanel";
 import ShareDialog from "../components/share/ShareDialog";
+import PatternLibrary from "../components/patterns/PatternLibrary";
+import IdRangeManager from "../components/idranges/IdRangeManager";
 import { useOntologyStore } from "../store/ontologyStore";
 
-type Tab = "ontology" | "axioms" | "reasoning" | "odk" | "sparql" | "csv" | "tasks" | "publish" | "docs" | "files" | "console";
+type Tab = "ontology" | "axioms" | "reasoning" | "odk" | "sparql" | "csv" | "tasks" | "publish" | "docs" | "files" | "patterns" | "ids" | "console";
 
 export default function BoardPage() {
   const { boardId } = useParams<{ boardId: string }>();
@@ -48,7 +50,6 @@ export default function BoardPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const selectedEntity = useOntologyStore((s) => s.selectedEntity);
-  const setSelectedEntity = useOntologyStore((s) => s.selectEntity);
 
   const { connected, users: collabUsers } = useCollaboration(
     status === "ready" ? boardId : undefined,
@@ -376,7 +377,7 @@ export default function BoardPage() {
       <div className={styles.main}>
         {/* Left Panel (Tree Browser) */}
         {leftOpen && boardId && (
-          <TreeBrowser boardId={boardId} onSelectEntity={setSelectedEntity} />
+          <TreeBrowser boardId={boardId} />
         )}
 
         {/* Canvas */}
@@ -388,10 +389,10 @@ export default function BoardPage() {
         {sideOpen && (
           <aside className={styles.side}>
             <div className={styles.tabs}>
-              {(["ontology", "axioms", "reasoning", "sparql", "csv", "tasks", "publish", "docs", "files", "console"] as Tab[]).map((t) => (
+              {(["ontology", "axioms", "reasoning", "odk", "sparql", "csv", "tasks", "publish", "docs", "files", "patterns", "ids", "console"] as Tab[]).map((t) => (
                 <button key={t} className={`${styles.tab} ${activeTab === t ? styles.tabActive : ""}`}
                         onClick={() => setActiveTab(t)}>
-                  {({ ontology: "Onto", reasoning: "Reason", console: "Log", files: "Files" } as Record<string, string>)[t] ||
+                  {({ ontology: "Onto", reasoning: "Reason", odk: "ODK", console: "Log", files: "Files", patterns: "ODP", ids: "IDs" } as Record<string, string>)[t] ||
                    t.charAt(0).toUpperCase() + t.slice(1)}
                 </button>
               ))}
@@ -411,6 +412,8 @@ export default function BoardPage() {
               {activeTab === "publish" && boardId && <PublishPanel boardId={boardId} />}
               {activeTab === "docs" && boardId && <DocsPanel boardId={boardId} />}
               {activeTab === "files" && boardId && <FileBrowser boardId={boardId} />}
+              {activeTab === "patterns" && boardId && <PatternLibrary boardId={boardId} />}
+              {activeTab === "ids" && boardId && <IdRangeManager boardId={boardId} />}
               {activeTab === "console" && (
                 <div className={styles.consolePanel}>
                   {consoleLog.length === 0 ? (

@@ -1,0 +1,619 @@
+/* ── Modal overlay ──────────────────────────────────────────── */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.dialog {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+  width: 620px;
+  max-width: 95vw;
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── Header ────────────────────────────────────────────────── */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.title { font-size: 1rem; font-weight: 700; margin: 0; }
+.closeBtn {
+  background: none; border: none; color: var(--text-muted);
+  font-size: 1.2rem; cursor: pointer; padding: 0.2rem;
+}
+.closeBtn:hover { color: var(--text-primary); }
+
+/* ── Steps indicator ───────────────────────────────────────── */
+.steps {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.6rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.step {
+  flex: 1;
+  padding: 0.35rem 0.5rem;
+  text-align: center;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--bg-primary);
+  border-radius: var(--radius-sm);
+  transition: all 0.2s;
+}
+.stepActive {
+  background: var(--accent);
+  color: #fff;
+}
+.stepDone {
+  background: var(--success);
+  color: #fff;
+}
+
+/* ── Body (scrollable) ─────────────────────────────────────── */
+.body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.25rem;
+}
+
+/* ── Footer ────────────────────────────────────────────────── */
+.footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1.25rem;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.footerRight { display: flex; gap: 0.4rem; }
+
+/* ── Buttons ───────────────────────────────────────────────── */
+.btn {
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn:hover { background: var(--bg-card-hover); color: var(--text-primary); }
+.btn:disabled { opacity: 0.4; cursor: default; }
+
+.btnPrimary {
+  composes: btn;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.btnPrimary:hover:not(:disabled) { background: #5a4bd6; }
+
+.btnSuccess {
+  composes: btn;
+  background: var(--success);
+  border-color: var(--success);
+  color: #fff;
+}
+
+/* ── Step 0: Mode cards ────────────────────────────────────── */
+.modeCards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+.modeCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 2rem 1.5rem;
+  background: var(--bg-card);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+}
+.modeCard:hover {
+  border-color: var(--accent);
+  background: var(--accent-glow);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+.modeIcon { font-size: 2.5rem; }
+.modeTitle { font-size: 1rem; font-weight: 700; color: var(--text-primary); }
+.modeDesc { font-size: 0.78rem; color: var(--text-secondary); line-height: 1.5; }
+
+/* ── Step 1: Form ──────────────────────────────────────────── */
+.formSection {
+  margin-bottom: 1.25rem;
+}
+.formSectionTitle {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  margin-bottom: 0.5rem;
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.formRow {
+  display: flex;
+  gap: 0.6rem;
+  margin-bottom: 0.5rem;
+}
+.formGroup {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.formLabel {
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+.formRequired { color: var(--danger); }
+.formInput {
+  padding: 0.4rem 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 0.8rem;
+  font-family: inherit;
+  outline: none;
+}
+.formInput:focus { border-color: var(--accent); }
+.formInput::placeholder { color: var(--text-muted); }
+
+.formSelect {
+  composes: formInput;
+  cursor: pointer;
+}
+
+/* Checkboxes */
+.checkboxGroup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  padding: 0.3rem 0;
+}
+.checkboxLabel {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.checkboxLabel input[type="checkbox"] {
+  accent-color: var(--accent);
+}
+
+/* Radio */
+.radioGroup {
+  display: flex;
+  gap: 1rem;
+  padding: 0.3rem 0;
+}
+.radioLabel {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.radioLabel input[type="radio"] {
+  accent-color: var(--accent);
+}
+.radioHint {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  margin-left: 1.2rem;
+}
+
+/* Toggle */
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+/* ── Imports section ───────────────────────────────────────── */
+.importList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-bottom: 0.5rem;
+}
+.importRow {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+.importRow .formInput { min-width: 0; }
+.importId { width: 80px; flex-shrink: 0; }
+.importUrl { flex: 1; }
+.importType { width: 90px; flex-shrink: 0; }
+.importRemove {
+  background: none; border: none; color: var(--danger);
+  font-size: 0.85rem; cursor: pointer; padding: 0.2rem 0.4rem;
+  border-radius: 3px; flex-shrink: 0;
+}
+.importRemove:hover { background: rgba(239, 68, 68, 0.1); }
+.addImportBtn {
+  padding: 0.3rem 0.6rem;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.addImportBtn:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ── Step 2: YAML preview ──────────────────────────────────── */
+.yamlEditor {
+  width: 100%;
+  min-height: 400px;
+  resize: vertical;
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: "Cascadia Code", "Fira Code", monospace;
+  font-size: 0.75rem;
+  line-height: 1.6;
+  tab-size: 2;
+  outline: none;
+}
+.yamlEditor:focus { border-color: var(--accent); }
+.yamlHint {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  margin-bottom: 0.5rem;
+}
+
+/* ── Step 3: Success ───────────────────────────────────────── */
+.successBanner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1.5rem;
+  margin-bottom: 1rem;
+}
+.successIcon {
+  width: 56px; height: 56px;
+  border-radius: 50%;
+  background: rgba(16, 185, 129, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.8rem;
+  color: var(--success);
+}
+.successTitle { font-size: 1.1rem; font-weight: 700; }
+.successSub { font-size: 0.82rem; color: var(--text-secondary); }
+
+.fileList {
+  max-height: 250px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  margin-bottom: 1rem;
+}
+.fileGroup { border-bottom: 1px solid var(--border); }
+.fileGroup:last-child { border-bottom: none; }
+.fileGroupTitle {
+  padding: 0.3rem 0.75rem;
+  font-size: 0.62rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  background: var(--bg-primary);
+  position: sticky;
+  top: 0;
+}
+.fileName {
+  padding: 0.25rem 0.75rem 0.25rem 1.2rem;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  font-family: "Cascadia Code", "Fira Code", monospace;
+}
+
+.successActions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+/* ── Error ─────────────────────────────────────────────────── */
+.error {
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-sm);
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  color: var(--danger);
+  font-size: 0.78rem;
+  margin-bottom: 0.75rem;
+}
+
+/* ── Creating spinner ──────────────────────────────────────── */
+.creating {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 3rem;
+}
+.spinner {
+  width: 36px; height: 36px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.creatingText { font-size: 0.85rem; color: var(--text-muted); }
+
+/* ── Help Tooltip ─────────────────────────────────────────── */
+.helpTip {
+  position: relative;
+  display: inline-block;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+.helpBtn {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1.5px solid var(--text-muted);
+  background: none;
+  color: var(--text-muted);
+  font-size: 0.58rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+  line-height: 1;
+}
+.helpBtn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-glow);
+}
+.helpPopup {
+  position: absolute;
+  left: 50%;
+  top: calc(100% + 6px);
+  transform: translateX(-50%);
+  width: 260px;
+  padding: 0.6rem 0.75rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  z-index: 100;
+  font-size: 0.72rem;
+  font-weight: 400;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+.helpText { margin: 0; }
+.helpClose {
+  position: absolute;
+  top: 2px;
+  right: 4px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+/* ── Field hint ───────────────────────────────────────────── */
+.fieldHint {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+  font-family: "Cascadia Code", "Fira Code", monospace;
+  word-break: break-all;
+}
+
+/* ── Quick add common imports ──────────────────────────────── */
+.quickAdd {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-bottom: 0.6rem;
+  flex-wrap: wrap;
+}
+.quickAddLabel {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+.quickAddBtn {
+  padding: 0.2rem 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-primary);
+  color: var(--text-secondary);
+  font-size: 0.65rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.quickAddBtn:hover { border-color: var(--accent); color: var(--accent); }
+.quickAddBtnActive {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+/* ── Import card ──────────────────────────────────────────── */
+.importCard {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 0.75rem;
+  margin-bottom: 0.5rem;
+  background: var(--bg-primary);
+}
+.importCardHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.importRow {
+  display: flex;
+  gap: 0.4rem;
+  align-items: flex-end;
+}
+
+/* ── Term IRI section ─────────────────────────────────────── */
+.termIriSection {
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px dashed var(--border);
+}
+.termIriInput {
+  width: 100%;
+  min-height: 80px;
+  resize: vertical;
+  padding: 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-family: "Cascadia Code", "Fira Code", monospace;
+  font-size: 0.72rem;
+  line-height: 1.5;
+  outline: none;
+}
+.termIriInput:focus { border-color: var(--accent); }
+.termIriInput::placeholder { color: var(--text-muted); font-family: inherit; }
+.termIriActions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.35rem;
+}
+.uploadBtn {
+  padding: 0.25rem 0.6rem;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.uploadBtn:hover { border-color: var(--accent); color: var(--accent); }
+.termCount {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  margin-left: auto;
+}
+
+/* ── Info box ─────────────────────────────────────────────── */
+.infoBox {
+  padding: 0.6rem 0.75rem;
+  background: rgba(99, 102, 241, 0.06);
+  border: 1px solid rgba(99, 102, 241, 0.15);
+  border-radius: var(--radius-sm);
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin-bottom: 0.6rem;
+}
+.infoBox code {
+  background: rgba(99, 102, 241, 0.1);
+  padding: 0.1rem 0.3rem;
+  border-radius: 3px;
+  font-size: 0.7rem;
+}
+
+/* ── ID Range table ───────────────────────────────────────── */
+.idRangeTable {
+  margin-bottom: 0.5rem;
+}
+.idRangeHeader {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 1fr 1fr 30px;
+  gap: 0.4rem;
+  padding: 0.3rem 0;
+  font-size: 0.62rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 0.3rem;
+}
+.idRangeRow {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 1fr 1fr 30px;
+  gap: 0.4rem;
+  align-items: center;
+  margin-bottom: 0.25rem;
+}
+.idRangeRow .formInput { min-width: 0; }
+
+/* ── Mode card learn more ─────────────────────────────────── */
+.modeLearnMore {
+  margin-top: 0.3rem;
+}
+.modeLearnMore a {
+  font-size: 0.72rem;
+  color: var(--accent);
+  text-decoration: none;
+}
+.modeLearnMore a:hover { text-decoration: underline; }
+
+/* ── Success hint ─────────────────────────────────────────── */
+.successHint {
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-bottom: 1rem;
+  line-height: 1.5;
+}

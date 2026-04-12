@@ -11,13 +11,18 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import cytoscape from "cytoscape";
 import dagre from "cytoscape-dagre";
 import coseBilkent from "cytoscape-cose-bilkent";
+import edgehandles from "cytoscape-edgehandles";
 import { useOntologyStore } from "../../store/ontologyStore";
-import { useCollaboration, RemoteCursor } from "../../collab/useCollaboration";
+import { useCollaboration } from "../../collab/useCollaboration";
 import { useAuth } from "../../auth";
+import EditPopup, { EditData, NodeEditData, EdgeEditData } from "./EditPopup";
+import StickyNoteComponent from "./StickyNote";
+import Minimap from "./Minimap";
 import styles from "./OntologyCanvas.module.css";
 
 cytoscape.use(dagre);
 cytoscape.use(coseBilkent);
+cytoscape.use(edgehandles);
 
 const PREFIXES: Record<string, string> = {
   "http://www.w3.org/2002/07/owl#": "owl:", "http://www.w3.org/2000/01/rdf-schema#": "rdfs:",
@@ -44,23 +49,22 @@ export default function OntologyCanvas({ boardId }: Props) {
   );
 
   const [layoutName, setLayoutName] = useState("dagre");
-  const [selected, setSelected] = useState<string | null>(null);
+  const selected = store.selectedEntity?.iri ?? null;
   const [editLabel, setEditLabel] = useState("");
   const [editColor, setEditColor] = useState("#4f46e5");
   const [edgeType, setEdgeType] = useState<"object" | "subClassOf" | "data" | "annotation">("object");
+  const [snapToGrid, setSnapToGrid] = useState(true);
+  const snapRef = useRef(true);
+  const GRID = 20;
+  const [zoomLevel, setZoomLevel] = useState(100);
+  const [viewport, setViewport] = useState({ zoom: 1, pan: { x: 0, y: 0 } });
 
-  // ── Edge drawing with REFS (not state — avoids stale closures) ──
-  const edgeModeRef = useRef(false);
-  const edgeSourceRef = useRef<string | null>(null);
-  const [edgeModeUI, setEdgeModeUI] = useState(false);
-  const [edgeSourceUI, setEdgeSourceUI] = useState<string | null>(null);
-
-  const toggleEdgeMode = () => {
-    edgeModeRef.current = !edgeModeRef.current;
-    edgeSourceRef.current = null;
-    setEdgeModeUI(edgeModeRef.current);
-    setEdgeSourceUI(null);
-  };
+  // ── Edge drawing via cytoscape-edgehandles ──
+  const ehRef = useRef<any>(null);
+  const edgeTypeRef = useRef(edgeType);
+  const [edgeDrawing, setEdgeDrawing] = useState(false);
+  edgeTypeRef.current = edgeType;
+  const [editPopup, setEditPopup] = useState<EditData | null>(null);
 
   // ── Cytoscape init ──────────────────────────────────────────
   useEffect(() => {
@@ -116,63 +120,135 @@ export default function OntologyCanvas({ boardId }: Props) {
           "target-arrow-shape": "triangle", "curve-style": "bezier",
           width: 1, "line-style": "dotted",
         }},
+        // Edgehandles styles
+        { selector: ".eh-handle", style: {
+          "background-color": "#ef4444", width: 10, height: 10, shape: "ellipse",
+          "overlay-opacity": 0, "border-width": 2, "border-color": "#fff",
+        }},
+        { selector: ".eh-hover", style: {
+          "background-color": "#ef4444",
+        }},
+        { selector: ".eh-source", style: {
+          "border-color": "#ef4444", "border-width": 3,
+        }},
+        { selector: ".eh-target", style: {
+          "border-color": "#10b981", "border-width": 3,
+        }},
+        { selector: ".eh-preview, .eh-ghost-edge", style: {
+          "line-color": "#94a3b8", "target-arrow-color": "#94a3b8",
+          "target-arrow-shape": "triangle", "curve-style": "bezier",
+          width: 2, "line-style": "dashed",
+        }},
       ],
       layout: { name: "preset" },
       wheelSensitivity: 0.3, minZoom: 0.05, maxZoom: 4,
+      boxSelectionEnabled: true,
+      selectionType: "additive",
     });
     cyRef.current = cy;
 
-    // ── Node tap (edge drawing uses refs) ─────────────────────
+    // ── Edge handles (drag from node to create edge) ──────────
+    const eh = (cy as any).edgehandles({
+      snap: true,
+      canConnect: (src: any, tgt: any) => src !== tgt,
+      edgeParams: () => ({ data: { edgeType: "objectProperty", displayLabel: "relatedTo" } }),
+      hoverDelay: 150,
+      handleNodes: "node",
+      handlePosition: () => "middle middle",
+      handleInDrawMode: false,
+      nodeLoopOffset: -50,
+    });
+    ehRef.current = eh;
+
+    // When edge drawing completes, create the property in store
+    cy.on("ehcomplete", (_e: any, src: any, tgt: any, addedEdge: any) => {
+      addedEdge.remove(); // remove the temporary edge added by edgehandles
+      const ts = Date.now();
+      const et = edgeTypeRef.current;
+      const iri = et === "subClassOf" ? "rdfs:subClassOf" : `http://example.org/new#prop_${ts}`;
+      const label = et === "subClassOf" ? "subClassOf" : "relatedTo";
+      store.addProperty({
+        id: `edge_${ts}`, iri, label,
+        source_id: src.id(), target_id: tgt.id(),
+        property_type: et === "subClassOf" ? "annotation" : et,
+      });
+    });
+
+    // ── Node tap — select ────────────────────────────────────
     cy.on("tap", "node", (evt) => {
       const nodeId = evt.target.id();
       const nodeLabel = evt.target.data("label") || "";
       const nodeType = evt.target.data("entityType") || "class";
-
-      if (edgeModeRef.current) {
-        if (edgeSourceRef.current) {
-          // Complete edge
-          const ts = Date.now();
-          const iri = edgeType === "subClassOf" ? "rdfs:subClassOf" : `http://example.org/new#prop_${ts}`;
-          const label = edgeType === "subClassOf" ? "subClassOf" : "relatedTo";
-          store.addProperty({
-            id: `edge_${ts}`, iri, label,
-            source_id: edgeSourceRef.current, target_id: nodeId,
-            property_type: edgeType === "subClassOf" ? "annotation" : edgeType,
-          });
-          // Remove highlight
-          cy.getElementById(edgeSourceRef.current).removeClass("edge-source");
-          edgeSourceRef.current = null;
-          setEdgeSourceUI(null);
-        } else {
-          // Select source
-          edgeSourceRef.current = nodeId;
-          setEdgeSourceUI(nodeId);
-          evt.target.addClass("edge-source");
-        }
-      } else {
-        setSelected(nodeId);
-        setEditLabel(nodeLabel);
-        store.selectEntity({ iri: nodeId, type: nodeType, label: nodeLabel });
-      }
+      setEditLabel(nodeLabel);
+      store.selectEntity({ iri: nodeId, type: nodeType, label: nodeLabel });
     });
 
     // Pane tap — deselect
     cy.on("tap", (e) => {
       if (e.target === cy) {
-        setSelected(null);
         store.selectEntity(null);
-        if (edgeModeRef.current && edgeSourceRef.current) {
-          cy.getElementById(edgeSourceRef.current).removeClass("edge-source");
-          edgeSourceRef.current = null;
-          setEdgeSourceUI(null);
-        }
+        setEditPopup(null);
       }
     });
 
-    // Drag → update position
+    // ── Double-click: edit node / edge / create new node ─────
+    cy.on("dbltap", "node", (evt) => {
+      const n = evt.target;
+      const rp = n.renderedPosition();
+      const entityType = n.data("entityType") || "class";
+      setEditPopup({
+        type: "node", id: n.id(), label: n.data("label") || "",
+        entityType, shape: n.style("shape") || "roundrectangle",
+        color: n.style("border-color") || "#4f46e5",
+        fontSize: parseInt(n.style("font-size")) || 11,
+        screenX: rp.x + 20, screenY: rp.y - 10,
+      });
+    });
+
+    cy.on("dbltap", "edge", (evt) => {
+      const e = evt.target;
+      const mid = e.midpoint();
+      const zoom = cy.zoom();
+      const pan = cy.pan();
+      setEditPopup({
+        type: "edge", id: e.id(), label: e.data("displayLabel") || "",
+        edgeType: e.data("edgeType") || "objectProperty",
+        color: e.style("line-color") || "#10b981",
+        lineStyle: (e.style("line-style") || "solid") as "solid" | "dashed" | "dotted",
+        screenX: mid.x * zoom + pan.x + 20, screenY: mid.y * zoom + pan.y - 10,
+      });
+    });
+
+    cy.on("dbltap", (evt) => {
+      if (evt.target === cy && evt.position) {
+        // Double-click empty canvas → create new class
+        const pos = evt.position;
+        const snap = snapRef.current;
+        const x = snap ? Math.round(pos.x / GRID) * GRID : pos.x;
+        const y = snap ? Math.round(pos.y / GRID) * GRID : pos.y;
+        const ts = Date.now();
+        const iri = `http://example.org/new#Class_${ts}`;
+        store.addClass({ id: iri, iri, label: "NewClass", x, y, w: 160, h: 60, color: "#4f46e5" });
+        // Open edit popup for the new node
+        const rZoom = cy.zoom();
+        const rPan = cy.pan();
+        setEditPopup({
+          type: "node", id: iri, label: "NewClass",
+          entityType: "class", shape: "roundrectangle",
+          color: "#4f46e5", fontSize: 11,
+          screenX: x * rZoom + rPan.x + 20, screenY: y * rZoom + rPan.y - 10,
+        });
+      }
+    });
+
+    // Drag → snap to grid + update position
     cy.on("dragfree", "node", (e) => {
       const p = e.target.position();
-      store.updateClass(e.target.id(), { x: p.x, y: p.y });
+      const snap = snapRef.current;
+      const sx = snap ? Math.round(p.x / GRID) * GRID : p.x;
+      const sy = snap ? Math.round(p.y / GRID) * GRID : p.y;
+      if (snap) e.target.position({ x: sx, y: sy });
+      store.updateClass(e.target.id(), { x: sx, y: sy });
     });
 
     // ── Mouse move → broadcast cursor ─────────────────────────
@@ -188,7 +264,14 @@ export default function OntologyCanvas({ boardId }: Props) {
       if (e.position) broadcastCursor(e.position.x, e.position.y, false);
     });
 
-    return () => { cy.destroy(); cyRef.current = null; };
+    // Track zoom level and viewport for sticky notes
+    const updateViewport = () => {
+      setZoomLevel(Math.round(cy.zoom() * 100));
+      setViewport({ zoom: cy.zoom(), pan: cy.pan() });
+    };
+    cy.on("zoom pan", updateViewport);
+
+    return () => { eh.destroy(); cy.destroy(); cyRef.current = null; };
   }, []);
 
   // ── Sync store → Cytoscape ──────────────────────────────────
@@ -222,6 +305,72 @@ export default function OntologyCanvas({ boardId }: Props) {
   }, [store.classes, store.properties, store.individuals]);
 
   useEffect(() => { store.loadFromBackend(boardId); }, [boardId]);
+
+  // ── Selection sync: highlight + center node when selected from tree ──
+  useEffect(() => {
+    const cy = cyRef.current;
+    if (!cy) return;
+    cy.elements().unselect();
+    if (selected) {
+      const node = cy.getElementById(selected);
+      if (node.length) {
+        node.select();
+        setEditLabel(node.data("label") || "");
+        cy.animate({ center: { eles: node }, zoom: cy.zoom() }, { duration: 300 });
+      }
+    }
+  }, [selected]);
+
+  // ── Keyboard shortcuts ────────────────────────────────────
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      // Don't capture when typing in an input
+      const tag = (e.target as HTMLElement).tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+
+      const ctrl = e.ctrlKey || e.metaKey;
+
+      if ((e.key === "Delete" || e.key === "Backspace") && selected) {
+        e.preventDefault();
+        store.removeClass(selected);
+        store.setIndividuals(store.individuals.filter((i) => i.iri !== selected));
+        store.selectEntity(null);
+      } else if (ctrl && e.key === "z" && !e.shiftKey) {
+        e.preventDefault();
+        store.undo();
+      } else if (ctrl && (e.key === "Z" || e.key === "y" || (e.key === "z" && e.shiftKey))) {
+        e.preventDefault();
+        store.redo();
+      } else if (ctrl && e.key === "c" && selected) {
+        // Copy selected node IRI to internal clipboard
+        (window as any).__ontoboard_clipboard = selected;
+      } else if (ctrl && e.key === "v") {
+        const clipIri = (window as any).__ontoboard_clipboard;
+        if (!clipIri) return;
+        const cls = store.classes.find((c) => c.iri === clipIri);
+        if (cls) {
+          const ts = Date.now();
+          const iri = `${clipIri}_copy_${ts}`;
+          store.addClass({ ...cls, id: iri, iri, label: cls.label + " (copy)", x: cls.x + 40, y: cls.y + 40 });
+        }
+      } else if (e.key === "Escape") {
+        store.selectEntity(null);
+        setEditPopup(null);
+        if (edgeDrawing) {
+          setEdgeDrawing(false);
+          ehRef.current?.disableDrawMode();
+        }
+      } else if (e.key === "f" && !ctrl) {
+        e.preventDefault();
+        cyRef.current?.fit(undefined, 40);
+      } else if (ctrl && e.key === "a") {
+        e.preventDefault();
+        cyRef.current?.elements().select();
+      }
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [selected, store, edgeDrawing]);
 
   // ── Render remote cursors as overlay ────────────────────────
   useEffect(() => {
@@ -271,48 +420,130 @@ export default function OntologyCanvas({ boardId }: Props) {
     if (!selected || !editLabel) return;
     store.updateClass(selected, { label: editLabel });
     store.setIndividuals(store.individuals.map((i) => i.iri === selected ? { ...i, label: editLabel } : i));
-    // Update Cytoscape node label
     cyRef.current?.getElementById(selected).data("displayLabel", editLabel);
   };
 
+  // ── EditPopup handlers ────────────────────────────────────
+  const handlePopupSave = useCallback((data: EditData) => {
+    const cy = cyRef.current;
+    if (!cy) { setEditPopup(null); return; }
+
+    if (data.type === "node") {
+      const nd = data as NodeEditData;
+      const node = cy.getElementById(nd.id);
+      if (node.length) {
+        node.data("displayLabel", nd.label);
+        node.data("label", nd.label);
+        node.data("entityType", nd.entityType);
+        node.style({ shape: nd.shape, "border-color": nd.color, "background-color": nd.color + "15", "font-size": `${nd.fontSize}px` });
+      }
+      store.updateClass(nd.id, { label: nd.label, color: nd.color });
+      store.setIndividuals(store.individuals.map((i) => i.iri === nd.id ? { ...i, label: nd.label } : i));
+    } else {
+      const ed = data as EdgeEditData;
+      const edge = cy.getElementById(ed.id);
+      if (edge.length) {
+        edge.data("displayLabel", ed.label);
+        edge.data("edgeType", ed.edgeType);
+        edge.style({ "line-color": ed.color, "target-arrow-color": ed.color, "line-style": ed.lineStyle });
+      }
+      // Update property in store
+      const prop = store.properties.find((p) => p.id === ed.id);
+      if (prop) {
+        const isSub = ed.edgeType === "subClassOf";
+        store.setProperties(store.properties.map((p) => p.id === ed.id ? {
+          ...p, label: ed.label, iri: isSub ? "rdfs:subClassOf" : prop.iri,
+          property_type: isSub ? "annotation" : ed.edgeType === "dataProperty" ? "data" : ed.edgeType === "annotationProperty" ? "annotation" : "object",
+        } : p));
+      }
+    }
+    setEditPopup(null);
+  }, [store]);
+
+  const handlePopupDelete = useCallback((id: string, type: "node" | "edge") => {
+    if (type === "node") {
+      store.removeClass(id);
+      store.setIndividuals(store.individuals.filter((i) => i.iri !== id));
+      store.selectEntity(null);
+    } else {
+      store.removeProperty(id);
+    }
+    setEditPopup(null);
+  }, [store]);
+
   return (
     <div className={styles.container}>
-      {/* ── Toolbar ─────────────────────────────────────────── */}
+      {/* ── Floating Toolbar ──────────────────────────────── */}
       <div className={styles.toolbar}>
+        {/* Node tools */}
         <div className={styles.group}>
-          <button className={styles.btn} onClick={() => {
+          <button className={styles.btn} title="Add Class" onClick={() => {
             const iri = `http://example.org/new#Class_${Date.now()}`;
             store.addClass({ id: iri, iri, label: "NewClass", x: 200 + Math.random() * 400, y: 100 + Math.random() * 300, w: 160, h: 60, color: "#4f46e5" });
           }}>+ Class</button>
-          <button className={styles.btn} onClick={() => {
+          <button className={styles.btn} title="Add Individual" onClick={() => {
             const iri = `http://example.org/new#Ind_${Date.now()}`;
             store.setIndividuals([...store.individuals, { id: iri, iri, label: "NewIndividual", class_iri: "", x: 300, y: 400 }]);
           }}>+ Individual</button>
+          <button className={styles.btn} title="Add Sticky Note" onClick={() => {
+            const cy = cyRef.current;
+            const center = cy ? { x: -cy.pan().x / cy.zoom() + cy.width() / cy.zoom() / 2, y: -cy.pan().y / cy.zoom() + cy.height() / cy.zoom() / 2 } : { x: 300, y: 300 };
+            store.addStickyNote({
+              id: `sticky_${Date.now()}`, text: "", x: center.x - 100, y: center.y - 75,
+              w: 200, h: 150, color: "#fef3c7", fontSize: 14,
+            });
+          }}>+ Sticky</button>
         </div>
 
+        <div className={styles.separator} />
+
+        {/* Edge tools */}
         <div className={styles.group}>
           <select className={styles.edgeSelect} value={edgeType} onChange={(e) => setEdgeType(e.target.value as any)}>
-            <option value="object">Object Property</option>
+            <option value="object">Object Prop</option>
             <option value="subClassOf">SubClassOf</option>
-            <option value="data">Data Property</option>
+            <option value="data">Data Prop</option>
             <option value="annotation">Annotation</option>
           </select>
-          <button className={`${styles.btn} ${edgeModeUI ? styles.active : ""}`} onClick={toggleEdgeMode}>
-            {edgeModeUI ? (edgeSourceUI ? `\u2192 Click target` : `\u2022 Click source`) : "\u2194 Draw Edge"}
+          <button className={`${styles.btn} ${edgeDrawing ? styles.active : ""}`}
+                  onClick={() => { const v = !edgeDrawing; setEdgeDrawing(v); v ? ehRef.current?.enableDrawMode() : ehRef.current?.disableDrawMode(); }}>
+            {edgeDrawing ? "\u2716 Stop" : "\u2194 Edge"}
           </button>
         </div>
 
+        <div className={styles.separator} />
+
+        {/* Layout + view */}
         <div className={styles.group}>
-          <span className={styles.layoutLabel}>Layout:</span>
           {(["dagre", "cose-bilkent", "grid"] as const).map((l) => (
             <button key={l} className={`${styles.btn} ${layoutName === l ? styles.active : ""}`}
-                    onClick={() => { setLayoutName(l); doLayout(l); }}>
+                    onClick={() => { setLayoutName(l); doLayout(l); }}
+                    title={l === "dagre" ? "Tree layout" : l === "cose-bilkent" ? "Force layout" : "Grid layout"}>
               {l === "dagre" ? "Tree" : l === "cose-bilkent" ? "Force" : "Grid"}
             </button>
           ))}
-          <button className={styles.btn} onClick={() => cyRef.current?.fit(undefined, 40)}>Fit</button>
+          <button className={styles.btn} onClick={() => cyRef.current?.fit(undefined, 40)} title="Fit to view">Fit</button>
+          <button className={`${styles.btn} ${snapToGrid ? styles.active : ""}`}
+                  onClick={() => { const v = !snapToGrid; setSnapToGrid(v); snapRef.current = v; }}
+                  title="Snap to grid">Snap</button>
         </div>
 
+        <div className={styles.separator} />
+
+        {/* Zoom controls */}
+        <div className={styles.group}>
+          <button className={styles.btn} title="Zoom out"
+                  onClick={() => { const cy = cyRef.current; if (cy) cy.zoom({ level: cy.zoom() * 0.8, renderedPosition: { x: cy.width() / 2, y: cy.height() / 2 } }); }}>
+            &minus;
+          </button>
+          <span className={styles.zoomLabel}>{zoomLevel}%</span>
+          <button className={styles.btn} title="Zoom in"
+                  onClick={() => { const cy = cyRef.current; if (cy) cy.zoom({ level: cy.zoom() * 1.25, renderedPosition: { x: cy.width() / 2, y: cy.height() / 2 } }); }}>
+            +
+          </button>
+        </div>
+
+        {/* Save indicator */}
         <span className={styles.save}>
           {store.saving ? "Saving..." : store.lastSaved > 0 ? "\u2713" : ""}
         </span>
@@ -333,7 +564,7 @@ export default function OntologyCanvas({ boardId }: Props) {
           <button className={styles.btnSmall} onClick={() => {
             store.removeClass(selected);
             store.setIndividuals(store.individuals.filter((i) => i.iri !== selected));
-            setSelected(null);
+            store.selectEntity(null);
           }}>Delete</button>
         </div>
       )}
@@ -348,11 +579,27 @@ export default function OntologyCanvas({ boardId }: Props) {
         <span><i className={styles.line} style={{ borderColor: "#a855f7", borderStyle: "dotted" }} /> AnnotProp</span>
       </div>
 
+      {/* ── Minimap ────────────────────────────────────────��── */}
+      <Minimap cyRef={cyRef} />
+
       {/* ── Remote cursors overlay ─────────────────────────── */}
       <div ref={cursorsRef} className={styles.cursorsLayer} />
 
+      {/* ── Sticky notes overlay ────────────────────────────── */}
+      {store.stickyNotes.map((note) => (
+        <StickyNoteComponent key={note.id} note={note}
+          zoom={viewport.zoom} pan={viewport.pan}
+          onUpdate={store.updateStickyNote} onDelete={store.removeStickyNote} />
+      ))}
+
       {/* ── Cytoscape canvas ───────────────────────────────── */}
       <div ref={containerRef} className={styles.canvas} />
+
+      {/* ── Edit popup (double-click) ─────────────────────── */}
+      {editPopup && (
+        <EditPopup data={editPopup} onSave={handlePopupSave}
+                   onDelete={handlePopupDelete} onCancel={() => setEditPopup(null)} />
+      )}
     </div>
   );
 }

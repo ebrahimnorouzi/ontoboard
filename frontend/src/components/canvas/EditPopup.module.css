@@ -1,0 +1,201 @@
+.overlay {
+  position: absolute;
+  z-index: 20;
+  pointer-events: auto;
+}
+
+.card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.06);
+  padding: 12px;
+  min-width: 240px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-family: Inter, sans-serif;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.label {
+  font-size: 11px;
+  color: #64748b;
+  font-weight: 600;
+  min-width: 48px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.input {
+  flex: 1;
+  padding: 5px 8px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: inherit;
+  color: #1e293b;
+  outline: none;
+  background: #f8fafc;
+}
+.input:focus {
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.12);
+  background: #fff;
+}
+
+.select {
+  flex: 1;
+  padding: 5px 8px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 12px;
+  font-family: inherit;
+  color: #1e293b;
+  background: #f8fafc;
+  cursor: pointer;
+}
+
+.colorPick {
+  width: 28px;
+  height: 28px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.shapeGrid {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.shapeBtn {
+  width: 32px;
+  height: 32px;
+  border: 2px solid #e2e8f0;
+  border-radius: 6px;
+  background: #f8fafc;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  transition: all 0.15s;
+  padding: 0;
+}
+.shapeBtn:hover {
+  border-color: #94a3b8;
+  background: #f1f5f9;
+}
+.shapeBtnActive {
+  border-color: #4f46e5;
+  background: #eef2ff;
+  color: #4f46e5;
+}
+
+.fontRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.fontSlider {
+  flex: 1;
+  accent-color: #4f46e5;
+}
+
+.fontValue {
+  font-size: 11px;
+  color: #64748b;
+  min-width: 28px;
+  text-align: right;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  padding-top: 4px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.saveBtn {
+  padding: 4px 14px;
+  border: none;
+  border-radius: 6px;
+  background: #4f46e5;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.saveBtn:hover {
+  background: #4338ca;
+}
+
+.cancelBtn {
+  padding: 4px 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  background: #fff;
+  color: #64748b;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+}
+.cancelBtn:hover {
+  background: #f8fafc;
+}
+
+.deleteBtn {
+  padding: 4px 10px;
+  border: 1px solid #fecaca;
+  border-radius: 6px;
+  background: #fef2f2;
+  color: #ef4444;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  margin-right: auto;
+}
+.deleteBtn:hover {
+  background: #ef4444;
+  color: #fff;
+}
+
+/* Line style buttons */
+.lineStyleGrid {
+  display: flex;
+  gap: 4px;
+}
+
+.lineBtn {
+  flex: 1;
+  padding: 4px 8px;
+  border: 2px solid #e2e8f0;
+  border-radius: 6px;
+  background: #f8fafc;
+  font-size: 11px;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.15s;
+}
+.lineBtn:hover {
+  border-color: #94a3b8;
+}
+.lineBtnActive {
+  border-color: #4f46e5;
+  background: #eef2ff;
+  color: #4f46e5;
+}

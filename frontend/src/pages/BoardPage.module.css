@@ -189,7 +189,9 @@
   left: 0;
   margin-top: 4px;
   z-index: 100;
-  min-width: 200px;
+  min-width: 210px;
+  max-height: calc(100vh - 80px);
+  overflow-y: auto;
   background: var(--bg-secondary);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);

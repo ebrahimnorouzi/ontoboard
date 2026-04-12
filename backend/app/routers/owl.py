@@ -1,12 +1,13 @@
 """OWL load/save router — convert between .owl files and canvas JSON."""
 
+import json
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
 
 from app.config import DATA_DIR
 from app.deps import get_db, get_current_user, get_current_user_optional
 from app.models.user import User
-from app.schemas.canvas import CanvasState
+from app.schemas.canvas import CanvasState, CanvasStickyNote
 from app.services import board as board_svc
 from app.services import odk as odk_svc
 from app.services import canvas as canvas_svc
@@ -34,7 +35,21 @@ def load_owl(
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="No .owl file found")
 
-    return canvas_svc.owl_to_canvas(g)
+    state = canvas_svc.owl_to_canvas(g)
+
+    # Merge sticky notes from sidecar file (not part of OWL)
+    meta_file = board_dir / "canvas_meta.json"
+    if meta_file.exists():
+        try:
+            meta = json.loads(meta_file.read_text())
+            state.sticky_notes = [
+                CanvasStickyNote(**n)
+                for n in meta.get("sticky_notes", [])
+            ]
+        except Exception:
+            pass
+
+    return state
 
 
 # ── Save: CanvasState → OWL (rdflib serialization, no Docker) ─
@@ -68,6 +83,31 @@ def save_owl(
     owl_xml = canvas_svc.canvas_state_to_owl_xml(state, base_iri)
     output_owl.parent.mkdir(parents=True, exist_ok=True)
     output_owl.write_text(owl_xml)
+
+    # Persist sticky notes in a sidecar JSON (not part of OWL)
+    if state.sticky_notes:
+        meta_file = board_dir / "canvas_meta.json"
+        meta = {}
+        if meta_file.exists():
+            try:
+                meta = json.loads(meta_file.read_text())
+            except Exception:
+                pass
+        meta["sticky_notes"] = [n.model_dump() for n in state.sticky_notes]
+        meta_file.write_text(json.dumps(meta, indent=2))
+    else:
+        # Clean up if no sticky notes
+        meta_file = board_dir / "canvas_meta.json"
+        if meta_file.exists():
+            try:
+                meta = json.loads(meta_file.read_text())
+                meta.pop("sticky_notes", None)
+                if meta:
+                    meta_file.write_text(json.dumps(meta, indent=2))
+                else:
+                    meta_file.unlink()
+            except Exception:
+                pass
 
     board_svc.git_commit(board_dir, "Update ontology from canvas")
     board_svc.log_activity(db, board, user, "saved", f"{len(state.classes)} classes, {len(state.properties)} properties")

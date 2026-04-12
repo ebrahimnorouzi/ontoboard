@@ -273,7 +273,7 @@ def _create_manual_scaffold(board_dir: Path, ont_id: str, title: str,
         ONT_ID := {ont_id}
         ONT := $(ONT_ID)
 
-        include $(ONT).Makefile
+        -include $(ONT).Makefile
 
         .PHONY: all test clean prepare_release publish docs reason update_repo refresh-imports
 

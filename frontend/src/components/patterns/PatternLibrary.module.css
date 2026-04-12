@@ -1,0 +1,72 @@
+.container { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
+
+.header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0.6rem 0.8rem; border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+.title { font-size: 0.82rem; font-weight: 600; margin: 0; }
+.count { font-size: 0.65rem; color: var(--text-muted); }
+
+.error, .success {
+  padding: 0.4rem 0.8rem; font-size: 0.72rem; cursor: pointer; flex-shrink: 0;
+}
+.error { background: rgba(239,68,68,0.08); color: var(--danger); }
+.success { background: rgba(16,185,129,0.08); color: var(--success); }
+
+.empty { padding: 1.5rem; text-align: center; color: var(--text-muted); font-size: 0.78rem; }
+.hint { font-size: 0.7rem; margin-top: 0.5rem; }
+
+.list { flex: 1; overflow-y: auto; }
+
+.category { margin-bottom: 0.3rem; }
+.categoryTitle {
+  padding: 0.3rem 0.8rem; font-size: 0.6rem; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted);
+  background: var(--bg-primary); position: sticky; top: 0; z-index: 1;
+}
+
+.patternCard {
+  padding: 0.5rem 0.8rem; cursor: pointer; border-left: 3px solid transparent;
+  transition: all 0.15s; position: relative;
+}
+.patternCard:hover { background: var(--bg-card-hover); }
+.patternSelected { border-left-color: var(--accent); background: var(--accent-glow); }
+
+.patternHeader { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.15rem; }
+.patternName { font-size: 0.78rem; font-weight: 600; }
+.patternMeta { font-size: 0.6rem; color: var(--text-muted); }
+.patternDesc { font-size: 0.68rem; color: var(--text-secondary); line-height: 1.4; }
+
+.applyBtn {
+  position: absolute; top: 0.5rem; right: 0.5rem;
+  padding: 0.2rem 0.5rem; border: 1px solid var(--accent); border-radius: var(--radius-sm);
+  background: none; color: var(--accent); font-size: 0.62rem; font-weight: 600;
+  cursor: pointer; opacity: 0; transition: opacity 0.15s; font-family: inherit;
+}
+.patternCard:hover .applyBtn { opacity: 1; }
+.applyBtn:hover { background: var(--accent); color: #fff; }
+.applyBtn:disabled { opacity: 0.4; }
+
+/* Preview */
+.preview {
+  border-top: 1px solid var(--border); padding: 0.75rem; flex-shrink: 0;
+  max-height: 40%; overflow-y: auto;
+}
+.previewTitle { font-size: 0.82rem; font-weight: 600; margin: 0 0 0.25rem; }
+.previewDesc { font-size: 0.72rem; color: var(--text-secondary); margin-bottom: 0.5rem; }
+.previewSection { margin-bottom: 0.4rem; font-size: 0.72rem; }
+.previewSection strong { color: var(--text-muted); font-size: 0.65rem; text-transform: uppercase; display: block; margin-bottom: 0.2rem; }
+.previewEntity {
+  display: inline-block; padding: 0.1rem 0.4rem; margin: 0.1rem;
+  background: var(--accent-glow); color: var(--accent); border-radius: 999px; font-size: 0.68rem;
+}
+.previewProp {
+  display: inline-block; padding: 0.1rem 0.4rem; margin: 0.1rem;
+  background: rgba(16,185,129,0.08); color: var(--success); border-radius: 999px; font-size: 0.68rem;
+}
+.applyBtnLg {
+  width: 100%; padding: 0.45rem; margin-top: 0.5rem;
+  background: var(--accent); color: #fff; border: none; border-radius: var(--radius-sm);
+  font-size: 0.78rem; font-weight: 600; cursor: pointer; font-family: inherit;
+}
+.applyBtnLg:disabled { opacity: 0.4; }
