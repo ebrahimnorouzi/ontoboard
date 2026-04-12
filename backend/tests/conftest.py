@@ -45,6 +45,8 @@ _DATA_DIR_MODULES = [
     "app.routers.analysis",
     "app.routers.odk_mediator",
     "app.routers.export",
+    "app.routers.odk_setup",
+    "app.routers.odk_imports",
 ]
 
 

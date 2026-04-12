@@ -223,6 +223,69 @@
   border-radius: var(--radius-sm);
 }
 .menuItem:hover { background: var(--accent-glow); color: var(--accent-light); }
+.menuDivider {
+  height: 1px;
+  background: var(--border);
+  margin: 0.2rem 0.6rem;
+}
+.menuDanger { color: var(--danger); }
+.menuDanger:hover { background: rgba(239, 68, 68, 0.08); color: var(--danger); }
+
+/* ── Confirm dialog ──────────────────────────────────────── */
+.confirmOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.confirmDialog {
+  background: var(--bg-card);
+  padding: 1.5rem 2rem;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  max-width: 400px;
+  width: 90%;
+}
+.confirmDialog h3 {
+  font-size: 1rem;
+  margin-bottom: 0.6rem;
+  color: var(--text-primary);
+}
+.confirmDialog p {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin-bottom: 1.2rem;
+}
+.confirmActions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+.confirmDeleteBtn {
+  padding: 0.45rem 1rem;
+  background: var(--danger);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.confirmDeleteBtn:hover { opacity: 0.9; }
+.confirmCancelBtn {
+  padding: 0.45rem 1rem;
+  background: none;
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+.confirmCancelBtn:hover { background: var(--bg-card-hover); }
 
 /* ── Toast notification ────────────────────────────────────── */
 .toast {

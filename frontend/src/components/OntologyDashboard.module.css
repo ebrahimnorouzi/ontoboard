@@ -140,6 +140,41 @@
 }
 .editInput:focus { border-color: var(--accent); }
 
+.fieldValueEditable {
+  font-size: 0.78rem;
+  color: var(--text-primary);
+  font-family: "JetBrains Mono", "Fira Code", monospace;
+  word-break: break-all;
+  cursor: pointer;
+  padding: 0.25rem 0.4rem;
+  border: 1px dashed transparent;
+  border-radius: var(--radius-sm);
+  transition: all 0.15s;
+}
+.fieldValueEditable:hover {
+  border-color: var(--accent);
+  background: var(--accent-glow);
+}
+
+.editRow {
+  display: flex;
+  gap: 0.3rem;
+  align-items: center;
+}
+.editRow .editInput { flex: 1; }
+
+.smallBtnMuted {
+  padding: 0.2rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text-muted);
+  font-size: 0.65rem;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
 .versionRow {
   display: flex;
   align-items: center;

@@ -219,3 +219,113 @@ def find_replace(
     if count > 0:
         board_svc.git_commit(DATA_DIR / board_id, f"Find/replace: '{body.find}' → '{body.replace}' ({count} changes)")
     return {"replaced": count}
+
+
+# ── Ontology Identity (IRI + Version) ──────────────────────────
+
+class IdentityUpdateBody(BaseModel):
+    version_iri: str | None = None
+    version_info: str | None = None
+
+
+@router.get("/{board_id}/identity")
+def get_identity(
+    board_id: str,
+    db: Session = Depends(get_db), user: User | None = Depends(get_current_user_optional),
+):
+    """Get ontology IRI, version IRI, and version info."""
+    _require_board_view(board_id, db, user)
+    try:
+        g = ont_svc.load_graph(DATA_DIR / board_id)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="No OWL file")
+    return meta_svc.get_ontology_identity(g)
+
+
+@router.put("/{board_id}/identity")
+def set_identity(
+    board_id: str, body: IdentityUpdateBody,
+    db: Session = Depends(get_db), user: User = Depends(get_current_user),
+):
+    """Update ontology version IRI and/or version info."""
+    board = board_svc.get_board_by_slug(db, board_id)
+    if not board or not board_svc.can_edit(db, board, user):
+        raise HTTPException(status_code=403, detail="Edit access required")
+    result = meta_svc.set_ontology_identity(DATA_DIR / board_id, version_iri=body.version_iri, version_info=body.version_info)
+    board_svc.git_commit(DATA_DIR / board_id, "Updated ontology identity")
+    return result
+
+
+# ── Full Ontology Annotations ──────────────────────────────────
+
+@router.get("/{board_id}/annotations")
+def get_annotations(
+    board_id: str,
+    db: Session = Depends(get_db), user: User | None = Depends(get_current_user_optional),
+):
+    """Get ALL annotations on the ontology node (dcterms, bibo, vann, owl, rdfs, etc.)."""
+    _require_board_view(board_id, db, user)
+    try:
+        g = ont_svc.load_graph(DATA_DIR / board_id)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="No OWL file")
+    return meta_svc.get_all_ontology_annotations(g)
+
+
+class AnnotationAddBody(BaseModel):
+    property_iri: str    # e.g. "dcterms:creator" or full IRI
+    value: str           # e.g. "https://orcid.org/..." or "My Ontology"
+    value_type: str = "literal"  # "literal" or "iri"
+    language: str | None = None  # e.g. "en"
+
+
+@router.post("/{board_id}/annotations", status_code=201)
+def add_annotation(
+    board_id: str, body: AnnotationAddBody,
+    db: Session = Depends(get_db), user: User = Depends(get_current_user),
+):
+    """Add an annotation to the ontology node."""
+    board = board_svc.get_board_by_slug(db, board_id)
+    if not board or not board_svc.can_edit(db, board, user):
+        raise HTTPException(status_code=403, detail="Edit access required")
+    ok = meta_svc.add_ontology_annotation(DATA_DIR / board_id, body.property_iri, body.value, body.value_type, body.language)
+    if ok:
+        board_svc.git_commit(DATA_DIR / board_id, f"Added annotation: {body.property_iri}")
+    return {"success": ok}
+
+
+class AnnotationRemoveBody(BaseModel):
+    property_iri: str
+    value: str
+
+
+@router.delete("/{board_id}/annotations")
+def remove_annotation(
+    board_id: str, body: AnnotationRemoveBody,
+    db: Session = Depends(get_db), user: User = Depends(get_current_user),
+):
+    """Remove a specific annotation from the ontology node."""
+    board = board_svc.get_board_by_slug(db, board_id)
+    if not board or not board_svc.can_edit(db, board, user):
+        raise HTTPException(status_code=403, detail="Edit access required")
+    ok = meta_svc.remove_ontology_annotation(DATA_DIR / board_id, body.property_iri, body.value)
+    if ok:
+        board_svc.git_commit(DATA_DIR / board_id, f"Removed annotation: {body.property_iri}")
+    return {"success": ok}
+
+
+# ── Prefix Resolution ─────────────────────────────────────────
+
+@router.get("/{board_id}/resolve/{compact_iri:path}")
+def resolve_iri(
+    board_id: str, compact_iri: str,
+    db: Session = Depends(get_db), user: User | None = Depends(get_current_user_optional),
+):
+    """Resolve a compact IRI (e.g., prov:Activity) to its full IRI."""
+    _require_board_view(board_id, db, user)
+    try:
+        g = ont_svc.load_graph(DATA_DIR / board_id)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="No OWL file")
+    full = meta_svc.resolve_compact_iri(g, compact_iri)
+    return {"compact": compact_iri, "full": full}

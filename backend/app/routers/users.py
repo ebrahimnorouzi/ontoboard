@@ -7,6 +7,7 @@ from app.deps import get_db, require_admin
 from app.models.user import User
 from app.schemas.user import UserCreate, UserUpdate, UserOut, UserDetail
 from app.services import user as user_svc
+from app.services import notification as notif_svc
 
 router = APIRouter()
 
@@ -95,3 +96,45 @@ def delete_user(user_id: int, db: Session = Depends(get_db), admin: User = Depen
         raise HTTPException(status_code=400, detail="Cannot delete yourself")
     user_svc.update_user(db, user, is_active=False)
     return {"detail": f"User '{user.username}' deactivated"}
+
+
+# ── Approve / Reject ─────────────────────────────────────────
+
+@router.post("/{user_id}/approve", response_model=UserOut)
+def approve_user(user_id: int, db: Session = Depends(get_db), _admin: User = Depends(require_admin)):
+    """Activate a pending user account."""
+    user = user_svc.get_user_by_id(db, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if user.is_active:
+        raise HTTPException(status_code=400, detail="User is already active")
+    user_svc.update_user(db, user, is_active=True)
+    notif_svc.notify_user_activated(db, user)
+    return user
+
+
+@router.post("/{user_id}/reject")
+def reject_user(user_id: int, db: Session = Depends(get_db), admin: User = Depends(require_admin)):
+    """Reject and deactivate a pending user (keeps record for audit)."""
+    user = user_svc.get_user_by_id(db, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if user.id == admin.id:
+        raise HTTPException(status_code=400, detail="Cannot reject yourself")
+    user_svc.update_user(db, user, is_active=False)
+    return {"detail": f"User '{user.username}' rejected"}
+
+
+@router.delete("/{user_id}/permanent")
+def permanently_delete_user(user_id: int, db: Session = Depends(get_db), admin: User = Depends(require_admin)):
+    """Permanently remove a user and all their data."""
+    user = user_svc.get_user_by_id(db, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if user.id == admin.id:
+        raise HTTPException(status_code=400, detail="Cannot delete yourself")
+    if user.role == "admin":
+        raise HTTPException(status_code=400, detail="Cannot delete another admin")
+    username = user.username
+    user_svc.delete_user_permanently(db, user)
+    return {"detail": f"User '{username}' permanently deleted"}

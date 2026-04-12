@@ -33,7 +33,25 @@
       "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); s=d['statistics']; m=d['metadata']; print\\(f'  IRI: {m[\\\\\"ontology_iri\\\\\"][:50]}'\\); print\\(f'  Version: {m[\\\\\"version_iri\\\\\"]}'[:60]\\); print\\(f'  Classes: {s[\\\\\"classes\\\\\"]}, ObjProps: {s[\\\\\"object_properties\\\\\"]}, Inds: {s[\\\\\"individuals\\\\\"]}'\\)\")",
       "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(f'Board: {d.get\\(\\\\\"board_id\\\\\",\\\\\"?\\\\\"\\)}'\\) if 'board_id' in d else print\\(f'Error: {d}'\\)\")",
       "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(f'  Classes: {len\\(d[\\\\\"classes\\\\\"]\\)}, Properties: {len\\(d[\\\\\"properties\\\\\"]\\)}, Individuals: {len\\(d[\\\\\"individuals\\\\\"]\\)}'\\)\")",
-      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(f'Canvas: {len\\(d[\\\\\"classes\\\\\"]\\)} classes, {len\\(d[\\\\\"properties\\\\\"]\\)} edges, {len\\(d[\\\\\"individuals\\\\\"]\\)} inds'\\)\")"
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(f'Canvas: {len\\(d[\\\\\"classes\\\\\"]\\)} classes, {len\\(d[\\\\\"properties\\\\\"]\\)} edges, {len\\(d[\\\\\"individuals\\\\\"]\\)} inds'\\)\")",
+      "Bash(curl -s http://localhost:8000/api/help/topics)",
+      "Bash(curl -s http://localhost:8000/api/help/import-step/1)",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(f'Title: {d[\\\\\"title\\\\\"]}'\\); print\\(f'Intro: {d[\\\\\"intro\\\\\"][:150]}...'\\); print\\(f'Fields: {list\\(d.get\\(\\\\\"fields\\\\\",{}\\).keys\\(\\)\\)}'\\)\")",
+      "Bash(python -m pytest tests/test_odk_lifecycle.py -v --tb=short)",
+      "Bash(python -m pytest tests/test_odk_lifecycle.py::test_ontology_annotations -v --tb=long)",
+      "Bash(python -m pytest tests/test_odk_lifecycle.py::test_ontology_annotations -v --tb=short)",
+      "Bash(gh api:*)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(python -m pytest tests/ -x -q)",
+      "Bash(python -m pytest tests/test_odk_lifecycle.py -x -q)",
+      "Bash(xargs grep:*)",
+      "Bash(python -m pytest tests/test_odk_lifecycle.py tests/test_auth.py -x -q)",
+      "Bash(python -m pytest tests/test_notifications.py -x -q)",
+      "Bash(npx tsc:*)",
+      "Bash(npm run:*)",
+      "Bash(ls node_modules/.bin/tsc*)",
+      "Bash(npm install:*)",
+      "Bash(./node_modules/.bin/tsc --noEmit)"
     ]
   }
 }

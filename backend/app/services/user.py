@@ -76,3 +76,13 @@ def count_users(db: Session, active_only: bool = False) -> int:
     if active_only:
         q = q.filter(User.is_active.is_(True))
     return q.count()
+
+
+def delete_user_permanently(db: Session, user: User) -> None:
+    """Permanently delete a user and their notifications/memberships."""
+    from app.models.notification import Notification
+    from app.models.board import BoardMember
+    db.query(Notification).filter(Notification.user_id == user.id).delete()
+    db.query(BoardMember).filter(BoardMember.user_id == user.id).delete()
+    db.delete(user)
+    db.commit()

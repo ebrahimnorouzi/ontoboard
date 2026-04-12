@@ -107,15 +107,21 @@ async def sparql_verify(board_id: str, body: SparqlVerifyRequest,
 
 # ── Workflow 5: Release ────────────────────────────────────────
 
+class ReleaseBody(BaseModel):
+    version: str | None = None  # e.g. "1.2.0" or "2024-03-15"; None = auto
+
+
 @router.post("/{board_id}/release")
-async def run_release(board_id: str, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+async def run_release(board_id: str, body: ReleaseBody | None = None,
+                      db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     """Run full release pipeline: test → prepare → build artifacts → publish."""
     board = _check(board_id, db, user)
     if not board_svc.can_manage(db, board, user):
         raise HTTPException(status_code=403, detail="Owner or admin required for release")
     board_dir = DATA_DIR / board_id
-    board_svc.log_activity(db, board, user, "odk_release", "Release pipeline started")
-    return StreamingResponse(mediator.stream_release(board_dir, board_id), media_type="text/event-stream")
+    version = body.version if body else None
+    board_svc.log_activity(db, board, user, "odk_release", f"Release pipeline started (version={version})")
+    return StreamingResponse(mediator.stream_release(board_dir, board_id, version=version), media_type="text/event-stream")
 
 
 @router.get("/{board_id}/release/artifacts")

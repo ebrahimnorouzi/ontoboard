@@ -10,6 +10,7 @@ from app.schemas.user import UserOut
 from app.schemas.auth import SignupRequest
 from app.services.auth import verify_password, create_access_token
 from app.services.user import get_user_by_username, get_user_by_email, create_user
+from app.services.notification import notify_admins_new_signup
 
 router = APIRouter()
 
@@ -47,6 +48,8 @@ def signup(body: SignupRequest, db: Session = Depends(get_db)):
     user.is_active = False
     db.commit()
     db.refresh(user)
+    # Notify all admins about the new signup
+    notify_admins_new_signup(db, user)
     return user
 
 

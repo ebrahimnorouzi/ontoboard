@@ -37,10 +37,20 @@
 .btn:hover { background: #f1f5f9; border-color: #cbd5e1; }
 .active { background: #4f46e5; color: #fff; border-color: #4f46e5; }
 .active:hover { background: #4338ca; }
+.btnSmall {
+  padding: 2px 8px; border: 1px solid #fecaca; border-radius: 4px;
+  background: #fef2f2; color: #ef4444; font-size: 11px; font-family: inherit; cursor: pointer;
+}
+.btnSmall:hover { background: #ef4444; color: #fff; }
+
+.edgeSelect {
+  padding: 3px 6px; border: 1px solid #e2e8f0; border-radius: 4px;
+  background: #fff; color: #475569; font-size: 11px; font-family: inherit;
+}
 
 .save { font-size: 11px; color: #10b981; font-weight: 500; margin-left: auto; }
 
-/* ── Node editor (appears on selection) ────────────────────── */
+/* ── Entity editor bar ─────────────────────────────────────── */
 .editor {
   display: flex;
   align-items: center;
@@ -64,7 +74,7 @@
 }
 .nameInput:focus { border-color: #4f46e5; box-shadow: 0 0 0 2px rgba(79,70,229,0.15); }
 .colorPick { width: 28px; height: 28px; border: 1px solid #e2e8f0; border-radius: 4px; cursor: pointer; padding: 0; }
-.iri { font-size: 11px; color: #6366f1; font-family: "JetBrains Mono", monospace; }
+.iri { font-size: 11px; color: #6366f1; font-family: "JetBrains Mono", monospace; flex: 1; overflow: hidden; text-overflow: ellipsis; }
 
 /* ── Legend ─────────────────────────────────────────────────── */
 .legend {
@@ -85,6 +95,34 @@
 .legend span { display: flex; align-items: center; gap: 4px; }
 .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
 .line { width: 16px; height: 0; border-top: 2px solid; display: inline-block; }
+
+/* ── Remote cursors overlay ────────────────────────────────── */
+.cursorsLayer {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+  overflow: hidden;
+}
+.remoteCursor {
+  position: absolute;
+  transition: left 0.1s linear, top 0.1s linear;
+  pointer-events: none;
+}
+.cursorLabel {
+  display: inline-block;
+  position: relative;
+  top: 14px;
+  left: 12px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  font-family: Inter, sans-serif;
+  white-space: nowrap;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+}
 
 /* ── Cytoscape canvas ──────────────────────────────────────── */
 .canvas {

@@ -9,6 +9,7 @@ class BoardCreate(BaseModel):
     description: str = ""
     is_public: bool = True
     tags: str = ""
+    versioning_strategy: str = "date"  # "date" or "semantic"
 
 
 class BoardUpdate(BaseModel):

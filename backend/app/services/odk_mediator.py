@@ -159,9 +159,17 @@ async def stream_sparql_verify(board_dir: Path, sparql_file: str) -> AsyncGenera
 # Workflow 5: Release
 # ═══════════════════════════════════════════════════════════════
 
-async def stream_release(board_dir: Path, board_id: str) -> AsyncGenerator[str, None]:
-    """Run the full release pipeline: test → prepare → release + multi-format export."""
-    yield _sse("info", "Starting release pipeline...", 2)
+async def stream_release(board_dir: Path, board_id: str,
+                         version: str | None = None) -> AsyncGenerator[str, None]:
+    """Run the full release pipeline: test → prepare → release + multi-format export.
+
+    If a release.sh exists (generated based on versioning strategy), it is used
+    for the prepare step. Otherwise falls back to Makefile targets.
+    """
+    from app.services.odk_setup import get_versioning_strategy
+
+    strategy = get_versioning_strategy(board_dir)
+    yield _sse("info", f"Starting release pipeline (versioning: {strategy})...", 2)
 
     loop = asyncio.get_event_loop()
 
@@ -170,10 +178,22 @@ async def stream_release(board_dir: Path, board_id: str) -> AsyncGenerator[str, 
     for line in await loop.run_in_executor(None, lambda: list(_run_container_streaming(board_dir, "make test"))):
         yield line
 
-    # Step 2: Prepare
-    yield _sse("step", "Step 2/4: Preparing release...", 30)
-    for line in await loop.run_in_executor(None, lambda: list(_run_container_streaming(board_dir, "make prepare_release"))):
-        yield line
+    # Step 2: Prepare release via release.sh or Makefile
+    release_sh = board_dir / "src" / "ontology" / "release.sh"
+    if release_sh.exists():
+        if version:
+            release_cmd = f"sh release.sh {version}"
+        elif strategy == "date":
+            release_cmd = "sh release.sh"  # defaults to today's date
+        else:
+            release_cmd = "sh release.sh 0.1.0"  # semantic default
+        yield _sse("step", f"Step 2/4: Running release.sh ({strategy} versioning)...", 30)
+        for line in await loop.run_in_executor(None, lambda: list(_run_container_streaming(board_dir, release_cmd))):
+            yield line
+    else:
+        yield _sse("step", "Step 2/4: Preparing release...", 30)
+        for line in await loop.run_in_executor(None, lambda: list(_run_container_streaming(board_dir, "make prepare_release"))):
+            yield line
 
     # Step 3: Build release (multi-format export)
     yield _sse("step", "Step 3/4: Building release artifacts...", 50)

@@ -13,6 +13,7 @@ from app.schemas.board import (
 )
 from app.services import board as board_svc
 from app.services import user as user_svc
+from app.services import notification as notif_svc
 
 router = APIRouter()
 
@@ -98,8 +99,8 @@ async def create_board(
     board_dir = await loop.run_in_executor(None, board_svc.provision_directory, slug)
     await loop.run_in_executor(None, board_svc.git_init, board_dir)
 
-    # Background ODK seed
-    task = asyncio.create_task(board_svc.try_odk_seed_background(slug))
+    # Background ODK seed (passes versioning strategy)
+    task = asyncio.create_task(board_svc.try_odk_seed_background(slug, body.versioning_strategy))
     board_svc.register_seed_task(slug, task)
 
     return _enrich(board, db, user)
@@ -214,6 +215,7 @@ def share_board(
     if not target:
         raise HTTPException(status_code=404, detail="User not found")
     board_svc.add_member(db, board, target, body.role, user)
+    notif_svc.notify_board_shared(db, target.id, board_id, body.role, user.username)
     return {"detail": f"Shared with {body.username} as {body.role}"}
 
 

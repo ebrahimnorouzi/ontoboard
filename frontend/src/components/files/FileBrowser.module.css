@@ -1,0 +1,237 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.6rem 0.8rem;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.title {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+.refreshBtn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.error {
+  padding: 0.5rem 0.8rem;
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--danger);
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+
+.content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* File tree */
+.fileTree {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.empty {
+  padding: 1.5rem;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.dirGroup {
+  margin-bottom: 0.3rem;
+}
+.dirName {
+  padding: 0.3rem 0.8rem;
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  background: var(--bg-primary);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.fileRow {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.8rem 0.35rem 1.2rem;
+  cursor: pointer;
+  transition: background 0.1s;
+  font-size: 0.75rem;
+}
+.fileRow:hover { background: var(--bg-card-hover); }
+.fileRow:hover .fileActions { opacity: 1; }
+.fileActive {
+  background: var(--accent-glow);
+  border-left: 2px solid var(--accent);
+}
+
+.fileIcon { font-size: 0.85rem; flex-shrink: 0; }
+.fileInfo {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.fileName {
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fileDesc {
+  font-size: 0.62rem;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fileSize {
+  font-size: 0.62rem;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.fileActions {
+  opacity: 0;
+  display: flex;
+  gap: 0.2rem;
+  flex-shrink: 0;
+  transition: opacity 0.15s;
+}
+.fileActionBtn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 0.1rem;
+}
+.fileActionBtn:hover { color: var(--accent); }
+
+/* Editor */
+.editor {
+  flex-shrink: 0;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  max-height: 50%;
+  min-height: 200px;
+}
+.editorHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.4rem 0.8rem;
+  background: var(--bg-primary);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.editorPath {
+  font-size: 0.68rem;
+  font-family: "Cascadia Code", "Fira Code", monospace;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.editorActions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+.unsaved {
+  font-size: 0.62rem;
+  color: var(--warning);
+  font-weight: 600;
+}
+.saveBtn {
+  padding: 0.2rem 0.6rem;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 0.68rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.saveBtn:disabled { opacity: 0.4; cursor: default; }
+.closeBtn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.closeBtn:hover { color: var(--danger); }
+
+.editorArea {
+  flex: 1;
+  resize: none;
+  padding: 0.6rem;
+  border: none;
+  outline: none;
+  font-family: "Cascadia Code", "Fira Code", monospace;
+  font-size: 0.72rem;
+  line-height: 1.5;
+  color: var(--text-primary);
+  background: var(--bg-card);
+  tab-size: 4;
+}
+
+/* Overlay / Dialog */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.dialog {
+  background: var(--bg-card);
+  padding: 1.2rem 1.5rem;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  max-width: 340px;
+}
+.dialog p { font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 1rem; }
+.dialogActions { display: flex; gap: 0.5rem; justify-content: flex-end; }
+.dialogActions button {
+  padding: 0.4rem 0.9rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+}
+.dialogActions button:first-child {
+  background: var(--danger);
+  color: #fff;
+  border-color: var(--danger);
+}

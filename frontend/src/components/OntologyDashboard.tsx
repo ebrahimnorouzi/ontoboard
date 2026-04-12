@@ -27,6 +27,10 @@ export default function OntologyDashboard({ boardId }: Props) {
   const [versionInput, setVersionInput] = useState("");
   const [metaFields, setMetaFields] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  const [editingIri, setEditingIri] = useState(false);
+  const [iriInput, setIriInput] = useState("");
+  const [editingVersionIri, setEditingVersionIri] = useState(false);
+  const [versionIriInput, setVersionIriInput] = useState("");
 
   const saveMetadata = useCallback(async (fields: Record<string, string>) => {
     setSaving(true);
@@ -60,6 +64,15 @@ export default function OntologyDashboard({ boardId }: Props) {
     } catch {}
   }, [boardId]);
 
+  const saveIdentity = useCallback(async (fields: Record<string, string | null>) => {
+    try {
+      await apiJson(`/api/ontology/${boardId}/identity`, {
+        method: "PUT",
+        body: JSON.stringify(fields),
+      });
+    } catch {}
+  }, [boardId]);
+
   if (loading) return <div className={styles.loading}>Loading ontology info...</div>;
   if (error) return <div className={styles.error}>{error}</div>;
   if (!data) return null;
@@ -71,14 +84,71 @@ export default function OntologyDashboard({ boardId }: Props) {
       {/* ── Editable IRI & Version ────────────────────── */}
       <section className={styles.section}>
         <h3 className={styles.sectionTitle}>Ontology Identity</h3>
+
+        {/* Ontology IRI — click to edit */}
         <div className={styles.fieldGroup}>
           <label className={styles.fieldLabel}>Ontology IRI</label>
-          <div className={styles.fieldValue}>{metadata.ontology_iri || "—"}</div>
+          {editingIri ? (
+            <div className={styles.editRow}>
+              <input
+                className={styles.editInput}
+                value={iriInput}
+                onChange={(e) => setIriInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    saveMetadata({ ontology_iri: iriInput });
+                    setEditingIri(false);
+                  }
+                  if (e.key === "Escape") setEditingIri(false);
+                }}
+                autoFocus
+              />
+              <button className={styles.smallBtn} onClick={() => { saveMetadata({ ontology_iri: iriInput }); setEditingIri(false); }}>Save</button>
+              <button className={styles.smallBtnMuted} onClick={() => setEditingIri(false)}>Cancel</button>
+            </div>
+          ) : (
+            <div
+              className={styles.fieldValueEditable}
+              onClick={() => { setIriInput(metadata.ontology_iri || ""); setEditingIri(true); }}
+              title="Click to edit"
+            >
+              {metadata.ontology_iri || "— click to set —"}
+            </div>
+          )}
         </div>
+
+        {/* Version IRI — click to edit */}
         <div className={styles.fieldGroup}>
           <label className={styles.fieldLabel}>Version IRI</label>
-          <div className={styles.fieldValue}>{metadata.version_iri || "—"}</div>
+          {editingVersionIri ? (
+            <div className={styles.editRow}>
+              <input
+                className={styles.editInput}
+                value={versionIriInput}
+                onChange={(e) => setVersionIriInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    saveIdentity({ version_iri: versionIriInput });
+                    setEditingVersionIri(false);
+                  }
+                  if (e.key === "Escape") setEditingVersionIri(false);
+                }}
+                autoFocus
+              />
+              <button className={styles.smallBtn} onClick={() => { saveIdentity({ version_iri: versionIriInput }); setEditingVersionIri(false); }}>Save</button>
+              <button className={styles.smallBtnMuted} onClick={() => setEditingVersionIri(false)}>Cancel</button>
+            </div>
+          ) : (
+            <div
+              className={styles.fieldValueEditable}
+              onClick={() => { setVersionIriInput(metadata.version_iri || ""); setEditingVersionIri(true); }}
+              title="Click to edit"
+            >
+              {metadata.version_iri || "— click to set —"}
+            </div>
+          )}
         </div>
+
         <div className={styles.fieldGroup}>
           <label className={styles.fieldLabel}>Version</label>
           <div className={styles.versionRow}>

@@ -358,12 +358,12 @@ def _stage_all(repo: DulwichRepo, board_dir: Path) -> None:
             repo.stage([rel.encode()])
 
 
-async def try_odk_seed_background(board_id: str) -> None:
+async def try_odk_seed_background(board_id: str, versioning_strategy: str = "date") -> None:
     """Attempt ODK seed in background. Fails silently if odkfull unavailable."""
     board_dir = DATA_DIR / board_id
     loop = asyncio.get_event_loop()
     try:
-        await loop.run_in_executor(None, _odk_seed_sync, board_id, board_dir)
+        await loop.run_in_executor(None, _odk_seed_sync, board_id, board_dir, versioning_strategy)
         await loop.run_in_executor(None, git_commit, board_dir, "ODK seed complete")
         logger.info("ODK seed completed for '%s'", board_id)
     except ImageNotFound:
@@ -374,7 +374,7 @@ async def try_odk_seed_background(board_id: str) -> None:
         logger.error("ODK seed failed for '%s': %s", board_id, exc)
 
 
-def _odk_seed_sync(board_id: str, board_dir: Path) -> None:
+def _odk_seed_sync(board_id: str, board_dir: Path, versioning_strategy: str = "date") -> None:
     client = docker.from_env()
     client.images.get(ODK_IMAGE)
     client.containers.run(
@@ -386,6 +386,9 @@ def _odk_seed_sync(board_id: str, board_dir: Path) -> None:
         stdout=True,
         stderr=True,
     )
+    # After Docker seed, generate release.sh based on user's chosen strategy
+    from app.services.odk_setup import set_versioning_strategy
+    set_versioning_strategy(board_dir, versioning_strategy, board_id)
 
 
 def board_dir_info(board_id: str) -> dict:

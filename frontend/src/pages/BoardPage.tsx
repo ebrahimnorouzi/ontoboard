@@ -3,11 +3,11 @@
  *
  * Layout:
  *   [Header: Logo + BoardName + AppMenu + Actions + Collab]
- *   [LeftPanel: Hierarchy + Patterns] | [Canvas: React Flow] | [RightPanel: Tabs]
+ *   [LeftPanel: Hierarchy + Patterns] | [Canvas: Cytoscape] | [RightPanel: Tabs]
  */
 
 import { useEffect, useState, useRef, useCallback } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth";
 import { api, apiJson, ApiError } from "../api";
 import styles from "./BoardPage.module.css";
@@ -16,6 +16,7 @@ import OntologyDashboard from "../components/OntologyDashboard";
 import OntologyCanvas from "../components/canvas/OntologyCanvas";
 import AxiomEditor from "../components/axiom/AxiomEditor";
 import TreeBrowser from "../components/tree/TreeBrowser";
+import FileBrowser from "../components/files/FileBrowser";
 import { useCollaboration } from "../collab/useCollaboration";
 import CollabStatus from "../collab/CollabStatus";
 import PublishPanel from "../components/publish/PublishPanel";
@@ -28,19 +29,22 @@ import DocsPanel from "../components/docs/DocsPanel";
 import ShareDialog from "../components/share/ShareDialog";
 import { useOntologyStore } from "../store/ontologyStore";
 
-type Tab = "ontology" | "axioms" | "reasoning" | "odk" | "sparql" | "csv" | "tasks" | "publish" | "docs" | "console";
+type Tab = "ontology" | "axioms" | "reasoning" | "odk" | "sparql" | "csv" | "tasks" | "publish" | "docs" | "files" | "console";
 
 export default function BoardPage() {
   const { boardId } = useParams<{ boardId: string }>();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [status, setStatus] = useState<"loading" | "ready" | "provisioning" | "error">("loading");
   const [error, setError] = useState("");
   const [sideOpen, setSideOpen] = useState(true);
+  const [leftOpen, setLeftOpen] = useState(true);
   const [activeTab, setActiveTab] = useState<Tab>("ontology");
   const [consoleLog, setConsoleLog] = useState<string[]>([]);
   const [building, setBuilding] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [confirmDeleteBoard, setConfirmDeleteBoard] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const selectedEntity = useOntologyStore((s) => s.selectedEntity);
@@ -87,7 +91,7 @@ export default function BoardPage() {
     }
   };
 
-  // ── Epic 1: File Upload ─────────────────────────────────────
+  // ── File Upload ────────────────────────────────────────────
   const handleFileUpload = useCallback(async (file: File) => {
     if (!boardId) return;
     const form = new FormData();
@@ -111,7 +115,7 @@ export default function BoardPage() {
     e.target.value = "";
   };
 
-  // ── Build / ODK ─────────────────────────────────────────────
+  // ── Build / ODK ────────────────────────────────────────────
   const handleBuild = async () => {
     setBuilding(true);
     setActiveTab("console");
@@ -139,12 +143,11 @@ export default function BoardPage() {
     }
   };
 
-  // ── Export (triggers browser download) ───────────────────────
+  // ── Export ─────────────────────────────────────────────────
   const handleExport = async (format: string) => {
     if (!boardId) return;
     setMenuOpen(false);
     try {
-      // For ZIP export (full ODP repo)
       if (format === "zip") {
         const res = await api(`/api/export/${boardId}/zip`, { method: "POST" });
         if (res.ok) {
@@ -153,12 +156,17 @@ export default function BoardPage() {
           const a = document.createElement("a");
           a.href = url;
           a.download = `${boardId}-odp-repo.zip`;
+          document.body.appendChild(a);
           a.click();
+          document.body.removeChild(a);
           URL.revokeObjectURL(url);
+        } else {
+          setError("ZIP export failed");
         }
         return;
       }
-      // For single format conversion — first convert, then trigger download
+      // Save first, then convert via OWL service
+      await useOntologyStore.getState().saveToBackend();
       const res = await api(`/api/robot/${boardId}/convert`, {
         method: "POST",
         body: JSON.stringify({ output_format: format }),
@@ -166,22 +174,59 @@ export default function BoardPage() {
       if (res.ok) {
         const data = await res.json();
         if (data.output_file) {
-          // Download the generated file
-          const dlRes = await api(`/api/odk-mediator/${boardId}/release/download/${data.output_file.split("/").pop()}`);
+          const fileName = data.output_file.split("/").pop() || `${boardId}.${format}`;
+          const dlRes = await api(`/api/odk-mediator/${boardId}/release/download/${fileName}`);
           if (dlRes.ok) {
             const blob = await dlRes.blob();
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
-            a.download = data.output_file.split("/").pop() || `${boardId}.${format}`;
+            a.download = fileName;
+            document.body.appendChild(a);
             a.click();
+            document.body.removeChild(a);
             URL.revokeObjectURL(url);
+          } else {
+            // Fallback: try direct download from output_file path
+            const fb = await api(`/api/odk-setup/${boardId}/file/${data.output_file}`);
+            if (fb.ok) {
+              const blob = await fb.blob();
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = fileName;
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+              URL.revokeObjectURL(url);
+            } else {
+              setError("Download failed — file not found after conversion");
+            }
           }
         }
+      } else {
+        setError("Export failed — conversion error");
       }
     } catch (e: any) {
       setError(e.message || "Export failed");
     }
+  };
+
+  // ── Delete board ──────────────────────────────────────────
+  const handleDeleteBoard = async () => {
+    if (!boardId) return;
+    try {
+      const res = await api(`/api/boards/${boardId}`, { method: "DELETE" });
+      if (res.ok) {
+        navigate("/board");
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setError(data.detail || "Delete failed");
+      }
+    } catch (e: any) {
+      setError(e.message || "Delete failed");
+    }
+    setConfirmDeleteBoard(false);
   };
 
   if (status === "loading" || status === "provisioning") {
@@ -207,12 +252,12 @@ export default function BoardPage() {
 
   return (
     <div className={styles.layout}>
-      {/* Hidden file input for uploads */}
+      {/* Hidden file input */}
       <input ref={fileInputRef} type="file" accept=".owl,.ttl,.rdf,.obo,.jsonld,.json,.nt,.xml"
              onChange={handleFileInputChange} hidden />
 
       {/* ══════════════════════════════════════════════════════════
-          Epic 2: Header with App Menu
+          Header with App Menu
           ══════════════════════════════════════════════════════════ */}
       <header className={styles.toolbar}>
         <div className={styles.toolbarLeft}>
@@ -224,7 +269,7 @@ export default function BoardPage() {
             <span className={styles.statusDot} />
           </div>
 
-          {/* App Menu (Protege-style) */}
+          {/* App Menu */}
           <div className={styles.menuContainer}>
             <button className={styles.menuBtn} onClick={() => setMenuOpen(!menuOpen)}>
               Menu &#9662;
@@ -239,26 +284,70 @@ export default function BoardPage() {
                   <button className={styles.menuItem} onClick={() => { useOntologyStore.getState().saveToBackend(); setMenuOpen(false); }}>
                     Save
                   </button>
-                  <button className={styles.menuItem} onClick={() => handleExport("ttl")}>Export as Turtle</button>
-                  <button className={styles.menuItem} onClick={() => handleExport("obo")}>Export as OBO</button>
-                  <button className={styles.menuItem} onClick={() => handleExport("jsonld")}>Export as JSON-LD</button>
+                  <div className={styles.menuDivider} />
+                  <button className={styles.menuItem} onClick={() => handleExport("ttl")}>Export as Turtle (.ttl)</button>
+                  <button className={styles.menuItem} onClick={() => handleExport("obo")}>Export as OBO (.obo)</button>
+                  <button className={styles.menuItem} onClick={() => handleExport("jsonld")}>Export as JSON-LD (.jsonld)</button>
+                  <button className={styles.menuItem} onClick={() => handleExport("ofn")}>Export as OWL Functional (.ofn)</button>
+                  <button className={styles.menuItem} onClick={() => handleExport("nt")}>Export as N-Triples (.nt)</button>
+                  <div className={styles.menuDivider} />
                   <button className={styles.menuItem} onClick={() => handleExport("zip")}>Export ODP Repository (ZIP)</button>
                 </div>
                 <div className={styles.menuSection}>
                   <div className={styles.menuLabel}>Edit</div>
-                  <button className={styles.menuItem} onClick={() => { apiJson(`/api/refactor/${boardId}/undo`, { method: "POST" }); setMenuOpen(false); }}>Undo</button>
-                  <button className={styles.menuItem} onClick={() => { apiJson(`/api/refactor/${boardId}/redo`, { method: "POST" }); setMenuOpen(false); }}>Redo</button>
+                  <button className={styles.menuItem} onClick={() => { apiJson(`/api/refactor/${boardId}/undo`, { method: "POST" }).then(() => useOntologyStore.getState().loadFromBackend(boardId!)).catch(() => {}); setMenuOpen(false); }}>
+                    Undo
+                  </button>
+                  <button className={styles.menuItem} onClick={() => { apiJson(`/api/refactor/${boardId}/redo`, { method: "POST" }).then(() => useOntologyStore.getState().loadFromBackend(boardId!)).catch(() => {}); setMenuOpen(false); }}>
+                    Redo
+                  </button>
+                  <div className={styles.menuDivider} />
+                  <button className={styles.menuItem} onClick={() => { setActiveTab("sparql"); setMenuOpen(false); }}>
+                    SPARQL Query
+                  </button>
+                  <button className={styles.menuItem} onClick={() => { setActiveTab("csv"); setMenuOpen(false); }}>
+                    Import CSV
+                  </button>
                 </div>
                 <div className={styles.menuSection}>
                   <div className={styles.menuLabel}>View</div>
+                  <button className={styles.menuItem} onClick={() => { setLeftOpen(!leftOpen); setMenuOpen(false); }}>
+                    {leftOpen ? "Hide Left Panel" : "Show Left Panel"}
+                  </button>
                   <button className={styles.menuItem} onClick={() => { setSideOpen(!sideOpen); setMenuOpen(false); }}>
                     {sideOpen ? "Hide Right Panel" : "Show Right Panel"}
                   </button>
                 </div>
                 <div className={styles.menuSection}>
+                  <div className={styles.menuLabel}>Tools</div>
+                  <button className={styles.menuItem} onClick={() => { setActiveTab("reasoning"); setMenuOpen(false); }}>
+                    Run Reasoner
+                  </button>
+                  <button className={styles.menuItem} onClick={() => { handleBuild(); setMenuOpen(false); }}>
+                    Run ODK Build
+                  </button>
+                  <button className={styles.menuItem} onClick={() => { setActiveTab("publish"); setMenuOpen(false); }}>
+                    Publish / Release
+                  </button>
+                  <button className={styles.menuItem} onClick={() => { setActiveTab("docs"); setMenuOpen(false); }}>
+                    Generate Docs
+                  </button>
+                </div>
+                <div className={styles.menuSection}>
                   <div className={styles.menuLabel}>Board</div>
-                  <button className={styles.menuItem} onClick={() => { setShareOpen(true); setMenuOpen(false); }}>Share Settings</button>
-                  <button className={styles.menuItem} onClick={() => { handleBuild(); setMenuOpen(false); }}>Run ODK Build</button>
+                  <button className={styles.menuItem} onClick={() => { setShareOpen(true); setMenuOpen(false); }}>
+                    Share Settings
+                  </button>
+                  <button className={styles.menuItem} onClick={() => { setActiveTab("files"); setMenuOpen(false); }}>
+                    Browse Files
+                  </button>
+                  <button className={styles.menuItem} onClick={() => { setActiveTab("tasks"); setMenuOpen(false); }}>
+                    Task Board
+                  </button>
+                  <div className={styles.menuDivider} />
+                  <button className={`${styles.menuItem} ${styles.menuDanger}`} onClick={() => { setConfirmDeleteBoard(true); setMenuOpen(false); }}>
+                    Delete Board
+                  </button>
                 </div>
               </div>
             )}
@@ -285,33 +374,31 @@ export default function BoardPage() {
           Main 3-panel layout
           ══════════════════════════════════════════════════════════ */}
       <div className={styles.main}>
-        {/* ── Epic 3: Left Panel (Hierarchy + Patterns) ────────── */}
-        {boardId && (
+        {/* Left Panel (Tree Browser) */}
+        {leftOpen && boardId && (
           <TreeBrowser boardId={boardId} onSelectEntity={setSelectedEntity} />
         )}
 
-        {/* ── Epic 4: Canvas (React Flow) ──────────────────────── */}
+        {/* Canvas */}
         <div className={styles.canvas}>
           {boardId && <OntologyCanvas boardId={boardId} />}
         </div>
 
-        {/* ── Epic 5: Right Panel (Metadata + Tabs) ────────────── */}
+        {/* Right Panel (Tabs) */}
         {sideOpen && (
           <aside className={styles.side}>
             <div className={styles.tabs}>
-              {(["ontology", "axioms", "reasoning", "sparql", "csv", "tasks", "publish", "docs", "console"] as Tab[]).map((t) => (
+              {(["ontology", "axioms", "reasoning", "sparql", "csv", "tasks", "publish", "docs", "files", "console"] as Tab[]).map((t) => (
                 <button key={t} className={`${styles.tab} ${activeTab === t ? styles.tabActive : ""}`}
                         onClick={() => setActiveTab(t)}>
-                  {t === "ontology" ? "Onto" : t === "reasoning" ? "Reason" : t === "console" ? "Log" :
+                  {({ ontology: "Onto", reasoning: "Reason", console: "Log", files: "Files" } as Record<string, string>)[t] ||
                    t.charAt(0).toUpperCase() + t.slice(1)}
                 </button>
               ))}
             </div>
 
             <div className={styles.tabContent}>
-              {activeTab === "ontology" && boardId && (
-                <OntologyDashboard boardId={boardId} />
-              )}
+              {activeTab === "ontology" && boardId && <OntologyDashboard boardId={boardId} />}
               {activeTab === "axioms" && boardId && (
                 <AxiomEditor boardId={boardId} entityIri={selectedEntity?.iri}
                              entityLabel={selectedEntity?.label} entityType={selectedEntity?.type} />
@@ -323,6 +410,7 @@ export default function BoardPage() {
               {activeTab === "tasks" && boardId && <TaskBoard boardId={boardId} />}
               {activeTab === "publish" && boardId && <PublishPanel boardId={boardId} />}
               {activeTab === "docs" && boardId && <DocsPanel boardId={boardId} />}
+              {activeTab === "files" && boardId && <FileBrowser boardId={boardId} />}
               {activeTab === "console" && (
                 <div className={styles.consolePanel}>
                   {consoleLog.length === 0 ? (
@@ -339,6 +427,20 @@ export default function BoardPage() {
 
       {shareOpen && boardId && (
         <ShareDialog boardId={boardId} onClose={() => setShareOpen(false)} />
+      )}
+
+      {/* Delete board confirmation */}
+      {confirmDeleteBoard && (
+        <div className={styles.confirmOverlay}>
+          <div className={styles.confirmDialog}>
+            <h3>Delete Board</h3>
+            <p>Are you sure you want to delete <strong>{boardId}</strong>? This will permanently remove all ontology data, files, and history. This action cannot be undone.</p>
+            <div className={styles.confirmActions}>
+              <button className={styles.confirmDeleteBtn} onClick={handleDeleteBoard}>Delete Board</button>
+              <button className={styles.confirmCancelBtn} onClick={() => setConfirmDeleteBoard(false)}>Cancel</button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Toast for errors */}

@@ -4,7 +4,7 @@
   height: 100%;
   background: var(--bg-secondary);
   border-right: 1px solid var(--border);
-  width: 260px;
+  width: 280px;
   flex-shrink: 0;
 }
 
@@ -40,10 +40,15 @@
 }
 .refreshBtn:hover { color: var(--text-primary); }
 
-/* Search */
-.searchWrap { padding: 0.4rem; flex-shrink: 0; }
+/* Search + Add */
+.searchRow {
+  display: flex;
+  gap: 0.3rem;
+  padding: 0.4rem;
+  flex-shrink: 0;
+}
 .searchInput {
-  width: 100%;
+  flex: 1;
   padding: 0.35rem 0.55rem;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
@@ -55,6 +60,73 @@
 }
 .searchInput::placeholder { color: var(--text-muted); }
 .searchInput:focus { border-color: var(--accent); }
+
+.addBtn {
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.addBtn:hover { background: var(--accent-light); }
+
+/* Add form (inline) */
+.addForm {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0 0.4rem 0.4rem;
+  flex-shrink: 0;
+}
+.addInput {
+  flex: 1;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-size: 0.75rem;
+  font-family: inherit;
+  outline: none;
+}
+.addConfirm {
+  padding: 0.25rem 0.6rem;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.addConfirm:disabled { opacity: 0.5; cursor: default; }
+.addCancel {
+  padding: 0.25rem 0.4rem;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+/* Context hint */
+.contextHint {
+  padding: 0.25rem 0.6rem;
+  font-size: 0.65rem;
+  color: var(--accent);
+  background: var(--accent-glow);
+  border-bottom: 1px solid var(--border);
+}
+.contextHint strong { font-weight: 600; }
 
 /* Tree area */
 .treeArea {
@@ -68,6 +140,32 @@
   color: var(--text-muted);
   font-size: 0.78rem;
 }
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 2rem 1rem;
+  color: var(--text-muted);
+}
+.emptyIcon {
+  font-size: 2rem;
+  opacity: 0.3;
+}
+.emptyState p { font-size: 0.78rem; margin: 0; }
+.emptyAdd {
+  padding: 0.35rem 0.8rem;
+  background: var(--accent-glow);
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.emptyAdd:hover { background: var(--accent); color: #fff; }
 
 .treeList {
   list-style: none;
@@ -83,11 +181,17 @@
   cursor: pointer;
   transition: background 0.1s;
   font-size: 0.78rem;
+  position: relative;
 }
 .nodeRow:hover { background: var(--bg-card-hover); }
+.nodeRow:hover .nodeDeleteBtn { opacity: 1; }
 .nodeSelected {
   background: var(--accent-glow);
   color: var(--accent-light);
+}
+.nodeDragOver {
+  background: rgba(79, 70, 229, 0.15);
+  border-top: 2px solid var(--accent);
 }
 
 .expandBtn {
@@ -118,10 +222,89 @@
   flex-shrink: 0;
 }
 
+/* Inline rename */
+.renameInput {
+  flex: 1;
+  padding: 0.15rem 0.35rem;
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-size: 0.78rem;
+  font-family: inherit;
+  outline: none;
+  min-width: 0;
+}
+
+.nodeDeleteBtn {
+  opacity: 0;
+  background: none;
+  border: none;
+  color: var(--danger);
+  font-size: 0.65rem;
+  cursor: pointer;
+  padding: 0.1rem 0.25rem;
+  border-radius: 3px;
+  flex-shrink: 0;
+  transition: opacity 0.15s;
+}
+.nodeDeleteBtn:hover {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+/* Delete confirmation */
+.confirmOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.confirmDialog {
+  background: var(--bg-card);
+  padding: 1.2rem 1.5rem;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  max-width: 340px;
+}
+.confirmDialog p {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  margin-bottom: 1rem;
+  line-height: 1.5;
+}
+.confirmActions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+.confirmDeleteBtn {
+  padding: 0.4rem 0.9rem;
+  background: var(--danger);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.confirmCancelBtn {
+  padding: 0.4rem 0.9rem;
+  background: none;
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
 /* Detail panel */
 .detailPanel {
   border-top: 1px solid var(--border);
-  max-height: 280px;
+  max-height: 40%;
+  min-height: 80px;
   overflow-y: auto;
   flex-shrink: 0;
 }
@@ -143,7 +326,27 @@
   background: var(--accent-glow);
   color: var(--accent-light);
 }
-.detailLabel { font-size: 0.85rem; font-weight: 600; }
+.detailLabel { font-size: 0.85rem; font-weight: 600; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.detailEditBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.8rem;
+  opacity: 0.5;
+  transition: opacity 0.15s;
+  padding: 0.1rem;
+}
+.detailEditBtn:hover { opacity: 1; }
+.detailDelete {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.85rem;
+  opacity: 0.5;
+  transition: opacity 0.15s;
+  padding: 0.15rem;
+}
+.detailDelete:hover { opacity: 1; }
 .detailIri {
   font-size: 0.65rem;
   font-family: "Cascadia Code", "Fira Code", monospace;
@@ -186,3 +389,9 @@
 }
 .usageLink:hover { color: var(--accent); }
 .usagePred { color: var(--text-muted); font-style: italic; }
+
+/* Scrollable sub-lists inside detail */
+.annotationList, .usageList {
+  max-height: 120px;
+  overflow-y: auto;
+}

@@ -1,23 +1,23 @@
 # ─────────────────────────────────────────────────────────────
-# OntoBoard — Docker Compose
+# Development Compose — builds from source with hot-reload
 #
 # Usage:
-#   docker compose up --build        # Build + start everything
-#   docker compose up --build -d     # Build + start in background
-#   docker compose down              # Stop all services
-#
-# For development with hot-reload (source mounted as volumes):
 #   docker compose -f docker-compose.dev.yml up --build
+#
+# This mounts source code as volumes so changes are reflected
+# immediately without rebuilding images.
 # ─────────────────────────────────────────────────────────────
 
 services:
-  # ── React + Cytoscape frontend ─────────────────────────────
   frontend:
-    build:
-      context: ./frontend
-      network: host
+    build: ./frontend
     ports:
       - "3000:3000"
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
+      - ./frontend/index.html:/app/index.html
+      - ./frontend/vite.config.ts:/app/vite.config.ts
     depends_on:
       - backend
       - collab
@@ -25,14 +25,13 @@ services:
       - VITE_API_URL=http://localhost:8000
       - VITE_COLLAB_URL=ws://localhost:1234
 
-  # ── FastAPI backend ─────────────────────────────────────────
   backend:
-    build:
-      context: ./backend
-      network: host
+    build: ./backend
     ports:
       - "8000:8000"
     volumes:
+      - ./backend/app:/app/app
+      - ./backend/tests:/app/tests
       - ./data:/app/data
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
@@ -47,11 +46,8 @@ services:
       - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@ontoboard.local}
       - REDIS_URL=redis://redis:6379/0
 
-  # ── Hocuspocus / Yjs collaboration server ───────────────────
   collab:
-    build:
-      context: ./collab
-      network: host
+    build: ./collab
     ports:
       - "1234:1234"
     volumes:
@@ -60,11 +56,8 @@ services:
       - SECRET_KEY=${SECRET_KEY:-change-me-in-production}
       - DATA_DIR=/app/data
 
-  # ── Worker: long-running ODK / ROBOT jobs via Redis queue ───
   worker:
-    build:
-      context: ./worker
-      network: host
+    build: ./worker
     volumes:
       - ./data:/app/data
       - /var/run/docker.sock:/var/run/docker.sock
@@ -76,7 +69,6 @@ services:
       - ODK_IMAGE=obolibrary/odkfull:latest
       - REDIS_URL=redis://redis:6379/0
 
-  # ── Redis: job queue + pub/sub for progress ─────────────────
   redis:
     image: redis:7-alpine
     ports:
