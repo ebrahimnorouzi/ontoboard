@@ -10,11 +10,13 @@ import cytoscape from "cytoscape";
 import dagre from "cytoscape-dagre";
 import coseBilkent from "cytoscape-cose-bilkent";
 import edgehandles from "cytoscape-edgehandles";
-import { useOntologyStore } from "../../store/ontologyStore";
+import { useOntologyStore, type PrefixColor } from "../../store/ontologyStore";
+import { apiJson } from "../../api";
 import { useCollaboration } from "../../collab/useCollaboration";
 import { useAuth } from "../../auth";
 import EditPopup, { EditData, NodeEditData, EdgeEditData } from "./EditPopup";
 import StickyNoteComponent from "./StickyNote";
+import CanvasFrameComponent from "./CanvasFrame";
 import Minimap from "./Minimap";
 import ContextMenu, { ContextMenuData } from "./ContextMenu";
 import ExportDialog from "./ExportDialog";
@@ -85,6 +87,101 @@ function displayLabel(label: string, iri: string): string {
   return label && short !== label ? `${label}\n${short}` : label || short;
 }
 
+/** Predefined colors for ODP patterns */
+const PATTERN_COLORS: Record<string, string> = {
+  "part-of": "#8b5cf6",
+  "quality-pattern": "#06b6d4",
+  "participation": "#f97316",
+  "classification": "#ec4899",
+  "information-entity": "#14b8a6",
+};
+let patternColorIdx = 0;
+const PATTERN_COLOR_PALETTE = ["#7c3aed", "#0891b2", "#ea580c", "#db2777", "#0d9488", "#4f46e5", "#059669", "#d97706", "#dc2626", "#7c2d12"];
+function getPatternColor(patternId: string): string {
+  if (PATTERN_COLORS[patternId]) return PATTERN_COLORS[patternId];
+  const color = PATTERN_COLOR_PALETTE[patternColorIdx % PATTERN_COLOR_PALETTE.length];
+  PATTERN_COLORS[patternId] = color;
+  patternColorIdx++;
+  return color;
+}
+
+/** Nicer collapsible legend overlay */
+function CanvasLegend({ prefixColors, patternMap }: { prefixColors: PrefixColor[]; patternMap: Record<string, string> }) {
+  const [collapsed, setCollapsed] = useState(false);
+
+  // Collect unique patterns present in the graph
+  const patternIds = [...new Set(Object.values(patternMap))];
+
+  return (
+    <div className={styles.legend} style={collapsed ? { padding: "4px 10px" } : undefined}>
+      <div className={styles.legendHeader} onClick={() => setCollapsed(!collapsed)}>
+        <span className={styles.legendTitle}>Legend</span>
+        <span className={styles.legendToggle}>{collapsed ? "\u25B6" : "\u25BC"}</span>
+      </div>
+      {!collapsed && (
+        <div className={styles.legendBody}>
+          <div className={styles.legendSection}>
+            <span className={styles.legendSectionTitle}>Nodes</span>
+            <div className={styles.legendItem}>
+              <span className={styles.legendSwatch} style={{ background: "#eef2ff", border: "2px solid #4f46e5", borderRadius: "3px" }} />
+              <span>Class</span>
+            </div>
+            <div className={styles.legendItem}>
+              <span className={styles.legendDiamond} style={{ background: "#d97706" }} />
+              <span>Individual</span>
+            </div>
+            <div className={styles.legendItem}>
+              <span className={styles.legendCircle} style={{ background: "#dcfce7", border: "1.5px dashed #16a34a" }} />
+              <span>Literal</span>
+            </div>
+          </div>
+          <div className={styles.legendSection}>
+            <span className={styles.legendSectionTitle}>Edges</span>
+            <div className={styles.legendItem}>
+              <span className={styles.legendLine} style={{ borderColor: "#6366f1", borderStyle: "dashed" }} />
+              <span>SubClassOf</span>
+            </div>
+            <div className={styles.legendItem}>
+              <span className={styles.legendLine} style={{ borderColor: "#10b981" }} />
+              <span>Object Property</span>
+            </div>
+            <div className={styles.legendItem}>
+              <span className={styles.legendLine} style={{ borderColor: "#f59e0b", borderStyle: "dashed" }} />
+              <span>Data Property</span>
+            </div>
+            <div className={styles.legendItem}>
+              <span className={styles.legendLine} style={{ borderColor: "#9ca3af", borderStyle: "dashed" }} />
+              <span>rdf:type</span>
+            </div>
+          </div>
+          {prefixColors.length > 0 && (
+            <div className={styles.legendSection}>
+              <span className={styles.legendSectionTitle}>Prefix Colors</span>
+              {prefixColors.map((pc) => (
+                <div key={pc.prefix} className={styles.legendItem}>
+                  <span className={styles.legendSwatch} style={{ background: pc.color + "20", border: `2px solid ${pc.color}`, borderRadius: "3px" }} />
+                  <span>{pc.prefix}:</span>
+                </div>
+              ))}
+            </div>
+          )}
+          {patternIds.length > 0 && (
+            <div className={styles.legendSection}>
+              <span className={styles.legendSectionTitle}>Patterns</span>
+              {patternIds.map((pid) => (
+                <div key={pid} className={styles.legendItem}>
+                  <span className={styles.legendSwatch} style={{ background: getPatternColor(pid) + "20", border: `2px solid ${getPatternColor(pid)}`, borderRadius: "3px" }} />
+                  <span>{pid}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 interface Props { boardId: string }
 
 export default function OntologyCanvas({ boardId }: Props) {
@@ -117,6 +214,13 @@ export default function OntologyCanvas({ boardId }: Props) {
   const [editPopup, setEditPopup] = useState<EditData | null>(null);
   const [contextMenu, setContextMenu] = useState<ContextMenuData | null>(null);
   const [showExport, setShowExport] = useState(false);
+
+  // Search
+  const [showSearch, setShowSearch] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<{ id: string; label: string; type: string }[]>([]);
+  const [searchIdx, setSearchIdx] = useState(0);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   // ── Cytoscape init ──────────────────────────────────────────
   useEffect(() => {
@@ -221,14 +325,20 @@ export default function OntologyCanvas({ boardId }: Props) {
     // Draw mode is OFF so normal node drag and double-click work correctly.
 
     // Edge complete → create property in store
+    // Auto-detect data property when target is a literal node
     cy.on("ehcomplete", (_e: any, src: any, tgt: any, addedEdge: any) => {
       addedEdge.remove();
       const ts = Date.now();
-      const et = edgeTypeRef.current;
+      let et = edgeTypeRef.current;
+      const targetIsLiteral = tgt.data("entityType") === "literal";
+      // If target is a literal, force data property type
+      if (targetIsLiteral && et !== "annotation") {
+        et = "data";
+      }
       const isSubClass = et === "subClassOf";
       const isRdfType = et === "rdfType";
       const iri = isSubClass ? "rdfs:subClassOf" : isRdfType ? "rdf:type" : `http://example.org/new#prop_${ts}`;
-      const label = isSubClass ? "rdfs:subClassOf" : isRdfType ? "rdf:type" : "relatedTo";
+      const label = isSubClass ? "rdfs:subClassOf" : isRdfType ? "rdf:type" : targetIsLiteral ? "hasValue" : "relatedTo";
       const propType = isSubClass ? "annotation" : isRdfType ? "annotation" : et === "data" ? "data" : et === "annotation" ? "annotation" : "object";
       store.addProperty({
         id: `edge_${ts}`, iri, label,
@@ -243,11 +353,15 @@ export default function OntologyCanvas({ boardId }: Props) {
       setEditLabel(n.data("label") || "");
       store.selectEntity({ iri: n.id(), type: n.data("entityType") || "class", label: n.data("label") || "" });
       setContextMenu(null);
+      if (evt.position) broadcastCursor(evt.position.x, evt.position.y, false, "selected " + n.data("label"), n.id());
     });
 
     // Pane tap — deselect
     cy.on("tap", (e) => {
-      if (e.target === cy) { store.selectEntity(null); setEditPopup(null); setContextMenu(null); }
+      if (e.target === cy) {
+        store.selectEntity(null); setEditPopup(null); setContextMenu(null);
+        if (e.position) broadcastCursor(e.position.x, e.position.y, false, "idle", null);
+      }
     });
 
     // ── Double-click: edit node / edge / create new node ─────
@@ -342,6 +456,10 @@ export default function OntologyCanvas({ boardId }: Props) {
     });
 
     // ── Drag → snap + update position (classes AND individuals) ──
+    cy.on("drag", "node", (e) => {
+      const n = e.target;
+      if (e.position) broadcastCursor(e.position.x, e.position.y, true, "dragging " + n.data("label"), n.id());
+    });
     cy.on("dragfree", "node", (e) => {
       const n = e.target;
       const p = n.position();
@@ -357,6 +475,7 @@ export default function OntologyCanvas({ boardId }: Props) {
       } else {
         store.updateClass(n.id(), { x: sx, y: sy });
       }
+      if (e.position) broadcastCursor(e.position.x, e.position.y, false, "idle", null);
     });
 
     // ── Cursor broadcasting ──────────────────────────────────
@@ -395,6 +514,12 @@ export default function OntologyCanvas({ boardId }: Props) {
       expectedEdges.set(p.id, { source: p.source_id, target: p.target_id, displayLabel: isSub ? "rdfs:subClassOf" : isType ? "rdf:type" : compact(p.iri), edgeType });
     }
 
+    // Build prefix color lookup: namespace → color
+    const prefixColorLookup = new Map<string, string>();
+    for (const pc of store.prefixColors) {
+      prefixColorLookup.set(pc.namespace, pc.color);
+    }
+
     cy.batch(() => {
       // Remove nodes not in store
       cy.nodes().forEach((n) => {
@@ -411,8 +536,52 @@ export default function OntologyCanvas({ boardId }: Props) {
         } else {
           cy.add({ group: "nodes", data: { id, label: data.label, displayLabel: data.displayLabel, entityType: data.entityType }, position: { x: data.x, y: data.y } });
         }
+
+        // Apply prefix color or pattern color to class nodes
+        if (data.entityType === "class") {
+          const node = cy.getElementById(id);
+          if (!node.length) continue;
+          let customColor: string | null = null;
+
+          // Check pattern map first
+          const patternId = store.patternMap[id];
+          if (patternId) {
+            customColor = getPatternColor(patternId);
+          }
+
+          // Check prefix color (overrides pattern if set)
+          for (const [ns, color] of prefixColorLookup) {
+            if (id.startsWith(ns)) {
+              customColor = color;
+              break;
+            }
+          }
+
+          if (customColor) {
+            node.style({ "border-color": customColor, "background-color": customColor + "15", color: customColor });
+          }
+        }
       }
-      // Remove edges not in store
+      // Build set of inferred edge IDs
+      const inferredEdgeIds = new Set<string>();
+      if (store.showInferences) {
+        for (const inf of store.inferences) {
+          if (!inf.subject || !inf.object) continue;
+          const infId = `inferred_${inf.subject}_${inf.predicate}_${inf.object}`;
+          // Only add inferred edges if both nodes exist on canvas
+          if (expectedNodes.has(inf.subject) && expectedNodes.has(inf.object)) {
+            inferredEdgeIds.add(infId);
+            expectedEdges.set(infId, {
+              source: inf.subject,
+              target: inf.object,
+              displayLabel: inf.inference_type || compact(inf.predicate),
+              edgeType: "inferred",
+            });
+          }
+        }
+      }
+
+      // Remove edges not in store (including stale inferred edges)
       cy.edges().filter((e) => !e.hasClass("eh-ghost-edge") && !e.hasClass("eh-preview")).forEach((e) => {
         if (!expectedEdges.has(e.id())) e.remove();
       });
@@ -425,6 +594,19 @@ export default function OntologyCanvas({ boardId }: Props) {
           if (existing.data("edgeType") !== data.edgeType) existing.data("edgeType", data.edgeType);
         } else {
           cy.add({ group: "edges", data: { id, source: data.source, target: data.target, displayLabel: data.displayLabel, edgeType: data.edgeType } });
+        }
+        // Style inferred edges distinctly
+        if (inferredEdgeIds.has(id)) {
+          const edge = cy.getElementById(id);
+          if (edge.length) {
+            edge.style({
+              "line-color": "#a78bfa",
+              "target-arrow-color": "#a78bfa",
+              "line-style": "dashed",
+              "line-dash-pattern": [6, 4],
+              opacity: 0.75,
+            });
+          }
         }
       }
     });
@@ -439,7 +621,7 @@ export default function OntologyCanvas({ boardId }: Props) {
       const node = cy.getElementById(selected);
       if (node.length && !node.selected()) node.select();
     }
-  }, [store.classes, store.properties, store.individuals, store.literals]);
+  }, [store.classes, store.properties, store.individuals, store.literals, store.prefixColors, store.patternMap, store.showInferences, store.inferences]);
 
   useEffect(() => { store.loadFromBackend(boardId); }, [boardId]);
 
@@ -487,7 +669,12 @@ export default function OntologyCanvas({ boardId }: Props) {
           store.addClass({ ...cls, id: iri, iri, label: cls.label + " (copy)", x: cls.x + 40, y: cls.y + 40 });
         }
       } else if (e.key === "Escape") {
-        store.selectEntity(null); setEditPopup(null); setContextMenu(null);
+        if (showSearch) { setShowSearch(false); setSearchQuery(""); setSearchResults([]); }
+        else { store.selectEntity(null); setEditPopup(null); setContextMenu(null); }
+      } else if (ctrl && e.key === "f") {
+        e.preventDefault();
+        setShowSearch(true);
+        setTimeout(() => searchInputRef.current?.focus(), 50);
       } else if (e.key === "f" && !ctrl) {
         e.preventDefault(); cyRef.current?.fit(undefined, 40);
       } else if (ctrl && e.key === "a") {
@@ -509,10 +696,21 @@ export default function OntologyCanvas({ boardId }: Props) {
       const screenX = cursor.x * zoom + rendered.x;
       const screenY = cursor.y * zoom + rendered.y;
       const el = document.createElement("div");
-      el.className = styles.remoteCursor;
+      el.className = `${styles.remoteCursor}${cursor.action !== "idle" ? ` ${styles.cursorActive}` : ""}`;
       el.style.left = `${screenX}px`; el.style.top = `${screenY}px`;
-      el.innerHTML = `<svg width="16" height="20" viewBox="0 0 16 20" style="position:absolute;top:-2px;left:-2px;"><path d="M0 0L16 12L8 12L4 20Z" fill="${cursor.color}" stroke="#fff" stroke-width="1"/></svg><span class="${styles.cursorLabel}" style="background:${cursor.color}">${cursor.name}</span>`;
+      const actionHtml = cursor.action && cursor.action !== "idle" ? `<span class="${styles.cursorAction}" style="background:${cursor.color}">${cursor.action}</span>` : "";
+      el.innerHTML = `<svg width="16" height="20" viewBox="0 0 16 20" style="position:absolute;top:-2px;left:-2px;"><path d="M0 0L16 12L8 12L4 20Z" fill="${cursor.color}" stroke="#fff" stroke-width="1"/></svg><span class="${styles.cursorLabel}" style="background:${cursor.color}">${cursor.name}</span>${actionHtml}`;
       container.appendChild(el);
+
+      // Highlight selected entity node for this remote user
+      if (cursor.selectedEntity) {
+        const node = cy.getElementById(cursor.selectedEntity);
+        if (node.length) {
+          node.style("overlay-color", cursor.color);
+          node.style("overlay-opacity", 0.15);
+          node.style("overlay-padding", 6);
+        }
+      }
     }
   }, [remoteCursors]);
 
@@ -545,17 +743,36 @@ export default function OntologyCanvas({ boardId }: Props) {
     if (!cy) { setEditPopup(null); return; }
     if (data.type === "node") {
       const nd = data as NodeEditData;
-      const node = cy.getElementById(nd.id);
-      if (node.length) {
-        node.data("displayLabel", displayLabel(nd.label, nd.id));
-        node.data("label", nd.label);
-        node.data("entityType", nd.entityType);
-        node.style({ shape: nd.shape, "border-color": nd.color, "background-color": nd.color + "15", "font-size": `${nd.fontSize}px` });
+      const originalId = editPopup?.id || nd.id;
+      const iriChanged = nd.id !== originalId;
+
+      if (iriChanged && nd.entityType !== "literal") {
+        // IRI was changed — remove old, add new, update edge references
+        const cls = store.classes.find((c) => c.iri === originalId);
+        if (cls) {
+          store.removeClass(originalId);
+          store.addClass({ ...cls, id: nd.id, iri: nd.id, label: nd.label, color: nd.color });
+          // Update edges referencing this node
+          store.setProperties(store.properties.map((p) => ({
+            ...p,
+            source_id: p.source_id === originalId ? nd.id : p.source_id,
+            target_id: p.target_id === originalId ? nd.id : p.target_id,
+          })));
+          store.selectEntity({ iri: nd.id, type: "class", label: nd.label });
+        }
+      } else {
+        const node = cy.getElementById(nd.id);
+        if (node.length) {
+          node.data("displayLabel", displayLabel(nd.label, nd.id));
+          node.data("label", nd.label);
+          node.data("entityType", nd.entityType);
+          node.style({ shape: nd.shape, "border-color": nd.color, "background-color": nd.color + "15", "font-size": `${nd.fontSize}px` });
+        }
+        store.updateClass(nd.id, { label: nd.label, color: nd.color });
+        store.updateIndividual(nd.id, { label: nd.label });
+        // If it's a literal, update value
+        if (nd.entityType === "literal") store.updateLiteral(nd.id, { value: nd.label });
       }
-      store.updateClass(nd.id, { label: nd.label, color: nd.color });
-      store.updateIndividual(nd.id, { label: nd.label });
-      // If it's a literal, update value
-      if (nd.entityType === "literal") store.updateLiteral(nd.id, { value: nd.label });
     } else {
       const ed = data as EdgeEditData;
       const edge = cy.getElementById(ed.id);
@@ -608,7 +825,7 @@ export default function OntologyCanvas({ boardId }: Props) {
       }
       case "add-individual": {
         const iri = `http://example.org/new#Ind_${ts}`;
-        store.setIndividuals([...store.individuals, { id: iri, iri, label: "NewIndividual", class_iri: "", x, y }]);
+        store.addIndividual({ id: iri, iri, label: "NewIndividual", class_iri: "", x, y });
         break;
       }
       case "add-literal": {
@@ -618,6 +835,10 @@ export default function OntologyCanvas({ boardId }: Props) {
       }
       case "add-sticky": {
         store.addStickyNote({ id: `sticky_${ts}`, text: "", x: x - 100, y: y - 75, w: 200, h: 150, color: "#fef3c7", fontSize: 14 });
+        break;
+      }
+      case "add-frame": {
+        store.addFrame({ id: `frame_${ts}`, label: "Frame", x: x - 200, y: y - 150, w: 400, h: 300, color: "rgba(79, 70, 229, 0.05)", borderColor: "#c7d2fe" });
         break;
       }
       case "paste": {
@@ -750,6 +971,29 @@ export default function OntologyCanvas({ boardId }: Props) {
         }
         break;
       }
+      case "comment": {
+        const nodeId = contextMenu?.targetId;
+        if (nodeId) {
+          const text = prompt("Add comment (use @username to mention):");
+          if (text?.trim()) {
+            apiJson(`/api/comments/${boardId}`, {
+              method: "POST",
+              body: JSON.stringify({ text: text.trim(), entity_iri: nodeId }),
+            }).catch(() => {});
+          }
+        }
+        break;
+      }
+      case "board-comment": {
+        const text = prompt("Add board comment (use @username to mention):");
+        if (text?.trim()) {
+          apiJson(`/api/comments/${boardId}`, {
+            method: "POST",
+            body: JSON.stringify({ text: text.trim() }),
+          }).catch(() => {});
+        }
+        break;
+      }
       case "delete": {
         const nodeId = contextMenu?.targetId;
         if (nodeId) {
@@ -816,8 +1060,110 @@ export default function OntologyCanvas({ boardId }: Props) {
     setContextMenu(null);
   }, [contextMenu, store]);
 
+  // ── Pattern drag-and-drop onto canvas ──────────────────────
+  const handleCanvasDrop = useCallback(async (e: React.DragEvent) => {
+    e.preventDefault();
+    const patternId = e.dataTransfer.getData("application/x-odp-pattern");
+    if (!patternId) return;
+    const cy = cyRef.current;
+    if (!cy) return;
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    // Convert screen coordinates to graph coordinates
+    const zoom = cy.zoom();
+    const pan = cy.pan();
+    const graphX = (e.clientX - rect.left - pan.x) / zoom;
+    const graphY = (e.clientY - rect.top - pan.y) / zoom;
+    // Apply the pattern at the drop position
+    try {
+      const result = await apiJson<{ classes: any[]; properties: any[]; pattern_id?: string }>(
+        `/api/patterns/${boardId}/apply/${patternId}`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            base_iri: "http://example.org/ontology",
+            x: graphX,
+            y: graphY,
+          }),
+        }
+      );
+      const patternColor = getPatternColor(patternId);
+      for (const cls of result.classes || []) {
+        if (!store.classes.some((c) => c.iri === cls.iri)) {
+          store.addClass({ ...cls, color: patternColor });
+        }
+        store.assignPattern(cls.iri, patternId);
+      }
+      for (const prop of (result as any).properties || []) {
+        if (!store.properties.some((p) => p.id === prop.id)) {
+          store.addProperty(prop);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to apply pattern via drag-drop:", err);
+    }
+  }, [boardId, store]);
+
+  const handleCanvasDragOver = useCallback((e: React.DragEvent) => {
+    if (e.dataTransfer.types.includes("application/x-odp-pattern")) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "copy";
+    }
+  }, []);
+
+  // ── Fuzzy search across all entities ──────────────────────
+  const executeSearch = useCallback((query: string) => {
+    setSearchQuery(query);
+    if (!query.trim()) { setSearchResults([]); return; }
+    const q = query.toLowerCase();
+    const results: { id: string; label: string; type: string; score: number }[] = [];
+    // Fuzzy match: check if all chars of query appear in order
+    const fuzzyMatch = (text: string, pattern: string): number => {
+      const t = text.toLowerCase();
+      if (t.includes(pattern)) return 100; // exact substring
+      let pi = 0;
+      for (let i = 0; i < t.length && pi < pattern.length; i++) {
+        if (t[i] === pattern[pi]) pi++;
+      }
+      return pi === pattern.length ? 50 : 0;
+    };
+    for (const c of store.classes) {
+      const labelScore = fuzzyMatch(c.label, q);
+      const iriScore = fuzzyMatch(c.iri, q) * 0.5;
+      const score = Math.max(labelScore, iriScore);
+      if (score > 0) results.push({ id: c.iri, label: c.label, type: "class", score });
+    }
+    for (const i of store.individuals) {
+      const score = Math.max(fuzzyMatch(i.label, q), fuzzyMatch(i.iri, q) * 0.5);
+      if (score > 0) results.push({ id: i.iri, label: i.label, type: "individual", score });
+    }
+    for (const p of store.properties) {
+      const score = Math.max(fuzzyMatch(p.label, q), fuzzyMatch(p.iri, q) * 0.5);
+      if (score > 0) results.push({ id: p.id, label: p.label, type: "property", score });
+    }
+    results.sort((a, b) => b.score - a.score);
+    setSearchResults(results.slice(0, 20));
+    setSearchIdx(0);
+    // Select and center first result
+    if (results.length > 0) {
+      navigateToResult(results[0]);
+    }
+  }, [store.classes, store.individuals, store.properties]);
+
+  const navigateToResult = useCallback((result: { id: string; label: string; type: string }) => {
+    const cy = cyRef.current;
+    if (!cy) return;
+    const node = cy.getElementById(result.id);
+    if (node.length) {
+      cy.elements().unselect();
+      node.select();
+      cy.animate({ center: { eles: node }, zoom: cy.zoom() }, { duration: 300 });
+      store.selectEntity({ iri: result.id, type: result.type, label: result.label });
+    }
+  }, [store]);
+
   return (
-    <div className={styles.container}>
+    <div className={styles.container} onDrop={handleCanvasDrop} onDragOver={handleCanvasDragOver}>
       {/* ── Floating Toolbar ──────────────────────────────── */}
       <div className={styles.toolbar}>
         <div className={styles.group}>
@@ -827,7 +1173,7 @@ export default function OntologyCanvas({ boardId }: Props) {
           }}>+ Class</button>
           <button className={styles.btn} title="Add Individual" onClick={() => {
             const iri = `http://example.org/new#Ind_${Date.now()}`;
-            store.setIndividuals([...store.individuals, { id: iri, iri, label: "NewIndividual", class_iri: "", x: 300, y: 400 }]);
+            store.addIndividual({ id: iri, iri, label: "NewIndividual", class_iri: "", x: 300, y: 400 });
           }}>+ Individual</button>
           <button className={styles.btn} title="Add Literal value node" onClick={() => {
             const id = `lit_${Date.now()}`;
@@ -838,6 +1184,11 @@ export default function OntologyCanvas({ boardId }: Props) {
             const center = cy ? { x: -cy.pan().x / cy.zoom() + cy.width() / cy.zoom() / 2, y: -cy.pan().y / cy.zoom() + cy.height() / cy.zoom() / 2 } : { x: 300, y: 300 };
             store.addStickyNote({ id: `sticky_${Date.now()}`, text: "", x: center.x - 100, y: center.y - 75, w: 200, h: 150, color: "#fef3c7", fontSize: 14 });
           }}>+ Sticky</button>
+          <button className={styles.btn} title="Draw Frame" onClick={() => {
+            const cy = cyRef.current;
+            const center = cy ? { x: -cy.pan().x / cy.zoom() + cy.width() / cy.zoom() / 2, y: -cy.pan().y / cy.zoom() + cy.height() / cy.zoom() / 2 } : { x: 300, y: 300 };
+            store.addFrame({ id: `frame_${Date.now()}`, label: "Frame", x: center.x - 200, y: center.y - 150, w: 400, h: 300, color: "rgba(79, 70, 229, 0.05)", borderColor: "#c7d2fe" });
+          }}>+ Frame</button>
         </div>
 
         <div className={styles.separator} />
@@ -880,10 +1231,58 @@ export default function OntologyCanvas({ boardId }: Props) {
 
         <button className={styles.btn} title="Export graph image" onClick={() => setShowExport(true)}>Export</button>
 
+        <div className={styles.separator} />
+
+        <button className={styles.btn} title="Search (Ctrl+F)" onClick={() => { setShowSearch(!showSearch); setTimeout(() => searchInputRef.current?.focus(), 50); }}>
+          &#128269;
+        </button>
+
         <span className={styles.save}>
           {store.saving ? "Saving..." : store.lastSaved > 0 ? "\u2713" : ""}
         </span>
       </div>
+
+      {/* ── Search bar ──────────────────────────────────────── */}
+      {showSearch && (
+        <div className={styles.searchBar}>
+          <input
+            ref={searchInputRef}
+            className={styles.searchInput}
+            placeholder="Search entities... (fuzzy)"
+            value={searchQuery}
+            onChange={(e) => executeSearch(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && searchResults.length > 0) {
+                const nextIdx = (searchIdx + 1) % searchResults.length;
+                setSearchIdx(nextIdx);
+                navigateToResult(searchResults[nextIdx]);
+              }
+              if (e.key === "Escape") { setShowSearch(false); setSearchQuery(""); setSearchResults([]); }
+            }}
+          />
+          {searchResults.length > 0 && (
+            <span className={styles.searchCount}>{searchIdx + 1}/{searchResults.length}</span>
+          )}
+          <button className={styles.searchNav} disabled={searchResults.length === 0}
+                  onClick={() => { const i = (searchIdx - 1 + searchResults.length) % searchResults.length; setSearchIdx(i); navigateToResult(searchResults[i]); }}
+                  title="Previous">&#9650;</button>
+          <button className={styles.searchNav} disabled={searchResults.length === 0}
+                  onClick={() => { const i = (searchIdx + 1) % searchResults.length; setSearchIdx(i); navigateToResult(searchResults[i]); }}
+                  title="Next">&#9660;</button>
+          <button className={styles.searchClose} onClick={() => { setShowSearch(false); setSearchQuery(""); setSearchResults([]); }}>&times;</button>
+          {searchResults.length > 0 && (
+            <div className={styles.searchDropdown}>
+              {searchResults.map((r, i) => (
+                <div key={r.id} className={`${styles.searchResult} ${i === searchIdx ? styles.searchResultActive : ""}`}
+                     onClick={() => { setSearchIdx(i); navigateToResult(r); }}>
+                  <span className={styles.searchResultType}>{r.type === "class" ? "C" : r.type === "individual" ? "I" : "P"}</span>
+                  <span className={styles.searchResultLabel}>{r.label}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ── Entity editor bar ──────────────────────────────── */}
       {selected && (
@@ -907,18 +1306,16 @@ export default function OntologyCanvas({ boardId }: Props) {
       )}
 
       {/* ── Legend ──────────────────────────────────────────── */}
-      <div className={styles.legend}>
-        <span><i className={styles.dot} style={{ background: "#4f46e5" }} /> Class</span>
-        <span><i className={styles.dot} style={{ background: "#d97706" }} /> Individual</span>
-        <span><i className={styles.dot} style={{ background: "#16a34a" }} /> Literal</span>
-        <span><i className={styles.line} style={{ borderColor: "#6366f1", borderStyle: "dashed" }} /> SubClassOf</span>
-        <span><i className={styles.line} style={{ borderColor: "#10b981" }} /> ObjProp</span>
-        <span><i className={styles.line} style={{ borderColor: "#f59e0b", borderStyle: "dashed" }} /> DataProp</span>
-        <span><i className={styles.line} style={{ borderColor: "#9ca3af", borderStyle: "dashed" }} /> rdf:type</span>
-      </div>
+      <CanvasLegend prefixColors={store.prefixColors} patternMap={store.patternMap} />
 
       <Minimap cyRef={cyRef} />
       <div ref={cursorsRef} className={styles.cursorsLayer} />
+
+      {store.frames.map((frame) => (
+        <CanvasFrameComponent key={frame.id} frame={frame}
+          zoom={viewport.zoom} pan={viewport.pan}
+          onUpdate={store.updateFrame} onDelete={store.removeFrame} />
+      ))}
 
       {store.stickyNotes.map((note) => (
         <StickyNoteComponent key={note.id} note={note}

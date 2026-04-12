@@ -106,14 +106,37 @@ async def stream_build(board_dir: Path, target: str):
     loop = asyncio.get_event_loop()
     client = docker.from_env()
 
-    # Use the ODK pattern: run make inside odkfull container at /work/src/ontology
+    # Determine the correct working directory by finding the Makefile
+    # ODK seed generates files at {board_dir}/src/ontology/ or {board_dir}/{board_id}/src/ontology/
+    makefile_primary = board_dir / "src" / "ontology" / "Makefile"
+    makefile_fallback = board_dir / "Makefile"
+
+    if makefile_primary.exists():
+        working_dir = "/work/src/ontology"
+    elif makefile_fallback.exists():
+        working_dir = "/work"
+    else:
+        # Search recursively for a Makefile that contains ODK-style targets
+        found = None
+        for mf in board_dir.rglob("Makefile"):
+            if ".git" not in str(mf):
+                found = mf
+                break
+        if found:
+            rel = found.parent.relative_to(board_dir)
+            working_dir = f"/work/{str(rel).replace(chr(92), '/')}"
+        else:
+            yield f"data: [ERROR] No Makefile found in {board_dir}. Run 'ODK Seed' first to generate the project structure.\n\n"
+            yield f"data: [EXIT 1]\n\n"
+            return
+
     container = await loop.run_in_executor(
         None,
         lambda: client.containers.run(
             image=ODK_IMAGE,
             command=f"make {target}",
             volumes={str(board_dir): {"bind": "/work", "mode": "rw"}},
-            working_dir="/work/src/ontology",
+            working_dir=working_dir,
             remove=False,
             detach=True,
             stdout=True,

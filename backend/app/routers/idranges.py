@@ -23,6 +23,8 @@ def list_ranges(board_id: str, db: Session = Depends(get_db), user: User = Depen
 
 class AllocateBody(BaseModel):
     prefix: str = ""
+    lower: str = ""
+    upper: str = ""
 
 
 @router.post("/{board_id}/allocate", status_code=201)
@@ -34,6 +36,43 @@ def allocate_range(board_id: str, body: AllocateBody,
     result = idrange_svc.allocate_range(DATA_DIR / board_id, user.username, body.prefix)
     board_svc.git_commit(DATA_DIR / board_id, f"Allocated ID range for {user.username}")
     return result
+
+
+class UpdateRangeBody(BaseModel):
+    prefix: str | None = None
+    lower: str | None = None
+    upper: str | None = None
+
+
+@router.put("/{board_id}/{owner}")
+def update_range(board_id: str, owner: str, body: UpdateRangeBody,
+                  db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    """Update an existing ID range (prefix, bounds)."""
+    board = board_svc.get_board_by_slug(db, board_id)
+    if not board:
+        raise HTTPException(status_code=404, detail="Board not found")
+    result = idrange_svc.update_range(
+        DATA_DIR / board_id, owner,
+        prefix=body.prefix, lower=body.lower, upper=body.upper,
+    )
+    if not result:
+        raise HTTPException(status_code=404, detail="Range not found for user")
+    board_svc.git_commit(DATA_DIR / board_id, f"Updated ID range for {owner}")
+    return result
+
+
+@router.delete("/{board_id}/{owner}")
+def delete_range(board_id: str, owner: str,
+                  db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    """Delete an ID range."""
+    board = board_svc.get_board_by_slug(db, board_id)
+    if not board:
+        raise HTTPException(status_code=404, detail="Board not found")
+    deleted = idrange_svc.delete_range(DATA_DIR / board_id, owner)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Range not found for user")
+    board_svc.git_commit(DATA_DIR / board_id, f"Deleted ID range for {owner}")
+    return {"deleted": True}
 
 
 @router.post("/{board_id}/reserve")

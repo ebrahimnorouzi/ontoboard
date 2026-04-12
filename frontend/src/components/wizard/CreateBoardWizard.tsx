@@ -10,7 +10,7 @@
 
 import { useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { apiJson } from "../../api";
+import { api, apiJson } from "../../api";
 import styles from "./CreateBoardWizard.module.css";
 
 /* ── Help tooltip component ───────────────────────────────── */
@@ -79,7 +79,13 @@ const COMMON_IMPORTS = [
 export default function CreateBoardWizard({ onClose, onCreated }: Props) {
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
-  const [mode, setMode] = useState<"odk" | "blank">("odk");
+  const [mode, setMode] = useState<"odk" | "blank" | "import">("odk");
+
+  // Import mode state
+  const [importMode, setImportMode] = useState<"github" | "zip" | null>(null);
+  const [githubUrl, setGithubUrl] = useState("");
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importing, setImporting] = useState(false);
 
   // Step 0+1 form state
   const [ontId, setOntId] = useState("");
@@ -254,6 +260,43 @@ export default function CreateBoardWizard({ onClose, onCreated }: Props) {
     }
   };
 
+  const handleImport = async () => {
+    const id = normalizeId(ontId);
+    if (!id) { setError("Ontology ID is required"); return; }
+    setImporting(true);
+    setError("");
+    try {
+      let data: { board_id: string; files: string[]; success: boolean };
+      if (importMode === "github") {
+        if (!githubUrl.trim()) { setError("GitHub URL is required"); setImporting(false); return; }
+        data = await apiJson<{ board_id: string; files: string[]; success: boolean }>(
+          "/api/odk-setup/import-github",
+          { method: "POST", body: JSON.stringify({ url: githubUrl, ont_id: id, title: title || id }) }
+        );
+      } else if (importMode === "zip") {
+        if (!importFile) { setError("Please select a ZIP file"); setImporting(false); return; }
+        const formData = new FormData();
+        formData.append("file", importFile);
+        formData.append("ont_id", id);
+        formData.append("title", title || id);
+        const res = await api("/api/odk-setup/import-zip", { method: "POST", body: formData });
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({ detail: res.statusText }));
+          throw new Error(body.detail || "Import failed");
+        }
+        data = await res.json();
+      } else {
+        setError("Select an import source"); setImporting(false); return;
+      }
+      onCreated(data.board_id);
+      navigate(`/board/${data.board_id}`);
+    } catch (e: any) {
+      setError(e.message || "Import failed");
+    } finally {
+      setImporting(false);
+    }
+  };
+
   const canProceedStep1 = ontId.trim().length > 0 && title.trim().length > 0;
 
   // Group files by directory for success view
@@ -290,10 +333,10 @@ export default function CreateBoardWizard({ onClose, onCreated }: Props) {
         <div className={styles.body}>
           {error && <div className={styles.error}>{error}</div>}
 
-          {creating ? (
+          {(creating || importing) ? (
             <div className={styles.creating}>
               <div className={styles.spinner} />
-              <div className={styles.creatingText}>Creating board... This may take a moment.</div>
+              <div className={styles.creatingText}>{importing ? "Importing board... This may take a moment." : "Creating board... This may take a moment."}</div>
             </div>
           ) : (
             <>
@@ -343,7 +386,63 @@ export default function CreateBoardWizard({ onClose, onCreated }: Props) {
                         Minimal scaffold for quick experimentation. You can add ODK configuration later from the board settings.
                       </div>
                     </div>
+                    <div className={`${styles.modeCard} ${mode === "import" ? styles.modeCardActive : ""}`} onClick={() => { setMode("import"); }}>
+                      <div className={styles.modeIcon}>&#128229;</div>
+                      <div className={styles.modeTitle}>Import</div>
+                      <div className={styles.modeDesc}>
+                        Load an existing ODK repository from a <strong>GitHub URL</strong> or a <strong>ZIP file</strong>. Wizard steps are skipped; the board is created directly from the imported files.
+                      </div>
+                    </div>
                   </div>
+
+                  {/* Import sub-options */}
+                  {mode === "import" && (
+                    <div className={styles.formSection}>
+                      <div className={styles.formSectionTitle}>Import Source</div>
+                      <div className={styles.radioGroup}>
+                        <label className={styles.radioLabel}>
+                          <input type="radio" name="importMode" value="github"
+                                 checked={importMode === "github"} onChange={() => setImportMode("github")} />
+                          From GitHub Repository
+                        </label>
+                        <label className={styles.radioLabel}>
+                          <input type="radio" name="importMode" value="zip"
+                                 checked={importMode === "zip"} onChange={() => setImportMode("zip")} />
+                          From ZIP File
+                        </label>
+                      </div>
+
+                      {importMode === "github" && (
+                        <div className={styles.formGroup} style={{ marginTop: "0.75rem" }}>
+                          <label className={styles.formLabel}>
+                            GitHub Repository URL
+                            <HelpTip text="The full URL of a GitHub repository containing an ODK ontology project. The repo will be cloned (shallow, depth=1)." />
+                          </label>
+                          <input className={styles.formInput}
+                                 placeholder="https://github.com/org/ontology-repo"
+                                 value={githubUrl} onChange={(e) => setGithubUrl(e.target.value)} />
+                        </div>
+                      )}
+
+                      {importMode === "zip" && (
+                        <div className={styles.formGroup} style={{ marginTop: "0.75rem" }}>
+                          <label className={styles.formLabel}>
+                            ZIP File
+                            <HelpTip text="A ZIP archive containing an ODK repository structure (with src/ontology/ folder). GitHub 'Download ZIP' archives are supported." />
+                          </label>
+                          <input type="file" accept=".zip"
+                                 onChange={(e) => setImportFile(e.target.files?.[0] || null)} />
+                        </div>
+                      )}
+
+                      <div style={{ marginTop: "1rem" }}>
+                        <button className={styles.btnPrimary} onClick={handleImport}
+                                disabled={importing || !ontId.trim()}>
+                          {importing ? "Importing..." : "Import Board"}
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </>
               )}
 

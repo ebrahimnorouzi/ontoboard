@@ -219,6 +219,40 @@ def share_board(
     return {"detail": f"Shared with {body.username} as {body.role}"}
 
 
+@router.post("/{board_id}/request-access")
+def request_access(
+    board_id: str,
+    body: ShareRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    board = board_svc.get_board_by_slug(db, _sanitize_id(board_id))
+    if not board:
+        raise HTTPException(status_code=404, detail="Board not found")
+    # Create notification for board owner
+    notif_svc.create_notification(
+        db, board.owner_id, "board_update",
+        f"Access request for {board_id}",
+        f"{user.username} requests to add '{body.username}' as {body.role} to board '{board_id}'",
+        f"/board/{board_id}",
+    )
+    return {"status": "request_sent"}
+
+
+@router.post("/{board_id}/star")
+def toggle_star(
+    board_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    board = board_svc.get_board_by_slug(db, _sanitize_id(board_id))
+    if not board:
+        raise HTTPException(status_code=404, detail="Board not found")
+    board.is_starred = not board.is_starred
+    db.commit()
+    return {"is_starred": board.is_starred}
+
+
 @router.delete("/{board_id}/share/{username}")
 def unshare_board(
     board_id: str,

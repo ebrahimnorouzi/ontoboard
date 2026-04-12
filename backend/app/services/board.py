@@ -407,11 +407,27 @@ def _odk_seed_sync(board_id: str, board_dir: Path, versioning_strategy: str = "d
 
 def board_dir_info(board_id: str) -> dict:
     """Return filesystem info about a board."""
+    from datetime import datetime
+
     board_dir = DATA_DIR / board_id
-    return {
+    info = {
         "odk_seeded": (board_dir / "src" / "ontology").is_dir(),
         "git_initialized": (board_dir / ".git").is_dir(),
+        "last_modified": None,
+        "last_modified_by": None,
     }
+    # Try to get last modification from git log
+    try:
+        repo = DulwichRepo(str(board_dir))
+        walker = repo.get_walker(max_entries=1)
+        for entry in walker:
+            commit = entry.commit
+            info["last_modified"] = datetime.fromtimestamp(commit.commit_time).isoformat()
+            info["last_modified_by"] = commit.author.decode("utf-8", errors="replace").split("<")[0].strip()
+            break
+    except Exception:
+        pass
+    return info
 
 
 def register_seed_task(board_id: str, task: asyncio.Task) -> None:

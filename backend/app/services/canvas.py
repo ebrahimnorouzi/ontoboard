@@ -17,8 +17,8 @@ from app.schemas.canvas import CanvasClass, CanvasProperty, CanvasIndividual, Ca
 def owl_to_canvas(g: Graph) -> CanvasState:
     """Convert an rdflib Graph into a CanvasState with auto-layout."""
     classes = _extract_classes(g)
-    properties = _extract_properties(g, classes)
     individuals = _extract_individuals(g, classes)
+    properties = _extract_properties(g, classes, individuals)
 
     # Auto-layout classes in a grid
     _auto_layout(classes)
@@ -42,9 +42,11 @@ def _extract_classes(g: Graph) -> list[CanvasClass]:
     return classes
 
 
-def _extract_properties(g: Graph, classes: list[CanvasClass]) -> list[CanvasProperty]:
-    """Extract object properties with domain/range as connections."""
+def _extract_properties(g: Graph, classes: list[CanvasClass], individuals: list[CanvasIndividual] | None = None) -> list[CanvasProperty]:
+    """Extract object/data properties and rdf:type edges as connections."""
     class_iris = {c.iri for c in classes}
+    ind_iris = {i.iri for i in (individuals or [])}
+    known_iris = class_iris | ind_iris
     properties = []
     seen = set()
 
@@ -59,11 +61,36 @@ def _extract_properties(g: Graph, classes: list[CanvasClass]) -> list[CanvasProp
         label = _get_label(g, s) or _local_name(iri)
         domain = _get_single_object(g, s, RDFS.domain)
         range_ = _get_single_object(g, s, RDFS.range)
-        if domain and range_ and domain in class_iris and range_ in class_iris:
+        if domain and range_ and (domain in known_iris or range_ in known_iris):
             properties.append(CanvasProperty(
                 id=iri, iri=iri, label=label,
                 source_id=domain, target_id=range_,
                 property_type="object",
+            ))
+
+    # Data properties
+    for s in g.subjects(RDF.type, OWL.DatatypeProperty):
+        if isinstance(s, BNode):
+            continue
+        iri = str(s)
+        if iri in seen:
+            continue
+        seen.add(iri)
+        label = _get_label(g, s) or _local_name(iri)
+        domain = _get_single_object(g, s, RDFS.domain)
+        range_ = _get_single_object(g, s, RDFS.range)
+        source = domain if domain and domain in known_iris else None
+        if source:
+            properties.append(CanvasProperty(
+                id=iri, iri=iri, label=label,
+                source_id=source, target_id=range_ or "",
+                property_type="data",
+            ))
+        else:
+            properties.append(CanvasProperty(
+                id=iri, iri=iri, label=label,
+                source_id=domain or "", target_id=range_ or "",
+                property_type="data",
             ))
 
     # Also extract subClassOf relationships as connections
@@ -80,6 +107,22 @@ def _extract_properties(g: Graph, classes: list[CanvasClass]) -> list[CanvasProp
                     source_id=s_iri, target_id=o_iri,
                     property_type="annotation",
                 ))
+
+    # Extract rdf:type relationships between individuals and classes
+    for ind_iri in ind_iris:
+        for _, _, o in g.triples((URIRef(ind_iri), RDF.type, None)):
+            o_str = str(o)
+            if o_str == str(OWL.NamedIndividual):
+                continue
+            if o_str in class_iris:
+                edge_id = f"rdfType_{ind_iri}_{o_str}"
+                if edge_id not in seen:
+                    seen.add(edge_id)
+                    properties.append(CanvasProperty(
+                        id=edge_id, iri="rdf:type", label="rdf:type",
+                        source_id=ind_iri, target_id=o_str,
+                        property_type="annotation",
+                    ))
 
     return properties
 

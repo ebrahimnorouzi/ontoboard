@@ -83,10 +83,23 @@ async def run_report(
     report_path = board_dir / "report.tsv"
     parsed = ont_svc.parse_robot_report_tsv(report_path)
 
+    # Build a detailed summary that includes stdout/stderr on failure
+    summary = parsed["summary"]
+    if result.exit_code != 0:
+        details = []
+        if result.stderr:
+            details.append(f"stderr: {result.stderr[:500]}")
+        if result.stdout:
+            details.append(f"stdout: {result.stdout[:500]}")
+        if details:
+            summary = f"{summary} | {' | '.join(details)}"
+        if not summary:
+            summary = f"ROBOT failed with exit code {result.exit_code}"
+
     return RobotReportResult(
         exit_code=result.exit_code,
         violations=[dict_to_violation(v) for v in parsed["violations"]],
-        summary=parsed["summary"],
+        summary=summary,
     )
 
 

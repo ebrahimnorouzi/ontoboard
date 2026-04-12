@@ -41,6 +41,15 @@ async def run_reasoning(board_dir: Path, reasoner: str = "ELK") -> dict:
         return _error_result(reasoner, f"Docker/ODK unavailable: {result.stderr}",
                              duration=duration, docker_missing=True)
 
+    # Combine stdout + stderr for complete logs
+    combined_logs = ""
+    if result.stdout:
+        combined_logs += "=== STDOUT ===\n" + result.stdout[-2000:] + "\n"
+    if result.stderr:
+        combined_logs += "=== STDERR ===\n" + result.stderr[-2000:]
+    if not combined_logs.strip():
+        combined_logs = "(no output)"
+
     if not result.success:
         # Parse reasoning errors from stderr
         errors = _parse_reasoning_errors(result.stderr, board_dir)
@@ -68,7 +77,7 @@ async def run_reasoning(board_dir: Path, reasoner: str = "ELK") -> dict:
             "inferences": [],
             "errors": errors,
             "fixes": fixes,
-            "logs": result.stderr[-2000:],
+            "logs": combined_logs,
             "explanation": explanation,
             "duration_seconds": duration,
         }
@@ -88,7 +97,7 @@ async def run_reasoning(board_dir: Path, reasoner: str = "ELK") -> dict:
         "inferences": inferences,
         "errors": [],
         "fixes": [],
-        "logs": result.stdout[-1000:] if result.stdout else "Reasoning completed successfully.",
+        "logs": combined_logs,
         "duration_seconds": duration,
     }
     _reasoning_cache[board_id] = output

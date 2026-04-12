@@ -179,7 +179,7 @@ async def stream_odk_seed(board_dir: Path, board_id: str) -> AsyncGenerator[str,
     loop = asyncio.get_event_loop()
 
     if _docker_available():
-        cmd = f"seed -n {board_id} -t my-ont -d 'Ontology {board_id}' -u https://example.org/{board_id}"
+        cmd = f"/tools/odk.py seed --gitname 'OntoBoard' --gitemail 'ontoboard@local' -n {board_id} -t {board_id} -d 'Ontology {board_id}' -u https://example.org/{board_id}"
         for line in await loop.run_in_executor(None, lambda: list(_run_container_streaming(board_dir, cmd, "/work"))):
             yield line
     else:

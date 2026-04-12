@@ -39,10 +39,35 @@
 .patternCard:hover { background: var(--bg-card-hover); }
 .patternSelected { border-left-color: var(--accent); background: var(--accent-glow); }
 
-.patternHeader { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.15rem; }
-.patternName { font-size: 0.78rem; font-weight: 600; }
-.patternMeta { font-size: 0.6rem; color: var(--text-muted); }
+.dragHint {
+  padding: 0.3rem 0.8rem;
+  font-size: 0.62rem;
+  color: var(--text-muted);
+  font-style: italic;
+  flex-shrink: 0;
+}
+.batchUpload {
+  display: block;
+  padding: 0.35rem 0.8rem;
+  font-size: 0.62rem;
+  color: var(--accent);
+  cursor: pointer;
+  border-bottom: 1px solid var(--border);
+  border-top: 1px dashed var(--border);
+  text-align: center;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+.batchUpload:hover { background: var(--accent-glow); }
+.patternHeader { display: flex; align-items: center; gap: 0.3rem; margin-bottom: 0.15rem; }
+.patternColorDot {
+  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+}
+.patternName { font-size: 0.78rem; font-weight: 600; flex: 1; }
+.patternMeta { font-size: 0.6rem; color: var(--text-muted); margin-left: auto; }
 .patternDesc { font-size: 0.68rem; color: var(--text-secondary); line-height: 1.4; }
+.patternCard[draggable="true"] { cursor: grab; }
+.patternCard[draggable="true"]:active { cursor: grabbing; }
 
 .applyBtn {
   position: absolute; top: 0.5rem; right: 0.5rem;
@@ -59,7 +84,9 @@
   border-top: 1px solid var(--border); padding: 0.75rem; flex-shrink: 0;
   max-height: 40%; overflow-y: auto;
 }
-.previewTitle { font-size: 0.82rem; font-weight: 600; margin: 0 0 0.25rem; }
+.previewHeader { display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.25rem; }
+.previewColorBar { width: 4px; height: 16px; border-radius: 2px; flex-shrink: 0; }
+.previewTitle { font-size: 0.82rem; font-weight: 600; margin: 0; }
 .previewDesc { font-size: 0.72rem; color: var(--text-secondary); margin-bottom: 0.5rem; }
 .previewSection { margin-bottom: 0.4rem; font-size: 0.72rem; }
 .previewSection strong { color: var(--text-muted); font-size: 0.65rem; text-transform: uppercase; display: block; margin-bottom: 0.2rem; }

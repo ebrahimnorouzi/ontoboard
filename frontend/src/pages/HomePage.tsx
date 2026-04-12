@@ -28,8 +28,8 @@ export default function HomePage() {
             <span className={styles.gradient}>Editing on an Infinite Canvas</span>
           </h1>
           <p className={styles.subtitle}>
-            Visual modeling with OWL, ROBOT templates, and the Ontology
-            Development Kit — all in one place.
+            Visual ontology modeling with OWL, ROBOT templates, and the Ontology
+            Development Kit — powered by Cytoscape.js on an infinite canvas.
           </p>
 
           {/* Quick-start input */}
@@ -58,13 +58,13 @@ export default function HomePage() {
             icon="&#9632;"
             color="var(--accent)"
             title="Visual OWL Modeling"
-            desc="Drag squares for classes, draw arrows for properties. Manchester Syntax editor for complex axioms."
+            desc="Cytoscape.js-powered canvas with classes, individuals, literals. Draw edges for properties, SubClassOf, rdf:type. Manchester Syntax axiom editor."
           />
           <FeatureCard
             icon="&#8644;"
             color="var(--success)"
             title="Bi-directional Sync"
-            desc="Load existing .owl files onto the canvas. Save canvas changes back to ODK-compatible OWL."
+            desc="Import .owl, .ttl, .obo, .jsonld files or GitHub repos. Export to multiple formats. Full round-trip between visual canvas and OWL."
           />
           <FeatureCard
             icon="&#9881;"
@@ -78,14 +78,32 @@ export default function HomePage() {
             title="CSV to Knowledge Graph"
             desc="Upload CSVs, map columns to ontology classes, generate ROBOT templates and Turtle KGs."
           />
+          <FeatureCard
+            icon="&#9733;"
+            color="var(--accent-light)"
+            title="Real-time Collaboration"
+            desc="Work together with live cursors, comments with @mentions, task boards, and invite links. See who's editing what in real-time."
+          />
+          <FeatureCard
+            icon="&#9670;"
+            color="#8b5cf6"
+            title="Ontology Design Patterns"
+            desc="Browse and apply ODPs from a built-in library. Drag-and-drop patterns onto the canvas. Each pattern gets a unique color."
+          />
         </div>
       </section>
 
       {/* Footer */}
       <footer className={styles.footer}>
-        <span>Built with ODK, Tldraw, FastAPI</span>
+        <span>OntoBoard — Collaborative Ontology Engineering</span>
         <span className={styles.dot}>&#183;</span>
-        <span>ISE / FIZ Karlsruhe</span>
+        <span>Built with ODK, Cytoscape.js, FastAPI</span>
+        <span className={styles.dot}>&#183;</span>
+        <a href="https://www.fiz-karlsruhe.de/en/forschung/information-service-engineering" target="_blank" rel="noreferrer" className={styles.footerLink}>ISE / FIZ Karlsruhe</a>
+        <span className={styles.dot}>&#183;</span>
+        <span>Developed by <a href="https://ebrahimnorouzi.github.io/" target="_blank" rel="noreferrer" className={styles.footerLink}>Ebrahim Norouzi</a></span>
+        <span className={styles.dot}>&#183;</span>
+        <a href="mailto:ebrahim.norouzi@fiz-karlsruhe.de" className={styles.footerLink}>Contact</a>
       </footer>
     </div>
   );

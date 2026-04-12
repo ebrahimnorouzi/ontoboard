@@ -176,3 +176,11 @@
 .dot {
   margin: 0 0.5rem;
 }
+
+.footerLink {
+  color: var(--accent-light);
+  text-decoration: none;
+}
+.footerLink:hover {
+  text-decoration: underline;
+}

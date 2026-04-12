@@ -154,6 +154,17 @@ async def robot_convert_format(board_id: str, body: ConvertRequest,
     return result
 
 
+@router.get("/{board_id}/download/{filename}")
+async def robot_download_file(board_id: str, filename: str,
+                               db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    """Serve a converted file from the board's src/ontology/ directory."""
+    board_dir = DATA_DIR / board_id
+    file_path = board_dir / "src" / "ontology" / filename
+    if not file_path.exists() or not file_path.is_file():
+        raise HTTPException(status_code=404, detail=f"File not found: {filename}")
+    return FileResponse(path=str(file_path), filename=filename)
+
+
 @router.post("/{board_id}/rename-cmd", response_model=RobotCommandResult)
 async def robot_rename_cmd(board_id: str, body: RenameCommandRequest,
                             db: Session = Depends(get_db), user: User = Depends(get_current_user)):

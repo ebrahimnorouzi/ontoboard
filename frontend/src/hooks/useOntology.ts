@@ -8,6 +8,8 @@ interface OntologyMetadata {
   imports: string[];
   prefixes: PrefixEntry[];
   languages: string[];
+  creators?: string[];
+  contributors?: string[];
 }
 interface OntologyStats {
   classes: number;
@@ -46,6 +48,7 @@ export function useOntologyDashboard(boardId: string | undefined) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [reportLoading, setReportLoading] = useState(false);
+  const [reportError, setReportError] = useState("");
 
   useEffect(() => {
     if (!boardId) return;
@@ -59,17 +62,29 @@ export function useOntologyDashboard(boardId: string | undefined) {
   const runReport = useCallback(async () => {
     if (!boardId) return;
     setReportLoading(true);
+    setReportError("");
     try {
       const report = await apiJson<RobotReport>(`/api/ontology/${boardId}/report`, { method: "POST" });
       setData((prev) => prev ? { ...prev, report } : prev);
+      // If exit code is non-zero, show that as an error too
+      if (report.exit_code !== 0 && !report.summary) {
+        setReportError(`ROBOT exited with code ${report.exit_code}. Docker may not be running or the odkfull image is missing.`);
+      }
     } catch (e: any) {
-      setError(e.message);
+      const msg = e.message || "Failed to run ROBOT report";
+      setReportError(msg);
+      // Provide more details about common failures
+      if (msg.includes("404")) {
+        setReportError(`${msg} — No OWL file found in the board. Save the ontology first.`);
+      } else if (msg.includes("500") || msg.includes("fetch")) {
+        setReportError(`${msg} — Server error. Check that Docker is running and the odkfull image is available (run: docker pull obolibrary/odkfull).`);
+      }
     } finally {
       setReportLoading(false);
     }
   }, [boardId]);
 
-  return { data, loading, error, runReport, reportLoading };
+  return { data, setData, loading, error, runReport, reportLoading, reportError };
 }
 
 export type { OntologyMetadata, OntologyStats, RobotReport, ReportViolation, DashboardData, PrefixEntry };

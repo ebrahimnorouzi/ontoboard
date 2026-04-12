@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.config import DATA_DIR
 from app.deps import get_db, get_current_user, get_current_user_optional
 from app.models.user import User
-from app.schemas.canvas import CanvasState, CanvasStickyNote
+from app.schemas.canvas import CanvasState, CanvasStickyNote, CanvasFrame
 from app.services import board as board_svc
 from app.services import odk as odk_svc
 from app.services import canvas as canvas_svc
@@ -37,7 +37,7 @@ def load_owl(
 
     state = canvas_svc.owl_to_canvas(g)
 
-    # Merge sticky notes from sidecar file (not part of OWL)
+    # Merge sticky notes and frames from sidecar file (not part of OWL)
     meta_file = board_dir / "canvas_meta.json"
     if meta_file.exists():
         try:
@@ -45,6 +45,10 @@ def load_owl(
             state.sticky_notes = [
                 CanvasStickyNote(**n)
                 for n in meta.get("sticky_notes", [])
+            ]
+            state.frames = [
+                CanvasFrame(**f)
+                for f in meta.get("frames", [])
             ]
         except Exception:
             pass
@@ -94,30 +98,35 @@ def save_owl(
     # Also write to the -edit.owl file so ROBOT/ODK commands find it
     edit_owl.write_text(owl_xml)
 
-    # Persist sticky notes in a sidecar JSON (not part of OWL)
+    # Persist sticky notes and frames in a sidecar JSON (not part of OWL)
+    meta_file = board_dir / "canvas_meta.json"
+    meta = {}
+    if meta_file.exists():
+        try:
+            meta = json.loads(meta_file.read_text())
+        except Exception:
+            pass
+
+    # Update sticky notes
     if state.sticky_notes:
-        meta_file = board_dir / "canvas_meta.json"
-        meta = {}
-        if meta_file.exists():
-            try:
-                meta = json.loads(meta_file.read_text())
-            except Exception:
-                pass
         meta["sticky_notes"] = [n.model_dump() for n in state.sticky_notes]
-        meta_file.write_text(json.dumps(meta, indent=2))
     else:
-        # Clean up if no sticky notes
-        meta_file = board_dir / "canvas_meta.json"
-        if meta_file.exists():
-            try:
-                meta = json.loads(meta_file.read_text())
-                meta.pop("sticky_notes", None)
-                if meta:
-                    meta_file.write_text(json.dumps(meta, indent=2))
-                else:
-                    meta_file.unlink()
-            except Exception:
-                pass
+        meta.pop("sticky_notes", None)
+
+    # Update frames
+    if state.frames:
+        meta["frames"] = [f.model_dump() for f in state.frames]
+    else:
+        meta.pop("frames", None)
+
+    # Write or remove sidecar file
+    if meta:
+        meta_file.write_text(json.dumps(meta, indent=2))
+    elif meta_file.exists():
+        try:
+            meta_file.unlink()
+        except Exception:
+            pass
 
     username = user.display_name or user.username if user else "anonymous"
     board_svc.git_commit(board_dir, f"Update ontology by {username}")

@@ -38,6 +38,26 @@ function formatDate(iso?: string): string {
 export default function ContextMenu({ data, onAction, onClose }: Props) {
   const ref = useRef<HTMLDivElement>(null);
 
+  // Adjust position so menu stays within viewport
+  useEffect(() => {
+    if (!ref.current) return;
+    const el = ref.current;
+    const rect = el.getBoundingClientRect();
+    const parent = el.offsetParent as HTMLElement | null;
+    const parentRect = parent?.getBoundingClientRect() || { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
+
+    // Check if menu overflows bottom
+    if (rect.bottom > parentRect.top + parentRect.height) {
+      const newTop = Math.max(0, data.y - rect.height);
+      el.style.top = `${newTop}px`;
+    }
+    // Check if menu overflows right
+    if (rect.right > parentRect.left + parentRect.width) {
+      const newLeft = Math.max(0, data.x - rect.width);
+      el.style.left = `${newLeft}px`;
+    }
+  }, [data.x, data.y]);
+
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) onClose();
@@ -71,8 +91,11 @@ export default function ContextMenu({ data, onAction, onClose }: Props) {
           {item("Individual", "add-individual", "\u25C7")}
           {item("Literal", "add-literal", "\u25CB")}
           {item("Sticky Note", "add-sticky", "\u25A0")}
+          {item("Frame", "add-frame", "\u25A1")}
           <div className={styles.divider} />
           {item("Paste", "paste", "\u2398")}
+          <div className={styles.divider} />
+          {item("Add Board Comment...", "board-comment", "\uD83D\uDCAC")}
         </>
       )}
       {data.target === "node" && (
@@ -129,6 +152,7 @@ export default function ContextMenu({ data, onAction, onClose }: Props) {
           {item("Open IRI in Browser", "open-iri", "\u2197")}
           {item("Duplicate", "duplicate", "\u2750")}
           {item("Copy IRI", "copy-iri", "\u2398")}
+          {item("Add Comment...", "comment", "\uD83D\uDCAC")}
           <div className={styles.divider} />
           <button className={`${styles.item} ${styles.danger}`} onClick={() => onAction("delete")}>
             <span className={styles.icon}>{"\u2716"}</span> Delete

@@ -13,9 +13,21 @@ const MAPPING_TYPES = [
 
 const IRI_STRATEGIES = [
   { value: "sequential", label: "Sequential (ind_0, ind_1, ...)" },
+  { value: "timestamp", label: "Timestamp (EX_1713000000001)" },
   { value: "uuid", label: "UUID (random unique)" },
   { value: "hash", label: "Hash (content-based)" },
   { value: "pattern", label: "Custom pattern" },
+];
+
+const SAMPLE_ROBOT_CSV =
+  "ID,Label,SubClass Of,Definition\n" +
+  "EX:0000001,Example Class,owl:Thing,An example class definition\n" +
+  "EX:0000002,Another Class,EX:0000001,Another example class\n";
+
+const IRI_ITERATORS = [
+  { value: "timestamp", label: "Timestamp" },
+  { value: "uuid", label: "UUID" },
+  { value: "sequential", label: "Sequential" },
 ];
 
 export default function CsvImportWizard({ boardId }: Props) {
@@ -30,21 +42,25 @@ export default function CsvImportWizard({ boardId }: Props) {
   const [iriStrategy, setIriStrategy] = useState("sequential");
   const [iriPattern, setIriPattern] = useState("");
   const [baseIri, setBaseIri] = useState("http://example.org/instance");
+  const [ontologyPrefix, setOntologyPrefix] = useState("EX");
+  const [iriIterator, setIriIterator] = useState("timestamp");
 
   useEffect(() => { fetchFiles(); }, [fetchFiles]);
+
+  const prefixBaseIri = `http://example.org/${ontologyPrefix}_`;
 
   // Auto-init mappings when analysis arrives
   useEffect(() => {
     if (analysis) {
       setMappings(analysis.columns.map((c) => ({
         column: c.name,
-        target_iri: `http://example.org/${c.name.replace(/\s+/g, '_')}`,
+        target_iri: `${prefixBaseIri}${c.name.replace(/\s+/g, '_')}`,
         mapping_type: "data_property",
         iri_role: "value",
       })));
       setStep(1);
     }
-  }, [analysis]);
+  }, [analysis, prefixBaseIri]);
 
   const handleUpload = () => fileRef.current?.click();
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -87,6 +103,55 @@ export default function CsvImportWizard({ boardId }: Props) {
       {/* Step 0: Upload */}
       {step === 0 && (
         <div className={styles.section}>
+          <div style={{ marginBottom: 12, padding: "10px 14px", background: "#f4f6fb", borderRadius: 6, fontSize: 13 }}>
+            <strong>CSV columns should follow ROBOT template conventions:</strong>
+            <table style={{ marginTop: 6, borderCollapse: "collapse", width: "100%", fontSize: 12 }}>
+              <thead>
+                <tr style={{ borderBottom: "1px solid #ccc", textAlign: "left" }}>
+                  <th style={{ padding: "4px 8px" }}>ID</th>
+                  <th style={{ padding: "4px 8px" }}>Label</th>
+                  <th style={{ padding: "4px 8px" }}>SubClass Of</th>
+                  <th style={{ padding: "4px 8px" }}>Definition</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr style={{ color: "#666" }}>
+                  <td style={{ padding: "4px 8px" }}>EX:0000001</td>
+                  <td style={{ padding: "4px 8px" }}>Example Class</td>
+                  <td style={{ padding: "4px 8px" }}>owl:Thing</td>
+                  <td style={{ padding: "4px 8px" }}>An example class</td>
+                </tr>
+              </tbody>
+            </table>
+            <div style={{ marginTop: 8, display: "flex", gap: 8 }}>
+              <button
+                className={styles.nextBtn}
+                style={{ fontSize: 12, padding: "4px 10px" }}
+                onClick={() => {
+                  const blob = new Blob([SAMPLE_ROBOT_CSV], { type: "text/csv" });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = "robot_template_sample.csv";
+                  a.click();
+                  URL.revokeObjectURL(url);
+                }}
+              >
+                Download Sample Template
+              </button>
+              <button
+                className={styles.nextBtn}
+                style={{ fontSize: 12, padding: "4px 10px" }}
+                onClick={() => {
+                  const blob = new Blob([SAMPLE_ROBOT_CSV], { type: "text/csv" });
+                  const file = new File([blob], "default_template.csv", { type: "text/csv" });
+                  uploadFile(file);
+                }}
+              >
+                Use Default Template
+              </button>
+            </div>
+          </div>
           <input ref={fileRef} type="file" accept=".csv,.tsv,.txt" onChange={handleFile} hidden />
           <button className={styles.uploadBtn} onClick={handleUpload} disabled={uploading}>
             {uploading ? "Uploading..." : "Upload CSV / TSV"}
@@ -108,6 +173,55 @@ export default function CsvImportWizard({ boardId }: Props) {
           <div className={styles.sectionHeader}>
             <h4 className={styles.sectionTitle}>Map Columns ({analysis.row_count} rows)</h4>
           </div>
+
+          {/* Prefix and IRI iterator controls */}
+          <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 12, flexWrap: "wrap" }}>
+            <label style={{ fontSize: 13 }}>
+              Ontology Prefix:
+              <input
+                className={styles.iriInput}
+                style={{ marginLeft: 6, width: 100 }}
+                value={ontologyPrefix}
+                onChange={(e) => {
+                  const prefix = e.target.value;
+                  setOntologyPrefix(prefix);
+                  setMappings((prev) =>
+                    prev.map((m) => ({
+                      ...m,
+                      target_iri: `http://example.org/${prefix}_${m.column.replace(/\s+/g, "_")}`,
+                    }))
+                  );
+                }}
+                placeholder="e.g. EX"
+              />
+            </label>
+            <label style={{ fontSize: 13 }}>
+              IRI Iterator:
+              <select
+                className={styles.select}
+                style={{ marginLeft: 6 }}
+                value={iriIterator}
+                onChange={(e) => {
+                  setIriIterator(e.target.value);
+                  setIriStrategy(e.target.value);
+                }}
+              >
+                {IRI_ITERATORS.map((it) => (
+                  <option key={it.value} value={it.value}>{it.label}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <div style={{ fontSize: 12, color: "#666", marginBottom: 10, padding: "6px 10px", background: "#f9f9fb", borderRadius: 4 }}>
+            Sample IRI: <code>
+              {iriIterator === "timestamp"
+                ? `http://example.org/instance/${ontologyPrefix}_${Date.now()}`
+                : iriIterator === "uuid"
+                ? `http://example.org/instance/${ontologyPrefix}_${crypto.randomUUID?.() || "a1b2c3d4-..."}`
+                : `http://example.org/instance/${ontologyPrefix}_0`}
+            </code>
+          </div>
+
           <div className={styles.mappingList}>
             {mappings.map((m, i) => (
               <div key={m.column} className={styles.mappingRow}>
@@ -170,9 +284,29 @@ export default function CsvImportWizard({ boardId }: Props) {
               </div>
             ))}
           </div>
-          <button className={`${styles.nextBtn} ${styles.buildBtn}`} onClick={handleBuild} disabled={building}>
-            {building ? "Building..." : "Build Knowledge Graph"}
-          </button>
+          <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+            <button
+              className={styles.nextBtn}
+              onClick={() => {
+                const lines = preview.map(
+                  (t) => `${t.subject}\t${t.predicate}\t${t.object}`
+                );
+                const content = "Subject\tPredicate\tObject\n" + lines.join("\n");
+                const blob = new Blob([content], { type: "text/tab-separated-values" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = "preview_triples.tsv";
+                a.click();
+                URL.revokeObjectURL(url);
+              }}
+            >
+              Download Preview
+            </button>
+            <button className={`${styles.nextBtn} ${styles.buildBtn}`} onClick={handleBuild} disabled={building}>
+              {building ? "Building..." : "Build Knowledge Graph"}
+            </button>
+          </div>
         </div>
       )}
 

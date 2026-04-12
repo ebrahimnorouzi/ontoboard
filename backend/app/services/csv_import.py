@@ -3,6 +3,7 @@
 import csv
 import hashlib
 import re
+import time
 import uuid
 from pathlib import Path
 
@@ -72,6 +73,9 @@ def generate_iri(strategy: str, row: dict, index: int, base_iri: str, pattern: s
     """Generate a unique IRI for an instance."""
     if strategy == "uuid":
         return f"{base_iri}/{uuid.uuid4()}"
+    elif strategy == "timestamp":
+        ts = int(time.time() * 1000) + index
+        return f"{base_iri}/{ts}"
     elif strategy == "hash":
         content = "|".join(str(v) for v in row.values())
         h = hashlib.sha256(content.encode()).hexdigest()[:12]

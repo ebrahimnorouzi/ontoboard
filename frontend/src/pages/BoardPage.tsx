@@ -30,6 +30,7 @@ import ShareDialog from "../components/share/ShareDialog";
 import PatternLibrary from "../components/patterns/PatternLibrary";
 import IdRangeManager from "../components/idranges/IdRangeManager";
 import { useOntologyStore } from "../store/ontologyStore";
+import ExportOntologyDialog from "../components/export/ExportOntologyDialog";
 
 type Tab = "ontology" | "axioms" | "reasoning" | "odk" | "sparql" | "csv" | "tasks" | "publish" | "docs" | "files" | "patterns" | "ids" | "console";
 
@@ -42,11 +43,18 @@ export default function BoardPage() {
   const [sideOpen, setSideOpen] = useState(true);
   const [leftOpen, setLeftOpen] = useState(true);
   const [activeTab, setActiveTab] = useState<Tab>("ontology");
+  const [leftWidth, setLeftWidth] = useState(260);
+  const [rightWidth, setRightWidth] = useState(340);
   const [consoleLog, setConsoleLog] = useState<string[]>([]);
   const [building, setBuilding] = useState(false);
+  const [buildTarget, setBuildTarget] = useState("all");
+  const [buildExitCode, setBuildExitCode] = useState<number | null>(null);
+  const consoleEndRef = useRef<HTMLDivElement>(null);
   const [shareOpen, setShareOpen] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirmDeleteBoard, setConfirmDeleteBoard] = useState(false);
+  const [showExportOntology, setShowExportOntology] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const selectedEntity = useOntologyStore((s) => s.selectedEntity);
@@ -92,6 +100,8 @@ export default function BoardPage() {
     try {
       const res = await api(`/api/boards/${boardId}`);
       if (res.ok) {
+        const boardData = await res.json().catch(() => ({}));
+        if (boardData.user_role) setUserRole(boardData.user_role);
         setStatus("ready");
       } else if (res.status === 404) {
         setStatus("provisioning");
@@ -144,14 +154,21 @@ export default function BoardPage() {
   };
 
   // ── Build / ODK ────────────────────────────────────────────
-  const handleBuild = async () => {
+  const handleBuild = async (target?: string) => {
+    const t = target || buildTarget;
     setBuilding(true);
+    setBuildExitCode(null);
     setActiveTab("console");
-    setConsoleLog(["$ make all\n"]);
+    setConsoleLog([`$ make ${t}\n`]);
     try {
-      const res = await api(`/api/odk/${boardId}/build`, { method: "POST" });
+      const res = await api(`/api/odk/${boardId}/build`, {
+        method: "POST",
+        body: JSON.stringify({ target: t }),
+        headers: { "Content-Type": "application/json" },
+      });
       if (!res.ok || !res.body) {
         setConsoleLog((p) => [...p, `[ERROR] Build failed (${res.status})\n`]);
+        setBuildExitCode(res.status);
         setBuilding(false);
         return;
       }
@@ -161,15 +178,27 @@ export default function BoardPage() {
         const { done, value } = await reader.read();
         if (done) break;
         for (const line of decoder.decode(value).split("\n\n").filter(Boolean)) {
-          setConsoleLog((p) => [...p, line.replace(/^data: /, "")]);
+          const text = line.replace(/^data: /, "");
+          // Parse exit code from [EXIT N] marker
+          const exitMatch = text.match(/\[EXIT (\d+)\]/);
+          if (exitMatch) {
+            setBuildExitCode(parseInt(exitMatch[1], 10));
+          }
+          setConsoleLog((p) => [...p, text]);
         }
       }
     } catch {
       setConsoleLog((p) => [...p, "[ERROR] Connection lost\n"]);
+      setBuildExitCode(-1);
     } finally {
       setBuilding(false);
     }
   };
+
+  // Auto-scroll console to bottom
+  useEffect(() => {
+    consoleEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [consoleLog]);
 
   // ── Export ─────────────────────────────────────────────────
   const handleExport = async (format: string) => {
@@ -203,7 +232,7 @@ export default function BoardPage() {
         const data = await res.json();
         if (data.output_file) {
           const fileName = data.output_file.split("/").pop() || `${boardId}.${format}`;
-          const dlRes = await api(`/api/odk-mediator/${boardId}/release/download/${fileName}`);
+          const dlRes = await api(`/api/robot/${boardId}/download/${fileName}`);
           if (dlRes.ok) {
             const blob = await dlRes.blob();
             const url = URL.createObjectURL(blob);
@@ -215,21 +244,7 @@ export default function BoardPage() {
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
           } else {
-            // Fallback: try direct download from output_file path
-            const fb = await api(`/api/odk-setup/${boardId}/file/${data.output_file}`);
-            if (fb.ok) {
-              const blob = await fb.blob();
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement("a");
-              a.href = url;
-              a.download = fileName;
-              document.body.appendChild(a);
-              a.click();
-              document.body.removeChild(a);
-              URL.revokeObjectURL(url);
-            } else {
-              setError("Download failed — file not found after conversion");
-            }
+            setError("Download failed — file not found after conversion");
           }
         }
       } else {
@@ -313,13 +328,7 @@ export default function BoardPage() {
                     Save
                   </button>
                   <div className={styles.menuDivider} />
-                  <button className={styles.menuItem} onClick={() => handleExport("ttl")}>Export as Turtle (.ttl)</button>
-                  <button className={styles.menuItem} onClick={() => handleExport("obo")}>Export as OBO (.obo)</button>
-                  <button className={styles.menuItem} onClick={() => handleExport("jsonld")}>Export as JSON-LD (.jsonld)</button>
-                  <button className={styles.menuItem} onClick={() => handleExport("ofn")}>Export as OWL Functional (.ofn)</button>
-                  <button className={styles.menuItem} onClick={() => handleExport("nt")}>Export as N-Triples (.nt)</button>
-                  <div className={styles.menuDivider} />
-                  <button className={styles.menuItem} onClick={() => handleExport("zip")}>Export ODP Repository (ZIP)</button>
+                  <button className={styles.menuItem} onClick={() => { setShowExportOntology(true); setMenuOpen(false); }}>Export Ontology...</button>
                 </div>
                 <div className={styles.menuSection}>
                   <div className={styles.menuLabel}>Edit</div>
@@ -384,7 +393,7 @@ export default function BoardPage() {
 
         <div className={styles.toolbarActions}>
           <button className={styles.toolBtn} onClick={() => setShareOpen(true)}>Share</button>
-          <button className={`${styles.toolBtn} ${styles.buildBtn}`} onClick={handleBuild} disabled={building}>
+          <button className={`${styles.toolBtn} ${styles.buildBtn}`} onClick={() => handleBuild()} disabled={building}>
             {building ? "Building..." : "Build"}
           </button>
           <CollabStatus connected={connected} users={collabUsers}
@@ -401,29 +410,77 @@ export default function BoardPage() {
       <div className={styles.main}>
         {/* Left Panel (Tree Browser) */}
         {leftOpen && boardId && (
-          <TreeBrowser boardId={boardId} />
+          <div style={{ width: leftWidth, flexShrink: 0 }}>
+            <TreeBrowser boardId={boardId} />
+          </div>
         )}
 
-        {/* Left panel toggle arrow */}
-        <button className={styles.panelToggle} onClick={() => setLeftOpen(!leftOpen)}
-                title={leftOpen ? "Hide left panel" : "Show left panel"}>
-          {leftOpen ? "\u25C0" : "\u25B6"}
-        </button>
+        {/* Left panel resize handle + toggle */}
+        <div
+          className={styles.panelResizeHandle}
+          onMouseDown={(e) => {
+            e.preventDefault();
+            const startX = e.clientX;
+            const startW = leftWidth;
+            const onMove = (me: MouseEvent) => {
+              const newW = Math.max(180, Math.min(500, startW + me.clientX - startX));
+              setLeftWidth(newW);
+            };
+            const onUp = () => {
+              document.removeEventListener("mousemove", onMove);
+              document.removeEventListener("mouseup", onUp);
+              document.body.style.cursor = "";
+              document.body.style.userSelect = "";
+            };
+            document.body.style.cursor = "col-resize";
+            document.body.style.userSelect = "none";
+            document.addEventListener("mousemove", onMove);
+            document.addEventListener("mouseup", onUp);
+          }}
+        >
+          <button className={styles.panelToggle} onClick={() => setLeftOpen(!leftOpen)}
+                  title={leftOpen ? "Hide left panel" : "Show left panel"}>
+            {leftOpen ? "\u25C0" : "\u25B6"}
+          </button>
+        </div>
 
         {/* Canvas */}
         <div className={styles.canvas}>
           {boardId && <OntologyCanvas boardId={boardId} />}
         </div>
 
-        {/* Right panel toggle arrow */}
-        <button className={styles.panelToggle} onClick={() => setSideOpen(!sideOpen)}
-                title={sideOpen ? "Hide right panel" : "Show right panel"}>
-          {sideOpen ? "\u25B6" : "\u25C0"}
-        </button>
+        {/* Right panel resize handle + toggle */}
+        <div
+          className={styles.panelResizeHandle}
+          onMouseDown={(e) => {
+            e.preventDefault();
+            const startX = e.clientX;
+            const startW = rightWidth;
+            const onMove = (me: MouseEvent) => {
+              const newW = Math.max(240, Math.min(600, startW - (me.clientX - startX)));
+              setRightWidth(newW);
+            };
+            const onUp = () => {
+              document.removeEventListener("mousemove", onMove);
+              document.removeEventListener("mouseup", onUp);
+              document.body.style.cursor = "";
+              document.body.style.userSelect = "";
+            };
+            document.body.style.cursor = "col-resize";
+            document.body.style.userSelect = "none";
+            document.addEventListener("mousemove", onMove);
+            document.addEventListener("mouseup", onUp);
+          }}
+        >
+          <button className={styles.panelToggle} onClick={() => setSideOpen(!sideOpen)}
+                  title={sideOpen ? "Hide right panel" : "Show right panel"}>
+            {sideOpen ? "\u25B6" : "\u25C0"}
+          </button>
+        </div>
 
         {/* Right Panel (Tabs) */}
         {sideOpen && (
-          <aside className={styles.side}>
+          <aside className={styles.side} style={{ width: rightWidth }}>
             <div className={styles.tabs}>
               {(["ontology", "axioms", "reasoning", "odk", "sparql", "csv", "tasks", "publish", "docs", "files", "patterns", "ids", "console"] as Tab[]).map((t) => (
                 <button key={t} className={`${styles.tab} ${activeTab === t ? styles.tabActive : ""}`}
@@ -444,7 +501,7 @@ export default function BoardPage() {
               {activeTab === "odk" && boardId && <OdkPanel boardId={boardId} />}
               {activeTab === "sparql" && boardId && <SparqlPanel boardId={boardId} />}
               {activeTab === "csv" && boardId && <CsvImportWizard boardId={boardId} />}
-              {activeTab === "tasks" && boardId && <TaskBoard boardId={boardId} />}
+              {activeTab === "tasks" && boardId && <TaskBoard boardId={boardId} members={collabUsers.map((u) => u.name)} />}
               {activeTab === "publish" && boardId && <PublishPanel boardId={boardId} />}
               {activeTab === "docs" && boardId && <DocsPanel boardId={boardId} />}
               {activeTab === "files" && boardId && <FileBrowser boardId={boardId} />}
@@ -452,11 +509,55 @@ export default function BoardPage() {
               {activeTab === "ids" && boardId && <IdRangeManager boardId={boardId} />}
               {activeTab === "console" && (
                 <div className={styles.consolePanel}>
-                  {consoleLog.length === 0 ? (
-                    <p className={styles.panelHint}>Click "Build" to run the ODK pipeline.</p>
-                  ) : (
-                    <pre className={styles.consolePre}>{consoleLog.join("")}</pre>
-                  )}
+                  <div className={styles.consoleToolbar}>
+                    <select
+                      className={styles.consoleSelect}
+                      value={buildTarget}
+                      onChange={(e) => setBuildTarget(e.target.value)}
+                      disabled={building}
+                    >
+                      <option value="all">all</option>
+                      <option value="docs">docs</option>
+                      <option value="test">test</option>
+                      <option value="refresh-imports">refresh-imports</option>
+                      <option value="reason">reason</option>
+                      <option value="clean">clean</option>
+                      <option value="update_repo">update_repo</option>
+                      <option value="prepare_release">prepare_release</option>
+                    </select>
+                    <button
+                      className={styles.consoleRunBtn}
+                      onClick={() => handleBuild()}
+                      disabled={building}
+                    >
+                      {building ? "Running..." : "Run"}
+                    </button>
+                    <button
+                      className={styles.consoleClearBtn}
+                      onClick={() => { setConsoleLog([]); setBuildExitCode(null); }}
+                    >
+                      Clear
+                    </button>
+                    {buildExitCode !== null && (
+                      <span className={buildExitCode === 0 ? styles.exitCodeSuccess : styles.exitCodeError}>
+                        Exit: {buildExitCode}
+                      </span>
+                    )}
+                  </div>
+                  <div className={styles.consolePre}>
+                    {consoleLog.length === 0 ? (
+                      <span className={styles.panelHint}>Select a target and click "Run" to execute the ODK build pipeline.</span>
+                    ) : (
+                      consoleLog.map((line, i) => {
+                        let cls = styles.logLine;
+                        if (/\[ERROR\]|error|Error|FATAL|fatal|failed|FAILED/.test(line)) cls = styles.logLineError;
+                        else if (/\[EXIT 0\]|success|Success|completed successfully/.test(line)) cls = styles.logLineSuccess;
+                        else if (/^\$\s/.test(line)) cls = styles.logLineCmd;
+                        return <div key={i} className={cls}>{line}</div>;
+                      })
+                    )}
+                    <div ref={consoleEndRef} />
+                  </div>
                 </div>
               )}
             </div>
@@ -465,7 +566,11 @@ export default function BoardPage() {
       </div>
 
       {shareOpen && boardId && (
-        <ShareDialog boardId={boardId} onClose={() => setShareOpen(false)} />
+        <ShareDialog
+          boardId={boardId}
+          userRole={userRole}
+          onClose={() => setShareOpen(false)}
+        />
       )}
 
       {/* Delete board confirmation */}
@@ -480,6 +585,10 @@ export default function BoardPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {showExportOntology && boardId && (
+        <ExportOntologyDialog boardId={boardId} onClose={() => setShowExportOntology(false)} onError={setError} />
       )}
 
       {/* Toast for errors */}

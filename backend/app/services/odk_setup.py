@@ -70,7 +70,7 @@ def run_odk_seed(board_dir: Path, ont_id: str, title: str = "",
         logger.info("Running ODK seed for '%s'...", ont_id)
         container = client.containers.run(
             image=ODK_IMAGE,
-            command=f"seed -n {ont_id} -t {ont_id} -d '{title}' -u http://example.org/{ont_id}",
+            command=f"/tools/odk.py seed --gitname 'OntoBoard' --gitemail 'ontoboard@local' -n {ont_id} -t {ont_id} -d '{title}' -u http://example.org/{ont_id}",
             volumes={str(board_dir): {"bind": "/work", "mode": "rw"}},
             working_dir="/work",
             detach=True,
@@ -550,6 +550,66 @@ def set_versioning_strategy(board_dir: Path, strategy: str, ont_id: str) -> str:
     ont_dir = board_dir / "src" / "ontology"
     _write_release_sh(ont_dir, ont_id, strategy)
     return strategy
+
+
+def import_from_zip(board_dir: Path, zip_content: bytes) -> list[str]:
+    """Extract a ZIP archive into board_dir and return list of extracted files."""
+    import zipfile
+    import io
+
+    board_dir.mkdir(parents=True, exist_ok=True)
+    files: list[str] = []
+    with zipfile.ZipFile(io.BytesIO(zip_content)) as zf:
+        # Detect if all entries share a common top-level directory (GitHub-style archives)
+        all_dirs = zf.namelist()
+        prefix = ""
+        if all_dirs:
+            first = all_dirs[0]
+            if "/" in first:
+                candidate = first.split("/")[0] + "/"
+                if all(n.startswith(candidate) for n in all_dirs):
+                    prefix = candidate
+
+        for info in zf.infolist():
+            # Skip directories
+            if info.is_dir():
+                continue
+            # Strip common prefix if present
+            rel_path = info.filename
+            if prefix and rel_path.startswith(prefix):
+                rel_path = rel_path[len(prefix):]
+            if not rel_path:
+                continue
+            target = board_dir / rel_path
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(zf.read(info.filename))
+            files.append(rel_path.replace("\\", "/"))
+
+    return sorted(files)
+
+
+def import_from_github(board_dir: Path, github_url: str) -> list[str]:
+    """Clone a GitHub repository (shallow) into board_dir and return list of files."""
+    import subprocess
+
+    # Remove board_dir if it already exists (git clone needs an empty/non-existent target)
+    if board_dir.exists():
+        import shutil
+        shutil.rmtree(board_dir)
+
+    result = subprocess.run(
+        ["git", "clone", "--depth", "1", github_url, str(board_dir)],
+        capture_output=True, text=True, timeout=120,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(f"git clone failed: {result.stderr.strip()}")
+
+    files: list[str] = []
+    for f in board_dir.rglob("*"):
+        if f.is_file() and ".git" not in f.parts:
+            files.append(str(f.relative_to(board_dir)).replace("\\", "/"))
+
+    return sorted(files)
 
 
 def _find_file(board_dir: Path, filename: str) -> str:

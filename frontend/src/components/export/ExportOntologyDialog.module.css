@@ -1,0 +1,155 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+}
+.dialog {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  width: 520px;
+  max-width: 90vw;
+  overflow: hidden;
+}
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid #f1f5f9;
+}
+.title {
+  font-size: 14px;
+  font-weight: 700;
+  margin: 0;
+}
+.closeBtn {
+  background: none;
+  border: none;
+  font-size: 18px;
+  color: #94a3b8;
+  cursor: pointer;
+}
+.body {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.sectionLabel {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #64748b;
+  margin: 0 0 6px;
+}
+.formatGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 16px;
+}
+.formatOption {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #334155;
+  cursor: pointer;
+  padding: 4px 0;
+}
+.formatOption input {
+  accent-color: #4f46e5;
+}
+.optionsSection {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.optionsSection label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #475569;
+  cursor: pointer;
+}
+.optionsSection input {
+  accent-color: #4f46e5;
+}
+.odkSection {
+  border-top: 1px solid #f1f5f9;
+  padding-top: 12px;
+}
+.odkBtn {
+  padding: 6px 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  background: #f8fafc;
+  color: #334155;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  width: 100%;
+  text-align: center;
+}
+.odkBtn:hover {
+  background: #f1f5f9;
+}
+.odkBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.statusMsg {
+  font-size: 12px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  text-align: center;
+}
+.statusMsg[data-type="error"] {
+  background: #fef2f2;
+  color: #dc2626;
+}
+.statusMsg[data-type="success"] {
+  background: #f0fdf4;
+  color: #16a34a;
+}
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 10px 16px;
+  border-top: 1px solid #f1f5f9;
+}
+.cancelBtn {
+  padding: 6px 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  background: #fff;
+  color: #64748b;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+}
+.downloadBtn {
+  padding: 6px 20px;
+  border: none;
+  border-radius: 6px;
+  background: #4f46e5;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+}
+.downloadBtn:hover {
+  background: #4338ca;
+}
+.downloadBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

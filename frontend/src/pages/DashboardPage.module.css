@@ -237,3 +237,23 @@
 .card:hover .cardFooter {
   color: var(--accent-light);
 }
+
+/* ── Star button ──────────────────────────────────────────── */
+.starBtn {
+  margin-left: auto;
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  color: var(--text-muted);
+  padding: 0 0.15rem;
+  line-height: 1;
+  transition: color 0.2s, transform 0.15s;
+}
+.starBtn:hover {
+  color: #f9ca24;
+  transform: scale(1.2);
+}
+.card .starBtn:first-of-type {
+  flex-shrink: 0;
+}

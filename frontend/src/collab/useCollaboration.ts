@@ -23,6 +23,8 @@ export interface RemoteCursor {
   y: number;
   clicking: boolean;
   clientId: number;
+  action: string;
+  selectedEntity: string | null;
 }
 
 const COLORS = [
@@ -72,6 +74,8 @@ export function useCollaboration(boardId: string | undefined, userName: string) 
               y: state.cursor.y,
               clicking: state.cursor.clicking || false,
               clientId,
+              action: state.cursor.action || "idle",
+              selectedEntity: state.cursor.selectedEntity || null,
             });
           }
         }
@@ -91,9 +95,9 @@ export function useCollaboration(boardId: string | undefined, userName: string) 
     };
   }, [boardId, userName]);
 
-  // Broadcast local cursor position
-  const broadcastCursor = useCallback((x: number, y: number, clicking: boolean = false) => {
-    providerRef.current?.awareness.setLocalStateField("cursor", { x, y, clicking });
+  // Broadcast local cursor position with optional activity info
+  const broadcastCursor = useCallback((x: number, y: number, clicking: boolean = false, action: string = "idle", selectedEntity: string | null = null) => {
+    providerRef.current?.awareness.setLocalStateField("cursor", { x, y, clicking, action, selectedEntity });
   }, []);
 
   return { connected, users, remoteCursors, broadcastCursor };

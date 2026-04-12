@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useReasoning } from "../../hooks/useReasoning";
+import { useOntologyStore } from "../../store/ontologyStore";
 import styles from "./ReasoningPanel.module.css";
 
 interface Props {
@@ -12,7 +13,16 @@ const REASONERS = ["ELK", "HermiT", "JFact", "Whelk"];
 export default function ReasoningPanel({ boardId, onHighlightEntity }: Props) {
   const { result, running, error, runReasoning, applyFix } = useReasoning(boardId);
   const [selectedReasoner, setSelectedReasoner] = useState("ELK");
-  const [showLogs, setShowLogs] = useState(false);
+  const store = useOntologyStore();
+
+  // Store inferences in the ontology store when reasoning completes successfully
+  useEffect(() => {
+    if (result?.success && result.inferences.length > 0) {
+      store.setInferences(result.inferences);
+    } else if (result && !result.success) {
+      store.setInferences([]);
+    }
+  }, [result]);
 
   return (
     <div className={styles.container}>
@@ -117,15 +127,13 @@ export default function ReasoningPanel({ boardId, onHighlightEntity }: Props) {
             </div>
           )}
 
-          {/* Logs toggle */}
-          <div className={styles.section}>
-            <button className={styles.logToggle} onClick={() => setShowLogs(!showLogs)}>
-              {showLogs ? "Hide Logs" : "Show Logs"}
-            </button>
-            {showLogs && (
+          {/* Logs — always visible when there is content */}
+          {result.logs && result.logs.trim() && (
+            <div className={styles.section}>
+              <h4 className={styles.sectionTitle}>Reasoning Logs</h4>
               <pre className={styles.logPre}>{result.logs}</pre>
-            )}
-          </div>
+            </div>
+          )}
         </>
       )}
 

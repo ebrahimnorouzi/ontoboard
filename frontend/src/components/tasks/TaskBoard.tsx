@@ -4,6 +4,7 @@ import styles from "./TaskBoard.module.css";
 
 interface Props {
   boardId: string;
+  members?: string[];
 }
 
 const COLUMNS = [
@@ -20,10 +21,11 @@ const PRIORITIES: Record<string, string> = {
   low: "\u{1F7E2}",
 };
 
-export default function TaskBoard({ boardId }: Props) {
+export default function TaskBoard({ boardId, members = [] }: Props) {
   const { tasks, loading, createTask, updateTask, deleteTask } = useTasks(boardId);
   const [showCreate, setShowCreate] = useState(false);
   const [newTitle, setNewTitle] = useState("");
+  const [newDesc, setNewDesc] = useState("");
   const [newPriority, setNewPriority] = useState("medium");
   const [newAssignee, setNewAssignee] = useState("");
 
@@ -31,10 +33,12 @@ export default function TaskBoard({ boardId }: Props) {
     if (!newTitle.trim()) return;
     await createTask({
       title: newTitle,
+      description: newDesc || undefined,
       priority: newPriority,
       assignee_username: newAssignee || undefined,
     });
     setNewTitle("");
+    setNewDesc("");
     setShowCreate(false);
   };
 
@@ -65,6 +69,14 @@ export default function TaskBoard({ boardId }: Props) {
             onKeyDown={(e) => e.key === "Enter" && handleCreate()}
             autoFocus
           />
+          <textarea
+            className={styles.input}
+            placeholder="Description (optional)..."
+            value={newDesc}
+            onChange={(e) => setNewDesc(e.target.value)}
+            rows={2}
+            style={{ resize: "vertical" }}
+          />
           <div className={styles.createRow}>
             <select className={styles.select} value={newPriority} onChange={(e) => setNewPriority(e.target.value)}>
               <option value="low">Low</option>
@@ -75,9 +87,15 @@ export default function TaskBoard({ boardId }: Props) {
             <input
               className={styles.input}
               placeholder="Assignee username"
+              list="member-suggestions"
               value={newAssignee}
               onChange={(e) => setNewAssignee(e.target.value)}
             />
+            <datalist id="member-suggestions">
+              {members.map((m) => (
+                <option key={m} value={m} />
+              ))}
+            </datalist>
             <button className={styles.submitBtn} onClick={handleCreate}>Create</button>
           </div>
         </div>

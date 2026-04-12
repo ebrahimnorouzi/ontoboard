@@ -65,7 +65,7 @@ export default function EditPopup({ data, onSave, onDelete, onCancel }: Props) {
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (cardRef.current && !cardRef.current.contains(e.target as Node) && !dragging.current) onCancel();
+      if (cardRef.current && !cardRef.current.contains(e.target as Node) && !dragging.current) onSave(local);
     };
     const timer = setTimeout(() => document.addEventListener("mousedown", handler), 100);
     return () => { clearTimeout(timer); document.removeEventListener("mousedown", handler); };
@@ -105,6 +105,17 @@ export default function EditPopup({ data, onSave, onDelete, onCancel }: Props) {
 
         {local.type === "node" ? (
           <>
+            {/* IRI (editable prefix) */}
+            {(local as NodeEditData).entityType !== "literal" && (
+              <div className={styles.row}>
+                <span className={styles.label}>IRI</span>
+                <input className={styles.iriInput} value={local.id}
+                       onChange={(e) => update({ id: e.target.value })}
+                       title="Edit the IRI to change the prefix/namespace of this entity"
+                       placeholder="http://example.org/ontology#ClassName" />
+              </div>
+            )}
+
             {/* Entity type */}
             <div className={styles.row}>
               <span className={styles.label}>Type</span>

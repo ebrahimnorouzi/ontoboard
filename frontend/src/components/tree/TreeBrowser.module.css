@@ -45,6 +45,32 @@
 }
 .refreshBtn:hover { color: var(--text-primary); }
 
+/* Inference toggle */
+.inferenceToggle {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-primary);
+}
+.inferenceToggle input[type="checkbox"] {
+  accent-color: #a78bfa;
+  cursor: pointer;
+}
+.inferenceCount {
+  font-size: 0.6rem;
+  font-weight: 600;
+  padding: 0.05rem 0.35rem;
+  border-radius: 999px;
+  background: rgba(167, 139, 250, 0.15);
+  color: #a78bfa;
+}
+
 /* Search + Add */
 .searchRow {
   display: flex;
@@ -121,6 +147,54 @@
   color: var(--text-muted);
   font-size: 0.75rem;
   cursor: pointer;
+}
+
+/* Quick stats bar */
+.statsBar {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.2rem 0.5rem;
+  font-size: 0.6rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--bg-primary);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  font-family: "Cascadia Code", monospace;
+}
+
+/* Individuals by class grouping */
+.groupNode { list-style: none; }
+.groupHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  cursor: pointer;
+  border-bottom: 1px solid var(--border);
+}
+.groupHeader:hover { background: var(--bg-card-hover); }
+.groupIcon { font-size: 0.7rem; color: var(--accent); }
+.groupLabel { flex: 1; }
+.groupCount {
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  background: var(--bg-accent);
+  padding: 0.05rem 0.35rem;
+  border-radius: 999px;
+}
+.groupChildren {
+  list-style: none;
+  padding: 0 0 0 1rem;
+  margin: 0;
+}
+.indIcon {
+  font-size: 0.65rem;
+  color: #d97706;
+  margin-right: 0.3rem;
 }
 
 /* Context hint */

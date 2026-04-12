@@ -250,12 +250,34 @@
 }
 .prefixRow {
   display: flex;
-  gap: 0.5rem;
+  align-items: center;
+  gap: 0.4rem;
   font-size: 0.72rem;
   padding: 0.2rem 0.3rem;
   border-radius: var(--radius-sm);
 }
 .prefixRow:hover { background: var(--bg-primary); }
+.prefixColorPick {
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+}
+.prefixColorReset {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  cursor: pointer;
+  padding: 0 2px;
+  line-height: 1;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.prefixColorReset:hover { color: var(--danger); }
 .prefixName {
   color: var(--accent-light);
   font-weight: 600;
@@ -268,6 +290,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  flex: 1;
 }
 .prefixMore {
   font-size: 0.7rem;
@@ -276,7 +299,54 @@
   padding: 0.3rem;
 }
 
+/* Tags for multi-value fields (authors, contributors) */
+.tagList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  min-height: 1.2rem;
+}
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.15rem 0.45rem;
+  background: var(--accent-glow);
+  color: var(--accent-light);
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 500;
+}
+.tagRemove {
+  background: none;
+  border: none;
+  color: var(--accent-light);
+  font-size: 0.75rem;
+  cursor: pointer;
+  padding: 0 1px;
+  line-height: 1;
+  opacity: 0.6;
+}
+.tagRemove:hover { opacity: 1; color: var(--danger); }
+
 /* Report */
+.reportError {
+  font-size: 0.72rem;
+  color: var(--danger);
+  background: rgba(239, 68, 68, 0.06);
+  border: 1px solid rgba(239, 68, 68, 0.15);
+  border-radius: var(--radius-sm);
+  padding: 0.4rem 0.6rem;
+  margin-bottom: 0.4rem;
+  line-height: 1.5;
+}
+.reportError code {
+  font-family: "Cascadia Code", monospace;
+  font-size: 0.68rem;
+  background: rgba(239, 68, 68, 0.08);
+  padding: 0.1rem 0.3rem;
+  border-radius: 3px;
+}
 .reportBtn {
   padding: 0.3rem 0.7rem;
   border: 1px solid var(--border);

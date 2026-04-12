@@ -17,6 +17,8 @@ interface Board {
   user_role: string | null;
   odk_seeded: boolean;
   git_initialized: boolean;
+  last_modified?: string | null;
+  last_modified_by?: string | null;
 }
 
 export default function DashboardPage() {
@@ -26,6 +28,18 @@ export default function DashboardPage() {
   const [error, setError] = useState("");
   const [wizardOpen, setWizardOpen] = useState(false);
   const navigate = useNavigate();
+
+  const toggleStar = async (boardId: string) => {
+    try {
+      const res = await api(`/api/boards/${boardId}/star`, { method: "POST" });
+      if (res.ok) {
+        const data = await res.json();
+        setBoards((prev) =>
+          prev.map((b) => b.board_id === boardId ? { ...b, is_starred: data.is_starred } : b)
+        );
+      }
+    } catch { /* ignore */ }
+  };
 
   const fetchBoards = async () => {
     try {
@@ -90,6 +104,13 @@ export default function DashboardPage() {
                 <div className={styles.cardHeader}>
                   <span className={styles.cardIcon}>&#9678;</span>
                   <h3 className={styles.cardName}>{b.display_name || b.board_id}</h3>
+                  <button
+                    className={styles.starBtn}
+                    onClick={(e) => { e.preventDefault(); toggleStar(b.board_id); }}
+                    title={b.is_starred ? "Remove from favourites" : "Add to favourites"}
+                  >
+                    {b.is_starred ? "\u2605" : "\u2606"}
+                  </button>
                 </div>
                 {b.description && (
                   <p className={styles.cardDesc}>{b.description}</p>
@@ -110,6 +131,12 @@ export default function DashboardPage() {
                 <div className={styles.cardMeta}>
                   <span>{b.owner_username}</span>
                   {b.member_count > 0 && <span>{b.member_count} members</span>}
+                  {b.last_modified && (
+                    <span title={b.last_modified}>
+                      {b.last_modified_by ? `${b.last_modified_by} · ` : ""}
+                      {new Date(b.last_modified).toLocaleDateString()}
+                    </span>
+                  )}
                 </div>
                 <div className={styles.cardFooter}>Open board &rarr;</div>
               </Link>

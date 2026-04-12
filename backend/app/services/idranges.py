@@ -80,6 +80,49 @@ def allocate_range(board_dir: Path, username: str, prefix: str = "") -> dict:
             "upper": str(upper).zfill(7), "current": str(lower).zfill(7)}
 
 
+def update_range(board_dir: Path, username: str, *, prefix: str | None = None,
+                  lower: str | None = None, upper: str | None = None) -> dict | None:
+    """Update an existing ID range for a user."""
+    path = board_dir / "src" / "ontology" / "idranges.xml"
+    if not path.exists():
+        return None
+
+    tree = ET.parse(str(path))
+    for elem in tree.findall(".//range"):
+        if elem.get("user") == username:
+            if prefix is not None:
+                elem.set("prefix", prefix)
+            if lower is not None:
+                elem.set("lower", lower)
+            if upper is not None:
+                elem.set("upper", upper)
+            tree.write(str(path), xml_declaration=True, encoding="UTF-8")
+            return {
+                "user": elem.get("user", ""),
+                "prefix": elem.get("prefix", ""),
+                "lower": elem.get("lower", ""),
+                "upper": elem.get("upper", ""),
+                "current": elem.get("current", ""),
+            }
+    return None
+
+
+def delete_range(board_dir: Path, username: str) -> bool:
+    """Delete an ID range for a user."""
+    path = board_dir / "src" / "ontology" / "idranges.xml"
+    if not path.exists():
+        return False
+
+    tree = ET.parse(str(path))
+    root = tree.getroot()
+    for elem in root.findall("range"):
+        if elem.get("user") == username:
+            root.remove(elem)
+            tree.write(str(path), xml_declaration=True, encoding="UTF-8")
+            return True
+    return False
+
+
 def reserve_next_id(board_dir: Path, username: str) -> str | None:
     """Reserve the next available ID in the user's range."""
     path = board_dir / "src" / "ontology" / "idranges.xml"

@@ -67,12 +67,24 @@ class CanvasStickyNote(BaseModel):
     fontSize: int = 14
 
 
+class CanvasFrame(BaseModel):
+    id: str
+    label: str = "Frame"
+    x: float = 0
+    y: float = 0
+    w: float = 400
+    h: float = 300
+    color: str = "rgba(79, 70, 229, 0.05)"
+    borderColor: str = "#c7d2fe"
+
+
 class CanvasState(BaseModel):
     classes: list[CanvasClass] = []
     properties: list[CanvasProperty] = []
     individuals: list[CanvasIndividual] = []
     literals: list[CanvasLiteral] = []
     sticky_notes: list[CanvasStickyNote] = []
+    frames: list[CanvasFrame] = []
     # Board-level provenance settings
     track_provenance: bool = True
     provenance_target: str = "both"  # "board" | "ontology" | "both"

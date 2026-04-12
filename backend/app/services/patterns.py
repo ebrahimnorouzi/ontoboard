@@ -119,7 +119,12 @@ def apply_pattern(board_dir: Path, pattern_id: str, base_iri: str, x: float = 10
             "property_type": prop.get("type", "object"),
         })
 
-    return {"classes": classes, "properties": properties, "individuals": []}
+    return {
+        "classes": classes,
+        "properties": properties,
+        "individuals": [],
+        "pattern_id": pattern_id,
+    }
 
 
 def add_pattern(*, pattern_id: str, name: str, description: str = "",

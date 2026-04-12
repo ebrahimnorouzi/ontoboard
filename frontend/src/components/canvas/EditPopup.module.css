@@ -75,6 +75,23 @@
   background: #fff;
 }
 
+.iriInput {
+  flex: 1;
+  padding: 4px 6px;
+  border: 1px solid #e2e8f0;
+  border-radius: 5px;
+  font-size: 10px;
+  font-family: "JetBrains Mono", "Cascadia Code", Consolas, monospace;
+  color: #6366f1;
+  outline: none;
+  background: #f8fafc;
+}
+.iriInput:focus {
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.12);
+  background: #fff;
+}
+
 .select {
   flex: 1;
   padding: 5px 8px;

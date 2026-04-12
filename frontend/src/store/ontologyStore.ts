@@ -34,10 +34,38 @@ interface StickyNote {
   x: number; y: number; w: number; h: number;
   color: string; fontSize: number;
 }
+interface CanvasFrame {
+  id: string;
+  label: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  color: string; // background color with transparency
+  borderColor: string;
+}
+
+/** Inference from reasoning (inferred triple). */
+interface Inference {
+  inference_type: string;
+  subject: string;
+  subject_label: string;
+  predicate: string;
+  object: string;
+  object_label: string;
+}
+
+/** Maps prefix name → color for per-prefix class coloring */
+interface PrefixColor {
+  prefix: string;
+  namespace: string;
+  color: string;
+}
 
 interface CanvasSnapshot {
   classes: OntClass[]; properties: OntProperty[];
   individuals: OntIndividual[]; literals: OntLiteral[]; stickyNotes: StickyNote[];
+  frames: CanvasFrame[];
 }
 
 interface SelectedEntity {
@@ -51,12 +79,20 @@ interface OntologyState {
   individuals: OntIndividual[];
   literals: OntLiteral[];
   stickyNotes: StickyNote[];
+  frames: CanvasFrame[];
   selectedEntity: SelectedEntity | null;
   dirty: boolean;
   saving: boolean;
   lastSaved: number;
   undoStack: CanvasSnapshot[];
   redoStack: CanvasSnapshot[];
+  // Prefix colors for per-prefix class coloring
+  prefixColors: PrefixColor[];
+  // Pattern tracking: maps class IRI → pattern ID for coloring
+  patternMap: Record<string, string>;
+  // Inferences from reasoning
+  showInferences: boolean;
+  inferences: Inference[];
   // Provenance settings
   currentUser: string;
   trackProvenance: boolean;
@@ -80,6 +116,7 @@ interface OntologyState {
   setClasses: (classes: OntClass[]) => void;
   setProperties: (properties: OntProperty[]) => void;
   setIndividuals: (individuals: OntIndividual[]) => void;
+  addIndividual: (ind: OntIndividual) => void;
   updateIndividual: (iri: string, updates: Partial<OntIndividual>) => void;
 
   // Literals
@@ -92,6 +129,25 @@ interface OntologyState {
   updateStickyNote: (id: string, updates: Partial<StickyNote>) => void;
   removeStickyNote: (id: string) => void;
   setStickyNotes: (notes: StickyNote[]) => void;
+
+  // Frames
+  addFrame: (frame: CanvasFrame) => void;
+  updateFrame: (id: string, updates: Partial<CanvasFrame>) => void;
+  removeFrame: (id: string) => void;
+  setFrames: (frames: CanvasFrame[]) => void;
+
+  // Prefix colors
+  setPrefixColors: (colors: PrefixColor[]) => void;
+  setPrefixColor: (prefix: string, namespace: string, color: string) => void;
+  removePrefixColor: (prefix: string) => void;
+
+  // Pattern map
+  setPatternMap: (map: Record<string, string>) => void;
+  assignPattern: (classIri: string, patternId: string) => void;
+
+  // Inferences
+  setShowInferences: (show: boolean) => void;
+  setInferences: (infs: Inference[]) => void;
 
   // Provenance
   setCurrentUser: (username: string) => void;
@@ -111,13 +167,14 @@ function debouncedSave(get: () => OntologyState) {
 const MAX_UNDO = 50;
 
 function pushUndo(get: () => OntologyState, set: (partial: Partial<OntologyState>) => void) {
-  const { classes, properties, individuals, literals, stickyNotes, undoStack } = get();
+  const { classes, properties, individuals, literals, stickyNotes, frames, undoStack } = get();
   const snapshot: CanvasSnapshot = {
     classes: classes.map((c) => ({ ...c })),
     properties: properties.map((p) => ({ ...p })),
     individuals: individuals.map((i) => ({ ...i })),
     literals: literals.map((l) => ({ ...l })),
     stickyNotes: stickyNotes.map((s) => ({ ...s })),
+    frames: frames.map((f) => ({ ...f })),
   };
   set({ undoStack: [...undoStack.slice(-(MAX_UNDO - 1)), snapshot], redoStack: [] });
 }
@@ -139,12 +196,17 @@ export const useOntologyStore = create<OntologyState>((set, get) => ({
   individuals: [],
   literals: [],
   stickyNotes: [],
+  frames: [],
   selectedEntity: null,
   dirty: false,
   saving: false,
   lastSaved: 0,
   undoStack: [],
   redoStack: [],
+  prefixColors: [],
+  patternMap: {},
+  showInferences: false,
+  inferences: [],
   currentUser: "",
   trackProvenance: true,
   provenanceTarget: "both",
@@ -153,7 +215,7 @@ export const useOntologyStore = create<OntologyState>((set, get) => ({
 
   loadFromBackend: async (boardId) => {
     try {
-      const data = await apiJson<{ classes: OntClass[]; properties: OntProperty[]; individuals: OntIndividual[]; literals?: OntLiteral[]; sticky_notes?: StickyNote[] }>(
+      const data = await apiJson<{ classes: OntClass[]; properties: OntProperty[]; individuals: OntIndividual[]; literals?: OntLiteral[]; sticky_notes?: StickyNote[]; frames?: CanvasFrame[] }>(
         `/api/owl/${boardId}/load`
       );
       set({
@@ -163,24 +225,25 @@ export const useOntologyStore = create<OntologyState>((set, get) => ({
         individuals: data.individuals,
         literals: data.literals || [],
         stickyNotes: data.sticky_notes || [],
+        frames: data.frames || [],
         dirty: false,
         undoStack: [],
         redoStack: [],
       });
     } catch {
-      set({ boardId, classes: [], properties: [], individuals: [], literals: [], stickyNotes: [], dirty: false });
+      set({ boardId, classes: [], properties: [], individuals: [], literals: [], stickyNotes: [], frames: [], dirty: false });
     }
   },
 
   saveToBackend: async () => {
-    const { boardId, classes, properties, individuals, literals, stickyNotes, dirty, trackProvenance, provenanceTarget } = get();
+    const { boardId, classes, properties, individuals, literals, stickyNotes, frames, dirty, trackProvenance, provenanceTarget } = get();
     if (!boardId || !dirty) return;
     set({ saving: true });
     try {
       await apiJson(`/api/owl/${boardId}/save`, {
         method: "POST",
         body: JSON.stringify({
-          classes, properties, individuals, literals, sticky_notes: stickyNotes,
+          classes, properties, individuals, literals, sticky_notes: stickyNotes, frames,
           track_provenance: trackProvenance, provenance_target: provenanceTarget,
         }),
       });
@@ -193,7 +256,7 @@ export const useOntologyStore = create<OntologyState>((set, get) => ({
   selectEntity: (entity) => set({ selectedEntity: entity }),
 
   undo: () => {
-    const { undoStack, classes, properties, individuals, literals, stickyNotes } = get();
+    const { undoStack, classes, properties, individuals, literals, stickyNotes, frames } = get();
     if (undoStack.length === 0) return;
     const prev = undoStack[undoStack.length - 1];
     const current: CanvasSnapshot = {
@@ -202,10 +265,12 @@ export const useOntologyStore = create<OntologyState>((set, get) => ({
       individuals: individuals.map((i) => ({ ...i })),
       literals: literals.map((l) => ({ ...l })),
       stickyNotes: stickyNotes.map((s) => ({ ...s })),
+      frames: frames.map((f) => ({ ...f })),
     };
     set({
       classes: prev.classes, properties: prev.properties,
       individuals: prev.individuals, literals: prev.literals, stickyNotes: prev.stickyNotes,
+      frames: prev.frames || [],
       undoStack: undoStack.slice(0, -1),
       redoStack: [...get().redoStack, current],
       dirty: true,
@@ -214,7 +279,7 @@ export const useOntologyStore = create<OntologyState>((set, get) => ({
   },
 
   redo: () => {
-    const { redoStack, classes, properties, individuals, literals, stickyNotes } = get();
+    const { redoStack, classes, properties, individuals, literals, stickyNotes, frames } = get();
     if (redoStack.length === 0) return;
     const next = redoStack[redoStack.length - 1];
     const current: CanvasSnapshot = {
@@ -223,10 +288,12 @@ export const useOntologyStore = create<OntologyState>((set, get) => ({
       individuals: individuals.map((i) => ({ ...i })),
       literals: literals.map((l) => ({ ...l })),
       stickyNotes: stickyNotes.map((s) => ({ ...s })),
+      frames: frames.map((f) => ({ ...f })),
     };
     set({
       classes: next.classes, properties: next.properties,
       individuals: next.individuals, literals: next.literals, stickyNotes: next.stickyNotes,
+      frames: next.frames || [],
       redoStack: redoStack.slice(0, -1),
       undoStack: [...get().undoStack, current],
       dirty: true,
@@ -294,9 +361,16 @@ export const useOntologyStore = create<OntologyState>((set, get) => ({
   setClasses: (classes) => set({ classes, dirty: true }),
   setProperties: (properties) => set({ properties, dirty: true }),
   setIndividuals: (individuals) => set({ individuals, dirty: true }),
+  addIndividual: (ind) => {
+    pushUndo(get, set);
+    const stamped = get().trackProvenance ? { ...ind, ...provStamp(get) } : ind;
+    set((s) => ({ individuals: [...s.individuals, stamped], dirty: true }));
+    debouncedSave(get);
+  },
   updateIndividual: (iri, updates) => {
+    const mod = get().trackProvenance ? modStamp(get) : {};
     set((s) => ({
-      individuals: s.individuals.map((i) => (i.iri === iri ? { ...i, ...updates } : i)),
+      individuals: s.individuals.map((i) => (i.iri === iri ? { ...i, ...updates, ...mod } : i)),
       dirty: true,
     }));
     debouncedSave(get);
@@ -343,10 +417,55 @@ export const useOntologyStore = create<OntologyState>((set, get) => ({
   },
   setStickyNotes: (notes) => set({ stickyNotes: notes, dirty: true }),
 
+  // Frames
+  addFrame: (frame) => {
+    pushUndo(get, set);
+    set((s) => ({ frames: [...s.frames, frame], dirty: true }));
+    debouncedSave(get);
+  },
+  updateFrame: (id, updates) => {
+    set((s) => ({
+      frames: s.frames.map((f) => (f.id === id ? { ...f, ...updates } : f)),
+      dirty: true,
+    }));
+    debouncedSave(get);
+  },
+  removeFrame: (id) => {
+    pushUndo(get, set);
+    set((s) => ({ frames: s.frames.filter((f) => f.id !== id), dirty: true }));
+    debouncedSave(get);
+  },
+  setFrames: (frames) => set({ frames, dirty: true }),
+
+  // Prefix colors
+  setPrefixColors: (colors) => set({ prefixColors: colors }),
+  setPrefixColor: (prefix, namespace, color) => set((s) => {
+    const existing = s.prefixColors.findIndex((pc) => pc.prefix === prefix);
+    if (existing >= 0) {
+      const updated = [...s.prefixColors];
+      updated[existing] = { prefix, namespace, color };
+      return { prefixColors: updated };
+    }
+    return { prefixColors: [...s.prefixColors, { prefix, namespace, color }] };
+  }),
+  removePrefixColor: (prefix) => set((s) => ({
+    prefixColors: s.prefixColors.filter((pc) => pc.prefix !== prefix),
+  })),
+
+  // Pattern map
+  setPatternMap: (map) => set({ patternMap: map }),
+  assignPattern: (classIri, patternId) => set((s) => ({
+    patternMap: { ...s.patternMap, [classIri]: patternId },
+  })),
+
+  // Inferences
+  setShowInferences: (show) => set({ showInferences: show }),
+  setInferences: (infs) => set({ inferences: infs }),
+
   // Provenance settings
   setCurrentUser: (username) => set({ currentUser: username }),
   setTrackProvenance: (enabled) => set({ trackProvenance: enabled }),
   setProvenanceTarget: (target) => set({ provenanceTarget: target }),
 }));
 
-export type { OntClass, OntProperty, OntIndividual, OntLiteral, StickyNote, SelectedEntity };
+export type { OntClass, OntProperty, OntIndividual, OntLiteral, StickyNote, CanvasFrame, SelectedEntity, PrefixColor, Inference };

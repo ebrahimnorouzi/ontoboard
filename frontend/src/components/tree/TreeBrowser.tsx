@@ -7,12 +7,13 @@ interface Props {
   boardId: string;
 }
 
-const TAB_LABELS: { id: TreeTab; label: string; fullLabel: string }[] = [
+const TAB_LABELS: { id: TreeTab | "ind-by-class"; label: string; fullLabel: string }[] = [
   { id: "classes", label: "C", fullLabel: "Classes" },
   { id: "object-properties", label: "OP", fullLabel: "Object Properties" },
   { id: "data-properties", label: "DP", fullLabel: "Data Properties" },
   { id: "annotation-properties", label: "AP", fullLabel: "Annotation Properties" },
   { id: "individuals", label: "Ind", fullLabel: "Individuals" },
+  { id: "ind-by-class", label: "I/C", fullLabel: "Individuals by Class" },
 ];
 
 export default function TreeBrowser({ boardId }: Props) {
@@ -24,7 +25,26 @@ export default function TreeBrowser({ boardId }: Props) {
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [renamingIri, setRenamingIri] = useState<string | null>(null);
   const [renameLabel, setRenameLabel] = useState("");
+  const [virtualTab, setVirtualTab] = useState<"ind-by-class" | null>(null);
   const store = useOntologyStore();
+
+  // Build individuals-by-class grouping
+  const indByClass = virtualTab === "ind-by-class" ? (() => {
+    const groups: Record<string, { classLabel: string; individuals: { iri: string; label: string }[] }> = {};
+    const ungrouped: { iri: string; label: string }[] = [];
+    for (const ind of store.individuals) {
+      if (ind.class_iri) {
+        if (!groups[ind.class_iri]) {
+          const cls = store.classes.find((c) => c.iri === ind.class_iri);
+          groups[ind.class_iri] = { classLabel: cls?.label || ind.class_iri.split(/[#/]/).pop() || ind.class_iri, individuals: [] };
+        }
+        groups[ind.class_iri].individuals.push({ iri: ind.iri, label: ind.label });
+      } else {
+        ungrouped.push({ iri: ind.iri, label: ind.label });
+      }
+    }
+    return { groups, ungrouped };
+  })() : null;
 
   const handleSelect = (node: TreeNode) => {
     store.selectEntity({ iri: node.iri, type: node.entity_type, label: node.label });
@@ -107,13 +127,20 @@ export default function TreeBrowser({ boardId }: Props) {
 
   return (
     <div className={styles.container}>
-      {/* Tabs */}
+      {/* Tabs — scrollable */}
       <div className={styles.tabs}>
         {TAB_LABELS.map((t) => (
           <button
             key={t.id}
-            className={`${styles.tab} ${activeTab === t.id ? styles.tabActive : ""}`}
-            onClick={() => setActiveTab(t.id)}
+            className={`${styles.tab} ${(t.id === "ind-by-class" ? virtualTab === "ind-by-class" : activeTab === t.id && !virtualTab) ? styles.tabActive : ""}`}
+            onClick={() => {
+              if (t.id === "ind-by-class") {
+                setVirtualTab("ind-by-class");
+              } else {
+                setVirtualTab(null);
+                setActiveTab(t.id as TreeTab);
+              }
+            }}
             title={t.fullLabel}
           >
             {t.label}
@@ -123,6 +150,27 @@ export default function TreeBrowser({ boardId }: Props) {
           &#8635;
         </button>
       </div>
+
+      {/* Quick stats bar */}
+      <div className={styles.statsBar}>
+        <span title="Classes">{store.classes.length}C</span>
+        <span title="Object Properties">{store.properties.filter(p => p.property_type === "object").length}OP</span>
+        <span title="Individuals">{store.individuals.length}I</span>
+        <span title="Literals">{store.literals.length}L</span>
+      </div>
+
+      {/* Show Inferences toggle */}
+      <label className={styles.inferenceToggle}>
+        <input
+          type="checkbox"
+          checked={store.showInferences}
+          onChange={(e) => store.setShowInferences(e.target.checked)}
+        />
+        <span>Show Inferences</span>
+        {store.inferences.length > 0 && (
+          <span className={styles.inferenceCount}>{store.inferences.length}</span>
+        )}
+      </label>
 
       {/* Search + Add */}
       <div className={styles.searchRow}>
@@ -164,8 +212,68 @@ export default function TreeBrowser({ boardId }: Props) {
         </div>
       )}
 
+      {/* Individuals by Class view */}
+      {virtualTab === "ind-by-class" && indByClass && (
+        <div className={styles.treeArea}>
+          {store.individuals.length === 0 ? (
+            <div className={styles.emptyState}>
+              <div className={styles.emptyIcon}>{"\u25C7"}</div>
+              <p>No individuals yet</p>
+            </div>
+          ) : (
+            <ul className={styles.treeList}>
+              {Object.entries(indByClass.groups).map(([classIri, group]) => (
+                <li key={classIri} className={styles.groupNode}>
+                  <div
+                    className={styles.groupHeader}
+                    onClick={() => store.selectEntity({ iri: classIri, type: "class", label: group.classLabel })}
+                  >
+                    <span className={styles.groupIcon}>{"\u25A0"}</span>
+                    <span className={styles.groupLabel}>{group.classLabel}</span>
+                    <span className={styles.groupCount}>{group.individuals.length}</span>
+                  </div>
+                  <ul className={styles.groupChildren}>
+                    {group.individuals.map((ind) => (
+                      <li
+                        key={ind.iri}
+                        className={`${styles.nodeRow} ${selectedIri === ind.iri ? styles.nodeSelected : ""}`}
+                        onClick={() => store.selectEntity({ iri: ind.iri, type: "individual", label: ind.label })}
+                      >
+                        <span className={styles.indIcon}>{"\u25C7"}</span>
+                        <span className={styles.nodeLabel}>{ind.label}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </li>
+              ))}
+              {indByClass.ungrouped.length > 0 && (
+                <li className={styles.groupNode}>
+                  <div className={styles.groupHeader}>
+                    <span className={styles.groupIcon}>{"\u25CB"}</span>
+                    <span className={styles.groupLabel}>Untyped</span>
+                    <span className={styles.groupCount}>{indByClass.ungrouped.length}</span>
+                  </div>
+                  <ul className={styles.groupChildren}>
+                    {indByClass.ungrouped.map((ind) => (
+                      <li
+                        key={ind.iri}
+                        className={`${styles.nodeRow} ${selectedIri === ind.iri ? styles.nodeSelected : ""}`}
+                        onClick={() => store.selectEntity({ iri: ind.iri, type: "individual", label: ind.label })}
+                      >
+                        <span className={styles.indIcon}>{"\u25C7"}</span>
+                        <span className={styles.nodeLabel}>{ind.label}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </li>
+              )}
+            </ul>
+          )}
+        </div>
+      )}
+
       {/* Tree */}
-      <div className={styles.treeArea}>
+      {!virtualTab && <div className={styles.treeArea}>
         {loading ? (
           <div className={styles.empty}>Loading...</div>
         ) : filtered.length === 0 ? (
@@ -196,7 +304,7 @@ export default function TreeBrowser({ boardId }: Props) {
             ))}
           </ul>
         )}
-      </div>
+      </div>}
 
       {/* Delete confirmation */}
       {confirmDelete && (

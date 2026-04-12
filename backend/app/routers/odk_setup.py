@@ -1,6 +1,6 @@
 """ODK Setup Router — create ODK-compliant boards, manage files, edit YAML."""
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -62,6 +62,78 @@ async def create_odk_board(
         "board_id": ont_id,
         "mode": body.mode,
         **result,
+    }
+
+
+class GithubImport(BaseModel):
+    url: str
+    ont_id: str
+    title: str = ""
+
+
+@router.post("/import-zip", status_code=201)
+async def import_zip(
+    file: UploadFile = File(...),
+    ont_id: str = Form(...),
+    title: str = Form(""),
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Import a board from an uploaded ZIP file containing an ODK repository."""
+    ont_id = ont_id.strip().replace(" ", "-").lower()
+    if board_svc.get_board_by_slug(db, ont_id):
+        raise HTTPException(status_code=409, detail="Board already exists")
+
+    board = board_svc.create_board(db, ont_id, user, display_name=title or ont_id)
+    board_dir = DATA_DIR / ont_id
+
+    try:
+        zip_content = await file.read()
+        files = odk_setup.import_from_zip(board_dir, zip_content)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"ZIP extraction failed: {exc}")
+
+    # Git init + commit
+    import asyncio
+    loop = asyncio.get_event_loop()
+    await loop.run_in_executor(None, board_svc.git_init, board_dir)
+
+    board_svc.log_activity(db, board, user, "import_zip", f"Imported board from ZIP: {ont_id}")
+
+    return {
+        "board_id": ont_id,
+        "mode": "import-zip",
+        "success": True,
+        "files": files,
+    }
+
+
+@router.post("/import-github", status_code=201)
+async def import_github(
+    body: GithubImport,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Import a board by cloning a GitHub repository."""
+    ont_id = body.ont_id.strip().replace(" ", "-").lower()
+    if board_svc.get_board_by_slug(db, ont_id):
+        raise HTTPException(status_code=409, detail="Board already exists")
+
+    board = board_svc.create_board(db, ont_id, user, display_name=body.title or ont_id)
+    board_dir = DATA_DIR / ont_id
+
+    try:
+        files = odk_setup.import_from_github(board_dir, body.url)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"GitHub clone failed: {exc}")
+
+    board_svc.log_activity(db, board, user, "import_github", f"Imported board from GitHub: {body.url}")
+
+    return {
+        "board_id": ont_id,
+        "mode": "import-github",
+        "success": True,
+        "files": files,
     }
 
 

@@ -1,12 +1,32 @@
 /**
  * PatternLibrary — Browse, apply, and upload ODP/DOSDP patterns.
  * Patterns are added to the canvas without clearing existing entities.
+ * Each applied pattern gets a unique color for visual distinction.
+ * Supports drag-and-drop to place patterns on the canvas.
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { apiJson } from "../../api";
 import { useOntologyStore } from "../../store/ontologyStore";
 import styles from "./PatternLibrary.module.css";
+
+/** Predefined colors for ODP patterns — matches OntologyCanvas PATTERN_COLORS */
+const PATTERN_COLORS: Record<string, string> = {
+  "part-of": "#8b5cf6",
+  "quality-pattern": "#06b6d4",
+  "participation": "#f97316",
+  "classification": "#ec4899",
+  "information-entity": "#14b8a6",
+};
+const PATTERN_COLOR_PALETTE = ["#7c3aed", "#0891b2", "#ea580c", "#db2777", "#0d9488", "#4f46e5", "#059669", "#d97706", "#dc2626", "#7c2d12"];
+let patternColorIdx = 0;
+function getPatternColor(patternId: string): string {
+  if (PATTERN_COLORS[patternId]) return PATTERN_COLORS[patternId];
+  const color = PATTERN_COLOR_PALETTE[patternColorIdx % PATTERN_COLOR_PALETTE.length];
+  PATTERN_COLORS[patternId] = color;
+  patternColorIdx++;
+  return color;
+}
 
 interface PatternSummary {
   id: string;
@@ -35,6 +55,7 @@ export default function PatternLibrary({ boardId }: Props) {
   const [error, setError] = useState("");
   const [showUpload, setShowUpload] = useState(false);
   const store = useOntologyStore();
+  const dragPatternRef = useRef<string | null>(null);
 
   // Upload form state
   const [uploadName, setUploadName] = useState("");
@@ -60,26 +81,32 @@ export default function PatternLibrary({ boardId }: Props) {
     } catch { setError("Failed to load pattern details"); }
   };
 
-  const applyPattern = useCallback(async (patternId: string) => {
+  const applyPattern = useCallback(async (patternId: string, dropX?: number, dropY?: number) => {
     setApplying(true);
     setError("");
     try {
-      const result = await apiJson<{ classes: any[]; properties: any[]; individuals: any[] }>(
+      const result = await apiJson<{ classes: any[]; properties: any[]; individuals: any[]; pattern_id?: string }>(
         `/api/patterns/${boardId}/apply/${patternId}`,
         {
           method: "POST",
           body: JSON.stringify({
             base_iri: "http://example.org/ontology",
-            x: 200 + Math.random() * 300,
-            y: 100 + Math.random() * 200,
+            x: dropX ?? 200 + Math.random() * 300,
+            y: dropY ?? 100 + Math.random() * 200,
           }),
         }
       );
+
+      const patternColor = getPatternColor(patternId);
+
       // MERGE pattern entities into existing store (don't reload — that clears everything)
       for (const cls of result.classes || []) {
         if (!store.classes.some((c) => c.iri === cls.iri)) {
-          store.addClass(cls);
+          // Apply pattern-specific color
+          store.addClass({ ...cls, color: patternColor });
         }
+        // Track which pattern this class belongs to
+        store.assignPattern(cls.iri, patternId);
       }
       for (const prop of result.properties || []) {
         if (!store.properties.some((p) => p.id === prop.id)) {
@@ -94,6 +121,20 @@ export default function PatternLibrary({ boardId }: Props) {
       setApplying(false);
     }
   }, [boardId, store]);
+
+  // ── Drag and drop handlers ──
+  const handleDragStart = useCallback((e: React.DragEvent, patternId: string) => {
+    dragPatternRef.current = patternId;
+    e.dataTransfer.setData("application/x-odp-pattern", patternId);
+    e.dataTransfer.effectAllowed = "copy";
+    // Set a drag image
+    const ghost = document.createElement("div");
+    ghost.textContent = patterns.find((p) => p.id === patternId)?.name || patternId;
+    ghost.style.cssText = "position:absolute;top:-100px;padding:6px 12px;background:#4f46e5;color:#fff;border-radius:6px;font-size:12px;font-weight:600;white-space:nowrap;";
+    document.body.appendChild(ghost);
+    e.dataTransfer.setDragImage(ghost, 0, 0);
+    setTimeout(() => document.body.removeChild(ghost), 0);
+  }, [patterns]);
 
   const handleUpload = useCallback(async () => {
     if (!uploadName.trim()) { setError("Pattern name is required"); return; }
@@ -125,6 +166,27 @@ export default function PatternLibrary({ boardId }: Props) {
     }
   }, [uploadName, uploadDesc, uploadCategory, uploadScope, uploadCqs, uploadRef, uploadIri, uploadFile]);
 
+  /** Batch upload: multiple JSON+OWL file pairs */
+  const handleBatchUpload = useCallback(async (files: FileList) => {
+    setError("");
+    try {
+      const formData = new FormData();
+      for (let i = 0; i < files.length; i++) {
+        formData.append("files", files[i]);
+      }
+      const results = await apiJson<PatternSummary[]>("/api/patterns/upload-batch", {
+        method: "POST",
+        body: formData,
+        headers: {},
+      });
+      setPatterns((prev) => [...prev, ...results]);
+      setApplied("uploaded");
+      setTimeout(() => setApplied(null), 3000);
+    } catch (e: any) {
+      setError(e.message || "Batch upload failed");
+    }
+  }, []);
+
   // Group patterns by category
   const categories = patterns.reduce((acc, p) => {
     if (!acc[p.category]) acc[p.category] = [];
@@ -142,6 +204,18 @@ export default function PatternLibrary({ boardId }: Props) {
 
       {error && <div className={styles.error} onClick={() => setError("")}>{error}</div>}
       {applied && <div className={styles.success}>{applied === "uploaded" ? "Pattern uploaded" : "Pattern applied to canvas"}</div>}
+
+      <div className={styles.dragHint}>
+        Drag a pattern onto the canvas to place it, or click Apply.
+      </div>
+
+      {/* Batch upload zone */}
+      <label className={styles.batchUpload}>
+        <span>Upload multiple ODPs (JSON metadata + OWL files)</span>
+        <input type="file" multiple accept=".json,.owl,.ttl,.rdf,.xml"
+               style={{ display: "none" }}
+               onChange={(e) => e.target.files && e.target.files.length > 0 && handleBatchUpload(e.target.files)} />
+      </label>
 
       {/* Upload form */}
       {showUpload && (
@@ -188,8 +262,11 @@ export default function PatternLibrary({ boardId }: Props) {
                   key={p.id}
                   className={`${styles.patternCard} ${selected?.id === p.id ? styles.patternSelected : ""}`}
                   onClick={() => loadDetail(p.id)}
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, p.id)}
                 >
                   <div className={styles.patternHeader}>
+                    <span className={styles.patternColorDot} style={{ background: getPatternColor(p.id) }} />
                     <span className={styles.patternName}>{p.name}</span>
                     <span className={styles.patternMeta}>{p.class_count}C {p.property_count}P</span>
                   </div>
@@ -211,12 +288,15 @@ export default function PatternLibrary({ boardId }: Props) {
       {/* Pattern detail preview */}
       {selected && (
         <div className={styles.preview}>
-          <h4 className={styles.previewTitle}>{selected.name}</h4>
+          <div className={styles.previewHeader}>
+            <span className={styles.previewColorBar} style={{ background: getPatternColor(selected.id) }} />
+            <h4 className={styles.previewTitle}>{selected.name}</h4>
+          </div>
           <p className={styles.previewDesc}>{selected.description}</p>
           <div className={styles.previewSection}>
             <strong>Classes:</strong>
             {selected.classes.map((c) => (
-              <span key={c.iri} className={styles.previewEntity}>{c.label}</span>
+              <span key={c.iri} className={styles.previewEntity} style={{ borderColor: getPatternColor(selected.id) }}>{c.label}</span>
             ))}
           </div>
           {selected.properties.length > 0 && (
@@ -227,7 +307,8 @@ export default function PatternLibrary({ boardId }: Props) {
               ))}
             </div>
           )}
-          <button className={styles.applyBtnLg} onClick={() => applyPattern(selected.id)} disabled={applying}>
+          <button className={styles.applyBtnLg} style={{ background: getPatternColor(selected.id) }}
+                  onClick={() => applyPattern(selected.id)} disabled={applying}>
             {applying ? "Applying..." : "Apply to Board"}
           </button>
         </div>

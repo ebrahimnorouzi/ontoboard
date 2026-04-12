@@ -35,6 +35,8 @@ class BoardOut(BaseModel):
     # filesystem info
     odk_seeded: bool = False
     git_initialized: bool = False
+    last_modified: str | None = None
+    last_modified_by: str | None = None
 
     model_config = {"from_attributes": True}
 
