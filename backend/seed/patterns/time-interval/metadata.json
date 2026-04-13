@@ -1,0 +1,9 @@
+{
+  "id": "time-interval",
+  "name": "Time Interval Pattern",
+  "description": "Represents a time interval with a start and end point. Used for temporal modeling.",
+  "category": "structural",
+  "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/timeinterval.owl",
+  "references": "http://ontologydesignpatterns.org/wiki/Submissions:TimeInterval",
+  "competency_questions": "When does this interval start? When does this interval end?"
+}

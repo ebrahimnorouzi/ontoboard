@@ -1,0 +1,9 @@
+{
+  "id": "observation",
+  "name": "Observation Pattern",
+  "description": "Represents an observation made by an observer about a feature of interest, producing a result.",
+  "category": "behavioral",
+  "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/observation.owl",
+  "references": "http://ontologydesignpatterns.org/wiki/Submissions:Observation",
+  "competency_questions": "What was observed? Who made the observation? What was the result?"
+}

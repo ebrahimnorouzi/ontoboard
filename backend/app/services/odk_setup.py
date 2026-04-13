@@ -548,12 +548,16 @@ def import_from_zip(board_dir: Path, zip_content: bytes) -> list[str]:
 
 
 def import_from_github(board_dir: Path, github_url: str) -> list[str]:
-    """Clone a GitHub repository (shallow) into board_dir and return list of files."""
+    """Clone a GitHub repository (shallow) into board_dir and return list of files.
+
+    After cloning, converts any OWL Functional Syntax files to OWL/XML
+    so rdflib can parse them.
+    """
+    import shutil
     import subprocess
 
     # Remove board_dir if it already exists (git clone needs an empty/non-existent target)
     if board_dir.exists():
-        import shutil
         shutil.rmtree(board_dir)
 
     result = subprocess.run(
@@ -562,6 +566,30 @@ def import_from_github(board_dir: Path, github_url: str) -> list[str]:
     )
     if result.returncode != 0:
         raise RuntimeError(f"git clone failed: {result.stderr.strip()}")
+
+    # Convert OWL Functional Syntax files to OWL/XML (rdflib can't parse functional syntax)
+    if shutil.which("robot"):
+        for owl_file in board_dir.rglob("*.owl"):
+            if ".git" in str(owl_file):
+                continue
+            try:
+                content = owl_file.read_text(encoding="utf-8", errors="replace")[:100]
+                # OWL Functional Syntax starts with "Prefix(" or "Ontology("
+                if content.strip().startswith("Prefix(") or content.strip().startswith("Ontology("):
+                    logger.info("Converting %s from OWL Functional Syntax to OWL/XML", owl_file.name)
+                    converted = owl_file.parent / f"_tmp_{owl_file.name}"
+                    conv_result = subprocess.run(
+                        ["robot", "convert", "-i", str(owl_file), "-o", str(converted), "--format", "owl"],
+                        capture_output=True, text=True, timeout=120,
+                    )
+                    if conv_result.returncode == 0 and converted.exists():
+                        converted.replace(owl_file)
+                        logger.info("Converted %s successfully", owl_file.name)
+                    else:
+                        converted.unlink(missing_ok=True)
+                        logger.warning("ROBOT convert failed for %s: %s", owl_file.name, conv_result.stderr[:200])
+            except Exception as exc:
+                logger.warning("Error checking/converting %s: %s", owl_file.name, exc)
 
     files: list[str] = []
     for f in board_dir.rglob("*"):

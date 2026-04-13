@@ -28,15 +28,53 @@ _WELL_KNOWN_NS = {
 
 
 def load_graph(board_dir: Path) -> Graph:
-    """Load the board's primary OWL file into an rdflib Graph."""
+    """Load the board's primary OWL file into an rdflib Graph.
+
+    Handles multiple formats: OWL/XML, Turtle, RDF/XML, N-Triples.
+    If the file is in OWL Functional Syntax (which rdflib can't parse),
+    converts it to OWL/XML using ROBOT first.
+    """
     ont_dir = board_dir / "src" / "ontology"
     owl_files = list(ont_dir.glob("*.owl")) if ont_dir.exists() else []
     if not owl_files:
         raise FileNotFoundError(f"No .owl file in {ont_dir}")
 
+    owl_file = owl_files[0]
     g = Graph()
-    g.parse(str(owl_files[0]), format="xml")
-    return g
+
+    # Try parsing in multiple formats
+    for fmt in ("xml", "turtle", "n3", "nt", "json-ld"):
+        try:
+            g.parse(str(owl_file), format=fmt)
+            return g
+        except Exception:
+            continue
+
+    # If all rdflib parsers fail, try converting with ROBOT (handles OWL Functional Syntax)
+    import shutil
+    import subprocess
+    if shutil.which("robot"):
+        converted = owl_file.parent / f"_converted_{owl_file.stem}.owl"
+        try:
+            result = subprocess.run(
+                ["robot", "convert", "-i", str(owl_file), "-o", str(converted), "--format", "owl"],
+                capture_output=True, text=True, timeout=120,
+                cwd=str(owl_file.parent),
+            )
+            if result.returncode == 0 and converted.exists():
+                g.parse(str(converted), format="xml")
+                # Replace the original with the converted XML version
+                converted.replace(owl_file)
+                logger.info("Converted %s from OWL Functional Syntax to OWL/XML", owl_file.name)
+                return g
+            else:
+                logger.warning("ROBOT convert failed: %s", result.stderr[:300])
+        except Exception as exc:
+            logger.warning("ROBOT convert error: %s", exc)
+        finally:
+            converted.unlink(missing_ok=True)
+
+    raise ValueError(f"Cannot parse {owl_file.name} — unsupported format")
 
 
 def load_full_graph(board_dir: Path) -> Graph:
@@ -44,13 +82,18 @@ def load_full_graph(board_dir: Path) -> Graph:
     g = Graph()
     for ext in ("*.owl", "*.ttl", "*.rdf", "*.nt"):
         for f in board_dir.rglob(ext):
-            if ".git" in str(f) or "tmp_" in f.name:
+            if ".git" in str(f) or "tmp_" in f.name or f.name.startswith("_converted_"):
                 continue
-            try:
-                fmt = {"owl": "xml", "ttl": "turtle", "rdf": "xml", "nt": "nt"}[f.suffix[1:]]
-                g.parse(str(f), format=fmt)
-            except Exception as exc:
-                logger.warning("Failed to parse %s: %s", f, exc)
+            parsed = False
+            for fmt in ("xml", "turtle", "n3", "nt"):
+                try:
+                    g.parse(str(f), format=fmt)
+                    parsed = True
+                    break
+                except Exception:
+                    continue
+            if not parsed:
+                logger.warning("Failed to parse %s (unsupported format)", f)
     return g
 
 

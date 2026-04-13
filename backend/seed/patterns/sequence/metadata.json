@@ -1,0 +1,9 @@
+{
+  "id": "sequence",
+  "name": "Sequence Pattern",
+  "description": "Represents an ordered sequence of entities where each element follows another.",
+  "category": "structural",
+  "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/sequence.owl",
+  "references": "http://ontologydesignpatterns.org/wiki/Submissions:Sequence",
+  "competency_questions": "What follows this entity in the sequence? What precedes this entity?"
+}

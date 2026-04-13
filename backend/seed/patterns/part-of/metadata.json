@@ -1,0 +1,9 @@
+{
+  "id": "part-of",
+  "name": "Part-Of Pattern",
+  "description": "Models mereological part-whole relationships. A whole entity has parts, and parts are components of a whole.",
+  "category": "structural",
+  "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/partof.owl",
+  "references": "http://ontologydesignpatterns.org/wiki/Submissions:PartOf",
+  "competency_questions": "What are the parts of this whole? What is this entity part of?"
+}

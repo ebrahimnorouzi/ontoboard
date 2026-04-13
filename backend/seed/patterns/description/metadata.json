@@ -1,0 +1,9 @@
+{
+  "id": "description",
+  "name": "Description Pattern",
+  "description": "Represents non-physical objects (descriptions, plans, norms) that define or describe situations.",
+  "category": "information",
+  "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/description.owl",
+  "references": "http://ontologydesignpatterns.org/wiki/Submissions:Description",
+  "competency_questions": "What does this description define? What situation satisfies this description?"
+}

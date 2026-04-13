@@ -254,27 +254,26 @@ async def test_file_browser(admin_client, tmp_data_dir):
 # Test 5: ODK Mediator Commands (Mocked Docker)
 # ═══════════════════════════════════════════════════════════════
 
-def _mock_docker():
-    mock = MagicMock()
-    mock.images.get.return_value = True
-    container = MagicMock()
-    container.logs.return_value = iter([b"[INFO] Command completed\n"])
-    container.wait.return_value = {"StatusCode": 0}
-    container.remove.return_value = None
-    mock.containers.run.return_value = container
-    return mock
+def _mock_subprocess():
+    """Create a mock for subprocess.run that simulates successful command execution."""
+    import subprocess
+    return MagicMock(return_value=subprocess.CompletedProcess(
+        args="mock", returncode=0,
+        stdout="[INFO] Command completed\n",
+        stderr="",
+    ))
 
 
 @pytest.mark.asyncio
 async def test_odk_build_commands(admin_client, tmp_data_dir):
-    """Test all ODK mediator commands with mocked Docker."""
+    """Test all ODK mediator commands with mocked subprocess."""
     await admin_client.post("/api/odk-setup/create-board", json={
         "ont_id": "buildtest", "title": "Build Test", "mode": "odk",
     })
     await asyncio.sleep(0.1)
 
-    mock = _mock_docker()
-    with patch("app.services.odk_mediator.docker.from_env", return_value=mock):
+    mock_run = _mock_subprocess()
+    with patch("app.services.odk_mediator.subprocess.run", mock_run):
         # Test each command
         for endpoint in ["seed", "update-repo", "refresh-imports", "test"]:
             resp = await admin_client.post(f"/api/odk-mediator/buildtest/{endpoint}")

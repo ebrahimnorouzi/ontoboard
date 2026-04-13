@@ -1,0 +1,9 @@
+{
+  "id": "spatial-object",
+  "name": "Place (Spatial Object) Pattern",
+  "description": "Represents spatial entities and their locations. Used for geographical and spatial modeling.",
+  "category": "structural",
+  "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/place.owl",
+  "references": "http://ontologydesignpatterns.org/wiki/Submissions:Place",
+  "competency_questions": "Where is this entity located? What entities are at this place?"
+}

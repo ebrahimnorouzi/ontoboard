@@ -1,0 +1,9 @@
+{
+  "id": "co-participation",
+  "name": "Co-Participation Pattern",
+  "description": "Two or more objects co-participate in the same event.",
+  "category": "behavioral",
+  "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/coparticipation.owl",
+  "references": "http://ontologydesignpatterns.org/wiki/Submissions:CoParticipation",
+  "competency_questions": "What objects co-participate in this event? Which events involve co-participation of these objects?"
+}

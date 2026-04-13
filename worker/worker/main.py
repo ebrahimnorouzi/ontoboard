@@ -1,22 +1,22 @@
 """
-Worker service — polls Redis job queue and executes long-running tasks
-inside the odkfull Docker container.
+Worker service — polls Redis job queue and executes long-running ROBOT tasks.
+
+ROBOT is expected to be on PATH (installed in the Docker image).
 
 Supported job types:
   - reason:       Run a reasoner on the ontology
   - publish:      Run the ODK publish pipeline
   - build_docs:   Generate documentation
-  - build_kg:     Build a knowledge graph from CSV
   - robot_report: Run ROBOT report
 """
 
 import json
 import logging
 import os
+import subprocess
 import time
 import traceback
 
-import docker
 import redis
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(name)s] %(message)s")
@@ -24,77 +24,37 @@ logger = logging.getLogger("worker")
 
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 DATA_DIR = os.getenv("DATA_DIR", "/app/data")
-ODK_IMAGE = os.getenv("ODK_IMAGE", "obolibrary/odkfull:latest")
-DOCKER_HOST = os.getenv("DOCKER_HOST", "unix:///var/run/docker.sock")
 
 JOB_QUEUE_KEY = "ontoboard:jobs"
 JOB_PREFIX = "ontoboard:job:"
+JOB_TTL = 3600 * 24
 JOB_PROGRESS_CHANNEL = "ontoboard:progress:"
-JOB_TTL = 3600
-
-
-def get_redis():
-    return redis.from_url(REDIS_URL, decode_responses=True)
 
 
 def update_job(r, job_id, **updates):
-    """Update job status and publish progress."""
     key = f"{JOB_PREFIX}{job_id}"
-    data = r.get(key)
-    if not data:
-        return
-    job = json.loads(data)
+    job = json.loads(r.get(key) or "{}")
     job.update(updates)
     r.set(key, json.dumps(job), ex=JOB_TTL)
     r.publish(f"{JOB_PROGRESS_CHANNEL}{job_id}", json.dumps(updates))
 
 
-def run_docker_command(board_dir, command, working_dir="/work"):
-    """Run a command in the odkfull container. Returns (exit_code, stdout, stderr).
+def run_command(board_dir, command, working_dir=None):
+    """Run a command as a local subprocess. Returns (exit_code, stdout, stderr)."""
+    cwd = working_dir or os.path.join(board_dir, "src", "ontology")
+    if not os.path.isdir(cwd):
+        cwd = board_dir
 
-    Auto-pulls the ODK image if it is not found locally.
-    """
     try:
-        client = docker.from_env()
-        try:
-            client.images.get(ODK_IMAGE)
-        except Exception:
-            print(f"[worker] ODK image '{ODK_IMAGE}' not found — pulling...")
-            try:
-                client.images.pull(ODK_IMAGE)
-                print(f"[worker] Successfully pulled '{ODK_IMAGE}'")
-            except Exception as pull_exc:
-                return -1, "", f"Docker/ODK image not found and pull failed: {pull_exc}"
+        result = subprocess.run(
+            command, shell=True, cwd=cwd,
+            capture_output=True, text=True, timeout=600,
+        )
+        return result.returncode, result.stdout, result.stderr
+    except subprocess.TimeoutExpired:
+        return -1, "", "Command timed out after 600 seconds"
     except Exception as exc:
-        return -1, "", f"Docker unavailable: {exc}"
-
-    # Resolve to absolute path — Docker requires absolute paths for bind mounts
-    abs_dir = os.path.abspath(board_dir)
-    # Windows Docker mount path: C:\... → /c/...
-    mount_path = abs_dir.replace("\\", "/")
-    if len(mount_path) >= 2 and mount_path[1] == ":":
-        mount_path = "/" + mount_path[0].lower() + mount_path[2:]
-
-    container = client.containers.run(
-        image=ODK_IMAGE,
-        command=command,
-        volumes={mount_path: {"bind": "/work", "mode": "rw"}},
-        working_dir=working_dir,
-        detach=True,
-        stdout=True,
-        stderr=True,
-    )
-
-    try:
-        result = container.wait(timeout=600)
-        stdout = container.logs(stdout=True, stderr=False).decode("utf-8", errors="replace")
-        stderr = container.logs(stdout=False, stderr=True).decode("utf-8", errors="replace")
-        return result.get("StatusCode", -1), stdout, stderr
-    finally:
-        try:
-            container.remove(force=True)
-        except Exception:
-            pass
+        return -1, "", str(exc)
 
 
 def handle_reason(r, job_id, board_id, params):
@@ -107,10 +67,10 @@ def handle_reason(r, job_id, board_id, params):
 
     update_job(r, job_id, status="running", progress=20)
 
-    rel_owl = os.path.relpath(owl_file, board_dir)
-    code, stdout, stderr = run_docker_command(
+    rel_owl = os.path.relpath(owl_file, board_dir).replace("\\", "/")
+    code, stdout, stderr = run_command(
         board_dir,
-        f"robot reason -r {reasoner} -i /work/{rel_owl} -o /work/src/ontology/tmp_inferred.owl",
+        f"robot reason -r {reasoner} -i {rel_owl} -o src/ontology/tmp_inferred.owl",
     )
 
     update_job(r, job_id, progress=80)
@@ -126,9 +86,7 @@ def handle_publish(r, job_id, board_id, params):
     for i, step in enumerate(steps):
         progress = 20 + (i / len(steps)) * 70
         update_job(r, job_id, status="running", progress=progress)
-        code, stdout, stderr = run_docker_command(
-            board_dir, f"make {step}", working_dir="/work/src/ontology",
-        )
+        code, stdout, stderr = run_command(board_dir, f"make {step}")
         results.append({"step": step, "exit_code": code, "stdout": stdout[-200:], "stderr": stderr[-200:]})
         if code != 0:
             return {"results": results, "failed_at": step}
@@ -140,9 +98,7 @@ def handle_build_docs(r, job_id, board_id, params):
     """Run make docs."""
     board_dir = os.path.join(DATA_DIR, board_id)
     update_job(r, job_id, status="running", progress=30)
-    code, stdout, stderr = run_docker_command(
-        board_dir, "make docs", working_dir="/work/src/ontology",
-    )
+    code, stdout, stderr = run_command(board_dir, "make docs")
     return {"exit_code": code, "stdout": stdout[-500:], "stderr": stderr[-500:]}
 
 
@@ -154,10 +110,10 @@ def handle_robot_report(r, job_id, board_id, params):
         return {"error": "No OWL file found"}
 
     update_job(r, job_id, status="running", progress=30)
-    rel_owl = os.path.relpath(owl_file, board_dir)
-    code, stdout, stderr = run_docker_command(
+    rel_owl = os.path.relpath(owl_file, board_dir).replace("\\", "/")
+    code, stdout, stderr = run_command(
         board_dir,
-        f"robot report -i /work/{rel_owl} --output /work/report.tsv --format tsv",
+        f"robot report -i {rel_owl} --output report.tsv --format tsv",
     )
     return {"exit_code": code, "stdout": stdout[-500:], "stderr": stderr[-500:]}
 
@@ -173,6 +129,10 @@ JOB_HANDLERS = {
 def _find_owl(board_dir):
     ont_dir = os.path.join(board_dir, "src", "ontology")
     if os.path.isdir(ont_dir):
+        # Prefer -edit.owl
+        for f in os.listdir(ont_dir):
+            if f.endswith("-edit.owl"):
+                return os.path.join(ont_dir, f)
         for f in os.listdir(ont_dir):
             if f.endswith(".owl"):
                 return os.path.join(ont_dir, f)
@@ -180,54 +140,37 @@ def _find_owl(board_dir):
 
 
 def main():
-    logger.info("Worker starting. Redis: %s, Data: %s", REDIS_URL, DATA_DIR)
-
-    r = get_redis()
-    r.ping()
-    logger.info("Connected to Redis")
+    r = redis.from_url(REDIS_URL)
+    logger.info("Worker started. Listening on queue '%s'...", JOB_QUEUE_KEY)
 
     while True:
-        # Block-pop from the job queue (timeout 5s)
-        item = r.blpop(JOB_QUEUE_KEY, timeout=5)
-        if item is None:
-            continue
-
-        _, raw = item
         try:
-            job_msg = json.loads(raw)
-        except json.JSONDecodeError:
-            logger.warning("Invalid job message: %s", raw)
-            continue
+            item = r.brpop(JOB_QUEUE_KEY, timeout=5)
+            if item is None:
+                continue
 
-        job_id = job_msg["job_id"]
-        board_id = job_msg["board_id"]
-        job_type = job_msg["job_type"]
-        params = job_msg.get("params", {})
+            _, payload = item
+            job = json.loads(payload)
+            job_id = job["id"]
+            job_type = job["type"]
+            board_id = job["board_id"]
+            params = job.get("params", {})
 
-        logger.info("Processing job %s: %s for board %s", job_id, job_type, board_id)
-        update_job(r, job_id, status="running", progress=10)
+            logger.info("Processing job %s: type=%s board=%s", job_id, job_type, board_id)
+            update_job(r, job_id, status="running", progress=10)
 
-        handler = JOB_HANDLERS.get(job_type)
-        if not handler:
-            update_job(r, job_id, status="failed", error=f"Unknown job type: {job_type}", progress=100)
-            continue
-
-        try:
-            t0 = time.time()
-            result = handler(r, job_id, board_id, params)
-            duration = time.time() - t0
-            result["duration_seconds"] = round(duration, 2)
-
-            if result.get("error"):
-                update_job(r, job_id, status="failed", error=result["error"], result=result, progress=100)
+            handler = JOB_HANDLERS.get(job_type)
+            if handler:
+                result = handler(r, job_id, board_id, params)
+                update_job(r, job_id, status="completed", progress=100, result=result)
+                logger.info("Job %s completed", job_id)
             else:
-                update_job(r, job_id, status="completed", result=result, progress=100)
-
-            logger.info("Job %s completed in %.1fs", job_id, duration)
+                update_job(r, job_id, status="failed", result={"error": f"Unknown job type: {job_type}"})
+                logger.warning("Unknown job type: %s", job_type)
 
         except Exception as exc:
-            logger.error("Job %s failed: %s", job_id, traceback.format_exc())
-            update_job(r, job_id, status="failed", error=str(exc), progress=100)
+            logger.error("Worker error: %s\n%s", exc, traceback.format_exc())
+            time.sleep(1)
 
 
 if __name__ == "__main__":

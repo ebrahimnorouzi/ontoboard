@@ -1,0 +1,9 @@
+{
+  "id": "participation",
+  "name": "Participation Pattern",
+  "description": "Represents the participation of an object in an event or process.",
+  "category": "behavioral",
+  "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/participation.owl",
+  "references": "http://ontologydesignpatterns.org/wiki/Submissions:Participation",
+  "competency_questions": "What objects participate in this event? In what events does this object participate?"
+}

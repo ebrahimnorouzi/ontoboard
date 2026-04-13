@@ -1,0 +1,9 @@
+{
+  "id": "agent-role",
+  "name": "Agent Role Pattern",
+  "description": "Represents an agent playing a role in some context. Agents can be persons, organizations, or software agents.",
+  "category": "behavioral",
+  "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/agentrole.owl",
+  "references": "http://ontologydesignpatterns.org/wiki/Submissions:AgentRole",
+  "competency_questions": "What role does this agent play? Which agent plays this role?"
+}

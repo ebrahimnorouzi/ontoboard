@@ -1,0 +1,9 @@
+{
+  "id": "information-realization",
+  "name": "Information Realization Pattern",
+  "description": "Represents the relationship between an information object and its physical realization (e.g., a document and its printed copy).",
+  "category": "information",
+  "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/informationrealization.owl",
+  "references": "http://ontologydesignpatterns.org/wiki/Submissions:InformationRealization",
+  "competency_questions": "What physical entity realizes this information object? What information is realized by this entity?"
+}

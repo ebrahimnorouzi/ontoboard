@@ -1,0 +1,9 @@
+{
+  "id": "classification",
+  "name": "Classification Pattern",
+  "description": "Represents the assignment of a concept to a classification scheme or taxonomy.",
+  "category": "structural",
+  "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/classification.owl",
+  "references": "http://ontologydesignpatterns.org/wiki/Submissions:Classification",
+  "competency_questions": "What concept classifies this entity? What entities are classified by this concept?"
+}

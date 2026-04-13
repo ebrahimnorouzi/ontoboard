@@ -1,14 +1,43 @@
+# Python
 __pycache__/
 *.pyc
-.env
-node_modules/
-dist/
-data/
-.vite/
+*.pyo
 *.egg-info/
 .mypy_cache/
 .pytest_cache/
+htmlcov/
+.coverage
+
+# Node
+node_modules/
+dist/
+.vite/
+
+# Runtime data (board files, databases, uploads)
+data/
+
+# Environment & secrets
+.env
+*.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Docker
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude Code
 .claude/*
+
+# Temp files
 playground.pptx
 mwo301.ttl
 test_upload.ttl
+*.tmp

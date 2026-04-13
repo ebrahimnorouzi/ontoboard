@@ -1,0 +1,9 @@
+{
+  "id": "situation",
+  "name": "Situation Pattern",
+  "description": "Represents a relational context (situation) that includes entities playing roles. A situation is a unified view of a state of affairs.",
+  "category": "behavioral",
+  "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/situation.owl",
+  "references": "http://ontologydesignpatterns.org/wiki/Submissions:Situation",
+  "competency_questions": "What is the context of this entity? What entities are involved in this situation?"
+}

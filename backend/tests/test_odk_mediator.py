@@ -1,22 +1,20 @@
-"""Tests for ODK Mediator — all 6 workflows with mocked Docker SSE streams.
+"""Tests for ODK Mediator — all workflows with mocked subprocess calls.
 
 Mocking Strategy:
-- docker.from_env() returns a mock client
-- client.images.get() succeeds (image "exists")
-- client.containers.run() returns a mock container
-- container.logs(stream=True) yields fake log lines
-- container.wait() returns {"StatusCode": 0}
-- container.remove() is a no-op
+- subprocess.run() is patched in app.services.odk_mediator
+- Returns a CompletedProcess with stdout, stderr, and returncode
+- No Docker dependency — the service uses local subprocess calls
 
-This ensures the full FastAPI→Service→Docker→SSE pipeline is tested
-without pulling the 5GB odkfull image.
+This ensures the full FastAPI→Service→subprocess→SSE pipeline is tested
+without requiring ROBOT or ODK tools to be installed.
 """
 
 import asyncio
 import json
+import subprocess
 import textwrap
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 import pytest
 
@@ -45,32 +43,29 @@ def _setup(d, bid):
     (sparql_dir / "test_check.rq").write_text("SELECT ?s WHERE { ?s ?p ?o } LIMIT 1")
 
 
-def _make_mock_container(log_lines: list[str], exit_code: int = 0):
-    """Create a mock Docker container that yields log lines."""
-    container = MagicMock()
-    container.logs.return_value = iter([line.encode("utf-8") for line in log_lines])
-    container.wait.return_value = {"StatusCode": exit_code}
-    container.remove.return_value = None
-    return container
+def _make_completed_process(
+    stdout: str = "",
+    stderr: str = "",
+    returncode: int = 0,
+) -> subprocess.CompletedProcess:
+    """Create a CompletedProcess for mocking subprocess.run."""
+    return subprocess.CompletedProcess(
+        args="mocked",
+        returncode=returncode,
+        stdout=stdout,
+        stderr=stderr,
+    )
 
 
-def _make_mock_docker(log_lines: list[str] = None, exit_code: int = 0):
-    """Create a mock docker client + container."""
-    if log_lines is None:
-        log_lines = [
-            "[INFO] Loading ontology...\n",
-            "[INFO] Running reasoner ELK...\n",
-            "[INFO] Reasoner completed successfully\n",
-        ]
-    mock_client = MagicMock()
-    mock_client.images.get.return_value = True  # Image "exists"
-    container = _make_mock_container(log_lines, exit_code)
-    mock_client.containers.run.return_value = container
-    return mock_client
+DEFAULT_STDOUT = (
+    "[INFO] Loading ontology...\n"
+    "[INFO] Running reasoner ELK...\n"
+    "[INFO] Reasoner completed successfully\n"
+)
 
 
 # ═══════════════════════════════════════════════════════════════
-# Unit Tests: SSE streaming from mocked Docker
+# Unit Tests: SSE streaming from mocked subprocess
 # ═══════════════════════════════════════════════════════════════
 
 def test_sse_format():
@@ -85,17 +80,16 @@ def test_sse_format():
     assert data["progress"] == 50
 
 
-def test_run_container_streaming_success(tmp_data_dir):
-    """Test that _run_container_streaming yields proper SSE lines on success."""
+def test_run_command_success(tmp_data_dir):
+    """Test that _run_command yields proper SSE lines on success."""
     _setup(tmp_data_dir, "stream-ok")
-    mock_client = _make_mock_docker([
-        "[INFO] Step 1: Loading...\n",
-        "[INFO] Step 2: Processing...\n",
-        "[INFO] Done!\n",
-    ])
-    with patch("app.services.odk_mediator.docker.from_env", return_value=mock_client):
-        from app.services.odk_mediator import _run_container_streaming
-        lines = list(_run_container_streaming(tmp_data_dir / "stream-ok", "make all"))
+    mock_result = _make_completed_process(
+        stdout="[INFO] Step 1: Loading...\n[INFO] Step 2: Processing...\n[INFO] Done!\n",
+        returncode=0,
+    )
+    with patch("app.services.odk_mediator.subprocess.run", return_value=mock_result):
+        from app.services.odk_mediator import _run_command
+        lines = list(_run_command(tmp_data_dir / "stream-ok", "make all"))
 
     # Should have: start + 3 log lines + success
     assert len(lines) >= 4
@@ -105,62 +99,74 @@ def test_run_container_streaming_success(tmp_data_dir):
     # Last line should be "success"
     last = json.loads(lines[-1][6:].strip())
     assert last["type"] == "success"
-    assert "exit 0" in last["message"]
+    assert "successfully" in last["message"]
 
 
-def test_run_container_streaming_failure(tmp_data_dir):
-    """Test that _run_container_streaming reports errors on non-zero exit."""
+def test_run_command_failure(tmp_data_dir):
+    """Test that _run_command reports errors on non-zero exit."""
     _setup(tmp_data_dir, "stream-fail")
-    mock_client = _make_mock_docker(["[ERROR] Reasoner failed!\n"], exit_code=1)
-    # Override container.logs to return different results for stream vs stderr
-    container = mock_client.containers.run.return_value
-    def logs_side_effect(**kwargs):
-        if kwargs.get("stream"):
-            return iter([b"[ERROR] Reasoner failed!\n"])
-        if kwargs.get("stderr") and not kwargs.get("stdout"):
-            return b"Detailed error: inconsistency found"
-        return b""
-    container.logs.side_effect = logs_side_effect
-
-    with patch("app.services.odk_mediator.docker.from_env", return_value=mock_client):
-        from app.services.odk_mediator import _run_container_streaming
-        lines = list(_run_container_streaming(tmp_data_dir / "stream-fail", "make test"))
+    mock_result = _make_completed_process(
+        stdout="",
+        stderr="[ERROR] Reasoner failed!\nDetailed error: inconsistency found",
+        returncode=1,
+    )
+    with patch("app.services.odk_mediator.subprocess.run", return_value=mock_result):
+        from app.services.odk_mediator import _run_command
+        lines = list(_run_command(tmp_data_dir / "stream-fail", "make test"))
 
     # Should contain an error line
     types = [json.loads(l[6:].strip())["type"] for l in lines]
     assert "error" in types
 
 
-def test_run_container_no_docker(tmp_data_dir):
-    """Test graceful handling when Docker is unavailable."""
-    _setup(tmp_data_dir, "no-docker")
-    mock_client = MagicMock()
-    mock_client.images.get.side_effect = Exception("No Docker")
+def test_run_command_timeout(tmp_data_dir):
+    """Test graceful handling when command times out."""
+    _setup(tmp_data_dir, "stream-timeout")
+    with patch(
+        "app.services.odk_mediator.subprocess.run",
+        side_effect=subprocess.TimeoutExpired(cmd="make all", timeout=600),
+    ):
+        from app.services.odk_mediator import _run_command
+        lines = list(_run_command(tmp_data_dir / "stream-timeout", "make all"))
 
-    with patch("app.services.odk_mediator.docker.from_env", return_value=mock_client):
-        from app.services.odk_mediator import _run_container_streaming
-        lines = list(_run_container_streaming(tmp_data_dir / "no-docker", "make all"))
-
-    assert len(lines) == 1
-    data = json.loads(lines[0][6:].strip())
+    # start + error
+    assert len(lines) == 2
+    data = json.loads(lines[-1][6:].strip())
     assert data["type"] == "error"
-    assert "Docker" in data["message"] or "unavailable" in data["message"]
+    assert "timed out" in data["message"]
+
+
+def test_run_command_not_found(tmp_data_dir):
+    """Test graceful handling when command is not found."""
+    _setup(tmp_data_dir, "stream-notfound")
+    with patch(
+        "app.services.odk_mediator.subprocess.run",
+        side_effect=FileNotFoundError("No such file or directory: 'robot'"),
+    ):
+        from app.services.odk_mediator import _run_command
+        lines = list(_run_command(tmp_data_dir / "stream-notfound", "robot reason"))
+
+    # start + error
+    assert len(lines) == 2
+    data = json.loads(lines[-1][6:].strip())
+    assert data["type"] == "error"
+    assert "not found" in data["message"].lower() or "Command not found" in data["message"]
 
 
 # ═══════════════════════════════════════════════════════════════
-# Integration Tests: API endpoints with mocked Docker
+# Integration Tests: API endpoints with mocked subprocess
 # ═══════════════════════════════════════════════════════════════
 
 @pytest.fixture
-def mock_docker_mediator():
-    """Fixture that patches docker.from_env specifically in odk_mediator."""
-    mock_client = _make_mock_docker()
-    with patch("app.services.odk_mediator.docker.from_env", return_value=mock_client):
-        yield mock_client
+def mock_subprocess():
+    """Fixture that patches subprocess.run in odk_mediator."""
+    mock_result = _make_completed_process(stdout=DEFAULT_STDOUT, returncode=0)
+    with patch("app.services.odk_mediator.subprocess.run", return_value=mock_result) as mock_run:
+        yield mock_run
 
 
 @pytest.mark.asyncio
-async def test_odk_seed_endpoint(admin_client, tmp_data_dir, mock_docker_mediator):
+async def test_odk_seed_endpoint(admin_client, tmp_data_dir, mock_subprocess):
     """Workflow 1: ODK seed streams SSE output."""
     await admin_client.post("/api/boards/med-seed")
     await asyncio.sleep(0.1)
@@ -175,7 +181,7 @@ async def test_odk_seed_endpoint(admin_client, tmp_data_dir, mock_docker_mediato
 
 
 @pytest.mark.asyncio
-async def test_update_repo_endpoint(admin_client, tmp_data_dir, mock_docker_mediator):
+async def test_update_repo_endpoint(admin_client, tmp_data_dir, mock_subprocess):
     """Workflow 1b: Update repo streams SSE output."""
     await admin_client.post("/api/boards/med-update")
     await asyncio.sleep(0.1)
@@ -187,7 +193,7 @@ async def test_update_repo_endpoint(admin_client, tmp_data_dir, mock_docker_medi
 
 
 @pytest.mark.asyncio
-async def test_refresh_imports_endpoint(admin_client, tmp_data_dir, mock_docker_mediator):
+async def test_refresh_imports_endpoint(admin_client, tmp_data_dir, mock_subprocess):
     """Workflow 2: Refresh imports streams SSE."""
     await admin_client.post("/api/boards/med-imports")
     await asyncio.sleep(0.1)
@@ -199,7 +205,7 @@ async def test_refresh_imports_endpoint(admin_client, tmp_data_dir, mock_docker_
 
 
 @pytest.mark.asyncio
-async def test_reason_endpoint(admin_client, tmp_data_dir, mock_docker_mediator):
+async def test_reason_endpoint(admin_client, tmp_data_dir, mock_subprocess):
     """Workflow 3: Reasoning with ELK streams SSE."""
     await admin_client.post("/api/boards/med-reason")
     await asyncio.sleep(0.1)
@@ -214,7 +220,7 @@ async def test_reason_endpoint(admin_client, tmp_data_dir, mock_docker_mediator)
 
 
 @pytest.mark.asyncio
-async def test_reason_hermit_endpoint(admin_client, tmp_data_dir, mock_docker_mediator):
+async def test_reason_hermit_endpoint(admin_client, tmp_data_dir, mock_subprocess):
     """Workflow 3b: Reasoning with HermiT."""
     await admin_client.post("/api/boards/med-hermit")
     await asyncio.sleep(0.1)
@@ -225,7 +231,7 @@ async def test_reason_hermit_endpoint(admin_client, tmp_data_dir, mock_docker_me
 
 
 @pytest.mark.asyncio
-async def test_test_endpoint(admin_client, tmp_data_dir, mock_docker_mediator):
+async def test_test_endpoint(admin_client, tmp_data_dir, mock_subprocess):
     """Workflow 3c: Run ontology test suite."""
     await admin_client.post("/api/boards/med-test")
     await asyncio.sleep(0.1)
@@ -237,7 +243,7 @@ async def test_test_endpoint(admin_client, tmp_data_dir, mock_docker_mediator):
 
 
 @pytest.mark.asyncio
-async def test_sparql_verify_endpoint(admin_client, tmp_data_dir, mock_docker_mediator):
+async def test_sparql_verify_endpoint(admin_client, tmp_data_dir, mock_subprocess):
     """Workflow 4: SPARQL verification."""
     await admin_client.post("/api/boards/med-sparql")
     await asyncio.sleep(0.1)
@@ -251,7 +257,7 @@ async def test_sparql_verify_endpoint(admin_client, tmp_data_dir, mock_docker_me
 
 
 @pytest.mark.asyncio
-async def test_release_endpoint(admin_client, tmp_data_dir, mock_docker_mediator):
+async def test_release_endpoint(admin_client, tmp_data_dir, mock_subprocess):
     """Workflow 5: Full release pipeline streams all steps."""
     await admin_client.post("/api/boards/med-release")
     await asyncio.sleep(0.1)
@@ -304,7 +310,7 @@ async def test_download_artifact(admin_client, tmp_data_dir):
 
 
 @pytest.mark.asyncio
-async def test_dosdp_endpoint(admin_client, tmp_data_dir, mock_docker_mediator):
+async def test_dosdp_endpoint(admin_client, tmp_data_dir, mock_subprocess):
     """Workflow 6: DOSDP pattern instantiation."""
     await admin_client.post("/api/boards/med-dosdp")
     await asyncio.sleep(0.1)

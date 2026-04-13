@@ -1,0 +1,26 @@
+<?xml version="1.0"?>
+<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+         xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+         xmlns:owl="http://www.w3.org/2002/07/owl#"
+         xml:base="http://www.ontologydesignpatterns.org/cp/owl/place.owl">
+  <owl:Ontology rdf:about="http://www.ontologydesignpatterns.org/cp/owl/place.owl">
+    <rdfs:label>Place (Spatial Object) Pattern</rdfs:label>
+    <rdfs:comment>Represents spatial entities and their locations. Used for geographical and spatial modeling.</rdfs:comment>
+  </owl:Ontology>
+  <owl:Class rdf:about="http://www.ontologydesignpatterns.org/cp/owl/place.owl#Place">
+    <rdfs:label>Place</rdfs:label>
+  </owl:Class>
+  <owl:Class rdf:about="http://www.ontologydesignpatterns.org/cp/owl/place.owl#SpatialObject">
+    <rdfs:label>Spatial Object</rdfs:label>
+  </owl:Class>
+  <owl:ObjectProperty rdf:about="http://www.ontologydesignpatterns.org/cp/owl/place.owl#hasLocation">
+    <rdfs:label>hasLocation</rdfs:label>
+    <rdfs:domain rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/place.owl#SpatialObject"/>
+    <rdfs:range rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/place.owl#Place"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="http://www.ontologydesignpatterns.org/cp/owl/place.owl#isLocationOf">
+    <rdfs:label>isLocationOf</rdfs:label>
+    <rdfs:domain rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/place.owl#Place"/>
+    <rdfs:range rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/place.owl#SpatialObject"/>
+  </owl:ObjectProperty>
+</rdf:RDF>

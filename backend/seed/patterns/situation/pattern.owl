@@ -1,0 +1,26 @@
+<?xml version="1.0"?>
+<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+         xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+         xmlns:owl="http://www.w3.org/2002/07/owl#"
+         xml:base="http://www.ontologydesignpatterns.org/cp/owl/situation.owl">
+  <owl:Ontology rdf:about="http://www.ontologydesignpatterns.org/cp/owl/situation.owl">
+    <rdfs:label>Situation Pattern</rdfs:label>
+    <rdfs:comment>Represents a relational context (situation) that includes entities playing roles. A situation is a unified view of a state of affairs.</rdfs:comment>
+  </owl:Ontology>
+  <owl:Class rdf:about="http://www.ontologydesignpatterns.org/cp/owl/situation.owl#Situation">
+    <rdfs:label>Situation</rdfs:label>
+  </owl:Class>
+  <owl:Class rdf:about="http://www.ontologydesignpatterns.org/cp/owl/situation.owl#Entity">
+    <rdfs:label>Entity</rdfs:label>
+  </owl:Class>
+  <owl:ObjectProperty rdf:about="http://www.ontologydesignpatterns.org/cp/owl/situation.owl#isSettingFor">
+    <rdfs:label>isSettingFor</rdfs:label>
+    <rdfs:domain rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/situation.owl#Situation"/>
+    <rdfs:range rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/situation.owl#Entity"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="http://www.ontologydesignpatterns.org/cp/owl/situation.owl#hasSetting">
+    <rdfs:label>hasSetting</rdfs:label>
+    <rdfs:domain rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/situation.owl#Entity"/>
+    <rdfs:range rdf:resource="http://www.ontologydesignpatterns.org/cp/owl/situation.owl#Situation"/>
+  </owl:ObjectProperty>
+</rdf:RDF>

@@ -2,7 +2,7 @@
 
 import contextlib
 import os
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 import pytest
 from httpx import AsyncClient, ASGITransport
@@ -85,17 +85,7 @@ def db_session(tmp_data_dir):
 
 
 @pytest.fixture()
-def mock_docker():
-    mock_client = MagicMock()
-    mock_client.images.get.side_effect = Exception("No Docker in tests")
-    with patch("app.services.board.docker.from_env", return_value=mock_client), \
-         patch("app.services.odk.docker.from_env", return_value=mock_client), \
-         patch("app.services.robot.docker.from_env", return_value=mock_client):
-        yield mock_client
-
-
-@pytest.fixture()
-async def client(db_session, mock_docker):
+async def client(db_session):
     """Unauthenticated test client."""
     from app.main import app
     transport = ASGITransport(app=app)

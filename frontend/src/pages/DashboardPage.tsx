@@ -128,92 +128,94 @@ export default function DashboardPage() {
             <p>{user ? "Create your first board to get started." : "Sign in to create boards."}</p>
           </div>
         ) : (
-          <div className={styles.grid}>
-            {boards.map((b) => {
-              const isOwner = b.user_role === "owner" || b.user_role === "admin";
-              return (
-                <div key={b.board_id} className={styles.card}>
-                  <Link to={`/board/${b.board_id}`} className={styles.cardLink}>
-                    <div className={styles.cardHeader}>
-                      <span className={styles.cardIcon}>&#9678;</span>
-                      <h3 className={styles.cardName}>{b.display_name || b.board_id}</h3>
-                    </div>
-                    {b.description && <p className={styles.cardDesc}>{b.description}</p>}
-                    <div className={styles.badges}>
-                      <span className={`${styles.badge} ${b.is_public ? styles.badgeOk : styles.badgeWarn}`}>
-                        {b.is_public ? "Public" : "Private"}
-                      </span>
-                      {b.user_role && <span className={`${styles.badge} ${styles.badgeOk}`}>{b.user_role}</span>}
-                    </div>
-                    <div className={styles.cardMeta}>
-                      <span>{b.owner_username}</span>
-                      {b.member_count > 0 && <span>{b.member_count} members</span>}
-                      {b.last_modified && (
-                        <span title={b.last_modified}>
-                          {b.last_modified_by ? `${b.last_modified_by} · ` : ""}
-                          {new Date(b.last_modified).toLocaleDateString()}
+          <>
+            <div className={styles.grid}>
+              {boards.map((b) => {
+                const isOwner = b.user_role === "owner" || b.user_role === "admin";
+                return (
+                  <div key={b.board_id} className={styles.card}>
+                    <Link to={`/board/${b.board_id}`} className={styles.cardLink}>
+                      <div className={styles.cardHeader}>
+                        <span className={styles.cardIcon}>&#9678;</span>
+                        <h3 className={styles.cardName}>{b.display_name || b.board_id}</h3>
+                      </div>
+                      {b.description && <p className={styles.cardDesc}>{b.description}</p>}
+                      <div className={styles.badges}>
+                        <span className={`${styles.badge} ${b.is_public ? styles.badgeOk : styles.badgeWarn}`}>
+                          {b.is_public ? "Public" : "Private"}
                         </span>
+                        {b.user_role && <span className={`${styles.badge} ${styles.badgeOk}`}>{b.user_role}</span>}
+                      </div>
+                      <div className={styles.cardMeta}>
+                        <span>{b.owner_username}</span>
+                        {b.member_count > 0 && <span>{b.member_count} members</span>}
+                        {b.last_modified && (
+                          <span title={b.last_modified}>
+                            {b.last_modified_by ? `${b.last_modified_by} · ` : ""}
+                            {new Date(b.last_modified).toLocaleDateString()}
+                          </span>
+                        )}
+                      </div>
+                    </Link>
+
+                    {/* Board actions bar */}
+                    <div className={styles.cardActions}>
+                      <button className={styles.cardActionBtn}
+                        onClick={() => toggleStar(b.board_id)}
+                        title={b.is_starred ? "Unstar" : "Star"}>
+                        {b.is_starred ? "\u2605" : "\u2606"}
+                      </button>
+                      <button className={styles.cardActionBtn}
+                        onClick={() => { setCloning(b.board_id); setCloneId(`${b.board_id}-copy`); }}
+                        title="Clone board">
+                        Clone
+                      </button>
+                      {isOwner && (
+                        <button className={`${styles.cardActionBtn} ${styles.cardActionDanger}`}
+                          onClick={() => setConfirmDelete(b.board_id)}
+                          title="Delete board">
+                          Delete
+                        </button>
                       )}
                     </div>
-                  </Link>
+                  </div>
+                );
+              })}
+            </div>
 
-                  {/* Board actions bar */}
-                  <div className={styles.cardActions}>
-                    <button className={styles.cardActionBtn}
-                      onClick={() => toggleStar(b.board_id)}
-                      title={b.is_starred ? "Unstar" : "Star"}>
-                      {b.is_starred ? "\u2605" : "\u2606"}
-                    </button>
-                    <button className={styles.cardActionBtn}
-                      onClick={() => { setCloning(b.board_id); setCloneId(`${b.board_id}-copy`); }}
-                      title="Clone board">
-                      Clone
-                    </button>
-                    {isOwner && (
-                      <button className={`${styles.cardActionBtn} ${styles.cardActionDanger}`}
-                        onClick={() => setConfirmDelete(b.board_id)}
-                        title="Delete board">
-                        Delete
-                      </button>
-                    )}
+            {/* Delete confirmation */}
+            {confirmDelete && (
+              <div className={styles.overlay} onClick={() => setConfirmDelete(null)}>
+                <div className={styles.dialog} onClick={(e) => e.stopPropagation()}>
+                  <h3>Delete Board</h3>
+                  <p>Are you sure you want to delete <strong>{confirmDelete}</strong>? This cannot be undone.</p>
+                  <div className={styles.dialogActions}>
+                    <button className={styles.dangerBtn} onClick={() => deleteBoard(confirmDelete)}>Delete</button>
+                    <button className={styles.cancelBtn} onClick={() => setConfirmDelete(null)}>Cancel</button>
                   </div>
                 </div>
-              );
-            })}
-          </div>
+              </div>
+            )}
 
-          {/* Delete confirmation */}
-          {confirmDelete && (
-            <div className={styles.overlay} onClick={() => setConfirmDelete(null)}>
-              <div className={styles.dialog} onClick={(e) => e.stopPropagation()}>
-                <h3>Delete Board</h3>
-                <p>Are you sure you want to delete <strong>{confirmDelete}</strong>? This cannot be undone.</p>
-                <div className={styles.dialogActions}>
-                  <button className={styles.dangerBtn} onClick={() => deleteBoard(confirmDelete)}>Delete</button>
-                  <button className={styles.cancelBtn} onClick={() => setConfirmDelete(null)}>Cancel</button>
+            {/* Clone dialog */}
+            {cloning && (
+              <div className={styles.overlay} onClick={() => setCloning(null)}>
+                <div className={styles.dialog} onClick={(e) => e.stopPropagation()}>
+                  <h3>Clone Board</h3>
+                  <p>Create a copy of <strong>{cloning}</strong>:</p>
+                  <input className={styles.dialogInput} value={cloneId}
+                    onChange={(e) => setCloneId(e.target.value)}
+                    placeholder="New board ID"
+                    onKeyDown={(e) => e.key === "Enter" && cloneBoard(cloning)} autoFocus />
+                  <div className={styles.dialogActions}>
+                    <button className={styles.primaryBtn} onClick={() => cloneBoard(cloning)}
+                      disabled={!cloneId.trim()}>Clone</button>
+                    <button className={styles.cancelBtn} onClick={() => setCloning(null)}>Cancel</button>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
-
-          {/* Clone dialog */}
-          {cloning && (
-            <div className={styles.overlay} onClick={() => setCloning(null)}>
-              <div className={styles.dialog} onClick={(e) => e.stopPropagation()}>
-                <h3>Clone Board</h3>
-                <p>Create a copy of <strong>{cloning}</strong>:</p>
-                <input className={styles.dialogInput} value={cloneId}
-                  onChange={(e) => setCloneId(e.target.value)}
-                  placeholder="New board ID"
-                  onKeyDown={(e) => e.key === "Enter" && cloneBoard(cloning)} autoFocus />
-                <div className={styles.dialogActions}>
-                  <button className={styles.primaryBtn} onClick={() => cloneBoard(cloning)}
-                    disabled={!cloneId.trim()}>Clone</button>
-                  <button className={styles.cancelBtn} onClick={() => setCloning(null)}>Cancel</button>
-                </div>
-              </div>
-            </div>
-          )}
+            )}
+          </>
         )}
       </div>
 

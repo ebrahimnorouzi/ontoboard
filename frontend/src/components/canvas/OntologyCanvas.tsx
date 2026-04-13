@@ -233,79 +233,99 @@ export default function OntologyCanvas({ boardId, onOpenComments, remoteCursors 
       container: containerRef.current,
       style: [
         // Class nodes — two-line label
-        { selector: "node[entityType='class']", style: {
-          "background-color": "#eef2ff", "border-color": "#4f46e5", "border-width": 2,
-          label: "data(displayLabel)", "text-valign": "center", "text-halign": "center",
-          "font-size": "11px", "font-family": "Inter, sans-serif", "font-weight": 600,
-          color: "#312e81", shape: "roundrectangle", width: "label", height: "label", padding: "10px",
-          "text-wrap": "wrap", "text-max-width": "180px",
-        }},
+        {
+          selector: "node[entityType='class']", style: {
+            "background-color": "#eef2ff", "border-color": "#4f46e5", "border-width": 2,
+            label: "data(displayLabel)", "text-valign": "center", "text-halign": "center",
+            "font-size": "11px", "font-family": "Inter, sans-serif", "font-weight": 600,
+            color: "#312e81", shape: "roundrectangle", width: "label", height: "label", padding: "10px",
+            "text-wrap": "wrap", "text-max-width": "180px",
+          }
+        },
         // Individual nodes
-        { selector: "node[entityType='individual']", style: {
-          "background-color": "#fef3c7", "border-color": "#d97706", "border-width": 2,
-          label: "data(displayLabel)", "text-valign": "center", "text-halign": "center",
-          "font-size": "10px", color: "#78350f", shape: "ellipse",
-          width: "label", height: "label", padding: "10px",
-          "text-wrap": "wrap", "text-max-width": "140px",
-        }},
+        {
+          selector: "node[entityType='individual']", style: {
+            "background-color": "#fef3c7", "border-color": "#d97706", "border-width": 2,
+            label: "data(displayLabel)", "text-valign": "center", "text-halign": "center",
+            "font-size": "10px", color: "#78350f", shape: "ellipse",
+            width: "label", height: "label", padding: "10px",
+            "text-wrap": "wrap", "text-max-width": "140px",
+          }
+        },
         // Literal nodes — green dashed ellipse
-        { selector: "node[entityType='literal']", style: {
-          "background-color": "#dcfce7", "border-color": "#16a34a", "border-width": 1.5,
-          "border-style": "dashed", label: "data(displayLabel)",
-          "text-valign": "center", "text-halign": "center",
-          "font-size": "10px", "font-style": "italic", color: "#166534",
-          shape: "ellipse", width: "label", height: "label", padding: "8px",
-          "text-wrap": "wrap", "text-max-width": "120px",
-        }},
-        { selector: "node:selected", style: { "border-color": "#0ea5e9", "border-width": 3 }},
+        {
+          selector: "node[entityType='literal']", style: {
+            "background-color": "#dcfce7", "border-color": "#16a34a", "border-width": 1.5,
+            "border-style": "dashed", label: "data(displayLabel)",
+            "text-valign": "center", "text-halign": "center",
+            "font-size": "10px", "font-style": "italic", color: "#166534",
+            shape: "ellipse", width: "label", height: "label", padding: "8px",
+            "text-wrap": "wrap", "text-max-width": "120px",
+          }
+        },
+        { selector: "node:selected", style: { "border-color": "#0ea5e9", "border-width": 3 } },
         // Edges
-        { selector: "edge[edgeType='subClassOf']", style: {
-          "line-color": "#6366f1", "target-arrow-color": "#6366f1",
-          "target-arrow-shape": "triangle-backcurve", "curve-style": "bezier",
-          width: 2, "line-style": "dashed", "line-dash-pattern": [8, 4], "arrow-scale": 1.2,
-          label: "data(displayLabel)", "font-size": "8px", color: "#4338ca",
-          "text-rotation": "autorotate", "text-background-color": "#fff",
-          "text-background-opacity": 0.9, "text-background-padding": "2px",
-        }},
-        { selector: "edge[edgeType='objectProperty']", style: {
-          "line-color": "#10b981", "target-arrow-color": "#10b981",
-          "target-arrow-shape": "triangle", "curve-style": "bezier", width: 2,
-          label: "data(displayLabel)", "font-size": "9px", color: "#064e3b",
-          "text-rotation": "autorotate", "text-background-color": "#fff",
-          "text-background-opacity": 0.9, "text-background-padding": "2px",
-        }},
-        { selector: "edge[edgeType='rdfType']", style: {
-          "line-color": "#9ca3af", "target-arrow-color": "#9ca3af",
-          "target-arrow-shape": "triangle", "curve-style": "bezier",
-          width: 1.5, "line-style": "dashed", "line-dash-pattern": [4, 2],
-          label: "data(displayLabel)", "font-size": "8px", color: "#6b7280",
-          "text-rotation": "autorotate", "text-background-color": "#fff",
-          "text-background-opacity": 0.9, "text-background-padding": "2px",
-        }},
-        { selector: "edge[edgeType='dataProperty']", style: {
-          "line-color": "#f59e0b", "target-arrow-color": "#f59e0b",
-          "target-arrow-shape": "triangle", "curve-style": "bezier",
-          width: 1.5, "line-style": "dashed", label: "data(displayLabel)",
-          "font-size": "8px", color: "#92400e", "text-rotation": "autorotate",
-        }},
-        { selector: "edge[edgeType='annotationProperty']", style: {
-          "line-color": "#a855f7", "target-arrow-color": "#a855f7",
-          "target-arrow-shape": "triangle", "curve-style": "bezier",
-          width: 1, "line-style": "dotted",
-        }},
+        {
+          selector: "edge[edgeType='subClassOf']", style: {
+            "line-color": "#6366f1", "target-arrow-color": "#6366f1",
+            "target-arrow-shape": "triangle-backcurve", "curve-style": "bezier",
+            width: 2, "line-style": "dashed", "line-dash-pattern": [8, 4], "arrow-scale": 1.2,
+            label: "data(displayLabel)", "font-size": "8px", color: "#4338ca",
+            "text-rotation": "autorotate", "text-background-color": "#fff",
+            "text-background-opacity": 0.9, "text-background-padding": "2px",
+          }
+        },
+        {
+          selector: "edge[edgeType='objectProperty']", style: {
+            "line-color": "#10b981", "target-arrow-color": "#10b981",
+            "target-arrow-shape": "triangle", "curve-style": "bezier", width: 2,
+            label: "data(displayLabel)", "font-size": "9px", color: "#064e3b",
+            "text-rotation": "autorotate", "text-background-color": "#fff",
+            "text-background-opacity": 0.9, "text-background-padding": "2px",
+          }
+        },
+        {
+          selector: "edge[edgeType='rdfType']", style: {
+            "line-color": "#9ca3af", "target-arrow-color": "#9ca3af",
+            "target-arrow-shape": "triangle", "curve-style": "bezier",
+            width: 1.5, "line-style": "dashed", "line-dash-pattern": [4, 2],
+            label: "data(displayLabel)", "font-size": "8px", color: "#6b7280",
+            "text-rotation": "autorotate", "text-background-color": "#fff",
+            "text-background-opacity": 0.9, "text-background-padding": "2px",
+          }
+        },
+        {
+          selector: "edge[edgeType='dataProperty']", style: {
+            "line-color": "#f59e0b", "target-arrow-color": "#f59e0b",
+            "target-arrow-shape": "triangle", "curve-style": "bezier",
+            width: 1.5, "line-style": "dashed", label: "data(displayLabel)",
+            "font-size": "8px", color: "#92400e", "text-rotation": "autorotate",
+          }
+        },
+        {
+          selector: "edge[edgeType='annotationProperty']", style: {
+            "line-color": "#a855f7", "target-arrow-color": "#a855f7",
+            "target-arrow-shape": "triangle", "curve-style": "bezier",
+            width: 1, "line-style": "dotted",
+          }
+        },
         // Edgehandles
-        { selector: ".eh-handle", style: {
-          "background-color": "#ef4444", width: 14, height: 14, shape: "ellipse",
-          "overlay-opacity": 0, "border-width": 2, "border-color": "#fff",
-        }},
-        { selector: ".eh-hover", style: { "background-color": "#ef4444" }},
-        { selector: ".eh-source", style: { "border-color": "#ef4444", "border-width": 3 }},
-        { selector: ".eh-target", style: { "border-color": "#10b981", "border-width": 3 }},
-        { selector: ".eh-preview, .eh-ghost-edge", style: {
-          "line-color": "#94a3b8", "target-arrow-color": "#94a3b8",
-          "target-arrow-shape": "triangle", "curve-style": "bezier",
-          width: 2, "line-style": "dashed",
-        }},
+        {
+          selector: ".eh-handle", style: {
+            "background-color": "#ef4444", width: 14, height: 14, shape: "ellipse",
+            "overlay-opacity": 0, "border-width": 2, "border-color": "#fff",
+          }
+        },
+        { selector: ".eh-hover", style: { "background-color": "#ef4444" } },
+        { selector: ".eh-source", style: { "border-color": "#ef4444", "border-width": 3 } },
+        { selector: ".eh-target", style: { "border-color": "#10b981", "border-width": 3 } },
+        {
+          selector: ".eh-preview, .eh-ghost-edge", style: {
+            "line-color": "#94a3b8", "target-arrow-color": "#94a3b8",
+            "target-arrow-shape": "triangle", "curve-style": "bezier",
+            width: 2, "line-style": "dashed",
+          }
+        },
       ],
       layout: { name: "preset" },
       wheelSensitivity: 0.3, minZoom: 0.05, maxZoom: 4,
@@ -1261,18 +1281,18 @@ export default function OntologyCanvas({ boardId, onOpenComments, remoteCursors 
           </select>
           <button className={styles.btn} onClick={() => cyRef.current?.fit(undefined, 40)} title="Fit to view">Fit</button>
           <button className={`${styles.btn} ${snapToGrid ? styles.active : ""}`}
-                  onClick={() => { const v = !snapToGrid; setSnapToGrid(v); snapRef.current = v; }}
-                  title="Snap to grid">Snap</button>
+            onClick={() => { const v = !snapToGrid; setSnapToGrid(v); snapRef.current = v; }}
+            title="Snap to grid">Snap</button>
         </div>
 
         <div className={styles.separator} />
 
         <div className={styles.group}>
           <button className={styles.btn} title="Zoom out"
-                  onClick={() => { const cy = cyRef.current; if (cy) cy.zoom({ level: cy.zoom() * 0.8, renderedPosition: { x: cy.width() / 2, y: cy.height() / 2 } }); }}>&minus;</button>
+            onClick={() => { const cy = cyRef.current; if (cy) cy.zoom({ level: cy.zoom() * 0.8, renderedPosition: { x: cy.width() / 2, y: cy.height() / 2 } }); }}>&minus;</button>
           <span className={styles.zoomLabel}>{zoomLevel}%</span>
           <button className={styles.btn} title="Zoom in"
-                  onClick={() => { const cy = cyRef.current; if (cy) cy.zoom({ level: cy.zoom() * 1.25, renderedPosition: { x: cy.width() / 2, y: cy.height() / 2 } }); }}>+</button>
+            onClick={() => { const cy = cyRef.current; if (cy) cy.zoom({ level: cy.zoom() * 1.25, renderedPosition: { x: cy.width() / 2, y: cy.height() / 2 } }); }}>+</button>
         </div>
 
         <div className={styles.separator} />
@@ -1312,17 +1332,17 @@ export default function OntologyCanvas({ boardId, onOpenComments, remoteCursors 
             <span className={styles.searchCount}>{searchIdx + 1}/{searchResults.length}</span>
           )}
           <button className={styles.searchNav} disabled={searchResults.length === 0}
-                  onClick={() => { const i = (searchIdx - 1 + searchResults.length) % searchResults.length; setSearchIdx(i); navigateToResult(searchResults[i]); }}
-                  title="Previous">&#9650;</button>
+            onClick={() => { const i = (searchIdx - 1 + searchResults.length) % searchResults.length; setSearchIdx(i); navigateToResult(searchResults[i]); }}
+            title="Previous">&#9650;</button>
           <button className={styles.searchNav} disabled={searchResults.length === 0}
-                  onClick={() => { const i = (searchIdx + 1) % searchResults.length; setSearchIdx(i); navigateToResult(searchResults[i]); }}
-                  title="Next">&#9660;</button>
+            onClick={() => { const i = (searchIdx + 1) % searchResults.length; setSearchIdx(i); navigateToResult(searchResults[i]); }}
+            title="Next">&#9660;</button>
           <button className={styles.searchClose} onClick={() => { setShowSearch(false); setSearchQuery(""); setSearchResults([]); }}>&times;</button>
           {searchResults.length > 0 && (
             <div className={styles.searchDropdown}>
               {searchResults.map((r, i) => (
                 <div key={r.id} className={`${styles.searchResult} ${i === searchIdx ? styles.searchResultActive : ""}`}
-                     onClick={() => { setSearchIdx(i); navigateToResult(r); }}>
+                  onClick={() => { setSearchIdx(i); navigateToResult(r); }}>
                   <span className={styles.searchResultType}>{r.type === "class" ? "C" : r.type === "individual" ? "I" : "P"}</span>
                   <span className={styles.searchResultLabel}>{r.label}</span>
                 </div>
@@ -1336,8 +1356,8 @@ export default function OntologyCanvas({ boardId, onOpenComments, remoteCursors 
       {selected && (
         <div className={styles.editor}>
           <input className={styles.nameInput} value={editLabel}
-                 onChange={(e) => setEditLabel(e.target.value)}
-                 onBlur={rename} onKeyDown={(e) => e.key === "Enter" && rename()} />
+            onChange={(e) => setEditLabel(e.target.value)}
+            onBlur={rename} onKeyDown={(e) => e.key === "Enter" && rename()} />
           <input type="color" className={styles.colorPick} value={editColor} onChange={(e) => {
             setEditColor(e.target.value);
             cyRef.current?.getElementById(selected).style("border-color", e.target.value);
@@ -1375,12 +1395,12 @@ export default function OntologyCanvas({ boardId, onOpenComments, remoteCursors 
 
       {editPopup && (
         <EditPopup data={editPopup} onSave={handlePopupSave}
-                   onDelete={handlePopupDelete} onCancel={() => setEditPopup(null)} />
+          onDelete={handlePopupDelete} onCancel={() => setEditPopup(null)} />
       )}
 
       {contextMenu && (
         <ContextMenu data={contextMenu} onAction={handleContextAction}
-                     onClose={() => setContextMenu(null)} />
+          onClose={() => setContextMenu(null)} />
       )}
 
       {showExport && (

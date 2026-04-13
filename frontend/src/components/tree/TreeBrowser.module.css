@@ -17,6 +17,7 @@
   padding: 4px 6px 0;
   background: var(--bg-primary);
 }
+
 .tab {
   flex: 1;
   padding: 0.4rem 0.5rem;
@@ -33,8 +34,18 @@
   text-align: center;
   white-space: nowrap;
 }
-.tab:hover { color: var(--text-secondary); background: var(--bg-accent); }
-.tabActive { color: var(--accent-light); border-bottom-color: var(--accent); background: var(--bg-secondary); }
+
+.tab:hover {
+  color: var(--text-secondary);
+  background: var(--bg-accent);
+}
+
+.tabActive {
+  color: var(--accent-light);
+  border-bottom-color: var(--accent);
+  background: var(--bg-secondary);
+}
+
 .refreshBtn {
   padding: 0.45rem 0.5rem;
   background: none;
@@ -43,7 +54,10 @@
   font-size: 0.85rem;
   cursor: pointer;
 }
-.refreshBtn:hover { color: var(--text-primary); }
+
+.refreshBtn:hover {
+  color: var(--text-primary);
+}
 
 /* Inference toggle */
 .inferenceToggle {
@@ -58,10 +72,12 @@
   border-bottom: 1px solid var(--border);
   background: var(--bg-primary);
 }
+
 .inferenceToggle input[type="checkbox"] {
   accent-color: #a78bfa;
   cursor: pointer;
 }
+
 .inferenceCount {
   font-size: 0.6rem;
   font-weight: 600;
@@ -78,6 +94,7 @@
   padding: 0.4rem;
   flex-shrink: 0;
 }
+
 .searchInput {
   flex: 1;
   padding: 0.35rem 0.55rem;
@@ -89,8 +106,14 @@
   font-family: inherit;
   outline: none;
 }
-.searchInput::placeholder { color: var(--text-muted); }
-.searchInput:focus { border-color: var(--accent); }
+
+.searchInput::placeholder {
+  color: var(--text-muted);
+}
+
+.searchInput:focus {
+  border-color: var(--accent);
+}
 
 .addBtn {
   width: 30px;
@@ -108,7 +131,10 @@
   cursor: pointer;
   transition: background 0.15s;
 }
-.addBtn:hover { background: var(--accent-light); }
+
+.addBtn:hover {
+  background: var(--accent-light);
+}
 
 /* Add form (inline) */
 .addForm {
@@ -117,6 +143,7 @@
   padding: 0 0.4rem 0.4rem;
   flex-shrink: 0;
 }
+
 .addInput {
   flex: 1;
   padding: 0.35rem 0.5rem;
@@ -128,6 +155,7 @@
   font-family: inherit;
   outline: none;
 }
+
 .addConfirm {
   padding: 0.25rem 0.6rem;
   background: var(--accent);
@@ -138,7 +166,12 @@
   font-weight: 600;
   cursor: pointer;
 }
-.addConfirm:disabled { opacity: 0.5; cursor: default; }
+
+.addConfirm:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 .addCancel {
   padding: 0.25rem 0.4rem;
   background: none;
@@ -164,7 +197,10 @@
 }
 
 /* Individuals by class grouping */
-.groupNode { list-style: none; }
+.groupNode {
+  list-style: none;
+}
+
 .groupHeader {
   display: flex;
   align-items: center;
@@ -176,9 +212,20 @@
   cursor: pointer;
   border-bottom: 1px solid var(--border);
 }
-.groupHeader:hover { background: var(--bg-card-hover); }
-.groupIcon { font-size: 0.7rem; color: var(--accent); }
-.groupLabel { flex: 1; }
+
+.groupHeader:hover {
+  background: var(--bg-card-hover);
+}
+
+.groupIcon {
+  font-size: 0.7rem;
+  color: var(--accent);
+}
+
+.groupLabel {
+  flex: 1;
+}
+
 .groupCount {
   font-size: 0.6rem;
   color: var(--text-muted);
@@ -186,11 +233,13 @@
   padding: 0.05rem 0.35rem;
   border-radius: 999px;
 }
+
 .groupChildren {
   list-style: none;
   padding: 0 0 0 1rem;
   margin: 0;
 }
+
 .indIcon {
   font-size: 0.65rem;
   color: #d97706;
@@ -205,7 +254,10 @@
   background: var(--accent-glow);
   border-bottom: 1px solid var(--border);
 }
-.contextHint strong { font-weight: 600; }
+
+.contextHint strong {
+  font-weight: 600;
+}
 
 /* Tree area */
 .treeArea {
@@ -213,6 +265,7 @@
   overflow-y: auto;
   min-height: 0;
 }
+
 .empty {
   padding: 1.5rem;
   text-align: center;
@@ -228,11 +281,17 @@
   padding: 2rem 1rem;
   color: var(--text-muted);
 }
+
 .emptyIcon {
   font-size: 2rem;
   opacity: 0.3;
 }
-.emptyState p { font-size: 0.78rem; margin: 0; }
+
+.emptyState p {
+  font-size: 0.78rem;
+  margin: 0;
+}
+
 .emptyAdd {
   padding: 0.35rem 0.8rem;
   background: var(--accent-glow);
@@ -244,7 +303,11 @@
   cursor: pointer;
   transition: all 0.15s;
 }
-.emptyAdd:hover { background: var(--accent); color: #fff; }
+
+.emptyAdd:hover {
+  background: var(--accent);
+  color: #fff;
+}
 
 .treeList {
   list-style: none;
@@ -262,18 +325,27 @@
   font-size: 0.78rem;
   position: relative;
 }
-.nodeRow:hover { background: var(--bg-card-hover); }
-.nodeRow:hover .nodeDeleteBtn { opacity: 1; }
+
+.nodeRow:hover {
+  background: var(--bg-card-hover);
+}
+
+.nodeRow:hover .nodeDeleteBtn {
+  opacity: 1;
+}
+
 .nodeSelected {
   background: var(--accent-glow);
   color: var(--accent-light);
 }
+
 .nodeDragOver {
   background: rgba(79, 70, 229, 0.15);
   outline: 2px dashed var(--accent);
   outline-offset: -2px;
   border-radius: 4px;
 }
+
 .nodeDragOver::after {
   content: "Drop here";
   position: absolute;
@@ -296,7 +368,11 @@
   padding: 0;
   flex-shrink: 0;
 }
-.expandSpacer { width: 14px; flex-shrink: 0; }
+
+.expandSpacer {
+  width: 14px;
+  flex-shrink: 0;
+}
 
 .nodeLabel {
   overflow: hidden;
@@ -340,6 +416,7 @@
   flex-shrink: 0;
   transition: opacity 0.15s;
 }
+
 .nodeDeleteBtn:hover {
   background: rgba(239, 68, 68, 0.1);
 }
@@ -354,6 +431,7 @@
   justify-content: center;
   z-index: 1000;
 }
+
 .confirmDialog {
   background: var(--bg-card);
   padding: 1.2rem 1.5rem;
@@ -361,17 +439,20 @@
   box-shadow: var(--shadow-lg);
   max-width: 340px;
 }
+
 .confirmDialog p {
   font-size: 0.82rem;
   color: var(--text-secondary);
   margin-bottom: 1rem;
   line-height: 1.5;
 }
+
 .confirmActions {
   display: flex;
   gap: 0.5rem;
   justify-content: flex-end;
 }
+
 .confirmDeleteBtn {
   padding: 0.4rem 0.9rem;
   background: var(--danger);
@@ -382,6 +463,7 @@
   font-weight: 600;
   cursor: pointer;
 }
+
 .confirmCancelBtn {
   padding: 0.4rem 0.9rem;
   background: none;
@@ -401,13 +483,17 @@
   flex-shrink: 0;
 }
 
-.detail { padding: 0.6rem; }
+.detail {
+  padding: 0.6rem;
+}
+
 .detailHeader {
   display: flex;
   align-items: center;
   gap: 0.4rem;
   margin-bottom: 0.25rem;
 }
+
 .detailBadge {
   font-size: 0.55rem;
   font-weight: 600;
@@ -418,7 +504,16 @@
   background: var(--accent-glow);
   color: var(--accent-light);
 }
-.detailLabel { font-size: 0.85rem; font-weight: 600; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.detailLabel {
+  font-size: 0.85rem;
+  font-weight: 600;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .detailEditBtn {
   background: none;
   border: none;
@@ -428,7 +523,11 @@
   transition: opacity 0.15s;
   padding: 0.1rem;
 }
-.detailEditBtn:hover { opacity: 1; }
+
+.detailEditBtn:hover {
+  opacity: 1;
+}
+
 .detailDelete {
   background: none;
   border: none;
@@ -438,7 +537,11 @@
   transition: opacity 0.15s;
   padding: 0.15rem;
 }
-.detailDelete:hover { opacity: 1; }
+
+.detailDelete:hover {
+  opacity: 1;
+}
+
 .detailIri {
   font-size: 0.65rem;
   font-family: "Cascadia Code", "Fira Code", monospace;
@@ -447,7 +550,10 @@
   margin-bottom: 0.5rem;
 }
 
-.detailSection { margin-bottom: 0.5rem; }
+.detailSection {
+  margin-bottom: 0.5rem;
+}
+
 .detailSectionTitle {
   font-size: 0.65rem;
   font-weight: 600;
@@ -456,7 +562,11 @@
   color: var(--text-muted);
   margin-bottom: 0.3rem;
 }
-.detailMeta { font-size: 0.72rem; color: var(--text-muted); }
+
+.detailMeta {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
 
 .annotationRow {
   display: flex;
@@ -464,9 +574,22 @@
   font-size: 0.72rem;
   padding: 0.15rem 0;
 }
-.annotProp { color: var(--accent-light); font-weight: 500; min-width: 50px; }
-.annotVal { color: var(--text-secondary); }
-.langTag { color: var(--text-muted); font-size: 0.6rem; margin-left: 0.2rem; }
+
+.annotProp {
+  color: var(--accent-light);
+  font-weight: 500;
+  min-width: 50px;
+}
+
+.annotVal {
+  color: var(--text-secondary);
+}
+
+.langTag {
+  color: var(--text-muted);
+  font-size: 0.6rem;
+  margin-left: 0.2rem;
+}
 
 .usageRow {
   display: flex;
@@ -474,16 +597,25 @@
   font-size: 0.72rem;
   padding: 0.12rem 0;
 }
+
 .usageLink {
   color: var(--accent-light);
   cursor: pointer;
   text-decoration: underline;
 }
-.usageLink:hover { color: var(--accent); }
-.usagePred { color: var(--text-muted); font-style: italic; }
+
+.usageLink:hover {
+  color: var(--accent);
+}
+
+.usagePred {
+  color: var(--text-muted);
+  font-style: italic;
+}
 
 /* Scrollable sub-lists inside detail */
-.annotationList, .usageList {
+.annotationList,
+.usageList {
   max-height: 120px;
   overflow-y: auto;
 }

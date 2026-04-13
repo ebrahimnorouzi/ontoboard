@@ -24,9 +24,23 @@ USER_DIR = DATA_DIR / "patterns" / "user"
 _patterns: list[dict] | None = None
 
 
+SEED_DIR = Path(__file__).parent.parent.parent / "seed" / "patterns"
+
+
 def _ensure_dirs() -> None:
+    """Create pattern directories and seed ODPA patterns if empty."""
     ODPA_DIR.mkdir(parents=True, exist_ok=True)
     USER_DIR.mkdir(parents=True, exist_ok=True)
+
+    # Seed ODPA patterns from the bundled seed directory (first run only)
+    if SEED_DIR.exists() and not any(ODPA_DIR.iterdir()):
+        import shutil
+        for src in SEED_DIR.iterdir():
+            if src.is_dir():
+                dst = ODPA_DIR / src.name
+                if not dst.exists():
+                    shutil.copytree(src, dst)
+        logger.info("Seeded %d ODPA patterns from %s", len(list(ODPA_DIR.iterdir())), SEED_DIR)
 
 
 def _parse_owl_file(owl_path: Path) -> tuple[list[dict], list[dict]]:
