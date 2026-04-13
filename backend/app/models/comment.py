@@ -1,4 +1,4 @@
-"""Comment model — board and entity-level comments with @mentions."""
+"""Comment model — board and entity-level comments with @mentions and replies."""
 
 import datetime
 
@@ -16,6 +16,7 @@ class Comment(Base):
     entity_iri: Mapped[str | None] = mapped_column(String(500), nullable=True)  # null = board-level comment
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False)
     text: Mapped[str] = mapped_column(Text, nullable=False)
+    parent_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("comments.id", ondelete="CASCADE"), nullable=True)
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime, server_default=func.now()
     )

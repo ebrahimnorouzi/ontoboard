@@ -61,8 +61,10 @@ def _run_robot_sync(
         logger.warning("Docker unavailable: %s", exc)
         return RobotResult(exit_code=-1, stdout="", stderr=str(exc))
 
+    # Resolve to absolute path — Docker requires absolute paths for bind mounts
+    abs_board_dir = board_dir.resolve()
     # On Windows, Docker needs forward slashes and may need /c/ style paths
-    mount_path = str(board_dir).replace("\\", "/")
+    mount_path = str(abs_board_dir).replace("\\", "/")
     # Convert C:/... to /c/... for Docker on Windows (Git Bash / MSYS2 style)
     if len(mount_path) >= 2 and mount_path[1] == ":":
         mount_path = "/" + mount_path[0].lower() + mount_path[2:]

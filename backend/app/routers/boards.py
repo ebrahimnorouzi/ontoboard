@@ -4,6 +4,7 @@ import asyncio
 import functools
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.deps import get_db, get_current_user, get_current_user_optional, require_admin
@@ -187,6 +188,30 @@ def delete_board(
         raise HTTPException(status_code=403, detail="Only the owner or admin can delete")
     board_svc.delete_board(db, board, user)
     return {"detail": f"Board '{board_id}' deleted"}
+
+
+# ── Clone board ───────────────────────────────────────────────
+class CloneBody(BaseModel):
+    new_board_id: str
+
+
+@router.post("/{board_id}/clone", status_code=201)
+def clone_board(
+    board_id: str,
+    body: CloneBody,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    board = board_svc.get_board_by_slug(db, _sanitize_id(board_id))
+    if not board:
+        raise HTTPException(status_code=404, detail="Board not found")
+    if not board_svc.can_view(db, board, user):
+        raise HTTPException(status_code=403, detail="View access required to clone")
+    new_id = _sanitize_id(body.new_board_id)
+    if board_svc.get_board_by_slug(db, new_id):
+        raise HTTPException(status_code=409, detail="A board with that ID already exists")
+    new_board = board_svc.clone_board(db, board, new_id, user)
+    return _enrich(new_board, db, user)
 
 
 # ── Share / Members ────────────────────────────────────────────

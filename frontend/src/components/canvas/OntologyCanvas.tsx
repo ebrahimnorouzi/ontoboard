@@ -12,8 +12,7 @@ import coseBilkent from "cytoscape-cose-bilkent";
 import edgehandles from "cytoscape-edgehandles";
 import { useOntologyStore, type PrefixColor } from "../../store/ontologyStore";
 import { apiJson } from "../../api";
-import { useCollaboration } from "../../collab/useCollaboration";
-import { useAuth } from "../../auth";
+import type { RemoteCursor } from "../../collab/useCollaboration";
 import EditPopup, { EditData, NodeEditData, EdgeEditData } from "./EditPopup";
 import StickyNoteComponent from "./StickyNote";
 import CanvasFrameComponent from "./CanvasFrame";
@@ -182,17 +181,18 @@ function CanvasLegend({ prefixColors, patternMap }: { prefixColors: PrefixColor[
   );
 }
 
-interface Props { boardId: string }
+interface Props {
+  boardId: string;
+  onOpenComments?: (entityIri?: string) => void;
+  remoteCursors?: RemoteCursor[];
+  broadcastCursor?: (x: number, y: number, clicking?: boolean, action?: string, selectedEntity?: string | null) => void;
+}
 
-export default function OntologyCanvas({ boardId }: Props) {
+export default function OntologyCanvas({ boardId, onOpenComments, remoteCursors = [], broadcastCursor }: Props) {
   const cyRef = useRef<cytoscape.Core | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const cursorsRef = useRef<HTMLDivElement>(null);
   const store = useOntologyStore();
-  const { user } = useAuth();
-  const { remoteCursors, broadcastCursor } = useCollaboration(
-    boardId, user?.display_name || user?.username || "anonymous"
-  );
 
   const [layoutName, setLayoutName] = useState("dagre");
   const selected = store.selectedEntity?.iri ?? null;
@@ -354,14 +354,14 @@ export default function OntologyCanvas({ boardId }: Props) {
       setEditLabel(n.data("label") || "");
       store.selectEntity({ iri: n.id(), type: n.data("entityType") || "class", label: n.data("label") || "" });
       setContextMenu(null);
-      if (evt.position) broadcastCursor(evt.position.x, evt.position.y, false, "selected " + n.data("label"), n.id());
+      if (evt.position) broadcastCursor?.(evt.position.x, evt.position.y, false, "selected " + n.data("label"), n.id());
     });
 
     // Pane tap — deselect
     cy.on("tap", (e) => {
       if (e.target === cy) {
         store.selectEntity(null); setEditPopup(null); setContextMenu(null);
-        if (e.position) broadcastCursor(e.position.x, e.position.y, false, "idle", null);
+        if (e.position) broadcastCursor?.(e.position.x, e.position.y, false, "idle", null);
       }
     });
 
@@ -459,7 +459,7 @@ export default function OntologyCanvas({ boardId }: Props) {
     // ── Drag → snap + update position (classes AND individuals) ──
     cy.on("drag", "node", (e) => {
       const n = e.target;
-      if (e.position) broadcastCursor(e.position.x, e.position.y, true, "dragging " + n.data("label"), n.id());
+      if (e.position) broadcastCursor?.(e.position.x, e.position.y, true, "dragging " + n.data("label"), n.id());
     });
     cy.on("dragfree", "node", (e) => {
       const n = e.target;
@@ -476,13 +476,13 @@ export default function OntologyCanvas({ boardId }: Props) {
       } else {
         store.updateClass(n.id(), { x: sx, y: sy });
       }
-      if (e.position) broadcastCursor(e.position.x, e.position.y, false, "idle", null);
+      if (e.position) broadcastCursor?.(e.position.x, e.position.y, false, "idle", null);
     });
 
     // ── Cursor broadcasting ──────────────────────────────────
-    cy.on("mousemove", (e) => { if (e.position) broadcastCursor(e.position.x, e.position.y, false); });
-    cy.on("mousedown", (e) => { if (e.position) broadcastCursor(e.position.x, e.position.y, true); });
-    cy.on("mouseup", (e) => { if (e.position) broadcastCursor(e.position.x, e.position.y, false); });
+    cy.on("mousemove", (e) => { if (e.position) broadcastCursor?.(e.position.x, e.position.y, false); });
+    cy.on("mousedown", (e) => { if (e.position) broadcastCursor?.(e.position.x, e.position.y, true); });
+    cy.on("mouseup", (e) => { if (e.position) broadcastCursor?.(e.position.x, e.position.y, false); });
 
     // ── Track viewport ───────────────────────────────────────
     const updateViewport = () => {
@@ -982,24 +982,19 @@ export default function OntologyCanvas({ boardId }: Props) {
       }
       case "comment": {
         const nodeId = contextMenu?.targetId;
-        if (nodeId) {
-          const text = prompt("Add comment (use @username to mention):");
-          if (text?.trim()) {
-            apiJson(`/api/comments/${boardId}`, {
-              method: "POST",
-              body: JSON.stringify({ text: text.trim(), entity_iri: nodeId }),
-            }).catch(() => {});
+        if (nodeId && onOpenComments) {
+          // Select the entity and open comments panel
+          const node = cyRef.current?.getElementById(nodeId);
+          if (node?.length) {
+            store.selectEntity({ iri: nodeId, label: node.data("label") || nodeId, type: node.data("entityType") || "class" });
           }
+          onOpenComments(nodeId);
         }
         break;
       }
       case "board-comment": {
-        const text = prompt("Add board comment (use @username to mention):");
-        if (text?.trim()) {
-          apiJson(`/api/comments/${boardId}`, {
-            method: "POST",
-            body: JSON.stringify({ text: text.trim() }),
-          }).catch(() => {});
+        if (onOpenComments) {
+          onOpenComments();
         }
         break;
       }
@@ -1097,17 +1092,30 @@ export default function OntologyCanvas({ boardId }: Props) {
         }
       );
       const patternColor = getPatternColor(patternId);
+      // Batch all additions into a single store update to avoid partial state
+      const currentState = useOntologyStore.getState();
+      const newClasses = [...currentState.classes];
+      const newProperties = [...currentState.properties];
+      const newPatternMap = { ...currentState.patternMap };
+
       for (const cls of result.classes || []) {
-        if (!store.classes.some((c) => c.iri === cls.iri)) {
-          store.addClass({ ...cls, color: patternColor });
+        if (!newClasses.some((c) => c.iri === cls.iri)) {
+          newClasses.push({ ...cls, color: patternColor });
         }
-        store.assignPattern(cls.iri, patternId);
+        newPatternMap[cls.iri] = patternId;
       }
       for (const prop of (result as any).properties || []) {
-        if (!store.properties.some((p) => p.id === prop.id)) {
-          store.addProperty(prop);
+        if (!newProperties.some((p) => p.id === prop.id)) {
+          newProperties.push(prop);
         }
       }
+
+      useOntologyStore.setState({
+        classes: newClasses,
+        properties: newProperties,
+        patternMap: newPatternMap,
+        dirty: true,
+      });
     } catch (err) {
       console.error("Failed to apply pattern via drag-drop:", err);
     }

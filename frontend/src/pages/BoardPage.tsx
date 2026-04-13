@@ -30,10 +30,12 @@ import DocsPanel from "../components/docs/DocsPanel";
 import ShareDialog from "../components/share/ShareDialog";
 import PatternLibrary from "../components/patterns/PatternLibrary";
 import IdRangeManager from "../components/idranges/IdRangeManager";
+import BoardSettingsDialog from "../components/board/BoardSettingsDialog";
+import CommentsPanel from "../components/comments/CommentsPanel";
 import { useOntologyStore } from "../store/ontologyStore";
 import ExportOntologyDialog from "../components/export/ExportOntologyDialog";
 
-type Tab = "ontology" | "axioms" | "reasoning" | "odk" | "sparql" | "csv" | "tasks" | "publish" | "docs" | "files" | "patterns" | "ids" | "console";
+type Tab = "ontology" | "axioms" | "reasoning" | "odk" | "sparql" | "csv" | "tasks" | "publish" | "docs" | "files" | "patterns" | "ids" | "comments" | "console";
 
 export default function BoardPage() {
   const { boardId } = useParams<{ boardId: string }>();
@@ -56,6 +58,7 @@ export default function BoardPage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirmDeleteBoard, setConfirmDeleteBoard] = useState(false);
   const [showExportOntology, setShowExportOntology] = useState(false);
+  const [showBoardSettings, setShowBoardSettings] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const selectedEntity = useOntologyStore((s) => s.selectedEntity);
@@ -66,7 +69,7 @@ export default function BoardPage() {
     if (user) setCurrentUser(user.display_name || user.username || "anonymous");
   }, [user, setCurrentUser]);
 
-  const { connected, users: collabUsers, doc: yjsDoc } = useCollaboration(
+  const { connected, users: collabUsers, doc: yjsDoc, remoteCursors, broadcastCursor } = useCollaboration(
     status === "ready" ? boardId : undefined,
     user?.display_name || user?.username || "anonymous",
   );
@@ -74,9 +77,9 @@ export default function BoardPage() {
   // Bind Yjs shared types ↔ Zustand store for real-time entity sync
   useYjsSync(yjsDoc, status === "ready" ? boardId : undefined);
 
-  // Fallback poll for backend saves (safety net — Yjs handles real-time sync)
+  // Fallback poll — only when Yjs is NOT connected (offline/disconnected mode)
   useEffect(() => {
-    if (status !== "ready" || !boardId) return;
+    if (status !== "ready" || !boardId || connected) return;
     const store = useOntologyStore.getState();
     let lastKnownSave = store.lastSaved;
     const interval = setInterval(async () => {
@@ -89,9 +92,9 @@ export default function BoardPage() {
           await currentStore.loadFromBackend(boardId);
         }
       } catch { /* ignore polling errors */ }
-    }, 30000); // 30s fallback (Yjs handles real-time)
+    }, 15000);
     return () => clearInterval(interval);
-  }, [status, boardId]);
+  }, [status, boardId, connected]);
 
   useEffect(() => {
     if (!boardId) return;
@@ -374,6 +377,9 @@ export default function BoardPage() {
                 </div>
                 <div className={styles.menuSection}>
                   <div className={styles.menuLabel}>Board</div>
+                  <button className={styles.menuItem} onClick={() => { setShowBoardSettings(true); setMenuOpen(false); }}>
+                    Board Settings
+                  </button>
                   <button className={styles.menuItem} onClick={() => { setShareOpen(true); setMenuOpen(false); }}>
                     Share Settings
                   </button>
@@ -448,7 +454,10 @@ export default function BoardPage() {
 
         {/* Canvas */}
         <div className={styles.canvas}>
-          {boardId && <OntologyCanvas boardId={boardId} />}
+          {boardId && <OntologyCanvas boardId={boardId}
+            onOpenComments={() => { setActiveTab("comments"); setSideOpen(true); }}
+            remoteCursors={remoteCursors}
+            broadcastCursor={broadcastCursor} />}
         </div>
 
         {/* Right panel resize handle + toggle */}
@@ -484,10 +493,10 @@ export default function BoardPage() {
         {sideOpen && (
           <aside className={styles.side} style={{ width: rightWidth }}>
             <div className={styles.tabs}>
-              {(["ontology", "axioms", "reasoning", "odk", "sparql", "csv", "tasks", "publish", "docs", "files", "patterns", "ids", "console"] as Tab[]).map((t) => (
+              {(["ontology", "axioms", "reasoning", "odk", "sparql", "csv", "tasks", "publish", "docs", "files", "patterns", "ids", "comments", "console"] as Tab[]).map((t) => (
                 <button key={t} className={`${styles.tab} ${activeTab === t ? styles.tabActive : ""}`}
                         onClick={() => setActiveTab(t)}>
-                  {({ ontology: "Onto", reasoning: "Reason", odk: "ODK", console: "Log", files: "Files", patterns: "ODP", ids: "IDs" } as Record<string, string>)[t] ||
+                  {({ ontology: "Onto", reasoning: "Reason", odk: "ODK", console: "Log", files: "Files", patterns: "ODP", ids: "IDs", comments: "Chat" } as Record<string, string>)[t] ||
                    t.charAt(0).toUpperCase() + t.slice(1)}
                 </button>
               ))}
@@ -509,6 +518,7 @@ export default function BoardPage() {
               {activeTab === "files" && boardId && <FileBrowser boardId={boardId} />}
               {activeTab === "patterns" && boardId && <PatternLibrary boardId={boardId} />}
               {activeTab === "ids" && boardId && <IdRangeManager boardId={boardId} />}
+              {activeTab === "comments" && boardId && <CommentsPanel boardId={boardId} />}
               {activeTab === "console" && (
                 <div className={styles.consolePanel}>
                   <div className={styles.consoleToolbar}>
@@ -587,6 +597,14 @@ export default function BoardPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {showBoardSettings && boardId && (
+        <BoardSettingsDialog
+          boardId={boardId}
+          userRole={userRole}
+          onClose={() => setShowBoardSettings(false)}
+        />
       )}
 
       {showExportOntology && boardId && (

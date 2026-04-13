@@ -1,27 +1,26 @@
 /**
- * useYjsSync — Bridges Yjs shared types ↔ Zustand ontology store.
+ * useYjsSync — Bridges Yjs shared types <-> Zustand ontology store.
  *
  * Uses Y.Map for each entity collection (classes, properties, individuals, etc.).
  * Each entity is stored as a JSON string keyed by its ID.
  *
  * Flow:
- * - Local change → Zustand store → push to Yjs map → propagates to all users
- * - Remote Yjs change → observe callback → update Zustand store → re-renders canvas
+ * - Local change -> Zustand store -> push to Yjs map -> propagates to all users
+ * - Remote Yjs change -> observe callback -> update Zustand store -> re-renders canvas
  *
- * A `_syncing` flag prevents infinite loops (local→Yjs→observe→store→local...).
+ * Optimizations:
+ * - Only updates changed arrays (compares JSON to avoid unnecessary re-renders)
+ * - Uses _syncing flag + transaction.local to prevent infinite loops
  */
 
 import { useEffect, useRef } from "react";
 import * as Y from "yjs";
 import { useOntologyStore } from "../store/ontologyStore";
 
-type EntityMap = Y.Map<string>; // key = entity id/iri, value = JSON string
+type EntityMap = Y.Map<string>;
 
 let _syncing = false;
 
-/**
- * Sync the Zustand ontology store with Yjs shared types for real-time collaboration.
- */
 export function useYjsSync(doc: Y.Doc | null, boardId: string | undefined) {
   const cleanupRef = useRef<(() => void) | null>(null);
 
@@ -30,7 +29,6 @@ export function useYjsSync(doc: Y.Doc | null, boardId: string | undefined) {
 
     const store = useOntologyStore;
 
-    // Get or create shared types
     const yClasses: EntityMap = doc.getMap("classes");
     const yProperties: EntityMap = doc.getMap("properties");
     const yIndividuals: EntityMap = doc.getMap("individuals");
@@ -38,10 +36,9 @@ export function useYjsSync(doc: Y.Doc | null, boardId: string | undefined) {
     const yStickyNotes: EntityMap = doc.getMap("stickyNotes");
     const yFrames: EntityMap = doc.getMap("frames");
 
-    // ── Push local store state to Yjs (initial seed if we have data) ──
+    // ── Seed Yjs from store (first user to load populates the shared doc) ──
     function seedYjsFromStore() {
       const state = store.getState();
-      // Only seed if Yjs is empty and store has data (we loaded from backend)
       if (yClasses.size === 0 && state.classes.length > 0) {
         doc!.transact(() => {
           for (const c of state.classes) yClasses.set(c.iri, JSON.stringify(c));
@@ -54,74 +51,78 @@ export function useYjsSync(doc: Y.Doc | null, boardId: string | undefined) {
       }
     }
 
-    // ── Apply Yjs state to Zustand store ──
-    function applyYjsToStore() {
-      if (_syncing) return;
-      _syncing = true;
-      try {
-        const classes = Array.from(yClasses.values()).map((v) => JSON.parse(v));
-        const properties = Array.from(yProperties.values()).map((v) => JSON.parse(v));
-        const individuals = Array.from(yIndividuals.values()).map((v) => JSON.parse(v));
-        const literals = Array.from(yLiterals.values()).map((v) => JSON.parse(v));
-        const stickyNotes = Array.from(yStickyNotes.values()).map((v) => JSON.parse(v));
-        const frames = Array.from(yFrames.values()).map((v) => JSON.parse(v));
-
-        store.setState({
-          classes,
-          properties,
-          individuals,
-          literals,
-          stickyNotes,
-          frames,
-          // Don't mark as dirty — this is a remote update, not a local edit
-        });
-      } finally {
-        _syncing = false;
+    // ── Apply a single Yjs map change to the store (surgical update) ──
+    function applyMapToStoreKey(yMap: EntityMap, stateKey: string, getKey: (item: any) => string) {
+      const current: any[] = (store.getState() as any)[stateKey];
+      const yEntries = new Map<string, any>();
+      for (const [k, v] of yMap.entries()) {
+        yEntries.set(k, JSON.parse(v));
       }
+
+      // Check if anything actually changed
+      if (current.length === yEntries.size) {
+        let same = true;
+        for (const item of current) {
+          const yItem = yEntries.get(getKey(item));
+          if (!yItem || JSON.stringify(item) !== JSON.stringify(yItem)) {
+            same = false;
+            break;
+          }
+        }
+        if (same) return; // No changes — skip update to avoid re-render
+      }
+
+      store.setState({ [stateKey]: Array.from(yEntries.values()) } as any);
     }
 
-    // ── Observe Yjs changes (from remote users) ──
-    function onYjsChange(event: Y.YMapEvent<string>, transaction: Y.Transaction) {
-      // Skip changes originated from this client's store sync
-      if (transaction.local) return;
-      applyYjsToStore();
+    // ── Observe remote Yjs changes ──
+    function makeObserver(yMap: EntityMap, stateKey: string, getKey: (item: any) => string) {
+      return (_event: Y.YMapEvent<string>, transaction: Y.Transaction) => {
+        if (transaction.local || _syncing) return;
+        _syncing = true;
+        try {
+          applyMapToStoreKey(yMap, stateKey, getKey);
+        } finally {
+          _syncing = false;
+        }
+      };
     }
 
-    yClasses.observe(onYjsChange);
-    yProperties.observe(onYjsChange);
-    yIndividuals.observe(onYjsChange);
-    yLiterals.observe(onYjsChange);
-    yStickyNotes.observe(onYjsChange);
-    yFrames.observe(onYjsChange);
+    const obsClasses = makeObserver(yClasses, "classes", (c) => c.iri);
+    const obsProperties = makeObserver(yProperties, "properties", (p) => p.id);
+    const obsIndividuals = makeObserver(yIndividuals, "individuals", (i) => i.iri);
+    const obsLiterals = makeObserver(yLiterals, "literals", (l) => l.id);
+    const obsStickyNotes = makeObserver(yStickyNotes, "stickyNotes", (n) => n.id);
+    const obsFrames = makeObserver(yFrames, "frames", (f) => f.id);
 
-    // ── Subscribe to Zustand store changes → push to Yjs ──
+    yClasses.observe(obsClasses);
+    yProperties.observe(obsProperties);
+    yIndividuals.observe(obsIndividuals);
+    yLiterals.observe(obsLiterals);
+    yStickyNotes.observe(obsStickyNotes);
+    yFrames.observe(obsFrames);
+
+    // ── Subscribe to Zustand store changes -> push to Yjs ──
     const unsubscribe = store.subscribe((state, prevState) => {
       if (_syncing) return;
       _syncing = true;
-
       try {
         doc!.transact(() => {
-          // Sync classes
           if (state.classes !== prevState.classes) {
             syncArrayToMap(state.classes, yClasses, (c) => c.iri);
           }
-          // Sync properties
           if (state.properties !== prevState.properties) {
             syncArrayToMap(state.properties, yProperties, (p) => p.id);
           }
-          // Sync individuals
           if (state.individuals !== prevState.individuals) {
             syncArrayToMap(state.individuals, yIndividuals, (i) => i.iri);
           }
-          // Sync literals
           if (state.literals !== prevState.literals) {
             syncArrayToMap(state.literals, yLiterals, (l) => l.id);
           }
-          // Sync sticky notes
           if (state.stickyNotes !== prevState.stickyNotes) {
             syncArrayToMap(state.stickyNotes, yStickyNotes, (n) => n.id);
           }
-          // Sync frames
           if (state.frames !== prevState.frames) {
             syncArrayToMap(state.frames, yFrames, (f) => f.id);
           }
@@ -131,28 +132,36 @@ export function useYjsSync(doc: Y.Doc | null, boardId: string | undefined) {
       }
     });
 
-    // If Yjs already has data from other users, apply it
+    // If Yjs already has data, apply it; otherwise seed from store
     if (yClasses.size > 0) {
-      applyYjsToStore();
+      _syncing = true;
+      try {
+        applyMapToStoreKey(yClasses, "classes", (c) => c.iri);
+        applyMapToStoreKey(yProperties, "properties", (p) => p.id);
+        applyMapToStoreKey(yIndividuals, "individuals", (i) => i.iri);
+        applyMapToStoreKey(yLiterals, "literals", (l) => l.id);
+        applyMapToStoreKey(yStickyNotes, "stickyNotes", (n) => n.id);
+        applyMapToStoreKey(yFrames, "frames", (f) => f.id);
+      } finally {
+        _syncing = false;
+      }
     } else {
-      // Seed Yjs once store loads from backend
       const unsub = store.subscribe((state, prev) => {
         if (state.classes.length > 0 && prev.classes.length === 0) {
           seedYjsFromStore();
           unsub();
         }
       });
-      // Also try immediately in case store already has data
       seedYjsFromStore();
     }
 
     cleanupRef.current = () => {
-      yClasses.unobserve(onYjsChange);
-      yProperties.unobserve(onYjsChange);
-      yIndividuals.unobserve(onYjsChange);
-      yLiterals.unobserve(onYjsChange);
-      yStickyNotes.unobserve(onYjsChange);
-      yFrames.unobserve(onYjsChange);
+      yClasses.unobserve(obsClasses);
+      yProperties.unobserve(obsProperties);
+      yIndividuals.unobserve(obsIndividuals);
+      yLiterals.unobserve(obsLiterals);
+      yStickyNotes.unobserve(obsStickyNotes);
+      yFrames.unobserve(obsFrames);
       unsubscribe();
     };
 
@@ -164,27 +173,20 @@ export function useYjsSync(doc: Y.Doc | null, boardId: string | undefined) {
 }
 
 
-/**
- * Sync a local array to a Yjs Map — adds new items, updates changed items, removes deleted items.
- */
 function syncArrayToMap<T extends Record<string, any>>(
   items: T[],
   yMap: EntityMap,
   getKey: (item: T) => string,
 ) {
   const localKeys = new Set<string>();
-
   for (const item of items) {
     const key = getKey(item);
     localKeys.add(key);
     const json = JSON.stringify(item);
-    // Only update if value actually changed (avoid unnecessary Yjs transactions)
     if (yMap.get(key) !== json) {
       yMap.set(key, json);
     }
   }
-
-  // Remove items that no longer exist locally
   for (const key of yMap.keys()) {
     if (!localKeys.has(key)) {
       yMap.delete(key);

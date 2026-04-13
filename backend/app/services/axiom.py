@@ -158,35 +158,83 @@ def apply_manchester_edit(board_dir: Path, entity_iri: str, manchester_text: str
     for pred in removable_preds:
         g.remove((entity, pred, None))
 
+    # Remove existing annotations (rdfs:comment, rdfs:label annotations beyond the primary label)
+    # Keep the primary rdfs:label but remove rdfs:comment and custom annotation properties
+    _annotation_preds_to_clear = [RDFS.comment]
+    for pred in _annotation_preds_to_clear:
+        g.remove((entity, pred, None))
+
     # Parse Manchester lines
+    current_section = None
     for line_num, line in enumerate(manchester_text.split("\n"), 1):
         line = line.strip()
-        if not line or line.startswith("#") or line.startswith("Class:") or \
-           line.startswith("ObjectProperty:") or line.startswith("DataProperty:") or \
-           line.startswith("Individual:") or line.startswith("Annotations:"):
+        if not line or line.startswith("#"):
+            continue
+        # Skip entity declaration headers
+        if line.startswith("Class:") or line.startswith("ObjectProperty:") or \
+           line.startswith("DataProperty:") or line.startswith("Individual:"):
+            continue
+
+        # Track section headers
+        if line.endswith(":") and line[:-1] in ("SubClassOf", "EquivalentTo", "DisjointWith",
+            "Domain", "Range", "SubPropertyOf", "InverseOf", "Annotations", "Types", "Facts",
+            "SameAs", "DifferentFrom", "Characteristics", "DisjointUnionOf"):
+            current_section = line[:-1]
             continue
 
         handled = False
-        for keyword, pred in [
-            ("SubClassOf:", RDFS.subClassOf),
-            ("EquivalentTo:", OWL.equivalentClass),
-            ("DisjointWith:", OWL.disjointWith),
-            ("Domain:", RDFS.domain),
-            ("Range:", RDFS.range),
-            ("SubPropertyOf:", RDFS.subPropertyOf),
-            ("InverseOf:", OWL.inverseOf),
-        ]:
-            if line.startswith(keyword):
-                obj_str = line[len(keyword):].strip()
-                obj_uri = _resolve_name(g, obj_str)
-                if obj_uri:
-                    g.add((entity, pred, obj_uri))
-                    applied += 1
-                else:
-                    errors.append({"line": line_num, "column": len(keyword) + 1,
-                                   "message": f"Cannot resolve '{obj_str}'"})
-                handled = True
-                break
+
+        # Handle Annotations: <property> <value>
+        if line.startswith("Annotations:"):
+            ann_text = line[len("Annotations:"):].strip()
+            _apply_annotation(g, entity, ann_text, errors, line_num)
+            applied += 1
+            handled = True
+        elif current_section == "Annotations":
+            _apply_annotation(g, entity, line, errors, line_num)
+            applied += 1
+            handled = True
+
+        if not handled:
+            for keyword, pred in [
+                ("SubClassOf:", RDFS.subClassOf),
+                ("EquivalentTo:", OWL.equivalentClass),
+                ("DisjointWith:", OWL.disjointWith),
+                ("Domain:", RDFS.domain),
+                ("Range:", RDFS.range),
+                ("SubPropertyOf:", RDFS.subPropertyOf),
+                ("InverseOf:", OWL.inverseOf),
+            ]:
+                if line.startswith(keyword):
+                    obj_str = line[len(keyword):].strip()
+                    obj_uri = _resolve_name(g, obj_str)
+                    if obj_uri:
+                        g.add((entity, pred, obj_uri))
+                        applied += 1
+                    else:
+                        errors.append({"line": line_num, "column": len(keyword) + 1,
+                                       "message": f"Cannot resolve '{obj_str}'"})
+                    handled = True
+                    break
+
+            # Handle bare values under a section header (e.g. indented lines under SubClassOf:)
+            if not handled and current_section:
+                pred_map = {
+                    "SubClassOf": RDFS.subClassOf, "EquivalentTo": OWL.equivalentClass,
+                    "DisjointWith": OWL.disjointWith, "Domain": RDFS.domain,
+                    "Range": RDFS.range, "SubPropertyOf": RDFS.subPropertyOf,
+                    "InverseOf": OWL.inverseOf,
+                }
+                if current_section in pred_map:
+                    obj_uri = _resolve_name(g, line)
+                    if obj_uri:
+                        g.add((entity, pred_map[current_section], obj_uri))
+                        applied += 1
+                        handled = True
+                    else:
+                        errors.append({"line": line_num, "column": 1,
+                                       "message": f"Cannot resolve '{line}'"})
+                        handled = True
 
         if not handled and not line.startswith("Types:") and not line.startswith("Facts:"):
             warnings.append(f"Line {line_num}: Unrecognized syntax '{line[:40]}...'")
@@ -310,22 +358,144 @@ def _render_restriction(g: Graph, bnode: BNode) -> str:
 def _get_annotation_lines(g: Graph, entity: URIRef) -> list[str]:
     """Get annotation property values for display."""
     lines = []
+    # Known annotation predicates to display
+    ann_preds = {
+        str(RDFS.label): "rdfs:label",
+        str(RDFS.comment): "rdfs:comment",
+        str(RDFS.seeAlso): "rdfs:seeAlso",
+        str(RDFS.isDefinedBy): "rdfs:isDefinedBy",
+        "http://purl.org/dc/terms/creator": "dcterms:creator",
+        "http://purl.org/dc/terms/description": "dcterms:description",
+        "http://purl.org/dc/terms/title": "dcterms:title",
+        "http://purl.org/dc/elements/1.1/creator": "dc:creator",
+        "http://purl.org/dc/elements/1.1/description": "dc:description",
+        "http://www.w3.org/2004/02/skos/core#prefLabel": "skos:prefLabel",
+        "http://www.w3.org/2004/02/skos/core#altLabel": "skos:altLabel",
+        "http://www.w3.org/2004/02/skos/core#definition": "skos:definition",
+        "http://www.w3.org/2004/02/skos/core#example": "skos:example",
+        "http://www.w3.org/2004/02/skos/core#note": "skos:note",
+        "http://purl.obolibrary.org/obo/IAO_0000115": "obo:IAO_0000115",
+    }
+    skip = {str(RDF.type), str(OWL.imports), str(OWL.versionIRI), str(OWL.versionInfo)}
+
     for p, o in g.predicate_objects(entity):
-        if str(p) == str(RDFS.label):
-            if isinstance(o, Literal) and o.language:
-                lines.append(f'rdfs:label "{o}"@{o.language}')
-        elif str(p) == str(RDFS.comment):
+        p_str = str(p)
+        if p_str in skip:
+            continue
+        if p_str in ann_preds:
+            compact = ann_preds[p_str]
             if isinstance(o, Literal):
-                lines.append(f'rdfs:comment "{o}"')
+                lang = f"@{o.language}" if o.language else ""
+                lines.append(f'{compact} "{o}"{lang}')
+        elif isinstance(o, Literal) and not p_str.startswith("http://www.w3.org/1999/02/22-rdf-syntax-ns#") and \
+             not p_str.startswith("http://www.w3.org/2000/01/rdf-schema#sub") and \
+             not p_str.startswith("http://www.w3.org/2002/07/owl#"):
+            # Custom annotation properties
+            compact = _local_name(p_str)
+            lines.append(f'{compact} "{o}"')
     return lines
 
 
-def _resolve_name(g: Graph, name: str) -> URIRef | None:
-    """Try to resolve a label or local name to a URIRef."""
+def _apply_annotation(g: Graph, entity: URIRef, ann_text: str,
+                      errors: list, line_num: int) -> None:
+    """Parse and apply an annotation line like: rdfs:comment "Some text" or rdfs:label "Name"@en"""
+    ann_text = ann_text.strip()
+
+    # Parse: <property> "<value>"[@lang]
+    import re
+    # Match: property_name "value"[@lang]
+    m = re.match(r'^(\S+)\s+"(.*?)"(?:@(\w+))?$', ann_text)
+    if m:
+        prop_name, value, lang = m.group(1), m.group(2), m.group(3)
+        prop_uri = _resolve_annotation_property(prop_name)
+        if prop_uri:
+            if lang:
+                g.add((entity, prop_uri, Literal(value, lang=lang)))
+            else:
+                g.add((entity, prop_uri, Literal(value)))
+            return
+
+    # Match: property_name value (no quotes — treat value as literal)
+    parts = ann_text.split(None, 1)
+    if len(parts) == 2:
+        prop_name, value = parts
+        prop_uri = _resolve_annotation_property(prop_name)
+        if prop_uri:
+            # Strip surrounding quotes if present
+            value = value.strip().strip('"')
+            g.add((entity, prop_uri, Literal(value)))
+            return
+
+    errors.append({"line": line_num, "column": 1,
+                   "message": f"Cannot parse annotation: '{ann_text[:60]}'"})
+
+
+# Well-known prefixed names → URIs
+_WELL_KNOWN = {
+    "owl:Thing": str(OWL.Thing), "owl:Nothing": str(OWL.Nothing),
+    "owl:Class": str(OWL.Class), "owl:ObjectProperty": str(OWL.ObjectProperty),
+    "owl:DatatypeProperty": str(OWL.DatatypeProperty),
+    "owl:NamedIndividual": str(OWL.NamedIndividual),
+    "owl:topObjectProperty": str(OWL.topObjectProperty),
+    "owl:bottomObjectProperty": str(OWL.bottomObjectProperty),
+    "rdfs:Resource": str(RDFS.Resource), "rdfs:Class": str(RDFS.Class),
+    "rdfs:Literal": str(RDFS.Literal),
+    "xsd:string": str(XSD.string), "xsd:integer": str(XSD.integer),
+    "xsd:boolean": str(XSD.boolean), "xsd:float": str(XSD.float),
+    "xsd:double": str(XSD.double), "xsd:dateTime": str(XSD.dateTime),
+    "xsd:date": str(XSD.date), "xsd:decimal": str(XSD.decimal),
+    "xsd:anyURI": str(XSD.anyURI),
+}
+
+# Well-known annotation properties
+_ANNOTATION_PROPERTIES = {
+    "rdfs:label": RDFS.label,
+    "rdfs:comment": RDFS.comment,
+    "rdfs:seeAlso": RDFS.seeAlso,
+    "rdfs:isDefinedBy": RDFS.isDefinedBy,
+    "owl:deprecated": OWL.deprecated,
+    "dcterms:creator": URIRef("http://purl.org/dc/terms/creator"),
+    "dcterms:description": URIRef("http://purl.org/dc/terms/description"),
+    "dcterms:title": URIRef("http://purl.org/dc/terms/title"),
+    "dc:creator": URIRef("http://purl.org/dc/elements/1.1/creator"),
+    "dc:description": URIRef("http://purl.org/dc/elements/1.1/description"),
+    "skos:prefLabel": URIRef("http://www.w3.org/2004/02/skos/core#prefLabel"),
+    "skos:altLabel": URIRef("http://www.w3.org/2004/02/skos/core#altLabel"),
+    "skos:definition": URIRef("http://www.w3.org/2004/02/skos/core#definition"),
+    "skos:example": URIRef("http://www.w3.org/2004/02/skos/core#example"),
+    "skos:note": URIRef("http://www.w3.org/2004/02/skos/core#note"),
+    "obo:IAO_0000115": URIRef("http://purl.obolibrary.org/obo/IAO_0000115"),  # definition
+}
+
+
+def _resolve_annotation_property(name: str) -> URIRef | None:
+    """Resolve an annotation property name to a URIRef."""
     name = name.strip()
-    # If it looks like a full IRI
+    if name in _ANNOTATION_PROPERTIES:
+        return _ANNOTATION_PROPERTIES[name]
     if name.startswith("http://") or name.startswith("https://"):
         return URIRef(name)
+    return None
+
+
+def _resolve_name(g: Graph, name: str) -> URIRef | None:
+    """Try to resolve a label or local name to a URIRef.
+
+    Handles well-known OWL/RDF/RDFS/XSD terms, compact IRIs, labels, and local names.
+    """
+    name = name.strip()
+    # Full IRI
+    if name.startswith("http://") or name.startswith("https://"):
+        return URIRef(name)
+    # Well-known prefixed names (owl:Thing, rdfs:Resource, xsd:string, etc.)
+    if name in _WELL_KNOWN:
+        return URIRef(_WELL_KNOWN[name])
+    # Compact IRI with graph namespace bindings
+    if ":" in name and not name.startswith('"'):
+        prefix, local = name.split(":", 1)
+        for p, ns in g.namespaces():
+            if p == prefix:
+                return URIRef(str(ns) + local)
     # Search by label
     for s, _, o in g.triples((None, RDFS.label, None)):
         if isinstance(o, Literal) and str(o) == name and not isinstance(s, BNode):

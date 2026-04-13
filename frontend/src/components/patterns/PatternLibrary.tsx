@@ -102,20 +102,30 @@ export default function PatternLibrary({ boardId }: Props) {
 
       const patternColor = getPatternColor(patternId);
 
-      // MERGE pattern entities into existing store (don't reload — that clears everything)
+      // Batch all additions into a single store update
+      const currentState = useOntologyStore.getState();
+      const newClasses = [...currentState.classes];
+      const newProperties = [...currentState.properties];
+      const newPatternMap = { ...currentState.patternMap };
+
       for (const cls of result.classes || []) {
-        if (!store.classes.some((c) => c.iri === cls.iri)) {
-          // Apply pattern-specific color
-          store.addClass({ ...cls, color: patternColor });
+        if (!newClasses.some((c) => c.iri === cls.iri)) {
+          newClasses.push({ ...cls, color: patternColor });
         }
-        // Track which pattern this class belongs to
-        store.assignPattern(cls.iri, patternId);
+        newPatternMap[cls.iri] = patternId;
       }
       for (const prop of result.properties || []) {
-        if (!store.properties.some((p) => p.id === prop.id)) {
-          store.addProperty(prop);
+        if (!newProperties.some((p) => p.id === prop.id)) {
+          newProperties.push(prop);
         }
       }
+
+      useOntologyStore.setState({
+        classes: newClasses,
+        properties: newProperties,
+        patternMap: newPatternMap,
+        dirty: true,
+      });
       setApplied(patternId);
       setTimeout(() => setApplied(null), 3000);
     } catch (e: any) {

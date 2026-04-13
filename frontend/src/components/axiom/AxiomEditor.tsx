@@ -74,6 +74,13 @@ const AXIOM_TYPES = [
   "Types", "Facts", "SameAs", "DifferentFrom", "Annotations",
 ];
 
+const ANNOTATION_PROPERTIES = [
+  "rdfs:comment", "rdfs:label", "rdfs:seeAlso", "rdfs:isDefinedBy",
+  "dcterms:creator", "dcterms:description", "dcterms:title",
+  "skos:prefLabel", "skos:altLabel", "skos:definition", "skos:example", "skos:note",
+  "owl:deprecated", "obo:IAO_0000115",
+];
+
 const TYPE_COLORS: Record<string, string> = {
   SubClassOf: "#6366f1", EquivalentTo: "#10b981", DisjointWith: "#ef4444",
   Domain: "#f59e0b", Range: "#f59e0b", SubPropertyOf: "#8b5cf6",
@@ -95,6 +102,7 @@ export default function AxiomEditor({ boardId, entityIri, entityLabel, entityTyp
   const [editValue, setEditValue] = useState("");
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const addInputRef = useRef<HTMLInputElement>(null);
+  const [annProperty, setAnnProperty] = useState("rdfs:comment");
 
   const editorRef = useRef<any>(null);
   const monacoRef = useRef<any>(null);
@@ -133,13 +141,18 @@ export default function AxiomEditor({ boardId, entityIri, entityLabel, entityTyp
   // ── Structured row operations ──
   const addAxiomRow = useCallback(() => {
     if (!addingType || !addValue.trim()) return;
-    const newRows = [...axiomRows, { type: addingType, value: addValue.trim() }];
+    let value = addValue.trim();
+    // For Annotations, format as: property "value"
+    if (addingType === "Annotations" && !value.includes('"')) {
+      value = `${annProperty} "${value}"`;
+    }
+    const newRows = [...axiomRows, { type: addingType, value }];
     const newText = rowsToManchester(entityType || "class", entityLabel || entityIri || "", newRows);
     setManchester(newText);
     setAddValue("");
     setAddingType(null);
     setSuggestions([]);
-  }, [addingType, addValue, axiomRows, entityType, entityLabel, entityIri, setManchester]);
+  }, [addingType, addValue, annProperty, axiomRows, entityType, entityLabel, entityIri, setManchester]);
 
   const deleteAxiomRow = useCallback((idx: number) => {
     const newRows = axiomRows.filter((_, i) => i !== idx);
@@ -290,17 +303,25 @@ export default function AxiomEditor({ boardId, entityIri, entityLabel, entityTyp
           {addingType ? (
             <div className={styles.addRow}>
               <span className={styles.addLabel}>{addingType}:</span>
+              {addingType === "Annotations" && (
+                <select className={styles.annPropSelect} value={annProperty}
+                  onChange={(e) => setAnnProperty(e.target.value)}>
+                  {ANNOTATION_PROPERTIES.map((p) => (
+                    <option key={p} value={p}>{p}</option>
+                  ))}
+                </select>
+              )}
               <div className={styles.addInputWrap}>
                 <input
                   ref={addInputRef}
                   className={styles.axiomInput}
                   value={addValue}
-                  onChange={(e) => { setAddValue(e.target.value); updateSuggestions(e.target.value); }}
+                  onChange={(e) => { setAddValue(e.target.value); if (addingType !== "Annotations") updateSuggestions(e.target.value); }}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") addAxiomRow();
                     if (e.key === "Escape") { setAddingType(null); setAddValue(""); setSuggestions([]); }
                   }}
-                  placeholder="e.g. Animal, hasPart some Organ, ..."
+                  placeholder={addingType === "Annotations" ? "Enter annotation value..." : "e.g. Animal, hasPart some Organ, ..."}
                   autoFocus
                 />
                 {suggestions.length > 0 && (

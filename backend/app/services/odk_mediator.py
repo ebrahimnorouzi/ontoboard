@@ -28,8 +28,11 @@ logger = logging.getLogger("ontoboard.odk_mediator")
 
 
 def _docker_mount_path(host_path: Path) -> str:
-    """Convert a host path to a Docker-compatible mount path (Windows → /c/...)."""
-    p = str(host_path).replace("\\", "/")
+    """Convert a host path to a Docker-compatible mount path (Windows → /c/...).
+
+    Resolves to absolute path first — Docker requires absolute paths for bind mounts.
+    """
+    p = str(host_path.resolve()).replace("\\", "/")
     if len(p) >= 2 and p[1] == ":":
         p = "/" + p[0].lower() + p[2:]
     return p

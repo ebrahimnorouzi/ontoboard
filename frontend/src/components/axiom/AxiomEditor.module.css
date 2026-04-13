@@ -223,6 +223,19 @@
   padding-top: 0.25rem;
   white-space: nowrap;
 }
+.annPropSelect {
+  padding: 0.2rem 0.3rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-primary);
+  color: var(--accent-light);
+  font-size: 0.68rem;
+  font-family: "Cascadia Code", "Fira Code", monospace;
+  font-weight: 600;
+  outline: none;
+  flex-shrink: 0;
+}
+.annPropSelect:focus { border-color: var(--accent); }
 .addInputWrap {
   flex: 1;
   position: relative;

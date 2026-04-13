@@ -151,6 +151,31 @@ def update_board(db: Session, board: Board, user: User, **fields) -> Board:
     return board
 
 
+def clone_board(db: Session, source_board: Board, new_board_id: str, user: User) -> Board:
+    """Clone a board — copies filesystem and creates a new DB record."""
+    new_board = create_board(db, new_board_id, user,
+                             display_name=f"{source_board.display_name} (copy)",
+                             description=source_board.description,
+                             is_public=source_board.is_public,
+                             tags=source_board.tags)
+
+    src_dir = get_board_dir(source_board.board_id)
+    dst_dir = get_board_dir(new_board_id)
+    if src_dir.exists():
+        if dst_dir.exists():
+            shutil.rmtree(dst_dir)
+        shutil.copytree(src_dir, dst_dir)
+        # Re-init git so the clone has its own history
+        git_dir = dst_dir / ".git"
+        if git_dir.exists():
+            shutil.rmtree(git_dir)
+        git_init(dst_dir)
+        git_commit(dst_dir, f"Cloned from {source_board.board_id}")
+
+    log_activity(db, new_board, user, "cloned", f"Cloned from '{source_board.board_id}'")
+    return new_board
+
+
 def delete_board(db: Session, board: Board, user: User) -> None:
     slug = board.board_id
     # Cancel background seed

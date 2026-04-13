@@ -1,8 +1,13 @@
 """Ontology Design Pattern (ODP) library service.
 
-Loads patterns from two directories:
-- data/patterns/odpa/  — curated patterns from ontologydesignpatterns.org (ODPA)
-- data/patterns/user/  — user-uploaded patterns (persisted to disk)
+Storage layout:
+  data/patterns/odpa/{pattern-id}/
+    metadata.json   — name, description, category, references, etc.
+    pattern.owl     — OWL/RDF ontology file (or .ttl)
+
+  data/patterns/user/{username}/{pattern-id}/
+    metadata.json   — same format as ODPA
+    pattern.owl     — uploaded ontology file
 """
 
 import json
@@ -16,37 +21,141 @@ logger = logging.getLogger("ontoboard.patterns")
 ODPA_DIR = DATA_DIR / "patterns" / "odpa"
 USER_DIR = DATA_DIR / "patterns" / "user"
 
-# In-memory cache — loaded on first access
 _patterns: list[dict] | None = None
 
 
 def _ensure_dirs() -> None:
-    """Create pattern directories if they don't exist."""
     ODPA_DIR.mkdir(parents=True, exist_ok=True)
     USER_DIR.mkdir(parents=True, exist_ok=True)
 
 
+def _parse_owl_file(owl_path: Path) -> tuple[list[dict], list[dict]]:
+    """Parse an OWL/TTL file and extract classes + properties."""
+    classes = []
+    properties = []
+    try:
+        from rdflib import Graph, RDF, OWL, RDFS
+        g = Graph()
+        ext = owl_path.suffix.lower()
+        fmt = "turtle" if ext in (".ttl", ".n3") else "xml"
+        g.parse(str(owl_path), format=fmt)
+
+        for s in g.subjects(RDF.type, OWL.Class):
+            from rdflib import BNode
+            if isinstance(s, BNode):
+                continue
+            label = str(s).split("#")[-1].split("/")[-1]
+            for _, _, o in g.triples((s, RDFS.label, None)):
+                label = str(o)
+                break
+            classes.append({"iri": str(s), "label": label})
+
+        for s in g.subjects(RDF.type, OWL.ObjectProperty):
+            from rdflib import BNode
+            if isinstance(s, BNode):
+                continue
+            label = str(s).split("#")[-1].split("/")[-1]
+            for _, _, o in g.triples((s, RDFS.label, None)):
+                label = str(o)
+                break
+            source, target = "", ""
+            for _, _, o in g.triples((s, RDFS.domain, None)):
+                source = str(o)
+            for _, _, o in g.triples((s, RDFS.range, None)):
+                target = str(o)
+            properties.append({
+                "iri": str(s), "label": label,
+                "source": source, "target": target, "type": "object",
+            })
+
+        for s in g.subjects(RDF.type, OWL.DatatypeProperty):
+            from rdflib import BNode
+            if isinstance(s, BNode):
+                continue
+            label = str(s).split("#")[-1].split("/")[-1]
+            for _, _, o in g.triples((s, RDFS.label, None)):
+                label = str(o)
+                break
+            source, target = "", ""
+            for _, _, o in g.triples((s, RDFS.domain, None)):
+                source = str(o)
+            for _, _, o in g.triples((s, RDFS.range, None)):
+                target = str(o)
+            properties.append({
+                "iri": str(s), "label": label,
+                "source": source, "target": target, "type": "data",
+            })
+    except Exception as exc:
+        logger.warning("Failed to parse OWL file %s: %s", owl_path, exc)
+
+    return classes, properties
+
+
+def _load_pattern_dir(pattern_dir: Path, source: str, uploaded_by: str = "") -> dict | None:
+    """Load a single pattern from its directory (metadata.json + pattern.owl/ttl)."""
+    meta_file = pattern_dir / "metadata.json"
+    if not meta_file.exists():
+        return None
+
+    try:
+        meta = json.loads(meta_file.read_text(encoding="utf-8"))
+    except Exception as exc:
+        logger.warning("Failed to read metadata %s: %s", meta_file, exc)
+        return None
+
+    # Find the ontology file
+    owl_file = None
+    for ext in ("*.owl", "*.ttl", "*.rdf", "*.xml"):
+        files = list(pattern_dir.glob(ext))
+        if files:
+            owl_file = files[0]
+            break
+
+    # Parse classes/properties from the OWL file
+    classes, properties = [], []
+    if owl_file:
+        classes, properties = _parse_owl_file(owl_file)
+        meta["ontology_file"] = owl_file.name
+
+    meta["classes"] = classes
+    meta["properties"] = properties
+    meta["source"] = source
+    meta["dir"] = str(pattern_dir)
+    if uploaded_by:
+        meta["uploaded_by"] = uploaded_by
+    if "id" not in meta:
+        meta["id"] = pattern_dir.name
+
+    return meta
+
+
 def _load_patterns_from_dir(directory: Path, source: str) -> list[dict]:
-    """Load all JSON pattern files from a directory (including subdirectories)."""
+    """Load all patterns from a directory (each subdirectory is a pattern)."""
     patterns = []
     if not directory.exists():
         return patterns
-    for f in sorted(directory.rglob("*.json")):
-        try:
-            data = json.loads(f.read_text(encoding="utf-8"))
-            data["source"] = source  # "odpa" or "user"
-            data["file"] = str(f)
-            # For user patterns, extract the username from the subdirectory
-            if source == "user" and f.parent != directory:
-                data["uploaded_by"] = f.parent.name
-            patterns.append(data)
-        except Exception as exc:
-            logger.warning("Failed to load pattern %s: %s", f, exc)
+
+    for sub in sorted(directory.iterdir()):
+        if not sub.is_dir():
+            continue
+
+        if source == "user":
+            # User dir: data/patterns/user/{username}/{pattern-id}/
+            for pattern_dir in sorted(sub.iterdir()):
+                if pattern_dir.is_dir():
+                    p = _load_pattern_dir(pattern_dir, source, uploaded_by=sub.name)
+                    if p:
+                        patterns.append(p)
+        else:
+            # ODPA dir: data/patterns/odpa/{pattern-id}/
+            p = _load_pattern_dir(sub, source)
+            if p:
+                patterns.append(p)
+
     return patterns
 
 
 def _load_all() -> list[dict]:
-    """Load patterns from both directories."""
     global _patterns
     _ensure_dirs()
     odpa = _load_patterns_from_dir(ODPA_DIR, "odpa")
@@ -56,29 +165,26 @@ def _load_all() -> list[dict]:
 
 
 def _get_patterns() -> list[dict]:
-    """Return cached patterns or load from disk."""
     if _patterns is None:
         return _load_all()
     return _patterns
 
 
 def reload_patterns() -> int:
-    """Force reload patterns from disk. Returns count."""
-    patterns = _load_all()
-    return len(patterns)
+    return len(_load_all())
 
 
 def list_patterns() -> list[dict]:
-    """Return pattern metadata (without full structure)."""
-    return [{"id": p["id"], "name": p["name"], "description": p["description"],
-             "category": p["category"], "class_count": len(p.get("classes", [])),
+    return [{"id": p["id"], "name": p["name"], "description": p.get("description", ""),
+             "category": p.get("category", "structural"),
+             "class_count": len(p.get("classes", [])),
              "property_count": len(p.get("properties", [])),
              "source": p.get("source", "odpa"),
-             "uploaded_by": p.get("uploaded_by", "")} for p in _get_patterns()]
+             "uploaded_by": p.get("uploaded_by", ""),
+             "ontology_file": p.get("ontology_file", "")} for p in _get_patterns()]
 
 
 def get_pattern(pattern_id: str) -> dict | None:
-    """Get full pattern structure."""
     for p in _get_patterns():
         if p["id"] == pattern_id:
             return p
@@ -130,51 +236,16 @@ def add_pattern(*, pattern_id: str, name: str, description: str = "",
                 competency_questions: str = "", references: str = "",
                 pattern_iri: str = "", owl_content: str | None = None,
                 username: str = "anonymous") -> dict:
-    """Add a user-defined pattern — saved to data/patterns/user/{username}/ as JSON.
+    """Add a user-defined pattern — saves to data/patterns/user/{username}/{pattern-id}/
 
-    If owl_content is provided, try to extract classes/properties from it.
-    Otherwise create an empty pattern structure.
+    Always saves both metadata.json and pattern.owl (or .ttl).
     """
-    classes = []
-    properties = []
+    _ensure_dirs()
+    pattern_dir = USER_DIR / username / pattern_id
+    pattern_dir.mkdir(parents=True, exist_ok=True)
 
-    if owl_content:
-        try:
-            from rdflib import Graph, RDF, OWL, RDFS
-            g = Graph()
-            for fmt in ("xml", "turtle", "n3"):
-                try:
-                    g.parse(data=owl_content, format=fmt)
-                    break
-                except Exception:
-                    continue
-
-            for s in g.subjects(RDF.type, OWL.Class):
-                label = str(s).split("#")[-1].split("/")[-1]
-                for _, _, o in g.triples((s, RDFS.label, None)):
-                    label = str(o)
-                    break
-                classes.append({"iri": str(s), "label": label})
-
-            for s in g.subjects(RDF.type, OWL.ObjectProperty):
-                label = str(s).split("#")[-1].split("/")[-1]
-                for _, _, o in g.triples((s, RDFS.label, None)):
-                    label = str(o)
-                    break
-                source = ""
-                target = ""
-                for _, _, o in g.triples((s, RDFS.domain, None)):
-                    source = str(o)
-                for _, _, o in g.triples((s, RDFS.range, None)):
-                    target = str(o)
-                properties.append({
-                    "iri": str(s), "label": label,
-                    "source": source, "target": target, "type": "object",
-                })
-        except Exception:
-            pass
-
-    new_pattern = {
+    # Save metadata
+    meta = {
         "id": pattern_id,
         "name": name,
         "description": description,
@@ -183,42 +254,65 @@ def add_pattern(*, pattern_id: str, name: str, description: str = "",
         "competency_questions": competency_questions,
         "references": references,
         "pattern_iri": pattern_iri,
-        "classes": classes,
-        "properties": properties,
     }
+    (pattern_dir / "metadata.json").write_text(
+        json.dumps(meta, indent=2, ensure_ascii=False), encoding="utf-8")
 
-    # Save to disk in per-user subdirectory
-    _ensure_dirs()
-    user_dir = USER_DIR / username
-    user_dir.mkdir(parents=True, exist_ok=True)
-    dest = user_dir / f"{pattern_id}.json"
-    dest.write_text(json.dumps(new_pattern, indent=2, ensure_ascii=False), encoding="utf-8")
+    # Save ontology file
+    classes, properties = [], []
+    if owl_content:
+        # Detect format from content
+        ext = ".owl"
+        if owl_content.strip().startswith("@prefix") or owl_content.strip().startswith("@base"):
+            ext = ".ttl"
+        owl_file = pattern_dir / f"pattern{ext}"
+        owl_file.write_text(owl_content, encoding="utf-8")
+        classes, properties = _parse_owl_file(owl_file)
+        meta["ontology_file"] = owl_file.name
+    else:
+        # Generate a minimal OWL file from metadata
+        owl_iri = pattern_iri or f"http://example.org/patterns/{pattern_id}"
+        owl_content = (
+            f'<?xml version="1.0"?>\n'
+            f'<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"\n'
+            f'         xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"\n'
+            f'         xmlns:owl="http://www.w3.org/2002/07/owl#"\n'
+            f'         xml:base="{owl_iri}">\n'
+            f'  <owl:Ontology rdf:about="{owl_iri}">\n'
+            f'    <rdfs:label>{name}</rdfs:label>\n'
+            f'    <rdfs:comment>{description}</rdfs:comment>\n'
+            f'  </owl:Ontology>\n'
+            f'</rdf:RDF>\n'
+        )
+        (pattern_dir / "pattern.owl").write_text(owl_content, encoding="utf-8")
+        meta["ontology_file"] = "pattern.owl"
 
     # Add to in-memory cache
-    new_pattern["source"] = "user"
-    new_pattern["uploaded_by"] = username
-    new_pattern["file"] = str(dest)
+    full = {**meta, "classes": classes, "properties": properties,
+            "source": "user", "uploaded_by": username, "dir": str(pattern_dir)}
     patterns = _get_patterns()
-    patterns.append(new_pattern)
+    patterns.append(full)
 
     return {
         "id": pattern_id, "name": name, "description": description,
         "category": category, "class_count": len(classes),
         "property_count": len(properties), "source": "user",
+        "uploaded_by": username, "ontology_file": meta.get("ontology_file", ""),
     }
 
 
 def delete_pattern(pattern_id: str) -> bool:
     """Delete a user-added pattern (ODPA patterns cannot be deleted)."""
+    import shutil
     patterns = _get_patterns()
     for p in patterns:
         if p["id"] == pattern_id:
             if p.get("source") == "odpa":
-                return False  # Cannot delete ODPA patterns
-            # Remove file
-            file_path = Path(p.get("file", ""))
-            if file_path.exists():
-                file_path.unlink()
+                return False
+            # Remove directory
+            pattern_dir = Path(p.get("dir", ""))
+            if pattern_dir.exists() and pattern_dir.is_dir():
+                shutil.rmtree(pattern_dir)
             patterns.remove(p)
             return True
     return False

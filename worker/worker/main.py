@@ -68,10 +68,17 @@ def run_docker_command(board_dir, command, working_dir="/work"):
     except Exception as exc:
         return -1, "", f"Docker unavailable: {exc}"
 
+    # Resolve to absolute path — Docker requires absolute paths for bind mounts
+    abs_dir = os.path.abspath(board_dir)
+    # Windows Docker mount path: C:\... → /c/...
+    mount_path = abs_dir.replace("\\", "/")
+    if len(mount_path) >= 2 and mount_path[1] == ":":
+        mount_path = "/" + mount_path[0].lower() + mount_path[2:]
+
     container = client.containers.run(
         image=ODK_IMAGE,
         command=command,
-        volumes={board_dir: {"bind": "/work", "mode": "rw"}},
+        volumes={mount_path: {"bind": "/work", "mode": "rw"}},
         working_dir=working_dir,
         detach=True,
         stdout=True,
