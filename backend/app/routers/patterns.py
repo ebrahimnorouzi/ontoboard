@@ -45,6 +45,21 @@ def apply_pattern(board_id: str, pattern_id: str, body: ApplyBody,
     return result
 
 
+@router.post("/reload")
+def reload_patterns(user: User = Depends(get_current_user)):
+    """Reload all patterns from disk."""
+    count = pattern_svc.reload_patterns()
+    return {"reloaded": count}
+
+
+@router.delete("/{pattern_id}")
+def delete_pattern(pattern_id: str, user: User = Depends(get_current_user)):
+    """Delete a user-added pattern (ODPA patterns cannot be deleted)."""
+    if not pattern_svc.delete_pattern(pattern_id):
+        raise HTTPException(status_code=400, detail="Pattern not found or is an ODPA pattern (cannot delete)")
+    return {"deleted": pattern_id}
+
+
 @router.post("/upload", status_code=201)
 async def upload_pattern(
     name: str = Form(...),
@@ -77,6 +92,7 @@ async def upload_pattern(
         references=references,
         pattern_iri=pattern_iri,
         owl_content=file_content,
+        username=user.username,
     )
     return new_pattern
 
@@ -141,6 +157,7 @@ async def upload_patterns_batch(
             references=meta.get("references", ""),
             pattern_iri=meta.get("pattern_iri", ""),
             owl_content=owl_content,
+            username=user.username,
         )
         results.append(new_pattern)
 

@@ -35,6 +35,8 @@ interface PatternSummary {
   category: string;
   class_count: number;
   property_count: number;
+  source?: "odpa" | "user";
+  uploaded_by?: string;
 }
 
 interface PatternDetail extends PatternSummary {
@@ -55,6 +57,7 @@ export default function PatternLibrary({ boardId }: Props) {
   const [error, setError] = useState("");
   const [showUpload, setShowUpload] = useState(false);
   const store = useOntologyStore();
+  const [deleting, setDeleting] = useState<string | null>(null);
   const dragPatternRef = useRef<string | null>(null);
 
   // Upload form state
@@ -187,6 +190,19 @@ export default function PatternLibrary({ boardId }: Props) {
     }
   }, []);
 
+  const handleDelete = useCallback(async (patternId: string) => {
+    setDeleting(patternId);
+    try {
+      await apiJson(`/api/patterns/${patternId}`, { method: "DELETE" });
+      setPatterns((prev) => prev.filter((p) => p.id !== patternId));
+      if (selected?.id === patternId) setSelected(null);
+    } catch (e: any) {
+      setError(e.message || "Delete failed");
+    } finally {
+      setDeleting(null);
+    }
+  }, [selected]);
+
   // Group patterns by category
   const categories = patterns.reduce((acc, p) => {
     if (!acc[p.category]) acc[p.category] = [];
@@ -268,16 +284,32 @@ export default function PatternLibrary({ boardId }: Props) {
                   <div className={styles.patternHeader}>
                     <span className={styles.patternColorDot} style={{ background: getPatternColor(p.id) }} />
                     <span className={styles.patternName}>{p.name}</span>
+                    <span className={`${styles.sourceBadge} ${p.source === "user" ? styles.sourceUser : styles.sourceOdpa}`}
+                          title={p.uploaded_by ? `Uploaded by ${p.uploaded_by}` : ""}>
+                      {p.source === "user" ? (p.uploaded_by || "user") : "ODPA"}
+                    </span>
                     <span className={styles.patternMeta}>{p.class_count}C {p.property_count}P</span>
                   </div>
                   <div className={styles.patternDesc}>{p.description}</div>
-                  <button
-                    className={styles.applyBtn}
-                    onClick={(e) => { e.stopPropagation(); applyPattern(p.id); }}
-                    disabled={applying}
-                  >
-                    {applying ? "..." : "Apply"}
-                  </button>
+                  <div className={styles.patternActions}>
+                    <button
+                      className={styles.applyBtn}
+                      onClick={(e) => { e.stopPropagation(); applyPattern(p.id); }}
+                      disabled={applying}
+                    >
+                      {applying ? "..." : "Apply"}
+                    </button>
+                    {p.source === "user" && (
+                      <button
+                        className={styles.deleteBtn}
+                        onClick={(e) => { e.stopPropagation(); handleDelete(p.id); }}
+                        disabled={deleting === p.id}
+                        title="Delete user pattern"
+                      >
+                        {deleting === p.id ? "..." : "\u2715"}
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>

@@ -24,6 +24,9 @@ export default function OntologyDashboard({ boardId }: Props) {
   const { data, setData, loading, error, runReport, reportLoading, reportError } = useOntologyDashboard(boardId);
   const [newPrefix, setNewPrefix] = useState("");
   const [newNs, setNewNs] = useState("");
+  const [editingPrefix, setEditingPrefix] = useState<string | null>(null);
+  const [editPrefixName, setEditPrefixName] = useState("");
+  const [editPrefixNs, setEditPrefixNs] = useState("");
   const [metaFields, setMetaFields] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [editingIri, setEditingIri] = useState(false);
@@ -80,6 +83,28 @@ export default function OntologyDashboard({ boardId }: Props) {
       setNewNs("");
     } catch {}
   }, [boardId, newPrefix, newNs, data, setData]);
+
+  const updatePrefix = useCallback(async (oldPrefix: string, newPrefixName: string, newNsValue: string) => {
+    if (!newPrefixName || !newNsValue) return;
+    try {
+      await apiJson(`/api/ontology/${boardId}/prefixes/${encodeURIComponent(oldPrefix)}`, {
+        method: "PUT",
+        body: JSON.stringify({ prefix: newPrefixName, namespace: newNsValue }),
+      });
+      if (data) {
+        setData({
+          ...data,
+          metadata: {
+            ...data.metadata,
+            prefixes: data.metadata.prefixes.map((p) =>
+              p.prefix === oldPrefix ? { prefix: newPrefixName, namespace: newNsValue } : p
+            ),
+          },
+        });
+      }
+      setEditingPrefix(null);
+    } catch {}
+  }, [boardId, data, setData]);
 
   const saveIdentity = useCallback(async (fields: Record<string, string | null>) => {
     try {
@@ -354,6 +379,7 @@ export default function OntologyDashboard({ boardId }: Props) {
         <div className={styles.prefixTable}>
           {metadata.prefixes.slice(0, 20).map((p) => {
             const pc = prefixColors.find((c) => c.prefix === p.prefix);
+            const isEditing = editingPrefix === p.prefix;
             return (
               <div key={p.prefix} className={styles.prefixRow}>
                 <input
@@ -365,9 +391,47 @@ export default function OntologyDashboard({ boardId }: Props) {
                     useOntologyStore.getState().setPrefixColor(p.prefix, p.namespace, e.target.value);
                   }}
                 />
-                <span className={styles.prefixName}>{p.prefix}</span>
-                <span className={styles.prefixNs}>{p.namespace}</span>
-                {pc && (
+                {isEditing ? (
+                  <>
+                    <input
+                      className={styles.prefixEditInput}
+                      value={editPrefixName}
+                      onChange={(e) => setEditPrefixName(e.target.value)}
+                      placeholder="prefix"
+                      autoFocus
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") updatePrefix(p.prefix, editPrefixName, editPrefixNs);
+                        if (e.key === "Escape") setEditingPrefix(null);
+                      }}
+                    />
+                    <input
+                      className={styles.prefixEditNsInput}
+                      value={editPrefixNs}
+                      onChange={(e) => setEditPrefixNs(e.target.value)}
+                      placeholder="http://namespace.org/"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") updatePrefix(p.prefix, editPrefixName, editPrefixNs);
+                        if (e.key === "Escape") setEditingPrefix(null);
+                      }}
+                    />
+                    <button className={styles.smallBtn} onClick={() => updatePrefix(p.prefix, editPrefixName, editPrefixNs)}>Save</button>
+                    <button className={styles.smallBtnMuted} onClick={() => setEditingPrefix(null)}>✕</button>
+                  </>
+                ) : (
+                  <>
+                    <span
+                      className={styles.prefixName}
+                      onClick={() => { setEditPrefixName(p.prefix === "(default)" ? "" : p.prefix); setEditPrefixNs(p.namespace); setEditingPrefix(p.prefix); }}
+                      title="Click to edit prefix"
+                    >{p.prefix}</span>
+                    <span
+                      className={styles.prefixNs}
+                      onClick={() => { setEditPrefixName(p.prefix === "(default)" ? "" : p.prefix); setEditPrefixNs(p.namespace); setEditingPrefix(p.prefix); }}
+                      title="Click to edit namespace"
+                    >{p.namespace}</span>
+                  </>
+                )}
+                {pc && !isEditing && (
                   <button
                     className={styles.prefixColorReset}
                     title="Remove prefix color"
@@ -424,12 +488,20 @@ export default function OntologyDashboard({ boardId }: Props) {
         {report ? (
           <>
             <div className={styles.reportSummary}>{report.summary}</div>
-            {report.exit_code !== 0 && (
+            {report.exit_code === -1 && (
+              <div className={styles.reportWarn}>
+                <strong>Docker / ODK Unavailable</strong>
+                <p style={{ marginTop: "0.3rem" }}>
+                  ROBOT report requires Docker with the <code>obolibrary/odkfull</code> image.
+                  <br />Install Docker and run: <code>docker pull obolibrary/odkfull</code>
+                </p>
+              </div>
+            )}
+            {report.exit_code !== 0 && report.exit_code !== -1 && (
               <div className={styles.reportError}>
                 <strong>Exit code:</strong> {report.exit_code}
                 <p style={{ marginTop: "0.3rem" }}>
-                  Check that the odkfull Docker image is installed and Docker is running.
-                  Run <code>docker pull obolibrary/odkfull</code> to install.
+                  Check that the OWL file is valid and retry.
                 </p>
               </div>
             )}

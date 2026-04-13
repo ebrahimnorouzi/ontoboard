@@ -201,6 +201,27 @@ def add_prefix(
     return {"success": True}
 
 
+class PrefixUpdateBody(BaseModel):
+    prefix: str
+    namespace: str
+
+
+@router.put("/{board_id}/prefixes/{old_prefix}")
+def update_prefix(
+    board_id: str, old_prefix: str, body: PrefixUpdateBody,
+    db: Session = Depends(get_db), user: User = Depends(get_current_user),
+):
+    """Update a prefix binding (rename and/or change namespace)."""
+    board = board_svc.get_board_by_slug(db, board_id)
+    if not board:
+        raise HTTPException(status_code=404, detail="Board not found")
+    if not board_svc.can_edit(db, board, user):
+        raise HTTPException(status_code=403, detail="Edit access required")
+    meta_svc.update_prefix(board_svc.get_board_dir(board_id), old_prefix, body.prefix, body.namespace)
+    board_svc.git_commit(board_svc.get_board_dir(board_id), f"Updated prefix {old_prefix} → {body.prefix}")
+    return {"success": True}
+
+
 @router.delete("/{board_id}/prefixes/{prefix}")
 def remove_prefix(
     board_id: str, prefix: str,

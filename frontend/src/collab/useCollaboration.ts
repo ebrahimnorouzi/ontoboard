@@ -100,7 +100,7 @@ export function useCollaboration(boardId: string | undefined, userName: string) 
     providerRef.current?.awareness.setLocalStateField("cursor", { x, y, clicking, action, selectedEntity });
   }, []);
 
-  return { connected, users, remoteCursors, broadcastCursor };
+  return { connected, users, remoteCursors, broadcastCursor, doc: docRef.current };
 }
 
 function hashCode(str: string): number {

@@ -37,6 +37,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       - redis
+      - odkfull-pull
     environment:
       - DATA_DIR=/app/data
       - DOCKER_HOST=unix:///var/run/docker.sock
@@ -64,11 +65,18 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       - redis
+      - odkfull-pull
     environment:
       - DATA_DIR=/app/data
       - DOCKER_HOST=unix:///var/run/docker.sock
       - ODK_IMAGE=obolibrary/odkfull:latest
       - REDIS_URL=redis://redis:6379/0
+
+  # ── ODK image pull — ensures odkfull is available for ROBOT ──
+  odkfull-pull:
+    image: obolibrary/odkfull:latest
+    entrypoint: ["echo", "ODK image ready"]
+    restart: "no"
 
   redis:
     image: redis:7-alpine

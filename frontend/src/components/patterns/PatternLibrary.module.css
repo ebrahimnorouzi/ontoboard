@@ -69,15 +69,31 @@
 .patternCard[draggable="true"] { cursor: grab; }
 .patternCard[draggable="true"]:active { cursor: grabbing; }
 
-.applyBtn {
+.patternActions {
   position: absolute; top: 0.5rem; right: 0.5rem;
+  display: flex; gap: 0.2rem; opacity: 0; transition: opacity 0.15s;
+}
+.patternCard:hover .patternActions { opacity: 1; }
+.applyBtn {
   padding: 0.2rem 0.5rem; border: 1px solid var(--accent); border-radius: var(--radius-sm);
   background: none; color: var(--accent); font-size: 0.62rem; font-weight: 600;
-  cursor: pointer; opacity: 0; transition: opacity 0.15s; font-family: inherit;
+  cursor: pointer; font-family: inherit;
 }
-.patternCard:hover .applyBtn { opacity: 1; }
 .applyBtn:hover { background: var(--accent); color: #fff; }
 .applyBtn:disabled { opacity: 0.4; }
+.deleteBtn {
+  padding: 0.2rem 0.4rem; border: 1px solid var(--danger); border-radius: var(--radius-sm);
+  background: none; color: var(--danger); font-size: 0.62rem; font-weight: 600;
+  cursor: pointer; font-family: inherit;
+}
+.deleteBtn:hover { background: var(--danger); color: #fff; }
+.deleteBtn:disabled { opacity: 0.4; }
+.sourceBadge {
+  font-size: 0.55rem; font-weight: 600; text-transform: uppercase;
+  padding: 0.05rem 0.3rem; border-radius: 999px; letter-spacing: 0.03em;
+}
+.sourceOdpa { background: rgba(99,102,241,0.12); color: #818cf8; }
+.sourceUser { background: rgba(16,185,129,0.12); color: var(--success); }
 
 /* Preview */
 .preview {

@@ -18,6 +18,7 @@ import AxiomEditor from "../components/axiom/AxiomEditor";
 import TreeBrowser from "../components/tree/TreeBrowser";
 import FileBrowser from "../components/files/FileBrowser";
 import { useCollaboration } from "../collab/useCollaboration";
+import { useYjsSync } from "../collab/useYjsSync";
 import CollabStatus from "../collab/CollabStatus";
 import PublishPanel from "../components/publish/PublishPanel";
 import ReasoningPanel from "../components/reasoning/ReasoningPanel";
@@ -65,12 +66,15 @@ export default function BoardPage() {
     if (user) setCurrentUser(user.display_name || user.username || "anonymous");
   }, [user, setCurrentUser]);
 
-  const { connected, users: collabUsers } = useCollaboration(
+  const { connected, users: collabUsers, doc: yjsDoc } = useCollaboration(
     status === "ready" ? boardId : undefined,
     user?.display_name || user?.username || "anonymous",
   );
 
-  // Poll for changes by other users every 10 seconds
+  // Bind Yjs shared types ↔ Zustand store for real-time entity sync
+  useYjsSync(yjsDoc, status === "ready" ? boardId : undefined);
+
+  // Fallback poll for backend saves (safety net — Yjs handles real-time sync)
   useEffect(() => {
     if (status !== "ready" || !boardId) return;
     const store = useOntologyStore.getState();
@@ -78,16 +82,14 @@ export default function BoardPage() {
     const interval = setInterval(async () => {
       try {
         const currentStore = useOntologyStore.getState();
-        // Skip if we're currently saving or dirty
         if (currentStore.saving || currentStore.dirty) return;
         const res = await apiJson<{ last_saved?: number }>(`/api/boards/${boardId}/sync-check`).catch(() => null);
         if (res?.last_saved && res.last_saved > lastKnownSave && res.last_saved > currentStore.lastSaved) {
-          // Another user saved — reload
           lastKnownSave = res.last_saved;
           await currentStore.loadFromBackend(boardId);
         }
       } catch { /* ignore polling errors */ }
-    }, 10000);
+    }, 30000); // 30s fallback (Yjs handles real-time)
     return () => clearInterval(interval);
   }, [status, boardId]);
 

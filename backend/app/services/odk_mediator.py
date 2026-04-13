@@ -72,15 +72,32 @@ def _find_edit_owl(board_dir: Path, board_id: str) -> str | None:
 
 
 def _docker_available() -> bool:
-    """Check if Docker is available and the ODK image exists."""
+    """Check if Docker is available and the ODK image exists (auto-pulls if missing)."""
     if not HAS_DOCKER_LIB:
         return False
     try:
         client = docker.from_env()
-        client.images.get(ODK_IMAGE)
+        try:
+            client.images.get(ODK_IMAGE)
+        except ImageNotFound:
+            logger.info("ODK image '%s' not found — auto-pulling...", ODK_IMAGE)
+            try:
+                client.images.pull(ODK_IMAGE)
+            except Exception:
+                return False
         return True
     except Exception:
         return False
+
+
+def _ensure_odk_image(client):
+    """Ensure the ODK image is available, pulling if necessary."""
+    try:
+        client.images.get(ODK_IMAGE)
+    except ImageNotFound:
+        logger.info("ODK image '%s' not found — pulling (this may take a few minutes)...", ODK_IMAGE)
+        client.images.pull(ODK_IMAGE)
+        logger.info("Successfully pulled '%s'", ODK_IMAGE)
 
 
 def _run_container_streaming(board_dir: Path, command: str, working_dir: str = "/work/src/ontology"):
@@ -91,9 +108,9 @@ def _run_container_streaming(board_dir: Path, command: str, working_dir: str = "
 
     try:
         client = docker.from_env()
-        client.images.get(ODK_IMAGE)
+        _ensure_odk_image(client)
     except ImageNotFound:
-        yield _sse("error", f"ODK image '{ODK_IMAGE}' not found. Run: docker pull {ODK_IMAGE}", 0)
+        yield _sse("error", f"ODK image '{ODK_IMAGE}' not found and auto-pull failed.", 0)
         return
     except (DockerException, Exception) as exc:
         yield _sse("error", f"Docker unavailable: {exc}", 0)

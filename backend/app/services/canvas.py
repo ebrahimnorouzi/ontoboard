@@ -209,22 +209,37 @@ def canvas_to_owl(state: CanvasState, base_iri: str) -> Graph:
     g.add((ont, RDF.type, OWL.Ontology))
     g.add((ont, RDFS.label, Literal(base_iri.split("/")[-1])))
 
+    XSD = Namespace("http://www.w3.org/2001/XMLSchema#")
+
     def _add_provenance(subject, created_by: str, created_at: str,
                         modified_by: str, modified_at: str):
-        """Add PROV-O / Dublin Core provenance annotations to an entity."""
+        """Add PROV-O / Dublin Core provenance annotations to an entity.
+
+        Uses proper semantic web ontologies:
+        - PROV-O (W3C): prov:wasAttributedTo, prov:generatedAtTime, prov:wasGeneratedBy
+        - Dublin Core Terms: dcterms:creator, dcterms:created, dcterms:modified, dcterms:contributor
+        - FOAF: foaf:name for agent identification
+        """
         if not embed_prov:
             return
+
+        # Create a PROV Agent for the creator
         if created_by:
+            agent_uri = URIRef(base_iri + "#agent-" + created_by.replace(" ", "-").replace("@", "-"))
+            g.add((agent_uri, RDF.type, PROV.Agent))
+            g.add((agent_uri, FOAF.name, Literal(created_by)))
+            g.add((subject, PROV.wasAttributedTo, agent_uri))
             g.add((subject, DC.creator, Literal(created_by)))
+
         if created_at:
-            g.add((subject, DC.created, Literal(created_at)))
-            g.add((subject, PROV.generatedAtTime, Literal(created_at)))
+            g.add((subject, DC.created, Literal(created_at, datatype=XSD.dateTime)))
+            g.add((subject, PROV.generatedAtTime, Literal(created_at, datatype=XSD.dateTime)))
+
         if modified_by:
             g.add((subject, DC.contributor, Literal(modified_by)))
+
         if modified_at:
-            g.add((subject, DC.modified, Literal(modified_at)))
-        if created_by:
-            g.add((subject, PROV.wasAttributedTo, Literal(created_by)))
+            g.add((subject, DC.modified, Literal(modified_at, datatype=XSD.dateTime)))
 
     # Classes
     for cls in state.classes:

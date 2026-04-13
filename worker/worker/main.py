@@ -50,12 +50,23 @@ def update_job(r, job_id, **updates):
 
 
 def run_docker_command(board_dir, command, working_dir="/work"):
-    """Run a command in the odkfull container. Returns (exit_code, stdout, stderr)."""
+    """Run a command in the odkfull container. Returns (exit_code, stdout, stderr).
+
+    Auto-pulls the ODK image if it is not found locally.
+    """
     try:
         client = docker.from_env()
-        client.images.get(ODK_IMAGE)
+        try:
+            client.images.get(ODK_IMAGE)
+        except Exception:
+            print(f"[worker] ODK image '{ODK_IMAGE}' not found — pulling...")
+            try:
+                client.images.pull(ODK_IMAGE)
+                print(f"[worker] Successfully pulled '{ODK_IMAGE}'")
+            except Exception as pull_exc:
+                return -1, "", f"Docker/ODK image not found and pull failed: {pull_exc}"
     except Exception as exc:
-        return -1, "", f"Docker/ODK unavailable: {exc}"
+        return -1, "", f"Docker unavailable: {exc}"
 
     container = client.containers.run(
         image=ODK_IMAGE,

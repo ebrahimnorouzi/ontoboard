@@ -186,6 +186,20 @@ def remove_prefix(board_dir: Path, prefix: str) -> bool:
     return True
 
 
+def update_prefix(board_dir: Path, old_prefix: str, new_prefix: str, new_namespace: str) -> bool:
+    """Update a prefix binding (rename prefix and/or change namespace).
+
+    Removes the old binding and adds the new one.
+    """
+    g = load_graph(board_dir)
+    # Remove old binding
+    g.bind(old_prefix, Namespace("urn:removed:"), override=True)
+    # Add new binding
+    g.bind(new_prefix, Namespace(new_namespace), override=True)
+    _save(g, board_dir)
+    return True
+
+
 def resolve_compact_iri(g: Graph, compact_iri: str) -> str:
     """Resolve a compact IRI like 'prov:Activity' to its full IRI.
 

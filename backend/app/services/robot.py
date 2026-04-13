@@ -47,10 +47,16 @@ def _run_robot_sync(
     """
     try:
         client = docker.from_env()
-        client.images.get(ODK_IMAGE)
-    except ImageNotFound:
-        logger.warning("ODK image '%s' not found locally", ODK_IMAGE)
-        return RobotResult(exit_code=-1, stdout="", stderr=f"Image {ODK_IMAGE} not found")
+        try:
+            client.images.get(ODK_IMAGE)
+        except ImageNotFound:
+            logger.info("ODK image '%s' not found locally — pulling (this may take a few minutes)...", ODK_IMAGE)
+            try:
+                client.images.pull(ODK_IMAGE)
+                logger.info("Successfully pulled '%s'", ODK_IMAGE)
+            except Exception as pull_exc:
+                logger.warning("Failed to pull ODK image '%s': %s", ODK_IMAGE, pull_exc)
+                return RobotResult(exit_code=-1, stdout="", stderr=f"Image {ODK_IMAGE} not found and pull failed: {pull_exc}")
     except (DockerException, Exception) as exc:
         logger.warning("Docker unavailable: %s", exc)
         return RobotResult(exit_code=-1, stdout="", stderr=str(exc))

@@ -283,7 +283,9 @@
   font-weight: 600;
   min-width: 55px;
   font-family: "Cascadia Code", "Fira Code", monospace;
+  cursor: pointer;
 }
+.prefixName:hover { text-decoration: underline; text-decoration-style: dashed; }
 .prefixNs {
   color: var(--text-muted);
   font-family: "Cascadia Code", "Fira Code", monospace;
@@ -291,6 +293,32 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   flex: 1;
+  cursor: pointer;
+}
+.prefixNs:hover { text-decoration: underline; text-decoration-style: dashed; }
+.prefixEditInput {
+  width: 60px;
+  padding: 0.15rem 0.3rem;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  background: var(--bg-primary);
+  color: var(--accent-light);
+  font-family: "Cascadia Code", "Fira Code", monospace;
+  font-size: 0.72rem;
+  font-weight: 600;
+  outline: none;
+}
+.prefixEditNsInput {
+  flex: 1;
+  min-width: 0;
+  padding: 0.15rem 0.3rem;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: "Cascadia Code", "Fira Code", monospace;
+  font-size: 0.72rem;
+  outline: none;
 }
 .prefixMore {
   font-size: 0.7rem;
@@ -339,6 +367,23 @@
   padding: 0.4rem 0.6rem;
   margin-bottom: 0.4rem;
   line-height: 1.5;
+}
+.reportWarn {
+  font-size: 0.72rem;
+  color: var(--warning);
+  background: rgba(253, 203, 110, 0.08);
+  border: 1px solid rgba(253, 203, 110, 0.2);
+  border-radius: var(--radius-sm);
+  padding: 0.4rem 0.6rem;
+  margin-bottom: 0.4rem;
+  line-height: 1.5;
+}
+.reportWarn code {
+  font-family: "Cascadia Code", monospace;
+  font-size: 0.68rem;
+  background: rgba(253, 203, 110, 0.1);
+  padding: 0.1rem 0.3rem;
+  border-radius: 3px;
 }
 .reportError code {
   font-family: "Cascadia Code", monospace;

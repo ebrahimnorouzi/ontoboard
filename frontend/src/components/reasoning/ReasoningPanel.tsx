@@ -48,7 +48,23 @@ export default function ReasoningPanel({ boardId, onHighlightEntity }: Props) {
 
       {result && (
         <>
-          {/* Consistency banner */}
+          {/* Docker/ODK missing banner */}
+          {result.docker_missing && (
+            <div className={`${styles.banner} ${styles.bannerWarn}`}>
+              <span className={styles.bannerIcon}>⚠</span>
+              <div>
+                <div className={styles.bannerTitle}>Docker / ODK Unavailable</div>
+                <div className={styles.bannerMeta}>
+                  The <code>obolibrary/odkfull</code> Docker image is required for reasoning.
+                  <br />
+                  Install Docker and run: <code>docker pull obolibrary/odkfull</code>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Consistency banner (only when reasoner actually ran) */}
+          {!result.docker_missing && (
           <div className={`${styles.banner} ${result.consistent ? styles.bannerOk : styles.bannerFail}`}>
             <span className={styles.bannerIcon}>{result.consistent ? "\u2713" : "\u2717"}</span>
             <div>
@@ -62,6 +78,7 @@ export default function ReasoningPanel({ boardId, onHighlightEntity }: Props) {
               </div>
             </div>
           </div>
+          )}
 
           {/* Errors */}
           {result.errors.length > 0 && (

@@ -221,6 +221,7 @@ export default function OntologyCanvas({ boardId }: Props) {
   const [searchResults, setSearchResults] = useState<{ id: string; label: string; type: string }[]>([]);
   const [searchIdx, setSearchIdx] = useState(0);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const initialFitDoneRef = useRef(false);
 
   // ── Cytoscape init ──────────────────────────────────────────
   useEffect(() => {
@@ -614,6 +615,14 @@ export default function OntologyCanvas({ boardId }: Props) {
     // Auto-layout only if all positions are 0
     if (store.classes.length > 0 && store.classes.every((c) => c.x === 0 && c.y === 0) && cy.nodes().length > 0) {
       doLayout(layoutName);
+    }
+
+    // Auto-fit viewport on initial load so entities are visible
+    if (!initialFitDoneRef.current && cy.nodes().length > 0) {
+      initialFitDoneRef.current = true;
+      requestAnimationFrame(() => {
+        cy.fit(undefined, 50);
+      });
     }
 
     // Restore selection

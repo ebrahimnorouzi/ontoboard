@@ -1,10 +1,11 @@
 """Tests for ID ranges and ODP patterns."""
 
 import asyncio
+import json
 from pathlib import Path
 import pytest
 from app.services.idranges import generate_idranges_xml, parse_idranges, allocate_range, reserve_next_id
-from app.services.patterns import list_patterns, get_pattern, apply_pattern
+from app.services import patterns as pattern_svc
 
 def _setup(d, bid):
     p = d / bid / "src" / "ontology"; p.mkdir(parents=True, exist_ok=True)
@@ -34,20 +35,46 @@ def test_reserve_id(tmp_data_dir):
     assert iri is not None
     assert "bob" in iri.lower() or "0" in iri
 
-def test_list_patterns():
-    pats = list_patterns()
-    assert len(pats) >= 5
+def _seed_patterns(data_dir):
+    """Create a test pattern file in the ODPA dir."""
+    odpa_dir = data_dir / "patterns" / "odpa"
+    odpa_dir.mkdir(parents=True, exist_ok=True)
+    (data_dir / "patterns" / "user").mkdir(parents=True, exist_ok=True)
+    pattern = {
+        "id": "part-of", "name": "Part-Of Pattern",
+        "description": "Test", "category": "structural",
+        "classes": [
+            {"iri": "http://example.org/Whole", "label": "Whole"},
+            {"iri": "http://example.org/Part", "label": "Part"},
+        ],
+        "properties": [
+            {"iri": "http://example.org/hasPart", "label": "hasPart",
+             "source": "http://example.org/Whole", "target": "http://example.org/Part", "type": "object"},
+            {"iri": "http://example.org/isPartOf", "label": "isPartOf",
+             "source": "http://example.org/Part", "target": "http://example.org/Whole", "type": "object"},
+        ],
+    }
+    (odpa_dir / "part-of.json").write_text(json.dumps(pattern))
+    # Reset in-memory cache so files are re-read
+    pattern_svc._patterns = None
+
+def test_list_patterns(tmp_data_dir):
+    _seed_patterns(tmp_data_dir)
+    pats = pattern_svc.list_patterns()
+    assert len(pats) >= 1
     assert any(p["id"] == "part-of" for p in pats)
 
-def test_get_pattern():
-    p = get_pattern("part-of")
+def test_get_pattern(tmp_data_dir):
+    _seed_patterns(tmp_data_dir)
+    p = pattern_svc.get_pattern("part-of")
     assert p is not None
     assert len(p["classes"]) == 2
     assert len(p["properties"]) == 2
 
 def test_apply_pattern(tmp_data_dir):
     _setup(tmp_data_dir, "pat-apply")
-    result = apply_pattern(tmp_data_dir / "pat-apply", "part-of", "http://ex.org/test")
+    _seed_patterns(tmp_data_dir)
+    result = pattern_svc.apply_pattern(tmp_data_dir / "pat-apply", "part-of", "http://ex.org/test")
     assert len(result["classes"]) == 2
     assert len(result["properties"]) == 2
 
@@ -61,12 +88,14 @@ async def test_idranges_endpoint(admin_client, tmp_data_dir):
 
 @pytest.mark.asyncio
 async def test_patterns_endpoint(admin_client, tmp_data_dir):
+    _seed_patterns(tmp_data_dir)
     resp = await admin_client.get("/api/patterns/")
     assert resp.status_code == 200
-    assert len(resp.json()) >= 5
+    assert len(resp.json()) >= 1
 
 @pytest.mark.asyncio
 async def test_pattern_apply_endpoint(admin_client, tmp_data_dir):
+    _seed_patterns(tmp_data_dir)
     await admin_client.post("/api/boards/pat-api"); await asyncio.sleep(0.1); _setup(tmp_data_dir, "pat-api")
     resp = await admin_client.post("/api/patterns/pat-api/apply/part-of", json={"base_iri": "http://ex.org/test"})
     assert resp.status_code == 201

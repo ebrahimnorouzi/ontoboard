@@ -36,6 +36,10 @@
 }
 .bannerOk { background: rgba(0, 206, 201, 0.08); border-left-color: var(--success); }
 .bannerFail { background: rgba(255, 118, 117, 0.08); border-left-color: var(--danger); }
+.bannerWarn { background: rgba(253, 203, 110, 0.08); border-left-color: var(--warning); }
+.bannerWarn .bannerIcon { color: var(--warning); }
+.bannerWarn .bannerTitle { color: var(--warning); }
+.bannerWarn .bannerMeta code { background: rgba(255,255,255,0.08); padding: 0.1rem 0.3rem; border-radius: 3px; font-size: 0.68rem; }
 .bannerIcon { font-size: 1.2rem; }
 .bannerOk .bannerIcon { color: var(--success); }
 .bannerFail .bannerIcon { color: var(--danger); }

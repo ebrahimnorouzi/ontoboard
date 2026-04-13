@@ -254,14 +254,16 @@ def _parse_diff_output(diff_text: str, board_dir: Path) -> list[dict]:
 
 def _error_result(reasoner: str, message: str, duration: float = 0, docker_missing: bool = False) -> dict:
     return {
-        "success": not docker_missing,
-        "consistent": True if docker_missing else False,
+        "success": False,
+        "consistent": None,  # None = unknown (reasoner did not run)
         "reasoner": reasoner,
         "inferences": [],
-        "errors": [{"entity_iri": "", "entity_label": "", "axiom": "", "message": message, "severity": "warning" if docker_missing else "error"}] if not docker_missing else [],
+        "errors": [{"entity_iri": "", "entity_label": "", "axiom": "", "message": message,
+                     "severity": "warning" if docker_missing else "error"}],
         "fixes": [],
-        "logs": message,
+        "logs": f"Docker/ODK unavailable: {message}" if docker_missing else message,
         "duration_seconds": duration,
+        "docker_missing": docker_missing,
     }
 
 
