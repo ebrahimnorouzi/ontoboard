@@ -21,8 +21,11 @@ from docker.errors import ImageNotFound, DockerException
 
 
 def _docker_mount_path(host_path: Path) -> str:
-    """Convert a host path to a Docker-compatible mount path (Windows → /c/...)."""
-    p = str(host_path).replace("\\", "/")
+    """Convert a host path to a Docker-compatible mount path (Windows → /c/...).
+
+    Resolves to absolute path first — Docker requires absolute paths for bind mounts.
+    """
+    p = str(host_path.resolve()).replace("\\", "/")
     if len(p) >= 2 and p[1] == ":":
         p = "/" + p[0].lower() + p[2:]
     return p
@@ -72,13 +75,30 @@ def run_odk_seed(board_dir: Path, ont_id: str, title: str = "",
 
     try:
         client = docker.from_env()
-        client.images.get(ODK_IMAGE)
+        try:
+            client.images.get(ODK_IMAGE)
+        except ImageNotFound:
+            logger.info("Pulling ODK image '%s'...", ODK_IMAGE)
+            client.images.pull(ODK_IMAGE)
 
-        # Run ODK seed
+        # Generate ODK YAML config for the seed command
+        odk_config = (
+            f"id: {ont_id}\n"
+            f"title: \"{title}\"\n"
+            f"github_org: ontoboard\n"
+            f"git_main_branch: main\n"
+            f"repo: {ont_id}\n"
+            f"base_url: https://example.org/{ont_id}\n"
+            f"uribase: https://example.org/{ont_id}\n"
+        )
+        config_path = board_dir / "odk-seed-config.yaml"
+        config_path.write_text(odk_config, encoding="utf-8")
+
+        # Run ODK seed with config file
         logger.info("Running ODK seed for '%s'...", ont_id)
         container = client.containers.run(
             image=ODK_IMAGE,
-            command=["/tools/odk.py", "seed", "--gitname", "OntoBoard", "--gitemail", "ontoboard@local", "-n", ont_id, "-t", ont_id, "-d", title or f"Ontology {ont_id}", "-u", f"http://example.org/{ont_id}"],
+            command=["sh", "-c", "/tools/odk.py seed -C /work/odk-seed-config.yaml --skipgit -D /work"],
             volumes={_docker_mount_path(board_dir): {"bind": "/work", "mode": "rw"}},
             working_dir="/work",
             detach=True,
@@ -89,6 +109,9 @@ def run_odk_seed(board_dir: Path, ont_id: str, title: str = "",
         stdout = container.logs(stdout=True, stderr=False).decode("utf-8", errors="replace")
         stderr = container.logs(stdout=False, stderr=True).decode("utf-8", errors="replace")
         container.remove(force=True)
+
+        # Clean up temp config
+        config_path.unlink(missing_ok=True)
 
         exit_code = result.get("StatusCode", -1)
         if exit_code == 0:

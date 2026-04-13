@@ -77,19 +77,23 @@ def _find_edit_owl(board_dir: Path, board_id: str) -> str | None:
 def _docker_available() -> bool:
     """Check if Docker is available and the ODK image exists (auto-pulls if missing)."""
     if not HAS_DOCKER_LIB:
+        logger.warning("Docker SDK not installed (pip install docker)")
         return False
     try:
         client = docker.from_env()
         try:
             client.images.get(ODK_IMAGE)
-        except ImageNotFound:
-            logger.info("ODK image '%s' not found — auto-pulling...", ODK_IMAGE)
+        except (ImageNotFound, Exception):
+            logger.info("ODK image '%s' not found locally — pulling (this may take several minutes)...", ODK_IMAGE)
             try:
                 client.images.pull(ODK_IMAGE)
-            except Exception:
+                logger.info("Successfully pulled '%s'", ODK_IMAGE)
+            except Exception as pull_exc:
+                logger.warning("Failed to pull ODK image: %s", pull_exc)
                 return False
         return True
-    except Exception:
+    except Exception as exc:
+        logger.warning("Docker not available: %s", exc)
         return False
 
 
@@ -208,15 +212,31 @@ async def stream_odk_seed(board_dir: Path, board_id: str) -> AsyncGenerator[str,
     loop = asyncio.get_event_loop()
 
     if _docker_available():
-        cmd = f'/tools/odk.py seed --gitname "OntoBoard" --gitemail "ontoboard@local" -n {board_id} -t {board_id} -d "Ontology {board_id}" -u https://example.org/{board_id}'
+        # Generate a minimal ODK YAML config for the seed command
+        odk_config = (
+            f"id: {board_id}\n"
+            f"title: {board_id}\n"
+            f"github_org: ontoboard\n"
+            f"git_main_branch: main\n"
+            f"repo: {board_id}\n"
+            f"base_url: https://example.org/{board_id}\n"
+            f"uribase: https://example.org/{board_id}\n"
+        )
+        config_path = board_dir / "odk-seed-config.yaml"
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+        config_path.write_text(odk_config, encoding="utf-8")
+
+        cmd = f'/tools/odk.py seed -C /work/odk-seed-config.yaml --skipgit -D /work'
         for line in await loop.run_in_executor(None, lambda: list(_run_container_streaming(board_dir, cmd, "/work"))):
             yield line
+
+        # Clean up temp config
+        config_path.unlink(missing_ok=True)
     else:
         # Fall back to manual scaffold
         yield _sse("info", "Docker not available — creating ODK scaffold manually...", 10)
         _ensure_scaffold(board_dir, board_id)
         yield _sse("success", f"ODK scaffold created for '{board_id}' (manual mode)", 100)
-        # List created files
         ont_dir = board_dir / "src" / "ontology"
         if ont_dir.exists():
             files = [str(f.relative_to(board_dir)) for f in board_dir.rglob("*") if f.is_file() and ".git" not in str(f)]
