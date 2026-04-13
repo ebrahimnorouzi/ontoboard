@@ -1,36 +1,15 @@
-"""ODK Setup Service — runs the full ODK seed workflow for new boards.
+"""ODK Setup Service — scaffolds ODK project structure for new boards.
 
-Flow:
-1. Create board directory
-2. Run `odk seed` inside odkfull container (generates full ODK structure)
-3. Parse the generated odk.yaml for user editing
-4. Connect the board to the *-edit.owl file
-5. Initialize git repo
-
-If odkfull is not available, falls back to creating a minimal scaffold
-that mimics the ODK structure.
+Creates a full ODK-compatible workspace with Makefile, OWL files,
+SPARQL queries, and configuration. ROBOT is installed directly in the
+backend image — no Docker-in-Docker needed.
 """
 
-import json
 import logging
 import textwrap
 from pathlib import Path
 
-import docker
-from docker.errors import ImageNotFound, DockerException
-
-
-def _docker_mount_path(host_path: Path) -> str:
-    """Convert a host path to a Docker-compatible mount path (Windows → /c/...).
-
-    Resolves to absolute path first — Docker requires absolute paths for bind mounts.
-    """
-    p = str(host_path.resolve()).replace("\\", "/")
-    if len(p) >= 2 and p[1] == ":":
-        p = "/" + p[0].lower() + p[2:]
-    return p
-
-from app.config import DATA_DIR, ODK_IMAGE
+from app.config import DATA_DIR
 
 logger = logging.getLogger("ontoboard.odk_setup")
 
@@ -66,64 +45,13 @@ robot_report:
 
 def run_odk_seed(board_dir: Path, ont_id: str, title: str = "",
                   versioning_strategy: str = "date") -> dict:
-    """Run ODK seed to create a full ODK project structure.
+    """Create a full ODK project structure.
 
     Returns: {"success": bool, "files": list[str], "yaml_path": str, "edit_owl": str}
     """
     title = title or ont_id
     board_dir.mkdir(parents=True, exist_ok=True)
-
-    try:
-        client = docker.from_env()
-        try:
-            client.images.get(ODK_IMAGE)
-        except ImageNotFound:
-            logger.info("Pulling ODK image '%s'...", ODK_IMAGE)
-            client.images.pull(ODK_IMAGE)
-
-        # Generate ODK YAML config for the seed command
-        odk_config = (
-            f"id: {ont_id}\n"
-            f"title: \"{title}\"\n"
-            f"github_org: ontoboard\n"
-            f"git_main_branch: main\n"
-            f"repo: {ont_id}\n"
-            f"base_url: https://example.org/{ont_id}\n"
-            f"uribase: https://example.org/{ont_id}\n"
-        )
-        config_path = board_dir / "odk-seed-config.yaml"
-        config_path.write_text(odk_config, encoding="utf-8")
-
-        # Run ODK seed with config file
-        logger.info("Running ODK seed for '%s'...", ont_id)
-        container = client.containers.run(
-            image=ODK_IMAGE,
-            command=["sh", "-c", "/tools/odk.py seed -C /work/odk-seed-config.yaml --skipgit -D /work"],
-            volumes={_docker_mount_path(board_dir): {"bind": "/work", "mode": "rw"}},
-            working_dir="/work",
-            detach=True,
-            stdout=True,
-            stderr=True,
-        )
-        result = container.wait(timeout=300)
-        stdout = container.logs(stdout=True, stderr=False).decode("utf-8", errors="replace")
-        stderr = container.logs(stdout=False, stderr=True).decode("utf-8", errors="replace")
-        container.remove(force=True)
-
-        # Clean up temp config
-        config_path.unlink(missing_ok=True)
-
-        exit_code = result.get("StatusCode", -1)
-        if exit_code == 0:
-            logger.info("ODK seed completed for '%s'", ont_id)
-        else:
-            logger.warning("ODK seed failed (exit %d): %s", exit_code, stderr[:500])
-            # Fall back to manual scaffold
-            _create_manual_scaffold(board_dir, ont_id, title, versioning_strategy)
-
-    except (ImageNotFound, DockerException, Exception) as exc:
-        logger.warning("ODK unavailable (%s), creating manual scaffold", exc)
-        _create_manual_scaffold(board_dir, ont_id, title, versioning_strategy)
+    _create_manual_scaffold(board_dir, ont_id, title, versioning_strategy)
 
     # Collect results
     files = []

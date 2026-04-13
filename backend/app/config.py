@@ -8,9 +8,9 @@ from pathlib import Path
 DATA_DIR = Path(os.getenv("DATA_DIR", "/app/data"))
 DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{DATA_DIR / 'ontoboard.db'}")
 
-# ── Docker / ODK ───────────────────────────────────────────────
-ODK_IMAGE = os.getenv("ODK_IMAGE", "obolibrary/odkfull:latest")
-DOCKER_HOST = os.getenv("DOCKER_HOST", "unix:///var/run/docker.sock")
+# ── ROBOT ─────────────────────────────────────────────────────
+# ROBOT is installed directly in the backend image (robot.jar + Java).
+# No Docker-in-Docker needed.
 
 # ── Auth ───────────────────────────────────────────────────────
 SECRET_KEY = os.getenv("SECRET_KEY", "change-me-in-production-please")

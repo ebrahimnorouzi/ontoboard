@@ -9,22 +9,12 @@ import csv
 import json
 from pathlib import Path
 
-import docker
+import subprocess
 
-from app.config import DATA_DIR, ODK_IMAGE
+from app.config import DATA_DIR
 from app.schemas.board import CanvasGraph
 from app.services.robot import robot_convert as _robot_convert
 from app.services.robot import robot_template as _robot_template
-
-
-def _docker_mount_path(host_path: Path) -> str:
-    """Convert a host path to a Docker-compatible mount path.
-    On Windows, converts C:\\Users\\... to /c/Users/... for Docker Desktop.
-    """
-    p = str(host_path).replace("\\", "/")
-    if len(p) >= 2 and p[1] == ":":
-        p = "/" + p[0].lower() + p[2:]
-    return p
 
 
 # ── OWL helpers ────────────────────────────────────────────────
@@ -129,81 +119,62 @@ async def robot_template(board_dir: Path, template: Path, output: Path) -> None:
 
 
 async def stream_build(board_dir: Path, target: str):
-    """Generator that yields SSE lines from an ODK build using sh run.sh make pattern."""
+    """Generator that yields SSE lines from a `make` build (local subprocess)."""
     loop = asyncio.get_event_loop()
 
-    try:
-        client = docker.from_env()
-    except Exception as exc:
-        yield f"data: [ERROR] Docker unavailable: {exc}\n\n"
-        yield f"data: [EXIT 1]\n\n"
-        return
-
-    # Determine the correct working directory by finding the Makefile
+    # Find the Makefile
     makefile_primary = board_dir / "src" / "ontology" / "Makefile"
     makefile_fallback = board_dir / "Makefile"
 
     if makefile_primary.exists():
-        working_dir = "/work/src/ontology"
+        cwd = board_dir / "src" / "ontology"
         makefile_path = makefile_primary
     elif makefile_fallback.exists():
-        working_dir = "/work"
+        cwd = board_dir
         makefile_path = makefile_fallback
     else:
-        # Search recursively for a Makefile
         found = None
         for mf in board_dir.rglob("Makefile"):
             if ".git" not in str(mf):
                 found = mf
                 break
         if found:
-            rel = found.parent.relative_to(board_dir)
-            working_dir = f"/work/{str(rel).replace(chr(92), '/')}"
+            cwd = found.parent
             makefile_path = found
         else:
-            yield f"data: [ERROR] No Makefile found in {board_dir}. Run 'ODK Seed' first.\n\n"
+            yield f"data: [ERROR] No Makefile found. Run 'ODK Seed' first.\n\n"
             yield f"data: [EXIT 1]\n\n"
             return
 
-    # Verify the target exists in the Makefile
+    # Verify target exists
     try:
         mk_content = makefile_path.read_text()
         if target + ":" not in mk_content and target != "all":
             targets = [line.split(":")[0] for line in mk_content.splitlines()
                        if ":" in line and not line.startswith("#")
                        and not line.startswith("\t") and not line.startswith(" ")]
-            targets_str = ", ".join(targets)
-            yield f"data: [WARN] Target '{target}' not found in Makefile. Available: {targets_str}\n\n"
+            yield f"data: [WARN] Target '{target}' not found. Available: {', '.join(targets)}\n\n"
     except Exception:
         pass
 
-    mount_path = _docker_mount_path(board_dir)
     yield f"data: $ make {target}\n\n"
-    yield f"data: [mount: {mount_path} -> /work, cwd: {working_dir}]\n\n"
 
-    container = await loop.run_in_executor(
-        None,
-        lambda: client.containers.run(
-            image=ODK_IMAGE,
-            command=f"make {target}",
-            volumes={mount_path: {"bind": "/work", "mode": "rw"}},
-            working_dir=working_dir,
-            remove=False,
-            detach=True,
-            stdout=True,
-            stderr=True,
-        ),
-    )
+    def _run():
+        return subprocess.run(
+            f"make {target}", shell=True, cwd=str(cwd),
+            capture_output=True, text=True, timeout=600,
+        )
 
     try:
-        for chunk in container.logs(stream=True, follow=True):
-            line = chunk.decode("utf-8", errors="replace")
+        result = await loop.run_in_executor(None, _run)
+        for line in result.stdout.splitlines():
             yield f"data: {line}\n\n"
-        result = await loop.run_in_executor(None, container.wait)
-        code = result.get("StatusCode", -1)
-        yield f"data: [EXIT {code}]\n\n"
-    finally:
-        try:
-            await loop.run_in_executor(None, container.remove)
-        except Exception:
-            pass
+        for line in result.stderr.splitlines():
+            yield f"data: {line}\n\n"
+        yield f"data: [EXIT {result.returncode}]\n\n"
+    except subprocess.TimeoutExpired:
+        yield f"data: [ERROR] Build timed out after 600 seconds\n\n"
+        yield f"data: [EXIT 1]\n\n"
+    except Exception as exc:
+        yield f"data: [ERROR] {exc}\n\n"
+        yield f"data: [EXIT 1]\n\n"

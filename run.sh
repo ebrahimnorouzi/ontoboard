@@ -14,6 +14,7 @@
 set -e
 cd "$(dirname "$0")"
 
+
 # Check if an image exists
 image_exists() {
     docker image inspect "$1" >/dev/null 2>&1

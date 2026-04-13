@@ -27,7 +27,7 @@ services:
       - VITE_API_URL=http://localhost:8000
       - VITE_COLLAB_URL=ws://localhost:1234
 
-  # ── FastAPI backend ─────────────────────────────────────────
+  # ── FastAPI backend (includes ROBOT + Java) ─────────────────
   backend:
     image: ontoboard-backend:latest
     build:
@@ -37,13 +37,10 @@ services:
       - "8000:8000"
     volumes:
       - ./data:/app/data
-      - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       - redis
     environment:
       - DATA_DIR=/app/data
-      - DOCKER_HOST=unix:///var/run/docker.sock
-      - ODK_IMAGE=obolibrary/odkfull:latest
       - SECRET_KEY=${SECRET_KEY:-change-me-in-production}
       - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin}
@@ -64,7 +61,7 @@ services:
       - SECRET_KEY=${SECRET_KEY:-change-me-in-production}
       - DATA_DIR=/app/data
 
-  # ── Worker: long-running ODK / ROBOT jobs via Redis queue ───
+  # ── Worker: long-running ROBOT jobs via Redis queue ─────────
   worker:
     image: ontoboard-worker:latest
     build:
@@ -72,13 +69,10 @@ services:
       network: host
     volumes:
       - ./data:/app/data
-      - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       - redis
     environment:
       - DATA_DIR=/app/data
-      - DOCKER_HOST=unix:///var/run/docker.sock
-      - ODK_IMAGE=obolibrary/odkfull:latest
       - REDIS_URL=redis://redis:6379/0
 
   # ── Redis: job queue + pub/sub for progress ─────────────────

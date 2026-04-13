@@ -7,12 +7,10 @@ import shutil
 import textwrap
 from pathlib import Path
 
-import docker
-from docker.errors import ImageNotFound, DockerException
 from dulwich.repo import Repo as DulwichRepo
 from sqlalchemy.orm import Session
 
-from app.config import DATA_DIR, ODK_IMAGE
+from app.config import DATA_DIR
 from app.models.board import Board, BoardMember
 from app.models.activity import Activity
 from app.models.user import User
@@ -449,35 +447,20 @@ def _stage_all(repo: DulwichRepo, board_dir: Path) -> None:
 
 
 async def try_odk_seed_background(board_id: str, versioning_strategy: str = "date") -> None:
-    """Attempt ODK seed in background. Fails silently if odkfull unavailable."""
+    """Run ODK scaffold in background."""
     board_dir = get_board_dir(board_id)
     loop = asyncio.get_event_loop()
     try:
         await loop.run_in_executor(None, _odk_seed_sync, board_id, board_dir, versioning_strategy)
         await loop.run_in_executor(None, git_commit, board_dir, "ODK seed complete")
         logger.info("ODK seed completed for '%s'", board_id)
-    except ImageNotFound:
-        logger.warning("ODK image '%s' not found — skipping seed for '%s'", ODK_IMAGE, board_id)
-    except DockerException as exc:
-        logger.warning("Docker unavailable for ODK seed on '%s': %s", board_id, exc)
     except Exception as exc:
         logger.error("ODK seed failed for '%s': %s", board_id, exc)
 
 
 def _odk_seed_sync(board_id: str, board_dir: Path, versioning_strategy: str = "date") -> None:
-    client = docker.from_env()
-    client.images.get(ODK_IMAGE)
-    client.containers.run(
-        image=ODK_IMAGE,
-        command=f"seed -n {board_id} -t my-ont -d 'Ontology created by OntoBoard' -u https://example.org/{board_id}",
-        volumes={str(board_dir): {"bind": "/work", "mode": "rw"}},
-        working_dir="/work",
-        remove=True,
-        stdout=True,
-        stderr=True,
-    )
-    # After Docker seed, generate release.sh based on user's chosen strategy
-    from app.services.odk_setup import set_versioning_strategy
+    from app.services.odk_setup import run_odk_seed, set_versioning_strategy
+    run_odk_seed(board_dir, board_id, board_id, versioning_strategy)
     set_versioning_strategy(board_dir, versioning_strategy, board_id)
 
 

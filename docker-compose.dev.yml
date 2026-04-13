@@ -34,13 +34,10 @@ services:
     volumes:
       - ./backend/app:/app/app
       - ./data:/app/data
-      - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       - redis
     environment:
       - DATA_DIR=/app/data
-      - DOCKER_HOST=unix:///var/run/docker.sock
-      - ODK_IMAGE=obolibrary/odkfull:latest
       - SECRET_KEY=${SECRET_KEY:-change-me-in-production}
       - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin}
@@ -61,13 +58,10 @@ services:
     image: ontoboard-worker:latest
     volumes:
       - ./data:/app/data
-      - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       - redis
     environment:
       - DATA_DIR=/app/data
-      - DOCKER_HOST=unix:///var/run/docker.sock
-      - ODK_IMAGE=obolibrary/odkfull:latest
       - REDIS_URL=redis://redis:6379/0
 
   redis:

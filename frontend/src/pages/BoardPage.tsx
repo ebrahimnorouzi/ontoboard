@@ -59,6 +59,12 @@ export default function BoardPage() {
   const [confirmDeleteBoard, setConfirmDeleteBoard] = useState(false);
   const [showExportOntology, setShowExportOntology] = useState(false);
   const [showBoardSettings, setShowBoardSettings] = useState(false);
+  // Track which tabs have been visited so their state is preserved
+  const [visitedTabs, setVisitedTabs] = useState<Set<Tab>>(new Set(["ontology"]));
+  const switchTab = useCallback((t: Tab) => {
+    setActiveTab(t);
+    setVisitedTabs((v) => { const n = new Set(v); n.add(t); return n; });
+  }, []);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const selectedEntity = useOntologyStore((s) => s.selectedEntity);
@@ -163,7 +169,7 @@ export default function BoardPage() {
     const t = target || buildTarget;
     setBuilding(true);
     setBuildExitCode(null);
-    setActiveTab("console");
+    switchTab("console");
     setConsoleLog([`$ make ${t}\n`]);
     try {
       const res = await api(`/api/odk/${boardId}/build`, {
@@ -344,10 +350,10 @@ export default function BoardPage() {
                     Redo
                   </button>
                   <div className={styles.menuDivider} />
-                  <button className={styles.menuItem} onClick={() => { setActiveTab("sparql"); setMenuOpen(false); }}>
+                  <button className={styles.menuItem} onClick={() => { switchTab("sparql"); setMenuOpen(false); }}>
                     SPARQL Query
                   </button>
-                  <button className={styles.menuItem} onClick={() => { setActiveTab("csv"); setMenuOpen(false); }}>
+                  <button className={styles.menuItem} onClick={() => { switchTab("csv"); setMenuOpen(false); }}>
                     Import CSV
                   </button>
                 </div>
@@ -362,16 +368,16 @@ export default function BoardPage() {
                 </div>
                 <div className={styles.menuSection}>
                   <div className={styles.menuLabel}>Tools</div>
-                  <button className={styles.menuItem} onClick={() => { setActiveTab("reasoning"); setMenuOpen(false); }}>
+                  <button className={styles.menuItem} onClick={() => { switchTab("reasoning"); setMenuOpen(false); }}>
                     Run Reasoner
                   </button>
                   <button className={styles.menuItem} onClick={() => { handleBuild(); setMenuOpen(false); }}>
                     Run ODK Build
                   </button>
-                  <button className={styles.menuItem} onClick={() => { setActiveTab("publish"); setMenuOpen(false); }}>
+                  <button className={styles.menuItem} onClick={() => { switchTab("publish"); setMenuOpen(false); }}>
                     Publish / Release
                   </button>
-                  <button className={styles.menuItem} onClick={() => { setActiveTab("docs"); setMenuOpen(false); }}>
+                  <button className={styles.menuItem} onClick={() => { switchTab("docs"); setMenuOpen(false); }}>
                     Generate Docs
                   </button>
                 </div>
@@ -383,10 +389,10 @@ export default function BoardPage() {
                   <button className={styles.menuItem} onClick={() => { setShareOpen(true); setMenuOpen(false); }}>
                     Share Settings
                   </button>
-                  <button className={styles.menuItem} onClick={() => { setActiveTab("files"); setMenuOpen(false); }}>
+                  <button className={styles.menuItem} onClick={() => { switchTab("files"); setMenuOpen(false); }}>
                     Browse Files
                   </button>
-                  <button className={styles.menuItem} onClick={() => { setActiveTab("tasks"); setMenuOpen(false); }}>
+                  <button className={styles.menuItem} onClick={() => { switchTab("tasks"); setMenuOpen(false); }}>
                     Task Board
                   </button>
                   <div className={styles.menuDivider} />
@@ -455,7 +461,7 @@ export default function BoardPage() {
         {/* Canvas */}
         <div className={styles.canvas}>
           {boardId && <OntologyCanvas boardId={boardId}
-            onOpenComments={() => { setActiveTab("comments"); setSideOpen(true); }}
+            onOpenComments={() => { switchTab("comments"); setSideOpen(true); }}
             remoteCursors={remoteCursors}
             broadcastCursor={broadcastCursor} />}
         </div>
@@ -495,7 +501,7 @@ export default function BoardPage() {
             <div className={styles.tabs}>
               {(["ontology", "axioms", "reasoning", "odk", "sparql", "csv", "tasks", "publish", "docs", "files", "patterns", "ids", "comments", "console"] as Tab[]).map((t) => (
                 <button key={t} className={`${styles.tab} ${activeTab === t ? styles.tabActive : ""}`}
-                        onClick={() => setActiveTab(t)}>
+                        onClick={() => switchTab(t)}>
                   {({ ontology: "Onto", reasoning: "Reason", odk: "ODK", console: "Log", files: "Files", patterns: "ODP", ids: "IDs", comments: "Chat" } as Record<string, string>)[t] ||
                    t.charAt(0).toUpperCase() + t.slice(1)}
                 </button>
@@ -503,23 +509,75 @@ export default function BoardPage() {
             </div>
 
             <div className={styles.tabContent}>
-              {activeTab === "ontology" && boardId && <OntologyDashboard boardId={boardId} />}
-              {activeTab === "axioms" && boardId && (
-                <AxiomEditor boardId={boardId} entityIri={selectedEntity?.iri}
-                             entityLabel={selectedEntity?.label} entityType={selectedEntity?.type} />
+              {/* Tabs stay mounted once visited so their state is preserved */}
+              {visitedTabs.has("ontology") && boardId && (
+                <div style={{ display: activeTab === "ontology" ? "contents" : "none" }}>
+                  <OntologyDashboard boardId={boardId} />
+                </div>
               )}
-              {activeTab === "reasoning" && boardId && <ReasoningPanel boardId={boardId} />}
-              {activeTab === "odk" && boardId && <OdkPanel boardId={boardId} />}
-              {activeTab === "sparql" && boardId && <SparqlPanel boardId={boardId} />}
-              {activeTab === "csv" && boardId && <CsvImportWizard boardId={boardId} />}
-              {activeTab === "tasks" && boardId && <TaskBoard boardId={boardId} members={collabUsers.map((u) => u.name)} />}
-              {activeTab === "publish" && boardId && <PublishPanel boardId={boardId} />}
-              {activeTab === "docs" && boardId && <DocsPanel boardId={boardId} />}
-              {activeTab === "files" && boardId && <FileBrowser boardId={boardId} />}
-              {activeTab === "patterns" && boardId && <PatternLibrary boardId={boardId} />}
-              {activeTab === "ids" && boardId && <IdRangeManager boardId={boardId} />}
-              {activeTab === "comments" && boardId && <CommentsPanel boardId={boardId} />}
-              {activeTab === "console" && (
+              {visitedTabs.has("axioms") && boardId && (
+                <div style={{ display: activeTab === "axioms" ? "contents" : "none" }}>
+                  <AxiomEditor boardId={boardId} entityIri={selectedEntity?.iri}
+                               entityLabel={selectedEntity?.label} entityType={selectedEntity?.type} />
+                </div>
+              )}
+              {visitedTabs.has("reasoning") && boardId && (
+                <div style={{ display: activeTab === "reasoning" ? "contents" : "none" }}>
+                  <ReasoningPanel boardId={boardId} />
+                </div>
+              )}
+              {visitedTabs.has("odk") && boardId && (
+                <div style={{ display: activeTab === "odk" ? "contents" : "none" }}>
+                  <OdkPanel boardId={boardId} />
+                </div>
+              )}
+              {visitedTabs.has("sparql") && boardId && (
+                <div style={{ display: activeTab === "sparql" ? "contents" : "none" }}>
+                  <SparqlPanel boardId={boardId} />
+                </div>
+              )}
+              {visitedTabs.has("csv") && boardId && (
+                <div style={{ display: activeTab === "csv" ? "contents" : "none" }}>
+                  <CsvImportWizard boardId={boardId} />
+                </div>
+              )}
+              {visitedTabs.has("tasks") && boardId && (
+                <div style={{ display: activeTab === "tasks" ? "contents" : "none" }}>
+                  <TaskBoard boardId={boardId} members={collabUsers.map((u) => u.name)} />
+                </div>
+              )}
+              {visitedTabs.has("publish") && boardId && (
+                <div style={{ display: activeTab === "publish" ? "contents" : "none" }}>
+                  <PublishPanel boardId={boardId} />
+                </div>
+              )}
+              {visitedTabs.has("docs") && boardId && (
+                <div style={{ display: activeTab === "docs" ? "contents" : "none" }}>
+                  <DocsPanel boardId={boardId} />
+                </div>
+              )}
+              {visitedTabs.has("files") && boardId && (
+                <div style={{ display: activeTab === "files" ? "contents" : "none" }}>
+                  <FileBrowser boardId={boardId} />
+                </div>
+              )}
+              {visitedTabs.has("patterns") && boardId && (
+                <div style={{ display: activeTab === "patterns" ? "contents" : "none" }}>
+                  <PatternLibrary boardId={boardId} />
+                </div>
+              )}
+              {visitedTabs.has("ids") && boardId && (
+                <div style={{ display: activeTab === "ids" ? "contents" : "none" }}>
+                  <IdRangeManager boardId={boardId} />
+                </div>
+              )}
+              {visitedTabs.has("comments") && boardId && (
+                <div style={{ display: activeTab === "comments" ? "contents" : "none" }}>
+                  <CommentsPanel boardId={boardId} />
+                </div>
+              )}
+              {visitedTabs.has("console") && (
+                <div style={{ display: activeTab === "console" ? "contents" : "none" }}>
                 <div className={styles.consolePanel}>
                   <div className={styles.consoleToolbar}>
                     <select
@@ -570,6 +628,7 @@ export default function BoardPage() {
                     )}
                     <div ref={consoleEndRef} />
                   </div>
+                </div>
                 </div>
               )}
             </div>

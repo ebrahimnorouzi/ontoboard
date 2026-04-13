@@ -1,19 +1,17 @@
-"""Centralised ROBOT Docker executor.
+"""Centralised ROBOT executor.
 
-All interactions with the ROBOT tool (inside the odkfull container) go
-through this module.  Other services call these helpers instead of
-touching the Docker SDK directly.
+Runs ROBOT commands as local subprocesses. ROBOT (robot.jar) is installed
+in the backend Docker image — no Docker-in-Docker needed.
+
+Falls back to checking if `robot` is on PATH for local development.
 """
 
 import asyncio
 import logging
+import shutil
+import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
-
-import docker
-from docker.errors import ImageNotFound, DockerException
-
-from app.config import ODK_IMAGE
 
 logger = logging.getLogger("ontoboard.robot")
 
@@ -30,76 +28,69 @@ class RobotResult:
         self.success = self.exit_code == 0
 
 
-# ── Synchronous executor (run in thread pool) ─────────────────
+def _robot_available() -> bool:
+    """Check if ROBOT is available on PATH."""
+    return shutil.which("robot") is not None
+
+
 def _run_robot_sync(
     board_dir: Path,
     command: str,
-    working_dir: str = "/work",
+    working_dir: str = "",
     timeout: int = 300,
 ) -> RobotResult:
-    """Run a ROBOT command inside the odkfull container.
+    """Run a ROBOT command as a local subprocess.
 
     Args:
-        board_dir: Host path to mount as /work.
-        command:   Full command string (e.g. "robot report -i /work/ont.owl ...").
-        working_dir: Working directory inside the container.
-        timeout:   Container execution timeout in seconds.
+        board_dir: Working directory for the command.
+        command:   Full command string (e.g. "robot report -i ont.owl ...").
+        working_dir: Subdirectory within board_dir to run in (optional).
+        timeout:   Execution timeout in seconds.
     """
+    if not _robot_available():
+        return RobotResult(
+            exit_code=-1, stdout="",
+            stderr="ROBOT not installed. Install Java and ROBOT (https://robot.obolibrary.org).",
+        )
+
+    # Determine working directory
+    cwd = board_dir.resolve()
+    if working_dir:
+        cwd = cwd / working_dir.lstrip("/")
+    if not cwd.exists():
+        cwd = board_dir.resolve()
+
+    # Replace /work/ references with actual board_dir path
+    # (for backward compatibility with existing command strings)
+    actual_command = command.replace("/work/", str(board_dir.resolve()).replace("\\", "/") + "/")
+    actual_command = actual_command.replace("/work", str(board_dir.resolve()).replace("\\", "/"))
+
     try:
-        client = docker.from_env()
-        try:
-            client.images.get(ODK_IMAGE)
-        except ImageNotFound:
-            logger.info("ODK image '%s' not found locally — pulling (this may take a few minutes)...", ODK_IMAGE)
-            try:
-                client.images.pull(ODK_IMAGE)
-                logger.info("Successfully pulled '%s'", ODK_IMAGE)
-            except Exception as pull_exc:
-                logger.warning("Failed to pull ODK image '%s': %s", ODK_IMAGE, pull_exc)
-                return RobotResult(exit_code=-1, stdout="", stderr=f"Image {ODK_IMAGE} not found and pull failed: {pull_exc}")
-    except (DockerException, Exception) as exc:
-        logger.warning("Docker unavailable: %s", exc)
+        result = subprocess.run(
+            actual_command,
+            shell=True,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            cwd=str(cwd),
+        )
+        return RobotResult(
+            exit_code=result.returncode,
+            stdout=result.stdout,
+            stderr=result.stderr,
+        )
+    except subprocess.TimeoutExpired:
+        return RobotResult(exit_code=-1, stdout="", stderr=f"Command timed out after {timeout}s")
+    except Exception as exc:
+        logger.warning("ROBOT command failed: %s", exc)
         return RobotResult(exit_code=-1, stdout="", stderr=str(exc))
 
-    # Resolve to absolute path — Docker requires absolute paths for bind mounts
-    abs_board_dir = board_dir.resolve()
-    # On Windows, Docker needs forward slashes and may need /c/ style paths
-    mount_path = str(abs_board_dir).replace("\\", "/")
-    # Convert C:/... to /c/... for Docker on Windows (Git Bash / MSYS2 style)
-    if len(mount_path) >= 2 and mount_path[1] == ":":
-        mount_path = "/" + mount_path[0].lower() + mount_path[2:]
 
-    container = client.containers.run(
-        image=ODK_IMAGE,
-        command=command,
-        volumes={mount_path: {"bind": "/work", "mode": "rw"}},
-        working_dir=working_dir,
-        detach=True,
-        stdout=True,
-        stderr=True,
-    )
-
-    try:
-        result = container.wait(timeout=timeout)
-        stdout = container.logs(stdout=True, stderr=False).decode("utf-8", errors="replace")
-        stderr = container.logs(stdout=False, stderr=True).decode("utf-8", errors="replace")
-        return RobotResult(
-            exit_code=result.get("StatusCode", -1),
-            stdout=stdout,
-            stderr=stderr,
-        )
-    finally:
-        try:
-            container.remove(force=True)
-        except Exception:
-            pass
-
-
-# ── Async wrappers ─────────────────────────────────────────────
+# ── Async wrapper ─────────────────────────────────────────────
 async def run_robot(
     board_dir: Path,
     command: str,
-    working_dir: str = "/work",
+    working_dir: str = "",
     timeout: int = 300,
 ) -> RobotResult:
     """Async wrapper around _run_robot_sync."""
@@ -110,7 +101,7 @@ async def run_robot(
 
 
 def _posix_rel(child: Path, parent: Path) -> str:
-    """Get relative path as a POSIX string (forward slashes) for use in Docker."""
+    """Get relative path as a POSIX string (forward slashes)."""
     return str(child.relative_to(parent)).replace("\\", "/")
 
 
@@ -125,7 +116,7 @@ async def robot_convert(
     rel_out = _posix_rel(output_path, board_dir)
     return await run_robot(
         board_dir,
-        f"robot convert -i /work/{rel_in} -o /work/{rel_out} --format {output_format}",
+        f"robot convert -i {rel_in} -o {rel_out} --format {output_format}",
     )
 
 
@@ -139,7 +130,7 @@ async def robot_template(
     rel_o = _posix_rel(output_path, board_dir)
     return await run_robot(
         board_dir,
-        f"robot template --template /work/{rel_t} -o /work/{rel_o}",
+        f"robot template --template {rel_t} -o {rel_o}",
     )
 
 
@@ -151,7 +142,7 @@ async def robot_report(
     rel_in = _posix_rel(owl_file, board_dir)
     return await run_robot(
         board_dir,
-        f"robot report -i /work/{rel_in} --output /work/report.tsv --format tsv",
+        f"robot report -i {rel_in} --output report.tsv --format tsv",
     )
 
 
@@ -166,7 +157,7 @@ async def robot_reason(
     rel_out = _posix_rel(output_path, board_dir)
     return await run_robot(
         board_dir,
-        f"robot reason -r {reasoner} -i /work/{rel_in} -o /work/{rel_out}",
+        f"robot reason -r {reasoner} -i {rel_in} -o {rel_out}",
     )
 
 
@@ -177,12 +168,12 @@ async def robot_diff(
     output: Path,
 ) -> RobotResult:
     """Diff two OWL files."""
-    rel_l = left.relative_to(board_dir)
-    rel_r = right.relative_to(board_dir)
-    rel_o = output.relative_to(board_dir)
+    rel_l = _posix_rel(left, board_dir)
+    rel_r = _posix_rel(right, board_dir)
+    rel_o = _posix_rel(output, board_dir)
     return await run_robot(
         board_dir,
-        f"robot diff --left /work/{rel_l} --right /work/{rel_r} --output /work/{rel_o}",
+        f"robot diff --left {rel_l} --right {rel_r} --output {rel_o}",
     )
 
 
@@ -193,10 +184,10 @@ async def robot_query(
     output_path: Path,
 ) -> RobotResult:
     """Run a SPARQL query against an OWL file via ROBOT."""
-    rel_in = owl_file.relative_to(board_dir)
-    rel_q = sparql_file.relative_to(board_dir)
-    rel_o = output_path.relative_to(board_dir)
+    rel_in = _posix_rel(owl_file, board_dir)
+    rel_q = _posix_rel(sparql_file, board_dir)
+    rel_o = _posix_rel(output_path, board_dir)
     return await run_robot(
         board_dir,
-        f"robot query -i /work/{rel_in} --query /work/{rel_q} /work/{rel_o}",
+        f"robot query -i {rel_in} --query {rel_q} {rel_o}",
     )

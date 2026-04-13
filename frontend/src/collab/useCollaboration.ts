@@ -1,12 +1,5 @@
 /**
- * useCollaboration — Yjs awareness for real-time cursor sharing.
- *
- * Each user broadcasts:
- *   - user.name, user.color (identity)
- *   - cursor.x, cursor.y (canvas position)
- *   - cursor.clicking (boolean)
- *
- * Other clients render these as colored avatar bubbles on the canvas.
+ * useCollaboration — Yjs awareness for real-time cursor sharing + doc access.
  */
 
 import { useEffect, useRef, useState, useCallback } from "react";
@@ -38,14 +31,18 @@ export function useCollaboration(boardId: string | undefined, userName: string) 
   const [connected, setConnected] = useState(false);
   const [users, setUsers] = useState<{ name: string; color: string }[]>([]);
   const [remoteCursors, setRemoteCursors] = useState<RemoteCursor[]>([]);
+  // Track doc as state so consumers re-render when it's ready
+  const [doc, setDoc] = useState<Y.Doc | null>(null);
 
   useEffect(() => {
     if (!boardId) return;
 
-    const doc = new Y.Doc();
-    docRef.current = doc;
+    const ydoc = new Y.Doc();
+    docRef.current = ydoc;
+    setDoc(ydoc);
+
     const token = getToken() || "";
-    const provider = new WebsocketProvider(COLLAB_URL, boardId, doc, { params: { token } });
+    const provider = new WebsocketProvider(COLLAB_URL, boardId, ydoc, { params: { token } });
     providerRef.current = provider;
 
     const colorIndex = Math.abs(hashCode(userName)) % COLORS.length;
@@ -63,7 +60,7 @@ export function useCollaboration(boardId: string | undefined, userName: string) 
       const cursors: RemoteCursor[] = [];
 
       states.forEach((state, clientId) => {
-        if (clientId === doc.clientID) return;
+        if (clientId === ydoc.clientID) return;
         if (state.user) {
           userList.push(state.user as any);
           if (state.cursor) {
@@ -91,16 +88,17 @@ export function useCollaboration(boardId: string | undefined, userName: string) 
       provider.awareness.off("change", updateAwareness);
       provider.disconnect();
       provider.destroy();
-      doc.destroy();
+      ydoc.destroy();
+      docRef.current = null;
+      setDoc(null);
     };
   }, [boardId, userName]);
 
-  // Broadcast local cursor position with optional activity info
   const broadcastCursor = useCallback((x: number, y: number, clicking: boolean = false, action: string = "idle", selectedEntity: string | null = null) => {
     providerRef.current?.awareness.setLocalStateField("cursor", { x, y, clicking, action, selectedEntity });
   }, []);
 
-  return { connected, users, remoteCursors, broadcastCursor, doc: docRef.current };
+  return { connected, users, remoteCursors, broadcastCursor, doc };
 }
 
 function hashCode(str: string): number {
