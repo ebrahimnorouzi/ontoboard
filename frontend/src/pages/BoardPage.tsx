@@ -18,7 +18,6 @@ import AxiomEditor from "../components/axiom/AxiomEditor";
 import TreeBrowser from "../components/tree/TreeBrowser";
 import FileBrowser from "../components/files/FileBrowser";
 import { useCollaboration } from "../collab/useCollaboration";
-import { useYjsSync } from "../collab/useYjsSync";
 import CollabStatus from "../collab/CollabStatus";
 import PublishPanel from "../components/publish/PublishPanel";
 import ReasoningPanel from "../components/reasoning/ReasoningPanel";
@@ -32,7 +31,7 @@ import PatternLibrary from "../components/patterns/PatternLibrary";
 import IdRangeManager from "../components/idranges/IdRangeManager";
 import BoardSettingsDialog from "../components/board/BoardSettingsDialog";
 import CommentsPanel from "../components/comments/CommentsPanel";
-import { useOntologyStore } from "../store/ontologyStore";
+import { useOntologyStore, setOnSaveCallback } from "../store/ontologyStore";
 import ExportOntologyDialog from "../components/export/ExportOntologyDialog";
 
 type Tab = "ontology" | "axioms" | "reasoning" | "odk" | "sparql" | "csv" | "tasks" | "publish" | "docs" | "files" | "patterns" | "ids" | "comments" | "console";
@@ -75,19 +74,32 @@ export default function BoardPage() {
     if (user) setCurrentUser(user.display_name || user.username || "anonymous");
   }, [user, setCurrentUser]);
 
-  const { connected, users: collabUsers, doc: yjsDoc, remoteCursors, broadcastCursor } = useCollaboration(
+  const {
+    connected, users: collabUsers, remoteCursors, broadcastCursor,
+    entityLocks, lockEntity, getEntityLock, remoteSaveVersion, broadcastSave,
+  } = useCollaboration(
     status === "ready" ? boardId : undefined,
     user?.display_name || user?.username || "anonymous",
   );
 
-  // Bind Yjs shared types ↔ Zustand store for real-time entity sync
-  useYjsSync(yjsDoc, status === "ready" ? boardId : undefined);
-
-  // Fallback poll — only when Yjs is NOT connected (offline/disconnected mode)
+  // Wire save broadcast — when our save completes, notify all other users instantly
   useEffect(() => {
-    if (status !== "ready" || !boardId || connected) return;
-    const store = useOntologyStore.getState();
-    let lastKnownSave = store.lastSaved;
+    setOnSaveCallback(broadcastSave);
+    return () => setOnSaveCallback(null);
+  }, [broadcastSave]);
+
+  // Instant reload when another user saves (via Yjs awareness)
+  useEffect(() => {
+    if (!boardId || !remoteSaveVersion) return;
+    const currentStore = useOntologyStore.getState();
+    if (currentStore.saving || currentStore.dirty) return;
+    currentStore.loadFromBackend(boardId);
+  }, [remoteSaveVersion, boardId]);
+
+  // Fallback poll (safety net for when Yjs is disconnected)
+  useEffect(() => {
+    if (status !== "ready" || !boardId) return;
+    let lastKnownSave = useOntologyStore.getState().lastSaved;
     const interval = setInterval(async () => {
       try {
         const currentStore = useOntologyStore.getState();
@@ -98,9 +110,9 @@ export default function BoardPage() {
           await currentStore.loadFromBackend(boardId);
         }
       } catch { /* ignore polling errors */ }
-    }, 15000);
+    }, 30000); // 30s fallback — Yjs handles instant sync
     return () => clearInterval(interval);
-  }, [status, boardId, connected]);
+  }, [status, boardId]);
 
   useEffect(() => {
     if (!boardId) return;
@@ -411,7 +423,8 @@ export default function BoardPage() {
             {building ? "Building..." : "Build"}
           </button>
           <CollabStatus connected={connected} users={collabUsers}
-                        currentUser={user?.display_name || user?.username || "anonymous"} />
+                        currentUser={user?.display_name || user?.username || "anonymous"}
+                        entityLocks={entityLocks} />
         </div>
       </header>
 
@@ -463,7 +476,10 @@ export default function BoardPage() {
           {boardId && <OntologyCanvas boardId={boardId}
             onOpenComments={() => { switchTab("comments"); setSideOpen(true); }}
             remoteCursors={remoteCursors}
-            broadcastCursor={broadcastCursor} />}
+            broadcastCursor={broadcastCursor}
+            entityLocks={entityLocks}
+            lockEntity={lockEntity}
+            getEntityLock={getEntityLock} />}
         </div>
 
         {/* Right panel resize handle + toggle */}

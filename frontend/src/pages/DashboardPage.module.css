@@ -145,18 +145,22 @@
 .card {
   display: flex;
   flex-direction: column;
-  padding: 1.25rem;
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   color: var(--text-primary);
   transition: border-color 0.2s, transform 0.15s, box-shadow 0.2s;
+  overflow: hidden;
 }
 .card:hover {
   border-color: var(--accent);
   transform: translateY(-2px);
   box-shadow: var(--shadow-md);
-  color: var(--text-primary);
+}
+.cardLink {
+  display: flex; flex-direction: column; flex: 1;
+  padding: 1.25rem 1.25rem 0.75rem;
+  color: var(--text-primary); text-decoration: none;
 }
 
 .cardHeader {
@@ -228,32 +232,53 @@
   margin-bottom: 0.75rem;
 }
 
-.cardFooter {
-  margin-top: auto;
-  font-size: 0.8rem;
-  color: var(--text-muted);
-  font-weight: 500;
-}
-.card:hover .cardFooter {
-  color: var(--accent-light);
-}
 
-/* ── Star button ──────────────────────────────────────────── */
-.starBtn {
-  margin-left: auto;
-  background: none;
-  border: none;
-  font-size: 1.2rem;
-  cursor: pointer;
-  color: var(--text-muted);
-  padding: 0 0.15rem;
-  line-height: 1;
-  transition: color 0.2s, transform 0.15s;
+/* ── Card actions bar ─────────────────────────────────────── */
+.cardActions {
+  display: flex; gap: 0.25rem; padding: 0.5rem 1rem;
+  border-top: 1px solid var(--border); background: var(--bg-primary);
 }
-.starBtn:hover {
-  color: #f9ca24;
-  transform: scale(1.2);
+.cardActionBtn {
+  padding: 0.25rem 0.6rem; border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background: none; color: var(--text-muted); font-size: 0.68rem; font-weight: 500;
+  cursor: pointer; font-family: inherit; transition: all 0.15s;
 }
-.card .starBtn:first-of-type {
-  flex-shrink: 0;
+.cardActionBtn:hover { border-color: var(--accent); color: var(--accent-light); }
+.cardActionDanger:hover { border-color: var(--danger); color: var(--danger); }
+
+/* ── Overlay + Dialog ────────────────────────────────────── */
+.overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+  display: flex; align-items: center; justify-content: center; z-index: 100;
+}
+.dialog {
+  background: var(--bg-secondary); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 1.5rem; width: 400px; max-width: 90vw;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.3);
+}
+.dialog h3 { margin: 0 0 0.5rem; font-size: 1rem; }
+.dialog p { font-size: 0.85rem; color: var(--text-secondary); margin: 0 0 1rem; }
+.dialogInput {
+  width: 100%; padding: 0.5rem 0.75rem; border: 1px solid var(--border);
+  border-radius: var(--radius-sm); background: var(--bg-primary);
+  color: var(--text-primary); font-size: 0.85rem; font-family: inherit;
+  outline: none; margin-bottom: 1rem; box-sizing: border-box;
+}
+.dialogInput:focus { border-color: var(--accent); }
+.dialogActions { display: flex; gap: 0.5rem; justify-content: flex-end; }
+.primaryBtn {
+  padding: 0.4rem 1rem; background: var(--accent); color: #fff; border: none;
+  border-radius: var(--radius-sm); font-size: 0.82rem; font-weight: 600;
+  cursor: pointer; font-family: inherit;
+}
+.primaryBtn:disabled { opacity: 0.4; }
+.dangerBtn {
+  padding: 0.4rem 1rem; background: var(--danger); color: #fff; border: none;
+  border-radius: var(--radius-sm); font-size: 0.82rem; font-weight: 600;
+  cursor: pointer; font-family: inherit;
+}
+.cancelBtn {
+  padding: 0.4rem 1rem; background: none; border: 1px solid var(--border);
+  border-radius: var(--radius-sm); color: var(--text-secondary); font-size: 0.82rem;
+  cursor: pointer; font-family: inherit;
 }

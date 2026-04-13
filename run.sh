@@ -101,7 +101,7 @@ case "${1:-start}" in
     echo "  Backend:  http://localhost:8000 (auto-reload via uvicorn)"
     ;;
   test)
-    cd backend && python -m pytest tests/ -v --tb=short
+    cd backend && python3 -m pytest tests/ -v --tb=short
     ;;
   logs)
     docker compose logs -f --tail=50

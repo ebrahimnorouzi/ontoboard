@@ -10,9 +10,9 @@ import cytoscape from "cytoscape";
 import dagre from "cytoscape-dagre";
 import coseBilkent from "cytoscape-cose-bilkent";
 import edgehandles from "cytoscape-edgehandles";
-import { useOntologyStore, type PrefixColor } from "../../store/ontologyStore";
+import { useOntologyStore, scheduleAutoSave, type PrefixColor } from "../../store/ontologyStore";
 import { apiJson } from "../../api";
-import type { RemoteCursor } from "../../collab/useCollaboration";
+import type { RemoteCursor, EntityLock } from "../../collab/useCollaboration";
 import EditPopup, { EditData, NodeEditData, EdgeEditData } from "./EditPopup";
 import StickyNoteComponent from "./StickyNote";
 import CanvasFrameComponent from "./CanvasFrame";
@@ -186,9 +186,12 @@ interface Props {
   onOpenComments?: (entityIri?: string) => void;
   remoteCursors?: RemoteCursor[];
   broadcastCursor?: (x: number, y: number, clicking?: boolean, action?: string, selectedEntity?: string | null) => void;
+  entityLocks?: EntityLock[];
+  lockEntity?: (entityIri: string | null) => void;
+  getEntityLock?: (entityIri: string) => EntityLock | null;
 }
 
-export default function OntologyCanvas({ boardId, onOpenComments, remoteCursors = [], broadcastCursor }: Props) {
+export default function OntologyCanvas({ boardId, onOpenComments, remoteCursors = [], broadcastCursor, entityLocks = [], lockEntity, getEntityLock }: Props) {
   const cyRef = useRef<cytoscape.Core | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const cursorsRef = useRef<HTMLDivElement>(null);
@@ -348,19 +351,28 @@ export default function OntologyCanvas({ boardId, onOpenComments, remoteCursors 
       });
     });
 
-    // ── Node tap — select ────────────────────────────────────
+    // ── Node tap — select + lock ──────────────────────────────
     cy.on("tap", "node", (evt) => {
       const n = evt.target;
+      const nodeIri = n.id();
+      // Check if locked by another user
+      const lock = getEntityLock?.(nodeIri);
+      if (lock) {
+        // Show a brief toast or just let the user know via overlay
+        console.info(`[collab] Entity locked by ${lock.userName}`);
+      }
       setEditLabel(n.data("label") || "");
-      store.selectEntity({ iri: n.id(), type: n.data("entityType") || "class", label: n.data("label") || "" });
+      store.selectEntity({ iri: nodeIri, type: n.data("entityType") || "class", label: n.data("label") || "" });
+      lockEntity?.(nodeIri); // Broadcast that we're editing this entity
       setContextMenu(null);
-      if (evt.position) broadcastCursor?.(evt.position.x, evt.position.y, false, "selected " + n.data("label"), n.id());
+      if (evt.position) broadcastCursor?.(evt.position.x, evt.position.y, false, "selected " + n.data("label"), nodeIri);
     });
 
-    // Pane tap — deselect
+    // Pane tap — deselect + unlock
     cy.on("tap", (e) => {
       if (e.target === cy) {
         store.selectEntity(null); setEditPopup(null); setContextMenu(null);
+        lockEntity?.(null); // Release entity lock
         if (e.position) broadcastCursor?.(e.position.x, e.position.y, false, "idle", null);
       }
     });
@@ -505,8 +517,12 @@ export default function OntologyCanvas({ boardId, onOpenComments, remoteCursors 
     for (const l of store.literals) expectedNodes.set(l.id, { label: l.value, displayLabel: l.value || "(empty)", entityType: "literal", x: l.x || 0, y: l.y || 0 });
 
     const expectedEdges = new Map<string, { source: string; target: string; displayLabel: string; edgeType: string }>();
+    let skippedEdges = 0;
     for (const p of store.properties) {
-      if (!expectedNodes.has(p.source_id) && !expectedNodes.has(p.target_id)) continue;
+      if (!expectedNodes.has(p.source_id) && !expectedNodes.has(p.target_id)) {
+        skippedEdges++;
+        continue;
+      }
       const isSub = p.iri === "rdfs:subClassOf";
       const isType = p.iri === "rdf:type";
       const isData = p.property_type === "data";
@@ -520,6 +536,8 @@ export default function OntologyCanvas({ boardId, onOpenComments, remoteCursors 
     for (const pc of store.prefixColors) {
       prefixColorLookup.set(pc.namespace, pc.color);
     }
+
+    console.debug("[canvas sync]", store.classes.length, "classes,", store.properties.length, "props,", expectedEdges.size, "edges,", skippedEdges, "skipped");
 
     cy.batch(() => {
       // Remove nodes not in store
@@ -563,6 +581,18 @@ export default function OntologyCanvas({ boardId, onOpenComments, remoteCursors 
           }
         }
       }
+      // Show entity locks from other users
+      for (const lock of entityLocks) {
+        const lockedNode = cy.getElementById(lock.entityIri);
+        if (lockedNode.length) {
+          lockedNode.style({
+            "overlay-color": lock.color,
+            "overlay-opacity": 0.12,
+            "overlay-padding": 8,
+          });
+        }
+      }
+
       // Build set of inferred edge IDs
       const inferredEdgeIds = new Set<string>();
       if (store.showInferences) {
@@ -630,7 +660,7 @@ export default function OntologyCanvas({ boardId, onOpenComments, remoteCursors 
       const node = cy.getElementById(selected);
       if (node.length && !node.selected()) node.select();
     }
-  }, [store.classes, store.properties, store.individuals, store.literals, store.prefixColors, store.patternMap, store.showInferences, store.inferences]);
+  }, [store.classes, store.properties, store.individuals, store.literals, store.prefixColors, store.patternMap, store.showInferences, store.inferences, entityLocks]);
 
   useEffect(() => { store.loadFromBackend(boardId); }, [boardId]);
 
@@ -1116,6 +1146,7 @@ export default function OntologyCanvas({ boardId, onOpenComments, remoteCursors 
         patternMap: newPatternMap,
         dirty: true,
       });
+      scheduleAutoSave();
     } catch (err) {
       console.error("Failed to apply pattern via drag-drop:", err);
     }

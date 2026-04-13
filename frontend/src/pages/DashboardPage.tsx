@@ -27,6 +27,10 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [wizardOpen, setWizardOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [cloning, setCloning] = useState<string | null>(null);
+  const [cloneId, setCloneId] = useState("");
   const navigate = useNavigate();
 
   const toggleStar = async (boardId: string) => {
@@ -39,6 +43,32 @@ export default function DashboardPage() {
         );
       }
     } catch { /* ignore */ }
+  };
+
+  const deleteBoard = async (boardId: string) => {
+    try {
+      const res = await api(`/api/boards/${boardId}`, { method: "DELETE" });
+      if (res.ok) {
+        setBoards((prev) => prev.filter((b) => b.board_id !== boardId));
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setError(data.detail || "Delete failed");
+      }
+    } catch (e: any) { setError(e.message || "Delete failed"); }
+    setConfirmDelete(null);
+  };
+
+  const cloneBoard = async (boardId: string) => {
+    if (!cloneId.trim()) return;
+    try {
+      await apiJson(`/api/boards/${boardId}/clone`, {
+        method: "POST",
+        body: JSON.stringify({ new_board_id: cloneId.trim() }),
+      });
+      navigate(`/board/${cloneId.trim()}`);
+    } catch (e: any) { setError(e.message || "Clone failed"); }
+    setCloning(null);
+    setCloneId("");
   };
 
   const fetchBoards = async () => {
@@ -99,49 +129,91 @@ export default function DashboardPage() {
           </div>
         ) : (
           <div className={styles.grid}>
-            {boards.map((b) => (
-              <Link key={b.board_id} to={`/board/${b.board_id}`} className={styles.card}>
-                <div className={styles.cardHeader}>
-                  <span className={styles.cardIcon}>&#9678;</span>
-                  <h3 className={styles.cardName}>{b.display_name || b.board_id}</h3>
-                  <button
-                    className={styles.starBtn}
-                    onClick={(e) => { e.preventDefault(); toggleStar(b.board_id); }}
-                    title={b.is_starred ? "Remove from favourites" : "Add to favourites"}
-                  >
-                    {b.is_starred ? "\u2605" : "\u2606"}
-                  </button>
+            {boards.map((b) => {
+              const isOwner = b.user_role === "owner" || b.user_role === "admin";
+              return (
+                <div key={b.board_id} className={styles.card}>
+                  <Link to={`/board/${b.board_id}`} className={styles.cardLink}>
+                    <div className={styles.cardHeader}>
+                      <span className={styles.cardIcon}>&#9678;</span>
+                      <h3 className={styles.cardName}>{b.display_name || b.board_id}</h3>
+                    </div>
+                    {b.description && <p className={styles.cardDesc}>{b.description}</p>}
+                    <div className={styles.badges}>
+                      <span className={`${styles.badge} ${b.is_public ? styles.badgeOk : styles.badgeWarn}`}>
+                        {b.is_public ? "Public" : "Private"}
+                      </span>
+                      {b.user_role && <span className={`${styles.badge} ${styles.badgeOk}`}>{b.user_role}</span>}
+                    </div>
+                    <div className={styles.cardMeta}>
+                      <span>{b.owner_username}</span>
+                      {b.member_count > 0 && <span>{b.member_count} members</span>}
+                      {b.last_modified && (
+                        <span title={b.last_modified}>
+                          {b.last_modified_by ? `${b.last_modified_by} · ` : ""}
+                          {new Date(b.last_modified).toLocaleDateString()}
+                        </span>
+                      )}
+                    </div>
+                  </Link>
+
+                  {/* Board actions bar */}
+                  <div className={styles.cardActions}>
+                    <button className={styles.cardActionBtn}
+                      onClick={() => toggleStar(b.board_id)}
+                      title={b.is_starred ? "Unstar" : "Star"}>
+                      {b.is_starred ? "\u2605" : "\u2606"}
+                    </button>
+                    <button className={styles.cardActionBtn}
+                      onClick={() => { setCloning(b.board_id); setCloneId(`${b.board_id}-copy`); }}
+                      title="Clone board">
+                      Clone
+                    </button>
+                    {isOwner && (
+                      <button className={`${styles.cardActionBtn} ${styles.cardActionDanger}`}
+                        onClick={() => setConfirmDelete(b.board_id)}
+                        title="Delete board">
+                        Delete
+                      </button>
+                    )}
+                  </div>
                 </div>
-                {b.description && (
-                  <p className={styles.cardDesc}>{b.description}</p>
-                )}
-                <div className={styles.badges}>
-                  <span className={`${styles.badge} ${b.is_public ? styles.badgeOk : styles.badgeWarn}`}>
-                    {b.is_public ? "Public" : "Private"}
-                  </span>
-                  {b.user_role && (
-                    <span className={`${styles.badge} ${styles.badgeOk}`}>
-                      {b.user_role}
-                    </span>
-                  )}
-                  <span className={`${styles.badge} ${b.odk_seeded ? styles.badgeOk : styles.badgeWarn}`}>
-                    {b.odk_seeded ? "ODK" : "No ODK"}
-                  </span>
-                </div>
-                <div className={styles.cardMeta}>
-                  <span>{b.owner_username}</span>
-                  {b.member_count > 0 && <span>{b.member_count} members</span>}
-                  {b.last_modified && (
-                    <span title={b.last_modified}>
-                      {b.last_modified_by ? `${b.last_modified_by} · ` : ""}
-                      {new Date(b.last_modified).toLocaleDateString()}
-                    </span>
-                  )}
-                </div>
-                <div className={styles.cardFooter}>Open board &rarr;</div>
-              </Link>
-            ))}
+              );
+            })}
           </div>
+
+          {/* Delete confirmation */}
+          {confirmDelete && (
+            <div className={styles.overlay} onClick={() => setConfirmDelete(null)}>
+              <div className={styles.dialog} onClick={(e) => e.stopPropagation()}>
+                <h3>Delete Board</h3>
+                <p>Are you sure you want to delete <strong>{confirmDelete}</strong>? This cannot be undone.</p>
+                <div className={styles.dialogActions}>
+                  <button className={styles.dangerBtn} onClick={() => deleteBoard(confirmDelete)}>Delete</button>
+                  <button className={styles.cancelBtn} onClick={() => setConfirmDelete(null)}>Cancel</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Clone dialog */}
+          {cloning && (
+            <div className={styles.overlay} onClick={() => setCloning(null)}>
+              <div className={styles.dialog} onClick={(e) => e.stopPropagation()}>
+                <h3>Clone Board</h3>
+                <p>Create a copy of <strong>{cloning}</strong>:</p>
+                <input className={styles.dialogInput} value={cloneId}
+                  onChange={(e) => setCloneId(e.target.value)}
+                  placeholder="New board ID"
+                  onKeyDown={(e) => e.key === "Enter" && cloneBoard(cloning)} autoFocus />
+                <div className={styles.dialogActions}>
+                  <button className={styles.primaryBtn} onClick={() => cloneBoard(cloning)}
+                    disabled={!cloneId.trim()}>Clone</button>
+                  <button className={styles.cancelBtn} onClick={() => setCloning(null)}>Cancel</button>
+                </div>
+              </div>
+            </div>
+          )}
         )}
       </div>
 

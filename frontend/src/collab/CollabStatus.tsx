@@ -4,6 +4,7 @@
  */
 
 import { useState, useRef, useEffect } from "react";
+import type { EntityLock } from "./useCollaboration";
 import styles from "./CollabStatus.module.css";
 
 interface CollabUser {
@@ -15,9 +16,10 @@ interface Props {
   connected: boolean;
   users: CollabUser[];
   currentUser: string;
+  entityLocks?: EntityLock[];
 }
 
-export default function CollabStatus({ connected, users, currentUser }: Props) {
+export default function CollabStatus({ connected, users, currentUser, entityLocks = [] }: Props) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -75,15 +77,24 @@ export default function CollabStatus({ connected, users, currentUser }: Props) {
       {open && (
         <div className={styles.dropdown}>
           <div className={styles.dropdownTitle}>Online Users ({deduped.length})</div>
-          {deduped.map((u) => (
-            <div key={u.name} className={styles.dropdownItem}>
-              <div className={styles.dropdownAvatar} style={{ backgroundColor: u.color }}>
-                {u.name.charAt(0).toUpperCase()}
+          {deduped.map((u) => {
+            const lock = entityLocks.find((l) => l.userName === u.name);
+            const editingLabel = lock ? lock.entityIri.split("#").pop()?.split("/").pop() : null;
+            return (
+              <div key={u.name} className={styles.dropdownItem}>
+                <div className={styles.dropdownAvatar} style={{ backgroundColor: u.color }}>
+                  {u.name.charAt(0).toUpperCase()}
+                </div>
+                <div className={styles.dropdownInfo}>
+                  <span className={styles.dropdownName}>{u.name}</span>
+                  {editingLabel && (
+                    <span className={styles.editingLabel}>editing {editingLabel}</span>
+                  )}
+                </div>
+                {u.name === currentUser && <span className={styles.youBadge}>you</span>}
               </div>
-              <span className={styles.dropdownName}>{u.name}</span>
-              {u.name === currentUser && <span className={styles.youBadge}>you</span>}
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

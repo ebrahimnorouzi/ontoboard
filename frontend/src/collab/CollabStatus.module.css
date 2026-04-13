@@ -64,7 +64,12 @@
   display: flex; align-items: center; justify-content: center;
   font-size: 0.55rem; font-weight: 700; color: #fff; flex-shrink: 0;
 }
-.dropdownName { color: var(--text-primary); flex: 1; }
+.dropdownInfo { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.dropdownName { color: var(--text-primary); }
+.editingLabel {
+  font-size: 0.6rem; color: var(--accent-light); font-style: italic;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
 .youBadge {
   font-size: 0.55rem; font-weight: 600; color: var(--text-muted);
   background: var(--bg-accent); padding: 0.05rem 0.3rem; border-radius: 999px;

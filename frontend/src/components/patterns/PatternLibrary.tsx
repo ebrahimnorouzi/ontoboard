@@ -7,7 +7,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { apiJson } from "../../api";
-import { useOntologyStore } from "../../store/ontologyStore";
+import { useOntologyStore, scheduleAutoSave } from "../../store/ontologyStore";
 import styles from "./PatternLibrary.module.css";
 
 /** Predefined colors for ODP patterns — matches OntologyCanvas PATTERN_COLORS */
@@ -126,6 +126,7 @@ export default function PatternLibrary({ boardId }: Props) {
         patternMap: newPatternMap,
         dirty: true,
       });
+      scheduleAutoSave();
       setApplied(patternId);
       setTimeout(() => setApplied(null), 3000);
     } catch (e: any) {

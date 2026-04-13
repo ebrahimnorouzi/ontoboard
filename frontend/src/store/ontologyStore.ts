@@ -157,11 +157,20 @@ interface OntologyState {
 
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
 
+/** Callback invoked after each successful save (set by BoardPage to broadcast via Yjs). */
+let _onSaveCallback: (() => void) | null = null;
+export function setOnSaveCallback(cb: (() => void) | null) { _onSaveCallback = cb; }
+
 function debouncedSave(get: () => OntologyState) {
   if (saveTimer) clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
     get().saveToBackend();
-  }, 2000);
+  }, 800); // Fast saves — 800ms debounce for responsive collaboration
+}
+
+/** Schedule an auto-save (for use after batched setState calls). */
+export function scheduleAutoSave() {
+  debouncedSave(() => useOntologyStore.getState());
 }
 
 const MAX_UNDO = 50;
@@ -248,6 +257,7 @@ export const useOntologyStore = create<OntologyState>((set, get) => ({
         }),
       });
       set({ dirty: false, saving: false, lastSaved: Date.now() });
+      _onSaveCallback?.();
     } catch {
       set({ saving: false });
     }
