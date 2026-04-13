@@ -14,41 +14,33 @@ os.environ["ADMIN_USERNAME"] = "admin"
 os.environ["ADMIN_PASSWORD"] = "admin123"
 os.environ["ADMIN_EMAIL"] = "admin@test.local"
 
-# All modules that import DATA_DIR from app.config — must be patched for tests
-_DATA_DIR_MODULES = [
-    "app.config",
-    "app.services.board",
-    "app.services.odk",
-    "app.services.ontology",
-    "app.routers.odk",
-    "app.routers.owl",
-    "app.routers.ontology",
-    "app.routers.axiom",
-    "app.routers.tree",
-    "app.routers.publish",
-    "app.routers.reasoning",
-    "app.routers.csv_import",
-    "app.routers.sparql",
-    "app.routers.docs",
-    "app.routers.restrictions",
-    "app.routers.characteristics",
-    "app.routers.search",
-    "app.routers.refactor",
-    "app.routers.imports",
-    "app.routers.version",
-    "app.routers.robot_commands",
-    "app.routers.dl_query",
-    "app.routers.odk_config",
-    "app.routers.quality",
-    "app.routers.idranges",
-    "app.routers.patterns",
-    "app.services.patterns",
-    "app.routers.analysis",
-    "app.routers.odk_mediator",
-    "app.routers.export",
-    "app.routers.odk_setup",
-    "app.routers.odk_imports",
-]
+# Modules that import DATA_DIR at module level — must be patched for tests.
+# We only patch modules where DATA_DIR is a module-level attribute
+# (i.e., `from app.config import DATA_DIR` at the top of the file).
+# Modules that import DATA_DIR inside functions don't need patching here.
+_DATA_DIR_MODULES = []
+
+def _find_data_dir_modules():
+    """Dynamically find all modules that have DATA_DIR as a module-level attribute."""
+    import importlib, pkgutil
+    for pkg in ["app.services", "app.routers"]:
+        try:
+            parent = importlib.import_module(pkg)
+            for _, name, _ in pkgutil.iter_modules(parent.__path__):
+                mod_name = f"{pkg}.{name}"
+                try:
+                    mod = importlib.import_module(mod_name)
+                    if hasattr(mod, "DATA_DIR"):
+                        _DATA_DIR_MODULES.append(mod_name)
+                except Exception:
+                    pass
+        except Exception:
+            pass
+    # Always patch app.config itself
+    if "app.config" not in _DATA_DIR_MODULES:
+        _DATA_DIR_MODULES.insert(0, "app.config")
+
+_find_data_dir_modules()
 
 
 @pytest.fixture()

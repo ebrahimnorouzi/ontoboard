@@ -51,7 +51,9 @@
       "Bash(npm run:*)",
       "Bash(ls node_modules/.bin/tsc*)",
       "Bash(npm install:*)",
-      "Bash(./node_modules/.bin/tsc --noEmit)"
+      "Bash(./node_modules/.bin/tsc --noEmit)",
+      "Bash(python3 -m pytest tests/test_health.py -v --tb=short)",
+      "Bash(python -m pytest tests/test_health.py -v --tb=short)"
     ]
   }
 }
