@@ -602,13 +602,40 @@ export default function OntologyDashboard({ boardId }: Props) {
                 </p>
               </div>
             )}
+
+            {/* Download report button */}
+            {report.violations && report.violations.length > 0 && (
+              <button className={styles.smallBtn} style={{ marginBottom: "0.4rem" }}
+                onClick={() => {
+                  const header = "Level\tRule\tSubject\tProperty\tMessage\n";
+                  const rows = report.violations.map((v: any) =>
+                    `${v.severity}\t${v.rule || ""}\t${v.subject}\t${v.property || ""}\t${v.message}`
+                  ).join("\n");
+                  const blob = new Blob([header + rows], { type: "text/tab-separated-values" });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url; a.download = `${boardId}-report.tsv`; a.click();
+                  URL.revokeObjectURL(url);
+                }}>
+                Download Report (TSV)
+              </button>
+            )}
+
             {report.violations && report.violations.length > 0 && (
               <div className={styles.violationList}>
-                {report.violations.slice(0, 50).map((v, i) => (
+                {report.violations.slice(0, 50).map((v: any, i: number) => (
                   <div key={i} className={`${styles.violation} ${v.severity === "ERROR" ? styles.violationError : v.severity === "WARN" ? styles.violationWarn : styles.violationInfo}`}>
-                    <span className={styles.violationSeverity}>{v.severity}</span>
-                    <span className={styles.violationMsg}>{v.message}</span>
-                    <span className={styles.violationSubject} title={v.subject}>{v.subject?.split("/").pop() || ""}</span>
+                    <div className={styles.violationHeader}>
+                      <span className={styles.violationSeverity}>{v.severity}</span>
+                      {v.rule && <span className={styles.violationRule}>{v.rule}</span>}
+                    </div>
+                    <div className={styles.violationSubject} title={v.subject}>
+                      {v.subject?.split("/").pop()?.split("#").pop() || v.subject || "—"}
+                    </div>
+                    {v.property && (
+                      <div className={styles.violationProp}>Property: {v.property.split("/").pop()?.split("#").pop() || v.property}</div>
+                    )}
+                    <div className={styles.violationMsg}>{v.message || "No message"}</div>
                   </div>
                 ))}
               </div>

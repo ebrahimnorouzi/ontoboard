@@ -446,10 +446,10 @@
 }
 .violation {
   display: flex;
-  gap: 0.4rem;
-  align-items: baseline;
+  flex-direction: column;
+  gap: 0.1rem;
   font-size: 0.72rem;
-  padding: 0.3rem 0.4rem;
+  padding: 0.4rem 0.6rem;
   border-radius: var(--radius-sm);
   border-left: 3px solid transparent;
 }
@@ -465,25 +465,44 @@
   border-left-color: var(--text-muted);
   background: var(--bg-primary);
 }
+.violationHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.15rem;
+}
 .violationSeverity {
-  font-weight: 600;
+  font-weight: 700;
   text-transform: uppercase;
   font-size: 0.6rem;
-  min-width: 38px;
+  padding: 0.05rem 0.3rem;
+  border-radius: 3px;
+  background: rgba(255,255,255,0.06);
 }
-.violationError .violationSeverity { color: var(--danger); }
-.violationWarn .violationSeverity { color: var(--warning); }
+.violationError .violationSeverity { color: #fff; background: var(--danger); }
+.violationWarn .violationSeverity { color: #000; background: var(--warning); }
 .violationInfo .violationSeverity { color: var(--text-muted); }
-.violationMsg {
-  color: var(--text-secondary);
-  flex: 1;
+.violationRule {
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: var(--accent-light);
+  font-family: "Cascadia Code", "Fira Code", monospace;
 }
 .violationSubject {
+  color: var(--text-primary);
+  font-family: "Cascadia Code", "Fira Code", monospace;
+  font-size: 0.72rem;
+  font-weight: 600;
+  word-break: break-all;
+}
+.violationProp {
+  font-size: 0.65rem;
   color: var(--text-muted);
   font-family: "Cascadia Code", "Fira Code", monospace;
-  font-size: 0.65rem;
-  max-width: 120px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+}
+.violationMsg {
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  line-height: 1.4;
+  margin-top: 0.1rem;
 }
