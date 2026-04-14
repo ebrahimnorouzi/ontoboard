@@ -22,36 +22,21 @@ This means:
 
 Entity locking is advisory only -- it is not enforced at the API level. Two users can technically edit the same entity simultaneously.
 
-### 2. Manchester Parser ~~Limitations~~ (Resolved)
-
-The Manchester parser now supports all standard OWL 2 class expression constructs:
-- `HasSelf`: `likes Self`
-- `ObjectOneOf`: `{john, jane, bob}` (multiple individuals)
-- Datatype facet restrictions: `xsd:integer[>= 0, <= 100]`, `xsd:string[minLength 1]`
-- All Boolean connectives (`and`, `or`, `not`), restrictions (`some`, `only`, `value`), cardinality (`min`, `max`, `exactly`)
-
-### 3. SWRL ~~Storage Format~~ (Resolved)
-
-SWRL rules are now stored in **native OWL/XML SWRL format** using proper `swrl:Imp`, `swrl:ClassAtom`, `swrl:Variable` triples. This means:
-- Rules are directly executable by standard OWL reasoners that support SWRL
-- Backward compatibility maintained: annotation-based `[SWRL]` rules are still readable
-- Atom types supported: ClassAtom, IndividualPropertyAtom, DatavaluedPropertyAtom, BuiltinAtom
-
-### 4. Embedded Reasoner (owlready2) Issues
+### 2. Embedded Reasoner (owlready2) Issues
 
 - **Windows path issues**: `file:///` URIs in owlready2 may fail on Windows paths with spaces or non-ASCII characters
 - **Performance**: Slower than ROBOT for large ontologies (owlready2 loads the entire ontology into Python memory)
 - **Java dependency**: owlready2 requires Java for its HermiT bridge, even though it's an "embedded" reasoner
 - **Inference differences**: May produce slightly different results than ROBOT's reasoners for edge cases
 
-### 5. Import Resolution Limitations
+### 3. Import Resolution Limitations
 
 - Downloads may fail for ontologies behind authentication (no credential support)
 - No HTTP proxy support
 - No automatic freshness checking (must manually re-resolve)
 - Large import chains may be slow to resolve sequentially
 
-### 6. OWL Format Support
+### 4. OWL Format Support
 
 | Format | Read | Write | Notes |
 |--------|:----:|:-----:|-------|
@@ -64,13 +49,13 @@ SWRL rules are now stored in **native OWL/XML SWRL format** using proper `swrl:I
 | Manchester Syntax | Partial | Partial | Supported for axiom editing, not as file format |
 | OBO Format | Read-only | No | Read-only via rdflib; no writing support |
 
-### 7. Canvas Rendering
+### 5. Canvas Rendering
 
 - Edges only show on canvas if both source and target nodes exist on the canvas
-- Performance degrades with 1000+ entities on the canvas
-- Tested up to ~500 classes with acceptable performance
+- Performance degrades beyond ~500 classes on the canvas
+- Tab scrolling uses simple conditional rendering (no wrapper divs) for reliable scrolling in all panels
 
-### 8. Scale Limits
+### 6. Scale Limits
 
 | Dimension | Tested Limit | Notes |
 |-----------|:------------:|-------|
@@ -85,7 +70,7 @@ For larger ontologies, consider:
 - Splitting ontologies into modules using ROBOT extract
 - Using the ODK import system to work with subsets
 
-### 9. ROBOT Command Coverage
+### 7. ROBOT Command Coverage
 
 7 of 24 ROBOT commands are fully implemented and tested:
 
@@ -109,7 +94,12 @@ For larger ontologies, consider:
 | | `measure` |
 | | `python` |
 
-### 10. Other Limitations
+### 8. Widoco
+
+- Widoco 1.4.25 is installed in the backend Docker image
+- Requires Docker image rebuild (`./run.sh build`) if Widoco is updated or if the image was built before Widoco was added
+
+### 9. Other Limitations
 
 - **No plugin system**: Cannot extend functionality without modifying source code
 - **No offline mode**: Requires network connectivity to the backend
@@ -121,6 +111,7 @@ For larger ontologies, consider:
 - **No two-factor authentication**
 - **No refresh token mechanism**: Token expiration default is 8 hours
 - **No password self-service reset**: Requires admin intervention
+- **owlready2 Windows path issues**: `file:///` URIs may fail on Windows paths with spaces or non-ASCII characters
 
 ### Browser Requirements
 
@@ -171,9 +162,9 @@ Internet Explorer is not supported.
 | Property characteristics (7) | Yes | Yes | All 7 via UI checkboxes |
 | Property chains | Yes | Yes | Ordered list editor |
 | Inverse properties | Yes | Yes | |
-| HasSelf | Yes | No | |
-| ObjectOneOf (multiple) | Yes | No | Single individual works |
-| Datatype restrictions (facets) | Yes | No | `xsd:integer[> 5]` not supported |
+| HasSelf | Yes | Yes | `likes Self` |
+| ObjectOneOf (multiple) | Yes | Yes | `{john, jane, bob}` |
+| Datatype restrictions (facets) | Yes | Yes | `xsd:integer[>= 0, <= 100]` |
 | Custom datatypes | Yes | No | |
 | Key axioms (owl:hasKey) | Yes | No | |
 | Negative property assertions | Yes | No | |
@@ -189,7 +180,8 @@ Internet Explorer is not supported.
 | Background reasoning | Yes | No | Must manually trigger |
 | **SWRL** | | | |
 | SWRL rule editing | Yes | Yes | Human-readable format |
-| SWRL execution | Yes | No | Rules stored as annotations |
+| SWRL native OWL/XML storage | Yes | Yes | `swrl:Imp` + `swrl:ClassAtom` + `swrl:Variable` |
+| SWRL execution | Yes | Yes | Standard reasoners can execute native SWRL rules |
 | **Collaboration** | | | |
 | Real-time multi-user editing | No | Yes | Yjs/Hocuspocus |
 | Cursor sharing | No | Yes | |
@@ -203,9 +195,10 @@ Internet Explorer is not supported.
 | Minimap | No | Yes | |
 | Canvas frames / sticky notes | No | Yes | |
 | **Data Integration** | | | |
-| CSV import | Plugin (Cellfie) | Built-in | |
+| CSV import | Plugin (Cellfie) | Built-in | ROBOT Template Builder with merge + consistency check |
 | SPARQL query | Plugin (SPARQL Tab) | Built-in | |
 | GitHub import | No | Yes | With OWL Functional Syntax auto-conversion |
+| HTML documentation | No (plugin) | Yes | Widoco 1.4.25 |
 | **Ontology Management** | | | |
 | Provenance tracking | No | Yes | PROV-O + Dublin Core |
 | ID range management | Yes (file-based) | Yes | UI + OWL Functional Syntax |
@@ -220,13 +213,12 @@ Internet Explorer is not supported.
 
 ### Where Protege Wins
 
-1. **Full OWL 2 construct coverage**: Protege supports every OWL 2 construct including HasSelf, complex ObjectOneOf, datatype facets, custom datatypes, key axioms, negative assertions, and annotation on axioms
+1. **Remaining OWL 2 constructs**: Protege supports custom datatypes, key axioms (`owl:hasKey`), negative property assertions, and annotation on axioms -- which OntoBoard does not yet implement
 2. **Incremental and background reasoning**: Protege can reason in the background and update incrementally
-3. **SWRL execution**: Protege can execute SWRL rules via its reasoner integration
-4. **Mature plugin ecosystem**: 20+ years of plugins for various use cases
-5. **Scale**: Tested with very large ontologies (100,000+ classes)
-6. **Native OWL API**: Direct access to the OWL API without subprocess overhead
-7. **Offline use**: No network or Docker required
+3. **Mature plugin ecosystem**: 20+ years of plugins for various use cases
+4. **Scale**: Tested with very large ontologies (100,000+ classes)
+5. **Native OWL API**: Direct access to the OWL API without subprocess overhead
+6. **Offline use**: No network or Docker required
 
 ### Where OntoBoard Wins
 
@@ -237,8 +229,9 @@ Internet Explorer is not supported.
 5. **Design pattern library**: 13 curated ODPA patterns, drag-and-drop application
 6. **Task management**: Built-in Kanban board for team coordination
 7. **Provenance tracking**: Automatic PROV-O + Dublin Core metadata
-8. **CSV import**: Built-in wizard without plugins
-9. **Modern UI**: React-based responsive interface
+8. **CSV import**: ROBOT Template Builder with 6-step wizard, merge, and consistency check
+9. **HTML documentation**: Widoco 1.4.25 integration for comprehensive ontology documentation
+10. **Modern UI**: React-based responsive interface with in-app documentation
 
 ---
 
@@ -248,11 +241,14 @@ The following features are planned for future development, organized by priority
 
 ### Phase 13: Remaining OWL Expressiveness
 
-**Goal**: Close the gap with Protege's OWL 2 construct coverage.
+**Goal**: Close the remaining gap with Protege's OWL 2 construct coverage.
 
-- HasSelf support
-- ObjectOneOf with multiple individuals
-- Datatype restrictions (facets: minInclusive, maxInclusive, pattern, length)
+**Resolved in this release:**
+- ~~HasSelf support~~ -- implemented (`likes Self`)
+- ~~ObjectOneOf with multiple individuals~~ -- implemented (`{john, jane, bob}`)
+- ~~Datatype restrictions (facets)~~ -- implemented (`xsd:integer[>= 0, <= 100]`)
+
+**Still planned:**
 - Custom datatypes
 - Key axioms (owl:hasKey)
 - Negative property assertions
@@ -275,7 +271,7 @@ The following features are planned for future development, organized by priority
 - Incremental reasoning (only re-check affected axioms)
 - DL Query with full OWL 2 DL syntax support
 - Proof tree visualization for explanations
-- SWRL execution via ROBOT or owlready2
+- ~~SWRL execution via ROBOT or owlready2~~ -- resolved (native OWL/XML SWRL format, executable by standard reasoners)
 
 ### Phase 16: SHACL and Validation
 
@@ -325,15 +321,18 @@ The following features are planned for future development, organized by priority
 
 | Category | Implemented | Key Gaps |
 |----------|:-----------:|----------|
-| Core OWL constructs | 15+ | HasSelf, ObjectOneOf, datatype facets, custom datatypes, keys |
+| Core OWL constructs | 18+ (incl. HasSelf, ObjectOneOf, datatype facets) | Custom datatypes, keys, negative assertions |
 | Property features | 10+ | Negative assertions |
-| Manchester Syntax | Parser + renderer | Datatype restrictions, HasSelf |
+| Manchester Syntax | Full OWL 2 parser + renderer | None for standard constructs |
+| SWRL | Native OWL/XML format, executable by reasoners | -- |
 | ROBOT commands | 7 of 24 | 17 commands not fully implemented |
 | Reasoning | ROBOT + owlready2 | No background/incremental reasoning |
-| SWRL | CRUD | No execution |
-| Collaboration | Full awareness + sync | Not CRDT, last-write-wins, ~15 user max |
+| CSV Import | ROBOT Template Builder (6-step wizard) | -- |
+| Documentation | Widoco 1.4.25 HTML generation | Requires rebuild for updates |
+| Collaboration | Full awareness + sync (ephemeral) | Not CRDT, last-write-wins, ~15 user max |
 | Import management | Resolve + download + catalog | No auto-freshness, no auth |
 | Visualization | Canvas + patterns + minimap | Scale limited to ~500 classes |
-| Quality | ROBOT report, OOPS!, OQuaRE | No SHACL |
+| Quality | ROBOT report (with violation cards), OOPS!, OQuaRE | No SHACL |
 | Authentication | JWT local | No OAuth, no 2FA |
 | Database | SQLite | Not tested with PostgreSQL |
+| Testing | 500+ tests across 48+ files | -- |

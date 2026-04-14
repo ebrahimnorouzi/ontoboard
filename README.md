@@ -51,7 +51,7 @@ OntoBoard uses a 5-service microservice architecture. ROBOT 1.9.6 and Java 21 ar
 | Service | Stack | Port |
 |---------|-------|------|
 | **Frontend** | React 18, Cytoscape.js 3.30, Zustand 5, Monaco Editor, Vite 5, TypeScript 5.6 | 3000 |
-| **Backend** | FastAPI 0.115, Python 3.12, rdflib 7.1, owlready2 0.47, ROBOT 1.9.6, Java 21, SQLAlchemy 2 | 8000 |
+| **Backend** | FastAPI 0.115, Python 3.12, rdflib 7.1, owlready2 0.47, ROBOT 1.9.6, Java 21, Widoco 1.4.25, SQLAlchemy 2 | 8000 |
 | **Collaboration** | Hocuspocus 3.4 (Yjs WebSocket server) | 1234 |
 | **Worker** | Python 3.12, ROBOT 1.9.6, Java 21, Redis consumer for long-running jobs | -- |
 | **Redis** | Redis 7 Alpine -- job queue + pub/sub | 6379 |
@@ -67,9 +67,12 @@ OntoBoard uses a 5-service microservice architecture. ROBOT 1.9.6 and Java 21 ar
 - Auto-fit viewport on initial load
 - Tab state preserved (visited tabs stay mounted)
 
-### Manchester Syntax Parser
+### Manchester Syntax Parser (Full OWL 2 Coverage)
 - Recursive descent parser (`manchester_parser.py`) for OWL 2 class expressions
-- Supports: `and`, `or`, `not`, `some`, `only`, `value`, `min`/`max`/`exactly`, nested parentheses
+- Supports: `and`, `or`, `not`, `some`, `only`, `value`, `min`/`max`/`exactly`, `Self`, `{...}` enumerations, datatype facets, nested parentheses
+- **HasSelf**: `likes Self` -- `owl:hasSelf`
+- **ObjectOneOf**: `{john, jane, bob}` -- `owl:oneOf` with multiple individuals
+- **Datatype facet restrictions**: `xsd:integer[>= 0, <= 100]`, `xsd:string[minLength 1]` -- `owl:DatatypeRestriction`
 - Bidirectional: parse Manchester syntax to RDF triples, render RDF triples back to Manchester syntax
 - Example: `Animal and hasPart some (Organ or Tissue) and not Plant`
 
@@ -83,16 +86,21 @@ OntoBoard uses a 5-service microservice architecture. ROBOT 1.9.6 and Java 21 ar
 - Justification axioms for entailments
 - Suggested fixes for inconsistencies
 - 7 of 24 ROBOT commands implemented: `convert`, `report`, `reason`, `template`, `diff`, `query`, `explain`
+- ROBOT Report: violation cards with severity badge (colored), rule name, subject IRI, property, full message
+- Download Report (TSV) button
 
 ### Import Resolution
 - Resolve status checking for all imports
 - Download remote imports on demand
 - Catalog management (catalog-v001.xml)
 
-### SWRL Rule Editor
+### SWRL Rule Editor (Native OWL/XML Format)
 - View, create, and delete SWRL rules
 - Human-readable format display
-- Rules stored as OWL annotations
+- Rules stored as native OWL/XML SWRL format (`swrl:Imp` + `swrl:ClassAtom` + `swrl:Variable` RDF triples)
+- Standard reasoners can execute SWRL rules directly from OntoBoard
+- Backward compatible: still reads legacy annotation-based `[SWRL]` rules
+- Atom types: ClassAtom, IndividualPropertyAtom, DatavaluedPropertyAtom, BuiltinAtom
 
 ### Embedded Reasoner
 - owlready2 integration as alternative to ROBOT subprocess
@@ -113,10 +121,15 @@ OntoBoard uses a 5-service microservice architecture. ROBOT 1.9.6 and Java 21 ar
 - **Comments**: threaded discussions with @mentions and notifications
 - **Task board**: Kanban columns (To Do, In Progress, Review, Done)
 - **Entity lock visibility**: CollabStatus dropdown shows who is editing which entity
+- **Ephemeral awareness**: collab server rewritten for ephemeral awareness only, no state persistence
+- **Global error handlers**: prevent crashes from corrupt WebSocket data
 
 ### ODK Integration
 - ODK scaffold generation (manual, no Docker dependency)
-- Build error explanations (8 known error patterns with human-readable messages)
+- Build error explanations (7+ known error patterns with human-readable messages: odk-info missing, robot not found, OutOfMemory, etc.)
+- Terminal logs always visible (min-height: 200px, scrollable)
+- Environment info shown: ROBOT version, Java version, Make version
+- "Mode: local subprocess (no Docker-in-Docker)" shown in logs
 - OWL Functional Syntax support (auto-conversion via ROBOT)
 - Multi-file ontology loading (edit + release files merged)
 - Ontology file switcher dropdown (switch between edit, release, import modules)
@@ -127,14 +140,30 @@ OntoBoard uses a 5-service microservice architecture. ROBOT 1.9.6 and Java 21 ar
 - ID ranges with OWL Functional Syntax support (ODK standard format)
 - Create boards from scratch, GitHub repos, or file upload (OWL, TTL, RDF, OBO)
 
+### CSV Import -- ROBOT Template Builder
+- 6-step wizard: Upload, Map Columns, IRI Strategy, Preview, Build, Files
+- Column mapping with ontology-aware dropdowns (classes, object/data/annotation properties)
+- ROBOT template directives: `ID`, `TYPE`, `A rdfs:label`, `I <property>`, `SPLIT=`
+- Row expansion: `ref_type` creates referenced individuals automatically
+- Build pipeline: `robot merge --include-annotations true -i ontology.owl template --merge-before --template template.tsv -o output.owl`
+- Consistency check: `robot explain --reasoner hermit -i output.owl -M inconsistency`
+- Multi-file: upload multiple CSVs, generate templates, merge KGs
+- File storage: `kg/uploads/`, `kg/templates/`, `kg/output/`
+
+### Widoco Documentation Generator
+- Widoco 1.4.25 installed in backend Docker image
+- Generates HTML documentation for ontologies (not just markdown)
+- Version shown in build logs
+
 ### Additional Features
-- CSV to Knowledge Graph import wizard
 - SPARQL query panel with result visualization
 - Provenance tracking using PROV-O agents, Dublin Core, XSD datatypes
-- Prefix management with editable names and IRIs, per-prefix canvas coloring
+- Ontology dashboard auto-population: version IRI, creators, contributors, title, description, license extracted from OWL annotations
+- Prefix management with editable names and IRIs, per-prefix canvas coloring (auto-coloring from ontology namespace prefixes)
 - GitHub import with auto-conversion of OWL Functional Syntax
 - Git-backed version control
 - Quality metrics (OQUARE compliance)
+- In-app documentation page (/docs route with 7 sections, "Docs" link in navbar)
 
 ## Comparison with Protege
 
@@ -148,22 +177,23 @@ OntoBoard uses a 5-service microservice architecture. ROBOT 1.9.6 and Java 21 ar
 | Annotation property CRUD | Yes | Yes |
 | Reasoner integration (ELK, HermiT) | Yes | Yes (via ROBOT + owlready2) |
 | Explanation / justification | Yes | Yes (ROBOT explain) |
-| SWRL rules | Yes | Yes (annotation-based) |
+| SWRL rules | Yes | Yes (native OWL/XML format) |
 | Consistency checking | Yes | Yes |
 | Visual graph canvas | Plugin (OntoGraf) | Built-in (Cytoscape.js) |
 | Real-time collaboration | No | Yes (Yjs/Hocuspocus) |
 | Web-based (no install) | No (desktop Java) | Yes (Docker) |
 | ODK/ROBOT pipeline integration | No | Yes |
 | Design pattern library | No | Yes (13 ODPA patterns) |
-| CSV import | No (plugin) | Built-in |
+| CSV import | No (plugin) | Built-in (ROBOT Template Builder) |
 | Task management | No | Yes (Kanban) |
 | Import resolution UI | Partial | Yes |
 | ID range management | Yes (file-based) | Yes (UI + OWL Functional Syntax) |
 | SPARQL query panel | Plugin (SPARQL Tab) | Built-in |
 | Provenance tracking | No | Yes (PROV-O) |
-| DataRange restrictions (`xsd:integer[> 5]`) | Yes | No |
-| HasSelf | Yes | No |
-| ObjectOneOf (multiple individuals) | Yes | No |
+| DataRange restrictions (`xsd:integer[>= 0, <= 100]`) | Yes | Yes |
+| HasSelf (`likes Self`) | Yes | Yes |
+| ObjectOneOf (`{john, jane, bob}`) | Yes | Yes |
+| Widoco HTML documentation | No (plugin) | Yes (built-in) |
 | Custom datatypes | Yes | No |
 | Key axioms (owl:hasKey) | Yes | No |
 | Negative property assertions | Yes | No |
@@ -194,14 +224,14 @@ ontoboard/
 │   │   │   └── swrl.py              # SWRL rule management
 │   │   ├── models/          # 8 SQLAlchemy ORM models (7 tables)
 │   │   └── schemas/         # Pydantic request/response schemas
-│   ├── tests/               # 46 test files, 455+ test functions
+│   ├── tests/               # 48+ test files, 500+ test functions
 │   ├── seed/patterns/       # 13 bundled ODPA patterns (tracked in git)
-│   ├── Dockerfile           # Python 3.12 + Java 21 + ROBOT 1.9.6 + make
+│   ├── Dockerfile           # Python 3.12 + Java 21 + ROBOT 1.9.6 + Widoco 1.4.25 + make
 │   └── requirements.txt     # FastAPI, rdflib, owlready2, etc.
 ├── frontend/                # React SPA
 │   ├── src/
 │   │   ├── components/      # 25 feature directories
-│   │   ├── pages/           # 8 page routes
+│   │   ├── pages/           # 9 page routes (including /docs)
 │   │   ├── store/           # Zustand state management
 │   │   ├── collab/          # Yjs collaboration (useCollaboration, CollabStatus)
 │   │   └── hooks/           # Custom React hooks
@@ -244,11 +274,13 @@ See [docs/api-reference.md](docs/api-reference.md) for the full reference.
 cd backend && python -m pytest tests/ -v
 ```
 
-46 test files with 455+ test functions covering:
+48+ test files with 500+ test functions covering:
 
 | Category | Tests |
 |----------|:-----:|
 | Manchester parser | 19 |
+| OWL 2 features (HasSelf, ObjectOneOf, datatype facets) | 30 |
+| ROBOT template builder | 23 |
 | Property characteristics | 8 |
 | Property chains | 6 |
 | XSD ranges | 6 |

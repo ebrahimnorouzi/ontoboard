@@ -9,12 +9,12 @@ Developed by [Ebrahim Norouzi](https://ebrahimnorouzi.github.io/) at [ISE / FIZ 
 OntoBoard bridges the gap between traditional desktop ontology editors (like Protege) and modern collaborative web applications. It lets ontology engineers:
 
 - **Visually model** OWL ontologies on a drag-and-drop canvas powered by Cytoscape.js
-- **Edit complex class expressions** using a recursive descent Manchester Syntax parser with full round-tripping
+- **Edit complex class expressions** using a recursive descent Manchester Syntax parser with full OWL 2 coverage (including HasSelf, ObjectOneOf, datatype facet restrictions) and full round-tripping
 - **Collaborate in real-time** with cursor tracking, entity locking, and live sync via Yjs/Hocuspocus
 - **Run ROBOT commands** directly from the browser -- reason, report, explain, convert, diff, query, and template
 - **Debug ontologies** with ROBOT explain for justification axioms and suggested fixes
 - **Import ontology design patterns** from a built-in pattern library (13 ODPA patterns) or upload custom patterns
-- **Write SWRL rules** in a human-readable format with a dedicated editor
+- **Write SWRL rules** in native OWL/XML format with a dedicated editor (standard reasoners can execute rules directly)
 - **Query ontologies** with SPARQL and DL Query, and visualize results as graphs
 - **Manage the full ontology lifecycle** including versioning, import resolution, provenance tracking, and publishing
 
@@ -25,12 +25,13 @@ OntoBoard bridges the gap between traditional desktop ontology editors (like Pro
 - **ODK users** who want a graphical interface for the ROBOT command-line tools
 - **Knowledge graph developers** who need to import CSV data and build knowledge graphs from tabular sources
 
-## What has changed (Tier 1 + Tier 2 features)?
+## What has changed (Tier 1 + Tier 2 + recent features)?
 
-OntoBoard now includes two complete tiers of functionality beyond the original core:
+OntoBoard now includes two complete tiers of functionality beyond the original core, plus several major enhancements:
 
 **Tier 1** -- Core ontology expressiveness matching Protege:
 - Manchester Syntax expression parser with recursive descent (bidirectional: parse and render)
+- Full OWL 2 coverage: HasSelf (`likes Self`), ObjectOneOf (`{john, jane, bob}`), datatype facet restrictions (`xsd:integer[>= 0, <= 100]`)
 - Property characteristics UI (all 7 OWL characteristics)
 - Property chain editor with ordered list management
 - Data property XSD range dropdown (9 XSD types)
@@ -39,11 +40,21 @@ OntoBoard now includes two complete tiers of functionality beyond the original c
 **Tier 2** -- Advanced tooling:
 - ROBOT explain for ontology debugging with justification axioms
 - Full import resolution with download and catalog management
-- SWRL rule editor (view/create/delete in human-readable format)
+- SWRL rule editor with native OWL/XML format (rules executable by standard reasoners)
 - Embedded reasoner via owlready2 as alternative to ROBOT subprocess
 - Consistency check endpoint
 
-**Architecture change**: ROBOT 1.9.6 and Java 21 are installed directly in the backend and worker Docker images. There is no Docker-in-Docker or odkfull container dependency. All ROBOT commands run as local subprocesses.
+**Recent enhancements**:
+- CSV Import redesigned as ROBOT Template Builder (6-step wizard with merge + consistency check)
+- Widoco 1.4.25 HTML documentation generator in backend Docker image
+- ODK panel improvements: always-visible terminal logs, environment info, error explanations for 7+ patterns
+- ROBOT Report: violation cards with severity badges, Download Report (TSV) button
+- Ontology dashboard auto-population from OWL annotations (version IRI, creators, license, etc.)
+- Collaboration server rewritten: ephemeral awareness only, global error handlers
+- In-app /docs page with 7 sections visible in navbar
+- 500+ tests across 48+ test files (including test_owl2_features.py and test_robot_template.py)
+
+**Architecture change**: ROBOT 1.9.6, Java 21, and Widoco 1.4.25 are installed directly in the backend and worker Docker images. There is no Docker-in-Docker or odkfull container dependency. All ROBOT commands run as local subprocesses.
 
 ## Key Areas of the Application
 
@@ -57,22 +68,31 @@ The main workspace. An infinite Cytoscape.js canvas where users drag-and-drop to
 A Protege-style hierarchical tree showing classes, object properties, data properties, annotation properties, and individuals. Clicking an entity opens a detail panel with annotations, axioms, restrictions, characteristics, and property chains.
 
 ### Axiom Editor
-A Monaco-based Manchester Syntax editor with auto-completion for editing class expressions and axioms. The backend uses a recursive descent parser supporting `and`, `or`, `not`, `some`, `only`, `value`, `min`/`max`/`exactly`, and nested parentheses. Supports structured view for exploring existing axioms per entity.
+A Monaco-based Manchester Syntax editor with auto-completion for editing class expressions and axioms. The backend uses a recursive descent parser supporting `and`, `or`, `not`, `some`, `only`, `value`, `min`/`max`/`exactly`, `Self`, `{...}` enumerations, datatype facets (`xsd:integer[>= 0, <= 100]`), and nested parentheses. Supports structured view for exploring existing axioms per entity.
 
 ### Pattern Library
 Browse and apply Ontology Design Patterns (ODPA). 13 curated patterns stored in `backend/seed/patterns/` and auto-seeded to `data/patterns/odpa/` at startup. User patterns saved per-user. Patterns can be dragged onto the canvas with auto-coloring per namespace prefix.
 
 ### ODK Panel
-Run ROBOT commands and ODK workflows: scaffold new projects, convert formats (including OWL Functional Syntax), run reasoning, generate reports, diff versions, execute SPARQL queries, and explain entailments. Build error explanations cover 8 known error patterns. Multi-file ontology loading merges edit and release files. File switcher dropdown allows switching between edit, release, and import modules.
+Run ROBOT commands and ODK workflows: scaffold new projects, convert formats (including OWL Functional Syntax), run reasoning, generate reports, diff versions, execute SPARQL queries, and explain entailments. Terminal logs always visible (min-height: 200px, scrollable). Environment info shown: ROBOT version, Java version, Make version. Error explanations cover 7+ known error patterns (odk-info missing, robot not found, OutOfMemory, etc.). Multi-file ontology loading merges edit and release files. File switcher dropdown allows switching between edit, release, and import modules.
 
 ### Collaboration
-Real-time collaboration powered by Yjs and Hocuspocus. See other users' cursors and entity selections. CollabStatus dropdown shows who is editing which entity. Comments with @mentions, threaded replies, a Kanban task board, and invite links with configurable roles.
+Real-time collaboration powered by Yjs and Hocuspocus. Collab server rewritten for ephemeral awareness only (no state persistence). Global error handlers prevent crashes from corrupt WebSocket data. See other users' cursors and entity selections. CollabStatus dropdown shows who is editing which entity. Comments with @mentions, threaded replies, a Kanban task board, and invite links with configurable roles.
 
 ### SWRL Rule Editor
-View, create, and delete SWRL rules in human-readable format. Rules are stored as OWL annotations.
+View, create, and delete SWRL rules in human-readable format. Rules stored in native OWL/XML SWRL format (`swrl:Imp`, `swrl:ClassAtom`, `swrl:Variable` triples), directly executable by standard reasoners. Backward compatible with annotation-based `[SWRL]` rules.
 
-### ROBOT Explain
-Debug ontology inconsistencies with justification axioms and suggested fixes via ROBOT explain.
+### ROBOT Explain and Report
+Debug ontology inconsistencies with justification axioms and suggested fixes via ROBOT explain. ROBOT Report shows violation cards with severity badges (colored), rule name, subject IRI, property, full message, and Download Report (TSV) button.
+
+### CSV Import -- ROBOT Template Builder
+6-step wizard: Upload, Map Columns, IRI Strategy, Preview, Build, Files. Column mapping with ontology-aware dropdowns. ROBOT template directives (`ID`, `TYPE`, `A rdfs:label`, `I <property>`, `SPLIT=`). Row expansion for referenced individuals. Build pipeline with merge + consistency check. Multi-file support.
+
+### Widoco Documentation Generator
+Widoco 1.4.25 generates HTML documentation for ontologies directly from the backend Docker image.
+
+### Docs Page
+In-app /docs route with 7 sections. "Docs" link visible in navbar to all users.
 
 ## Quick Links
 

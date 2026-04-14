@@ -15,7 +15,7 @@ RUN curl -sSL -o /usr/local/bin/robot.jar \
 # Install Widoco (ontology HTML documentation generator)
 ENV WIDOCO_VERSION=1.4.25
 RUN curl -sSL -o /usr/local/bin/widoco.jar \
-    "https://github.com/dgarijo/Widoco/releases/download/v${WIDOCO_VERSION}/widoco-${WIDOCO_VERSION}-jar-with-dependencies.jar"
+    "https://github.com/dgarijo/Widoco/releases/download/v${WIDOCO_VERSION}/widoco-${WIDOCO_VERSION}-jar-with-dependencies_JDK-17.jar"
 
 WORKDIR /app
 

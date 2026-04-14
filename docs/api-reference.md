@@ -237,7 +237,7 @@ Requires admin role unless noted.
 |--------|------|:----:|-------------|
 | POST | `/api/dlquery/{board_id}/dl-query` | Yes | Execute DL query |
 | GET | `/api/dlquery/{board_id}/swrl` | Optional | List SWRL rules |
-| POST | `/api/dlquery/{board_id}/swrl` | Yes | Add SWRL rule (human-readable format) |
+| POST | `/api/dlquery/{board_id}/swrl` | Yes | Add SWRL rule (native OWL/XML format) |
 | DELETE | `/api/dlquery/{board_id}/swrl` | Yes | Delete SWRL rule |
 
 ### SWRL Rule Request

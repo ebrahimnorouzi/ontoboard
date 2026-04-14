@@ -148,6 +148,9 @@ The board is created with a starter OWL file and the ODK directory structure und
    - Existential: `Person SubClassOf worksFor some Organization`
    - Complex: `Animal and hasPart some (Organ or Tissue) and not Plant`
    - Cardinality: `Person SubClassOf hasChild min 0 Person`
+   - HasSelf: `likes Self`
+   - ObjectOneOf: `{john, jane, bob}`
+   - Datatype facets: `hasAge some xsd:integer[>= 0, <= 150]`
 4. The axiom editor provides auto-completion for entity names
 
 ### Step 6: Configure Property Characteristics
@@ -228,7 +231,7 @@ pip install -r requirements-test.txt
 python -m pytest tests/ -v
 ```
 
-The test suite contains 455+ tests across 46 test files covering all API endpoints and services including Manchester parser, property characteristics, SWRL rules, ROBOT explain, import resolution, and embedded reasoner.
+The test suite contains 500+ tests across 48+ test files covering all API endpoints and services including Manchester parser, OWL 2 features (HasSelf, ObjectOneOf, datatype facets), ROBOT template builder, property characteristics, SWRL rules, ROBOT explain, import resolution, and embedded reasoner.
 
 ### Running Frontend Locally (without Docker)
 

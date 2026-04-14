@@ -192,9 +192,8 @@ export default function CsvImportWizard({ boardId }: Props) {
         <div className={styles.section}>
           <h4 className={styles.sectionTitle}>Upload CSV / TSV File</h4>
           <p className={styles.hint}>
-            Upload a CSV or TSV file with your data. The wizard will help you
-            map columns to ROBOT template directives and generate a standards-compliant
-            ROBOT template for building OWL knowledge graphs.
+            Upload a CSV or TSV file to map columns to ROBOT template directives.
+            Or upload a ready-made ROBOT template to build a KG directly.
           </p>
           <input
             ref={fileRef}
@@ -203,13 +202,61 @@ export default function CsvImportWizard({ boardId }: Props) {
             onChange={handleFile}
             hidden
           />
-          <button
-            className={styles.uploadBtn}
-            onClick={handleUpload}
-            disabled={uploading}
-          >
-            {uploading ? "Uploading..." : "Choose CSV / TSV file"}
-          </button>
+
+          <div className={styles.uploadOptions}>
+            {/* Option 1: Raw data — full wizard */}
+            <div className={styles.uploadOption}>
+              <button
+                className={styles.uploadBtn}
+                onClick={handleUpload}
+                disabled={uploading}
+              >
+                {uploading ? "Uploading..." : "Upload Data CSV/TSV"}
+              </button>
+              <span className={styles.uploadOptionHint}>Raw data — wizard guides you through mapping</span>
+            </div>
+
+            {/* Option 2: Ready ROBOT template — skip to build */}
+            <div className={styles.uploadOption}>
+              <input
+                type="file"
+                accept=".csv,.tsv,.txt"
+                style={{ display: "none" }}
+                id="template-upload"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  clearError();
+                  // Upload as template directly
+                  const formData = new FormData();
+                  formData.append("file", file);
+                  try {
+                    const { api: apiFn } = await import("../../api");
+                    await apiFn(`/api/csv/${boardId}/upload`, {
+                      method: "POST",
+                      body: formData,
+                    });
+                    // Set as template and skip to build
+                    setTemplateName(file.name.replace(/\.[^.]+$/, ""));
+                    setTemplateResult({
+                      template_path: `kg/uploads/${file.name}`,
+                      preview_rows: [],
+                    } as any);
+                    setStep(4);
+                  } catch (err: any) {
+                    clearError();
+                  }
+                }}
+              />
+              <button
+                className={`${styles.uploadBtn} ${styles.uploadBtnAlt}`}
+                onClick={() => document.getElementById("template-upload")?.click()}
+              >
+                Upload Ready Template
+              </button>
+              <span className={styles.uploadOptionHint}>Already has ROBOT directives — skip to build</span>
+            </div>
+          </div>
 
           {/* Quick-access to existing uploads */}
           {kgFiles.uploads.length > 0 && (

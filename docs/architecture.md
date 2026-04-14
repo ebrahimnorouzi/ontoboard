@@ -78,15 +78,15 @@ Key frontend dependencies:
 | Property | Value |
 |----------|-------|
 | Image | `ontoboard-backend:latest` |
-| Base | `python:3.12-slim` + Java 21 JRE + ROBOT 1.9.6 + make |
+| Base | `python:3.12-slim` + Java 21 JRE + ROBOT 1.9.6 + Widoco 1.4.25 + make |
 | Port | 8000 |
 | Stack | FastAPI 0.115, rdflib 7.1, owlready2 0.47, SQLAlchemy 2, Dulwich |
 
-The backend is a FastAPI application providing 100+ REST API endpoints across 37 routers. It contains 41 service modules with all business logic. ROBOT (robot.jar) with Java runs OWL processing as a local subprocess. rdflib handles lightweight RDF/OWL parsing. owlready2 provides an embedded reasoner as an alternative to ROBOT. SQLAlchemy manages the SQLite database for user accounts, boards, tasks, comments, and notifications. Dulwich provides Git operations for version tracking.
+The backend is a FastAPI application providing 100+ REST API endpoints across 37 routers. It contains 41 service modules with all business logic. ROBOT (robot.jar) with Java runs OWL processing as a local subprocess. Widoco 1.4.25 generates HTML documentation. rdflib handles lightweight RDF/OWL parsing. owlready2 provides an embedded reasoner as an alternative to ROBOT. SQLAlchemy manages the SQLite database for user accounts, boards, tasks, comments, and notifications. Dulwich provides Git operations for version tracking.
 
 Key backend services:
-- `manchester_parser.py` -- recursive descent parser for Manchester Syntax class expressions (bidirectional: parse and render)
-- `swrl.py` -- SWRL rule management (stored as OWL annotations)
+- `manchester_parser.py` -- recursive descent parser for Manchester Syntax class expressions with full OWL 2 coverage (HasSelf, ObjectOneOf, datatype facets; bidirectional: parse and render)
+- `swrl.py` -- SWRL rule management (native OWL/XML format with `swrl:Imp`, `swrl:ClassAtom`, `swrl:Variable` triples; backward compatible with annotation-based rules)
 - `reasoning.py` -- reasoner integration via ROBOT subprocess and owlready2
 - `robot.py` -- ROBOT command execution (7 of 24 commands: convert, report, reason, template, diff, query, explain)
 - `imports.py` -- import resolution with download and catalog management
@@ -111,11 +111,12 @@ Key backend dependencies:
 | Port | 1234 |
 | Stack | Hocuspocus Server 3.4, Yjs 13.6, jsonwebtoken |
 
-The collaboration server runs Hocuspocus, a WebSocket server for Yjs document synchronization. Each board gets its own Yjs document, identified by the board ID. The server:
+The collaboration server runs Hocuspocus, a WebSocket server for Yjs document synchronization. The server has been rewritten for ephemeral awareness only (no state persistence), with global error handlers to prevent crashes from corrupt WebSocket data. Each board gets its own Yjs document, identified by the board ID. The server:
 - Authenticates users via JWT tokens (same SECRET_KEY as the backend)
-- Persists Yjs document state to disk as binary snapshots (`collab-state.bin`)
+- Provides ephemeral awareness only (cursor sharing, entity locking) -- no persistent state
 - Allows anonymous connections as read-only viewers
 - Broadcasts awareness updates (cursor positions, entity selections, user actions)
+- Users must hard-refresh the browser to clear stale Yjs state
 
 ### 4. Worker (Redis Queue Consumer + ROBOT + Java)
 
@@ -177,10 +178,12 @@ ontoboard/
 |   |       +-- robot.py             # ROBOT command execution
 |   |       +-- imports.py           # Import resolution and catalog management
 |   |       +-- ontology.py          # OWL file parsing via rdflib
-|   +-- tests/                  # pytest test suite (46 files, 455+ functions)
+|   +-- tests/                  # pytest test suite (48+ files, 500+ functions)
 |   |   +-- conftest.py         # Shared fixtures (test client, auth helpers)
 |   |   +-- test_tier1_features.py   # Manchester parser, characteristics, chains, XSD, annotations
 |   |   +-- test_tier2_features.py   # ROBOT explain, imports, SWRL, embedded reasoner
+|   |   +-- test_owl2_features.py    # OWL 2: HasSelf, ObjectOneOf, datatype facets (30 tests)
+|   |   +-- test_robot_template.py   # ROBOT Template Builder (23 tests)
 |   |   +-- test_*.py           # 44 additional test files
 |   +-- seed/
 |   |   +-- patterns/           # 13 bundled ODPA patterns (tracked in git)
@@ -197,7 +200,7 @@ ontoboard/
 |   |       +-- situation/
 |   |       +-- spatial-object/
 |   |       +-- time-interval/
-|   +-- Dockerfile              # Python 3.12 + Java 21 + ROBOT 1.9.6 + make
+|   +-- Dockerfile              # Python 3.12 + Java 21 + ROBOT 1.9.6 + Widoco 1.4.25 + make
 |   +-- requirements.txt        # FastAPI, rdflib, owlready2, etc.
 |   +-- requirements-test.txt   # Test dependencies (pytest)
 |   +-- pytest.ini              # pytest configuration
@@ -233,7 +236,7 @@ ontoboard/
 |   |   |   +-- useCollaboration.ts  # Yjs connection and sync
 |   |   |   +-- useYjsSync.ts       # Canvas state sync via Yjs
 |   |   |   +-- CollabStatus.tsx     # Connection + entity lock visibility
-|   |   +-- pages/              # 8 page routes
+|   |   +-- pages/              # 9 page routes
 |   |       +-- HomePage.tsx
 |   |       +-- LoginPage.tsx
 |   |       +-- SignupPage.tsx
@@ -242,6 +245,7 @@ ontoboard/
 |   |       +-- AdminPage.tsx
 |   |       +-- InvitePage.tsx
 |   |       +-- FeedbackPage.tsx
+|   |       +-- DocsPage.tsx
 |   +-- Dockerfile              # Node 20 Alpine + Vite dev server
 |   +-- package.json            # npm dependencies
 +-- collab/                     # Collaboration server
@@ -252,7 +256,7 @@ ontoboard/
 |   +-- worker/
 |   |   +-- main.py             # Redis queue consumer + ROBOT subprocess
 |   +-- requirements.txt
-|   +-- Dockerfile              # Python 3.12 + Java 21 + ROBOT 1.9.6 + make
+|   +-- Dockerfile              # Python 3.12 + Java 21 + ROBOT 1.9.6 + Widoco 1.4.25 + make
 +-- data/                       # Persistent data (Docker volume, gitignored)
 |   +-- ontoboard.db            # SQLite database
 |   +-- patterns/
@@ -609,7 +613,10 @@ data/
 |               +-- pattern.owl
 +-- {board-id}/                        # Per-board data directory
     +-- canvas.json                    # Canvas state (classes, properties, positions, etc.)
-    +-- collab-state.bin               # Yjs document persistence
+    +-- kg/                            # CSV import / ROBOT Template Builder files
+    |   +-- uploads/                   # Uploaded CSV files
+    |   +-- templates/                 # Generated ROBOT template TSV files
+    |   +-- output/                    # Merged output OWL files
     +-- src/
         +-- ontology/
             +-- {ontology-name}.owl    # Primary OWL file

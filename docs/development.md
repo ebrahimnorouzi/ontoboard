@@ -65,7 +65,7 @@ npm run dev
 
 ### Backend Tests
 
-The backend test suite contains 455+ tests across 46 test files covering all API endpoints and services.
+The backend test suite contains 500+ tests across 48+ test files covering all API endpoints and services.
 
 ```bash
 cd backend
@@ -80,6 +80,8 @@ python -m pytest tests/test_reasoning.py -v
 python -m pytest tests/test_axiom.py -v
 python -m pytest tests/test_tier1_features.py -v
 python -m pytest tests/test_tier2_features.py -v
+python -m pytest tests/test_owl2_features.py -v
+python -m pytest tests/test_robot_template.py -v
 ```
 
 Run with coverage:
@@ -146,7 +148,9 @@ backend/tests/
 +-- test_tier1_features.py       # Tier 1: Manchester parser (19), characteristics (8),
 |                                #   chains (6), XSD ranges (6), annotation CRUD (7)
 +-- test_tier2_features.py       # Tier 2: ROBOT explain (6), imports (8), SWRL (6),
-                                 #   embedded reasoner (6), integration (4)
+|                                #   embedded reasoner (6), integration (4)
++-- test_owl2_features.py        # OWL 2: HasSelf, ObjectOneOf, datatype facets (30 tests)
++-- test_robot_template.py       # ROBOT Template Builder (23 tests)
 ```
 
 ### Test Categories (Tier 1 + Tier 2)
@@ -154,13 +158,15 @@ backend/tests/
 | Category | File | Test Count | Description |
 |----------|------|:----------:|-------------|
 | Manchester parser | `test_tier1_features.py` | 19 | Parse, render, round-trip, nested expressions, edge cases |
+| OWL 2 features | `test_owl2_features.py` | 30 | HasSelf, ObjectOneOf, datatype facet restrictions |
+| ROBOT Template Builder | `test_robot_template.py` | 23 | Template generation, column mapping, build pipeline |
 | Property characteristics | `test_tier1_features.py` | 8 | All 7 characteristics, toggle, persist, read back |
 | Property chains | `test_tier1_features.py` | 6 | Create, read, delete chains, multi-step chains |
 | XSD ranges | `test_tier1_features.py` | 6 | Set range for each XSD type, read back, change |
 | Annotation CRUD | `test_tier1_features.py` | 7 | Create, read, update, delete annotation properties |
 | ROBOT explain | `test_tier2_features.py` | 6 | Explain entailments, justification axioms, error handling |
 | Import resolution | `test_tier2_features.py` | 8 | Resolve status, download, catalog, add/remove |
-| SWRL rules | `test_tier2_features.py` | 6 | Create, list, delete rules, format parsing |
+| SWRL rules | `test_tier2_features.py` | 6 | Create, list, delete rules, native OWL/XML format |
 | Embedded reasoner | `test_tier2_features.py` | 6 | owlready2 consistency, inferences, error handling |
 | Integration | `test_tier2_features.py` | 4 | Cross-feature integration scenarios |
 | Existing tests | `test_*.py` (40 files) | 380+ | API endpoints, canvas, reasoning, SPARQL, etc. |
@@ -229,8 +235,8 @@ def run_reasoner(board_id: str, reasoner: str = "ELK") -> dict:
 
 | Service | File | Description |
 |---------|------|-------------|
-| Manchester Parser | `manchester_parser.py` | Recursive descent parser for Manchester Syntax (tokenizer, parser, renderer) |
-| SWRL | `swrl.py` | SWRL rule CRUD (stored as OWL annotations) |
+| Manchester Parser | `manchester_parser.py` | Recursive descent parser for Manchester Syntax with full OWL 2 coverage (tokenizer, parser, renderer) |
+| SWRL | `swrl.py` | SWRL rule CRUD (native OWL/XML format with backward compatibility) |
 | Reasoning | `reasoning.py` | ROBOT subprocess + owlready2 embedded reasoner |
 | ROBOT | `robot.py` | ROBOT command execution (7 commands) |
 | Imports | `imports.py` | Import resolution, download, catalog management |
@@ -404,6 +410,7 @@ Pages are the top-level components routed by React Router:
 | `AdminPage` | `/admin` | User and system administration |
 | `InvitePage` | `/invite/:token` | Invite link acceptance |
 | `FeedbackPage` | `/feedback` | User feedback form |
+| `DocsPage` | `/docs` | In-app documentation (7 sections, visible to all users) |
 
 #### CSS Modules
 
@@ -546,6 +553,7 @@ Both the backend and worker Dockerfiles install:
 - Python 3.12 (slim base)
 - Java 21 JRE (OpenJDK)
 - ROBOT 1.9.6 (robot.jar + wrapper script)
+- Widoco 1.4.25 (HTML documentation generator, backend only)
 - make (for ODK Makefiles)
 
 There is no Docker-in-Docker. There is no dependency on the odkfull container. All ROBOT commands run as local subprocesses via `subprocess.run(["robot", ...])`.

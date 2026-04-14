@@ -94,15 +94,23 @@ ClassExpression  ::= Intersection ( 'or' Intersection )*
 Intersection     ::= Primary ( 'and' Primary )*
 Primary          ::= 'not' Primary
                    | '(' ClassExpression ')'
+                   | '{' IndividualName ( ',' IndividualName )* '}'
                    | Restriction
                    | ClassName
 
 Restriction      ::= PropertyName 'some' ClassExpression
                    | PropertyName 'only' ClassExpression
                    | PropertyName 'value' IndividualName
+                   | PropertyName 'Self'
                    | PropertyName 'min' NonNegativeInteger ClassExpression?
                    | PropertyName 'max' NonNegativeInteger ClassExpression?
                    | PropertyName 'exactly' NonNegativeInteger ClassExpression?
+
+DatatypeRestriction ::= DatatypeName '[' FacetRestriction ( ',' FacetRestriction )* ']'
+FacetRestriction    ::= FacetName Value
+FacetName           ::= '>=' | '<=' | '>' | '<' | 'minLength' | 'maxLength'
+                      | 'minInclusive' | 'maxInclusive' | 'minExclusive' | 'maxExclusive'
+                      | 'pattern' | 'length'
 
 ClassName        ::= IRI | PrefixedName | SimpleLabel
 PropertyName     ::= IRI | PrefixedName | SimpleLabel
@@ -119,9 +127,12 @@ IndividualName   ::= IRI | PrefixedName | SimpleLabel
 | Existential | `prop some A` | `owl:someValuesFrom` |
 | Universal | `prop only A` | `owl:allValuesFrom` |
 | Has Value | `prop value ind` | `owl:hasValue` |
+| Has Self | `prop Self` | `owl:hasSelf` |
+| Object One Of | `{ind1, ind2, ind3}` | `owl:oneOf` |
 | Min Cardinality | `prop min 1 A` | `owl:minCardinality` / `owl:minQualifiedCardinality` |
 | Max Cardinality | `prop max 5 A` | `owl:maxCardinality` / `owl:maxQualifiedCardinality` |
 | Exact Cardinality | `prop exactly 2 A` | `owl:cardinality` / `owl:qualifiedCardinality` |
+| Datatype Facets | `xsd:integer[>= 0, <= 100]` | `owl:DatatypeRestriction` |
 | Nested | `A and (B or C)` | Nested blank nodes |
 
 ### Examples
@@ -144,6 +155,17 @@ Person and worksFor some Organization and hasAge some xsd:integer
 
 # Deeply nested
 (A or B) and (C or (D and not E))
+
+# HasSelf (owl:hasSelf)
+likes Self
+
+# ObjectOneOf (owl:oneOf with multiple individuals)
+{john, jane, bob}
+
+# Datatype facet restrictions (owl:DatatypeRestriction)
+xsd:integer[>= 0, <= 100]
+xsd:string[minLength 1]
+hasAge some xsd:integer[>= 0, <= 150]
 ```
 
 ### Bidirectional Round-Tripping
@@ -157,11 +179,12 @@ This means you can parse an expression, store it as RDF, and render it back to g
 
 ### Full OWL 2 Coverage
 
-The Manchester parser supports all standard OWL 2 class expression constructs:
-- `HasSelf`: `likes Self`
-- `ObjectOneOf`: `{john, jane, bob}`
-- Datatype facet restrictions: `xsd:integer[>= 0, <= 100]`, `xsd:string[minLength 1]`
-- All Boolean connectives, restrictions, and cardinality constraints
+The Manchester parser supports **all** standard OWL 2 class expression constructs, with no remaining gaps for common use cases:
+- **HasSelf**: `likes Self` -- `owl:hasSelf` restriction
+- **ObjectOneOf**: `{john, jane, bob}` -- `owl:oneOf` enumeration with multiple individuals
+- **Datatype facet restrictions**: `xsd:integer[>= 0, <= 100]`, `xsd:string[minLength 1]` -- `owl:DatatypeRestriction` with facets (minInclusive, maxInclusive, minLength, maxLength, pattern, length, etc.)
+- All Boolean connectives (`and`, `or`, `not`), restrictions (`some`, `only`, `value`, `Self`), and cardinality constraints (`min`, `max`, `exactly`)
+- These constructs were previously listed as limitations and are now fully implemented and tested (30 tests in `test_owl2_features.py`)
 
 ---
 
@@ -404,9 +427,14 @@ POST   /api/dlquery/{board_id}/swrl      # Add a new SWRL rule
 DELETE /api/dlquery/{board_id}/swrl      # Delete a SWRL rule
 ```
 
-### Storage
+### Storage (Native OWL/XML Format)
 
-SWRL rules are stored as annotation properties in the OWL file rather than in native OWL/XML SWRL format. This simplifies parsing and manipulation but means the rules are not directly executable by standard OWL reasoners. The simplified atom parsing handles the common cases.
+SWRL rules are now stored in **native OWL/XML SWRL format** using proper `swrl:Imp`, `swrl:ClassAtom`, `swrl:Variable`, and related RDF triples. This means:
+- Rules are directly executable by standard OWL reasoners that support SWRL (e.g., HermiT, Pellet)
+- Backward compatibility is maintained: annotation-based `[SWRL]` rules from older OntoBoard versions are still readable
+- Supported atom types: `ClassAtom`, `IndividualPropertyAtom`, `DatavaluedPropertyAtom`, `BuiltinAtom`
+
+This was previously a limitation (rules stored as annotations only) and has been fully resolved.
 
 ---
 
@@ -504,7 +532,7 @@ The Axiom Editor provides two views for working with OWL axioms:
 
 A Monaco-based code editor with syntax highlighting and auto-completion for Manchester OWL Syntax. Features:
 
-- Syntax highlighting for Manchester Syntax keywords (`SubClassOf`, `EquivalentTo`, `DisjointWith`, `some`, `only`, `and`, `or`, `not`, `min`, `max`, `exactly`, `value`, `Self`)
+- Syntax highlighting for Manchester Syntax keywords (`SubClassOf`, `EquivalentTo`, `DisjointWith`, `some`, `only`, `and`, `or`, `not`, `min`, `max`, `exactly`, `value`, `Self`, `{`, `}`)
 - Auto-completion for entity names (classes, properties, individuals) in the current ontology
 - Real-time validation of Manchester Syntax expressions via the recursive descent parser
 - Edit axioms for any selected entity
@@ -572,7 +600,7 @@ The reasoner checks for logical consistency. If the ontology is inconsistent:
 
 ## ODK Integration
 
-OntoBoard integrates with the Ontology Development Kit for ontology lifecycle management. ROBOT 1.9.6 and Java 21 are installed directly in the Docker images -- there is no Docker-in-Docker dependency.
+OntoBoard integrates with the Ontology Development Kit for ontology lifecycle management. ROBOT 1.9.6, Java 21, and Widoco 1.4.25 are installed directly in the Docker images -- there is no Docker-in-Docker dependency.
 
 ### ODK Scaffold
 
@@ -597,17 +625,23 @@ OntoBoard implements 7 of 24 ROBOT commands:
 
 All commands run as local subprocesses: `subprocess.run(["robot", "command", ...])`.
 
+### ODK Panel Improvements
+
+The ODK panel provides enhanced developer experience:
+- **Terminal logs always visible**: min-height 200px, scrollable output area
+- **Environment info**: ROBOT version, Java version, Make version displayed in logs
+- **Mode indicator**: "Mode: local subprocess (no Docker-in-Docker)" shown in logs
+
 ### Build Error Explanations
 
-OntoBoard recognizes 8 common error patterns from ROBOT output and provides human-readable explanations:
+OntoBoard recognizes 7+ common error patterns from ROBOT/ODK output and provides human-readable explanations:
+- odk-info missing
+- robot not found
+- OutOfMemory
 - Unsatisfiable classes
 - Inconsistent ontology
 - Missing imports
 - Invalid syntax
-- Reasoner timeout
-- Out of memory
-- File not found
-- Unknown annotation property
 
 ### OWL Functional Syntax Support
 
@@ -642,7 +676,7 @@ The ODK import system manages ontology imports following ODK conventions:
 
 ## Collaboration
 
-OntoBoard provides real-time collaboration features powered by Yjs and Hocuspocus.
+OntoBoard provides real-time collaboration features powered by Yjs and Hocuspocus. The collab server has been rewritten for ephemeral awareness only (no state persistence), with global error handlers to prevent crashes from corrupt WebSocket data.
 
 ### Real-time Sync
 
@@ -650,6 +684,7 @@ OntoBoard provides real-time collaboration features powered by Yjs and Hocuspocu
 - When one user saves, a Yjs update is broadcast to all connected clients
 - Other clients reload the canvas from the backend within ~1 second
 - Connection status is shown in the toolbar (connected, disconnected, reconnecting)
+- Users must hard-refresh the browser to clear stale Yjs state
 
 ### Cursor Sharing
 
@@ -735,31 +770,55 @@ The SPARQL panel auto-loads all prefixes from the ontology, so users can write q
 
 ---
 
-## CSV Import
+## CSV Import -- ROBOT Template Builder
 
-Import tabular data from CSV files and convert them to OWL ontology axioms.
+A complete redesign of the CSV import system, built around ROBOT template generation for standards-compliant ontology construction from tabular data.
 
-### Import Wizard
+### 6-Step Wizard
 
-1. **Upload**: Upload a CSV file to the board
-2. **Analyze**: OntoBoard analyzes column headers and auto-detects types
-3. **Map columns**: Assign each column a role:
-   - IRI column (subject)
-   - Label column (`rdfs:label`)
-   - Type column (`rdf:type`)
-   - Property columns (object or data properties)
-4. **IRI strategy**: Choose how IRIs are generated:
+1. **Upload**: Upload one or more CSV files to the board (stored in `kg/uploads/`)
+2. **Map Columns**: Assign each column a role using ontology-aware dropdowns:
+   - Classes, object properties, data properties, and annotation properties from the loaded ontology
+   - ROBOT template directives: `ID`, `TYPE`, `A rdfs:label`, `I <property>`, `SPLIT=`
+3. **IRI Strategy**: Choose how IRIs are generated:
    - Sequential numbering (e.g., `ex:Entity_001`)
    - UUID-based
    - Hash-based (from label)
    - Timestamp-based
    - Custom pattern
-5. **Preview**: View the generated triples before committing
-6. **Build**: Generate the OWL axioms and add them to the ontology
+4. **Preview**: View the generated ROBOT template TSV before building
+5. **Build**: Execute the ROBOT pipeline:
+   - `robot merge --include-annotations true -i ontology.owl template --merge-before --template template.tsv -o output.owl`
+   - Consistency check: `robot explain --reasoner hermit -i output.owl -M inconsistency`
+6. **Files**: Browse generated files in `kg/templates/` and `kg/output/`
 
-### ROBOT Template Compatibility
+### Row Expansion
 
-The CSV import generates ROBOT template-compatible CSV files that can be used with `robot template` for batch ontology construction.
+The `ref_type` column mapping creates referenced individuals automatically. For example, if a CSV row references an organization by name, a new individual of the specified type is created with the appropriate label.
+
+### Multi-File Support
+
+Upload multiple CSV files, generate separate ROBOT templates for each, and merge all resulting knowledge graphs into a single output ontology.
+
+### File Storage
+
+| Directory | Contents |
+|-----------|----------|
+| `kg/uploads/` | Uploaded CSV files |
+| `kg/templates/` | Generated ROBOT template TSV files |
+| `kg/output/` | Merged output OWL files |
+
+### ROBOT Template Directives
+
+The generated templates use standard ROBOT template directives:
+
+| Directive | Description |
+|-----------|-------------|
+| `ID` | Entity identifier (IRI or CURIE) |
+| `TYPE` | Entity type (class, individual) |
+| `A rdfs:label` | Annotation with rdfs:label |
+| `I <property>` | Object property assertion (IRI value) |
+| `SPLIT=;` | Split cell value by delimiter for multiple values |
 
 ---
 
@@ -942,6 +1001,54 @@ Users can configure:
 
 ---
 
+## Ontology Dashboard Auto-Population
+
+When an ontology is loaded, the dashboard panel auto-populates metadata fields from OWL annotations:
+
+| Field | OWL Source |
+|-------|-----------|
+| Title | `dcterms:title`, `rdfs:label` on ontology IRI |
+| Description | `dcterms:description`, `rdfs:comment` on ontology IRI |
+| Version IRI | `owl:versionIRI` |
+| Creators | `dcterms:creator` annotations |
+| Contributors | `dcterms:contributor` annotations |
+| License | `dcterms:license`, `dcterms:rights` annotations |
+
+Prefix auto-coloring is derived from ontology namespace prefixes.
+
+---
+
+## Widoco Documentation Generator
+
+OntoBoard integrates Widoco 1.4.25 for generating HTML documentation for ontologies.
+
+### Features
+
+- Generates comprehensive HTML documentation (not just markdown)
+- Widoco version shown in build logs
+- Documentation accessible via the Documentation panel
+- Requires Docker image rebuild (`./run.sh build`) if Widoco is updated
+
+### Usage
+
+1. Open the Documentation panel
+2. Click "Build Documentation"
+3. Widoco generates HTML files in the board's documentation directory
+4. Browse the generated documentation in the browser
+
+---
+
+## Docs Page
+
+OntoBoard includes an in-app documentation page:
+
+- Accessible at the `/docs` route
+- "Docs" link visible in the navbar to all users (authenticated and unauthenticated)
+- Contains 7 sections covering all major features
+- Provides quick reference without leaving the application
+
+---
+
 ## Prefix Management
 
 ### Prefix Table
@@ -1018,6 +1125,10 @@ Generate a detailed quality report covering:
 - Deprecated entity usage
 - IRI pattern violations
 - Report output in TSV format
+
+**Report UI improvements:**
+- Violation cards show: severity badge (colored by level), rule name, subject IRI, property, and full message
+- Download Report (TSV) button for offline analysis
 
 ### OOPS! Integration
 

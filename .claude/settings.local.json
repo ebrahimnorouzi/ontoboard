@@ -67,7 +67,10 @@
       "Bash(docker exec:*)",
       "Read(//c/Users/eno/Documents/NFDI-MatWerk/gitlab/matwerk/server/manual__2026-03-30/**)",
       "Bash(python -m pytest tests/test_robot_template.py -v --tb=short -q)",
-      "Bash(python -m pytest tests/test_robot_template.py::test_get_ontology_entities --tb=short)"
+      "Bash(python -m pytest tests/test_robot_template.py::test_get_ontology_entities --tb=short)",
+      "Bash(wc -l \"c:/Users/eno/Documents/Git_repo/ebrahimnorouzi_github/ISE-FIZKarlsruhe/ontoboard/README.md\" \"c:/Users/eno/Documents/Git_repo/ebrahimnorouzi_github/ISE-FIZKarlsruhe/ontoboard/docs/\"*.md)",
+      "Bash(curl -sI -L \"https://github.com/dgarijo/Widoco/releases/download/v1.4.25/widoco-1.4.25-jar-with-dependencies.jar\")",
+      "Bash(curl -sL \"https://api.github.com/repos/dgarijo/Widoco/releases/tags/v1.4.25\")"
     ]
   }
 }
