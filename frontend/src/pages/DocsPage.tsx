@@ -242,24 +242,33 @@ function LimitationsSection() {
   return (
     <article className={styles.article}>
       <h1>Known Limitations</h1>
+
+      <h2>Resolved in Current Version</h2>
+      <ul>
+        <li><s>Manchester parser: no HasSelf, no ObjectOneOf, no datatype restrictions</s> — <strong>All implemented</strong>: <code>likes Self</code>, <code>{"{john, jane}"}</code>, <code>xsd:integer[&gt;= 0, &lt;= 100]</code></li>
+        <li><s>SWRL: stored as annotations</s> — <strong>Native OWL/XML format</strong>: <code>swrl:Imp</code> + <code>swrl:ClassAtom</code> + <code>swrl:Variable</code></li>
+        <li><s>DataRange restrictions</s> — <strong>Implemented</strong> with facet support</li>
+      </ul>
+
+      <h2>Remaining Limitations</h2>
       <ol>
-        <li><strong>Collaboration model</strong>: polling-based (not CRDT), last-write-wins</li>
-        <li><strong>Manchester parser</strong>: no datatype restrictions (<code>xsd:integer[&gt; 5]</code>), no HasSelf</li>
-        <li><strong>SWRL</strong>: stored as annotations, simplified atom parsing</li>
-        <li><strong>Scale</strong>: tested up to ~500 classes, performance degrades with 1000+</li>
-        <li><strong>ROBOT commands</strong>: 7 of 24 implemented</li>
-        <li><strong>No plugin system</strong></li>
-        <li><strong>No offline mode</strong></li>
-        <li><strong>No SHACL validation</strong></li>
-        <li><strong>No OBO format editing</strong> (read-only via rdflib)</li>
+        <li><strong>Collaboration model</strong>: polling-based with instant save broadcast (not CRDT). Last-write-wins for concurrent edits. Entity locking is advisory only. Tested up to ~10-15 users.</li>
+        <li><strong>Scale</strong>: canvas performance degrades beyond ~500 classes (Cytoscape.js limitation). Use tree browser for larger ontologies.</li>
+        <li><strong>ROBOT commands</strong>: 7 of 24 fully implemented (convert, report, reason, template, diff, query, explain)</li>
+        <li><strong>No plugin system</strong>: cannot extend without modifying source code</li>
+        <li><strong>No offline mode</strong>: requires network connectivity</li>
+        <li><strong>No SHACL validation</strong>: only OWL reasoning</li>
+        <li><strong>No OBO format editing</strong>: read-only via rdflib</li>
+        <li><strong>owlready2 Windows issues</strong>: file:/// URI handling on Windows paths</li>
       </ol>
+
       <h2>Roadmap</h2>
       <ul>
-        <li>Full CRDT-based real-time sync</li>
-        <li>DataRange restrictions support</li>
-        <li>More ROBOT commands (merge, extract, annotate, rename)</li>
-        <li>SHACL validation</li>
-        <li>Plugin system for custom panels</li>
+        <li>Operation-based real-time sync (CRDT for ontology operations)</li>
+        <li>SHACL validation via pyshacl</li>
+        <li>More ROBOT commands (merge, extract, annotate, rename, repair)</li>
+        <li>Canvas scale optimization (WebGL rendering or viewport virtualization)</li>
+        <li>OBO format writing via ROBOT convert</li>
       </ul>
     </article>
   );
