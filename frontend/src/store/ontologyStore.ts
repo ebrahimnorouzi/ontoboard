@@ -155,6 +155,47 @@ interface OntologyState {
   setProvenanceTarget: (target: "board" | "ontology" | "both") => void;
 }
 
+// Distinct colors for auto-assigning to prefixes (namespace-based)
+const PREFIX_AUTO_COLORS = [
+  "#6366f1", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6",
+  "#0ea5e9", "#ec4899", "#14b8a6", "#f97316", "#84cc16",
+  "#a855f7", "#06b6d4", "#d946ef", "#22c55e", "#e11d48",
+  "#0891b2", "#7c3aed", "#059669", "#dc2626", "#2563eb",
+];
+
+function _autoAssignPrefixColors(classes: OntClass[]): PrefixColor[] {
+  // Extract unique namespaces from class IRIs
+  const namespaces = new Map<string, string>(); // namespace -> short prefix
+  for (const c of classes) {
+    const iri = c.iri;
+    let ns: string;
+    if (iri.includes("#")) {
+      ns = iri.substring(0, iri.lastIndexOf("#") + 1);
+    } else {
+      ns = iri.substring(0, iri.lastIndexOf("/") + 1);
+    }
+    if (ns && !namespaces.has(ns)) {
+      // Derive a short prefix name from the namespace
+      const parts = ns.replace(/#$/, "").split("/").filter(Boolean);
+      const shortName = parts[parts.length - 1] || parts[parts.length - 2] || "ns";
+      namespaces.set(ns, shortName);
+    }
+  }
+
+  // Assign colors
+  const colors: PrefixColor[] = [];
+  let idx = 0;
+  for (const [ns, prefix] of namespaces) {
+    colors.push({
+      prefix,
+      namespace: ns,
+      color: PREFIX_AUTO_COLORS[idx % PREFIX_AUTO_COLORS.length],
+    });
+    idx++;
+  }
+  return colors;
+}
+
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
 
 /** Callback invoked after each successful save (set by BoardPage to broadcast via Yjs). */
@@ -227,6 +268,14 @@ export const useOntologyStore = create<OntologyState>((set, get) => ({
       const data = await apiJson<{ classes: OntClass[]; properties: OntProperty[]; individuals: OntIndividual[]; literals?: OntLiteral[]; sticky_notes?: StickyNote[]; frames?: CanvasFrame[] }>(
         `/api/owl/${boardId}/load`
       );
+
+      // Auto-assign colors to prefixes if none set yet
+      const currentColors = get().prefixColors;
+      let newColors = currentColors;
+      if (currentColors.length === 0 && data.classes.length > 0) {
+        newColors = _autoAssignPrefixColors(data.classes);
+      }
+
       set({
         boardId,
         classes: data.classes,
@@ -235,6 +284,7 @@ export const useOntologyStore = create<OntologyState>((set, get) => ({
         literals: data.literals || [],
         stickyNotes: data.sticky_notes || [],
         frames: data.frames || [],
+        prefixColors: newColors,
         dirty: false,
         undoStack: [],
         redoStack: [],

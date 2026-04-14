@@ -36,26 +36,36 @@ def test_reserve_id(tmp_data_dir):
     assert "bob" in iri.lower() or "0" in iri
 
 def _seed_patterns(data_dir):
-    """Create a test pattern file in the ODPA dir."""
-    odpa_dir = data_dir / "patterns" / "odpa"
-    odpa_dir.mkdir(parents=True, exist_ok=True)
+    """Create a test pattern in the ODPA dir (directory-based format)."""
+    pattern_dir = data_dir / "patterns" / "odpa" / "part-of"
+    pattern_dir.mkdir(parents=True, exist_ok=True)
     (data_dir / "patterns" / "user").mkdir(parents=True, exist_ok=True)
-    pattern = {
+    # metadata.json
+    (pattern_dir / "metadata.json").write_text(json.dumps({
         "id": "part-of", "name": "Part-Of Pattern",
         "description": "Test", "category": "structural",
-        "classes": [
-            {"iri": "http://example.org/Whole", "label": "Whole"},
-            {"iri": "http://example.org/Part", "label": "Part"},
-        ],
-        "properties": [
-            {"iri": "http://example.org/hasPart", "label": "hasPart",
-             "source": "http://example.org/Whole", "target": "http://example.org/Part", "type": "object"},
-            {"iri": "http://example.org/isPartOf", "label": "isPartOf",
-             "source": "http://example.org/Part", "target": "http://example.org/Whole", "type": "object"},
-        ],
-    }
-    (odpa_dir / "part-of.json").write_text(json.dumps(pattern))
-    # Reset in-memory cache so files are re-read
+    }))
+    # pattern.owl with classes and properties
+    (pattern_dir / "pattern.owl").write_text(
+        '<?xml version="1.0"?>'
+        '<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"'
+        '  xmlns:owl="http://www.w3.org/2002/07/owl#"'
+        '  xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"'
+        '  xml:base="http://example.org/partof">'
+        '<owl:Ontology rdf:about="http://example.org/partof"/>'
+        '<owl:Class rdf:about="http://example.org/Whole"><rdfs:label>Whole</rdfs:label></owl:Class>'
+        '<owl:Class rdf:about="http://example.org/Part"><rdfs:label>Part</rdfs:label></owl:Class>'
+        '<owl:ObjectProperty rdf:about="http://example.org/hasPart"><rdfs:label>hasPart</rdfs:label>'
+        '  <rdfs:domain rdf:resource="http://example.org/Whole"/>'
+        '  <rdfs:range rdf:resource="http://example.org/Part"/>'
+        '</owl:ObjectProperty>'
+        '<owl:ObjectProperty rdf:about="http://example.org/isPartOf"><rdfs:label>isPartOf</rdfs:label>'
+        '  <rdfs:domain rdf:resource="http://example.org/Part"/>'
+        '  <rdfs:range rdf:resource="http://example.org/Whole"/>'
+        '</owl:ObjectProperty>'
+        '</rdf:RDF>'
+    )
+    # Reset in-memory cache
     pattern_svc._patterns = None
 
 def test_list_patterns(tmp_data_dir):

@@ -1,0 +1,240 @@
+/* PropertyCharacteristics — styled to match AxiomEditor */
+
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.section {
+  border-top: 1px solid var(--border);
+  padding: 0.5rem 0.75rem;
+}
+
+.sectionTitle {
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--accent-light);
+  margin-bottom: 0.4rem;
+}
+
+/* Characteristics checkboxes */
+.checkboxGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.6rem;
+}
+
+.checkboxLabel {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.72rem;
+  color: var(--text-primary);
+  cursor: pointer;
+  padding: 0.15rem 0.25rem;
+  border-radius: 4px;
+  transition: background 0.1s;
+}
+.checkboxLabel:hover {
+  background: var(--bg-card-hover);
+}
+.checkboxLabel input[type="checkbox"] {
+  accent-color: var(--accent);
+  width: 13px;
+  height: 13px;
+  cursor: pointer;
+}
+.checkboxName {
+  font-family: "JetBrains Mono", "Cascadia Code", "Fira Code", monospace;
+  font-size: 0.68rem;
+}
+
+/* Property chains */
+.chainList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 0.4rem;
+}
+
+.chainRow {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.4rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 0.72rem;
+}
+
+.chainIndex {
+  font-size: 0.58rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  min-width: 1.2rem;
+  text-align: center;
+}
+
+.chainPropName {
+  flex: 1;
+  font-family: "JetBrains Mono", "Cascadia Code", "Fira Code", monospace;
+  font-size: 0.68rem;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chainBtnGroup {
+  display: flex;
+  gap: 0.15rem;
+  flex-shrink: 0;
+}
+
+.chainSmallBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.68rem;
+  padding: 0.1rem 0.2rem;
+  border-radius: 3px;
+  color: var(--text-muted);
+  transition: all 0.15s;
+}
+.chainSmallBtn:hover {
+  background: var(--bg-card-hover);
+  color: var(--text-primary);
+}
+.chainRemoveBtn {
+  composes: chainSmallBtn;
+  color: var(--danger);
+}
+.chainRemoveBtn:hover {
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.chainCompose {
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 0.05rem 0;
+}
+
+/* Add to chain */
+.addChainRow {
+  display: flex;
+  gap: 0.3rem;
+  align-items: center;
+  position: relative;
+}
+
+.addChainInput {
+  flex: 1;
+  padding: 0.25rem 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-size: 0.72rem;
+  font-family: "JetBrains Mono", "Cascadia Code", monospace;
+  outline: none;
+}
+.addChainInput:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.15);
+}
+
+.addChainBtn {
+  padding: 0.2rem 0.5rem;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+}
+.addChainBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.saveChainBtn {
+  padding: 0.2rem 0.5rem;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  margin-top: 0.3rem;
+}
+.saveChainBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Autocomplete dropdown */
+.autocomplete {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  max-height: 160px;
+  overflow-y: auto;
+}
+.autocompleteItem {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0.3rem 0.5rem;
+  border: none;
+  background: none;
+  color: var(--text-primary);
+  font-size: 0.7rem;
+  font-family: "JetBrains Mono", "Cascadia Code", monospace;
+  cursor: pointer;
+}
+.autocompleteItem:hover {
+  background: var(--accent-glow);
+  color: var(--accent-light);
+}
+
+/* Status messages */
+.statusMsg {
+  font-size: 0.68rem;
+  padding: 0.2rem 0;
+}
+.successMsg {
+  composes: statusMsg;
+  color: var(--success);
+}
+.errorMsg {
+  composes: statusMsg;
+  color: var(--danger);
+}
+
+.loading {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  padding: 0.5rem 0.75rem;
+}
+
+.emptyChain {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  font-style: italic;
+}

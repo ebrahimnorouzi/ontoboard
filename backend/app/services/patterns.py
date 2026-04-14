@@ -18,8 +18,13 @@ from app.config import DATA_DIR
 
 logger = logging.getLogger("ontoboard.patterns")
 
-ODPA_DIR = DATA_DIR / "patterns" / "odpa"
-USER_DIR = DATA_DIR / "patterns" / "user"
+
+def _odpa_dir() -> Path:
+    return DATA_DIR / "patterns" / "odpa"
+
+
+def _user_dir() -> Path:
+    return DATA_DIR / "patterns" / "user"
 
 _patterns: list[dict] | None = None
 
@@ -29,18 +34,18 @@ SEED_DIR = Path(__file__).parent.parent.parent / "seed" / "patterns"
 
 def _ensure_dirs() -> None:
     """Create pattern directories and seed ODPA patterns if empty."""
-    ODPA_DIR.mkdir(parents=True, exist_ok=True)
-    USER_DIR.mkdir(parents=True, exist_ok=True)
+    _odpa_dir().mkdir(parents=True, exist_ok=True)
+    _user_dir().mkdir(parents=True, exist_ok=True)
 
     # Seed ODPA patterns from the bundled seed directory (first run only)
-    if SEED_DIR.exists() and not any(ODPA_DIR.iterdir()):
+    if SEED_DIR.exists() and not any(_odpa_dir().iterdir()):
         import shutil
         for src in SEED_DIR.iterdir():
             if src.is_dir():
-                dst = ODPA_DIR / src.name
+                dst = _odpa_dir() / src.name
                 if not dst.exists():
                     shutil.copytree(src, dst)
-        logger.info("Seeded %d ODPA patterns from %s", len(list(ODPA_DIR.iterdir())), SEED_DIR)
+        logger.info("Seeded %d ODPA patterns from %s", len(list(_odpa_dir().iterdir())), SEED_DIR)
 
 
 def _parse_owl_file(owl_path: Path) -> tuple[list[dict], list[dict]]:
@@ -172,8 +177,8 @@ def _load_patterns_from_dir(directory: Path, source: str) -> list[dict]:
 def _load_all() -> list[dict]:
     global _patterns
     _ensure_dirs()
-    odpa = _load_patterns_from_dir(ODPA_DIR, "odpa")
-    user = _load_patterns_from_dir(USER_DIR, "user")
+    odpa = _load_patterns_from_dir(_odpa_dir(), "odpa")
+    user = _load_patterns_from_dir(_user_dir(), "user")
     _patterns = odpa + user
     return _patterns
 
@@ -255,7 +260,7 @@ def add_pattern(*, pattern_id: str, name: str, description: str = "",
     Always saves both metadata.json and pattern.owl (or .ttl).
     """
     _ensure_dirs()
-    pattern_dir = USER_DIR / username / pattern_id
+    pattern_dir = _user_dir() / username / pattern_id
     pattern_dir.mkdir(parents=True, exist_ok=True)
 
     # Save metadata

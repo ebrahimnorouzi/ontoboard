@@ -47,7 +47,8 @@ async def test_mwo_ingest(admin_client, tmp_data_dir, mwo_content):
     await asyncio.sleep(0.2)
 
     # Verify the OWL file was created
-    owl_path = tmp_data_dir / "mwo-test" / "src" / "ontology" / "mwo-test.owl"
+    from app.services.board import get_board_dir
+    owl_path = get_board_dir("mwo-test") / "src" / "ontology" / "mwo-test.owl"
     assert owl_path.exists(), "OWL file not generated"
 
     # Parse the converted OWL and verify critical axioms survived

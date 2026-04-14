@@ -20,7 +20,8 @@ async def test_upload_csv(admin_client, tmp_data_dir):
     body = resp.json()
     assert body["filename"] == "people.csv"
     assert body["columns"] == ["Name", "Age", "City"]
-    assert (tmp_data_dir / "csv-test" / "uploads" / "people.csv").is_file()
+    from app.services.board import get_board_dir
+    assert (get_board_dir("csv-test") / "uploads" / "people.csv").is_file()
 
 
 @pytest.mark.asyncio

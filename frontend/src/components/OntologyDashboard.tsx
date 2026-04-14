@@ -20,10 +20,56 @@ interface Props {
   boardId: string;
 }
 
+interface OntologyFile {
+  path: string;
+  name: string;
+  label: string;
+  size: number;
+  is_edit: boolean;
+  is_import: boolean;
+  is_idranges: boolean;
+}
+
 export default function OntologyDashboard({ boardId }: Props) {
   const { data, setData, loading, error, runReport, reportLoading, reportError } = useOntologyDashboard(boardId);
   const [newPrefix, setNewPrefix] = useState("");
   const [newNs, setNewNs] = useState("");
+
+  // Ontology file switcher
+  const [ontologyFiles, setOntologyFiles] = useState<OntologyFile[]>([]);
+  const [activeFile, setActiveFile] = useState<string>("");
+  const [switchingFile, setSwitchingFile] = useState(false);
+
+  // Load available ontology files
+  useEffect(() => {
+    apiJson<OntologyFile[]>(`/api/owl/${boardId}/files`)
+      .then((files) => {
+        setOntologyFiles(files);
+        const editFile = files.find((f) => f.is_edit);
+        if (editFile && !activeFile) setActiveFile(editFile.path);
+        else if (files.length > 0 && !activeFile) setActiveFile(files[0].path);
+      })
+      .catch(() => {});
+  }, [boardId]);
+
+  // Switch ontology file — reload canvas from the selected file
+  const switchFile = useCallback(async (filePath: string) => {
+    setActiveFile(filePath);
+    setSwitchingFile(true);
+    try {
+      const store = useOntologyStore.getState();
+      const data = await apiJson<any>(`/api/owl/${boardId}/load?file=${encodeURIComponent(filePath)}`);
+      store.setBoardId(boardId);
+      useOntologyStore.setState({
+        classes: data.classes || [],
+        properties: data.properties || [],
+        individuals: data.individuals || [],
+        literals: data.literals || [],
+        dirty: false,
+      });
+    } catch {}
+    finally { setSwitchingFile(false); }
+  }, [boardId]);
   const [editingPrefix, setEditingPrefix] = useState<string | null>(null);
   const [editPrefixName, setEditPrefixName] = useState("");
   const [editPrefixNs, setEditPrefixNs] = useState("");
@@ -187,6 +233,34 @@ export default function OntologyDashboard({ boardId }: Props) {
 
   return (
     <div className={styles.dashboard}>
+      {/* ── Ontology File Switcher ────────────────────── */}
+      {ontologyFiles.length > 1 && (
+        <section className={styles.section}>
+          <h3 className={styles.sectionTitle}>Active Ontology File</h3>
+          <div className={styles.fileSwitcher}>
+            <select
+              className={styles.fileSelect}
+              value={activeFile}
+              onChange={(e) => switchFile(e.target.value)}
+              disabled={switchingFile}
+            >
+              {ontologyFiles.map((f) => (
+                <option key={f.path} value={f.path}>
+                  {f.label} ({(f.size / 1024).toFixed(1)} KB)
+                </option>
+              ))}
+            </select>
+            {switchingFile && <span className={styles.switchingLabel}>Loading...</span>}
+            {activeFile && (
+              <span className={styles.activeFileHint}>
+                {ontologyFiles.find((f) => f.path === activeFile)?.is_edit ? "Editing file" :
+                 ontologyFiles.find((f) => f.path === activeFile)?.is_import ? "Import module (read-only)" : "Release file"}
+              </span>
+            )}
+          </div>
+        </section>
+      )}
+
       {/* ── Editable IRI & Version ────────────────────── */}
       <section className={styles.section}>
         <h3 className={styles.sectionTitle}>Ontology Identity</h3>

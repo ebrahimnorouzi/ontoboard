@@ -1,7 +1,8 @@
 """OWL load/save router — convert between .owl files and canvas JSON."""
 
 import json
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from pathlib import Path
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from sqlalchemy.orm import Session
 
 from app.deps import get_db, get_current_user, get_current_user_optional
@@ -15,10 +16,60 @@ from app.services.ontology import load_graph
 router = APIRouter()
 
 
+# ── List available ontology files ─────────────────────────────
+@router.get("/{board_id}/files")
+def list_owl_files(
+    board_id: str,
+    db: Session = Depends(get_db),
+    user: User | None = Depends(get_current_user_optional),
+):
+    """List all OWL/TTL files in the board's ontology directory."""
+    board = board_svc.get_board_by_slug(db, board_id)
+    if not board:
+        raise HTTPException(status_code=404, detail="Board not found")
+    if not board_svc.can_view(db, board, user):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    board_dir = board_svc.get_board_dir(board_id)
+    ont_dir = board_dir / "src" / "ontology"
+    if not ont_dir.exists():
+        return []
+
+    files = []
+    for ext in ("*.owl", "*.ttl", "*.rdf"):
+        for f in sorted(ont_dir.rglob(ext)):
+            if ".git" in str(f) or f.name.startswith("_") or "tmp_" in f.name:
+                continue
+            rel = str(f.relative_to(board_dir)).replace("\\", "/")
+            is_edit = "-edit." in f.name
+            is_idranges = "-idranges" in f.name
+            is_import = "imports/" in rel
+            label = f.stem
+            if is_edit:
+                label += " (edit)"
+            elif is_import:
+                label = f"import: {f.stem}"
+            elif is_idranges:
+                label += " (id ranges)"
+
+            files.append({
+                "path": rel,
+                "name": f.name,
+                "label": label,
+                "size": f.stat().st_size,
+                "is_edit": is_edit,
+                "is_import": is_import,
+                "is_idranges": is_idranges,
+            })
+
+    return files
+
+
 # ── Load: OWL → CanvasState (rdflib, no Docker needed) ────────
 @router.get("/{board_id}/load", response_model=CanvasState)
 def load_owl(
     board_id: str,
+    file: str | None = Query(None, description="Specific OWL/TTL file to load (relative to board dir)"),
     db: Session = Depends(get_db),
     user: User | None = Depends(get_current_user_optional),
 ):
@@ -30,26 +81,60 @@ def load_owl(
 
     board_dir = board_svc.get_board_dir(board_id)
 
-    # Try to load full canvas state from sidecar JSON first (lossless)
+    # If a specific file is requested, load it directly (no sidecar)
+    if file:
+        target = (board_dir / file).resolve()
+        try:
+            target.relative_to(board_dir.resolve())  # path traversal check
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid file path")
+        if not target.exists():
+            raise HTTPException(status_code=404, detail=f"File not found: {file}")
+        from rdflib import Graph
+        g = Graph()
+        parsed = False
+        for fmt in ("xml", "turtle", "n3", "nt", "json-ld"):
+            try:
+                g.parse(str(target), format=fmt)
+                parsed = True
+                break
+            except Exception:
+                continue
+        if not parsed:
+            from app.services.ontology import _try_robot_convert
+            _try_robot_convert(target, g)
+        if len(g) == 0:
+            raise HTTPException(status_code=400, detail=f"Cannot parse {file}")
+        state = canvas_svc.owl_to_canvas(g)
+        return state
+
+    # Default: try sidecar JSON first, then OWL
     meta_file = board_dir / "canvas_meta.json"
     if meta_file.exists():
         try:
             meta = json.loads(meta_file.read_text())
-            # If we have saved canvas entities, use them directly
             if "classes" in meta and "properties" in meta:
-                state = CanvasState(
-                    classes=[CanvasClass(**c) for c in meta["classes"]],
-                    properties=[CanvasProperty(**p) for p in meta["properties"]],
-                    individuals=[CanvasIndividual(**i) for i in meta.get("individuals", [])],
-                    literals=[CanvasLiteral(**l) for l in meta.get("literals", [])] if meta.get("literals") else [],
-                    sticky_notes=[CanvasStickyNote(**n) for n in meta.get("sticky_notes", [])],
-                    frames=[CanvasFrame(**f) for f in meta.get("frames", [])],
+                props = meta["properties"]
+                # Validate: if properties exist but all have empty source/target,
+                # the data is stale — re-parse from OWL instead
+                has_connected_props = any(
+                    p.get("source_id") and p.get("target_id") for p in props
                 )
-                return state
+                if has_connected_props or not props:
+                    state = CanvasState(
+                        classes=[CanvasClass(**c) for c in meta["classes"]],
+                        properties=[CanvasProperty(**p) for p in props],
+                        individuals=[CanvasIndividual(**i) for i in meta.get("individuals", [])],
+                        literals=[CanvasLiteral(**l) for l in meta.get("literals", [])] if meta.get("literals") else [],
+                        sticky_notes=[CanvasStickyNote(**n) for n in meta.get("sticky_notes", [])],
+                        frames=[CanvasFrame(**f) for f in meta.get("frames", [])],
+                    )
+                    return state
+                # else: fall through to OWL re-parse
         except Exception:
             pass
 
-    # Fallback: extract from OWL graph (may lose some edge connections)
+    # Parse from OWL graph (extracts classes, subClassOf, properties with domain/range)
     try:
         g = load_graph(board_dir)
     except FileNotFoundError:
@@ -57,18 +142,18 @@ def load_owl(
 
     state = canvas_svc.owl_to_canvas(g)
 
-    # Merge sticky notes and frames from sidecar file
+    # Preserve positions, sticky notes, frames from stale canvas_meta if available
     if meta_file.exists():
         try:
             meta = json.loads(meta_file.read_text())
-            state.sticky_notes = [
-                CanvasStickyNote(**n)
-                for n in meta.get("sticky_notes", [])
-            ]
-            state.frames = [
-                CanvasFrame(**f)
-                for f in meta.get("frames", [])
-            ]
+            # Restore positions from saved classes
+            saved_pos = {c["iri"]: (c.get("x", 0), c.get("y", 0)) for c in meta.get("classes", [])}
+            for cls in state.classes:
+                if cls.iri in saved_pos:
+                    cls.x, cls.y = saved_pos[cls.iri]
+            # Restore sticky notes and frames
+            state.sticky_notes = [CanvasStickyNote(**n) for n in meta.get("sticky_notes", [])]
+            state.frames = [CanvasFrame(**f) for f in meta.get("frames", [])]
         except Exception:
             pass
 

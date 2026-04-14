@@ -17,6 +17,7 @@ import {
   themeRules,
   completionItems,
 } from "./manchesterLanguage";
+import PropertyCharacteristics from "./PropertyCharacteristics";
 import styles from "./AxiomEditor.module.css";
 
 interface Props {
@@ -51,7 +52,13 @@ function parseAxiomRows(text: string): { type: string; value: string }[] {
 
 /** Convert structured rows back to Manchester text */
 function rowsToManchester(entityType: string, entityLabel: string, rows: { type: string; value: string }[]): string {
-  const header = entityType === "class" ? "Class:" : entityType === "individual" ? "Individual:" : "ObjectProperty:";
+  const headerMap: Record<string, string> = {
+    "class": "Class:", "individual": "Individual:",
+    "object-property": "ObjectProperty:", "object_property": "ObjectProperty:",
+    "data-property": "DataProperty:", "data_property": "DataProperty:",
+    "annotation-property": "AnnotationProperty:", "annotation_property": "AnnotationProperty:",
+  };
+  const header = headerMap[entityType] || "ObjectProperty:";
   const grouped = new Map<string, string[]>();
   for (const r of rows) {
     const arr = grouped.get(r.type) || [];
@@ -81,6 +88,12 @@ const ANNOTATION_PROPERTIES = [
   "owl:deprecated", "obo:IAO_0000115",
 ];
 
+const XSD_RANGE_TYPES = [
+  "xsd:string", "xsd:integer", "xsd:float", "xsd:double", "xsd:boolean",
+  "xsd:decimal", "xsd:date", "xsd:dateTime", "xsd:anyURI",
+  "xsd:nonNegativeInteger", "xsd:positiveInteger",
+];
+
 const TYPE_COLORS: Record<string, string> = {
   SubClassOf: "#6366f1", EquivalentTo: "#10b981", DisjointWith: "#ef4444",
   Domain: "#f59e0b", Range: "#f59e0b", SubPropertyOf: "#8b5cf6",
@@ -103,6 +116,17 @@ export default function AxiomEditor({ boardId, entityIri, entityLabel, entityTyp
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const addInputRef = useRef<HTMLInputElement>(null);
   const [annProperty, setAnnProperty] = useState("rdfs:comment");
+  const [xsdRangeType, setXsdRangeType] = useState("xsd:string");
+
+  const isObjectProperty = entityType === "object-property" || entityType === "object_property";
+  const isDataProperty = entityType === "data-property" || entityType === "data_property";
+
+  // Build property names list for PropertyCharacteristics chain autocomplete
+  const propertyNamesList = useMemo(() =>
+    entityNames.filter((e) => e.type === "object_property" || e.type === "object-property")
+      .map((e) => ({ iri: e.iri, label: e.label })),
+    [entityNames],
+  );
 
   const editorRef = useRef<any>(null);
   const monacoRef = useRef<any>(null);
@@ -311,32 +335,54 @@ export default function AxiomEditor({ boardId, entityIri, entityLabel, entityTyp
                   ))}
                 </select>
               )}
-              <div className={styles.addInputWrap}>
-                <input
-                  ref={addInputRef}
-                  className={styles.axiomInput}
-                  value={addValue}
-                  onChange={(e) => { setAddValue(e.target.value); if (addingType !== "Annotations") updateSuggestions(e.target.value); }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") addAxiomRow();
-                    if (e.key === "Escape") { setAddingType(null); setAddValue(""); setSuggestions([]); }
-                  }}
-                  placeholder={addingType === "Annotations" ? "Enter annotation value..." : "e.g. Animal, hasPart some Organ, ..."}
-                  autoFocus
-                />
-                {suggestions.length > 0 && (
-                  <div className={styles.suggestions}>
-                    {suggestions.map((s) => (
-                      <button key={s} className={styles.suggestion}
-                              onClick={() => { setAddValue((prev) => { const parts = prev.split(/\s+/); parts[parts.length - 1] = s; return parts.join(" "); }); setSuggestions([]); addInputRef.current?.focus(); }}>
-                        {s}
-                      </button>
+              {/* XSD type dropdown for Range on data properties */}
+              {addingType === "Range" && isDataProperty ? (
+                <>
+                  <select
+                    className={styles.annPropSelect}
+                    value={xsdRangeType}
+                    onChange={(e) => { setXsdRangeType(e.target.value); setAddValue(e.target.value); }}
+                    autoFocus
+                  >
+                    {XSD_RANGE_TYPES.map((t) => (
+                      <option key={t} value={t}>{t}</option>
                     ))}
+                  </select>
+                  <button className={styles.axiomSaveBtn}
+                    onClick={addAxiomRow}
+                  >Add</button>
+                  <button className={styles.axiomCancelBtn} onClick={() => { setAddingType(null); setAddValue(""); setSuggestions([]); }}>Cancel</button>
+                </>
+              ) : (
+                <>
+                  <div className={styles.addInputWrap}>
+                    <input
+                      ref={addInputRef}
+                      className={styles.axiomInput}
+                      value={addValue}
+                      onChange={(e) => { setAddValue(e.target.value); if (addingType !== "Annotations") updateSuggestions(e.target.value); }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") addAxiomRow();
+                        if (e.key === "Escape") { setAddingType(null); setAddValue(""); setSuggestions([]); }
+                      }}
+                      placeholder={addingType === "Annotations" ? "Enter annotation value..." : "e.g. Animal, hasPart some Organ, ..."}
+                      autoFocus
+                    />
+                    {suggestions.length > 0 && (
+                      <div className={styles.suggestions}>
+                        {suggestions.map((s) => (
+                          <button key={s} className={styles.suggestion}
+                                  onClick={() => { setAddValue((prev) => { const parts = prev.split(/\s+/); parts[parts.length - 1] = s; return parts.join(" "); }); setSuggestions([]); addInputRef.current?.focus(); }}>
+                            {s}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-              <button className={styles.axiomSaveBtn} onClick={addAxiomRow} disabled={!addValue.trim()}>Add</button>
-              <button className={styles.axiomCancelBtn} onClick={() => { setAddingType(null); setAddValue(""); setSuggestions([]); }}>Cancel</button>
+                  <button className={styles.axiomSaveBtn} onClick={addAxiomRow} disabled={!addValue.trim()}>Add</button>
+                  <button className={styles.axiomCancelBtn} onClick={() => { setAddingType(null); setAddValue(""); setSuggestions([]); }}>Cancel</button>
+                </>
+              )}
             </div>
           ) : (
             <div className={styles.addButtons}>
@@ -347,11 +393,27 @@ export default function AxiomEditor({ boardId, entityIri, entityLabel, entityTyp
               }).map((t) => (
                 <button key={t} className={styles.addTypeBtn}
                         style={{ borderColor: TYPE_COLORS[t] || "#64748b", color: TYPE_COLORS[t] || "#64748b" }}
-                        onClick={() => { setAddingType(t); setTimeout(() => addInputRef.current?.focus(), 50); }}>
+                        onClick={() => {
+                          setAddingType(t);
+                          if (t === "Range" && isDataProperty) {
+                            setAddValue(xsdRangeType);
+                          }
+                          setTimeout(() => addInputRef.current?.focus(), 50);
+                        }}>
                   + {t}
                 </button>
               ))}
             </div>
+          )}
+
+          {/* Property characteristics & chains (object properties only) */}
+          {isObjectProperty && entityIri && (
+            <PropertyCharacteristics
+              boardId={boardId}
+              entityIri={entityIri}
+              entityLabel={entityLabel}
+              propertyNames={propertyNamesList}
+            />
           )}
         </div>
       ) : (

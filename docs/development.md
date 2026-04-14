@@ -1,6 +1,6 @@
 # Development Guide
 
-This guide covers the development workflow, code conventions, and architecture patterns used in OntoBoard.
+This guide covers the development workflow, code conventions, testing, and architecture patterns used in OntoBoard.
 
 ## Development Setup
 
@@ -47,6 +47,8 @@ export REDIS_URL=redis://localhost:6379/0
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
+**Note**: Running the backend locally without Docker requires Java 21 and ROBOT 1.9.6 to be installed on the host system for ROBOT commands to work. The `robot` binary must be on PATH.
+
 **Frontend:**
 
 ```bash
@@ -63,11 +65,11 @@ npm run dev
 
 ### Backend Tests
 
-The backend test suite contains 181 tests covering all API endpoints and services.
+The backend test suite contains 455+ tests across 46 test files covering all API endpoints and services.
 
 ```bash
 cd backend
-python -m pytest tests/ -v --tb=short
+python -m pytest tests/ -v
 ```
 
 Run specific test files:
@@ -76,6 +78,8 @@ Run specific test files:
 python -m pytest tests/test_boards.py -v
 python -m pytest tests/test_reasoning.py -v
 python -m pytest tests/test_axiom.py -v
+python -m pytest tests/test_tier1_features.py -v
+python -m pytest tests/test_tier2_features.py -v
 ```
 
 Run with coverage:
@@ -98,44 +102,68 @@ Tests use the FastAPI test client with a test database. The `conftest.py` file p
 
 ```
 backend/tests/
-+-- conftest.py           # Shared fixtures (test client, test DB, auth helpers)
-+-- test_auth.py          # Authentication tests (5 tests)
-+-- test_users.py         # User management tests (8 tests)
-+-- test_boards.py        # Board CRUD tests (16 tests)
-+-- test_canvas.py        # Canvas load/save tests (13 tests)
-+-- test_axiom.py         # Axiom editor tests (13 tests)
-+-- test_tree.py          # Tree browser tests (14 tests)
-+-- test_reasoning.py     # Reasoning tests (12 tests)
-+-- test_sparql.py        # SPARQL query tests (12 tests)
-+-- test_csv_import.py    # CSV import tests (13 tests)
-+-- test_odk.py           # ODK build tests
-+-- test_odk_config.py    # ODK config tests
-+-- test_odk_lifecycle.py # ODK lifecycle tests
-+-- test_odk_mediator.py  # ODK mediator tests
-+-- test_publish.py       # Publish pipeline tests (9 tests)
-+-- test_task.py          # Task management tests (9 tests)
-+-- test_invite.py        # Invite system tests (10 tests)
-+-- test_restrictions.py  # OWL restrictions tests
-+-- test_characteristics.py # Property characteristics tests
-+-- test_search.py        # Search tests
-+-- test_refactor.py      # Refactoring tests
-+-- test_imports.py       # Import management tests
-+-- test_version.py       # Version management tests
-+-- test_dl_query.py      # DL query tests
-+-- test_robot_commands.py # ROBOT command tests
-+-- test_quality.py       # Quality checks tests
-+-- test_analysis.py      # Analysis tools tests
-+-- test_docs.py          # Documentation tests (12 tests)
-+-- test_queue.py         # Job queue tests (11 tests)
-+-- test_notifications.py # Notification tests
-+-- test_conversion.py    # Format conversion tests
-+-- test_health.py        # Health check tests
-+-- test_metadata.py      # Metadata tests (13 tests)
-+-- test_owl.py           # OWL parsing tests
-+-- test_idranges.py      # ID range tests
-+-- test_e2e_lifecycle.py # End-to-end lifecycle tests
-+-- test_mwo301_integration.py # Integration test with real ontology
++-- conftest.py                  # Shared fixtures (test client, test DB, auth helpers)
++-- test_auth.py                 # Authentication tests
++-- test_users.py                # User management tests
++-- test_boards.py               # Board CRUD tests
++-- test_board_actions.py        # Board actions (star, clone, delete)
++-- test_canvas.py               # Canvas load/save tests
++-- test_axiom.py                # Axiom editor tests
++-- test_tree.py                 # Tree browser tests
++-- test_reasoning.py            # Reasoning tests
++-- test_sparql.py               # SPARQL query tests
++-- test_csv_import.py           # CSV import tests
++-- test_odk.py                  # ODK build tests
++-- test_odk_config.py           # ODK config tests
++-- test_odk_lifecycle.py        # ODK lifecycle tests
++-- test_odk_mediator.py         # ODK mediator tests
++-- test_publish.py              # Publish pipeline tests
++-- test_task.py                 # Task management tests
++-- test_invite.py               # Invite system tests
++-- test_restrictions.py         # OWL restrictions tests
++-- test_characteristics.py      # Property characteristics tests
++-- test_search.py               # Search tests
++-- test_refactor.py             # Refactoring tests
++-- test_imports.py              # Import management tests
++-- test_version.py              # Version management tests
++-- test_dl_query.py             # DL query tests
++-- test_robot_commands.py       # ROBOT command tests
++-- test_quality.py              # Quality checks tests
++-- test_analysis.py             # Analysis tools tests
++-- test_docs.py                 # Documentation tests
++-- test_queue.py                # Job queue tests
++-- test_notifications.py        # Notification tests
++-- test_conversion.py           # Format conversion tests
++-- test_health.py               # Health check tests
++-- test_metadata.py             # Metadata tests
++-- test_owl.py                  # OWL parsing tests
++-- test_ontology.py             # Ontology service tests
++-- test_idranges.py             # ID range tests
++-- test_comments.py             # Comment system tests
++-- test_patterns_new.py         # Pattern library tests
++-- test_e2e_lifecycle.py        # End-to-end lifecycle tests
++-- test_mwo301_integration.py   # Integration test with real ontology
++-- test_tier1_features.py       # Tier 1: Manchester parser (19), characteristics (8),
+|                                #   chains (6), XSD ranges (6), annotation CRUD (7)
++-- test_tier2_features.py       # Tier 2: ROBOT explain (6), imports (8), SWRL (6),
+                                 #   embedded reasoner (6), integration (4)
 ```
+
+### Test Categories (Tier 1 + Tier 2)
+
+| Category | File | Test Count | Description |
+|----------|------|:----------:|-------------|
+| Manchester parser | `test_tier1_features.py` | 19 | Parse, render, round-trip, nested expressions, edge cases |
+| Property characteristics | `test_tier1_features.py` | 8 | All 7 characteristics, toggle, persist, read back |
+| Property chains | `test_tier1_features.py` | 6 | Create, read, delete chains, multi-step chains |
+| XSD ranges | `test_tier1_features.py` | 6 | Set range for each XSD type, read back, change |
+| Annotation CRUD | `test_tier1_features.py` | 7 | Create, read, update, delete annotation properties |
+| ROBOT explain | `test_tier2_features.py` | 6 | Explain entailments, justification axioms, error handling |
+| Import resolution | `test_tier2_features.py` | 8 | Resolve status, download, catalog, add/remove |
+| SWRL rules | `test_tier2_features.py` | 6 | Create, list, delete rules, format parsing |
+| Embedded reasoner | `test_tier2_features.py` | 6 | owlready2 consistency, inferences, error handling |
+| Integration | `test_tier2_features.py` | 4 | Cross-feature integration scenarios |
+| Existing tests | `test_*.py` (40 files) | 380+ | API endpoints, canvas, reasoning, SPARQL, etc. |
 
 ## Code Structure Conventions
 
@@ -145,10 +173,10 @@ The backend follows a strict separation between API routing and business logic:
 
 ```
 app/
-+-- routers/     # API endpoint definitions (thin layer)
-+-- services/    # Business logic (all heavy processing)
++-- routers/     # 37 API endpoint definitions (thin layer)
++-- services/    # 41 business logic modules (all heavy processing)
 +-- schemas/     # Pydantic models for request/response validation
-+-- models/      # SQLAlchemy ORM models (database tables)
++-- models/      # 8 SQLAlchemy ORM model files (7 database tables)
 ```
 
 **Routers** define HTTP endpoints, validate inputs via Pydantic schemas, call service functions, and return responses. They should not contain business logic.
@@ -175,22 +203,41 @@ async def run_reasoning(
     return reasoning_svc.run_reasoner(board_id, reasoner)
 ```
 
-**Services** contain the actual business logic. They work with rdflib graphs, file I/O, Docker SDK, and other libraries. Services are stateless functions.
+**Services** contain the actual business logic. They work with rdflib graphs, file I/O, ROBOT subprocess calls, owlready2, and other libraries. Services are stateless functions.
 
 Example service pattern:
 
 ```python
 # app/services/reasoning.py
 
+import subprocess
 from pathlib import Path
 from app.config import DATA_DIR
 
 def run_reasoner(board_id: str, reasoner: str = "ELK") -> dict:
     board_dir = DATA_DIR / board_id
     owl_file = _find_owl(board_dir)
-    # ... reasoning logic using ROBOT subprocess or rdflib ...
-    return {"consistent": True, "inferences": [...]}
+    # Run ROBOT as local subprocess (no Docker-in-Docker)
+    result = subprocess.run(
+        ["robot", "reason", "-r", reasoner, "-i", str(owl_file)],
+        capture_output=True, text=True
+    )
+    return {"consistent": result.returncode == 0, "inferences": [...]}
 ```
+
+### Key Service Modules
+
+| Service | File | Description |
+|---------|------|-------------|
+| Manchester Parser | `manchester_parser.py` | Recursive descent parser for Manchester Syntax (tokenizer, parser, renderer) |
+| SWRL | `swrl.py` | SWRL rule CRUD (stored as OWL annotations) |
+| Reasoning | `reasoning.py` | ROBOT subprocess + owlready2 embedded reasoner |
+| ROBOT | `robot.py` | ROBOT command execution (7 commands) |
+| Imports | `imports.py` | Import resolution, download, catalog management |
+| Ontology | `ontology.py` | OWL file parsing and manipulation via rdflib |
+| Canvas | `canvas.py` | Canvas state serialization/deserialization |
+| Board | `board.py` | Board CRUD and sharing logic |
+| Conversion | `conversion.py` | OWL format conversion (ROBOT + rdflib) |
 
 **Schemas** define Pydantic models for request validation and response serialization:
 
@@ -252,7 +299,7 @@ src/
 +-- main.tsx            # App entry point, React Router setup
 +-- store/
 |   +-- ontologyStore.ts # Zustand store (single source of truth for canvas state)
-+-- components/         # Reusable UI components (organized by feature domain)
++-- components/         # 25 feature directories
 +-- hooks/              # Custom React hooks (data fetching, state management)
 +-- collab/             # Collaboration-specific components and hooks
 +-- pages/              # Page-level components (routed by React Router)
@@ -268,7 +315,7 @@ The `ontologyStore.ts` is the single source of truth for all canvas state. It ma
 - Undo/redo stacks (max 50 snapshots)
 - Prefix colors and pattern assignments
 - Inference display state
-- Provenance settings
+- Provenance settings (PROV-O agents, Dublin Core, XSD datatypes)
 - Auto-save with 800ms debounce
 
 Key design decisions:
@@ -276,6 +323,9 @@ Key design decisions:
 - Destructive operations push to the undo stack via `pushUndo(get, set)`
 - Provenance stamps (`created_by`, `created_at`, `modified_by`, `modified_at`) are automatically added when `trackProvenance` is enabled
 - A `setOnSaveCallback` function allows the BoardPage to register a Yjs broadcast after each save
+- Pattern applications are batched into a single state update for performance
+- Auto-fit viewport on initial load
+- Tab state preserved (visited tabs stay mounted)
 
 #### Custom Hooks Pattern
 
@@ -307,7 +357,7 @@ Available hooks:
 | Hook | Purpose |
 |------|---------|
 | `useOntology` | Ontology metadata and statistics fetching |
-| `useAxiomEditor` | Axiom listing, editing, and validation |
+| `useAxiomEditor` | Axiom listing, editing, and Manchester Syntax validation |
 | `useReasoning` | Reasoning execution and inference display |
 | `useSparql` | SPARQL query execution |
 | `useTasks` | Task CRUD and comments |
@@ -317,6 +367,16 @@ Available hooks:
 | `usePublish` | Publish pipeline management |
 | `useDocs` | Documentation building |
 | `useInvite` | Invite link management |
+
+#### Collaboration Components
+
+```
+collab/
++-- useCollaboration.ts   # Yjs connection, awareness, save broadcast
++-- useYjsSync.ts         # Canvas state sync via Yjs document
++-- CollabStatus.tsx       # Connection status + entity lock visibility
+                           # Shows who is editing which entity
+```
 
 #### API Client
 
@@ -339,7 +399,7 @@ Pages are the top-level components routed by React Router:
 | `HomePage` | `/` | Landing page |
 | `LoginPage` | `/login` | Login form |
 | `SignupPage` | `/signup` | Registration form |
-| `DashboardPage` | `/dashboard` | Board listing and management |
+| `DashboardPage` | `/dashboard` | Board listing with action bars (star, clone, delete) |
 | `BoardPage` | `/boards/:boardId` | Main ontology editor (canvas + panels) |
 | `AdminPage` | `/admin` | User and system administration |
 | `InvitePage` | `/invite/:token` | Invite link acceptance |
@@ -449,17 +509,46 @@ This avoids global CSS conflicts and keeps styles co-located with their componen
 
 3. The table is auto-created on next application startup via `create_tables()` in `database.py`.
 
+### Adding a New ROBOT Command
+
+1. Add the subprocess call in `backend/app/services/robot.py`:
+   ```python
+   def run_my_command(board_id: str, params: dict) -> dict:
+       owl_file = _find_owl(DATA_DIR / board_id)
+       result = subprocess.run(
+           ["robot", "my-command", "-i", str(owl_file), ...],
+           capture_output=True, text=True
+       )
+       return {"success": result.returncode == 0, "output": result.stdout}
+   ```
+
+2. Add the router endpoint in `backend/app/routers/robot_commands.py`.
+
+3. Add tests in `backend/tests/test_robot_commands.py`.
+
 ## Key Configuration Files
 
 | File | Purpose |
 |------|---------|
 | `backend/app/config.py` | All backend configuration from environment variables |
+| `backend/Dockerfile` | Python 3.12 + Java 21 + ROBOT 1.9.6 + make |
+| `worker/Dockerfile` | Python 3.12 + Java 21 + ROBOT 1.9.6 + make |
 | `docker-compose.yml` | Production service definitions |
 | `docker-compose.dev.yml` | Development overrides (source mounts) |
 | `frontend/vite.config.ts` | Vite build configuration |
 | `frontend/tsconfig.json` | TypeScript configuration |
 | `backend/pytest.ini` | pytest test runner configuration |
 | `.env.example` | Environment variable template |
+
+## Docker Image Architecture
+
+Both the backend and worker Dockerfiles install:
+- Python 3.12 (slim base)
+- Java 21 JRE (OpenJDK)
+- ROBOT 1.9.6 (robot.jar + wrapper script)
+- make (for ODK Makefiles)
+
+There is no Docker-in-Docker. There is no dependency on the odkfull container. All ROBOT commands run as local subprocesses via `subprocess.run(["robot", ...])`.
 
 ## Debugging
 
@@ -473,7 +562,7 @@ Or in development mode, logs appear directly in the terminal.
 
 ### Frontend Logs
 
-Open browser DevTools (F12) to see console logs and network requests.
+Open browser DevTools (F12) to see console logs and network requests. Debug logging is available for edge rendering diagnostics.
 
 ### Database Inspection
 
@@ -489,3 +578,13 @@ SELECT * FROM boards;
 ### API Testing
 
 Use the interactive Swagger UI at `http://localhost:8000/docs` to test API endpoints directly. You can authorize with a JWT token obtained from the login endpoint.
+
+### ROBOT Debugging
+
+To debug ROBOT commands, exec into the container and run them directly:
+
+```bash
+docker compose exec backend bash
+robot --version
+robot reason -r ELK -i /app/data/{board-id}/src/ontology/ont.owl
+```

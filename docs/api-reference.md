@@ -68,7 +68,7 @@ Requires admin role unless noted.
 | GET | `/api/boards/{board_id}` | Optional | Get board details |
 | POST | `/api/boards/{board_id}` | Yes | Create a new board |
 | POST | `/api/boards/{board_id}/from-file` | Yes | Create board from uploaded OWL/ZIP file |
-| PATCH | `/api/boards/{board_id}` | Yes | Update board settings |
+| PATCH | `/api/boards/{board_id}` | Yes | Update board settings (name, description, visibility, tags) |
 | DELETE | `/api/boards/{board_id}` | Yes | Delete a board |
 | POST | `/api/boards/{board_id}/clone` | Yes | Clone a board |
 | GET | `/api/boards/{board_id}/members` | Yes | List board members |
@@ -77,7 +77,7 @@ Requires admin role unless noted.
 | POST | `/api/boards/{board_id}/request-access` | Yes | Request access to a board |
 | POST | `/api/boards/{board_id}/star` | Yes | Toggle star/favourite |
 | GET | `/api/boards/{board_id}/activity` | Yes | Get board activity log |
-| GET | `/api/boards/{board_id}/sync-check` | Optional | Check last update timestamp |
+| GET | `/api/boards/{board_id}/sync-check` | Optional | Check last update timestamp (used by polling fallback) |
 | GET | `/api/boards/admin/stats` | Admin | Admin statistics across all boards |
 
 ---
@@ -122,7 +122,7 @@ Requires admin role unless noted.
 | GET | `/api/ontology/{board_id}/dashboard` | Optional | Combined metadata + statistics + prefixes |
 | PUT | `/api/ontology/{board_id}/metadata` | Yes | Update ontology metadata (DC terms) |
 | POST | `/api/ontology/{board_id}/prefixes` | Yes | Add a new prefix binding |
-| PUT | `/api/ontology/{board_id}/prefixes/{old_prefix}` | Yes | Update a prefix binding |
+| PUT | `/api/ontology/{board_id}/prefixes/{old_prefix}` | Yes | Update a prefix binding (name and/or IRI) |
 | DELETE | `/api/ontology/{board_id}/prefixes/{prefix}` | Yes | Remove a prefix binding |
 | POST | `/api/ontology/{board_id}/find-replace` | Yes | Find and replace in annotations |
 | GET | `/api/ontology/{board_id}/identity` | Optional | Get ontology IRI and version IRI |
@@ -143,7 +143,7 @@ Requires admin role unless noted.
 | GET | `/api/tree/{board_id}/data-properties` | Optional | Get data property hierarchy |
 | GET | `/api/tree/{board_id}/annotation-properties` | Optional | Get annotation property hierarchy |
 | GET | `/api/tree/{board_id}/individuals` | Optional | Get individuals list |
-| GET | `/api/tree/{board_id}/entity/{entity_iri}` | Optional | Get entity detail (annotations, types, supers) |
+| GET | `/api/tree/{board_id}/entity/{entity_iri}` | Optional | Get entity detail (annotations, types, supers, characteristics) |
 | PUT | `/api/tree/{board_id}/entity/{entity_iri}/annotations` | Yes | Update entity annotations |
 | POST | `/api/tree/{board_id}/entity` | Yes | Create a new entity |
 | DELETE | `/api/tree/{board_id}/entity/{entity_iri}` | Yes | Delete an entity |
@@ -155,9 +155,9 @@ Requires admin role unless noted.
 | Method | Path | Auth | Description |
 |--------|------|:----:|-------------|
 | GET | `/api/axiom/{board_id}/entity-names` | Optional | List all entity names (for auto-completion) |
-| GET | `/api/axiom/{board_id}/axioms/{entity_iri}` | Optional | List axioms for an entity |
-| GET | `/api/axiom/{board_id}/manchester/{entity_iri}` | Optional | Get Manchester Syntax for an entity |
-| PUT | `/api/axiom/{board_id}/axioms/{entity_iri}` | Yes | Update axioms from Manchester Syntax |
+| GET | `/api/axiom/{board_id}/axioms/{entity_iri}` | Optional | List axioms for an entity (structured view) |
+| GET | `/api/axiom/{board_id}/manchester/{entity_iri}` | Optional | Get Manchester Syntax rendering for an entity |
+| PUT | `/api/axiom/{board_id}/axioms/{entity_iri}` | Yes | Update axioms from Manchester Syntax (parsed via recursive descent) |
 | POST | `/api/axiom/{board_id}/validate` | Yes | Validate Manchester Syntax expressions |
 
 ---
@@ -177,11 +177,37 @@ Requires admin role unless noted.
 
 | Method | Path | Auth | Description |
 |--------|------|:----:|-------------|
-| GET | `/api/characteristics/{board_id}/entity/{entity_iri}` | Optional | Get property characteristics |
+| GET | `/api/characteristics/{board_id}/entity/{entity_iri}` | Optional | Get property characteristics (7 booleans) |
 | PUT | `/api/characteristics/{board_id}/entity/{entity_iri}` | Yes | Set property characteristics |
 | POST | `/api/characteristics/{board_id}/property-chain` | Yes | Add property chain axiom |
 | POST | `/api/characteristics/{board_id}/all-disjoint` | Yes | Declare all disjoint classes |
 | POST | `/api/characteristics/{board_id}/disjoint-properties` | Yes | Declare disjoint properties |
+
+### Characteristics Request/Response
+
+```json
+{
+  "functional": true,
+  "inverse_functional": false,
+  "transitive": false,
+  "symmetric": false,
+  "asymmetric": false,
+  "reflexive": false,
+  "irreflexive": false
+}
+```
+
+### Property Chain Request
+
+```json
+{
+  "property_iri": "http://example.org/hasUncle",
+  "chain": [
+    "http://example.org/hasParent",
+    "http://example.org/hasBrother"
+  ]
+}
+```
 
 ---
 
@@ -189,7 +215,7 @@ Requires admin role unless noted.
 
 | Method | Path | Auth | Description |
 |--------|------|:----:|-------------|
-| POST | `/api/reasoning/{board_id}/run` | Yes | Run reasoner (ELK, HermiT, JFact, Whelk) |
+| POST | `/api/reasoning/{board_id}/run` | Yes | Run reasoner (ELK, HermiT, JFact, Whelk, or owlready2) |
 | GET | `/api/reasoning/{board_id}/inferences` | Optional | Get inferred axioms |
 | POST | `/api/reasoning/{board_id}/apply-fix` | Yes | Apply a consistency fix suggestion |
 
@@ -205,14 +231,22 @@ Requires admin role unless noted.
 
 ---
 
-## DL Query (`/api/dlquery`)
+## DL Query and SWRL (`/api/dlquery`)
 
 | Method | Path | Auth | Description |
 |--------|------|:----:|-------------|
 | POST | `/api/dlquery/{board_id}/dl-query` | Yes | Execute DL query |
 | GET | `/api/dlquery/{board_id}/swrl` | Optional | List SWRL rules |
-| POST | `/api/dlquery/{board_id}/swrl` | Yes | Add SWRL rule |
+| POST | `/api/dlquery/{board_id}/swrl` | Yes | Add SWRL rule (human-readable format) |
 | DELETE | `/api/dlquery/{board_id}/swrl` | Yes | Delete SWRL rule |
+
+### SWRL Rule Request
+
+```json
+{
+  "rule": "Person(?x) ^ hasAge(?x, ?age) ^ swrlb:greaterThan(?age, 18) -> Adult(?x)"
+}
+```
 
 ---
 
@@ -231,9 +265,9 @@ Requires admin role unless noted.
 
 | Method | Path | Auth | Description |
 |--------|------|:----:|-------------|
-| GET | `/api/patterns/` | No | List all available patterns |
+| GET | `/api/patterns/` | No | List all available patterns (13 ODPA + user) |
 | GET | `/api/patterns/{pattern_id}` | No | Get pattern details and OWL content |
-| POST | `/api/patterns/{board_id}/apply/{pattern_id}` | Yes | Apply a pattern to a board |
+| POST | `/api/patterns/{board_id}/apply/{pattern_id}` | Yes | Apply a pattern to a board (batched state update) |
 | POST | `/api/patterns/reload` | Yes | Reload pattern list from disk |
 | DELETE | `/api/patterns/{pattern_id}` | Yes | Delete a user-uploaded pattern |
 | POST | `/api/patterns/upload` | Yes | Upload a custom pattern (JSON + OWL) |
@@ -264,8 +298,8 @@ Requires admin role unless noted.
 
 | Method | Path | Auth | Description |
 |--------|------|:----:|-------------|
-| GET | `/api/imports/{board_id}` | Optional | List ontology imports |
-| POST | `/api/imports/{board_id}` | Yes | Add a new import |
+| GET | `/api/imports/{board_id}` | Optional | List ontology imports with resolve status |
+| POST | `/api/imports/{board_id}` | Yes | Add a new import (downloads and creates catalog entry) |
 | DELETE | `/api/imports/{board_id}/{import_iri}` | Yes | Remove an import |
 
 ---
@@ -283,8 +317,12 @@ Requires admin role unless noted.
 
 ## ROBOT Commands (`/api/robot`)
 
+7 of 24 ROBOT commands are implemented. All commands run as local subprocesses (no Docker-in-Docker).
+
 | Method | Path | Auth | Description |
 |--------|------|:----:|-------------|
+| POST | `/api/robot/{board_id}/convert` | Yes | Run ROBOT convert (between OWL formats) |
+| POST | `/api/robot/{board_id}/explain` | Yes | Run ROBOT explain (justification axioms) |
 | POST | `/api/robot/{board_id}/annotate` | Yes | Run ROBOT annotate |
 | POST | `/api/robot/{board_id}/repair` | Yes | Run ROBOT repair |
 | POST | `/api/robot/{board_id}/extract` | Yes | Run ROBOT extract (STAR/TOP/BOT) |
@@ -294,10 +332,10 @@ Requires admin role unless noted.
 | POST | `/api/robot/{board_id}/relax` | Yes | Run ROBOT relax |
 | POST | `/api/robot/{board_id}/merge` | Yes | Run ROBOT merge |
 | POST | `/api/robot/{board_id}/unmerge` | Yes | Run ROBOT unmerge |
-| POST | `/api/robot/{board_id}/explain` | Yes | Run ROBOT explain |
-| POST | `/api/robot/{board_id}/convert` | Yes | Run ROBOT convert |
 | GET | `/api/robot/{board_id}/download/{filename}` | Yes | Download ROBOT output file |
 | POST | `/api/robot/{board_id}/rename-cmd` | Yes | Run ROBOT rename |
+
+**Note**: The 7 fully implemented and tested ROBOT commands are: `convert`, `report`, `reason`, `template`, `diff`, `query`, `explain`. The remaining commands have API endpoints but may have limited testing.
 
 ---
 
@@ -305,7 +343,7 @@ Requires admin role unless noted.
 
 | Method | Path | Auth | Description |
 |--------|------|:----:|-------------|
-| POST | `/api/odk/{board_id}/build` | Yes | Run ODK build inside odkfull container |
+| POST | `/api/odk/{board_id}/build` | Yes | Run ODK build (scaffold generation, no Docker dependency) |
 
 ---
 
@@ -359,7 +397,7 @@ Requires admin role unless noted.
 |--------|------|:----:|-------------|
 | POST | `/api/odk-setup/create-board` | Yes | Create board with ODK structure |
 | POST | `/api/odk-setup/import-zip` | Yes | Import board from ZIP file |
-| POST | `/api/odk-setup/import-github` | Yes | Import board from GitHub repository |
+| POST | `/api/odk-setup/import-github` | Yes | Import board from GitHub (with OWL Functional Syntax auto-conversion) |
 | GET | `/api/odk-setup/{board_id}/yaml` | Optional | Get ODK YAML file content |
 | PUT | `/api/odk-setup/{board_id}/yaml` | Yes | Update ODK YAML file |
 | GET | `/api/odk-setup/{board_id}/files` | Optional | List files in board directory |
@@ -385,7 +423,7 @@ Requires admin role unless noted.
 
 | Method | Path | Auth | Description |
 |--------|------|:----:|-------------|
-| POST | `/api/jobs/{board_id}/submit` | Yes | Submit a background job |
+| POST | `/api/jobs/{board_id}/submit` | Yes | Submit a background job (ROBOT commands) |
 | GET | `/api/jobs/status/{job_id}` | Yes | Get job status |
 | GET | `/api/jobs/stream/{job_id}` | Yes | Stream job progress via SSE |
 | GET | `/api/jobs/{board_id}/list` | Yes | List jobs for a board |
@@ -398,7 +436,7 @@ Requires admin role unless noted.
 |--------|------|:----:|-------------|
 | GET | `/api/tasks/{board_id}` | Yes | List tasks for a board |
 | POST | `/api/tasks/{board_id}` | Yes | Create a new task |
-| PATCH | `/api/tasks/{board_id}/{task_id}` | Yes | Update a task |
+| PATCH | `/api/tasks/{board_id}/{task_id}` | Yes | Update a task (status, priority, assignee) |
 | DELETE | `/api/tasks/{board_id}/{task_id}` | Yes | Delete a task |
 | GET | `/api/tasks/{board_id}/{task_id}/comments` | Yes | List task comments |
 | POST | `/api/tasks/{board_id}/{task_id}/comments` | Yes | Add a task comment |
@@ -410,8 +448,8 @@ Requires admin role unless noted.
 
 | Method | Path | Auth | Description |
 |--------|------|:----:|-------------|
-| GET | `/api/comments/{board_id}` | Yes | List comments (optional entity_iri filter) |
-| POST | `/api/comments/{board_id}` | Yes | Create a comment (with optional @mentions) |
+| GET | `/api/comments/{board_id}` | Yes | List comments (optional entity_iri filter for entity-level) |
+| POST | `/api/comments/{board_id}` | Yes | Create a comment (with optional @mentions, threading via parent_id) |
 | DELETE | `/api/comments/{board_id}/{comment_id}` | Yes | Delete a comment |
 
 ---
@@ -431,7 +469,7 @@ Requires admin role unless noted.
 
 | Method | Path | Auth | Description |
 |--------|------|:----:|-------------|
-| POST | `/api/invite/{board_id}/create` | Yes | Create an invite link |
+| POST | `/api/invite/{board_id}/create` | Yes | Create an invite link (role, expiration, max uses) |
 | GET | `/api/invite/{board_id}/links` | Yes | List invite links for a board |
 | DELETE | `/api/invite/{board_id}/{token}` | Yes | Revoke an invite link |
 | POST | `/api/invite/accept/{token}` | Yes | Accept an invite link |
@@ -468,7 +506,7 @@ Requires admin role unless noted.
 |--------|------|:----:|-------------|
 | GET | `/api/analysis/{board_id}/unused` | Optional | Find unused entities |
 | GET | `/api/analysis/{board_id}/deprecated` | Optional | List deprecated entities |
-| GET | `/api/analysis/{board_id}/import-health` | Optional | Check import health |
+| GET | `/api/analysis/{board_id}/import-health` | Optional | Check import health (resolve status) |
 | GET | `/api/analysis/{board_id}/circular-deps` | Optional | Detect circular dependencies |
 | POST | `/api/analysis/{board_id}/batch-annotate` | Yes | Batch annotate entities |
 
@@ -478,7 +516,7 @@ Requires admin role unless noted.
 
 | Method | Path | Auth | Description |
 |--------|------|:----:|-------------|
-| GET | `/api/idranges/{board_id}` | Optional | List ID range allocations |
+| GET | `/api/idranges/{board_id}` | Optional | List ID range allocations (OWL Functional Syntax support) |
 | POST | `/api/idranges/{board_id}/allocate` | Yes | Allocate a new ID range |
 | PUT | `/api/idranges/{board_id}/{owner}` | Yes | Update an ID range |
 | DELETE | `/api/idranges/{board_id}/{owner}` | Yes | Delete an ID range |
@@ -490,7 +528,7 @@ Requires admin role unless noted.
 
 | Method | Path | Auth | Description |
 |--------|------|:----:|-------------|
-| POST | `/api/export/{board_id}` | Yes | Export ontology in specified format |
+| POST | `/api/export/{board_id}` | Yes | Export ontology in specified format (OWL/XML, Turtle, N-Triples, Functional, etc.) |
 | POST | `/api/export/{board_id}/zip` | Yes | Download board as ZIP |
 
 ---

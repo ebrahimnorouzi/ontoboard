@@ -52,6 +52,20 @@ def set_characteristics(
     return CharacteristicsInfo(**result)
 
 
+@router.get("/{board_id}/chains/{entity_iri:path}")
+def get_chains(
+    board_id: str, entity_iri: str,
+    db: Session = Depends(get_db), user: User | None = Depends(get_current_user_optional),
+):
+    _check(board_id, db, user)
+    try:
+        g = load_graph(board_svc.get_board_dir(board_id))
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="No OWL file")
+    chains = char_svc.get_property_chains(g, entity_iri)
+    return {"chains": chains}
+
+
 @router.post("/{board_id}/property-chain", status_code=201)
 def create_chain(
     board_id: str, body: PropertyChainCreate,

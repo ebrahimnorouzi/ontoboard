@@ -11,7 +11,7 @@ OntoBoard runs as a set of Docker containers. You need:
 | **Docker** | 20.10+ | Docker Desktop on Windows/macOS, or Docker Engine on Linux |
 | **Docker Compose** | v2.0+ | Included with Docker Desktop; install separately on Linux |
 | **Git** | 2.30+ | For cloning the repository |
-| **Disk space** | ~4 GB | For Docker images (including odkfull ~2.5 GB if using ODK features) |
+| **Disk space** | ~2 GB | For Docker images (backend image includes Java 21 + ROBOT 1.9.6) |
 
 Optional (for development mode):
 
@@ -20,12 +20,14 @@ Optional (for development mode):
 | Python | 3.12+ | For running backend tests locally |
 | Node.js | 20+ | For frontend development |
 
+> **Note**: OntoBoard does NOT require the odkfull Docker image (~2.5 GB). ROBOT 1.9.6 and Java 21 are installed directly in the backend and worker Docker images. All ROBOT commands run as local subprocesses.
+
 ## Quick Start
 
 1. Clone the repository:
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/ISE-FIZKarlsruhe/ontoboard.git
 cd ontoboard
 ```
 
@@ -68,9 +70,6 @@ ADMIN_USERNAME=admin
 ADMIN_PASSWORD=your-secure-password
 ADMIN_EMAIL=admin@your-domain.com
 
-# ODK Docker image (pulled by worker on first use)
-ODK_IMAGE=obolibrary/odkfull:latest
-
 # Data directory (inside containers)
 DATA_DIR=/app/data
 ```
@@ -97,7 +96,7 @@ The `run.sh` script provides all common operations:
 | Service | Port | Description |
 |---------|------|-------------|
 | Frontend | 3000 | React application (Vite dev server) |
-| Backend | 8000 | FastAPI REST API |
+| Backend | 8000 | FastAPI REST API + ROBOT 1.9.6 + Java 21 |
 | Collab | 1234 | Hocuspocus WebSocket server for real-time sync |
 | Redis | 6379 | Job queue and pub/sub |
 
@@ -118,7 +117,7 @@ The board is created with a starter OWL file and the ODK directory structure und
 
 ### Step 2: Add Classes to the Canvas
 
-1. The board opens on the **Ontology Canvas**
+1. The board opens on the **Ontology Canvas** with auto-fit viewport
 2. **Double-click** on empty canvas space to create a new class
 3. Enter the class label (e.g., "Person") and confirm
 4. Create a second class (e.g., "Organization")
@@ -140,18 +139,38 @@ The board is created with a starter OWL file and the ODK directory structure und
 3. Enter the individual label and select its type (class)
 4. The individual appears as a diamond-shaped node
 
-### Step 5: Edit Axioms
+### Step 5: Edit Axioms with Manchester Syntax
 
 1. Click on a class to select it
 2. Open the **Axiom Editor** panel from the right sidebar
-3. Add Manchester Syntax expressions (e.g., `Person SubClassOf worksFor some Organization`)
+3. Add Manchester Syntax expressions. The parser supports:
+   - Simple: `Person SubClassOf Agent`
+   - Existential: `Person SubClassOf worksFor some Organization`
+   - Complex: `Animal and hasPart some (Organ or Tissue) and not Plant`
+   - Cardinality: `Person SubClassOf hasChild min 0 Person`
 4. The axiom editor provides auto-completion for entity names
 
-### Step 6: Save and Export
+### Step 6: Configure Property Characteristics
+
+1. Select an object property in the tree browser
+2. In the detail panel, use checkboxes for:
+   - Functional, InverseFunctional, Transitive, Symmetric, Asymmetric, Reflexive, Irreflexive
+3. Add property chains via the chain editor (e.g., `hasParent o hasBrother -> hasUncle`)
+4. For data properties, select XSD range from the dropdown
+
+### Step 7: Apply an Ontology Design Pattern
+
+1. Open the **Pattern Library** panel
+2. Browse the 13 curated ODPA patterns (e.g., Part-Of, Participation, Classification)
+3. Click "Apply" or drag the pattern onto the canvas
+4. Pattern classes are auto-colored by namespace prefix
+
+### Step 8: Save and Export
 
 - The canvas **auto-saves** after 800ms of inactivity
 - To export, use the export menu for OWL/XML, Turtle, or other formats
-- To run quality checks, open the **ODK Panel** and run a ROBOT report
+- To run quality checks, use **ROBOT report** from the ODK Panel
+- To debug inconsistencies, use **ROBOT explain** for justification axioms
 
 ## Importing from GitHub
 
@@ -162,6 +181,7 @@ OntoBoard can import existing ontology repositories from GitHub:
 3. OntoBoard will:
    - Clone the repository
    - Detect the OWL file and ODK structure
+   - Auto-convert OWL Functional Syntax files to OWL/XML via ROBOT
    - Create a board with the imported ontology
 4. The board is ready for visual editing
 
@@ -172,6 +192,15 @@ You can also import from a ZIP file containing an ODK project structure.
 1. From the Dashboard, click **"Import from File"**
 2. Upload an OWL file (.owl, .ttl, .rdf, .nt, .jsonld) or a ZIP file
 3. OntoBoard parses the ontology and creates the board with all classes, properties, and individuals displayed on the canvas
+
+**Supported formats:**
+- OWL/XML (native)
+- Turtle (native)
+- N-Triples (native)
+- OWL Functional Syntax (auto-converted via ROBOT)
+- Manchester Syntax (partial support)
+- RDF/XML (native)
+- OBO Format (read-only via rdflib)
 
 ## Development Mode Setup
 
@@ -196,10 +225,10 @@ In development mode:
 cd backend
 pip install -r requirements.txt
 pip install -r requirements-test.txt
-python -m pytest tests/ -v --tb=short
+python -m pytest tests/ -v
 ```
 
-The test suite contains 181 tests covering all API endpoints and services.
+The test suite contains 455+ tests across 46 test files covering all API endpoints and services including Manchester parser, property characteristics, SWRL rules, ROBOT explain, import resolution, and embedded reasoner.
 
 ### Running Frontend Locally (without Docker)
 
@@ -229,17 +258,16 @@ docker build --network host -t ontoboard-worker   ./worker
 docker compose up -d
 ```
 
-### ODK Image Not Found
-
-The worker service pulls the `obolibrary/odkfull:latest` image on first use. This image is approximately 2.5 GB. If the pull fails:
-
-```bash
-docker pull obolibrary/odkfull:latest
-```
-
 ### Port Conflicts
 
 If ports 3000, 8000, 1234, or 6379 are already in use, stop the conflicting services or modify the port mappings in `docker-compose.yml`.
+
+### ROBOT / Java Issues
+
+ROBOT 1.9.6 and Java 21 are installed inside the backend and worker Docker images. If ROBOT commands fail:
+- Check that the Docker images were built successfully (`./run.sh build`)
+- Verify Java is available inside the container: `docker compose exec backend java -version`
+- Verify ROBOT is available: `docker compose exec backend robot --version`
 
 ### Resetting All Data
 

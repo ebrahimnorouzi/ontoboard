@@ -7,6 +7,19 @@
   height: 100%;
 }
 
+/* File switcher */
+.fileSwitcher { display: flex; flex-direction: column; gap: 0.3rem; }
+.fileSelect {
+  width: 100%; padding: 0.4rem 0.5rem; border: 1px solid var(--accent);
+  border-radius: var(--radius-sm); background: var(--bg-primary);
+  color: var(--text-primary); font-size: 0.78rem; font-family: "Cascadia Code", monospace;
+  outline: none; cursor: pointer;
+}
+.fileSelect:focus { box-shadow: 0 0 0 2px var(--accent-glow); }
+.fileSelect:disabled { opacity: 0.5; }
+.switchingLabel { font-size: 0.68rem; color: var(--accent-light); font-style: italic; }
+.activeFileHint { font-size: 0.62rem; color: var(--text-muted); }
+
 .loading, .error {
   padding: 1.5rem;
   text-align: center;

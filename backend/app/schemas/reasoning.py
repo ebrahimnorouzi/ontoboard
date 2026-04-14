@@ -34,7 +34,7 @@ class FixSuggestion(BaseModel):
 
 class ReasoningResult(BaseModel):
     success: bool
-    consistent: bool = True
+    consistent: bool | None = True  # None = unknown (reasoner did not run)
     reasoner: str = ""
     inferences: list[Inference] = []
     errors: list[ReasoningError] = []

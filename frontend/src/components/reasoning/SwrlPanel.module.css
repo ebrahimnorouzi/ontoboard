@@ -1,0 +1,25 @@
+.container { border-top: 1px solid var(--border); padding-top: 0.5rem; margin-top: 0.5rem; }
+.header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.3rem; }
+.title { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); margin: 0; }
+.addToggle { padding: 0.15rem 0.5rem; border: 1px solid var(--accent); border-radius: var(--radius-sm); background: none; color: var(--accent); font-size: 0.6rem; font-weight: 600; cursor: pointer; font-family: inherit; }
+.addToggle:hover { background: var(--accent); color: #fff; }
+.error { padding: 0.3rem 0.5rem; background: rgba(239,68,68,0.08); color: var(--danger); font-size: 0.72rem; border-radius: var(--radius-sm); margin-bottom: 0.3rem; cursor: pointer; }
+.hint { font-size: 0.72rem; color: var(--text-muted); padding: 0.3rem 0; }
+.addForm { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0.5rem; margin-bottom: 0.4rem; }
+.formRow { margin-bottom: 0.3rem; }
+.formLabel { font-size: 0.65rem; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 0.15rem; }
+.formInput { width: 100%; padding: 0.3rem 0.4rem; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg-primary); color: var(--text-primary); font-size: 0.72rem; font-family: "Cascadia Code", monospace; outline: none; resize: vertical; box-sizing: border-box; }
+.formInput:focus { border-color: var(--accent); }
+.formArrow { text-align: center; font-size: 0.8rem; font-weight: 700; color: var(--accent); padding: 0.2rem 0; }
+.addBtn { width: 100%; padding: 0.3rem; background: var(--accent); color: #fff; border: none; border-radius: var(--radius-sm); font-size: 0.72rem; font-weight: 600; cursor: pointer; font-family: inherit; margin-top: 0.2rem; }
+.addBtn:disabled { opacity: 0.4; }
+.ruleList { display: flex; flex-direction: column; gap: 0.25rem; }
+.ruleCard { display: flex; align-items: flex-start; gap: 0.3rem; padding: 0.35rem 0.5rem; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-sm); border-left: 3px solid var(--accent); }
+.ruleBody { flex: 1; font-size: 0.72rem; font-family: "Cascadia Code", monospace; line-height: 1.5; }
+.ruleAnt { color: var(--text-secondary); }
+.ruleArrow { color: var(--accent); font-weight: 700; margin: 0 0.3rem; }
+.ruleCon { color: var(--success); font-weight: 600; }
+.ruleDelete { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 0.85rem; padding: 0; line-height: 1; flex-shrink: 0; }
+.ruleDelete:hover { color: var(--danger); }
+.infoText { font-size: 0.6rem; color: var(--text-muted); margin-top: 0.4rem; line-height: 1.5; }
+.infoText code { background: rgba(255,255,255,0.06); padding: 0.1rem 0.25rem; border-radius: 3px; font-size: 0.58rem; }

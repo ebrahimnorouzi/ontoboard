@@ -1,14 +1,17 @@
 """Reasoning router — run reasoner, get inferences, apply fixes."""
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.deps import get_db, get_current_user, get_current_user_optional
 from app.models.user import User
 from app.schemas.reasoning import ReasoningRequest, ReasoningResult, Inference
+from pydantic import BaseModel
+
 from app.services import board as board_svc
 from app.services import reasoning as reasoning_svc
 from app.services import axiom as axiom_svc
+from app.services import swrl as swrl_svc
 from app.services.ontology import load_graph
 
 router = APIRouter()
@@ -106,3 +109,126 @@ def apply_fix(
             raise HTTPException(status_code=500, detail=str(exc))
 
     return {"success": False, "detail": f"Unknown action: {action}"}
+
+
+@router.post("/{board_id}/explain/{entity_iri:path}")
+async def explain_entity(
+    board_id: str,
+    entity_iri: str,
+    body: ReasoningRequest | None = None,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Explain why a specific entity is unsatisfiable."""
+    board = board_svc.get_board_by_slug(db, board_id)
+    if not board:
+        raise HTTPException(status_code=404, detail="Board not found")
+    if not board_svc.can_edit(db, board, user):
+        raise HTTPException(status_code=403, detail="Edit access required")
+
+    body = body or ReasoningRequest()
+    board_dir = board_svc.get_board_dir(board_id)
+    result = await reasoning_svc.explain_unsatisfiable(
+        board_dir, entity_iri, reasoner=body.reasoner,
+    )
+    return result
+
+
+@router.post("/{board_id}/explain")
+async def explain_inconsistency(
+    board_id: str,
+    body: ReasoningRequest | None = None,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Explain overall ontology inconsistency."""
+    board = board_svc.get_board_by_slug(db, board_id)
+    if not board:
+        raise HTTPException(status_code=404, detail="Board not found")
+    if not board_svc.can_edit(db, board, user):
+        raise HTTPException(status_code=403, detail="Edit access required")
+
+    body = body or ReasoningRequest()
+    board_dir = board_svc.get_board_dir(board_id)
+    result = await reasoning_svc.explain_inconsistency(
+        board_dir, reasoner=body.reasoner,
+    )
+    return result
+
+
+# ── SWRL rules ────────────────────────────────────────────────────
+
+
+class SwrlRuleCreate(BaseModel):
+    antecedent: str
+    consequent: str
+
+
+@router.get("/{board_id}/swrl")
+def list_swrl_rules(
+    board_id: str,
+    db: Session = Depends(get_db),
+    user: User | None = Depends(get_current_user_optional),
+):
+    """List all SWRL rules for this board."""
+    board = board_svc.get_board_by_slug(db, board_id)
+    if not board:
+        raise HTTPException(status_code=404, detail="Board not found")
+    if not board_svc.can_view(db, board, user):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    board_dir = board_svc.get_board_dir(board_id)
+    return swrl_svc.get_swrl_rules(board_dir)
+
+
+@router.post("/{board_id}/swrl")
+def add_swrl_rule(
+    board_id: str,
+    body: SwrlRuleCreate,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Add a new SWRL rule."""
+    board = board_svc.get_board_by_slug(db, board_id)
+    if not board:
+        raise HTTPException(status_code=404, detail="Board not found")
+    if not board_svc.can_edit(db, board, user):
+        raise HTTPException(status_code=403, detail="Edit access required")
+
+    board_dir = board_svc.get_board_dir(board_id)
+    try:
+        rule = swrl_svc.add_swrl_rule(board_dir, body.antecedent, body.consequent)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+    board_svc.log_activity(
+        db, board, user, "swrl_add",
+        f"Added SWRL rule: {rule['label']}",
+    )
+    return rule
+
+
+@router.delete("/{board_id}/swrl/{rule_id}")
+def delete_swrl_rule(
+    board_id: str,
+    rule_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Delete a SWRL rule by id."""
+    board = board_svc.get_board_by_slug(db, board_id)
+    if not board:
+        raise HTTPException(status_code=404, detail="Board not found")
+    if not board_svc.can_edit(db, board, user):
+        raise HTTPException(status_code=403, detail="Edit access required")
+
+    board_dir = board_svc.get_board_dir(board_id)
+    deleted = swrl_svc.delete_swrl_rule(board_dir, rule_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Rule not found")
+
+    board_svc.log_activity(
+        db, board, user, "swrl_delete",
+        f"Deleted SWRL rule {rule_id}",
+    )
+    return {"success": True}

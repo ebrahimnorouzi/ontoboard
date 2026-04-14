@@ -27,6 +27,8 @@ OntoBoard is a 5-service microservice architecture orchestrated with Docker Comp
                    |     |    Backend     |     |
                    |     |   FastAPI      |     |
                    |     |  rdflib+ROBOT  |     |
+                   |     |  owlready2    |     |
+                   |     |  Java 21      |     |
                    |     +--+-------+--+-+     |
                    |        |       |  |       |
                    |   SQLite    Redis |  Filesystem
@@ -39,13 +41,15 @@ OntoBoard is a 5-service microservice architecture orchestrated with Docker Comp
                    |        |       |          |
                    |        |  +----v--------+ |
                    |        |  |   Worker    | |
-                   |        |  | Redis queue | |
-                   |        |  | odkfull     | |
+                   |        |  | ROBOT+Java  | |
+                   |        |  | subprocess  | |
                    |        |  +-------------+ |
                    |        |                  |
                    +--------+------------------+
                          Shared ./data/ volume
 ```
+
+**Key architectural decision**: ROBOT 1.9.6 and Java 21 are installed directly in the backend and worker Docker images. There is no Docker-in-Docker. There is no dependency on the odkfull container at runtime. All ROBOT commands run as local subprocesses via `subprocess.run(["robot", ...])`.
 
 ## Services
 
@@ -56,9 +60,11 @@ OntoBoard is a 5-service microservice architecture orchestrated with Docker Comp
 | Image | `ontoboard-frontend:latest` |
 | Base | `node:20-alpine` |
 | Port | 3000 |
-| Stack | React 18, TypeScript, Cytoscape.js, Zustand, Monaco Editor, Vite |
+| Stack | React 18.3, TypeScript 5.6, Cytoscape.js 3.30, Zustand 5, Monaco Editor, Vite 5 |
 
 The frontend is a single-page application built with React 18 and TypeScript. The ontology canvas uses Cytoscape.js for graph rendering with dagre, cose-bilkent, and force-directed layouts. State management uses Zustand with a single `ontologyStore` that tracks all canvas entities (classes, properties, individuals, literals, sticky notes, frames) and auto-saves to the backend with an 800ms debounce.
+
+The canvas auto-fits the viewport on initial load. Tab state is preserved so visited tabs stay mounted. Debug logging is available for edge rendering diagnostics. Pattern applications are batched into single state updates.
 
 Key frontend dependencies:
 - `cytoscape` + `cytoscape-dagre` + `cytoscape-cose-bilkent` + `cytoscape-edgehandles` -- graph rendering and interaction
@@ -67,20 +73,29 @@ Key frontend dependencies:
 - `zustand` -- state management
 - `react-router-dom` -- client-side routing
 
-### 2. Backend (FastAPI + rdflib + ROBOT)
+### 2. Backend (FastAPI + rdflib + ROBOT + owlready2)
 
 | Property | Value |
 |----------|-------|
 | Image | `ontoboard-backend:latest` |
-| Base | `python:3.12-slim` + Java JRE + ROBOT 1.9.6 |
+| Base | `python:3.12-slim` + Java 21 JRE + ROBOT 1.9.6 + make |
 | Port | 8000 |
-| Stack | FastAPI, rdflib 7.1, SQLAlchemy, Dulwich, Docker SDK |
+| Stack | FastAPI 0.115, rdflib 7.1, owlready2 0.47, SQLAlchemy 2, Dulwich |
 
-The backend is a FastAPI application providing 100+ REST API endpoints across 35 routers. It embeds ROBOT (robot.jar) with Java for OWL processing and uses rdflib for lightweight RDF/OWL parsing. SQLAlchemy manages the SQLite database for user accounts, boards, tasks, comments, and notifications. Dulwich provides Git operations for version tracking.
+The backend is a FastAPI application providing 100+ REST API endpoints across 37 routers. It contains 41 service modules with all business logic. ROBOT (robot.jar) with Java runs OWL processing as a local subprocess. rdflib handles lightweight RDF/OWL parsing. owlready2 provides an embedded reasoner as an alternative to ROBOT. SQLAlchemy manages the SQLite database for user accounts, boards, tasks, comments, and notifications. Dulwich provides Git operations for version tracking.
+
+Key backend services:
+- `manchester_parser.py` -- recursive descent parser for Manchester Syntax class expressions (bidirectional: parse and render)
+- `swrl.py` -- SWRL rule management (stored as OWL annotations)
+- `reasoning.py` -- reasoner integration via ROBOT subprocess and owlready2
+- `robot.py` -- ROBOT command execution (7 of 24 commands: convert, report, reason, template, diff, query, explain)
+- `imports.py` -- import resolution with download and catalog management
+- `ontology.py` -- OWL file parsing and manipulation via rdflib
 
 Key backend dependencies:
 - `fastapi` + `uvicorn` -- web framework and ASGI server
 - `rdflib` -- RDF/OWL graph parsing and manipulation
+- `owlready2` -- embedded OWL reasoner and ontology manipulation
 - `sqlalchemy` -- ORM for SQLite/PostgreSQL
 - `dulwich` -- pure-Python Git library for version control
 - `redis` -- job queue client
@@ -94,33 +109,35 @@ Key backend dependencies:
 | Image | `ontoboard-collab:latest` |
 | Base | `node:20-alpine` |
 | Port | 1234 |
-| Stack | Hocuspocus Server, Yjs, jsonwebtoken |
+| Stack | Hocuspocus Server 3.4, Yjs 13.6, jsonwebtoken |
 
 The collaboration server runs Hocuspocus, a WebSocket server for Yjs document synchronization. Each board gets its own Yjs document, identified by the board ID. The server:
 - Authenticates users via JWT tokens (same SECRET_KEY as the backend)
 - Persists Yjs document state to disk as binary snapshots (`collab-state.bin`)
 - Allows anonymous connections as read-only viewers
-- Broadcasts awareness updates (cursor positions, user actions)
+- Broadcasts awareness updates (cursor positions, entity selections, user actions)
 
-### 4. Worker (Redis Queue Consumer)
+### 4. Worker (Redis Queue Consumer + ROBOT + Java)
 
 | Property | Value |
 |----------|-------|
 | Image | `ontoboard-worker:latest` |
-| Base | `python:3.12-slim` |
+| Base | `python:3.12-slim` + Java 21 JRE + ROBOT 1.9.6 + make |
 | Port | None (background service) |
-| Stack | Python, Redis, Docker SDK |
+| Stack | Python 3.12, ROBOT 1.9.6, Java 21, Redis |
 
-The worker service polls a Redis job queue (`ontoboard:jobs`) and executes long-running tasks by spinning up `odkfull` Docker containers. Supported job types:
+The worker service polls a Redis job queue (`ontoboard:jobs`) and executes long-running ROBOT tasks as local subprocesses. ROBOT and Java are installed directly in the worker image -- there is no Docker-in-Docker.
+
+Supported job types:
 
 | Job Type | Description |
 |----------|-------------|
 | `reason` | Run a reasoner (ELK, HermiT, JFact, Whelk) on the ontology |
-| `publish` | Run the ODK publish pipeline (test, prepare_release, publish) |
-| `build_docs` | Generate ontology documentation via `make docs` |
 | `robot_report` | Run ROBOT report for quality checking |
+| `robot_explain` | Run ROBOT explain for entailment justifications |
+| `convert` | Convert between OWL formats |
 
-Each job gets a unique ID. Progress is published via Redis pub/sub (`ontoboard:progress:{job_id}`), and results are stored in Redis with a 1-hour TTL. The worker auto-pulls the ODK Docker image if not found locally.
+Each job gets a unique ID. Progress is published via Redis pub/sub (`ontoboard:progress:{job_id}`), and results are stored in Redis with a 1-hour TTL.
 
 ### 5. Redis
 
@@ -143,7 +160,7 @@ ontoboard/
 |   |   +-- database.py         # SQLAlchemy engine and session setup
 |   |   +-- deps.py             # Dependency injection (auth, DB sessions)
 |   |   +-- main.py             # FastAPI app, router registration, startup
-|   |   +-- models/             # SQLAlchemy ORM models
+|   |   +-- models/             # SQLAlchemy ORM models (8 files, 7 tables)
 |   |   |   +-- user.py         # User model (id, username, email, role, etc.)
 |   |   |   +-- board.py        # Board + BoardMember models
 |   |   |   +-- activity.py     # Activity log model
@@ -151,12 +168,37 @@ ontoboard/
 |   |   |   +-- comment.py      # Comment model (board/entity-level)
 |   |   |   +-- invite.py       # InviteLink model
 |   |   |   +-- notification.py # Notification model
-|   |   +-- routers/            # API endpoint definitions (35 router modules)
+|   |   +-- routers/            # API endpoint definitions (37 router modules)
 |   |   +-- schemas/            # Pydantic request/response schemas
-|   |   +-- services/           # Business logic layer (30+ service modules)
-|   +-- tests/                  # pytest test suite (181 tests)
-|   +-- Dockerfile              # Python 3.12 + Java JRE + ROBOT
-|   +-- requirements.txt        # Python dependencies
+|   |   +-- services/           # Business logic layer (41 service modules)
+|   |       +-- manchester_parser.py  # Recursive descent Manchester parser
+|   |       +-- swrl.py              # SWRL rule management
+|   |       +-- reasoning.py         # ROBOT + owlready2 reasoning
+|   |       +-- robot.py             # ROBOT command execution
+|   |       +-- imports.py           # Import resolution and catalog management
+|   |       +-- ontology.py          # OWL file parsing via rdflib
+|   +-- tests/                  # pytest test suite (46 files, 455+ functions)
+|   |   +-- conftest.py         # Shared fixtures (test client, auth helpers)
+|   |   +-- test_tier1_features.py   # Manchester parser, characteristics, chains, XSD, annotations
+|   |   +-- test_tier2_features.py   # ROBOT explain, imports, SWRL, embedded reasoner
+|   |   +-- test_*.py           # 44 additional test files
+|   +-- seed/
+|   |   +-- patterns/           # 13 bundled ODPA patterns (tracked in git)
+|   |       +-- agent-role/     # metadata.json + pattern.owl
+|   |       +-- classification/
+|   |       +-- collection-entity/
+|   |       +-- co-participation/
+|   |       +-- description/
+|   |       +-- information-realization/
+|   |       +-- observation/
+|   |       +-- participation/
+|   |       +-- part-of/
+|   |       +-- sequence/
+|   |       +-- situation/
+|   |       +-- spatial-object/
+|   |       +-- time-interval/
+|   +-- Dockerfile              # Python 3.12 + Java 21 + ROBOT 1.9.6 + make
+|   +-- requirements.txt        # FastAPI, rdflib, owlready2, etc.
 |   +-- requirements-test.txt   # Test dependencies (pytest)
 |   +-- pytest.ini              # pytest configuration
 +-- frontend/                   # React frontend service
@@ -166,8 +208,8 @@ ontoboard/
 |   |   +-- main.tsx            # App entry point and routing
 |   |   +-- store/
 |   |   |   +-- ontologyStore.ts # Zustand store (single source of truth)
-|   |   +-- components/         # React components
-|   |   |   +-- canvas/         # OntologyCanvas, ContextMenu, EditPopup, Minimap, etc.
+|   |   +-- components/         # 25 feature directories
+|   |   |   +-- canvas/         # OntologyCanvas, ContextMenu, EditPopup, Minimap
 |   |   |   +-- tree/           # TreeBrowser (Protege-style hierarchy)
 |   |   |   +-- axiom/          # AxiomEditor (Monaco + Manchester Syntax)
 |   |   |   +-- patterns/       # PatternLibrary (ODPA patterns)
@@ -187,59 +229,58 @@ ontoboard/
 |   |   |   +-- wizard/         # CreateBoardWizard
 |   |   |   +-- board/          # BoardSettingsDialog
 |   |   +-- hooks/              # Custom React hooks
-|   |   |   +-- useOntology.ts  # Ontology data fetching
-|   |   |   +-- useAxiomEditor.ts
-|   |   |   +-- useReasoning.ts
-|   |   |   +-- useSparql.ts
-|   |   |   +-- useTasks.ts
-|   |   |   +-- useCsvImport.ts
-|   |   |   +-- useTreeData.ts
-|   |   |   +-- useRestrictions.ts
-|   |   |   +-- usePublish.ts
-|   |   |   +-- useDocs.ts
-|   |   |   +-- useInvite.ts
 |   |   +-- collab/             # Collaboration components
 |   |   |   +-- useCollaboration.ts  # Yjs connection and sync
 |   |   |   +-- useYjsSync.ts       # Canvas state sync via Yjs
-|   |   |   +-- CollabStatus.tsx     # Connection status indicator
-|   |   +-- pages/              # Page-level components
-|   |   |   +-- HomePage.tsx
-|   |   |   +-- LoginPage.tsx
-|   |   |   +-- SignupPage.tsx
-|   |   |   +-- DashboardPage.tsx
-|   |   |   +-- BoardPage.tsx
-|   |   |   +-- AdminPage.tsx
-|   |   |   +-- InvitePage.tsx
-|   |   |   +-- FeedbackPage.tsx
-|   |   +-- styles/
-|   |       +-- global.css
+|   |   |   +-- CollabStatus.tsx     # Connection + entity lock visibility
+|   |   +-- pages/              # 8 page routes
+|   |       +-- HomePage.tsx
+|   |       +-- LoginPage.tsx
+|   |       +-- SignupPage.tsx
+|   |       +-- DashboardPage.tsx
+|   |       +-- BoardPage.tsx
+|   |       +-- AdminPage.tsx
+|   |       +-- InvitePage.tsx
+|   |       +-- FeedbackPage.tsx
 |   +-- Dockerfile              # Node 20 Alpine + Vite dev server
 |   +-- package.json            # npm dependencies
-|   +-- vite.config.ts
-|   +-- tsconfig.json
 +-- collab/                     # Collaboration server
 |   +-- server.mjs              # Hocuspocus server with JWT auth
 |   +-- package.json
 |   +-- Dockerfile
 +-- worker/                     # Background job worker
 |   +-- worker/
-|   |   +-- main.py             # Redis queue consumer + Docker SDK
+|   |   +-- main.py             # Redis queue consumer + ROBOT subprocess
 |   +-- requirements.txt
-|   +-- Dockerfile
-+-- data/                       # Persistent data (Docker volume)
+|   +-- Dockerfile              # Python 3.12 + Java 21 + ROBOT 1.9.6 + make
++-- data/                       # Persistent data (Docker volume, gitignored)
 |   +-- ontoboard.db            # SQLite database
 |   +-- patterns/
-|   |   +-- odpa/               # Built-in ODPA patterns (JSON + OWL)
+|   |   +-- odpa/               # Auto-seeded from backend/seed/patterns/
+|   |   |   +-- part-of/
+|   |   |   +-- quality/
+|   |   |   +-- participation/
+|   |   |   +-- classification/
+|   |   |   +-- ...
 |   |   +-- user/               # User-uploaded patterns
-|   +-- {username}/
-|       +-- {board-id}/
-|           +-- src/
-|           |   +-- ontology/
-|           |       +-- *.owl   # Primary OWL file
-|           |       +-- Makefile
-|           |       +-- *.yaml  # ODK config
-|           +-- canvas.json     # Canvas layout state
-|           +-- collab-state.bin # Yjs persistence
+|   |       +-- {username}/
+|   |           +-- {pattern-id}/
+|   |               +-- metadata.json
+|   |               +-- pattern.owl
+|   +-- {board-id}/             # Per-board data directory
+|       +-- canvas.json         # Canvas state (classes, properties, positions)
+|       +-- collab-state.bin    # Yjs document persistence
+|       +-- src/
+|           +-- ontology/
+|               +-- {ontology-name}.owl       # Primary OWL file
+|               +-- {ontology-name}-edit.owl  # Edit version (ODK convention)
+|               +-- Makefile                  # ODK Makefile
+|               +-- {ontology-name}-odk.yaml  # ODK configuration
+|               +-- catalog-v001.xml          # Import catalog
+|               +-- imports/                  # Mirrored imports
+|               +-- components/               # Ontology components
+|               +-- reports/                  # ROBOT report output
++-- docs/                       # 7 documentation files
 +-- docker-compose.yml          # Production compose
 +-- docker-compose.dev.yml      # Development compose (source mounted)
 +-- run.sh                      # CLI entry point
@@ -258,6 +299,7 @@ Zustand store mutated (addClass, addProperty, etc.)
          |
          v
 Provenance stamp added (created_by, created_at, modified_by, modified_at)
+  using PROV-O agents, Dublin Core, XSD datatypes
          |
          v
 Undo snapshot pushed (max 50 snapshots)
@@ -276,7 +318,7 @@ POST /api/owl/{board_id}/save
 onSaveCallback invoked -> Yjs broadcast to other clients
          |
          v
-Other clients receive Yjs update -> reload from backend
+Other clients receive Yjs update -> reload from backend within ~1 second
 ```
 
 ### Collaboration Flow
@@ -301,14 +343,45 @@ Hocuspocus WebSocket)  -------> |
     |                           |
     |                           v
     |                    Canvas re-rendered
+
+  Entity locking:
+    - Client A selects an entity -> Yjs awareness broadcasts selection
+    - Client B sees entity highlighted with Client A's color
+    - CollabStatus dropdown shows "A is editing ClassName"
+
+  Polling fallback:
+    - If WebSocket disconnects, clients poll sync-check endpoint every 30s
+    - On reconnect, full state reload from backend
 ```
 
-### ODK Job Flow
+### ROBOT Command Flow
 
 ```
-User clicks "Run Reasoning"
+User clicks "Run Reasoning" / "ROBOT Explain" / etc.
          |
          v
+POST /api/reasoning/{board_id}/run  (or /api/robot/{board_id}/explain)
+         |
+         v
+Backend locates the OWL file on disk
+         |
+         v
+Backend runs ROBOT as subprocess:
+  subprocess.run(["robot", "reason", "-r", "ELK", "-i", "ont.owl", ...])
+         |
+         v
+ROBOT (Java process) runs locally inside the Docker container
+         |
+         v
+Backend parses ROBOT output
+         |
+         v
+Result returned to frontend via HTTP response
+```
+
+For long-running jobs:
+
+```
 POST /api/jobs/{board_id}/submit
   { job_type: "reason", params: { reasoner: "ELK" } }
          |
@@ -321,8 +394,7 @@ Backend creates job record in Redis
 Worker BLPOP from ontoboard:jobs
          |
          v
-Worker runs Docker container:
-  docker run obolibrary/odkfull robot reason -r ELK -i /work/src/ontology/ont.owl
+Worker runs ROBOT as local subprocess (Java process, no Docker-in-Docker)
          |
          v
 Worker publishes progress via Redis pub/sub:
@@ -339,9 +411,49 @@ Frontend displays progress bar and terminal output
 Job completed -> result stored in Redis (1h TTL)
 ```
 
+### Manchester Syntax Parsing Flow
+
+```
+User types Manchester expression in axiom editor:
+  "Animal and hasPart some (Organ or Tissue) and not Plant"
+         |
+         v
+PUT /api/axiom/{board_id}/axioms/{entity_iri}
+         |
+         v
+manchester_parser.py tokenizes the expression:
+  [Animal, and, hasPart, some, (, Organ, or, Tissue, ), and, not, Plant]
+         |
+         v
+Recursive descent parser builds AST:
+  IntersectionOf(
+    Animal,
+    SomeValuesFrom(hasPart, UnionOf(Organ, Tissue)),
+    ComplementOf(Plant)
+  )
+         |
+         v
+AST converted to rdflib triples (blank nodes for restrictions)
+         |
+         v
+Triples written to OWL file via rdflib graph
+         |
+         v
+200 OK returned to frontend
+
+Reverse direction (render):
+  GET /api/axiom/{board_id}/manchester/{entity_iri}
+         |
+         v
+  rdflib graph traversed for entity's axioms
+         |
+         v
+  RDF triples rendered back to Manchester Syntax string
+```
+
 ## Database Schema
 
-OntoBoard uses SQLite with SQLAlchemy ORM. The schema consists of 7 tables:
+OntoBoard uses SQLite with SQLAlchemy ORM. The schema consists of 7 tables across 8 model files:
 
 ### users
 
@@ -474,18 +586,27 @@ Each board's ontology files are stored on disk under the shared `data/` volume:
 data/
 +-- ontoboard.db                       # SQLite database
 +-- patterns/
-|   +-- odpa/                          # Built-in ODPA patterns
+|   +-- odpa/                          # Auto-seeded from backend/seed/patterns/
 |   |   +-- part-of/
 |   |   |   +-- metadata.json          # Pattern metadata (name, description, classes, properties)
 |   |   |   +-- pattern.owl            # OWL file with pattern axioms
-|   |   +-- quality/
-|   |   +-- participation/
 |   |   +-- classification/
-|   |   +-- ...
-|   +-- user/                          # User-uploaded patterns
-|       +-- {pattern-id}/
-|           +-- metadata.json
-|           +-- pattern.owl
+|   |   +-- participation/
+|   |   +-- agent-role/
+|   |   +-- collection-entity/
+|   |   +-- co-participation/
+|   |   +-- description/
+|   |   +-- information-realization/
+|   |   +-- observation/
+|   |   +-- sequence/
+|   |   +-- situation/
+|   |   +-- spatial-object/
+|   |   +-- time-interval/
+|   +-- user/                          # User-uploaded patterns (per-user)
+|       +-- {username}/
+|           +-- {pattern-id}/
+|               +-- metadata.json
+|               +-- pattern.owl
 +-- {board-id}/                        # Per-board data directory
     +-- canvas.json                    # Canvas state (classes, properties, positions, etc.)
     +-- collab-state.bin               # Yjs document persistence
@@ -495,6 +616,7 @@ data/
             +-- {ontology-name}-edit.owl # Edit version (ODK convention)
             +-- Makefile               # ODK Makefile
             +-- {ontology-name}-odk.yaml # ODK configuration
+            +-- catalog-v001.xml       # Import catalog for local resolution
             +-- imports/               # Mirrored imports
             +-- components/            # Ontology components
             +-- reports/               # ROBOT report output
@@ -513,7 +635,7 @@ OntoBoard uses JWT bearer token authentication:
 
 ## API Overview
 
-The backend exposes 100+ endpoints across 35 router modules, organized by domain:
+The backend exposes 100+ endpoints across 37 router modules, organized by domain:
 
 | Router Prefix | Endpoints | Description |
 |---------------|:---------:|-------------|
@@ -523,10 +645,10 @@ The backend exposes 100+ endpoints across 35 router modules, organized by domain
 | `/api/owl` | 4 | Canvas load/save, CSV upload, KG build |
 | `/api/ontology` | 14 | Metadata, statistics, prefixes, annotations, identity |
 | `/api/tree` | 9 | Tree hierarchy, entity CRUD, annotations |
-| `/api/axiom` | 5 | Axiom listing, Manchester Syntax, validation |
+| `/api/axiom` | 5 | Axiom listing, Manchester Syntax parsing, validation |
 | `/api/restrictions` | 4 | OWL restrictions (some/all/cardinality/complex) |
 | `/api/characteristics` | 5 | Property characteristics, chains, disjoint |
-| `/api/reasoning` | 3 | Run reasoner, get inferences, apply fix |
+| `/api/reasoning` | 3 | Run reasoner (ROBOT + owlready2), inferences, apply fix |
 | `/api/sparql` | 3 | SPARQL query, visualization, prefixes |
 | `/api/csv` | 4 | CSV upload, preview, build |
 | `/api/patterns` | 7 | Pattern library, apply, upload |
@@ -536,21 +658,21 @@ The backend exposes 100+ endpoints across 35 router modules, organized by domain
 | `/api/odk-config` | 5 | ODK config, targets, changelog, CI YAML |
 | `/api/odk-setup` | 10 | Board creation, import, file browser |
 | `/api/odk-imports` | 8 | Import declaration, terms, Makefile targets |
-| `/api/imports` | 3 | OWL import management |
+| `/api/imports` | 3 | OWL import resolution and management |
 | `/api/version` | 4 | Version info, strategy |
 | `/api/search` | 1 | Full-text entity search |
 | `/api/refactor` | 4 | Rename IRI, move entity, undo/redo |
-| `/api/dlquery` | 4 | DL Query, SWRL rules |
-| `/api/robot` | 14 | ROBOT commands (annotate, repair, extract, filter, etc.) |
+| `/api/dlquery` | 4 | DL Query, SWRL rules (view/create/delete) |
+| `/api/robot` | 14 | ROBOT commands (convert, report, explain, diff, etc.) |
 | `/api/jobs` | 4 | Job submission, status, streaming, listing |
 | `/api/tasks` | 7 | Task CRUD, comments, GitHub integration |
-| `/api/comments` | 3 | Board/entity comments |
+| `/api/comments` | 3 | Board/entity comments with @mentions |
 | `/api/docs` | 4 | Documentation build, status, serve |
 | `/api/invite` | 5 | Invite link creation, acceptance, info |
 | `/api/notifications` | 5 | Notification listing, read, delete |
 | `/api/quality` | 4 | OOPS!, OQuaRE, compliance, registry |
 | `/api/analysis` | 5 | Unused entities, deprecated, import health, circular deps |
-| `/api/idranges` | 5 | ID range allocation, reservation |
+| `/api/idranges` | 5 | ID range allocation (OWL Functional Syntax support) |
 | `/api/export` | 2 | Ontology export, ZIP download |
 | `/api/help` | 4 | Help topics, import steps |
 

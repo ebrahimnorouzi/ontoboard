@@ -569,27 +569,52 @@ def import_from_github(board_dir: Path, github_url: str) -> list[str]:
 
     # Convert OWL Functional Syntax files to OWL/XML (rdflib can't parse functional syntax)
     if shutil.which("robot"):
+        ont_dir = board_dir / "src" / "ontology"
+        catalog = ont_dir / "catalog-v001.xml"
+
         for owl_file in board_dir.rglob("*.owl"):
-            if ".git" in str(owl_file):
+            if ".git" in str(owl_file) or "idranges" in owl_file.name:
                 continue
             try:
-                content = owl_file.read_text(encoding="utf-8", errors="replace")[:100]
-                # OWL Functional Syntax starts with "Prefix(" or "Ontology("
-                if content.strip().startswith("Prefix(") or content.strip().startswith("Ontology("):
+                content = owl_file.read_text(encoding="utf-8", errors="replace")[:200]
+                # Detect OWL Functional Syntax (starts with Prefix( or ## comment + Prefix)
+                first_line = content.lstrip().lstrip("#").lstrip()
+                if first_line.startswith("Prefix(") or first_line.startswith("Ontology("):
                     logger.info("Converting %s from OWL Functional Syntax to OWL/XML", owl_file.name)
                     converted = owl_file.parent / f"_tmp_{owl_file.name}"
+
+                    # Build ROBOT command — use catalog if available for import resolution
+                    cmd = ["robot", "convert"]
+                    if catalog.exists():
+                        cmd += ["--catalog", str(catalog)]
+                    cmd += ["-i", str(owl_file), "-o", str(converted), "--format", "owl"]
+
                     conv_result = subprocess.run(
-                        ["robot", "convert", "-i", str(owl_file), "-o", str(converted), "--format", "owl"],
-                        capture_output=True, text=True, timeout=120,
+                        cmd, capture_output=True, text=True, timeout=180,
+                        cwd=str(owl_file.parent),
                     )
                     if conv_result.returncode == 0 and converted.exists():
                         converted.replace(owl_file)
-                        logger.info("Converted %s successfully", owl_file.name)
+                        logger.info("Converted %s successfully (%d bytes)", owl_file.name, owl_file.stat().st_size)
                     else:
                         converted.unlink(missing_ok=True)
-                        logger.warning("ROBOT convert failed for %s: %s", owl_file.name, conv_result.stderr[:200])
+                        # Try again without catalog (import resolution may fail)
+                        logger.info("Retrying %s conversion without catalog...", owl_file.name)
+                        cmd_nocatalog = ["robot", "convert", "-i", str(owl_file),
+                                         "-o", str(converted), "--format", "owl"]
+                        conv2 = subprocess.run(
+                            cmd_nocatalog, capture_output=True, text=True, timeout=180,
+                            cwd=str(owl_file.parent),
+                        )
+                        if conv2.returncode == 0 and converted.exists():
+                            converted.replace(owl_file)
+                            logger.info("Converted %s (without catalog)", owl_file.name)
+                        else:
+                            converted.unlink(missing_ok=True)
+                            logger.warning("ROBOT convert failed for %s: %s", owl_file.name,
+                                           (conv_result.stderr or conv2.stderr)[:300])
             except Exception as exc:
-                logger.warning("Error checking/converting %s: %s", owl_file.name, exc)
+                logger.warning("Error converting %s: %s", owl_file.name, exc)
 
     files: list[str] = []
     for f in board_dir.rglob("*"):

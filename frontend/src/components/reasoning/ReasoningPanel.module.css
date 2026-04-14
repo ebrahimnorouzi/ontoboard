@@ -115,3 +115,74 @@
 }
 
 .hint { font-size: 0.82rem; color: var(--text-muted); line-height: 1.6; text-align: center; padding: 2rem 1rem; }
+
+/* Explain button inline with errors */
+.explainBtn {
+  padding: 0.15rem 0.4rem; border: 1px solid var(--accent); border-radius: var(--radius-sm);
+  background: transparent; color: var(--accent); font-size: 0.6rem; font-weight: 600;
+  font-family: inherit; cursor: pointer; white-space: nowrap; margin-left: auto; flex-shrink: 0;
+}
+.explainBtn:hover { background: var(--accent); color: #fff; }
+
+/* ExplanationPanel styles */
+.explainHeader {
+  display: flex; align-items: center; justify-content: space-between;
+}
+.explainCloseBtn {
+  background: none; border: none; color: var(--text-muted); cursor: pointer;
+  font-size: 0.85rem; padding: 0.15rem 0.3rem; border-radius: var(--radius-sm);
+}
+.explainCloseBtn:hover { color: var(--text-primary); background: rgba(255,255,255,0.06); }
+.explainPrompt {
+  display: flex; flex-direction: column; align-items: center; gap: 0.5rem;
+  padding: 0.5rem 0;
+}
+.explainPromptText {
+  font-size: 0.75rem; color: var(--text-secondary); text-align: center; margin: 0;
+}
+.explainLoading {
+  font-size: 0.75rem; color: var(--accent-light); text-align: center;
+  padding: 0.8rem 0; animation: pulse 1.5s ease-in-out infinite;
+}
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+.explainSubtitle {
+  font-size: 0.65rem; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.04em; color: var(--text-muted); margin: 0.4rem 0 0.25rem;
+}
+.explainAxiomList { margin-top: 0.25rem; }
+.explainAxiomRow {
+  display: flex; align-items: flex-start; gap: 0.35rem;
+  padding: 0.25rem 0.35rem; font-size: 0.72rem;
+  border-radius: var(--radius-sm); margin-bottom: 0.15rem;
+  border-left: 2px solid var(--accent);
+}
+.explainAxiomRow:hover { background: rgba(108, 92, 231, 0.08); }
+.explainAxiomIdx {
+  font-size: 0.6rem; font-weight: 700; color: var(--accent);
+  min-width: 1.1rem; text-align: center; flex-shrink: 0;
+  padding-top: 0.05rem;
+}
+.explainAxiomText {
+  color: var(--text-secondary); font-family: "Cascadia Code", "Fira Code", monospace;
+  font-size: 0.68rem; word-break: break-word;
+}
+.explainFixes { margin-top: 0.3rem; }
+.explainFixRow {
+  display: flex; align-items: flex-start; gap: 0.3rem;
+  padding: 0.25rem 0.35rem; font-size: 0.72rem;
+  border-left: 2px solid var(--warning); margin-bottom: 0.15rem;
+  border-radius: var(--radius-sm);
+  background: rgba(253, 203, 110, 0.04);
+}
+.explainFixIcon {
+  color: var(--warning); font-weight: 700; flex-shrink: 0; font-size: 0.7rem;
+}
+.explainFixText { color: var(--text-secondary); }
+
+/* Explain overall inconsistency button */
+.explainOverallBtn {
+  padding: 0.3rem 0.7rem; border: 1px solid var(--danger); border-radius: var(--radius-sm);
+  background: transparent; color: var(--danger); font-size: 0.7rem; font-weight: 600;
+  font-family: inherit; cursor: pointer; margin-top: 0.3rem;
+}
+.explainOverallBtn:hover { background: var(--danger); color: #fff; }

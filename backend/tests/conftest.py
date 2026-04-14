@@ -43,6 +43,11 @@ def _find_data_dir_modules():
 _find_data_dir_modules()
 
 
+def _noop_git_commit(board_dir, message=""):
+    """No-op replacement for git_commit in tests."""
+    pass
+
+
 @pytest.fixture()
 def tmp_data_dir(tmp_path):
     data_dir = tmp_path / "data"
@@ -51,6 +56,8 @@ def tmp_data_dir(tmp_path):
         for mod in _DATA_DIR_MODULES:
             stack.enter_context(patch(f"{mod}.DATA_DIR", data_dir))
         stack.enter_context(patch("app.routers.invite.FRONTEND_URL", "http://test-frontend"))
+        # Patch git_commit to no-op — tests don't need actual git repos
+        stack.enter_context(patch("app.services.board.git_commit", _noop_git_commit))
         yield data_dir
 
 

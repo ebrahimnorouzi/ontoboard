@@ -24,6 +24,8 @@ from unittest.mock import patch, MagicMock
 import pytest
 import yaml
 
+from app.services.board import get_board_dir
+
 
 # ═══════════════════════════════════════════════════════════════
 # Test 1: Board Creation — ODK Mode
@@ -44,7 +46,7 @@ async def test_create_odk_board(admin_client, tmp_data_dir):
     assert len(data["files"]) >= 10
 
     # Verify the exact ODK workspace structure
-    board_dir = tmp_data_dir / "testonto"
+    board_dir = get_board_dir("testonto")
     assert (board_dir / "src" / "ontology" / "testonto-edit.owl").exists(), "Missing edit OWL"
     assert (board_dir / "src" / "ontology" / "testonto-odk.yaml").exists(), "Missing ODK YAML"
     assert (board_dir / "src" / "ontology" / "testonto.Makefile").exists(), "Missing custom Makefile"
@@ -69,7 +71,7 @@ async def test_create_blank_board(admin_client, tmp_data_dir):
         "mode": "blank",
     })
     assert resp.status_code == 201
-    assert (tmp_data_dir / "blank1" / "src" / "ontology" / "blank1-edit.owl").exists()
+    assert (get_board_dir("blank1") / "src" / "ontology" / "blank1-edit.owl").exists()
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -511,7 +513,7 @@ async def test_versioning_strategy_default_date(admin_client, tmp_data_dir):
     })
     assert resp.status_code == 201
 
-    board_dir = tmp_data_dir / "dateont"
+    board_dir = get_board_dir("dateont")
     release_sh = (board_dir / "src" / "ontology" / "release.sh").read_text()
     assert "date-based versioning" in release_sh
     assert "$(date +%Y-%m-%d)" in release_sh
@@ -539,7 +541,7 @@ async def test_versioning_strategy_semantic(admin_client, tmp_data_dir):
     })
     assert resp2.status_code == 201
 
-    board_dir = tmp_data_dir / "semonto2"
+    board_dir = get_board_dir("semonto2")
     release_sh = (board_dir / "src" / "ontology" / "release.sh").read_text()
     assert "semantic versioning" in release_sh
     assert "ANNOTATE_ONTOLOGY_VERSION" in release_sh
@@ -570,7 +572,7 @@ async def test_versioning_strategy_switch(admin_client, tmp_data_dir):
     assert resp.json()["strategy"] == "semantic"
 
     # Verify release.sh was regenerated
-    board_dir = tmp_data_dir / "switchont"
+    board_dir = get_board_dir("switchont")
     release_sh = (board_dir / "src" / "ontology" / "release.sh").read_text()
     assert "semantic versioning" in release_sh
 

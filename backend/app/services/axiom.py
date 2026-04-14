@@ -207,9 +207,9 @@ def apply_manchester_edit(board_dir: Path, entity_iri: str, manchester_text: str
             ]:
                 if line.startswith(keyword):
                     obj_str = line[len(keyword):].strip()
-                    obj_uri = _resolve_name(g, obj_str)
-                    if obj_uri:
-                        g.add((entity, pred, obj_uri))
+                    obj_node = _resolve_expression(g, obj_str)
+                    if obj_node:
+                        g.add((entity, pred, obj_node))
                         applied += 1
                     else:
                         errors.append({"line": line_num, "column": len(keyword) + 1,
@@ -217,7 +217,7 @@ def apply_manchester_edit(board_dir: Path, entity_iri: str, manchester_text: str
                     handled = True
                     break
 
-            # Handle bare values under a section header (e.g. indented lines under SubClassOf:)
+            # Handle bare values under a section header
             if not handled and current_section:
                 pred_map = {
                     "SubClassOf": RDFS.subClassOf, "EquivalentTo": OWL.equivalentClass,
@@ -226,9 +226,9 @@ def apply_manchester_edit(board_dir: Path, entity_iri: str, manchester_text: str
                     "InverseOf": OWL.inverseOf,
                 }
                 if current_section in pred_map:
-                    obj_uri = _resolve_name(g, line)
-                    if obj_uri:
-                        g.add((entity, pred_map[current_section], obj_uri))
+                    obj_node = _resolve_expression(g, line)
+                    if obj_node:
+                        g.add((entity, pred_map[current_section], obj_node))
                         applied += 1
                         handled = True
                     else:
@@ -333,26 +333,76 @@ def _render_object(g: Graph, obj) -> str:
 
 
 def _render_restriction(g: Graph, bnode: BNode) -> str:
-    """Attempt to render an OWL restriction as Manchester Syntax."""
+    """Render an OWL restriction/anonymous class as Manchester Syntax.
+
+    Uses the full renderer from manchester_parser if available,
+    falls back to simple rendering.
+    """
+    try:
+        from app.services.manchester_parser import render_class_expression
+        return render_class_expression(g, bnode)
+    except (ImportError, Exception):
+        pass
+
+    # Fallback: simple rendering
     on_prop = None
     for o in g.objects(bnode, OWL.onProperty):
         on_prop = _get_label(g, o) or _local_name(str(o))
 
     some_cls = None
     for o in g.objects(bnode, OWL.someValuesFrom):
-        some_cls = _get_label(g, o) or _local_name(str(o))
+        some_cls = _render_object(g, o) if isinstance(o, BNode) else (_get_label(g, o) or _local_name(str(o)))
 
     all_cls = None
     for o in g.objects(bnode, OWL.allValuesFrom):
-        all_cls = _get_label(g, o) or _local_name(str(o))
+        all_cls = _render_object(g, o) if isinstance(o, BNode) else (_get_label(g, o) or _local_name(str(o)))
+
+    has_val = None
+    for o in g.objects(bnode, OWL.hasValue):
+        has_val = _render_object(g, o)
+
+    # Cardinality
+    for card_pred, card_kw in [(OWL.minCardinality, "min"), (OWL.maxCardinality, "max"),
+                                (OWL.cardinality, "exactly"),
+                                (OWL.minQualifiedCardinality, "min"),
+                                (OWL.maxQualifiedCardinality, "max"),
+                                (OWL.qualifiedCardinality, "exactly")]:
+        for o in g.objects(bnode, card_pred):
+            on_cls = None
+            for oc in g.objects(bnode, OWL.onClass):
+                on_cls = _get_label(g, oc) or _local_name(str(oc))
+            suffix = f" {on_cls}" if on_cls else ""
+            return f"{on_prop} {card_kw} {o}{suffix}" if on_prop else f"({card_kw} {o}{suffix})"
+
+    # Intersection / Union / Complement
+    for o in g.objects(bnode, OWL.intersectionOf):
+        members = _render_rdf_list(g, o)
+        return " and ".join(members) if members else "(intersection)"
+    for o in g.objects(bnode, OWL.unionOf):
+        members = _render_rdf_list(g, o)
+        return " or ".join(members) if members else "(union)"
+    for o in g.objects(bnode, OWL.complementOf):
+        return f"not {_render_object(g, o)}"
 
     if on_prop and some_cls:
         return f"{on_prop} some {some_cls}"
     if on_prop and all_cls:
         return f"{on_prop} only {all_cls}"
+    if on_prop and has_val:
+        return f"{on_prop} value {has_val}"
     if on_prop:
-        return f"{on_prop} some Thing"
+        return f"{on_prop} some owl:Thing"
     return "(anonymous expression)"
+
+
+def _render_rdf_list(g: Graph, head) -> list[str]:
+    """Render an RDF list to a list of Manchester Syntax strings."""
+    from rdflib.collection import Collection
+    try:
+        items = list(Collection(g, head))
+        return [_render_object(g, item) for item in items]
+    except Exception:
+        return []
 
 
 def _get_annotation_lines(g: Graph, entity: URIRef) -> list[str]:
@@ -475,6 +525,36 @@ def _resolve_annotation_property(name: str) -> URIRef | None:
         return _ANNOTATION_PROPERTIES[name]
     if name.startswith("http://") or name.startswith("https://"):
         return URIRef(name)
+    return None
+
+
+def _resolve_expression(g: Graph, expr: str) -> URIRef | BNode | None:
+    """Resolve a Manchester Syntax expression to an RDF node.
+
+    First tries simple name resolution. If that fails and the expression
+    contains keywords (and, or, not, some, only, min, max, exactly),
+    uses the full Manchester parser.
+    """
+    expr = expr.strip()
+    if not expr:
+        return None
+
+    # Try simple name first
+    simple = _resolve_name(g, expr)
+    if simple:
+        return simple
+
+    # Check if expression contains Manchester keywords
+    keywords = {"and", "or", "not", "some", "only", "value", "min", "max", "exactly", "(", ")"}
+    tokens = expr.split()
+    if any(t in keywords for t in tokens) or "(" in expr:
+        try:
+            from app.services.manchester_parser import parse_class_expression
+            return parse_class_expression(expr, g)
+        except Exception as exc:
+            logger.warning("Manchester parse failed for '%s': %s", expr[:50], exc)
+            return None
+
     return None
 
 

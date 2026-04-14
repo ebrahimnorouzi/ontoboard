@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { useReasoning } from "../../hooks/useReasoning";
 import { useOntologyStore } from "../../store/ontologyStore";
+import ExplanationPanel from "./ExplanationPanel";
+import SwrlPanel from "./SwrlPanel";
 import styles from "./ReasoningPanel.module.css";
 
 interface Props {
@@ -13,6 +15,8 @@ const REASONERS = ["ELK", "HermiT", "JFact", "Whelk"];
 export default function ReasoningPanel({ boardId, onHighlightEntity }: Props) {
   const { result, running, error, runReasoning, applyFix } = useReasoning(boardId);
   const [selectedReasoner, setSelectedReasoner] = useState("ELK");
+  const [explainTarget, setExplainTarget] = useState<string | null>(null);
+  const [showExplainPanel, setShowExplainPanel] = useState(false);
   const store = useOntologyStore();
 
   // Store inferences in the ontology store when reasoning completes successfully
@@ -90,16 +94,48 @@ export default function ReasoningPanel({ boardId, onHighlightEntity }: Props) {
                   className={styles.errorRow}
                   onClick={() => err.entity_iri && onHighlightEntity?.(err.entity_iri, "red")}
                 >
-                  <span className={styles.errorIcon}>\u2717</span>
+                  <span className={styles.errorIcon}>{"\u2717"}</span>
                   <div className={styles.errorContent}>
                     {err.entity_label && (
                       <span className={styles.errorEntity}>{err.entity_label}</span>
                     )}
                     <span className={styles.errorMsg}>{err.message}</span>
                   </div>
+                  <button
+                    className={styles.explainBtn}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setExplainTarget(err.entity_iri || undefined ?? null);
+                      setShowExplainPanel(true);
+                    }}
+                  >
+                    Explain
+                  </button>
                 </div>
               ))}
+              {!showExplainPanel && (
+                <button
+                  className={styles.explainOverallBtn}
+                  onClick={() => {
+                    setExplainTarget(null);
+                    setShowExplainPanel(true);
+                  }}
+                >
+                  Explain Overall Inconsistency
+                </button>
+              )}
             </div>
+          )}
+
+          {/* Explanation panel */}
+          {showExplainPanel && (
+            <ExplanationPanel
+              boardId={boardId}
+              entityIri={explainTarget || undefined}
+              reasoner={result.reasoner || selectedReasoner}
+              onHighlightEntity={onHighlightEntity}
+              onClose={() => setShowExplainPanel(false)}
+            />
           )}
 
           {/* Fix suggestions */}
@@ -160,6 +196,9 @@ export default function ReasoningPanel({ boardId, onHighlightEntity }: Props) {
           and compute inferences.
         </p>
       )}
+
+      {/* SWRL Rules */}
+      <SwrlPanel boardId={boardId} />
     </div>
   );
 }

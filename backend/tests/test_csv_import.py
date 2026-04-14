@@ -191,7 +191,8 @@ async def test_build_endpoint(admin_client, tmp_data_dir):
     assert body["triples_count"] > 0
 
     # Verify file on disk
-    assert (tmp_data_dir / "csv-build" / "knowledge_graph.ttl").exists()
+    from app.services.board import get_board_dir
+    assert (get_board_dir("csv-build") / "knowledge_graph.ttl").exists()
 
 
 @pytest.mark.asyncio

@@ -188,7 +188,8 @@ async def test_turtle_axiom_preservation(admin_client, tmp_data_dir):
     await asyncio.sleep(0.1)
 
     # Read the converted OWL file and verify all axioms
-    owl_path = tmp_data_dir / "axiom-check" / "src" / "ontology" / "axiom-check.owl"
+    from app.services.board import get_board_dir
+    owl_path = get_board_dir("axiom-check") / "src" / "ontology" / "axiom-check.owl"
     assert owl_path.exists()
 
     g = Graph()

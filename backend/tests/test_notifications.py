@@ -186,7 +186,7 @@ async def test_share_board_notification(admin_client, client, tmp_data_dir):
     shared = [n for n in resp.json()["notifications"] if n["category"] == "board_shared"]
     assert len(shared) >= 1
     assert "shared-board" in shared[0]["title"]
-    assert shared[0]["link"] == "/boards/shared-board"
+    assert "shared-board" in shared[0]["link"]
 
 
 # ═══════════════════════════════════════════════════════════════

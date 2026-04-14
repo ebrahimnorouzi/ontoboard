@@ -157,7 +157,8 @@ async def test_create_board_from_turtle(admin_client, tmp_data_dir):
     assert body["odk_seeded"] is True
 
     # Verify the OWL file was created with correct content
-    owl_path = tmp_data_dir / "ttl-board" / "src" / "ontology" / "ttl-board.owl"
+    from app.services.board import get_board_dir
+    owl_path = get_board_dir("ttl-board") / "src" / "ontology" / "ttl-board.owl"
     assert owl_path.exists()
     g = Graph()
     g.parse(str(owl_path), format="xml")

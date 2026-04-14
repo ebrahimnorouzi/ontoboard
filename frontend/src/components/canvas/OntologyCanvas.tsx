@@ -557,7 +557,10 @@ export default function OntologyCanvas({ boardId, onOpenComments, remoteCursors 
       prefixColorLookup.set(pc.namespace, pc.color);
     }
 
-    console.debug("[canvas sync]", store.classes.length, "classes,", store.properties.length, "props,", expectedEdges.size, "edges,", skippedEdges, "skipped");
+    // Debug: log edge rendering details
+    let edgeAddedCount = 0;
+    let edgeMissingNodeCount = 0;
+    console.debug("[canvas sync]", store.classes.length, "classes,", store.properties.length, "props,", expectedEdges.size, "edges (kept),", skippedEdges, "skipped (no endpoints)");
 
     cy.batch(() => {
       // Remove nodes not in store
@@ -638,13 +641,22 @@ export default function OntologyCanvas({ boardId, onOpenComments, remoteCursors 
       });
       // Add or update edges
       for (const [id, data] of expectedEdges) {
-        if (!cy.getElementById(data.source).length || !cy.getElementById(data.target).length) continue;
+        const srcNode = cy.getElementById(data.source);
+        const tgtNode = cy.getElementById(data.target);
+        if (!srcNode.length || !tgtNode.length) {
+          edgeMissingNodeCount++;
+          if (edgeMissingNodeCount <= 3) {
+            console.debug("[canvas sync] edge missing node:", id.slice(-40), "src:", data.source.slice(-30), srcNode.length ? "OK" : "MISSING", "tgt:", data.target.slice(-30), tgtNode.length ? "OK" : "MISSING");
+          }
+          continue;
+        }
         const existing = cy.getElementById(id);
         if (existing.length) {
           if (existing.data("displayLabel") !== data.displayLabel) existing.data("displayLabel", data.displayLabel);
           if (existing.data("edgeType") !== data.edgeType) existing.data("edgeType", data.edgeType);
         } else {
           cy.add({ group: "edges", data: { id, source: data.source, target: data.target, displayLabel: data.displayLabel, edgeType: data.edgeType } });
+          edgeAddedCount++;
         }
         // Style inferred edges distinctly
         if (inferredEdgeIds.has(id)) {
@@ -661,6 +673,10 @@ export default function OntologyCanvas({ boardId, onOpenComments, remoteCursors 
         }
       }
     });
+
+    if (edgeAddedCount > 0 || edgeMissingNodeCount > 0) {
+      console.debug("[canvas sync] edges added:", edgeAddedCount, "missing nodes:", edgeMissingNodeCount, "total in cy:", cy.edges().length);
+    }
 
     // Auto-layout only if all positions are 0
     if (store.classes.length > 0 && store.classes.every((c) => c.x === 0 && c.y === 0) && cy.nodes().length > 0) {

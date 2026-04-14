@@ -216,7 +216,9 @@ async def test_load_endpoint(admin_client, tmp_data_dir):
     await asyncio.sleep(0.1)
 
     # Write richer OWL content
-    ont_dir = tmp_data_dir / "canvas-load" / "src" / "ontology"
+    from app.services.board import get_board_dir
+    ont_dir = get_board_dir("canvas-load") / "src" / "ontology"
+    ont_dir.mkdir(parents=True, exist_ok=True)
     (ont_dir / "canvas-load.owl").write_text(PIZZA_OWL)
 
     resp = await admin_client.get("/api/owl/canvas-load/load")
@@ -249,7 +251,8 @@ async def test_save_endpoint(admin_client, tmp_data_dir):
     assert resp.status_code == 200
 
     # Verify the OWL file was written
-    owl_path = tmp_data_dir / "canvas-save" / "src" / "ontology" / "canvas-save.owl"
+    from app.services.board import get_board_dir
+    owl_path = get_board_dir("canvas-save") / "src" / "ontology" / "canvas-save.owl"
     assert owl_path.exists()
     content = owl_path.read_text()
     assert "Cat" in content
@@ -263,7 +266,9 @@ async def test_load_save_round_trip(admin_client, tmp_data_dir):
     await admin_client.post("/api/boards/rt-test")
     await asyncio.sleep(0.1)
 
-    ont_dir = tmp_data_dir / "rt-test" / "src" / "ontology"
+    from app.services.board import get_board_dir
+    ont_dir = get_board_dir("rt-test") / "src" / "ontology"
+    ont_dir.mkdir(parents=True, exist_ok=True)
     (ont_dir / "rt-test.owl").write_text(PIZZA_OWL)
 
     # Load

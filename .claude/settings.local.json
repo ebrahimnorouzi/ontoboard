@@ -53,7 +53,14 @@
       "Bash(npm install:*)",
       "Bash(./node_modules/.bin/tsc --noEmit)",
       "Bash(python3 -m pytest tests/test_health.py -v --tb=short)",
-      "Bash(python -m pytest tests/test_health.py -v --tb=short)"
+      "Bash(python -m pytest tests/test_health.py -v --tb=short)",
+      "Bash(python -m pytest tests/test_version.py tests/test_refactor.py tests/test_tree.py tests/test_reasoning.py -v --tb=line -q)",
+      "Bash(python -m pytest tests/test_patterns_new.py::test_patterns_load_from_odpa_directory tests/test_odk_mediator.py::test_release_endpoint -v --tb=short)",
+      "Bash(python -m pytest tests/test_odk_mediator.py tests/test_patterns_new.py tests/test_odk_lifecycle.py -v --tb=line -q)",
+      "Bash(python -m pytest tests/test_odk_mediator.py::test_sparql_verify_endpoint tests/test_odk_mediator.py::test_release_artifacts_endpoint -v --tb=short)",
+      "Bash(python -m pytest tests/test_odk_lifecycle.py::test_create_odk_board -v --tb=short)",
+      "Bash(python -m pytest tests/test_odk_lifecycle.py::test_create_odk_board -v --tb=long)",
+      "Bash(python -m pytest tests/test_canvas.py::test_load_save_round_trip tests/test_conversion.py::test_create_board_from_turtle tests/test_csv_import.py::test_build_endpoint tests/test_e2e_lifecycle.py::test_turtle_axiom_preservation -v --tb=short -q)"
     ]
   }
 }

@@ -194,7 +194,7 @@ async def stream_robot_report(board_dir: Path, board_id: str = "") -> AsyncGener
 # Workflow 6: Release / Publish
 # ═══════════════════════════════════════════════════════════════
 
-async def stream_release(board_dir: Path, board_id: str = "") -> AsyncGenerator[str, None]:
+async def stream_release(board_dir: Path, board_id: str = "", version: str = "") -> AsyncGenerator[str, None]:
     """Run `make prepare_release` to build a release candidate."""
     if board_id:
         _ensure_scaffold(board_dir, board_id)
@@ -202,3 +202,51 @@ async def stream_release(board_dir: Path, board_id: str = "") -> AsyncGenerator[
     loop = asyncio.get_event_loop()
     for line in await loop.run_in_executor(None, lambda: list(_run_command(board_dir, "make prepare_release"))):
         yield line
+
+
+async def stream_dosdp_generate(board_dir: Path, pattern_file: str, data_file: str) -> AsyncGenerator[str, None]:
+    """Run DOSDP pattern instantiation via ROBOT template."""
+    yield _sse("info", f"Generating from pattern: {pattern_file}", 5)
+    loop = asyncio.get_event_loop()
+    cmd = f"robot template --template {data_file} -o generated.owl"
+    for line in await loop.run_in_executor(None, lambda: list(_run_command(board_dir, cmd))):
+        yield line
+
+
+async def stream_sparql_verify(board_dir: Path, sparql_file: str, board_id: str = "") -> AsyncGenerator[str, None]:
+    """Run a SPARQL query for verification."""
+    if board_id:
+        _ensure_scaffold(board_dir, board_id)
+    yield _sse("info", f"Running SPARQL verification: {sparql_file}", 5)
+    loop = asyncio.get_event_loop()
+    owl = _find_edit_owl(board_dir, board_id)
+    if not owl:
+        yield _sse("error", "No OWL file found.", 100)
+        return
+    cmd = f"robot query -i {owl} --query src/sparql/{sparql_file} results.csv"
+    for line in await loop.run_in_executor(None, lambda: list(_run_command(board_dir, cmd))):
+        yield line
+
+
+def get_release_artifacts(board_dir: Path) -> list[dict]:
+    """List release artifacts (files in the releases/ directory)."""
+    releases_dir = board_dir / "releases"
+    if not releases_dir.exists():
+        return []
+    artifacts = []
+    for f in sorted(releases_dir.iterdir()):
+        if f.is_file():
+            artifacts.append({
+                "name": f.name,
+                "size": f.stat().st_size,
+                "modified": f.stat().st_mtime,
+            })
+    return artifacts
+
+
+def download_artifact_path(board_dir: Path, filename: str) -> Path | None:
+    """Get the path to a release artifact for download."""
+    path = board_dir / "releases" / filename
+    if path.exists() and path.is_file():
+        return path
+    return None

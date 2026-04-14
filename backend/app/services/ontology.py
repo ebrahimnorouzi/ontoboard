@@ -28,53 +28,79 @@ _WELL_KNOWN_NS = {
 
 
 def load_graph(board_dir: Path) -> Graph:
-    """Load the board's primary OWL file into an rdflib Graph.
+    """Load the board's OWL files into a single rdflib Graph.
 
-    Handles multiple formats: OWL/XML, Turtle, RDF/XML, N-Triples.
-    If the file is in OWL Functional Syntax (which rdflib can't parse),
-    converts it to OWL/XML using ROBOT first.
+    Loads ALL parseable OWL files in src/ontology/ (edit + release),
+    merging them into one graph. This ensures metadata, annotations,
+    prefixes, and class definitions are all available.
+
+    Prefers -edit.owl for entity definitions, but also loads the release
+    file for annotations and metadata that may only be in the full ontology.
     """
     ont_dir = board_dir / "src" / "ontology"
     owl_files = list(ont_dir.glob("*.owl")) if ont_dir.exists() else []
     if not owl_files:
         raise FileNotFoundError(f"No .owl file in {ont_dir}")
 
-    owl_file = owl_files[0]
     g = Graph()
+    loaded_any = False
 
-    # Try parsing in multiple formats
-    for fmt in ("xml", "turtle", "n3", "nt", "json-ld"):
-        try:
-            g.parse(str(owl_file), format=fmt)
-            return g
-        except Exception:
+    # Sort: -edit.owl first (primary), then others
+    def _sort_key(f):
+        if "-edit.owl" in f.name:
+            return 0
+        if "-idranges" in f.name:
+            return 2  # load last (or skip)
+        return 1
+
+    for owl_file in sorted(owl_files, key=_sort_key):
+        if "-idranges" in owl_file.name or owl_file.name.startswith("_"):
             continue
+        parsed = False
+        for fmt in ("xml", "turtle", "n3", "nt", "json-ld"):
+            try:
+                g.parse(str(owl_file), format=fmt)
+                parsed = True
+                loaded_any = True
+                break
+            except Exception:
+                continue
 
-    # If all rdflib parsers fail, try converting with ROBOT (handles OWL Functional Syntax)
+        if not parsed:
+            # Try ROBOT conversion for OWL Functional Syntax
+            _try_robot_convert(owl_file, g)
+            if len(g) > 0:
+                loaded_any = True
+
+    if not loaded_any:
+        raise ValueError(f"Cannot parse any OWL file in {ont_dir}")
+
+    return g
+
+
+def _try_robot_convert(owl_file: Path, g: Graph) -> bool:
+    """Try to convert an OWL file using ROBOT and parse the result."""
     import shutil
     import subprocess
-    if shutil.which("robot"):
-        converted = owl_file.parent / f"_converted_{owl_file.stem}.owl"
-        try:
-            result = subprocess.run(
-                ["robot", "convert", "-i", str(owl_file), "-o", str(converted), "--format", "owl"],
-                capture_output=True, text=True, timeout=120,
-                cwd=str(owl_file.parent),
-            )
-            if result.returncode == 0 and converted.exists():
-                g.parse(str(converted), format="xml")
-                # Replace the original with the converted XML version
-                converted.replace(owl_file)
-                logger.info("Converted %s from OWL Functional Syntax to OWL/XML", owl_file.name)
-                return g
-            else:
-                logger.warning("ROBOT convert failed: %s", result.stderr[:300])
-        except Exception as exc:
-            logger.warning("ROBOT convert error: %s", exc)
-        finally:
-            converted.unlink(missing_ok=True)
-
-    raise ValueError(f"Cannot parse {owl_file.name} — unsupported format")
+    if not shutil.which("robot"):
+        return False
+    converted = owl_file.parent / f"_converted_{owl_file.stem}.owl"
+    try:
+        result = subprocess.run(
+            ["robot", "convert", "-i", str(owl_file), "-o", str(converted), "--format", "owl"],
+            capture_output=True, text=True, timeout=120,
+            cwd=str(owl_file.parent),
+        )
+        if result.returncode == 0 and converted.exists():
+            g.parse(str(converted), format="xml")
+            converted.replace(owl_file)
+            logger.info("Converted %s via ROBOT", owl_file.name)
+            return True
+    except Exception as exc:
+        logger.warning("ROBOT convert error for %s: %s", owl_file.name, exc)
+    finally:
+        converted.unlink(missing_ok=True)
+    return False
 
 
 def load_full_graph(board_dir: Path) -> Graph:

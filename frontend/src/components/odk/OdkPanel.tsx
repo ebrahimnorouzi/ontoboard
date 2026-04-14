@@ -12,6 +12,7 @@
 
 import { useState, useRef, useCallback } from "react";
 import { api } from "../../api";
+import ImportsPanel from "./ImportsPanel";
 import styles from "./OdkPanel.module.css";
 
 interface Props {
@@ -87,6 +88,11 @@ export default function OdkPanel({ boardId }: Props) {
 
   return (
     <div className={styles.container}>
+      {/* ── Imports Management ────────────────────────────────── */}
+      <div className={styles.section}>
+        <ImportsPanel boardId={boardId} />
+      </div>
+
       {/* ── Workflow Buttons ─────────────────────────────────── */}
       <div className={styles.section}>
         <h4 className={styles.sectionTitle}>Project Lifecycle</h4>
