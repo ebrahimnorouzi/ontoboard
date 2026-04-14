@@ -88,13 +88,36 @@ export default function OntologyDashboard({ boardId }: Props) {
   const [newAuthor, setNewAuthor] = useState("");
   const [newContributor, setNewContributor] = useState("");
 
-  // Initialize authors/contributors from metadata annotations when data loads
+  // Initialize authors/contributors/annotations from metadata when data loads
   useEffect(() => {
     if (!data) return;
-    // Try to extract from metadata fields
     const meta = data.metadata as any;
-    if (meta?.creators) setAuthors(meta.creators);
-    if (meta?.contributors) setContributors(meta.contributors);
+    if (meta?.creators?.length) setAuthors(meta.creators);
+    if (meta?.contributors?.length) setContributors(meta.contributors);
+    // Initialize annotation fields from ontology
+    if (meta?.title || meta?.description || meta?.license) {
+      setMetaFields((prev) => ({
+        ...prev,
+        ...(meta.title ? { title: meta.title } : {}),
+        ...(meta.description ? { description: meta.description } : {}),
+        ...(meta.license ? { license: meta.license } : {}),
+      }));
+    }
+    // Auto-assign prefix colors from ontology prefixes
+    const prefixColors = useOntologyStore.getState().prefixColors;
+    if (prefixColors.length === 0 && meta?.prefixes?.length > 0) {
+      const autoColors = [
+        "#6366f1", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6",
+        "#0ea5e9", "#ec4899", "#14b8a6", "#f97316", "#84cc16",
+      ];
+      let idx = 0;
+      for (const p of meta.prefixes) {
+        if (p.prefix && p.prefix !== "(default)" && !p.namespace.startsWith("http://www.w3.org/")) {
+          useOntologyStore.getState().setPrefixColor(p.prefix, p.namespace, autoColors[idx % autoColors.length]);
+          idx++;
+        }
+      }
+    }
   }, [data]);
 
   const saveMetadata = useCallback(async (fields: Record<string, string>) => {

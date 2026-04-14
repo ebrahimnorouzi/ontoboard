@@ -14,6 +14,11 @@ class OntologyMetadata(BaseModel):
     imports: list[str] = []
     prefixes: list[PrefixEntry] = []
     languages: list[str] = []
+    creators: list[str] = []
+    contributors: list[str] = []
+    title: str = ""
+    description: str = ""
+    license: str = ""
 
 
 class OntologyStats(BaseModel):

@@ -527,73 +527,73 @@ export default function BoardPage() {
             <div className={styles.tabContent}>
               {/* Tabs stay mounted once visited so their state is preserved */}
               {visitedTabs.has("ontology") && boardId && (
-                <div style={{ display: activeTab === "ontology" ? "contents" : "none" }}>
+                <div style={{ display: activeTab === "ontology" ? undefined : "none", height: activeTab === "ontology" ? "100%" : undefined }}>
                   <OntologyDashboard boardId={boardId} />
                 </div>
               )}
               {visitedTabs.has("axioms") && boardId && (
-                <div style={{ display: activeTab === "axioms" ? "contents" : "none" }}>
+                <div style={{ display: activeTab === "axioms" ? undefined : "none", height: activeTab === "axioms" ? "100%" : undefined }}>
                   <AxiomEditor boardId={boardId} entityIri={selectedEntity?.iri}
                                entityLabel={selectedEntity?.label} entityType={selectedEntity?.type} />
                 </div>
               )}
               {visitedTabs.has("reasoning") && boardId && (
-                <div style={{ display: activeTab === "reasoning" ? "contents" : "none" }}>
+                <div style={{ display: activeTab === "reasoning" ? undefined : "none", height: activeTab === "reasoning" ? "100%" : undefined }}>
                   <ReasoningPanel boardId={boardId} />
                 </div>
               )}
               {visitedTabs.has("odk") && boardId && (
-                <div style={{ display: activeTab === "odk" ? "contents" : "none" }}>
+                <div style={{ display: activeTab === "odk" ? undefined : "none", height: activeTab === "odk" ? "100%" : undefined }}>
                   <OdkPanel boardId={boardId} />
                 </div>
               )}
               {visitedTabs.has("sparql") && boardId && (
-                <div style={{ display: activeTab === "sparql" ? "contents" : "none" }}>
+                <div style={{ display: activeTab === "sparql" ? undefined : "none", height: activeTab === "sparql" ? "100%" : undefined }}>
                   <SparqlPanel boardId={boardId} />
                 </div>
               )}
               {visitedTabs.has("csv") && boardId && (
-                <div style={{ display: activeTab === "csv" ? "contents" : "none" }}>
+                <div style={{ display: activeTab === "csv" ? undefined : "none", height: activeTab === "csv" ? "100%" : undefined }}>
                   <CsvImportWizard boardId={boardId} />
                 </div>
               )}
               {visitedTabs.has("tasks") && boardId && (
-                <div style={{ display: activeTab === "tasks" ? "contents" : "none" }}>
+                <div style={{ display: activeTab === "tasks" ? undefined : "none", height: activeTab === "tasks" ? "100%" : undefined }}>
                   <TaskBoard boardId={boardId} members={collabUsers.map((u) => u.name)} />
                 </div>
               )}
               {visitedTabs.has("publish") && boardId && (
-                <div style={{ display: activeTab === "publish" ? "contents" : "none" }}>
+                <div style={{ display: activeTab === "publish" ? undefined : "none", height: activeTab === "publish" ? "100%" : undefined }}>
                   <PublishPanel boardId={boardId} />
                 </div>
               )}
               {visitedTabs.has("docs") && boardId && (
-                <div style={{ display: activeTab === "docs" ? "contents" : "none" }}>
+                <div style={{ display: activeTab === "docs" ? undefined : "none", height: activeTab === "docs" ? "100%" : undefined }}>
                   <DocsPanel boardId={boardId} />
                 </div>
               )}
               {visitedTabs.has("files") && boardId && (
-                <div style={{ display: activeTab === "files" ? "contents" : "none" }}>
+                <div style={{ display: activeTab === "files" ? undefined : "none", height: activeTab === "files" ? "100%" : undefined }}>
                   <FileBrowser boardId={boardId} />
                 </div>
               )}
               {visitedTabs.has("patterns") && boardId && (
-                <div style={{ display: activeTab === "patterns" ? "contents" : "none" }}>
+                <div style={{ display: activeTab === "patterns" ? undefined : "none", height: activeTab === "patterns" ? "100%" : undefined }}>
                   <PatternLibrary boardId={boardId} />
                 </div>
               )}
               {visitedTabs.has("ids") && boardId && (
-                <div style={{ display: activeTab === "ids" ? "contents" : "none" }}>
+                <div style={{ display: activeTab === "ids" ? undefined : "none", height: activeTab === "ids" ? "100%" : undefined }}>
                   <IdRangeManager boardId={boardId} />
                 </div>
               )}
               {visitedTabs.has("comments") && boardId && (
-                <div style={{ display: activeTab === "comments" ? "contents" : "none" }}>
+                <div style={{ display: activeTab === "comments" ? undefined : "none", height: activeTab === "comments" ? "100%" : undefined }}>
                   <CommentsPanel boardId={boardId} />
                 </div>
               )}
               {visitedTabs.has("console") && (
-                <div style={{ display: activeTab === "console" ? "contents" : "none" }}>
+                <div style={{ display: activeTab === "console" ? undefined : "none", height: activeTab === "console" ? "100%" : undefined }}>
                 <div className={styles.consolePanel}>
                   <div className={styles.consoleToolbar}>
                     <select

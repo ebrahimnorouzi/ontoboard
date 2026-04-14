@@ -106,6 +106,10 @@ export default function Navbar() {
           </Link>
         )}
 
+        <Link to="/docs" className={`${styles.link} ${pathname.startsWith("/docs") ? styles.active : ""}`}>
+          Docs
+        </Link>
+
         <a href="http://localhost:8000/docs" target="_blank" rel="noreferrer" className={styles.link}>
           API
         </a>

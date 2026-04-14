@@ -165,13 +165,41 @@ def get_languages(g: Graph) -> list[str]:
 
 
 def get_ontology_metadata(g: Graph) -> dict:
-    """Return combined metadata dictionary."""
+    """Return combined metadata dictionary including creators/contributors."""
+    # Extract creators and contributors from ontology node annotations
+    creators: list[str] = []
+    contributors: list[str] = []
+    title = ""
+    description = ""
+    license_iri = ""
+
+    for s in g.subjects(RDF.type, OWL.Ontology):
+        for p, o in g.predicate_objects(s):
+            p_str = str(p)
+            val = str(o)
+            if "creator" in p_str.lower():
+                creators.append(val)
+            elif "contributor" in p_str.lower():
+                contributors.append(val)
+            elif p_str.endswith("title") or p_str.endswith("/title"):
+                title = val
+            elif p_str.endswith("description") or p_str.endswith("/description"):
+                if len(val) > len(description):
+                    description = val
+            elif "license" in p_str.lower():
+                license_iri = val
+
     return {
         "ontology_iri": get_ontology_iri(g) or "",
         "version_iri": get_version_iri(g),
         "imports": get_imports(g),
         "prefixes": get_prefixes(g),
         "languages": get_languages(g),
+        "creators": creators,
+        "contributors": contributors,
+        "title": title,
+        "description": description,
+        "license": license_iri,
     }
 
 

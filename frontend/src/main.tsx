@@ -11,6 +11,7 @@ import AdminPage from "./pages/AdminPage";
 import InvitePage from "./pages/InvitePage";
 import SignupPage from "./pages/SignupPage";
 import FeedbackPage from "./pages/FeedbackPage";
+import DocsPage from "./pages/DocsPage";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
@@ -27,6 +28,8 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
           <Route path="/admin" element={<AdminPage />} />
           <Route path="/admin/:tab" element={<AdminPage />} />
           <Route path="/feedback" element={<FeedbackPage />} />
+          <Route path="/docs" element={<DocsPage />} />
+          <Route path="/docs/:section" element={<DocsPage />} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>
