@@ -105,7 +105,7 @@ export default function ReasoningPanel({ boardId, onHighlightEntity }: Props) {
                     className={styles.explainBtn}
                     onClick={(e) => {
                       e.stopPropagation();
-                      setExplainTarget(err.entity_iri || undefined ?? null);
+                      setExplainTarget(err.entity_iri || null);
                       setShowExplainPanel(true);
                     }}
                   >
