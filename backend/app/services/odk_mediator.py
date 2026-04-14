@@ -51,12 +51,29 @@ def _find_edit_owl(board_dir: Path, board_id: str) -> str | None:
     return None
 
 
+def _check_tools():
+    """Check which tools are available and return a status dict."""
+    import shutil
+    tools = {}
+    for tool in ["robot", "java", "make"]:
+        path = shutil.which(tool)
+        if path:
+            try:
+                ver = subprocess.run([tool, "--version"], capture_output=True, text=True, timeout=5)
+                tools[tool] = ver.stdout.strip().split("\n")[0] if ver.returncode == 0 else "installed"
+            except Exception:
+                tools[tool] = "installed"
+        else:
+            tools[tool] = None
+    return tools
+
+
 def _run_command(board_dir: Path, command: str, cwd: Path | None = None):
     """Run a command locally and yield SSE lines."""
     work_dir = cwd or (board_dir / "src" / "ontology")
     work_dir.mkdir(parents=True, exist_ok=True)
 
-    yield _sse("start", f"Running: {command}", 5)
+    yield _sse("start", f"$ {command}", 5)
 
     try:
         result = subprocess.run(
@@ -71,13 +88,40 @@ def _run_command(board_dir: Path, command: str, cwd: Path | None = None):
         if result.returncode == 0:
             yield _sse("success", "Command completed successfully", 100)
         else:
+            # Add error explanations
+            combined = (result.stdout or "") + (result.stderr or "")
+            explanations = _explain_errors(combined, command)
+            for exp in explanations:
+                yield _sse("info", exp, 100)
             yield _sse("error", f"Command failed (exit {result.returncode})", 100)
     except subprocess.TimeoutExpired:
         yield _sse("error", "Command timed out after 600 seconds", 100)
     except FileNotFoundError as exc:
-        yield _sse("error", f"Command not found: {exc}", 100)
+        yield _sse("error", f"Command not found: {exc}. Check that the tool is installed in the Docker image.", 100)
     except Exception as exc:
         yield _sse("error", f"Execution error: {exc}", 100)
+
+
+_ERROR_PATTERNS = [
+    ("robot: command not found", "ROBOT is not installed. Rebuild the backend image: ./run.sh build"),
+    ("make: command not found", "'make' is not installed. Rebuild the backend image: ./run.sh build"),
+    ("java: not found", "Java is required for ROBOT. Rebuild the backend image."),
+    ("odk-info: No such file", "This Makefile requires the full ODK toolkit (odkfull image). "
+     "OntoBoard runs ROBOT directly without the full ODK. "
+     "Individual commands like 'reason' and 'report' work — use those instead of 'make all'."),
+    ("OutOfMemoryError", "ROBOT ran out of memory. Try setting ROBOT_JAVA_ARGS='-Xmx4G'."),
+    ("No such file or directory", "A required file is missing. Check the working directory and file paths."),
+    ("overriding recipe for target", "The custom .Makefile overrides a target — this is usually intentional."),
+]
+
+
+def _explain_errors(output: str, command: str) -> list[str]:
+    """Match known error patterns and return explanations."""
+    explanations = []
+    for pattern, explanation in _ERROR_PATTERNS:
+        if pattern.lower() in output.lower():
+            explanations.append(explanation)
+    return explanations
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -86,6 +130,13 @@ def _run_command(board_dir: Path, command: str, cwd: Path | None = None):
 
 async def stream_odk_seed(board_dir: Path, board_id: str) -> AsyncGenerator[str, None]:
     """Scaffold an ODK project structure."""
+    # Show environment info
+    tools = _check_tools()
+    tool_lines = []
+    for name, ver in tools.items():
+        tool_lines.append(f"  {name}: {ver or 'NOT INSTALLED'}")
+    yield _sse("info", "Environment: " + ", ".join(f"{k}={v or 'missing'}" for k, v in tools.items()), 5)
+    yield _sse("info", "Mode: local subprocess (no Docker-in-Docker)", 5)
     yield _sse("info", "Creating ODK project scaffold...", 10)
     _ensure_scaffold(board_dir, board_id)
     yield _sse("success", f"ODK scaffold created for '{board_id}'", 100)

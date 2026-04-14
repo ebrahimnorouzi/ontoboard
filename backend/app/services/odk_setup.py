@@ -234,28 +234,39 @@ def _create_manual_scaffold(board_dir: Path, ont_id: str, title: str,
 
         -include $(ONT).Makefile
 
-        .PHONY: all test clean prepare_release publish docs reason update_repo refresh-imports
+        .PHONY: all test clean prepare_release publish docs reason update_repo refresh-imports report
 
-        all:
-        \t@echo "Build: $(ONT)"
+        all: reason report
+        \t@echo "Build complete: $(ONT)"
 
-        test:
-        \t@echo "Running tests on $(ONT)..."
+        test: report
+        \t@echo "Tests complete for $(ONT)."
 
         reason:
-        \trobot reason -r ELK -i $(ONT)-edit.owl -o $(ONT).owl || true
+        \t@echo "Running ELK reasoner on $(ONT)-edit.owl..."
+        \trobot reason -r ELK -i $(ONT)-edit.owl -o $(ONT).owl
+        \t@echo "Reasoning complete. Output: $(ONT).owl"
+
+        report:
+        \t@echo "Running ROBOT report on $(ONT)-edit.owl..."
+        \trobot report -i $(ONT)-edit.owl --output report.tsv --format tsv || true
+        \t@echo "Report saved to report.tsv"
 
         clean:
-        \t@rm -f tmp_* report.tsv *.bak
+        \t@rm -f tmp_* report.tsv *.bak $(ONT).owl
 
-        prepare_release: test
-        \t@echo "Preparing release for $(ONT)..."
+        prepare_release: reason report
+        \t@echo "Release candidate prepared for $(ONT)."
+        \t@mkdir -p ../../releases
+        \tcp $(ONT).owl ../../releases/$(ONT)-$$(date +%Y%m%d).owl 2>/dev/null || cp $(ONT).owl ../../releases/$(ONT)-release.owl
 
         publish: prepare_release
-        \t@echo "Publishing $(ONT)..."
+        \t@echo "Published $(ONT) to releases/"
 
         docs:
         \t@echo "Generating docs for $(ONT)..."
+        \trobot export --input $(ONT)-edit.owl --header "IRI|label|definition" --format csv --export docs-entities.csv 2>/dev/null || true
+        \t@echo "Entity list exported to docs-entities.csv"
 
         update_repo:
         \t@echo "Updating repository from $(ONT)-odk.yaml..."
