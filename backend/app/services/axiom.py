@@ -545,9 +545,9 @@ def _resolve_expression(g: Graph, expr: str) -> URIRef | BNode | None:
         return simple
 
     # Check if expression contains Manchester keywords
-    keywords = {"and", "or", "not", "some", "only", "value", "min", "max", "exactly", "(", ")"}
+    keywords = {"and", "or", "not", "some", "only", "value", "min", "max", "exactly", "Self"}
     tokens = expr.split()
-    if any(t in keywords for t in tokens) or "(" in expr:
+    if any(t in keywords for t in tokens) or any(c in expr for c in "(){}[]"):
         try:
             from app.services.manchester_parser import parse_class_expression
             return parse_class_expression(expr, g)

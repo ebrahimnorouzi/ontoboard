@@ -22,20 +22,20 @@ This means:
 
 Entity locking is advisory only -- it is not enforced at the API level. Two users can technically edit the same entity simultaneously.
 
-### 2. Manchester Parser Limitations
+### 2. Manchester Parser ~~Limitations~~ (Resolved)
 
-The recursive descent Manchester parser handles most OWL 2 class expressions but not:
-- **Datatype restrictions with facets**: e.g., `xsd:integer[> 5]`, `xsd:string[minLength 1]`
-- **HasSelf**: e.g., `likes Self`
-- **ObjectOneOf with multiple individuals**: e.g., `{john, jane, bob}` (single individual works)
-- **Complex data ranges**: e.g., `integer[>= 0, <= 100]`
+The Manchester parser now supports all standard OWL 2 class expression constructs:
+- `HasSelf`: `likes Self`
+- `ObjectOneOf`: `{john, jane, bob}` (multiple individuals)
+- Datatype facet restrictions: `xsd:integer[>= 0, <= 100]`, `xsd:string[minLength 1]`
+- All Boolean connectives (`and`, `or`, `not`), restrictions (`some`, `only`, `value`), cardinality (`min`, `max`, `exactly`)
 
-### 3. SWRL Storage Format
+### 3. SWRL ~~Storage Format~~ (Resolved)
 
-SWRL rules are stored as OWL annotation properties rather than in native OWL/XML SWRL format. This means:
-- Rules are not directly executable by standard OWL reasoners that expect native SWRL syntax
-- The simplified atom parsing handles common cases but may not cover all SWRL built-in functions
-- Import/export of SWRL rules from/to other tools may require format conversion
+SWRL rules are now stored in **native OWL/XML SWRL format** using proper `swrl:Imp`, `swrl:ClassAtom`, `swrl:Variable` triples. This means:
+- Rules are directly executable by standard OWL reasoners that support SWRL
+- Backward compatibility maintained: annotation-based `[SWRL]` rules are still readable
+- Atom types supported: ClassAtom, IndividualPropertyAtom, DatavaluedPropertyAtom, BuiltinAtom
 
 ### 4. Embedded Reasoner (owlready2) Issues
 

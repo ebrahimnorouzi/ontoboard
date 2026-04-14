@@ -155,13 +155,13 @@ The parser supports full round-tripping:
 
 This means you can parse an expression, store it as RDF, and render it back to get an equivalent Manchester Syntax string.
 
-### Limitations
+### Full OWL 2 Coverage
 
-The Manchester parser handles most OWL 2 class expressions but not:
-- Datatype restrictions with facets (e.g., `xsd:integer[> 5]`)
-- `HasSelf` (e.g., `likes Self`)
-- `ObjectOneOf` with multiple individuals (e.g., `{john, jane, bob}`)
-- Complex data ranges
+The Manchester parser supports all standard OWL 2 class expression constructs:
+- `HasSelf`: `likes Self`
+- `ObjectOneOf`: `{john, jane, bob}`
+- Datatype facet restrictions: `xsd:integer[>= 0, <= 100]`, `xsd:string[minLength 1]`
+- All Boolean connectives, restrictions, and cardinality constraints
 
 ---
 
