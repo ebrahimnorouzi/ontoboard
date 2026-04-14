@@ -61,7 +61,10 @@
       "Bash(python -m pytest tests/test_odk_lifecycle.py::test_create_odk_board -v --tb=short)",
       "Bash(python -m pytest tests/test_odk_lifecycle.py::test_create_odk_board -v --tb=long)",
       "Bash(python -m pytest tests/test_canvas.py::test_load_save_round_trip tests/test_conversion.py::test_create_board_from_turtle tests/test_csv_import.py::test_build_endpoint tests/test_e2e_lifecycle.py::test_turtle_axiom_preservation -v --tb=short -q)",
-      "Bash(python -m pytest tests/test_owl2_features.py::TestNativeSWRL::test_swrl_complex_rule tests/test_owl2_features.py::TestAxiomEditorIntegration::test_subclassof_has_self_endpoint --tb=short)"
+      "Bash(python -m pytest tests/test_owl2_features.py::TestNativeSWRL::test_swrl_complex_rule tests/test_owl2_features.py::TestAxiomEditorIntegration::test_subclassof_has_self_endpoint --tb=short)",
+      "Bash(ls -la \"c:/Users/eno/Documents/Git_repo/ebrahimnorouzi_github/ISE-FIZKarlsruhe/ontoboard/data/admin/\"*/collab-state.bin)",
+      "Bash(ls -la \"c:/Users/eno/Documents/Git_repo/ebrahimnorouzi_github/ISE-FIZKarlsruhe/ontoboard/data/\"*/collab-state.bin)",
+      "Bash(docker exec:*)"
     ]
   }
 }

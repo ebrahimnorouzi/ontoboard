@@ -46,23 +46,35 @@ async def generate_docs(board_dir: Path):
         yield _sse("odk_warn", f"make docs failed: {result.stderr[:200]}", 80)
 
     # Step 3: Try Widoco HTML documentation
-    yield _sse("widoco", "Running Widoco documentation generator...", 85)
-    owl_files = list((board_dir / "src" / "ontology").glob("*.owl"))
-    if owl_files:
-        widoco_result = await run_robot(
-            board_dir,
-            f"java -jar /tools/widoco.jar -ontFile /work/src/ontology/{owl_files[0].name} "
-            f"-outFolder /work/docs/widoco -rewriteAll -crossRef -uniteSections "
-            f"-lang en -getOntologyMetadata -oops -webVowl || true",
-            working_dir="/work",
-            timeout=300,
-        )
-        if widoco_result.success:
-            yield _sse("widoco_done", "Widoco documentation generated", 95)
-        elif widoco_result.exit_code == -1:
-            yield _sse("widoco_skip", "Widoco unavailable (needs odkfull image)", 95)
-        else:
-            yield _sse("widoco_warn", f"Widoco failed: {widoco_result.stderr[:150]}", 95)
+    import shutil, os
+    widoco_jar = Path("/usr/local/bin/widoco.jar")
+    widoco_version = os.environ.get("WIDOCO_VERSION", "1.4.25")
+    if widoco_jar.exists():
+        yield _sse("widoco", f"Running Widoco v{widoco_version} documentation generator...", 85)
+        owl_files = list((board_dir / "src" / "ontology").glob("*.owl"))
+        if owl_files:
+            # Prefer -edit.owl
+            owl_file = owl_files[0]
+            for f in owl_files:
+                if "-edit.owl" in f.name:
+                    owl_file = f
+                    break
+            import subprocess
+            widoco_result = subprocess.run(
+                ["java", "-jar", str(widoco_jar), "-ontFile", str(owl_file),
+                 "-outFolder", str(board_dir / "docs" / "widoco"),
+                 "-rewriteAll", "-crossRef", "-uniteSections", "-lang", "en",
+                 "-getOntologyMetadata"],
+                capture_output=True, text=True, timeout=300,
+                cwd=str(board_dir),
+            )
+            if widoco_result.returncode == 0:
+                yield _sse("widoco_done", f"Widoco v{widoco_version} HTML documentation generated in docs/widoco/", 95)
+            else:
+                yield _sse("widoco_warn", f"Widoco v{widoco_version} failed: {widoco_result.stderr[:200]}", 95)
+    else:
+        yield _sse("info", "Widoco not installed — Markdown summary generated instead. "
+                    "Rebuild the backend image (./run.sh build) to install Widoco.", 95)
 
     # Step 4: Save build status
     _save_docs_status(board_dir)

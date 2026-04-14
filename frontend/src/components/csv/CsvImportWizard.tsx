@@ -327,28 +327,44 @@ export default function CsvImportWizard({ boardId }: Props) {
           </div>
           <div className={styles.resultActions}>
             <button className={styles.nextBtn} onClick={() => { setStep(0); }}>Import Another CSV</button>
-            <a
+            <button
               className={styles.openBoardBtn}
-              href={`/board/${boardId}-kg`}
-              onClick={async (e) => {
-                e.preventDefault();
-                const kgBoardId = `${boardId}-kg-${Date.now()}`;
+              onClick={async () => {
+                const kgBoardId = `${boardId}-kg`;
                 try {
-                  const res = await fetch(`/api/boards/${kgBoardId}`, {
+                  const { api: apiFn } = await import("../../api");
+                  // Create a new board
+                  const createRes = await apiFn(`/api/boards/${kgBoardId}`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ display_name: `${boardId} Knowledge Graph` }),
                   });
-                  if (res.ok || res.status === 409) {
-                    window.location.href = `/board/${res.ok ? kgBoardId : boardId + "-kg"}`;
+                  if (createRes.ok || createRes.status === 409) {
+                    // Copy the KG file to the new board by uploading it
+                    const kgFile = buildResult.output_path;
+                    if (kgFile) {
+                      const fileContent = await apiFn(`/api/odk-setup/${boardId}/file?path=${encodeURIComponent(kgFile)}`);
+                      if (fileContent.ok) {
+                        const text = await fileContent.text();
+                        const blob = new Blob([text], { type: "text/turtle" });
+                        const formData = new FormData();
+                        formData.append("file", blob, "knowledge_graph.ttl");
+                        await apiFn(`/api/boards/${kgBoardId}/from-file`, {
+                          method: "POST",
+                          body: formData,
+                        });
+                      }
+                    }
+                    window.location.href = `/board/${kgBoardId}`;
                   }
-                } catch {
-                  window.location.href = `/board/${boardId}`;
+                } catch (err) {
+                  console.error("Failed to create KG board:", err);
+                  alert("Failed to create KG board. The knowledge graph is saved in the current board's files.");
                 }
               }}
             >
               Open as New Board
-            </a>
+            </button>
           </div>
         </div>
       )}
