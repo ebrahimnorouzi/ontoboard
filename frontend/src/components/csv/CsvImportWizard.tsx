@@ -1,89 +1,171 @@
 import { useEffect, useRef, useState } from "react";
-import { useCsvImport, ColumnMapping } from "../../hooks/useCsvImport";
+import {
+  useCsvImport,
+  ColumnMapping,
+  OntologyEntity,
+} from "../../hooks/useCsvImport";
 import styles from "./CsvImportWizard.module.css";
 
-interface Props { boardId: string }
+interface Props {
+  boardId: string;
+}
 
-const MAPPING_TYPES = [
-  { value: "data_property", label: "Data Property" },
-  { value: "class_assertion", label: "Class Type" },
-  { value: "object_property", label: "Object Property" },
-  { value: "annotation", label: "Annotation" },
+const STEP_LABELS = [
+  "Upload",
+  "Map Columns",
+  "IRI Strategy",
+  "Preview",
+  "Build",
+  "Files",
+];
+
+const DIRECTIVE_TYPES = [
+  { value: "ID", label: "ID (Individual IRI)" },
+  { value: "TYPE", label: "TYPE (rdf:type)" },
+  { value: "A rdfs:label", label: "Label (rdfs:label)" },
+  { value: "A rdfs:comment", label: "Comment (rdfs:comment)" },
+  { value: "A", label: "Annotation Property" },
+  { value: "I", label: "Object / Data Property" },
+  { value: "IGNORE", label: "Ignore" },
 ];
 
 const IRI_STRATEGIES = [
-  { value: "sequential", label: "Sequential (ind_0, ind_1, ...)" },
-  { value: "timestamp", label: "Timestamp (EX_1713000000001)" },
-  { value: "uuid", label: "UUID (random unique)" },
-  { value: "hash", label: "Hash (content-based)" },
-  { value: "pattern", label: "Custom pattern" },
-];
-
-const SAMPLE_ROBOT_CSV =
-  "ID,Label,SubClass Of,Definition\n" +
-  "EX:0000001,Example Class,owl:Thing,An example class definition\n" +
-  "EX:0000002,Another Class,EX:0000001,Another example class\n";
-
-const IRI_ITERATORS = [
-  { value: "timestamp", label: "Timestamp" },
-  { value: "uuid", label: "UUID" },
-  { value: "sequential", label: "Sequential" },
+  { value: "auto_sequential", label: "Sequential (base/1, base/2, ...)" },
+  { value: "auto_uuid", label: "UUID (random unique)" },
+  { value: "auto_hash", label: "Hash (content-based)" },
+  { value: "from_column", label: "From column value" },
+  { value: "custom_pattern", label: "Custom pattern" },
 ];
 
 export default function CsvImportWizard({ boardId }: Props) {
   const {
-    analysis, files, uploading, uploadFile, fetchFiles,
-    preview, runPreview, building, buildKg, buildResult, error,
+    analysis, entities, kgFiles,
+    templateResult, buildResult,
+    uploading, generating, building, merging, error,
+    uploadFile, fetchEntities, fetchFiles,
+    generateTemplate, buildKg, mergeKgs,
+    getDownloadUrl, clearError,
+    setTemplateResult, setBuildResult,
   } = useCsvImport(boardId);
 
   const fileRef = useRef<HTMLInputElement>(null);
-  const [step, setStep] = useState(0); // 0=upload, 1=map, 2=iri, 3=preview, 4=result
+  const [step, setStep] = useState(0);
   const [mappings, setMappings] = useState<ColumnMapping[]>([]);
-  const [iriStrategy, setIriStrategy] = useState("sequential");
-  const [iriPattern, setIriPattern] = useState("");
-  const [baseIri, setBaseIri] = useState("http://example.org/instance");
-  const [ontologyPrefix, setOntologyPrefix] = useState("EX");
-  const [iriIterator, setIriIterator] = useState("timestamp");
+  const [iriStrategy, setIriStrategy] = useState("auto_sequential");
+  const [baseIri, setBaseIri] = useState("https://example.org/resource");
+  const [fromColumn, setFromColumn] = useState("");
+  const [customPattern, setCustomPattern] = useState("");
+  const [templateName, setTemplateName] = useState("");
 
-  useEffect(() => { fetchFiles(); }, [fetchFiles]);
+  // Load entities and files on mount
+  useEffect(() => {
+    fetchEntities();
+    fetchFiles();
+  }, [fetchEntities, fetchFiles]);
 
-  const prefixBaseIri = `http://example.org/${ontologyPrefix}_`;
-
-  // Auto-init mappings when analysis arrives
+  // Initialize mappings when analysis arrives
   useEffect(() => {
     if (analysis) {
-      setMappings(analysis.columns.map((c) => ({
-        column: c.name,
-        target_iri: `${prefixBaseIri}${c.name.replace(/\s+/g, '_')}`,
-        mapping_type: "data_property",
-        iri_role: "value",
-      })));
+      setMappings(
+        analysis.columns.map((c) => ({
+          column_name: c.name,
+          directive_type: c.suggested_type,
+          property_iri: "",
+          split_char: "",
+        }))
+      );
+      setTemplateName(`${analysis.filename.replace(/\.[^.]+$/, "")}-template`);
       setStep(1);
     }
-  }, [analysis, prefixBaseIri]);
+  }, [analysis]);
 
   const handleUpload = () => fileRef.current?.click();
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) uploadFile(file);
-  };
-
-  const updateMapping = (idx: number, field: string, value: string) => {
-    setMappings((prev) => prev.map((m, i) => i === idx ? { ...m, [field]: value } : m));
-  };
-
-  const handlePreview = () => {
-    if (analysis) {
-      runPreview(analysis.filename, mappings, iriStrategy, iriPattern || null, baseIri);
-      setStep(3);
+    if (file) {
+      clearError();
+      uploadFile(file);
     }
+  };
+
+  const updateMapping = (idx: number, field: keyof ColumnMapping, value: string) => {
+    setMappings((prev) =>
+      prev.map((m, i) => (i === idx ? { ...m, [field]: value } : m))
+    );
+  };
+
+  const handleGenerateTemplate = () => {
+    if (!analysis) return;
+    const effectiveBaseIri =
+      iriStrategy === "custom_pattern" ? customPattern : baseIri;
+    const effectiveMappings = iriStrategy === "from_column"
+      ? [
+          { column_name: fromColumn, directive_type: "ID", property_iri: "", split_char: "" },
+          ...mappings.filter((m) => m.column_name !== fromColumn),
+        ]
+      : mappings;
+    generateTemplate(
+      analysis.filename,
+      effectiveMappings,
+      iriStrategy,
+      effectiveBaseIri,
+      templateName,
+    );
+    setStep(3);
   };
 
   const handleBuild = () => {
-    if (analysis) {
-      buildKg(analysis.filename, mappings, iriStrategy, iriPattern || null, baseIri);
+    if (templateResult) {
+      buildKg(templateResult.template_path);
       setStep(4);
     }
+  };
+
+  const handleMergeAll = () => {
+    const owlFiles = kgFiles.output
+      .filter((f) => f.name.endsWith(".owl") && f.name !== "merged-kg.owl")
+      .map((f) => f.path);
+    if (owlFiles.length > 0) mergeKgs(owlFiles);
+  };
+
+  const handleStartNew = () => {
+    setStep(0);
+    setTemplateResult(null);
+    setBuildResult(null);
+    fetchFiles();
+  };
+
+  // Helper: get property options for a directive type
+  const getPropertyOptions = (directiveType: string): OntologyEntity[] => {
+    if (!entities) return [];
+    if (directiveType === "TYPE") return entities.classes;
+    if (directiveType === "A") return entities.annotation_properties;
+    if (directiveType === "I") {
+      return [...entities.object_properties, ...entities.data_properties];
+    }
+    return [];
+  };
+
+  // Helper: does this directive type need a property IRI dropdown?
+  const needsPropertyIri = (dt: string) => ["TYPE", "A", "I"].includes(dt);
+
+  // Build the directive preview string
+  const directivePreview = (m: ColumnMapping): string => {
+    if (m.directive_type === "IGNORE") return "(ignored)";
+    if (m.directive_type === "ID") return "ID";
+    if (m.directive_type === "TYPE") return "TYPE";
+    if (m.directive_type === "A rdfs:label") return "A rdfs:label";
+    if (m.directive_type === "A rdfs:comment") return "A rdfs:comment";
+    let d = m.directive_type;
+    if (m.property_iri) d += ` ${m.property_iri}`;
+    if (m.split_char) d += ` SPLIT=${m.split_char}`;
+    return d;
+  };
+
+  const formatBytes = (bytes: number): string => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
   return (
@@ -92,280 +174,609 @@ export default function CsvImportWizard({ boardId }: Props) {
 
       {/* Step indicator */}
       <div className={styles.steps}>
-        {["Upload", "Map", "IRI", "Preview", "Build"].map((label, i) => (
-          <span key={i} className={`${styles.step} ${step >= i ? styles.stepActive : ""}`}
-                onClick={() => i <= step && setStep(i)}>
+        {STEP_LABELS.map((label, i) => (
+          <span
+            key={i}
+            className={`${styles.step} ${step === i ? styles.stepActive : step > i ? styles.stepDone : ""}`}
+            onClick={() => {
+              if (i <= step || i === 5) setStep(i);
+            }}
+          >
             {label}
           </span>
         ))}
       </div>
 
-      {/* Step 0: Upload */}
+      {/* ── Step 0: Upload CSV ─────────────────────────────── */}
       {step === 0 && (
         <div className={styles.section}>
-          <div style={{ marginBottom: 12, padding: "10px 14px", background: "#f4f6fb", borderRadius: 6, fontSize: 13 }}>
-            <strong>CSV columns should follow ROBOT template conventions:</strong>
-            <table style={{ marginTop: 6, borderCollapse: "collapse", width: "100%", fontSize: 12 }}>
-              <thead>
-                <tr style={{ borderBottom: "1px solid #ccc", textAlign: "left" }}>
-                  <th style={{ padding: "4px 8px" }}>ID</th>
-                  <th style={{ padding: "4px 8px" }}>Label</th>
-                  <th style={{ padding: "4px 8px" }}>SubClass Of</th>
-                  <th style={{ padding: "4px 8px" }}>Definition</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr style={{ color: "#666" }}>
-                  <td style={{ padding: "4px 8px" }}>EX:0000001</td>
-                  <td style={{ padding: "4px 8px" }}>Example Class</td>
-                  <td style={{ padding: "4px 8px" }}>owl:Thing</td>
-                  <td style={{ padding: "4px 8px" }}>An example class</td>
-                </tr>
-              </tbody>
-            </table>
-            <div style={{ marginTop: 8, display: "flex", gap: 8 }}>
-              <button
-                className={styles.nextBtn}
-                style={{ fontSize: 12, padding: "4px 10px" }}
-                onClick={() => {
-                  const blob = new Blob([SAMPLE_ROBOT_CSV], { type: "text/csv" });
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement("a");
-                  a.href = url;
-                  a.download = "robot_template_sample.csv";
-                  a.click();
-                  URL.revokeObjectURL(url);
-                }}
-              >
-                Download Sample Template
-              </button>
-              <button
-                className={styles.nextBtn}
-                style={{ fontSize: 12, padding: "4px 10px" }}
-                onClick={() => {
-                  const blob = new Blob([SAMPLE_ROBOT_CSV], { type: "text/csv" });
-                  const file = new File([blob], "default_template.csv", { type: "text/csv" });
-                  uploadFile(file);
-                }}
-              >
-                Use Default Template
-              </button>
-            </div>
-          </div>
-          <input ref={fileRef} type="file" accept=".csv,.tsv,.txt" onChange={handleFile} hidden />
-          <button className={styles.uploadBtn} onClick={handleUpload} disabled={uploading}>
-            {uploading ? "Uploading..." : "Upload CSV / TSV"}
+          <h4 className={styles.sectionTitle}>Upload CSV / TSV File</h4>
+          <p className={styles.hint}>
+            Upload a CSV or TSV file with your data. The wizard will help you
+            map columns to ROBOT template directives and generate a standards-compliant
+            ROBOT template for building OWL knowledge graphs.
+          </p>
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".csv,.tsv,.txt"
+            onChange={handleFile}
+            hidden
+          />
+          <button
+            className={styles.uploadBtn}
+            onClick={handleUpload}
+            disabled={uploading}
+          >
+            {uploading ? "Uploading..." : "Choose CSV / TSV file"}
           </button>
-          {files.length > 0 && (
-            <div className={styles.fileList}>
-              <span className={styles.fileLabel}>Previous uploads:</span>
-              {files.map((f) => (
-                <span key={f} className={styles.fileChip}>{f}</span>
-              ))}
+
+          {/* Quick-access to existing uploads */}
+          {kgFiles.uploads.length > 0 && (
+            <div className={styles.existingFiles}>
+              <span className={styles.existingLabel}>Previously uploaded:</span>
+              <div className={styles.chipRow}>
+                {kgFiles.uploads.map((f) => (
+                  <button
+                    key={f.name}
+                    className={styles.fileChip}
+                    onClick={() => {
+                      // Re-analyze an existing upload
+                      clearError();
+                      // Simulate by creating a fetch to the analyze endpoint
+                      const fakeFile = new File([""], f.name);
+                      // We just re-upload — the backend overwrites gracefully
+                      // Instead, use direct fetch for analysis
+                      import("../../api").then(({ apiJson }) => {
+                        apiJson(`/api/csv/${boardId}/upload`, {
+                          method: "POST",
+                          body: (() => {
+                            const form = new FormData();
+                            form.append("file", fakeFile);
+                            return form;
+                          })(),
+                        }).catch(() => {
+                          // Fallback: just navigate to files step
+                          setStep(5);
+                        });
+                      });
+                    }}
+                  >
+                    {f.name}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
         </div>
       )}
 
-      {/* Step 1: Column mappings */}
+      {/* ── Step 1: Map Columns ────────────────────────────── */}
       {step === 1 && analysis && (
         <div className={styles.section}>
           <div className={styles.sectionHeader}>
-            <h4 className={styles.sectionTitle}>Map Columns ({analysis.row_count} rows)</h4>
+            <h4 className={styles.sectionTitle}>
+              Map Columns to ROBOT Directives
+            </h4>
+            <span className={styles.rowCount}>{analysis.row_count} rows</span>
           </div>
 
-          {/* Prefix and IRI iterator controls */}
-          <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 12, flexWrap: "wrap" }}>
-            <label style={{ fontSize: 13 }}>
-              Ontology Prefix:
-              <input
-                className={styles.iriInput}
-                style={{ marginLeft: 6, width: 100 }}
-                value={ontologyPrefix}
-                onChange={(e) => {
-                  const prefix = e.target.value;
-                  setOntologyPrefix(prefix);
-                  setMappings((prev) =>
-                    prev.map((m) => ({
-                      ...m,
-                      target_iri: `http://example.org/${prefix}_${m.column.replace(/\s+/g, "_")}`,
-                    }))
-                  );
-                }}
-                placeholder="e.g. EX"
-              />
-            </label>
-            <label style={{ fontSize: 13 }}>
-              IRI Iterator:
-              <select
-                className={styles.select}
-                style={{ marginLeft: 6 }}
-                value={iriIterator}
-                onChange={(e) => {
-                  setIriIterator(e.target.value);
-                  setIriStrategy(e.target.value);
-                }}
-              >
-                {IRI_ITERATORS.map((it) => (
-                  <option key={it.value} value={it.value}>{it.label}</option>
+          {/* Data preview table */}
+          <div className={styles.previewTable}>
+            <table>
+              <thead>
+                <tr>
+                  {analysis.columns.map((c) => (
+                    <th key={c.name}>{c.name}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {analysis.sample_rows.slice(0, 3).map((row, i) => (
+                  <tr key={i}>
+                    {analysis.columns.map((c) => (
+                      <td key={c.name}>{row[c.name] || ""}</td>
+                    ))}
+                  </tr>
                 ))}
-              </select>
-            </label>
-          </div>
-          <div style={{ fontSize: 12, color: "#666", marginBottom: 10, padding: "6px 10px", background: "#f9f9fb", borderRadius: 4 }}>
-            Sample IRI: <code>
-              {iriIterator === "timestamp"
-                ? `http://example.org/instance/${ontologyPrefix}_${Date.now()}`
-                : iriIterator === "uuid"
-                ? `http://example.org/instance/${ontologyPrefix}_${crypto.randomUUID?.() || "a1b2c3d4-..."}`
-                : `http://example.org/instance/${ontologyPrefix}_0`}
-            </code>
+              </tbody>
+            </table>
           </div>
 
+          {/* Column mapping controls */}
           <div className={styles.mappingList}>
-            {mappings.map((m, i) => (
-              <div key={m.column} className={styles.mappingRow}>
-                <span className={styles.colName}>{m.column}</span>
-                <span className={styles.colType}>{analysis.columns[i]?.inferred_type}</span>
-                <select className={styles.select}
-                        value={m.mapping_type}
-                        onChange={(e) => updateMapping(i, "mapping_type", e.target.value)}>
-                  {MAPPING_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-                </select>
-                <input className={styles.iriInput}
-                       value={m.target_iri}
-                       onChange={(e) => updateMapping(i, "target_iri", e.target.value)}
-                       placeholder="Target IRI" />
-              </div>
-            ))}
+            {mappings.map((m, i) => {
+              const col = analysis.columns[i];
+              const propOptions = getPropertyOptions(m.directive_type);
+              return (
+                <div key={m.column_name} className={styles.mappingRow}>
+                  <div className={styles.mappingCol}>
+                    <span className={styles.colName}>{m.column_name}</span>
+                    {col && col.sample_values.length > 0 && (
+                      <span className={styles.colSample}>
+                        {col.sample_values[0]}
+                      </span>
+                    )}
+                  </div>
+
+                  <select
+                    className={styles.select}
+                    value={m.directive_type}
+                    onChange={(e) =>
+                      updateMapping(i, "directive_type", e.target.value)
+                    }
+                  >
+                    {DIRECTIVE_TYPES.map((t) => (
+                      <option key={t.value} value={t.value}>
+                        {t.label}
+                      </option>
+                    ))}
+                  </select>
+
+                  {needsPropertyIri(m.directive_type) && (
+                    <select
+                      className={styles.select}
+                      value={m.property_iri}
+                      onChange={(e) =>
+                        updateMapping(i, "property_iri", e.target.value)
+                      }
+                    >
+                      <option value="">
+                        {m.directive_type === "TYPE"
+                          ? "-- select class --"
+                          : "-- select property --"}
+                      </option>
+                      {propOptions.map((p) => (
+                        <option key={p.iri} value={p.iri}>
+                          {p.label} ({p.iri.split("/").pop()?.split("#").pop()})
+                        </option>
+                      ))}
+                    </select>
+                  )}
+
+                  {(m.directive_type === "A" || m.directive_type === "I") && (
+                    <input
+                      className={styles.splitInput}
+                      value={m.split_char}
+                      onChange={(e) =>
+                        updateMapping(i, "split_char", e.target.value)
+                      }
+                      placeholder="split"
+                      title="Split character for multi-valued cells (e.g. comma)"
+                    />
+                  )}
+
+                  {/* If no property options loaded, allow manual IRI entry */}
+                  {needsPropertyIri(m.directive_type) &&
+                    propOptions.length === 0 && (
+                      <input
+                        className={styles.iriInput}
+                        value={m.property_iri}
+                        onChange={(e) =>
+                          updateMapping(i, "property_iri", e.target.value)
+                        }
+                        placeholder="Property IRI"
+                      />
+                    )}
+
+                  <span className={styles.directivePreview}>
+                    {directivePreview(m)}
+                  </span>
+                </div>
+              );
+            })}
           </div>
-          <button className={styles.nextBtn} onClick={() => setStep(2)}>Next: IRI Strategy</button>
+
+          <button className={styles.nextBtn} onClick={() => setStep(2)}>
+            Next: IRI Strategy
+          </button>
         </div>
       )}
 
-      {/* Step 2: IRI strategy */}
+      {/* ── Step 2: IRI Strategy ──────────────────────────── */}
       {step === 2 && (
         <div className={styles.section}>
           <h4 className={styles.sectionTitle}>IRI Generation Strategy</h4>
+          <p className={styles.hint}>
+            Choose how individual IRIs are generated for each row in your data.
+          </p>
+
           <div className={styles.iriOptions}>
             {IRI_STRATEGIES.map((s) => (
               <label key={s.value} className={styles.radioLabel}>
-                <input type="radio" name="iri" value={s.value}
-                       checked={iriStrategy === s.value}
-                       onChange={(e) => setIriStrategy(e.target.value)} />
+                <input
+                  type="radio"
+                  name="iri_strategy"
+                  value={s.value}
+                  checked={iriStrategy === s.value}
+                  onChange={(e) => setIriStrategy(e.target.value)}
+                />
                 {s.label}
               </label>
             ))}
           </div>
-          {iriStrategy === "pattern" && (
-            <input className={styles.patternInput}
-                   placeholder="e.g. http://example.org/{Name}_{City}"
-                   value={iriPattern}
-                   onChange={(e) => setIriPattern(e.target.value)} />
-          )}
-          <div className={styles.iriBaseRow}>
-            <span className={styles.iriBaseLabel}>Base IRI:</span>
-            <input className={styles.iriInput} value={baseIri} onChange={(e) => setBaseIri(e.target.value)} />
-          </div>
-          <button className={styles.nextBtn} onClick={handlePreview}>Preview Triples</button>
-        </div>
-      )}
 
-      {/* Step 3: Preview */}
-      {step === 3 && (
-        <div className={styles.section}>
-          <h4 className={styles.sectionTitle}>Preview ({preview.length} triples)</h4>
-          <div className={styles.tripleList}>
-            {preview.map((t, i) => (
-              <div key={i} className={styles.tripleRow}>
-                <span className={styles.tripleS}>{t.subject?.split("/").pop()}</span>
-                <span className={styles.tripleP}>{t.predicate?.split("/").pop()?.split("#").pop()}</span>
-                <span className={styles.tripleO}>{String(t.object).split("/").pop()}</span>
-              </div>
-            ))}
+          {/* Base IRI */}
+          {iriStrategy !== "custom_pattern" && (
+            <div className={styles.iriBaseRow}>
+              <label className={styles.iriBaseLabel}>Base IRI:</label>
+              <input
+                className={styles.iriInput}
+                value={baseIri}
+                onChange={(e) => setBaseIri(e.target.value)}
+                placeholder="https://example.org/resource"
+              />
+            </div>
+          )}
+
+          {/* From column selector */}
+          {iriStrategy === "from_column" && analysis && (
+            <div className={styles.iriBaseRow}>
+              <label className={styles.iriBaseLabel}>Column:</label>
+              <select
+                className={styles.select}
+                value={fromColumn}
+                onChange={(e) => setFromColumn(e.target.value)}
+              >
+                <option value="">-- select column --</option>
+                {analysis.columns.map((c) => (
+                  <option key={c.name} value={c.name}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Custom pattern */}
+          {iriStrategy === "custom_pattern" && (
+            <div className={styles.iriBaseRow}>
+              <label className={styles.iriBaseLabel}>Pattern:</label>
+              <input
+                className={styles.iriInput}
+                value={customPattern}
+                onChange={(e) => setCustomPattern(e.target.value)}
+                placeholder="https://example.org/{Name}_{City}"
+              />
+              {analysis && (
+                <span className={styles.patternHint}>
+                  Available: {analysis.columns.map((c) => `{${c.name}}`).join(", ")}
+                </span>
+              )}
+            </div>
+          )}
+
+          {/* IRI preview */}
+          <div className={styles.iriPreview}>
+            <span className={styles.iriPreviewLabel}>Example IRI:</span>
+            <code className={styles.iriPreviewValue}>
+              {iriStrategy === "auto_sequential" && `${baseIri}/1`}
+              {iriStrategy === "auto_uuid" && `${baseIri}/a1b2c3d4-e5f6-...`}
+              {iriStrategy === "auto_hash" && `${baseIri}/3f2a9b1c4d5e`}
+              {iriStrategy === "from_column" &&
+                (fromColumn
+                  ? `${baseIri}/${fromColumn}_value`
+                  : "(select a column)")}
+              {iriStrategy === "custom_pattern" &&
+                (customPattern || "https://example.org/{Col1}_{Col2}")}
+            </code>
           </div>
-          <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+
+          {/* Template name */}
+          <div className={styles.iriBaseRow}>
+            <label className={styles.iriBaseLabel}>Template name:</label>
+            <input
+              className={styles.iriInput}
+              value={templateName}
+              onChange={(e) => setTemplateName(e.target.value)}
+              placeholder="my-template"
+            />
+          </div>
+
+          <div className={styles.buttonRow}>
+            <button
+              className={styles.backBtn}
+              onClick={() => setStep(1)}
+            >
+              Back
+            </button>
             <button
               className={styles.nextBtn}
-              onClick={() => {
-                const lines = preview.map(
-                  (t) => `${t.subject}\t${t.predicate}\t${t.object}`
-                );
-                const content = "Subject\tPredicate\tObject\n" + lines.join("\n");
-                const blob = new Blob([content], { type: "text/tab-separated-values" });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement("a");
-                a.href = url;
-                a.download = "preview_triples.tsv";
-                a.click();
-                URL.revokeObjectURL(url);
-              }}
+              onClick={handleGenerateTemplate}
+              disabled={generating}
             >
-              Download Preview
-            </button>
-            <button className={`${styles.nextBtn} ${styles.buildBtn}`} onClick={handleBuild} disabled={building}>
-              {building ? "Building..." : "Build Knowledge Graph"}
+              {generating ? "Generating..." : "Generate Template"}
             </button>
           </div>
         </div>
       )}
 
-      {/* Step 4: Result */}
-      {step === 4 && buildResult && (
+      {/* ── Step 3: Preview Template ──────────────────────── */}
+      {step === 3 && (
         <div className={styles.section}>
-          <div className={styles.resultBanner}>
-            <span className={styles.resultIcon}>{"\u2713"}</span>
-            <div>
-              <div className={styles.resultTitle}>Knowledge Graph Built</div>
-              <div className={styles.resultMeta}>
-                {buildResult.individuals_count} individuals &middot; {buildResult.triples_count} triples
+          <h4 className={styles.sectionTitle}>ROBOT Template Preview</h4>
+
+          {generating && <p className={styles.hint}>Generating template...</p>}
+
+          {templateResult && (
+            <>
+              <div className={styles.templateInfo}>
+                <span>Template: <code>{templateResult.template_name}</code></span>
+                <span>{templateResult.total_data_rows} data rows</span>
               </div>
+
+              <div className={styles.templatePreview}>
+                <table>
+                  <tbody>
+                    {templateResult.preview_rows.map((row, ri) => (
+                      <tr
+                        key={ri}
+                        className={
+                          ri === 0
+                            ? styles.commentRow
+                            : ri === 1
+                            ? styles.directiveRow
+                            : ""
+                        }
+                      >
+                        {row.map((cell, ci) => (
+                          <td key={ci}>{cell}</td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className={styles.buttonRow}>
+                <button
+                  className={styles.backBtn}
+                  onClick={() => setStep(2)}
+                >
+                  Back
+                </button>
+                <a
+                  className={styles.downloadLink}
+                  href={getDownloadUrl(
+                    `kg/templates/${templateResult.template_name}`
+                  )}
+                  download={templateResult.template_name}
+                >
+                  Download Template
+                </a>
+                <button
+                  className={`${styles.nextBtn} ${styles.buildBtn}`}
+                  onClick={handleBuild}
+                  disabled={building}
+                >
+                  {building ? "Building..." : "Build Knowledge Graph"}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ── Step 4: Build Result ──────────────────────────── */}
+      {step === 4 && (
+        <div className={styles.section}>
+          {building && (
+            <div className={styles.buildingIndicator}>
+              Building knowledge graph with ROBOT...
             </div>
-          </div>
-          <div className={styles.resultPath}>
-            Output: <code>{buildResult.output_path}</code>
-          </div>
-          <div className={styles.resultActions}>
-            <button className={styles.nextBtn} onClick={() => { setStep(0); }}>Import Another CSV</button>
+          )}
+
+          {buildResult && buildResult.success && (
+            <>
+              <div className={styles.resultBanner}>
+                <span className={styles.resultIcon}>{"\u2713"}</span>
+                <div>
+                  <div className={styles.resultTitle}>Knowledge Graph Built</div>
+                  <div className={styles.resultMeta}>
+                    {buildResult.triples_count} triples generated
+                  </div>
+                </div>
+              </div>
+
+              {/* Build Pipeline Logs */}
+              {buildResult.logs && buildResult.logs.length > 0 && (
+                <div className={styles.buildLogs}>
+                  <div className={styles.logsTitle}>Build Pipeline</div>
+                  {buildResult.logs.map((log: any, i: number) => (
+                    <div key={i} className={`${styles.logStep} ${
+                      log.status === "success" ? styles.logStepOk :
+                      log.status === "failed" ? styles.logStepFail :
+                      log.status === "inconsistent" ? styles.logStepWarn : ""
+                    }`}>
+                      <span className={styles.logStepIcon}>
+                        {log.status === "success" ? "\u2713" :
+                         log.status === "failed" ? "\u2717" :
+                         log.status === "inconsistent" ? "\u26A0" : "\u2022"}
+                      </span>
+                      <div className={styles.logStepContent}>
+                        <div className={styles.logStepName}>
+                          {log.step === "merge+template" ? "Merge Ontology + Build Template" :
+                           log.step === "template" ? "Build Template" :
+                           log.step === "consistency_check" ? "Consistency Check (HermiT)" :
+                           log.step}
+                        </div>
+                        <code className={styles.logStepCmd}>{log.command}</code>
+                        {log.note && <div className={styles.logStepNote}>{log.note}</div>}
+                        {log.stderr && <pre className={styles.logStepErr}>{log.stderr}</pre>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Consistency Check Result */}
+              {buildResult.consistency_check && (
+                <div className={`${styles.consistencyBanner} ${
+                  buildResult.consistency_check.consistent ? styles.consistencyOk : styles.consistencyFail
+                }`}>
+                  <span className={styles.consistencyIcon}>
+                    {buildResult.consistency_check.consistent ? "\u2713" : "\u2717"}
+                  </span>
+                  <div>
+                    <div className={styles.consistencyTitle}>
+                      {buildResult.consistency_check.consistent
+                        ? "Ontology is Consistent"
+                        : "INCONSISTENT — Review Required"}
+                    </div>
+                    {buildResult.consistency_check.explanation && (
+                      <pre className={styles.consistencyExpl}>
+                        {buildResult.consistency_check.explanation}
+                      </pre>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <div className={styles.resultPath}>
+                Output: <code>{buildResult.output_path}</code>
+              </div>
+              <div className={styles.resultActions}>
+                <button className={styles.backBtn} onClick={handleStartNew}>
+                  Import Another CSV
+                </button>
+                <button className={styles.nextBtn} onClick={() => { fetchFiles(); setStep(5); }}>
+                  View All Files
+                </button>
+              </div>
+            </>
+          )}
+
+          {buildResult && !buildResult.success && (
+            <div className={styles.errorBanner}>
+              <div className={styles.errorTitle}>Build Failed</div>
+              <div className={styles.errorDetail}>
+                {buildResult.error || "Unknown error"}
+              </div>
+              {buildResult.logs && buildResult.logs.map((log: any, i: number) => (
+                <div key={i} className={styles.logStep}>
+                  <code className={styles.logStepCmd}>{log.command}</code>
+                  {log.stderr && <pre className={styles.logStepErr}>{log.stderr}</pre>}
+                </div>
+              ))}
+              <button className={styles.backBtn} onClick={() => setStep(3)}>
+                Back to Template
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Step 5: Multi-file Management ────────────────── */}
+      {step === 5 && (
+        <div className={styles.section}>
+          <div className={styles.sectionHeader}>
+            <h4 className={styles.sectionTitle}>KG File Manager</h4>
             <button
-              className={styles.openBoardBtn}
-              onClick={async () => {
-                const kgBoardId = `${boardId}-kg`;
-                try {
-                  const { api: apiFn } = await import("../../api");
-                  // Create a new board
-                  const createRes = await apiFn(`/api/boards/${kgBoardId}`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ display_name: `${boardId} Knowledge Graph` }),
-                  });
-                  if (createRes.ok || createRes.status === 409) {
-                    // Copy the KG file to the new board by uploading it
-                    const kgFile = buildResult.output_path;
-                    if (kgFile) {
-                      const fileContent = await apiFn(`/api/odk-setup/${boardId}/file?path=${encodeURIComponent(kgFile)}`);
-                      if (fileContent.ok) {
-                        const text = await fileContent.text();
-                        const blob = new Blob([text], { type: "text/turtle" });
-                        const formData = new FormData();
-                        formData.append("file", blob, "knowledge_graph.ttl");
-                        await apiFn(`/api/boards/${kgBoardId}/from-file`, {
-                          method: "POST",
-                          body: formData,
-                        });
-                      }
-                    }
-                    window.location.href = `/board/${kgBoardId}`;
-                  }
-                } catch (err) {
-                  console.error("Failed to create KG board:", err);
-                  alert("Failed to create KG board. The knowledge graph is saved in the current board's files.");
-                }
-              }}
+              className={styles.refreshBtn}
+              onClick={fetchFiles}
+              title="Refresh file list"
             >
-              Open as New Board
+              Refresh
             </button>
           </div>
+
+          {/* Uploads */}
+          <div className={styles.fileSection}>
+            <h5 className={styles.fileSectionTitle}>Uploaded Data Files</h5>
+            {kgFiles.uploads.length === 0 ? (
+              <p className={styles.emptyHint}>No files uploaded yet.</p>
+            ) : (
+              <div className={styles.fileGrid}>
+                {kgFiles.uploads.map((f) => (
+                  <div key={f.name} className={styles.fileCard}>
+                    <span className={styles.fileName}>{f.name}</span>
+                    <span className={styles.fileSize}>
+                      {formatBytes(f.size)}
+                    </span>
+                    <a
+                      className={styles.fileAction}
+                      href={getDownloadUrl(f.path)}
+                      download={f.name}
+                    >
+                      Download
+                    </a>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Templates */}
+          <div className={styles.fileSection}>
+            <h5 className={styles.fileSectionTitle}>ROBOT Templates</h5>
+            {kgFiles.templates.length === 0 ? (
+              <p className={styles.emptyHint}>No templates generated yet.</p>
+            ) : (
+              <div className={styles.fileGrid}>
+                {kgFiles.templates.map((f) => (
+                  <div key={f.name} className={styles.fileCard}>
+                    <span className={styles.fileName}>{f.name}</span>
+                    <span className={styles.fileSize}>
+                      {formatBytes(f.size)}
+                    </span>
+                    <a
+                      className={styles.fileAction}
+                      href={getDownloadUrl(f.path)}
+                      download={f.name}
+                    >
+                      Download
+                    </a>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Output */}
+          <div className={styles.fileSection}>
+            <h5 className={styles.fileSectionTitle}>Generated KG Files</h5>
+            {kgFiles.output.length === 0 ? (
+              <p className={styles.emptyHint}>
+                No knowledge graphs built yet.
+              </p>
+            ) : (
+              <>
+                <div className={styles.fileGrid}>
+                  {kgFiles.output.map((f) => (
+                    <div key={f.name} className={styles.fileCard}>
+                      <span className={styles.fileName}>{f.name}</span>
+                      <span className={styles.fileSize}>
+                        {formatBytes(f.size)}
+                      </span>
+                      <a
+                        className={styles.fileAction}
+                        href={getDownloadUrl(f.path)}
+                        download={f.name}
+                      >
+                        Download
+                      </a>
+                    </div>
+                  ))}
+                </div>
+                {kgFiles.output.filter(
+                  (f) =>
+                    f.name.endsWith(".owl") && f.name !== "merged-kg.owl"
+                ).length > 1 && (
+                  <button
+                    className={`${styles.nextBtn} ${styles.mergeBtn}`}
+                    onClick={handleMergeAll}
+                    disabled={merging}
+                  >
+                    {merging ? "Merging..." : "Merge All KG Files"}
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+
+          <button className={styles.backBtn} onClick={handleStartNew}>
+            Import New CSV
+          </button>
         </div>
       )}
     </div>

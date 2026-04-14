@@ -64,7 +64,10 @@
       "Bash(python -m pytest tests/test_owl2_features.py::TestNativeSWRL::test_swrl_complex_rule tests/test_owl2_features.py::TestAxiomEditorIntegration::test_subclassof_has_self_endpoint --tb=short)",
       "Bash(ls -la \"c:/Users/eno/Documents/Git_repo/ebrahimnorouzi_github/ISE-FIZKarlsruhe/ontoboard/data/admin/\"*/collab-state.bin)",
       "Bash(ls -la \"c:/Users/eno/Documents/Git_repo/ebrahimnorouzi_github/ISE-FIZKarlsruhe/ontoboard/data/\"*/collab-state.bin)",
-      "Bash(docker exec:*)"
+      "Bash(docker exec:*)",
+      "Read(//c/Users/eno/Documents/NFDI-MatWerk/gitlab/matwerk/server/manual__2026-03-30/**)",
+      "Bash(python -m pytest tests/test_robot_template.py -v --tb=short -q)",
+      "Bash(python -m pytest tests/test_robot_template.py::test_get_ontology_entities --tb=short)"
     ]
   }
 }
