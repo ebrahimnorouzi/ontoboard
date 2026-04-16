@@ -6,21 +6,17 @@ This document lists known limitations of OntoBoard, provides a detailed comparis
 
 ### 1. Collaboration Model
 
-**Polling-based sync, not true CRDT**
+**Operation-based CRDT with semantic merge**
 
-OntoBoard uses Yjs/Hocuspocus for awareness (cursor sharing, entity locking) and save notifications, but the actual ontology data is not stored in a CRDT structure. Instead, the collaboration flow works as follows:
+OntoBoard uses an operation-based CRDT system (Phases 1-3) built on Yjs/Hocuspocus. Each ontology mutation is propagated as an individual operation via a shared `Y.Array`, achieving < 100ms cross-client sync. A semantic merge engine auto-resolves non-conflicting concurrent edits (different fields, additive ops, position-only changes) and surfaces true conflicts (same semantic field) with resolution UI.
 
-1. User A saves the canvas to the backend via HTTP
-2. A Yjs broadcast notifies other clients that a save occurred
-3. User B's client fetches the latest state from the backend via HTTP
-
-This means:
-- **Last-write-wins**: If two users edit the same entity simultaneously and save within the 800ms debounce window, the second save overwrites the first. There is no automatic merge of concurrent edits.
-- **No offline support**: Edits made while disconnected are lost if another user saves in the meantime.
-- **Polling fallback**: If the WebSocket connection drops, clients fall back to polling the `sync-check` endpoint every 30 seconds, which increases latency for detecting changes.
-- **Tested up to ~10-15 users**: Beyond this range, performance has not been validated.
-
-Entity locking is advisory only -- it is not enforced at the API level. Two users can technically edit the same entity simultaneously.
+**Remaining limitations:**
+- **No offline support**: The operation log is ephemeral (in Hocuspocus memory). Edits made while disconnected are not queued for replay. If a user disconnects and reconnects, they reload from the backend.
+- **Operation log growth**: The `Y.Array("ops")` grows unbounded during a session. For very long sessions with many edits, Hocuspocus memory may increase. Restarting the collab server clears the log (clients reload from backend).
+- **Tested up to ~10-15 users**: Beyond this range, performance has not been validated. The merge engine handles N-user conflicts, but network overhead scales with user count.
+- **Entity locking is advisory**: Not enforced at the API level. Two users can edit the same entity simultaneously -- the merge engine will classify the result.
+- **Position-only merges use last-write-wins**: Concurrent position edits (drag-to-move) are resolved by timestamp, which may cause a brief visual jump for the "losing" user.
+- **Consistency check is manual**: The `POST /api/reasoning/{board_id}/consistency-check` endpoint must be called explicitly after a merge to verify OWL consistency. It is not triggered automatically.
 
 ### 2. Embedded Reasoner (owlready2) Issues
 
@@ -183,7 +179,7 @@ Internet Explorer is not supported.
 | SWRL native OWL/XML storage | Yes | Yes | `swrl:Imp` + `swrl:ClassAtom` + `swrl:Variable` |
 | SWRL execution | Yes | Yes | Standard reasoners can execute native SWRL rules |
 | **Collaboration** | | | |
-| Real-time multi-user editing | No | Yes | Yjs/Hocuspocus |
+| Real-time multi-user editing | No | Yes | Operation-based CRDT + semantic merge |
 | Cursor sharing | No | Yes | |
 | Entity locking | No | Yes | Advisory |
 | Comments with @mentions | No | Yes | |
@@ -304,7 +300,7 @@ The following features are planned for future development, organized by priority
 
 ### Future Considerations
 
-- **CRDT-based collaboration**: Replace polling with true conflict-free replicated data types
+- ~~**CRDT-based collaboration**~~: Implemented (Phases 1-3: operation log, conflict detection, semantic merge)
 - **Plugin system**: Allow community extensions for custom functionality
 - **Internationalization**: Multi-language UI
 - **Accessibility**: WCAG 2.1 AA compliance
@@ -312,7 +308,7 @@ The following features are planned for future development, organized by priority
 - **GraphDB/Triplestore integration**: Store ontologies in a triplestore instead of file-based rdflib
 - **Ontology alignment tools**: Semi-automated mapping between ontologies
 - **AI-assisted modeling**: Suggestions for class hierarchies, property definitions, and axiom patterns
-- **Offline mode**: Service worker for offline editing with sync-on-reconnect
+- **Offline mode**: Queue operations locally in IndexedDB, replay on reconnect (Phase 4 of CRDT plan)
 - **DOSDP pattern editor**: Dead Simple OWL Design Patterns template editor and instantiation
 
 ---
@@ -329,10 +325,10 @@ The following features are planned for future development, organized by priority
 | Reasoning | ROBOT + owlready2 | No background/incremental reasoning |
 | CSV Import | ROBOT Template Builder (6-step wizard) | -- |
 | Documentation | Widoco 1.4.25 HTML generation | Requires rebuild for updates |
-| Collaboration | Full awareness + sync (ephemeral) | Not CRDT, last-write-wins, ~15 user max |
+| Collaboration | Operation-based CRDT + semantic merge + conflict UI | No offline support, ~15 user max |
 | Import management | Resolve + download + catalog | No auto-freshness, no auth |
 | Visualization | Canvas + patterns + minimap | Scale limited to ~500 classes |
 | Quality | ROBOT report (with violation cards), OOPS!, OQuaRE | No SHACL |
 | Authentication | JWT local | No OAuth, no 2FA |
 | Database | SQLite | Not tested with PostgreSQL |
-| Testing | 500+ tests across 48+ files | -- |
+| Testing | 500+ backend tests + 44 frontend tests | -- |

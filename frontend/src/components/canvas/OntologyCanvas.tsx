@@ -1158,31 +1158,20 @@ export default function OntologyCanvas({ boardId, onOpenComments, remoteCursors 
         }
       );
       const patternColor = getPatternColor(patternId);
-      // Batch all additions into a single store update to avoid partial state
-      const currentState = useOntologyStore.getState();
-      const newClasses = [...currentState.classes];
-      const newProperties = [...currentState.properties];
-      const newPatternMap = { ...currentState.patternMap };
-
+      // Use store mutation methods so changes are broadcast via CRDT op sync
+      // and properly trigger Cytoscape re-render.
+      const s = useOntologyStore.getState();
       for (const cls of result.classes || []) {
-        if (!newClasses.some((c) => c.iri === cls.iri)) {
-          newClasses.push({ ...cls, color: patternColor });
+        if (!s.classes.some((c) => c.iri === cls.iri)) {
+          s.addClass({ ...cls, color: patternColor });
         }
-        newPatternMap[cls.iri] = patternId;
+        s.assignPattern(cls.iri, patternId);
       }
-      for (const prop of (result as any).properties || []) {
-        if (!newProperties.some((p) => p.id === prop.id)) {
-          newProperties.push(prop);
+      for (const prop of result.properties || []) {
+        if (!s.properties.some((p) => p.id === prop.id)) {
+          s.addProperty(prop);
         }
       }
-
-      useOntologyStore.setState({
-        classes: newClasses,
-        properties: newProperties,
-        patternMap: newPatternMap,
-        dirty: true,
-      });
-      scheduleAutoSave();
     } catch (err) {
       console.error("Failed to apply pattern via drag-drop:", err);
     }
@@ -1368,26 +1357,7 @@ export default function OntologyCanvas({ boardId, onOpenComments, remoteCursors 
         </div>
       )}
 
-      {/* ── Entity editor bar ──────────────────────────────── */}
-      {selected && (
-        <div className={styles.editor}>
-          <input className={styles.nameInput} value={editLabel}
-            onChange={(e) => setEditLabel(e.target.value)}
-            onBlur={rename} onKeyDown={(e) => e.key === "Enter" && rename()} />
-          <input type="color" className={styles.colorPick} value={editColor} onChange={(e) => {
-            setEditColor(e.target.value);
-            cyRef.current?.getElementById(selected).style("border-color", e.target.value);
-            cyRef.current?.getElementById(selected).style("background-color", e.target.value + "15");
-          }} />
-          <span className={styles.iri}>{compact(selected)}</span>
-          <button className={styles.btnSmall} onClick={() => {
-            store.removeClass(selected);
-            store.setIndividuals(store.individuals.filter((i) => i.iri !== selected));
-            store.removeLiteral(selected);
-            store.selectEntity(null);
-          }}>Delete</button>
-        </div>
-      )}
+      {/* Entity editor bar removed — entity editing is handled in the right panel */}
 
       {/* ── Legend ──────────────────────────────────────────── */}
       <CanvasLegend prefixColors={store.prefixColors} patternMap={store.patternMap} />

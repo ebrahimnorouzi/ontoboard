@@ -104,6 +104,19 @@ def _parse_owl_file(owl_path: Path) -> tuple[list[dict], list[dict]]:
                 "iri": str(s), "label": label,
                 "source": source, "target": target, "type": "data",
             })
+
+        # Extract rdfs:subClassOf relationships as edges
+        from rdflib import BNode as BNode2
+        class_iris = {str(c["iri"]) for c in classes}
+        for s, _, o in g.triples((None, RDFS.subClassOf, None)):
+            if isinstance(s, BNode2) or isinstance(o, BNode2):
+                continue
+            s_iri, o_iri = str(s), str(o)
+            if s_iri in class_iris and o_iri in class_iris:
+                properties.append({
+                    "iri": "rdfs:subClassOf", "label": "rdfs:subClassOf",
+                    "source": s_iri, "target": o_iri, "type": "annotation",
+                })
     except Exception as exc:
         logger.warning("Failed to parse OWL file %s: %s", owl_path, exc)
 
