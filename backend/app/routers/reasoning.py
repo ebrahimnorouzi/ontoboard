@@ -156,6 +156,29 @@ async def explain_inconsistency(
     return result
 
 
+@router.post("/{board_id}/consistency-check")
+async def consistency_check(
+    board_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Lightweight consistency check via owlready2 (no full inference).
+
+    Designed to be called after a semantic merge to verify the merged state
+    doesn't introduce OWL inconsistencies. Returns quickly (< 2s for most
+    ontologies) with a boolean `consistent` flag and any unsatisfiable classes.
+    """
+    board = board_svc.get_board_by_slug(db, board_id)
+    if not board:
+        raise HTTPException(status_code=404, detail="Board not found")
+    if not board_svc.can_edit(db, board, user):
+        raise HTTPException(status_code=403, detail="Edit access required")
+
+    board_dir = board_svc.get_board_dir(board_id)
+    result = await reasoning_svc.check_consistency_fast(board_dir)
+    return result
+
+
 # ── SWRL rules ────────────────────────────────────────────────────
 
 

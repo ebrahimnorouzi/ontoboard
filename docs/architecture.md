@@ -111,12 +111,15 @@ Key backend dependencies:
 | Port | 1234 |
 | Stack | Hocuspocus Server 3.4, Yjs 13.6, jsonwebtoken |
 
-The collaboration server runs Hocuspocus, a WebSocket server for Yjs document synchronization. The server has been rewritten for ephemeral awareness only (no state persistence), with global error handlers to prevent crashes from corrupt WebSocket data. Each board gets its own Yjs document, identified by the board ID. The server:
+The collaboration server runs Hocuspocus, a WebSocket server for Yjs document synchronization. Each board gets its own Yjs document, identified by the board ID. The server:
 - Authenticates users via JWT tokens (same SECRET_KEY as the backend)
-- Provides ephemeral awareness only (cursor sharing, entity locking) -- no persistent state
+- Provides awareness (cursor sharing, entity locking) and document sync
+- Hosts a shared `Y.Array("ops")` per board -- the operation log for the CRDT sync system
 - Allows anonymous connections as read-only viewers
 - Broadcasts awareness updates (cursor positions, entity selections, user actions)
-- Users must hard-refresh the browser to clear stale Yjs state
+- Global error handlers prevent crashes from corrupt WebSocket data
+
+**CRDT operation log**: In addition to ephemeral awareness, each Yjs document now carries a `Y.Array<string>` named `"ops"` that serves as an append-only operation log. Each ontology mutation (addClass, updateClass, removeProperty, etc.) is serialized as an `OntologyOperation` JSON object and pushed to this array. Hocuspocus propagates the array delta to all connected clients within ~50ms. The array is not persisted to disk -- it lives in server memory for the duration of the Yjs document (while at least one client is connected). Backend persistence continues via the existing HTTP save endpoint.
 
 ### 4. Worker (Redis Queue Consumer + ROBOT + Java)
 
@@ -325,7 +328,9 @@ onSaveCallback invoked -> Yjs broadcast to other clients
 Other clients receive Yjs update -> reload from backend within ~1 second
 ```
 
-### Collaboration Flow
+### Collaboration Flow (Operation-Based CRDT)
+
+The collaboration system uses an operation-based CRDT architecture. Instead of syncing full state (which causes last-write-wins), individual operations are propagated via a shared Yjs array.
 
 ```
 Client A edits              Client B views
@@ -333,30 +338,60 @@ Client A edits              Client B views
     v                           |
 Zustand mutation                |
     |                           |
+    +---> pushOp to Y.Array ----+---> Hocuspocus broadcasts delta
+    |                           |
+    v                           v
+Local state updated        Y.Array observer fires
+    |                           |
+    v                           v
+debouncedSave (800ms)      Merge engine classifies op:
+    |                        - "both"           -> apply silently
+    v                        - "last-write-wins" -> apply later op
+POST /api/owl/.../save       - "add-wins"       -> re-apply the add
+    |                        - "conflict"       -> show ConflictBanner
     v                           |
-Auto-save to backend            |
-    |                           |
-    v                           |
-Yjs broadcast (via              |
-Hocuspocus WebSocket)  -------> |
-    |                           v
-    |                    Yjs update received
-    |                           |
-    |                           v
-    |                    loadFromBackend()
-    |                           |
-    |                           v
-    |                    Canvas re-rendered
-
-  Entity locking:
-    - Client A selects an entity -> Yjs awareness broadcasts selection
-    - Client B sees entity highlighted with Client A's color
-    - CollabStatus dropdown shows "A is editing ClassName"
-
-  Polling fallback:
-    - If WebSocket disconnects, clients poll sync-check endpoint every 30s
-    - On reconnect, full state reload from backend
+Yjs broadcastSave              v
+    |                      applyRemoteOp(op)
+    +----(safety net)---->     |
+                               v
+                          Canvas re-rendered (< 100ms)
 ```
+
+**Operation schema** (`OntologyOperation`):
+```typescript
+interface OntologyOperation {
+  id: string;           // UUID -- for deduplication
+  type: OntologyOpType; // "addClass" | "updateClass" | "removeClass" | ...
+  timestamp: number;    // Date.now() on the originator
+  userId: string;       // display name of the originator
+  data: any;            // operation-specific payload
+}
+```
+
+**Conflict detection window**: A 2-second sliding window tracks recent ops from all users. When a new op arrives (local or remote), if another user touched the same entity IRI within the window, the pair is classified by the merge engine.
+
+**Merge rule table** (Phase 3):
+
+| Op A | Op B | Resolution |
+|------|------|------------|
+| `addClass(X)` | `addClass(Y)` | both (additive) |
+| `updateClass(X, label)` | `updateClass(X, pos)` | both (different fields) |
+| `updateClass(X, label="A")` | `updateClass(X, label="B")` | **conflict** (same field) |
+| `addClass(X)` | `removeClass(X)` | add-wins (conservative) |
+| `updateClass(X, x=1)` | `updateClass(X, x=2)` | last-write-wins (position ephemeral) |
+| `addAxiom(SubClassOf X Y)` | `addAxiom(SubClassOf X Z)` | both (additive) |
+| `updateClass(X)` | `removeClass(X)` | add-wins (edit preserved) |
+
+**Entity locking** (awareness layer):
+- Client A selects an entity -> Yjs awareness broadcasts selection
+- Client B sees entity highlighted with Client A's color
+- CollabStatus dropdown shows "A is editing ClassName"
+
+**Safety nets**:
+- Polling fallback: If WebSocket disconnects, clients poll sync-check endpoint every 30s
+- Save broadcast: After each save, Yjs awareness notifies other clients to reload
+- On reconnect: full state reload from backend
+- Backend consistency check: `POST /api/reasoning/{board_id}/consistency-check` runs owlready2 HermiT to detect OWL inconsistencies introduced by a merge
 
 ### ROBOT Command Flow
 

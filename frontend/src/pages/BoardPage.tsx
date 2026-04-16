@@ -18,6 +18,8 @@ import AxiomEditor from "../components/axiom/AxiomEditor";
 import TreeBrowser from "../components/tree/TreeBrowser";
 import FileBrowser from "../components/files/FileBrowser";
 import { useCollaboration } from "../collab/useCollaboration";
+import { useOperationSync } from "../collab/useOperationSync";
+import ConflictBanner from "../collab/ConflictBanner";
 import CollabStatus from "../collab/CollabStatus";
 import PublishPanel from "../components/publish/PublishPanel";
 import ReasoningPanel from "../components/reasoning/ReasoningPanel";
@@ -77,7 +79,17 @@ export default function BoardPage() {
   const {
     connected, users: collabUsers, remoteCursors, broadcastCursor,
     entityLocks, lockEntity, getEntityLock, remoteSaveVersion, broadcastSave,
+    doc: collabDoc,
   } = useCollaboration(
+    status === "ready" ? boardId : undefined,
+    user?.display_name || user?.username || "anonymous",
+  );
+
+  // Real-time op sync (Phase 1) + conflict detection (Phase 2) + semantic merge (Phase 3).
+  const {
+    conflicts, autoMerges, dismissConflict, dismissAll, resolveConflict,
+  } = useOperationSync(
+    status === "ready" ? collabDoc : null,
     status === "ready" ? boardId : undefined,
     user?.display_name || user?.username || "anonymous",
   );
@@ -473,6 +485,7 @@ export default function BoardPage() {
 
         {/* Canvas */}
         <div className={styles.canvas}>
+          <ConflictBanner conflicts={conflicts} autoMerges={autoMerges} onDismiss={dismissConflict} onDismissAll={dismissAll} onResolve={resolveConflict} />
           {boardId && <OntologyCanvas boardId={boardId}
             onOpenComments={() => { switchTab("comments"); setSideOpen(true); }}
             remoteCursors={remoteCursors}

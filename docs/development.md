@@ -378,11 +378,30 @@ Available hooks:
 
 ```
 collab/
-+-- useCollaboration.ts   # Yjs connection, awareness, save broadcast
-+-- useYjsSync.ts         # Canvas state sync via Yjs document
-+-- CollabStatus.tsx       # Connection status + entity lock visibility
-                           # Shows who is editing which entity
++-- useCollaboration.ts     # Yjs connection, awareness, save broadcast
++-- useOperationSync.ts     # CRDT operation log: mutation wrapping, remote
+                            #   apply, conflict detection, merge integration
++-- mergeEngine.ts          # Semantic merge rules: classifies concurrent op
+                            #   pairs into both/conflict/add-wins/last-write-wins
++-- ConflictBanner.tsx      # UI: auto-merge notices (green) + true conflict
+                            #   banners (amber) with Keep mine/theirs/both
++-- ConflictBanner.module.css
++-- CollabStatus.tsx        # Connection status + entity lock visibility
++-- CollabStatus.module.css
++-- useYjsSync.ts           # Legacy state-based sync (unused, kept for reference)
++-- __tests__/
+    +-- mergeEngine.test.ts       # 25 tests: all merge rule combinations
+    +-- useOperationSync.test.ts  # 19 tests: entity extraction, conflict
+                                  #   window, serialization, 3-user scenarios
 ```
+
+**Key design decisions:**
+
+- `useOperationSync` monkey-patches the Zustand store's mutation methods for its lifetime. Each mutation calls the original (which triggers `pushUndo`, provenance, and `debouncedSave`), then pushes an `OntologyOperation` to the shared `Y.Array("ops")`.
+- Remote operations are applied via `store.setState()` directly, bypassing `pushUndo`/provenance/`debouncedSave`. The originating client's save is authoritative.
+- The `mergeEngine` is a pure function (`resolveMerge(opA, opB) -> MergeResult`) with no side effects, making it easy to test in isolation.
+- Conflict detection uses a 2-second sliding window. Auto-resolved merges produce brief green notices; true conflicts produce amber banners with resolution actions.
+- The `resolveConflict` callback re-applies the chosen operation via a `useRef` to avoid stale closures.
 
 #### API Client
 

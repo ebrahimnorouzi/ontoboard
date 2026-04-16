@@ -113,16 +113,16 @@ OntoBoard uses a 5-service microservice architecture. ROBOT 1.9.6 and Java 21 ar
 - User patterns saved per-user in `data/patterns/user/{username}/{pattern-id}/`
 - Drag-and-drop onto canvas with auto-coloring per namespace prefix
 
-### Real-time Collaboration
+### Real-time Collaboration (Operation-Based CRDT)
+- **Operation-based CRDT**: each ontology mutation (addClass, updateClass, etc.) is propagated as an individual operation via a shared Yjs array -- < 100ms cross-client sync, no full-state reload
+- **Semantic merge engine**: concurrent edits are classified as auto-mergeable (different fields, additive ops, position-only) or true conflicts (same semantic field) -- not blind last-write-wins
+- **Conflict resolution UI**: auto-merged ops show brief green notices; true conflicts show amber banners with "Keep mine / Keep theirs / Keep both" actions
 - **Cursor sharing**: see other users' cursors in real-time via Yjs awareness
 - **Entity locking**: when you select an entity, others see it highlighted with your color
-- **Instant save broadcast**: when you save, all other users reload within ~1 second
-- **Fallback polling**: 30-second backend poll as safety net when Yjs disconnects
+- **Consistency check**: `POST /api/reasoning/{board_id}/consistency-check` validates merged OWL state via owlready2 HermiT
+- **Safety nets**: instant save broadcast + 30-second polling fallback + full state reload on reconnect
 - **Comments**: threaded discussions with @mentions and notifications
 - **Task board**: Kanban columns (To Do, In Progress, Review, Done)
-- **Entity lock visibility**: CollabStatus dropdown shows who is editing which entity
-- **Ephemeral awareness**: collab server rewritten for ephemeral awareness only, no state persistence
-- **Global error handlers**: prevent crashes from corrupt WebSocket data
 
 ### ODK Integration
 - ODK scaffold generation (manual, no Docker dependency)
@@ -180,7 +180,7 @@ OntoBoard uses a 5-service microservice architecture. ROBOT 1.9.6 and Java 21 ar
 | SWRL rules | Yes | Yes (native OWL/XML format) |
 | Consistency checking | Yes | Yes |
 | Visual graph canvas | Plugin (OntoGraf) | Built-in (Cytoscape.js) |
-| Real-time collaboration | No | Yes (Yjs/Hocuspocus) |
+| Real-time collaboration | No | Yes (operation-based CRDT + semantic merge) |
 | Web-based (no install) | No (desktop Java) | Yes (Docker) |
 | ODK/ROBOT pipeline integration | No | Yes |
 | Design pattern library | No | Yes (13 ODPA patterns) |
@@ -224,7 +224,7 @@ ontoboard/
 │   │   │   └── swrl.py              # SWRL rule management
 │   │   ├── models/          # 8 SQLAlchemy ORM models (7 tables)
 │   │   └── schemas/         # Pydantic request/response schemas
-│   ├── tests/               # 48+ test files, 500+ test functions
+│   ├── tests/               # 49+ test files, 500+ test functions
 │   ├── seed/patterns/       # 13 bundled ODPA patterns (tracked in git)
 │   ├── Dockerfile           # Python 3.12 + Java 21 + ROBOT 1.9.6 + Widoco 1.4.25 + make
 │   └── requirements.txt     # FastAPI, rdflib, owlready2, etc.
@@ -233,7 +233,8 @@ ontoboard/
 │   │   ├── components/      # 25 feature directories
 │   │   ├── pages/           # 9 page routes (including /docs)
 │   │   ├── store/           # Zustand state management
-│   │   ├── collab/          # Yjs collaboration (useCollaboration, CollabStatus)
+│   │   ├── collab/          # CRDT collaboration (operation sync, merge engine,
+│   │   │                    #   conflict detection, resolution UI, 44 tests)
 │   │   └── hooks/           # Custom React hooks
 │   └── Dockerfile
 ├── collab/                  # Hocuspocus WebSocket server
@@ -269,12 +270,14 @@ See [docs/api-reference.md](docs/api-reference.md) for the full reference.
 
 ## Testing
 
+### Backend Tests
+
 ```bash
 ./run.sh test         # Run all backend tests
 cd backend && python -m pytest tests/ -v
 ```
 
-48+ test files with 500+ test functions covering:
+49+ test files with 500+ test functions covering:
 
 | Category | Tests |
 |----------|:-----:|
@@ -289,8 +292,23 @@ cd backend && python -m pytest tests/ -v
 | Import resolution | 8 |
 | SWRL rules | 6 |
 | Embedded reasoner | 6 |
+| Consistency check (CRDT merge validation) | 6 |
 | Integration tests | 4 |
 | Existing tests (API, canvas, reasoning, etc.) | 380+ |
+
+### Frontend Tests
+
+```bash
+cd frontend && npm test          # Run all frontend tests
+cd frontend && npm run test:watch  # Watch mode
+```
+
+44 tests (vitest) covering the CRDT collaboration system:
+
+| Category | Tests |
+|----------|:-----:|
+| Semantic merge engine (all rule combinations) | 25 |
+| Operation sync (entity extraction, conflict window, serialization) | 19 |
 
 ## Documentation
 
