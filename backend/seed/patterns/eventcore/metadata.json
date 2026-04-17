@@ -1,0 +1,14 @@
+{
+  "id": "eventcore",
+  "name": "Eventcore Pattern",
+  "description": "The purpose of this pattern is to provide a minimalistic model of event where it is not always possible to separate its spatial and the temporal aspects, thus can model events that move or possess discontinuous temporal extent. Events according to this model has at least one participant, attached via a participant-role, and may have additional descriptive information through its information object.",
+  "category": "structural",
+  "domain": "games",
+  "scenarios": "The 1990 World Chess Championship Match takes place in New York from October 8 to November 7, 1990, and in Lyons, France, from November 26 to December 30, 1990.",
+  "competency_questions": "Where and when did the 1990 World Chess Championship Match take place?,\nWho were involved in the 1990 World Chess Championship Match?",
+  "pattern_iri": "http://w3id.org/daselab/onto/event",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:EventCore",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:EventCore",
+  "class_count": 4,
+  "property_count": 7
+}

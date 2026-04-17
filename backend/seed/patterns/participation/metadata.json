@@ -5,5 +5,10 @@
   "category": "behavioral",
   "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/participation.owl",
   "references": "http://ontologydesignpatterns.org/wiki/Submissions:Participation",
-  "competency_questions": "What objects participate in this event? In what events does this object participate?"
+  "competency_questions": "What objects participate in this event? In what events does this object participate?",
+  "domain": "general",
+  "scenarios": "A person participates in a meeting. An enzyme participates in a metabolic pathway.",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:Participation",
+  "class_count": 2,
+  "property_count": 2
 }

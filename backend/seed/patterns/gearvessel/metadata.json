@@ -1,0 +1,14 @@
+{
+  "id": "gearvessel",
+  "name": "Gearvessel Pattern",
+  "description": "to represent types of fishing gear with regard to the types of vessel they can be mounted on",
+  "category": "conceptual",
+  "domain": "fisheries",
+  "scenarios": "give me the vesseltypes that use 'trawls'",
+  "competency_questions": "what vessel type can equip what gear type?",
+  "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/fsdas/gearvessel.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:GearVessel",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:GearVessel",
+  "class_count": 2,
+  "property_count": 2
+}

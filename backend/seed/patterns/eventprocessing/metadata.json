@@ -1,0 +1,14 @@
+{
+  "id": "eventprocessing",
+  "name": "Eventprocessing Pattern",
+  "description": "To model event objects (in the context of complex event processing), their attributes, and their relations actual events, and sensor readings producing the events. Different types of event objects, such as complex, composite, and simple events are modelled, preoperties for expressing relations between event objects, such as constituency and componency are expressed, and attributes of event objects, such as timestamps and other data values. This pattern is aligned both to the SSN (Semantic Sensor Network) ontology, and the Event-F model, which in turn both use DUL as an upper layer.",
+  "category": "structural",
+  "domain": "iot",
+  "scenarios": "",
+  "competency_questions": "What event objects are this complex event object and abstraction of?; What is the header/body of this event object?; What are the parts of this composite event object?; What is the timestamp of this event object?; By what sensor was this event object recorded?; What actual event does this event object document?; What are the attribute values of this event object?",
+  "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/eventprocessing.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:EventProcessing",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:EventProcessing",
+  "class_count": 8,
+  "property_count": 22
+}

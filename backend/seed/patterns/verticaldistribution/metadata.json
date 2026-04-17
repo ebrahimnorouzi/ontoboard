@@ -1,0 +1,14 @@
+{
+  "id": "verticaldistribution",
+  "name": "Verticaldistribution Pattern",
+  "description": "The intent of the pattern is to be able to represent vertical distribution for aquatic resources.",
+  "category": "observation",
+  "domain": "biology",
+  "scenarios": "Give me the resource observations where the vertical distribution is 'Pelagic'",
+  "competency_questions": "What resource has what vertical distribution?",
+  "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/fsdas/verticaldistribution.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:VerticalDistribution",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:VerticalDistribution",
+  "class_count": 6,
+  "property_count": 9
+}

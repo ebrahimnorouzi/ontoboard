@@ -1,0 +1,14 @@
+{
+  "id": "specieseat",
+  "name": "Specieseat Pattern",
+  "description": "The pattern intends to model the situation that a certain species feed upon other species and that some species are preyed upon by a certain species.",
+  "category": "conceptual",
+  "domain": "biology",
+  "scenarios": "What species eat 'shrimp'\nWhat species are eaten by 'seals'",
+  "competency_questions": "What species feed upon a certain species? What species are eaten by a certain species? What species is preyed upon by a certain species? What species preyes upon a certain species?",
+  "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/fsdas/specieseat.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:SpeciesEat",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:SpeciesEat",
+  "class_count": 1,
+  "property_count": 4
+}

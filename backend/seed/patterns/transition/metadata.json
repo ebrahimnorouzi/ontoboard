@@ -1,0 +1,14 @@
+{
+  "id": "transition",
+  "name": "Transition Pattern",
+  "description": "To represent basic knowledge about transitions (events, states, processes, objects).",
+  "category": "behavioral",
+  "domain": "general",
+  "scenarios": "The addition of Bud Powell on piano made the tune jump from a static, aerial comping into a hard driving swing improvisation",
+  "competency_questions": "What states of some object are changed by what event during a transition?,What is the process that is invariant through the transition?,What transitions are occurring on what object at what time?",
+  "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/transition.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:Transition",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:Transition",
+  "class_count": 9,
+  "property_count": 23
+}

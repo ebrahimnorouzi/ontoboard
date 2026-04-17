@@ -1,0 +1,14 @@
+{
+  "id": "airline",
+  "name": "Airline Pattern",
+  "description": "To represent the encyclopedic knowledge expressed by an object typed as Airline",
+  "category": "conceptual",
+  "domain": "transportation",
+  "scenarios": "",
+  "competency_questions": "",
+  "pattern_iri": "file:///C:/Users/eno/Documents/Git_repo/ebrahimnorouzi_github/ISE-FIZKarlsruhe/ontoboard/patterns-repository/Airline/Airline.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:Airline",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:Airline",
+  "class_count": 2,
+  "property_count": 1
+}

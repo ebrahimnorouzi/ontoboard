@@ -1,0 +1,14 @@
+{
+  "id": "periodicinterval",
+  "name": "Periodicinterval Pattern",
+  "description": "The goal of this pattern is to represent non-convex intervals where the duration of each internal interval and the duration of the gaps between intervals are constant. These intervals are called periodic intervals within the context of this pattern.",
+  "category": "temporal",
+  "domain": "general",
+  "scenarios": "Sam teaches every monday",
+  "competency_questions": "What is the period of the interval 'every tuesday of 2010'? The period is a week (weekly).",
+  "pattern_iri": "http://delicias.dia.fi.upm.es/ontologies/PeriodicInterval.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:PeriodicInterval",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:PeriodicInterval",
+  "class_count": 3,
+  "property_count": 3
+}

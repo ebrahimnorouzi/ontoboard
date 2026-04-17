@@ -1,0 +1,14 @@
+{
+  "id": "descriptionandsituation",
+  "name": "Descriptionandsituation Pattern",
+  "description": "The Description and Situation content ontology design pattern. This CP represents conceptualizations i.e., descriptions, and corresponding groundings i.e., situations. The pattern is extracted from DOLCE+DnS Ultralite by partial cloning of elements, and is composed of three other CPs: description, situation, and classification.",
+  "category": "structural",
+  "domain": "general",
+  "scenarios": "",
+  "competency_questions": "",
+  "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/descriptionandsituation.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:DescriptionAndSituation",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:DescriptionAndSituation",
+  "class_count": 5,
+  "property_count": 5
+}

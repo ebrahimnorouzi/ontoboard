@@ -33,6 +33,9 @@ interface PatternSummary {
   name: string;
   description: string;
   category: string;
+  domain: string;
+  scenarios?: string;
+  competency_questions?: string;
   class_count: number;
   property_count: number;
   source?: "odpa" | "user";
@@ -59,6 +62,7 @@ export default function PatternLibrary({ boardId }: Props) {
   const store = useOntologyStore();
   const [deleting, setDeleting] = useState<string | null>(null);
   const dragPatternRef = useRef<string | null>(null);
+  const [domainFilter, setDomainFilter] = useState<string>("all");
 
   // Upload form state
   const [uploadName, setUploadName] = useState("");
@@ -101,32 +105,18 @@ export default function PatternLibrary({ boardId }: Props) {
       );
 
       const patternColor = getPatternColor(patternId);
-
-      // Batch all additions into a single store update
-      const currentState = useOntologyStore.getState();
-      const newClasses = [...currentState.classes];
-      const newProperties = [...currentState.properties];
-      const newPatternMap = { ...currentState.patternMap };
-
+      const s = useOntologyStore.getState();
       for (const cls of result.classes || []) {
-        if (!newClasses.some((c) => c.iri === cls.iri)) {
-          newClasses.push({ ...cls, color: patternColor });
+        if (!s.classes.some((c) => c.iri === cls.iri)) {
+          s.addClass({ ...cls, color: patternColor });
         }
-        newPatternMap[cls.iri] = patternId;
+        s.assignPattern(cls.iri, patternId);
       }
       for (const prop of result.properties || []) {
-        if (!newProperties.some((p) => p.id === prop.id)) {
-          newProperties.push(prop);
+        if (!s.properties.some((p) => p.id === prop.id)) {
+          s.addProperty(prop);
         }
       }
-
-      useOntologyStore.setState({
-        classes: newClasses,
-        properties: newProperties,
-        patternMap: newPatternMap,
-        dirty: true,
-      });
-      scheduleAutoSave();
       setApplied(patternId);
       setTimeout(() => setApplied(null), 3000);
     } catch (e: any) {
@@ -214,8 +204,12 @@ export default function PatternLibrary({ boardId }: Props) {
     }
   }, [selected]);
 
-  // Group patterns by category
-  const categories = patterns.reduce((acc, p) => {
+  // Collect unique domains for the filter dropdown
+  const allDomains = Array.from(new Set(patterns.map((p) => p.domain || "general"))).sort();
+
+  // Filter by domain, then group by category
+  const filtered = domainFilter === "all" ? patterns : patterns.filter((p) => (p.domain || "general") === domainFilter);
+  const categories = filtered.reduce((acc, p) => {
     if (!acc[p.category]) acc[p.category] = [];
     acc[p.category].push(p);
     return acc;
@@ -225,8 +219,25 @@ export default function PatternLibrary({ boardId }: Props) {
     <div className={styles.container}>
       <div className={styles.header}>
         <h3 className={styles.title}>Pattern Library</h3>
-        <span className={styles.count}>{patterns.length} patterns</span>
+        <span className={styles.count}>{filtered.length}/{patterns.length}</span>
         <button className={styles.uploadToggle} onClick={() => setShowUpload(!showUpload)} title="Add new pattern">+</button>
+      </div>
+
+      {/* Domain filter dropdown */}
+      <div className={styles.filterRow}>
+        <label className={styles.filterLabel}>Domain:</label>
+        <select
+          className={styles.filterSelect}
+          value={domainFilter}
+          onChange={(e) => setDomainFilter(e.target.value)}
+        >
+          <option value="all">All domains ({patterns.length})</option>
+          {allDomains.map((d) => (
+            <option key={d} value={d}>
+              {d.charAt(0).toUpperCase() + d.slice(1).replace(/-/g, " ")} ({patterns.filter((p) => (p.domain || "general") === d).length})
+            </option>
+          ))}
+        </select>
       </div>
 
       {error && <div className={styles.error} onClick={() => setError("")}>{error}</div>}
@@ -295,9 +306,8 @@ export default function PatternLibrary({ boardId }: Props) {
                   <div className={styles.patternHeader}>
                     <span className={styles.patternColorDot} style={{ background: getPatternColor(p.id) }} />
                     <span className={styles.patternName}>{p.name}</span>
-                    <span className={`${styles.sourceBadge} ${p.source === "user" ? styles.sourceUser : styles.sourceOdpa}`}
-                          title={p.uploaded_by ? `Uploaded by ${p.uploaded_by}` : ""}>
-                      {p.source === "user" ? (p.uploaded_by || "user") : "ODPA"}
+                    <span className={styles.domainBadge} title={`Domain: ${p.domain || "general"}`}>
+                      {(p.domain || "general").replace(/-/g, " ")}
                     </span>
                     <span className={styles.patternMeta}>{p.class_count}C {p.property_count}P</span>
                   </div>
@@ -336,6 +346,16 @@ export default function PatternLibrary({ boardId }: Props) {
             <h4 className={styles.previewTitle}>{selected.name}</h4>
           </div>
           <p className={styles.previewDesc}>{selected.description}</p>
+          {(selected as any).scenarios && (
+            <div className={styles.previewSection}>
+              <strong>Scenario:</strong> <span className={styles.previewScenario}>{(selected as any).scenarios}</span>
+            </div>
+          )}
+          {(selected as any).competency_questions && (
+            <div className={styles.previewSection}>
+              <strong>Competency Questions:</strong> <span className={styles.previewScenario}>{(selected as any).competency_questions}</span>
+            </div>
+          )}
           <div className={styles.previewSection}>
             <strong>Classes:</strong>
             {selected.classes.map((c) => (

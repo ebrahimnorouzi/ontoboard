@@ -1,0 +1,14 @@
+{
+  "id": "transportpattern",
+  "name": "Transportpattern",
+  "description": "To reduce dimensionality of large data collections.",
+  "category": "structural",
+  "domain": "transportation",
+  "scenarios": "The rive water has pollution from a location, after a certain time.  A package left Auckland, New Zealand, at 5:45am on 01/06/2012 and arrived in Los Angeles, USA, on 01/12/2012.",
+  "competency_questions": "What is the extent of a point source pollution event? Where did a voyage begin, and where did it end?",
+  "pattern_iri": "http://www.descartes-core.org/patterns/owl/transportPattern",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:TransportPattern",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:TransportPattern",
+  "class_count": 3,
+  "property_count": 2
+}

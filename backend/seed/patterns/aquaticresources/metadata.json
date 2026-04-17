@@ -1,0 +1,14 @@
+{
+  "id": "aquaticresources",
+  "name": "Aquaticresources Pattern",
+  "description": "To represent aquatic resources or stocks as composed of aquatic organisms from one or more species, and living in a water area.",
+  "category": "information",
+  "domain": "biology",
+  "scenarios": "give me the Species for water area 24 give me the Water areas for species Gadus morhua",
+  "competency_questions": "What species are present in this aquatic resource/stock? In what water area this aquatic resource/stock lives in?",
+  "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresources.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:AquaticResources",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:AquaticResources",
+  "class_count": 4,
+  "property_count": 4
+}

@@ -1,0 +1,14 @@
+{
+  "id": "basicplanexecution",
+  "name": "Basicplanexecution Pattern",
+  "description": "The basic plans execution content ontology design pattern represents the execution of a plan and the entity that participate in such an execution. This CP is the composition of other CPs: situation and region. Furthermore, it expands such CPs with ontology elements that are partial clones of elements from the DOCLE Ultra Lite and the Plans Lite ontologies.",
+  "category": "structural",
+  "domain": "general",
+  "scenarios": "",
+  "competency_questions": "",
+  "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:BasicPlanExecution",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:BasicPlanExecution",
+  "class_count": 8,
+  "property_count": 14
+}

@@ -1,0 +1,14 @@
+{
+  "id": "partof",
+  "name": "Partof Pattern",
+  "description": "To represents entities and their parts.",
+  "category": "structural",
+  "domain": "general",
+  "scenarios": "Brain and heart are parts of the human body, substantia nigra is part of brain.",
+  "competency_questions": "What is this entity part of? What are the parts of this entity?",
+  "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/partof.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:PartOf",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:PartOf",
+  "class_count": 1,
+  "property_count": 2
+}

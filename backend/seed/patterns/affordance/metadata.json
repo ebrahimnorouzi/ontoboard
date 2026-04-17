@@ -1,0 +1,14 @@
+{
+  "id": "affordance",
+  "name": "Affordance Pattern",
+  "description": "To represent the model for supporting the action selection mechanism.",
+  "category": "behavioral",
+  "domain": "general",
+  "scenarios": "",
+  "competency_questions": "What are the tasks afforded in a certain situation?; Which is the strength of an Affordance?",
+  "pattern_iri": "https://w3id.org/MON/affordance.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:Affordance",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:Affordance",
+  "class_count": 2,
+  "property_count": 8
+}

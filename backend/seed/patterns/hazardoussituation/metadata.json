@@ -1,0 +1,14 @@
+{
+  "id": "hazardoussituation",
+  "name": "Hazardoussituation Pattern",
+  "description": "Ontology design pattern for modeling hazardoussituation relationships and concepts.",
+  "category": "structural",
+  "domain": "safety",
+  "scenarios": "",
+  "competency_questions": "",
+  "pattern_iri": "http://semantic.cs.put.poznan.pl/ontologies/oshdo/HazardousSituation",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:HazardousSituation",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:HazardousSituation",
+  "class_count": 8,
+  "property_count": 7
+}

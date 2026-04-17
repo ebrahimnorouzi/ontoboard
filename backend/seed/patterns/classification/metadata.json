@@ -5,5 +5,10 @@
   "category": "structural",
   "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/classification.owl",
   "references": "http://ontologydesignpatterns.org/wiki/Submissions:Classification",
-  "competency_questions": "What concept classifies this entity? What entities are classified by this concept?"
+  "competency_questions": "What concept classifies this entity? What entities are classified by this concept?",
+  "domain": "general",
+  "scenarios": "A biological species is classified under a Linnaean taxonomy. A product is assigned to a category in a catalog.",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:Classification",
+  "class_count": 2,
+  "property_count": 2
 }

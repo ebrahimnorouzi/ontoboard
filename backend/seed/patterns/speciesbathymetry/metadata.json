@@ -1,0 +1,14 @@
+{
+  "id": "speciesbathymetry",
+  "name": "Speciesbathymetry Pattern",
+  "description": "to represent species together with their typical environment in terms of bathymetric range and water area",
+  "category": "information",
+  "domain": "biology",
+  "scenarios": "give me the species found below 200 metres for water area '24'",
+  "competency_questions": "what species have what (typical) bathymetric range in what water area? where can species be typical found for a certain water area?",
+  "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/fsdas/speciesbathymetry.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:SpeciesBathymetry",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:SpeciesBathymetry",
+  "class_count": 1,
+  "property_count": 4
+}

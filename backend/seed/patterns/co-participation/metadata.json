@@ -5,5 +5,10 @@
   "category": "behavioral",
   "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/coparticipation.owl",
   "references": "http://ontologydesignpatterns.org/wiki/Submissions:CoParticipation",
-  "competency_questions": "What objects co-participate in this event? Which events involve co-participation of these objects?"
+  "competency_questions": "What objects co-participate in this event? Which events involve co-participation of these objects?",
+  "domain": "general",
+  "scenarios": "Two researchers co-participate in a conference. Multiple ingredients co-participate in a chemical reaction.",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:CoParticipation",
+  "class_count": 2,
+  "property_count": 2
 }

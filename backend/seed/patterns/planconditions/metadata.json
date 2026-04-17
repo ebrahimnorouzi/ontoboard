@@ -1,0 +1,14 @@
+{
+  "id": "planconditions",
+  "name": "Planconditions Pattern",
+  "description": "Diagram (this article has no graphical representation)",
+  "category": "behavioral",
+  "domain": "general",
+  "scenarios": "",
+  "competency_questions": "",
+  "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/planconditions.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:PlanConditions",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:PlanConditions",
+  "class_count": 3,
+  "property_count": 10
+}

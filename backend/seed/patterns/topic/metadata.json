@@ -1,0 +1,14 @@
+{
+  "id": "topic",
+  "name": "Topic Pattern",
+  "description": "To represent topics and their relations.",
+  "category": "conceptual",
+  "domain": "general",
+  "scenarios": "\"The topic of Moby Dick is the hatred of humanity\",\"What is the main subjects in neswpapers today? And more specifically?\"",
+  "competency_questions": "What is the topic of something?,\nWhat topics are included in this one?,\nWhat are the topics near to that one?",
+  "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/topic.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:Topic",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:Topic",
+  "class_count": 3,
+  "property_count": 11
+}

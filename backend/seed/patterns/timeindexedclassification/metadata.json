@@ -1,0 +1,14 @@
+{
+  "id": "timeindexedclassification",
+  "name": "Timeindexedclassification Pattern",
+  "description": "Diagram (this article has no graphical representation)",
+  "category": "conceptual",
+  "domain": "general",
+  "scenarios": "",
+  "competency_questions": "",
+  "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/timeindexedclassification.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:TimeIndexedClassification",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:TimeIndexedClassification",
+  "class_count": 7,
+  "property_count": 4
+}

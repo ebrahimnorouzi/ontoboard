@@ -1,0 +1,14 @@
+{
+  "id": "smarthome-place",
+  "name": "Smarthome Place Pattern",
+  "description": "To represent a SmartHome as a place (specialization of http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#PhysicalPlace) which contains a number of sections (other physical places) and is also seen as a platform (e.g. a platform for a sensor network).",
+  "category": "spatial",
+  "domain": "iot",
+  "scenarios": "",
+  "competency_questions": "What are the spatial/directional relations between sections of a smart home?; Which physical objects are located in a section of a smart environment?; How many and what sections are there in the SmartHome?",
+  "pattern_iri": "http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Place.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:SmartHome_Place",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:SmartHome_Place",
+  "class_count": 6,
+  "property_count": 4
+}

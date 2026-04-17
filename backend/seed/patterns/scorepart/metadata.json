@@ -1,0 +1,14 @@
+{
+  "id": "scorepart",
+  "name": "Scorepart Pattern",
+  "description": "This content ODP formalises the structure and the hierarchies of a music score/symbolic representation system.",
+  "category": "structural",
+  "domain": "music",
+  "scenarios": "",
+  "competency_questions": "What is the instrument playing a specific score part?, How many voices does the score part have?, Which are the metrics defining the sections of the score part?",
+  "pattern_iri": "https://purl.org/andreapoltronieri/scorepart/",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:Scorepart",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:Scorepart",
+  "class_count": 5,
+  "property_count": 13
+}

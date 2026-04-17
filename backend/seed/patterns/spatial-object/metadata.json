@@ -5,5 +5,10 @@
   "category": "structural",
   "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/place.owl",
   "references": "http://ontologydesignpatterns.org/wiki/Submissions:Place",
-  "competency_questions": "Where is this entity located? What entities are at this place?"
+  "competency_questions": "Where is this entity located? What entities are at this place?",
+  "domain": "spatial",
+  "scenarios": "A hospital is located in a city. A sensor is deployed at a geographic coordinate.",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:Place",
+  "class_count": 2,
+  "property_count": 2
 }

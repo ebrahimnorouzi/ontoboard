@@ -1,0 +1,14 @@
+{
+  "id": "trajectory",
+  "name": "Trajectory Pattern",
+  "description": "The pattern provides a model of trajectory, which is understood as a sequence of spatiotemporal points. The model generalizing the Semantic Trajectory pattern from [Hu, et al., COSIT 2013] by employing the notion of place, instead of location/geo-coordinate, to represent the spatial extent of the trajectory.  This pattern is suitable for a variety of trajectory datasets and easily extendible by by aligning to or matching with existing trajectory ontologies, foundational ontologies, or other domain specific vocabularies.",
+  "category": "structural",
+  "domain": "games",
+  "scenarios": "Mike's trip to the GeoVoCamp 2012 from his home integrating data from GPS device, vehicle information, and personal information.\n\nA toucan flies through the air as recorded by researchers in the MoveBank.\n\nThe 1990 World Chess Championship event that was held in two locations at two different times.",
+  "competency_questions": "Show the birds which stop at x and y,\nShow the birds which move at a ground speed of 0.4 m/s,\nShow the trajectories of rivers which cross national parks,\nWhere are the ports at which the oceanographic cruise A3221 stopped after leaving Woods Hole?,\nList the places and times that represent the spatiotemporal extent of the 1990 World Chess Championship event,",
+  "pattern_iri": "http://w3id.org/daselab/onto/trajectory",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:Trajectory",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:Trajectory",
+  "class_count": 9,
+  "property_count": 10
+}

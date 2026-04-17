@@ -1,0 +1,14 @@
+{
+  "id": "speciesnames",
+  "name": "Speciesnames Pattern",
+  "description": "To express the terminological variants and the conceptual similarity that can be sources of confusion between species.",
+  "category": "conceptual",
+  "domain": "biology",
+  "scenarios": "give me the species containing local name 'oyster'\ngive me the synonyms and localnames for species 'Ostrica gigas'\ngive me the species with which species 'Ostrica gigas' can be confused",
+  "competency_questions": "what local names are used for that species? what synonyms exist for that species? can that species be confused with some other one?",
+  "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/fsdas/speciesnames.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:SpeciesNames",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:SpeciesNames",
+  "class_count": 1,
+  "property_count": 3
+}

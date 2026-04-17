@@ -1,0 +1,14 @@
+{
+  "id": "price",
+  "name": "Price Pattern",
+  "description": "The price content ontology design pattern. This CP represents the price of an entity in a certain currency.",
+  "category": "information",
+  "domain": "commerce",
+  "scenarios": "",
+  "competency_questions": "",
+  "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/price.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:Price",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:Price",
+  "class_count": 3,
+  "property_count": 4
+}

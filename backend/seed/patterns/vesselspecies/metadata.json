@@ -1,0 +1,14 @@
+{
+  "id": "vesselspecies",
+  "name": "Vesselspecies Pattern",
+  "description": "to provide a direct relation between aquatic species and vessels that are able to catch them, regardless of the fishing gear used.",
+  "category": "conceptual",
+  "domain": "biology",
+  "scenarios": "give me the species caught using 'gillneters'",
+  "competency_questions": "what vessel types can catch what species? (provided that species are caught by geartypes are used by vessel types)",
+  "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/fsdas/vesselspecies.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:VesselSpecies",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:VesselSpecies",
+  "class_count": 0,
+  "property_count": 3
+}

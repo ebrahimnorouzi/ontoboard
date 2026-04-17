@@ -5,5 +5,10 @@
   "category": "behavioral",
   "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/observation.owl",
   "references": "http://ontologydesignpatterns.org/wiki/Submissions:Observation",
-  "competency_questions": "What was observed? Who made the observation? What was the result?"
+  "competency_questions": "What was observed? Who made the observation? What was the result?",
+  "domain": "general",
+  "scenarios": "A sensor measures temperature in a room. A biologist observes species abundance in a habitat.",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:Observation",
+  "class_count": 4,
+  "property_count": 4
 }

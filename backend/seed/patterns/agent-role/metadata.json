@@ -5,5 +5,10 @@
   "category": "behavioral",
   "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/agentrole.owl",
   "references": "http://ontologydesignpatterns.org/wiki/Submissions:AgentRole",
-  "competency_questions": "What role does this agent play? Which agent plays this role?"
+  "competency_questions": "What role does this agent play? Which agent plays this role?",
+  "domain": "general",
+  "scenarios": "John is working as a project manager for ACME Corp. A software agent acts on behalf of a user.",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:AgentRole",
+  "class_count": 3,
+  "property_count": 2
 }

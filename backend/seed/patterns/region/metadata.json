@@ -1,0 +1,14 @@
+{
+  "id": "region",
+  "name": "Region Pattern",
+  "description": "To represent and reason on values of attributes of things, by explicitly talking about the dimensions (\"regions\") of the attributes, which include those values.",
+  "category": "structural",
+  "domain": "general",
+  "scenarios": "We can represent and reason on *any* kind of attributes, parameters, features, etc., which have a given set of values.\nWith the new OWL2 support for custom and complex datatypes, this pattern should be confronted with possible enrichments, or may be restricted to OWL1. Anyway, since datatypes cannot overlap with classes even in OWL2, it remains useful for the cases where the domain must be kept homogeneous.",
+  "competency_questions": "What is the value for the attribute of that entity?,Which entities have a certain value on that parameter/attribute/feature?",
+  "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/region.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:Region",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:Region",
+  "class_count": 2,
+  "property_count": 3
+}

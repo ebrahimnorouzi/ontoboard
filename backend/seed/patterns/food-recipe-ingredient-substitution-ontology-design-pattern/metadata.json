@@ -1,0 +1,14 @@
+{
+  "id": "food-recipe-ingredient-substitution-ontology-design-pattern",
+  "name": "Food Recipe Ingredient Substitution Ontology Design Pattern",
+  "description": "Diagram | Intent: | To model substitutes for ingredients in food recipes. Essential aspects of modelling substitutes are their quantity in a recipe, the constraints and the quali...",
+  "category": "structural",
+  "domain": "food-science",
+  "scenarios": "",
+  "competency_questions": "",
+  "pattern_iri": "http://semantic.cs.put.poznan.pl/ontologies/food_ingredient_substitutes",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:Food_Recipe_Ingredient_Substitution_Ontology_Design_Pattern",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:Food_Recipe_Ingredient_Substitution_Ontology_Design_Pattern",
+  "class_count": 24,
+  "property_count": 8
+}

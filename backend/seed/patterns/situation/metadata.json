@@ -5,5 +5,10 @@
   "category": "behavioral",
   "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/situation.owl",
   "references": "http://ontologydesignpatterns.org/wiki/Submissions:Situation",
-  "competency_questions": "What is the context of this entity? What entities are involved in this situation?"
+  "competency_questions": "What is the context of this entity? What entities are involved in this situation?",
+  "domain": "general",
+  "scenarios": "A medical emergency situation involves patients, doctors, and equipment. A business negotiation is a situation with parties and terms.",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:Situation",
+  "class_count": 2,
+  "property_count": 2
 }

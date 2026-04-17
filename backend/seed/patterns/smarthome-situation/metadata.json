@@ -1,0 +1,14 @@
+{
+  "id": "smarthome-situation",
+  "name": "Smarthome Situation Pattern",
+  "description": "Diagram (this article has no graphical representation) | Competency Questions: | <li> What is the state of the feature of interest in the smart home?</li><li> What are the equivalent situations of the given one (which situation is proxy of another one). It is possible to find two different situations equivalent from the observation process's perspective. Fo...",
+  "category": "behavioral",
+  "domain": "iot",
+  "scenarios": "",
+  "competency_questions": "What is the state of the feature of interest in the smart home?; What are the equivalent situations of the given one (which situation is proxy of another one). It is possible to find two different situations equivalent from the observation process's perspective. For instance in order to see if the fan above the oven is switched on we can either check the electriccurrent of the fan (first situation) or the luminosity of its lamp (second situation).; Which feature (property) of an object (feature of interest) is used to conceptualize a situation?",
+  "pattern_iri": "http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Situation.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:SmartHome_Situation",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:SmartHome_Situation",
+  "class_count": 4,
+  "property_count": 3
+}

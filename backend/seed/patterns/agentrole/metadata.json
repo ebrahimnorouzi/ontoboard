@@ -1,0 +1,14 @@
+{
+  "id": "agentrole",
+  "name": "Agentrole Pattern",
+  "description": "To represent agents and the roles they play.",
+  "category": "behavioral",
+  "domain": "general",
+  "scenarios": "She greeted us all in her various roles of mother, friend, and daughter.",
+  "competency_questions": "which agent does play this role? \nwhat is the role that played by that agent?",
+  "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/agentrole.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:AgentRole",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:AgentRole",
+  "class_count": 3,
+  "property_count": 0
+}

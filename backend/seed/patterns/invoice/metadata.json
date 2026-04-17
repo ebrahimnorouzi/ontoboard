@@ -1,0 +1,14 @@
+{
+  "id": "invoice",
+  "name": "Invoice Pattern",
+  "description": "To represent the core attributes of an invoice",
+  "category": "behavioral",
+  "domain": "commerce",
+  "scenarios": "An invoice refers to transactions related to an ordered item for a certain amount of currency, and is grounded in a (legally valid) document.",
+  "competency_questions": "What are the transactions involved in this invoice? What is the order this invoice is referring to? What is the line item for this invoice? What is the amount of the transactions involved in this invoice? What currency is applied to this invoice?",
+  "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/invoice.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:Invoice",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:Invoice",
+  "class_count": 12,
+  "property_count": 17
+}

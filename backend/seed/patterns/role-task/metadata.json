@@ -1,0 +1,14 @@
+{
+  "id": "role-task",
+  "name": "Role Task Pattern",
+  "description": "To represent the assignment of tasks to roles",
+  "category": "behavioral",
+  "domain": "general",
+  "scenarios": "students have the duty of giving exams",
+  "competency_questions": "What roles are this task of?, What tasks do have this role?",
+  "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/taskrole.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:Role_task",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:Role_task",
+  "class_count": 2,
+  "property_count": 2
+}

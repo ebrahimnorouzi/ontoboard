@@ -1,0 +1,14 @@
+{
+  "id": "climaticzone",
+  "name": "Climaticzone Pattern",
+  "description": "The intent of the pattern is to be able to represent climatic zones for aquatic resources.",
+  "category": "observation",
+  "domain": "biology",
+  "scenarios": "Give me the resource observations where the zone is 'Tropical'",
+  "competency_questions": "What resource has what climatic zone?",
+  "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/fsdas/climaticzone.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:ClimaticZone",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:ClimaticZone",
+  "class_count": 3,
+  "property_count": 5
+}

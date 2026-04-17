@@ -1,0 +1,14 @@
+{
+  "id": "objectrole",
+  "name": "Objectrole Pattern",
+  "description": "To represents objects and the roles they play.",
+  "category": "behavioral",
+  "domain": "general",
+  "scenarios": "This old glass is used as a ﬂower pot.",
+  "competency_questions": "What role does this object play? which objects do play that role?",
+  "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/objectrole.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:Objectrole",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:Objectrole",
+  "class_count": 3,
+  "property_count": 4
+}

@@ -1,0 +1,14 @@
+{
+  "id": "place",
+  "name": "Place Pattern",
+  "description": "To talk about places of things.",
+  "category": "spatial",
+  "domain": "general",
+  "scenarios": "The Colosseum is located in Rome.",
+  "competency_questions": "Where is a certain thing located? What is located at this place?",
+  "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/place.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:Place",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:Place",
+  "class_count": 2,
+  "property_count": 2
+}

@@ -1,0 +1,14 @@
+{
+  "id": "newsreportingevent",
+  "name": "Newsreportingevent Pattern",
+  "description": "The pattern can be used for modelling situations\nin which we are not certain that a particular actual event has the properties\nwhich were described in a news message. We want to define the properties\nof an actual event which were reported (time, place, actors, subevents,\ncause, effect etc.), but not to treat them as universal, verified knowledge.\nThe pattern also allows to define who is responsible for a particular\ndescription of an event and how this description is dealt with.",
+  "category": "structural",
+  "domain": "media",
+  "scenarios": "A single actual event, bus drivers protest, is presented in to different media: a TV news station\nand a news website. John Doe prepared the material for the station Channel 55, owned by Media Corp.\nThis material was presented as first material in a news programme on 16/07/2016, started at 19:30 and ended at 19:35.\nIt was based on correspondent report. The material said that the cause of the protest was malfunction of buses,\nand that a brutal police intervention took place.\n\nThe article from website livingintheworld.com also mentioned malfunction of buses, but it also mentioned\nother cause of protest: planned reduction of social benefits. It did not mention brutal police intervention,\nbut it did mention destruction of public property. The article seems not important for the website authors,\nit was presented at the page bottom.",
+  "competency_questions": "In addition to the competency questions defined for pattern\nReportingEvent (http:/ontologydesignpatterns.org/wiki/Submissions:ReportingEvent)\nthe pattern allows to answer the following questions:\n- What aspects of an actual event were presented in the news message?\n- Who reported an actual event? Which news provider they represented?\n- When was a certain actual event reported for the first time?\n- What actual events are presented in a certain medium/by media of a certain news provider?\n- How was an actual event presented?",
+  "pattern_iri": "http://semantic.cs.put.poznan.pl/ontologies/newsreportingevent.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:NewsReportingEvent",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:NewsReportingEvent",
+  "class_count": 6,
+  "property_count": 3
+}

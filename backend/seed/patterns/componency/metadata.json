@@ -1,0 +1,14 @@
+{
+  "id": "componency",
+  "name": "Componency Pattern",
+  "description": "To represent (non-transitively) that entities either are proper parts of other entities, or have proper parts.",
+  "category": "structural",
+  "domain": "general",
+  "scenarios": "This Content OP allows designers to represent part-whole relations. It allows to distinguish between parts and proper parts. Relation of proper part is not transitive, and implies a simple  part of relation, which is transitive. Temporal indexing is not expressible. To solve this issue see the  time indexed part of Content OP.",
+  "competency_questions": "What is this entity component of? What are the components of this entity?",
+  "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/componency.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:Componency",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:Componency",
+  "class_count": 2,
+  "property_count": 4
+}

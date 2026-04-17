@@ -1,0 +1,14 @@
+{
+  "id": "smarthome-featureofinterest",
+  "name": "Smarthome Featureofinterest Pattern",
+  "description": "Diagram | Competency Questions: | ...",
+  "category": "behavioral",
+  "domain": "iot",
+  "scenarios": "A feature of interest can be \"the pressure sensed on the couch\" or \"the electric-current of the TV\".",
+  "competency_questions": "What is the object which is the interest of the observation process? Which property pf this object is important?; Which sensing process (SSN:Sensing) is monitoring the state of the feature of interest (i.e. a specific property of the object)",
+  "pattern_iri": "http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_FeatureOfInterest.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:SmartHome_FeatureOfInterest",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:SmartHome_FeatureOfInterest",
+  "class_count": 3,
+  "property_count": 3
+}

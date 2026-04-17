@@ -1,0 +1,14 @@
+{
+  "id": "actuation-actuator-effect",
+  "name": "Actuation Actuator Effect Pattern",
+  "description": "Ontology design pattern for modeling actuation actuator effect relationships and concepts.",
+  "category": "structural",
+  "domain": "iot",
+  "scenarios": "",
+  "competency_questions": "",
+  "pattern_iri": "http://www.irit.fr/recherches/MELODI/ontologies/SAN",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:Actuation-Actuator-Effect",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:Actuation-Actuator-Effect",
+  "class_count": 33,
+  "property_count": 25
+}

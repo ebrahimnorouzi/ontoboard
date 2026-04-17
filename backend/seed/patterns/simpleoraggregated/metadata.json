@@ -1,0 +1,14 @@
+{
+  "id": "simpleoraggregated",
+  "name": "Simpleoraggregated Pattern",
+  "description": "The goal of this pattern is to represent objects that can be simple or aggregated (that is, several objects gathered in another object acting as a whole). The main difference between the aggregation relation and other mereological relationships (such as part of or composition) is that the aggregated object and its aggregated members should belong to the same concept. For example, a turbine is part of an engine, whereas an aggregated provider is formed by providers.",
+  "category": "structural",
+  "domain": "general",
+  "scenarios": "This Content OP allows designers to represent aggregations relations.",
+  "competency_questions": "What is this object aggregated member of?; What elements are aggregated members of this object?",
+  "pattern_iri": "http://delicias.dia.fi.upm.es/ontologies/SimpleOrAggregated.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:SimpleOrAggregated",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:SimpleOrAggregated",
+  "class_count": 4,
+  "property_count": 4
+}

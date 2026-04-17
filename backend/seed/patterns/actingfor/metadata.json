@@ -1,0 +1,14 @@
+{
+  "id": "actingfor",
+  "name": "Actingfor Pattern",
+  "description": "To represent that some agent is acting in order to forward the action of a social (non-physical) agent.",
+  "category": "behavioral",
+  "domain": "general",
+  "scenarios": "Matteo Sanvitale is working as an officer for CEMA s.r.l.",
+  "competency_questions": "Who is working for which organization? Who is representing the company?",
+  "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/actingfor.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:ActingFor",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:ActingFor",
+  "class_count": 2,
+  "property_count": 2
+}

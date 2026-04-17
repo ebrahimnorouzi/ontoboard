@@ -1,0 +1,14 @@
+{
+  "id": "communities",
+  "name": "Communities Pattern",
+  "description": "Diagram (this article has no graphical representation)",
+  "category": "information",
+  "domain": "general",
+  "scenarios": "",
+  "competency_questions": "",
+  "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/communities.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:Communities",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:Communities",
+  "class_count": 3,
+  "property_count": 1
+}

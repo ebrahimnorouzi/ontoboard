@@ -1,0 +1,14 @@
+{
+  "id": "nary-participation",
+  "name": "Nary Participation Pattern",
+  "description": "The nary participation pattern. \nThis pattern re-uses participation and situation patterns. It is extracted from DOLCE-UltraLite by partial clone of elements.",
+  "category": "structural",
+  "domain": "general",
+  "scenarios": "",
+  "competency_questions": "",
+  "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/naryparticipation.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:Nary_Participation",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:Nary_Participation",
+  "class_count": 6,
+  "property_count": 4
+}

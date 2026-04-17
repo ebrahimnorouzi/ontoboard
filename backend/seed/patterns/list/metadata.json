@@ -1,0 +1,14 @@
+{
+  "id": "list",
+  "name": "List Pattern",
+  "description": "To represent ordered collections, i.e. lists.",
+  "category": "structural",
+  "domain": "general",
+  "scenarios": "",
+  "competency_questions": "What are the items (elements) in this list?; What is the length (size) of this list?; What is the first/last item in this list?; What resource does this list item contain?; What it the next/previous item in the list?",
+  "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/list.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:List",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:List",
+  "class_count": 2,
+  "property_count": 6
+}

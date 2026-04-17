@@ -1,0 +1,14 @@
+{
+  "id": "move",
+  "name": "Move Pattern",
+  "description": "The move content ontology design pattern. This CP represents the action of moving a physical object from a place to another. The move CP is extracted from the CIDOC ontology.",
+  "category": "behavioral",
+  "domain": "general",
+  "scenarios": "",
+  "competency_questions": "",
+  "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/move.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:Move",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:Move",
+  "class_count": 3,
+  "property_count": 10
+}

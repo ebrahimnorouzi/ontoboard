@@ -1,0 +1,14 @@
+{
+  "id": "collectionentity",
+  "name": "Collectionentity Pattern",
+  "description": "To represent domain (not set theory) membership.",
+  "category": "structural",
+  "domain": "general",
+  "scenarios": "My saxophone collection includes a Mark VI tenor, a Balanced Action alto, and a Conn Transitional bari.",
+  "competency_questions": "What things are contained in this collection (community, collective)? What collections this thing is member of?",
+  "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/collectionentity.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:CollectionEntity",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:CollectionEntity",
+  "class_count": 2,
+  "property_count": 2
+}

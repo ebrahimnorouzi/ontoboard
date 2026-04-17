@@ -1,0 +1,14 @@
+{
+  "id": "reportingevent",
+  "name": "Reportingevent Pattern",
+  "description": "The intent of the pattern is to allow for modelling situations in which the knowledge\nabout an event cannot be treated as certain. It is particularly useful for\ncases in which two or more agents provide different, contradictory information\nabout the same event.\n\nIt can be also used for modelling situation in which a single agent provided\ncontradictory information about the same event in different points in time. In\ngeneral the pattern allows for stating different circumstances of an act of the\ninformation provision.",
+  "category": "structural",
+  "domain": "media",
+  "scenarios": "Two History professors have different opinion about the same\nactual event. The exemplary actual event is baptism of prince Mieszko I.\nThe baptism exact place is a subject to historical debate.\nAccording to professor Hanna Kóčka-Krenz the likely place was Poznań.\nShe bases her claim on Poznań excavations that she conducted.\nHowever, the late professor Labuda pointed to Lednica Holm.\nHe also based his claims on the local excavations, but also on historical annals.",
+  "competency_questions": "Pattern was designed to allow a completed ontology to answer the following questions:\n- What characteristics (date/participants/cause etc.) is an actual event said to have?\n- Which agent made a statement about an actual event?\n- On which sources these statements were based?\n- What were circumstances of providing information about an actual event?",
+  "pattern_iri": "http://semantic.cs.put.poznan.pl/ontologies/reportingevent.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:ReportingEvent",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:ReportingEvent",
+  "class_count": 8,
+  "property_count": 6
+}

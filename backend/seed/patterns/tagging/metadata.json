@@ -1,0 +1,14 @@
+{
+  "id": "tagging",
+  "name": "Tagging Pattern",
+  "description": "To represent a tagging situation, in which someone uses a term, from a list of a folksonomy, to tag something (or the content of something). We might also want to represent the time and the polarity of the tagging.",
+  "category": "structural",
+  "domain": "data-management",
+  "scenarios": "A Flickr picture showing a leopard, tagged with the Tag 'leopard',A Flickr picture showing a boy surfing with a sombrero hat, tagged with the Tag 'cool', A Flickr picture tagged as 'taken in Sicily'",
+  "competency_questions": "Who is tagging (the content of) what, by using what term from what folksonomy?, Which polarity has the tagging?",
+  "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/tagging.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:Tagging",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:Tagging",
+  "class_count": 11,
+  "property_count": 14
+}

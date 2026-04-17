@@ -1,0 +1,14 @@
+{
+  "id": "computer-system",
+  "name": "Computer System Pattern",
+  "description": "The pattern intends to model computer systems based on a hardware/software approach.",
+  "category": "behavioral",
+  "domain": "computing",
+  "scenarios": "Some examples of instantiation of the ComputerSystem ODP are:\n  1. “The computer uses Ubuntu 16.04”\n  2. “The graphics card requires driver A”\n  3. “The software is compatible with Windows 10”\n  4. “The processor is compatible with motherboard B”",
+  "competency_questions": "What is currently installed in a computer? A computer uses specific pieces of hardware and software.\nWhat software or hardware is required so that some other software or hardware can operate properly? This relationship is represented with properties requiresSoftware and requiresHardware.\nWhat software or hardware is compatible with other software or hardware? This is expressed via the isCompatibleWith relationship.",
+  "pattern_iri": "http://mklab.iti.gr/pericles/ComputerSystem_ODP",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:Computer_System",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:Computer_System",
+  "class_count": 5,
+  "property_count": 7
+}

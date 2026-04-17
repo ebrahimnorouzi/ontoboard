@@ -1,0 +1,14 @@
+{
+  "id": "digitalvideo",
+  "name": "Digitalvideo Pattern",
+  "description": "The pattern intends to model digital video files, their components and other associated entities, such as codecs and containers.",
+  "category": "structural",
+  "domain": "digital-media",
+  "scenarios": "Some examples of instantiation of the DigitalVideo ODP are:\n  1. “The digital video is wrapped by an AVI container”\n  2. “The digital video has duration 22 minutes”\n  3. “The video stream is processed by the QuickTime codec”\n  4. “The audio stream has bitrate 256 kbit/s”",
+  "competency_questions": "1. What does a digital video file consist of? A digital video file usually consists of one or more streams. These streams are compressed using codecs (coder-decoder) and wrapped into a container.\n2. What types of streams exist in a video file? Video streams, audio streams and subtitle streams. A video file has at least one video stream and may also have any number and any type of other streams.\n3. What types of codecs exist? Video and audio codecs.",
+  "pattern_iri": "http://mklab.iti.gr/pericles/DigitalVideo_ODP",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:DigitalVideo",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:DigitalVideo",
+  "class_count": 31,
+  "property_count": 27
+}

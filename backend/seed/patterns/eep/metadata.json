@@ -1,0 +1,14 @@
+{
+  "id": "eep",
+  "name": "EEP Pattern",
+  "description": "The DOLCE+DnS Ultralite ontology.\nIt is a simplification of some parts of the DOLCE Lite-Plus library (cf. http://www.ontologydesignpatterns.org/ont/dul/DLP397.owl). \nMain aspects in which DOLCE+DnS Ultralite departs from DOLCE Lite-Plus are the following:\n\n- The names of classes and relations have been made more intuitive\n- The DnS-related part is closer to the newer 'constructive DnS' ontology (http://www.ontologydesignpatterns.org/ont/dul/cDnS.owl).\n- Temporal and spatial relations are simplified\n- Qualities and regions are more relaxed than in DOLCE-Full: they can be used as attributes of any entity; an axiom states that each quality has a region\n- Axiomatization makes use of simpler constructs than DOLCE Lite-Plus\n- The architecture of the ontology is pattern-based, which means that DOLCE+DnS Ultralite is also available in modules, called 'content ontology design patterns', which can be applied independently in the design of domain ontologies (cf. http://www.ontologydesignpatterns.org).  If many modules are needed in a same ontology project, it is anyway useful to use this integrated version.\n\nThe final result is a lightweight, easy-to-apply foundational ontology for modeling either physical or social contexts.\nSeveral extensions of DOLCE+DnS Ultralite have been designed: \n- Information objects: http://www.ontologydesignpatterns.org/ont/dul/IOLite.owl \n- Systems: http://www.ontologydesignpatterns.org/ont/dul/SystemsLite.owl \n- Plans: http://www.ontologydesignpatterns.org/ont/dul/PlansLite.owl\n- Legal domain: http://www.ontologydesignpatterns.org/ont/dul/CLO/CoreLegal.owl\n- Lexical and semiotic domains: http://www.ontologydesignpatterns.org/ont/lmm/LMM_L2.owl\n- DOLCE-Zero: http://www.ontologydesignpatterns.org/ont/d0.owl is a commonsense-oriented generalisation of some top-level classes, which allows to use DOLCE with tolerance against ambiguities like abstract vs. concrete information, locations vs. physical artifacts, event occurrences vs. event types, events vs. situations, qualities vs. regions, etc.; etc.",
+  "category": "structural",
+  "domain": "iot",
+  "scenarios": "",
+  "competency_questions": "",
+  "pattern_iri": "http://www.ontologydesignpatterns.org/ont/dul/DUL.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:EEP",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:EEP",
+  "class_count": 79,
+  "property_count": 117
+}

@@ -5,5 +5,10 @@
   "category": "structural",
   "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/partof.owl",
   "references": "http://ontologydesignpatterns.org/wiki/Submissions:PartOf",
-  "competency_questions": "What are the parts of this whole? What is this entity part of?"
+  "competency_questions": "What are the parts of this whole? What is this entity part of?",
+  "domain": "general",
+  "scenarios": "A wheel is part of a car. A chapter is part of a book. An organ is part of an organism.",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:PartOf",
+  "class_count": 2,
+  "property_count": 2
 }

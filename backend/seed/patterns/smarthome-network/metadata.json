@@ -1,0 +1,14 @@
+{
+  "id": "smarthome-network",
+  "name": "Smarthome Network Pattern",
+  "description": "This pattern relies on both the SSN ontology and DUL in order to represent sensors and other techniqually needed objects to deploy a network in a smart home environment.\n\nThe concept of Network is modeled in this pattern as a System (http://purl.oclc.org/NET/ssnx/ssn#System) whose constituents are NodeStations (subclass of Node which is in turn subsumed by the class http://purl.oclc.org/NET/ssnx/ssn#Device). Another subsumee of the Device class is the class Node describing more details about the content of each node station. Depending on their roles, nodes of a network are devided into types of node senders (whcih observe a phenomenon and send the data) and receivers (which receive the observation data).",
+  "category": "structural",
+  "domain": "iot",
+  "scenarios": "",
+  "competency_questions": "What are the nodes that are sending data to a given receiver?; What is the receiving node of the given set of sending nodes?; Which types of nodes are available in a network?",
+  "pattern_iri": "http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Network.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:SmartHome_Network",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:SmartHome_Network",
+  "class_count": 13,
+  "property_count": 10
+}

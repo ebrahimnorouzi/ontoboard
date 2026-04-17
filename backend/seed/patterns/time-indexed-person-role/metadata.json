@@ -1,0 +1,14 @@
+{
+  "id": "time-indexed-person-role",
+  "name": "Time Indexed Person Role Pattern",
+  "description": "Ontology design pattern for modeling time indexed person role relationships and concepts.",
+  "category": "behavioral",
+  "domain": "social",
+  "scenarios": "",
+  "competency_questions": "",
+  "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/timeindexedpersonrole.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:Time_indexed_person_role",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:Time_indexed_person_role",
+  "class_count": 5,
+  "property_count": 1
+}

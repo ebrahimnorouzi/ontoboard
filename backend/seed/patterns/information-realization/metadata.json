@@ -5,5 +5,10 @@
   "category": "information",
   "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/informationrealization.owl",
   "references": "http://ontologydesignpatterns.org/wiki/Submissions:InformationRealization",
-  "competency_questions": "What physical entity realizes this information object? What information is realized by this entity?"
+  "competency_questions": "What physical entity realizes this information object? What information is realized by this entity?",
+  "domain": "information-science",
+  "scenarios": "A PDF file realizes a research paper. A printed book realizes a novel.",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:InformationRealization",
+  "class_count": 2,
+  "property_count": 2
 }

@@ -1,0 +1,14 @@
+{
+  "id": "informationobjectsandrepresentationlanguages",
+  "name": "Informationobjectsandrepresentationlanguages Pattern",
+  "description": "Diagram (this article has no graphical representation)",
+  "category": "information",
+  "domain": "general",
+  "scenarios": "",
+  "competency_questions": "",
+  "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/informationobjectsandrepresentationlanguages.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:InformationObjectsAndRepresentationLanguages",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:InformationObjectsAndRepresentationLanguages",
+  "class_count": 12,
+  "property_count": 7
+}

@@ -1,0 +1,14 @@
+{
+  "id": "smarthome-geometry",
+  "name": "Smarthome Geometry Pattern",
+  "description": "Ontology design pattern for modeling smarthome geometry relationships and concepts.",
+  "category": "spatial",
+  "domain": "iot",
+  "scenarios": "",
+  "competency_questions": "What are the spatial entities (objects with geometry) in a smart home environment?",
+  "pattern_iri": "http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Geometry.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:SmartHome_Geometry",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:SmartHome_Geometry",
+  "class_count": 3,
+  "property_count": 19
+}

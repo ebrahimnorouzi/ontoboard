@@ -1,0 +1,14 @@
+{
+  "id": "detectorfinalstate",
+  "name": "Detectorfinalstate Pattern",
+  "description": "This pattern represent schematic model for data obtained from results of high-energy physics experiments, such as ones ran in the CERN's Large Hadron Collider. Specifically, this pattern models the notion of Detector Final State, a composition obatined by a selection of some target characteristics concerning physics measurements and parameters of experiments.",
+  "category": "conceptual",
+  "domain": "general",
+  "scenarios": "Representing detection of final state of a high-energy physics experiment.",
+  "competency_questions": "Retrieve all analyses that veto extra leptons.; Retrieve all analyses that used jets in the final state.; Retrieve all analyses requiring large missing energy.; Retrieve all analyses requireing particles to have an invariant mass near the Z pole.",
+  "pattern_iri": "http://purl.org/net/detectorfinalstate/",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:DetectorFinalState",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:DetectorFinalState",
+  "class_count": 14,
+  "property_count": 11
+}

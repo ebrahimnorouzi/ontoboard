@@ -1,0 +1,14 @@
+{
+  "id": "specieshabitat",
+  "name": "Specieshabitat Pattern",
+  "description": "to represent species together with their typical environment in terms of habitat and water area",
+  "category": "information",
+  "domain": "biology",
+  "scenarios": "give me the species having a 'demersal' habitat in water area '24'",
+  "competency_questions": "what species have what habitat in what water area?",
+  "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/fsdas/specieshabitat.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:SpeciesHabitat",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:SpeciesHabitat",
+  "class_count": 8,
+  "property_count": 5
+}

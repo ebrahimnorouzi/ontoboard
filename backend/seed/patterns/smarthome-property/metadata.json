@@ -1,0 +1,14 @@
+{
+  "id": "smarthome-property",
+  "name": "Smarthome Property Pattern",
+  "description": "Diagram (this article has no graphical representation)",
+  "category": "information",
+  "domain": "iot",
+  "scenarios": "",
+  "competency_questions": "What are the properties of a physical object in a smart home?",
+  "pattern_iri": "http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Property.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:SmartHome_Property",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:SmartHome_Property",
+  "class_count": 3,
+  "property_count": 2
+}

@@ -1,0 +1,14 @@
+{
+  "id": "linnaeantaxonomy",
+  "name": "Linnaeantaxonomy Pattern",
+  "description": "The linnaean taxonomy content ontology design pattern represents the layered classification invented by Linneus in the XVIII century. It is created by reengineering Wikipedia articles about taxa, taxonomic ranks, and linnaean taxonomy.",
+  "category": "conceptual",
+  "domain": "biology",
+  "scenarios": "",
+  "competency_questions": "",
+  "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:LinnaeanTaxonomy",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:LinnaeanTaxonomy",
+  "class_count": 8,
+  "property_count": 4
+}

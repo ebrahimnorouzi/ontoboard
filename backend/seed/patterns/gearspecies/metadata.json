@@ -1,0 +1,14 @@
+{
+  "id": "gearspecies",
+  "name": "Gearspecies Pattern",
+  "description": "to represent types of fishing gear with respect to the aquatic species they either are targeted to catch or can accidentally catch",
+  "category": "conceptual",
+  "domain": "biology",
+  "scenarios": "give me the gears targeting species \"tuna\" give me the species caught using \"bottom gillnets\" give me the gears which incidentally catch species \"dolphins\"",
+  "competency_questions": "what type of fishing gear can catch what aquatic species?",
+  "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/fsdas/gearspecies.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:GearSpecies",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:GearSpecies",
+  "class_count": 1,
+  "property_count": 5
+}

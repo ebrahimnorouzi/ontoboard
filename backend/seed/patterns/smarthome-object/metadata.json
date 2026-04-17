@@ -1,0 +1,14 @@
+{
+  "id": "smarthome-object",
+  "name": "Smarthome Object Pattern",
+  "description": "This pattern relies on both the SSN ontology and DUL in order to represent an object in the context of Smart Home. Using this model we categorize the objects in to two groups of Smart Objects and NodeHolder based on the reason behind their existance in a smart home. \n\nDue to usual difficulties to install sensors in a smart home environment it is common that some other objects (i.e. NodeHolder) are used to attache sensors on so as to observe the situation of other objects (i.e. SmartObject) specifically for the configuration planner. Using this pattern we are able to diffrentiate between these two types of objects.\n\nThis pattern also allows us to extend the definition of an object's properties in the context of smart home. The properties of a SmartObject which are the interest of the sensing process can be defined as either a subclass of the class  http://purl.oclc.org/NET/ssnx/ssn#Property  (e.g. the temperature of a stove) or as part of the smart object (e.g. the door of a friedge)",
+  "category": "structural",
+  "domain": "iot",
+  "scenarios": "",
+  "competency_questions": "Where is the location of a given object?; Which objects are used as the holder of sensors in the smart home environment?; Which devices (e.g. sensors) are attached to a NodeHolder?; Which objects are there in a smart home environment?; Which objects are the interest of the observation process?",
+  "pattern_iri": "http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Object.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:SmartHome_Object",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:SmartHome_Object",
+  "class_count": 15,
+  "property_count": 5
+}

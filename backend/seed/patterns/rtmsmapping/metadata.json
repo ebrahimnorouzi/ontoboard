@@ -1,0 +1,14 @@
+{
+  "id": "rtmsmapping",
+  "name": "Rtmsmapping Pattern",
+  "description": "to represent mappings between FSDAS application ontology network, and RTMS ontologies",
+  "category": "information",
+  "domain": "general",
+  "scenarios": "",
+  "competency_questions": "",
+  "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/fsdas/rtmsmapping.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:RTMSmapping",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:RTMSmapping",
+  "class_count": 1,
+  "property_count": 1
+}

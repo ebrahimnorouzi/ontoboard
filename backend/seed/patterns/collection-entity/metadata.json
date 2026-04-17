@@ -5,5 +5,10 @@
   "category": "structural",
   "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/collectionentity.owl",
   "references": "http://ontologydesignpatterns.org/wiki/Submissions:CollectionEntity",
-  "competency_questions": "What members belong to this collection? Which collections contain this entity?"
+  "competency_questions": "What members belong to this collection? Which collections contain this entity?",
+  "domain": "general",
+  "scenarios": "A library contains a collection of books. A playlist groups songs by genre.",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:CollectionEntity",
+  "class_count": 2,
+  "property_count": 2
 }

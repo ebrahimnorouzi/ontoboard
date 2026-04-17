@@ -1,0 +1,14 @@
+{
+  "id": "gearwaterarea",
+  "name": "Gearwaterarea Pattern",
+  "description": "to represent gear types in terms of the water areas where they can be employed to collect aquatic resources",
+  "category": "structural",
+  "domain": "biology",
+  "scenarios": "in which water areas are 'bottom gillnets' used?",
+  "competency_questions": "in which water areas are what gear types used? (provided that species caught by geartypes are present in those water areas)",
+  "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/fsdas/gearwaterarea.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:GearWaterArea",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:GearWaterArea",
+  "class_count": 0,
+  "property_count": 2
+}

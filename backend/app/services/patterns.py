@@ -209,6 +209,9 @@ def reload_patterns() -> int:
 def list_patterns() -> list[dict]:
     return [{"id": p["id"], "name": p["name"], "description": p.get("description", ""),
              "category": p.get("category", "structural"),
+             "domain": p.get("domain", "general"),
+             "scenarios": p.get("scenarios", ""),
+             "competency_questions": p.get("competency_questions", ""),
              "class_count": len(p.get("classes", [])),
              "property_count": len(p.get("properties", [])),
              "source": p.get("source", "odpa"),

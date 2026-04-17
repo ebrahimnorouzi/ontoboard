@@ -5,5 +5,10 @@
   "category": "structural",
   "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/timeinterval.owl",
   "references": "http://ontologydesignpatterns.org/wiki/Submissions:TimeInterval",
-  "competency_questions": "When does this interval start? When does this interval end?"
+  "competency_questions": "When does this interval start? When does this interval end?",
+  "domain": "temporal",
+  "scenarios": "A project runs from January to June. A lecture is scheduled from 10:00 to 11:30.",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:TimeInterval",
+  "class_count": 1,
+  "property_count": 3
 }

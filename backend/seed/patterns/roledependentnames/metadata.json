@@ -1,0 +1,14 @@
+{
+  "id": "roledependentnames",
+  "name": "Roledependentnames Pattern",
+  "description": "Diagram | Intent: | An ontology design pattern for modeling Names as part of Roles, to capture scenarios where an Agent performs different Roles using different Names associated with the different Roles. Examples of an Agent performing a Role using different Names are rather ubiq- uitous, e.g., authors...",
+  "category": "structural",
+  "domain": "general",
+  "scenarios": "",
+  "competency_questions": "",
+  "pattern_iri": "https://kastle-labl.org/lod/ontology/",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:RoleDependentNames",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:RoleDependentNames",
+  "class_count": 5,
+  "property_count": 5
+}

@@ -1,0 +1,14 @@
+{
+  "id": "timeindexedsituation",
+  "name": "Timeindexedsituation Pattern",
+  "description": "To represent time indexed situations.",
+  "category": "conceptual",
+  "domain": "general",
+  "scenarios": "Mustafa's address in 2005 was in Brussels",
+  "competency_questions": "At what time did a certain situation occur?,What situations occurred at a certain time?",
+  "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/timeindexedsituation.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:TimeIndexedSituation",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:TimeIndexedSituation",
+  "class_count": 4,
+  "property_count": 6
+}

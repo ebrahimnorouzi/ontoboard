@@ -1,0 +1,14 @@
+{
+  "id": "food-recipe-ingredient-substitution-odp",
+  "name": "Food Recipe Ingredient Substitution ODP Pattern",
+  "description": "Diagram (this article has no graphical representation)",
+  "category": "information",
+  "domain": "food-science",
+  "scenarios": "",
+  "competency_questions": "",
+  "pattern_iri": "http://semantic.cs.put.poznan.pl/ontologies/food_ingredient_substitutes",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:Food_Recipe_Ingredient_Substitution_ODP",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:Food_Recipe_Ingredient_Substitution_ODP",
+  "class_count": 24,
+  "property_count": 8
+}

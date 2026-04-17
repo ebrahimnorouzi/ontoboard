@@ -1,0 +1,14 @@
+{
+  "id": "timeinterval",
+  "name": "Timeinterval Pattern",
+  "description": "To represent time intervals.",
+  "category": "temporal",
+  "domain": "general",
+  "scenarios": "The time inter val “January 2008” starts at 2008 − 01 − 0 and ends at 2008 − 01 − 31.",
+  "competency_questions": "What is the end time of this interval? What is the starting time of this interval? What is the date of this time interval?",
+  "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/timeinterval.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:TimeInterval",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:TimeInterval",
+  "class_count": 1,
+  "property_count": 3
+}

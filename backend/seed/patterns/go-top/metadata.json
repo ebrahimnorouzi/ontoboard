@@ -1,0 +1,14 @@
+{
+  "id": "go-top",
+  "name": "GO Top Pattern",
+  "description": "To represent types of gene-related entities and their parts.",
+  "category": "structural",
+  "domain": "biology",
+  "scenarios": "A 'template for synthesis of G-rich strand of telomere DNA activity' must be part of a 'telomerase activity'. All 'templates for synthesis of G-rich strand of telomere DNA activity' are 'molecular functions'.",
+  "competency_questions": "What are the possible most general supertypes for any type from the gene-related domain?; What entity is part of another entity in the gene-related domain?",
+  "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/gotop.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:GO_Top",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:GO_Top",
+  "class_count": 4,
+  "property_count": 1
+}

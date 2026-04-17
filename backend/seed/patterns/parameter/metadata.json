@@ -1,0 +1,14 @@
+{
+  "id": "parameter",
+  "name": "Parameter Pattern",
+  "description": "To represent parameters to be used for a certain concept.",
+  "category": "conceptual",
+  "domain": "general",
+  "scenarios": "",
+  "competency_questions": "",
+  "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/parameter.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:Parameter",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:Parameter",
+  "class_count": 2,
+  "property_count": 3
+}

@@ -1,0 +1,14 @@
+{
+  "id": "types-of-entities",
+  "name": "Types Of Entities Pattern",
+  "description": "To identify and categorize the most general possible types of things in the domain of discourse.",
+  "category": "behavioral",
+  "domain": "general",
+  "scenarios": "",
+  "competency_questions": "What kind of entity is that?",
+  "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:Types_of_entities",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:Types_of_entities",
+  "class_count": 5,
+  "property_count": 0
+}

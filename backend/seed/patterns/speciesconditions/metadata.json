@@ -1,0 +1,14 @@
+{
+  "id": "speciesconditions",
+  "name": "Speciesconditions Pattern",
+  "description": "This pattern aims at representing the habitat and bathymetric features that are typical for an aquatic species, in the context of a given water area.",
+  "category": "information",
+  "domain": "biology",
+  "scenarios": "give me the species found below 200 metres for water area '24'\ngive me the species having a 'demersal' habitat in water area '24'",
+  "competency_questions": "what are the typical living conditions of a certain aquatic species? what are the aquatic species that live in a certain  habitat/bathymetric range for that water area?",
+  "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/fsdas/speciesconditions.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:SpeciesConditions",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:SpeciesConditions",
+  "class_count": 5,
+  "property_count": 8
+}

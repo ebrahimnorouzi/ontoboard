@@ -1,0 +1,14 @@
+{
+  "id": "resourceabundanceobservation",
+  "name": "Resourceabundanceobservation Pattern",
+  "description": "The intent of the pattern is to be able to represent observations of aquatic resources, where the observations have been made a certain year and has certain other parameters.",
+  "category": "conceptual",
+  "domain": "biology",
+  "scenarios": "Give me the resource observations for the year 2004\nGive me the resource observations where the abundance level is 'Low abundance'",
+  "competency_questions": "What resource is observed? For what year and at what abundance level?",
+  "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/fsdas/resourceabundanceobservation.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:ResourceAbundanceObservation",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:ResourceAbundanceObservation",
+  "class_count": 2,
+  "property_count": 5
+}

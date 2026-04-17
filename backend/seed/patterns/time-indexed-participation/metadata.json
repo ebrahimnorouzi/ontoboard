@@ -1,0 +1,14 @@
+{
+  "id": "time-indexed-participation",
+  "name": "Time Indexed Participation Pattern",
+  "description": "To represent participants in events at some time,To represent participants in parts of events.",
+  "category": "structural",
+  "domain": "general",
+  "scenarios": "This morning I've prepared my coffee and had my fingers burnt,The football match lasted only ten minutes for Totti",
+  "competency_questions": "When something participated in some event?,At what time an event had some participant?",
+  "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/timeindexedparticipation.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:Time_indexed_participation",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:Time_indexed_participation",
+  "class_count": 6,
+  "property_count": 7
+}

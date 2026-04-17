@@ -1,0 +1,14 @@
+{
+  "id": "spatial-graph-adapter-sga",
+  "name": "Spatial Graph Adapter (SGA) Pattern",
+  "description": "Diagram (this article has no graphical representation) | Intent: | Link to OWL File: https://raw.githubusercontent.com/HollyFerguson/Spatial-Graph-Adapter-Pattern/master/SGA\\Protege\\OWL.owlPDF of SGA Pattern Image: Image:USOcore3.pdfTo answer the modern, interdisciplinary questions asked within the Building domain, industry tools and data standards need to become f...",
+  "category": "spatial",
+  "domain": "general",
+  "scenarios": "",
+  "competency_questions": "",
+  "pattern_iri": "http://www.semanticweb.org/holly2012/ontologies/2016/SGA_Pattern",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:Spatial_Graph_Adapter_(SGA)",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:Spatial_Graph_Adapter_(SGA)",
+  "class_count": 6,
+  "property_count": 6
+}

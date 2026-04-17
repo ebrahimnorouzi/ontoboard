@@ -1,0 +1,14 @@
+{
+  "id": "contentops",
+  "name": "Contentops Pattern",
+  "description": "Below you find the currently proposed Content OPs (CPs). New proposals of CPs are very welcome. Please post a new proposal if you want to contribute. Domain --- --- Act as a basic model for Agricultural Related Ontologies, in particular for t...",
+  "category": "structural",
+  "domain": "general",
+  "scenarios": "",
+  "competency_questions": "",
+  "pattern_iri": "http://www.irit.fr/recherches/MELODI/ontologies/SAN",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:ContentOPs",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:ContentOPs",
+  "class_count": 33,
+  "property_count": 25
+}

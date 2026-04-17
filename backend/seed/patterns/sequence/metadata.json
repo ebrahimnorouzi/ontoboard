@@ -5,5 +5,10 @@
   "category": "structural",
   "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/sequence.owl",
   "references": "http://ontologydesignpatterns.org/wiki/Submissions:Sequence",
-  "competency_questions": "What follows this entity in the sequence? What precedes this entity?"
+  "competency_questions": "What follows this entity in the sequence? What precedes this entity?",
+  "domain": "general",
+  "scenarios": "Steps in a workflow follow a defined order. DNA nucleotides form a sequence.",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:Sequence",
+  "class_count": 1,
+  "property_count": 4
 }

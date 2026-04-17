@@ -1,0 +1,14 @@
+{
+  "id": "speciesconservation",
+  "name": "Speciesconservation Pattern",
+  "description": "This pattern intend to represent a description of the conservation status of aquatic species.",
+  "category": "conceptual",
+  "domain": "biology",
+  "scenarios": "Give me the species for which conservation status contains 'Vulnerable'.\nGive me the species for which conservation status is 'vulnerable'\nGive me the conservation status for species 'Ostrica gigas\"'",
+  "competency_questions": "What is the conservation status of this species? What are the species with a specific conservation status? What species' conservation status contain a specific string?",
+  "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/fsdas/speciesconservation.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:SpeciesConservation",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:SpeciesConservation",
+  "class_count": 1,
+  "property_count": 1
+}

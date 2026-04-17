@@ -1,0 +1,14 @@
+{
+  "id": "timeindexedpartof",
+  "name": "Timeindexedpartof Pattern",
+  "description": "The time indexed part of pattern. \nThis pattern re-uses part of and time-indexed situation patterns. It is extracted from DOLCE-UltraLite by partial clone of elements.",
+  "category": "structural",
+  "domain": "general",
+  "scenarios": "",
+  "competency_questions": "",
+  "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/timeindexedpartof.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:TimeIndexedPartOf",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:TimeIndexedPartOf",
+  "class_count": 5,
+  "property_count": 8
+}

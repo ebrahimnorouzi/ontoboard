@@ -1,0 +1,14 @@
+{
+  "id": "contextualizedwinstonpartwhole",
+  "name": "Contextualizedwinstonpartwhole Pattern",
+  "description": "Ontology design pattern for modeling contextualizedwinstonpartwhole relationships and concepts.",
+  "category": "structural",
+  "domain": "general",
+  "scenarios": "",
+  "competency_questions": "",
+  "pattern_iri": "http://daselab.org/ContextualizedWinstonPartWhole",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:ContextualizedWinstonPartWhole",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:ContextualizedWinstonPartWhole",
+  "class_count": 9,
+  "property_count": 4
+}

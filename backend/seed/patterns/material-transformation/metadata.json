@@ -1,0 +1,14 @@
+{
+  "id": "material-transformation",
+  "name": "Material Transformation Pattern",
+  "description": "To contextualize the transformation process from raw components and the required equipment to a final manufactured artifact.",
+  "category": "structural",
+  "domain": "engineering",
+  "scenarios": "A pile of wood is transformed into ash by burning. \nEmboddied energy involved in the process of mixing aggregate, water, cement and other binders to create concrete. \nMaterials required to construct a manufactured artifact such as a window (glass, wood, aluminum).",
+  "competency_questions": "What material resources were required to produce a product?\nWhere did the transformation take place?\nWhat was the time necessary for the transformation?\nWhat other materials or conditions were necessary for the transformation process to occur?\nWhat materials change during the transformation?\nHow much energy is required for the transformation to take place?",
+  "pattern_iri": "http://descartes-core.org/ontologies/mt/1.1/MaterialTransformationPattern",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:Material_Transformation",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:Material_Transformation",
+  "class_count": 6,
+  "property_count": 7
+}

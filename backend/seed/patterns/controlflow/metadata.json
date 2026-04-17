@@ -1,0 +1,14 @@
+{
+  "id": "controlflow",
+  "name": "Controlflow Pattern",
+  "description": "To represent control flows: activation, branching, decisions, concurrency, etc.",
+  "category": "behavioral",
+  "domain": "general",
+  "scenarios": "",
+  "competency_questions": "",
+  "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/controlflow.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:Controlflow",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:Controlflow",
+  "class_count": 18,
+  "property_count": 6
+}

@@ -1,0 +1,14 @@
+{
+  "id": "winstonpartwhole",
+  "name": "Winstonpartwhole Pattern",
+  "description": "Diagram (this article has no graphical representation)",
+  "category": "structural",
+  "domain": "general",
+  "scenarios": "",
+  "competency_questions": "",
+  "pattern_iri": "http://daselab.org/WinstonPartWhole",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:WinstonPartWhole",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:WinstonPartWhole",
+  "class_count": 0,
+  "property_count": 8
+}

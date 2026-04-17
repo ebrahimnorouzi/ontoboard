@@ -1,0 +1,14 @@
+{
+  "id": "notepattern",
+  "name": "Notepattern",
+  "description": "The Music Note ODP models a symbolic note and its symbolic attributes.",
+  "category": "structural",
+  "domain": "music",
+  "scenarios": "",
+  "competency_questions": "what is the name of a note?, what part of the score does a note belong to?, what are the dynamic indications referring to a note in the score?, what is the fundamental frequency of a note?, what are the different frequencies that make up the spectrum of a note?, what is the duration in seconds of a note, in a given performance?, how is the envelope of a note shaped?",
+  "pattern_iri": "https://purl.org/andreapoltronieri/notepattern/",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:Notepattern",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:Notepattern",
+  "class_count": 58,
+  "property_count": 29
+}

@@ -1,0 +1,14 @@
+{
+  "id": "smarthome-timeinterval",
+  "name": "Smarthome Timeinterval Pattern",
+  "description": "The ontology pattern Time represents temporal entities in the form of Instant, Interval and Temporal Distance (for example the relative temporal relations between an event and its preconditions.) in the context of smart environments.",
+  "category": "behavioral",
+  "domain": "iot",
+  "scenarios": "We can quantitavely represent temporal distances through  an observation process for different purposes . These purposes include \ndefinition of an event in terms of its preconditions whose occurance timestamp is within a specific temporal distance with that of the event.",
+  "competency_questions": "What is the time interval between two specific timestamps in the form of dates?; What is the temporal distance between two specific time steps?",
+  "pattern_iri": "http://ecareathome-ontology.mpi.aass.oru.se/patterns/time.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:SmartHome_TimeInterval",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:SmartHome_TimeInterval",
+  "class_count": 9,
+  "property_count": 1
+}

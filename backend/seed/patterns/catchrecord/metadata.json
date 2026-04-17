@@ -1,0 +1,14 @@
+{
+  "id": "catchrecord",
+  "name": "Catchrecord Pattern",
+  "description": "To represent the catch records from time series FIGIS application, which contain temporally-indexed aggregated information about aquatic species cacthing.",
+  "category": "temporal",
+  "domain": "biology",
+  "scenarios": "We are able to query time-series data for catches of species in a certain fishing area, by vessels of some country, with anounts and measurement units.",
+  "competency_questions": "What species, and what amount of organisms, have been caught from what areas, countries, at what date and fishing year?",
+  "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/fsdas/catchrecord.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:CatchRecord",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:CatchRecord",
+  "class_count": 10,
+  "property_count": 20
+}

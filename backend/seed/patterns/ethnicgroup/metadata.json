@@ -1,0 +1,14 @@
+{
+  "id": "ethnicgroup",
+  "name": "Ethnicgroup Pattern",
+  "description": "To model the core knowledge needed to describe a EthnicGroup",
+  "category": "conceptual",
+  "domain": "social",
+  "scenarios": "",
+  "competency_questions": "",
+  "pattern_iri": "file:///C:/Users/eno/Documents/Git_repo/ebrahimnorouzi_github/ISE-FIZKarlsruhe/ontoboard/patterns-repository/EthnicGroup/EthnicGroup.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:EthnicGroup",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:EthnicGroup",
+  "class_count": 14,
+  "property_count": 20
+}

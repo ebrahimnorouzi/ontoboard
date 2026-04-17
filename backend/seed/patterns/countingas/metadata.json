@@ -1,0 +1,14 @@
+{
+  "id": "countingas",
+  "name": "Countingas Pattern",
+  "description": "Diagram (this article has no graphical representation)",
+  "category": "information",
+  "domain": "general",
+  "scenarios": "",
+  "competency_questions": "",
+  "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/countingas.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:CountingAs",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:CountingAs",
+  "class_count": 4,
+  "property_count": 2
+}

@@ -1,0 +1,14 @@
+{
+  "id": "basicplan",
+  "name": "Basicplan Pattern",
+  "description": "The basic plans. This content ontology design patterns represents plans descriptions and their executions. It is defined by combining and expanding other CPs: basic plans description, basic plans execution, and object role. Expansion involves the partial clone of ontology elements from DOLCE Ultra Lite and Plans Lite ontologies.",
+  "category": "structural",
+  "domain": "general",
+  "scenarios": "",
+  "competency_questions": "",
+  "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/basicplan.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:BasicPlan",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:BasicPlan",
+  "class_count": 18,
+  "property_count": 11
+}

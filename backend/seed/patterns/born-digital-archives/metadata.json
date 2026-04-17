@@ -1,0 +1,14 @@
+{
+  "id": "born-digital-archives",
+  "name": "Born Digital Archives Pattern",
+  "description": "The pattern intends to model the domain of born digital archives.",
+  "category": "structural",
+  "domain": "digital-media",
+  "scenarios": "Some examples of instantiation of the BornDigitalArchives ODP are:\n  1. “Series A has part file B.”\n  2. “Fonds C has part Series A”\n  3. “File D has creator John Smith”",
+  "competency_questions": "What are the main entities (units) that compose born digital archives? These are fonds, series, files and items.\nWhat is the hierarchy of units within a born digital archive? Fonds composed from series or files, series composed from files and files composed from items.\nWho is the creator of an archive? The creator is entity of type foaf:Agent.",
+  "pattern_iri": "http://mklab.iti.gr/pericles/BornDigitalArchives_ODP",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:Born_Digital_Archives",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:Born_Digital_Archives",
+  "class_count": 6,
+  "property_count": 2
+}

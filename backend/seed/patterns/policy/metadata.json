@@ -1,0 +1,14 @@
+{
+  "id": "policy",
+  "name": "Policy Pattern",
+  "description": "The pattern intends to model policies, their characteristics and their associated entities, such as processes and agents.",
+  "category": "behavioral",
+  "domain": "biology",
+  "scenarios": "Some examples of instantiation of the Policy ODP are:\n  1. The policy has two subpolicies\n  2. The policy is implemented by a certain process\n  3. The policy is validated by a certain process\n  4. The policy is assigned to John Smith\n  5. The policy is fully automated",
+  "competency_questions": "1. What are the main entities associated with a policy? A policy is usually associated with super/sub-policies, processes, agents and other entities.\n2. What are the main attributes of a policy? They are version, language, policy type, requirement level, implementation status and automation status.\n3. Where is a policy described? Statements are detailed text (formal or non- formal) definitions of the policy contents.",
+  "pattern_iri": "http://mklab.iti.gr/pericles/Policy_ODP",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:Policy",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:Policy",
+  "class_count": 10,
+  "property_count": 13
+}

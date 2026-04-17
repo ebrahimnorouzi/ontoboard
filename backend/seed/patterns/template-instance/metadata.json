@@ -1,0 +1,14 @@
+{
+  "id": "template-instance",
+  "name": "Template Instance Pattern",
+  "description": "Diagram | Intent: | The Template Instance pattern proposes a way of reducing the number of reified instances and the related property assertion axioms in an ontology, especially for the cases in which the reified relations are identical for multiple entities. ...",
+  "category": "conceptual",
+  "domain": "general",
+  "scenarios": "",
+  "competency_questions": "",
+  "pattern_iri": "http://ontologydesignpatterns.org/template",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:Template_Instance",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:Template_Instance",
+  "class_count": 0,
+  "property_count": 1
+}

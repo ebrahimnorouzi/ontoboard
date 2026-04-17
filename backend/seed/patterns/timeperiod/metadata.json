@@ -1,0 +1,14 @@
+{
+  "id": "timeperiod",
+  "name": "Timeperiod Pattern",
+  "description": "To represent time periods, as n-ary relation with a measurement unit and a numerical value.",
+  "category": "behavioral",
+  "domain": "general",
+  "scenarios": "The measurement unit and the numerical value of a time period can be modeled.",
+  "competency_questions": "Which is the measurement unit of a time period?, Which is the value of a time period?",
+  "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/timeperiod.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:TimePeriod",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:TimePeriod",
+  "class_count": 2,
+  "property_count": 3
+}

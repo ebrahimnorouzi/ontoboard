@@ -1,0 +1,14 @@
+{
+  "id": "object-with-states",
+  "name": "Object With States Pattern",
+  "description": "An object can have different states for which different restrictions apply. The goal of the pattern is to allow modelling the different states of an object and the restrictions on such object for its different states",
+  "category": "structural",
+  "domain": "computing",
+  "scenarios": "A sample scenario is the following. A software defect created in an issue tracker must have a creator and be associated to a certain software product. Once it is checked that the defect is reproducible, it must be assigned to some developer and have a certain priority. However, before checking the defect reproducilibty the defect must not have either asignee or priority.",
+  "competency_questions": "Objects in StateA must have at least one value for property property1; Objects in StateB must have at most one value for property property2; Objects in StateC must have exactly one value for property property3; Objects must have a unique state; Object states must belong to a single collection of non-duplicate elements (i.e., to a set); An object can have three different states; The possible states are: StateA, StateB and StateC",
+  "pattern_iri": "http://delicias.dia.fi.upm.es/ontologies/ObjectWithStates.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:Object_with_states",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:Object_with_states",
+  "class_count": 5,
+  "property_count": 6
+}

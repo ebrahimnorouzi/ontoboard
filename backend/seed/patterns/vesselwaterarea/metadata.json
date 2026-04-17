@@ -1,0 +1,14 @@
+{
+  "id": "vesselwaterarea",
+  "name": "Vesselwaterarea Pattern",
+  "description": "to represent a direct relation between vessel types and water areas regardless of what type of fishing gear is fitted",
+  "category": "conceptual",
+  "domain": "fisheries",
+  "scenarios": "in which water areas are 'gillneters' used?",
+  "competency_questions": "which vessel types can be used in which water areas? (provided that water areas have species that are caught by geartypes that are used by vessel types)",
+  "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/fsdas/vesselwaterarea.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:VesselWaterArea",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:VesselWaterArea",
+  "class_count": 0,
+  "property_count": 2
+}

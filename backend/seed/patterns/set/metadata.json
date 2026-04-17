@@ -1,0 +1,14 @@
+{
+  "id": "set",
+  "name": "Set Pattern",
+  "description": "To model sets of things (elements). A Set is a collection that cannot contain duplicate elements.",
+  "category": "structural",
+  "domain": "general",
+  "scenarios": "",
+  "competency_questions": "What is the cardinality (size) of this set?; What are the elements in this set?",
+  "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/set.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:Set",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:Set",
+  "class_count": 1,
+  "property_count": 1
+}

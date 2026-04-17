@@ -1,0 +1,14 @@
+{
+  "id": "smarthome",
+  "name": "Smarthome Pattern",
+  "description": "Diagram (this article has no graphical representation) | Intent: | The SmartEnv as a network of 8 ontology patterns relies on the SSN ontology and represents a smart environment. Each pattern model one aspect of such environments including temporal, spatial, objects, network, observation etc. The patterns are:https://w3id.org/smartenvironment/patterns/time.owlhttps://w3id.org/smartenvironment/p...",
+  "category": "temporal",
+  "domain": "iot",
+  "scenarios": "",
+  "competency_questions": "What are the spatial relations among objects or sections in a smart environment?",
+  "pattern_iri": "https://w3id.org/smartenvironment/patterns/geometry.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:SmartHome",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:SmartHome",
+  "class_count": 3,
+  "property_count": 30
+}

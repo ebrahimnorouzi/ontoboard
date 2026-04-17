@@ -1,0 +1,14 @@
+{
+  "id": "aquaticresourceobservation",
+  "name": "Aquaticresourceobservation Pattern",
+  "description": "To represent the aquatic observation data extracted from factsheet application. An aquatic observation refers to a specific year, is about an aquatic resource, and is situated in a given habitat, in which the aquatic species from the resource live. Observations can have a reporting year that is different from the observation time.",
+  "category": "temporal",
+  "domain": "biology",
+  "scenarios": "The aquatic resource for Skipjack tuna in Northern Atlantic in 2004 (as reported in 2008) was observed with low abundance level.",
+  "competency_questions": "For an aquatic resource, what species, in what fishing areas, climatic zones, bottom types, depth zones, geo forms, horizontal and vertical distribution, and for what standardized abundance level, exploitation state and rate, have been observed? for what reference year? At what year the observation has been recorded?",
+  "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:AquaticResourceObservation",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:AquaticResourceObservation",
+  "class_count": 16,
+  "property_count": 29
+}

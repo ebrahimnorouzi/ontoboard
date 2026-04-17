@@ -1,0 +1,14 @@
+{
+  "id": "bag",
+  "name": "Bag Pattern",
+  "description": "To model bags of items (elements). The Bag is characterized by a collection that can have multiple copies of each object.",
+  "category": "structural",
+  "domain": "general",
+  "scenarios": "",
+  "competency_questions": "What bag is this item an element of?; What is the size of this bag?; What resource does this item refer to?; What are the items contained in this bag?",
+  "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/bag.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:Bag",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:Bag",
+  "class_count": 2,
+  "property_count": 4
+}

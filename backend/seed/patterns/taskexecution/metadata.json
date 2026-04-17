@@ -1,0 +1,14 @@
+{
+  "id": "taskexecution",
+  "name": "Taskexecution Pattern",
+  "description": "To represent actions through which tasks are executed.",
+  "category": "behavioral",
+  "domain": "general",
+  "scenarios": "She smiled at us, so obtaining the effect of making us feeling positive.",
+  "competency_questions": "which task is executed through this action? \nwhat actions can done in order to execute that task?",
+  "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/taskexecution.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:TaskExecution",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:TaskExecution",
+  "class_count": 9,
+  "property_count": 5
+}

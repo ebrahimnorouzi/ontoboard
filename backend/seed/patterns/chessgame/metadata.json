@@ -1,0 +1,14 @@
+{
+  "id": "chessgame",
+  "name": "Chessgame Pattern",
+  "description": "To model a flexible schema to allow exposing chess games as linked data.",
+  "category": "structural",
+  "domain": "games",
+  "scenarios": "Exposing chess games as linked data",
+  "competency_questions": "Who played against Kasparov in the round 1994 Linares tournament? Did (s)he play as a white or black player?; What is the first move taken by black player in the Sicilian Defence opening?; List all moves in a Fools Mate game where black wins after 2 moves by both players?; What did Kasparov say about his opponent first two moves in his commentary about his game against Topalov in 1999 Tournament in Wijk aan Zee?",
+  "pattern_iri": "http://purl.org/NET/rdfchess/ontology/",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:ChessGame",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:ChessGame",
+  "class_count": 18,
+  "property_count": 22
+}

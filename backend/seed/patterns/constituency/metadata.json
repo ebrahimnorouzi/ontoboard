@@ -1,0 +1,14 @@
+{
+  "id": "constituency",
+  "name": "Constituency Pattern",
+  "description": "The constituency pattern. It is extracted from DOLCE-UltraLite by partial clone of elements.",
+  "category": "structural",
+  "domain": "general",
+  "scenarios": "",
+  "competency_questions": "",
+  "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/constituency.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:Constituency",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:Constituency",
+  "class_count": 1,
+  "property_count": 2
+}

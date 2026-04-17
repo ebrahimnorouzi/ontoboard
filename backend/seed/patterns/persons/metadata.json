@@ -1,0 +1,14 @@
+{
+  "id": "persons",
+  "name": "Persons Pattern",
+  "description": "Diagram (this article has no graphical representation)",
+  "category": "information",
+  "domain": "social",
+  "scenarios": "",
+  "competency_questions": "",
+  "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/persons.owl",
+  "source": "https://ontologydesignpatterns.org/wiki/Submissions:Persons",
+  "references": "https://ontologydesignpatterns.org/wiki/Submissions:Persons",
+  "class_count": 6,
+  "property_count": 4
+}
