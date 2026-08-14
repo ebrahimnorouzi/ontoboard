@@ -32,7 +32,8 @@ Protégé hosts the ontology-engineering core natively and better. ROBOT ships a
 
 | # | Decision | Rationale |
 |---|---|---|
-| D1 | Protégé Desktop 5.6 plugin, not a Miro app | §1 |
+| D1 | Protégé Desktop plugin, not a Miro app | §1 |
+| D1a | Target the **5.5.0 floor**, forward-compatible with 5.6.x | The available install is 5.5.0; §9a proves the stack works there |
 | D2 | Native Swing canvas on JGraphX | Cytoscape.js is browser-only; no embedded browser |
 | D3 | Single-user. No server, no collaboration | User decision |
 | D4 | Layout in a sidecar JSON file | Keeps the ontology byte-clean |
@@ -264,16 +265,45 @@ Versions verified present on Maven Central on 2026-08-14.
 
 | Artifact | Version | Note |
 |---|---|---|
-| `edu.stanford.protege:protege-editor-owl` | 5.6.6 | `provided`; OWL API arrives transitively |
-| `org.obolibrary.robot:robot-core` | 1.9.8 | Embedded; brings Jena ARQ, OWL API, Jackson |
+| `edu.stanford.protege:protege-editor-owl` | 5.5.0 | `provided`; imported as `version="5.5.0"`, which OSGi reads as `[5.5.0, ∞)` |
+| `org.obolibrary.robot:robot-core` | 1.9.8 | Embedded; **forced onto OWL API 4.5.9** via `dependencyManagement` |
+| `net.sourceforge.owlapi:owlapi-*` | 4.5.9 | Pinned to match the host; supplied by Protégé at runtime |
 | `com.github.vlsi.mxgraph:jgraphx` | 4.2.2 | Embedded; published **with OSGi manifest entries** |
 
-**Do not declare JGit, Jackson, or SnakeYAML.** `protege-editor-owl:5.6.6` already depends on
-`org.eclipse.jgit`, `jackson-core`, `jackson-annotations`, `jackson-databind`,
-`jackson-datatype-guava`, `jackson-dataformat-yaml`, `jackson-dataformat-csv`, and
-`snakeyaml:1.33`. Declaring our own versions risks OSGi resolution conflicts. GitHub
-import (§7.2) uses Protégé's JGit; the sidecar store (§6) and ODK YAML config (Plan 3)
-use Protégé's Jackson.
+**Compile to Java 8 bytecode.** Protégé 5.5.0 ships a Java 8 JRE (`1.8.0_121`); a Java 11
+plugin fails to load with `UnsupportedClassVersionError`. Java 8 bytecode also runs
+unchanged on 5.6.x, so this single target covers both. The *build* toolchain may be any
+JDK 11+ with `<source>8</source><target>8</target>`.
+
+### 9a. Verified: robot-core runs on the host's OWL API
+
+`robot-core:1.9.8` *declares* OWL API 4.5.29, but Protégé 5.5.0 ships 4.5.9. Forcing the
+downgrade was tested before any plugin code was written:
+
+```
+owlapi   : owlapi-api-4.5.9.jar
+robotcore: robot-core-1.9.8.jar
+  IOHelper.loadOntology         -> 2 classes
+  ReasonOperation.reason (ELK)  -> 4 axioms (inference materialised)
+  ReportOperation               -> links cleanly
+  IOHelper.saveOntology         -> 1213 bytes
+RESULT: robot-core 1.9.8 WORKS on OWL API 4.5.9
+```
+
+Dependencies resolve cleanly with every `owlapi-*` artifact at 4.5.9, compiled at Java 8.
+This retires the top risk in §13 and validates the in-process ROBOT premise behind §7.1.
+
+**Do not declare JGit.** The installed host has `org.eclipse.jgit.jar` as its own exported
+OSGi bundle, so GitHub import (§7.2) imports it rather than shipping a copy.
+
+**Jackson must be embedded, not imported.** Although `protege-editor-owl` depends on
+`jackson-core`, `jackson-annotations`, `jackson-databind`, `jackson-dataformat-yaml` and
+`snakeyaml`, it declares them `provided` and inlines them into its own bundle — the
+installed jar contains 849 Jackson class files and **exports none of them**, with no
+standalone Jackson bundle in `bundles/`. Jackson therefore reaches this plugin only as a
+transitive dependency of the embedded `robot-core`, making `Embed-Transitive` load-bearing
+for the sidecar store (§6) and ODK YAML config. Note also that 5.5.0 provides no
+`jackson-dataformat-csv`; the CSV wizard (§7.2) must not assume it.
 
 **Widoco is not a Maven dependency.** It is not published to Maven Central; it is
 distributed only as a 39 MB fat JAR per JDK line from GitHub releases (Apache-2.0,
@@ -366,8 +396,11 @@ this brings the ODK/ROBOT release pipeline into Protégé.
 | Risk | Mitigation |
 |---|---|
 | JGraphX is end-of-life | BSD, stable, OSGi-published, two shipping plugins depend on it (§9) |
-| OSGi classpath conflicts between `robot-core` and Protégé's OWL API | Both target the same OWL API line; pin versions and resolve at phase 1, before feature work |
+| ~~OSGi classpath conflicts between `robot-core` and Protégé's OWL API~~ | **Retired.** Verified working at OWL API 4.5.9 / Java 8 before implementation (§9a) |
 | `robot-core` embedded fat-bundle size | Acceptable for a desktop plugin; measure at phase 1 |
+| Host heap is capped at `-Xmx500M` in `Protege.l4j.ini` | ROBOT reasoning and reports need multiple GB. Raise to at least `-Xmx4G` before phase 4; detect low heap and warn |
+| Protégé 5.5.0 runs on Java 8 and has produced an `awt.dll` access-violation crash | Build the canvas on plain Swing/JGraphX with no native rendering; keep 5.6.x forward compatibility (§9) so upgrading is always available as an escape |
+| Duplicate `singleton:=true` bundles in the host `plugins/` directory (CoModIDE 1.1.1 + 1.1.2, Cellfie 2.2.3 + 2.2.4, SWRLTab 2.1.2 + 2.1.3, shacl4protege 1.1.0 + 1.2.0) | Deduplicate before testing; a duplicate singleton can prevent *our* bundle resolving and is a plausible cause of the crash above |
 | ODK `make` targets need `make` and ODK on the user's PATH | Detect and report clearly; scaffold generation works without them |
 | Widoco is a 39 MB external JAR, not a Maven artifact | Optional external tool with on-demand download (§9); every other feature works without it |
 | Canvas performance on large diagrams | Opt-in membership (§5.3) caps on-canvas entities by construction |

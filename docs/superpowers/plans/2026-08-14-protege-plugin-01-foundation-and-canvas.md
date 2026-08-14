@@ -6,7 +6,9 @@
 
 **Architecture:** The canvas is a *view over Protégé's model*, never a parallel model. `OntologyProjection` turns an `OWLOntology` plus a set of on-canvas IRIs into plain node/edge value objects; `SchemaGraph` renders those through JGraphX; `CanvasLayoutStore` persists presentation state to a JSON sidecar beside the ontology file. This plan builds the read/display/layout half — no axiom mutation, which is Plan 2.
 
-**Tech Stack:** Java 11, Maven, Apache Felix `maven-bundle-plugin` (OSGi), `protege-editor-owl:5.6.6`, `jgraphx:4.2.2`, `robot-core:1.9.8`, OWL API 4.5.x, JUnit 5.
+**Tech Stack:** Java 8 bytecode (built with JDK 11), Maven, Apache Felix `maven-bundle-plugin` (OSGi), `protege-editor-owl:5.5.0`, `jgraphx:4.2.2`, `robot-core:1.9.8` forced onto OWL API 4.5.9, JUnit 5.
+
+**Target host:** `C:\Users\eno\Documents\Protege-5.5.0` — Protégé 5.5.0, OWL API 4.5.9, bundled JRE 1.8.0_121.
 
 **Spec:** [`docs/superpowers/specs/2026-08-14-ontoboard-protege-plugin-design.md`](../specs/2026-08-14-ontoboard-protege-plugin-design.md)
 
@@ -25,11 +27,14 @@ This spec is decomposed into six plans. Each produces working software.
 
 ## Global Constraints
 
-- **Java 11 bytecode.** Protégé 5.6 requires Java 11+; do not use records, `var` in APIs, or any 12+ feature.
-- **OWL API 4.5.x collection idioms**, not OWL API 5 streams. `ontology.getAxioms(AxiomType.X)` returns a `Set`.
+- **Java 8 bytecode — `<source>8</source><target>8</target>`.** The target host's bundled JRE is `1.8.0_121`; a Java 11 class file fails to load with `UnsupportedClassVersionError`. Build with any JDK 11+, but emit Java 8. **No** `var`, records, `List.of`, `Optional.isEmpty()`, text blocks, or any 9+ API. Java 8 bytecode also runs on Protégé 5.6.x, which is how one artifact covers both.
+- **OWL API 4.5.9 collection idioms**, not OWL API 5 streams. `ontology.getAxioms(AxiomType.X)` returns a `Set`. Do not use APIs added after 4.5.9.
 - **Package root:** `de.fizkarlsruhe.ise.ontoboard`.
-- **Maven coordinates (verified on Maven Central 2026-08-14):** `edu.stanford.protege:protege-editor-owl:5.6.6`, `com.github.vlsi.mxgraph:jgraphx:4.2.2`, `org.obolibrary.robot:robot-core:1.9.8`.
-- **Do not declare JGit or Jackson.** Protégé 5.6.6 already provides `org.eclipse.jgit`, `jackson-core`, `jackson-annotations`, `jackson-databind`, `jackson-dataformat-yaml`, `jackson-dataformat-csv`, and `snakeyaml`. Declaring our own versions risks OSGi conflicts. *(This corrects spec §9, which pinned a JGit version.)*
+- **Maven coordinates (verified on Maven Central 2026-08-14):** `edu.stanford.protege:protege-editor-owl:5.5.0`, `com.github.vlsi.mxgraph:jgraphx:4.2.2`, `org.obolibrary.robot:robot-core:1.9.8` with every `net.sourceforge.owlapi:owlapi-*` pinned to `4.5.9` through `dependencyManagement`.
+- **Import Protégé packages as `version="5.5.0"`**, which OSGi reads as `[5.5.0, ∞)`, keeping the bundle loadable on 5.6.x.
+- **Deployment target for every in-Protégé verification step:** `C:\Users\eno\Documents\Protege-5.5.0\plugins\`.
+- **Do not declare JGit.** The host runtime has `org.eclipse.jgit.jar` as its own exported OSGi bundle, so it is importable. Declaring our own version risks a conflict.
+- **Jackson must be embedded, not imported.** Verified against the installed host: `protege-editor-owl.jar` inlines 849 Jackson class files but its manifest **exports none of them**, and no standalone Jackson bundle exists in `bundles/`. Our bundle therefore cannot `Import-Package com.fasterxml.jackson.*`. It arrives instead as a transitive dependency of `robot-core` (databind 2.11.3, core/annotations/yaml 2.12.2), which is why **`<Embed-Transitive>true</Embed-Transitive>` is load-bearing, not incidental** — removing it breaks the Task 3 sidecar store at runtime with `NoClassDefFoundError`, not at compile time. Task 3 includes a test that catches this.
 - **Never set `Bundle-ClassPath` manually.** `Embed-Dependency` manages it; hardcoding `.` breaks embedding.
 - **Sidecar naming:** append to the full ontology file name — `myont-edit.owl` → `myont-edit.owl.ontoboard.json`. *(Clarifies spec §6, which was ambiguous between appending and replacing the extension. Appending avoids collisions when `foo.owl` and `foo.ttl` coexist.)*
 - **The canvas never deletes axioms.** Removing a node from the canvas is a view operation only (spec §5.3).
@@ -135,12 +140,51 @@ Expected: FAIL — no `pom.xml` yet, so Maven cannot even start. That is the exp
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <maven.compiler.source>11</maven.compiler.source>
-    <maven.compiler.target>11</maven.compiler.target>
-    <protege.version>5.6.6</protege.version>
+    <!-- The target host bundles a Java 8 JRE. Java 8 bytecode also runs on Protege 5.6.x. -->
+    <maven.compiler.source>8</maven.compiler.source>
+    <maven.compiler.target>8</maven.compiler.target>
+    <protege.version>5.5.0</protege.version>
+    <owlapi.version>4.5.9</owlapi.version>
     <jgraphx.version>4.2.2</jgraphx.version>
     <junit.version>5.10.2</junit.version>
   </properties>
+
+  <dependencyManagement>
+    <!-- Protege 5.5.0 ships owlapi 4.5.9. robot-core declares 4.5.29; force it down so
+         there is exactly one OWL API. Verified working - see spec section 9a. -->
+    <dependencies>
+      <dependency>
+        <groupId>net.sourceforge.owlapi</groupId>
+        <artifactId>owlapi-api</artifactId>
+        <version>${owlapi.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>net.sourceforge.owlapi</groupId>
+        <artifactId>owlapi-apibinding</artifactId>
+        <version>${owlapi.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>net.sourceforge.owlapi</groupId>
+        <artifactId>owlapi-impl</artifactId>
+        <version>${owlapi.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>net.sourceforge.owlapi</groupId>
+        <artifactId>owlapi-parsers</artifactId>
+        <version>${owlapi.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>net.sourceforge.owlapi</groupId>
+        <artifactId>owlapi-rio</artifactId>
+        <version>${owlapi.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>net.sourceforge.owlapi</groupId>
+        <artifactId>owlapi-distribution</artifactId>
+        <version>${owlapi.version}</version>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
 
   <dependencies>
     <!-- provided: supplied by the Protege runtime, never embedded.
@@ -201,9 +245,10 @@ Expected: FAIL — no `pom.xml` yet, so Maven cannot even start. That is the exp
             <!-- Do NOT set Bundle-ClassPath; Embed-Dependency manages it. -->
             <Embed-Dependency>jgraphx</Embed-Dependency>
             <Embed-Transitive>true</Embed-Transitive>
+            <!-- version="5.5.0" means [5.5.0, infinity), so this also loads on 5.6.x -->
             <Import-Package>
-              org.protege.editor.owl.*;version="5.6.0",
-              org.protege.editor.core.*;version="5.6.0",
+              org.protege.editor.owl.*;version="5.5.0",
+              org.protege.editor.core.*;version="5.5.0",
               org.semanticweb.owlapi.*,
               org.slf4j.*,
               *
@@ -295,12 +340,12 @@ Expected: PASS, 2 tests.
 
 ```bash
 cd protege-plugin && mvn -q clean package
-cp target/ontoboard-2.0.0-SNAPSHOT.jar "$PROTEGE_HOME/plugins/"
+cp target/ontoboard-2.0.0-SNAPSHOT.jar "/c/Users/eno/Documents/Protege-5.5.0/plugins/"
 ```
 
 Start Protégé, open any ontology, and check **Window → Tabs → OntoBoard**. Expected: the tab exists and shows the class hierarchy beside a panel reading "OntoBoard schema canvas".
 
-If the tab is absent, read `$PROTEGE_HOME/logs/` — an OSGi resolution failure names the unsatisfied import.
+If the tab is absent, read `/c/Users/eno/Documents/Protege-5.5.0/logs/` — an OSGi resolution failure names the unsatisfied import.
 
 - [ ] **Step 6: Commit**
 
@@ -311,9 +356,9 @@ git commit -m "feat(plugin): Maven/OSGi skeleton with a loading Protege tab"
 
 ---
 
-### Task 2: Prove robot-core and Protégé's OWL API coexist
+### Task 2: Lock in robot-core on OWL API 4.5.9
 
-Spec §13 flags this as the top technical risk and requires resolving it before feature work. `robot-core:1.9.8` declares OWL API **4.5.29**; Protégé supplies its own. If they diverge irreconcilably, the in-process ROBOT approach fails and the spec needs revisiting — so find out now, while there is nothing to throw away.
+`robot-core:1.9.8` declares OWL API 4.5.29; Protégé 5.5.0 ships 4.5.9. Spec §9a records that the forced downgrade was **already proven to work** — load, ELK reasoning, report linkage and save all succeeded at Java 8. This task is therefore not a discovery gate: it wires that proven configuration into the build and leaves a regression test so a future dependency bump cannot silently break it.
 
 **Files:**
 - Modify: `protege-plugin/pom.xml` (add `robot-core`)
@@ -355,31 +400,46 @@ ex:alice a owl:NamedIndividual, ex:Person .
 package de.fizkarlsruhe.ise.ontoboard;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
 import org.junit.jupiter.api.Test;
 import org.obolibrary.robot.IOHelper;
+import org.obolibrary.robot.ReasonOperation;
 import org.semanticweb.owlapi.apibinding.OWLManager;
 import org.semanticweb.owlapi.model.OWLOntology;
+import org.semanticweb.owlapi.reasoner.OWLReasonerFactory;
 
 class RobotCoreInteropTest {
 
     private static final File FIXTURE = new File("src/test/resources/fixture-tiny.ttl");
 
-    /** The whole in-process ROBOT approach depends on there being exactly one OWL API. */
+    /**
+     * The host ships OWL API 4.5.9; robot-core declares 4.5.29. The dependencyManagement
+     * block forces the downgrade. If a future bump lets 4.5.29 back in, the plugin would
+     * compile here and then fail inside Protege - so pin the expectation.
+     */
     @Test
-    void robotCoreAndOwlApiBindingShareOneOWLOntologyType() throws Exception {
-        OWLOntology viaRobot = new IOHelper().loadOntology(FIXTURE);
-        OWLOntology viaOwlApi = OWLManager.createOWLOntologyManager()
-                .loadOntologyFromOntologyDocument(FIXTURE);
+    void owlApiIsPinnedToTheVersionTheHostShips() throws Exception {
+        String owlApiJar = new File(OWLOntology.class.getProtectionDomain()
+                .getCodeSource().getLocation().toURI()).getName();
+        assertTrue(owlApiJar.contains("4.5.9"),
+                "expected OWL API 4.5.9 to match Protege 5.5.0, but resolved " + owlApiJar);
+    }
 
-        assertSame(OWLOntology.class, viaRobot.getClass().getInterfaces().length > 0
-                        ? OWLOntology.class : null,
-                "sanity: OWLOntology type resolvable");
-        assertSame(viaRobot.getOWLOntologyManager().getOWLDataFactory().getClass().getClassLoader(),
-                viaOwlApi.getOWLOntologyManager().getOWLDataFactory().getClass().getClassLoader(),
-                "robot-core and the OWL API binding resolved to different classloaders");
+    /** Reasoning is the most OWL-API-intensive ROBOT operation, so exercise it directly. */
+    @Test
+    void robotCoreCanReasonAgainstTheHostsOwlApi() throws Exception {
+        OWLOntology ontology = new IOHelper().loadOntology(FIXTURE);
+        int before = ontology.getAxiomCount();
+
+        OWLReasonerFactory factory = (OWLReasonerFactory)
+                Class.forName("org.semanticweb.elk.owlapi.ElkReasonerFactory")
+                        .getDeclaredConstructor().newInstance();
+        ReasonOperation.reason(ontology, factory);
+
+        assertTrue(ontology.getAxiomCount() > before,
+                "ELK should have materialised at least one inferred axiom");
     }
 
     @Test
@@ -424,21 +484,20 @@ Then inspect what actually resolved:
 cd protege-plugin && mvn -q dependency:tree -Dincludes=net.sourceforge.owlapi
 ```
 
-Record the result. **Decision point:**
-- *One OWL API version resolves* → proceed to Step 5.
-- *Two versions appear (one from Protégé, one from robot-core)* → add an `<exclusions>` block on the `robot-core` dependency excluding `net.sourceforge.owlapi:owlapi-distribution`, `owlapi-api`, `owlapi-apibinding`, and `owlapi-rio`, so robot-core compiles against Protégé's OWL API. Re-run and confirm a single version.
-- *Excluding breaks compilation because the versions are incompatible* → **stop and report.** This invalidates spec §7.1's in-process ROBOT assumption and the spec must be revisited before any further work.
+**Expected:** every `net.sourceforge.owlapi:owlapi-*` line reads `4.5.9`, matching the host. The `dependencyManagement` block added in Task 1 is what forces this.
+
+If any artifact still resolves to 4.5.29, the `dependencyManagement` entry for it is missing — add it rather than adding an `<exclusions>` block, so the artifact stays on the classpath at the host's version.
 
 - [ ] **Step 5: Run tests to verify they pass**
 
 Run: `cd protege-plugin && mvn -q test`
-Expected: PASS, 4 tests.
+Expected: PASS, 5 tests.
 
 - [ ] **Step 6: Verify the packaged bundle still resolves in Protégé**
 
 ```bash
 cd protege-plugin && mvn -q clean package && ls -lh target/ontoboard-2.0.0-SNAPSHOT.jar
-cp target/ontoboard-2.0.0-SNAPSHOT.jar "$PROTEGE_HOME/plugins/"
+cp target/ontoboard-2.0.0-SNAPSHOT.jar "/c/Users/eno/Documents/Protege-5.5.0/plugins/"
 ```
 
 Start Protégé and confirm the OntoBoard tab still appears. Record the JAR size — spec §13 asks for this measurement, and it decides whether `patterns-repository/` ships inside the JAR (spec §14).
@@ -463,7 +522,7 @@ Pure logic, no UI. Implements spec §6.
 - Test: `protege-plugin/src/test/java/de/fizkarlsruhe/ise/ontoboard/layout/CanvasLayoutStoreTest.java`
 
 **Interfaces:**
-- Consumes: Jackson `ObjectMapper` (provided transitively by Protégé — do not declare it).
+- Consumes: Jackson `ObjectMapper`, reaching the bundle *embedded* via `robot-core` (see Global Constraints — it is not importable from Protégé).
 - Produces:
   - `CanvasLayout` with public mutable fields `version:int`, `ontologyIri:String`, `onCanvas:List<String>`, `nodes:Map<String,CanvasLayout.NodeLayout>`, `frames:List<CanvasLayout.FrameLayout>`, `notes:List<CanvasLayout.NoteLayout>`, `prefixColors:Map<String,String>`; constant `CanvasLayout.CURRENT_VERSION == 1`.
   - `CanvasLayout.NodeLayout` with public `double x, y, w, h` and constructors `NodeLayout()` and `NodeLayout(double x, double y)`.
@@ -523,6 +582,17 @@ class CanvasLayoutStoreTest {
         assertEquals(120.0, reloaded.nodes.get("http://example.org/tiny#Person").x);
         assertEquals(40.0, reloaded.nodes.get("http://example.org/tiny#Person").y);
         assertEquals("#4A90D9", reloaded.prefixColors.get("ex"));
+    }
+
+    /**
+     * Jackson is embedded via robot-core, not imported from Protege (see Global
+     * Constraints). If Embed-Transitive is ever dropped, this fails with
+     * NoClassDefFoundError rather than the sidecar silently breaking at runtime.
+     */
+    @Test
+    void jacksonIsActuallyReachableOnTheClasspath() {
+        assertEquals("com.fasterxml.jackson.databind.ObjectMapper",
+                com.fasterxml.jackson.databind.ObjectMapper.class.getName());
     }
 
     @Test
@@ -692,7 +762,7 @@ public final class CanvasLayoutStore {
 - [ ] **Step 4: Run tests to verify they pass**
 
 Run: `cd protege-plugin && mvn -q test`
-Expected: PASS, 8 tests.
+Expected: PASS, 10 tests.
 
 - [ ] **Step 5: Commit**
 
@@ -1153,7 +1223,7 @@ public final class OntologyProjection {
 - [ ] **Step 5: Run tests to verify they pass**
 
 Run: `cd protege-plugin && mvn -q test`
-Expected: PASS, 13 tests.
+Expected: PASS, 15 tests.
 
 Note: `projectsClassAssertionAsATypeEdge` expects exactly one edge because `owl:NamedIndividual` is a built-in, not a projected class, and `Organization` is off-canvas in that case.
 
@@ -1437,7 +1507,7 @@ public class SchemaGraph extends mxGraph {
 - [ ] **Step 5: Run tests to verify they pass**
 
 Run: `cd protege-plugin && mvn -q test`
-Expected: PASS, 17 tests.
+Expected: PASS, 19 tests.
 
 - [ ] **Step 6: Wire the graph into the view**
 
@@ -1517,7 +1587,7 @@ Note: `OWLOntologyChangeListener` is a functional interface taking `List<? exten
 
 ```bash
 cd protege-plugin && mvn -q clean package
-cp target/ontoboard-2.0.0-SNAPSHOT.jar "$PROTEGE_HOME/plugins/"
+cp target/ontoboard-2.0.0-SNAPSHOT.jar "/c/Users/eno/Documents/Protege-5.5.0/plugins/"
 ```
 
 Open `../mwo301.ttl` in Protégé and switch to the OntoBoard tab. Expected: up to 25 class boxes with dashed SubClassOf arrows between those that are both shown. Adding a subclass in Protégé's class hierarchy must make the canvas redraw immediately — that is the §4.1 live-model binding working.
@@ -1762,7 +1832,7 @@ public class CanvasMembership {
 - [ ] **Step 4: Run tests to verify they pass**
 
 Run: `cd protege-plugin && mvn -q test`
-Expected: PASS, 22 tests.
+Expected: PASS, 24 tests.
 
 - [ ] **Step 5: Wire membership, persistence and a context menu into the view**
 
@@ -1918,7 +1988,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
 
 ```bash
 cd protege-plugin && mvn -q clean package
-cp target/ontoboard-2.0.0-SNAPSHOT.jar "$PROTEGE_HOME/plugins/"
+cp target/ontoboard-2.0.0-SNAPSHOT.jar "/c/Users/eno/Documents/Protege-5.5.0/plugins/"
 ```
 
 Open `../mwo301.ttl`. Expected: the canvas starts **empty**. Select a class in the hierarchy, right-click the canvas, "Add selected entity to canvas" — it appears. Right-click it, "Expand neighbours (1 hop)" — related entities appear. Drag nodes, close Protégé, reopen: positions are restored and `mwo301.ttl.ontoboard.json` exists beside the ontology.
@@ -2096,7 +2166,7 @@ public class SelectionBridge {
 - [ ] **Step 4: Run tests to verify they pass**
 
 Run: `cd protege-plugin && mvn -q test`
-Expected: PASS, 25 tests.
+Expected: PASS, 27 tests.
 
 - [ ] **Step 5: Wire the bridge into the view**
 
@@ -2436,7 +2506,7 @@ public final class CanvasExport {
 - [ ] **Step 5: Run tests to verify they pass**
 
 Run: `cd protege-plugin && mvn -q test`
-Expected: PASS, 31 tests.
+Expected: PASS, 33 tests.
 
 If `writesSvgContainingTheNodeLabel` fails because JGraphX emits labels as `<text>` children rendered differently, relax the assertion to `content.contains("<svg")` only and open a follow-up — do not weaken the PNG test.
 
@@ -2537,7 +2607,7 @@ git commit -m "feat(canvas): layout algorithms, minimap and PNG/SVG export"
 
 Plan 1 is complete when:
 
-- `mvn clean package` in `protege-plugin/` produces an OSGi bundle with 31 passing tests.
+- `mvn clean package` in `protege-plugin/` produces an OSGi bundle with 33 passing tests.
 - Dropping the JAR into Protégé's `plugins/` gives a working **OntoBoard** tab.
 - The canvas starts empty, grows by explicit add and one-hop expansion, and never deletes axioms.
 - Node positions survive a Protégé restart via `<ontology>.ontoboard.json`.
@@ -2551,6 +2621,11 @@ Plan 1 is complete when:
 Recorded during authoring, per the writing-plans self-review:
 
 1. **Spec coverage.** Plan 1 covers spec §4.1 (Task 5–6), §4.2 partially (Schema Canvas view only; Pattern Library, Pipeline Console and Quality views belong to Plans 3–5), §5.1 and the read half of §5.2 (Task 4), §5.3 (Task 6), §6 (Tasks 3, 6), §9 (Tasks 1–2), §13's top risk (Task 2), and the canvas rows of §7.2 (Tasks 5, 8). The write half of §5.2 — edge drawing, default axioms and the Generate Axioms dialog — is deliberately Plan 2, as is frames/sticky notes.
-2. **Two spec corrections made.** JGit must not be declared (Protégé 5.6.6 already provides it), correcting spec §9. Sidecar naming appends to the full file name, resolving an ambiguity in spec §6. Both are recorded in Global Constraints and should be folded back into the spec.
+2. **Five spec corrections made**, all folded back into the spec and recorded in Global Constraints:
+   - Target is the **Protégé 5.5.0 floor**, not 5.6.6 — that is the only install available. Import as `version="5.5.0"` to stay loadable on 5.6.x.
+   - **Java 8 bytecode**, not Java 11. The host's bundled JRE is `1.8.0_121`; Java 11 class files would have failed at Task 1 Step 5 with `UnsupportedClassVersionError`.
+   - **OWL API pinned to 4.5.9** via `dependencyManagement`, matching the host rather than robot-core's declared 4.5.29. Verified working before implementation (spec §9a), which retires spec §13's top risk.
+   - **JGit is importable** (its own exported bundle in the host runtime), but **Jackson is not** — `protege-editor-owl.jar` inlines 849 Jackson classes and exports none. Jackson arrives embedded via `robot-core`, making `Embed-Transitive` load-bearing.
+   - Sidecar naming appends to the full file name, resolving an ambiguity in spec §6.
 3. **Type consistency.** `CanvasLayout.NodeLayout` fields `x/y/w/h` are used identically in Tasks 3, 5, 6 and 8. `SchemaGraph.getCellForId`/`getIdForCell` keep the same signatures across Tasks 5–8. `CanvasLayouts.Algorithm` has four constants used consistently in the test, the switch, and the toolbar.
 4. **Known soft spot.** `RobotCoreInteropTest.robotCoreAndOwlApiBindingShareOneOWLOntologyType` asserts on classloader identity, which is a weaker signal than a true OSGi resolution check. The authoritative verification is the `mvn dependency:tree` inspection in Task 2 Step 4 plus the in-Protégé check in Step 6; the test guards against regression only.
