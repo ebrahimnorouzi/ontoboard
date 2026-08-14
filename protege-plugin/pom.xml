@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>de.fizkarlsruhe.ise</groupId>
+  <artifactId>ontoboard</artifactId>
+  <version>2.0.0-SNAPSHOT</version>
+  <packaging>bundle</packaging>
+
+  <name>OntoBoard</name>
+  <description>Visual ontology engineering and ODK/ROBOT pipeline tooling for Protege Desktop</description>
+
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <!-- The target host bundles a Java 8 JRE. Java 8 bytecode also runs on Protege 5.6.x. -->
+    <maven.compiler.source>8</maven.compiler.source>
+    <maven.compiler.target>8</maven.compiler.target>
+    <protege.version>5.5.0</protege.version>
+    <owlapi.version>4.5.9</owlapi.version>
+    <jgraphx.version>4.2.2</jgraphx.version>
+    <junit.version>5.10.2</junit.version>
+  </properties>
+
+  <dependencyManagement>
+    <!-- Protege 5.5.0 ships owlapi 4.5.9. robot-core declares 4.5.29; force it down so
+         there is exactly one OWL API. Verified working - see spec section 9a. -->
+    <dependencies>
+      <dependency>
+        <groupId>net.sourceforge.owlapi</groupId>
+        <artifactId>owlapi-api</artifactId>
+        <version>${owlapi.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>net.sourceforge.owlapi</groupId>
+        <artifactId>owlapi-apibinding</artifactId>
+        <version>${owlapi.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>net.sourceforge.owlapi</groupId>
+        <artifactId>owlapi-impl</artifactId>
+        <version>${owlapi.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>net.sourceforge.owlapi</groupId>
+        <artifactId>owlapi-parsers</artifactId>
+        <version>${owlapi.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>net.sourceforge.owlapi</groupId>
+        <artifactId>owlapi-rio</artifactId>
+        <version>${owlapi.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>net.sourceforge.owlapi</groupId>
+        <artifactId>owlapi-distribution</artifactId>
+        <version>${owlapi.version}</version>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
+  <dependencies>
+    <!-- provided: supplied by the Protege runtime, never embedded.
+         Also brings the OWL API, Jackson, JGit and SLF4J transitively. -->
+    <dependency>
+      <groupId>edu.stanford.protege</groupId>
+      <artifactId>protege-editor-owl</artifactId>
+      <version>${protege.version}</version>
+      <scope>provided</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>com.github.vlsi.mxgraph</groupId>
+      <artifactId>jgraphx</artifactId>
+      <version>${jgraphx.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <version>${junit.version}</version>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <resources>
+      <resource>
+        <!-- filtering resolves ${project.artifactId} inside plugin.xml and view configs -->
+        <directory>src/main/resources</directory>
+        <filtering>true</filtering>
+      </resource>
+    </resources>
+
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.13.0</version>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>3.2.5</version>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.felix</groupId>
+        <artifactId>maven-bundle-plugin</artifactId>
+        <version>5.1.9</version>
+        <extensions>true</extensions>
+        <configuration>
+          <instructions>
+            <Bundle-Activator>org.protege.editor.owl.ProtegeOWL</Bundle-Activator>
+            <Bundle-SymbolicName>${project.artifactId};singleton:=true</Bundle-SymbolicName>
+            <Bundle-Vendor>ISE / FIZ Karlsruhe</Bundle-Vendor>
+            <!-- Do NOT set Bundle-ClassPath; Embed-Dependency manages it. -->
+            <Embed-Dependency>jgraphx</Embed-Dependency>
+            <Embed-Transitive>true</Embed-Transitive>
+            <!-- version="5.5.0" means [5.5.0, infinity), so this also loads on 5.6.x -->
+            <Import-Package>
+              org.protege.editor.owl.*;version="5.5.0",
+              org.protege.editor.core.*;version="5.5.0",
+              org.semanticweb.owlapi.*,
+              org.slf4j.*,
+              *
+            </Import-Package>
+          </instructions>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+</project>
