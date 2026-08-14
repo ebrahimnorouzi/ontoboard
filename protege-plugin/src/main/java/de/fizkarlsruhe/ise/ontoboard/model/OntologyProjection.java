@@ -1,6 +1,7 @@
 package de.fizkarlsruhe.ise.ontoboard.model;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import org.semanticweb.owlapi.model.AxiomType;
@@ -49,15 +50,28 @@ public final class OntologyProjection {
         return new Projection(nodes, edges);
     }
 
+    /** Thin caller: production code always scans every SubClassOf axiom in the ontology. */
+    private static void collectSubClassEdges(OWLOntology ontology, Set<String> on,
+            List<CanvasNode> nodes, List<CanvasEdge> edges) {
+        collectSubClassEdges(ontology.getAxioms(AxiomType.SUBCLASS_OF), on, nodes, edges);
+    }
+
     /**
      * SubClassOf(A B) and SubClassOf(A ObjectSomeValuesFrom(R B)) / ObjectAllValuesFrom. Also
      * SubClassOf(A DataSomeValuesFrom(R D)) for a plain datatype D, which additionally
      * projects a DATATYPE node for D (never gated on canvas membership: a datatype is a leaf
      * pulled in by showing the class, not a first-class canvas citizen).
+     *
+     * <p>Package-private (rather than the private the rest of this class uses) so tests can
+     * pass an explicit, ordered {@link Collection} of axioms and pin an exact iteration order.
+     * {@link OWLOntology#getAxioms(org.semanticweb.owlapi.model.AxiomType)} returns an
+     * unordered {@code Set} whose real iteration order is an implementation detail of
+     * owlapi-impl's internal hash map - not something a test should depend on to reproduce a
+     * specific code path.
      */
-    private static void collectSubClassEdges(OWLOntology ontology, Set<String> on,
+    static void collectSubClassEdges(Collection<OWLSubClassOfAxiom> axioms, Set<String> on,
             List<CanvasNode> nodes, List<CanvasEdge> edges) {
-        for (OWLSubClassOfAxiom axiom : ontology.getAxioms(AxiomType.SUBCLASS_OF)) {
+        for (OWLSubClassOfAxiom axiom : axioms) {
             if (axiom.getSubClass().isAnonymous()) {
                 continue;
             }

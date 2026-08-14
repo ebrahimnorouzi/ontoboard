@@ -4,14 +4,26 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.semanticweb.owlapi.apibinding.OWLManager;
+import org.semanticweb.owlapi.model.IRI;
+import org.semanticweb.owlapi.model.OWLClass;
+import org.semanticweb.owlapi.model.OWLDataFactory;
+import org.semanticweb.owlapi.model.OWLDataProperty;
+import org.semanticweb.owlapi.model.OWLDataSomeValuesFrom;
+import org.semanticweb.owlapi.model.OWLDatatypeRestriction;
+import org.semanticweb.owlapi.model.OWLFacetRestriction;
 import org.semanticweb.owlapi.model.OWLOntology;
+import org.semanticweb.owlapi.model.OWLSubClassOfAxiom;
+import org.semanticweb.owlapi.vocab.OWLFacet;
 
 class OntologyProjectionTest {
 
@@ -159,10 +171,18 @@ class OntologyProjectionTest {
     }
 
     /**
-     * Regression test for the bug where a facet-restricted data range (filler is an
-     * OWLDatatypeRestriction, not a plain OWLDatatype) hit a {@code return} instead of a
-     * {@code continue} and silently aborted the scan of every remaining SubClassOf axiom,
-     * non-deterministically depending on the unordered Set's iteration order.
+     * End-to-end regression check for the bug where a facet-restricted data range (filler is
+     * an OWLDatatypeRestriction, not a plain OWLDatatype) hit a {@code return} instead of a
+     * {@code continue} and silently aborted the scan of every remaining SubClassOf axiom.
+     *
+     * <p>This exercises the real parse-and-project path and has standalone value as an
+     * end-to-end check, but it is NOT the sole guard against the regression: it only fails
+     * because "Left"/"Right" happens to land after Employee's axiom in this particular
+     * ontology's {@code Set} iteration order (verified empirically - "A"/"B" did not
+     * reproduce it). That iteration order is an unspecified implementation detail, so a
+     * future edit to this fixture could silently stop exercising the bug. See
+     * {@link #facetRestrictedDataRangeDoesNotSuppressOtherSubClassEdgesRegardlessOfAxiomOrder()}
+     * for the order-independent guard that does not have this weakness.
      */
     @Test
     void facetRestrictedDataRangeDoesNotSuppressOtherSubClassEdges() {
@@ -173,6 +193,54 @@ class OntologyProjectionTest {
                 && e.getSourceId().equals(NS2 + "Left") && e.getTargetId().equals(NS2 + "Right"));
         assertTrue(hasLeftToRight, "SubClassOf(Left, Right) must survive even though Employee has an "
                 + "unhandled facet-restricted data range axiom in the same axiom set");
+    }
+
+    /**
+     * Order-independent regression test for the same bug as
+     * {@link #facetRestrictedDataRangeDoesNotSuppressOtherSubClassEdges()}, but immune to Set
+     * iteration order: it calls the package-private
+     * {@link OntologyProjection#collectSubClassEdges(java.util.Collection, Set, List, List)}
+     * overload directly with a hand-built {@link LinkedHashSet}, whose iteration order is
+     * insertion order by contract. The facet-restricted axiom is inserted FIRST, so if the
+     * unsupported-data-range branch ever regresses back to {@code return} instead of
+     * {@code continue}, this test fails no matter how the axioms were built, no matter what
+     * fixture exists, and no matter what future edits are made to any ontology file.
+     */
+    @Test
+    void facetRestrictedDataRangeDoesNotSuppressOtherSubClassEdgesRegardlessOfAxiomOrder() {
+        OWLDataFactory factory = OWLManager.getOWLDataFactory();
+
+        OWLClass employee = factory.getOWLClass(IRI.create(NS2 + "OrderProbeEmployee"));
+        OWLClass left = factory.getOWLClass(IRI.create(NS2 + "OrderProbeLeft"));
+        OWLClass right = factory.getOWLClass(IRI.create(NS2 + "OrderProbeRight"));
+        OWLDataProperty hasSalary = factory.getOWLDataProperty(IRI.create(NS2 + "orderProbeHasSalary"));
+
+        OWLFacetRestriction minZero = factory.getOWLFacetRestriction(OWLFacet.MIN_INCLUSIVE, 0);
+        OWLDatatypeRestriction facetRestrictedInteger =
+                factory.getOWLDatatypeRestriction(factory.getIntegerOWLDatatype(), minZero);
+        OWLDataSomeValuesFrom facetRange = factory.getOWLDataSomeValuesFrom(hasSalary, facetRestrictedInteger);
+
+        OWLSubClassOfAxiom facetAxiom = factory.getOWLSubClassOfAxiom(employee, facetRange);
+        OWLSubClassOfAxiom plainAxiom = factory.getOWLSubClassOfAxiom(left, right);
+
+        // LinkedHashSet's iteration order is insertion order, by contract - not a hope, a
+        // guarantee. The facet-restricted axiom goes in FIRST, deliberately.
+        Set<OWLSubClassOfAxiom> axioms = new LinkedHashSet<>();
+        axioms.add(facetAxiom);
+        axioms.add(plainAxiom);
+
+        Set<String> on = new HashSet<>(Arrays.asList(
+                employee.getIRI().toString(), left.getIRI().toString(), right.getIRI().toString()));
+        List<CanvasNode> nodes = new ArrayList<>();
+        List<CanvasEdge> edges = new ArrayList<>();
+
+        OntologyProjection.collectSubClassEdges(axioms, on, nodes, edges);
+
+        boolean hasLeftToRight = edges.stream().anyMatch(e -> e.getKind() == CanvasEdge.Kind.SUBCLASS
+                && e.getSourceId().equals(left.getIRI().toString())
+                && e.getTargetId().equals(right.getIRI().toString()));
+        assertTrue(hasLeftToRight, "SubClassOf(Left, Right) must survive even when the "
+                + "facet-restricted axiom is guaranteed to be visited strictly first");
     }
 
     @Test
