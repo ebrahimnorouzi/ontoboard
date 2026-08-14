@@ -75,14 +75,23 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
 
     /**
      * The testable core of {@link #switchToActiveOntology()}: point {@code layout} at
-     * {@code ontology} and discard membership that named entities in whatever ontology
-     * was active before. Package-private so a unit test can drive it directly without a
-     * live {@code OWLEditorKit}.
+     * {@code ontology} and discard every per-ontology collection - {@code onCanvas},
+     * {@code nodes}, {@code frames}, {@code notes}, {@code prefixColors} - so nothing
+     * from the previous diagram survives. This must be a full wipe, not just
+     * {@code onCanvas}: {@code nodes} is keyed by entity IRI, and two ontologies that
+     * share an imported vocabulary (BFO, RO, SKOS, ...) can easily share an IRI, which
+     * would otherwise let a class silently inherit its on-canvas position from the
+     * ontology that was active before. Package-private so a unit test can drive it
+     * directly without a live {@code OWLEditorKit}.
      */
     static void resetLayoutForOntology(OWLOntology ontology, CanvasLayout layout) {
         layout.ontologyIri = ontology.getOntologyID().getOntologyIRI()
                 .transform(Object::toString).or("");
         layout.onCanvas.clear();
+        layout.nodes.clear();
+        layout.frames.clear();
+        layout.notes.clear();
+        layout.prefixColors.clear();
     }
 
     private void seedInitialMembership() {
