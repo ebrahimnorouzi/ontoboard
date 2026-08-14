@@ -27,37 +27,59 @@
 
   <dependencyManagement>
     <!-- Protege 5.5.0 ships owlapi 4.5.9. robot-core declares 4.5.29; force it down so
-         there is exactly one OWL API. Verified working - see spec section 9a. -->
+         there is exactly one OWL API. Verified working - see spec section 9a.
+         scope=provided: the host's bundles/owlapi-osgidistribution.jar exports every
+         org.semanticweb.owlapi.*, uk.ac.manchester.cs.owl.owlapi.* and org.obolibrary.oboformat.*
+         package robot-core needs, so OWL API is imported from the host, not embedded
+         (fix round 1 ruling). -->
     <dependencies>
       <dependency>
         <groupId>net.sourceforge.owlapi</groupId>
         <artifactId>owlapi-api</artifactId>
         <version>${owlapi.version}</version>
+        <scope>provided</scope>
       </dependency>
       <dependency>
         <groupId>net.sourceforge.owlapi</groupId>
         <artifactId>owlapi-apibinding</artifactId>
         <version>${owlapi.version}</version>
+        <scope>provided</scope>
       </dependency>
       <dependency>
         <groupId>net.sourceforge.owlapi</groupId>
         <artifactId>owlapi-impl</artifactId>
         <version>${owlapi.version}</version>
+        <scope>provided</scope>
       </dependency>
       <dependency>
         <groupId>net.sourceforge.owlapi</groupId>
         <artifactId>owlapi-parsers</artifactId>
         <version>${owlapi.version}</version>
+        <scope>provided</scope>
       </dependency>
       <dependency>
         <groupId>net.sourceforge.owlapi</groupId>
         <artifactId>owlapi-rio</artifactId>
         <version>${owlapi.version}</version>
+        <scope>provided</scope>
       </dependency>
       <dependency>
         <groupId>net.sourceforge.owlapi</groupId>
         <artifactId>owlapi-distribution</artifactId>
         <version>${owlapi.version}</version>
+        <scope>provided</scope>
+      </dependency>
+      <!-- Guava: the host's owlapi bundle imports com.google.guava (host ships Guava 18.0)
+           and returns host-Guava types (e.g. OWLOntologyID.getOntologyIRI() returns
+           com.google.common.base.Optional) from its own API. Embedding a different Guava
+           would link our code against a different Optional class than the host's OWL API
+           returns, producing a ClassCastException/LinkageError. So Guava must also be
+           provided, pinned to what the host actually ships (fix round 1 ruling). -->
+      <dependency>
+        <groupId>com.google.guava</groupId>
+        <artifactId>guava</artifactId>
+        <version>18.0</version>
+        <scope>provided</scope>
       </dependency>
     </dependencies>
   </dependencyManagement>
@@ -125,7 +147,7 @@
             <Bundle-SymbolicName>${project.artifactId};singleton:=true</Bundle-SymbolicName>
             <Bundle-Vendor>ISE / FIZ Karlsruhe</Bundle-Vendor>
             <!-- Do NOT set Bundle-ClassPath; Embed-Dependency manages it. -->
-            <Embed-Dependency>jgraphx,robot-core</Embed-Dependency>
+            <Embed-Dependency>*;scope=compile|runtime</Embed-Dependency>
             <Embed-Transitive>true</Embed-Transitive>
             <!-- version="5.5.0" means [5.5.0, infinity), so this also loads on 5.6.x -->
             <Import-Package>
