@@ -147,7 +147,7 @@
             <Bundle-SymbolicName>${project.artifactId};singleton:=true</Bundle-SymbolicName>
             <Bundle-Vendor>ISE / FIZ Karlsruhe</Bundle-Vendor>
             <!-- Do NOT set Bundle-ClassPath; Embed-Dependency manages it. -->
-            <Embed-Dependency>*;scope=compile|runtime</Embed-Dependency>
+            <Embed-Dependency>*;scope=compile|runtime;artifactId=!log4j-api</Embed-Dependency>
             <Embed-Transitive>true</Embed-Transitive>
             <!-- version="5.5.0" means [5.5.0, infinity), so this also loads on 5.6.x -->
             <Import-Package>
