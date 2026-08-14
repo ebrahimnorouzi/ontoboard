@@ -42,15 +42,21 @@ public final class OntologyProjection {
             }
         }
 
-        collectSubClassEdges(ontology, onCanvasIris, edges);
+        collectSubClassEdges(ontology, onCanvasIris, nodes, edges);
         collectLegacyDomainRangeEdges(ontology, onCanvasIris, edges);
         collectTypeEdges(ontology, onCanvasIris, edges);
 
         return new Projection(nodes, edges);
     }
 
-    /** SubClassOf(A B) and SubClassOf(A ObjectSomeValuesFrom(R B)) / ObjectAllValuesFrom. */
-    private static void collectSubClassEdges(OWLOntology ontology, Set<String> on, List<CanvasEdge> edges) {
+    /**
+     * SubClassOf(A B) and SubClassOf(A ObjectSomeValuesFrom(R B)) / ObjectAllValuesFrom. Also
+     * SubClassOf(A DataSomeValuesFrom(R D)) for a plain datatype D, which additionally
+     * projects a DATATYPE node for D (never gated on canvas membership: a datatype is a leaf
+     * pulled in by showing the class, not a first-class canvas citizen).
+     */
+    private static void collectSubClassEdges(OWLOntology ontology, Set<String> on,
+            List<CanvasNode> nodes, List<CanvasEdge> edges) {
         for (OWLSubClassOfAxiom axiom : ontology.getAxioms(AxiomType.SUBCLASS_OF)) {
             if (axiom.getSubClass().isAnonymous()) {
                 continue;
@@ -76,10 +82,16 @@ public final class OntologyProjection {
             } else if (sup instanceof OWLDataSomeValuesFrom) {
                 OWLDataSomeValuesFrom data = (OWLDataSomeValuesFrom) sup;
                 if (data.getProperty().isAnonymous() || !data.getFiller().isDatatype()) {
-                    return;
+                    // Not a plain datatype range (e.g. a facet-restricted DatatypeRestriction,
+                    // or an anonymous property) - unsupported shape, skip only this axiom.
+                    continue;
                 }
                 IRI propIri = data.getProperty().asOWLDataProperty().getIRI();
                 IRI dtIri = data.getFiller().asOWLDatatype().getIRI();
+                CanvasNode datatypeNode = new CanvasNode(iri(dtIri), NodeKind.DATATYPE, localName(dtIri));
+                if (!nodes.contains(datatypeNode)) {
+                    nodes.add(datatypeNode);
+                }
                 edges.add(new CanvasEdge("data|" + subIri + "|" + propIri + "|" + dtIri,
                         iri(subIri), iri(dtIri), localName(propIri), CanvasEdge.Kind.DATA_PROPERTY));
             }
@@ -166,6 +178,15 @@ public final class OntologyProjection {
             return fragment;
         }
         String text = value.toString();
+        // IRI.getFragment() returns "" (not null) for a bare trailing '/' or '#', so both
+        // fall through to here. Strip a single trailing delimiter before taking the last
+        // path segment, otherwise "foo/" yields the whole IRI and "foo#" leaks the '#'.
+        if (text.endsWith("/") || text.endsWith("#")) {
+            text = text.substring(0, text.length() - 1);
+        }
+        if (text.isEmpty()) {
+            return value.toString();
+        }
         int slash = text.lastIndexOf('/');
         return slash >= 0 && slash < text.length() - 1 ? text.substring(slash + 1) : text;
     }
