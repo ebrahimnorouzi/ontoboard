@@ -162,9 +162,14 @@ separate, explicit action.
 
 ## 6. Layout persistence
 
-A sidecar JSON file `<ontology-file-name>.ontoboard.json` sits next to the ontology file.
-Written on ontology save and on explicit save; read on ontology load. Absent file means
-an empty canvas, never an error.
+A sidecar JSON file sits next to the ontology file, named by **appending** to the full
+ontology file name including its extension: `myont-edit.owl` →
+`myont-edit.owl.ontoboard.json`. Appending rather than replacing the extension avoids a
+collision when `foo.owl` and `foo.ttl` sit in the same directory.
+
+Written on ontology save and on explicit save; read on ontology load. An absent file
+means an empty canvas, never an error. A sidecar declaring an unrecognised `version`
+fails loudly rather than silently discarding the layout.
 
 ```json
 {
@@ -262,7 +267,13 @@ Versions verified present on Maven Central on 2026-08-14.
 | `edu.stanford.protege:protege-editor-owl` | 5.6.6 | `provided`; OWL API arrives transitively |
 | `org.obolibrary.robot:robot-core` | 1.9.8 | Embedded; brings Jena ARQ, OWL API, Jackson |
 | `com.github.vlsi.mxgraph:jgraphx` | 4.2.2 | Embedded; published **with OSGi manifest entries** |
-| `org.eclipse.jgit:org.eclipse.jgit` | 7.3.0.202506031305-r | Embedded; GitHub import |
+
+**Do not declare JGit, Jackson, or SnakeYAML.** `protege-editor-owl:5.6.6` already depends on
+`org.eclipse.jgit`, `jackson-core`, `jackson-annotations`, `jackson-databind`,
+`jackson-datatype-guava`, `jackson-dataformat-yaml`, `jackson-dataformat-csv`, and
+`snakeyaml:1.33`. Declaring our own versions risks OSGi resolution conflicts. GitHub
+import (§7.2) uses Protégé's JGit; the sidecar store (§6) and ODK YAML config (Plan 3)
+use Protégé's Jackson.
 
 **Widoco is not a Maven dependency.** It is not published to Maven Central; it is
 distributed only as a 39 MB fat JAR per JDK line from GitHub releases (Apache-2.0,
