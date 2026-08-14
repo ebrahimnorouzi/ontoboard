@@ -23,17 +23,23 @@ class PluginXmlTest {
     }
 
     @Test
-    void everyOntoBoardClassDeclaredInPluginXmlExists() throws Exception {
+    void everyClassDeclaredInPluginXmlExists() throws Exception {
         NodeList declared = parseResource("/plugin.xml").getElementsByTagName("class");
+        List<String> all = new ArrayList<>();
         List<String> ours = new ArrayList<>();
         for (int i = 0; i < declared.getLength(); i++) {
             String name = ((Element) declared.item(i)).getAttribute("value");
+            all.add(name);
             if (name.startsWith("de.fizkarlsruhe.ise.ontoboard")) {
                 ours.add(name);
             }
         }
         assertTrue(ours.size() >= 1, "expected at least one OntoBoard class in plugin.xml");
-        for (String name : ours) {
+        // Every declared class - ours and third-party (e.g. Protege's own
+        // OWLWorkspaceViewsTab) - must resolve. A typo in any of them produces the same
+        // silent-non-loading failure this test exists to prevent, and nothing in Java
+        // source references third-party plugin.xml class names, so javac won't catch it.
+        for (String name : all) {
             Class.forName(name); // ClassNotFoundException on a typo
         }
     }

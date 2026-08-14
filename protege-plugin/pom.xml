@@ -14,9 +14,11 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <!-- The target host bundles a Java 8 JRE. Java 8 bytecode also runs on Protege 5.6.x. -->
-    <maven.compiler.source>8</maven.compiler.source>
-    <maven.compiler.target>8</maven.compiler.target>
+    <!-- The target host bundles a Java 8 JRE. Java 8 bytecode also runs on Protege 5.6.x.
+         release (not source/target) also rejects any Java 9+ API surface at compile time,
+         since it compiles against the Java 8 bootclasspath/ct.sym instead of just emitting
+         Java 8 class file format from whatever JDK APIs happen to be present. -->
+    <maven.compiler.release>8</maven.compiler.release>
     <protege.version>5.5.0</protege.version>
     <owlapi.version>4.5.9</owlapi.version>
     <jgraphx.version>4.2.2</jgraphx.version>
