@@ -2629,3 +2629,214 @@ Recorded during authoring, per the writing-plans self-review:
    - Sidecar naming appends to the full file name, resolving an ambiguity in spec §6.
 3. **Type consistency.** `CanvasLayout.NodeLayout` fields `x/y/w/h` are used identically in Tasks 3, 5, 6 and 8. `SchemaGraph.getCellForId`/`getIdForCell` keep the same signatures across Tasks 5–8. `CanvasLayouts.Algorithm` has four constants used consistently in the test, the switch, and the toolbar.
 4. **Known soft spot.** `RobotCoreInteropTest.robotCoreAndOwlApiBindingShareOneOWLOntologyType` asserts on classloader identity, which is a weaker signal than a true OSGi resolution check. The authoritative verification is the `mvn dependency:tree` inspection in Task 2 Step 4 plus the in-Protégé check in Step 6; the test guards against regression only.
+
+---
+
+### Task 9: Plugin version, identity and auto-update descriptor
+
+Added after the plan was written, at the user's request ("also take care of version for the plugin").
+
+The default `2.0.0-SNAPSHOT` is actively wrong for a Protégé plugin. bnd renders it as
+`Bundle-Version: 2.0.0.SNAPSHOT`, and OSGi sorts a qualified version **after** the bare
+one — so a later released `2.0.0` would appear *older* than the snapshot and Protégé's
+auto-update would refuse it. Every plugin in the target install uses a plain three-part
+version (`ontograf 2.0.3`, `oops 1.0.2`, `swrltab 2.1.3`).
+
+Because the bundle is `singleton:=true`, a stale JAR left beside a new one collides —
+the exact fault already present in the host's `plugins/` directory (CoModIDE 1.1.1 +
+1.1.2, cellfie ×2, swrltab ×2, shacl4protege ×2). Upgrade hygiene is therefore part of
+this task's deliverable, not an afterthought.
+
+**Decisions (user-approved):** version **1.0.0** — the plugin is its own product, not an
+upgrade from a web app nobody installed. Version is kept in sync by **Maven resource
+filtering from a single source of truth in `pom.xml`, guarded by a test**, so drift fails
+the build instead of shipping.
+
+**Files:**
+- Modify: `protege-plugin/pom.xml` (version, `github.repo` property, `Bundle-*` identity headers)
+- Create: `protege-plugin/src/main/resources/update.properties`
+- Modify: `protege-plugin/src/test/java/de/fizkarlsruhe/ise/ontoboard/BundleConfigurationTest.java` (created in Task 2 fix round 3 — extend it, do not create a second class)
+- Create: `protege-plugin/INSTALL.md`
+
+**Interfaces:**
+- Consumes: `BundleConfigurationTest` from Task 2's fix round 3.
+- Produces: pom version `1.0.0`; built artifact `ontoboard-1.0.0.jar`; `update.properties` on the bundle classpath with `version` equal to the pom version.
+
+- [ ] **Step 1: Write the failing tests**
+
+Append these tests to `BundleConfigurationTest`:
+
+```java
+    @Test
+    void versionIsOsgiCleanWithNoSnapshotQualifier() throws Exception {
+        String version = pomVersion();
+        assertTrue(version.matches("\\d+\\.\\d+\\.\\d+"),
+                "Protege auto-update compares OSGi versions, and a qualifier such as "
+                        + "'.SNAPSHOT' sorts AFTER the bare version - so a released 1.0.0 would look "
+                        + "older than 1.0.0.SNAPSHOT and refuse to install. Found: " + version);
+    }
+
+    @Test
+    void updatePropertiesVersionMatchesThePom() throws Exception {
+        Properties update = loadUpdateProperties();
+        assertEquals(pomVersion(), update.getProperty("version"),
+                "update.properties drifting from pom.xml is the most common Protege "
+                        + "auto-update bug: the registry advertises one version and serves another.");
+    }
+
+    @Test
+    void updatePropertiesDownloadUrlPointsAtThisExactVersion() throws Exception {
+        Properties update = loadUpdateProperties();
+        String download = update.getProperty("download");
+        assertNotNull(download, "update.properties must declare a download URL");
+        assertTrue(download.contains(pomVersion()),
+                "a stale download URL serves the wrong jar to every auto-updating user; got " + download);
+        assertTrue(download.endsWith(".jar"), "download must resolve to a jar; got " + download);
+    }
+
+    @Test
+    void updatePropertiesDeclaresTheRequiredRegistryFields() throws Exception {
+        Properties update = loadUpdateProperties();
+        String[] required = {"id", "name", "version", "download", "license", "author"};
+        for (String field : required) {
+            assertNotNull(update.getProperty(field), "update.properties is missing '" + field + "'");
+            assertFalse(update.getProperty(field).trim().isEmpty(),
+                    "update.properties field '" + field + "' is empty");
+        }
+        assertEquals("ontoboard", update.getProperty("id"),
+                "the registry id must equal the bundle symbolic name so Protege matches installs to updates");
+    }
+```
+
+Add these helpers to the same class:
+
+```java
+    private static String pomVersion() throws Exception {
+        Document pom = DocumentBuilderFactory.newInstance().newDocumentBuilder()
+                .parse(new File("pom.xml"));
+        NodeList children = pom.getDocumentElement().getChildNodes();
+        for (int i = 0; i < children.getLength(); i++) {
+            if (children.item(i) instanceof Element
+                    && "version".equals(children.item(i).getNodeName())) {
+                return children.item(i).getTextContent().trim();
+            }
+        }
+        throw new AssertionError("no top-level <version> in pom.xml");
+    }
+
+    private static Properties loadUpdateProperties() throws Exception {
+        Properties properties = new Properties();
+        InputStream in = BundleConfigurationTest.class.getResourceAsStream("/update.properties");
+        assertNotNull(in, "update.properties missing from the built classpath - "
+                + "check that resource filtering is enabled for src/main/resources");
+        try {
+            properties.load(in);
+        } finally {
+            in.close();
+        }
+        return properties;
+    }
+```
+
+Required imports: `java.io.InputStream`, `java.util.Properties`, `org.w3c.dom.Document`,
+`org.w3c.dom.Element`, `org.w3c.dom.NodeList`, `javax.xml.parsers.DocumentBuilderFactory`,
+plus `assertNotNull` and `assertFalse` from `org.junit.jupiter.api.Assertions`.
+
+Note: `pomVersion()` deliberately walks only the top-level children. A naive
+`getElementsByTagName("version").item(0)` would return a dependency's version and assert
+against the wrong value while appearing to pass.
+
+- [ ] **Step 2: Run tests to verify they fail**
+
+Run: `cd protege-plugin && mvn -q test -Dtest=BundleConfigurationTest`
+Expected: FAIL — the version is `2.0.0-SNAPSHOT` (not OSGi-clean) and `update.properties` does not exist.
+
+- [ ] **Step 3: Set the version and bundle identity**
+
+In `pom.xml`, change the top-level project version to `1.0.0`, and add a property beside
+the existing ones:
+
+```xml
+    <github.repo>ISE-FIZKarlsruhe/ontoboard</github.repo>
+```
+
+Add these three entries beside the existing `Bundle-*` instructions so the plugin
+identifies itself in Protégé's plugin manager:
+
+```xml
+            <Bundle-Name>OntoBoard</Bundle-Name>
+            <Bundle-Description>Visual ontology engineering and ODK/ROBOT pipeline tooling for Protege Desktop</Bundle-Description>
+            <Bundle-DocURL>https://github.com/${github.repo}</Bundle-DocURL>
+```
+
+Leave `Bundle-Vendor`, `Bundle-SymbolicName`, `Bundle-Activator`, `Embed-Dependency`,
+`Embed-Transitive` and `Import-Package` exactly as they are.
+
+- [ ] **Step 4: Add the auto-update descriptor**
+
+Create `protege-plugin/src/main/resources/update.properties`. Resource filtering is
+already enabled from Task 1, so the placeholders resolve at build time — that filtering is
+the mechanism keeping the three versions in lockstep:
+
+```properties
+id=ontoboard
+name=OntoBoard
+version=${project.version}
+download=https://github.com/${github.repo}/releases/download/v${project.version}/ontoboard-${project.version}.jar
+readme=https://github.com/${github.repo}/blob/main/README.md
+license=https://github.com/${github.repo}/blob/main/LICENSE
+author=Ebrahim Norouzi, ISE / FIZ Karlsruhe
+```
+
+- [ ] **Step 5: Run tests to verify they pass**
+
+Run: `cd protege-plugin && mvn -q clean test`
+Expected: PASS. Report the new total.
+
+- [ ] **Step 6: Verify the built artifact**
+
+```bash
+cd protege-plugin && mvn -q clean package && ls -l target/ontoboard-1.0.0.jar
+unzip -p target/ontoboard-1.0.0.jar META-INF/MANIFEST.MF | tr -d '\r' | grep -E "^Bundle-"
+unzip -p target/ontoboard-1.0.0.jar update.properties
+```
+
+Expected: `Bundle-Version: 1.0.0` with **no** qualifier, the identity headers present, and
+`update.properties` fully filtered with **no** literal `${` remaining.
+
+- [ ] **Step 7: Replace the stale bundle in the host**
+
+The previously deployed `ontoboard-2.0.0-SNAPSHOT.jar` must be **deleted**, not left
+beside the new jar — two `singleton:=true` bundles sharing a symbolic name is the exact
+collision described at the top of this task.
+
+```bash
+rm -f "/c/Users/eno/Documents/Protege-5.5.0/plugins/ontoboard-2.0.0-SNAPSHOT.jar"
+cp target/ontoboard-1.0.0.jar "/c/Users/eno/Documents/Protege-5.5.0/plugins/"
+ls "/c/Users/eno/Documents/Protege-5.5.0/plugins/" | grep -i ontoboard
+```
+
+Expected: exactly one `ontoboard-*.jar`. Delete only OntoBoard's own artifacts — never
+touch another plugin's jars.
+
+- [ ] **Step 8: Document the upgrade procedure**
+
+Create `protege-plugin/INSTALL.md` covering: the Protégé version floor (5.5.0, also runs
+on 5.6.x); that the bundle is `singleton:=true` so **the old jar must be deleted before a
+new one is installed**; the plugins-directory location; and that `-Xmx500M` in
+`Protege.l4j.ini` is too low for the ROBOT operations arriving in later releases. Short
+and factual.
+
+- [ ] **Step 9: Commit**
+
+```bash
+git add protege-plugin/
+git commit -m "feat(plugin): set version 1.0.0 with auto-update descriptor and identity headers"
+```
+
+**Known gap, for the human and not for the implementer to solve:** the repository has no
+`LICENSE` file — `README.md` states only "ISE / FIZ Karlsruhe", which is an attribution
+rather than a license, leaving the work all-rights-reserved by default. The `license` URL
+in `update.properties` therefore points at a file that does not yet exist. This is the
+same defect this project's own spec (§11) cites in CoModIDE as the reason it cannot be
+reused, and it must be resolved before any public release. Do not invent a license.
