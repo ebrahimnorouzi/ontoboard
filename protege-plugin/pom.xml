@@ -79,6 +79,12 @@
     </dependency>
 
     <dependency>
+      <groupId>org.obolibrary.robot</groupId>
+      <artifactId>robot-core</artifactId>
+      <version>1.9.8</version>
+    </dependency>
+
+    <dependency>
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter</artifactId>
       <version>${junit.version}</version>
@@ -119,7 +125,7 @@
             <Bundle-SymbolicName>${project.artifactId};singleton:=true</Bundle-SymbolicName>
             <Bundle-Vendor>ISE / FIZ Karlsruhe</Bundle-Vendor>
             <!-- Do NOT set Bundle-ClassPath; Embed-Dependency manages it. -->
-            <Embed-Dependency>jgraphx</Embed-Dependency>
+            <Embed-Dependency>jgraphx,robot-core</Embed-Dependency>
             <Embed-Transitive>true</Embed-Transitive>
             <!-- version="5.5.0" means [5.5.0, infinity), so this also loads on 5.6.x -->
             <Import-Package>
