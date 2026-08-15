@@ -3,6 +3,7 @@ package de.fizkarlsruhe.ise.ontoboard.views;
 import com.mxgraph.swing.mxGraphComponent;
 import de.fizkarlsruhe.ise.ontoboard.canvas.CanvasMembership;
 import de.fizkarlsruhe.ise.ontoboard.canvas.SchemaGraph;
+import de.fizkarlsruhe.ise.ontoboard.canvas.SelectionBridge;
 import de.fizkarlsruhe.ise.ontoboard.layout.CanvasLayout;
 import de.fizkarlsruhe.ise.ontoboard.layout.CanvasLayoutStore;
 import de.fizkarlsruhe.ise.ontoboard.model.OntologyProjection;
@@ -16,7 +17,9 @@ import javax.swing.JMenuItem;
 import javax.swing.JPopupMenu;
 import org.protege.editor.owl.model.event.EventType;
 import org.protege.editor.owl.model.event.OWLModelManagerListener;
+import org.protege.editor.owl.model.selection.OWLSelectionModelListener;
 import org.protege.editor.owl.ui.view.AbstractOWLViewComponent;
+import org.semanticweb.owlapi.model.IRI;
 import org.semanticweb.owlapi.model.OWLEntity;
 import org.semanticweb.owlapi.model.OWLOntology;
 import org.semanticweb.owlapi.model.OWLOntologyChangeListener;
@@ -36,6 +39,8 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
     private File currentOntologyFile;
     private OWLOntologyChangeListener changeListener;
     private OWLModelManagerListener modelManagerListener;
+    private SelectionBridge selectionBridge;
+    private OWLSelectionModelListener selectionListener;
 
     @Override
     protected void initialiseOWLView() {
@@ -48,6 +53,17 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         loadLayoutForActiveOntology();
         installContextMenu();
         refresh();
+
+        selectionBridge = new SelectionBridge(graph, this::pushSelectionToProtege);
+        selectionBridge.install();
+
+        selectionListener = () -> {
+            OWLEntity selected = getOWLEditorKit().getOWLWorkspace()
+                    .getOWLSelectionModel().getSelectedEntity();
+            selectionBridge.selectOnCanvas(selected == null ? null : selected.getIRI().toString());
+        };
+        getOWLEditorKit().getOWLWorkspace().getOWLSelectionModel()
+                .addListener(selectionListener);
 
         changeListener = changes -> refresh();
         getOWLModelManager().addOntologyChangeListener(changeListener);
@@ -74,6 +90,13 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         if (modelManagerListener != null) {
             getOWLModelManager().removeListener(modelManagerListener);
         }
+        if (selectionBridge != null) {
+            selectionBridge.uninstall();
+        }
+        if (selectionListener != null) {
+            getOWLEditorKit().getOWLWorkspace().getOWLSelectionModel()
+                    .removeListener(selectionListener);
+        }
         capturePositions();
         saveLayoutTo(currentOntologyFile);
     }
@@ -84,6 +107,15 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                 .getOWLSelectionModel().getSelectedEntity();
         if (selected != null && membership.add(selected.getIRI().toString())) {
             refresh();
+        }
+    }
+
+    /** Pushes a canvas selection outward so Protege's editors follow it. */
+    private void pushSelectionToProtege(String iri) {
+        OWLOntology ontology = getOWLModelManager().getActiveOntology();
+        for (OWLEntity entity : ontology.getEntitiesInSignature(IRI.create(iri))) {
+            getOWLEditorKit().getOWLWorkspace().getOWLSelectionModel().setSelectedEntity(entity);
+            return;
         }
     }
 
