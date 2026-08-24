@@ -34,6 +34,7 @@ public class SchemaGraph extends mxGraph {
     }
 
     public void render(Projection projection, CanvasLayout layout) {
+        PrefixColours colours = new PrefixColours(layout.prefixColors);
         getModel().beginUpdate();
         try {
             removeCells(mxGraphModel.getChildren(getModel(), getDefaultParent()), true);
@@ -50,7 +51,7 @@ public class SchemaGraph extends mxGraph {
                     nextX += DEFAULT_W + 40;
                 }
                 Object cell = insertVertex(getDefaultParent(), node.getId(), node.getLabel(),
-                        x, y, w, h, styleFor(node));
+                        x, y, w, h, styleFor(node, colours));
                 cellsById.put(node.getId(), cell);
             }
 
@@ -89,7 +90,16 @@ public class SchemaGraph extends mxGraph {
         return id != null ? id : super.getToolTipForCell(cell);
     }
 
-    private static String styleFor(CanvasNode node) {
+    /**
+     * Appends an inline {@code strokeColor} override to the named style, so every namespace
+     * gets a distinguishable outline while the shape still says what kind of thing it is.
+     * mxGraph reads {@code "styleName;key=value"} as style-plus-overrides.
+     */
+    private static String styleFor(CanvasNode node, PrefixColours colours) {
+        return baseStyleFor(node) + ";strokeColor=" + colours.colourFor(node.getId());
+    }
+
+    private static String baseStyleFor(CanvasNode node) {
         switch (node.getKind()) {
             case INDIVIDUAL: return SchemaStyles.INDIVIDUAL;
             case DATATYPE:   return SchemaStyles.DATATYPE;
