@@ -6,7 +6,7 @@
 
   <groupId>de.fizkarlsruhe.ise</groupId>
   <artifactId>ontoboard</artifactId>
-  <version>1.3.0</version>
+  <version>1.3.1</version>
   <packaging>bundle</packaging>
 
   <name>OntoBoard</name>
@@ -34,6 +34,12 @@
          package robot-core needs, so OWL API is imported from the host, not embedded
          (fix round 1 ruling). -->
     <dependencies>
+      <dependency>
+        <groupId>net.sourceforge.owlapi</groupId>
+        <artifactId>owlapi-osgidistribution</artifactId>
+        <version>${owlapi.version}</version>
+        <scope>provided</scope>
+      </dependency>
       <dependency>
         <groupId>net.sourceforge.owlapi</groupId>
         <artifactId>owlapi-api</artifactId>
