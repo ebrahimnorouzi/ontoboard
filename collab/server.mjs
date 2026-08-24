@@ -11,9 +11,11 @@
 
 import { Server } from "@hocuspocus/server";
 import jwt from "jsonwebtoken";
+import { startBridge } from "./bridge.mjs";
 
 const PORT = parseInt(process.env.COLLAB_PORT || "1234", 10);
 const SECRET_KEY = process.env.SECRET_KEY || "change-me-in-production";
+const BRIDGE_PORT = parseInt(process.env.BRIDGE_PORT || "1235", 10);
 
 const server = new Server({
   port: PORT,
@@ -65,5 +67,19 @@ process.on("unhandledRejection", (reason) => {
 });
 
 server.listen();
+
+// JSON bridge for non-JS clients (the Protege plugin). It attaches to the SAME Y.Doc that
+// Hocuspocus serves, via openDirectConnection, so a Protege user and a browser user are in
+// one session rather than two that happen to look alike.
+startBridge({
+  port: BRIDGE_PORT,
+  secret: SECRET_KEY,
+  getDoc: async (board) => {
+    const connection = await server.openDirectConnection(board);
+    return connection.document;
+  },
+});
+
 console.log(`[collab] Hocuspocus server running on port ${PORT}`);
 console.log(`[collab] Mode: awareness only (cursors, locking, save broadcast)`);
+console.log(`[collab] JSON bridge for non-JS clients on port ${BRIDGE_PORT}`);
