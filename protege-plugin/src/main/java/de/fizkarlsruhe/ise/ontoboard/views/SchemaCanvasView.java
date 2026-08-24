@@ -1,6 +1,10 @@
 package de.fizkarlsruhe.ise.ontoboard.views;
 
 import com.mxgraph.swing.mxGraphComponent;
+import de.fizkarlsruhe.ise.ontoboard.axiom.EdgeAxioms;
+import de.fizkarlsruhe.ise.ontoboard.axiom.EntityFactory;
+import de.fizkarlsruhe.ise.ontoboard.axiom.RelationDialog;
+import de.fizkarlsruhe.ise.ontoboard.model.DisplayLabels;
 import com.mxgraph.swing.mxGraphOutline;
 import com.mxgraph.util.mxEvent;
 import com.mxgraph.util.mxEventSource.mxIEventListener;
@@ -18,12 +22,16 @@ import java.awt.Dimension;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.File;
+import java.util.List;
+import java.util.Collections;
+import java.util.ArrayList;
 import java.io.IOException;
 import java.net.URI;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JFileChooser;
 import javax.swing.JMenuItem;
+import javax.swing.JOptionPane;
 import javax.swing.JOptionPane;
 import javax.swing.JPopupMenu;
 import javax.swing.JToolBar;
@@ -34,6 +42,10 @@ import org.protege.editor.owl.model.selection.OWLSelectionModelListener;
 import org.protege.editor.owl.ui.view.AbstractOWLViewComponent;
 import org.semanticweb.owlapi.model.IRI;
 import org.semanticweb.owlapi.model.OWLEntity;
+import org.semanticweb.owlapi.model.AddAxiom;
+import org.semanticweb.owlapi.model.OWLDataFactory;
+import org.semanticweb.owlapi.model.OWLObjectProperty;
+import org.semanticweb.owlapi.model.OWLOntologyChange;
 import org.semanticweb.owlapi.model.OWLOntology;
 import org.semanticweb.owlapi.model.OWLOntologyChangeListener;
 
@@ -251,6 +263,27 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                     });
                     menu.add(remove);
                 }
+                menu.addSeparator();
+
+                final int clickX = event.getX();
+                final int clickY = event.getY();
+
+                JMenuItem newClass = new JMenuItem("New class here...");
+                newClass.addActionListener(a -> createEntityAt(
+                        EntityFactory.Kind.CLASS, clickX, clickY));
+                menu.add(newClass);
+
+                JMenuItem newIndividual = new JMenuItem("New individual here...");
+                newIndividual.addActionListener(a -> createEntityAt(
+                        EntityFactory.Kind.INDIVIDUAL, clickX, clickY));
+                menu.add(newIndividual);
+
+                if (iri != null && membership.contains(iri)) {
+                    JMenuItem relate = new JMenuItem("Create relation from this node...");
+                    relate.addActionListener(a -> createRelationFrom(iri));
+                    menu.add(relate);
+                }
+
                 menu.show(graphComponent.getGraphControl(), event.getX(), event.getY());
             }
         });
@@ -373,5 +406,119 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         if (file != null) {
             CanvasLayoutStore.save(file, layout);
         }
+    }
+
+    /**
+     * Creates a class or individual and places it where the user clicked.
+     *
+     * <p>The position is written into {@link #layout} <em>before</em> refreshing, because
+     * render() reads geometry from the layout - without this the new node would appear at
+     * the default position rather than under the cursor.
+     */
+    private void createEntityAt(EntityFactory.Kind kind, int x, int y) {
+        OWLOntology ontology = getOWLModelManager().getActiveOntology();
+        String what = kind == EntityFactory.Kind.INDIVIDUAL ? "individual" : "class";
+        String name = JOptionPane.showInputDialog(this,
+                "Name for the new " + what + ":", "New " + what,
+                JOptionPane.PLAIN_MESSAGE);
+        if (name == null) {
+            return;
+        }
+        IRI iri;
+        try {
+            iri = EntityFactory.iriFor(ontology, name);
+        } catch (IllegalArgumentException invalid) {
+            JOptionPane.showMessageDialog(this, invalid.getMessage(),
+                    "Cannot use that name", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        List<OWLOntologyChange> changes = EntityFactory.declare(ontology, iri, kind);
+        if (!changes.isEmpty()) {
+            getOWLModelManager().applyChanges(changes);
+        }
+        layout.nodes.put(iri.toString(), new CanvasLayout.NodeLayout(x, y));
+        membership.add(iri.toString());
+        refresh();
+        saveLayoutTo(currentOntologyFile);
+    }
+
+    /**
+     * Asks for a target, a property and how the edge should be read, then writes the chosen
+     * OWL axiom. Cancelling at any point writes nothing at all.
+     */
+    private void createRelationFrom(String sourceIri) {
+        OWLOntology ontology = getOWLModelManager().getActiveOntology();
+        OWLDataFactory factory = getOWLModelManager().getOWLDataFactory();
+
+        List<String> targets = new ArrayList<String>();
+        for (String onCanvas : membership.asSet()) {
+            if (!onCanvas.equals(sourceIri)
+                    && ontology.containsClassInSignature(IRI.create(onCanvas))) {
+                targets.add(onCanvas);
+            }
+        }
+        if (targets.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                    "Add another class to the canvas first - a relation needs a target.",
+                    "Nothing to relate to", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        Collections.sort(targets);
+
+        String[] labels = new String[targets.size()];
+        for (int i = 0; i < targets.size(); i++) {
+            labels[i] = DisplayLabels.forEntity(ontology,
+                    factory.getOWLClass(IRI.create(targets.get(i))));
+        }
+        String sourceLabel = DisplayLabels.forEntity(ontology,
+                factory.getOWLClass(IRI.create(sourceIri)));
+
+        Object chosen = JOptionPane.showInputDialog(this,
+                "Relate " + sourceLabel + " to:", "Choose target",
+                JOptionPane.PLAIN_MESSAGE, null, labels, labels[0]);
+        if (chosen == null) {
+            return;
+        }
+        String targetIri = targets.get(indexOf(labels, chosen.toString()));
+
+        RelationDialog.Choice choice =
+                RelationDialog.ask(this, ontology, sourceLabel, chosen.toString());
+        if (choice == null) {
+            return;
+        }
+
+        List<OWLOntologyChange> changes = new ArrayList<OWLOntologyChange>();
+        OWLObjectProperty property = choice.getProperty();
+        if (property == null) {
+            IRI propertyIri;
+            try {
+                propertyIri = EntityFactory.iriFor(ontology, choice.getNewPropertyName());
+            } catch (IllegalArgumentException invalid) {
+                JOptionPane.showMessageDialog(this, invalid.getMessage(),
+                        "Cannot use that name", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            changes.addAll(EntityFactory.declare(ontology, propertyIri,
+                    EntityFactory.Kind.OBJECT_PROPERTY));
+            property = factory.getOWLObjectProperty(propertyIri);
+        }
+
+        changes.add(new AddAxiom(ontology, EdgeAxioms.build(factory, choice.getCandidate(),
+                factory.getOWLClass(IRI.create(sourceIri)), property,
+                factory.getOWLClass(IRI.create(targetIri)))));
+
+        // Applying fires the ontology-change listener, which refreshes the canvas. The edge
+        // therefore appears only because the axiom exists - if the change were rejected,
+        // no edge would be drawn.
+        getOWLModelManager().applyChanges(changes);
+    }
+
+    private static int indexOf(String[] values, String needle) {
+        for (int i = 0; i < values.length; i++) {
+            if (values[i].equals(needle)) {
+                return i;
+            }
+        }
+        return 0;
     }
 }
