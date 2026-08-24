@@ -1,0 +1,72 @@
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+@prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+@prefix ex:   <http://example.org/restrictions#> .
+
+<http://example.org/restrictions> a owl:Ontology .
+
+ex:Person       a owl:Class .
+ex:Organization a owl:Class .
+ex:Manager      a owl:Class .
+ex:Student      a owl:Class .
+ex:Contact      a owl:Class .
+ex:Employee     a owl:Class .
+ex:Left         a owl:Class .
+ex:Right        a owl:Class .
+
+# Unrelated plain SubClassOf axiom. In this fixture's axiom set, this is iterated after
+# Employee's facet-restricted axiom below (verified empirically), so it is the axiom that
+# exposes the return-instead-of-continue regression: see
+# facetRestrictedDataRangeDoesNotSuppressOtherSubClassEdges in OntologyProjectionTest.
+ex:Left rdfs:subClassOf ex:Right .
+
+ex:worksFor  a owl:ObjectProperty .
+ex:manages   a owl:ObjectProperty .
+ex:hasName   a owl:DatatypeProperty .
+ex:hasEmail  a owl:DatatypeProperty .
+ex:hasSalary a owl:DatatypeProperty .
+
+# Existential restriction to a named class.
+ex:Person rdfs:subClassOf [
+    a owl:Restriction ;
+    owl:onProperty ex:worksFor ;
+    owl:someValuesFrom ex:Organization
+] .
+
+# Universal restriction to a named class.
+ex:Manager rdfs:subClassOf [
+    a owl:Restriction ;
+    owl:onProperty ex:manages ;
+    owl:allValuesFrom ex:Person
+] .
+
+# Plain data restriction (filler is a plain datatype).
+ex:Student rdfs:subClassOf [
+    a owl:Restriction ;
+    owl:onProperty ex:hasName ;
+    owl:someValuesFrom xsd:string
+] .
+
+# Second plain data restriction to the same datatype, to exercise datatype-node dedup.
+ex:Contact rdfs:subClassOf [
+    a owl:Restriction ;
+    owl:onProperty ex:hasEmail ;
+    owl:someValuesFrom xsd:string
+] .
+
+# Facet-restricted data range: the filler is an anonymous OWLDatatypeRestriction, not a
+# plain OWLDatatype. This is the exact shape that must not abort the whole subclass scan.
+ex:Employee rdfs:subClassOf [
+    a owl:Restriction ;
+    owl:onProperty ex:hasSalary ;
+    owl:someValuesFrom [
+        a rdfs:Datatype ;
+        owl:onDatatype xsd:integer ;
+        owl:withRestrictions ( [ xsd:minInclusive 0 ] )
+    ]
+] .
+
+# IRIs with delimiter edge cases for localName().
+<http://example.org/restrictions/thing#> a owl:Class .
+<http://example.org/restrictions/container/> a owl:Class .

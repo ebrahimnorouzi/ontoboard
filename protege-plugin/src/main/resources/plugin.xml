@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<?eclipse version="3.0"?>
+<plugin>
+
+  <extension id="OntoBoardTab" point="org.protege.editor.core.application.WorkspaceTab">
+    <label value="OntoBoard"/>
+    <class value="org.protege.editor.owl.ui.OWLWorkspaceViewsTab"/>
+    <index value="O"/>
+    <editorKitId value="OWLEditorKit"/>
+    <defaultViewConfigFileName value="viewconfig-ontoboardtab.xml"/>
+  </extension>
+
+  <extension id="SchemaCanvasView" point="org.protege.editor.core.application.ViewComponent">
+    <label value="Schema Canvas"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.views.SchemaCanvasView"/>
+    <headerColor value="@org.protege.ontologycolor"/>
+    <category value="@org.protege.ontologycategory"/>
+  </extension>
+
+</plugin>
