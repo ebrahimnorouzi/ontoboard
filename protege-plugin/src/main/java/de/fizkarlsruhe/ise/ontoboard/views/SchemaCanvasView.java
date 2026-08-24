@@ -12,6 +12,7 @@ import com.mxgraph.util.mxEventSource.mxIEventListener;
 import de.fizkarlsruhe.ise.ontoboard.canvas.CanvasExport;
 import de.fizkarlsruhe.ise.ontoboard.canvas.CanvasLayouts;
 import de.fizkarlsruhe.ise.ontoboard.canvas.CanvasMembership;
+import de.fizkarlsruhe.ise.ontoboard.canvas.PalettePanel;
 import de.fizkarlsruhe.ise.ontoboard.canvas.SchemaGraph;
 import de.fizkarlsruhe.ise.ontoboard.canvas.SelectionBridge;
 import de.fizkarlsruhe.ise.ontoboard.layout.CanvasLayout;
@@ -19,6 +20,12 @@ import de.fizkarlsruhe.ise.ontoboard.layout.CanvasLayoutStore;
 import de.fizkarlsruhe.ise.ontoboard.model.OntologyProjection;
 import de.fizkarlsruhe.ise.ontoboard.model.Projection;
 import java.awt.BorderLayout;
+import java.awt.Point;
+import java.awt.dnd.DropTargetAdapter;
+import java.awt.dnd.DropTargetDropEvent;
+import java.awt.dnd.DropTarget;
+import java.awt.dnd.DnDConstants;
+import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -95,6 +102,12 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         outline.setPreferredSize(new Dimension(180, 140));
         add(outline, BorderLayout.EAST);
         add(buildToolBar(), BorderLayout.NORTH);
+        add(new PalettePanel(), BorderLayout.WEST);
+        graphComponent.getViewport().setOpaque(true);
+        graphComponent.getViewport().setBackground(
+                Color.decode(de.fizkarlsruhe.ise.ontoboard.canvas.SchemaStyles.CANVAS_BACKGROUND));
+        graphComponent.setGridVisible(true);
+        installPaletteDropTarget();
 
         loadLayoutForActiveOntology();
         installContextMenu();
@@ -361,6 +374,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         Projection projection = OntologyProjection
                 .project(getOWLModelManager().getActiveOntology(), membership.asSet());
         graph.render(projection, layout);
+        autoArrangeIfUnpositioned();
 
         if (selectionBridge != null) {
             selectionBridge.resyncAfterRender(selectedBeforeRender);
@@ -575,5 +589,57 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         if (answer == JOptionPane.YES_OPTION) {
             getOWLModelManager().applyChanges(removals);
         }
+    }
+
+    /**
+     * Accepts entity drops from the palette.
+     *
+     * <p>Swing drag-and-drop is used rather than mxGraph's transfer machinery because the
+     * drop must create an OWL entity through OWLModelManager. Inserting a bare cell would
+     * produce something with no axiom behind it, which the next refresh would erase.
+     */
+    private void installPaletteDropTarget() {
+        new DropTarget(graphComponent.getGraphControl(), DnDConstants.ACTION_COPY,
+                new DropTargetAdapter() {
+                    @Override
+                    public void drop(DropTargetDropEvent event) {
+                        try {
+                            event.acceptDrop(DnDConstants.ACTION_COPY);
+                            Object payload = event.getTransferable()
+                                    .getTransferData(java.awt.datatransfer.DataFlavor.stringFlavor);
+                            EntityFactory.Kind kind =
+                                    PalettePanel.kindOf(String.valueOf(payload));
+                            if (kind == null) {
+                                // Something else was dragged in; ignore rather than
+                                // inventing a default entity the user did not ask for.
+                                event.dropComplete(false);
+                                return;
+                            }
+                            Point at = event.getLocation();
+                            createEntityAt(kind, at.x, at.y);
+                            event.dropComplete(true);
+                        } catch (Exception failed) {
+                            event.dropComplete(false);
+                        }
+                    }
+                });
+    }
+
+    /**
+     * Arranges the diagram when nothing has a stored position yet.
+     *
+     * <p>Without this, a freshly populated canvas stacks everything near the origin and
+     * looks broken. Only applied when the layout carries no geometry, so a user's own
+     * arrangement is never silently rearranged.
+     */
+    private void autoArrangeIfUnpositioned() {
+        if (!layout.nodes.isEmpty()) {
+            return;
+        }
+        if (membership.size() < 2) {
+            return;
+        }
+        CanvasLayouts.apply(graph, CanvasLayouts.Algorithm.HIERARCHICAL);
+        capturePositions();
     }
 }
