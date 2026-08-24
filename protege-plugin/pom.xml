@@ -23,7 +23,7 @@
     <owlapi.version>4.5.9</owlapi.version>
     <jgraphx.version>4.2.2</jgraphx.version>
     <junit.version>5.10.2</junit.version>
-    <github.repo>ISE-FIZKarlsruhe/ontoboard</github.repo>
+    <github.repo>ebrahimnorouzi/ontoboard</github.repo>
   </properties>
 
   <dependencyManagement>
