@@ -56,4 +56,57 @@ class SelectionBridgeTest {
         bridge.selectOnCanvas("http://example.org/tiny#Absent");
         assertNull(bridge.currentCanvasSelection());
     }
+
+    /**
+     * {@link SchemaGraph#render} clears and recreates every cell, so a live selection does
+     * not survive a re-render even though the same IRI is still on the canvas afterwards.
+     * The view's {@code refresh()} calls {@code resyncAfterRender} with whatever was
+     * selected beforehand precisely to paper over that; here it must restore the selection
+     * through the same suppressed path as {@link #selectOnCanvas}, so Protege - which never
+     * lost track of the same entity - is not notified again for a selection that, from its
+     * point of view, never changed.
+     */
+    @Test
+    void resyncAfterRenderRestoresASurvivingSelectionWithoutReportingBack() {
+        graph.setSelectionCell(graph.getCellForId(PERSON));
+        String selectedBeforeRender = bridge.currentCanvasSelection();
+        List<String> outboundBeforeRender = new ArrayList<>(outbound);
+
+        graph.render(new Projection(Arrays.asList(
+                new CanvasNode(PERSON, NodeKind.CLASS, "Person"),
+                new CanvasNode(AGENT, NodeKind.CLASS, "Agent")),
+                Collections.emptyList()), new CanvasLayout());
+        assertNull(bridge.currentCanvasSelection(),
+                "render() recreates every cell, so the old selection object must be gone");
+
+        bridge.resyncAfterRender(selectedBeforeRender);
+
+        assertEquals(PERSON, bridge.currentCanvasSelection());
+        assertEquals(outboundBeforeRender, outbound,
+                "restoring a surviving selection after render must not notify Protege again");
+    }
+
+    /**
+     * When the previously-selected IRI is no longer on the canvas after a render (removed
+     * from the diagram, or dropped from the ontology), the loss is real: the canvas and
+     * Protege's selection would otherwise disagree forever, since Protege still thinks that
+     * entity is selected. So, unlike the ordinary "unknown IRI" case in
+     * {@link #selectOnCanvas}, this is reported outward with {@code null} so the caller can
+     * clear Protege's selection too and the two models end up agreeing again.
+     */
+    @Test
+    void resyncAfterRenderClearsAndReportsWhenTheSelectionFallsOffTheCanvas() {
+        graph.setSelectionCell(graph.getCellForId(PERSON));
+        String selectedBeforeRender = bridge.currentCanvasSelection();
+
+        graph.render(new Projection(Collections.singletonList(
+                new CanvasNode(AGENT, NodeKind.CLASS, "Agent")),
+                Collections.emptyList()), new CanvasLayout());
+
+        bridge.resyncAfterRender(selectedBeforeRender);
+
+        assertNull(bridge.currentCanvasSelection());
+        assertEquals(Arrays.asList(PERSON, null), outbound,
+                "the selected entity fell off the canvas, so Protege must be told to clear its selection");
+    }
 }

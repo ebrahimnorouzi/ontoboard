@@ -58,6 +58,35 @@ public class SelectionBridge {
         return graph.getIdForCell(graph.getSelectionCell());
     }
 
+    /**
+     * Re-syncs the canvas selection with {@code previousIri} after a call to
+     * {@link SchemaGraph#render}, which clears and recreates every cell and so silently
+     * drops any live selection - the old cell object simply no longer exists, even if the
+     * same IRI is still shown afterwards.
+     *
+     * <p>If {@code previousIri} still has a cell post-render, it is re-selected through the
+     * same suppressed, inbound path as {@link #selectOnCanvas}: nothing conceptually
+     * changed from Protege's point of view, so it must not be notified again.
+     *
+     * <p>If {@code previousIri} no longer has a cell - the node was removed from the
+     * canvas, or vanished from the ontology - the loss is real: the canvas and Protege
+     * would otherwise permanently disagree about what is selected. So this clears the
+     * canvas selection (a no-op if {@link SchemaGraph#render} already cleared it) and,
+     * unlike an ordinary unknown-IRI {@link #selectOnCanvas} call, reports the loss outward
+     * with {@code null} so the caller can clear Protege's selection too.
+     */
+    public void resyncAfterRender(String previousIri) {
+        if (previousIri == null) {
+            return;
+        }
+        if (graph.getCellForId(previousIri) != null) {
+            selectOnCanvas(previousIri);
+        } else {
+            graph.clearSelection();
+            onCanvasSelection.accept(null);
+        }
+    }
+
     private void handleCanvasSelectionChanged() {
         if (applyingInbound) {
             return;

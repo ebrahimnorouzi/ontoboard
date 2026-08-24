@@ -110,8 +110,18 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         }
     }
 
-    /** Pushes a canvas selection outward so Protege's editors follow it. */
+    /**
+     * Pushes a canvas selection outward so Protege's editors follow it. {@code iri} is
+     * {@code null} when {@link SelectionBridge#resyncAfterRender} determines the
+     * previously-selected node fell off the canvas during a refresh; passing {@code null}
+     * through to {@code setSelectedEntity} clears Protege's selection so it does not keep
+     * pointing at an entity the canvas no longer highlights.
+     */
     private void pushSelectionToProtege(String iri) {
+        if (iri == null) {
+            getOWLEditorKit().getOWLWorkspace().getOWLSelectionModel().setSelectedEntity(null);
+            return;
+        }
         OWLOntology ontology = getOWLModelManager().getActiveOntology();
         for (OWLEntity entity : ontology.getEntitiesInSignature(IRI.create(iri))) {
             getOWLEditorKit().getOWLWorkspace().getOWLSelectionModel().setSelectedEntity(entity);
@@ -203,10 +213,25 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         layout.prefixColors.clear();
     }
 
+    /**
+     * Re-renders the canvas. {@link SchemaGraph#render} clears and recreates every cell,
+     * which silently drops any live selection - so whatever was selected beforehand is
+     * captured and handed to {@link SelectionBridge#resyncAfterRender} afterwards, which
+     * restores it if it is still on the canvas, or clears it (and reports the loss outward)
+     * if it is not. {@code selectionBridge} is null the first time this runs, during
+     * {@link #initialiseOWLView()}, before there is anything to preserve.
+     */
     private void refresh() {
+        String selectedBeforeRender =
+                selectionBridge != null ? selectionBridge.currentCanvasSelection() : null;
+
         Projection projection = OntologyProjection
                 .project(getOWLModelManager().getActiveOntology(), membership.asSet());
         graph.render(projection, layout);
+
+        if (selectionBridge != null) {
+            selectionBridge.resyncAfterRender(selectedBeforeRender);
+        }
     }
 
     /** Copies live cell geometry back into the layout so it survives the next save. */
