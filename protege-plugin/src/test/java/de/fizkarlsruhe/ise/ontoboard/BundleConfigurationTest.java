@@ -240,4 +240,39 @@ class BundleConfigurationTest {
         }
         return properties;
     }
+
+    /**
+     * OSGi forbids Import-Package entries for {@code java.*} packages - they always come
+     * from the boot classloader. Felix enforces this at INSTALL time, rejecting the whole
+     * bundle with "Importing java.* packages not allowed" before resolution is even
+     * attempted. Version 1.0.0 shipped without this exclusion and could not be installed
+     * at all: bnd's wildcard had generated ~44 java.* clauses from the embedded jars.
+     */
+    @Test
+    void importPackageExcludesJavaStarSoFelixCanInstallTheBundle() throws Exception {
+        assertTrue(importPackageInstruction().contains("!java.*"),
+                "Import-Package must start with '!java.*'. Without it Felix refuses to "
+                        + "install the bundle ('Importing java.* packages not allowed') and "
+                        + "the OntoBoard tab silently never appears in Protege.");
+    }
+
+    /**
+     * The long tail of packages that robot-core's dependency tree references - Saxon,
+     * logback, POI, javaparser, bouncycastle, scala - must be optional. Made mandatory,
+     * none of them is provided by Protege and the bundle cannot resolve.
+     */
+    @Test
+    void importPackageMakesTheUnusedDependencyTailOptional() throws Exception {
+        assertTrue(importPackageInstruction().contains("*;resolution:=optional"),
+                "Import-Package must end with '*;resolution:=optional' so packages pulled "
+                        + "in by robot-core's transitive tree but never called do not make the "
+                        + "bundle unresolvable.");
+    }
+
+    private String importPackageInstruction() throws Exception {
+        NodeList nodes = parsePom().getElementsByTagName("Import-Package");
+        assertEquals(1, nodes.getLength(),
+                "expected exactly one <Import-Package> instruction in pom.xml");
+        return nodes.item(0).getTextContent();
+    }
 }
