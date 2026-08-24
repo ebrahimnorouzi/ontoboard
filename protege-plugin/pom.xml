@@ -6,7 +6,7 @@
 
   <groupId>de.fizkarlsruhe.ise</groupId>
   <artifactId>ontoboard</artifactId>
-  <version>2.0.0-SNAPSHOT</version>
+  <version>1.0.0</version>
   <packaging>bundle</packaging>
 
   <name>OntoBoard</name>
@@ -23,6 +23,7 @@
     <owlapi.version>4.5.9</owlapi.version>
     <jgraphx.version>4.2.2</jgraphx.version>
     <junit.version>5.10.2</junit.version>
+    <github.repo>ISE-FIZKarlsruhe/ontoboard</github.repo>
   </properties>
 
   <dependencyManagement>
@@ -146,6 +147,9 @@
             <Bundle-Activator>org.protege.editor.owl.ProtegeOWL</Bundle-Activator>
             <Bundle-SymbolicName>${project.artifactId};singleton:=true</Bundle-SymbolicName>
             <Bundle-Vendor>ISE / FIZ Karlsruhe</Bundle-Vendor>
+            <Bundle-Name>OntoBoard</Bundle-Name>
+            <Bundle-Description>Visual ontology engineering and ODK/ROBOT pipeline tooling for Protege Desktop</Bundle-Description>
+            <Bundle-DocURL>https://github.com/${github.repo}</Bundle-DocURL>
             <!-- Do NOT set Bundle-ClassPath; Embed-Dependency manages it. -->
             <Embed-Dependency>*;scope=compile|runtime;artifactId=!log4j-api</Embed-Dependency>
             <Embed-Transitive>true</Embed-Transitive>

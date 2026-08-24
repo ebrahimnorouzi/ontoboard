@@ -1,11 +1,15 @@
 package de.fizkarlsruhe.ise.ontoboard;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 import java.io.File;
+import java.io.InputStream;
+import java.util.Properties;
 import javax.xml.parsers.DocumentBuilderFactory;
 import org.junit.jupiter.api.Test;
 import org.w3c.dom.Document;
@@ -169,5 +173,71 @@ class BundleConfigurationTest {
                 + "the way maven.compiler.release does, so re-adding it would let Java 9+-only "
                 + "APIs slip past the compiler and fail only at runtime inside Protege's Java 8 "
                 + "JRE.");
+    }
+
+    @Test
+    void versionIsOsgiCleanWithNoSnapshotQualifier() throws Exception {
+        String version = pomVersion();
+        assertTrue(version.matches("\\d+\\.\\d+\\.\\d+"),
+                "Protege auto-update compares OSGi versions, and a qualifier such as "
+                        + "'.SNAPSHOT' sorts AFTER the bare version - so a released 1.0.0 would look "
+                        + "older than 1.0.0.SNAPSHOT and refuse to install. Found: " + version);
+    }
+
+    @Test
+    void updatePropertiesVersionMatchesThePom() throws Exception {
+        Properties update = loadUpdateProperties();
+        assertEquals(pomVersion(), update.getProperty("version"),
+                "update.properties drifting from pom.xml is the most common Protege "
+                        + "auto-update bug: the registry advertises one version and serves another.");
+    }
+
+    @Test
+    void updatePropertiesDownloadUrlPointsAtThisExactVersion() throws Exception {
+        Properties update = loadUpdateProperties();
+        String download = update.getProperty("download");
+        assertNotNull(download, "update.properties must declare a download URL");
+        assertTrue(download.contains(pomVersion()),
+                "a stale download URL serves the wrong jar to every auto-updating user; got " + download);
+        assertTrue(download.endsWith(".jar"), "download must resolve to a jar; got " + download);
+    }
+
+    @Test
+    void updatePropertiesDeclaresTheRequiredRegistryFields() throws Exception {
+        Properties update = loadUpdateProperties();
+        String[] required = {"id", "name", "version", "download", "license", "author"};
+        for (String field : required) {
+            assertNotNull(update.getProperty(field), "update.properties is missing '" + field + "'");
+            assertFalse(update.getProperty(field).trim().isEmpty(),
+                    "update.properties field '" + field + "' is empty");
+        }
+        assertEquals("ontoboard", update.getProperty("id"),
+                "the registry id must equal the bundle symbolic name so Protege matches installs to updates");
+    }
+
+    private static String pomVersion() throws Exception {
+        Document pom = DocumentBuilderFactory.newInstance().newDocumentBuilder()
+                .parse(new File("pom.xml"));
+        NodeList children = pom.getDocumentElement().getChildNodes();
+        for (int i = 0; i < children.getLength(); i++) {
+            if (children.item(i) instanceof Element
+                    && "version".equals(children.item(i).getNodeName())) {
+                return children.item(i).getTextContent().trim();
+            }
+        }
+        throw new AssertionError("no top-level <version> in pom.xml");
+    }
+
+    private static Properties loadUpdateProperties() throws Exception {
+        Properties properties = new Properties();
+        InputStream in = BundleConfigurationTest.class.getResourceAsStream("/update.properties");
+        assertNotNull(in, "update.properties missing from the built classpath - "
+                + "check that resource filtering is enabled for src/main/resources");
+        try {
+            properties.load(in);
+        } finally {
+            in.close();
+        }
+        return properties;
     }
 }
