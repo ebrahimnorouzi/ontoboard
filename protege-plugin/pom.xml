@@ -6,7 +6,7 @@
 
   <groupId>de.fizkarlsruhe.ise</groupId>
   <artifactId>ontoboard</artifactId>
-  <version>1.0.1</version>
+  <version>1.0.2</version>
   <packaging>bundle</packaging>
 
   <name>OntoBoard</name>
@@ -144,6 +144,21 @@
         <extensions>true</extensions>
         <configuration>
           <instructions>
+            <!--
+              Suppress the generated `Require-Capability: osgi.ee=JavaSE version=11`.
+              bnd computes that from the HIGHEST class-file version across the whole
+              bundle, and three embedded jars (logback-classic 1.5.6, obographs-core and
+              obographs-owlapi 0.3.1) carry Java 11 classes. Protege 5.5.0 runs on its
+              bundled Java 8 JRE, so the requirement is unsatisfiable and Felix refuses
+              to resolve the bundle - which is why 1.0.1 installed but never started.
+
+              OntoBoard's own classes are Java 8 (enforced by maven.compiler.release and
+              guarded by a test). The Java 11 classes belong to a logging backend Protege
+              already provides and to a ROBOT JSON format this release does not call; if
+              such a class were ever loaded it would throw UnsupportedClassVersionError,
+              the same trade-off already accepted for the optional import tail.
+            -->
+            <_noee>true</_noee>
             <Bundle-Activator>org.protege.editor.owl.ProtegeOWL</Bundle-Activator>
             <Bundle-SymbolicName>${project.artifactId};singleton:=true</Bundle-SymbolicName>
             <Bundle-Vendor>ISE / FIZ Karlsruhe</Bundle-Vendor>

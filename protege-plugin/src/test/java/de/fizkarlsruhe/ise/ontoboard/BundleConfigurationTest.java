@@ -275,4 +275,23 @@ class BundleConfigurationTest {
                 "expected exactly one <Import-Package> instruction in pom.xml");
         return nodes.item(0).getTextContent();
     }
+
+    /**
+     * bnd derives {@code Require-Capability: osgi.ee} from the HIGHEST class-file version
+     * anywhere in the bundle, including embedded jars. Three of robot-core's transitive
+     * jars carry Java 11 classes, so bnd demanded JavaSE 11 - unsatisfiable on Protege
+     * 5.5.0's bundled Java 8 JRE. Version 1.0.1 installed but Felix refused to resolve it
+     * ("missing requirement osgi.ee JavaSE 11"), so the tab never appeared.
+     */
+    @Test
+    void executionEnvironmentRequirementIsSuppressedForTheJava8Host() throws Exception {
+        NodeList nodes = parsePom().getElementsByTagName("_noee");
+        assertEquals(1, nodes.getLength(),
+                "pom.xml must set <_noee>true</_noee>. Without it bnd emits "
+                        + "Require-Capability osgi.ee=JavaSE version=11 (taken from embedded "
+                        + "jars' class-file versions), which the Java 8 host cannot satisfy, "
+                        + "and the bundle silently fails to resolve.");
+        assertEquals("true", nodes.item(0).getTextContent().trim(),
+                "<_noee> must be true");
+    }
 }
