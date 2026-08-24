@@ -2,6 +2,8 @@ package de.fizkarlsruhe.ise.ontoboard.views;
 
 import com.mxgraph.swing.mxGraphComponent;
 import com.mxgraph.swing.mxGraphOutline;
+import com.mxgraph.util.mxEvent;
+import com.mxgraph.util.mxEventSource.mxIEventListener;
 import de.fizkarlsruhe.ise.ontoboard.canvas.CanvasExport;
 import de.fizkarlsruhe.ise.ontoboard.canvas.CanvasLayouts;
 import de.fizkarlsruhe.ise.ontoboard.canvas.CanvasMembership;
@@ -25,6 +27,7 @@ import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPopupMenu;
 import javax.swing.JToolBar;
+import javax.swing.Timer;
 import org.protege.editor.owl.model.event.EventType;
 import org.protege.editor.owl.model.event.OWLModelManagerListener;
 import org.protege.editor.owl.model.selection.OWLSelectionModelListener;
@@ -51,6 +54,17 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
     private OWLModelManagerListener modelManagerListener;
     private SelectionBridge selectionBridge;
     private OWLSelectionModelListener selectionListener;
+    /**
+     * Debounces the sidecar save that follows a drag. {@code mxEvent.CELLS_MOVED} fires
+     * repeatedly while the mouse moves, and writing the sidecar on every one of those events
+     * would be wasteful, so {@link #positionSaveTimer} is restarted on each event and only
+     * the last one in a burst - after ~800ms of quiet, mirroring the retired web app's
+     * debounce - actually reaches disk. {@code capturePositions()} itself still runs
+     * synchronously on every event since copying live geometry into {@link #layout} is
+     * cheap; only the disk write is deferred.
+     */
+    private Timer positionSaveTimer;
+    private mxIEventListener cellsMovedListener;
 
     @Override
     protected void initialiseOWLView() {
@@ -58,6 +72,10 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
 
         graph = new SchemaGraph();
         graphComponent = new mxGraphComponent(graph);
+        graphComponent.setConnectable(false); // Task 4 turns this on with real axiom writing
+        graphComponent.setToolTips(true);
+        graphComponent.setPanning(true);
+        graphComponent.getPanningHandler().setEnabled(true);
         add(graphComponent, BorderLayout.CENTER);
 
         mxGraphOutline outline = new mxGraphOutline(graphComponent);
@@ -71,6 +89,14 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
 
         selectionBridge = new SelectionBridge(graph, this::pushSelectionToProtege);
         selectionBridge.install();
+
+        positionSaveTimer = new Timer(800, event -> saveLayoutTo(currentOntologyFile));
+        positionSaveTimer.setRepeats(false);
+        cellsMovedListener = (sender, event) -> {
+            capturePositions();
+            positionSaveTimer.restart();
+        };
+        graph.addListener(mxEvent.CELLS_MOVED, cellsMovedListener);
 
         selectionListener = () -> {
             OWLEntity selected = getOWLEditorKit().getOWLWorkspace()
@@ -111,6 +137,15 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         if (selectionListener != null) {
             getOWLEditorKit().getOWLWorkspace().getOWLSelectionModel()
                     .removeListener(selectionListener);
+        }
+        if (cellsMovedListener != null) {
+            graph.removeListener(cellsMovedListener);
+        }
+        if (positionSaveTimer != null) {
+            // Stop the debounce timer so it cannot fire after this view is gone, then do
+            // the save it would have done - a drag immediately before closing must not be
+            // lost just because the 800ms quiet period never elapsed.
+            positionSaveTimer.stop();
         }
         capturePositions();
         saveLayoutTo(currentOntologyFile);

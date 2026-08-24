@@ -25,6 +25,12 @@ public class SchemaGraph extends mxGraph {
         setAllowLoops(false);
         setCellsDisconnectable(false);
         setEdgeLabelsMovable(false);
+        setCellsMovable(true);
+        // Label editing arrives in Task 3; enabling it now would let a user rename a
+        // cell's visible text without touching the ontology, which would be a lie.
+        setCellsEditable(false);
+        setDropEnabled(false);
+        setSplitEnabled(false);
     }
 
     public void render(Projection projection, CanvasLayout layout) {
@@ -69,6 +75,18 @@ public class SchemaGraph extends mxGraph {
 
     public String getIdForCell(Object cell) {
         return cell instanceof mxCell ? ((mxCell) cell).getId() : null;
+    }
+
+    /**
+     * Shows the full entity IRI on hover. Cell ids are the IRI (see {@link #render}, which
+     * passes {@code node.getId()} / {@code edge.getId()} as the vertex/edge id), while the
+     * visible label ({@link #convertValueToString}) is deliberately kept short. Falls back
+     * to the default behaviour for anything without an id, e.g. {@code null}.
+     */
+    @Override
+    public String getToolTipForCell(Object cell) {
+        String id = getIdForCell(cell);
+        return id != null ? id : super.getToolTipForCell(cell);
     }
 
     private static String styleFor(CanvasNode node) {
