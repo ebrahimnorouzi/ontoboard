@@ -37,6 +37,8 @@ Protégé hosts the ontology-engineering core natively and better. ROBOT ships a
 | D2 | Native Swing canvas on JGraphX | Cytoscape.js is browser-only; no embedded browser |
 | ~~D3~~ | ~~Single-user. No server, no collaboration~~ | **REVERSED 2026-08-24** |
 | D3a | The plugin is a **second client**, not a replacement. The web application and its collaboration stack are retained | After using the plugin the user confirmed the requirement is both tooling and collaboration; Protege cannot host the latter |
+| D3b | The plugin **joins the same live session** as web clients: presence, remote cursors, live operations, comments | User decision 2026-08-25. Collaboration is not delegated to the browser; a Protege user and a browser user edit together |
+| D3c | Supported host is **Protege 5.6.x**; 5.5.0 still loads with a reduced ROBOT surface | OWL API 4.5.29 is required for ROBOT report/query/export. Proven in both directions (§9b) |
 | D4 | Layout in a sidecar JSON file | Keeps the ontology byte-clean |
 | D5 | New `protege-plugin/` module; delete the web stack at parity | User decision |
 | D6 | Reuse Protégé's stock editors rather than reimplement them | Avoids duplicating a better implementation |
@@ -329,6 +331,33 @@ Distribution: copy the JAR into Protégé's `plugins/` directory, plus an
 licensed and stable, `4.2.2` is republished to Maven Central with OSGi metadata, and both
 CoModIDE and OWLAx ship on it. Accepted: the alternatives (Prefuse, JUNG, GraphStream)
 are visualization-first and lack edge drawing, grouping, and undo.
+
+### 9b. Verified: the ROBOT surface depends on the host's OWL API
+
+OWL API moved its Rio layer from Sesame (`org.openrdf`) to RDF4J (`org.eclipse.rdf4j`) at
+**4.5.25**. `robot-core:1.9.8` is built against 4.5.29 and calls the RDF4J form, so on a
+host supplying an older OWL API every Rio-routed operation throws
+`NoSuchMethodError: RioRenderer.<init>(..., org.eclipse.rdf4j.rio.RDFHandler, ...)`.
+Supplying RDF4J jars does not help - the mismatched signature is inside OWL API itself.
+
+Confirmed in both directions rather than inferred from one run:
+
+| OWL API | `ReportOperation.getReport` |
+|---|---|
+| 4.5.9 (Protege 5.5.0) | `NoSuchMethodError` on `RioRenderer` |
+| 4.5.29 (Protege 5.6.9) | 7 findings returned (`missing_label`, `missing_ontology_title`, ...) |
+
+Working on 4.5.9: loading, reasoning, saving, conversion. Not working: report, SPARQL
+query, export. §9a's earlier probe passed only because it happened to exercise the former.
+
+**OWL API is imported from the host, never embedded**, so one artifact serves both hosts and
+the available ROBOT surface simply follows the host.
+
+A trap worth recording: `owlapi-osgidistribution` is a fat jar containing every OWL API
+class. Left out of `dependencyManagement` it stays at the transitively-resolved version and
+shadows correctly-pinned siblings, which made the first version experiment silently
+ineffective - seven artifacts resolved to 4.5.29 while the fat 4.5.9 jar still won at
+runtime. It is now pinned.
 
 ## 10. Testing
 
