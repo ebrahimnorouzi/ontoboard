@@ -17,4 +17,13 @@
     <category value="@org.protege.ontologycategory"/>
   </extension>
 
+  <!-- Tools menu: start a new ODK project -->
+  <extension id="NewOdkProjectAction" point="org.protege.editor.core.application.EditorKitMenuAction">
+    <name value="New ODK Project..."/>
+    <path value="org.protege.editor.owl.menu.tools/SlotA-A"/>
+    <toolTip value="Create an ODK-style ontology repository and start editing it"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.odk.NewProjectAction"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
+
 </plugin>
