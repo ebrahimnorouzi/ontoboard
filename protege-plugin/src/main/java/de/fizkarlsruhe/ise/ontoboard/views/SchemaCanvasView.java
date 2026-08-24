@@ -1,6 +1,9 @@
 package de.fizkarlsruhe.ise.ontoboard.views;
 
 import com.mxgraph.swing.mxGraphComponent;
+import com.mxgraph.swing.mxGraphOutline;
+import de.fizkarlsruhe.ise.ontoboard.canvas.CanvasExport;
+import de.fizkarlsruhe.ise.ontoboard.canvas.CanvasLayouts;
 import de.fizkarlsruhe.ise.ontoboard.canvas.CanvasMembership;
 import de.fizkarlsruhe.ise.ontoboard.canvas.SchemaGraph;
 import de.fizkarlsruhe.ise.ontoboard.canvas.SelectionBridge;
@@ -9,12 +12,19 @@ import de.fizkarlsruhe.ise.ontoboard.layout.CanvasLayoutStore;
 import de.fizkarlsruhe.ise.ontoboard.model.OntologyProjection;
 import de.fizkarlsruhe.ise.ontoboard.model.Projection;
 import java.awt.BorderLayout;
+import java.awt.Dimension;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.File;
+import java.io.IOException;
 import java.net.URI;
+import javax.swing.JButton;
+import javax.swing.JComboBox;
+import javax.swing.JFileChooser;
 import javax.swing.JMenuItem;
+import javax.swing.JOptionPane;
 import javax.swing.JPopupMenu;
+import javax.swing.JToolBar;
 import org.protege.editor.owl.model.event.EventType;
 import org.protege.editor.owl.model.event.OWLModelManagerListener;
 import org.protege.editor.owl.model.selection.OWLSelectionModelListener;
@@ -49,6 +59,11 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         graph = new SchemaGraph();
         graphComponent = new mxGraphComponent(graph);
         add(graphComponent, BorderLayout.CENTER);
+
+        mxGraphOutline outline = new mxGraphOutline(graphComponent);
+        outline.setPreferredSize(new Dimension(180, 140));
+        add(outline, BorderLayout.EAST);
+        add(buildToolBar(), BorderLayout.NORTH);
 
         loadLayoutForActiveOntology();
         installContextMenu();
@@ -126,6 +141,48 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         for (OWLEntity entity : ontology.getEntitiesInSignature(IRI.create(iri))) {
             getOWLEditorKit().getOWLWorkspace().getOWLSelectionModel().setSelectedEntity(entity);
             return;
+        }
+    }
+
+    private JToolBar buildToolBar() {
+        JToolBar bar = new JToolBar();
+        bar.setFloatable(false);
+
+        JComboBox<CanvasLayouts.Algorithm> algorithms =
+                new JComboBox<>(CanvasLayouts.Algorithm.values());
+        JButton arrange = new JButton("Arrange");
+        arrange.addActionListener(a -> CanvasLayouts.apply(graph,
+                (CanvasLayouts.Algorithm) algorithms.getSelectedItem()));
+
+        JButton exportPng = new JButton("Export PNG");
+        exportPng.addActionListener(a -> exportTo("png"));
+
+        JButton exportSvg = new JButton("Export SVG");
+        exportSvg.addActionListener(a -> exportTo("svg"));
+
+        bar.add(algorithms);
+        bar.add(arrange);
+        bar.addSeparator();
+        bar.add(exportPng);
+        bar.add(exportSvg);
+        return bar;
+    }
+
+    private void exportTo(String extension) {
+        JFileChooser chooser = new JFileChooser();
+        chooser.setSelectedFile(new File("schema-diagram." + extension));
+        if (chooser.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) {
+            return;
+        }
+        try {
+            if ("png".equals(extension)) {
+                CanvasExport.writePng(graph, chooser.getSelectedFile());
+            } else {
+                CanvasExport.writeSvg(graph, chooser.getSelectedFile());
+            }
+        } catch (IOException e) {
+            JOptionPane.showMessageDialog(this, "Export failed: " + e.getMessage(),
+                    "OntoBoard", JOptionPane.ERROR_MESSAGE);
         }
     }
 
