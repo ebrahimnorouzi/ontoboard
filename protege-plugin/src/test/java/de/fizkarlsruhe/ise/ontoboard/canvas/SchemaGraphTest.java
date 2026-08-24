@@ -1,8 +1,10 @@
 package de.fizkarlsruhe.ise.ontoboard.canvas;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.mxgraph.model.mxCell;
 import de.fizkarlsruhe.ise.ontoboard.layout.CanvasLayout;
@@ -70,5 +72,29 @@ class SchemaGraphTest {
         Object[] children = com.mxgraph.model.mxGraphModel
                 .getChildren(graph.getModel(), graph.getDefaultParent());
         assertEquals(3, children.length, "expected 2 vertices + 1 edge, not duplicates");
+    }
+
+    @Test
+    void graphIsConfiguredForDirectManipulation() {
+        SchemaGraph graph = new SchemaGraph();
+        assertTrue(graph.isCellsMovable(), "nodes must be draggable");
+        assertFalse(graph.isAllowDanglingEdges(), "an edge with one end is not an axiom");
+        assertFalse(graph.isCellsDisconnectable(),
+                "detaching an edge endpoint would silently orphan an axiom");
+        assertFalse(graph.isCellsEditable(),
+                "label editing arrives in Task 3; enabling it now would let a user rename "
+                        + "a cell without touching the ontology");
+        assertFalse(graph.isDropEnabled(), "drag-and-drop cell splitting is not part of this task");
+        assertFalse(graph.isSplitEnabled(), "edge splitting is not part of this task");
+    }
+
+    @Test
+    void tooltipShowsTheFullIriRatherThanTheShortLabel() {
+        SchemaGraph graph = new SchemaGraph();
+        graph.render(twoClassesWithSubClassEdge(), new CanvasLayout());
+
+        Object personCell = graph.getCellForId(PERSON);
+        assertEquals(PERSON, graph.getToolTipForCell(personCell),
+                "tooltip must show the full IRI even though the visible label is short");
     }
 }

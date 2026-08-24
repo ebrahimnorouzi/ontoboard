@@ -34,12 +34,14 @@ public final class OntologyProjection {
 
         for (OWLClass cls : ontology.getClassesInSignature()) {
             if (isOn(onCanvasIris, cls.getIRI())) {
-                nodes.add(new CanvasNode(iri(cls.getIRI()), NodeKind.CLASS, localName(cls.getIRI())));
+                nodes.add(new CanvasNode(iri(cls.getIRI()), NodeKind.CLASS,
+                        DisplayLabels.forEntity(ontology, cls)));
             }
         }
         for (OWLNamedIndividual ind : ontology.getIndividualsInSignature()) {
             if (isOn(onCanvasIris, ind.getIRI())) {
-                nodes.add(new CanvasNode(iri(ind.getIRI()), NodeKind.INDIVIDUAL, localName(ind.getIRI())));
+                nodes.add(new CanvasNode(iri(ind.getIRI()), NodeKind.INDIVIDUAL,
+                        DisplayLabels.forEntity(ontology, ind)));
             }
         }
 
@@ -186,22 +188,8 @@ public final class OntologyProjection {
         return value.toString();
     }
 
+    /** Delegates so short-name derivation lives in exactly one place. */
     private static String localName(IRI value) {
-        String fragment = value.getFragment();
-        if (fragment != null && !fragment.isEmpty()) {
-            return fragment;
-        }
-        String text = value.toString();
-        // IRI.getFragment() returns "" (not null) for a bare trailing '/' or '#', so both
-        // fall through to here. Strip a single trailing delimiter before taking the last
-        // path segment, otherwise "foo/" yields the whole IRI and "foo#" leaks the '#'.
-        if (text.endsWith("/") || text.endsWith("#")) {
-            text = text.substring(0, text.length() - 1);
-        }
-        if (text.isEmpty()) {
-            return value.toString();
-        }
-        int slash = text.lastIndexOf('/');
-        return slash >= 0 && slash < text.length() - 1 ? text.substring(slash + 1) : text;
+        return DisplayLabels.shortNameOf(value);
     }
 }

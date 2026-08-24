@@ -35,7 +35,8 @@ Protégé hosts the ontology-engineering core natively and better. ROBOT ships a
 | D1 | Protégé Desktop plugin, not a Miro app | §1 |
 | D1a | Target the **5.5.0 floor**, forward-compatible with 5.6.x | The available install is 5.5.0; §9a proves the stack works there |
 | D2 | Native Swing canvas on JGraphX | Cytoscape.js is browser-only; no embedded browser |
-| D3 | Single-user. No server, no collaboration | User decision |
+| ~~D3~~ | ~~Single-user. No server, no collaboration~~ | **REVERSED 2026-08-24** |
+| D3a | The plugin is a **second client**, not a replacement. The web application and its collaboration stack are retained | After using the plugin the user confirmed the requirement is both tooling and collaboration; Protege cannot host the latter |
 | D4 | Layout in a sidecar JSON file | Keeps the ontology byte-clean |
 | D5 | New `protege-plugin/` module; delete the web stack at parity | User decision |
 | D6 | Reuse Protégé's stock editors rather than reimplement them | Avoids duplicating a better implementation |

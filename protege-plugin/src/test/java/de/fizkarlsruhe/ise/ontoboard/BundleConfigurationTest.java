@@ -275,4 +275,70 @@ class BundleConfigurationTest {
                 "expected exactly one <Import-Package> instruction in pom.xml");
         return nodes.item(0).getTextContent();
     }
+
+    /**
+     * bnd derives {@code Require-Capability: osgi.ee} from the HIGHEST class-file version
+     * anywhere in the bundle, including embedded jars. Three of robot-core's transitive
+     * jars carry Java 11 classes, so bnd demanded JavaSE 11 - unsatisfiable on Protege
+     * 5.5.0's bundled Java 8 JRE. Version 1.0.1 installed but Felix refused to resolve it
+     * ("missing requirement osgi.ee JavaSE 11"), so the tab never appeared.
+     */
+    @Test
+    void executionEnvironmentRequirementIsSuppressedForTheJava8Host() throws Exception {
+        NodeList nodes = parsePom().getElementsByTagName("_noee");
+        assertEquals(1, nodes.getLength(),
+                "pom.xml must set <_noee>true</_noee>. Without it bnd emits "
+                        + "Require-Capability osgi.ee=JavaSE version=11 (taken from embedded "
+                        + "jars' class-file versions), which the Java 8 host cannot satisfy, "
+                        + "and the bundle silently fails to resolve.");
+        assertEquals("true", nodes.item(0).getTextContent().trim(),
+                "<_noee> must be true");
+    }
+
+    /**
+     * plugin.xml names classes as strings, so bnd never sees them referenced from Java
+     * and does not generate imports for their packages. A wildcard like
+     * {@code org.protege.editor.owl.*} does not help: bnd wildcards filter packages it
+     * already decided are needed, they do not add new ones.
+     *
+     * <p>Version 1.0.2 shipped without {@code org.protege.editor.owl.ui}, whose
+     * {@code OWLWorkspaceViewsTab} is the tab class named in plugin.xml. The bundle
+     * installed, resolved and started, and the tab appeared under Window &gt; Tabs -- but
+     * clicking it threw ClassNotFoundException and nothing happened.
+     *
+     * <p>PluginXmlTest cannot catch this: it runs with the full Maven test classpath, so
+     * every class loads there regardless of what the OSGi manifest imports.
+     */
+    @Test
+    void everyThirdPartyClassInPluginXmlHasItsPackageImported() throws Exception {
+        String imports = importPackageInstruction();
+        NodeList declared = parsePluginXml().getElementsByTagName("class");
+        int checked = 0;
+        for (int i = 0; i < declared.getLength(); i++) {
+            String fqcn = ((Element) declared.item(i)).getAttribute("value");
+            if (fqcn.isEmpty() || fqcn.startsWith("de.fizkarlsruhe.ise.ontoboard")) {
+                continue;
+            }
+            String pkg = fqcn.substring(0, fqcn.lastIndexOf('.'));
+            checked++;
+            assertTrue(imports.contains(pkg),
+                    "plugin.xml declares '" + fqcn + "' but package '" + pkg + "' is not in "
+                            + "<Import-Package>. OSGi cannot load a class from a package the "
+                            + "bundle does not import, so the tab appears in the menu and then "
+                            + "fails with ClassNotFoundException when clicked. Add '" + pkg
+                            + "' as an explicit clause - a wildcard will not force it.");
+        }
+        assertTrue(checked >= 1,
+                "expected at least one third-party class declared in plugin.xml");
+    }
+
+    private Document parsePluginXml() throws Exception {
+        InputStream in = getClass().getResourceAsStream("/plugin.xml");
+        assertNotNull(in, "plugin.xml missing from the built classpath");
+        try {
+            return DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(in);
+        } finally {
+            in.close();
+        }
+    }
 }
