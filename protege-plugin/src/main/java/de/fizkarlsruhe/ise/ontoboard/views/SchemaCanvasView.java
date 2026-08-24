@@ -1,6 +1,7 @@
 package de.fizkarlsruhe.ise.ontoboard.views;
 
 import com.mxgraph.swing.mxGraphComponent;
+import de.fizkarlsruhe.ise.ontoboard.axiom.AxiomRemoval;
 import de.fizkarlsruhe.ise.ontoboard.axiom.EdgeAxioms;
 import de.fizkarlsruhe.ise.ontoboard.axiom.EntityFactory;
 import de.fizkarlsruhe.ise.ontoboard.axiom.RelationDialog;
@@ -263,6 +264,13 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                     });
                     menu.add(remove);
                 }
+                if (cell != null && graph.getModel().isEdge(cell)) {
+                    final String edgeId = graph.getIdForCell(cell);
+                    JMenuItem deleteAxiom = new JMenuItem("Delete axiom from ontology...");
+                    deleteAxiom.addActionListener(a -> deleteAxiomFor(edgeId));
+                    menu.add(deleteAxiom);
+                }
+
                 menu.addSeparator();
 
                 final int clickX = event.getX();
@@ -520,5 +528,52 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             }
         }
         return 0;
+    }
+
+    /**
+     * Retracts the axiom an edge stands for, after confirmation.
+     *
+     * <p>Deliberately worded and separated from "Remove from canvas (keeps axioms)": one
+     * changes the ontology and one changes only the view, and confusing them would lose a
+     * user's work. Legacy rdfs:domain/rdfs:range edges get an extra warning because those
+     * axioms are global - every other arrow drawn with the same property depends on them.
+     */
+    private void deleteAxiomFor(String edgeId) {
+        OWLOntology ontology = getOWLModelManager().getActiveOntology();
+        List<OWLOntologyChange> removals;
+        try {
+            removals = AxiomRemoval.removalsFor(ontology, edgeId);
+        } catch (AxiomRemoval.UnknownEdgeException unknown) {
+            JOptionPane.showMessageDialog(this, unknown.getMessage(),
+                    "Cannot delete this edge", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        if (removals.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                    "That axiom is not asserted in this ontology - it may be inferred, or "
+                            + "it may live in an imported ontology.",
+                    "Nothing to delete", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+
+        StringBuilder message = new StringBuilder();
+        message.append("Permanently remove ")
+                .append(removals.size() == 1 ? "this axiom" : removals.size() + " axioms")
+                .append(" from the ontology?\n\n");
+        for (OWLOntologyChange change : removals) {
+            message.append("    ").append(change.getAxiom()).append('\n');
+        }
+        if (AxiomRemoval.isGlobalDomainRange(edgeId)) {
+            message.append("\nThese are GLOBAL rdfs:domain / rdfs:range axioms. Every other "
+                    + "arrow drawn with this property depends on them and will disappear too.");
+        }
+        message.append("\n\nTo hide the arrow without changing the ontology, use "
+                + "\"Remove from canvas\" on a node instead.");
+
+        int answer = JOptionPane.showConfirmDialog(this, message.toString(),
+                "Delete axiom", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+        if (answer == JOptionPane.YES_OPTION) {
+            getOWLModelManager().applyChanges(removals);
+        }
     }
 }
