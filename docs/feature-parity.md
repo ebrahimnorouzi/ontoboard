@@ -44,7 +44,9 @@ quality reporting, GitHub integration, and live collaboration.
 | SWRL rules | ✅ | 🧩 | SWRLTab, bundled |
 | Custom datatypes, `owl:hasKey`, negative assertions | ❌ | ✅ | Protégé supports these; the web app never did |
 
-**Nothing to build.** The plugin is ahead here simply by running inside Protégé.
+**Nothing to build.** The plugin is ahead here simply by running inside Protégé. Since
+1.8.0 the OntoBoard tab also carries Protégé's own class, property, datatype and
+individual views in a tabbed column beside the canvas, so none of this needs a tab switch.
 
 ## 2. Visual canvas
 
@@ -158,5 +160,5 @@ mature plugins is waste) or ➖ (web-application machinery with no desktop meani
 - **Collaboration cannot be verified by tests alone.** "Two people see each other's cursors"
   needs a server, a browser and Protégé at once. Each piece is built to fail loudly; the
   end-to-end claim needs a human.
-- **No plugin UI is covered by tests.** 170 tests cover logic; every Swing surface is verified
+- **No plugin UI is covered by tests.** 185 tests cover logic; every Swing surface is verified
   by hand.

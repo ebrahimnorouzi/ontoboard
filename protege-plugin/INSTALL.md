@@ -29,3 +29,26 @@
 - Confirm exactly one `ontoboard-*.jar` exists in `plugins/`.
 - In Protégé, check **Help → About Protégé → Plugins** (or the plugin
   manager) for a single OntoBoard entry at the expected version.
+
+## Opening the tab
+
+**Window → Tabs → OntoBoard.** The tab shows Protégé's entity views in a
+tabbed column on the left — Classes, Object properties, Data properties,
+Annotation properties, Datatypes, Individuals — with the Schema Canvas
+beside them.
+
+### If the layout looks wrong after upgrading
+
+Protégé stores the arrangement of each tab per user and restores that in
+preference to the one shipped in the jar, so a new release's layout would
+otherwise never reach anyone who had already opened the tab. OntoBoard
+detects this and adopts the new layout once, the first time you open the tab
+after upgrading — no action needed, and any rearranging you do afterwards is
+kept until the shipped layout genuinely changes again.
+
+If it somehow does not take effect — a stacked layout instead of two columns,
+or a missing panel — apply it by hand:
+
+**Window → Reset selected tab to default state**
+
+`~/.Protege/logs/protege.log` records the outcome; search for `OntoBoard`.

@@ -90,6 +90,12 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
      */
     private Timer positionSaveTimer;
     private mxIEventListener cellsMovedListener;
+    /**
+     * Enabled only while Protege has an entity selected. The entity tabs sit in the same
+     * OntoBoard tab as the canvas, so the intended gesture is select-then-add; a button that
+     * is always enabled and silently does nothing on an empty selection reads as broken.
+     */
+    private JButton addSelectedButton;
 
     @Override
     protected void initialiseOWLView() {
@@ -140,6 +146,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             OWLEntity selected = getOWLEditorKit().getOWLWorkspace()
                     .getOWLSelectionModel().getSelectedEntity();
             selectionBridge.selectOnCanvas(selected == null ? null : selected.getIRI().toString());
+            describeSelectionOnButton(selected);
         };
         getOWLEditorKit().getOWLWorkspace().getOWLSelectionModel()
                 .addListener(selectionListener);
@@ -189,13 +196,52 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         saveLayoutTo(currentOntologyFile);
     }
 
-    /** Adds whatever is selected in Protege's hierarchy views to the canvas. */
+    /**
+     * Adds whatever is selected in Protege's entity tabs to the canvas.
+     *
+     * <p>Both dead ends are answered rather than ignored. With nothing selected the user is told
+     * where to select something, since the tabs that drive this are in the same OntoBoard tab
+     * and easy to overlook. An entity already on the board is selected there instead, because a
+     * board holding fifty nodes gives no clue whether the one you asked for is among them, and
+     * doing nothing at all is indistinguishable from a failure.
+     */
     public void addSelectedEntityToCanvas() {
         OWLEntity selected = getOWLEditorKit().getOWLWorkspace()
                 .getOWLSelectionModel().getSelectedEntity();
-        if (selected != null && membership.add(selected.getIRI().toString())) {
+        if (selected == null) {
+            JOptionPane.showMessageDialog(this,
+                    "Select a class, property or individual in the tabs on the left first.",
+                    "Nothing selected", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        String iri = selected.getIRI().toString();
+        if (membership.add(iri)) {
             refresh();
         }
+        if (selectionBridge != null) {
+            selectionBridge.selectOnCanvas(iri);
+        }
+    }
+
+    /**
+     * Puts the selected entity's name on the Add button, so the button says what it will add
+     * rather than leaving the user to check the tree and the board for agreement.
+     */
+    private void describeSelectionOnButton(OWLEntity selected) {
+        if (addSelectedButton == null) {
+            return;
+        }
+        addSelectedButton.setEnabled(selected != null);
+        if (selected == null) {
+            addSelectedButton.setText("Add selected");
+            addSelectedButton.setToolTipText(
+                    "Select a class, property or individual in the tabs on the left");
+            return;
+        }
+        String label =
+                DisplayLabels.forEntity(getOWLModelManager().getActiveOntology(), selected);
+        addSelectedButton.setText("Add " + label);
+        addSelectedButton.setToolTipText("Add " + selected.getIRI() + " to the canvas");
     }
 
     /**
@@ -227,12 +273,19 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         arrange.addActionListener(a -> CanvasLayouts.apply(graph,
                 (CanvasLayouts.Algorithm) algorithms.getSelectedItem()));
 
+        addSelectedButton = new JButton("Add selected");
+        addSelectedButton.addActionListener(a -> addSelectedEntityToCanvas());
+        describeSelectionOnButton(getOWLEditorKit().getOWLWorkspace()
+                .getOWLSelectionModel().getSelectedEntity());
+
         JButton exportPng = new JButton("Export PNG");
         exportPng.addActionListener(a -> exportTo("png"));
 
         JButton exportSvg = new JButton("Export SVG");
         exportSvg.addActionListener(a -> exportTo("svg"));
 
+        bar.add(addSelectedButton);
+        bar.addSeparator();
         bar.add(algorithms);
         bar.add(arrange);
         bar.addSeparator();

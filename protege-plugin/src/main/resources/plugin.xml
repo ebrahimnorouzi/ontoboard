@@ -2,9 +2,12 @@
 <?eclipse version="3.0"?>
 <plugin>
 
+  <!-- OntoBoardTab subclasses Protege's OWLWorkspaceViewsTab only so that a changed
+       viewconfig-ontoboardtab.xml reaches users who have already opened the tab; Protege
+       otherwise restores the arrangement it saved and ignores the new default. -->
   <extension id="OntoBoardTab" point="org.protege.editor.core.application.WorkspaceTab">
     <label value="OntoBoard"/>
-    <class value="org.protege.editor.owl.ui.OWLWorkspaceViewsTab"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.views.OntoBoardTab"/>
     <index value="O"/>
     <editorKitId value="OWLEditorKit"/>
     <defaultViewConfigFileName value="viewconfig-ontoboardtab.xml"/>

@@ -9,7 +9,7 @@ Two codebases: the Protégé plugin (`protege-plugin/`, Java) and the web applic
 
 ```bash
 cd protege-plugin
-mvn clean test        # 129 tests
+mvn clean test        # 185 tests
 mvn clean package     # -> target/ontoboard-<version>.jar
 ```
 
@@ -68,6 +68,33 @@ accident.
   returns a Guava `Optional`, which OWL API 4 does.
 - **`owlapi-osgidistribution` is pinned** — it is a fat jar containing every OWL API class,
   and if left unpinned it shadows correctly-pinned siblings.
+
+### The tab layout, and one trap in it
+
+`viewconfig-ontoboardtab.xml` describes the OntoBoard tab in Protégé's mdock format.
+`ViewConfigTest` asserts its structure, because nothing here fails loudly: Protégé parses the
+file with a SAX handler that ignores what it does not recognise, so a mistake produces a tab
+that *looks* fine.
+
+- **`VSNode` puts its children side by side; `HSNode` stacks them.** The names describe the
+  divider, not the arrangement. This is the opposite of most people's first reading, and the
+  plugin shipped once with the hierarchy underneath the canvas because of it. `VerticalSplitter`
+  sets a `W_RESIZE` cursor and `HorizontalSplitter` an `N_RESIZE` one, which settles the
+  question; Protégé's own `viewconfig-classestab.xml` uses `VSNode` for its left-hand column.
+- **A `CNode` holding several `Component`s renders them as tabs.** One `CNode` per view would
+  give slivers instead. This is how the entity column fits six views into 28% of the width.
+- **A `pluginId` is `<bundle symbolic name>.<extension id>`**, resolved at runtime against the
+  extension registry. A typo yields an empty panel and no log line, so
+  `ViewConfigTest.everyReferencedViewIsDeclaredByABundleOnTheClasspath` resolves every id
+  against the `plugin.xml` files actually on the classpath.
+- **`${project.artifactId}` is substituted by resource filtering**, which is why
+  `src/main/resources` is filtered in the pom. With filtering off, the token reaches the jar and
+  the canvas panel comes up empty.
+
+Reusing Protégé's views rather than writing our own is deliberate: the class hierarchy has
+search, rendering options, deprecation handling and a context menu that would take months to
+match, and reusing it means selection in the tree and selection on the canvas are the same
+selection.
 
 ### Testing rules
 

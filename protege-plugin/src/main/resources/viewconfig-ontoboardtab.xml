@@ -1,9 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Layout of the OntoBoard tab, in Protege's mdock format.
+
+  VSNode means a VERTICAL SPLITTER, so its children sit side by side in columns; HSNode is a
+  horizontal splitter and stacks its children in rows. The names describe the divider, not the
+  arrangement, which is the opposite of what most people expect - this file used HSNode and the
+  hierarchy appeared underneath the canvas. VerticalSplitter sets a W_RESIZE cursor and
+  HorizontalSplitter an N_RESIZE one, which settles it; ViewConfigTest pins the orientation.
+
+  A CNode holding several Components renders them as tabs, one visible at a time. All six entity
+  views therefore share the left column instead of competing for space, the same arrangement
+  Protege's own Entities tab uses (viewconfig-entitiestab.xml).
+-->
 <layout>
-    <HSNode splits="0.22 0.78">
+    <VSNode splits="0.28 0.72">
         <CNode>
-            <Component label="Class hierarchy">
+            <Component label="Classes">
                 <Property id="pluginId" value="org.protege.editor.owl.OWLAssertedClassHierarchy"/>
+            </Component>
+            <Component label="Object properties">
+                <Property id="pluginId" value="org.protege.editor.owl.OWLObjectPropertyTree"/>
+            </Component>
+            <Component label="Data properties">
+                <Property id="pluginId" value="org.protege.editor.owl.OWLDataPropertyTree"/>
+            </Component>
+            <Component label="Annotation properties">
+                <Property id="pluginId" value="org.protege.editor.owl.OWLAnnotationPropertyTree"/>
+            </Component>
+            <Component label="Datatypes">
+                <Property id="pluginId" value="org.protege.editor.owl.OWLDatatypeList"/>
+            </Component>
+            <Component label="Individuals">
+                <Property id="pluginId" value="org.protege.editor.owl.OWLIndividualsList"/>
             </Component>
         </CNode>
         <CNode>
@@ -11,5 +39,5 @@
                 <Property id="pluginId" value="${project.artifactId}.SchemaCanvasView"/>
             </Component>
         </CNode>
-    </HSNode>
+    </VSNode>
 </layout>

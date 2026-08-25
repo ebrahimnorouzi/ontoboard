@@ -9,6 +9,9 @@ import static org.junit.jupiter.api.Assertions.fail;
 
 import java.io.File;
 import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Properties;
 import javax.xml.parsers.DocumentBuilderFactory;
 import org.junit.jupiter.api.Test;
@@ -302,34 +305,85 @@ class BundleConfigurationTest {
      * already decided are needed, they do not add new ones.
      *
      * <p>Version 1.0.2 shipped without {@code org.protege.editor.owl.ui}, whose
-     * {@code OWLWorkspaceViewsTab} is the tab class named in plugin.xml. The bundle
+     * {@code OWLWorkspaceViewsTab} was then the tab class named in plugin.xml. The bundle
      * installed, resolved and started, and the tab appeared under Window &gt; Tabs -- but
      * clicking it threw ClassNotFoundException and nothing happened.
      *
      * <p>PluginXmlTest cannot catch this: it runs with the full Maven test classpath, so
      * every class loads there regardless of what the OSGi manifest imports.
+     *
+     * <p>As of 1.8.0 plugin.xml names only OntoBoard's own classes, so this rule currently has
+     * nothing to reject. It is applied rather than deleted because the hazard returns the moment
+     * a Protege class is named here again, and
+     * {@link #theRuleAboutThirdPartyPackagesActuallyRejectsAMissingImport()} keeps the rule
+     * itself honest in the meantime.
      */
     @Test
     void everyThirdPartyClassInPluginXmlHasItsPackageImported() throws Exception {
-        String imports = importPackageInstruction();
-        NodeList declared = parsePluginXml().getElementsByTagName("class");
-        int checked = 0;
-        for (int i = 0; i < declared.getLength(); i++) {
-            String fqcn = ((Element) declared.item(i)).getAttribute("value");
-            if (fqcn.isEmpty() || fqcn.startsWith("de.fizkarlsruhe.ise.ontoboard")) {
+        List<String> declared = new ArrayList<>();
+        NodeList elements = parsePluginXml().getElementsByTagName("class");
+        for (int i = 0; i < elements.getLength(); i++) {
+            declared.add(((Element) elements.item(i)).getAttribute("value"));
+        }
+        assertTrue(declared.size() >= 3, "expected plugin.xml to declare its extension classes");
+        for (String missing : thirdPartyPackagesNotImported(declared, importPackageInstruction())) {
+            fail("plugin.xml declares a class from '" + missing + "' but that package is not in "
+                    + "<Import-Package>. OSGi cannot load a class from a package the bundle does "
+                    + "not import, so the tab appears in the menu and then fails with "
+                    + "ClassNotFoundException when clicked. Add '" + missing + "' as an explicit "
+                    + "clause - a wildcard will not force it.");
+        }
+    }
+
+    /**
+     * Proves the rule above has teeth. Without this, the loop would pass by finding nothing to
+     * check and would keep passing even if it had been broken - the exact shape of vacuous test
+     * this project has been bitten by before.
+     */
+    @Test
+    void theRuleAboutThirdPartyPackagesActuallyRejectsAMissingImport() {
+        List<String> named = Arrays.asList("de.fizkarlsruhe.ise.ontoboard.views.OntoBoardTab",
+                "org.protege.editor.owl.ui.OWLWorkspaceViewsTab",
+                "com.example.absent.SomeClass");
+
+        assertEquals(Arrays.asList("com.example.absent"),
+                thirdPartyPackagesNotImported(named, "org.protege.editor.owl.ui, org.slf4j"),
+                "only the un-imported third-party package should be reported: our own package "
+                        + "needs no import, and org.protege.editor.owl.ui is present");
+    }
+
+    /**
+     * Packages of {@code declaredClasses} that OSGi would have to import and
+     * {@code importInstruction} does not mention. OntoBoard's own packages are excluded because
+     * they live in the bundle, and a class named in plugin.xml can be loaded from it directly.
+     */
+    private static List<String> thirdPartyPackagesNotImported(List<String> declaredClasses,
+            String importInstruction) {
+        List<String> missing = new ArrayList<>();
+        for (String fqcn : declaredClasses) {
+            if (fqcn.isEmpty() || fqcn.startsWith("de.fizkarlsruhe.ise.ontoboard")
+                    || fqcn.lastIndexOf('.') < 0) {
                 continue;
             }
             String pkg = fqcn.substring(0, fqcn.lastIndexOf('.'));
-            checked++;
-            assertTrue(imports.contains(pkg),
-                    "plugin.xml declares '" + fqcn + "' but package '" + pkg + "' is not in "
-                            + "<Import-Package>. OSGi cannot load a class from a package the "
-                            + "bundle does not import, so the tab appears in the menu and then "
-                            + "fails with ClassNotFoundException when clicked. Add '" + pkg
-                            + "' as an explicit clause - a wildcard will not force it.");
+            if (!importInstruction.contains(pkg) && !missing.contains(pkg)) {
+                missing.add(pkg);
+            }
         }
-        assertTrue(checked >= 1,
-                "expected at least one third-party class declared in plugin.xml");
+        return missing;
+    }
+
+    /**
+     * {@code OntoBoardTab} extends Protege's {@code OWLWorkspaceViewsTab}, so OSGi must resolve
+     * {@code org.protege.editor.owl.ui} before the tab class will load - the same requirement as
+     * when plugin.xml named that class directly, and the same silent failure if it is unmet. bnd
+     * can see the extends clause in our bytecode and would generate the import on its own, but
+     * the explicit clause costs nothing and records why the package is needed.
+     */
+    @Test
+    void theTabSuperclassPackageIsImported() throws Exception {
+        assertTrue(importPackageInstruction().contains("org.protege.editor.owl.ui"),
+                "OntoBoardTab cannot load without org.protege.editor.owl.ui");
     }
 
     private Document parsePluginXml() throws Exception {
