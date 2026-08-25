@@ -110,8 +110,8 @@ individual views in a tabbed column beside the canvas, so none of this needs a t
 
 | Feature | Web app | Plugin | Assessment |
 |---|---|---|---|
-| Real-time multi-user editing | ✅ | 🔶 | Bridge + protocol + settings built; **client and cursors remain** |
-| Cursor sharing | ✅ | 🔶 | Protocol carries graph-space coordinates; overlay not built |
+| Real-time multi-user editing | ✅ | ✅ | Against a server the team runs; see [collaboration](collaboration.md) |
+| Cursor sharing | ✅ | ✅ | Graph-space, so a cursor lands on the same entity at any zoom |
 | Semantic merge engine | ✅ | ✅* | *Reused server-side rather than reimplemented in Java — deliberate |
 | Entity locking | ✅ | ❌ | **Build.** Advisory in both |
 | Comments, @mentions | ✅ | ❌ | **Build.** REST against the existing backend |
@@ -140,8 +140,8 @@ Ranked by value per unit of effort, not by how the list happens to be ordered ab
 
 | # | Work | Why it is next |
 |---|---|---|
-| 1 | **Live collaboration client + cursors** | Explicitly requested; bridge and protocol already done |
-| 2 | **Git mode** (branch, commit, push, `ROBOT diff`) | Serves every team without a server, and it is the ODK release workflow |
+| ~~1~~ | ~~Live collaboration client + cursors~~ | **Done in 1.9.0.** Also fixed a bridge defect that stopped any operation crossing between Protégé and a browser in either direction |
+| 1 | **Git mode** (branch, commit, push, `ROBOT diff`) | Serves every team without a server, and it is the ODK release workflow. Git mode is *selectable* today; the in-plugin commit and diff tooling is not built |
 | 3 | **ROBOT/ODK views** — report, commands, Makefile targets, live log | The reason Protégé was chosen; `robot-core` is embedded and idle |
 | 4 | **ODP pattern library** | Distinctive, and `patterns-repository/` is already here |
 | 5 | **Provenance, prefixes, ID ranges** | Small each, and they complete the ODK story |
@@ -157,8 +157,9 @@ mature plugins is waste) or ➖ (web-application machinery with no desktop meani
 
 - **ROBOT-dependent features need Protégé 5.6.x.** On 5.5.0 the report, SPARQL query and
   export paths fail on an OWL API incompatibility. See [limitations](limitations.md).
-- **Collaboration cannot be verified by tests alone.** "Two people see each other's cursors"
-  needs a server, a browser and Protégé at once. Each piece is built to fail loudly; the
-  end-to-end claim needs a human.
-- **No plugin UI is covered by tests.** 185 tests cover logic; every Swing surface is verified
+- **Collaboration is verified in pieces, not end to end.** The bridge's side is proved against a
+  real `Y.Doc` and real sockets; the client's against a real WebSocket server; the loop guard
+  against a host that re-fires its change listener the way Protégé does. What no test covers is
+  "two people see each other's cursors", which needs a server, a browser and Protégé at once.
+- **No plugin UI is covered by tests.** 309 tests cover logic; every Swing surface is verified
   by hand.

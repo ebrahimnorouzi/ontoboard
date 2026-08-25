@@ -10,7 +10,12 @@ gaps.
 
 The plugin is early. These exist in the web application but not yet here:
 
-- **Live collaboration** — in progress. No multi-user editing, cursors, or presence.
+- **Live collaboration** — built as of 1.9.0, but only for the seventeen operation types
+  the web application understands. Equivalence, disjointness, property characteristics,
+  chains, `owl:hasKey`, negative assertions, global domain and range, datatype definitions
+  and imports do **not** travel; the plugin counts them and says so in the toolbar rather
+  than dropping them silently. Use git for work on those. See
+  [collaboration](collaboration.md).
 - **Comments and discussion** — none.
 - **Ontology design pattern library** — the bundled ODPA patterns are not exposed.
 - **CSV / ROBOT template import** — no wizard.
@@ -50,7 +55,7 @@ The plugin is early. These exist in the web application but not yet here:
 
 ### Not covered by tests
 
-185 tests cover projection, axiom construction, layout persistence, ODK scaffolding, report
+309 tests cover projection, axiom construction, layout persistence, ODK scaffolding, report
 parsing and the OSGi configuration. They do **not** cover any Swing UI: the palette panel,
 dialogs, toolbar, minimap, drop handling, and every visual choice need a display and are
 verified by hand. Treat visual behaviour as unverified after each change.
@@ -74,12 +79,16 @@ verified by hand. Treat visual behaviour as unverified after each change.
 
 Ordered by what is being worked on:
 
-1. **Live collaboration in the plugin** — a JSON bridge in the collab service mirroring the
-   same `Y.Doc`, a Java client, remote cursors, operation sync, comments. Plan written.
+1. **Git tooling in the plugin** — branch, commit, push and `ROBOT diff` from the OntoBoard
+   tab. Git mode is selectable today, but doing the git part still means leaving Protégé.
 2. **ROBOT and ODK surface in the plugin** — report view, reasoning, Makefile targets,
    import resolution.
 3. **Data integration** — pattern library, CSV/template wizard, SPARQL, GitHub.
 4. **Quality** — ROBOT report UI, OOPS!, OQuaRE, provenance, ID ranges.
+5. **Comments and entity locking** — once live collaboration has been used in anger.
+
+Done: live collaboration and cursors (1.9.0); the entity-view column and the tab layout that
+actually reaches upgraded users (1.8.0).
 
 Specs and plans live in [superpowers/](superpowers/), including the reasoning behind
 decisions that were reversed — the plugin was briefly intended to replace the web
