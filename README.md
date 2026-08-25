@@ -1,330 +1,166 @@
 # OntoBoard
 
-A collaborative ontology engineering platform built on top of the [Ontology Development Kit (ODK)](https://github.com/INCATools/ontology-development-kit). OntoBoard provides visual ontology modeling on an infinite canvas with full ROBOT pipeline integration, real-time collaboration, and comprehensive ontology lifecycle management.
+Collaborative, visual ontology engineering — as a **Protégé Desktop plugin** and as a
+**web application**.
 
-**Developed by [Ebrahim Norouzi](https://ebrahimnorouzi.github.io/)** at [ISE / FIZ Karlsruhe](https://www.fiz-karlsruhe.de/en/forschung/information-service-engineering)
-
-Contact: [ebrahim.norouzi@fiz-karlsruhe.de](mailto:ebrahim.norouzi@fiz-karlsruhe.de)
+**Developed by [Ebrahim Norouzi](https://ebrahimnorouzi.github.io/)** at
+[ISE / FIZ Karlsruhe](https://www.fiz-karlsruhe.de/en/forschung/information-service-engineering) ·
+[ebrahim.norouzi@fiz-karlsruhe.de](mailto:ebrahim.norouzi@fiz-karlsruhe.de)
 
 ---
 
-## Quick Start
+## Two clients, one purpose
+
+Ontology engineering pulls in two directions. Domain experts want to sketch, discuss and
+work together; maintainers want reasoners, quality reports and a reproducible release
+pipeline. No single host does both well, so OntoBoard ships as two clients.
+
+| | Protégé plugin | Web application |
+|---|---|---|
+| Runs in | Protégé Desktop | Browser + Docker |
+| Best at | OWL depth, reasoning, ODK/ROBOT pipeline | Real-time collaboration, discussion |
+| Multi-user | in progress | yes — CRDT, cursors, comments, tasks |
+| Needs a server | no | yes |
+| Status | early, actively developed | complete |
+
+They are not alternatives to choose between: the plugin runs inside the editor ontologists
+already use, and the web application is where a team works together.
+
+---
+
+## Protégé plugin
+
+### Requirements
+
+- **Protégé Desktop 5.6.x recommended.** It loads on 5.5.0 too, but with a reduced ROBOT
+  surface — see [Host support](#host-support).
+- Java 8 or newer (Protégé bundles its own JRE).
+
+The jar is ~64 MB because ROBOT and its dependencies are embedded so the pipeline runs
+in-process, with no Docker and no subprocess.
+
+### Install
+
+1. Download `ontoboard-<version>.jar` from the releases page.
+2. **Delete any older `ontoboard-*.jar` from Protégé's `plugins/` folder first.** The bundle
+   is `singleton:=true`, so two versions side by side prevent it resolving and the tab
+   silently never appears.
+3. Copy the jar into `plugins/`.
+4. Restart Protégé and open **Window → Tabs → OntoBoard**.
+
+See [INSTALL.md](protege-plugin/INSTALL.md) for details and troubleshooting.
+
+### What it does today
+
+**Start a project** — *Tools → New ODK Project…* asks for an ontology ID, title, base IRI
+and license, writes a complete ODK repository (edit and release files, ODK YAML, the
+generated/custom Makefile pair, catalog, ID ranges, ROBOT report profile, SPARQL checks, a
+GitHub Actions workflow, README), then opens the edit file so you start editing immediately.
+No Docker needed to create it; running its `make` targets needs `make` and ROBOT on PATH.
+
+**Draw the schema** — an opt-in canvas that starts empty and grows as you add entities,
+because Protégé routinely opens ontologies with 100,000+ classes and rendering all of them
+would hang. Drag *Class* or *Individual* from the palette onto the board, expand a node's
+neighbours one hop at a time, and arrange with hierarchical, organic, circle or grid
+layouts. Nodes are labelled from `rdfs:label` and coloured by namespace, so imported
+vocabulary is distinguishable at a glance.
+
+**Edit real axioms** — drawing a relation asks which property and *how the arrow should be
+read*, offering the six OWLAx candidate forms (existential, scoped/global domain and range,
+functionality) with a plain-language explanation of each. Every change goes through
+Protégé's `OWLModelManager`, so it appears instantly in the class hierarchy and undoes with
+Protégé's own undo.
+
+**Keep the ontology clean** — canvas layout lives in a sidecar file
+(`<ontology>.ontoboard.json`) beside the ontology, never inside it, so ROBOT `report`,
+`diff` and release artifacts are unaffected. Removing a node from the canvas never deletes
+axioms; deleting an axiom is a separate, confirmed action.
+
+### Not built yet
+
+Live collaboration (in progress), the ontology design pattern library, CSV/ROBOT template
+import, SPARQL queries, GitHub integration, Widoco documentation, import resolution,
+provenance stamping, and frames/sticky notes. Use the web application for collaboration
+today. Full list in [docs/limitations.md](docs/limitations.md).
+
+### Host support
+
+ROBOT runs in-process against the ontology Protégé has open. Which ROBOT operations are
+available depends on the host's OWL API, because OWL API moved its RDF layer from Sesame to
+RDF4J at 4.5.25 and `robot-core` targets the newer form:
+
+| Protégé | OWL API | ROBOT |
+|---|---|---|
+| **5.6.x** | 4.5.29 | all operations, including report, query and export |
+| 5.5.0 | 4.5.9 | loading, reasoning, saving and conversion only |
+
+One jar serves both — OWL API is imported from the host rather than embedded, so the
+available surface simply follows the host. On 5.5.0 the plugin explains which operations are
+unavailable and why rather than failing obscurely.
+
+### Building
 
 ```bash
-git clone https://github.com/ISE-FIZKarlsruhe/ontoboard.git
-cd ontoboard
-./run.sh           # Build + start everything
+cd protege-plugin
+mvn clean package          # -> target/ontoboard-<version>.jar
+mvn test                   # 129 tests
 ```
 
-Open [http://localhost:3000](http://localhost:3000) and login with `admin` / `admin`.
+Java 8 bytecode is emitted deliberately (`maven.compiler.release=8`) so the bundle loads on
+Protégé's bundled JRE. See [docs/development.md](docs/development.md) for the OSGi
+constraints — several are load-bearing and guarded by tests.
 
-> **Requirements**: Docker and Docker Compose. See [docs/getting-started.md](docs/getting-started.md) for detailed setup.
+---
 
-## Architecture
+## Web application
 
-OntoBoard uses a 5-service microservice architecture. ROBOT 1.9.6 and Java 21 are installed directly in the backend and worker Docker images -- there is no Docker-in-Docker or odkfull container dependency at runtime.
-
-```
-                  +-----------------+
-                  |    Frontend     | :3000
-                  |  React 18 +    |
-                  |  Cytoscape.js  |
-                  +--------+-------+
-                           |
-          +----------------+----------------+
-          |                |                |
-+---------v------+ +------v------+ +-------v------+
-|    Backend     | |   Collab    | |    Worker    |
-|  FastAPI +     | | Hocuspocus  | |  Python +   |
-|  ROBOT + Java  | | Yjs + JWT   | |  ROBOT +    |
-|  :8000         | | :1234       | |  Java       |
-+--------+------+  +------------+  +------+------+
-         |                                |
-         +--------------+-----------------+
-                        |
-                +-------v-------+
-                |    Redis      | :6379
-                |  Job Queue    |
-                +---------------+
-```
-
-| Service | Stack | Port |
-|---------|-------|------|
-| **Frontend** | React 18, Cytoscape.js 3.30, Zustand 5, Monaco Editor, Vite 5, TypeScript 5.6 | 3000 |
-| **Backend** | FastAPI 0.115, Python 3.12, rdflib 7.1, owlready2 0.47, ROBOT 1.9.6, Java 21, Widoco 1.4.25, SQLAlchemy 2 | 8000 |
-| **Collaboration** | Hocuspocus 3.4 (Yjs WebSocket server) | 1234 |
-| **Worker** | Python 3.12, ROBOT 1.9.6, Java 21, Redis consumer for long-running jobs | -- |
-| **Redis** | Redis 7 Alpine -- job queue + pub/sub | 6379 |
-
-## Key Features
-
-### Visual Ontology Canvas
-- **Cytoscape.js** infinite canvas with dagre, force, and grid layouts
-- Drag-and-drop class, individual, and literal creation
-- Edge drawing for object properties, data properties, SubClassOf, rdf:type
-- Canvas frames and sticky notes for organization
-- Minimap for navigation
-- Auto-fit viewport on initial load
-- Tab state preserved (visited tabs stay mounted)
-
-### Manchester Syntax Parser (Full OWL 2 Coverage)
-- Recursive descent parser (`manchester_parser.py`) for OWL 2 class expressions
-- Supports: `and`, `or`, `not`, `some`, `only`, `value`, `min`/`max`/`exactly`, `Self`, `{...}` enumerations, datatype facets, nested parentheses
-- **HasSelf**: `likes Self` -- `owl:hasSelf`
-- **ObjectOneOf**: `{john, jane, bob}` -- `owl:oneOf` with multiple individuals
-- **Datatype facet restrictions**: `xsd:integer[>= 0, <= 100]`, `xsd:string[minLength 1]` -- `owl:DatatypeRestriction`
-- Bidirectional: parse Manchester syntax to RDF triples, render RDF triples back to Manchester syntax
-- Example: `Animal and hasPart some (Organ or Tissue) and not Plant`
-
-### Property Characteristics and Chains
-- UI checkboxes for all 7 OWL property characteristics: Functional, InverseFunctional, Transitive, Symmetric, Asymmetric, Reflexive, Irreflexive
-- Property chain editor with ordered list, add/remove/reorder
-- Data property XSD range dropdown: `xsd:string`, `xsd:integer`, `xsd:float`, `xsd:double`, `xsd:boolean`, `xsd:decimal`, `xsd:date`, `xsd:dateTime`, `xsd:anyURI`
-- Full annotation property CRUD
-
-### ROBOT Explain (Ontology Debugging)
-- Justification axioms for entailments
-- Suggested fixes for inconsistencies
-- 7 of 24 ROBOT commands implemented: `convert`, `report`, `reason`, `template`, `diff`, `query`, `explain`
-- ROBOT Report: violation cards with severity badge (colored), rule name, subject IRI, property, full message
-- Download Report (TSV) button
-
-### Import Resolution
-- Resolve status checking for all imports
-- Download remote imports on demand
-- Catalog management (catalog-v001.xml)
-
-### SWRL Rule Editor (Native OWL/XML Format)
-- View, create, and delete SWRL rules
-- Human-readable format display
-- Rules stored as native OWL/XML SWRL format (`swrl:Imp` + `swrl:ClassAtom` + `swrl:Variable` RDF triples)
-- Standard reasoners can execute SWRL rules directly from OntoBoard
-- Backward compatible: still reads legacy annotation-based `[SWRL]` rules
-- Atom types: ClassAtom, IndividualPropertyAtom, DatavaluedPropertyAtom, BuiltinAtom
-
-### Embedded Reasoner
-- owlready2 integration as alternative to ROBOT subprocess
-- Consistency check endpoint
-- ELK, HermiT, JFact, Whelk reasoners via ROBOT
-
-### Ontology Design Patterns (ODP)
-- 13 curated ODPA patterns from [ontologydesignpatterns.org](http://ontologydesignpatterns.org)
-- Each pattern stored as `metadata.json` + `pattern.owl` in `backend/seed/patterns/`
-- User patterns saved per-user in `data/patterns/user/{username}/{pattern-id}/`
-- Drag-and-drop onto canvas with auto-coloring per namespace prefix
-
-### Real-time Collaboration (Operation-Based CRDT)
-- **Operation-based CRDT**: each ontology mutation (addClass, updateClass, etc.) is propagated as an individual operation via a shared Yjs array -- < 100ms cross-client sync, no full-state reload
-- **Semantic merge engine**: concurrent edits are classified as auto-mergeable (different fields, additive ops, position-only) or true conflicts (same semantic field) -- not blind last-write-wins
-- **Conflict resolution UI**: auto-merged ops show brief green notices; true conflicts show amber banners with "Keep mine / Keep theirs / Keep both" actions
-- **Cursor sharing**: see other users' cursors in real-time via Yjs awareness
-- **Entity locking**: when you select an entity, others see it highlighted with your color
-- **Consistency check**: `POST /api/reasoning/{board_id}/consistency-check` validates merged OWL state via owlready2 HermiT
-- **Safety nets**: instant save broadcast + 30-second polling fallback + full state reload on reconnect
-- **Comments**: threaded discussions with @mentions and notifications
-- **Task board**: Kanban columns (To Do, In Progress, Review, Done)
-
-### ODK Integration
-- ODK scaffold generation (manual, no Docker dependency)
-- Build error explanations (7+ known error patterns with human-readable messages: odk-info missing, robot not found, OutOfMemory, etc.)
-- Terminal logs always visible (min-height: 200px, scrollable)
-- Environment info shown: ROBOT version, Java version, Make version
-- "Mode: local subprocess (no Docker-in-Docker)" shown in logs
-- OWL Functional Syntax support (auto-conversion via ROBOT)
-- Multi-file ontology loading (edit + release files merged)
-- Ontology file switcher dropdown (switch between edit, release, import modules)
-
-### Board Management
-- Board settings dialog (rename, description, visibility, tags, clone, delete)
-- Board cards with action bar (star, clone, delete) on dashboard
-- ID ranges with OWL Functional Syntax support (ODK standard format)
-- Create boards from scratch, GitHub repos, or file upload (OWL, TTL, RDF, OBO)
-
-### CSV Import -- ROBOT Template Builder
-- 6-step wizard: Upload, Map Columns, IRI Strategy, Preview, Build, Files
-- Column mapping with ontology-aware dropdowns (classes, object/data/annotation properties)
-- ROBOT template directives: `ID`, `TYPE`, `A rdfs:label`, `I <property>`, `SPLIT=`
-- Row expansion: `ref_type` creates referenced individuals automatically
-- Build pipeline: `robot merge --include-annotations true -i ontology.owl template --merge-before --template template.tsv -o output.owl`
-- Consistency check: `robot explain --reasoner hermit -i output.owl -M inconsistency`
-- Multi-file: upload multiple CSVs, generate templates, merge KGs
-- File storage: `kg/uploads/`, `kg/templates/`, `kg/output/`
-
-### Widoco Documentation Generator
-- Widoco 1.4.25 installed in backend Docker image
-- Generates HTML documentation for ontologies (not just markdown)
-- Version shown in build logs
-
-### Additional Features
-- SPARQL query panel with result visualization
-- Provenance tracking using PROV-O agents, Dublin Core, XSD datatypes
-- Ontology dashboard auto-population: version IRI, creators, contributors, title, description, license extracted from OWL annotations
-- Prefix management with editable names and IRIs, per-prefix canvas coloring (auto-coloring from ontology namespace prefixes)
-- GitHub import with auto-conversion of OWL Functional Syntax
-- Git-backed version control
-- Quality metrics (OQUARE compliance)
-- In-app documentation page (/docs route with 7 sections, "Docs" link in navbar)
-
-## Comparison with Protege
-
-| Feature | Protege 5.6 | OntoBoard |
-|---------|:-----------:|:---------:|
-| OWL class hierarchy browser | Yes | Yes |
-| Manchester Syntax editing | Yes | Yes (recursive descent parser) |
-| Property characteristics (all 7) | Yes | Yes |
-| Property chains | Yes | Yes |
-| Data property XSD ranges | Yes | Yes |
-| Annotation property CRUD | Yes | Yes |
-| Reasoner integration (ELK, HermiT) | Yes | Yes (via ROBOT + owlready2) |
-| Explanation / justification | Yes | Yes (ROBOT explain) |
-| SWRL rules | Yes | Yes (native OWL/XML format) |
-| Consistency checking | Yes | Yes |
-| Visual graph canvas | Plugin (OntoGraf) | Built-in (Cytoscape.js) |
-| Real-time collaboration | No | Yes (operation-based CRDT + semantic merge) |
-| Web-based (no install) | No (desktop Java) | Yes (Docker) |
-| ODK/ROBOT pipeline integration | No | Yes |
-| Design pattern library | No | Yes (13 ODPA patterns) |
-| CSV import | No (plugin) | Built-in (ROBOT Template Builder) |
-| Task management | No | Yes (Kanban) |
-| Import resolution UI | Partial | Yes |
-| ID range management | Yes (file-based) | Yes (UI + OWL Functional Syntax) |
-| SPARQL query panel | Plugin (SPARQL Tab) | Built-in |
-| Provenance tracking | No | Yes (PROV-O) |
-| DataRange restrictions (`xsd:integer[>= 0, <= 100]`) | Yes | Yes |
-| HasSelf (`likes Self`) | Yes | Yes |
-| ObjectOneOf (`{john, jane, bob}`) | Yes | Yes |
-| Widoco HTML documentation | No (plugin) | Yes (built-in) |
-| Custom datatypes | Yes | No |
-| Key axioms (owl:hasKey) | Yes | No |
-| Negative property assertions | Yes | No |
-| SHACL validation | No | No |
-
-## Commands
+The original OntoBoard: a browser-based environment with real-time collaboration built on an
+ontology-aware operation CRDT, plus the full ODK/ROBOT pipeline behind a REST API.
 
 ```bash
-./run.sh              # Build (if needed) + start all services
-./run.sh build        # Force rebuild all Docker images
-./run.sh up           # Start services (no build)
-./run.sh down         # Stop services
-./run.sh dev          # Development mode (source mounted for hot-reload)
-./run.sh test         # Run backend tests
-./run.sh logs         # View service logs
-./run.sh clean        # Stop + remove all data
+./run.sh          # build and start everything
 ```
 
-## Project Structure
+Then open [http://localhost:3000](http://localhost:3000) and log in with `admin` / `admin`.
+Requires Docker and Docker Compose.
 
-```
-ontoboard/
-├── backend/                 # FastAPI backend
-│   ├── app/
-│   │   ├── routers/         # 37 API route modules
-│   │   ├── services/        # 41 business logic modules
-│   │   │   ├── manchester_parser.py  # Recursive descent Manchester parser
-│   │   │   └── swrl.py              # SWRL rule management
-│   │   ├── models/          # 8 SQLAlchemy ORM models (7 tables)
-│   │   └── schemas/         # Pydantic request/response schemas
-│   ├── tests/               # 49+ test files, 500+ test functions
-│   ├── seed/patterns/       # 13 bundled ODPA patterns (tracked in git)
-│   ├── Dockerfile           # Python 3.12 + Java 21 + ROBOT 1.9.6 + Widoco 1.4.25 + make
-│   └── requirements.txt     # FastAPI, rdflib, owlready2, etc.
-├── frontend/                # React SPA
-│   ├── src/
-│   │   ├── components/      # 25 feature directories
-│   │   ├── pages/           # 9 page routes (including /docs)
-│   │   ├── store/           # Zustand state management
-│   │   ├── collab/          # CRDT collaboration (operation sync, merge engine,
-│   │   │                    #   conflict detection, resolution UI, 44 tests)
-│   │   └── hooks/           # Custom React hooks
-│   └── Dockerfile
-├── collab/                  # Hocuspocus WebSocket server
-├── worker/                  # Redis job consumer (ROBOT + Java installed locally)
-├── data/                    # Runtime data (gitignored)
-│   └── patterns/
-│       ├── odpa/            # Auto-seeded from backend/seed/patterns/
-│       └── user/            # Per-user uploaded patterns
-├── docs/                    # 7 documentation files
-├── docker-compose.yml       # Production setup
-├── docker-compose.dev.yml   # Development setup
-└── run.sh                   # Orchestration script
-```
+It provides multi-user editing with cursor sharing and semantic merge, threaded comments
+with @mentions, a Kanban task board, sharing and invite links, the ODP pattern library, the
+CSV → ROBOT template wizard, SPARQL, quality reports and Widoco documentation.
 
-## API Documentation
+Architecture and API details: [docs/architecture.md](docs/architecture.md),
+[docs/api-reference.md](docs/api-reference.md).
 
-Interactive API docs available at [http://localhost:8000/docs](http://localhost:8000/docs) after starting the backend.
-
-**60+ REST endpoints** covering: boards, ontology CRUD, axioms, Manchester syntax parsing, reasoning, ROBOT commands, SPARQL, SWRL rules, patterns, comments, collaboration, ODK workflows, import resolution, file management, and more.
-
-See [docs/api-reference.md](docs/api-reference.md) for the full reference.
-
-## Technology Stack
-
-| Layer | Technologies |
-|-------|-------------|
-| **Frontend** | React 18.3, TypeScript 5.6, Cytoscape.js 3.30, Zustand 5, Monaco Editor, Vite 5 |
-| **Backend** | FastAPI 0.115, Python 3.12, rdflib 7.1, owlready2 0.47, SQLAlchemy 2, Dulwich (Git) |
-| **Ontology Tools** | ROBOT 1.9.6, OWL API (via ROBOT), Java 21, owlready2 (embedded reasoner) |
-| **Collaboration** | Yjs 13.6, y-websocket, Hocuspocus 3.4 |
-| **Database** | SQLite (dev) / PostgreSQL-ready |
-| **Infrastructure** | Docker, Docker Compose, Redis 7 |
-
-## Testing
-
-### Backend Tests
-
-```bash
-./run.sh test         # Run all backend tests
-cd backend && python -m pytest tests/ -v
-```
-
-49+ test files with 500+ test functions covering:
-
-| Category | Tests |
-|----------|:-----:|
-| Manchester parser | 19 |
-| OWL 2 features (HasSelf, ObjectOneOf, datatype facets) | 30 |
-| ROBOT template builder | 23 |
-| Property characteristics | 8 |
-| Property chains | 6 |
-| XSD ranges | 6 |
-| Annotation CRUD | 7 |
-| ROBOT explain | 6 |
-| Import resolution | 8 |
-| SWRL rules | 6 |
-| Embedded reasoner | 6 |
-| Consistency check (CRDT merge validation) | 6 |
-| Integration tests | 4 |
-| Existing tests (API, canvas, reasoning, etc.) | 380+ |
-
-### Frontend Tests
-
-```bash
-cd frontend && npm test          # Run all frontend tests
-cd frontend && npm run test:watch  # Watch mode
-```
-
-44 tests (vitest) covering the CRDT collaboration system:
-
-| Category | Tests |
-|----------|:-----:|
-| Semantic merge engine (all rule combinations) | 25 |
-| Operation sync (entity extraction, conflict window, serialization) | 19 |
+---
 
 ## Documentation
 
-Full documentation is in the [docs/](docs/) directory:
-- [Documentation Index](docs/index.md)
-- [Getting Started](docs/getting-started.md)
+- [Getting started](docs/getting-started.md)
 - [Architecture](docs/architecture.md)
 - [Features](docs/features.md)
-- [API Reference](docs/api-reference.md)
-- [Development Guide](docs/development.md)
-- [Limitations & Roadmap](docs/limitations.md)
+- [Development](docs/development.md)
+- [Limitations and roadmap](docs/limitations.md)
+- [API reference](docs/api-reference.md) — web application
+- Design specs and implementation plans: [docs/superpowers/](docs/superpowers/)
+
+## Related work
+
+[CoModIDE](https://comodide.com/) brought graphical, pattern-driven ontology modelling into
+Protégé, and [OWLAx](https://arxiv.org/abs/1808.10105) established the candidate-axiom
+vocabulary this plugin's relation editor uses. OntoBoard's plugin is aimed at a different
+gap: bringing the ODK/ROBOT release pipeline into Protégé without a Docker prerequisite.
+
+Note that canvas layout is stored in a sidecar file rather than as OPLa-SD annotations, so
+diagrams are **not** interchangeable with CoModIDE — a deliberate trade to keep the ontology
+byte-clean.
 
 ## License
 
-ISE / FIZ Karlsruhe
+[Apache License 2.0](LICENSE). Third-party components and their licenses are listed in
+[NOTICE](NOTICE).
 
 ---
 
-**OntoBoard** is a research prototype developed at the [Information Service Engineering (ISE)](https://www.fiz-karlsruhe.de/en/forschung/information-service-engineering) group of [FIZ Karlsruhe](https://www.fiz-karlsruhe.de).
+OntoBoard is a research prototype developed at the
+[Information Service Engineering](https://www.fiz-karlsruhe.de/en/forschung/information-service-engineering)
+group of [FIZ Karlsruhe](https://www.fiz-karlsruhe.de).

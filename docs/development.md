@@ -1,617 +1,135 @@
 # Development Guide
 
-This guide covers the development workflow, code conventions, testing, and architecture patterns used in OntoBoard.
+Two codebases: the Protégé plugin (`protege-plugin/`, Java) and the web application
+(`backend/`, `frontend/`, `worker/`, `collab/`).
 
-## Development Setup
+---
 
-### Prerequisites
-
-- Python 3.12+
-- Node.js 20+
-- Docker and Docker Compose
-- Git
-
-### Starting Development Mode
+## Protégé plugin
 
 ```bash
-# Build images (first time only)
-./run.sh build
-
-# Start with source-mounted hot-reload
-./run.sh dev
+cd protege-plugin
+mvn clean test        # 129 tests
+mvn clean package     # -> target/ontoboard-<version>.jar
 ```
 
-In development mode:
-- Frontend source (`frontend/src/`) is mounted into the container; Vite provides hot module replacement
-- Backend source (`backend/app/`) is mounted into the container; Uvicorn auto-reloads on file changes
-- The collab and worker services use pre-built images
-
-### Running Without Docker
-
-**Backend:**
+### Deploy locally
 
 ```bash
-cd backend
-python -m venv venv
-source venv/bin/activate        # Linux/macOS
-# venv\Scripts\activate         # Windows
-
-pip install -r requirements.txt
-pip install -r requirements-test.txt
-
-# Set environment variables
-export DATA_DIR=../data
-export SECRET_KEY=dev-secret
-export REDIS_URL=redis://localhost:6379/0
-
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+rm -f "$PROTEGE/plugins"/ontoboard-*.jar     # singleton bundle: remove the old one
+cp target/ontoboard-<version>.jar "$PROTEGE/plugins/"
 ```
 
-**Note**: Running the backend locally without Docker requires Java 21 and ROBOT 1.9.6 to be installed on the host system for ROBOT commands to work. The `robot` binary must be on PATH.
-
-**Frontend:**
+**Verify the copy.** A 64 MB jar can be truncated by a copy that reports success, and the
+symptom is a plugin that silently never appears:
 
 ```bash
-cd frontend
-npm install
-
-export VITE_API_URL=http://localhost:8000
-export VITE_COLLAB_URL=ws://localhost:1234
-
-npm run dev
+unzip -t "$PROTEGE/plugins/ontoboard-<version>.jar"   # must report no errors
 ```
 
-## Running Tests
+This has actually happened during development and cost a debugging cycle. `ZipException:
+zip END header not found` in `~/.Protege/logs/protege.log` means a bad copy, not a bad
+build.
 
-### Backend Tests
+### Reading the log
 
-The backend test suite contains 500+ tests across 48+ test files covering all API endpoints and services.
+`~/.Protege/logs/protege.log` is authoritative when the plugin misbehaves. It is large;
+search for `ontoboard`. The failures seen so far, in the order they were hit:
+
+| Message | Cause |
+|---|---|
+| `Importing java.* packages not allowed` | bnd emitted `java.*` imports; `!java.*` is required |
+| `missing requirement osgi.ee JavaSE 11` | an embedded jar has Java 11 classes; `<_noee>true</_noee>` suppresses it |
+| `ClassNotFoundException` on a `plugin.xml` class | that class's package is not in `Import-Package` |
+| `zip END header not found` | truncated jar — re-copy |
+
+### Constraints that are load-bearing
+
+Several `pom.xml` settings look arbitrary and are not. `BundleConfigurationTest` asserts
+each one, with a failure message explaining the consequence, so they cannot be removed by
+accident.
+
+- **`<maven.compiler.release>8</maven.compiler.release>`** — not `source`/`target`. Only
+  `release` restricts the *API surface*; `source`/`target` set the bytecode version while
+  still allowing calls to Java 9+ methods that fail at runtime on Protégé's JRE.
+- **`!java.*` first in `Import-Package`** — OSGi forbids importing `java.*`, and Felix
+  rejects the whole bundle at install time if any are present.
+- **`*;resolution:=optional` last** — ROBOT's dependency tree references Saxon, logback,
+  POI, javaparser, bouncycastle and Scala. Mandatory imports for code that is never called
+  would make the bundle unresolvable.
+- **Explicit clauses for packages named only in `plugin.xml`** — bnd cannot see a class
+  referenced from XML, and a wildcard will not force the import. A wildcard *filters*
+  packages bnd already decided it needs; it does not add new ones.
+- **`<_noee>true</_noee>`** — bnd derives an execution-environment requirement from the
+  highest class-file version anywhere in the bundle, including embedded jars. Three of
+  ROBOT's transitive dependencies carry Java 11 classes.
+- **OWL API and Guava are `provided`, everything else embedded** — the host exports both.
+  Embedding our own Guava would cause `ClassCastException` at every OWL API boundary that
+  returns a Guava `Optional`, which OWL API 4 does.
+- **`owlapi-osgidistribution` is pinned** — it is a fat jar containing every OWL API class,
+  and if left unpinned it shadows correctly-pinned siblings.
+
+### Testing rules
+
+- Tests run **headless**. Never construct `mxGraphComponent`, `mxGraphOutline` or
+  `SchemaCanvasView` in a test — all need Swing or a live `OWLEditorKit`.
+- Put decisions in plain classes so they are testable, and keep Swing as a thin shell.
+  `EdgeAxioms`, `EntityFactory`, `OdkProjectConfig` and `QualityReport.parse` exist in that
+  shape for this reason.
+- **Ask whether a test would still fail if the code under test were deleted.** Four tests in
+  this project passed while measuring nothing — one depended on hash iteration order, one
+  never populated the map it asserted on. When fixing a bug, break the fix deliberately and
+  confirm the test fails before trusting it.
+
+### Layout of the plugin
+
+```
+de.fizkarlsruhe.ise.ontoboard
+├── views/      SchemaCanvasView — the Protégé ViewComponent
+├── canvas/     JGraphX rendering, styles, palette, layouts, export, selection bridge
+├── model/      OWL -> canvas projection, labels
+├── axiom/      entity creation, OWLAx edge axioms, axiom removal
+├── layout/     sidecar persistence
+├── odk/        project wizard and ODK scaffolding
+└── robot/      in-process ROBOT operations
+```
+
+The central rule: **the canvas is a view over Protégé's model, never a parallel model.**
+Every mutation becomes `OWLOntologyChange` objects applied through `OWLModelManager`, which
+is what makes Protégé's undo and its other tabs stay correct for free.
+
+---
+
+## Web application
 
 ```bash
-cd backend
-python -m pytest tests/ -v
+./run.sh              # build if needed, then start
+./run.sh dev          # source mounted for hot reload
+./run.sh test         # backend tests
+./run.sh logs
+./run.sh down
 ```
 
-Run specific test files:
+Five services: frontend (React, :3000), backend (FastAPI + ROBOT + Java, :8000), collab
+(Hocuspocus/Yjs, :1234), worker (Redis consumer), Redis (:6379).
 
-```bash
-python -m pytest tests/test_boards.py -v
-python -m pytest tests/test_reasoning.py -v
-python -m pytest tests/test_axiom.py -v
-python -m pytest tests/test_tier1_features.py -v
-python -m pytest tests/test_tier2_features.py -v
-python -m pytest tests/test_owl2_features.py -v
-python -m pytest tests/test_robot_template.py -v
-```
+Frontend tests: `cd frontend && npm test`.
 
-Run with coverage:
+### Collaboration internals
 
-```bash
-python -m pytest tests/ --cov=app --cov-report=html
-```
+`collab/server.mjs` carries **awareness and the operation log only** — ontology state is
+persisted through the backend REST API, not Yjs. Anything added to the collaboration path
+must respect that split.
 
-The pytest configuration is in `backend/pytest.ini`:
+`frontend/src/collab/` holds the operation protocol (`useOperationSync.ts`), the semantic
+merge engine (`mergeEngine.ts`) and the conflict UI. The plugin's forthcoming collaboration
+client speaks a JSON bridge onto the same `Y.Doc` rather than reimplementing the merge
+engine in Java, so the merge rules keep a single implementation.
 
-```ini
-[pytest]
-testpaths = tests
-asyncio_mode = auto
-```
+---
 
-### Test Structure
+## Specs and plans
 
-Tests use the FastAPI test client with a test database. The `conftest.py` file provides shared fixtures:
-
-```
-backend/tests/
-+-- conftest.py                  # Shared fixtures (test client, test DB, auth helpers)
-+-- test_auth.py                 # Authentication tests
-+-- test_users.py                # User management tests
-+-- test_boards.py               # Board CRUD tests
-+-- test_board_actions.py        # Board actions (star, clone, delete)
-+-- test_canvas.py               # Canvas load/save tests
-+-- test_axiom.py                # Axiom editor tests
-+-- test_tree.py                 # Tree browser tests
-+-- test_reasoning.py            # Reasoning tests
-+-- test_sparql.py               # SPARQL query tests
-+-- test_csv_import.py           # CSV import tests
-+-- test_odk.py                  # ODK build tests
-+-- test_odk_config.py           # ODK config tests
-+-- test_odk_lifecycle.py        # ODK lifecycle tests
-+-- test_odk_mediator.py         # ODK mediator tests
-+-- test_publish.py              # Publish pipeline tests
-+-- test_task.py                 # Task management tests
-+-- test_invite.py               # Invite system tests
-+-- test_restrictions.py         # OWL restrictions tests
-+-- test_characteristics.py      # Property characteristics tests
-+-- test_search.py               # Search tests
-+-- test_refactor.py             # Refactoring tests
-+-- test_imports.py              # Import management tests
-+-- test_version.py              # Version management tests
-+-- test_dl_query.py             # DL query tests
-+-- test_robot_commands.py       # ROBOT command tests
-+-- test_quality.py              # Quality checks tests
-+-- test_analysis.py             # Analysis tools tests
-+-- test_docs.py                 # Documentation tests
-+-- test_queue.py                # Job queue tests
-+-- test_notifications.py        # Notification tests
-+-- test_conversion.py           # Format conversion tests
-+-- test_health.py               # Health check tests
-+-- test_metadata.py             # Metadata tests
-+-- test_owl.py                  # OWL parsing tests
-+-- test_ontology.py             # Ontology service tests
-+-- test_idranges.py             # ID range tests
-+-- test_comments.py             # Comment system tests
-+-- test_patterns_new.py         # Pattern library tests
-+-- test_e2e_lifecycle.py        # End-to-end lifecycle tests
-+-- test_mwo301_integration.py   # Integration test with real ontology
-+-- test_tier1_features.py       # Tier 1: Manchester parser (19), characteristics (8),
-|                                #   chains (6), XSD ranges (6), annotation CRUD (7)
-+-- test_tier2_features.py       # Tier 2: ROBOT explain (6), imports (8), SWRL (6),
-|                                #   embedded reasoner (6), integration (4)
-+-- test_owl2_features.py        # OWL 2: HasSelf, ObjectOneOf, datatype facets (30 tests)
-+-- test_robot_template.py       # ROBOT Template Builder (23 tests)
-```
-
-### Test Categories (Tier 1 + Tier 2)
-
-| Category | File | Test Count | Description |
-|----------|------|:----------:|-------------|
-| Manchester parser | `test_tier1_features.py` | 19 | Parse, render, round-trip, nested expressions, edge cases |
-| OWL 2 features | `test_owl2_features.py` | 30 | HasSelf, ObjectOneOf, datatype facet restrictions |
-| ROBOT Template Builder | `test_robot_template.py` | 23 | Template generation, column mapping, build pipeline |
-| Property characteristics | `test_tier1_features.py` | 8 | All 7 characteristics, toggle, persist, read back |
-| Property chains | `test_tier1_features.py` | 6 | Create, read, delete chains, multi-step chains |
-| XSD ranges | `test_tier1_features.py` | 6 | Set range for each XSD type, read back, change |
-| Annotation CRUD | `test_tier1_features.py` | 7 | Create, read, update, delete annotation properties |
-| ROBOT explain | `test_tier2_features.py` | 6 | Explain entailments, justification axioms, error handling |
-| Import resolution | `test_tier2_features.py` | 8 | Resolve status, download, catalog, add/remove |
-| SWRL rules | `test_tier2_features.py` | 6 | Create, list, delete rules, native OWL/XML format |
-| Embedded reasoner | `test_tier2_features.py` | 6 | owlready2 consistency, inferences, error handling |
-| Integration | `test_tier2_features.py` | 4 | Cross-feature integration scenarios |
-| Existing tests | `test_*.py` (40 files) | 380+ | API endpoints, canvas, reasoning, SPARQL, etc. |
-
-## Code Structure Conventions
-
-### Backend: Service/Router Pattern
-
-The backend follows a strict separation between API routing and business logic:
-
-```
-app/
-+-- routers/     # 37 API endpoint definitions (thin layer)
-+-- services/    # 41 business logic modules (all heavy processing)
-+-- schemas/     # Pydantic models for request/response validation
-+-- models/      # 8 SQLAlchemy ORM model files (7 database tables)
-```
-
-**Routers** define HTTP endpoints, validate inputs via Pydantic schemas, call service functions, and return responses. They should not contain business logic.
-
-Example router pattern:
-
-```python
-# app/routers/reasoning.py
-
-from fastapi import APIRouter, Depends
-from app.deps import get_current_user, get_db
-from app.schemas.reasoning import ReasoningResult, Inference
-from app.services import reasoning as reasoning_svc
-
-router = APIRouter()
-
-@router.post("/{board_id}/run", response_model=ReasoningResult)
-async def run_reasoning(
-    board_id: str,
-    reasoner: str = "ELK",
-    user=Depends(get_current_user),
-    db=Depends(get_db),
-):
-    return reasoning_svc.run_reasoner(board_id, reasoner)
-```
-
-**Services** contain the actual business logic. They work with rdflib graphs, file I/O, ROBOT subprocess calls, owlready2, and other libraries. Services are stateless functions.
-
-Example service pattern:
-
-```python
-# app/services/reasoning.py
-
-import subprocess
-from pathlib import Path
-from app.config import DATA_DIR
-
-def run_reasoner(board_id: str, reasoner: str = "ELK") -> dict:
-    board_dir = DATA_DIR / board_id
-    owl_file = _find_owl(board_dir)
-    # Run ROBOT as local subprocess (no Docker-in-Docker)
-    result = subprocess.run(
-        ["robot", "reason", "-r", reasoner, "-i", str(owl_file)],
-        capture_output=True, text=True
-    )
-    return {"consistent": result.returncode == 0, "inferences": [...]}
-```
-
-### Key Service Modules
-
-| Service | File | Description |
-|---------|------|-------------|
-| Manchester Parser | `manchester_parser.py` | Recursive descent parser for Manchester Syntax with full OWL 2 coverage (tokenizer, parser, renderer) |
-| SWRL | `swrl.py` | SWRL rule CRUD (native OWL/XML format with backward compatibility) |
-| Reasoning | `reasoning.py` | ROBOT subprocess + owlready2 embedded reasoner |
-| ROBOT | `robot.py` | ROBOT command execution (7 commands) |
-| Imports | `imports.py` | Import resolution, download, catalog management |
-| Ontology | `ontology.py` | OWL file parsing and manipulation via rdflib |
-| Canvas | `canvas.py` | Canvas state serialization/deserialization |
-| Board | `board.py` | Board CRUD and sharing logic |
-| Conversion | `conversion.py` | OWL format conversion (ROBOT + rdflib) |
-
-**Schemas** define Pydantic models for request validation and response serialization:
-
-```python
-# app/schemas/reasoning.py
-
-from pydantic import BaseModel
-
-class ReasoningResult(BaseModel):
-    consistent: bool
-    inferences: list
-    errors: list[str] = []
-
-class Inference(BaseModel):
-    inference_type: str
-    subject: str
-    subject_label: str
-    predicate: str
-    object: str
-    object_label: str
-```
-
-**Models** define SQLAlchemy ORM classes for database tables:
-
-```python
-# app/models/board.py
-
-from sqlalchemy.orm import Mapped, mapped_column
-from app.database import Base
-
-class Board(Base):
-    __tablename__ = "boards"
-    id: Mapped[int] = mapped_column(primary_key=True)
-    board_id: Mapped[str] = mapped_column(String(120), unique=True, index=True)
-    # ...
-```
-
-### Dependency Injection
-
-The `deps.py` module provides FastAPI dependencies used across routers:
-
-| Dependency | Purpose |
-|------------|---------|
-| `get_db()` | Yields a SQLAlchemy session, auto-closes after request |
-| `get_current_user_optional()` | Returns User or None (for public endpoints) |
-| `get_current_user()` | Returns User or raises 401 (for authenticated endpoints) |
-| `require_admin()` | Returns User or raises 403 (for admin endpoints) |
-
-### Frontend: Component Architecture
-
-The frontend follows a component-based architecture with Zustand for state management and custom hooks for data fetching.
-
-#### Directory Layout
-
-```
-src/
-+-- api.ts              # API client (fetch wrapper with JWT auth)
-+-- auth.tsx            # AuthProvider context (login, logout, token management)
-+-- main.tsx            # App entry point, React Router setup
-+-- store/
-|   +-- ontologyStore.ts # Zustand store (single source of truth for canvas state)
-+-- components/         # 25 feature directories
-+-- hooks/              # Custom React hooks (data fetching, state management)
-+-- collab/             # Collaboration-specific components and hooks
-+-- pages/              # Page-level components (routed by React Router)
-+-- styles/             # Global CSS
-```
-
-#### Zustand Store
-
-The `ontologyStore.ts` is the single source of truth for all canvas state. It manages:
-
-- Canvas entities (classes, properties, individuals, literals, sticky notes, frames)
-- Selection state
-- Undo/redo stacks (max 50 snapshots)
-- Prefix colors and pattern assignments
-- Inference display state
-- Provenance settings (PROV-O agents, Dublin Core, XSD datatypes)
-- Auto-save with 800ms debounce
-
-Key design decisions:
-- All mutations call `debouncedSave(get)` to trigger auto-save
-- Destructive operations push to the undo stack via `pushUndo(get, set)`
-- Provenance stamps (`created_by`, `created_at`, `modified_by`, `modified_at`) are automatically added when `trackProvenance` is enabled
-- A `setOnSaveCallback` function allows the BoardPage to register a Yjs broadcast after each save
-- Pattern applications are batched into a single state update for performance
-- Auto-fit viewport on initial load
-- Tab state preserved (visited tabs stay mounted)
-
-#### Custom Hooks Pattern
-
-Hooks encapsulate API calls and local state for specific features:
-
-```typescript
-// hooks/useReasoning.ts
-
-export function useReasoning(boardId: string) {
-  const [running, setRunning] = useState(false);
-  const [result, setResult] = useState<ReasoningResult | null>(null);
-
-  const run = async (reasoner: string) => {
-    setRunning(true);
-    const data = await apiJson(`/api/reasoning/${boardId}/run`, {
-      method: "POST",
-      body: JSON.stringify({ reasoner }),
-    });
-    setResult(data);
-    setRunning(false);
-  };
-
-  return { running, result, run };
-}
-```
-
-Available hooks:
-
-| Hook | Purpose |
-|------|---------|
-| `useOntology` | Ontology metadata and statistics fetching |
-| `useAxiomEditor` | Axiom listing, editing, and Manchester Syntax validation |
-| `useReasoning` | Reasoning execution and inference display |
-| `useSparql` | SPARQL query execution |
-| `useTasks` | Task CRUD and comments |
-| `useCsvImport` | CSV upload, analysis, and KG building |
-| `useTreeData` | Tree hierarchy data fetching |
-| `useRestrictions` | OWL restriction management |
-| `usePublish` | Publish pipeline management |
-| `useDocs` | Documentation building |
-| `useInvite` | Invite link management |
-
-#### Collaboration Components
-
-```
-collab/
-+-- useCollaboration.ts     # Yjs connection, awareness, save broadcast
-+-- useOperationSync.ts     # CRDT operation log: mutation wrapping, remote
-                            #   apply, conflict detection, merge integration
-+-- mergeEngine.ts          # Semantic merge rules: classifies concurrent op
-                            #   pairs into both/conflict/add-wins/last-write-wins
-+-- ConflictBanner.tsx      # UI: auto-merge notices (green) + true conflict
-                            #   banners (amber) with Keep mine/theirs/both
-+-- ConflictBanner.module.css
-+-- CollabStatus.tsx        # Connection status + entity lock visibility
-+-- CollabStatus.module.css
-+-- useYjsSync.ts           # Legacy state-based sync (unused, kept for reference)
-+-- __tests__/
-    +-- mergeEngine.test.ts       # 25 tests: all merge rule combinations
-    +-- useOperationSync.test.ts  # 19 tests: entity extraction, conflict
-                                  #   window, serialization, 3-user scenarios
-```
-
-**Key design decisions:**
-
-- `useOperationSync` monkey-patches the Zustand store's mutation methods for its lifetime. Each mutation calls the original (which triggers `pushUndo`, provenance, and `debouncedSave`), then pushes an `OntologyOperation` to the shared `Y.Array("ops")`.
-- Remote operations are applied via `store.setState()` directly, bypassing `pushUndo`/provenance/`debouncedSave`. The originating client's save is authoritative.
-- The `mergeEngine` is a pure function (`resolveMerge(opA, opB) -> MergeResult`) with no side effects, making it easy to test in isolation.
-- Conflict detection uses a 2-second sliding window. Auto-resolved merges produce brief green notices; true conflicts produce amber banners with resolution actions.
-- The `resolveConflict` callback re-applies the chosen operation via a `useRef` to avoid stale closures.
-
-#### API Client
-
-The `api.ts` module provides a typed fetch wrapper:
-
-```typescript
-export async function apiJson<T>(path: string, init?: RequestInit): Promise<T> {
-  // Adds Authorization header from stored token
-  // Base URL from VITE_API_URL environment variable
-  // Throws on non-2xx responses
-}
-```
-
-#### Page Components
-
-Pages are the top-level components routed by React Router:
-
-| Page | Path | Description |
-|------|------|-------------|
-| `HomePage` | `/` | Landing page |
-| `LoginPage` | `/login` | Login form |
-| `SignupPage` | `/signup` | Registration form |
-| `DashboardPage` | `/dashboard` | Board listing with action bars (star, clone, delete) |
-| `BoardPage` | `/boards/:boardId` | Main ontology editor (canvas + panels) |
-| `AdminPage` | `/admin` | User and system administration |
-| `InvitePage` | `/invite/:token` | Invite link acceptance |
-| `FeedbackPage` | `/feedback` | User feedback form |
-| `DocsPage` | `/docs` | In-app documentation (7 sections, visible to all users) |
-
-#### CSS Modules
-
-Components use CSS Modules for scoped styling:
-
-```
-components/
-+-- canvas/
-    +-- OntologyCanvas.tsx
-    +-- OntologyCanvas.module.css
-```
-
-This avoids global CSS conflicts and keeps styles co-located with their components.
-
-## Adding New Features
-
-### Adding a New API Endpoint
-
-1. **Create the schema** in `backend/app/schemas/`:
-   ```python
-   # app/schemas/my_feature.py
-   from pydantic import BaseModel
-
-   class MyRequest(BaseModel):
-       param: str
-
-   class MyResponse(BaseModel):
-       result: str
-   ```
-
-2. **Create the service** in `backend/app/services/`:
-   ```python
-   # app/services/my_feature.py
-   def do_something(board_id: str, param: str) -> dict:
-       # Business logic here
-       return {"result": "done"}
-   ```
-
-3. **Create the router** in `backend/app/routers/`:
-   ```python
-   # app/routers/my_feature.py
-   from fastapi import APIRouter, Depends
-   from app.deps import get_current_user
-   from app.schemas.my_feature import MyRequest, MyResponse
-   from app.services import my_feature as svc
-
-   router = APIRouter()
-
-   @router.post("/{board_id}/action", response_model=MyResponse)
-   async def action(board_id: str, body: MyRequest, user=Depends(get_current_user)):
-       return svc.do_something(board_id, body.param)
-   ```
-
-4. **Register the router** in `backend/app/main.py`:
-   ```python
-   from app.routers import my_feature
-   app.include_router(my_feature.router, prefix="/api/my-feature", tags=["my-feature"])
-   ```
-
-5. **Write tests** in `backend/tests/test_my_feature.py`:
-   ```python
-   def test_action(client, auth_header):
-       resp = client.post("/api/my-feature/test-board/action",
-                          json={"param": "value"},
-                          headers=auth_header)
-       assert resp.status_code == 200
-       assert resp.json()["result"] == "done"
-   ```
-
-### Adding a New Frontend Component
-
-1. **Create the component** in `frontend/src/components/my-feature/`:
-   ```
-   MyFeaturePanel.tsx
-   MyFeaturePanel.module.css
-   ```
-
-2. **Create a custom hook** (if the feature needs API calls) in `frontend/src/hooks/`:
-   ```typescript
-   // hooks/useMyFeature.ts
-   export function useMyFeature(boardId: string) {
-     // API calls and state management
-   }
-   ```
-
-3. **Add the panel to BoardPage**: Import and render the component in the appropriate sidebar or panel area of `BoardPage.tsx`.
-
-### Adding a New Database Model
-
-1. **Create the model** in `backend/app/models/`:
-   ```python
-   # app/models/my_model.py
-   from sqlalchemy.orm import Mapped, mapped_column
-   from app.database import Base
-
-   class MyModel(Base):
-       __tablename__ = "my_table"
-       id: Mapped[int] = mapped_column(primary_key=True)
-       # ... columns
-   ```
-
-2. **Import in models/__init__.py** so SQLAlchemy creates the table on startup.
-
-3. The table is auto-created on next application startup via `create_tables()` in `database.py`.
-
-### Adding a New ROBOT Command
-
-1. Add the subprocess call in `backend/app/services/robot.py`:
-   ```python
-   def run_my_command(board_id: str, params: dict) -> dict:
-       owl_file = _find_owl(DATA_DIR / board_id)
-       result = subprocess.run(
-           ["robot", "my-command", "-i", str(owl_file), ...],
-           capture_output=True, text=True
-       )
-       return {"success": result.returncode == 0, "output": result.stdout}
-   ```
-
-2. Add the router endpoint in `backend/app/routers/robot_commands.py`.
-
-3. Add tests in `backend/tests/test_robot_commands.py`.
-
-## Key Configuration Files
-
-| File | Purpose |
-|------|---------|
-| `backend/app/config.py` | All backend configuration from environment variables |
-| `backend/Dockerfile` | Python 3.12 + Java 21 + ROBOT 1.9.6 + make |
-| `worker/Dockerfile` | Python 3.12 + Java 21 + ROBOT 1.9.6 + make |
-| `docker-compose.yml` | Production service definitions |
-| `docker-compose.dev.yml` | Development overrides (source mounts) |
-| `frontend/vite.config.ts` | Vite build configuration |
-| `frontend/tsconfig.json` | TypeScript configuration |
-| `backend/pytest.ini` | pytest test runner configuration |
-| `.env.example` | Environment variable template |
-
-## Docker Image Architecture
-
-Both the backend and worker Dockerfiles install:
-- Python 3.12 (slim base)
-- Java 21 JRE (OpenJDK)
-- ROBOT 1.9.6 (robot.jar + wrapper script)
-- Widoco 1.4.25 (HTML documentation generator, backend only)
-- make (for ODK Makefiles)
-
-There is no Docker-in-Docker. There is no dependency on the odkfull container. All ROBOT commands run as local subprocesses via `subprocess.run(["robot", ...])`.
-
-## Debugging
-
-### Backend Logs
-
-```bash
-docker compose logs backend -f
-```
-
-Or in development mode, logs appear directly in the terminal.
-
-### Frontend Logs
-
-Open browser DevTools (F12) to see console logs and network requests. Debug logging is available for edge rendering diagnostics.
-
-### Database Inspection
-
-The SQLite database is at `data/ontoboard.db`. You can inspect it with any SQLite client:
-
-```bash
-sqlite3 data/ontoboard.db
-.tables
-.schema boards
-SELECT * FROM boards;
-```
-
-### API Testing
-
-Use the interactive Swagger UI at `http://localhost:8000/docs` to test API endpoints directly. You can authorize with a JWT token obtained from the login endpoint.
-
-### ROBOT Debugging
-
-To debug ROBOT commands, exec into the container and run them directly:
-
-```bash
-docker compose exec backend bash
-robot --version
-robot reason -r ELK -i /app/data/{board-id}/src/ontology/ont.owl
-```
+`docs/superpowers/` holds the design specs and implementation plans, including decisions
+that were later reversed and why. Worth reading before changing architecture — several
+constraints above look removable until you read what they cost.
