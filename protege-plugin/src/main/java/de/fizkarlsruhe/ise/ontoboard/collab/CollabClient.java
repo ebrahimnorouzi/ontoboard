@@ -42,7 +42,7 @@ import org.slf4j.LoggerFactory;
  * {@code Runnable::run}. Making the hand-off explicit is what keeps this class testable without a
  * Swing environment, and stops a listener touching Protege's model off the EDT.
  */
-public final class CollabClient {
+public final class CollabClient implements CollabTransport {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(CollabClient.class);
 
@@ -145,6 +145,7 @@ public final class CollabClient {
      * {@link Listener#onRefused} rather than thrown, because "you have not filled in a token" is
      * the same kind of news as "your token is wrong" and belongs in the same place in the UI.
      */
+    @Override
     public void start() {
         if (!settings.isLive()) {
             refuse(settings.explainWhyNotLive());
@@ -177,6 +178,7 @@ public final class CollabClient {
     }
 
     /** Disconnects and stops retrying. Safe to call when never started, or twice. */
+    @Override
     public void stop() {
         WebSocketClient closing;
         ScheduledExecutorService stopping;
@@ -201,6 +203,7 @@ public final class CollabClient {
         }
     }
 
+    @Override
     public boolean isConnected() {
         synchronized (lock) {
             return connected;
@@ -208,6 +211,7 @@ public final class CollabClient {
     }
 
     /** Why the server refused us, or null while connected or retrying. */
+    @Override
     public String getRefusedReason() {
         synchronized (lock) {
             return refusedReason;
@@ -215,6 +219,7 @@ public final class CollabClient {
     }
 
     /** Operations waiting for the connection to come back. */
+    @Override
     public int getPendingCount() {
         synchronized (lock) {
             return pending.size();
@@ -222,6 +227,7 @@ public final class CollabClient {
     }
 
     /** Operations discarded because the outage outlasted the queue. */
+    @Override
     public int getDroppedWhileOfflineCount() {
         synchronized (lock) {
             return droppedWhileOffline;
@@ -237,6 +243,7 @@ public final class CollabClient {
      * authenticated user before it ever comes back, so this is a second guard rather than the
      * only one - and it is the guard that matters when the same account is signed in twice.
      */
+    @Override
     public void publish(OntologyOperation operation) {
         if (operation == null) {
             return;
@@ -264,6 +271,7 @@ public final class CollabClient {
      * <p>Also becomes the heartbeat: the same frame is resent every few seconds so the bridge does
      * not expire the cursor while its owner sits still.
      */
+    @Override
     public void publishPresence(double x, double y, String selection) {
         String frame = CollabMessages.presence(settings.getDisplayName(), settings.getColour(),
                 x, y, selection);
