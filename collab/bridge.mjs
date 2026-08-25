@@ -22,7 +22,7 @@
  *   <- { t: "peers",    peers: [ { user, colour, x, y, selection } ] }
  *   <- { t: "error",    message: "..." }
  *
- * `op.type` must be one of the 16 in frontend/src/collab/useOperationSync.ts. A type the web
+ * `op.type` must be one of the 17 in frontend/src/collab/useOperationSync.ts. A type the web
  * client cannot interpret is a silent no-op on the other side, which is far harder to
  * diagnose than a rejection, so unknown types are refused here.
  */
@@ -131,6 +131,46 @@ export function livePeers(peers, now = Date.now(), ttl = PRESENCE_TTL_MS) {
 }
 
 /**
+ * How an operation is stored in the shared Y.Array.
+ *
+ * useOperationSync.ts pushes `JSON.stringify(op)` and, when reading, skips any element that is
+ * not a string (`if (typeof raw !== "string") continue`). That convention is the contract, and
+ * the bridge has to honour it rather than push a bare object: an object lands in the array, web
+ * clients skip it, and nothing surfaces anywhere. No exception, no log line - the operation
+ * simply never happened as far as the browser is concerned.
+ *
+ * Exported so the round trip can be asserted against a real Y.Doc, which is the only way this
+ * class of mismatch shows up. Before this existed the bridge pushed objects and forwarded raw
+ * array contents, so Protege and the browser could not exchange a single operation in either
+ * direction, and every unit test still passed.
+ */
+export function encodeOperation(op) {
+  return JSON.stringify(op);
+}
+
+/**
+ * Reads one element of the shared Y.Array back into an operation object.
+ *
+ * @returns the operation, or null if the element is not a well-formed operation - a malformed
+ *          entry from an older or buggy client must not stop the ones after it being delivered.
+ */
+export function decodeOperation(content) {
+  if (content && typeof content === "object") {
+    // Tolerated, not produced: an object here means something wrote the array directly.
+    return content;
+  }
+  if (typeof content !== "string") {
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(content);
+    return parsed && typeof parsed === "object" ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Starts the bridge.
  *
  * @param {object} options
@@ -202,8 +242,10 @@ export function startBridge({ port, secret, getDoc }) {
         }
         ops = doc.getArray("ops");
 
-        // Forward operations appended by anyone else. Skipping the sender's own ids is what
-        // stops two clients amplifying each other indefinitely.
+        // Forward operations appended by anyone else. Filtering on the authenticated user is
+        // what stops two clients amplifying each other indefinitely - note that this makes two
+        // sessions signed in as the SAME user invisible to each other, which is a deliberate
+        // trade for a guarantee against loops.
         observer = (event) => {
           const added = [];
           for (const item of event.changes.added) {
@@ -211,7 +253,11 @@ export function startBridge({ port, secret, getDoc }) {
               added.push(content);
             }
           }
-          for (const op of added) {
+          for (const content of added) {
+            // Elements arrive as the JSON strings useOperationSync.ts writes, so they have to be
+            // parsed before userId can be read off them. Forwarding the raw string instead
+            // would send `{t:"op", op:"{...}"}`, which the Java client drops as a non-object.
+            const op = decodeOperation(content);
             if (op && op.userId !== user && socket.readyState === socket.OPEN) {
               socket.send(JSON.stringify({ t: "op", op }));
             }
@@ -244,8 +290,9 @@ export function startBridge({ port, secret, getDoc }) {
       }
 
       if (message.t === "op") {
-        // Stamp the authenticated user rather than trusting the client's claim.
-        ops.push([{ ...message.op, userId: user }]);
+        // Stamp the authenticated user rather than trusting the client's claim, and store it the
+        // way web clients read it - see encodeOperation.
+        ops.push([encodeOperation({ ...message.op, userId: user })]);
         return;
       }
 
