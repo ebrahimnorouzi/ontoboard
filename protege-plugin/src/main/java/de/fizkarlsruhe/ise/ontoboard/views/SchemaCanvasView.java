@@ -4,6 +4,7 @@ import com.mxgraph.swing.mxGraphComponent;
 import de.fizkarlsruhe.ise.ontoboard.axiom.AxiomRemoval;
 import de.fizkarlsruhe.ise.ontoboard.axiom.EdgeAxioms;
 import de.fizkarlsruhe.ise.ontoboard.axiom.EntityFactory;
+import de.fizkarlsruhe.ise.ontoboard.odk.OdkProjectLoader;
 import de.fizkarlsruhe.ise.ontoboard.axiom.RelationDialog;
 import de.fizkarlsruhe.ise.ontoboard.model.DisplayLabels;
 import com.mxgraph.swing.mxGraphOutline;
@@ -13,6 +14,7 @@ import de.fizkarlsruhe.ise.ontoboard.canvas.CanvasExport;
 import de.fizkarlsruhe.ise.ontoboard.canvas.CanvasLayouts;
 import de.fizkarlsruhe.ise.ontoboard.canvas.CanvasMembership;
 import de.fizkarlsruhe.ise.ontoboard.canvas.PalettePanel;
+import de.fizkarlsruhe.ise.ontoboard.canvas.StartPanel;
 import de.fizkarlsruhe.ise.ontoboard.canvas.SchemaGraph;
 import de.fizkarlsruhe.ise.ontoboard.canvas.SelectionBridge;
 import de.fizkarlsruhe.ise.ontoboard.layout.CanvasLayout;
@@ -20,11 +22,9 @@ import de.fizkarlsruhe.ise.ontoboard.layout.CanvasLayoutStore;
 import de.fizkarlsruhe.ise.ontoboard.model.OntologyProjection;
 import de.fizkarlsruhe.ise.ontoboard.model.Projection;
 import java.awt.BorderLayout;
+import java.awt.CardLayout;
 import java.awt.Point;
-import java.awt.dnd.DropTargetAdapter;
-import java.awt.dnd.DropTargetDropEvent;
 import java.awt.dnd.DropTarget;
-import java.awt.dnd.DnDConstants;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.event.MouseAdapter;
@@ -39,6 +39,9 @@ import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JFileChooser;
 import javax.swing.JMenuItem;
+import javax.swing.TransferHandler;
+import java.awt.datatransfer.DataFlavor;
+import javax.swing.JPanel;
 import javax.swing.JOptionPane;
 import javax.swing.JOptionPane;
 import javax.swing.JPopupMenu;
@@ -61,6 +64,8 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
 
     private SchemaGraph graph;
     private mxGraphComponent graphComponent;
+    private JPanel centre;
+    private CardLayout cards;
     private CanvasLayout layout = new CanvasLayout();
     private CanvasMembership membership;
     /**
@@ -96,7 +101,13 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         graphComponent.setToolTips(true);
         graphComponent.setPanning(true);
         graphComponent.getPanningHandler().setEnabled(true);
-        add(graphComponent, BorderLayout.CENTER);
+        // Card deck so an empty board shows guidance instead of a blank grid.
+        cards = new CardLayout();
+        centre = new JPanel(cards);
+        centre.add(graphComponent, "canvas");
+        centre.add(new StartPanel(this::runNewProjectWizard, this::openExistingProject,
+                this::addSelectedEntityToCanvas), "start");
+        add(centre, BorderLayout.CENTER);
 
         mxGraphOutline outline = new mxGraphOutline(graphComponent);
         outline.setPreferredSize(new Dimension(180, 140));
@@ -108,6 +119,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                 Color.decode(de.fizkarlsruhe.ise.ontoboard.canvas.SchemaStyles.CANVAS_BACKGROUND));
         graphComponent.setGridVisible(true);
         installPaletteDropTarget();
+        installDoubleClickToCreate();
 
         loadLayoutForActiveOntology();
         installContextMenu();
@@ -375,6 +387,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                 .project(getOWLModelManager().getActiveOntology(), membership.asSet());
         graph.render(projection, layout);
         autoArrangeIfUnpositioned();
+        showAppropriateCard();
 
         if (selectionBridge != null) {
             selectionBridge.resyncAfterRender(selectedBeforeRender);
@@ -594,35 +607,94 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
     /**
      * Accepts entity drops from the palette.
      *
-     * <p>Swing drag-and-drop is used rather than mxGraph's transfer machinery because the
-     * drop must create an OWL entity through OWLModelManager. Inserting a bare cell would
-     * produce something with no axiom behind it, which the next refresh would erase.
+     * <p>This must be a {@link TransferHandler} on the component, not a raw
+     * {@code DropTarget} on the graph control. mxGraphComponent installs its own transfer
+     * handler (see {@code createTransferHandler}), which owns the component's drop plumbing -
+     * a competing DropTarget is simply never called, which is exactly how the first attempt
+     * failed: the palette dragged, and nothing landed.
+     *
+     * <p>Anything this handler does not recognise is delegated back to mxGraph's handler, so
+     * the component's own drag behaviour keeps working.
      */
     private void installPaletteDropTarget() {
-        new DropTarget(graphComponent.getGraphControl(), DnDConstants.ACTION_COPY,
-                new DropTargetAdapter() {
-                    @Override
-                    public void drop(DropTargetDropEvent event) {
-                        try {
-                            event.acceptDrop(DnDConstants.ACTION_COPY);
-                            Object payload = event.getTransferable()
-                                    .getTransferData(java.awt.datatransfer.DataFlavor.stringFlavor);
-                            EntityFactory.Kind kind =
-                                    PalettePanel.kindOf(String.valueOf(payload));
-                            if (kind == null) {
-                                // Something else was dragged in; ignore rather than
-                                // inventing a default entity the user did not ask for.
-                                event.dropComplete(false);
-                                return;
-                            }
-                            Point at = event.getLocation();
-                            createEntityAt(kind, at.x, at.y);
-                            event.dropComplete(true);
-                        } catch (Exception failed) {
-                            event.dropComplete(false);
+        final TransferHandler mxHandler = graphComponent.getTransferHandler();
+        graphComponent.setTransferHandler(new TransferHandler() {
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            public boolean canImport(TransferSupport support) {
+                if (support.isDataFlavorSupported(DataFlavor.stringFlavor)) {
+                    return true;
+                }
+                return mxHandler != null && mxHandler.canImport(support);
+            }
+
+            @Override
+            public boolean importData(TransferSupport support) {
+                if (support.isDataFlavorSupported(DataFlavor.stringFlavor)) {
+                    try {
+                        Object payload = support.getTransferable()
+                                .getTransferData(DataFlavor.stringFlavor);
+                        EntityFactory.Kind kind =
+                                PalettePanel.kindOf(String.valueOf(payload));
+                        if (kind != null) {
+                            Point at = support.getDropLocation().getDropPoint();
+                            Point graphPoint = toGraphPoint(at);
+                            createEntityAt(kind, graphPoint.x, graphPoint.y);
+                            return true;
                         }
+                    } catch (Exception ignored) {
+                        // Fall through: something else was dragged in, let mxGraph try.
                     }
-                });
+                }
+                return mxHandler != null && mxHandler.importData(support);
+            }
+        });
+    }
+
+    /**
+     * Double-clicking empty canvas creates a class there.
+     *
+     * <p>The fastest path to a new term, and the one every other diagram tool offers. Having
+     * to pick an item from a palette and then drag it is a lot of ceremony for the most
+     * common action in ontology sketching, so the palette is now the explicit route rather
+     * than the only one.
+     */
+    private void installDoubleClickToCreate() {
+        graphComponent.getGraphControl().addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent event) {
+                if (event.getClickCount() != 2 || event.isPopupTrigger()) {
+                    return;
+                }
+                if (graphComponent.getCellAt(event.getX(), event.getY()) != null) {
+                    // Double-clicking a node is not a request for a new one.
+                    return;
+                }
+                com.mxgraph.util.mxPoint at = graphComponent.getPointForEvent(event);
+                createEntityAt(EntityFactory.Kind.CLASS, (int) at.getX(), (int) at.getY());
+            }
+        });
+    }
+
+    /**
+     * Converts a point in the component's coordinates to graph coordinates.
+     *
+     * <p>A drop point arrives relative to the visible component, so it has to be shifted by
+     * the scroll position and divided by the zoom - otherwise a node dropped on a scrolled or
+     * zoomed canvas appears somewhere else entirely.
+     */
+    private Point toGraphPoint(Point componentPoint) {
+        Point scrolled = new Point(componentPoint);
+        if (graphComponent.getViewport() != null) {
+            Point offset = graphComponent.getViewport().getViewPosition();
+            scrolled.translate(offset.x, offset.y);
+        }
+        double scale = graph.getView().getScale();
+        if (scale <= 0) {
+            scale = 1;
+        }
+        return new Point((int) (scrolled.x / scale), (int) (scrolled.y / scale));
     }
 
     /**
@@ -641,5 +713,58 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         }
         CanvasLayouts.apply(graph, CanvasLayouts.Algorithm.HIERARCHICAL);
         capturePositions();
+    }
+
+    /** Guidance while the board is empty, the board once it is not. */
+    private void showAppropriateCard() {
+        if (cards == null) {
+            return;
+        }
+        cards.show(centre, membership.size() == 0 ? "start" : "canvas");
+    }
+
+    /** The same wizard the Tools menu offers, reachable from the empty board. */
+    private void runNewProjectWizard() {
+        de.fizkarlsruhe.ise.ontoboard.odk.ProjectWizard.show(this, getOWLModelManager());
+    }
+
+    /**
+     * Opens an existing ODK repository.
+     *
+     * <p>Users think in terms of "my ontology repo", not "the file at
+     * src/ontology/foo-edit.owl", and picking the generated release file by mistake means
+     * their edits get overwritten by the next build. So this takes a folder and works out
+     * what to open, refusing rather than guessing when it cannot tell.
+     */
+    private void openExistingProject() {
+        JFileChooser chooser = new JFileChooser();
+        chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+        chooser.setDialogTitle("Select an ODK project folder");
+        if (chooser.showOpenDialog(this) != JFileChooser.APPROVE_OPTION) {
+            return;
+        }
+        OdkProjectLoader.Detected project;
+        try {
+            project = OdkProjectLoader.detect(chooser.getSelectedFile());
+        } catch (RuntimeException notAProject) {
+            JOptionPane.showMessageDialog(this, notAProject.getMessage(),
+                    "Not an ODK project", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        try {
+            getOWLModelManager().getOWLOntologyManager()
+                    .loadOntologyFromOntologyDocument(project.getEditFile());
+            JOptionPane.showMessageDialog(this,
+                    "Opened " + project.getTitle() + "\n\n"
+                            + project.getEditFile().getAbsolutePath()
+                            + "\n\nAdd entities from the class hierarchy, or double-click "
+                            + "the board to create one.",
+                    "Project opened", JOptionPane.INFORMATION_MESSAGE);
+        } catch (Exception couldNotLoad) {
+            JOptionPane.showMessageDialog(this,
+                    "Found " + project.getEditFile().getName()
+                            + " but Protege could not load it:\n" + couldNotLoad.getMessage(),
+                    "Could not open", JOptionPane.ERROR_MESSAGE);
+        }
     }
 }

@@ -8,6 +8,32 @@
 
 **Why:** the user asked directly — *"multiple user work on the same ontology, others could see their mouse is moving and they can see the changes, edits, comment"* — and chose "plugin joins the same live session" over delegating collaboration to the browser.
 
+## Two collaboration modes, chosen by the user (2026-08-25)
+
+The plugin does **not** host or ship a server. Teams run their own OntoBoard server, and each
+user points the plugin at it. A team without a server is not shut out — they collaborate the
+way the OBO community already does, through git.
+
+| | **Live mode** | **Git mode** |
+|---|---|---|
+| Needs | an OntoBoard server the team runs | a git remote only |
+| Setup | server URL, board, credentials in the plugin | clone / remote already configured |
+| Same-time editing | yes | no |
+| Remote cursors | yes | no |
+| Live operation sync | yes | no |
+| Comments | yes | via pull-request review |
+| Sharing changes | continuous | commit, push, pull |
+| Conflict handling | semantic merge engine | git merge, ROBOT diff |
+
+**The plugin must be honest about which mode is active.** In Git mode the cursor overlay,
+presence indicator and sync status must be *absent or visibly disabled* - never present and
+silently doing nothing. A user who believes they are collaborating live when they are not
+will lose work, and that failure is on the interface, not on them.
+
+Mode is inferred from configuration, not asked as a separate question: server details
+present and reachable means Live, otherwise Git. Nothing is required to get started, so the
+plugin is fully usable with no configuration at all.
+
 ## The central constraint
 
 The existing stack is **Yjs/Hocuspocus**, and Java has no mature Yjs client. Rather than port a CRDT to Java or bolt an immature JNI binding into a Protégé plugin, the plugin speaks a **plain JSON WebSocket** protocol, and a small bridge inside the existing `collab/` service translates that to and from the shared `Y.Doc`.
@@ -137,7 +163,31 @@ The hard part: `OWLOntologyChange` ↔ `OntologyOperation`.
 
 ---
 
-### Task 5: Comments
+### Task 5: Git mode
+
+For teams with no server. Not a lesser path - it is how most published ontologies are
+actually built, and it is what the ODK release workflow assumes.
+
+**Files:** create `.git/GitClient.java`, `.git/GitPanel.java`; modify `plugin.xml`
+
+- [ ] **Step 1** JGit is already on the classpath (Protege ships it - do not add a second
+  copy). Wrap the operations a modeller needs: current branch and dirty state, create
+  branch, stage the ontology and its sidecar, commit, pull with rebase, push.
+- [ ] **Step 2** Show status in the panel: branch, ahead/behind, changed files. A modeller
+  needs to know whether their work is shared, not to learn git plumbing.
+- [ ] **Step 3** `ROBOT diff` between the working copy and `HEAD`, so a review shows
+  *axiom* changes rather than an OWL/XML text diff nobody can read. This is the piece that
+  makes git mode genuinely usable for ontologies, and it needs ROBOT - so state plainly that
+  it requires Protege 5.6.x (spec D3c).
+- [ ] **Step 4** Never auto-commit and never auto-push. Both are explicit actions with the
+  diff visible first.
+- [ ] **Step 5** Test the plumbing against a temporary repository created in the test:
+  branch, commit, dirty detection. Push and pull need a remote and are stated as untested.
+- [ ] **Step 6: Commit**
+
+---
+
+### Task 6: Comments
 
 **Files:** create `.collab/CommentsClient.java`, `views/CommentsView.java`; modify `plugin.xml`
 
@@ -145,6 +195,30 @@ The hard part: `OWLOntologyChange` ↔ `OntologyOperation`.
 - [ ] **Step 2** A `ViewComponent` listing comments for the selected entity, following the selection through `OWLSelectionModel` exactly as the canvas already does.
 - [ ] **Step 3** **Register its package in `plugin.xml` and add the explicit `Import-Package` clause.** A class named only in `plugin.xml` is invisible to bnd — this already cost one release (1.0.2 shipped a tab that appeared in the menu and threw `ClassNotFoundException` when clicked), and `everyThirdPartyClassInPluginXmlHasItsPackageImported` guards it.
 - [ ] **Step 4: Commit**
+
+---
+
+### Task 7: Setup documentation
+
+The feature is unusable without it. A team has to stand up a server, mint credentials and
+configure each client, and none of that is guessable.
+
+**Files:** create `docs/collaboration.md`; modify `README.md`, `docs/getting-started.md`
+
+- [ ] **Step 1** `docs/collaboration.md` covering, for **Live mode**: what to run
+  (`./run.sh` brings up backend, collab and the bridge), which ports must be reachable
+  (backend 8000, bridge 1235) and that the bridge is the plugin's endpoint while 1234 stays
+  the browser's, how a user obtains a token, where to enter it in the plugin, and how to
+  verify it worked.
+- [ ] **Step 2** The same for **Git mode**: no server, configure a remote, the
+  commit/pull/push loop, and that cursors and live sync are deliberately unavailable.
+- [ ] **Step 3** A troubleshooting section written from the actual failure modes: bridge
+  unreachable, token expired, board id wrong, `SECRET_KEY` mismatched between backend and
+  collab (the same secret signs and verifies - if they differ every token is rejected).
+- [ ] **Step 4** Say plainly that the server is the team's to run and secure. The plugin
+  ships no server and no default credentials, and `SECRET_KEY` must be changed from its
+  development default before anyone exposes a server beyond localhost.
+- [ ] **Step 5: Commit**
 
 ---
 
@@ -156,6 +230,9 @@ The hard part: `OWLOntologyChange` ↔ `OntologyOperation`.
 - No operation is ever echoed back to its sender.
 - Killing the collab server mid-session loses no local work and does not block editing.
 - Comments on an entity are visible in both clients.
+- With **no** server configured, the plugin works fully in Git mode and no collaboration UI
+  claims otherwise.
+- A user can follow `docs/collaboration.md` and get either mode working without reading code.
 
 ## Risks
 
