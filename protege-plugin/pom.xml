@@ -6,7 +6,7 @@
 
   <groupId>de.fizkarlsruhe.ise</groupId>
   <artifactId>ontoboard</artifactId>
-  <version>1.5.0</version>
+  <version>1.6.0</version>
   <packaging>bundle</packaging>
 
   <name>OntoBoard</name>
@@ -111,6 +111,32 @@
       <groupId>org.obolibrary.robot</groupId>
       <artifactId>robot-core</artifactId>
       <version>1.9.8</version>
+    </dependency>
+
+    <!--
+      Java-WebSocket: the collaboration client's transport. 140 KB, Java 7 bytecode, and its
+      only compile-scope dependency is slf4j-api, which the host already exports and we
+      already import. Chosen over a Yjs binding because Java has no mature Yjs client and an
+      immature JNI binding inside an OSGi bundle is a poor trade; the bridge in collab/
+      translates JSON to the shared Y.Doc instead.
+    -->
+    <dependency>
+      <groupId>org.java-websocket</groupId>
+      <artifactId>Java-WebSocket</artifactId>
+      <version>1.5.7</version>
+      <exclusions>
+        <!--
+          Its only compile dependency is slf4j-api, which the host already exports and we
+          already import. Pulling in another copy shifted the resolved logging stack enough
+          to break logback-classic against logback-core
+          (NoSuchMethodError: Loader.systemClassloaderIfNull), which failed 61 tests that
+          had nothing to do with WebSockets.
+        -->
+        <exclusion>
+          <groupId>org.slf4j</groupId>
+          <artifactId>slf4j-api</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
 
     <dependency>

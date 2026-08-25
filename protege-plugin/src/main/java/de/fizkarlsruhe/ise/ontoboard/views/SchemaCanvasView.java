@@ -21,10 +21,7 @@ import de.fizkarlsruhe.ise.ontoboard.model.OntologyProjection;
 import de.fizkarlsruhe.ise.ontoboard.model.Projection;
 import java.awt.BorderLayout;
 import java.awt.Point;
-import java.awt.dnd.DropTargetAdapter;
-import java.awt.dnd.DropTargetDropEvent;
 import java.awt.dnd.DropTarget;
-import java.awt.dnd.DnDConstants;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.event.MouseAdapter;
@@ -39,6 +36,8 @@ import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JFileChooser;
 import javax.swing.JMenuItem;
+import javax.swing.TransferHandler;
+import java.awt.datatransfer.DataFlavor;
 import javax.swing.JOptionPane;
 import javax.swing.JOptionPane;
 import javax.swing.JPopupMenu;
@@ -108,6 +107,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                 Color.decode(de.fizkarlsruhe.ise.ontoboard.canvas.SchemaStyles.CANVAS_BACKGROUND));
         graphComponent.setGridVisible(true);
         installPaletteDropTarget();
+        installDoubleClickToCreate();
 
         loadLayoutForActiveOntology();
         installContextMenu();
@@ -594,35 +594,94 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
     /**
      * Accepts entity drops from the palette.
      *
-     * <p>Swing drag-and-drop is used rather than mxGraph's transfer machinery because the
-     * drop must create an OWL entity through OWLModelManager. Inserting a bare cell would
-     * produce something with no axiom behind it, which the next refresh would erase.
+     * <p>This must be a {@link TransferHandler} on the component, not a raw
+     * {@code DropTarget} on the graph control. mxGraphComponent installs its own transfer
+     * handler (see {@code createTransferHandler}), which owns the component's drop plumbing -
+     * a competing DropTarget is simply never called, which is exactly how the first attempt
+     * failed: the palette dragged, and nothing landed.
+     *
+     * <p>Anything this handler does not recognise is delegated back to mxGraph's handler, so
+     * the component's own drag behaviour keeps working.
      */
     private void installPaletteDropTarget() {
-        new DropTarget(graphComponent.getGraphControl(), DnDConstants.ACTION_COPY,
-                new DropTargetAdapter() {
-                    @Override
-                    public void drop(DropTargetDropEvent event) {
-                        try {
-                            event.acceptDrop(DnDConstants.ACTION_COPY);
-                            Object payload = event.getTransferable()
-                                    .getTransferData(java.awt.datatransfer.DataFlavor.stringFlavor);
-                            EntityFactory.Kind kind =
-                                    PalettePanel.kindOf(String.valueOf(payload));
-                            if (kind == null) {
-                                // Something else was dragged in; ignore rather than
-                                // inventing a default entity the user did not ask for.
-                                event.dropComplete(false);
-                                return;
-                            }
-                            Point at = event.getLocation();
-                            createEntityAt(kind, at.x, at.y);
-                            event.dropComplete(true);
-                        } catch (Exception failed) {
-                            event.dropComplete(false);
+        final TransferHandler mxHandler = graphComponent.getTransferHandler();
+        graphComponent.setTransferHandler(new TransferHandler() {
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            public boolean canImport(TransferSupport support) {
+                if (support.isDataFlavorSupported(DataFlavor.stringFlavor)) {
+                    return true;
+                }
+                return mxHandler != null && mxHandler.canImport(support);
+            }
+
+            @Override
+            public boolean importData(TransferSupport support) {
+                if (support.isDataFlavorSupported(DataFlavor.stringFlavor)) {
+                    try {
+                        Object payload = support.getTransferable()
+                                .getTransferData(DataFlavor.stringFlavor);
+                        EntityFactory.Kind kind =
+                                PalettePanel.kindOf(String.valueOf(payload));
+                        if (kind != null) {
+                            Point at = support.getDropLocation().getDropPoint();
+                            Point graphPoint = toGraphPoint(at);
+                            createEntityAt(kind, graphPoint.x, graphPoint.y);
+                            return true;
                         }
+                    } catch (Exception ignored) {
+                        // Fall through: something else was dragged in, let mxGraph try.
                     }
-                });
+                }
+                return mxHandler != null && mxHandler.importData(support);
+            }
+        });
+    }
+
+    /**
+     * Double-clicking empty canvas creates a class there.
+     *
+     * <p>The fastest path to a new term, and the one every other diagram tool offers. Having
+     * to pick an item from a palette and then drag it is a lot of ceremony for the most
+     * common action in ontology sketching, so the palette is now the explicit route rather
+     * than the only one.
+     */
+    private void installDoubleClickToCreate() {
+        graphComponent.getGraphControl().addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent event) {
+                if (event.getClickCount() != 2 || event.isPopupTrigger()) {
+                    return;
+                }
+                if (graphComponent.getCellAt(event.getX(), event.getY()) != null) {
+                    // Double-clicking a node is not a request for a new one.
+                    return;
+                }
+                com.mxgraph.util.mxPoint at = graphComponent.getPointForEvent(event);
+                createEntityAt(EntityFactory.Kind.CLASS, (int) at.getX(), (int) at.getY());
+            }
+        });
+    }
+
+    /**
+     * Converts a point in the component's coordinates to graph coordinates.
+     *
+     * <p>A drop point arrives relative to the visible component, so it has to be shifted by
+     * the scroll position and divided by the zoom - otherwise a node dropped on a scrolled or
+     * zoomed canvas appears somewhere else entirely.
+     */
+    private Point toGraphPoint(Point componentPoint) {
+        Point scrolled = new Point(componentPoint);
+        if (graphComponent.getViewport() != null) {
+            Point offset = graphComponent.getViewport().getViewPosition();
+            scrolled.translate(offset.x, offset.y);
+        }
+        double scale = graph.getView().getScale();
+        if (scale <= 0) {
+            scale = 1;
+        }
+        return new Point((int) (scrolled.x / scale), (int) (scrolled.y / scale));
     }
 
     /**
