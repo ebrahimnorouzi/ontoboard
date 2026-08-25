@@ -4,6 +4,7 @@ import com.mxgraph.swing.mxGraphComponent;
 import de.fizkarlsruhe.ise.ontoboard.axiom.AxiomRemoval;
 import de.fizkarlsruhe.ise.ontoboard.axiom.EdgeAxioms;
 import de.fizkarlsruhe.ise.ontoboard.axiom.EntityFactory;
+import de.fizkarlsruhe.ise.ontoboard.odk.OdkProjectLoader;
 import de.fizkarlsruhe.ise.ontoboard.axiom.RelationDialog;
 import de.fizkarlsruhe.ise.ontoboard.model.DisplayLabels;
 import com.mxgraph.swing.mxGraphOutline;
@@ -13,6 +14,7 @@ import de.fizkarlsruhe.ise.ontoboard.canvas.CanvasExport;
 import de.fizkarlsruhe.ise.ontoboard.canvas.CanvasLayouts;
 import de.fizkarlsruhe.ise.ontoboard.canvas.CanvasMembership;
 import de.fizkarlsruhe.ise.ontoboard.canvas.PalettePanel;
+import de.fizkarlsruhe.ise.ontoboard.canvas.StartPanel;
 import de.fizkarlsruhe.ise.ontoboard.canvas.SchemaGraph;
 import de.fizkarlsruhe.ise.ontoboard.canvas.SelectionBridge;
 import de.fizkarlsruhe.ise.ontoboard.layout.CanvasLayout;
@@ -20,6 +22,7 @@ import de.fizkarlsruhe.ise.ontoboard.layout.CanvasLayoutStore;
 import de.fizkarlsruhe.ise.ontoboard.model.OntologyProjection;
 import de.fizkarlsruhe.ise.ontoboard.model.Projection;
 import java.awt.BorderLayout;
+import java.awt.CardLayout;
 import java.awt.Point;
 import java.awt.dnd.DropTarget;
 import java.awt.Color;
@@ -38,6 +41,7 @@ import javax.swing.JFileChooser;
 import javax.swing.JMenuItem;
 import javax.swing.TransferHandler;
 import java.awt.datatransfer.DataFlavor;
+import javax.swing.JPanel;
 import javax.swing.JOptionPane;
 import javax.swing.JOptionPane;
 import javax.swing.JPopupMenu;
@@ -60,6 +64,8 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
 
     private SchemaGraph graph;
     private mxGraphComponent graphComponent;
+    private JPanel centre;
+    private CardLayout cards;
     private CanvasLayout layout = new CanvasLayout();
     private CanvasMembership membership;
     /**
@@ -95,7 +101,13 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         graphComponent.setToolTips(true);
         graphComponent.setPanning(true);
         graphComponent.getPanningHandler().setEnabled(true);
-        add(graphComponent, BorderLayout.CENTER);
+        // Card deck so an empty board shows guidance instead of a blank grid.
+        cards = new CardLayout();
+        centre = new JPanel(cards);
+        centre.add(graphComponent, "canvas");
+        centre.add(new StartPanel(this::runNewProjectWizard, this::openExistingProject,
+                this::addSelectedEntityToCanvas), "start");
+        add(centre, BorderLayout.CENTER);
 
         mxGraphOutline outline = new mxGraphOutline(graphComponent);
         outline.setPreferredSize(new Dimension(180, 140));
@@ -375,6 +387,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                 .project(getOWLModelManager().getActiveOntology(), membership.asSet());
         graph.render(projection, layout);
         autoArrangeIfUnpositioned();
+        showAppropriateCard();
 
         if (selectionBridge != null) {
             selectionBridge.resyncAfterRender(selectedBeforeRender);
@@ -700,5 +713,58 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         }
         CanvasLayouts.apply(graph, CanvasLayouts.Algorithm.HIERARCHICAL);
         capturePositions();
+    }
+
+    /** Guidance while the board is empty, the board once it is not. */
+    private void showAppropriateCard() {
+        if (cards == null) {
+            return;
+        }
+        cards.show(centre, membership.size() == 0 ? "start" : "canvas");
+    }
+
+    /** The same wizard the Tools menu offers, reachable from the empty board. */
+    private void runNewProjectWizard() {
+        de.fizkarlsruhe.ise.ontoboard.odk.ProjectWizard.show(this, getOWLModelManager());
+    }
+
+    /**
+     * Opens an existing ODK repository.
+     *
+     * <p>Users think in terms of "my ontology repo", not "the file at
+     * src/ontology/foo-edit.owl", and picking the generated release file by mistake means
+     * their edits get overwritten by the next build. So this takes a folder and works out
+     * what to open, refusing rather than guessing when it cannot tell.
+     */
+    private void openExistingProject() {
+        JFileChooser chooser = new JFileChooser();
+        chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+        chooser.setDialogTitle("Select an ODK project folder");
+        if (chooser.showOpenDialog(this) != JFileChooser.APPROVE_OPTION) {
+            return;
+        }
+        OdkProjectLoader.Detected project;
+        try {
+            project = OdkProjectLoader.detect(chooser.getSelectedFile());
+        } catch (RuntimeException notAProject) {
+            JOptionPane.showMessageDialog(this, notAProject.getMessage(),
+                    "Not an ODK project", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        try {
+            getOWLModelManager().getOWLOntologyManager()
+                    .loadOntologyFromOntologyDocument(project.getEditFile());
+            JOptionPane.showMessageDialog(this,
+                    "Opened " + project.getTitle() + "\n\n"
+                            + project.getEditFile().getAbsolutePath()
+                            + "\n\nAdd entities from the class hierarchy, or double-click "
+                            + "the board to create one.",
+                    "Project opened", JOptionPane.INFORMATION_MESSAGE);
+        } catch (Exception couldNotLoad) {
+            JOptionPane.showMessageDialog(this,
+                    "Found " + project.getEditFile().getName()
+                            + " but Protege could not load it:\n" + couldNotLoad.getMessage(),
+                    "Could not open", JOptionPane.ERROR_MESSAGE);
+        }
     }
 }
