@@ -1,6 +1,5 @@
 package de.fizkarlsruhe.ise.ontoboard;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -13,6 +12,7 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 
+/** The view config that sits beside this one is covered by {@link ViewConfigTest}. */
 class PluginXmlTest {
 
     private Document parseResource(String name) throws Exception {
@@ -44,13 +44,4 @@ class PluginXmlTest {
         }
     }
 
-    @Test
-    void viewConfigHasNoUnfilteredMavenProperties() throws Exception {
-        NodeList props = parseResource("/viewconfig-ontoboardtab.xml").getElementsByTagName("Property");
-        assertTrue(props.getLength() >= 1, "expected at least one Property in the view config");
-        for (int i = 0; i < props.getLength(); i++) {
-            String value = ((Element) props.item(i)).getAttribute("value");
-            assertFalse(value.contains("${"), "unfiltered Maven property in view config: " + value);
-        }
-    }
 }

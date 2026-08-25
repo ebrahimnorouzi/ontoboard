@@ -58,6 +58,11 @@ generated/custom Makefile pair, catalog, ID ranges, ROBOT report profile, SPARQL
 GitHub Actions workflow, README), then opens the edit file so you start editing immediately.
 No Docker needed to create it; running its `make` targets needs `make` and ROBOT on PATH.
 
+**Work in one place** — the tab puts Protégé's own entity views in a tabbed column on the
+left — Classes, Object properties, Data properties, Annotation properties, Datatypes,
+Individuals — with the canvas beside them. Select something in a tree and click *Add* on the
+canvas toolbar; the button names what it will add, so there is no guessing.
+
 **Draw the schema** — an opt-in canvas that starts empty and grows as you add entities,
 because Protégé routinely opens ontologies with 100,000+ classes and rendering all of them
 would hang. Drag *Class* or *Individual* from the palette onto the board, expand a node's
@@ -103,7 +108,7 @@ unavailable and why rather than failing obscurely.
 ```bash
 cd protege-plugin
 mvn clean package          # -> target/ontoboard-<version>.jar
-mvn test                   # 129 tests
+mvn test                   # 185 tests
 ```
 
 Java 8 bytecode is emitted deliberately (`maven.compiler.release=8`) so the bundle loads on
@@ -139,6 +144,7 @@ Architecture and API details: [docs/architecture.md](docs/architecture.md),
 - [Architecture](docs/architecture.md)
 - [Features](docs/features.md)
 - [Development](docs/development.md)
+- [Feature parity](docs/feature-parity.md) — plugin vs web application, gap by gap
 - [Limitations and roadmap](docs/limitations.md)
 - [API reference](docs/api-reference.md) — web application
 - Design specs and implementation plans: [docs/superpowers/](docs/superpowers/)
