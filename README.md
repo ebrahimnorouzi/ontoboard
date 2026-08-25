@@ -139,6 +139,7 @@ Architecture and API details: [docs/architecture.md](docs/architecture.md),
 - [Architecture](docs/architecture.md)
 - [Features](docs/features.md)
 - [Development](docs/development.md)
+- [Feature parity](docs/feature-parity.md) — plugin vs web application, gap by gap
 - [Limitations and roadmap](docs/limitations.md)
 - [API reference](docs/api-reference.md) — web application
 - Design specs and implementation plans: [docs/superpowers/](docs/superpowers/)
