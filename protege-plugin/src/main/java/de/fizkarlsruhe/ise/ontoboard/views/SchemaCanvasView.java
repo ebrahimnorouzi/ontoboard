@@ -11,7 +11,6 @@ import de.fizkarlsruhe.ise.ontoboard.canvas.CanvasExport;
 import de.fizkarlsruhe.ise.ontoboard.canvas.CanvasLayouts;
 import de.fizkarlsruhe.ise.ontoboard.canvas.CanvasMembership;
 import de.fizkarlsruhe.ise.ontoboard.canvas.CollaborativeGraphComponent;
-import de.fizkarlsruhe.ise.ontoboard.canvas.PalettePanel;
 import de.fizkarlsruhe.ise.ontoboard.canvas.PrefixColours;
 import de.fizkarlsruhe.ise.ontoboard.canvas.SchemaGraph;
 import de.fizkarlsruhe.ise.ontoboard.canvas.SelectionBridge;
@@ -32,7 +31,6 @@ import java.awt.CardLayout;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Point;
-import java.awt.datatransfer.DataFlavor;
 import java.awt.dnd.DropTarget;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -40,8 +38,10 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JFileChooser;
@@ -55,6 +55,7 @@ import javax.swing.TransferHandler;
 import org.protege.editor.owl.model.event.EventType;
 import org.protege.editor.owl.model.event.OWLModelManagerListener;
 import org.protege.editor.owl.model.selection.OWLSelectionModelListener;
+import org.protege.editor.owl.ui.transfer.OWLObjectDataFlavor;
 import org.protege.editor.owl.ui.view.AbstractOWLViewComponent;
 import org.semanticweb.owlapi.model.AddAxiom;
 import org.semanticweb.owlapi.model.IRI;
@@ -62,10 +63,15 @@ import org.semanticweb.owlapi.model.OWLDataFactory;
 import org.semanticweb.owlapi.model.OWLEntity;
 import org.semanticweb.owlapi.model.OWLObjectProperty;
 import org.semanticweb.owlapi.model.OWLOntology;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.semanticweb.owlapi.model.OWLOntologyChange;
 import org.semanticweb.owlapi.model.OWLOntologyChangeListener;
 
 public class SchemaCanvasView extends AbstractOWLViewComponent {
+
+    private static final Logger LOGGER =
+            LoggerFactory.getLogger(SchemaCanvasView.class);
 
     private SchemaGraph graph;
     private CollaborativeGraphComponent graphComponent;
@@ -138,12 +144,11 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         outline.setPreferredSize(new Dimension(180, 140));
         add(outline, BorderLayout.EAST);
         add(buildToolBar(), BorderLayout.NORTH);
-        add(new PalettePanel(), BorderLayout.WEST);
         graphComponent.getViewport().setOpaque(true);
         graphComponent.getViewport().setBackground(
                 Color.decode(de.fizkarlsruhe.ise.ontoboard.canvas.SchemaStyles.CANVAS_BACKGROUND));
         graphComponent.setGridVisible(true);
-        installPaletteDropTarget();
+        installEntityDropTarget();
         installDoubleClickToCreate();
         installCursorSharing();
 
@@ -665,13 +670,57 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
      */
     private void loadLayoutForActiveOntology() {
         currentOntologyFile = activeOntologyFile();
-        if (currentOntologyFile != null && CanvasLayoutStore.sidecarFor(currentOntologyFile).isFile()) {
-            layout = CanvasLayoutStore.load(currentOntologyFile);
-        } else {
+        OWLOntology ontology = getOWLModelManager().getActiveOntology();
+        layout = null;
+
+        if (currentOntologyFile != null
+                && CanvasLayoutStore.sidecarFor(currentOntologyFile).isFile()) {
+            CanvasLayout stored = CanvasLayoutStore.load(currentOntologyFile);
+            if (stored.belongsTo(ontologyIriOf(ontology))) {
+                layout = stored;
+                pruneStaleMembers(ontology, layout);
+            } else {
+                // A sidecar for a different ontology, which happens after a clone to another
+                // machine or a corrected ontology IRI. Adopting it would render an empty canvas -
+                // every stored IRI matches nothing - and then save that emptiness back over
+                // someone's arrangement. Starting fresh loses the diagram either way, but does
+                // not destroy the file that still holds it.
+                LOGGER.warn("OntoBoard: {} describes '{}' but the open ontology is '{}'. Starting "
+                        + "with an empty board rather than overwriting it.",
+                        CanvasLayoutStore.sidecarFor(currentOntologyFile).getName(),
+                        stored.ontologyIri, ontologyIriOf(ontology));
+                currentOntologyFile = null; // so nothing is written back over it
+            }
+        }
+        if (layout == null) {
             layout = new CanvasLayout();
-            resetLayoutForOntology(getOWLModelManager().getActiveOntology(), layout);
+            resetLayoutForOntology(ontology, layout);
         }
         membership = new CanvasMembership(layout);
+    }
+
+    /**
+     * Removes sidecar entries for entities the ontology no longer declares.
+     *
+     * <p>Deleting an entity in Protege leaves its position behind, and a stale entry renders
+     * nothing - so it is invisible and survives every save. Logged rather than done quietly,
+     * because a board that silently loses members would be worse than one that says so.
+     */
+    private void pruneStaleMembers(OWLOntology ontology, CanvasLayout candidate) {
+        Set<String> declared = new HashSet<String>();
+        for (OWLEntity entity : ontology.getSignature()) {
+            declared.add(entity.getIRI().toString());
+        }
+        List<String> removed = candidate.pruneMissing(declared);
+        if (!removed.isEmpty()) {
+            LOGGER.info("OntoBoard: dropped {} canvas entr{} for entities no longer in the "
+                    + "ontology: {}", removed.size(), removed.size() == 1 ? "y" : "ies", removed);
+        }
+    }
+
+    private static String ontologyIriOf(OWLOntology ontology) {
+        com.google.common.base.Optional<IRI> iri = ontology.getOntologyID().getOntologyIRI();
+        return iri.isPresent() ? iri.get().toString() : null;
     }
 
     private void saveLayoutTo(File file) {
@@ -853,14 +902,15 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
      * <p>Anything this handler does not recognise is delegated back to mxGraph's handler, so
      * the component's own drag behaviour keeps working.
      */
-    private void installPaletteDropTarget() {
+    private void installEntityDropTarget() {
         final TransferHandler mxHandler = graphComponent.getTransferHandler();
         graphComponent.setTransferHandler(new TransferHandler() {
             private static final long serialVersionUID = 1L;
 
             @Override
             public boolean canImport(TransferSupport support) {
-                if (support.isDataFlavorSupported(DataFlavor.stringFlavor)) {
+                if (support.isDataFlavorSupported(
+                        OWLObjectDataFlavor.OWL_OBJECT_DATA_FLAVOR)) {
                     return true;
                 }
                 return mxHandler != null && mxHandler.canImport(support);
@@ -868,34 +918,89 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
 
             @Override
             public boolean importData(TransferSupport support) {
-                if (support.isDataFlavorSupported(DataFlavor.stringFlavor)) {
+                if (support.isDataFlavorSupported(
+                        OWLObjectDataFlavor.OWL_OBJECT_DATA_FLAVOR)) {
                     try {
-                        Object payload = support.getTransferable()
-                                .getTransferData(DataFlavor.stringFlavor);
-                        EntityFactory.Kind kind =
-                                PalettePanel.kindOf(String.valueOf(payload));
-                        if (kind != null) {
-                            Point at = support.getDropLocation().getDropPoint();
-                            Point graphPoint = toGraphPoint(at);
-                            createEntityAt(kind, graphPoint.x, graphPoint.y);
+                        Object payload = support.getTransferable().getTransferData(
+                                OWLObjectDataFlavor.OWL_OBJECT_DATA_FLAVOR);
+                        Point graphPoint =
+                                toGraphPoint(support.getDropLocation().getDropPoint());
+                        if (dropEntities(payload, graphPoint)) {
                             return true;
                         }
-                    } catch (Exception ignored) {
-                        // Fall through: something else was dragged in, let mxGraph try.
+                    } catch (Exception notOurs) {
+                        // Something else was dragged in. Fall through to mxGraph rather than
+                        // consuming the drop, or its own cell moves would stop working.
+                        LOGGER.debug("OntoBoard: not an OWL entity drop", notOurs);
                     }
                 }
                 return mxHandler != null && mxHandler.importData(support);
             }
         });
+        // The trees are the drag source, so a drop has to be accepted anywhere the canvas is
+        // visible - including the empty area, which is not a cell and so is not something
+        // mxGraph's own handler would claim.
+        graphComponent.getGraphControl().setTransferHandler(
+                graphComponent.getTransferHandler());
+    }
+
+    /**
+     * Puts entities dragged in from Protege's trees onto the canvas at {@code at}.
+     *
+     * <p>Adds existing terms rather than creating new ones, which is the difference between this
+     * and double-clicking. Several can arrive at once, because Protege's trees allow a multiple
+     * selection, and they are laid out in a small grid from the drop point so a drag of twenty
+     * classes does not stack them all on one spot.
+     *
+     * @return true when at least one entity was recognised, so the drop is consumed
+     */
+    private boolean dropEntities(Object payload, Point at) {
+        if (!(payload instanceof List)) {
+            return false;
+        }
+        int added = 0;
+        int column = 0;
+        int row = 0;
+        for (Object dragged : (List<?>) payload) {
+            if (!(dragged instanceof OWLEntity)) {
+                // Protege can carry class expressions and axioms in the same flavour. Those have
+                // no node, so they are skipped rather than turned into something invented.
+                continue;
+            }
+            String iri = ((OWLEntity) dragged).getIRI().toString();
+            if (!membership.add(iri)) {
+                continue;
+            }
+            CanvasLayout.NodeLayout position = new CanvasLayout.NodeLayout();
+            position.x = at.x + column * 190;
+            position.y = at.y + row * 90;
+            position.w = 160;
+            position.h = 60;
+            layout.nodes.put(iri, position);
+            added++;
+            if (++column == 3) {
+                column = 0;
+                row++;
+            }
+        }
+        if (added == 0) {
+            return false;
+        }
+        refresh();
+        saveLayoutTo(currentOntologyFile);
+        return true;
     }
 
     /**
      * Double-clicking empty canvas creates a class there.
      *
-     * <p>The fastest path to a new term, and the one every other diagram tool offers. Having
-     * to pick an item from a palette and then drag it is a lot of ceremony for the most
-     * common action in ontology sketching, so the palette is now the explicit route rather
-     * than the only one.
+     * <p>The fastest path to a new term, and the one every other diagram tool offers.
+     *
+     * <p>This replaced a palette whose two items had to be dragged onto the canvas. Choosing
+     * "Class" before dragging is a mode, and modes are ceremony for the most common action in
+     * ontology sketching - especially when the canvas already had to give up a column of width to
+     * hold the palette. Existing terms now arrive by being dragged from Protege's own trees, which
+     * is a different gesture for a different thing: this creates, that adds.
      */
     private void installDoubleClickToCreate() {
         graphComponent.getGraphControl().addMouseListener(new MouseAdapter() {

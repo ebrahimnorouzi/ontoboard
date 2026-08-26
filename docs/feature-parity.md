@@ -161,5 +161,5 @@ mature plugins is waste) or ➖ (web-application machinery with no desktop meani
   real `Y.Doc` and real sockets; the client's against a real WebSocket server; the loop guard
   against a host that re-fires its change listener the way Protégé does. What no test covers is
   "two people see each other's cursors", which needs a server, a browser and Protégé at once.
-- **No plugin UI is covered by tests.** 309 tests cover logic; every Swing surface is verified
+- **No plugin UI is covered by tests.** 322 tests cover logic; every Swing surface is verified
   by hand.

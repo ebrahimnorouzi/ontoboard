@@ -51,7 +51,12 @@ public final class CollabDialog {
         JTextField server = new JTextField(existing.getBridgeUrl(), 28);
         JTextField board = new JTextField(existing.getBoard(), 28);
         JPasswordField token = new JPasswordField(existing.getToken(), 28);
-        JTextField displayName = new JTextField(existing.getDisplayName(), 28);
+        // No name field. The bridge takes the name from the access token's subject and never reads
+        // what a client claims - presenceFor(...).set(socket, { user, ... }) is written once at
+        // hello from the authenticated user, and a presence message only ever updates x, y,
+        // selection and seenAt. A "Your name" box therefore changed nothing anyone could see, which
+        // is worse than not offering one.
+        String displayName = existing.getDisplayName();
         JComboBox<String> colour = new JComboBox<String>(COLOURS);
         colour.setSelectedItem(existing.getColour());
         JCheckBox remember = new JCheckBox(
@@ -68,9 +73,10 @@ public final class CollabDialog {
         addRow(form, at, "Server address", server,
                 "The JSON bridge, normally port 1235 - not 1234, which browsers use");
         addRow(form, at, "Board id", board, "The board you and your colleagues share");
-        addRow(form, at, "Access token", token, "A token from the OntoBoard web application");
-        addRow(form, at, "Your name", displayName, "Shown to others beside your cursor");
-        addRow(form, at, "Your colour", colour, "Your cursor and selection colour");
+        addRow(form, at, "Access token", token,
+                "From the web application; your name comes from it, not from this dialog");
+        addRow(form, at, "Your colour", colour,
+                "Your cursor and selection colour, fixed for the session once connected");
 
         at.gridx = 1;
         at.gridy++;
@@ -91,7 +97,7 @@ public final class CollabDialog {
 
         CollabSettings chosen = new CollabSettings(server.getText().trim(),
                 board.getText().trim(), new String(token.getPassword()).trim(),
-                displayName.getText().trim(), String.valueOf(colour.getSelectedItem()));
+                displayName, String.valueOf(colour.getSelectedItem()));
         try {
             chosen.validate();
         } catch (IllegalArgumentException wrong) {

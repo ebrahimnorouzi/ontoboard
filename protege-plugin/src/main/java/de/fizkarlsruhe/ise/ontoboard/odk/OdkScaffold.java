@@ -207,9 +207,19 @@ public final class OdkScaffold {
                 + "        run: make test\n";
     }
 
+    /**
+     * Build products and scratch files only.
+     *
+     * <p>Note what is deliberately NOT here: {@code *.ontoboard.json}. An earlier version
+     * ignored the canvas sidecar, which meant two people cloning the repository each got an
+     * empty board and neither could see the other's diagram at all. The file exists precisely
+     * so a diagram can be shared without touching the ontology, and ignoring it removed the
+     * only way to share it. It is small, stable and diffs cleanly. A team that would rather
+     * keep diagrams private can add the line back; a team that never thinks about it gets the
+     * better default.
+     */
     private static String gitignore() {
-        return "tmp_*\nreport.tsv\n*.bak\nsrc/ontology/imports/*.owl\n"
-                + "*.ontoboard.json\n";
+        return "tmp_*\nreport.tsv\n*.bak\nsrc/ontology/imports/*.owl\n";
     }
 
     private static String readme(OdkProjectConfig c) {

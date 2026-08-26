@@ -44,6 +44,15 @@ export const OPERATION_TYPES = new Set([
 export const PRESENCE_TTL_MS = 10_000;
 
 /**
+ * How many of a connection's own operation ids are remembered, to avoid echoing them back.
+ *
+ * <p>Only has to cover the round trip from this socket into the shared document and back out
+ * through the observer, which is immediate. A few hundred is generous, and the bound matters
+ * because a long editing session on one connection would otherwise grow a set forever.
+ */
+export const SENT_ID_MEMORY = 500;
+
+/**
  * Validates an incoming client message.
  *
  * Exported so the rules are testable without sockets — every rejection below corresponds to
@@ -207,6 +216,8 @@ export function startBridge({ port, secret, getDoc }) {
     let user = null;
     let ops = null;
     let observer = null;
+    /** Ids this connection sent, so the observer does not hand them straight back. */
+    const sentFromHere = new Set();
 
     const fail = (message) => {
       try {
@@ -242,10 +253,17 @@ export function startBridge({ port, secret, getDoc }) {
         }
         ops = doc.getArray("ops");
 
-        // Forward operations appended by anyone else. Filtering on the authenticated user is
-        // what stops two clients amplifying each other indefinitely - note that this makes two
-        // sessions signed in as the SAME user invisible to each other, which is a deliberate
-        // trade for a guarantee against loops.
+        // Forward operations appended by anyone else.
+        //
+        // Filtered by the ids THIS connection sent, not by the authenticated user. Echo is a
+        // property of a connection - do not send a socket back what that socket just said - and
+        // filtering by user was a stricter thing that happened to imply it. The difference is not
+        // academic: two Protege windows signed in as one account could not see each other at all,
+        // which broke both the obvious way to try the feature out and the real case of one person
+        // working across a desktop and a laptop.
+        //
+        // Loop safety is unchanged. A socket still never receives its own operations, so nothing
+        // can amplify, and the plugin keeps its own id ledger as a second guard.
         observer = (event) => {
           const added = [];
           for (const item of event.changes.added) {
@@ -255,10 +273,10 @@ export function startBridge({ port, secret, getDoc }) {
           }
           for (const content of added) {
             // Elements arrive as the JSON strings useOperationSync.ts writes, so they have to be
-            // parsed before userId can be read off them. Forwarding the raw string instead
-            // would send `{t:"op", op:"{...}"}`, which the Java client drops as a non-object.
+            // parsed before the id can be read off them. Forwarding the raw string instead would
+            // send `{t:"op", op:"{...}"}`, which the Java client drops as a non-object.
             const op = decodeOperation(content);
-            if (op && op.userId !== user && socket.readyState === socket.OPEN) {
+            if (op && !sentFromHere.has(op.id) && socket.readyState === socket.OPEN) {
               socket.send(JSON.stringify({ t: "op", op }));
             }
           }
@@ -290,6 +308,11 @@ export function startBridge({ port, secret, getDoc }) {
       }
 
       if (message.t === "op") {
+        // Recorded before the push, because the observer fires synchronously inside it.
+        sentFromHere.add(message.op.id);
+        if (sentFromHere.size > SENT_ID_MEMORY) {
+          sentFromHere.delete(sentFromHere.values().next().value);
+        }
         // Stamp the authenticated user rather than trusting the client's claim, and store it the
         // way web clients read it - see encodeOperation.
         ops.push([encodeOperation({ ...message.op, userId: user })]);

@@ -55,7 +55,7 @@ The plugin is early. These exist in the web application but not yet here:
 
 ### Not covered by tests
 
-309 tests cover projection, axiom construction, layout persistence, ODK scaffolding, report
+322 tests cover projection, axiom construction, layout persistence, ODK scaffolding, report
 parsing and the OSGi configuration. They do **not** cover any Swing UI: the palette panel,
 dialogs, toolbar, minimap, drop handling, and every visual choice need a display and are
 verified by hand. Treat visual behaviour as unverified after each change.

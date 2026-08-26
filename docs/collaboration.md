@@ -166,11 +166,13 @@ operation types to `frontend/src/collab/useOperationSync.ts`, `collab/bridge.mjs
 
 ## Things that will confuse you once
 
-**Two windows signed in as the same account cannot see each other.** The bridge stops
-operations echoing by filtering on the authenticated user, so two Protégé instances using one
-person's token are invisible to each other, even on the same board. This is a deliberate trade
-for a hard guarantee against amplification loops. Use a separate account per person — which you
-want anyway, since the name beside a cursor comes from the token.
+**Your name comes from the token, not from the plugin.** The bridge reads it from the token's
+`sub` claim at connect and ignores anything a client claims afterwards, so two people sharing one
+account appear as two cursors with the same name. Use an account each — and note that the colour
+is read once at connect too, so changing it means reconnecting.
+
+Two windows on one account *do* see each other's edits: echo is filtered per connection, not per
+account, so one person working across a desktop and a laptop works as expected.
 
 **A cursor that vanishes is not a disconnection.** The bridge expires a peer after ten seconds
 of silence. The plugin re-sends your position every three seconds even when you are not moving,
@@ -232,10 +234,9 @@ Work down this list; it is ordered by how often each one is the answer.
 3. **Has the token expired?** Eight hours by default. The message says `jwt expired`.
 4. **Is everyone using the same board id?** It is free-form text, so a typo makes a second,
    empty board rather than an error.
-5. **Two people on one account?** They cannot see each other. See above.
-6. **Is the service actually up?** `docker compose logs collab` prints a line per join:
+5. **Is the service actually up?** `docker compose logs collab` prints a line per join:
    `[bridge] alice joined 'my-board'`. No line means the connection never got that far.
-7. **What does Protégé say?** `~/.Protege/logs/protege.log`, searching for `ontoboard`.
+6. **What does Protégé say?** `~/.Protege/logs/protege.log`, searching for `ontoboard`.
 
 The plugin is built to fail with a reason rather than a spinner: every state — connecting,
 connected, retrying in Ns, refused because X, N changes not shared — appears in the toolbar. If

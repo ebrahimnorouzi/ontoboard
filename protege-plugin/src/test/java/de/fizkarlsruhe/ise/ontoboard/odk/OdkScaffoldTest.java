@@ -99,6 +99,46 @@ class OdkScaffoldTest {
         }
     }
 
+    /**
+     * The most damaging value this dialog can accept, and the one that looks most harmless.
+     *
+     * <p>Found in a real generated project: the user typed "o" for the base IRI, and Protege
+     * resolved it against the file location on save. The ontology became
+     * {@code file:/C:/Users/.../src/ontology/o} and every term
+     * {@code file:/C:/Users/.../o#apple} - the author's own folder path baked into the identity
+     * of every concept. Nothing failed. It would simply never have meant the same thing to
+     * anyone else, and two people collaborating would mint different IRIs for one concept and
+     * never converge.
+     */
+    @Test
+    void aRelativeBaseIriIsRejectedBecauseItWouldBakeInALocalFilePath(@TempDir Path dir) {
+        for (String relative : new String[] {"o", "mmo", "obo/mmo.owl", "/absolute/path",
+            "./here", "ftp://x.org/a", "www.example.org/mmo"}) {
+            IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class,
+                    () -> new OdkProjectConfig("abc", "ABC", "", relative, "", dir.toFile())
+                            .validate(),
+                    "should have rejected base IRI '" + relative + "'");
+            assertTrue(thrown.getMessage().contains("absolute http"),
+                    thrown.getMessage());
+            assertTrue(thrown.getMessage().contains(relative),
+                    "the message must quote what was entered: " + thrown.getMessage());
+        }
+    }
+
+    @Test
+    void anAbsoluteBaseIriIsAccepted(@TempDir Path dir) {
+        new OdkProjectConfig("abc", "ABC", "", "http://purl.obolibrary.org/obo/abc.owl", "",
+                dir.toFile()).validate();
+        new OdkProjectConfig("abc", "ABC", "", "https://w3id.org/abc", "", dir.toFile())
+                .validate();
+    }
+
+    /** The fallback has to survive its own validation, or an omitted IRI would be unusable. */
+    @Test
+    void theFallbackIriPassesValidation(@TempDir Path dir) {
+        new OdkProjectConfig("abc", "ABC", "", "", "", dir.toFile()).validate();
+    }
+
     @Test
     void aMissingTitleIsRejected(@TempDir Path dir) {
         assertThrows(IllegalArgumentException.class,

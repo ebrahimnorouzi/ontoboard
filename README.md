@@ -114,7 +114,7 @@ unavailable and why rather than failing obscurely.
 ```bash
 cd protege-plugin
 mvn clean package          # -> target/ontoboard-<version>.jar
-mvn test                   # 309 tests
+mvn test                   # 322 tests
 ```
 
 Java 8 bytecode is emitted deliberately (`maven.compiler.release=8`) so the bundle loads on
@@ -151,6 +151,7 @@ Architecture and API details: [docs/architecture.md](docs/architecture.md),
 - [Features](docs/features.md)
 - [Development](docs/development.md)
 - [Collaboration](docs/collaboration.md) — live and git modes, server setup
+- [Testing collaboration locally](docs/testing-collaboration-locally.md)
 - [Feature parity](docs/feature-parity.md) — plugin vs web application, gap by gap
 - [Limitations and roadmap](docs/limitations.md)
 - [API reference](docs/api-reference.md) — web application
