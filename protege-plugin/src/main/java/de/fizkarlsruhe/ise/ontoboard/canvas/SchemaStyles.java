@@ -26,6 +26,18 @@ public final class SchemaStyles {
     public static final String OBJECT_PROPERTY = "obObjectProperty";
     public static final String DATA_PROPERTY = "obDataProperty";
     public static final String TYPE = "obType";
+    public static final String SUB_PROPERTY = "obSubProperty";
+    public static final String INFERRED_SUBCLASS = "obInferredSubClass";
+
+    /**
+     * Properties drawn as nodes rather than as edge labels.
+     *
+     * <p>Needed because a property hierarchy has nowhere to live otherwise - rdfs:subPropertyOf
+     * relates two properties, and an edge needs two nodes. Deliberately a different shape from a
+     * class so a diagram mixing the two is still readable at a glance.
+     */
+    public static final String OBJECT_PROPERTY_NODE = "obObjectPropertyNode";
+    public static final String DATA_PROPERTY_NODE = "obDataPropertyNode";
 
     /** Canvas background - a hair off white so white node fills read as raised. */
     public static final String CANVAS_BACKGROUND = "#F7F8FA";
@@ -61,6 +73,22 @@ public final class SchemaStyles {
                 edge("#3E8E5A", null, mxConstants.ARROW_OPEN, 1.1f));
         sheet.putCellStyle(TYPE,
                 edge("#7B61A8", "2 4", mxConstants.ARROW_OPEN, 1.1f));
+
+        // A property hierarchy read alongside a class hierarchy needs to be distinguishable from
+        // it, so subPropertyOf takes the same dashed weight as subClassOf in the property colour.
+        sheet.putCellStyle(SUB_PROPERTY,
+                edge("#C77700", "8 4", mxConstants.ARROW_BLOCK, 1.8f));
+
+        // Inferred edges are dotted and grey: present, clearly derived, and never mistaken for
+        // something the ontology actually asserts. A reasoner's conclusion drawn identically to an
+        // asserted axiom would be the single most misleading thing this canvas could do.
+        sheet.putCellStyle(INFERRED_SUBCLASS,
+                edge("#8A94A0", "1 5", mxConstants.ARROW_BLOCK, 1.4f));
+
+        sheet.putCellStyle(OBJECT_PROPERTY_NODE, vertex(mxConstants.SHAPE_HEXAGON, "#FFF4E5",
+                "#C77700", false, false, 12, mxConstants.FONT_ITALIC));
+        sheet.putCellStyle(DATA_PROPERTY_NODE, vertex(mxConstants.SHAPE_HEXAGON, "#EEF7F1",
+                "#3E8E5A", false, false, 12, mxConstants.FONT_ITALIC));
     }
 
     private static Map<String, Object> vertex(String shape, String fill, String stroke,

@@ -16,6 +16,9 @@ import org.semanticweb.owlapi.model.OWLObjectProperty;
 import org.semanticweb.owlapi.model.OWLObjectPropertyDomainAxiom;
 import org.semanticweb.owlapi.model.OWLObjectPropertyRangeAxiom;
 import org.semanticweb.owlapi.model.OWLObjectSomeValuesFrom;
+import org.semanticweb.owlapi.model.OWLDataProperty;
+import org.semanticweb.owlapi.model.OWLSubObjectPropertyOfAxiom;
+import org.semanticweb.owlapi.model.OWLSubDataPropertyOfAxiom;
 import org.semanticweb.owlapi.model.OWLOntology;
 import org.semanticweb.owlapi.model.OWLSubClassOfAxiom;
 
@@ -45,11 +48,67 @@ public final class OntologyProjection {
             }
         }
 
+        for (OWLObjectProperty property : ontology.getObjectPropertiesInSignature()) {
+            if (isOn(onCanvasIris, property.getIRI())) {
+                nodes.add(new CanvasNode(iri(property.getIRI()), NodeKind.OBJECT_PROPERTY,
+                        DisplayLabels.forEntity(ontology, property)));
+            }
+        }
+        for (OWLDataProperty property : ontology.getDataPropertiesInSignature()) {
+            if (isOn(onCanvasIris, property.getIRI())) {
+                nodes.add(new CanvasNode(iri(property.getIRI()), NodeKind.DATA_PROPERTY,
+                        DisplayLabels.forEntity(ontology, property)));
+            }
+        }
+
         collectSubClassEdges(ontology, onCanvasIris, nodes, edges);
+        collectSubPropertyEdges(ontology, onCanvasIris, edges);
         collectLegacyDomainRangeEdges(ontology, onCanvasIris, edges);
         collectTypeEdges(ontology, onCanvasIris, edges);
 
         return new Projection(nodes, edges);
+    }
+
+    /**
+     * Property hierarchy edges, for properties the user has put on the board.
+     *
+     * <p>Before this, {@code rdfs:subPropertyOf} was not drawn at all - there was no node for a
+     * property and no edge kind for the relation, so a property hierarchy was invisible on a canvas
+     * that otherwise showed the class hierarchy prominently. Both ends must be on the board: an
+     * arrow to a property nobody asked to see would drag unrequested nodes onto the diagram, which
+     * is the opt-in rule this canvas is built around.
+     *
+     * <p>Anonymous property expressions - an inverse, for instance - are skipped. They have no IRI,
+     * so there is nothing to draw and nothing to identify the edge by.
+     */
+    private static void collectSubPropertyEdges(OWLOntology ontology, Set<String> on,
+            List<CanvasEdge> edges) {
+        for (OWLSubObjectPropertyOfAxiom axiom
+                : ontology.getAxioms(AxiomType.SUB_OBJECT_PROPERTY)) {
+            if (axiom.getSubProperty().isAnonymous() || axiom.getSuperProperty().isAnonymous()) {
+                continue;
+            }
+            addSubPropertyEdge(on, edges,
+                    axiom.getSubProperty().asOWLObjectProperty().getIRI(),
+                    axiom.getSuperProperty().asOWLObjectProperty().getIRI());
+        }
+        for (OWLSubDataPropertyOfAxiom axiom : ontology.getAxioms(AxiomType.SUB_DATA_PROPERTY)) {
+            if (axiom.getSubProperty().isAnonymous() || axiom.getSuperProperty().isAnonymous()) {
+                continue;
+            }
+            addSubPropertyEdge(on, edges,
+                    axiom.getSubProperty().asOWLDataProperty().getIRI(),
+                    axiom.getSuperProperty().asOWLDataProperty().getIRI());
+        }
+    }
+
+    private static void addSubPropertyEdge(Set<String> on, List<CanvasEdge> edges, IRI sub,
+            IRI sup) {
+        if (!isOn(on, sub) || !isOn(on, sup)) {
+            return;
+        }
+        edges.add(new CanvasEdge("subprop|" + iri(sub) + "|" + iri(sup), iri(sub), iri(sup),
+                "rdfs:subPropertyOf", CanvasEdge.Kind.SUB_PROPERTY));
     }
 
     /** Thin caller: production code always scans every SubClassOf axiom in the ontology. */

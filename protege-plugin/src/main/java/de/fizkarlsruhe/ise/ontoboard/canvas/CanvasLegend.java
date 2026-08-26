@@ -118,6 +118,16 @@ public final class CanvasLegend {
                         + "property. Not drawn yet - the plugin has no literal nodes.",
                 "#FFF9E6", "#B08900", null));
 
+        entries.add(new Entry(Form.NODE, SchemaStyles.OBJECT_PROPERTY_NODE, "Object property",
+                "An owl:ObjectProperty as a node rather than an arrow label. Properties are only "
+                        + "nodes when you add them, because a diagram that boxed every property "
+                        + "would be unreadable - but a property hierarchy needs them.",
+                "#FFF4E5", "#C77700", null));
+        entries.add(new Entry(Form.NODE, SchemaStyles.DATA_PROPERTY_NODE, "Data property",
+                "An owl:DatatypeProperty as a node, for the same reason as an object property "
+                        + "node.",
+                "#EEF7F1", "#3E8E5A", null));
+
         entries.add(new Entry(Form.EDGE, SchemaStyles.SUBCLASS, "rdfs:subClassOf",
                 "The child is a kind of the parent. Dashed and heavier, so the hierarchy stays "
                         + "readable when property edges crowd it.",
@@ -134,6 +144,16 @@ public final class CanvasLegend {
                 "The individual is an instance of the class. Finely dashed, because it says "
                         + "something about one thing rather than about a kind.",
                 null, "#7B61A8", "2 4"));
+
+        entries.add(new Entry(Form.EDGE, SchemaStyles.SUB_PROPERTY, "rdfs:subPropertyOf",
+                "One property is a specialisation of another - if A worksAt B then A employedBy "
+                        + "B. Both properties have to be on the board for the arrow to appear.",
+                null, "#C77700", "8 4"));
+        entries.add(new Entry(Form.EDGE, SchemaStyles.INFERRED_SUBCLASS, "Inferred subclass",
+                "A subsumption the reasoner worked out that the ontology does not state "
+                        + "directly. Dotted and grey so it is never mistaken for an asserted "
+                        + "axiom - it will disappear if the axioms it followed from change.",
+                null, "#8A94A0", "1 5"));
 
         return entries;
     }
@@ -165,36 +185,62 @@ public final class CanvasLegend {
         return missing;
     }
 
-    /** The {@link SchemaStyles} name the canvas uses for {@code kind}. */
+    /**
+     * The {@link SchemaStyles} name the canvas uses for {@code kind}, or null when this class has
+     * no mapping for it.
+     *
+     * <p><b>No catch-all default.</b> An earlier version ended both switches with
+     * {@code default: return SchemaStyles.CLASS} (and {@code SUBCLASS}), which made the
+     * completeness checks below vacuous: a brand-new kind fell into the default, landed on a style
+     * that does have a legend row, and was reported as covered. Adding OBJECT_PROPERTY,
+     * DATA_PROPERTY and SUB_PROPERTY proved it - the guard passed while three new things were
+     * undocumented. Returning null instead is what makes {@link #nodeKindsWithoutAnEntry()} able
+     * to see a gap at all.
+     */
     static String styleFor(NodeKind kind) {
         switch (kind) {
+            case CLASS:
+                return SchemaStyles.CLASS;
             case INDIVIDUAL:
                 return SchemaStyles.INDIVIDUAL;
             case DATATYPE:
                 return SchemaStyles.DATATYPE;
             case LITERAL:
                 return SchemaStyles.LITERAL;
-            case CLASS:
+            case OBJECT_PROPERTY:
+                return SchemaStyles.OBJECT_PROPERTY_NODE;
+            case DATA_PROPERTY:
+                return SchemaStyles.DATA_PROPERTY_NODE;
             default:
-                return SchemaStyles.CLASS;
+                return null;
         }
     }
 
+    /** As {@link #styleFor(NodeKind)}, and deliberately without a catch-all for the same reason. */
     static String styleFor(CanvasEdge.Kind kind) {
         switch (kind) {
+            case SUBCLASS:
+                return SchemaStyles.SUBCLASS;
             case OBJECT_PROPERTY:
                 return SchemaStyles.OBJECT_PROPERTY;
             case DATA_PROPERTY:
                 return SchemaStyles.DATA_PROPERTY;
             case TYPE:
                 return SchemaStyles.TYPE;
-            case SUBCLASS:
+            case SUB_PROPERTY:
+                return SchemaStyles.SUB_PROPERTY;
+            case INFERRED_SUBCLASS:
+                return SchemaStyles.INFERRED_SUBCLASS;
             default:
-                return SchemaStyles.SUBCLASS;
+                return null;
         }
     }
 
     private static boolean hasEntryFor(String styleName) {
+        if (styleName == null) {
+            // An unmapped kind. Reported as missing, which is the whole point.
+            return false;
+        }
         for (Entry entry : entries()) {
             if (entry.getStyleName().equals(styleName)) {
                 return true;

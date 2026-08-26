@@ -23,9 +23,11 @@ import de.fizkarlsruhe.ise.ontoboard.collab.CollabSettingsStore;
 import de.fizkarlsruhe.ise.ontoboard.collab.OperationMapper;
 import de.fizkarlsruhe.ise.ontoboard.layout.CanvasLayout;
 import de.fizkarlsruhe.ise.ontoboard.layout.CanvasLayoutStore;
+import de.fizkarlsruhe.ise.ontoboard.model.CanvasEdge;
 import de.fizkarlsruhe.ise.ontoboard.model.DisplayLabels;
 import de.fizkarlsruhe.ise.ontoboard.model.OntologyProjection;
 import de.fizkarlsruhe.ise.ontoboard.model.Projection;
+import de.fizkarlsruhe.ise.ontoboard.reason.InferredEdges;
 import de.fizkarlsruhe.ise.ontoboard.odk.OdkProjectLoader;
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
@@ -108,6 +110,13 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
      * is always enabled and silently does nothing on an empty selection reads as broken.
      */
     private JButton addSelectedButton;
+    /**
+     * Whether the reasoner's conclusions are drawn alongside the asserted axioms. Off by default:
+     * reasoning costs time on a large ontology, and a diagram should show what the ontology says
+     * until someone asks what it means.
+     */
+    private boolean showInferences;
+    private javax.swing.JToggleButton inferencesButton;
     /**
      * The live session, or null when working through git. Created on demand from the
      * Collaborate dialog rather than at startup, because most sessions are single-user and
@@ -311,6 +320,55 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
     private void showLegend() {
         JOptionPane.showMessageDialog(this, new LegendPanel(), "What the diagram means",
                 JOptionPane.PLAIN_MESSAGE);
+    }
+
+    // ------------------------------------------------------------------ inferences
+
+    /**
+     * Adds the reasoner's conclusions to the projection, when the user has asked for them.
+     *
+     * <p>Failures are reported once, through the status line, and then the toggle is turned back
+     * off - a button that stays pressed while showing nothing is a worse lie than an error. The
+     * asserted diagram is always still drawn, because losing the whole canvas because a reasoner
+     * was not started would be an absurd punishment for asking a question.
+     */
+    private Projection withInferences(Projection asserted) {
+        if (!showInferences) {
+            return asserted;
+        }
+        try {
+            List<CanvasEdge> inferred = InferredEdges.subClassEdges(
+                    getOWLModelManager().getReasoner(), membership.asSet(),
+                    asserted.getEdges(),
+                    getOWLModelManager().getOWLDataFactory());
+            if (inferred.isEmpty()) {
+                setStatus("Nothing further was inferred: the ontology already states what it "
+                        + "entails for the entities on this board.");
+                return asserted;
+            }
+            List<CanvasEdge> combined = new ArrayList<CanvasEdge>(asserted.getEdges());
+            combined.addAll(inferred);
+            setStatus(inferred.size() + " inferred edge" + (inferred.size() == 1 ? "" : "s")
+                    + " shown, dotted and grey.");
+            return new Projection(asserted.getNodes(), combined);
+        } catch (InferredEdges.NotAvailable unavailable) {
+            showInferences = false;
+            if (inferencesButton != null) {
+                inferencesButton.setSelected(false);
+            }
+            setStatus(unavailable.getMessage());
+            JOptionPane.showMessageDialog(this, unavailable.getMessage(),
+                    "No inferences available", JOptionPane.INFORMATION_MESSAGE);
+            return asserted;
+        }
+    }
+
+    /** Puts a line in the toolbar's status label, reusing the collaboration one. */
+    private void setStatus(String text) {
+        if (collabStatus != null) {
+            collabStatus.setText(text);
+            collabStatus.setToolTipText(text);
+        }
     }
 
     // ------------------------------------------------------------------ interaction
@@ -625,6 +683,13 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         JButton export = new JButton("Export...");
         export.addActionListener(a -> exportWithOptions());
 
+        inferencesButton = new javax.swing.JToggleButton("Inferences");
+        inferencesButton.setToolTipText("Also draw what the running reasoner concludes, dotted");
+        inferencesButton.addActionListener(a -> {
+            showInferences = inferencesButton.isSelected();
+            refresh();
+        });
+
         JButton legend = new JButton("Legend");
         legend.setToolTipText("What the shapes and lines mean");
         legend.addActionListener(a -> showLegend());
@@ -639,6 +704,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         bar.add(arrange);
         bar.addSeparator();
         bar.add(addAll);
+        bar.add(inferencesButton);
         bar.add(legend);
         bar.addSeparator();
         bar.add(export);
@@ -827,6 +893,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
 
         Projection projection = OntologyProjection
                 .project(getOWLModelManager().getActiveOntology(), membership.asSet());
+        projection = withInferences(projection);
         graph.render(projection, layout);
         autoArrangeIfUnpositioned();
         showAppropriateCard();

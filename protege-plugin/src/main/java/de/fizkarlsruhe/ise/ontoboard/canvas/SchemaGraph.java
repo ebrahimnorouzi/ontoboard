@@ -104,6 +104,8 @@ public class SchemaGraph extends mxGraph {
             case INDIVIDUAL: return SchemaStyles.INDIVIDUAL;
             case DATATYPE:   return SchemaStyles.DATATYPE;
             case LITERAL:    return SchemaStyles.LITERAL;
+            case OBJECT_PROPERTY: return SchemaStyles.OBJECT_PROPERTY_NODE;
+            case DATA_PROPERTY:   return SchemaStyles.DATA_PROPERTY_NODE;
             case CLASS:
             default:         return SchemaStyles.CLASS;
         }
@@ -114,6 +116,8 @@ public class SchemaGraph extends mxGraph {
             case SUBCLASS:        return SchemaStyles.SUBCLASS;
             case DATA_PROPERTY:   return SchemaStyles.DATA_PROPERTY;
             case TYPE:            return SchemaStyles.TYPE;
+            case SUB_PROPERTY:    return SchemaStyles.SUB_PROPERTY;
+            case INFERRED_SUBCLASS: return SchemaStyles.INFERRED_SUBCLASS;
             case OBJECT_PROPERTY:
             default:              return SchemaStyles.OBJECT_PROPERTY;
         }
