@@ -11,6 +11,7 @@ import de.fizkarlsruhe.ise.ontoboard.canvas.CanvasExport;
 import de.fizkarlsruhe.ise.ontoboard.canvas.CanvasLayouts;
 import de.fizkarlsruhe.ise.ontoboard.canvas.CanvasMembership;
 import de.fizkarlsruhe.ise.ontoboard.canvas.CollaborativeGraphComponent;
+import de.fizkarlsruhe.ise.ontoboard.canvas.LegendPanel;
 import de.fizkarlsruhe.ise.ontoboard.canvas.PrefixColours;
 import de.fizkarlsruhe.ise.ontoboard.canvas.SchemaGraph;
 import de.fizkarlsruhe.ise.ontoboard.canvas.SelectionBridge;
@@ -151,6 +152,9 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         installEntityDropTarget();
         installDoubleClickToCreate();
         installCursorSharing();
+        installSelection();
+        installWheelZoom();
+        installKeyboardShortcuts();
 
         loadLayoutForActiveOntology();
         installContextMenu();
@@ -300,6 +304,160 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         for (OWLEntity entity : ontology.getEntitiesInSignature(IRI.create(iri))) {
             getOWLEditorKit().getOWLWorkspace().getOWLSelectionModel().setSelectedEntity(entity);
             return;
+        }
+    }
+
+    /** Shows the key to the diagram, built from the same styles the canvas draws with. */
+    private void showLegend() {
+        JOptionPane.showMessageDialog(this, new LegendPanel(), "What the diagram means",
+                JOptionPane.PLAIN_MESSAGE);
+    }
+
+    // ------------------------------------------------------------------ interaction
+
+    /**
+     * Rubberband selection with a modifier held, and multiple selection generally.
+     *
+     * <p>A plain left-drag pans (see {@code CollaborativeGraphComponent.isPanningEvent}), so the
+     * rubberband is bound to Ctrl or Shift rather than fighting it for the same gesture. Ctrl-click
+     * to add one node at a time works without any code here - mxGraph does it - but only once the
+     * graph allows more than one cell to be selected at a time, which is what
+     * {@code setMultigraph} does not do and {@code mxGraphSelectionModel} needs told.
+     */
+    private void installSelection() {
+        graph.getSelectionModel().setSingleSelection(false);
+        new com.mxgraph.swing.handler.mxRubberband(graphComponent) {
+            @Override
+            public void mousePressed(java.awt.event.MouseEvent event) {
+                // Without this guard the rubberband starts on every empty-space press and the
+                // pan never happens, because both handlers see the same event.
+                if (event.isControlDown() || event.isShiftDown()) {
+                    super.mousePressed(event);
+                }
+            }
+        };
+    }
+
+    /**
+     * Zooms on the mouse wheel.
+     *
+     * <p>mxGraph zooms on Ctrl+wheel and leaves a plain wheel to scroll. On a diagram the
+     * expectation is the opposite way round, so wheel scrolling is switched off on the scroll pane
+     * and the wheel is bound to zoom. Scrolling is still reachable by dragging the canvas, which is
+     * now the primary gesture anyway.
+     */
+    private void installWheelZoom() {
+        graphComponent.setWheelScrollingEnabled(false);
+        graphComponent.addMouseWheelListener(new java.awt.event.MouseWheelListener() {
+            @Override
+            public void mouseWheelMoved(java.awt.event.MouseWheelEvent event) {
+                if (event.getWheelRotation() < 0) {
+                    graphComponent.zoomIn();
+                } else {
+                    graphComponent.zoomOut();
+                }
+                event.consume();
+            }
+        });
+    }
+
+    /**
+     * Delete removes the selection from the canvas, and Escape clears it.
+     *
+     * <p>Delete removes from the <em>board</em>, not from the ontology. Retracting an axiom is a
+     * separate, confirmed action, and a keystroke that silently deleted classes from someone's
+     * ontology - with a collaborator watching them vanish - is not a keystroke worth having. The
+     * status line says which of the two happened, because "delete" reasonably means either.
+     */
+    private void installKeyboardShortcuts() {
+        javax.swing.InputMap keys =
+                graphComponent.getInputMap(javax.swing.JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
+        keys.put(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_DELETE, 0),
+                "ontoboard.removeFromCanvas");
+        keys.put(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_BACK_SPACE, 0),
+                "ontoboard.removeFromCanvas");
+        graphComponent.getActionMap().put("ontoboard.removeFromCanvas",
+                new javax.swing.AbstractAction() {
+                    private static final long serialVersionUID = 1L;
+
+                    @Override
+                    public void actionPerformed(java.awt.event.ActionEvent event) {
+                        removeSelectionFromCanvas();
+                    }
+                });
+    }
+
+    /**
+     * Takes every selected node off the board, leaving the ontology untouched.
+     *
+     * @return how many were removed
+     */
+    private int removeSelectionFromCanvas() {
+        Object[] selected = graph.getSelectionCells();
+        if (selected == null || selected.length == 0) {
+            return 0;
+        }
+        int removed = 0;
+        for (Object cell : selected) {
+            String iri = graph.getIdForCell(cell);
+            if (iri != null && membership.remove(iri)) {
+                removed++;
+            }
+        }
+        if (removed > 0) {
+            refresh();
+            saveLayoutTo(currentOntologyFile);
+        }
+        return removed;
+    }
+
+    /**
+     * Puts every entity the ontology declares onto the board.
+     *
+     * <p>The canvas is opt-in because Protege routinely opens ontologies with a hundred thousand
+     * classes, and rendering all of them hangs it. But for an ontology of a few hundred terms,
+     * choosing them one at a time is absurd - so this exists, with a confirmation whose threshold
+     * is about when the layout stops being readable rather than when it stops being possible.
+     */
+    private void addEverythingToCanvas() {
+        OWLOntology ontology = getOWLModelManager().getActiveOntology();
+        List<String> candidates = new ArrayList<String>();
+        for (OWLEntity entity : ontology.getSignature()) {
+            if (entity.isOWLClass() || entity.isOWLNamedIndividual()) {
+                candidates.add(entity.getIRI().toString());
+            }
+        }
+        if (candidates.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                    "This ontology declares no classes or individuals yet.",
+                    "Nothing to add", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        if (candidates.size() > 300) {
+            int answer = JOptionPane.showConfirmDialog(this,
+                    "This ontology has " + candidates.size() + " classes and individuals.\n\n"
+                            + "A diagram that large is slow to arrange and hard to read. Add them "
+                            + "all anyway?",
+                    "That is a lot of nodes", JOptionPane.OK_CANCEL_OPTION,
+                    JOptionPane.WARNING_MESSAGE);
+            if (answer != JOptionPane.OK_OPTION) {
+                return;
+            }
+        }
+        int added = 0;
+        for (String iri : candidates) {
+            if (membership.add(iri)) {
+                added++;
+            }
+        }
+        if (added > 0) {
+            // Cleared so autoArrangeIfUnpositioned lays the whole board out rather than leaving
+            // the new arrivals stacked on the origin, which is what "should not overlap" means.
+            layout.nodes.clear();
+            refresh();
+            CanvasLayouts.apply(graph, CanvasLayouts.Algorithm.HIERARCHICAL);
+            capturePositions();
+            saveLayoutTo(currentOntologyFile);
         }
     }
 
@@ -464,26 +622,68 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         describeSelectionOnButton(getOWLEditorKit().getOWLWorkspace()
                 .getOWLSelectionModel().getSelectedEntity());
 
-        JButton exportPng = new JButton("Export PNG");
-        exportPng.addActionListener(a -> exportTo("png"));
+        JButton export = new JButton("Export...");
+        export.addActionListener(a -> exportWithOptions());
 
-        JButton exportSvg = new JButton("Export SVG");
-        exportSvg.addActionListener(a -> exportTo("svg"));
+        JButton legend = new JButton("Legend");
+        legend.setToolTipText("What the shapes and lines mean");
+        legend.addActionListener(a -> showLegend());
+
+        JButton addAll = new JButton("Add all");
+        addAll.setToolTipText("Put every class and individual in the ontology on the board");
+        addAll.addActionListener(a -> addEverythingToCanvas());
 
         bar.add(addSelectedButton);
         bar.addSeparator();
         bar.add(algorithms);
         bar.add(arrange);
         bar.addSeparator();
-        bar.add(exportPng);
-        bar.add(exportSvg);
+        bar.add(addAll);
+        bar.add(legend);
+        bar.addSeparator();
+        bar.add(export);
         bar.addSeparator();
         bar.add(collaborateButton);
         bar.add(collabStatus);
         return bar;
     }
 
+    /**
+     * One export button, then the choices.
+     *
+     * <p>Two buttons for two formats does not scale past two formats, and it put the least
+     * interesting decision - the file type - in the toolbar while the one that matters, how big,
+     * was not offered at all.
+     */
+    private void exportWithOptions() {
+        JComboBox<String> format = new JComboBox<String>(new String[] {
+            "PNG - a picture, for slides and papers",
+            "SVG - vector, scales without blurring"});
+        JComboBox<String> resolution = new JComboBox<String>(new String[] {
+            "Screen size (1x)", "Double (2x)", "Triple (3x) - for print"});
+
+        javax.swing.JPanel form = new javax.swing.JPanel(new java.awt.GridLayout(0, 2, 6, 6));
+        form.add(new javax.swing.JLabel("Format"));
+        form.add(format);
+        form.add(new javax.swing.JLabel("Resolution"));
+        form.add(resolution);
+        // SVG is resolution-independent, so a scale for it would mean nothing.
+        format.addActionListener(a -> resolution.setEnabled(format.getSelectedIndex() == 0));
+
+        if (JOptionPane.showConfirmDialog(this, form, "Export diagram",
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE)
+                != JOptionPane.OK_OPTION) {
+            return;
+        }
+        boolean png = format.getSelectedIndex() == 0;
+        exportTo(png ? "png" : "svg", 1.0 + resolution.getSelectedIndex());
+    }
+
     private void exportTo(String extension) {
+        exportTo(extension, 1.0);
+    }
+
+    private void exportTo(String extension, double scale) {
         JFileChooser chooser = new JFileChooser();
         chooser.setSelectedFile(new File("schema-diagram." + extension));
         if (chooser.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) {
@@ -491,7 +691,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         }
         try {
             if ("png".equals(extension)) {
-                CanvasExport.writePng(graph, chooser.getSelectedFile());
+                CanvasExport.writePng(graph, chooser.getSelectedFile(), scale);
             } else {
                 CanvasExport.writeSvg(graph, chooser.getSelectedFile());
             }
@@ -1094,8 +1294,21 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             return;
         }
         try {
-            getOWLModelManager().getOWLOntologyManager()
-                    .loadOntologyFromOntologyDocument(project.getEditFile());
+            // handleLoadFrom, not loadOntologyFromOntologyDocument. The latter loads the
+            // ontology into the OWLOntologyManager and stops there: Protege's
+            // OWLModelManager never hears about it, so it does not become the active
+            // ontology, does not appear in the ontology list, and the class hierarchy
+            // carries on showing whatever was open before. The dialog said "Project
+            // opened" and nothing appeared, which is exactly what was reported.
+            // handleLoadFrom is the call Protege's own File > Open makes.
+            if (!getOWLEditorKit().handleLoadFrom(project.getEditFile().toURI())) {
+                JOptionPane.showMessageDialog(this,
+                        "Protege declined to open "
+                                + project.getEditFile().getName()
+                                + ". It may already be open in another window.",
+                        "Not opened", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
             JOptionPane.showMessageDialog(this,
                     "Opened " + project.getTitle() + "\n\n"
                             + project.getEditFile().getAbsolutePath()

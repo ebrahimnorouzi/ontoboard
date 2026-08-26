@@ -34,6 +34,33 @@ public final class CollaborativeGraphComponent extends mxGraphComponent {
         this.cursors = cursors;
     }
 
+    /**
+     * Makes a plain left-drag on empty canvas pan the view.
+     *
+     * <p>mxGraph's default panning trigger is the right button, which is also the context menu, so
+     * out of the box there is no way to move the diagram with the mouse at all - the canvas felt
+     * stuck. Panning on a plain left-drag over empty space is what every diagram tool does and what
+     * a user tries first.
+     *
+     * <p>Guarded on both counts. A drag that starts on a cell must move the cell, not the view, or
+     * nothing could ever be repositioned. A drag with a modifier held is a rubberband selection -
+     * see {@code SchemaCanvasView.installSelection} - so it is left alone here.
+     */
+    @Override
+    public boolean isPanningEvent(java.awt.event.MouseEvent event) {
+        if (event == null) {
+            return false;
+        }
+        if (event.isControlDown() || event.isShiftDown() || event.isAltDown()) {
+            return false;
+        }
+        if (!javax.swing.SwingUtilities.isLeftMouseButton(event)) {
+            // Right-drag still pans, which is mxGraph's own convention and harmless to keep.
+            return super.isPanningEvent(event);
+        }
+        return getCellAt(event.getX(), event.getY()) == null;
+    }
+
     @Override
     protected mxGraphComponent.mxGraphControl createGraphControl() {
         // An inner class of mxGraphComponent, so the enclosing instance is implicit - passing

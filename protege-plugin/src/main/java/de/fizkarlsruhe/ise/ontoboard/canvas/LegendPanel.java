@@ -1,0 +1,196 @@
+package de.fizkarlsruhe.ise.ontoboard.canvas;
+
+import java.awt.BasicStroke;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
+import java.awt.RenderingHints;
+import javax.swing.BorderFactory;
+import javax.swing.Icon;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+
+/**
+ * Draws {@link CanvasLegend} as a panel.
+ *
+ * <p>Thin by design: every decision about what the legend contains, and every colour and dash
+ * pattern, lives in {@link CanvasLegend}, which is unit-tested for agreement with
+ * {@link SchemaStyles} and for covering every kind of node and edge the canvas can draw. What is
+ * left here is painting, which no test can check.
+ */
+public final class LegendPanel extends JPanel {
+
+    private static final long serialVersionUID = 1L;
+    private static final int SWATCH_WIDTH = 46;
+    private static final int SWATCH_HEIGHT = 22;
+
+    public LegendPanel() {
+        super(new GridBagLayout());
+        setBorder(BorderFactory.createEmptyBorder(4, 4, 8, 4));
+
+        GridBagConstraints at = new GridBagConstraints();
+        at.insets = new Insets(3, 6, 3, 6);
+        at.anchor = GridBagConstraints.WEST;
+        at.gridy = 0;
+
+        CanvasLegend.Form section = null;
+        for (CanvasLegend.Entry entry : CanvasLegend.entries()) {
+            if (entry.getForm() != section) {
+                section = entry.getForm();
+                at.gridx = 0;
+                at.gridwidth = 2;
+                add(heading(section == CanvasLegend.Form.NODE ? "Things" : "Relationships"), at);
+                at.gridy++;
+                at.gridwidth = 1;
+            }
+            at.gridx = 0;
+            add(new JLabel(new SwatchIcon(entry)), at);
+            at.gridx = 1;
+            add(describe(entry), at);
+            at.gridy++;
+        }
+    }
+
+    private static Component heading(String text) {
+        JLabel heading = new JLabel(text);
+        heading.setFont(heading.getFont().deriveFont(Font.BOLD));
+        heading.setBorder(BorderFactory.createEmptyBorder(8, 0, 2, 0));
+        return heading;
+    }
+
+    /**
+     * The label, with the meaning as its tooltip.
+     *
+     * <p>The meaning is a sentence, and eight sentences stacked in a dialog is a wall of text; the
+     * tooltip keeps it one hover away instead of making the key harder to read than the diagram.
+     */
+    private static Component describe(CanvasLegend.Entry entry) {
+        JLabel label = new JLabel(entry.getLabel());
+        label.setToolTipText("<html><body style='width:280px'>" + entry.getMeaning()
+                + "</body></html>");
+        return label;
+    }
+
+    /** A miniature of the node shape or the edge line. */
+    private static final class SwatchIcon implements Icon {
+        private final CanvasLegend.Entry entry;
+
+        SwatchIcon(CanvasLegend.Entry entry) {
+            this.entry = entry;
+        }
+
+        @Override
+        public void paintIcon(Component host, Graphics graphics, int x, int y) {
+            Graphics2D g = (Graphics2D) graphics.create();
+            try {
+                g.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
+                        RenderingHints.VALUE_ANTIALIAS_ON);
+                if (entry.getForm() == CanvasLegend.Form.NODE) {
+                    paintNode(g, x, y);
+                } else {
+                    paintEdge(g, x, y);
+                }
+            } finally {
+                g.dispose();
+            }
+        }
+
+        private void paintNode(Graphics2D g, int x, int y) {
+            Color fill = decode(entry.getFill(), Color.WHITE);
+            Color stroke = decode(entry.getStroke(), Color.DARK_GRAY);
+            int w = SWATCH_WIDTH - 4;
+            int h = SWATCH_HEIGHT - 4;
+
+            g.setStroke(new BasicStroke(1.6f));
+            if (SchemaStyles.INDIVIDUAL.equals(entry.getStyleName())) {
+                // A rhombus, as the canvas draws individuals.
+                int[] xs = {x + w / 2, x + w, x + w / 2, x};
+                int[] ys = {y, y + h / 2, y + h, y + h / 2};
+                g.setColor(fill);
+                g.fillPolygon(xs, ys, 4);
+                g.setColor(stroke);
+                g.drawPolygon(xs, ys, 4);
+                return;
+            }
+            if (SchemaStyles.DATATYPE.equals(entry.getStyleName())) {
+                g.setColor(fill);
+                g.fillOval(x, y, w, h);
+                g.setColor(stroke);
+                g.drawOval(x, y, w, h);
+                return;
+            }
+            boolean rounded = SchemaStyles.CLASS.equals(entry.getStyleName());
+            int arc = rounded ? 8 : 0;
+            g.setColor(fill);
+            g.fillRoundRect(x, y, w, h, arc, arc);
+            g.setColor(stroke);
+            g.drawRoundRect(x, y, w, h, arc, arc);
+        }
+
+        private void paintEdge(Graphics2D g, int x, int y) {
+            Color stroke = decode(entry.getStroke(), Color.DARK_GRAY);
+            int middle = y + SWATCH_HEIGHT / 2;
+            int end = x + SWATCH_WIDTH - 8;
+
+            g.setColor(stroke);
+            g.setStroke(strokeFor(entry.getDashPattern()));
+            g.drawLine(x, middle, end, middle);
+
+            // A solid arrowhead regardless of the line's dash, since a dashed head reads as noise.
+            g.setStroke(new BasicStroke(1f));
+            int[] xs = {end + 8, end, end};
+            int[] ys = {middle, middle - 4, middle + 4};
+            g.fillPolygon(xs, ys, 3);
+        }
+
+        private static BasicStroke strokeFor(String dashPattern) {
+            if (dashPattern == null) {
+                return new BasicStroke(1.8f);
+            }
+            String[] parts = dashPattern.trim().split("\\s+");
+            float[] dashes = new float[parts.length];
+            for (int i = 0; i < parts.length; i++) {
+                try {
+                    dashes[i] = Float.parseFloat(parts[i]);
+                } catch (NumberFormatException notANumber) {
+                    return new BasicStroke(1.8f);
+                }
+            }
+            return new BasicStroke(1.8f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER, 10f,
+                    dashes, 0f);
+        }
+
+        private static Color decode(String hex, Color fallback) {
+            if (hex == null) {
+                return fallback;
+            }
+            try {
+                return Color.decode(hex);
+            } catch (NumberFormatException notAColour) {
+                return fallback;
+            }
+        }
+
+        @Override
+        public int getIconWidth() {
+            return SWATCH_WIDTH;
+        }
+
+        @Override
+        public int getIconHeight() {
+            return SWATCH_HEIGHT;
+        }
+    }
+
+    @Override
+    public Dimension getPreferredSize() {
+        Dimension natural = super.getPreferredSize();
+        return new Dimension(Math.max(natural.width, 320), natural.height);
+    }
+}
