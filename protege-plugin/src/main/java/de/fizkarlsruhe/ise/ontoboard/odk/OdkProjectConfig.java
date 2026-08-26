@@ -6,9 +6,11 @@ import java.io.File;
  * What the user answers before an ODK project is generated.
  *
  * <p>Validation lives here rather than in the dialog so it can be tested without a display,
- * and so a caller that skips the dialog cannot bypass it. The ontology id is the strictest
- * field because it becomes part of file names, Makefile variables and IRIs - a bad value
- * produces a project that looks fine until a build fails somewhere unrelated.
+ * and so a caller that skips the dialog cannot bypass it. The ontology id and the base IRI are
+ * the strictest fields: the id becomes part of file names, Makefile variables and IRIs, and the
+ * base IRI becomes the identity of every term the project will ever mint. A bad value in either
+ * produces a project that looks fine until something unrelated breaks - or, for the base IRI, one
+ * that never breaks visibly and is simply not shareable.
  */
 public final class OdkProjectConfig {
 
@@ -45,6 +47,22 @@ public final class OdkProjectConfig {
         }
         if (title.isEmpty()) {
             throw new IllegalArgumentException("Title is required.");
+        }
+        // A relative IRI is the most damaging value this dialog can accept, and it looks
+        // harmless. Protege resolves it against the file's own location on save, so a base IRI
+        // of "o" becomes file:/C:/Users/.../src/ontology/o and every term minted afterwards
+        // becomes file:/C:/Users/.../o#Term - the author's local path baked into the ontology.
+        // A colleague opening it mints different IRIs for the same concept, which makes the
+        // ontology unmergeable and live collaboration incapable of converging. Caught here,
+        // once, rather than discovered later when the terms already exist.
+        if (!baseIri.startsWith("http://") && !baseIri.startsWith("https://")) {
+            throw new IllegalArgumentException(
+                    "Base IRI must be an absolute http or https IRI, for example "
+                            + "'http://purl.obolibrary.org/obo/" + ontologyId + ".owl'. Got: '"
+                            + baseIri + "'. A relative value is resolved against this computer's "
+                            + "file path when the ontology is saved, so every term would be "
+                            + "named after a folder on your machine and would not mean the same "
+                            + "thing to anyone else.");
         }
         if (targetDirectory == null) {
             throw new IllegalArgumentException("Choose a folder for the new project.");

@@ -24,6 +24,57 @@ public class CanvasLayout {
     public List<NoteLayout> notes = new ArrayList<>();
     public Map<String, String> prefixColors = new LinkedHashMap<>();
 
+    /**
+     * True when this layout describes {@code candidateOntologyIri}.
+     *
+     * <p>A sidecar sits beside the ontology <em>file</em> but names the ontology <em>IRI</em>, and
+     * those come apart: a repository cloned to another machine, or an ontology whose IRI was
+     * corrected, leaves a sidecar keyed to identities that no longer exist. Loading it anyway gives
+     * an empty canvas - every stored IRI matches nothing - which is then saved back over the file,
+     * destroying the original arrangement without a word.
+     *
+     * <p>A layout with no recorded IRI is accepted: sidecars written before this was recorded are
+     * not worth discarding.
+     */
+    public boolean belongsTo(String candidateOntologyIri) {
+        if (ontologyIri == null || ontologyIri.trim().isEmpty()) {
+            return true;
+        }
+        return ontologyIri.equals(candidateOntologyIri);
+    }
+
+    /**
+     * Drops canvas members and positions for entities the ontology no longer declares.
+     *
+     * <p>A stale entry renders nothing, so it is invisible, and it survives every save - one real
+     * project was found carrying a position for a class that did not exist anywhere in its
+     * ontology. Pruning on load keeps the file honest about what it describes.
+     *
+     * @param declaredIris every entity IRI the ontology currently declares
+     * @return the IRIs removed, so the caller can say what it cleaned up rather than doing it
+     *     silently
+     */
+    public List<String> pruneMissing(java.util.Set<String> declaredIris) {
+        List<String> removed = new ArrayList<>();
+        for (String iri : new ArrayList<>(onCanvas)) {
+            if (!declaredIris.contains(iri)) {
+                onCanvas.remove(iri);
+                removed.add(iri);
+            }
+        }
+        // Positions are pruned against the same set rather than against onCanvas, so a position
+        // orphaned without a membership entry is cleaned up too.
+        for (String iri : new ArrayList<>(nodes.keySet())) {
+            if (!declaredIris.contains(iri)) {
+                nodes.remove(iri);
+                if (!removed.contains(iri)) {
+                    removed.add(iri);
+                }
+            }
+        }
+        return removed;
+    }
+
     public static class NodeLayout {
         public double x;
         public double y;

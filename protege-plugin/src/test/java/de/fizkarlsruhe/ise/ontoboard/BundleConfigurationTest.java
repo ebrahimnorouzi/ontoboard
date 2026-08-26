@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
+import java.util.Set;
 import javax.xml.parsers.DocumentBuilderFactory;
 import org.junit.jupiter.api.Test;
 import org.w3c.dom.Document;
@@ -384,6 +385,111 @@ class BundleConfigurationTest {
     void theTabSuperclassPackageIsImported() throws Exception {
         assertTrue(importPackageInstruction().contains("org.protege.editor.owl.ui"),
                 "OntoBoardTab cannot load without org.protege.editor.owl.ui");
+    }
+
+    /**
+     * The pom must keep a clause that can cover {@code org.protege.editor.owl.ui.transfer}, which
+     * the canvas drop target needs.
+     *
+     * <p>This is a weak check by nature and says so: the pom carries a wildcard, and bnd turns it
+     * into concrete packages at package time, so the only thing assertable from the pom is that
+     * the wildcard is still there.
+     * {@link #theBuiltManifestImportsEveryPackageTheCodeNamesAtRuntime()} does the real check
+     * against a built jar.
+     */
+    @Test
+    void theProtegeUiWildcardIsStillPresentForCanvasDrops() throws Exception {
+        assertTrue(importPackageInstruction().contains("org.protege.editor.owl.*"),
+                "without the wildcard, bnd generates no import for org.protege.editor.owl.ui."
+                        + "transfer and dragging a class onto the canvas throws "
+                        + "ClassNotFoundException");
+    }
+
+    /**
+     * The real check: the packages named only through third-party classes must appear in the built
+     * bundle's {@code Import-Package}.
+     *
+     * <p>Skipped when no jar has been built yet, because on a clean run the jar is produced after
+     * the tests. In development and in CI after a first build it runs, and it is the only place
+     * this can be verified at all - PluginXmlTest runs with the full Maven classpath, where
+     * everything resolves regardless of the manifest.
+     *
+     * <p><b>The trap this encodes.</b> Manifest values are folded at 72 characters with a leading
+     * space on each continuation, so
+     * {@code org.protege.editor.owl.ui.transfer} is routinely split across two lines. Grepping the
+     * raw file for it reports it missing when it is present - which happened, and cost a
+     * false-alarm investigation. The unfolding below is the point of this method.
+     */
+    @Test
+    void theBuiltManifestImportsEveryPackageTheCodeNamesAtRuntime() throws Exception {
+        File jar = newestBuiltJar();
+        org.junit.jupiter.api.Assumptions.assumeTrue(jar != null,
+                "no built jar yet; run mvn package");
+
+        Set<String> imported = importedPackagesOf(jar);
+        assertFalse(imported.isEmpty(), "no Import-Package found in " + jar);
+        for (String required : new String[] {
+            "org.protege.editor.owl.ui.transfer",
+            "org.protege.editor.owl.ui",
+            "org.protege.editor.core.prefs",
+            "org.semanticweb.owlapi.model",
+        }) {
+            assertTrue(imported.contains(required),
+                    "the bundle does not import " + required + "; imported " + imported.size()
+                            + " packages. Anything named only from Java that bnd missed becomes a "
+                            + "ClassNotFoundException inside a running Protege.");
+        }
+    }
+
+    private static File newestBuiltJar() {
+        File[] candidates = new File("target").listFiles((dir, name) ->
+                name.startsWith("ontoboard-") && name.endsWith(".jar"));
+        if (candidates == null || candidates.length == 0) {
+            return null;
+        }
+        File newest = candidates[0];
+        for (File candidate : candidates) {
+            if (candidate.lastModified() > newest.lastModified()) {
+                newest = candidate;
+            }
+        }
+        return newest;
+    }
+
+    /** Package names from a bundle's Import-Package, with folding undone and attributes stripped. */
+    private static Set<String> importedPackagesOf(File jar) throws Exception {
+        Set<String> packages = new java.util.HashSet<>();
+        try (java.util.jar.JarFile open = new java.util.jar.JarFile(jar)) {
+            String value = open.getManifest().getMainAttributes().getValue("Import-Package");
+            if (value == null) {
+                return packages;
+            }
+            // java.util.jar.Manifest already unfolds continuations; splitting on commas is still
+            // wrong inside a quoted attribute such as uses:="a,b", so only the leading token of
+            // each clause is taken and quoted regions are skipped.
+            boolean inQuotes = false;
+            StringBuilder clause = new StringBuilder();
+            for (int i = 0; i <= value.length(); i++) {
+                char c = i < value.length() ? value.charAt(i) : ',';
+                if (c == '"') {
+                    inQuotes = !inQuotes;
+                }
+                if (c == ',' && !inQuotes) {
+                    String name = clause.toString().trim();
+                    int attribute = name.indexOf(';');
+                    if (attribute >= 0) {
+                        name = name.substring(0, attribute).trim();
+                    }
+                    if (!name.isEmpty()) {
+                        packages.add(name);
+                    }
+                    clause.setLength(0);
+                } else {
+                    clause.append(c);
+                }
+            }
+        }
+        return packages;
     }
 
     private Document parsePluginXml() throws Exception {

@@ -19,7 +19,7 @@ pipeline. No single host does both well, so OntoBoard ships as two clients.
 |---|---|---|
 | Runs in | Protégé Desktop | Browser + Docker |
 | Best at | OWL depth, reasoning, ODK/ROBOT pipeline | Real-time collaboration, discussion |
-| Multi-user | in progress | yes — CRDT, cursors, comments, tasks |
+| Multi-user | yes — live via your own server, or git | yes — CRDT, cursors, comments, tasks |
 | Needs a server | no | yes |
 | Status | early, actively developed | complete |
 
@@ -81,12 +81,18 @@ Protégé's own undo.
 `diff` and release artifacts are unaffected. Removing a node from the canvas never deletes
 axioms; deleting an axiom is a separate, confirmed action.
 
+**Work together** — either live or through git, and both are first-class. Live needs a server
+your team runs: point each person's plugin at it and you share the board, seeing each other's
+edits and cursors in the same session as any browser users. No server, or you would rather not
+run one? Leave the fields empty and collaborate through git — commit and push as usual. Setup,
+and what the live vocabulary can and cannot carry, are in
+[docs/collaboration.md](docs/collaboration.md).
+
 ### Not built yet
 
-Live collaboration (in progress), the ontology design pattern library, CSV/ROBOT template
-import, SPARQL queries, GitHub integration, Widoco documentation, import resolution,
-provenance stamping, and frames/sticky notes. Use the web application for collaboration
-today. Full list in [docs/limitations.md](docs/limitations.md).
+The ontology design pattern library, CSV/ROBOT template import, SPARQL queries, GitHub
+integration, Widoco documentation, import resolution, provenance stamping, and frames/sticky
+notes. Full list in [docs/limitations.md](docs/limitations.md).
 
 ### Host support
 
@@ -108,7 +114,7 @@ unavailable and why rather than failing obscurely.
 ```bash
 cd protege-plugin
 mvn clean package          # -> target/ontoboard-<version>.jar
-mvn test                   # 185 tests
+mvn test                   # 322 tests
 ```
 
 Java 8 bytecode is emitted deliberately (`maven.compiler.release=8`) so the bundle loads on
@@ -144,6 +150,8 @@ Architecture and API details: [docs/architecture.md](docs/architecture.md),
 - [Architecture](docs/architecture.md)
 - [Features](docs/features.md)
 - [Development](docs/development.md)
+- [Collaboration](docs/collaboration.md) — live and git modes, server setup
+- [Testing collaboration locally](docs/testing-collaboration-locally.md)
 - [Feature parity](docs/feature-parity.md) — plugin vs web application, gap by gap
 - [Limitations and roadmap](docs/limitations.md)
 - [API reference](docs/api-reference.md) — web application

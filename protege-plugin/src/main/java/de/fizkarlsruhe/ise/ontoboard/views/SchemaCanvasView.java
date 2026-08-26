@@ -1,69 +1,80 @@
 package de.fizkarlsruhe.ise.ontoboard.views;
 
-import com.mxgraph.swing.mxGraphComponent;
-import de.fizkarlsruhe.ise.ontoboard.axiom.AxiomRemoval;
-import de.fizkarlsruhe.ise.ontoboard.axiom.EdgeAxioms;
-import de.fizkarlsruhe.ise.ontoboard.axiom.EntityFactory;
-import de.fizkarlsruhe.ise.ontoboard.odk.OdkProjectLoader;
-import de.fizkarlsruhe.ise.ontoboard.axiom.RelationDialog;
-import de.fizkarlsruhe.ise.ontoboard.model.DisplayLabels;
 import com.mxgraph.swing.mxGraphOutline;
 import com.mxgraph.util.mxEvent;
 import com.mxgraph.util.mxEventSource.mxIEventListener;
+import de.fizkarlsruhe.ise.ontoboard.axiom.AxiomRemoval;
+import de.fizkarlsruhe.ise.ontoboard.axiom.EdgeAxioms;
+import de.fizkarlsruhe.ise.ontoboard.axiom.EntityFactory;
+import de.fizkarlsruhe.ise.ontoboard.axiom.RelationDialog;
 import de.fizkarlsruhe.ise.ontoboard.canvas.CanvasExport;
 import de.fizkarlsruhe.ise.ontoboard.canvas.CanvasLayouts;
 import de.fizkarlsruhe.ise.ontoboard.canvas.CanvasMembership;
-import de.fizkarlsruhe.ise.ontoboard.canvas.PalettePanel;
-import de.fizkarlsruhe.ise.ontoboard.canvas.StartPanel;
+import de.fizkarlsruhe.ise.ontoboard.canvas.CollaborativeGraphComponent;
+import de.fizkarlsruhe.ise.ontoboard.canvas.PrefixColours;
 import de.fizkarlsruhe.ise.ontoboard.canvas.SchemaGraph;
 import de.fizkarlsruhe.ise.ontoboard.canvas.SelectionBridge;
+import de.fizkarlsruhe.ise.ontoboard.canvas.StartPanel;
+import de.fizkarlsruhe.ise.ontoboard.collab.CollabDialog;
+import de.fizkarlsruhe.ise.ontoboard.collab.CollabSession;
+import de.fizkarlsruhe.ise.ontoboard.collab.CollabSettings;
+import de.fizkarlsruhe.ise.ontoboard.collab.CollabSettingsStore;
+import de.fizkarlsruhe.ise.ontoboard.collab.OperationMapper;
 import de.fizkarlsruhe.ise.ontoboard.layout.CanvasLayout;
 import de.fizkarlsruhe.ise.ontoboard.layout.CanvasLayoutStore;
+import de.fizkarlsruhe.ise.ontoboard.model.DisplayLabels;
 import de.fizkarlsruhe.ise.ontoboard.model.OntologyProjection;
 import de.fizkarlsruhe.ise.ontoboard.model.Projection;
+import de.fizkarlsruhe.ise.ontoboard.odk.OdkProjectLoader;
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
-import java.awt.Point;
-import java.awt.dnd.DropTarget;
 import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.Point;
+import java.awt.dnd.DropTarget;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.File;
-import java.util.List;
-import java.util.Collections;
-import java.util.ArrayList;
 import java.io.IOException;
 import java.net.URI;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JFileChooser;
 import javax.swing.JMenuItem;
-import javax.swing.TransferHandler;
-import java.awt.datatransfer.DataFlavor;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
-import javax.swing.JOptionPane;
-import javax.swing.JOptionPane;
 import javax.swing.JPopupMenu;
 import javax.swing.JToolBar;
 import javax.swing.Timer;
+import javax.swing.TransferHandler;
 import org.protege.editor.owl.model.event.EventType;
 import org.protege.editor.owl.model.event.OWLModelManagerListener;
 import org.protege.editor.owl.model.selection.OWLSelectionModelListener;
+import org.protege.editor.owl.ui.transfer.OWLObjectDataFlavor;
 import org.protege.editor.owl.ui.view.AbstractOWLViewComponent;
-import org.semanticweb.owlapi.model.IRI;
-import org.semanticweb.owlapi.model.OWLEntity;
 import org.semanticweb.owlapi.model.AddAxiom;
+import org.semanticweb.owlapi.model.IRI;
 import org.semanticweb.owlapi.model.OWLDataFactory;
+import org.semanticweb.owlapi.model.OWLEntity;
 import org.semanticweb.owlapi.model.OWLObjectProperty;
-import org.semanticweb.owlapi.model.OWLOntologyChange;
 import org.semanticweb.owlapi.model.OWLOntology;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.semanticweb.owlapi.model.OWLOntologyChange;
 import org.semanticweb.owlapi.model.OWLOntologyChangeListener;
 
 public class SchemaCanvasView extends AbstractOWLViewComponent {
 
+    private static final Logger LOGGER =
+            LoggerFactory.getLogger(SchemaCanvasView.class);
+
     private SchemaGraph graph;
-    private mxGraphComponent graphComponent;
+    private CollaborativeGraphComponent graphComponent;
     private JPanel centre;
     private CardLayout cards;
     private CanvasLayout layout = new CanvasLayout();
@@ -96,13 +107,27 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
      * is always enabled and silently does nothing on an empty selection reads as broken.
      */
     private JButton addSelectedButton;
+    /**
+     * The live session, or null when working through git. Created on demand from the
+     * Collaborate dialog rather than at startup, because most sessions are single-user and
+     * opening a socket nobody asked for is the wrong default.
+     */
+    private CollabSession collab;
+    private JButton collaborateButton;
+    private javax.swing.JLabel collabStatus;
+    /**
+     * When the cursor was last published. Presence is sent on mouse movement, which fires far
+     * faster than anyone needs to see, so it is throttled - and the client's own heartbeat
+     * keeps the cursor alive in between.
+     */
+    private long lastCursorSentAt;
 
     @Override
     protected void initialiseOWLView() {
         setLayout(new BorderLayout());
 
         graph = new SchemaGraph();
-        graphComponent = new mxGraphComponent(graph);
+        graphComponent = new CollaborativeGraphComponent(graph);
         graphComponent.setConnectable(false); // Task 4 turns this on with real axiom writing
         graphComponent.setToolTips(true);
         graphComponent.setPanning(true);
@@ -119,13 +144,13 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         outline.setPreferredSize(new Dimension(180, 140));
         add(outline, BorderLayout.EAST);
         add(buildToolBar(), BorderLayout.NORTH);
-        add(new PalettePanel(), BorderLayout.WEST);
         graphComponent.getViewport().setOpaque(true);
         graphComponent.getViewport().setBackground(
                 Color.decode(de.fizkarlsruhe.ise.ontoboard.canvas.SchemaStyles.CANVAS_BACKGROUND));
         graphComponent.setGridVisible(true);
-        installPaletteDropTarget();
+        installEntityDropTarget();
         installDoubleClickToCreate();
+        installCursorSharing();
 
         loadLayoutForActiveOntology();
         installContextMenu();
@@ -151,7 +176,16 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         getOWLEditorKit().getOWLWorkspace().getOWLSelectionModel()
                 .addListener(selectionListener);
 
-        changeListener = changes -> refresh();
+        changeListener = changes -> {
+            // Publishing from here rather than from the canvas is deliberate: this listener sees
+            // edits made anywhere in Protege - the class hierarchy, the Manchester syntax
+            // editor - so those travel too. CollabSession refuses while it is applying a remote
+            // operation, which is what stops the two ends amplifying each other.
+            if (collab != null) {
+                collab.publishLocalChanges(changes, canvasHints());
+            }
+            refresh();
+        };
         getOWLModelManager().addOntologyChangeListener(changeListener);
 
         // Axiom edits and active-ontology switches are two separate Protege event
@@ -182,6 +216,12 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         if (selectionListener != null) {
             getOWLEditorKit().getOWLWorkspace().getOWLSelectionModel()
                     .removeListener(selectionListener);
+        }
+        if (collab != null) {
+            // Before the timer work below: stopping the socket first means no remote operation
+            // can arrive while the view is being torn down.
+            collab.stop();
+            collab = null;
         }
         if (cellsMovedListener != null) {
             graph.removeListener(cellsMovedListener);
@@ -263,6 +303,146 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         }
     }
 
+    // ------------------------------------------------------------------ collaboration
+
+    /**
+     * Opens the Collaborate dialog, or leaves a session that is already running.
+     *
+     * <p>One button for both because they are the same question - am I sharing this or not - and
+     * a separate Disconnect that only appears sometimes is harder to find than a label that
+     * changes.
+     */
+    private void toggleCollaboration() {
+        if (collab != null) {
+            collab.stop();
+            collab = null;
+            graphComponent.setPeerCursors(null);
+            graphComponent.getGraphControl().repaint();
+            collaborateButton.setText("Collaborate...");
+            collabStatus.setText("Working through git");
+            return;
+        }
+        CollabSettings settings = CollabDialog.show(this);
+        if (settings == null) {
+            return;
+        }
+        if (!settings.isLive()) {
+            // A deliberate choice, not a failure: the dialog says so too.
+            collabStatus.setText("Working through git");
+            JOptionPane.showMessageDialog(this, settings.explainWhyNotLive(),
+                    "Working through git", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        collab = new CollabSession(settings, new CanvasCollabHost(),
+                javax.swing.SwingUtilities::invokeLater);
+        graphComponent.setPeerCursors(collab.getCursors());
+        collaborateButton.setText("Disconnect");
+        collabStatus.setText("Connecting...");
+        collab.start();
+    }
+
+    /**
+     * Publishes the pointer position while it moves over the canvas.
+     *
+     * <p>Throttled because mouse-moved fires far faster than anyone can perceive, and every frame
+     * would be a WebSocket write. The client re-sends the last position on its own heartbeat, so
+     * a position dropped here is never the last one anyone sees.
+     */
+    private void installCursorSharing() {
+        graphComponent.getGraphControl().addMouseMotionListener(
+                new java.awt.event.MouseMotionAdapter() {
+                    @Override
+                    public void mouseMoved(java.awt.event.MouseEvent event) {
+                        shareCursor(event);
+                    }
+
+                    @Override
+                    public void mouseDragged(java.awt.event.MouseEvent event) {
+                        shareCursor(event);
+                    }
+                });
+    }
+
+    private void shareCursor(java.awt.event.MouseEvent event) {
+        if (collab == null) {
+            return;
+        }
+        long now = System.currentTimeMillis();
+        if (now - lastCursorSentAt < 80) {
+            return;
+        }
+        lastCursorSentAt = now;
+        double scale = graph.getView().getScale();
+        if (scale <= 0) {
+            scale = 1;
+        }
+        // The event is on the graph control, which is the scrolled content, so only the zoom has
+        // to be undone - the mirror of PeerCursorLayer, and of toGraphPoint minus its scroll term.
+        collab.publishCursor(event.getX() / scale, event.getY() / scale,
+                selectionBridge == null ? null : selectionBridge.currentCanvasSelection());
+    }
+
+    /**
+     * Canvas geometry for the operations being published, so a peer draws a new node where it
+     * actually is rather than at the origin.
+     */
+    private OperationMapper.CanvasHints canvasHints() {
+        return iri -> {
+            Object cell = graph.getCellForId(iri);
+            if (!(cell instanceof com.mxgraph.model.mxCell)) {
+                return null;
+            }
+            com.mxgraph.model.mxGeometry geometry =
+                    ((com.mxgraph.model.mxCell) cell).getGeometry();
+            if (geometry == null) {
+                return null;
+            }
+            // Coloured by the node's OWN namespace, not the ontology's: distinguishing imported
+            // vocabulary at a glance is the whole point of the colouring, and publishing every
+            // node in the ontology's colour would throw that away on the receiving canvas.
+            return new OperationMapper.NodeHint(geometry.getX(), geometry.getY(),
+                    geometry.getWidth(), geometry.getHeight(),
+                    new PrefixColours(layout.prefixColors).colourFor(iri));
+        };
+    }
+
+    /** What the session needs from Protege and from this view. */
+    private final class CanvasCollabHost implements CollabSession.Host {
+
+        @Override
+        public OWLOntology activeOntology() {
+            return getOWLModelManager().getActiveOntology();
+        }
+
+        @Override
+        public void applyChanges(List<OWLOntologyChange> changes) {
+            // Through the model manager, never straight into the ontology: that is what keeps
+            // Protege's undo and its other views correct for a change that came from someone else.
+            getOWLModelManager().applyChanges(changes);
+        }
+
+        @Override
+        public void onStatus(String status, boolean connected) {
+            collabStatus.setText(status);
+            collabStatus.setToolTipText(status);
+            collaborateButton.setText(connected ? "Disconnect" : "Collaborate...");
+        }
+
+        @Override
+        public void onPeersChanged() {
+            graphComponent.getGraphControl().repaint();
+        }
+
+        @Override
+        public void onUnshareable(int count, String exampleReason) {
+            // A running count in the status line rather than a dialog per change: Protege can
+            // produce a dozen unshareable axioms from one action, and a dozen modal dialogs
+            // would be worse than the problem. The tooltip carries the detail.
+            collabStatus.setText(count + " change" + (count == 1 ? "" : "s") + " not shared");
+            collabStatus.setToolTipText("The most recent was " + exampleReason);
+        }
+    }
+
     private JToolBar buildToolBar() {
         JToolBar bar = new JToolBar();
         bar.setFloatable(false);
@@ -272,6 +452,12 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         JButton arrange = new JButton("Arrange");
         arrange.addActionListener(a -> CanvasLayouts.apply(graph,
                 (CanvasLayouts.Algorithm) algorithms.getSelectedItem()));
+
+        collaborateButton = new JButton("Collaborate...");
+        collaborateButton.addActionListener(a -> toggleCollaboration());
+        collabStatus = new javax.swing.JLabel(" ");
+        collabStatus.setFont(collabStatus.getFont().deriveFont(
+                java.awt.Font.PLAIN, collabStatus.getFont().getSize() - 1f));
 
         addSelectedButton = new JButton("Add selected");
         addSelectedButton.addActionListener(a -> addSelectedEntityToCanvas());
@@ -291,6 +477,9 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         bar.addSeparator();
         bar.add(exportPng);
         bar.add(exportSvg);
+        bar.addSeparator();
+        bar.add(collaborateButton);
+        bar.add(collabStatus);
         return bar;
     }
 
@@ -481,13 +670,57 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
      */
     private void loadLayoutForActiveOntology() {
         currentOntologyFile = activeOntologyFile();
-        if (currentOntologyFile != null && CanvasLayoutStore.sidecarFor(currentOntologyFile).isFile()) {
-            layout = CanvasLayoutStore.load(currentOntologyFile);
-        } else {
+        OWLOntology ontology = getOWLModelManager().getActiveOntology();
+        layout = null;
+
+        if (currentOntologyFile != null
+                && CanvasLayoutStore.sidecarFor(currentOntologyFile).isFile()) {
+            CanvasLayout stored = CanvasLayoutStore.load(currentOntologyFile);
+            if (stored.belongsTo(ontologyIriOf(ontology))) {
+                layout = stored;
+                pruneStaleMembers(ontology, layout);
+            } else {
+                // A sidecar for a different ontology, which happens after a clone to another
+                // machine or a corrected ontology IRI. Adopting it would render an empty canvas -
+                // every stored IRI matches nothing - and then save that emptiness back over
+                // someone's arrangement. Starting fresh loses the diagram either way, but does
+                // not destroy the file that still holds it.
+                LOGGER.warn("OntoBoard: {} describes '{}' but the open ontology is '{}'. Starting "
+                        + "with an empty board rather than overwriting it.",
+                        CanvasLayoutStore.sidecarFor(currentOntologyFile).getName(),
+                        stored.ontologyIri, ontologyIriOf(ontology));
+                currentOntologyFile = null; // so nothing is written back over it
+            }
+        }
+        if (layout == null) {
             layout = new CanvasLayout();
-            resetLayoutForOntology(getOWLModelManager().getActiveOntology(), layout);
+            resetLayoutForOntology(ontology, layout);
         }
         membership = new CanvasMembership(layout);
+    }
+
+    /**
+     * Removes sidecar entries for entities the ontology no longer declares.
+     *
+     * <p>Deleting an entity in Protege leaves its position behind, and a stale entry renders
+     * nothing - so it is invisible and survives every save. Logged rather than done quietly,
+     * because a board that silently loses members would be worse than one that says so.
+     */
+    private void pruneStaleMembers(OWLOntology ontology, CanvasLayout candidate) {
+        Set<String> declared = new HashSet<String>();
+        for (OWLEntity entity : ontology.getSignature()) {
+            declared.add(entity.getIRI().toString());
+        }
+        List<String> removed = candidate.pruneMissing(declared);
+        if (!removed.isEmpty()) {
+            LOGGER.info("OntoBoard: dropped {} canvas entr{} for entities no longer in the "
+                    + "ontology: {}", removed.size(), removed.size() == 1 ? "y" : "ies", removed);
+        }
+    }
+
+    private static String ontologyIriOf(OWLOntology ontology) {
+        com.google.common.base.Optional<IRI> iri = ontology.getOntologyID().getOntologyIRI();
+        return iri.isPresent() ? iri.get().toString() : null;
     }
 
     private void saveLayoutTo(File file) {
@@ -669,14 +902,15 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
      * <p>Anything this handler does not recognise is delegated back to mxGraph's handler, so
      * the component's own drag behaviour keeps working.
      */
-    private void installPaletteDropTarget() {
+    private void installEntityDropTarget() {
         final TransferHandler mxHandler = graphComponent.getTransferHandler();
         graphComponent.setTransferHandler(new TransferHandler() {
             private static final long serialVersionUID = 1L;
 
             @Override
             public boolean canImport(TransferSupport support) {
-                if (support.isDataFlavorSupported(DataFlavor.stringFlavor)) {
+                if (support.isDataFlavorSupported(
+                        OWLObjectDataFlavor.OWL_OBJECT_DATA_FLAVOR)) {
                     return true;
                 }
                 return mxHandler != null && mxHandler.canImport(support);
@@ -684,34 +918,89 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
 
             @Override
             public boolean importData(TransferSupport support) {
-                if (support.isDataFlavorSupported(DataFlavor.stringFlavor)) {
+                if (support.isDataFlavorSupported(
+                        OWLObjectDataFlavor.OWL_OBJECT_DATA_FLAVOR)) {
                     try {
-                        Object payload = support.getTransferable()
-                                .getTransferData(DataFlavor.stringFlavor);
-                        EntityFactory.Kind kind =
-                                PalettePanel.kindOf(String.valueOf(payload));
-                        if (kind != null) {
-                            Point at = support.getDropLocation().getDropPoint();
-                            Point graphPoint = toGraphPoint(at);
-                            createEntityAt(kind, graphPoint.x, graphPoint.y);
+                        Object payload = support.getTransferable().getTransferData(
+                                OWLObjectDataFlavor.OWL_OBJECT_DATA_FLAVOR);
+                        Point graphPoint =
+                                toGraphPoint(support.getDropLocation().getDropPoint());
+                        if (dropEntities(payload, graphPoint)) {
                             return true;
                         }
-                    } catch (Exception ignored) {
-                        // Fall through: something else was dragged in, let mxGraph try.
+                    } catch (Exception notOurs) {
+                        // Something else was dragged in. Fall through to mxGraph rather than
+                        // consuming the drop, or its own cell moves would stop working.
+                        LOGGER.debug("OntoBoard: not an OWL entity drop", notOurs);
                     }
                 }
                 return mxHandler != null && mxHandler.importData(support);
             }
         });
+        // The trees are the drag source, so a drop has to be accepted anywhere the canvas is
+        // visible - including the empty area, which is not a cell and so is not something
+        // mxGraph's own handler would claim.
+        graphComponent.getGraphControl().setTransferHandler(
+                graphComponent.getTransferHandler());
+    }
+
+    /**
+     * Puts entities dragged in from Protege's trees onto the canvas at {@code at}.
+     *
+     * <p>Adds existing terms rather than creating new ones, which is the difference between this
+     * and double-clicking. Several can arrive at once, because Protege's trees allow a multiple
+     * selection, and they are laid out in a small grid from the drop point so a drag of twenty
+     * classes does not stack them all on one spot.
+     *
+     * @return true when at least one entity was recognised, so the drop is consumed
+     */
+    private boolean dropEntities(Object payload, Point at) {
+        if (!(payload instanceof List)) {
+            return false;
+        }
+        int added = 0;
+        int column = 0;
+        int row = 0;
+        for (Object dragged : (List<?>) payload) {
+            if (!(dragged instanceof OWLEntity)) {
+                // Protege can carry class expressions and axioms in the same flavour. Those have
+                // no node, so they are skipped rather than turned into something invented.
+                continue;
+            }
+            String iri = ((OWLEntity) dragged).getIRI().toString();
+            if (!membership.add(iri)) {
+                continue;
+            }
+            CanvasLayout.NodeLayout position = new CanvasLayout.NodeLayout();
+            position.x = at.x + column * 190;
+            position.y = at.y + row * 90;
+            position.w = 160;
+            position.h = 60;
+            layout.nodes.put(iri, position);
+            added++;
+            if (++column == 3) {
+                column = 0;
+                row++;
+            }
+        }
+        if (added == 0) {
+            return false;
+        }
+        refresh();
+        saveLayoutTo(currentOntologyFile);
+        return true;
     }
 
     /**
      * Double-clicking empty canvas creates a class there.
      *
-     * <p>The fastest path to a new term, and the one every other diagram tool offers. Having
-     * to pick an item from a palette and then drag it is a lot of ceremony for the most
-     * common action in ontology sketching, so the palette is now the explicit route rather
-     * than the only one.
+     * <p>The fastest path to a new term, and the one every other diagram tool offers.
+     *
+     * <p>This replaced a palette whose two items had to be dragged onto the canvas. Choosing
+     * "Class" before dragging is a mode, and modes are ceremony for the most common action in
+     * ontology sketching - especially when the canvas already had to give up a column of width to
+     * hold the palette. Existing terms now arrive by being dragged from Protege's own trees, which
+     * is a different gesture for a different thing: this creates, that adds.
      */
     private void installDoubleClickToCreate() {
         graphComponent.getGraphControl().addMouseListener(new MouseAdapter() {

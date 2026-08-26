@@ -17,7 +17,9 @@ import { afterEach, describe, expect, it } from "vitest";
 import * as Y from "yjs";
 import jwt from "jsonwebtoken";
 import WebSocket from "ws";
-import { startBridge, encodeOperation, decodeOperation } from "../bridge.mjs";
+import {
+  startBridge, encodeOperation, decodeOperation, SENT_ID_MEMORY,
+} from "../bridge.mjs";
 
 const SECRET = "test-secret";
 
@@ -284,16 +286,21 @@ describe("an operation written by a web client", () => {
     expect(relayed.op.data.updates.label).toBe("Human");
   });
 
-  it("is withheld when it is the plugin user's own work coming back round", async () => {
+  /**
+   * Echo is a property of a connection, not of an account. A web client's operation reaches the
+   * plugin even when the same person is signed in at both ends - it is not the plugin's own work
+   * coming back, it is work done somewhere else.
+   */
+  it("reaches the plugin even when the same account made it elsewhere", async () => {
     const doc = new Y.Doc();
     const port = await bridgeOn(doc);
     const plugin = await client(port).open();
     await plugin.hello("b1", "alice");
 
     pushAsWebClient(doc, operation("addClass", "alice", { iri: "x" }));
-    await new Promise((resolve) => setTimeout(resolve, 150));
 
-    expect(plugin.received.filter((m) => m.t === "op")).toHaveLength(0);
+    const relayed = await plugin.waitFor((m) => m.t === "op", "the operation");
+    expect(relayed.op.data.iri).toBe("x");
   });
 
   it("still arrives when an earlier array element is malformed", async () => {
@@ -307,6 +314,86 @@ describe("an operation written by a web client", () => {
 
     const relayed = await plugin.waitFor((m) => m.t === "op", "the operation after the junk");
     expect(relayed.op.type).toBe("removeProperty");
+  });
+});
+
+// ---------- two windows, one account ----------
+
+describe("two connections signed in as the same account", () => {
+  /**
+   * The obvious way to try collaboration out is two Protege windows on one machine, and the
+   * obvious credential is the one account you have. Filtering echo by authenticated user made
+   * that silently do nothing - and it is also the real case of one person on a desktop and a
+   * laptop. Filtering by the ids a connection sent covers echo exactly and leaves this working.
+   */
+  it("see each other's operations", async () => {
+    const doc = new Y.Doc();
+    const port = await bridgeOn(doc);
+    const windowA = await client(port).open();
+    const windowB = await client(port).open();
+    await windowA.hello("b1", "alice");
+    await windowB.hello("b1", "alice");
+
+    windowA.send({ t: "op", op: operation("addClass", "alice",
+        { iri: "http://example.org/o#FromWindowA" }) });
+
+    const relayed = await windowB.waitFor((m) => m.t === "op",
+        "the second window to receive the first window's work");
+    expect(relayed.op.data.iri).toBe("http://example.org/o#FromWindowA");
+  });
+
+  /** And the sender still never gets its own back, which is what echo prevention has to mean. */
+  it("still do not receive their own operations", async () => {
+    const doc = new Y.Doc();
+    const port = await bridgeOn(doc);
+    const windowA = await client(port).open();
+    const windowB = await client(port).open();
+    await windowA.hello("b1", "alice");
+    await windowB.hello("b1", "alice");
+
+    windowA.send({ t: "op", op: operation("addClass", "alice", { iri: "x" }) });
+
+    await windowB.waitFor((m) => m.t === "op", "the relay");
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(windowA.received.filter((m) => m.t === "op")).toHaveLength(0);
+  });
+
+  /** Both directions, so the fix is not accidentally one-way. */
+  it("relay in both directions", async () => {
+    const doc = new Y.Doc();
+    const port = await bridgeOn(doc);
+    const windowA = await client(port).open();
+    const windowB = await client(port).open();
+    await windowA.hello("b1", "alice");
+    await windowB.hello("b1", "alice");
+
+    windowB.send({ t: "op", op: operation("removeClass", "alice", { iri: "y" }) });
+
+    const relayed = await windowA.waitFor((m) => m.t === "op", "the reverse relay");
+    expect(relayed.op.type).toBe("removeClass");
+  });
+
+  /**
+   * The id memory is bounded, so a long session cannot grow it forever. What must not happen is
+   * an operation echoing back to its sender because its id was evicted before the round trip -
+   * the observer fires synchronously inside the push, so the id is always still present.
+   */
+  it("do not echo to the sender even after more operations than the id memory holds",
+      async () => {
+    const doc = new Y.Doc();
+    const port = await bridgeOn(doc);
+    const plugin = await client(port).open();
+    await plugin.hello("b1", "alice");
+
+    for (let i = 0; i < SENT_ID_MEMORY + 20; i++) {
+      plugin.send({ t: "op", op: { id: `op-${i}`, type: "addClass", timestamp: i,
+          userId: "alice", data: { iri: `http://example.org/o#C${i}` } } });
+    }
+
+    await waitFor(() => readAsWebClient(doc).length >= SENT_ID_MEMORY + 20,
+        "every operation to land");
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    expect(plugin.received.filter((m) => m.t === "op")).toHaveLength(0);
   });
 });
 
