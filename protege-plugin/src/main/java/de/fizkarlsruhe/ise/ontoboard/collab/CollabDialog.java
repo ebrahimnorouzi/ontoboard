@@ -59,6 +59,10 @@ public final class CollabDialog {
         String displayName = existing.getDisplayName();
         JComboBox<String> colour = new JComboBox<String>(COLOURS);
         colour.setSelectedItem(existing.getColour());
+        // A hex code is not a colour to anyone but a developer. The renderer paints the
+        // actual swatch, so picking "the green one" is a matter of looking rather than
+        // of decoding.
+        colour.setRenderer(new SwatchRenderer());
         JCheckBox remember = new JCheckBox(
                 "Remember the token on this computer", tokenWasRemembered);
         remember.setToolTipText("Stored in " + CollabSettingsStore.tokenStorageDescription());
@@ -155,6 +159,81 @@ public final class CollabDialog {
                 + "and push as usual. You will not see other people's cursors or their edits as "
                 + "they happen, but nothing else changes."));
         return notice;
+    }
+
+    /**
+     * Paints each palette entry as a swatch with a readable name beside it.
+     *
+     * <p>The names matter as much as the swatches: "#9C6ADE" is nothing a user can repeat to a
+     * colleague, whereas "Purple" is.
+     */
+    private static final class SwatchRenderer extends javax.swing.DefaultListCellRenderer {
+        private static final long serialVersionUID = 1L;
+
+        @Override
+        public Component getListCellRendererComponent(javax.swing.JList<?> list, Object value,
+                int index, boolean selected, boolean focused) {
+            super.getListCellRendererComponent(list, value, index, selected, focused);
+            String hex = String.valueOf(value);
+            setText(nameOf(hex));
+            setIcon(new SwatchIcon(hex));
+            setIconTextGap(8);
+            return this;
+        }
+    }
+
+    /** A filled rounded square in the given colour. */
+    private static final class SwatchIcon implements javax.swing.Icon {
+        private final Color colour;
+
+        SwatchIcon(String hex) {
+            Color parsed;
+            try {
+                parsed = Color.decode(hex);
+            } catch (NumberFormatException notAColour) {
+                // The palette is ours, so this cannot happen today - but a grey square is a
+                // better outcome than an exception inside a list renderer.
+                parsed = Color.GRAY;
+            }
+            this.colour = parsed;
+        }
+
+        @Override
+        public void paintIcon(Component host, java.awt.Graphics graphics, int x, int y) {
+            java.awt.Graphics2D g = (java.awt.Graphics2D) graphics.create();
+            try {
+                g.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING,
+                        java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
+                g.setColor(colour);
+                g.fillRoundRect(x, y, getIconWidth(), getIconHeight(), 4, 4);
+                g.setColor(new Color(0, 0, 0, 40));
+                g.drawRoundRect(x, y, getIconWidth() - 1, getIconHeight() - 1, 4, 4);
+            } finally {
+                g.dispose();
+            }
+        }
+
+        @Override
+        public int getIconWidth() {
+            return 14;
+        }
+
+        @Override
+        public int getIconHeight() {
+            return 14;
+        }
+    }
+
+    /** A name for each palette entry, in the same order as {@link #COLOURS}. */
+    static String nameOf(String hex) {
+        String[] names = {"Blue", "Terracotta", "Green", "Purple", "Amber", "Teal", "Pink",
+            "Slate"};
+        for (int i = 0; i < COLOURS.length && i < names.length; i++) {
+            if (COLOURS[i].equalsIgnoreCase(hex)) {
+                return names[i];
+            }
+        }
+        return hex;
     }
 
     private static JLabel wrapped(String text) {

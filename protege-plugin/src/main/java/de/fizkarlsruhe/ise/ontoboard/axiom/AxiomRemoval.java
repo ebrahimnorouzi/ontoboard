@@ -91,6 +91,27 @@ public final class AxiomRemoval {
                             f.getOWLDataProperty(IRI.create(parts[2])),
                             f.getOWLDatatype(IRI.create(parts[3])))));
         }
+        if ("subprop".equals(parts[0])) {
+            require(parts, 3, edgeId);
+            // Which kind of property it is cannot be read off the id, so both forms are offered
+            // and one() keeps whichever the ontology actually holds. Guessing from the id would
+            // mean encoding the kind into it, and the id has to stay stable for edges already
+            // saved in sidecars.
+            List<OWLOntologyChange> changes = new ArrayList<OWLOntologyChange>();
+            OWLAxiom objectForm = f.getOWLSubObjectPropertyOfAxiom(
+                    f.getOWLObjectProperty(IRI.create(parts[1])),
+                    f.getOWLObjectProperty(IRI.create(parts[2])));
+            OWLAxiom dataForm = f.getOWLSubDataPropertyOfAxiom(
+                    f.getOWLDataProperty(IRI.create(parts[1])),
+                    f.getOWLDataProperty(IRI.create(parts[2])));
+            if (ontology.containsAxiom(objectForm)) {
+                changes.add(new RemoveAxiom(ontology, objectForm));
+            }
+            if (ontology.containsAxiom(dataForm)) {
+                changes.add(new RemoveAxiom(ontology, dataForm));
+            }
+            return changes;
+        }
         if ("dr".equals(parts[0])) {
             require(parts, 4, edgeId);
             return domainAndRange(ontology, parts[1], parts[2], parts[3]);

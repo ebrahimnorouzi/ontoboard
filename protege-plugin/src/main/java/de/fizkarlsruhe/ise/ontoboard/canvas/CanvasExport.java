@@ -20,9 +20,27 @@ public final class CanvasExport {
     private CanvasExport() {
     }
 
+    /** Writes a PNG at the default scale. Kept so existing callers are unaffected. */
     public static void writePng(SchemaGraph graph, File target) throws IOException {
+        writePng(graph, target, SCALE);
+    }
+
+    /**
+     * Writes a PNG at {@code scale}.
+     *
+     * <p>A diagram exported at screen size is too small for a paper or a slide. Scaling at render
+     * time rather than resampling afterwards keeps text and strokes sharp, which is the entire
+     * point of asking for a higher resolution.
+     *
+     * @param scale must be positive; 1 is screen size
+     */
+    public static void writePng(SchemaGraph graph, File target, double scale)
+            throws IOException {
+        if (scale <= 0) {
+            throw new IllegalArgumentException("export scale must be positive, got " + scale);
+        }
         BufferedImage image = mxCellRenderer.createBufferedImage(
-                graph, null, SCALE, BACKGROUND, true, null);
+                graph, null, scale, BACKGROUND, true, null);
         if (image == null) {
             // An empty graph has no bounds; emit a 1x1 rather than a corrupt file.
             image = new BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB);
