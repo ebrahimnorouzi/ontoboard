@@ -28,6 +28,8 @@ import de.fizkarlsruhe.ise.ontoboard.model.DisplayLabels;
 import de.fizkarlsruhe.ise.ontoboard.model.OntologyProjection;
 import de.fizkarlsruhe.ise.ontoboard.model.Projection;
 import de.fizkarlsruhe.ise.ontoboard.reason.InferredEdges;
+import de.fizkarlsruhe.ise.ontoboard.odk.IdRanges;
+import de.fizkarlsruhe.ise.ontoboard.odk.TermMinter;
 import de.fizkarlsruhe.ise.ontoboard.odk.OdkProjectLoader;
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
@@ -1006,21 +1008,33 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
     private void createEntityAt(EntityFactory.Kind kind, int x, int y) {
         OWLOntology ontology = getOWLModelManager().getActiveOntology();
         String what = kind == EntityFactory.Kind.INDIVIDUAL ? "individual" : "class";
+        // The policy comes from the project, not from a setting: an ODK project mints numeric
+        // identifiers from this editor's allocated range, anything else names the term from what
+        // is typed. describe() goes in the prompt because the two produce very different IRIs and
+        // a user expecting #Person who gets MWO_0001000 will think something has broken.
+        TermMinter minter = TermMinter.forOntologyFile(currentOntologyFile, editorName());
         String name = JOptionPane.showInputDialog(this,
-                "Name for the new " + what + ":", "New " + what,
-                JOptionPane.PLAIN_MESSAGE);
+                "Name for the new " + what + ":\n\n" + minter.describe(),
+                "New " + what, JOptionPane.PLAIN_MESSAGE);
         if (name == null) {
             return;
         }
         IRI iri;
         try {
-            iri = EntityFactory.iriFor(ontology, name);
+            iri = minter.mintFor(ontology, name);
         } catch (IllegalArgumentException invalid) {
             JOptionPane.showMessageDialog(this, invalid.getMessage(),
                     "Cannot use that name", JOptionPane.WARNING_MESSAGE);
             return;
+        } catch (IdRanges.NoRangeException cannotMint) {
+            // Deliberately not falling back to a name-derived IRI. That would put the term
+            // outside the project's own identifier scheme without saying so, and the whole point
+            // of the ranges is that nobody mints outside their block.
+            JOptionPane.showMessageDialog(this, cannotMint.getMessage(),
+                    "Cannot mint an identifier", JOptionPane.WARNING_MESSAGE);
+            return;
         }
-        List<OWLOntologyChange> changes = EntityFactory.declare(ontology, iri, kind);
+        List<OWLOntologyChange> changes = minter.declare(ontology, iri, kind, name);
         if (!changes.isEmpty()) {
             getOWLModelManager().applyChanges(changes);
         }
@@ -1028,6 +1042,27 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         membership.add(iri.toString());
         refresh();
         saveLayoutTo(currentOntologyFile);
+    }
+
+    /**
+     * Who is minting, for matching against the ID ranges.
+     *
+     * <p>The collaboration display name when one is configured, since that is the name a team has
+     * already agreed on and the one their ranges are likely allocated to; otherwise the OS account,
+     * which is what the scaffold allocates the first range to.
+     */
+    private String editorName() {
+        try {
+            String configured = CollabSettingsStore.load().getDisplayName();
+            if (configured != null && !configured.trim().isEmpty()) {
+                return configured.trim();
+            }
+        } catch (RuntimeException noPreferences) {
+            LOGGER.debug("OntoBoard: no collaboration settings; using the OS account name",
+                    noPreferences);
+        }
+        String account = System.getProperty("user.name", "");
+        return account.trim().isEmpty() ? "FirstEditor" : account.trim();
     }
 
     /**
