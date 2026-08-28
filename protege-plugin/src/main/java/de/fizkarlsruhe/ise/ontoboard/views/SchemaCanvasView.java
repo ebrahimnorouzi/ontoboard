@@ -27,6 +27,8 @@ import de.fizkarlsruhe.ise.ontoboard.model.CanvasEdge;
 import de.fizkarlsruhe.ise.ontoboard.model.DisplayLabels;
 import de.fizkarlsruhe.ise.ontoboard.model.OntologyProjection;
 import de.fizkarlsruhe.ise.ontoboard.model.Projection;
+import de.fizkarlsruhe.ise.ontoboard.prov.Provenance;
+import de.fizkarlsruhe.ise.ontoboard.prov.ProvenanceSettings;
 import de.fizkarlsruhe.ise.ontoboard.reason.InferredEdges;
 import de.fizkarlsruhe.ise.ontoboard.odk.IdRanges;
 import de.fizkarlsruhe.ise.ontoboard.odk.TermMinter;
@@ -1035,6 +1037,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             return;
         }
         List<OWLOntologyChange> changes = minter.declare(ontology, iri, kind, name);
+        changes.addAll(provenanceFor(ontology, iri, minter.isNumeric()));
         if (!changes.isEmpty()) {
             getOWLModelManager().applyChanges(changes);
         }
@@ -1042,6 +1045,43 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         membership.add(iri.toString());
         refresh();
         saveLayoutTo(currentOntologyFile);
+    }
+
+    /**
+     * Provenance for a term just created, or nothing.
+     *
+     * <p>Whether to stamp is the ontology's decision more than the user's - see
+     * {@link ProvenanceSettings}. An ontology that has never recorded provenance does not start
+     * because somebody opened it here, since that would write a convention its maintainers never
+     * chose into every term and show up as unexplained churn in their next diff.
+     *
+     * <p>The annotation properties are declared alongside, because {@code ROBOT report} flags an
+     * undeclared annotation property - so stamping without declaring would make a project fail its
+     * own quality check.
+     */
+    private List<OWLOntologyChange> provenanceFor(OWLOntology ontology, IRI iri,
+            boolean isOdkProject) {
+        ProvenanceSettings settings = ProvenanceSettings.load();
+        if (!settings.shouldStamp(ontology, isOdkProject)) {
+            return new ArrayList<OWLOntologyChange>();
+        }
+        List<OWLOntologyChange> changes = new ArrayList<OWLOntologyChange>(
+                Provenance.declareProperties(ontology));
+        changes.addAll(Provenance.stampNew(ontology, iri, settings.canonicalAgent(), today()));
+        return changes;
+    }
+
+    /**
+     * Today, as {@code YYYY-MM-DD}.
+     *
+     * <p>Java 8 has {@code LocalDate}, but this bundle targets the Java 8 <em>API surface</em> on a
+     * JRE that Protege supplies, and SimpleDateFormat is available everywhere without question.
+     * The format is fixed to ISO regardless of locale, since a date in the ontology must not depend
+     * on the machine that wrote it.
+     */
+    private static String today() {
+        return new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.ROOT)
+                .format(new java.util.Date());
     }
 
     /**
