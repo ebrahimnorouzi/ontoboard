@@ -148,14 +148,42 @@ public final class OdkScaffold {
                 + "# This file is never overwritten - put your own rules here.\n";
     }
 
+    /**
+     * The ID ranges file, in the shape ODK actually uses.
+     *
+     * <p>What was here before was wrong rather than merely incomplete: it asserted an
+     * invented {@code idrange:has_id_policy} property under the project's own namespace, and
+     * declared no IRI prefix, no digit count and no ranges at all. ODK's tooling does not
+     * recognise that property, and a project generated from it could not allocate identifiers
+     * to anybody - so two collaborators would mint the same identifier by construction. The
+     * real format and its four OBO properties are in {@link IdRanges}; the reference file is
+     * {@code ISE-FIZKarlsruhe/mwo/src/ontology/mwo-idranges.owl}.
+     *
+     * <p>One range is allocated up front, to whoever is creating the project. A file with no
+     * ranges is what the previous version effectively produced, and it makes the very first
+     * minting attempt fail for the one person guaranteed to be there.
+     */
     private static String idRanges(OdkProjectConfig c) {
         String id = c.getOntologyId();
-        return "Prefix(: = <" + c.getNamespace() + ">)\n"
-                + "Prefix(idrange: = <" + c.getBaseIri() + "/idrange/>)\n\n"
-                + "Ontology(<" + c.getBaseIri() + "/idrange>\n\n"
-                + "    AnnotationAssertion(idrange:has_id_policy <" + c.getBaseIri()
-                + "> \"" + id.toUpperCase() + "\")\n"
-                + ")\n";
+        String upper = id.toUpperCase(java.util.Locale.ROOT);
+        String base = c.getBaseIri().replaceAll("\\.owl$", "");
+        return IdRanges.create(base + "/" + id + "-idranges.owl", upper,
+                        IdRanges.prefixFor(c.getBaseIri(), id), 7)
+                .withRange(firstEditor(), 1000, 9999)
+                .toManchester();
+    }
+
+    /**
+     * Who the first ID range belongs to.
+     *
+     * <p>The OS account name: there is nothing better available while scaffolding, and it is at
+     * least stable and recognisable to the person it names. They can rename it in the file. What
+     * matters is that a range exists at all, so the project can mint from the moment it is
+     * created.
+     */
+    private static String firstEditor() {
+        String name = System.getProperty("user.name", "");
+        return name.trim().isEmpty() ? "FirstEditor" : name.trim();
     }
 
     private static String catalog() {
