@@ -1,6 +1,7 @@
 package de.fizkarlsruhe.ise.ontoboard.odk;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -137,6 +138,40 @@ class OdkScaffoldTest {
     @Test
     void theFallbackIriPassesValidation(@TempDir Path dir) {
         new OdkProjectConfig("abc", "ABC", "", "", "", dir.toFile()).validate();
+    }
+
+    /**
+     * The generated ID ranges file must be one ODK recognises and one the plugin can mint from.
+     *
+     * <p>The previous version wrote an invented has_id_policy property and no ranges, so a fresh
+     * project could not allocate an identifier to anybody - which makes two collaborators minting
+     * the same identifier a certainty rather than a risk.
+     */
+    @Test
+    void theGeneratedIdRangesFileCanActuallyMint(@TempDir Path dir) throws Exception {
+        OdkProjectConfig config = new OdkProjectConfig("mwo", "MWO", "",
+                "http://purl.obolibrary.org/obo/mwo.owl", "", dir.toFile());
+        OdkScaffold.create(config);
+
+        String written = new String(java.nio.file.Files.readAllBytes(
+                new java.io.File(config.getProjectRoot(),
+                        "src/ontology/mwo-idranges.owl").toPath()),
+                java.nio.charset.StandardCharsets.UTF_8);
+
+        assertFalse(written.contains("has_id_policy"),
+                "has_id_policy is not an OBO property and ODK does not read it");
+        IdRanges ranges = IdRanges.parse(written);
+        assertEquals("MWO", ranges.getPolicyName());
+        assertEquals(7, ranges.getIdDigits());
+        assertEquals(1, ranges.getRanges().size(),
+                "a project with no ranges cannot mint at all");
+
+        String owner = ranges.getRanges().get(0).getAllocatedTo();
+        String minted = ranges.mint(owner, java.util.Collections.<String>emptySet());
+        assertTrue(minted.startsWith("http://purl.obolibrary.org/obo/mwo.owl#MWO_")
+                        || minted.contains("MWO_"),
+                "minted IRI should carry the policy prefix: " + minted);
+        assertTrue(minted.endsWith("0001000"), "first identifier in the range, padded: " + minted);
     }
 
     @Test
