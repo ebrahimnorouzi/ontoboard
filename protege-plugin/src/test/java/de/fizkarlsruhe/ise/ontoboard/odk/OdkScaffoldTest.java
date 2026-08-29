@@ -174,6 +174,57 @@ class OdkScaffoldTest {
         assertTrue(minted.endsWith("0001000"), "first identifier in the range, padded: " + minted);
     }
 
+    /**
+     * The generated project must not tell a user to run a file it does not write.
+     *
+     * <p>The YAML header used to say "sh run.sh make update_repo" - ODK's own instruction, naming
+     * a 150-line Docker wrapper this scaffold deliberately does not produce, because running the
+     * pipeline without Docker is the reason the plugin embeds robot-core at all.
+     */
+    @Test
+    void theGeneratedProjectDoesNotNameFilesItNeverWrites(@TempDir Path dir) throws Exception {
+        OdkProjectConfig config = new OdkProjectConfig("mwo", "MWO", "",
+                "http://purl.obolibrary.org/obo/mwo.owl", "", dir.toFile());
+        List<File> written = OdkScaffold.create(config);
+
+        java.util.Set<String> names = new java.util.HashSet<String>();
+        for (File file : written) {
+            names.add(file.getName());
+        }
+        String yaml = read(config, "mwo-odk.yaml");
+        if (yaml.contains("run.sh")) {
+            assertTrue(names.contains("run.sh"),
+                    "the YAML names run.sh but the scaffold never writes it");
+        }
+        assertTrue(yaml.contains("robot on") || yaml.contains("robot directly"),
+                "it should say what is actually needed: " + yaml);
+    }
+
+    /**
+     * A release with no owl:versionIRI cannot be cited or pinned by anyone downstream, and an
+     * undated copy means each release destroys the last - which a single cp did.
+     */
+    @Test
+    void prepareReleaseStampsAVersionAndKeepsDatedCopies(@TempDir Path dir) throws Exception {
+        OdkProjectConfig config = new OdkProjectConfig("mwo", "MWO", "",
+                "http://purl.obolibrary.org/obo/mwo.owl", "", dir.toFile());
+        OdkScaffold.create(config);
+
+        String makefile = read(config, "Makefile");
+        assertTrue(makefile.contains("--version-iri"), makefile);
+        assertTrue(makefile.contains("owl:versionInfo"), makefile);
+        assertTrue(makefile.contains("releases/$(TODAY)"),
+                "an undated release directory means each release overwrites the last");
+        assertTrue(makefile.contains("TODAY :="), "TODAY has to be defined to be used");
+    }
+
+    private static String read(OdkProjectConfig config, String name) throws Exception {
+        return new String(java.nio.file.Files.readAllBytes(
+                new File(new File(new File(config.getProjectRoot(), "src"), "ontology"),
+                        name).toPath()),
+                java.nio.charset.StandardCharsets.UTF_8);
+    }
+
     @Test
     void aMissingTitleIsRejected(@TempDir Path dir) {
         assertThrows(IllegalArgumentException.class,
