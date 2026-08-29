@@ -63,7 +63,7 @@
 
   <extension id="menu.OntoBoard.project.idranges"
              point="org.protege.editor.core.application.EditorKitMenuAction">
-    <name value="ID ranges..."/>
+    <name value="ID ranges"/>
     <toolTip value="Who may mint which identifiers in this project"/>
     <class value="de.fizkarlsruhe.ise.ontoboard.menu.IdRangesAction"/>
     <path value="ontoboard.menu.OntoBoard.project/SlotB-A"/>
@@ -81,7 +81,7 @@
 
   <extension id="menu.OntoBoard.robot.measure"
              point="org.protege.editor.core.application.EditorKitMenuAction">
-    <name value="Measure"/>
+    <name value="Measure..."/>
     <toolTip value="Size, expressivity and shape of this ontology - works on Protege 5.5 too"/>
     <class value="de.fizkarlsruhe.ise.ontoboard.menu.MeasureAction"/>
     <path value="ontoboard.menu.OntoBoard.robot/SlotA-A"/>
@@ -90,10 +90,19 @@
 
   <extension id="menu.OntoBoard.robot.report"
              point="org.protege.editor.core.application.EditorKitMenuAction">
-    <name value="Quality report"/>
+    <name value="Quality report..."/>
     <toolTip value="What ROBOT's default profile finds wrong - needs Protege 5.6"/>
     <class value="de.fizkarlsruhe.ise.ontoboard.menu.QualityReportAction"/>
     <path value="ontoboard.menu.OntoBoard.robot/SlotA-B"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
+
+  <extension id="menu.OntoBoard.robot.transform"
+             point="org.protege.editor.core.application.EditorKitMenuAction">
+    <name value="Transform..."/>
+    <toolTip value="Relax, reduce, repair or merge imports - applied so Protege can undo it"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.menu.TransformAction"/>
+    <path value="ontoboard.menu.OntoBoard.robot/SlotB-A"/>
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
