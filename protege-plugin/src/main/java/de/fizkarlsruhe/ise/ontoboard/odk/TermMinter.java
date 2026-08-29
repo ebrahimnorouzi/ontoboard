@@ -90,11 +90,11 @@ public final class TermMinter {
     /**
      * The {@code *-idranges.owl} beside {@code ontologyFile}, or null.
      *
-     * <p>Package-private so the search itself is testable without an ontology. Only a sibling
-     * counts: an idranges file elsewhere in the repository belongs to a different ontology, and
-     * minting from another ontology's ranges would hand out identifiers in someone else's space.
+     * <p>Only a sibling counts: an idranges file elsewhere in the repository belongs to a
+     * different ontology, and minting from another ontology's ranges would hand out identifiers in
+     * someone else's space.
      */
-    static File findRangesFile(File ontologyFile) {
+    public static File findRangesFile(File ontologyFile) {
         if (ontologyFile == null) {
             return null;
         }

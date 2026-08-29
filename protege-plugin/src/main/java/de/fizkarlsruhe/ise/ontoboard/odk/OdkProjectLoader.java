@@ -205,12 +205,19 @@ public final class OdkProjectLoader {
     }
 
     /** Makefile targets worth offering, when a Makefile is present. */
+    /**
+     * The targets this project's Makefile actually offers, most-used first.
+     *
+     * <p>Previously this opened the Makefile only to check it existed and then returned six
+     * hardcoded names. On the reference project {@code ISE-FIZKarlsruhe/mwo} that was wrong in both
+     * directions at once: it offered {@code reason} and {@code report}, which that Makefile does
+     * not define, and hid the other 39 targets it does - including {@code all_imports} and the
+     * {@code mirror-*} rules, which are what an ODK build is for.
+     */
     public static List<String> availableTargets(Detected project) {
-        File makefile = new File(project.getEditFile().getParentFile(), "Makefile");
-        if (!makefile.isFile()) {
+        if (project == null) {
             return Collections.emptyList();
         }
-        return Collections.unmodifiableList(
-                Arrays.asList("all", "test", "reason", "report", "prepare_release", "clean"));
+        return MakeTargets.ordered(MakeTargets.of(project.getEditFile()));
     }
 }
