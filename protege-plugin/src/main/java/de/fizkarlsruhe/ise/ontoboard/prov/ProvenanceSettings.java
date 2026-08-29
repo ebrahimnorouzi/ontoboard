@@ -38,7 +38,7 @@ public final class ProvenanceSettings {
     private final String agent;
     private final Mode mode;
 
-    ProvenanceSettings(String agent, Mode mode) {
+    public ProvenanceSettings(String agent, Mode mode) {
         this.agent = agent == null ? "" : agent.trim();
         this.mode = mode == null ? Mode.FOLLOW_THE_ONTOLOGY : mode;
     }

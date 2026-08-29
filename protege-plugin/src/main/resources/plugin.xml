@@ -20,6 +20,105 @@
     <category value="@org.protege.ontologycategory"/>
   </extension>
 
+
+  <!-- ============================================================================
+       The OntoBoard menu.
+
+       A top-level menu is an EditorKitMenuAction with a name, a root path and NO class -
+       that is how Protege's own File, Tools and Reasoner menus are declared. A submenu is
+       the same thing with a path under a parent. Children reference their parent by
+       <bundleSymbolicName>.<extensionId>, which is why every path below starts "ontoboard.".
+
+       Slot letters order the entries, and a CHANGE of the first letter draws a separator -
+       so SlotA-*, SlotB-* and so on are groups, not arbitrary names.
+
+       /SlotGZ-A puts OntoBoard immediately after Tools (/SlotG-A) and before Refactor
+       (/SlotH-A), which is where a user looks for project-level tooling.
+       ============================================================================ -->
+
+  <extension id="menu.OntoBoard" name="OntoBoardMenu"
+             point="org.protege.editor.core.application.EditorKitMenuAction">
+    <name value="OntoBoard"/>
+    <path value="/SlotGZ-A"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
+
+  <!-- = Project = -->
+
+  <extension id="menu.OntoBoard.project" name="Project"
+             point="org.protege.editor.core.application.EditorKitMenuAction">
+    <name value="Project"/>
+    <path value="ontoboard.menu.OntoBoard/SlotA-A"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
+
+  <extension id="menu.OntoBoard.project.new"
+             point="org.protege.editor.core.application.EditorKitMenuAction">
+    <name value="New ODK project..."/>
+    <toolTip value="Create an ODK-style ontology repository and start editing it"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.odk.NewProjectAction"/>
+    <path value="ontoboard.menu.OntoBoard.project/SlotA-A"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
+
+  <extension id="menu.OntoBoard.project.idranges"
+             point="org.protege.editor.core.application.EditorKitMenuAction">
+    <name value="ID ranges..."/>
+    <toolTip value="Who may mint which identifiers in this project"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.menu.IdRangesAction"/>
+    <path value="ontoboard.menu.OntoBoard.project/SlotB-A"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
+
+  <!-- = ROBOT = -->
+
+  <extension id="menu.OntoBoard.robot" name="Robot"
+             point="org.protege.editor.core.application.EditorKitMenuAction">
+    <name value="ROBOT"/>
+    <path value="ontoboard.menu.OntoBoard/SlotB-A"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
+
+  <extension id="menu.OntoBoard.robot.measure"
+             point="org.protege.editor.core.application.EditorKitMenuAction">
+    <name value="Measure"/>
+    <toolTip value="Size, expressivity and shape of this ontology - works on Protege 5.5 too"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.menu.MeasureAction"/>
+    <path value="ontoboard.menu.OntoBoard.robot/SlotA-A"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
+
+  <extension id="menu.OntoBoard.robot.report"
+             point="org.protege.editor.core.application.EditorKitMenuAction">
+    <name value="Quality report"/>
+    <toolTip value="What ROBOT's default profile finds wrong - needs Protege 5.6"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.menu.QualityReportAction"/>
+    <path value="ontoboard.menu.OntoBoard.robot/SlotA-B"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
+
+  <!-- = Provenance = -->
+
+  <extension id="menu.OntoBoard.provenance"
+             point="org.protege.editor.core.application.EditorKitMenuAction">
+    <name value="Provenance..."/>
+    <toolTip value="Who to record as the author of new terms"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.menu.ProvenanceAction"/>
+    <path value="ontoboard.menu.OntoBoard/SlotC-A"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
+
+  <!-- = Collaboration = -->
+
+  <extension id="menu.OntoBoard.collaboration"
+             point="org.protege.editor.core.application.EditorKitMenuAction">
+    <name value="Collaboration..."/>
+    <toolTip value="Server, board and access token for live editing"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.menu.CollaborationAction"/>
+    <path value="ontoboard.menu.OntoBoard/SlotC-B"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
+
   <!-- Tools menu: start a new ODK project -->
   <extension id="NewOdkProjectAction" point="org.protege.editor.core.application.EditorKitMenuAction">
     <name value="New ODK Project..."/>
