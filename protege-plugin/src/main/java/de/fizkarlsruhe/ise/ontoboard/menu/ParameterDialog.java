@@ -21,6 +21,8 @@ import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTextArea;
 import javax.swing.JTextField;
 
 /**
@@ -119,7 +121,14 @@ public final class ParameterDialog {
             at.gridx = 1;
             Component control = controlFor(parent, parameter);
             controls.put(parameter.getKey(), control);
+            // A text area needs the row to grow, or GridBag draws it at its minimum and the
+            // "several lines" the kind exists for are one line with a scrollbar.
+            at.fill = parameter.getKind() == Parameter.Kind.MULTILINE
+                    ? GridBagConstraints.BOTH : GridBagConstraints.NONE;
+            at.weighty = parameter.getKind() == Parameter.Kind.MULTILINE ? 1 : 0;
             form.add(control, at);
+            at.fill = GridBagConstraints.NONE;
+            at.weighty = 0;
 
             at.gridx = 2;
             form.add(helpButton(parent, parameter), at);
@@ -143,7 +152,7 @@ public final class ParameterDialog {
         help.setToolTipText("What does " + parameter.getLabel() + " do?");
         help.setFocusable(true);
         help.addActionListener(a -> JOptionPane.showMessageDialog(parent,
-                "<html><body style='width:360px'>" + escape(parameter.getHelp())
+                "<html><body style='width:360px'>" + asHtml(parameter.getHelp())
                         + defaultNote(parameter) + "</body></html>",
                 parameter.getLabel(), JOptionPane.INFORMATION_MESSAGE));
         return help;
@@ -185,6 +194,15 @@ public final class ParameterDialog {
                 row.putClientProperty("ontoboard.field", path);
                 return row;
             }
+            case MULTILINE: {
+                JTextArea area = new JTextArea(parameter.getDefaultValue(), 8, 34);
+                area.setLineWrap(false);
+                area.setFont(new Font(Font.MONOSPACED, Font.PLAIN,
+                        new JTextField().getFont().getSize()));
+                JScrollPane scroller = new JScrollPane(area);
+                scroller.putClientProperty("ontoboard.area", area);
+                return scroller;
+            }
             case NUMBER:
             case TEXT:
             default: {
@@ -215,6 +233,12 @@ public final class ParameterDialog {
         if (control instanceof JTextField) {
             return ((JTextField) control).getText();
         }
+        if (control instanceof JScrollPane) {
+            Object area = ((JScrollPane) control).getClientProperty("ontoboard.area");
+            if (area instanceof JTextArea) {
+                return ((JTextArea) area).getText();
+            }
+        }
         if (control instanceof JPanel) {
             Object field = ((JPanel) control).getClientProperty("ontoboard.field");
             if (field instanceof JTextField) {
@@ -235,6 +259,11 @@ public final class ParameterDialog {
                 ((JCheckBox) control).setSelected("true".equalsIgnoreCase(value));
             } else if (control instanceof JTextField) {
                 ((JTextField) control).setText(value);
+            } else if (control instanceof JScrollPane) {
+                Object area = ((JScrollPane) control).getClientProperty("ontoboard.area");
+                if (area instanceof JTextArea) {
+                    ((JTextArea) area).setText(value);
+                }
             } else if (control instanceof JPanel) {
                 Object field = ((JPanel) control).getClientProperty("ontoboard.field");
                 if (field instanceof JTextField) {
@@ -247,6 +276,40 @@ public final class ParameterDialog {
     private static String escape(String text) {
         return text == null ? "" : text.replace("&", "&amp;").replace("<", "&lt;")
                 .replace(">", "&gt;");
+    }
+
+    /**
+     * Help text as HTML, keeping the paragraphs it was written with.
+     *
+     * <p>Swing renders HTML in a label, and HTML collapses newlines. The help for a parameter that
+     * offers five reasoners is five paragraphs, one per reasoner; without this it arrives as a
+     * single unbroken block of prose that nobody reads to the end - which defeats the entire point
+     * of making the help mandatory.
+     *
+     * <p>Package-visible so it can be tested. Everything else here is Swing and is not.
+     */
+    static String asHtml(String text) {
+        if (text == null) {
+            return "";
+        }
+        StringBuilder html = new StringBuilder();
+        boolean blankRun = false;
+        for (String line : escape(text.trim()).split("\r?\n", -1)) {
+            if (line.trim().isEmpty()) {
+                blankRun = html.length() > 0;
+                continue;
+            }
+            if (blankRun) {
+                // A blank line was a paragraph break, and reads as one.
+                html.append("<br><br>");
+                blankRun = false;
+            } else if (html.length() > 0) {
+                // A single newline was a line break the author meant, not a space.
+                html.append("<br>");
+            }
+            html.append(line.trim());
+        }
+        return html.toString();
     }
 
     /** A dimmed hint label, for callers building their own rows beside a generated form. */

@@ -29,6 +29,15 @@ public final class Parameter {
         FLAG,
         /** Free text. */
         TEXT,
+        /**
+         * Free text over several lines, where each line means something.
+         *
+         * <p>A term list is the case: forty IRIs, one per line, pasted out of a spreadsheet. A
+         * single-line field would turn that into one unusable line, and asking a user to save a
+         * file first to import ten terms is a worse tool than the command line they are trying to
+         * avoid.
+         */
+        MULTILINE,
         /** A whole number, validated. */
         NUMBER,
         /** A file to read or write, with a chooser. */
@@ -114,6 +123,7 @@ public final class Parameter {
                         ? null : label + " must be true or false.";
             case FILE:
             case TEXT:
+            case MULTILINE:
             default:
                 return null;
         }

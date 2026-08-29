@@ -179,7 +179,7 @@ public final class RobotTransform {
      * @param reasonerFactory needed by {@link Kind#REDUCE}; null falls back to OWL API's
      *     structural reasoner, which computes told subsumptions and is enough to find the
      *     obviously redundant axioms
-     * @throws QualityReport.QualityReportException if ROBOT cannot run here, with the same
+     * @throws RobotException if ROBOT cannot run here, with the same
      *     contract as the report so a caller handles one failure shape
      */
     public static Diff preview(OWLOntology ontology, Kind kind,
@@ -192,21 +192,21 @@ public final class RobotTransform {
         try {
             copy = copyOf(ontology, kind == Kind.MERGE_IMPORTS);
         } catch (OWLOntologyCreationException cannotCopy) {
-            throw new QualityReport.QualityReportException(
+            throw new RobotException(
                     "Could not copy the ontology to preview the change: "
                             + cannotCopy.getMessage(), cannotCopy);
         }
         try {
             run(copy, kind, reasonerFactory);
         } catch (LinkageError incompatible) {
-            throw new QualityReport.QualityReportException(
+            throw new RobotException(
                     kind.getLabel() + " could not run against this Protege's OWL API. Protege 5.6 "
                             + "or newer is expected to work.", incompatible);
         } catch (RuntimeException failed) {
-            throw new QualityReport.QualityReportException(
+            throw new RobotException(
                     kind.getLabel() + " failed: " + failed.getMessage(), failed);
         } catch (Exception failed) {
-            throw new QualityReport.QualityReportException(
+            throw new RobotException(
                     kind.getLabel() + " failed: " + failed.getMessage(), failed);
         }
 

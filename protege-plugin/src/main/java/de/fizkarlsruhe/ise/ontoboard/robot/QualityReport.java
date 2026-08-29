@@ -220,8 +220,14 @@ public final class QualityReport {
         return row[index].trim();
     }
 
-    /** Signals that the report could not be produced, as distinct from finding nothing. */
-    public static class QualityReportException extends RuntimeException {
+    /**
+     * Signals that the report could not be produced, as distinct from finding nothing.
+     *
+     * <p>A {@link RobotException} with the report's own wording. Kept as its own type because the
+     * difference between "no violations" and "nothing looked" matters more here than anywhere
+     * else: an empty quality report is the answer a user most wants to believe.
+     */
+    public static class QualityReportException extends RobotException {
         private static final long serialVersionUID = 1L;
 
         QualityReportException(Throwable cause) {
@@ -230,11 +236,6 @@ public final class QualityReport {
 
         QualityReportException(String message, Throwable cause) {
             super(message, cause);
-        }
-
-        /** True when the host's OWL API is too old, as opposed to a transient failure. */
-        public boolean isHostIncompatibility() {
-            return getCause() instanceof LinkageError;
         }
     }
 }

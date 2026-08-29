@@ -106,6 +106,15 @@
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
+  <extension id="menu.OntoBoard.robot.importTerms"
+             point="org.protege.editor.core.application.EditorKitMenuAction">
+    <name value="Import terms..."/>
+    <toolTip value="Extract a module from another ontology and import it, catalog entry and all"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.menu.ImportTermsAction"/>
+    <path value="ontoboard.menu.OntoBoard.robot/SlotB-B"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
+
   <!-- = Provenance = -->
 
   <extension id="menu.OntoBoard.provenance"

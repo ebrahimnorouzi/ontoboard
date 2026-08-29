@@ -111,7 +111,7 @@ public final class OntologyMeasurements {
     /**
      * Measures {@code ontology}.
      *
-     * @throws QualityReport.QualityReportException if ROBOT cannot run here, with a message
+     * @throws RobotException if ROBOT cannot run here, with a message
      *     naming the reason - the same contract as the quality report, so a panel can show
      *     either failure the same way
      */
@@ -135,11 +135,11 @@ public final class OntologyMeasurements {
                     break;
             }
         } catch (LinkageError incompatible) {
-            throw new QualityReport.QualityReportException(
+            throw new RobotException(
                     "ROBOT's metrics could not run against this Protege's OWL API. "
                             + "Protege 5.6 or newer is known to work.", incompatible);
         } catch (RuntimeException failed) {
-            throw new QualityReport.QualityReportException(
+            throw new RobotException(
                     "ROBOT could not measure this ontology: " + failed.getMessage(), failed);
         }
         return present(result);
