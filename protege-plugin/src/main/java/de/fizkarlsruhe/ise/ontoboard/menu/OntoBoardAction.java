@@ -52,6 +52,31 @@ public abstract class OntoBoardAction extends ProtegeOWLAction {
         return true;
     }
 
+    /**
+     * Asks for whatever the operation needs before it runs.
+     *
+     * <p>Called on the event dispatch thread, so it may open a dialog; {@link #run} then executes
+     * in the background with whatever was chosen. Separating the two is what lets an operation be
+     * both configurable and non-blocking - asking on the worker thread would be a Swing threading
+     * violation, and asking after the work started would be pointless.
+     *
+     * @return false to abandon the operation, which is what a cancelled dialog means
+     */
+    protected boolean configure() {
+        return true;
+    }
+
+    /**
+     * Whether the work runs on a background thread.
+     *
+     * <p>True for anything that computes. An action whose {@code run} only opens a dialog must
+     * override this to false: a modal dialog opened from a worker thread is a Swing threading
+     * violation, and the symptoms are intermittent and horrible to diagnose.
+     */
+    protected boolean runsInBackground() {
+        return true;
+    }
+
     @Override
     public final void actionPerformed(ActionEvent event) {
         OWLOntology ontology = getOWLModelManager() == null ? null
@@ -63,9 +88,27 @@ public abstract class OntoBoardAction extends ProtegeOWLAction {
                     "Nothing is open", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
+        final OWLOntology target = ontology;
+        try {
+            if (!configure()) {
+                // Cancelled at the parameter dialog. Nothing ran, so there is nothing to report.
+                return;
+            }
+        } catch (RuntimeException failure) {
+            LOGGER.warn("OntoBoard: {} could not be configured", operationName(), failure);
+            ResultDialog.show(getOWLWorkspace(),
+                    OperationResult.failed(operationName(), describe(failure)));
+            return;
+        }
         OperationResult result;
         try {
-            result = run(ontology);
+            // Off the EDT. ROBOT's report was measured taking over ten minutes on a 582-axiom
+            // ontology, and an action doing that on the dispatch thread freezes all of Protege
+            // with no repaint and no way out - a user would reasonably conclude it had crashed.
+            result = runsInBackground()
+                    ? BackgroundRun.execute(getOWLWorkspace(), operationName(),
+                            () -> run(target))
+                    : run(target);
         } catch (RuntimeException | LinkageError failure) {
             // LinkageError as well as RuntimeException: several ROBOT operations fail that way on
             // Protege 5.5's older OWL API, and a NoSuchMethodError escaping into Protege's log is

@@ -24,6 +24,13 @@ public class ProvenanceAction extends OntoBoardAction {
     private static final long serialVersionUID = 1L;
 
     @Override
+    protected boolean runsInBackground() {
+        // This action's work is a modal dialog, and opening one from a worker thread is a Swing
+        // threading violation with intermittent, miserable symptoms.
+        return false;
+    }
+
+    @Override
     protected String operationName() {
         return "Provenance";
     }
