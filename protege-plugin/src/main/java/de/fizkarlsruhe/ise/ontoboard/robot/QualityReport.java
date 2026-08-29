@@ -1,5 +1,6 @@
 package de.fizkarlsruhe.ise.ontoboard.robot;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -34,18 +35,66 @@ public final class QualityReport {
     private QualityReport() {
     }
 
+    /** ROBOT's own option keys, spelled once so a typo cannot silently do nothing. */
+    public static final String OPTION_PROFILE = "profile";
+    public static final String OPTION_FAIL_ON = "fail-on";
+    public static final String OPTION_LABELS = "labels";
+    public static final String OPTION_LIMIT = "limit";
+
     /**
-     * Every violation ROBOT's default profile finds, most severe first.
+     * The profile file an ODK project declares, or null.
      *
+     * <p>Both this plugin's scaffold and the reference project put {@code profile.txt} beside the
+     * edit file, and both their Makefiles pass {@code --profile profile.txt} to ROBOT. Running the
+     * report here against ROBOT's built-in defaults instead would mean the plugin and the
+     * project's own CI disagree about what counts as a violation - the plugin reporting problems
+     * the project has deliberately downgraded, or missing ones it has promoted. Detecting the file
+     * is what keeps the two answers the same.
+     */
+    public static File profileBeside(File ontologyFile) {
+        if (ontologyFile == null || ontologyFile.getParentFile() == null) {
+            return null;
+        }
+        File profile = new File(ontologyFile.getParentFile(), "profile.txt");
+        return profile.isFile() ? profile : null;
+    }
+
+    /**
+     * Options that reproduce what {@code make report} would do for this project.
+     *
+     * <p>The starting point for the parameter dialog, so its defaults are the project's own rules
+     * rather than ROBOT's.
+     */
+    public static Map<String, String> optionsFor(File ontologyFile) {
+        Map<String, String> options = ReportOperation.getDefaultOptions();
+        File profile = profileBeside(ontologyFile);
+        if (profile != null) {
+            options.put(OPTION_PROFILE, profile.getAbsolutePath());
+        }
+        return options;
+    }
+
+    /** Every violation ROBOT's default profile finds, most severe first. */
+    public static List<QualityFinding> run(OWLOntology ontology) {
+        return run(ontology, ReportOperation.getDefaultOptions());
+    }
+
+    /**
+     * Every violation, using {@code options}.
+     *
+     * @param options ROBOT's own option map - see {@link #optionsFor(File)}, which fills in the
+     *     project's profile so this agrees with what its CI would report
      * @throws QualityReportException if ROBOT cannot run. Callers must surface this rather
      *     than showing an empty list, which for a quality tool would be a dangerous lie.
      */
-    public static List<QualityFinding> run(OWLOntology ontology) {
+    public static List<QualityFinding> run(OWLOntology ontology, Map<String, String> options) {
         List<String[]> rows;
         try {
             IOHelper ioHelper = new IOHelper();
-            Map<String, String> options = ReportOperation.getDefaultOptions();
-            Report report = ReportOperation.getReport(ontology, ioHelper, options);
+            Map<String, String> effective = options == null
+                    ? ReportOperation.getDefaultOptions()
+                    : new java.util.LinkedHashMap<String, String>(options);
+            Report report = ReportOperation.getReport(ontology, ioHelper, effective);
             rows = report.toTable("tsv").toList("tsv");
         } catch (LinkageError incompatible) {
             // robot-core 1.9.8 is built against OWL API 4.5.29, whose Rio API uses RDF4J.
