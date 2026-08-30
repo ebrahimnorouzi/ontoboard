@@ -1,5 +1,6 @@
 package de.fizkarlsruhe.ise.ontoboard.git;
 
+import de.fizkarlsruhe.ise.ontoboard.proc.ProcessRunner;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
@@ -294,103 +295,33 @@ public final class GitClone {
      * <p>stderr merged into stdout because git writes progress to one and errors to the other, and
      * a failure message split across two streams is reassembled wrongly as often as not.
      */
+    /**
+     * Runs commands for real, through the shared {@link ProcessRunner}.
+     *
+     * <p>The hardened implementation lives there because {@code make} needs exactly the same
+     * thing, and a second copy of "read on its own thread so the timeout can actually fire" is a
+     * second chance to get it wrong.
+     */
     public static Runner processRunner() {
+        final ProcessRunner.Runner runner = ProcessRunner.real();
         return new Runner() {
             @Override
             public Outcome run(File workingDirectory, List<String> command) throws IOException {
-                ProcessBuilder builder = new ProcessBuilder(command);
-                if (workingDirectory != null) {
-                    builder.directory(workingDirectory);
+                ProcessRunner.Outcome outcome = runner.run(workingDirectory, command,
+                        TIMEOUT_MINUTES, null);
+                StringBuilder text = new StringBuilder();
+                for (String line : outcome.getOutput()) {
+                    text.append(line).append('\n');
                 }
-                builder.redirectErrorStream(true);
-                // Nothing can answer a prompt from here, so make git fail instead of waiting for
-                // one. Without these, a private repository on Windows opens the Git Credential
-                // Manager window and git blocks until somebody notices it behind Protege.
-                builder.environment().put("GIT_TERMINAL_PROMPT", "0");
-                builder.environment().put("GCM_INTERACTIVE", "never");
-                builder.environment().put("GIT_ASKPASS", "");
-                builder.environment().put("SSH_ASKPASS", "");
-
-                Process process = builder.start();
-                // git reads nothing from us, and leaving the pipe open is one more thing for it
-                // to wait on.
-                try {
-                    process.getOutputStream().close();
-                } catch (IOException alreadyClosed) {
-                    // Nothing to do; the process is going to be waited on regardless.
+                if (outcome.timedOut()) {
+                    text.append("git did not finish within ").append(TIMEOUT_MINUTES)
+                            .append(" minutes and was stopped. If the repository is private, git ")
+                            .append("may have been waiting for a credential it cannot ask for ")
+                            .append("from here.\n");
                 }
-
-                // The read happens on its own thread. It used to run here, draining to EOF before
-                // waitFor was ever reached - so a git that never exits never closes its stdout,
-                // readLine blocked forever, and the timeout below was unreachable. The bound has
-                // to cover the read as well as the wait, or it is not a bound.
-                final StringBuilder output = new StringBuilder();
-                final Process running = process;
-                Thread drain = new Thread(new Runnable() {
-                    @Override
-                    public void run() {
-                        try {
-                            BufferedReader reader = new BufferedReader(
-                                    new InputStreamReader(running.getInputStream(), "UTF-8"));
-                            try {
-                                String line;
-                                while ((line = reader.readLine()) != null) {
-                                    synchronized (output) {
-                                        output.append(line).append('\n');
-                                    }
-                                }
-                            } finally {
-                                reader.close();
-                            }
-                        } catch (IOException stopped) {
-                            // The process was destroyed under us, which is how a timeout ends.
-                        }
-                    }
-                }, "ontoboard-git-output");
-                drain.setDaemon(true);
-                drain.start();
-
-                boolean finished;
-                try {
-                    finished = process.waitFor(TIMEOUT_MINUTES, TimeUnit.MINUTES);
-                } catch (InterruptedException interrupted) {
-                    Thread.currentThread().interrupt();
-                    process.destroyForcibly();
-                    return new Outcome(-1, collected(output) + "\ninterrupted");
-                }
-                if (!finished) {
-                    // destroyForcibly closes the pipe, which unblocks the reader at EOF.
-                    process.destroyForcibly();
-                    joinBriefly(drain);
-                    return new Outcome(-1, collected(output)
-                            + "\ngit did not finish within " + TIMEOUT_MINUTES
-                            + " minutes and was stopped. If the repository is private, git may "
-                            + "have been waiting for a credential it cannot ask for from here.");
-                }
-                joinBriefly(drain);
-                return new Outcome(process.exitValue(), collected(output));
+                return new Outcome(outcome.getExitCode(), text.toString());
             }
         };
-    }
-
-    private static String collected(StringBuilder output) {
-        synchronized (output) {
-            return output.toString();
-        }
-    }
-
-    /**
-     * Waits for the last of the output, but not forever.
-     *
-     * <p>The process has exited, so the pipe is at EOF and this returns at once in practice. The
-     * bound is there because "in practice" is what the original code assumed about readLine.
-     */
-    private static void joinBriefly(Thread drain) {
-        try {
-            drain.join(2000);
-        } catch (InterruptedException interrupted) {
-            Thread.currentThread().interrupt();
-        }
     }
 
     /** Whether git can be run at all. */
