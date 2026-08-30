@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.io.StringWriter;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
+import java.util.ArrayList;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.transform.OutputKeys;
 import javax.xml.transform.Transformer;
@@ -76,10 +77,7 @@ public final class Catalog {
         String source = existing == null || existing.trim().isEmpty() ? empty() : existing;
         Document document;
         try {
-            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-            factory.setNamespaceAware(true);
-            document = factory.newDocumentBuilder()
-                    .parse(new ByteArrayInputStream(source.getBytes("UTF-8")));
+            document = parse(source);
         } catch (Exception notXml) {
             throw new IllegalStateException("catalog-v001.xml could not be read as XML: "
                     + notXml.getMessage(), notXml);
@@ -97,6 +95,67 @@ public final class Catalog {
         // and a backslash in it resolves nowhere on any of them.
         entry.setAttribute("uri", path.trim().replace('\\', '/'));
         return serialise(document);
+    }
+
+    /**
+     * Reads a catalog, without letting it reach out to anything.
+     *
+     * <p>A catalog is XML from a repository somebody cloned off the internet, so it is untrusted
+     * input. Left at its defaults a {@code DocumentBuilderFactory} will happily fetch an external
+     * DTD named in a {@code <!DOCTYPE>} - an outbound request to a host of the document author's
+     * choosing, made silently the moment a project is opened, and a block of unbounded length when
+     * that host does not answer. A catalog has no legitimate use for a doctype at all, so the
+     * cheapest fix is also the completest one: refuse documents that contain one.
+     */
+    private static Document parse(String xml) throws Exception {
+        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+        factory.setNamespaceAware(true);
+        factory.setXIncludeAware(false);
+        factory.setExpandEntityReferences(false);
+        for (String feature : new String[] {
+                "http://apache.org/xml/features/disallow-doctype-decl",
+        }) {
+            factory.setFeature(feature, true);
+        }
+        for (String feature : new String[] {
+                "http://xml.org/sax/features/external-general-entities",
+                "http://xml.org/sax/features/external-parameter-entities",
+                "http://apache.org/xml/features/nonvalidating/load-external-dtd",
+        }) {
+            try {
+                factory.setFeature(feature, false);
+            } catch (javax.xml.parsers.ParserConfigurationException notSupported) {
+                // Already covered by disallowing doctypes; a parser that does not know the
+                // feature is not a parser that will act on one.
+                continue;
+            }
+        }
+        return factory.newDocumentBuilder()
+                .parse(new ByteArrayInputStream(xml.getBytes("UTF-8")));
+    }
+
+    /**
+     * Drops whitespace-only text nodes.
+     *
+     * <p>Without this the file grows every single time it is written. The parsed document keeps
+     * the source file's own indentation as text nodes, and a Transformer with {@code INDENT=yes}
+     * then adds its own indentation <em>around</em> them - so each pass doubles what is there.
+     * Measured on a real ODK catalog: 798 bytes and 12 lines to begin with, 4166 bytes and 185
+     * lines after twelve entries, with the ODK-managed group reformatted too. A committed file
+     * that its own build regenerates then conflicts on every merge.
+     */
+    private static void stripWhitespace(org.w3c.dom.Node node) {
+        NodeList children = node.getChildNodes();
+        for (int i = children.getLength() - 1; i >= 0; i--) {
+            org.w3c.dom.Node child = children.item(i);
+            if (child.getNodeType() == org.w3c.dom.Node.TEXT_NODE
+                    && child.getNodeValue() != null
+                    && child.getNodeValue().trim().isEmpty()) {
+                node.removeChild(child);
+            } else if (child.getNodeType() == org.w3c.dom.Node.ELEMENT_NODE) {
+                stripWhitespace(child);
+            }
+        }
     }
 
     /** The {@code uri} entry for this IRI, or null. */
@@ -120,17 +179,43 @@ public final class Catalog {
         return null;
     }
 
+    /**
+     * Every import IRI the catalog maps.
+     *
+     * <p>So a caller can ask the other question - not "where does this IRI point" but "what else
+     * already points at this file", which is how you find out that writing a module here would
+     * take somebody else's.
+     */
+    public static java.util.List<String> mappedIris(String catalogXml) {
+        java.util.List<String> iris = new ArrayList<String>();
+        if (catalogXml == null || catalogXml.trim().isEmpty()) {
+            return iris;
+        }
+        try {
+            Document document = parse(catalogXml);
+            for (NodeList entries : new NodeList[] {
+                    document.getElementsByTagNameNS(NAMESPACE, "uri"),
+                    document.getElementsByTagName("uri")}) {
+                for (int i = 0; i < entries.getLength(); i++) {
+                    String name = ((Element) entries.item(i)).getAttribute("name");
+                    if (name != null && !name.isEmpty() && !iris.contains(name)) {
+                        iris.add(name);
+                    }
+                }
+            }
+        } catch (Exception notXml) {
+            return iris;
+        }
+        return iris;
+    }
+
     /** Where {@code importIri} currently points, or null when the catalog says nothing about it. */
     public static String entryFor(String catalogXml, String importIri) {
         if (catalogXml == null || catalogXml.trim().isEmpty() || importIri == null) {
             return null;
         }
         try {
-            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-            factory.setNamespaceAware(true);
-            Document document = factory.newDocumentBuilder()
-                    .parse(new ByteArrayInputStream(catalogXml.getBytes("UTF-8")));
-            Element entry = findEntry(document, importIri.trim());
+            Element entry = findEntry(parse(catalogXml), importIri.trim());
             return entry == null ? null : entry.getAttribute("uri");
         } catch (Exception notXml) {
             return null;
@@ -153,6 +238,9 @@ public final class Catalog {
 
     private static String serialise(Document document) {
         try {
+            // Before indenting, not after: the file's own indentation is in the tree as text
+            // nodes, and indenting around it is what made every write bigger than the last.
+            stripWhitespace(document.getDocumentElement());
             Transformer transformer = TransformerFactory.newInstance().newTransformer();
             transformer.setOutputProperty(OutputKeys.INDENT, "yes");
             transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "4");

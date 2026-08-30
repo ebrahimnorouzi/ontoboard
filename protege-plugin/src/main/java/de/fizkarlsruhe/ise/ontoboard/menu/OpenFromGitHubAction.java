@@ -143,9 +143,14 @@ public class OpenFromGitHubAction extends OntoBoardAction {
                 return result.failed(GitClone.describeFailure(url, cloned)).build();
             }
             result.note("Cloned into " + checkout.getAbsolutePath());
+            if (BackgroundRun.abandoned()) {
+                return result.failed("Cloned to " + checkout.getAbsolutePath()
+                        + ", but you stopped waiting, so nothing was opened.").build();
+            }
         }
 
-        File toOpen = fileToOpen(checkout, url.getPath(), result);
+        String pathInRepo = switchToTheBranchTheLinkNamed(runner, checkout, url, result);
+        File toOpen = fileToOpen(checkout, pathInRepo, result);
         if (toOpen == null) {
             return result.failed("The repository was cloned to " + checkout.getAbsolutePath()
                     + " but there is no ontology file in it.").build();
@@ -191,6 +196,57 @@ public class OpenFromGitHubAction extends OntoBoardAction {
                     + "terms will look unused and a reasoner will not find problems that are "
                     + "really there.");
         }
+    }
+
+    /**
+     * Checks out the branch the link named, once the repository can be asked which branches exist.
+     *
+     * <p>A GitHub URL gives no way to tell where a ref ends and a path begins:
+     * {@code /tree/feature/x/src} is branch {@code feature/x} path {@code src} for one repository
+     * and branch {@code feature} path {@code x/src} for another, and slash-bearing refs -
+     * {@code feature/*}, {@code release/*}, {@code dependabot/*} - are everywhere. Splitting at
+     * the first slash and passing that to {@code git clone} produced "the branch 'feature' is not
+     * in this repository": a false statement about a branch nobody named, with nothing to suggest
+     * the real one had been truncated.
+     *
+     * @return the path within the repository the link pointed at, once the branch is accounted for
+     */
+    private String switchToTheBranchTheLinkNamed(GitClone.Runner runner, File checkout,
+            GitHubUrl url, OperationResult.Builder result) {
+        if (url.getRefAndPath() == null) {
+            return url.getPath();
+        }
+        List<String> branches;
+        try {
+            GitClone.Outcome listed = runner.run(checkout, GitClone.remoteBranchesCommand());
+            branches = listed.isSuccess()
+                    ? GitClone.remoteBranches(listed.getOutput())
+                    : java.util.Collections.<String>emptyList();
+        } catch (IOException cannotRun) {
+            branches = java.util.Collections.<String>emptyList();
+        }
+
+        String[] resolved = url.resolveRef(branches);
+        if (resolved[0] == null) {
+            // No branch matches, so the whole remainder is a path on the default branch. Saying
+            // nothing beats naming a branch the user never typed.
+            result.note("Opened the default branch; no branch matched '" + url.getRefAndPath()
+                    + "'.");
+            return resolved[1];
+        }
+        try {
+            GitClone.Outcome switched = runner.run(checkout,
+                    GitClone.checkoutCommand(resolved[0]));
+            if (switched.isSuccess()) {
+                result.note("Branch: " + resolved[0]);
+            } else {
+                result.warn("Could not switch to " + resolved[0] + ", so the default branch is "
+                        + "open instead: " + GitClone.lastLineOf(switched.getOutput()));
+            }
+        } catch (IOException cannotRun) {
+            result.warn("Could not switch branch: " + cannotRun.getMessage());
+        }
+        return resolved[1];
     }
 
     /**

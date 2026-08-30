@@ -100,15 +100,23 @@ public abstract class OntoBoardAction extends ProtegeOWLAction {
                     OperationResult.failed(operationName(), describe(failure)));
             return;
         }
+        if (runsInBackground()) {
+            // Off the EDT, and the result comes back through a callback rather than a blocking
+            // get(). ROBOT's report was measured taking over ten minutes on a 582-axiom ontology:
+            // an action doing that on the dispatch thread freezes all of Protege with no repaint
+            // and no way out, and an action that blocks the EDT *waiting* for it deadlocks
+            // outright against any operation that needs the EDT to apply its changes.
+            BackgroundRun.execute(getOWLWorkspace(), operationName(), () -> run(target),
+                    result -> {
+                        if (result != null) {
+                            ResultDialog.show(getOWLWorkspace(), result);
+                        }
+                    });
+            return;
+        }
         OperationResult result;
         try {
-            // Off the EDT. ROBOT's report was measured taking over ten minutes on a 582-axiom
-            // ontology, and an action doing that on the dispatch thread freezes all of Protege
-            // with no repaint and no way out - a user would reasonably conclude it had crashed.
-            result = runsInBackground()
-                    ? BackgroundRun.execute(getOWLWorkspace(), operationName(),
-                            () -> run(target))
-                    : run(target);
+            result = run(target);
         } catch (RuntimeException | LinkageError failure) {
             // LinkageError as well as RuntimeException: several ROBOT operations fail that way on
             // Protege 5.5's older OWL API, and a NoSuchMethodError escaping into Protege's log is

@@ -10,6 +10,8 @@ import org.obolibrary.robot.ExtractOperation;
 import org.obolibrary.robot.MireotOperation;
 import org.semanticweb.owlapi.model.IRI;
 import org.semanticweb.owlapi.model.OWLOntology;
+import org.semanticweb.owlapi.model.OWLOntologyID;
+import org.semanticweb.owlapi.model.SetOntologyID;
 import org.semanticweb.owlapi.model.parameters.Imports;
 import uk.ac.manchester.cs.owlapi.modularity.ModuleType;
 
@@ -186,10 +188,23 @@ public final class TermExtract {
 
         IRI iri = moduleIri != null ? moduleIri : moduleIriFor(source);
         try {
-            OWLOntology module = method == Method.MIREOT
-                    ? MireotOperation.getAncestors(source, null, present,
-                            MireotOperation.getDefaultAnnotationProperties())
-                    : ExtractOperation.extract(source, present, iri, moduleTypeOf(method));
+            OWLOntology module;
+            if (method == Method.MIREOT) {
+                module = MireotOperation.getAncestors(source, null, present,
+                        MireotOperation.getDefaultAnnotationProperties());
+                // MireotOperation takes no output IRI, so the module comes back carrying the
+                // SOURCE ontology's identity. Saved and imported under that IRI it claims to be
+                // the whole of the ontology it was cut from - the import IRI the catalog maps
+                // then belongs to no ontology at all, so the import never resolves, and any tool
+                // that loads both has two different ontologies under one name and keeps whichever
+                // it saw first. Every other method takes the IRI as an argument; this one has to
+                // be told afterwards.
+                module.getOWLOntologyManager().applyChange(new SetOntologyID(module,
+                        new OWLOntologyID(com.google.common.base.Optional.of(iri),
+                                com.google.common.base.Optional.<IRI>absent())));
+            } else {
+                module = ExtractOperation.extract(source, present, iri, moduleTypeOf(method));
+            }
             return new Result(module, missing, terms.size());
         } catch (LinkageError incompatible) {
             throw new RobotException(

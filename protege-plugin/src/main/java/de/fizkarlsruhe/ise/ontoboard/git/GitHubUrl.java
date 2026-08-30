@@ -44,12 +44,19 @@ public final class GitHubUrl {
     private final String repository;
     private final String branch;
     private final String path;
+    private final String refAndPath;
 
     private GitHubUrl(String owner, String repository, String branch, String path) {
+        this(owner, repository, branch, path, null);
+    }
+
+    private GitHubUrl(String owner, String repository, String branch, String path,
+            String refAndPath) {
         this.owner = owner;
         this.repository = repository;
         this.branch = branch;
         this.path = path;
+        this.refAndPath = refAndPath;
     }
 
     /**
@@ -63,11 +70,25 @@ public final class GitHubUrl {
         if (trimmed.isEmpty()) {
             throw new IllegalArgumentException("No repository was named.");
         }
-        // Trailing punctuation from a copy out of prose, and a fragment from a deep link.
+        // Trailing punctuation from a copy out of prose, then the query and the fragment - both
+        // of which GitHub's own address bar puts there. "?tab=readme-ov-file" is what you get
+        // after clicking the README pill, and "?plain=1" is on every plain-text file link; left
+        // in place the first is rejected outright and the second silently becomes part of a
+        // branch name or a path that matches no file.
         trimmed = trimmed.replaceAll("[),.;]+$", "");
+        int query = trimmed.indexOf('?');
+        if (query > 0) {
+            trimmed = trimmed.substring(0, query);
+        }
         int hash = trimmed.indexOf('#');
         if (hash > 0) {
             trimmed = trimmed.substring(0, hash);
+        }
+        while (trimmed.endsWith("/")) {
+            trimmed = trimmed.substring(0, trimmed.length() - 1);
+        }
+        if (trimmed.isEmpty()) {
+            throw new IllegalArgumentException("No repository was named.");
         }
 
         Matcher raw = RAW.matcher(trimmed);
@@ -104,14 +125,16 @@ public final class GitHubUrl {
         String first = parts[0].toLowerCase(Locale.ROOT);
         if (("tree".equals(first) || "blob".equals(first) || "raw".equals(first))
                 && parts.length >= 2) {
-            StringBuilder path = new StringBuilder();
-            for (int i = 2; i < parts.length; i++) {
-                if (path.length() > 0) {
-                    path.append('/');
+            StringBuilder remainder = new StringBuilder();
+            for (int i = 1; i < parts.length; i++) {
+                if (remainder.length() > 0) {
+                    remainder.append('/');
                 }
-                path.append(parts[i]);
+                remainder.append(parts[i]);
             }
-            return new GitHubUrl(owner, repository, parts[1], emptyToNull(path.toString()));
+            return new GitHubUrl(owner, repository, parts[1],
+                    emptyToNull(afterFirstSegment(remainder.toString())),
+                    emptyToNull(remainder.toString()));
         }
         // Anything else under the repository - /issues, /pull/3, /settings - still names the
         // repository, which is what was asked for.
@@ -135,14 +158,77 @@ public final class GitHubUrl {
         return repository;
     }
 
-    /** The branch named in the link, or null for whatever the repository's default is. */
+    /**
+     * The branch named in the link, as far as can be told without asking the repository.
+     *
+     * <p>Only the first segment, because a GitHub URL gives no way to tell where the ref ends and
+     * the path begins: {@code /tree/feature/x/src} is branch {@code feature/x} path {@code src}
+     * for one repository and branch {@code feature} path {@code x/src} for another. Slash-bearing
+     * refs - {@code feature/*}, {@code release/*}, {@code dependabot/*} - are everywhere, so this
+     * guess is wrong often. Use {@link #getRefAndPath()} with {@link #resolveRef} once the
+     * repository's real branches are known.
+     */
     public String getBranch() {
         return branch;
     }
 
-    /** The file or directory named in the link, or null. */
+    /** The file or directory named in the link, on the same offline guess as {@link #getBranch}. */
     public String getPath() {
         return path;
+    }
+
+    /**
+     * Everything after {@code /tree/} or {@code /blob/} - the ref and the path, still joined.
+     *
+     * <p>Kept whole because splitting it is guesswork until somebody knows the repository's
+     * branches. Splitting it wrongly and then reporting "the branch 'feature' is not in this
+     * repository" tells the user something about a branch they never named.
+     */
+    public String getRefAndPath() {
+        return refAndPath;
+    }
+
+    /**
+     * Splits {@link #getRefAndPath()} using the branches the repository actually has.
+     *
+     * <p>Longest match wins: a repository with both {@code feature} and {@code feature/x} and a
+     * link to {@code /tree/feature/x/o.owl} means the more specific branch, because that is the
+     * one whose name accounts for more of what was typed.
+     *
+     * @param knownBranches the repository's branch names, however obtained
+     * @return {@code {branch, path}} with either entry null, or {@code {null, refAndPath}} when
+     *     no branch matches - in which case the whole remainder is more likely a path on the
+     *     default branch than a branch nobody has
+     */
+    public String[] resolveRef(java.util.Collection<String> knownBranches) {
+        if (refAndPath == null || refAndPath.isEmpty()) {
+            return new String[] {branch, path};
+        }
+        if (knownBranches != null) {
+            String best = null;
+            for (String candidate : knownBranches) {
+                if (candidate == null || candidate.isEmpty()) {
+                    continue;
+                }
+                boolean matches = refAndPath.equals(candidate)
+                        || refAndPath.startsWith(candidate + "/");
+                if (matches && (best == null || candidate.length() > best.length())) {
+                    best = candidate;
+                }
+            }
+            if (best != null) {
+                String rest = refAndPath.length() > best.length()
+                        ? refAndPath.substring(best.length() + 1) : "";
+                return new String[] {best, rest.isEmpty() ? null : rest};
+            }
+        }
+        return new String[] {null, refAndPath};
+    }
+
+    /** Everything after the first {@code /}, or empty. */
+    private static String afterFirstSegment(String text) {
+        int slash = text.indexOf('/');
+        return slash < 0 ? "" : text.substring(slash + 1);
     }
 
     /**

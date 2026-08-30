@@ -117,6 +117,93 @@ class CatalogTest {
         assertEquals("imports/a.owl", Catalog.entryFor(updated, "http://example.org/a.owl"));
     }
 
+    // ---------- the file does not grow every time it is written ----------
+
+    /**
+     * The parsed document keeps the source file's indentation as text nodes, and a Transformer
+     * with INDENT=yes then indents around them - so every write doubled what was there. Measured
+     * on a real ODK catalog before the fix: 798 bytes and 12 lines to begin with, 4166 bytes and
+     * 185 lines after twelve entries, with the ODK-managed group reformatted too. A committed file
+     * that the project's own build regenerates then conflicts on every merge.
+     */
+    @Test
+    void rewritingTheSameEntryLeavesTheFileTheSameSize() {
+        String once = Catalog.withEntry(null, "http://example.org/a.owl", "imports/a.owl");
+
+        String twice = Catalog.withEntry(once, "http://example.org/a.owl", "imports/a.owl");
+        String thrice = Catalog.withEntry(twice, "http://example.org/a.owl", "imports/a.owl");
+
+        assertEquals(once.length(), twice.length(), "the file grew on a no-op rewrite");
+        assertEquals(once.length(), thrice.length(), "the file kept growing");
+    }
+
+    @Test
+    void addingTwelveEntriesDoesNotMultiplyTheWhitespace() {
+        String catalog = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
+                + "<catalog prefer=\"public\" xmlns=\"" + NAMESPACE + "\">\n"
+                + "  <group id=\"odk-managed-catalog\" prefer=\"public\">\n"
+                + "    <uri name=\"http://example.org/kept.owl\" uri=\"imports/kept.owl\" />\n"
+                + "  </group>\n"
+                + "</catalog>\n";
+        int startingBlankLines = blankLinesIn(catalog);
+
+        for (int i = 0; i < 12; i++) {
+            catalog = Catalog.withEntry(catalog, "http://example.org/m" + i + ".owl",
+                    "imports/m" + i + ".owl");
+        }
+
+        assertEquals(startingBlankLines, blankLinesIn(catalog),
+                "blank lines accumulated:\n" + catalog);
+        assertEquals("imports/kept.owl",
+                Catalog.entryFor(catalog, "http://example.org/kept.owl"),
+                "the ODK-managed entry was lost");
+        assertTrue(catalog.length() < 3000, "the file ballooned to " + catalog.length()
+                + " bytes:\n" + catalog);
+    }
+
+    private static int blankLinesIn(String xml) {
+        int blank = 0;
+        for (String line : xml.split("\r?\n")) {
+            if (line.trim().isEmpty()) {
+                blank++;
+            }
+        }
+        return blank;
+    }
+
+    // ---------- a catalog is untrusted input ----------
+
+    /**
+     * A catalog comes out of a repository somebody cloned off the internet. Left at its defaults
+     * the parser fetches an external DTD named in a doctype - an outbound request to a host of
+     * the document author's choosing, made the moment a project is opened, and a block of
+     * unbounded length when that host does not answer. A catalog has no use for a doctype at all.
+     */
+    @Test
+    void aCatalogCarryingADoctypeIsRefusedRatherThanFetched() {
+        String withDoctype = "<?xml version=\"1.0\"?>\n"
+                + "<!DOCTYPE catalog SYSTEM \"http://attacker.example/evil.dtd\">\n"
+                + "<catalog prefer=\"public\" xmlns=\"" + NAMESPACE + "\"/>\n";
+
+        assertThrows(IllegalStateException.class,
+                () -> Catalog.withEntry(withDoctype, "http://example.org/a.owl",
+                        "imports/a.owl"));
+        assertNull(Catalog.entryFor(withDoctype, "http://example.org/a.owl"));
+    }
+
+    @Test
+    void anEntityExpansionBombIsRefused() {
+        String bomb = "<?xml version=\"1.0\"?>\n"
+                + "<!DOCTYPE catalog [\n"
+                + "  <!ENTITY a \"aaaaaaaaaa\">\n"
+                + "  <!ENTITY b \"&a;&a;&a;&a;&a;&a;&a;&a;&a;&a;\">\n"
+                + "]>\n"
+                + "<catalog prefer=\"public\"><uri name=\"&b;\" uri=\"x\"/></catalog>\n";
+
+        assertThrows(IllegalStateException.class,
+                () -> Catalog.withEntry(bomb, "http://example.org/a.owl", "imports/a.owl"));
+    }
+
     // ---------- paths that work on somebody else's machine ----------
 
     /**

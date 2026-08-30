@@ -264,6 +264,124 @@ class RobotTransformTest {
         }
     }
 
+    // ---------- an import that is declared but not loaded ----------
+
+    /**
+     * The state a freshly cloned ODK project is in before its import modules are built - and one
+     * this plugin can produce itself, since Open from GitHub clones exactly such repositories and
+     * warns about it.
+     */
+    private void declareAnImportNothingLoaded() {
+        manager.applyChange(new org.semanticweb.owlapi.model.AddImport(ontology,
+                factory.getOWLImportsDeclaration(IRI.create("http://example.org/never-loaded"))));
+    }
+
+    /**
+     * Merge takes its axioms from the imports closure, and OWL API builds that closure by
+     * silently skipping declarations it could not resolve. Dropping such a declaration afterwards
+     * deletes the only record the import existed while merging nothing in its place - and reports
+     * it as a success, describing the result as self-contained. Saving loses the import for good.
+     */
+    @Test
+    void mergeRefusesRatherThanDroppingAnImportItCouldNotRead() {
+        declareAnImportNothingLoaded();
+
+        RobotException refused = assertThrows(RobotException.class,
+                () -> RobotTransform.preview(ontology, RobotTransform.Kind.MERGE_IMPORTS, null));
+
+        assertTrue(refused.getMessage().contains("never-loaded"), refused.getMessage());
+        assertTrue(refused.getMessage().contains("without bringing"), refused.getMessage());
+        assertEquals(1, ontology.getImportsDeclarations().size(),
+                "the declaration must survive a refusal");
+    }
+
+    @Test
+    void aRefusedMergeSuggestsWhatToDoAboutIt() {
+        declareAnImportNothingLoaded();
+
+        RobotException refused = assertThrows(RobotException.class,
+                () -> RobotTransform.preview(ontology, RobotTransform.Kind.MERGE_IMPORTS, null));
+
+        assertTrue(refused.getMessage().contains("make imports")
+                        || refused.getMessage().contains("catalog"),
+                "an ODK user needs to be told how to resolve it: " + refused.getMessage());
+    }
+
+    /** The other operations do not touch imports, so an unresolved one must not stop them. */
+    @Test
+    void theOtherOperationsStillRunWithAnUnresolvedImport() {
+        declareAnImportNothingLoaded();
+
+        for (RobotTransform.Kind kind : RobotTransform.Kind.values()) {
+            if (kind == RobotTransform.Kind.MERGE_IMPORTS) {
+                continue;
+            }
+            RobotTransform.Diff diff = RobotTransform.preview(ontology, kind, null);
+            assertEquals(0, diff.getImportsDropped(), kind + " touched the imports");
+        }
+    }
+
+    // ---------- the operations can see what the imports say ----------
+
+    /**
+     * Reduce cannot know an axiom is redundant when the axiom that makes it redundant lives in an
+     * import. Given a copy with no closure it silently finds nothing - a wrong answer that looks
+     * exactly like a clean ontology.
+     */
+    @Test
+    void reduceSeesRedundancyThatOnlyTheImportsExplain() throws Exception {
+        OWLOntology imported = manager.createOntology(IRI.create("http://example.org/upper"));
+        manager.addAxiom(imported, factory.getOWLSubClassOfAxiom(cls("Mineral"), cls("Solid")));
+        manager.applyChange(new org.semanticweb.owlapi.model.AddImport(ontology,
+                factory.getOWLImportsDeclaration(IRI.create("http://example.org/upper"))));
+        // Redundant only because the IMPORT says Mineral is a Solid.
+        manager.addAxiom(ontology, factory.getOWLSubClassOfAxiom(cls("Quartz"), cls("Mineral")));
+        manager.addAxiom(ontology, factory.getOWLSubClassOfAxiom(cls("Quartz"), cls("Solid")));
+
+        RobotTransform.Diff diff = RobotTransform.preview(ontology, RobotTransform.Kind.REDUCE,
+                null);
+
+        boolean removedTheRedundantOne = false;
+        for (OWLOntologyChange change : diff.getChanges()) {
+            if (change instanceof RemoveAxiom && change.getAxiom().equals(
+                    factory.getOWLSubClassOfAxiom(cls("Quartz"), cls("Solid")))) {
+                removedTheRedundantOne = true;
+            }
+        }
+        assertTrue(removedTheRedundantOne,
+                "reduce did not see the imported axiom that makes Quartz -> Solid redundant: "
+                        + diff);
+    }
+
+    /**
+     * The other half of giving the operations the closure: an imported axiom must not become a
+     * change to the edit file. A repair of an imported annotation written into the importing file
+     * would be a copy nobody asked for and nothing maintains.
+     */
+    @Test
+    void noImportedAxiomEverBecomesAChangeToTheEditFile() throws Exception {
+        OWLOntology imported = manager.createOntology(IRI.create("http://example.org/upper"));
+        manager.addAxiom(imported, factory.getOWLEquivalentClassesAxiom(cls("Imported"),
+                factory.getOWLObjectIntersectionOf(cls("Person"),
+                        factory.getOWLObjectSomeValuesFrom(property("hasChild"),
+                                cls("Person")))));
+        Set<OWLAxiom> importedAxioms = new HashSet<OWLAxiom>(imported.getAxioms());
+        manager.applyChange(new org.semanticweb.owlapi.model.AddImport(ontology,
+                factory.getOWLImportsDeclaration(IRI.create("http://example.org/upper"))));
+
+        for (RobotTransform.Kind kind : RobotTransform.Kind.values()) {
+            if (kind == RobotTransform.Kind.MERGE_IMPORTS) {
+                continue; // merge is defined as bringing them across
+            }
+            for (OWLOntologyChange change : RobotTransform.preview(ontology, kind, null)
+                    .getChanges()) {
+                assertFalse(importedAxioms.contains(change.getAxiom()),
+                        kind + " turned an imported axiom into a change to the edit file: "
+                                + change);
+            }
+        }
+    }
+
     // ---------- every operation is described for a user ----------
 
     /**

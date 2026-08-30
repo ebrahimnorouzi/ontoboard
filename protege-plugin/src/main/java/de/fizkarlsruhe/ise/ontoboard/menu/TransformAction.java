@@ -143,6 +143,14 @@ public class TransformAction extends OntoBoardAction {
             return result.summary(kind.getLabel() + " would make " + counts + ".").build();
         }
 
+        if (BackgroundRun.abandoned()) {
+            // ROBOT cannot be interrupted, so the work finished after the user walked away.
+            // Applying it now would change their ontology minutes after they cancelled, over
+            // whatever they went on to do instead.
+            result.note("Nothing was changed - you stopped waiting before it finished.");
+            return result.summary(kind.getLabel() + " would have made " + counts
+                    + ", but was abandoned.").build();
+        }
         try {
             applyOnEventThread(diff.getChanges());
         } catch (RuntimeException failure) {

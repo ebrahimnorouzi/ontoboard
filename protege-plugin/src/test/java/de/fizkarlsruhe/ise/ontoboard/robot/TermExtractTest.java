@@ -298,6 +298,36 @@ class TermExtractTest {
         assertTrue(iri.toString().endsWith("_import.owl"), iri.toString());
     }
 
+    /**
+     * MireotOperation takes no output IRI, so the module came back carrying the SOURCE ontology's
+     * identity. Saved and imported under that IRI it claims to be the whole of the ontology it was
+     * cut from: the import IRI the catalog maps belongs to no ontology at all, so the import never
+     * resolves, and anything loading both has two different ontologies under one name.
+     */
+    @Test
+    void aMireotModuleDoesNotClaimToBeTheOntologyItWasCutFrom() {
+        TermExtract.Result result = TermExtract.run(source, terms("Polymer"),
+                TermExtract.Method.MIREOT, IRI.create("http://example.org/my-module.owl"));
+
+        assertEquals(IRI.create("http://example.org/my-module.owl"),
+                result.getModule().getOntologyID().getOntologyIRI().get());
+        assertNotEquals(source.getOntologyID().getOntologyIRI(),
+                result.getModule().getOntologyID().getOntologyIRI());
+    }
+
+    /** Every method, so the next one added cannot quietly skip it. */
+    @Test
+    void everyMethodGivesTheModuleTheIriItWasAskedFor() {
+        for (TermExtract.Method method : TermExtract.Method.values()) {
+            TermExtract.Result result = TermExtract.run(source, terms("Polymer"), method,
+                    IRI.create("http://example.org/asked-for.owl"));
+
+            assertEquals(IRI.create("http://example.org/asked-for.owl"),
+                    result.getModule().getOntologyID().getOntologyIRI().get(),
+                    method + " ignored the module IRI");
+        }
+    }
+
     @Test
     void anExplicitIriIsUsedAsGiven() {
         TermExtract.Result result = TermExtract.run(source, terms("Polymer"),

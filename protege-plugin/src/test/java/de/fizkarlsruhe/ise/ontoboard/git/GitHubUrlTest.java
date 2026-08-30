@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.Arrays;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -144,6 +145,96 @@ class GitHubUrlTest {
     @Test
     void surroundingWhitespaceIsIgnored() {
         assertEquals("ISE-FIZKarlsruhe/mwo", GitHubUrl.parse("  " + REPO + "  \n").getFullName());
+    }
+
+    // ---------- what GitHub's own address bar puts on the end ----------
+
+    /**
+     * "?tab=readme-ov-file" is what the address bar shows after clicking the README pill. Left in
+     * place it matched no pattern at all, and the user was told their repository "is not a GitHub
+     * repository" while looking straight at it.
+     */
+    @Test
+    void aQueryStringOnTheRepositoryUrlIsIgnored() {
+        assertEquals("ISE-FIZKarlsruhe/mwo",
+                GitHubUrl.parse(REPO + "?tab=readme-ov-file").getFullName());
+    }
+
+    /** "?plain=1" is on every plain-text file link GitHub offers. */
+    @Test
+    void aQueryStringOnAFileLinkDoesNotBecomePartOfThePath() {
+        GitHubUrl url = GitHubUrl.parse(REPO + "/blob/main/src/ontology/mwo-edit.owl?plain=1");
+
+        assertEquals("main", url.getBranch());
+        assertEquals("src/ontology/mwo-edit.owl", url.getPath());
+    }
+
+    @Test
+    void aQueryStringOnABranchLinkDoesNotBecomePartOfTheBranch() {
+        assertEquals("main", GitHubUrl.parse(REPO + "/tree/main?tab=readme").getBranch());
+    }
+
+    // ---------- a branch name with a slash in it ----------
+
+    /**
+     * A GitHub URL gives no way to tell where the ref ends and the path begins, and
+     * slash-bearing refs are everywhere. Splitting at the first slash and then reporting "the
+     * branch 'feature' is not in this repository" tells the user about a branch they never named.
+     */
+    @Test
+    void theRefAndPathAreKeptWholeBecauseTheSplitIsNotKnowableOffline() {
+        GitHubUrl url = GitHubUrl.parse(REPO + "/tree/feature/x/src/ontology");
+
+        assertEquals("feature/x/src/ontology", url.getRefAndPath());
+    }
+
+    @Test
+    void aSlashBearingBranchResolvesOnceTheRealBranchesAreKnown() {
+        GitHubUrl url = GitHubUrl.parse(REPO + "/tree/feature/x/src/ontology");
+
+        String[] resolved = url.resolveRef(Arrays.asList("main", "feature/x"));
+
+        assertEquals("feature/x", resolved[0]);
+        assertEquals("src/ontology", resolved[1]);
+    }
+
+    /** The more specific branch accounts for more of what was typed, so it wins. */
+    @Test
+    void theLongestMatchingBranchWins() {
+        GitHubUrl url = GitHubUrl.parse(REPO + "/tree/feature/x/o.owl");
+
+        assertEquals("feature/x",
+                url.resolveRef(Arrays.asList("feature", "feature/x"))[0]);
+    }
+
+    @Test
+    void aBranchWithNoPathAfterItResolvesToNoPath() {
+        GitHubUrl url = GitHubUrl.parse(REPO + "/tree/release/2024-01-01");
+
+        String[] resolved = url.resolveRef(Arrays.asList("main", "release/2024-01-01"));
+
+        assertEquals("release/2024-01-01", resolved[0]);
+        assertNull(resolved[1]);
+    }
+
+    /**
+     * When nothing matches, the whole remainder is more likely a path on the default branch than
+     * a branch nobody has - and either way, naming a branch the user never typed is worse.
+     */
+    @Test
+    void whenNoBranchMatchesTheRemainderIsTreatedAsAPath() {
+        GitHubUrl url = GitHubUrl.parse(REPO + "/tree/feature/x/o.owl");
+
+        String[] resolved = url.resolveRef(Arrays.asList("main", "dev"));
+
+        assertNull(resolved[0]);
+        assertEquals("feature/x/o.owl", resolved[1]);
+    }
+
+    @Test
+    void aPlainRepositoryLinkHasNoRefToResolve() {
+        assertNull(GitHubUrl.parse(REPO).getRefAndPath());
+        assertNull(GitHubUrl.parse(REPO).resolveRef(Arrays.asList("main"))[0]);
     }
 
     // ---------- how it is cloned ----------

@@ -56,19 +56,72 @@ class RepoLayoutTest {
         assertEquals("src/ontology/mwo-edit.owl", RepoLayout.relative(root, chosen));
     }
 
-    /** Opening one of these means editing something the build regenerates. */
+    /**
+     * Opening one of these means editing something the build regenerates. They are offered rather
+     * than hidden - a repository with nothing else must still open - but never chosen over a file
+     * somebody actually edits.
+     */
     @Test
-    void theGeneratedAndImportedFilesAreNotEvenOffered(@TempDir File root) throws Exception {
+    void generatedAndImportedFilesAreNeverChosenOverTheEditFile(@TempDir File root)
+            throws Exception {
         anOdkRepository(root);
 
         List<File> candidates = RepoLayout.candidatesIn(root);
+        String best = RepoLayout.relative(root, candidates.get(0));
 
+        assertEquals("src/ontology/mwo-edit.owl", best);
         for (File candidate : candidates) {
             String path = RepoLayout.relative(root, candidate);
-            assertFalse(path.contains("imports/"), "an import module is not editable: " + path);
-            assertFalse(path.contains("releases/"), "a release is not editable: " + path);
             assertFalse(path.startsWith(".git/"), "git internals are not ontologies: " + path);
         }
+    }
+
+    /**
+     * They were skipped outright, and that was wrong. Many small vocabularies publish through
+     * GitHub Pages and keep their only OWL file in docs/; skipping it meant cloning such a
+     * repository and being told it contains no ontology, about a file sitting right there.
+     */
+    @Test
+    void aRepositoryWhoseOnlyOntologyIsInDocsStillOpensIt(@TempDir File root) throws Exception {
+        write(root, "docs/vocabulary.ttl");
+        write(root, "README.md");
+
+        File chosen = RepoLayout.ontologyIn(root, null);
+
+        assertNotNull(chosen, "the ontology in docs/ was not found");
+        assertEquals("docs/vocabulary.ttl", RepoLayout.relative(root, chosen));
+    }
+
+    @Test
+    void aRepositoryWhoseOnlyOntologyIsAnImportModuleStillOpensIt(@TempDir File root)
+            throws Exception {
+        write(root, "src/ontology/imports/iao_import.owl");
+
+        assertEquals("src/ontology/imports/iao_import.owl",
+                RepoLayout.relative(root, RepoLayout.ontologyIn(root, null)));
+    }
+
+    /** But a real file always wins over one in a generated directory. */
+    @Test
+    void aFileOutsideTheGeneratedDirectoriesBeatsOneInside(@TempDir File root) throws Exception {
+        write(root, "releases/2026-01-01/thing.owl");
+        write(root, "thing.owl");
+
+        assertEquals("thing.owl", RepoLayout.relative(root, RepoLayout.ontologyIn(root, null)));
+    }
+
+    /** Choosing build output is worth saying out loud, since editing it loses the work. */
+    @Test
+    void choosingAGeneratedFileIsFlaggedAsProbablyBuildOutput(@TempDir File root)
+            throws Exception {
+        write(root, "releases/2026-01-01/thing.owl");
+        write(root, "imports/other.owl");
+        File chosen = RepoLayout.ontologyIn(root, null);
+
+        String explanation = RepoLayout.explain(root, chosen, RepoLayout.candidatesIn(root));
+
+        assertTrue(explanation.contains("build output"), explanation);
+        assertTrue(explanation.contains("losing the changes"), explanation);
     }
 
     /**

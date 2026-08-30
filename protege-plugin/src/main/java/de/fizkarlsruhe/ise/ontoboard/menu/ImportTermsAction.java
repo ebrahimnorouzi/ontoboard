@@ -97,7 +97,7 @@ public class ImportTermsAction extends OntoBoardAction {
         values.put(OPTION_TERM_FILE, "");
         values.put(OPTION_METHOD, TermExtract.DEFAULT_METHOD.getLabel());
         values.put(OPTION_OUTCOME, Outcome.SAVE_AND_IMPORT.label);
-        values.put(OPTION_MODULE_FILE, defaultModuleFile());
+        values.put(OPTION_MODULE_FILE, "");
 
         // A loop, because two of the rules span fields - a source is needed, and terms have to
         // come from somewhere - and a per-field validator cannot express either. Re-showing with
@@ -145,11 +145,6 @@ public class ImportTermsAction extends OntoBoardAction {
         }
         if (isBlank(values.get(OPTION_TERMS)) && isBlank(values.get(OPTION_TERM_FILE))) {
             problems.add("Give some terms, either typed into the box or in a term file.");
-        }
-        if (Outcome.byLabel(values.get(OPTION_OUTCOME)) != Outcome.ADD_AXIOMS
-                && isBlank(values.get(OPTION_MODULE_FILE))) {
-            problems.add("Say where to save the module, or choose to copy the axioms in "
-                    + "instead of saving a module.");
         }
         return problems;
     }
@@ -220,11 +215,13 @@ public class ImportTermsAction extends OntoBoardAction {
                         .build(),
                 Parameter.of(OPTION_MODULE_FILE, "Save the module as", Parameter.Kind.FILE)
                         .defaultValue(values.get(OPTION_MODULE_FILE))
-                        .help("Where the module file goes. The default follows the ODK layout - "
-                                + "an imports/ directory beside the ontology, named after the "
-                                + "source - so the project looks like every other OBO project and "
-                                + "its Makefile knows where to find things. Ignored when you "
-                                + "choose to copy the axioms in instead.")
+                        .help("Where the module file goes. Leave it empty and it is named after "
+                                + "the source ontology and put in an imports/ directory beside "
+                                + "your own - imports/iao_import.owl for IAO - which is the ODK "
+                                + "layout, so the project looks like every other OBO project and "
+                                + "its Makefile knows where to find things. Fill it in only to "
+                                + "put the module somewhere else. Ignored when you choose to copy "
+                                + "the axioms in instead.")
                         .build());
     }
 
@@ -280,14 +277,20 @@ public class ImportTermsAction extends OntoBoardAction {
                     ).build();
         }
 
+        if (BackgroundRun.abandoned()) {
+            // The user stopped waiting. Everything below writes files or changes the ontology,
+            // and doing that after somebody walked away is worse than not being cancellable.
+            return result.failed("Stopped before anything was written.").build();
+        }
+
         switch (outcome) {
             case ADD_AXIOMS:
                 return copyIn(ontology, extracted, result);
             case SAVE_ONLY:
-                return save(extracted, result, false, ontology, moduleIri);
+                return save(extracted, result, false, ontology, moduleIri, source);
             case SAVE_AND_IMPORT:
             default:
-                return save(extracted, result, true, ontology, moduleIri);
+                return save(extracted, result, true, ontology, moduleIri, source);
         }
     }
 
@@ -339,6 +342,9 @@ public class ImportTermsAction extends OntoBoardAction {
             return result.summary("Nothing to add - this ontology already has every axiom the "
                     + "module contains.").build();
         }
+        if (BackgroundRun.abandoned()) {
+            return result.failed("Stopped before anything was changed.").build();
+        }
         applyOnEventThread(changes);
 
         result.columns("Axiom");
@@ -362,8 +368,22 @@ public class ImportTermsAction extends OntoBoardAction {
 
     /** Writes the module, and optionally wires it up as an import. */
     private OperationResult save(TermExtract.Result extracted, OperationResult.Builder result,
-            boolean andImport, OWLOntology ontology, IRI moduleIri) {
-        File target = new File(moduleFileText.trim());
+            boolean andImport, OWLOntology ontology, IRI moduleIri, OWLOntology source) {
+        File target = moduleFileFor(ontology, source);
+        if (target == null) {
+            return result.failed("This ontology has not been saved, so there is nowhere to put "
+                    + "the module. Save it first, or type a path to save the module at.").build();
+        }
+        // Named after the source, so two imports cannot land on one file. They used to share a
+        // single default - imports/extracted_import.owl - so importing from IAO and then from
+        // ChEBI overwrote the first module with the second while adding a catalog entry for each.
+        // Both import IRIs then resolved to one file holding only the second module. In the
+        // session it looked right, because the first was still in memory; reopening the project,
+        // or checking it out, lost every term from the first import with nothing to say so.
+        String clash = wouldOverwriteAnotherModule(target, moduleIri, ontology);
+        if (clash != null) {
+            return result.failed(clash).build();
+        }
         if (target.getParentFile() != null && !target.getParentFile().isDirectory()
                 && !target.getParentFile().mkdirs()) {
             return result.failed("Could not create " + target.getParentFile().getAbsolutePath())
@@ -377,6 +397,11 @@ public class ImportTermsAction extends OntoBoardAction {
                     + cannotSave.getMessage()).build();
         }
         result.wrote(target);
+        if (isOutsideTheProject(ontology, target)) {
+            result.warn("The module is outside the ontology's own directory, so it will not be "
+                    + "committed with the project and the catalog entry pointing at it will not "
+                    + "resolve for anybody else.");
+        }
 
         if (!andImport) {
             return result.summary("Wrote a module of " + extracted.getAxiomCount()
@@ -405,13 +430,20 @@ public class ImportTermsAction extends OntoBoardAction {
 
         // Into Protege's manager so the import resolves immediately, without a reload.
         OWLOntologyManager manager = getOWLModelManager().getOWLOntologyManager();
-        if (OntologySource.findAlreadyLoaded(manager, moduleIri) == null) {
-            try {
-                manager.loadOntologyFromOntologyDocument(target);
-            } catch (Exception cannotLoad) {
-                result.warn("The module was written but Protege could not load it back: "
-                        + cannotLoad.getMessage());
-            }
+        OWLOntology stale = OntologySource.findAlreadyLoaded(manager, moduleIri);
+        if (stale != null) {
+            // The file was just rewritten, so anything already in the manager is by definition
+            // the previous version. Skipping the load - which is what happened before - left
+            // Protege holding the old module while reporting the new one: re-running an import
+            // with an extra term wrote the term to disk, said so, and the term appeared nowhere
+            // in the class hierarchy until Protege was restarted.
+            manager.removeOntology(stale);
+        }
+        try {
+            manager.loadOntologyFromOntologyDocument(target);
+        } catch (Exception cannotLoad) {
+            result.warn("The module was written but Protege could not load it back: "
+                    + cannotLoad.getMessage());
         }
         applyOnEventThread(java.util.Collections.<OWLOntologyChange>singletonList(
                 new AddImport(ontology, getOWLModelManager().getOWLDataFactory()
@@ -435,20 +467,81 @@ public class ImportTermsAction extends OntoBoardAction {
                     .relativize(target.toPath().toAbsolutePath().normalize())
                     .toString().replace('\\', '/');
         } catch (IllegalArgumentException differentRoots) {
-            // Different drives on Windows: there is no relative path, and an absolute one at
-            // least works on this machine rather than silently resolving nowhere.
-            return target.getAbsolutePath().replace('\\', '/');
+            // Different drives on Windows: there is no relative path between them. A bare
+            // "D:/shared/x.owl" is not a usable catalog value - resolved against the catalog's
+            // own file: URI it yields a URI whose scheme is "D", which nothing can open, not even
+            // on the machine that wrote it. A real file: URI at least works locally.
+            return target.toURI().toString();
         }
     }
 
-    /** The ODK layout: an imports/ directory beside the ontology. */
-    private String defaultModuleFile() {
-        File ontologyFile = fileOf(getOWLModelManager().getActiveOntology());
+    /**
+     * Where the module goes: what was typed, or the ODK location named after the source.
+     *
+     * <p>Named after the source is the whole point. A single fixed default meant every import
+     * wrote to the same file, so the second one silently replaced the first.
+     */
+    private File moduleFileFor(OWLOntology ontology, OWLOntology source) {
+        if (!isBlank(moduleFileText)) {
+            return new File(moduleFileText.trim());
+        }
+        File ontologyFile = fileOf(ontology);
         if (ontologyFile == null || ontologyFile.getParentFile() == null) {
-            return "";
+            return null;
         }
         return new File(new File(ontologyFile.getParentFile(), "imports"),
-                "extracted_import.owl").getAbsolutePath();
+                TermExtract.shortNameOf(source) + "_import.owl");
+    }
+
+    /**
+     * Why writing here would destroy another module, or null.
+     *
+     * <p>The catalog is the record of which file belongs to which module IRI. If it already maps
+     * a <em>different</em> IRI to this file, writing would leave two import statements resolving
+     * to one file that answers to only one of them - and the loss is invisible until the project
+     * is reopened somewhere else.
+     */
+    private String wouldOverwriteAnotherModule(File target, IRI moduleIri, OWLOntology ontology) {
+        File ontologyFile = fileOf(ontology);
+        if (!target.isFile() || ontologyFile == null || ontologyFile.getParentFile() == null) {
+            return null;
+        }
+        File catalog = new File(ontologyFile.getParentFile(), "catalog-v001.xml");
+        if (!catalog.isFile()) {
+            return null;
+        }
+        String catalogXml;
+        try {
+            catalogXml = new String(java.nio.file.Files.readAllBytes(catalog.toPath()), "UTF-8");
+        } catch (IOException cannotRead) {
+            return null;
+        }
+        String here = relativePath(ontologyFile.getParentFile(), target);
+        String mine = Catalog.entryFor(catalogXml, moduleIri.toString());
+        if (here.equals(mine)) {
+            return null; // this module's own file; overwriting it is the point
+        }
+        for (String otherIri : Catalog.mappedIris(catalogXml)) {
+            if (here.equals(Catalog.entryFor(catalogXml, otherIri))
+                    && !otherIri.equals(moduleIri.toString())) {
+                return target.getAbsolutePath() + " is already the module for " + otherIri
+                        + ", according to catalog-v001.xml. Writing this module there would "
+                        + "leave two imports resolving to one file, and whichever of them is not "
+                        + "in that file would silently vanish the next time the project is "
+                        + "opened. Choose a different file name.";
+            }
+        }
+        return null;
+    }
+
+    /** Whether the module lies outside the tree that gets committed with the ontology. */
+    private boolean isOutsideTheProject(OWLOntology ontology, File target) {
+        File ontologyFile = fileOf(ontology);
+        if (ontologyFile == null || ontologyFile.getParentFile() == null) {
+            return false;
+        }
+        return relativePath(ontologyFile.getParentFile(), target).startsWith("..")
+                || relativePath(ontologyFile.getParentFile(), target).contains("://");
     }
 
     /** The ontology's own file, or null when it has never been saved. */

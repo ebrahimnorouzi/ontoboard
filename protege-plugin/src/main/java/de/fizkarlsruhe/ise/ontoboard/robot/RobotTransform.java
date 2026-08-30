@@ -12,6 +12,8 @@ import org.obolibrary.robot.RelaxOperation;
 import org.obolibrary.robot.RepairOperation;
 import org.semanticweb.owlapi.apibinding.OWLManager;
 import org.semanticweb.owlapi.model.AddAxiom;
+import org.semanticweb.owlapi.model.AddImport;
+import org.semanticweb.owlapi.model.IRI;
 import org.semanticweb.owlapi.model.OWLAxiom;
 import org.semanticweb.owlapi.model.OWLImportsDeclaration;
 import org.semanticweb.owlapi.model.OWLOntology;
@@ -20,6 +22,7 @@ import org.semanticweb.owlapi.model.OWLOntologyCreationException;
 import org.semanticweb.owlapi.model.OWLOntologyManager;
 import org.semanticweb.owlapi.model.RemoveAxiom;
 import org.semanticweb.owlapi.model.RemoveImport;
+import org.semanticweb.owlapi.model.parameters.Imports;
 import org.semanticweb.owlapi.reasoner.OWLReasonerFactory;
 import org.semanticweb.owlapi.reasoner.structural.StructuralReasonerFactory;
 
@@ -187,6 +190,29 @@ public final class RobotTransform {
         if (ontology == null) {
             throw new IllegalArgumentException("no ontology to transform");
         }
+        if (kind == Kind.MERGE_IMPORTS) {
+            // Every axiom merge brings across comes from getAxioms(Imports.INCLUDED), and OWL API
+            // builds that closure by skipping declarations whose ontology is not in the manager -
+            // silently, because an unresolved import is a normal state for an ontology to be in.
+            // Dropping such a declaration afterwards would delete the only record that the import
+            // ever existed while merging nothing in its place: the result is smaller than the
+            // input, is reported as "0 axioms added, 1 import statements dropped", and is
+            // described to the user as self-contained. Saving that loses the import for good.
+            // The state is not exotic - it is what a freshly cloned ODK project looks like before
+            // make has built its import modules, which this plugin can produce itself from
+            // Project > Open from GitHub.
+            List<String> unresolved = unresolvedImportsOf(ontology);
+            if (!unresolved.isEmpty()) {
+                throw new RobotException("Merge cannot run: " + unresolved.size()
+                        + (unresolved.size() == 1 ? " import is" : " imports are")
+                        + " declared but not loaded, so their axioms are not here to merge - "
+                        + unresolved
+                        + ". Merging now would delete the import statements without bringing "
+                        + "anything in. Resolve them first - for an ODK project that usually "
+                        + "means running make imports, or fixing catalog-v001.xml - and try "
+                        + "again.");
+            }
+        }
         Set<OWLAxiom> before = new HashSet<OWLAxiom>(ontology.getAxioms());
         OWLOntology copy;
         try {
@@ -210,6 +236,8 @@ public final class RobotTransform {
                     kind.getLabel() + " failed: " + failed.getMessage(), failed);
         }
 
+        // getAxioms(), not INCLUDED: the shadow import holds the closure, and a change aimed at
+        // an axiom that lives in an import would apply to nothing.
         Set<OWLAxiom> after = new HashSet<OWLAxiom>(copy.getAxioms());
         List<OWLOntologyChange> changes = new ArrayList<OWLOntologyChange>();
         int added = 0;
@@ -265,25 +293,60 @@ public final class RobotTransform {
         }
     }
 
+    /** Imports the ontology declares but the manager never loaded, as readable IRIs. */
+    static List<String> unresolvedImportsOf(OWLOntology ontology) {
+        List<String> unresolved = new ArrayList<String>();
+        OWLOntologyManager manager = ontology.getOWLOntologyManager();
+        for (OWLImportsDeclaration declaration : ontology.getImportsDeclarations()) {
+            if (manager.getImportedOntology(declaration) == null) {
+                unresolved.add(declaration.getIRI().toString());
+            }
+        }
+        return unresolved;
+    }
+
     /**
-     * A throwaway ontology with the same axioms.
+     * A throwaway ontology with the same axioms, in a manager of its own.
      *
-     * <p>Built in a fresh manager rather than through {@code copyOntology}, so nothing that
-     * happens to the copy can reach Protege's own manager - the entire point of the exercise.
+     * <p>A fresh manager rather than {@code copyOntology}, so nothing that happens to the copy can
+     * reach Protege's own manager - the entire point of the exercise.
      *
-     * @param withImports whether to bring the imports closure across, which only merge needs
+     * <p>The imports are the subtle part. Reduce and repair both consult the imports closure -
+     * ROBOT's deprecation check queries with {@code Imports.INCLUDED}, and reduce cannot know an
+     * axiom is redundant when the axiom that makes it redundant lives in an import. Handed a copy
+     * with no closure at all, repair reports "nothing to change" on exactly the case its own help
+     * text describes, and reduce misses every redundancy that spans an import. Both answers are
+     * wrong and neither looks it.
+     *
+     * <p>But the closure must not become the copy's <em>own</em> axioms either, or the diff turns
+     * every imported axiom into a change to the edit file - a repair of an imported annotation
+     * would be written into the file that imports it. So the closure goes behind an import
+     * declaration on the copy, exactly where it sits on the original: the operation sees it, and
+     * a diff of own axioms against own axioms stays about the edit file.
+     *
+     * @param flatten true for merge alone, which is defined as making the closure the ontology's
+     *     own axioms
      */
-    private static OWLOntology copyOf(OWLOntology ontology, boolean withImports)
+    private static OWLOntology copyOf(OWLOntology ontology, boolean flatten)
             throws OWLOntologyCreationException {
         OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
-        Set<OWLAxiom> axioms = withImports
-                ? new HashSet<OWLAxiom>(ontology.getAxioms(
-                        org.semanticweb.owlapi.model.parameters.Imports.INCLUDED))
-                : new HashSet<OWLAxiom>(ontology.getAxioms());
-        return manager.createOntology(axioms,
-                ontology.getOntologyID().getOntologyIRI().isPresent()
-                        ? ontology.getOntologyID().getOntologyIRI().get()
-                        : org.semanticweb.owlapi.model.IRI.create(
-                                "http://www.ontoboard.org/transform-preview"));
+        IRI iri = ontology.getOntologyID().getOntologyIRI().isPresent()
+                ? ontology.getOntologyID().getOntologyIRI().get()
+                : IRI.create("http://www.ontoboard.org/transform-preview");
+        if (flatten) {
+            return manager.createOntology(
+                    new HashSet<OWLAxiom>(ontology.getAxioms(Imports.INCLUDED)), iri);
+        }
+        OWLOntology copy = manager.createOntology(
+                new HashSet<OWLAxiom>(ontology.getAxioms()), iri);
+        Set<OWLAxiom> imported = new HashSet<OWLAxiom>(ontology.getAxioms(Imports.INCLUDED));
+        imported.removeAll(ontology.getAxioms());
+        if (!imported.isEmpty()) {
+            IRI shadow = IRI.create(iri + "#ontoboard-imports-closure");
+            manager.createOntology(imported, shadow);
+            manager.applyChange(new AddImport(copy, manager.getOWLDataFactory()
+                    .getOWLImportsDeclaration(shadow)));
+        }
+        return copy;
     }
 }
