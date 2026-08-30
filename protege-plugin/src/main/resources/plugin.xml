@@ -142,6 +142,17 @@
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
+  <!-- = Git = -->
+
+  <extension id="menu.OntoBoard.git"
+             point="org.protege.editor.core.application.EditorKitMenuAction">
+    <name value="Git..."/>
+    <toolTip value="Status, commit, pull and push for the project you have open"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.menu.GitAction"/>
+    <path value="ontoboard.menu.OntoBoard/SlotBY-A"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
+
   <!-- = Notes = -->
 
   <extension id="menu.OntoBoard.notes" name="Notes"
