@@ -611,9 +611,8 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         // session would say so.
         String mismatch = BoardId.mismatchWarning(settings.getBoard(), ontologyIri);
         if (mismatch != null && JOptionPane.showConfirmDialog(this,
-                mismatch + "
-
-Connect anyway?", "This board is for another ontology",
+                mismatch + "\n\nConnect anyway?",
+                "This board is for another ontology",
                 JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE)
                 != JOptionPane.YES_OPTION) {
             return;
