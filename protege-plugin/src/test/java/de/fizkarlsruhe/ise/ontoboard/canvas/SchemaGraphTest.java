@@ -149,4 +149,34 @@ class SchemaGraphTest {
         assertFalse(style.contains(SchemaStyles.UNSATISFIABLE_STROKE), style);
     }
 
+    // ---------- sticky notes and frames ----------
+
+    /**
+     * The canvas keys everything by id, and a note's id is generated rather than an IRI. Anything
+     * that treats a cell as a term - selection, axiom removal, expanding neighbours - has to be
+     * able to tell them apart, and asking the ontology would answer "not found" both for a note
+     * and for a term somebody has just deleted.
+     */
+    @Test
+    void notesAndFramesAreRecognisableByTheirIdAlone() {
+        assertTrue(SchemaGraph.isAnnotationId(SchemaGraph.NOTE_ID_PREFIX + "abc123"));
+        assertTrue(SchemaGraph.isAnnotationId(SchemaGraph.FRAME_ID_PREFIX + "abc123"));
+    }
+
+    @Test
+    void anIriIsNotAnAnnotation() {
+        assertFalse(SchemaGraph.isAnnotationId("http://example.org/o#Person"));
+        assertFalse(SchemaGraph.isAnnotationId("http://purl.obolibrary.org/obo/IAO_0000116"));
+        assertFalse(SchemaGraph.isAnnotationId(null));
+        assertFalse(SchemaGraph.isAnnotationId(""));
+    }
+
+    /** The two prefixes must not be confusable with each other or with anything else. */
+    @Test
+    void theTwoPrefixesAreDistinct() {
+        assertFalse(SchemaGraph.NOTE_ID_PREFIX.equals(SchemaGraph.FRAME_ID_PREFIX));
+        assertFalse(SchemaGraph.NOTE_ID_PREFIX.startsWith(SchemaGraph.FRAME_ID_PREFIX));
+        assertFalse(SchemaGraph.FRAME_ID_PREFIX.startsWith(SchemaGraph.NOTE_ID_PREFIX));
+    }
+
 }

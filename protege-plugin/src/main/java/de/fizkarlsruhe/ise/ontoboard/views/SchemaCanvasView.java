@@ -488,6 +488,125 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                 JOptionPane.WARNING_MESSAGE);
     }
 
+    // ------------------------------------------------------------------ notes and frames
+
+    /**
+     * A sticky note on the diagram.
+     *
+     * <p>Deliberately not in the ontology, and the menu says so. A note at x=340, y=90 reading
+     * "check this with Bob" is meaningless without the diagram it is stuck to, and putting it in
+     * the ontology would mean every consumer of every release downloads somebody's reminder to
+     * themselves. The durable, per-term kind that does belong in the ontology is
+     * {@code IAO:0000116}, which OntoBoard > Notes writes.
+     *
+     * <p>Kept in the sidecar, which is committed - so a note does reach collaborators through
+     * git, and reaches them live once the sidecar is synced.
+     */
+    private void createStickyNote(java.awt.Point at) {
+        String text = JOptionPane.showInputDialog(this,
+                "What should the note say?\n\nThis stays on the diagram - it is not written "
+                        + "into the ontology and will not appear in a release.",
+                "Sticky note", JOptionPane.PLAIN_MESSAGE);
+        if (text == null || text.trim().isEmpty()) {
+            return;
+        }
+        CanvasLayout.NoteLayout note = new CanvasLayout.NoteLayout();
+        note.id = SchemaGraph.NOTE_ID_PREFIX + nextAnnotationSuffix();
+        note.text = text.trim();
+        note.x = at == null ? 60 : at.getX();
+        note.y = at == null ? 60 : at.getY();
+        layout.notes.add(note);
+        refresh();
+        saveLayoutTo(currentOntologyFile);
+    }
+
+    /** A labelled region grouping what is inside it. Also diagram-only. */
+    private void createFrame(java.awt.Point at) {
+        String label = JOptionPane.showInputDialog(this,
+                "What is this group called?\n\nA frame is a region on the diagram. If it is "
+                        + "really a module, make it one - an import, or IAO:0000113 in branch - "
+                        + "rather than a rectangle.",
+                "Frame", JOptionPane.PLAIN_MESSAGE);
+        if (label == null || label.trim().isEmpty()) {
+            return;
+        }
+        CanvasLayout.FrameLayout frame = new CanvasLayout.FrameLayout();
+        frame.id = SchemaGraph.FRAME_ID_PREFIX + nextAnnotationSuffix();
+        frame.label = label.trim();
+        frame.x = at == null ? 40 : at.getX();
+        frame.y = at == null ? 40 : at.getY();
+        frame.w = 340;
+        frame.h = 240;
+        layout.frames.add(frame);
+        refresh();
+        saveLayoutTo(currentOntologyFile);
+    }
+
+    /** Changes the text of a note or the label of a frame. */
+    private void editAnnotation(String id) {
+        for (CanvasLayout.NoteLayout note : layout.notes) {
+            if (id.equals(note.id)) {
+                String text = JOptionPane.showInputDialog(this, "Note", note.text);
+                if (text != null && !text.trim().isEmpty()) {
+                    note.text = text.trim();
+                    refresh();
+                    saveLayoutTo(currentOntologyFile);
+                }
+                return;
+            }
+        }
+        for (CanvasLayout.FrameLayout frame : layout.frames) {
+            if (id.equals(frame.id)) {
+                String label = JOptionPane.showInputDialog(this, "Frame name", frame.label);
+                if (label != null && !label.trim().isEmpty()) {
+                    frame.label = label.trim();
+                    refresh();
+                    saveLayoutTo(currentOntologyFile);
+                }
+                return;
+            }
+        }
+    }
+
+    /**
+     * Removes a note or a frame.
+     *
+     * <p>No confirmation, unlike deleting a term: nothing in the ontology changes, the sidecar is
+     * in git, and a prompt for every sticky note would be the kind of friction that stops people
+     * using them.
+     */
+    private void deleteAnnotation(String id) {
+        boolean removed = false;
+        for (java.util.Iterator<CanvasLayout.NoteLayout> notes = layout.notes.iterator();
+                notes.hasNext();) {
+            if (id.equals(notes.next().id)) {
+                notes.remove();
+                removed = true;
+            }
+        }
+        for (java.util.Iterator<CanvasLayout.FrameLayout> frames = layout.frames.iterator();
+                frames.hasNext();) {
+            if (id.equals(frames.next().id)) {
+                frames.remove();
+                removed = true;
+            }
+        }
+        if (removed) {
+            refresh();
+            saveLayoutTo(currentOntologyFile);
+        }
+    }
+
+    /**
+     * A suffix that does not collide with one made on another machine.
+     *
+     * <p>The sidecar is committed and merged, so two people adding a note between pulls would
+     * otherwise both create note-1 and git would resolve it by keeping one of them.
+     */
+    private String nextAnnotationSuffix() {
+        return java.util.UUID.randomUUID().toString().substring(0, 8);
+    }
+
     /** Puts a line in the toolbar's status label, reusing the collaboration one. */
     private void setStatus(String text) {
         if (collabStatus != null) {
@@ -918,6 +1037,33 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                 Object cell = graphComponent.getCellAt(event.getX(), event.getY());
                 String iri = graph.getIdForCell(cell);
                 JPopupMenu menu = new JPopupMenu();
+
+                if (iri != null && SchemaGraph.isAnnotationId(iri)) {
+                    // A note or a frame: none of the term actions apply, and offering them would
+                    // be offering to remove axioms from something that has none.
+                    JMenuItem edit = new JMenuItem("Edit this note or frame...");
+                    edit.addActionListener(a -> editAnnotation(iri));
+                    menu.add(edit);
+                    JMenuItem delete = new JMenuItem("Delete this note or frame");
+                    delete.addActionListener(a -> deleteAnnotation(iri));
+                    menu.add(delete);
+                    menu.addSeparator();
+                }
+
+                JMenuItem addNote = new JMenuItem("Put a sticky note here...");
+                addNote.setToolTipText("A note on the diagram. It is not in the ontology and "
+                        + "never appears in a release - see OntoBoard > Notes for one that does.");
+                addNote.addActionListener(a -> createStickyNote(
+                        graphComponent.getGraphControl().getMousePosition()));
+                menu.add(addNote);
+
+                JMenuItem addFrame = new JMenuItem("Draw a frame here...");
+                addFrame.setToolTipText("A labelled region to group what is inside it. Also only "
+                        + "on the diagram.");
+                addFrame.addActionListener(a -> createFrame(
+                        graphComponent.getGraphControl().getMousePosition()));
+                menu.add(addFrame);
+                menu.addSeparator();
 
                 JMenuItem addSelected = new JMenuItem("Add selected entity to canvas");
                 addSelected.addActionListener(a -> addSelectedEntityToCanvas());

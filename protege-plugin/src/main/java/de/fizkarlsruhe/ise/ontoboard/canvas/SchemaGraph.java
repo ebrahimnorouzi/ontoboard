@@ -40,6 +40,21 @@ public class SchemaGraph extends mxGraph {
             removeCells(mxGraphModel.getChildren(getModel(), getDefaultParent()), true);
             cellsById.clear();
 
+            // Frames first, so they sit behind the nodes they group. mxGraph paints in insertion
+            // order and a frame drawn afterwards would cover everything inside it.
+            for (CanvasLayout.FrameLayout frame : layout.frames) {
+                if (frame == null || frame.id == null) {
+                    continue;
+                }
+                Object cell = insertVertex(getDefaultParent(), frame.id,
+                        frame.label == null ? "" : frame.label,
+                        frame.x, frame.y, frame.w <= 0 ? 320 : frame.w,
+                        frame.h <= 0 ? 220 : frame.h,
+                        SchemaStyles.FRAME + ";strokeColor="
+                                + (frame.stroke == null ? "#4A90D9" : frame.stroke));
+                cellsById.put(frame.id, cell);
+            }
+
             double nextX = 40;
             for (CanvasNode node : projection.getNodes()) {
                 CanvasLayout.NodeLayout stored = layout.nodes.get(node.getId());
@@ -65,10 +80,39 @@ public class SchemaGraph extends mxGraph {
                         source, target, styleFor(edge));
                 cellsById.put(edge.getId(), cell);
             }
+            // Sticky notes last, so they are never hidden behind a node - the whole point of one
+            // is that somebody reads it.
+            for (CanvasLayout.NoteLayout note : layout.notes) {
+                if (note == null || note.id == null) {
+                    continue;
+                }
+                Object cell = insertVertex(getDefaultParent(), note.id,
+                        note.text == null ? "" : note.text,
+                        note.x, note.y, note.w <= 0 ? 180 : note.w, note.h <= 0 ? 120 : note.h,
+                        SchemaStyles.STICKY_NOTE + ";fillColor="
+                                + (note.color == null ? "#FFF3B0" : note.color));
+                cellsById.put(note.id, cell);
+            }
         } finally {
             getModel().endUpdate();
         }
     }
+
+    /**
+     * Whether this id belongs to a sticky note or a frame rather than to a term.
+     *
+     * <p>The canvas keys everything by id, and a note's id is a generated one rather than an IRI.
+     * Anything that treats a cell as a term - selection, axiom removal, expanding neighbours -
+     * has to be able to tell them apart, and asking the ontology would say "not found" for both a
+     * note and a term that has been deleted.
+     */
+    public static boolean isAnnotationId(String id) {
+        return id != null && (id.startsWith(NOTE_ID_PREFIX) || id.startsWith(FRAME_ID_PREFIX));
+    }
+
+    /** Prefixes that make a canvas annotation recognisable by its id alone. */
+    public static final String NOTE_ID_PREFIX = "ontoboard-note-";
+    public static final String FRAME_ID_PREFIX = "ontoboard-frame-";
 
     public Object getCellForId(String id) {
         return id == null ? null : cellsById.get(id);
