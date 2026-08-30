@@ -4,6 +4,7 @@ import com.mxgraph.swing.mxGraphOutline;
 import com.mxgraph.util.mxEvent;
 import com.mxgraph.util.mxEventSource.mxIEventListener;
 import de.fizkarlsruhe.ise.ontoboard.axiom.AxiomRemoval;
+import de.fizkarlsruhe.ise.ontoboard.axiom.HierarchyAxioms;
 import de.fizkarlsruhe.ise.ontoboard.axiom.EdgeAxioms;
 import de.fizkarlsruhe.ise.ontoboard.axiom.EntityFactory;
 import de.fizkarlsruhe.ise.ontoboard.axiom.RelationDialog;
@@ -69,6 +70,7 @@ import org.semanticweb.owlapi.model.IRI;
 import org.semanticweb.owlapi.model.OWLDataFactory;
 import org.semanticweb.owlapi.model.OWLEntity;
 import org.semanticweb.owlapi.model.OWLObjectProperty;
+import org.semanticweb.owlapi.model.OWLAxiom;
 import org.semanticweb.owlapi.model.OWLOntology;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -840,6 +842,12 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                     });
                     menu.add(expand);
 
+                    JMenuItem hierarchy = new JMenuItem("Set parent or type...");
+                    hierarchy.setToolTipText("Assert rdfs:subClassOf, rdf:type or "
+                            + "rdfs:subPropertyOf between this term and another on the board");
+                    hierarchy.addActionListener(a -> createHierarchyLinkFrom(iri));
+                    menu.add(hierarchy);
+
                     JMenuItem remove = new JMenuItem("Remove from canvas (keeps axioms)");
                     remove.addActionListener(a -> {
                         membership.remove(iri);
@@ -1094,6 +1102,46 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
     }
 
     /**
+     * Provenance for a term this plugin has just changed, or nothing.
+     *
+     * <p>{@code dcterms:date} answers "when did this term last change", which is the question a
+     * curator asks before trusting a definition. {@link Provenance#stampModified} was written and
+     * tested and never called, so every term in every ontology edited here carried a creation
+     * date and no modification date at all - and the absence reads as "never touched since it was
+     * made", which was false for any term anybody had worked on.
+     *
+     * <p>Stamped where this plugin makes the edit rather than from the change listener. The
+     * listener sees every change including the ones arriving from a collaborator, and stamping
+     * those would record the local user as having modified a term somebody else changed - and
+     * would then publish that stamp back, which is a loop.
+     *
+     * @param iri the term that was edited, not the axiom that did it
+     */
+    private List<OWLOntologyChange> modificationProvenanceFor(OWLOntology ontology, IRI iri) {
+        ProvenanceSettings settings = ProvenanceSettings.load();
+        if (!settings.shouldStamp(ontology, isOdkProject())) {
+            return new ArrayList<OWLOntologyChange>();
+        }
+        List<OWLOntologyChange> changes = new ArrayList<OWLOntologyChange>(
+                Provenance.declareProperties(ontology));
+        changes.addAll(Provenance.stampModified(ontology, iri, settings.canonicalAgent(),
+                today()));
+        return changes;
+    }
+
+    /**
+     * Whether the open ontology is an ODK project, for the provenance default.
+     *
+     * <p>A project this plugin scaffolded gets provenance by default; somebody else's ontology
+     * does not, because introducing a convention its maintainers never chose would show up as
+     * unexplained churn in their next diff.
+     */
+    private boolean isOdkProject() {
+        return currentOntologyFile != null
+                && TermMinter.findRangesFile(currentOntologyFile) != null;
+    }
+
+    /**
      * Provenance for a term just created, or nothing.
      *
      * <p>Whether to stamp is the ontology's decision more than the user's - see
@@ -1215,11 +1263,126 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         changes.add(new AddAxiom(ontology, EdgeAxioms.build(factory, choice.getCandidate(),
                 factory.getOWLClass(IRI.create(sourceIri)), property,
                 factory.getOWLClass(IRI.create(targetIri)))));
+        // The restriction is asserted about the source class, so the source is what changed.
+        changes.addAll(modificationProvenanceFor(ontology, IRI.create(sourceIri)));
 
         // Applying fires the ontology-change listener, which refreshes the canvas. The edge
         // therefore appears only because the axiom exists - if the change were rejected,
         // no edge would be drawn.
         getOWLModelManager().applyChanges(changes);
+    }
+
+    /**
+     * Asserts the parent, type or sub-property link between this term and another on the board.
+     *
+     * <p>The canvas drew all three of these edges and could create none of them: the legend
+     * advertised {@code rdfs:subClassOf}, {@code rdf:type} and {@code rdfs:subPropertyOf}, the
+     * projection rendered them from the ontology, and the only authoring path - the relation
+     * dialog - offered six property restrictions and no way to say "this is a kind of that". To
+     * add a parent a user had to leave the canvas for Protege's class hierarchy.
+     *
+     * <p>Which of the three is offered is decided from what the two ends are rather than asked,
+     * because only one is ever legal for a given pair - see {@link HierarchyAxioms#applicableTo}.
+     * Offering a choice would be offering two ways to get an error, and letting somebody pick
+     * "subclass of" between an individual and a class is exactly the confusion this diagram
+     * exists to dispel.
+     */
+    private void createHierarchyLinkFrom(String sourceIri) {
+        OWLOntology ontology = getOWLModelManager().getActiveOntology();
+        OWLDataFactory factory = getOWLModelManager().getOWLDataFactory();
+        OWLEntity source = entityOnCanvas(ontology, sourceIri);
+        if (source == null) {
+            return;
+        }
+
+        // Only terms this one could legally be linked to, so the list cannot contain a choice
+        // that produces an error message.
+        List<String> targets = new ArrayList<String>();
+        for (String onCanvas : membership.asSet()) {
+            OWLEntity candidate = entityOnCanvas(ontology, onCanvas);
+            if (candidate != null && !HierarchyAxioms.applicableTo(source, candidate).isEmpty()) {
+                targets.add(onCanvas);
+            }
+        }
+        if (targets.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                    "Nothing on the board can be a parent or a type for "
+                            + getOWLModelManager().getRendering(source) + ".\n\n"
+                            + "A class takes a class as its parent, an individual takes a class "
+                            + "as its type, and a property takes a property of the same kind. "
+                            + "Add one to the board first.",
+                    "Nothing to link to", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        Collections.sort(targets);
+
+        String[] labels = new String[targets.size()];
+        for (int i = 0; i < targets.size(); i++) {
+            labels[i] = getOWLModelManager().getRendering(
+                    entityOnCanvas(ontology, targets.get(i)));
+        }
+        HierarchyAxioms.Kind kind = HierarchyAxioms.applicableTo(source,
+                entityOnCanvas(ontology, targets.get(0))).get(0);
+
+        Object chosen = JOptionPane.showInputDialog(this,
+                getOWLModelManager().getRendering(source) + " " + kind.getDlNotation()
+                        + " ...\n\n" + kind.getExplanation() + "\n",
+                kind.getDisplayName(), JOptionPane.PLAIN_MESSAGE, null, labels, labels[0]);
+        if (chosen == null) {
+            return;
+        }
+        OWLEntity target = entityOnCanvas(ontology,
+                targets.get(indexOf(labels, chosen.toString())));
+
+        // Re-read for the chosen target: the list can hold more than one kind of term, and the
+        // kind used for the prompt came from the first of them.
+        List<HierarchyAxioms.Kind> applicable = HierarchyAxioms.applicableTo(source, target);
+        if (applicable.isEmpty()) {
+            JOptionPane.showMessageDialog(this, HierarchyAxioms.whyNot(source, target),
+                    "Cannot link those", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        OWLAxiom axiom = HierarchyAxioms.build(factory, applicable.get(0), source, target);
+        if (ontology.containsAxiom(axiom)) {
+            JOptionPane.showMessageDialog(this, "That link is already asserted.",
+                    "Nothing to add", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        List<OWLOntologyChange> changes = new ArrayList<OWLOntologyChange>();
+        changes.add(new AddAxiom(ontology, axiom));
+        // The SOURCE term is the one that changed - it gained a parent, a type or a super
+        // property. The target is untouched by this axiom and stamping it would claim an edit
+        // nobody made.
+        changes.addAll(modificationProvenanceFor(ontology, source.getIRI()));
+        // Applying fires the ontology-change listener, which refreshes the canvas and publishes
+        // to the shared session. The edge appears only because the axiom exists.
+        getOWLModelManager().applyChanges(changes);
+    }
+
+    /**
+     * The entity behind an IRI on the board, or null.
+     *
+     * <p>An IRI can name more than one kind of entity in the same ontology - OWL 2 punning - and
+     * the board holds one node per IRI. Classes first because that is what a board is mostly made
+     * of, and because a punned IRI drawn as a class should link as one.
+     */
+    private OWLEntity entityOnCanvas(OWLOntology ontology, String iri) {
+        IRI subject = IRI.create(iri);
+        OWLDataFactory factory = getOWLModelManager().getOWLDataFactory();
+        if (ontology.containsClassInSignature(subject)) {
+            return factory.getOWLClass(subject);
+        }
+        if (ontology.containsIndividualInSignature(subject)) {
+            return factory.getOWLNamedIndividual(subject);
+        }
+        if (ontology.containsObjectPropertyInSignature(subject)) {
+            return factory.getOWLObjectProperty(subject);
+        }
+        if (ontology.containsDataPropertyInSignature(subject)) {
+            return factory.getOWLDataProperty(subject);
+        }
+        return null;
     }
 
     private static int indexOf(String[] values, String needle) {

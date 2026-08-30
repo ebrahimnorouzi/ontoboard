@@ -1,6 +1,8 @@
 package de.fizkarlsruhe.ise.ontoboard.menu;
 
 import de.fizkarlsruhe.ise.ontoboard.prov.EditorNotes;
+import de.fizkarlsruhe.ise.ontoboard.prov.ProvenanceSettings;
+import de.fizkarlsruhe.ise.ontoboard.prov.Provenance;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -135,6 +137,18 @@ public class EditorNoteAction extends OntoBoardAction {
                             + "by somebody else while you were typing it.").build();
         }
         declarations.addAll(changes);
+        // Writing a note is editing the term, and "when did this last change" is the question a
+        // curator asks before trusting what it says. Only when the ontology already keeps
+        // provenance - see ProvenanceSettings - so an ontology that has never recorded any does
+        // not start because somebody left a note in it.
+        ProvenanceSettings settings = ProvenanceSettings.load();
+        if (settings.shouldStamp(ontology, false)) {
+            declarations.addAll(Provenance.declareProperties(ontology));
+            declarations.addAll(Provenance.stampModified(ontology, subject.getIRI(),
+                    settings.canonicalAgent(),
+                    java.time.OffsetDateTime.now(java.time.ZoneOffset.UTC)
+                            .truncatedTo(java.time.temporal.ChronoUnit.SECONDS).toString()));
+        }
         getOWLModelManager().applyChanges(declarations);
 
         String label = getOWLModelManager().getRendering(subject);
