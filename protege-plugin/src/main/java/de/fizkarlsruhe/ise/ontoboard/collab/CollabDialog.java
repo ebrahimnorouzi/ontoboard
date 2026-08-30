@@ -44,12 +44,38 @@ public final class CollabDialog {
      *
      * @return the settings the user confirmed, already saved, or null if they cancelled
      */
+    /**
+     * The settings dialog, without an ontology to derive a board from.
+     *
+     * <p>Kept for callers that have none. Prefer {@link #show(Component, String)}: a board id
+     * typed by hand is the one that gets mistyped, and a mistyped board id is a second empty
+     * session rather than an error.
+     */
     public static CollabSettings show(Component parent) {
+        return show(parent, null);
+    }
+
+    /**
+     * The settings dialog for a particular ontology.
+     *
+     * <p>The board id defaults to the one the ontology derives, so two people editing the same
+     * ontology reach the same session without agreeing anything and without either of them typing
+     * a name. Overriding is allowed - one board across a pair of related files is a real thing to
+     * want - but a board that does not match the open ontology is said out loud, because the
+     * failure it causes is otherwise invisible until somebody else's class appears in your file.
+     *
+     * @param ontologyIri the open ontology's own IRI, or null when there is none
+     */
+    public static CollabSettings show(Component parent, String ontologyIri) {
         CollabSettings existing = CollabSettingsStore.load();
         boolean tokenWasRemembered = CollabSettingsStore.isTokenRemembered();
 
         JTextField server = new JTextField(existing.getBridgeUrl(), 28);
-        JTextField board = new JTextField(existing.getBoard(), 28);
+        String derived = BoardId.forOntology(ontologyIri);
+        // The stored board wins - somebody who set one meant it - and the derived one fills an
+        // empty field so that the common case needs no typing at all.
+        String startingBoard = existing.getBoard().isEmpty() ? derived : existing.getBoard();
+        JTextField board = new JTextField(startingBoard, 28);
         JPasswordField token = new JPasswordField(existing.getToken(), 28);
         // No name field. The bridge takes the name from the access token's subject and never reads
         // what a client claims - presenceFor(...).set(socket, { user, ... }) is written once at
@@ -76,7 +102,10 @@ public final class CollabDialog {
 
         addRow(form, at, "Server address", server,
                 "The JSON bridge, normally port 1235 - not 1234, which browsers use");
-        addRow(form, at, "Board id", board, "The board you and your colleagues share");
+        addRow(form, at, "Board id", board, derived.isEmpty()
+                ? "The board you and your colleagues share"
+                : "Derived from this ontology, so everyone editing it reaches the same board "
+                        + "without being told the name. Change it only if you mean to.");
         addRow(form, at, "Access token", token,
                 "From the web application; your name comes from it, not from this dialog");
         addRow(form, at, "Your colour", colour,
@@ -107,7 +136,7 @@ public final class CollabDialog {
         } catch (IllegalArgumentException wrong) {
             JOptionPane.showMessageDialog(parent, wrong.getMessage(),
                     "That address will not work", JOptionPane.WARNING_MESSAGE);
-            return show(parent);
+            return show(parent, ontologyIri);
         }
         CollabSettingsStore.save(chosen, remember.isSelected());
         return chosen;

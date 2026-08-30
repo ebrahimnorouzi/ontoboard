@@ -17,6 +17,7 @@ import de.fizkarlsruhe.ise.ontoboard.canvas.PrefixColours;
 import de.fizkarlsruhe.ise.ontoboard.canvas.SchemaGraph;
 import de.fizkarlsruhe.ise.ontoboard.canvas.SelectionBridge;
 import de.fizkarlsruhe.ise.ontoboard.canvas.StartPanel;
+import de.fizkarlsruhe.ise.ontoboard.collab.BoardId;
 import de.fizkarlsruhe.ise.ontoboard.collab.CollabDialog;
 import de.fizkarlsruhe.ise.ontoboard.collab.CollabSession;
 import de.fizkarlsruhe.ise.ontoboard.collab.CollabSettings;
@@ -590,7 +591,10 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             collabStatus.setText("Working through git");
             return;
         }
-        CollabSettings settings = CollabDialog.show(this);
+        OWLOntology open = getOWLModelManager().getActiveOntology();
+        String ontologyIri = open != null && open.getOntologyID().getOntologyIRI().isPresent()
+                ? open.getOntologyID().getOntologyIRI().get().toString() : null;
+        CollabSettings settings = CollabDialog.show(this, ontologyIri);
         if (settings == null) {
             return;
         }
@@ -599,6 +603,19 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             collabStatus.setText("Working through git");
             JOptionPane.showMessageDialog(this, settings.explainWhyNotLive(),
                     "Working through git", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        // Before connecting, not after. A board that is not this ontology's is legitimate when
+        // it is meant - one board across a pair of related files - but when it is not, the
+        // consequence is somebody else's classes arriving in this file, and nothing later in the
+        // session would say so.
+        String mismatch = BoardId.mismatchWarning(settings.getBoard(), ontologyIri);
+        if (mismatch != null && JOptionPane.showConfirmDialog(this,
+                mismatch + "
+
+Connect anyway?", "This board is for another ontology",
+                JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE)
+                != JOptionPane.YES_OPTION) {
             return;
         }
         collab = new CollabSession(settings, new CanvasCollabHost(),

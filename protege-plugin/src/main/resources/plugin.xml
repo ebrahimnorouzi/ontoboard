@@ -63,8 +63,8 @@
 
   <extension id="menu.OntoBoard.project.idranges"
              point="org.protege.editor.core.application.EditorKitMenuAction">
-    <name value="ID ranges"/>
-    <toolTip value="Who may mint which identifiers in this project"/>
+    <name value="ID ranges..."/>
+    <toolTip value="Who may mint which identifiers, and give a block to a new editor"/>
     <class value="de.fizkarlsruhe.ise.ontoboard.menu.IdRangesAction"/>
     <path value="ontoboard.menu.OntoBoard.project/SlotB-A"/>
     <editorKitId value="OWLEditorKit"/>
