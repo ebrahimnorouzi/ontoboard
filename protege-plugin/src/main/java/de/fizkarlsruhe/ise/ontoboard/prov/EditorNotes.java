@@ -198,6 +198,104 @@ public final class EditorNotes {
     }
 
     /**
+     * The issue trackers linked from a term, in the order the ontology gives them.
+     *
+     * <p>{@code IAO:0000233} is the OBO answer to "where is the discussion about this term". The
+     * note in the ontology says what is wrong; the tracker item points at the argument about it.
+     * That split is why a threaded conversation does not have to live in a released file: an
+     * importer gets the note and a link, and neither grows without bound in every diff.
+     */
+    public static List<String> trackerItemsOn(OWLOntology ontology, IRI entity) {
+        List<String> items = new ArrayList<String>();
+        if (ontology == null || entity == null) {
+            return items;
+        }
+        for (OWLAnnotationAssertionAxiom axiom : ontology.getAnnotationAssertionAxioms(entity)) {
+            if (!TERM_TRACKER_ITEM.equals(axiom.getProperty().getIRI())) {
+                continue;
+            }
+            if (axiom.getValue() instanceof IRI) {
+                items.add(axiom.getValue().toString());
+            } else if (axiom.getValue() instanceof OWLLiteral) {
+                // Some projects write it as a string. Read both; write only the IRI form.
+                items.add(((OWLLiteral) axiom.getValue()).getLiteral());
+            }
+        }
+        return items;
+    }
+
+    /**
+     * Changes that link a term to its issue.
+     *
+     * <p>Written as an IRI rather than a string, which is what OBO does and what makes the link
+     * resolvable by anything that reads the ontology rather than only by a person looking at it.
+     *
+     * @return no changes for a blank url, or when that exact link is already there
+     */
+    public static List<OWLOntologyChange> addTrackerItem(OWLOntology ontology, IRI entity,
+            String url) {
+        List<OWLOntologyChange> changes = new ArrayList<OWLOntologyChange>();
+        String trimmed = url == null ? "" : url.trim();
+        if (ontology == null || entity == null || trimmed.isEmpty()
+                || trackerItemsOn(ontology, entity).contains(trimmed)) {
+            return changes;
+        }
+        OWLDataFactory factory = ontology.getOWLOntologyManager().getOWLDataFactory();
+        changes.add(new AddAxiom(ontology, factory.getOWLAnnotationAssertionAxiom(
+                factory.getOWLAnnotationProperty(TERM_TRACKER_ITEM), entity,
+                IRI.create(trimmed))));
+        return changes;
+    }
+
+    /** Changes that unlink one exact issue from a term. */
+    public static List<OWLOntologyChange> removeTrackerItem(OWLOntology ontology, IRI entity,
+            String url) {
+        List<OWLOntologyChange> changes = new ArrayList<OWLOntologyChange>();
+        String trimmed = url == null ? "" : url.trim();
+        if (ontology == null || entity == null || trimmed.isEmpty()) {
+            return changes;
+        }
+        for (OWLAnnotationAssertionAxiom axiom : ontology.getAnnotationAssertionAxioms(entity)) {
+            if (TERM_TRACKER_ITEM.equals(axiom.getProperty().getIRI())
+                    && trimmed.equals(valueTextOf(axiom.getValue()))) {
+                changes.add(new RemoveAxiom(ontology, axiom));
+            }
+        }
+        return changes;
+    }
+
+    /**
+     * Why this is not usable as a tracker item, or null.
+     *
+     * <p>An {@code IAO:0000233} whose value is not resolvable is worse than none: it looks like a
+     * link, so nobody looks for the discussion anywhere else, and it goes nowhere.
+     */
+    public static String rejectTrackerItem(String url) {
+        String trimmed = url == null ? "" : url.trim();
+        if (trimmed.isEmpty()) {
+            return "Give the address of the issue.";
+        }
+        String lower = trimmed.toLowerCase(java.util.Locale.ROOT);
+        if (!lower.startsWith("http://") && !lower.startsWith("https://")) {
+            return "A term tracker item has to be a resolvable address - an issue URL such as "
+                    + "https://github.com/owner/repo/issues/12. A bare number or a note about "
+                    + "where to look would read as a link and go nowhere.";
+        }
+        if (trimmed.contains(" ")) {
+            return "That address contains a space, so it is not a URL.";
+        }
+        return null;
+    }
+
+    /** An annotation value as text, whether it is an IRI or a literal. */
+    private static String valueTextOf(org.semanticweb.owlapi.model.OWLAnnotationValue value) {
+        if (value instanceof OWLLiteral) {
+            return ((OWLLiteral) value).getLiteral();
+        }
+        return value == null ? "" : value.toString();
+    }
+
+    /**
      * Changes that take every editorial note out of the ontology.
      *
      * <p>For a release. {@code IAO:0000116}'s own definition says a note "may not be included in

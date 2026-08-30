@@ -2,6 +2,8 @@ package de.fizkarlsruhe.ise.ontoboard.prov;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Arrays;
@@ -172,6 +174,104 @@ class EditorNotesTest {
 
         assertTrue(EditorNotes.replaceNote(ontology, TERM, EditorNotes.Kind.EDITOR,
                 "Same.", "Same.").isEmpty());
+    }
+
+    // ---------- the discussion lives elsewhere, and the term points at it ----------
+
+    /**
+     * The other half of "keep the comments in the ontology". A note travels with every release;
+     * the argument about it is unbounded, so it stays where conversations work and the ontology
+     * holds a link. IAO:0000233 is what OBO uses for exactly that.
+     */
+    @Test
+    void aTermCanPointAtTheIssueItIsArguedAboutIn() {
+        apply(EditorNotes.addTrackerItem(ontology, TERM,
+                "https://github.com/ISE-FIZKarlsruhe/mwo/issues/12"));
+
+        assertEquals(Arrays.asList("https://github.com/ISE-FIZKarlsruhe/mwo/issues/12"),
+                EditorNotes.trackerItemsOn(ontology, TERM));
+    }
+
+    /** Written as an IRI, so anything reading the ontology can follow it, not only a person. */
+    @Test
+    void theLinkIsStoredAsAnIriRatherThanAString() {
+        apply(EditorNotes.addTrackerItem(ontology, TERM, "https://example.org/issues/1"));
+
+        boolean storedAsIri = false;
+        for (org.semanticweb.owlapi.model.OWLAnnotationAssertionAxiom axiom
+                : ontology.getAnnotationAssertionAxioms(TERM)) {
+            if (EditorNotes.TERM_TRACKER_ITEM.equals(axiom.getProperty().getIRI())) {
+                storedAsIri = axiom.getValue() instanceof IRI;
+            }
+        }
+        assertTrue(storedAsIri, "an IAO:0000233 written as a literal is not resolvable");
+    }
+
+    /** A term picks up more than one issue over its life. */
+    @Test
+    void aTermCanPointAtSeveralIssues() {
+        apply(EditorNotes.addTrackerItem(ontology, TERM, "https://example.org/issues/1"));
+        apply(EditorNotes.addTrackerItem(ontology, TERM, "https://example.org/issues/2"));
+
+        assertEquals(2, EditorNotes.trackerItemsOn(ontology, TERM).size());
+    }
+
+    @Test
+    void theSameIssueIsNotLinkedTwice() {
+        apply(EditorNotes.addTrackerItem(ontology, TERM, "https://example.org/issues/1"));
+
+        assertTrue(EditorNotes.addTrackerItem(ontology, TERM,
+                "https://example.org/issues/1").isEmpty());
+    }
+
+    @Test
+    void unlinkingTakesOffTheOneNamedAndLeavesTheRest() {
+        apply(EditorNotes.addTrackerItem(ontology, TERM, "https://example.org/issues/1"));
+        apply(EditorNotes.addTrackerItem(ontology, TERM, "https://example.org/issues/2"));
+
+        apply(EditorNotes.removeTrackerItem(ontology, TERM, "https://example.org/issues/1"));
+
+        assertEquals(Arrays.asList("https://example.org/issues/2"),
+                EditorNotes.trackerItemsOn(ontology, TERM));
+    }
+
+    /** Some projects write it as a string; read both, write only the resolvable form. */
+    @Test
+    void aLinkSomebodyElseWroteAsAStringIsStillRead() {
+        manager.addAxiom(ontology, factory.getOWLAnnotationAssertionAxiom(
+                factory.getOWLAnnotationProperty(EditorNotes.TERM_TRACKER_ITEM), TERM,
+                factory.getOWLLiteral("https://example.org/issues/3")));
+
+        assertEquals(Arrays.asList("https://example.org/issues/3"),
+                EditorNotes.trackerItemsOn(ontology, TERM));
+    }
+
+    /**
+     * A tracker item that does not resolve is worse than none: it looks like a link, so nobody
+     * looks for the discussion anywhere else, and it goes nowhere.
+     */
+    @Test
+    void somethingThatIsNotAnAddressIsRefusedWithAnExample() {
+        assertTrue(EditorNotes.rejectTrackerItem("issue 12").contains("resolvable"),
+                EditorNotes.rejectTrackerItem("issue 12"));
+        assertTrue(EditorNotes.rejectTrackerItem("issue 12").contains("github.com"),
+                "showing what one looks like is most of the help");
+        assertNotNull(EditorNotes.rejectTrackerItem(""));
+        assertNotNull(EditorNotes.rejectTrackerItem("https://example.org/a b"));
+    }
+
+    @Test
+    void arealIssueUrlIsAccepted() {
+        assertNull(EditorNotes.rejectTrackerItem(
+                "https://github.com/ISE-FIZKarlsruhe/mwo/issues/12"));
+        assertNull(EditorNotes.rejectTrackerItem("http://example.org/tracker/7"));
+    }
+
+    @Test
+    void aTermWithNoLinksHasNone() {
+        assertTrue(EditorNotes.trackerItemsOn(ontology, TERM).isEmpty());
+        assertTrue(EditorNotes.trackerItemsOn(null, TERM).isEmpty());
+        assertTrue(EditorNotes.addTrackerItem(ontology, TERM, "").isEmpty());
     }
 
     // ---------- release ----------

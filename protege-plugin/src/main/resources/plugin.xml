@@ -97,6 +97,15 @@
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
+  <extension id="menu.OntoBoard.project.imports"
+             point="org.protege.editor.core.application.EditorKitMenuAction">
+    <name value="Imports"/>
+    <toolTip value="What this ontology imports and whether any of it actually arrived"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.menu.ImportsAction"/>
+    <path value="ontoboard.menu.OntoBoard.project/SlotB-C"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
+
   <!-- = ROBOT = -->
 
   <extension id="menu.OntoBoard.robot" name="Robot"
@@ -177,6 +186,15 @@
     <toolTip value="Every editorial note in the ontology - Protege offers no other way to find them"/>
     <class value="de.fizkarlsruhe.ise.ontoboard.menu.AllNotesAction"/>
     <path value="ontoboard.menu.OntoBoard.notes/SlotA-B"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
+
+  <extension id="menu.OntoBoard.notes.tracker"
+             point="org.protege.editor.core.application.EditorKitMenuAction">
+    <name value="Discussion link..."/>
+    <toolTip value="Point a term at the issue where it is argued about - IAO:0000233"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.menu.TrackerItemAction"/>
+    <path value="ontoboard.menu.OntoBoard.notes/SlotA-C"/>
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
