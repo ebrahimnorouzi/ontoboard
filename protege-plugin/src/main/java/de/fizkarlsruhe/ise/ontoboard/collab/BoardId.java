@@ -96,6 +96,64 @@ public final class BoardId {
     }
 
     /**
+     * The peers who are editing something else, if any.
+     *
+     * <p>The one check no single end can do alone. A board id derived from the ontology makes the
+     * collision impossible for anybody who takes the default, and the local warning catches
+     * somebody who overrides it while looking at the wrong file - but two people who both
+     * override to the same wrong board defeat both, and the first sign either of them gets is
+     * somebody else's class arriving in their ontology.
+     *
+     * <p>A peer who said nothing is not counted. An older plugin, or an ontology with no IRI of
+     * its own, sends no ontology at all, and reporting absence as disagreement would cry wolf at
+     * exactly the people least able to tell it is wrong.
+     *
+     * @param mine the ontology this end is editing, or empty
+     * @param peerOntologies what each peer said they were editing, keyed by their name
+     * @return the peers who named a different ontology, in the order given
+     */
+    public static java.util.List<String> peersEditingSomethingElse(String mine,
+            java.util.Map<String, String> peerOntologies) {
+        java.util.List<String> disagreeing = new java.util.ArrayList<String>();
+        String ours = mine == null ? "" : mine.trim();
+        if (ours.isEmpty() || peerOntologies == null) {
+            return disagreeing;
+        }
+        for (java.util.Map.Entry<String, String> peer : peerOntologies.entrySet()) {
+            String theirs = peer.getValue() == null ? "" : peer.getValue().trim();
+            if (!theirs.isEmpty() && !theirs.equals(ours)) {
+                disagreeing.add(peer.getKey());
+            }
+        }
+        return disagreeing;
+    }
+
+    /**
+     * What to tell a user whose collaborators are editing a different ontology, or null.
+     *
+     * <p>Phrased as something happening now rather than something that might: by the time this
+     * can be said, both ends are connected and either one's next edit lands in the other's file.
+     */
+    public static String peerMismatchWarning(String mine,
+            java.util.Map<String, String> peerOntologies) {
+        java.util.List<String> disagreeing = peersEditingSomethingElse(mine, peerOntologies);
+        if (disagreeing.isEmpty()) {
+            return null;
+        }
+        StringBuilder names = new StringBuilder();
+        for (String name : disagreeing) {
+            if (names.length() > 0) {
+                names.append(", ");
+            }
+            names.append(name);
+        }
+        return (disagreeing.size() == 1 ? names + " is" : names + " are")
+                + " on this board editing a different ontology. Anything they change will be "
+                + "applied to yours, and anything you change to theirs. Disconnect unless you "
+                + "know that is what you want.";
+    }
+
+    /**
      * The readable part: the last meaningful segment of the IRI.
      *
      * <p>Meaningful rather than merely last, because an OBO release IRI ends in the same file name

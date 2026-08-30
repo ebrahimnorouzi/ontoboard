@@ -87,6 +87,12 @@ public final class CollabMessages {
         node.put("board", settings.getBoard());
         node.put("token", settings.getToken());
         node.put("colour", settings.getColour());
+        // Optional on the wire and relayed rather than checked: the bridge has no opinion about
+        // which ontology anybody edits, but it is the only thing that can put two peers in touch
+        // with each other's answer.
+        if (!settings.getOntologyIri().isEmpty()) {
+            node.put("ontology", settings.getOntologyIri());
+        }
         return node.toString();
     }
 
@@ -199,7 +205,7 @@ public final class CollabMessages {
             peers.add(new PeerPresence(user, text(peer, "colour"),
                     peer.has("x") ? peer.get("x").asDouble() : 0,
                     peer.has("y") ? peer.get("y").asDouble() : 0,
-                    text(peer, "selection"), receivedAt));
+                    text(peer, "selection"), receivedAt, text(peer, "ontology")));
         }
         return peers;
     }

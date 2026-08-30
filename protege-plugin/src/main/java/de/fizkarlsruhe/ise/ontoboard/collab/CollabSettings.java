@@ -27,6 +27,8 @@ public final class CollabSettings {
 
     private final String bridgeUrl;
     private final String board;
+    /** Not final and not persisted - see forOntology. */
+    private String ontologyIri = "";
     private final String token;
     private final String displayName;
     private final String colour;
@@ -103,6 +105,24 @@ public final class CollabSettings {
 
     public String getBoard() {
         return board;
+    }
+
+    /**
+     * The ontology being edited, for telling peers what this end is working on.
+     *
+     * <p>Context rather than configuration, which is why it is not persisted: it changes whenever
+     * the active ontology changes, and a stored copy would go stale the first time somebody
+     * switched file.
+     */
+    public String getOntologyIri() {
+        return ontologyIri;
+    }
+
+    /** The same settings, for a particular ontology. */
+    public CollabSettings forOntology(String iri) {
+        CollabSettings copy = new CollabSettings(bridgeUrl, board, token, displayName, colour);
+        copy.ontologyIri = iri == null ? "" : iri.trim();
+        return copy;
     }
 
     public String getToken() {

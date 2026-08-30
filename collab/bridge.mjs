@@ -15,11 +15,11 @@
  *
  * Protocol — one envelope in both directions:
  *
- *   -> { t: "hello",    board: "b1", token: "<jwt>" }
+ *   -> { t: "hello",    board: "b1", token: "<jwt>", ontology?: "http://..." }
  *   <- { t: "welcome",  user: "alice", peers: [...] }
  *   <> { t: "op",       op: { id, type, timestamp, userId, data } }
  *   <> { t: "presence", user, colour, x, y, selection }
- *   <- { t: "peers",    peers: [ { user, colour, x, y, selection } ] }
+ *   <- { t: "peers",    peers: [ { user, colour, x, y, selection, ontology } ] }
  *   <- { t: "error",    message: "..." }
  *
  * `op.type` must be one of the 18 in frontend/src/collab/useOperationSync.ts. A type the web
@@ -78,6 +78,14 @@ export function parseClientMessage(raw) {
   if (t === "hello") {
     if (!parsed.board || typeof parsed.board !== "string") {
       return { ok: false, reason: "hello needs a board" };
+    }
+    // Optional, and relayed rather than checked. The bridge has no opinion about which ontology
+    // anybody is editing - it cannot, it never sees one - but it is the only thing that can put
+    // two peers in touch with each other's answer. Two people who both override the derived
+    // board id to the same wrong value are invisible to every local check; this is what makes
+    // them visible to each other.
+    if (parsed.ontology !== undefined && typeof parsed.ontology !== "string") {
+      return { ok: false, reason: "hello ontology must be a string when present" };
     }
     return { ok: true, message: parsed };
   }
@@ -293,6 +301,9 @@ export function startBridge({ port, secret, getDoc }) {
           x: 0,
           y: 0,
           selection: null,
+          // Carried so peers can tell each other what they are editing. Empty when the client
+          // did not say - an older plugin, or an ontology with no IRI of its own.
+          ontology: typeof message.ontology === "string" ? message.ontology : "",
           seenAt: Date.now(),
         });
 

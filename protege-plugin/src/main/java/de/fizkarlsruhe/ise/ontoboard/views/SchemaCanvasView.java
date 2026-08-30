@@ -99,6 +99,8 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
     private File currentOntologyFile;
     private OWLOntologyChangeListener changeListener;
     private OWLModelManagerListener modelManagerListener;
+    /** The last peer-mismatch warning shown, so it is not repeated on every cursor move. */
+    private String lastPeerOntologyWarning;
     private SelectionBridge selectionBridge;
     private OWLSelectionModelListener selectionListener;
     /**
@@ -457,6 +459,35 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                 + " on this board cannot have instances - shown in red.";
     }
 
+    /**
+     * Says once when the people on this board are editing a different ontology.
+     *
+     * <p>Once, not on every presence update: peers arrive with every cursor movement, and a
+     * dialog per update would be unusable. The warning is repeated only when the set of
+     * disagreeing peers changes, which is when there is genuinely something new to say.
+     *
+     * <p>A dialog rather than the status line, unlike the other collaboration messages, because
+     * this one means every edit either side makes is landing in the wrong file - it is not a
+     * condition to notice eventually.
+     */
+    private void warnAboutPeersEditingSomethingElse() {
+        if (collab == null) {
+            return;
+        }
+        String warning = collab.peerOntologyWarning();
+        if (warning == null) {
+            lastPeerOntologyWarning = null;
+            return;
+        }
+        setStatus(warning);
+        if (warning.equals(lastPeerOntologyWarning)) {
+            return;
+        }
+        lastPeerOntologyWarning = warning;
+        JOptionPane.showMessageDialog(this, warning, "Different ontologies on one board",
+                JOptionPane.WARNING_MESSAGE);
+    }
+
     /** Puts a line in the toolbar's status label, reusing the collaboration one. */
     private void setStatus(String text) {
         if (collabStatus != null) {
@@ -658,7 +689,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                 != JOptionPane.YES_OPTION) {
             return;
         }
-        collab = new CollabSession(settings, new CanvasCollabHost(),
+        collab = new CollabSession(settings.forOntology(ontologyIri), new CanvasCollabHost(),
                 javax.swing.SwingUtilities::invokeLater);
         graphComponent.setPeerCursors(collab.getCursors());
         collaborateButton.setText("Disconnect");
@@ -756,6 +787,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         @Override
         public void onPeersChanged() {
             graphComponent.getGraphControl().repaint();
+            warnAboutPeersEditingSomethingElse();
         }
 
         @Override

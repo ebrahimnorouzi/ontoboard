@@ -6,6 +6,9 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.HashSet;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
@@ -198,4 +201,100 @@ class BoardIdTest {
         assertNull(BoardId.mismatchWarning("", MWO));
         assertNull(BoardId.mismatchWarning(null, MWO));
     }
+    // ---------- the check no single end can do alone ----------
+
+    /**
+     * Deriving the board id makes the collision impossible for anybody who takes the default, and
+     * the local warning catches somebody who overrides while looking at the wrong file. Two people
+     * who both override to the same wrong board defeat both - and the first sign either gets is
+     * somebody else's class arriving in their ontology.
+     */
+    @Test
+    void aPeerEditingAnotherOntologyIsNamed() {
+        Map<String, String> peers = new LinkedHashMap<String, String>();
+        peers.put("bob", "http://example.org/something-else.owl");
+
+        assertEquals(Arrays.asList("bob"), BoardId.peersEditingSomethingElse(MWO, peers));
+    }
+
+    @Test
+    void peersOnTheSameOntologyAreNotReported() {
+        Map<String, String> peers = new LinkedHashMap<String, String>();
+        peers.put("bob", MWO);
+        peers.put("carol", MWO);
+
+        assertTrue(BoardId.peersEditingSomethingElse(MWO, peers).isEmpty());
+        assertNull(BoardId.peerMismatchWarning(MWO, peers));
+    }
+
+    /**
+     * An older plugin, or an ontology with no IRI, sends nothing. Reporting absence as
+     * disagreement would cry wolf at exactly the people least able to tell it is wrong.
+     */
+    @Test
+    void aPeerWhoSaidNothingIsNotAccusedOfDisagreeing() {
+        Map<String, String> peers = new LinkedHashMap<String, String>();
+        peers.put("bob", "");
+        peers.put("carol", null);
+
+        assertTrue(BoardId.peersEditingSomethingElse(MWO, peers).isEmpty());
+    }
+
+    /** With no IRI of our own there is nothing to compare against, so nothing is claimed. */
+    @Test
+    void anEndWithNoOntologyOfItsOwnAccusesNobody() {
+        Map<String, String> peers = new LinkedHashMap<String, String>();
+        peers.put("bob", "http://example.org/other.owl");
+
+        assertTrue(BoardId.peersEditingSomethingElse("", peers).isEmpty());
+        assertTrue(BoardId.peersEditingSomethingElse(null, peers).isEmpty());
+    }
+
+    @Test
+    void severalDisagreeingPeersAreAllNamed() {
+        Map<String, String> peers = new LinkedHashMap<String, String>();
+        peers.put("bob", "http://example.org/a.owl");
+        peers.put("carol", MWO);
+        peers.put("dave", "http://example.org/b.owl");
+
+        assertEquals(Arrays.asList("bob", "dave"),
+                BoardId.peersEditingSomethingElse(MWO, peers));
+    }
+
+    /**
+     * Phrased as something happening now: by the time this can be said, both ends are connected
+     * and either one's next edit lands in the other's file.
+     */
+    @Test
+    void theWarningSaysEditsAreAlreadyCrossingOver() {
+        Map<String, String> peers = new LinkedHashMap<String, String>();
+        peers.put("bob", "http://example.org/other.owl");
+
+        String warning = BoardId.peerMismatchWarning(MWO, peers);
+
+        assertTrue(warning.contains("bob"), warning);
+        assertTrue(warning.contains("applied to yours"), warning);
+        assertTrue(warning.contains("Disconnect"), warning);
+    }
+
+    @Test
+    void oneAndSeveralPeersReadCorrectly() {
+        Map<String, String> one = new LinkedHashMap<String, String>();
+        one.put("bob", "http://example.org/other.owl");
+        assertTrue(BoardId.peerMismatchWarning(MWO, one).contains("bob is"),
+                BoardId.peerMismatchWarning(MWO, one));
+
+        Map<String, String> two = new LinkedHashMap<String, String>();
+        two.put("bob", "http://example.org/a.owl");
+        two.put("dave", "http://example.org/b.owl");
+        assertTrue(BoardId.peerMismatchWarning(MWO, two).contains("bob, dave are"),
+                BoardId.peerMismatchWarning(MWO, two));
+    }
+
+    @Test
+    void noPeersIsNothingToWarnAbout() {
+        assertNull(BoardId.peerMismatchWarning(MWO, new LinkedHashMap<String, String>()));
+        assertNull(BoardId.peerMismatchWarning(MWO, null));
+    }
+
 }
