@@ -1,6 +1,7 @@
 package de.fizkarlsruhe.ise.ontoboard.menu;
 
 import de.fizkarlsruhe.ise.ontoboard.odk.Release;
+import de.fizkarlsruhe.ise.ontoboard.odk.ReleaseDiff;
 import de.fizkarlsruhe.ise.ontoboard.prov.EditorNotes;
 import de.fizkarlsruhe.ise.ontoboard.robot.QualityFinding;
 import de.fizkarlsruhe.ise.ontoboard.robot.QualityReport;
@@ -77,12 +78,15 @@ public class ReleaseAction extends OntoBoardAction {
                 Parameter.of(OPTION_CHECK, "Refuse to release on an error",
                         Parameter.Kind.FLAG)
                         .defaultValue("true")
-                        .help("Runs ROBOT's quality report first, with this project's own "
-                                + "profile.txt, and stops if anything comes back at error. A "
-                                + "release is the one artefact you cannot take back once somebody "
-                                + "has imported it, so it is the right place to be strict. Needs "
-                                + "Protege 5.6 - on 5.5 the check is skipped and the result says "
-                                + "so rather than pretending it passed.")
+                        .help("Two checks. ROBOT's quality report, with this project's own "
+                                + "profile.txt, stopping if anything comes back at error. And "
+                                + "whether this release drops a term the last one published - "
+                                + "which breaks every ontology that imported it, silently, and is "
+                                + "almost always a mistake nobody noticed. A release is the one "
+                                + "artefact you cannot take back once somebody has imported it, "
+                                + "so it is the right place to be strict. The report needs "
+                                + "Protege 5.6; on 5.5 it is skipped and the result says so "
+                                + "rather than pretending it passed.")
                         .build(),
                 Parameter.of(OPTION_REASON, "Write down the inferences", Parameter.Kind.FLAG)
                         .defaultValue("true")
@@ -199,6 +203,39 @@ public class ReleaseAction extends OntoBoardAction {
             return result.failed("Stopped before anything was written.").build();
         }
 
+        // Against the last release, before anything is written. A term that is gone rather than
+        // obsoleted breaks every ontology that imported it and tells nobody, so this is the last
+        // moment it can be caught for free.
+        ReleaseDiff diff = null;
+        String previous = previousRelease(projectRoot, id, date);
+        if (previous != null) {
+            try {
+                diff = ReleaseDiff.between(
+                        loadRelease(Release.releaseFile(projectRoot, id, previous)), release);
+                result.note("Compared with the " + previous + " release: " + diff.summary());
+                if (!diff.removals().isEmpty()) {
+                    for (ReleaseDiff.TermChange removed : diff.removals()) {
+                        result.warn("Removed: " + ReleaseDiff.shortForm(removed.getIri())
+                                + (removed.getBefore().isEmpty() ? ""
+                                        : " (" + removed.getBefore() + ")"));
+                    }
+                    if (check) {
+                        return result.failed(diff.removals().size() + " term"
+                                + (diff.removals().size() == 1 ? " that the " : "s that the ")
+                                + previous + " release published "
+                                + (diff.removals().size() == 1 ? "is" : "are")
+                                + " gone from this one, and nothing was written. Obsolete them "
+                                + "instead - mark them owl:deprecated with a replacement - so "
+                                + "everything that imported them still resolves. Turn the check "
+                                + "off if you genuinely mean to drop them.").build();
+                    }
+                }
+            } catch (RuntimeException cannotCompare) {
+                result.warn("Could not compare with the " + previous + " release: "
+                        + cannotCompare.getMessage());
+            }
+        }
+
         File dated = Release.releaseFile(projectRoot, id, date);
         File published = new File(editFile.getParentFile(), id + ".owl");
         try {
@@ -216,6 +253,20 @@ public class ReleaseAction extends OntoBoardAction {
         }
         result.wrote(dated);
         result.wrote(published);
+
+        // Generated, not remembered. Release notes written from memory are written once, badly,
+        // and then not at all.
+        if (diff != null) {
+            File notes = new File(dated.getParentFile(), "CHANGES.md");
+            try {
+                java.nio.file.Files.write(notes.toPath(),
+                        diff.asReleaseNotes(date, release).getBytes("UTF-8"));
+                result.wrote(notes);
+            } catch (java.io.IOException cannotWrite) {
+                result.warn("The release was written but its notes were not: "
+                        + cannotWrite.getMessage());
+            }
+        }
 
         result.note("The dated copy is what the version IRI names, so leave it alone - it is the "
                 + "only thing that makes the IRI mean anything.");
@@ -276,6 +327,47 @@ public class ReleaseAction extends OntoBoardAction {
                     + cannotReport.getMessage());
             return null;
         }
+    }
+
+    /**
+     * The most recent release before {@code date}, or null when this is the first.
+     *
+     * <p>Dates sort lexically because they are ISO, which is most of why the format is insisted
+     * on elsewhere.
+     */
+    static String previousRelease(File projectRoot, String ontologyId, String date) {
+        java.util.List<String> dates = new java.util.ArrayList<String>();
+        File releases = new File(projectRoot, "releases");
+        File[] directories = releases.listFiles();
+        if (directories == null) {
+            return null;
+        }
+        for (File directory : directories) {
+            if (directory.isDirectory()
+                    && directory.getName().matches("\\d{4}-\\d{2}-\\d{2}")
+                    && directory.getName().compareTo(date) < 0
+                    && Release.releaseFile(projectRoot, ontologyId,
+                            directory.getName()).isFile()) {
+                dates.add(directory.getName());
+            }
+        }
+        if (dates.isEmpty()) {
+            return null;
+        }
+        java.util.Collections.sort(dates);
+        return dates.get(dates.size() - 1);
+    }
+
+    /**
+     * A previous release, in a manager of its own.
+     *
+     * <p>Its own manager because it declares the same ontology IRI as the edit file: loading it
+     * into Protege's would either collide with what is open or quietly hand back the open one,
+     * and comparing a thing with itself reports that nothing changed.
+     */
+    private OWLOntology loadRelease(File file) {
+        return de.fizkarlsruhe.ise.ontoboard.robot.OntologySource.load(
+                OWLManager.createOWLOntologyManager(), IRI.create(file.toURI()));
     }
 
     /** The release ontology, in a manager of its own so the edit file is untouched. */

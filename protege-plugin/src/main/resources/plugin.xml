@@ -106,6 +106,15 @@
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
+  <extension id="menu.OntoBoard.project.compare"
+             point="org.protege.editor.core.application.EditorKitMenuAction">
+    <name value="Compare releases..."/>
+    <toolTip value="What changed between two versions, term by term - added, obsoleted, redefined, moved"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.menu.CompareReleasesAction"/>
+    <path value="ontoboard.menu.OntoBoard.project/SlotC-B"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
+
   <!-- = ROBOT = -->
 
   <extension id="menu.OntoBoard.robot" name="Robot"
