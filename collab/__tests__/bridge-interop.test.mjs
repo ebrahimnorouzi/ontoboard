@@ -303,6 +303,64 @@ describe("an operation written by a web client", () => {
     expect(relayed.op.data.iri).toBe("x");
   });
 
+  /**
+   * The bridge refuses operation types it does not know, so this is the gate that decides
+   * whether an editorial note written in one Protege ever reaches another one. It is not a
+   * formality: the type list lives in three files, and the plugin's own vocabulary test reads
+   * this one, but only an end-to-end relay proves the gate actually opens.
+   */
+  it("relays an editorial note between two Protege windows", async () => {
+    const doc = new Y.Doc();
+    const port = await bridgeOn(doc);
+    const alice = await client(port).open();
+    const bob = await client(port).open();
+    await alice.hello("b1", "alice");
+    await bob.hello("b1", "bob");
+
+    alice.send({
+      t: "op",
+      op: operation("updateAnnotation", "alice", {
+        iri: "http://example.org/o#Person",
+        property: "http://purl.obolibrary.org/obo/IAO_0000116",
+        value: "the definition needs work",
+        previous: "",
+      }),
+    });
+
+    const relayed = await bob.waitFor((m) => m.t === "op", "the note");
+    expect(relayed.op.type).toBe("updateAnnotation");
+    expect(relayed.op.data.value).toBe("the definition needs work");
+    expect(relayed.op.data.property).toBe("http://purl.obolibrary.org/obo/IAO_0000116");
+  });
+
+  /**
+   * The previous value is what stops a peer deleting the other editor's note, so it has to
+   * survive the crossing. A relay that dropped it would turn "remove Alice's note" into
+   * something the peer could only interpret as "remove them all".
+   */
+  it("carries the previous value, which is what makes a note removal precise", async () => {
+    const doc = new Y.Doc();
+    const port = await bridgeOn(doc);
+    const alice = await client(port).open();
+    const bob = await client(port).open();
+    await alice.hello("b1", "alice");
+    await bob.hello("b1", "bob");
+
+    alice.send({
+      t: "op",
+      op: operation("updateAnnotation", "alice", {
+        iri: "http://example.org/o#Person",
+        property: "http://purl.obolibrary.org/obo/IAO_0000116",
+        value: "",
+        previous: "Alice: parent looks wrong",
+      }),
+    });
+
+    const relayed = await bob.waitFor((m) => m.t === "op", "the removal");
+    expect(relayed.op.data.previous).toBe("Alice: parent looks wrong");
+    expect(relayed.op.data.value).toBe("");
+  });
+
   it("still arrives when an earlier array element is malformed", async () => {
     const doc = new Y.Doc();
     const port = await bridgeOn(doc);

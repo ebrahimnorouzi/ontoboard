@@ -22,7 +22,7 @@
  *   <- { t: "peers",    peers: [ { user, colour, x, y, selection } ] }
  *   <- { t: "error",    message: "..." }
  *
- * `op.type` must be one of the 17 in frontend/src/collab/useOperationSync.ts. A type the web
+ * `op.type` must be one of the 18 in frontend/src/collab/useOperationSync.ts. A type the web
  * client cannot interpret is a silent no-op on the other side, which is far harder to
  * diagnose than a rejection, so unknown types are refused here.
  */
@@ -38,6 +38,10 @@ export const OPERATION_TYPES = new Set([
   "addLiteral", "updateLiteral", "removeLiteral",
   "addStickyNote", "updateStickyNote", "removeStickyNote",
   "addFrame", "updateFrame", "removeFrame",
+  // Editorial notes and every other annotation but rdfs:label. Listed here because this set is
+  // a gate, not a description: an operation whose type is not in it is refused outright, so
+  // without this entry a note written in one Protege never reaches another one.
+  "updateAnnotation",
 ]);
 
 /** How long a peer's cursor survives without an update, in milliseconds. */

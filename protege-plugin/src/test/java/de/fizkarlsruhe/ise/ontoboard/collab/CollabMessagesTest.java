@@ -1,6 +1,7 @@
 package de.fizkarlsruhe.ise.ontoboard.collab;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -10,6 +11,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.io.File;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -190,18 +193,62 @@ class CollabMessagesTest {
 
     // ---------- the type vocabulary ----------
 
+    /**
+     * Reads the other two files, rather than restating what they ought to contain.
+     *
+     * <p>The vocabulary lives in three places and all three have to agree: an operation whose
+     * type the bridge does not know is refused outright, and one the web client does not know is
+     * ignored in silence - which is far harder to notice than a rejection, because the edit
+     * simply never appears on the peer.
+     *
+     * <p>This asserted a hardcoded count and a hardcoded list, so it could only ever catch a
+     * change to the Java side - the one file it did not need to guard. Comparing the three sets
+     * is the only version of this test that does what its name says.
+     */
     @Test
-    void theTypeVocabularyMatchesTheBridgeAndWebClient() {
-        assertEquals(17, OntologyOperation.TYPES.size(),
-                "TYPES must stay in step with useOperationSync.ts and bridge.mjs");
-        for (String expected : new String[] {"addClass", "updateClass", "removeClass",
-            "addProperty", "removeProperty", "addSubClassOf", "addIndividual",
-            "updateIndividual", "addLiteral", "updateLiteral", "removeLiteral",
-            "addStickyNote", "updateStickyNote", "removeStickyNote", "addFrame",
-            "updateFrame", "removeFrame"}) {
-            assertTrue(OntologyOperation.TYPES.contains(expected), "missing " + expected);
-        }
+    void theTypeVocabularyMatchesTheBridgeAndWebClient() throws Exception {
+        Set<String> bridge = typesDeclaredIn(new File("../collab/bridge.mjs"),
+                "OPERATION_TYPES = new Set([", "]);");
+        Set<String> webClient = typesDeclaredIn(
+                new File("../frontend/src/collab/useOperationSync.ts"),
+                "export type OntologyOpType =", ";");
+
+        assertEquals(bridge, OntologyOperation.TYPES,
+                "the bridge and the plugin disagree; an operation the bridge does not know is "
+                        + "refused outright");
+        assertEquals(webClient, OntologyOperation.TYPES,
+                "the web client and the plugin disagree; an operation the web client does not "
+                        + "know is ignored in silence, which is harder to notice than a refusal");
     }
+
+    /**
+     * The quoted strings between two markers in a source file.
+     *
+     * <p>Crude on purpose: a parser for two languages would be a great deal of machinery to keep
+     * one list in step, and the shape of both declarations is a run of quoted names.
+     */
+    private static Set<String> typesDeclaredIn(File file, String from, String to)
+            throws Exception {
+        assertTrue(file.isFile(), "expected to find " + file.getAbsolutePath()
+                + " - if the repository layout has changed, this test needs the new path, "
+                + "because it is the only thing keeping the three vocabularies in step");
+        String source = new String(java.nio.file.Files.readAllBytes(file.toPath()), "UTF-8");
+        int start = source.indexOf(from);
+        assertTrue(start >= 0, "could not find '" + from + "' in " + file.getName());
+        int end = source.indexOf(to, start + from.length());
+        assertTrue(end > start, "could not find the end of the declaration in " + file.getName());
+
+        Set<String> types = new java.util.HashSet<String>();
+        java.util.regex.Matcher quoted = java.util.regex.Pattern.compile("\"([A-Za-z]+)\"")
+                .matcher(source.substring(start, end));
+        while (quoted.find()) {
+            types.add(quoted.group(1));
+        }
+        assertFalse(types.isEmpty(), "read no types at all from " + file.getName()
+                + ", so this test proves nothing");
+        return types;
+    }
+
 
     @Test
     void constructingAnUnknownTypeFailsLoudlyWithAnActionableMessage() {
