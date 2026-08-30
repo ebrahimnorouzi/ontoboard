@@ -205,15 +205,15 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         };
         getOWLModelManager().addOntologyChangeListener(changeListener);
 
-        // Axiom edits and active-ontology switches are two separate Protege event
-        // channels. Switching the active ontology fires no axiom change, so without this
-        // listener the canvas silently keeps showing the ontology it initialised
-        // against - see EventType. Only ACTIVE_ONTOLOGY_CHANGED is handled here; every
-        // other EventType is ignored so ordinary edits still go through changeListener
-        // alone and are not double-rendered.
+        // Axiom edits, active-ontology switches and classification are three separate Protege
+        // event channels, and the canvas has to hear all three. Switching the active ontology
+        // fires no axiom change; classifying fires no axiom change either. See
+        // shouldRefreshFor for which of them matter and why.
         modelManagerListener = event -> {
             if (event.isType(EventType.ACTIVE_ONTOLOGY_CHANGED)) {
                 switchToActiveOntology();
+            } else if (shouldRefreshFor(event.getType(), showInferences)) {
+                refresh();
             }
         };
         getOWLModelManager().addListener(modelManagerListener);
@@ -324,6 +324,52 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
     private void showLegend() {
         JOptionPane.showMessageDialog(this, new LegendPanel(), "What the diagram means",
                 JOptionPane.PLAIN_MESSAGE);
+    }
+
+    /**
+     * Whether a model-manager event means the diagram is now out of date.
+     *
+     * <p>Classification is its own event channel. Starting a reasoner, or re-running one after an
+     * edit, changes nothing about the axioms, so neither the ontology-change listener nor the
+     * active-ontology listener hears anything - and the canvas went on showing the inferences it
+     * had computed before, or none at all. The symptom was precisely backwards from useful: turn
+     * inferences on with no reasoner started, get told to start one, start one, and the canvas
+     * still showed nothing until you toggled the button off and on again or happened to make an
+     * edit.
+     *
+     * <p>Only when inferences are actually being shown, because a classification changes nothing a
+     * user can see on an asserted-only diagram, and re-rendering a large board for no visible
+     * difference is a stutter with no purpose.
+     *
+     * <p>Static and package-visible so the policy can be tested; everything around it is Swing.
+     *
+     * @param showingInferences whether the reasoner's conclusions are currently on the diagram
+     */
+    static boolean shouldRefreshFor(EventType type, boolean showingInferences) {
+        if (type == null) {
+            return false;
+        }
+        switch (type) {
+            case ONTOLOGY_CLASSIFIED:
+                // The conclusions have just changed. This is the event the canvas most needed and
+                // was not listening for.
+                return showingInferences;
+            case REASONER_CHANGED:
+                // A different reasoner reaches different conclusions - ELK and HermiT genuinely
+                // disagree on an ontology that uses anything outside OWL EL - so what is drawn is
+                // no longer what the selected reasoner says.
+                return showingInferences;
+            case ONTOLOGY_RELOADED:
+                // Reverted from disk. Every axiom may have changed and no axiom-change event is
+                // fired for it.
+                return true;
+            default:
+                // Everything else - visibility, renderer changes, saves, loads of ontologies that
+                // are not the active one - either cannot alter this diagram or already arrives
+                // through the ontology-change listener, and refreshing twice for one edit makes
+                // a large board stutter.
+                return false;
+        }
     }
 
     // ------------------------------------------------------------------ inferences
