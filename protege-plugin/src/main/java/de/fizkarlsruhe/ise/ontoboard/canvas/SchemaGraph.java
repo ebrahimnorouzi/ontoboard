@@ -96,7 +96,13 @@ public class SchemaGraph extends mxGraph {
      * mxGraph reads {@code "styleName;key=value"} as style-plus-overrides.
      */
     private static String styleFor(CanvasNode node, PrefixColours colours) {
-        return baseStyleFor(node) + ";strokeColor=" + colours.colourFor(node.getId());
+        // Border WEIGHT for a note, because every other channel is taken and says something
+        // else: the shape says what kind of thing it is, the stroke colour says which namespace
+        // it came from, and a dash would read as "inferred", which is what dashed edges mean two
+        // lines down. Weight is the one free channel, and it reads as emphasis rather than as a
+        // different kind of thing - which is right, since a note does not change what the term is.
+        return baseStyleFor(node) + ";strokeColor=" + colours.colourFor(node.getId())
+                + (node.hasNote() ? ";strokeWidth=" + SchemaStyles.NOTED_STROKE_WIDTH : "");
     }
 
     private static String baseStyleFor(CanvasNode node) {

@@ -26,9 +26,22 @@ import java.util.Set;
 public final class CanvasLegend {
 
     /** Whether a row is drawn as a box or as a line. */
+    /**
+     * What a legend row illustrates.
+     *
+     * <p>{@link #MODIFIER} is the third kind and the reason this is not a boolean. A note marker
+     * is not a kind of thing the canvas draws - it is a change to how an existing kind is drawn -
+     * so it must not be counted by the completeness check that pairs every {@code NodeKind} and
+     * {@code CanvasEdge.Kind} with exactly one row. Folding it in there would either force an
+     * invented kind or force the check to be loosened, and that check has already caught a real
+     * omission once.
+     */
     public enum Form {
         NODE,
-        EDGE
+        EDGE,
+
+        /** A marker laid over a kind, such as a term that carries an editorial note. */
+        MODIFIER
     }
 
     /** One row of the key. */
@@ -149,6 +162,10 @@ public final class CanvasLegend {
                 "One property is a specialisation of another - if A worksAt B then A employedBy "
                         + "B. Both properties have to be on the board for the arrow to appear.",
                 null, "#C77700", "8 4"));
+        entries.add(new Entry(Form.MODIFIER, SchemaStyles.NOTED, "Has an editorial note",
+                "A heavier border. Somebody has written an editor or curator note on this term - "
+                        + "read them all with OntoBoard > Notes > All notes.",
+                "#FFFFFF", "#4A90D9", null));
         entries.add(new Entry(Form.EDGE, SchemaStyles.INFERRED_SUBCLASS, "Inferred subclass",
                 "A subsumption the reasoner worked out that the ontology does not state "
                         + "directly. Dotted and grey so it is never mistaken for an asserted "
@@ -250,10 +267,29 @@ public final class CanvasLegend {
     }
 
     /** Style names the legend mentions, for a test that checks nothing is invented. */
+    /**
+     * The styles the legend explains that correspond to a kind the canvas draws.
+     *
+     * <p>Modifier rows are left out deliberately: they illustrate a change to how a kind is
+     * drawn, not a kind, so counting them would break the pairing this set exists to check.
+     */
     static Set<String> styleNamesMentioned() {
         Set<String> names = new LinkedHashSet<String>();
         for (Entry entry : entries()) {
-            names.add(entry.getStyleName());
+            if (entry.getForm() != Form.MODIFIER) {
+                names.add(entry.getStyleName());
+            }
+        }
+        return Collections.unmodifiableSet(names);
+    }
+
+    /** Every modifier row, so a new marker cannot be added without the legend gaining one. */
+    static Set<String> modifierStyleNames() {
+        Set<String> names = new LinkedHashSet<String>();
+        for (Entry entry : entries()) {
+            if (entry.getForm() == Form.MODIFIER) {
+                names.add(entry.getStyleName());
+            }
         }
         return Collections.unmodifiableSet(names);
     }

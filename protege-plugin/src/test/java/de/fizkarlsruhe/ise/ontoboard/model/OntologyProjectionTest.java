@@ -1,6 +1,7 @@
 package de.fizkarlsruhe.ise.ontoboard.model;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
@@ -22,6 +23,7 @@ import org.semanticweb.owlapi.model.OWLDataSomeValuesFrom;
 import org.semanticweb.owlapi.model.OWLDatatypeRestriction;
 import org.semanticweb.owlapi.model.OWLFacetRestriction;
 import org.semanticweb.owlapi.model.OWLOntology;
+import org.semanticweb.owlapi.model.OWLOntologyManager;
 import org.semanticweb.owlapi.model.OWLSubClassOfAxiom;
 import org.semanticweb.owlapi.vocab.OWLFacet;
 
@@ -258,4 +260,89 @@ class OntologyProjectionTest {
         assertEquals(1, p.getNodes().size());
         assertEquals("container", p.getNodes().get(0).getLabel());
     }
+    // ---------- terms carrying an editorial note ----------
+
+    /**
+     * The reason to write a note is that somebody comes back to it, and a board of forty terms
+     * gives no clue which of them anybody has said anything about.
+     */
+    @Test
+    void aClassWithAnEditorNoteIsMarked() throws Exception {
+        OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
+        OWLOntology ontology = manager.createOntology(IRI.create("http://example.org/o"));
+        OWLDataFactory factory = manager.getOWLDataFactory();
+        OWLClass person = factory.getOWLClass(IRI.create("http://example.org/o#Person"));
+        manager.addAxiom(ontology, factory.getOWLDeclarationAxiom(person));
+        manager.applyChanges(de.fizkarlsruhe.ise.ontoboard.prov.EditorNotes.addNote(ontology,
+                person.getIRI(), de.fizkarlsruhe.ise.ontoboard.prov.EditorNotes.Kind.EDITOR,
+                "the definition needs work"));
+
+        Projection projection = OntologyProjection.project(ontology,
+                new java.util.HashSet<String>(java.util.Arrays.asList(
+                        "http://example.org/o#Person")));
+
+        assertEquals(1, projection.getNodes().size());
+        assertTrue(projection.getNodes().get(0).hasNote(),
+                "a term with an editor note should be marked on the board");
+    }
+
+    @Test
+    void aClassWithNoNoteIsNotMarked() throws Exception {
+        OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
+        OWLOntology ontology = manager.createOntology(IRI.create("http://example.org/o"));
+        OWLDataFactory factory = manager.getOWLDataFactory();
+        OWLClass person = factory.getOWLClass(IRI.create("http://example.org/o#Person"));
+        manager.addAxiom(ontology, factory.getOWLDeclarationAxiom(person));
+        manager.addAxiom(ontology, factory.getOWLAnnotationAssertionAxiom(
+                factory.getRDFSComment(), person.getIRI(),
+                factory.getOWLLiteral("an ordinary comment, not an editorial note")));
+
+        Projection projection = OntologyProjection.project(ontology,
+                new java.util.HashSet<String>(java.util.Arrays.asList(
+                        "http://example.org/o#Person")));
+
+        assertFalse(projection.getNodes().get(0).hasNote(),
+                "rdfs:comment is not an editorial note and must not mark the term");
+    }
+
+    /**
+     * The mark is read from the ontology on every build rather than stored, so removing a note
+     * unmarks the term without anything else having to remember it did.
+     */
+    @Test
+    void removingTheNoteUnmarksTheTerm() throws Exception {
+        OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
+        OWLOntology ontology = manager.createOntology(IRI.create("http://example.org/o"));
+        OWLDataFactory factory = manager.getOWLDataFactory();
+        OWLClass person = factory.getOWLClass(IRI.create("http://example.org/o#Person"));
+        manager.addAxiom(ontology, factory.getOWLDeclarationAxiom(person));
+        java.util.Set<String> onCanvas = new java.util.HashSet<String>(
+                java.util.Arrays.asList("http://example.org/o#Person"));
+        manager.applyChanges(de.fizkarlsruhe.ise.ontoboard.prov.EditorNotes.addNote(ontology,
+                person.getIRI(), de.fizkarlsruhe.ise.ontoboard.prov.EditorNotes.Kind.EDITOR,
+                "temporary"));
+        assertTrue(OntologyProjection.project(ontology, onCanvas).getNodes().get(0).hasNote());
+
+        manager.applyChanges(de.fizkarlsruhe.ise.ontoboard.prov.EditorNotes.removeNote(ontology,
+                person.getIRI(), de.fizkarlsruhe.ise.ontoboard.prov.EditorNotes.Kind.EDITOR,
+                "temporary"));
+
+        assertFalse(OntologyProjection.project(ontology, onCanvas).getNodes().get(0).hasNote());
+    }
+
+    /**
+     * A note is a fact about the ontology at the moment of drawing, not part of what makes a node
+     * that node. Folding it into identity would make a node stop equalling itself across an
+     * annotation edit, which the canvas's own selection handling relies on.
+     */
+    @Test
+    void aNoteDoesNotChangeWhichNodeANodeIs() {
+        CanvasNode plain = new CanvasNode("http://example.org/o#Person", NodeKind.CLASS, "Person");
+        CanvasNode marked = new CanvasNode("http://example.org/o#Person", NodeKind.CLASS,
+                "Person", true);
+
+        assertEquals(plain, marked);
+        assertEquals(plain.hashCode(), marked.hashCode());
+    }
+
 }

@@ -40,6 +40,16 @@ public final class SchemaStyles {
     public static final String DATA_PROPERTY_NODE = "obDataPropertyNode";
 
     /** Canvas background - a hair off white so white node fills read as raised. */
+    /** The style name the legend uses for the note marker. Not a cell style; a label. */
+    public static final String NOTED = "obNoted";
+
+    /**
+     * The border weight of a term carrying an editorial note.
+     *
+     * <p>Heavy enough to notice while scanning a board, light enough not to read as selection.
+     */
+    public static final int NOTED_STROKE_WIDTH = 3;
+
     public static final String CANVAS_BACKGROUND = "#F7F8FA";
 
     private static final String FONT = "Segoe UI, Helvetica Neue, Arial, sans-serif";
@@ -56,6 +66,15 @@ public final class SchemaStyles {
         // rounded, shadowed, bold, and roomy enough for a two-line rdfs:label.
         sheet.putCellStyle(CLASS, vertex(mxConstants.SHAPE_RECTANGLE, "#FFFFFF", "#4A90D9",
                 true, true, 13, mxConstants.FONT_BOLD));
+        // The same class style with the heavier border, registered so the legend's swatch draws
+        // exactly what the canvas draws rather than an approximation of it. The canvas itself
+        // appends the width as an override, because the marker applies to every kind of node and
+        // a registered style per kind-and-marker combination would be six styles saying one thing.
+        Map<String, Object> noted = vertex(mxConstants.SHAPE_RECTANGLE, "#FFFFFF", "#4A90D9",
+                true, true, 13, mxConstants.FONT_BOLD);
+        noted.put(mxConstants.STYLE_STROKEWIDTH, (float) NOTED_STROKE_WIDTH);
+        sheet.putCellStyle(NOTED, noted);
+
         sheet.putCellStyle(INDIVIDUAL, vertex(mxConstants.SHAPE_RHOMBUS, "#F4F0FA", "#7B61A8",
                 false, false, 12, 0));
         sheet.putCellStyle(DATATYPE, vertex(mxConstants.SHAPE_ELLIPSE, "#EEF7F1", "#3E8E5A",
