@@ -109,14 +109,15 @@ public final class OdkScaffold {
                 + "description: \"" + c.getDescription() + "\"\n"
                 + "uribase: " + uriBase(c) + "\n"
                 + (c.getLicense().isEmpty() ? "" : "license: " + c.getLicense() + "\n")
+                // Only what the Makefile actually produces. It listed base, full, obo and json
+                // before, and built one .owl - so a user following the generated configuration
+                // went looking for four artefacts, found one, and had no way to tell whether the
+                // build was broken or the configuration was decorative.
                 + "release_artefacts:\n"
-                + "  - base\n"
                 + "  - full\n"
                 + "primary_release: full\n"
                 + "export_formats:\n"
                 + "  - owl\n"
-                + "  - obo\n"
-                + "  - json\n"
                 + "import_group:\n"
                 + "  products: []\n"
                 + "robot_report:\n"
@@ -140,9 +141,14 @@ public final class OdkScaffold {
                 + "test: report\n\n"
                 + "reason:\n"
                 + "\trobot reason -r ELK -i $(ONT)-edit.owl -o $(ONT).owl\n\n"
+                // --fail-on and --labels are passed because the YAML above declares them.
+                // They were declared and not passed, so CI did whatever ROBOT defaults to rather
+                // than what the project said - and a build that says fail_on: ERROR while not
+                // failing on errors is worse than one that says nothing.
                 + "report:\n"
-                + "\trobot report -i $(ONT)-edit.owl --profile profile.txt "
-                + "--output report.tsv --format tsv\n\n"
+                + "\trobot report -i $(ONT)-edit.owl --profile profile.txt \\\n"
+                + "\t  --fail-on ERROR --labels true \\\n"
+                + "\t  --output report.tsv --format tsv\n\n"
                 + "clean:\n"
                 + "\t@rm -f tmp_* report.tsv *.bak $(ONT).owl\n\n"
                 + "prepare_release: reason report\n"

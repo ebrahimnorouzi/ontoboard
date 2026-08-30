@@ -261,4 +261,50 @@ class OdkScaffoldTest {
             assertTrue(file.isFile(), "reported but not written: " + file);
         }
     }
+    /**
+     * The generated project has to do what its own configuration says. The YAML declared
+     * fail_on: ERROR and use_labels: TRUE and the Makefile passed neither, so CI did whatever
+     * ROBOT defaults to - and a build that announces a policy it does not apply is worse than one
+     * that announces nothing, because somebody relies on it.
+     */
+    @Test
+    void theReportTargetPassesWhatTheYamlDeclares(@TempDir Path dir) throws Exception {
+        OdkProjectConfig config = new OdkProjectConfig("abc", "ABC", "",
+                "http://x.org/abc.owl", "", dir.toFile());
+        OdkScaffold.create(config);
+
+        String makefile = read(config, "Makefile");
+        String yaml = read(config, "abc-odk.yaml");
+
+        assertTrue(yaml.contains("fail_on: ERROR"), yaml);
+        assertTrue(makefile.contains("--fail-on ERROR"),
+                "the Makefile does not pass the fail_on the YAML declares:\n" + makefile);
+        assertTrue(yaml.contains("use_labels: TRUE"), yaml);
+        assertTrue(makefile.contains("--labels true"),
+                "the Makefile does not pass the labels setting the YAML declares:\n" + makefile);
+    }
+
+    /**
+     * It listed base, full, obo and json and built one .owl, so anybody following the generated
+     * configuration went looking for four artefacts and found one, with no way to tell whether
+     * the build was broken or the configuration decorative.
+     */
+    @Test
+    void theYamlOnlyPromisesArtefactsTheMakefileBuilds(@TempDir Path dir) throws Exception {
+        OdkProjectConfig config = new OdkProjectConfig("abc", "ABC", "",
+                "http://x.org/abc.owl", "", dir.toFile());
+        OdkScaffold.create(config);
+
+        String yaml = read(config, "abc-odk.yaml");
+        String makefile = read(config, "Makefile");
+
+        for (String promised : new String[] {"  - obo", "  - json", "  - base"}) {
+            assertFalse(yaml.contains(promised),
+                    "the YAML promises an artefact nothing builds (" + promised.trim()
+                            + "):\n" + yaml);
+        }
+        assertTrue(yaml.contains("  - owl"), yaml);
+        assertTrue(makefile.contains("$(ONT).owl"), makefile);
+    }
+
 }
