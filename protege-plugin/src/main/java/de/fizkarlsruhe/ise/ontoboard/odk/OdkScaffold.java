@@ -213,14 +213,69 @@ public final class OdkScaffold {
                 + "</catalog>\n";
     }
 
+    /**
+     * The ROBOT report profile: every rule ROBOT knows, at ROBOT's own severity.
+     *
+     * <p>This used to list seven rules, and that was not a smaller profile - it was a silently
+     * emptier one. {@code ReportOperation.getProfile(path)} builds a fresh map from the file and
+     * does not merge it with ROBOT's defaults (the bundled {@code report_profile.txt} is read only
+     * when no path is given), so a project shipping seven lines ran seven of thirty-two checks.
+     * Both this plugin's own quality report and the generated CI read the same file, so both were
+     * equally blind, and nothing anywhere said which rules were not running.
+     *
+     * <p>The rules that were off by omission are the ones that catch exactly the damage several
+     * editors do to one ontology: {@code deprecated_class_reference},
+     * {@code misused_obsolete_label}, {@code misused_replaced_by}, {@code duplicate_label},
+     * {@code duplicate_definition}, {@code illegal_use_of_built_in_vocabulary},
+     * {@code multiple_equivalent_class_definitions}, {@code invalid_entity_uri}. Two more were
+     * quietly downgraded - {@code missing_label} from ERROR to WARN and {@code multiple_labels}
+     * from ERROR to INFO.
+     *
+     * <p>So: every rule, at ROBOT's level, written out in full. A project that wants a rule
+     * relaxed edits this file and can see what it changed; nobody loses a check by never having
+     * been told it existed. Kept in step with robot-core by a test that reads ROBOT's own bundled
+     * profile, so upgrading the dependency fails the build rather than silently adding a rule
+     * nobody runs.
+     */
     private static String reportProfile() {
-        return "ERROR\tmissing_ontology_license\n"
-                + "ERROR\tmissing_ontology_title\n"
-                + "ERROR\tmissing_ontology_description\n"
-                + "ERROR\tinvalid_xref\n"
+        return "# ROBOT report rules, at ROBOT's own severities.\n"
+                + "#\n"
+                + "# ROBOT does NOT merge this with its defaults - it runs exactly what is here.\n"
+                + "# A rule you delete is a rule that stops running, silently. To relax one,\n"
+                + "# change its level to WARN or INFO rather than removing the line, so the next\n"
+                + "# person can see the decision.\n"
+                + "WARN\tannotation_whitespace\n"
+                + "ERROR\tdeprecated_boolean_datatype\n"
+                + "ERROR\tdeprecated_class_reference\n"
+                + "ERROR\tdeprecated_property_reference\n"
+                + "ERROR\tduplicate_definition\n"
+                + "WARN\tduplicate_exact_synonym\n"
+                + "WARN\tduplicate_label_synonym\n"
+                + "ERROR\tduplicate_label\n"
+                + "WARN\tduplicate_scoped_synonym\n"
+                + "WARN\tequivalent_pair\n"
+                + "WARN\tequivalent_class_axiom_no_genus\n"
+                + "ERROR\tillegal_use_of_built_in_vocabulary\n"
+                + "WARN\tinvalid_xref\n"
+                + "ERROR\tlabel_formatting\n"
+                + "ERROR\tlabel_whitespace\n"
+                + "INFO\tlowercase_definition\n"
                 + "WARN\tmissing_definition\n"
-                + "WARN\tmissing_label\n"
-                + "INFO\tmultiple_labels\n";
+                + "ERROR\tmissing_label\n"
+                + "WARN\tmissing_obsolete_label\n"
+                + "ERROR\tmissing_ontology_description\n"
+                + "ERROR\tmissing_ontology_license\n"
+                + "ERROR\tmissing_ontology_title\n"
+                + "WARN\tmissing_subset_declaration\n"
+                + "INFO\tmissing_superclass\n"
+                + "WARN\tmissing_synonymtype_declaration\n"
+                + "ERROR\tmisused_obsolete_label\n"
+                + "ERROR\tmisused_replaced_by\n"
+                + "ERROR\tmultiple_definitions\n"
+                + "WARN\tmultiple_equivalent_classes\n"
+                + "ERROR\tmultiple_equivalent_class_definitions\n"
+                + "ERROR\tmultiple_labels\n"
+                + "WARN\tinvalid_entity_uri\n";
     }
 
     private static String checkLabels() {
