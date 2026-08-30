@@ -160,6 +160,15 @@
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
+  <extension id="menu.OntoBoard.obsolete"
+             point="org.protege.editor.core.application.EditorKitMenuAction">
+    <name value="Obsolete the selected term..."/>
+    <toolTip value="Retire a term the OBO way, so everything that referenced it still resolves"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.menu.ObsoleteAction"/>
+    <path value="ontoboard.menu.OntoBoard/SlotBX-A"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
+
   <!-- = Git = -->
 
   <extension id="menu.OntoBoard.git"
