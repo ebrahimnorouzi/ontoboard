@@ -28,6 +28,7 @@ import de.fizkarlsruhe.ise.ontoboard.layout.CanvasLayoutStore;
 import de.fizkarlsruhe.ise.ontoboard.model.CanvasEdge;
 import de.fizkarlsruhe.ise.ontoboard.model.DisplayLabels;
 import de.fizkarlsruhe.ise.ontoboard.model.OntologyProjection;
+import de.fizkarlsruhe.ise.ontoboard.model.CanvasNode;
 import de.fizkarlsruhe.ise.ontoboard.model.Projection;
 import de.fizkarlsruhe.ise.ontoboard.prov.Provenance;
 import de.fizkarlsruhe.ise.ontoboard.prov.ProvenanceSettings;
@@ -395,15 +396,19 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                     asserted.getEdges(),
                     getOWLModelManager().getOWLDataFactory());
             if (inferred.isEmpty()) {
+                // Still worth re-rendering: no new edges does not mean no unsatisfiable classes,
+                // and those are the more important of the two things a reasoner has to say.
+                List<CanvasNode> onlyMarked = markUnsatisfiable(asserted.getNodes());
                 setStatus("Nothing further was inferred: the ontology already states what it "
-                        + "entails for the entities on this board.");
-                return asserted;
+                        + "entails for the entities on this board." + unsatisfiableNote(onlyMarked));
+                return new Projection(onlyMarked, asserted.getEdges());
             }
             List<CanvasEdge> combined = new ArrayList<CanvasEdge>(asserted.getEdges());
             combined.addAll(inferred);
+            List<CanvasNode> nodes = markUnsatisfiable(asserted.getNodes());
             setStatus(inferred.size() + " inferred edge" + (inferred.size() == 1 ? "" : "s")
-                    + " shown, dotted and grey.");
-            return new Projection(asserted.getNodes(), combined);
+                    + " shown, dotted and grey." + unsatisfiableNote(nodes));
+            return new Projection(nodes, combined);
         } catch (InferredEdges.NotAvailable unavailable) {
             showInferences = false;
             if (inferencesButton != null) {
@@ -414,6 +419,42 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                     "No inferences available", JOptionPane.INFORMATION_MESSAGE);
             return asserted;
         }
+    }
+
+    /**
+     * The same nodes, with the ones the reasoner says can have no instances marked.
+     *
+     * <p>{@code InferredEdges.unsatisfiableClasses} was computed on every refresh and thrown away
+     * - the single most useful thing a reasoner has to say, calculated and discarded. An
+     * unsatisfiable class is a modelling error, not a shape, and on a diagram that draws it like
+     * everything else it is invisible.
+     */
+    private List<CanvasNode> markUnsatisfiable(List<CanvasNode> nodes) {
+        java.util.Set<String> unsatisfiable = InferredEdges.unsatisfiableClasses(
+                getOWLModelManager().getReasoner(), membership.asSet());
+        if (unsatisfiable.isEmpty()) {
+            return nodes;
+        }
+        List<CanvasNode> marked = new ArrayList<CanvasNode>(nodes.size());
+        for (CanvasNode node : nodes) {
+            marked.add(unsatisfiable.contains(node.getId()) ? node.asUnsatisfiable() : node);
+        }
+        return marked;
+    }
+
+    /** A sentence about unsatisfiable classes, or nothing when there are none. */
+    private static String unsatisfiableNote(List<CanvasNode> nodes) {
+        int count = 0;
+        for (CanvasNode node : nodes) {
+            if (node.isUnsatisfiable()) {
+                count++;
+            }
+        }
+        if (count == 0) {
+            return "";
+        }
+        return "  " + count + " class" + (count == 1 ? "" : "es")
+                + " on this board cannot have instances - shown in red.";
     }
 
     /** Puts a line in the toolbar's status label, reusing the collaboration one. */

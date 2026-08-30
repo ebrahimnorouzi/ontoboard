@@ -95,14 +95,31 @@ public class SchemaGraph extends mxGraph {
      * gets a distinguishable outline while the shape still says what kind of thing it is.
      * mxGraph reads {@code "styleName;key=value"} as style-plus-overrides.
      */
+    /**
+     * The style a node would be drawn with, for a test.
+     *
+     * <p>Rendering needs a live mxGraph; the decision about which marker wins does not, and it is
+     * the part that can be wrong in a way nobody notices.
+     */
+    static String styleForTesting(CanvasNode node) {
+        return styleFor(node, new PrefixColours(new java.util.HashMap<String, String>()));
+    }
+
     private static String styleFor(CanvasNode node, PrefixColours colours) {
         // Border WEIGHT for a note, because every other channel is taken and says something
         // else: the shape says what kind of thing it is, the stroke colour says which namespace
         // it came from, and a dash would read as "inferred", which is what dashed edges mean two
         // lines down. Weight is the one free channel, and it reads as emphasis rather than as a
         // different kind of thing - which is right, since a note does not change what the term is.
-        return baseStyleFor(node) + ";strokeColor=" + colours.colourFor(node.getId())
-                + (node.hasNote() ? ";strokeWidth=" + SchemaStyles.NOTED_STROKE_WIDTH : "");
+        // An unsatisfiable class takes the namespace colour's channel. Which vocabulary a term
+        // came from stops mattering the moment the reasoner says it can have no instances, and a
+        // modelling error visible only to somebody who knows which shade of blue to look for is
+        // not visible.
+        String stroke = node.isUnsatisfiable()
+                ? SchemaStyles.UNSATISFIABLE_STROKE : colours.colourFor(node.getId());
+        return baseStyleFor(node) + ";strokeColor=" + stroke
+                + (node.hasNote() || node.isUnsatisfiable()
+                        ? ";strokeWidth=" + SchemaStyles.NOTED_STROKE_WIDTH : "");
     }
 
     private static String baseStyleFor(CanvasNode node) {

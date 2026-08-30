@@ -97,4 +97,56 @@ class SchemaGraphTest {
         assertEquals(PERSON, graph.getToolTipForCell(personCell),
                 "tooltip must show the full IRI even though the visible label is short");
     }
+    // ---------- markers ----------
+
+    /**
+     * An unsatisfiable class takes the namespace colour's channel. Which vocabulary a term came
+     * from stops mattering the moment a reasoner says it can have no instances, and an error
+     * visible only to somebody who knows which shade of blue to look for is not visible.
+     */
+    @Test
+    void anUnsatisfiableClassIsDrawnInRedRatherThanItsNamespaceColour() {
+        CanvasNode broken = new CanvasNode("http://example.org/o#Impossible", NodeKind.CLASS,
+                "Impossible", false, true);
+        CanvasNode ordinary = new CanvasNode("http://example.org/o#Fine", NodeKind.CLASS, "Fine");
+
+        String brokenStyle = SchemaGraph.styleForTesting(broken);
+        String ordinaryStyle = SchemaGraph.styleForTesting(ordinary);
+
+        assertTrue(brokenStyle.contains(SchemaStyles.UNSATISFIABLE_STROKE), brokenStyle);
+        assertFalse(ordinaryStyle.contains(SchemaStyles.UNSATISFIABLE_STROKE), ordinaryStyle);
+    }
+
+    @Test
+    void aNotedTermGetsTheHeavierBorderAndKeepsItsNamespaceColour() {
+        CanvasNode noted = new CanvasNode("http://example.org/o#Noted", NodeKind.CLASS,
+                "Noted", true);
+
+        String style = SchemaGraph.styleForTesting(noted);
+
+        assertTrue(style.contains("strokeWidth=" + SchemaStyles.NOTED_STROKE_WIDTH), style);
+        assertFalse(style.contains(SchemaStyles.UNSATISFIABLE_STROKE), style);
+    }
+
+    /** Both at once is an ordinary state, and the error has to win the colour. */
+    @Test
+    void anUnsatisfiableTermThatAlsoHasANoteIsStillDrawnAsAnError() {
+        CanvasNode both = new CanvasNode("http://example.org/o#Both", NodeKind.CLASS,
+                "Both", true, true);
+
+        String style = SchemaGraph.styleForTesting(both);
+
+        assertTrue(style.contains(SchemaStyles.UNSATISFIABLE_STROKE), style);
+        assertTrue(style.contains("strokeWidth=" + SchemaStyles.NOTED_STROKE_WIDTH), style);
+    }
+
+    @Test
+    void anOrdinaryTermGetsNeitherMarker() {
+        String style = SchemaGraph.styleForTesting(
+                new CanvasNode("http://example.org/o#Plain", NodeKind.CLASS, "Plain"));
+
+        assertFalse(style.contains("strokeWidth="), style);
+        assertFalse(style.contains(SchemaStyles.UNSATISFIABLE_STROKE), style);
+    }
+
 }

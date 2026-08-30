@@ -43,6 +43,19 @@ public final class SchemaStyles {
     /** The style name the legend uses for the note marker. Not a cell style; a label. */
     public static final String NOTED = "obNoted";
 
+    /** The style name the legend uses for an unsatisfiable class. */
+    public static final String UNSATISFIABLE = "obUnsatisfiable";
+
+    /**
+     * The outline of a class a reasoner says can have no instances.
+     *
+     * <p>Red, and it overrides the namespace colour rather than sharing the channel. That is a
+     * deliberate ranking: which vocabulary a term came from stops mattering the moment the term
+     * cannot exist, and a modelling error that is only visible if you already know which shade of
+     * blue to look for is not visible.
+     */
+    public static final String UNSATISFIABLE_STROKE = "#C0392B";
+
     /**
      * The border weight of a term carrying an editorial note.
      *
@@ -74,6 +87,11 @@ public final class SchemaStyles {
                 true, true, 13, mxConstants.FONT_BOLD);
         noted.put(mxConstants.STYLE_STROKEWIDTH, (float) NOTED_STROKE_WIDTH);
         sheet.putCellStyle(NOTED, noted);
+
+        Map<String, Object> unsatisfiable = vertex(mxConstants.SHAPE_RECTANGLE, "#FDF0EE",
+                UNSATISFIABLE_STROKE, true, true, 13, mxConstants.FONT_BOLD);
+        unsatisfiable.put(mxConstants.STYLE_STROKEWIDTH, (float) NOTED_STROKE_WIDTH);
+        sheet.putCellStyle(UNSATISFIABLE, unsatisfiable);
 
         sheet.putCellStyle(INDIVIDUAL, vertex(mxConstants.SHAPE_RHOMBUS, "#F4F0FA", "#7B61A8",
                 false, false, 12, 0));

@@ -9,16 +9,42 @@ public final class CanvasNode {
     private final NodeKind kind;
     private final String label;
     private final boolean noted;
+    private final boolean unsatisfiable;
 
     public CanvasNode(String id, NodeKind kind, String label) {
-        this(id, kind, label, false);
+        this(id, kind, label, false, false);
     }
 
     public CanvasNode(String id, NodeKind kind, String label, boolean noted) {
+        this(id, kind, label, noted, false);
+    }
+
+    public CanvasNode(String id, NodeKind kind, String label, boolean noted,
+            boolean unsatisfiable) {
         this.id = Objects.requireNonNull(id, "id");
         this.kind = Objects.requireNonNull(kind, "kind");
         this.label = Objects.requireNonNull(label, "label");
         this.noted = noted;
+        this.unsatisfiable = unsatisfiable;
+    }
+
+    /** The same node, marked as one the reasoner found unsatisfiable. */
+    public CanvasNode asUnsatisfiable() {
+        return new CanvasNode(id, kind, label, noted, true);
+    }
+
+    /**
+     * Whether a reasoner found this class cannot have any instances.
+     *
+     * <p>The single most useful thing a reasoner has to say, and until now it was computed on
+     * every refresh and thrown away. An unsatisfiable class is a modelling error - two axioms that
+     * cannot both hold - and it is invisible on a diagram that draws it like everything else.
+     *
+     * <p>Like {@link #hasNote}, not part of {@link #equals}: it is a fact about what a reasoner
+     * concluded at the moment of drawing, not about which node this is.
+     */
+    public boolean isUnsatisfiable() {
+        return unsatisfiable;
     }
 
     public String getId() {
