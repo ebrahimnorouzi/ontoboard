@@ -278,7 +278,7 @@ public final class TermExtract {
     }
 
     /** The last path segment of an ontology's IRI, without any .owl. */
-    static String shortNameOf(OWLOntology source) {
+    public static String shortNameOf(OWLOntology source) {
         String base = source != null && source.getOntologyID().getOntologyIRI().isPresent()
                 ? source.getOntologyID().getOntologyIRI().get().toString()
                 : "extract";

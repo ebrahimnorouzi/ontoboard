@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Set;
 import org.obolibrary.robot.IOHelper;
 import org.obolibrary.robot.MergeOperation;
+import org.obolibrary.robot.ReasonOperation;
 import org.obolibrary.robot.ReduceOperation;
 import org.obolibrary.robot.RelaxOperation;
 import org.obolibrary.robot.RepairOperation;
@@ -61,6 +62,20 @@ public final class RobotTransform {
                         + "consumers which cannot handle equivalence still see the hierarchy. It "
                         + "only adds axioms; nothing is removed.",
                 false),
+
+        /**
+         * {@code robot reason}: writes down what the reasoner works out.
+         *
+         * <p>The operation an OBO release is built on, and the one people mean by "classify".
+         */
+        REASON("Reason",
+                "Runs the reasoner and writes its conclusions into the ontology as ordinary "
+                        + "subclass axioms, so a consumer who never runs a reasoner still sees the "
+                        + "full hierarchy. This is what 'make reason' does and what turns an edit "
+                        + "file into a release. It only adds - but it adds what the reasoner "
+                        + "believes, so an ontology with a modelling mistake gets the mistake "
+                        + "written down as fact. Look at the result before applying it.",
+                true),
 
         /**
          * {@code robot reduce}: removes subclass axioms a reasoner can already infer.
@@ -275,6 +290,10 @@ public final class RobotTransform {
         switch (kind) {
             case RELAX:
                 RelaxOperation.relax(copy);
+                return;
+            case REASON:
+                ReasonOperation.reason(copy, reasonerFactory == null
+                        ? new StructuralReasonerFactory() : reasonerFactory);
                 return;
             case REDUCE:
                 ReduceOperation.reduce(copy, reasonerFactory == null

@@ -171,6 +171,42 @@ class CatalogTest {
         return blank;
     }
 
+    /**
+     * A catalog is committed, and a project's own build writes it too. Byte-stability means a
+     * re-import that changes nothing produces no diff at all - not a smaller diff, none.
+     */
+    @Test
+    void writingTheSameContentTwiceProducesTheSameBytes() {
+        String once = Catalog.withEntry(null, "http://example.org/a.owl", "imports/a.owl");
+
+        assertEquals(once, Catalog.withEntry(once, "http://example.org/a.owl", "imports/a.owl"));
+    }
+
+    /** Comments in a hand-maintained catalog are somebody's notes; losing them is losing them. */
+    @Test
+    void aCommentInTheCatalogSurvives() {
+        String scaffolded = "<?xml version=\"1.0\"?>\n"
+                + "<catalog prefer=\"public\" xmlns=\"" + NAMESPACE + "\">\n"
+                + "    <!-- Map import IRIs to local files in imports/ as you add them. -->\n"
+                + "</catalog>\n";
+
+        String updated = Catalog.withEntry(scaffolded, "http://example.org/a.owl",
+                "imports/a.owl");
+
+        assertTrue(updated.contains("Map import IRIs to local files"), updated);
+    }
+
+    /** A value containing a quote or an ampersand must not break the file it is written into. */
+    @Test
+    void anIriNeedingEscapingIsWrittenSafely() throws Exception {
+        String catalog = Catalog.withEntry(null,
+                "http://example.org/a.owl?q=1&r=2", "imports/a&b.owl");
+
+        assertEquals(1, parse(catalog).getElementsByTagNameNS(NAMESPACE, "uri").getLength());
+        assertEquals("imports/a&b.owl",
+                Catalog.entryFor(catalog, "http://example.org/a.owl?q=1&r=2"));
+    }
+
     // ---------- a catalog is untrusted input ----------
 
     /**

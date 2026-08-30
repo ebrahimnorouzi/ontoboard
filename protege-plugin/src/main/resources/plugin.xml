@@ -79,6 +79,15 @@
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
+  <extension id="menu.OntoBoard.project.release"
+             point="org.protege.editor.core.application.EditorKitMenuAction">
+    <name value="Release..."/>
+    <toolTip value="Produce the published version: check it, classify it, stamp a dated version IRI"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.menu.ReleaseAction"/>
+    <path value="ontoboard.menu.OntoBoard.project/SlotC-A"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
+
   <!-- = ROBOT = -->
 
   <extension id="menu.OntoBoard.robot" name="Robot"
@@ -121,6 +130,33 @@
     <toolTip value="Extract a module from another ontology and import it, catalog entry and all"/>
     <class value="de.fizkarlsruhe.ise.ontoboard.menu.ImportTermsAction"/>
     <path value="ontoboard.menu.OntoBoard.robot/SlotB-B"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
+
+  <!-- = Notes = -->
+
+  <extension id="menu.OntoBoard.notes" name="Notes"
+             point="org.protege.editor.core.application.EditorKitMenuAction">
+    <name value="Notes"/>
+    <path value="ontoboard.menu.OntoBoard/SlotBZ-A"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
+
+  <extension id="menu.OntoBoard.notes.edit"
+             point="org.protege.editor.core.application.EditorKitMenuAction">
+    <name value="Note on the selected term..."/>
+    <toolTip value="Write an IAO editor note that travels with the ontology and its releases"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.menu.EditorNoteAction"/>
+    <path value="ontoboard.menu.OntoBoard.notes/SlotA-A"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
+
+  <extension id="menu.OntoBoard.notes.all"
+             point="org.protege.editor.core.application.EditorKitMenuAction">
+    <name value="All notes"/>
+    <toolTip value="Every editorial note in the ontology - Protege offers no other way to find them"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.menu.AllNotesAction"/>
+    <path value="ontoboard.menu.OntoBoard.notes/SlotA-B"/>
     <editorKitId value="OWLEditorKit"/>
   </extension>
 

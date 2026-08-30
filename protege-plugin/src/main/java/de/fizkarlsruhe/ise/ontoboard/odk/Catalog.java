@@ -3,18 +3,14 @@ package de.fizkarlsruhe.ise.ontoboard.odk;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
-import java.io.StringWriter;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.List;
 import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.transform.OutputKeys;
-import javax.xml.transform.Transformer;
-import javax.xml.transform.TransformerFactory;
-import javax.xml.transform.dom.DOMSource;
-import javax.xml.transform.stream.StreamResult;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
+import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.NodeList;
 
 /**
@@ -134,30 +130,6 @@ public final class Catalog {
                 .parse(new ByteArrayInputStream(xml.getBytes("UTF-8")));
     }
 
-    /**
-     * Drops whitespace-only text nodes.
-     *
-     * <p>Without this the file grows every single time it is written. The parsed document keeps
-     * the source file's own indentation as text nodes, and a Transformer with {@code INDENT=yes}
-     * then adds its own indentation <em>around</em> them - so each pass doubles what is there.
-     * Measured on a real ODK catalog: 798 bytes and 12 lines to begin with, 4166 bytes and 185
-     * lines after twelve entries, with the ODK-managed group reformatted too. A committed file
-     * that its own build regenerates then conflicts on every merge.
-     */
-    private static void stripWhitespace(org.w3c.dom.Node node) {
-        NodeList children = node.getChildNodes();
-        for (int i = children.getLength() - 1; i >= 0; i--) {
-            org.w3c.dom.Node child = children.item(i);
-            if (child.getNodeType() == org.w3c.dom.Node.TEXT_NODE
-                    && child.getNodeValue() != null
-                    && child.getNodeValue().trim().isEmpty()) {
-                node.removeChild(child);
-            } else if (child.getNodeType() == org.w3c.dom.Node.ELEMENT_NODE) {
-                stripWhitespace(child);
-            }
-        }
-    }
-
     /** The {@code uri} entry for this IRI, or null. */
     private static Element findEntry(Document document, String importIri) {
         NodeList entries = document.getElementsByTagNameNS(NAMESPACE, "uri");
@@ -236,22 +208,92 @@ public final class Catalog {
                 withEntry(existing, importIri, path).getBytes("UTF-8"));
     }
 
+    /**
+     * The document as text, written directly rather than through a Transformer.
+     *
+     * <p>Two reasons, and the second is the one that decided it.
+     *
+     * <p>{@code javax.xml.transform} is an <em>optional</em> import in this bundle's manifest,
+     * while {@code javax.xml.parsers} and {@code org.w3c.dom} are required. An optional package
+     * that turns out not to be exported by the host's OSGi framework does not stop the bundle
+     * resolving - it fails later, as a {@code NoClassDefFoundError} the first time somebody
+     * imports terms. Not depending on it at all removes the question.
+     *
+     * <p>And a catalog is a file in version control that a project's own build also writes.
+     * Controlling the output exactly means the same input produces the same bytes, so re-running
+     * an import that changes nothing produces no diff. A Transformer's indentation depends on the
+     * parser's whitespace handling, which is how this file used to grow every time it was written.
+     */
     private static String serialise(Document document) {
-        try {
-            // Before indenting, not after: the file's own indentation is in the tree as text
-            // nodes, and indenting around it is what made every write bigger than the last.
-            stripWhitespace(document.getDocumentElement());
-            Transformer transformer = TransformerFactory.newInstance().newTransformer();
-            transformer.setOutputProperty(OutputKeys.INDENT, "yes");
-            transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "4");
-            transformer.setOutputProperty(OutputKeys.ENCODING, "UTF-8");
-            StringWriter out = new StringWriter();
-            transformer.transform(new DOMSource(document), new StreamResult(out));
-            String xml = out.toString();
-            return xml.endsWith("\n") ? xml : xml + "\n";
-        } catch (Exception cannotWrite) {
-            throw new IllegalStateException("could not write the catalog: "
-                    + cannotWrite.getMessage(), cannotWrite);
+        StringBuilder out = new StringBuilder(
+                "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n");
+        write(document.getDocumentElement(), 0, out);
+        return out.toString();
+    }
+
+    private static void write(Element element, int depth, StringBuilder out) {
+        String indent = indent(depth);
+        out.append(indent).append('<').append(element.getNodeName());
+        NamedNodeMap attributes = element.getAttributes();
+        for (int i = 0; i < attributes.getLength(); i++) {
+            org.w3c.dom.Node attribute = attributes.item(i);
+            out.append(' ').append(attribute.getNodeName()).append("=\"")
+                    .append(escape(attribute.getNodeValue())).append('"');
         }
+
+        List<org.w3c.dom.Node> children = significantChildrenOf(element);
+        if (children.isEmpty()) {
+            out.append("/>\n");
+            return;
+        }
+        out.append(">\n");
+        for (org.w3c.dom.Node child : children) {
+            if (child.getNodeType() == org.w3c.dom.Node.ELEMENT_NODE) {
+                write((Element) child, depth + 1, out);
+            } else if (child.getNodeType() == org.w3c.dom.Node.COMMENT_NODE) {
+                out.append(indent(depth + 1)).append("<!--").append(child.getNodeValue())
+                        .append("-->\n");
+            } else {
+                out.append(indent(depth + 1))
+                        .append(escape(child.getNodeValue().trim())).append('\n');
+            }
+        }
+        out.append(indent).append("</").append(element.getNodeName()).append(">\n");
+    }
+
+    /** Children that carry meaning: elements, comments, and text that is not just layout. */
+    private static List<org.w3c.dom.Node> significantChildrenOf(Element element) {
+        List<org.w3c.dom.Node> children = new ArrayList<org.w3c.dom.Node>();
+        NodeList all = element.getChildNodes();
+        for (int i = 0; i < all.getLength(); i++) {
+            org.w3c.dom.Node child = all.item(i);
+            short type = child.getNodeType();
+            if (type == org.w3c.dom.Node.ELEMENT_NODE
+                    || type == org.w3c.dom.Node.COMMENT_NODE) {
+                children.add(child);
+            } else if ((type == org.w3c.dom.Node.TEXT_NODE
+                    || type == org.w3c.dom.Node.CDATA_SECTION_NODE)
+                    && child.getNodeValue() != null
+                    && !child.getNodeValue().trim().isEmpty()) {
+                children.add(child);
+            }
+        }
+        return children;
+    }
+
+    private static String indent(int depth) {
+        StringBuilder spaces = new StringBuilder();
+        for (int i = 0; i < depth; i++) {
+            spaces.append("    ");
+        }
+        return spaces.toString();
+    }
+
+    private static String escape(String text) {
+        if (text == null) {
+            return "";
+        }
+        return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+                .replace("\"", "&quot;");
     }
 }

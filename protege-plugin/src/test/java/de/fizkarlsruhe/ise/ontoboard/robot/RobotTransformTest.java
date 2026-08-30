@@ -400,11 +400,66 @@ class RobotTransformTest {
     }
 
     @Test
-    void onlyReduceClaimsToNeedAReasoner() {
+    void theOperationsThatReasonSayThatTheyDo() {
         assertTrue(RobotTransform.Kind.REDUCE.needsReasoner());
+        assertTrue(RobotTransform.Kind.REASON.needsReasoner());
         assertFalse(RobotTransform.Kind.RELAX.needsReasoner());
         assertFalse(RobotTransform.Kind.REPAIR.needsReasoner());
         assertFalse(RobotTransform.Kind.MERGE_IMPORTS.needsReasoner());
+    }
+
+    /**
+     * Reason is what turns an edit file into a release: the conclusions become ordinary axioms,
+     * so a consumer who never runs a reasoner still sees the hierarchy.
+     *
+     * <p>The fixture defines Parent as Person-with-a-child, and nothing says a Parent is a Person -
+     * that has to be worked out. Which is the whole point: it is the definition-derived
+     * subsumptions, not the ones already written down, that a consumer would otherwise miss.
+     */
+    @Test
+    void reasonWritesDownASubsumptionThatOnlyTheDefinitionImplies() {
+        RobotTransform.Diff diff = RobotTransform.preview(ontology, RobotTransform.Kind.REASON,
+                null);
+
+        assertEquals(0, diff.getRemoved(), "reason only adds: " + diff);
+        boolean wroteTheInference = false;
+        for (OWLOntologyChange change : diff.getChanges()) {
+            if (change instanceof AddAxiom && change.getAxiom().equals(
+                    factory.getOWLSubClassOfAxiom(cls("Parent"), cls("Person")))) {
+                wroteTheInference = true;
+            }
+        }
+        assertTrue(wroteTheInference,
+                "Parent -> Person follows from the definition and was not written down: " + diff);
+    }
+
+    /**
+     * Only the direct ones. ROBOT drops a subsumption already implied by a chain that is being
+     * written anyway, and an ontology padded with every indirect pair would be unreadable and
+     * enormous - so the absence of Dog -> Animal here is correct, not a gap.
+     */
+    @Test
+    void reasonDoesNotPadTheOntologyWithIndirectSubsumptions() {
+        manager.addAxiom(ontology, factory.getOWLSubClassOfAxiom(cls("Dog"), cls("Mammal")));
+        manager.addAxiom(ontology, factory.getOWLSubClassOfAxiom(cls("Mammal"), cls("Animal")));
+
+        RobotTransform.Diff diff = RobotTransform.preview(ontology, RobotTransform.Kind.REASON,
+                null);
+
+        for (OWLOntologyChange change : diff.getChanges()) {
+            assertFalse(change.getAxiom().equals(
+                    factory.getOWLSubClassOfAxiom(cls("Dog"), cls("Animal"))),
+                    "an indirect subsumption was written down: " + change);
+        }
+    }
+
+    /** It writes what the reasoner believes, so a user has to be told to read it first. */
+    @Test
+    void reasonWarnsThatItRecordsWhatTheReasonerBelieves() {
+        String help = RobotTransform.Kind.REASON.getHelp().toLowerCase();
+
+        assertTrue(help.contains("mistake"), help);
+        assertTrue(help.contains("before applying"), help);
     }
 
     @Test
