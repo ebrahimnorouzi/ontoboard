@@ -116,6 +116,43 @@ public final class EditorNotes {
         return notes;
     }
 
+    /**
+     * The notes of this kind on an entity, with who wrote each one and when.
+     *
+     * <p>{@link #notesOn} still returns the words alone, because most callers want the words. This
+     * is for the ones that have to decide whether to trust a note, which is a question about its
+     * age and its author before it is a question about its text.
+     */
+    public static List<Note> attributedNotesOn(OWLOntology ontology, IRI entity, Kind kind) {
+        List<Note> notes = new ArrayList<Note>();
+        if (ontology == null || entity == null || kind == null) {
+            return notes;
+        }
+        for (OWLAnnotationAssertionAxiom axiom : ontology.getAnnotationAssertionAxioms(entity)) {
+            if (kind.getIri().equals(axiom.getProperty().getIRI())
+                    && axiom.getValue() instanceof OWLLiteral) {
+                notes.add(noteFrom(entity, kind, axiom));
+            }
+        }
+        return notes;
+    }
+
+    /** One note read off its assertion, attribution and all. */
+    private static Note noteFrom(IRI subject, Kind kind, OWLAnnotationAssertionAxiom axiom) {
+        String author = "";
+        String date = "";
+        for (org.semanticweb.owlapi.model.OWLAnnotation annotation : axiom.getAnnotations()) {
+            IRI property = annotation.getProperty().getIRI();
+            if (Provenance.CONTRIBUTOR.equals(property)) {
+                author = valueTextOf(annotation.getValue());
+            } else if (Provenance.CREATED.equals(property)
+                    || Provenance.MODIFIED.equals(property)) {
+                date = valueTextOf(annotation.getValue());
+            }
+        }
+        return new Note(subject, kind, ((OWLLiteral) axiom.getValue()).getLiteral(), author, date);
+    }
+
     /** Whether anything is noted on this entity, of either kind. Drives the canvas marker. */
     public static boolean hasNote(OWLOntology ontology, IRI entity) {
         return !notesOn(ontology, entity, Kind.EDITOR).isEmpty()
@@ -133,19 +170,52 @@ public final class EditorNotes {
      */
     public static List<OWLOntologyChange> addNote(OWLOntology ontology, IRI entity, Kind kind,
             String text) {
+        return addNote(ontology, entity, kind, text, null, null);
+    }
+
+    /**
+     * Changes that add a note, recording who wrote it and when.
+     *
+     * <p>The attribution is a gap this plugin created. Notes sync between collaborating editors and
+     * carried no author or date, so a board's notes were undated anonymous text sitting beside
+     * terms with full provenance. That is not a cosmetic difference. A note is advice, and advice
+     * has a shelf life: "the definition needs work" written in 2019 by somebody who has since left
+     * the project is a different thing from the same sentence written on Tuesday by the person
+     * sitting next to you, and it is the difference between deleting the note and acting on it.
+     *
+     * <p>Written as annotations on the assertion rather than inside the text, so the note still
+     * reads as a note to anything that consumes the ontology - a tool showing {@code IAO:0000116}
+     * gets the words, not "needs work [0000-0002-..., 2019-04-02]".
+     *
+     * <p>The same two properties as term provenance, {@code dcterms:contributor} and
+     * {@code dcterms:created}, because a project that has one convention should not acquire a
+     * second one for notes. The caller declares them - see {@link Provenance#declareProperties} -
+     * on the same condition that decides whether to attribute at all.
+     *
+     * @param agent an ORCID or name; blank writes the note unattributed, as before
+     * @param isoDate {@code YYYY-MM-DD}; the caller owns the clock
+     */
+    public static List<OWLOntologyChange> addNote(OWLOntology ontology, IRI entity, Kind kind,
+            String text, String agent, String isoDate) {
         List<OWLOntologyChange> changes = new ArrayList<OWLOntologyChange>();
         String trimmed = text == null ? "" : text.trim();
         if (ontology == null || entity == null || trimmed.isEmpty()) {
             return changes;
         }
-        if (notesOn(ontology, entity, kind).contains(trimmed)) {
-            // Already said, word for word. Adding it again would put two identical annotations on
-            // the term, which no reader can tell apart and no diff explains.
-            return changes;
+        for (Note existing : attributedNotesOn(ontology, entity, kind)) {
+            // Already said, word for word, by the same person. Adding it again would put two
+            // identical annotations on the term, which no reader can tell apart and no diff
+            // explains. Two people saying the same thing years apart is a different matter and is
+            // allowed: with attribution those are two facts, not one repeated.
+            if (existing.getText().equals(trimmed)
+                    && existing.getAuthor().equals(canonical(agent))) {
+                return changes;
+            }
         }
         OWLDataFactory factory = ontology.getOWLOntologyManager().getOWLDataFactory();
         changes.add(new AddAxiom(ontology, factory.getOWLAnnotationAssertionAxiom(
-                property(factory, kind), entity, factory.getOWLLiteral(trimmed))));
+                property(factory, kind), entity, factory.getOWLLiteral(trimmed),
+                attribution(factory, agent, isoDate))));
         return changes;
     }
 
@@ -162,6 +232,18 @@ public final class EditorNotes {
      */
     public static List<OWLOntologyChange> replaceNote(OWLOntology ontology, IRI entity, Kind kind,
             String oldText, String newText) {
+        return replaceNote(ontology, entity, kind, oldText, newText, null, null);
+    }
+
+    /**
+     * Changes that replace one note with another, attributing the replacement.
+     *
+     * <p>The new author replaces the old one rather than joining them. Editing somebody's note is
+     * not contributing to it: the words are now yours, and leaving their name on text they did not
+     * write would attribute an opinion to somebody who may disagree with it.
+     */
+    public static List<OWLOntologyChange> replaceNote(OWLOntology ontology, IRI entity, Kind kind,
+            String oldText, String newText, String agent, String isoDate) {
         List<OWLOntologyChange> changes = new ArrayList<OWLOntologyChange>();
         String was = oldText == null ? "" : oldText.trim();
         String now = newText == null ? "" : newText.trim();
@@ -186,9 +268,37 @@ public final class EditorNotes {
         }
         if (!now.isEmpty()) {
             changes.add(new AddAxiom(ontology, factory.getOWLAnnotationAssertionAxiom(
-                    property(factory, kind), entity, factory.getOWLLiteral(now))));
+                    property(factory, kind), entity, factory.getOWLLiteral(now),
+                    attribution(factory, agent, isoDate))));
         }
         return changes;
+    }
+
+    /**
+     * The annotations recording who wrote a note and when.
+     *
+     * <p>Empty for a blank agent, which is what an ontology that does not keep provenance gets -
+     * the same rule as everywhere else, so leaving a note never starts a convention the project
+     * did not choose.
+     */
+    private static java.util.Set<org.semanticweb.owlapi.model.OWLAnnotation> attribution(
+            OWLDataFactory factory, String agent, String isoDate) {
+        java.util.Set<org.semanticweb.owlapi.model.OWLAnnotation> annotations =
+                new java.util.LinkedHashSet<org.semanticweb.owlapi.model.OWLAnnotation>();
+        if (agent == null || agent.trim().isEmpty()) {
+            return annotations;
+        }
+        annotations.addAll(Provenance.creationAnnotations(factory, agent, isoDate));
+        return annotations;
+    }
+
+    /** An agent as it will be recorded, so a note written twice can be recognised as one. */
+    private static String canonical(String agent) {
+        if (agent == null || agent.trim().isEmpty()) {
+            return "";
+        }
+        String orcid = Provenance.normaliseOrcid(agent);
+        return orcid != null ? orcid : agent.trim();
     }
 
     /** Changes that remove one exact note. */
@@ -359,8 +469,7 @@ public final class EditorNotes {
                     || !(axiom.getSubject() instanceof IRI)) {
                 continue;
             }
-            notes.add(new Note((IRI) axiom.getSubject(), kind,
-                    ((OWLLiteral) axiom.getValue()).getLiteral()));
+            notes.add(noteFrom((IRI) axiom.getSubject(), kind, axiom));
         }
         return Collections.unmodifiableList(notes);
     }
@@ -370,11 +479,15 @@ public final class EditorNotes {
         private final IRI subject;
         private final Kind kind;
         private final String text;
+        private final String author;
+        private final String date;
 
-        Note(IRI subject, Kind kind, String text) {
+        Note(IRI subject, Kind kind, String text, String author, String date) {
             this.subject = subject;
             this.kind = kind;
             this.text = text;
+            this.author = author == null ? "" : author;
+            this.date = date == null ? "" : date;
         }
 
         public IRI getSubject() {
@@ -389,9 +502,39 @@ public final class EditorNotes {
             return text;
         }
 
+        /** Who wrote it - an ORCID IRI or a name - or empty when the note is unattributed. */
+        public String getAuthor() {
+            return author;
+        }
+
+        /** When it was written, {@code YYYY-MM-DD}, or empty. */
+        public String getDate() {
+            return date;
+        }
+
+        /**
+         * Who and when, in one phrase, or empty when neither is recorded.
+         *
+         * <p>Empty rather than "unknown author": a note written before the project attributed
+         * anything is not a note by an unknown person, it is a note from before the practice
+         * existed, and saying "unknown" invites somebody to go looking for an answer that was
+         * never recorded.
+         */
+        public String describeAttribution() {
+            if (author.isEmpty() && date.isEmpty()) {
+                return "";
+            }
+            if (author.isEmpty()) {
+                return date;
+            }
+            return date.isEmpty() ? author : author + ", " + date;
+        }
+
         @Override
         public String toString() {
-            return kind.getLabel() + " on " + subject + ": " + text;
+            String attribution = describeAttribution();
+            return kind.getLabel() + " on " + subject + ": " + text
+                    + (attribution.isEmpty() ? "" : " (" + attribution + ")");
         }
     }
 

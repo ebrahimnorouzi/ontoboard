@@ -29,7 +29,7 @@ public class AllNotesAction extends OntoBoardAction {
         List<EditorNotes.Note> notes = EditorNotes.allIn(ontology);
 
         OperationResult.Builder result = OperationResult.of(operationName())
-                .columns("Kind", "Term", "Note");
+                .columns("Kind", "Term", "Note", "Written by");
         if (notes.isEmpty()) {
             return result.summary("No editorial notes in this ontology. They are stored as "
                     + "IAO:0000116 editor notes and IAO:0000232 curator notes; add one with "
@@ -37,14 +37,27 @@ public class AllNotesAction extends OntoBoardAction {
         }
 
         int editor = 0;
+        int unattributed = 0;
         for (EditorNotes.Note note : notes) {
-            result.row(note.getKind().getLabel(), render(note), note.getText());
+            result.row(note.getKind().getLabel(), render(note), note.getText(),
+                    note.describeAttribution());
             if (note.getKind() == EditorNotes.Kind.EDITOR) {
                 editor++;
+            }
+            if (note.describeAttribution().isEmpty()) {
+                unattributed++;
             }
         }
         result.note("Editor notes: " + editor);
         result.note("Curator notes: " + (notes.size() - editor));
+        if (unattributed > 0) {
+            // Not a warning. A note written before this project attributed anything is not a
+            // defect, and there is nothing to go and fix - the information was never recorded.
+            // Saying so is still worth a line, because a blank column otherwise reads as a bug.
+            result.note(unattributed + " note" + (unattributed == 1 ? " was" : "s were")
+                    + " written without an author - either before this ontology recorded "
+                    + "provenance, or by a tool that does not.");
+        }
         return result.summary(notes.size() + " note" + (notes.size() == 1 ? "" : "s")
                 + " on " + distinctSubjects(notes) + " term"
                 + (distinctSubjects(notes) == 1 ? "" : "s") + ".").build();

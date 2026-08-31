@@ -110,7 +110,12 @@ public class EditorNoteAction extends OntoBoardAction {
             return "This term has no notes yet.";
         }
         if (editorNotes.size() == 1 && curator == 0) {
-            return "Editing the note already on this term.";
+            // Who wrote it and when, because that is what decides whether to act on a note or
+            // delete it. Advice from somebody who left the project in 2019 and advice written on
+            // Tuesday read identically without it.
+            String by = attributionOfTheOneNote(ontology);
+            return "Editing the note already on this term"
+                    + (by.isEmpty() ? "." : ", written by " + by + ".");
         }
         return "This term already has " + editorNotes.size() + " editor note"
                 + (editorNotes.size() == 1 ? "" : "s")
@@ -119,12 +124,28 @@ public class EditorNoteAction extends OntoBoardAction {
                 + "; a new one will be added alongside.";
     }
 
+    /** The attribution of the single editor note, or empty when there is none recorded. */
+    private String attributionOfTheOneNote(OWLOntology ontology) {
+        List<EditorNotes.Note> attributed = EditorNotes.attributedNotesOn(ontology,
+                subject.getIRI(), EditorNotes.Kind.EDITOR);
+        return attributed.size() == 1 ? attributed.get(0).describeAttribution() : "";
+    }
+
     @Override
     protected OperationResult run(OWLOntology ontology) {
         OperationResult.Builder result = OperationResult.of(operationName());
+
+        // The note carries who wrote it and when. A note is advice, and advice has a shelf life:
+        // "the definition needs work" from 2019 by somebody who has left the project is a
+        // different thing from the same sentence written on Tuesday by the person sitting next to
+        // you, and undated anonymous text cannot be told apart from either.
+        ProvenanceSettings settings = ProvenanceSettings.load();
+        String author = settings.shouldStamp(ontology, false) ? settings.canonicalAgent() : "";
         List<OWLOntologyChange> changes = replacing == null
-                ? EditorNotes.addNote(ontology, subject.getIRI(), kind, text)
-                : EditorNotes.replaceNote(ontology, subject.getIRI(), kind, replacing, text);
+                ? EditorNotes.addNote(ontology, subject.getIRI(), kind, text, author,
+                        Provenance.today())
+                : EditorNotes.replaceNote(ontology, subject.getIRI(), kind, replacing, text,
+                        author, Provenance.today());
 
         // Declared before use: an undeclared annotation property is a ROBOT report violation, and
         // an ontology that relies on an import having declared it breaks when the import goes.
@@ -141,13 +162,10 @@ public class EditorNoteAction extends OntoBoardAction {
         // curator asks before trusting what it says. Only when the ontology already keeps
         // provenance - see ProvenanceSettings - so an ontology that has never recorded any does
         // not start because somebody left a note in it.
-        ProvenanceSettings settings = ProvenanceSettings.load();
         if (settings.shouldStamp(ontology, false)) {
             declarations.addAll(Provenance.declareProperties(ontology));
             declarations.addAll(Provenance.stampModified(ontology, subject.getIRI(),
-                    settings.canonicalAgent(),
-                    java.time.OffsetDateTime.now(java.time.ZoneOffset.UTC)
-                            .truncatedTo(java.time.temporal.ChronoUnit.SECONDS).toString()));
+                    settings.canonicalAgent(), Provenance.today()));
         }
         getOWLModelManager().applyChanges(declarations);
 

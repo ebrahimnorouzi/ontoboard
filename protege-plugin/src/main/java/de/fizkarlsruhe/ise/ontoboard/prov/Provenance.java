@@ -258,6 +258,43 @@ public final class Provenance {
                 factory.getOWLDatatype(IRI.create("http://www.w3.org/2001/XMLSchema#date")));
     }
 
+    /**
+     * Today, as {@code YYYY-MM-DD}.
+     *
+     * <p>Here rather than in each caller because three of them had rolled their own and one of
+     * them rolled it wrong - it passed a full ISO timestamp to {@link #stampModified}, which
+     * builds an {@code xsd:date} literal, so the ontology got
+     * {@code "2026-08-31T09:14:02Z"^^xsd:date}: a literal outside its own datatype's value space,
+     * which a strict parser is entitled to reject and a lax one silently keeps.
+     *
+     * <p>Every method that writes a date still takes it as a parameter. This is for callers that
+     * genuinely mean "now"; the ones under test pass their own so the output is reproducible.
+     */
+    public static String today() {
+        return new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.ROOT)
+                .format(new java.util.Date());
+    }
+
+    /**
+     * The creation date recorded for an entity, or empty.
+     *
+     * <p>Used to decide that a term made today does not also need a "last modified today". The two
+     * dates together would say nothing the creation date does not already say, and would put a
+     * second line in the diff for every new term.
+     */
+    public static String createdOn(OWLOntology ontology, IRI entity) {
+        if (ontology == null || entity == null) {
+            return "";
+        }
+        for (OWLAnnotationAssertionAxiom axiom : ontology.getAnnotationAssertionAxioms(entity)) {
+            if (CREATED.equals(axiom.getProperty().getIRI())
+                    && axiom.getValue() instanceof org.semanticweb.owlapi.model.OWLLiteral) {
+                return ((org.semanticweb.owlapi.model.OWLLiteral) axiom.getValue()).getLiteral();
+            }
+        }
+        return "";
+    }
+
     /** Every contributor recorded for an entity, for a panel to show. */
     public static List<String> contributorsOf(OWLOntology ontology, IRI entity) {
         List<String> contributors = new ArrayList<String>();

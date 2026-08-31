@@ -32,6 +32,8 @@ class EditorNotesTest {
 
     private static final IRI TERM = IRI.create("http://example.org/o#Polymer");
 
+    private static final String ORCID = "https://orcid.org/0000-0002-1825-0097";
+
     private OWLOntologyManager manager;
     private OWLOntology ontology;
     private OWLDataFactory factory;
@@ -374,6 +376,130 @@ class EditorNotesTest {
         assertTrue(EditorNotes.strip(null).isEmpty());
         assertTrue(EditorNotes.declareProperties(null).isEmpty());
         assertFalse(EditorNotes.hasNote(null, TERM));
+    }
+
+    // ---------- who wrote it, and when ----------
+
+    /**
+     * The gap this plugin created. Notes synced between editors and carried nothing about who
+     * wrote them, sitting beside terms with full provenance. A note is advice, and advice has a
+     * shelf life: "the definition needs work" from 2019 by somebody who has left the project is a
+     * different thing from the same sentence written on Tuesday.
+     */
+    @Test
+    void aNoteRecordsWhoWroteItAndWhen() {
+        manager.applyChanges(EditorNotes.addNote(ontology, TERM, EditorNotes.Kind.EDITOR,
+                "definition needs work", ORCID, "2019-04-02"));
+
+        List<EditorNotes.Note> notes =
+                EditorNotes.attributedNotesOn(ontology, TERM, EditorNotes.Kind.EDITOR);
+
+        assertEquals(1, notes.size());
+        assertEquals("definition needs work", notes.get(0).getText());
+        assertEquals(ORCID, notes.get(0).getAuthor());
+        assertEquals("2019-04-02", notes.get(0).getDate());
+        assertEquals(ORCID + ", 2019-04-02", notes.get(0).describeAttribution());
+    }
+
+    /** The words still have to read as the note, not as the note plus a signature. */
+    @Test
+    void theAttributionIsNotInTheText() {
+        manager.applyChanges(EditorNotes.addNote(ontology, TERM, EditorNotes.Kind.EDITOR,
+                "needs work", ORCID, "2019-04-02"));
+
+        assertEquals(Arrays.asList("needs work"),
+                EditorNotes.notesOn(ontology, TERM, EditorNotes.Kind.EDITOR));
+    }
+
+    /** A bare ORCID is recorded the same way it is everywhere else - as its resolvable IRI. */
+    @Test
+    void anOrcidIsRecordedAsAnIri() {
+        manager.applyChanges(EditorNotes.addNote(ontology, TERM, EditorNotes.Kind.EDITOR,
+                "needs work", "0000-0002-1825-0097", "2026-08-31"));
+
+        assertEquals(ORCID, EditorNotes.attributedNotesOn(ontology, TERM,
+                EditorNotes.Kind.EDITOR).get(0).getAuthor());
+    }
+
+    /**
+     * The same words from two people years apart are two facts, not one repeated - which only
+     * became true once notes carried an author.
+     */
+    @Test
+    void twoPeopleMaySayTheSameThing() {
+        manager.applyChanges(EditorNotes.addNote(ontology, TERM, EditorNotes.Kind.EDITOR,
+                "needs work", ORCID, "2019-04-02"));
+        manager.applyChanges(EditorNotes.addNote(ontology, TERM, EditorNotes.Kind.EDITOR,
+                "needs work", "Someone Else", "2026-08-31"));
+
+        assertEquals(2, EditorNotes.attributedNotesOn(ontology, TERM,
+                EditorNotes.Kind.EDITOR).size());
+    }
+
+    /** The same person saying it twice is still one note. */
+    @Test
+    void onePersonSayingItTwiceIsStillOneNote() {
+        manager.applyChanges(EditorNotes.addNote(ontology, TERM, EditorNotes.Kind.EDITOR,
+                "needs work", ORCID, "2019-04-02"));
+
+        assertTrue(EditorNotes.addNote(ontology, TERM, EditorNotes.Kind.EDITOR, "needs work",
+                ORCID, "2026-08-31").isEmpty());
+    }
+
+    /**
+     * Editing somebody's note is not contributing to it. The words are now yours, and leaving
+     * their name on text they did not write attributes an opinion to somebody who may disagree.
+     */
+    @Test
+    void editingSomebodyElsesNoteTakesOverTheAttribution() {
+        manager.applyChanges(EditorNotes.addNote(ontology, TERM, EditorNotes.Kind.EDITOR,
+                "needs work", ORCID, "2019-04-02"));
+        manager.applyChanges(EditorNotes.replaceNote(ontology, TERM, EditorNotes.Kind.EDITOR,
+                "needs work", "fixed, but check the parent", "Someone Else", "2026-08-31"));
+
+        List<EditorNotes.Note> notes =
+                EditorNotes.attributedNotesOn(ontology, TERM, EditorNotes.Kind.EDITOR);
+        assertEquals(1, notes.size());
+        assertEquals("Someone Else", notes.get(0).getAuthor());
+        assertEquals("2026-08-31", notes.get(0).getDate());
+    }
+
+    /** An ontology that does not record provenance does not start to because of a note. */
+    @Test
+    void aNoteWithoutAnAuthorIsStillJustANote() {
+        manager.applyChanges(EditorNotes.addNote(ontology, TERM, EditorNotes.Kind.EDITOR,
+                "needs work", "", null));
+
+        EditorNotes.Note note =
+                EditorNotes.attributedNotesOn(ontology, TERM, EditorNotes.Kind.EDITOR).get(0);
+        assertEquals("", note.getAuthor());
+        // Empty rather than "unknown author": a note from before the project attributed anything
+        // is not a note by an unknown person, and "unknown" sends somebody looking for an answer
+        // that was never recorded.
+        assertEquals("", note.describeAttribution());
+    }
+
+    /** The review of everything outstanding is where the age of a note matters most. */
+    @Test
+    void theWholeOntologyReviewKeepsTheAttribution() {
+        manager.applyChanges(EditorNotes.addNote(ontology, TERM, EditorNotes.Kind.EDITOR,
+                "needs work", ORCID, "2019-04-02"));
+
+        List<EditorNotes.Note> all = EditorNotes.allIn(ontology);
+        assertEquals(1, all.size());
+        assertEquals(ORCID, all.get(0).getAuthor());
+        assertEquals("2019-04-02", all.get(0).getDate());
+        assertTrue(all.get(0).toString().contains("2019-04-02"), all.get(0).toString());
+    }
+
+    /** Attributed or not, a note is still found by its words when it is being replaced. */
+    @Test
+    void anAttributedNoteIsStillMatchedByItsText() {
+        manager.applyChanges(EditorNotes.addNote(ontology, TERM, EditorNotes.Kind.EDITOR,
+                "needs work", ORCID, "2019-04-02"));
+
+        assertFalse(EditorNotes.removeNote(ontology, TERM, EditorNotes.Kind.EDITOR,
+                "needs work").isEmpty());
     }
 
     // ---------- the choice is explained ----------

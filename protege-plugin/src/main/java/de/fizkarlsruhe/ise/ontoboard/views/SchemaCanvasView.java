@@ -30,6 +30,7 @@ import de.fizkarlsruhe.ise.ontoboard.model.DisplayLabels;
 import de.fizkarlsruhe.ise.ontoboard.model.OntologyProjection;
 import de.fizkarlsruhe.ise.ontoboard.model.CanvasNode;
 import de.fizkarlsruhe.ise.ontoboard.model.Projection;
+import de.fizkarlsruhe.ise.ontoboard.prov.EditWatcher;
 import de.fizkarlsruhe.ise.ontoboard.prov.Provenance;
 import de.fizkarlsruhe.ise.ontoboard.prov.ProvenanceSettings;
 import de.fizkarlsruhe.ise.ontoboard.reason.InferredEdges;
@@ -208,6 +209,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             if (collab != null) {
                 collab.publishLocalChanges(changes, canvasHints());
             }
+            stampEditsMadeElsewhere(changes);
             refresh();
         };
         getOWLModelManager().addOntologyChangeListener(changeListener);
@@ -1366,6 +1368,55 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
     }
 
     /**
+     * Provenance for edits made in Protege's own editors rather than on the canvas.
+     *
+     * <p>A gap this plugin created. Until this existed, provenance was stamped only where the
+     * canvas made the edit - so a term dragged here recorded who and when, and the same term
+     * re-parented in the class hierarchy, or given a restriction in the Manchester syntax editor,
+     * recorded nothing. Which is most editing. The result was worse than no provenance at all: a
+     * reader sees dates on some terms and none on others and concludes the undated ones were never
+     * touched, when what actually happened is that somebody used a different view.
+     *
+     * <p>Three things make this safe to do from the change listener, which an earlier comment here
+     * rightly said it was not:
+     *
+     * <ul>
+     *   <li><b>Remote changes are skipped.</b> The listener sees a collaborator's edits arriving,
+     *       and stamping those would record the local user as having modified somebody else's
+     *       work - then publish that back, which is a loop.
+     *   <li><b>A stamp is not an edit.</b> {@link EditWatcher} ignores changes that only write
+     *       provenance, which is what terminates the recursion of stamping causing a stamp.
+     *   <li><b>It is applied afterwards, not during.</b> Protege is in the middle of broadcasting
+     *       this change to every listener; applying more changes inside that broadcast is asking
+     *       for trouble. The cost is that Edit &gt; Undo takes two steps - the stamp, then the
+     *       edit - which is the honest price of recording something Protege itself does not.
+     * </ul>
+     */
+    private void stampEditsMadeElsewhere(List<? extends OWLOntologyChange> changes) {
+        if (collab != null && collab.isApplyingRemote()) {
+            return;
+        }
+        final OWLOntology ontology = getOWLModelManager().getActiveOntology();
+        ProvenanceSettings settings = ProvenanceSettings.load();
+        if (ontology == null || !settings.shouldStamp(ontology, isOdkProject())
+                || !EditWatcher.isWorthStamping(ontology, changes)) {
+            return;
+        }
+        final List<OWLOntologyChange> snapshot =
+                new ArrayList<OWLOntologyChange>(changes);
+        final String agent = settings.canonicalAgent();
+        javax.swing.SwingUtilities.invokeLater(() -> {
+            // Recomputed against the ontology as it is now rather than as it was, so an edit
+            // undone or a term deleted in the meantime is not stamped back into existence.
+            List<OWLOntologyChange> stamps =
+                    EditWatcher.stampsFor(ontology, snapshot, agent, today());
+            if (!stamps.isEmpty()) {
+                getOWLModelManager().applyChanges(stamps);
+            }
+        });
+    }
+
+    /**
      * Whether the open ontology is an ODK project, for the provenance default.
      *
      * <p>A project this plugin scaffolded gets provenance by default; somebody else's ontology
@@ -1410,8 +1461,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
      * on the machine that wrote it.
      */
     private static String today() {
-        return new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.ROOT)
-                .format(new java.util.Date());
+        return Provenance.today();
     }
 
     /**
