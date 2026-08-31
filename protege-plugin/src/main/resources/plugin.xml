@@ -142,6 +142,15 @@
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
+  <extension id="menu.OntoBoard.robot.profile"
+             point="org.protege.editor.core.application.EditorKitMenuAction">
+    <name value="Profile..."/>
+    <toolTip value="Which OWL 2 profile this ontology is in, and which axioms take it out"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.menu.ProfileAction"/>
+    <path value="ontoboard.menu.OntoBoard.robot/SlotA-C"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
+
   <extension id="menu.OntoBoard.robot.transform"
              point="org.protege.editor.core.application.EditorKitMenuAction">
     <name value="Transform..."/>

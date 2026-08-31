@@ -33,6 +33,7 @@ import de.fizkarlsruhe.ise.ontoboard.model.Projection;
 import de.fizkarlsruhe.ise.ontoboard.prov.Provenance;
 import de.fizkarlsruhe.ise.ontoboard.prov.ProvenanceSettings;
 import de.fizkarlsruhe.ise.ontoboard.reason.InferredEdges;
+import de.fizkarlsruhe.ise.ontoboard.reason.ProfileCheck;
 import de.fizkarlsruhe.ise.ontoboard.odk.IdRanges;
 import de.fizkarlsruhe.ise.ontoboard.odk.TermMinter;
 import de.fizkarlsruhe.ise.ontoboard.odk.OdkProjectLoader;
@@ -1495,9 +1496,23 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             property = factory.getOWLObjectProperty(propertyIri);
         }
 
-        changes.add(new AddAxiom(ontology, EdgeAxioms.build(factory, choice.getCandidate(),
+        OWLAxiom relation = EdgeAxioms.build(factory, choice.getCandidate(),
                 factory.getOWLClass(IRI.create(sourceIri)), property,
-                factory.getOWLClass(IRI.create(targetIri)))));
+                factory.getOWLClass(IRI.create(targetIri)));
+
+        // Asked here, at the gesture, and not at release time. By release the axiom is one of
+        // thousands and whoever wrote it has long forgotten which arrow it was; right now they
+        // are looking straight at it. The dialog offers readings that leave OWL 2 EL, and both
+        // this plugin's release action and the ODK build it scaffolds classify with ELK - which
+        // ignores what it cannot express without saying so.
+        String outsideProfile = ProfileCheck.warningFor(relation, ProfileCheck.Target.EL);
+        if (outsideProfile != null && JOptionPane.showConfirmDialog(this,
+                outsideProfile + "\n\nWrite it anyway?", "Outside the EL profile",
+                JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE)
+                != JOptionPane.YES_OPTION) {
+            return;
+        }
+        changes.add(new AddAxiom(ontology, relation));
         // The restriction is asserted about the source class, so the source is what changed.
         changes.addAll(modificationProvenanceFor(ontology, IRI.create(sourceIri)));
 
