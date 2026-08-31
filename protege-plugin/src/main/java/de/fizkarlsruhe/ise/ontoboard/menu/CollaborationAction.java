@@ -1,5 +1,6 @@
 package de.fizkarlsruhe.ise.ontoboard.menu;
 
+import de.fizkarlsruhe.ise.ontoboard.collab.BoardId;
 import de.fizkarlsruhe.ise.ontoboard.collab.CollabDialog;
 import de.fizkarlsruhe.ise.ontoboard.collab.CollabSettings;
 import org.semanticweb.owlapi.model.OWLOntology;
@@ -16,6 +17,13 @@ public class CollaborationAction extends OntoBoardAction {
     private static final long serialVersionUID = 1L;
 
     @Override
+    protected boolean runsInBackground() {
+        // This action's work is a modal dialog, and opening one from a worker thread is a Swing
+        // threading violation with intermittent, miserable symptoms.
+        return false;
+    }
+
+    @Override
     protected String operationName() {
         return "Collaboration settings";
     }
@@ -28,7 +36,8 @@ public class CollaborationAction extends OntoBoardAction {
 
     @Override
     protected OperationResult run(OWLOntology ontology) {
-        CollabSettings chosen = CollabDialog.show(getOWLWorkspace());
+        String ontologyIri = iriOf(ontology);
+        CollabSettings chosen = CollabDialog.show(getOWLWorkspace(), ontologyIri);
         if (chosen == null) {
             return null;
         }
@@ -38,10 +47,25 @@ public class CollaborationAction extends OntoBoardAction {
                     + chosen.getBridgeUrl() + ". Open the OntoBoard tab and press Collaborate to "
                     + "connect.");
             result.note("Your name comes from the access token, not from this dialog.");
+            // Said here rather than at connect time because this is where somebody is looking at
+            // the board id and can still change it.
+            String mismatch = ontology == null ? null
+                    : BoardId.mismatchWarning(chosen.getBoard(), ontologyIri);
+            if (mismatch != null) {
+                result.warn(mismatch);
+            }
         } else {
             result.summary("Working through git. " + chosen.explainWhyNotLive());
             result.note("This is a choice, not a failure - commit and push as usual.");
         }
         return result.build();
+    }
+
+    /** The open ontology's own IRI, or null - a file path is not it. */
+    private String iriOf(OWLOntology ontology) {
+        if (ontology == null || !ontology.getOntologyID().getOntologyIRI().isPresent()) {
+            return null;
+        }
+        return ontology.getOntologyID().getOntologyIRI().get().toString();
     }
 }

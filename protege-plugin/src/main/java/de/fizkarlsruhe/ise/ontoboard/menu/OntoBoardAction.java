@@ -4,6 +4,7 @@ import java.awt.event.ActionEvent;
 import javax.swing.JOptionPane;
 import org.protege.editor.owl.ui.action.ProtegeOWLAction;
 import org.semanticweb.owlapi.model.OWLOntology;
+import org.semanticweb.owlapi.model.OWLOntologyChange;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,6 +53,31 @@ public abstract class OntoBoardAction extends ProtegeOWLAction {
         return true;
     }
 
+    /**
+     * Asks for whatever the operation needs before it runs.
+     *
+     * <p>Called on the event dispatch thread, so it may open a dialog; {@link #run} then executes
+     * in the background with whatever was chosen. Separating the two is what lets an operation be
+     * both configurable and non-blocking - asking on the worker thread would be a Swing threading
+     * violation, and asking after the work started would be pointless.
+     *
+     * @return false to abandon the operation, which is what a cancelled dialog means
+     */
+    protected boolean configure() {
+        return true;
+    }
+
+    /**
+     * Whether the work runs on a background thread.
+     *
+     * <p>True for anything that computes. An action whose {@code run} only opens a dialog must
+     * override this to false: a modal dialog opened from a worker thread is a Swing threading
+     * violation, and the symptoms are intermittent and horrible to diagnose.
+     */
+    protected boolean runsInBackground() {
+        return true;
+    }
+
     @Override
     public final void actionPerformed(ActionEvent event) {
         OWLOntology ontology = getOWLModelManager() == null ? null
@@ -63,9 +89,35 @@ public abstract class OntoBoardAction extends ProtegeOWLAction {
                     "Nothing is open", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
+        final OWLOntology target = ontology;
+        try {
+            if (!configure()) {
+                // Cancelled at the parameter dialog. Nothing ran, so there is nothing to report.
+                return;
+            }
+        } catch (RuntimeException failure) {
+            LOGGER.warn("OntoBoard: {} could not be configured", operationName(), failure);
+            ResultDialog.show(getOWLWorkspace(),
+                    OperationResult.failed(operationName(), describe(failure)));
+            return;
+        }
+        if (runsInBackground()) {
+            // Off the EDT, and the result comes back through a callback rather than a blocking
+            // get(). ROBOT's report was measured taking over ten minutes on a 582-axiom ontology:
+            // an action doing that on the dispatch thread freezes all of Protege with no repaint
+            // and no way out, and an action that blocks the EDT *waiting* for it deadlocks
+            // outright against any operation that needs the EDT to apply its changes.
+            BackgroundRun.execute(getOWLWorkspace(), operationName(), () -> run(target),
+                    result -> {
+                        if (result != null) {
+                            ResultDialog.show(getOWLWorkspace(), result);
+                        }
+                    });
+            return;
+        }
         OperationResult result;
         try {
-            result = run(ontology);
+            result = run(target);
         } catch (RuntimeException | LinkageError failure) {
             // LinkageError as well as RuntimeException: several ROBOT operations fail that way on
             // Protege 5.5's older OWL API, and a NoSuchMethodError escaping into Protege's log is
@@ -94,5 +146,48 @@ public abstract class OntoBoardAction extends ProtegeOWLAction {
                     + "or later is known to work. (" + failure.getClass().getSimpleName() + ")";
         }
         return "It failed with " + failure.getClass().getSimpleName() + " and no message.";
+    }
+    /**
+     * Applies changes through the model manager, on the dispatch thread.
+     *
+     * <p>Both halves matter and for different reasons. Through the model manager, so Protege
+     * records them for Edit &gt; Undo and every view hears about them - applying to the OWL API
+     * manager directly changes the ontology behind Protege's back. On the dispatch thread, because
+     * applying fires listeners that rebuild Swing components, and doing that from a worker thread
+     * is the kind of threading bug that shows up as an occasional blank panel weeks later.
+     *
+     * <p>{@code invokeAndWait}, not {@code invokeLater}: the result reports what was applied, and
+     * reporting a change that has not happened yet would be a lie the user could act on.
+     *
+     * <p>Three actions had written this separately before it moved here.
+     */
+    protected void applyOnEventThread(final java.util.List<OWLOntologyChange> changes) {
+        if (javax.swing.SwingUtilities.isEventDispatchThread()) {
+            getOWLModelManager().applyChanges(changes);
+            return;
+        }
+        final java.util.concurrent.atomic.AtomicReference<RuntimeException> failure =
+                new java.util.concurrent.atomic.AtomicReference<RuntimeException>();
+        try {
+            javax.swing.SwingUtilities.invokeAndWait(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        getOWLModelManager().applyChanges(changes);
+                    } catch (RuntimeException thrown) {
+                        failure.set(thrown);
+                    }
+                }
+            });
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("interrupted while applying the changes");
+        } catch (java.lang.reflect.InvocationTargetException thrown) {
+            throw new IllegalStateException(thrown.getCause() == null ? thrown.toString()
+                    : String.valueOf(thrown.getCause().getMessage()));
+        }
+        if (failure.get() != null) {
+            throw failure.get();
+        }
     }
 }

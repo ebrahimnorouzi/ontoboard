@@ -97,4 +97,86 @@ class SchemaGraphTest {
         assertEquals(PERSON, graph.getToolTipForCell(personCell),
                 "tooltip must show the full IRI even though the visible label is short");
     }
+    // ---------- markers ----------
+
+    /**
+     * An unsatisfiable class takes the namespace colour's channel. Which vocabulary a term came
+     * from stops mattering the moment a reasoner says it can have no instances, and an error
+     * visible only to somebody who knows which shade of blue to look for is not visible.
+     */
+    @Test
+    void anUnsatisfiableClassIsDrawnInRedRatherThanItsNamespaceColour() {
+        CanvasNode broken = new CanvasNode("http://example.org/o#Impossible", NodeKind.CLASS,
+                "Impossible", false, true);
+        CanvasNode ordinary = new CanvasNode("http://example.org/o#Fine", NodeKind.CLASS, "Fine");
+
+        String brokenStyle = SchemaGraph.styleForTesting(broken);
+        String ordinaryStyle = SchemaGraph.styleForTesting(ordinary);
+
+        assertTrue(brokenStyle.contains(SchemaStyles.UNSATISFIABLE_STROKE), brokenStyle);
+        assertFalse(ordinaryStyle.contains(SchemaStyles.UNSATISFIABLE_STROKE), ordinaryStyle);
+    }
+
+    @Test
+    void aNotedTermGetsTheHeavierBorderAndKeepsItsNamespaceColour() {
+        CanvasNode noted = new CanvasNode("http://example.org/o#Noted", NodeKind.CLASS,
+                "Noted", true);
+
+        String style = SchemaGraph.styleForTesting(noted);
+
+        assertTrue(style.contains("strokeWidth=" + SchemaStyles.NOTED_STROKE_WIDTH), style);
+        assertFalse(style.contains(SchemaStyles.UNSATISFIABLE_STROKE), style);
+    }
+
+    /** Both at once is an ordinary state, and the error has to win the colour. */
+    @Test
+    void anUnsatisfiableTermThatAlsoHasANoteIsStillDrawnAsAnError() {
+        CanvasNode both = new CanvasNode("http://example.org/o#Both", NodeKind.CLASS,
+                "Both", true, true);
+
+        String style = SchemaGraph.styleForTesting(both);
+
+        assertTrue(style.contains(SchemaStyles.UNSATISFIABLE_STROKE), style);
+        assertTrue(style.contains("strokeWidth=" + SchemaStyles.NOTED_STROKE_WIDTH), style);
+    }
+
+    @Test
+    void anOrdinaryTermGetsNeitherMarker() {
+        String style = SchemaGraph.styleForTesting(
+                new CanvasNode("http://example.org/o#Plain", NodeKind.CLASS, "Plain"));
+
+        assertFalse(style.contains("strokeWidth="), style);
+        assertFalse(style.contains(SchemaStyles.UNSATISFIABLE_STROKE), style);
+    }
+
+    // ---------- sticky notes and frames ----------
+
+    /**
+     * The canvas keys everything by id, and a note's id is generated rather than an IRI. Anything
+     * that treats a cell as a term - selection, axiom removal, expanding neighbours - has to be
+     * able to tell them apart, and asking the ontology would answer "not found" both for a note
+     * and for a term somebody has just deleted.
+     */
+    @Test
+    void notesAndFramesAreRecognisableByTheirIdAlone() {
+        assertTrue(SchemaGraph.isAnnotationId(SchemaGraph.NOTE_ID_PREFIX + "abc123"));
+        assertTrue(SchemaGraph.isAnnotationId(SchemaGraph.FRAME_ID_PREFIX + "abc123"));
+    }
+
+    @Test
+    void anIriIsNotAnAnnotation() {
+        assertFalse(SchemaGraph.isAnnotationId("http://example.org/o#Person"));
+        assertFalse(SchemaGraph.isAnnotationId("http://purl.obolibrary.org/obo/IAO_0000116"));
+        assertFalse(SchemaGraph.isAnnotationId(null));
+        assertFalse(SchemaGraph.isAnnotationId(""));
+    }
+
+    /** The two prefixes must not be confusable with each other or with anything else. */
+    @Test
+    void theTwoPrefixesAreDistinct() {
+        assertFalse(SchemaGraph.NOTE_ID_PREFIX.equals(SchemaGraph.FRAME_ID_PREFIX));
+        assertFalse(SchemaGraph.NOTE_ID_PREFIX.startsWith(SchemaGraph.FRAME_ID_PREFIX));
+        assertFalse(SchemaGraph.FRAME_ID_PREFIX.startsWith(SchemaGraph.NOTE_ID_PREFIX));
+    }
+
 }

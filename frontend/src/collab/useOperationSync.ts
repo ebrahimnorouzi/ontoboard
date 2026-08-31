@@ -40,7 +40,8 @@ export type OntologyOpType =
   | "addIndividual" | "updateIndividual"
   | "addLiteral" | "updateLiteral" | "removeLiteral"
   | "addStickyNote" | "updateStickyNote" | "removeStickyNote"
-  | "addFrame" | "updateFrame" | "removeFrame";
+  | "addFrame" | "updateFrame" | "removeFrame"
+  | "updateAnnotation";
 
 export interface OntologyOperation {
   id: string;
@@ -102,6 +103,7 @@ function getAffectedEntities(op: OntologyOperation): string[] {
     case "addFrame":       return [d.id];
     case "updateFrame":    return [d.id];
     case "removeFrame":    return [d.id];
+    case "updateAnnotation": return [d.iri];
     default:               return [];
   }
 }
@@ -370,6 +372,19 @@ export function useOperationSync(
               classes: s.classes.filter((c) => c.iri !== iri),
               properties: s.properties.filter((p) => p.source_id !== iri && p.target_id !== iri),
             });
+            break;
+          }
+          case "updateAnnotation": {
+            // Deliberately nothing. An OntClass here has id, iri, label, geometry and colour -
+            // there is nowhere to put an editor note, a definition or a contributor, and
+            // inventing a field for them in a store that is being replaced by the Protege plugin
+            // would be a model change with no user behind it.
+            //
+            // The case exists so the operation is a recognised no-op rather than an unknown type.
+            // That distinction is the whole point: the bridge refuses types it does not know, so
+            // an annotation written in one Protege would never reach another one with a web
+            // client in the same board. Relaying what we cannot display is what keeps the two
+            // Protege ends in step.
             break;
           }
           case "addProperty": {

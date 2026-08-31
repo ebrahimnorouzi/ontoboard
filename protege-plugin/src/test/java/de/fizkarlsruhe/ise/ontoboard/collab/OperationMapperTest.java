@@ -13,6 +13,8 @@ import org.junit.jupiter.api.Test;
 import org.semanticweb.owlapi.apibinding.OWLManager;
 import org.semanticweb.owlapi.model.AddAxiom;
 import org.semanticweb.owlapi.model.AddImport;
+import org.semanticweb.owlapi.model.OWLAnnotationAssertionAxiom;
+import java.util.LinkedHashMap;
 import org.semanticweb.owlapi.model.IRI;
 import org.semanticweb.owlapi.model.OWLAxiom;
 import org.semanticweb.owlapi.model.OWLClass;
@@ -298,16 +300,137 @@ class OperationMapperTest {
         assertEquals("Person", nested(result.getOperation(), "updates").get("label"));
     }
 
+    // ---------- annotations that are not labels ----------
+
+    /**
+     * Editorial notes have to reach the other editor, or they are a private scratchpad with an
+     * ontology-shaped storage format. Everything that is not a label travels as one general
+     * operation rather than a type per property.
+     */
     @Test
-    void anAnnotationOtherThanALabelIsReportedAsUnshareable() {
+    void anEditorNoteTravelsAsAnAnnotationOperation() {
         manager.addAxiom(ontology, factory.getOWLDeclarationAxiom(cls("Person")));
 
         OperationMapper.Outbound result = out(new AddAxiom(ontology,
+                factory.getOWLAnnotationAssertionAxiom(
+                        factory.getOWLAnnotationProperty(
+                                IRI.create("http://purl.obolibrary.org/obo/IAO_0000116")),
+                        cls("Person").getIRI(),
+                        factory.getOWLLiteral("the definition needs work"))));
+
+        assertTrue(result.isMapped(), result.getUnmappableReason());
+        assertEquals("updateAnnotation", result.getOperation().getType());
+        assertEquals("http://example.org/o#Person", result.getOperation().getData().get("iri"));
+        assertEquals("http://purl.obolibrary.org/obo/IAO_0000116",
+                result.getOperation().getData().get("property"));
+        assertEquals("the definition needs work",
+                result.getOperation().getData().get("value"));
+        assertEquals("", result.getOperation().getData().get("previous"));
+    }
+
+    /**
+     * The previous value is what makes the operation safe. Without it a peer applying "this
+     * term's note is now X" would delete every other note on the term - and two editors each
+     * leaving one is the ordinary case, not an edge case.
+     */
+    @Test
+    void removingANoteNamesTheExactTextThatWent() {
+        manager.addAxiom(ontology, factory.getOWLDeclarationAxiom(cls("Person")));
+        OWLAnnotationAssertionAxiom note = factory.getOWLAnnotationAssertionAxiom(
+                factory.getOWLAnnotationProperty(
+                        IRI.create("http://purl.obolibrary.org/obo/IAO_0000116")),
+                cls("Person").getIRI(), factory.getOWLLiteral("Alice: parent looks wrong"));
+        manager.addAxiom(ontology, note);
+
+        OperationMapper.Outbound result = out(new RemoveAxiom(ontology, note));
+
+        assertTrue(result.isMapped(), result.getUnmappableReason());
+        assertEquals("", result.getOperation().getData().get("value"));
+        assertEquals("Alice: parent looks wrong",
+                result.getOperation().getData().get("previous"));
+    }
+
+    /** The point of the previous value: the peer must keep the note it was not told about. */
+    @Test
+    void applyingANoteRemovalLeavesTheOtherEditorsNoteAlone() {
+        IRI editorNote = IRI.create("http://purl.obolibrary.org/obo/IAO_0000116");
+        manager.addAxiom(ontology, factory.getOWLDeclarationAxiom(cls("Person")));
+        manager.addAxiom(ontology, factory.getOWLAnnotationAssertionAxiom(
+                factory.getOWLAnnotationProperty(editorNote), cls("Person").getIRI(),
+                factory.getOWLLiteral("Alice: parent looks wrong")));
+        manager.addAxiom(ontology, factory.getOWLAnnotationAssertionAxiom(
+                factory.getOWLAnnotationProperty(editorNote), cls("Person").getIRI(),
+                factory.getOWLLiteral("Bob: see issue 12")));
+
+        Map<String, Object> data = new LinkedHashMap<String, Object>();
+        data.put("iri", "http://example.org/o#Person");
+        data.put("property", editorNote.toString());
+        data.put("value", "");
+        data.put("previous", "Alice: parent looks wrong");
+        OperationMapper.Inbound inbound = OperationMapper.toChanges(
+                new OntologyOperation("op-1", "updateAnnotation", 1L, "alice", data), ontology);
+        manager.applyChanges(inbound.getChanges());
+
+        int remaining = 0;
+        for (OWLAnnotationAssertionAxiom axiom
+                : ontology.getAnnotationAssertionAxioms(cls("Person").getIRI())) {
+            if (editorNote.equals(axiom.getProperty().getIRI())) {
+                remaining++;
+                assertEquals("Bob: see issue 12",
+                        ((org.semanticweb.owlapi.model.OWLLiteral) axiom.getValue()).getLiteral());
+            }
+        }
+        assertEquals(1, remaining, "the other editor's note was destroyed");
+    }
+
+    @Test
+    void anAnnotationRoundTripsThroughTheOperationVocabulary() {
+        IRI editorNote = IRI.create("http://purl.obolibrary.org/obo/IAO_0000116");
+        manager.addAxiom(ontology, factory.getOWLDeclarationAxiom(cls("Person")));
+        OWLAnnotationAssertionAxiom note = factory.getOWLAnnotationAssertionAxiom(
+                factory.getOWLAnnotationProperty(editorNote), cls("Person").getIRI(),
+                factory.getOWLLiteral("needs work"));
+
+        OperationMapper.Outbound outbound = out(new AddAxiom(ontology, note));
+        OperationMapper.Inbound inbound =
+                OperationMapper.toChanges(outbound.getOperation(), ontology);
+        manager.applyChanges(inbound.getChanges());
+
+        assertTrue(ontology.containsAxiom(note),
+                "the note did not survive the round trip through the shared vocabulary");
+    }
+
+    /**
+     * A term tracker item points at a GitHub issue and is IRI-valued, not a literal. Dropping it
+     * would lose the link between a term and the discussion about it.
+     */
+    @Test
+    void anIriValuedAnnotationTravelsAsAnIri() {
+        manager.addAxiom(ontology, factory.getOWLDeclarationAxiom(cls("Person")));
+
+        OperationMapper.Outbound result = out(new AddAxiom(ontology,
+                factory.getOWLAnnotationAssertionAxiom(
+                        factory.getOWLAnnotationProperty(
+                                IRI.create("http://purl.obolibrary.org/obo/IAO_0000233")),
+                        cls("Person").getIRI(),
+                        IRI.create("https://github.com/ISE-FIZKarlsruhe/mwo/issues/12"))));
+
+        assertTrue(result.isMapped(), result.getUnmappableReason());
+        assertEquals("https://github.com/ISE-FIZKarlsruhe/mwo/issues/12",
+                result.getOperation().getData().get("value"));
+        assertEquals(Boolean.TRUE, result.getOperation().getData().get("valueIsIri"));
+    }
+
+    /** An annotation on an anonymous subject has nothing a peer could apply it to. */
+    @Test
+    void anAnnotationOnAnAnonymousSubjectIsStillUnshareable() {
+        OperationMapper.Outbound result = out(new AddAxiom(ontology,
                 factory.getOWLAnnotationAssertionAxiom(factory.getRDFSComment(),
-                        cls("Person").getIRI(), factory.getOWLLiteral("a note"))));
+                        factory.getOWLAnonymousIndividual(),
+                        factory.getOWLLiteral("a note"))));
 
         assertFalse(result.isMapped());
-        assertTrue(result.getUnmappableReason().contains("rdfs:label"),
+        assertTrue(result.getUnmappableReason().contains("anonymous"),
                 result.getUnmappableReason());
     }
 

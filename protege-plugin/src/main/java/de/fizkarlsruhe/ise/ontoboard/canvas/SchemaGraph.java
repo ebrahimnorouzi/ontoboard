@@ -40,6 +40,21 @@ public class SchemaGraph extends mxGraph {
             removeCells(mxGraphModel.getChildren(getModel(), getDefaultParent()), true);
             cellsById.clear();
 
+            // Frames first, so they sit behind the nodes they group. mxGraph paints in insertion
+            // order and a frame drawn afterwards would cover everything inside it.
+            for (CanvasLayout.FrameLayout frame : layout.frames) {
+                if (frame == null || frame.id == null) {
+                    continue;
+                }
+                Object cell = insertVertex(getDefaultParent(), frame.id,
+                        frame.label == null ? "" : frame.label,
+                        frame.x, frame.y, frame.w <= 0 ? 320 : frame.w,
+                        frame.h <= 0 ? 220 : frame.h,
+                        SchemaStyles.FRAME + ";strokeColor="
+                                + (frame.stroke == null ? "#4A90D9" : frame.stroke));
+                cellsById.put(frame.id, cell);
+            }
+
             double nextX = 40;
             for (CanvasNode node : projection.getNodes()) {
                 CanvasLayout.NodeLayout stored = layout.nodes.get(node.getId());
@@ -65,10 +80,39 @@ public class SchemaGraph extends mxGraph {
                         source, target, styleFor(edge));
                 cellsById.put(edge.getId(), cell);
             }
+            // Sticky notes last, so they are never hidden behind a node - the whole point of one
+            // is that somebody reads it.
+            for (CanvasLayout.NoteLayout note : layout.notes) {
+                if (note == null || note.id == null) {
+                    continue;
+                }
+                Object cell = insertVertex(getDefaultParent(), note.id,
+                        note.text == null ? "" : note.text,
+                        note.x, note.y, note.w <= 0 ? 180 : note.w, note.h <= 0 ? 120 : note.h,
+                        SchemaStyles.STICKY_NOTE + ";fillColor="
+                                + (note.color == null ? "#FFF3B0" : note.color));
+                cellsById.put(note.id, cell);
+            }
         } finally {
             getModel().endUpdate();
         }
     }
+
+    /**
+     * Whether this id belongs to a sticky note or a frame rather than to a term.
+     *
+     * <p>The canvas keys everything by id, and a note's id is a generated one rather than an IRI.
+     * Anything that treats a cell as a term - selection, axiom removal, expanding neighbours -
+     * has to be able to tell them apart, and asking the ontology would say "not found" for both a
+     * note and a term that has been deleted.
+     */
+    public static boolean isAnnotationId(String id) {
+        return id != null && (id.startsWith(NOTE_ID_PREFIX) || id.startsWith(FRAME_ID_PREFIX));
+    }
+
+    /** Prefixes that make a canvas annotation recognisable by its id alone. */
+    public static final String NOTE_ID_PREFIX = "ontoboard-note-";
+    public static final String FRAME_ID_PREFIX = "ontoboard-frame-";
 
     public Object getCellForId(String id) {
         return id == null ? null : cellsById.get(id);
@@ -95,8 +139,31 @@ public class SchemaGraph extends mxGraph {
      * gets a distinguishable outline while the shape still says what kind of thing it is.
      * mxGraph reads {@code "styleName;key=value"} as style-plus-overrides.
      */
+    /**
+     * The style a node would be drawn with, for a test.
+     *
+     * <p>Rendering needs a live mxGraph; the decision about which marker wins does not, and it is
+     * the part that can be wrong in a way nobody notices.
+     */
+    static String styleForTesting(CanvasNode node) {
+        return styleFor(node, new PrefixColours(new java.util.HashMap<String, String>()));
+    }
+
     private static String styleFor(CanvasNode node, PrefixColours colours) {
-        return baseStyleFor(node) + ";strokeColor=" + colours.colourFor(node.getId());
+        // Border WEIGHT for a note, because every other channel is taken and says something
+        // else: the shape says what kind of thing it is, the stroke colour says which namespace
+        // it came from, and a dash would read as "inferred", which is what dashed edges mean two
+        // lines down. Weight is the one free channel, and it reads as emphasis rather than as a
+        // different kind of thing - which is right, since a note does not change what the term is.
+        // An unsatisfiable class takes the namespace colour's channel. Which vocabulary a term
+        // came from stops mattering the moment the reasoner says it can have no instances, and a
+        // modelling error visible only to somebody who knows which shade of blue to look for is
+        // not visible.
+        String stroke = node.isUnsatisfiable()
+                ? SchemaStyles.UNSATISFIABLE_STROKE : colours.colourFor(node.getId());
+        return baseStyleFor(node) + ";strokeColor=" + stroke
+                + (node.hasNote() || node.isUnsatisfiable()
+                        ? ";strokeWidth=" + SchemaStyles.NOTED_STROKE_WIDTH : "");
     }
 
     private static String baseStyleFor(CanvasNode node) {

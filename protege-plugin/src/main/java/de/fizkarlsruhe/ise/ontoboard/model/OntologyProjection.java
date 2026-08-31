@@ -1,5 +1,6 @@
 package de.fizkarlsruhe.ise.ontoboard.model;
 
+import de.fizkarlsruhe.ise.ontoboard.prov.EditorNotes;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -31,6 +32,12 @@ public final class OntologyProjection {
     private OntologyProjection() {
     }
 
+    /** A node that knows whether its term carries an editorial note. */
+    private static CanvasNode noted(OWLOntology ontology,
+            org.semanticweb.owlapi.model.IRI entity, NodeKind kind, String label) {
+        return new CanvasNode(iri(entity), kind, label, EditorNotes.hasNote(ontology, entity));
+    }
+
     public static Projection project(OWLOntology ontology, Set<String> onCanvasIris) {
         List<CanvasNode> nodes = new ArrayList<>();
         List<CanvasEdge> edges = new ArrayList<>();
@@ -38,25 +45,26 @@ public final class OntologyProjection {
         for (OWLClass cls : ontology.getClassesInSignature()) {
             if (isOn(onCanvasIris, cls.getIRI())) {
                 nodes.add(new CanvasNode(iri(cls.getIRI()), NodeKind.CLASS,
-                        DisplayLabels.forEntity(ontology, cls)));
+                        DisplayLabels.forEntity(ontology, cls),
+                        EditorNotes.hasNote(ontology, cls.getIRI())));
             }
         }
         for (OWLNamedIndividual ind : ontology.getIndividualsInSignature()) {
             if (isOn(onCanvasIris, ind.getIRI())) {
-                nodes.add(new CanvasNode(iri(ind.getIRI()), NodeKind.INDIVIDUAL,
+                nodes.add(noted(ontology, ind.getIRI(), NodeKind.INDIVIDUAL,
                         DisplayLabels.forEntity(ontology, ind)));
             }
         }
 
         for (OWLObjectProperty property : ontology.getObjectPropertiesInSignature()) {
             if (isOn(onCanvasIris, property.getIRI())) {
-                nodes.add(new CanvasNode(iri(property.getIRI()), NodeKind.OBJECT_PROPERTY,
+                nodes.add(noted(ontology, property.getIRI(), NodeKind.OBJECT_PROPERTY,
                         DisplayLabels.forEntity(ontology, property)));
             }
         }
         for (OWLDataProperty property : ontology.getDataPropertiesInSignature()) {
             if (isOn(onCanvasIris, property.getIRI())) {
-                nodes.add(new CanvasNode(iri(property.getIRI()), NodeKind.DATA_PROPERTY,
+                nodes.add(noted(ontology, property.getIRI(), NodeKind.DATA_PROPERTY,
                         DisplayLabels.forEntity(ontology, property)));
             }
         }

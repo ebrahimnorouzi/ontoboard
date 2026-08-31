@@ -10,6 +10,7 @@ import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.semanticweb.owlapi.apibinding.OWLManager;
@@ -261,4 +262,165 @@ class OdkScaffoldTest {
             assertTrue(file.isFile(), "reported but not written: " + file);
         }
     }
+    /**
+     * The generated project has to do what its own configuration says. The YAML declared
+     * fail_on: ERROR and use_labels: TRUE and the Makefile passed neither, so CI did whatever
+     * ROBOT defaults to - and a build that announces a policy it does not apply is worse than one
+     * that announces nothing, because somebody relies on it.
+     */
+    @Test
+    void theReportTargetPassesWhatTheYamlDeclares(@TempDir Path dir) throws Exception {
+        OdkProjectConfig config = new OdkProjectConfig("abc", "ABC", "",
+                "http://x.org/abc.owl", "", dir.toFile());
+        OdkScaffold.create(config);
+
+        String makefile = read(config, "Makefile");
+        String yaml = read(config, "abc-odk.yaml");
+
+        assertTrue(yaml.contains("fail_on: ERROR"), yaml);
+        assertTrue(makefile.contains("--fail-on ERROR"),
+                "the Makefile does not pass the fail_on the YAML declares:\n" + makefile);
+        assertTrue(yaml.contains("use_labels: TRUE"), yaml);
+        assertTrue(makefile.contains("--labels true"),
+                "the Makefile does not pass the labels setting the YAML declares:\n" + makefile);
+    }
+
+    /**
+     * It listed base, full, obo and json and built one .owl, so anybody following the generated
+     * configuration went looking for four artefacts and found one, with no way to tell whether
+     * the build was broken or the configuration decorative.
+     */
+    @Test
+    void theYamlOnlyPromisesArtefactsTheMakefileBuilds(@TempDir Path dir) throws Exception {
+        OdkProjectConfig config = new OdkProjectConfig("abc", "ABC", "",
+                "http://x.org/abc.owl", "", dir.toFile());
+        OdkScaffold.create(config);
+
+        String yaml = read(config, "abc-odk.yaml");
+        String makefile = read(config, "Makefile");
+
+        for (String promised : new String[] {"  - obo", "  - json", "  - base"}) {
+            assertFalse(yaml.contains(promised),
+                    "the YAML promises an artefact nothing builds (" + promised.trim()
+                            + "):\n" + yaml);
+        }
+        assertTrue(yaml.contains("  - owl"), yaml);
+        assertTrue(makefile.contains("$(ONT).owl"), makefile);
+    }
+
+    // ---------- the report profile is not quietly emptier than it looks ----------
+
+    /**
+     * The generated profile listed seven rules, and that was not a smaller profile - it was a
+     * silently emptier one. ROBOT's {@code ReportOperation.getProfile(path)} builds a fresh map
+     * from the file and does not merge it with the defaults, so seven lines meant seven of
+     * thirty-two checks ran. This plugin's own quality report and the generated CI read the same
+     * file, so both were equally blind, and nothing said which rules were off.
+     *
+     * <p>Read from robot-core's own bundled profile rather than a list copied into this test, so
+     * upgrading the dependency fails the build instead of silently adding a rule nobody runs.
+     */
+    @Test
+    void theGeneratedProfileNamesEveryRuleRobotKnows(@TempDir Path dir) throws Exception {
+        Set<String> robotsOwn = rulesInRobotsBundledProfile();
+        assertFalse(robotsOwn.isEmpty(),
+                "could not read robot-core's report_profile.txt, so this test proves nothing");
+
+        OdkProjectConfig config = new OdkProjectConfig("abc", "ABC", "",
+                "http://x.org/abc.owl", "", dir.toFile());
+        OdkScaffold.create(config);
+        Set<String> ours = rulesIn(read(config, "profile.txt"));
+
+        Set<String> missing = new java.util.TreeSet<String>(robotsOwn);
+        missing.removeAll(ours);
+        assertTrue(missing.isEmpty(),
+                "these ROBOT rules would never run in a generated project, and nothing would "
+                        + "say so: " + missing);
+    }
+
+    /** A rule this plugin invented would be ignored by ROBOT and look like a check that passed. */
+    @Test
+    void theGeneratedProfileInventsNoRules(@TempDir Path dir) throws Exception {
+        Set<String> robotsOwn = rulesInRobotsBundledProfile();
+        org.junit.jupiter.api.Assumptions.assumeFalse(robotsOwn.isEmpty());
+
+        OdkProjectConfig config = new OdkProjectConfig("abc", "ABC", "",
+                "http://x.org/abc.owl", "", dir.toFile());
+        OdkScaffold.create(config);
+
+        Set<String> invented = new java.util.TreeSet<String>(rulesIn(read(config, "profile.txt")));
+        invented.removeAll(robotsOwn);
+        assertTrue(invented.isEmpty(), "ROBOT knows no such rules, so they check nothing: "
+                + invented);
+    }
+
+    /**
+     * The checks that catch what several editors do to one ontology were the ones switched off,
+     * and they are the reason this project exists. They must be errors, not warnings.
+     */
+    @Test
+    void theRulesThatCatchMultiEditorDamageAreErrors(@TempDir Path dir) throws Exception {
+        OdkProjectConfig config = new OdkProjectConfig("abc", "ABC", "",
+                "http://x.org/abc.owl", "", dir.toFile());
+        OdkScaffold.create(config);
+        String profile = read(config, "profile.txt");
+
+        for (String rule : new String[] {"deprecated_class_reference", "misused_obsolete_label",
+                "misused_replaced_by", "duplicate_label", "duplicate_definition",
+                "illegal_use_of_built_in_vocabulary", "multiple_equivalent_class_definitions",
+                "missing_label", "multiple_labels"}) {
+            assertTrue(profile.contains("ERROR\t" + rule),
+                    rule + " is not an error in the generated profile:\n" + profile);
+        }
+    }
+
+    /** Deleting a line is how a check disappears, so the file has to say so. */
+    @Test
+    void theProfileWarnsThatADeletedLineIsADisabledCheck() throws Exception {
+        java.nio.file.Path dir = java.nio.file.Files.createTempDirectory("ontoboard-profile");
+        OdkProjectConfig config = new OdkProjectConfig("abc", "ABC", "",
+                "http://x.org/abc.owl", "", dir.toFile());
+        OdkScaffold.create(config);
+
+        String profile = read(config, "profile.txt");
+
+        assertTrue(profile.contains("does NOT merge"), profile);
+        assertTrue(profile.contains("stops running"), profile);
+    }
+
+    /** Rule names from a ROBOT profile file, ignoring comments and blank lines. */
+    private static Set<String> rulesIn(String profile) {
+        Set<String> rules = new java.util.TreeSet<String>();
+        for (String line : profile.split("\r?\n")) {
+            String trimmed = line.trim();
+            if (trimmed.isEmpty() || trimmed.startsWith("#")) {
+                continue;
+            }
+            String[] parts = trimmed.split("\\s+");
+            if (parts.length >= 2) {
+                rules.add(parts[1]);
+            }
+        }
+        return rules;
+    }
+
+    /** ROBOT's own list, from the jar, so this test cannot drift from the dependency. */
+    private static Set<String> rulesInRobotsBundledProfile() throws Exception {
+        java.io.InputStream in = org.obolibrary.robot.ReportOperation.class
+                .getResourceAsStream("/report_profile.txt");
+        if (in == null) {
+            return new java.util.TreeSet<String>();
+        }
+        try {
+            java.io.ByteArrayOutputStream bytes = new java.io.ByteArrayOutputStream();
+            byte[] buffer = new byte[4096];
+            for (int read = in.read(buffer); read > 0; read = in.read(buffer)) {
+                bytes.write(buffer, 0, read);
+            }
+            return rulesIn(new String(bytes.toByteArray(), "UTF-8"));
+        } finally {
+            in.close();
+        }
+    }
+
 }

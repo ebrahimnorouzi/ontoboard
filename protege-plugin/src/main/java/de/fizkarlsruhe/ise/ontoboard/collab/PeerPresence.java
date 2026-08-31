@@ -15,15 +15,37 @@ public final class PeerPresence {
     private final double y;
     private final String selection;
     private final long seenAt;
+    private final String ontologyIri;
 
     public PeerPresence(String user, String colour, double x, double y, String selection,
             long seenAt) {
+        this(user, colour, x, y, selection, seenAt, "");
+    }
+
+    public PeerPresence(String user, String colour, double x, double y, String selection,
+            long seenAt, String ontologyIri) {
         this.user = user == null ? "anonymous" : user;
         this.colour = colour == null || colour.trim().isEmpty() ? "#4A90D9" : colour;
         this.x = x;
         this.y = y;
         this.selection = selection;
         this.seenAt = seenAt;
+        this.ontologyIri = ontologyIri == null ? "" : ontologyIri.trim();
+    }
+
+    /**
+     * The ontology this peer is editing, or empty when they did not say.
+     *
+     * <p>The only way two editors can find out they are on one board editing different files.
+     * Every check available locally - the derived board id, the mismatch warning - is defeated
+     * the moment two people both override to the same wrong board, and until they exchange this
+     * the first sign is somebody else's class appearing in your ontology.
+     *
+     * <p>Empty for an older plugin, or an ontology with no IRI of its own. Absence is not
+     * disagreement, and must not be reported as one.
+     */
+    public String getOntologyIri() {
+        return ontologyIri;
     }
 
     public String getUser() {

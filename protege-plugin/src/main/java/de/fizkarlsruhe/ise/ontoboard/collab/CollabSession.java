@@ -73,6 +73,21 @@ public final class CollabSession implements CollabClient.Listener {
     private int unshareableCount;
     private String lastUnshareableReason;
 
+    /** What each connected peer last said they were editing, keyed by name. */
+    private volatile java.util.Map<String, String> peerOntologies =
+            new java.util.LinkedHashMap<String, String>();
+
+    /**
+     * Peers who are on this board editing a different ontology, if any.
+     *
+     * <p>The one check no single end can do alone: two people who both override the derived board
+     * id to the same wrong value defeat every local check, and the first sign either gets is
+     * somebody else's class arriving in their file.
+     */
+    public String peerOntologyWarning() {
+        return BoardId.peerMismatchWarning(settings.getOntologyIri(), peerOntologies);
+    }
+
     public CollabSession(CollabSettings settings, Host host, Executor dispatcher) {
         if (settings == null || host == null || dispatcher == null) {
             throw new IllegalArgumentException("settings, host and dispatcher are all required");
@@ -234,6 +249,11 @@ public final class CollabSession implements CollabClient.Listener {
     @Override
     public void onPeers(List<PeerPresence> peers) {
         cursors.update(peers);
+        java.util.Map<String, String> editing = new java.util.LinkedHashMap<String, String>();
+        for (PeerPresence peer : peers) {
+            editing.put(peer.getUser(), peer.getOntologyIri());
+        }
+        peerOntologies = editing;
         host.onPeersChanged();
     }
 

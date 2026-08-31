@@ -11,6 +11,7 @@ import org.semanticweb.owlapi.model.AddAxiom;
 import org.semanticweb.owlapi.model.AxiomType;
 import org.semanticweb.owlapi.model.IRI;
 import org.semanticweb.owlapi.model.OWLAnnotationAssertionAxiom;
+import org.semanticweb.owlapi.model.OWLAnnotationProperty;
 import org.semanticweb.owlapi.model.OWLAxiom;
 import org.semanticweb.owlapi.model.OWLClass;
 import org.semanticweb.owlapi.model.OWLClassAssertionAxiom;
@@ -368,13 +369,15 @@ public final class OperationMapper {
 
     private static Outbound annotation(OWLAnnotationAssertionAxiom axiom, boolean adding,
             String userId, OWLOntology ontology) {
-        if (!RDFS_LABEL.equals(axiom.getProperty().getIRI())) {
-            return unmappable("an annotation with " + shortForm(
-                    axiom.getProperty().getIRI().toString())
-                    + ", which the shared session only carries for rdfs:label");
-        }
         if (!(axiom.getSubject() instanceof IRI)) {
-            return unmappable("a label on an anonymous subject");
+            return unmappable("an annotation on an anonymous subject");
+        }
+        if (!RDFS_LABEL.equals(axiom.getProperty().getIRI())) {
+            // Everything that is not a label: editor notes, definitions, provenance, term
+            // tracker items. They travel as one general operation rather than a type per
+            // property, because the alternative is a new operation type - and a matching entry
+            // in three separate files - every time somebody annotates with something new.
+            return otherAnnotation(axiom, adding, userId);
         }
         IRI subject = (IRI) axiom.getSubject();
         OWLDataFactory factory = ontology.getOWLOntologyManager().getOWLDataFactory();
@@ -400,6 +403,48 @@ public final class OperationMapper {
         data.put("iri", subject.toString());
         data.put("updates", updates);
         return mapped(type, userId, data);
+    }
+
+    /**
+     * An annotation that is not a label, as an {@code updateAnnotation}.
+     *
+     * <p>Both the new value and the previous one are carried, and that is the whole design. A
+     * note is not a single-valued field: two editors each leaving one on the same term is the
+     * ordinary case, so an operation saying only "this term's note is now X" would delete the
+     * other editor's note on every peer that applied it. Naming the exact text being replaced
+     * means a peer changes the one annotation that changed and leaves the rest alone.
+     *
+     * <p>A replacement arrives as a removal and then an addition - two operations - exactly as a
+     * rename does. That is fine and is the reason the pair is precise rather than positional.
+     */
+    private static Outbound otherAnnotation(OWLAnnotationAssertionAxiom axiom, boolean adding,
+            String userId) {
+        if (!(axiom.getValue() instanceof OWLLiteral)) {
+            // An IRI-valued annotation - seeAlso, a term tracker item, an ORCID contributor.
+            // Carried as its text so a peer records the same thing rather than dropping it.
+            String iriValue = axiom.getValue() instanceof IRI ? axiom.getValue().toString() : null;
+            if (iriValue == null) {
+                return unmappable("an annotation whose value is neither a literal nor an IRI");
+            }
+            return annotationOperation((IRI) axiom.getSubject(),
+                    axiom.getProperty().getIRI(), iriValue, true, adding, userId);
+        }
+        return annotationOperation((IRI) axiom.getSubject(), axiom.getProperty().getIRI(),
+                ((OWLLiteral) axiom.getValue()).getLiteral(), false, adding, userId);
+    }
+
+    private static Outbound annotationOperation(IRI subject, IRI property, String value,
+            boolean valueIsIri, boolean adding, String userId) {
+        Map<String, Object> data = new LinkedHashMap<String, Object>();
+        data.put("iri", subject.toString());
+        data.put("property", property.toString());
+        // On a removal the new value is empty and the previous one is what went; on an addition
+        // the reverse. A peer can then tell "add this" from "take that away" without keeping any
+        // state of its own.
+        data.put("value", adding ? value : "");
+        data.put("previous", adding ? "" : value);
+        data.put("valueIsIri", Boolean.valueOf(valueIsIri));
+        return mapped("updateAnnotation", userId, data);
     }
 
     // ------------------------------------------------------------------ inbound
@@ -470,6 +515,9 @@ public final class OperationMapper {
         }
         if ("removeProperty".equals(type)) {
             return removeProperty(ontology, text(data, "id"));
+        }
+        if ("updateAnnotation".equals(type)) {
+            return annotationChanges(ontology, operation.getData());
         }
         if ("addLiteral".equals(type) || "updateLiteral".equals(type)
                 || "removeLiteral".equals(type)) {
@@ -625,6 +673,62 @@ public final class OperationMapper {
     }
 
     // ------------------------------------------------------------------ helpers
+
+    /**
+     * An {@code updateAnnotation} as local changes.
+     *
+     * <p>Matched by the exact previous text rather than by property alone, so a peer removes the
+     * annotation that actually changed. Removing every annotation with that property - the
+     * obvious implementation - would delete the other editors' notes on a term that has several,
+     * which is the failure this operation shape exists to avoid.
+     *
+     * <p>An unrecognised previous value is not an error. It means the annotation had already gone
+     * on this side, or never arrived, and re-adding it would resurrect something somebody
+     * removed; the addition half of the pair still applies.
+     */
+    private static Inbound annotationChanges(OWLOntology ontology, Map<String, Object> data) {
+        String subjectIri = text(data, "iri");
+        String propertyIri = text(data, "property");
+        if (subjectIri.isEmpty() || propertyIri.isEmpty()) {
+            return skipped("an annotation operation with no subject or no property");
+        }
+        OWLDataFactory factory = ontology.getOWLOntologyManager().getOWLDataFactory();
+        IRI subject = IRI.create(subjectIri);
+        OWLAnnotationProperty property = factory.getOWLAnnotationProperty(
+                IRI.create(propertyIri));
+        String value = text(data, "value");
+        String previous = text(data, "previous");
+        boolean valueIsIri = Boolean.TRUE.equals(data.get("valueIsIri"))
+                || "true".equals(String.valueOf(data.get("valueIsIri")));
+
+        List<OWLOntologyChange> changes = new ArrayList<OWLOntologyChange>();
+        if (!previous.isEmpty()) {
+            for (OWLAnnotationAssertionAxiom existing
+                    : ontology.getAnnotationAssertionAxioms(subject)) {
+                if (property.equals(existing.getProperty())
+                        && previous.equals(valueTextOf(existing.getValue()))) {
+                    changes.add(new RemoveAxiom(ontology, existing));
+                    break;
+                }
+            }
+        }
+        if (!value.isEmpty()) {
+            addIfAbsent(changes, ontology, factory.getOWLAnnotationAssertionAxiom(property,
+                    subject, valueIsIri ? IRI.create(value) : factory.getOWLLiteral(value)));
+        }
+        if (changes.isEmpty()) {
+            return skipped("an annotation that is already as the peer describes it");
+        }
+        return understood(changes);
+    }
+
+    /** An annotation value as text, whether it is a literal or an IRI. */
+    private static String valueTextOf(org.semanticweb.owlapi.model.OWLAnnotationValue value) {
+        if (value instanceof OWLLiteral) {
+            return ((OWLLiteral) value).getLiteral();
+        }
+        return value == null ? "" : value.toString();
+    }
 
     private static List<OWLOntologyChange> relabel(OWLOntology ontology, OWLDataFactory factory,
             Map<String, Object> data) {

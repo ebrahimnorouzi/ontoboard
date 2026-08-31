@@ -40,6 +40,35 @@ public final class SchemaStyles {
     public static final String DATA_PROPERTY_NODE = "obDataPropertyNode";
 
     /** Canvas background - a hair off white so white node fills read as raised. */
+    /** A sticky note: annotation on the diagram, not in the ontology. */
+    public static final String STICKY_NOTE = "obStickyNote";
+
+    /** A frame: a labelled region grouping nodes, drawn behind them. */
+    public static final String FRAME = "obFrame";
+
+    /** The style name the legend uses for the note marker. Not a cell style; a label. */
+    public static final String NOTED = "obNoted";
+
+    /** The style name the legend uses for an unsatisfiable class. */
+    public static final String UNSATISFIABLE = "obUnsatisfiable";
+
+    /**
+     * The outline of a class a reasoner says can have no instances.
+     *
+     * <p>Red, and it overrides the namespace colour rather than sharing the channel. That is a
+     * deliberate ranking: which vocabulary a term came from stops mattering the moment the term
+     * cannot exist, and a modelling error that is only visible if you already know which shade of
+     * blue to look for is not visible.
+     */
+    public static final String UNSATISFIABLE_STROKE = "#C0392B";
+
+    /**
+     * The border weight of a term carrying an editorial note.
+     *
+     * <p>Heavy enough to notice while scanning a board, light enough not to read as selection.
+     */
+    public static final int NOTED_STROKE_WIDTH = 3;
+
     public static final String CANVAS_BACKGROUND = "#F7F8FA";
 
     private static final String FONT = "Segoe UI, Helvetica Neue, Arial, sans-serif";
@@ -56,6 +85,42 @@ public final class SchemaStyles {
         // rounded, shadowed, bold, and roomy enough for a two-line rdfs:label.
         sheet.putCellStyle(CLASS, vertex(mxConstants.SHAPE_RECTANGLE, "#FFFFFF", "#4A90D9",
                 true, true, 13, mxConstants.FONT_BOLD));
+        // The same class style with the heavier border, registered so the legend's swatch draws
+        // exactly what the canvas draws rather than an approximation of it. The canvas itself
+        // appends the width as an override, because the marker applies to every kind of node and
+        // a registered style per kind-and-marker combination would be six styles saying one thing.
+        Map<String, Object> noted = vertex(mxConstants.SHAPE_RECTANGLE, "#FFFFFF", "#4A90D9",
+                true, true, 13, mxConstants.FONT_BOLD);
+        noted.put(mxConstants.STYLE_STROKEWIDTH, (float) NOTED_STROKE_WIDTH);
+        sheet.putCellStyle(NOTED, noted);
+
+        Map<String, Object> unsatisfiable = vertex(mxConstants.SHAPE_RECTANGLE, "#FDF0EE",
+                UNSATISFIABLE_STROKE, true, true, 13, mxConstants.FONT_BOLD);
+        unsatisfiable.put(mxConstants.STYLE_STROKEWIDTH, (float) NOTED_STROKE_WIDTH);
+        sheet.putCellStyle(UNSATISFIABLE, unsatisfiable);
+
+        // Deliberately unlike every ontology shape: square corners, no shadow, left-aligned text
+        // that wraps. A sticky note is not a term, and anything that let somebody mistake one for
+        // a class would be worse than not drawing them at all.
+        Map<String, Object> sticky = vertex(mxConstants.SHAPE_RECTANGLE, "#FFF3B0", "#D9C066",
+                false, false, 12, 0);
+        sticky.put(mxConstants.STYLE_ALIGN, mxConstants.ALIGN_LEFT);
+        sticky.put(mxConstants.STYLE_VERTICAL_ALIGN, mxConstants.ALIGN_TOP);
+        sticky.put(mxConstants.STYLE_SPACING, 6);
+        sticky.put(mxConstants.STYLE_WHITE_SPACE, "wrap");
+        sheet.putCellStyle(STICKY_NOTE, sticky);
+
+        // Behind everything, and not fillable enough to hide a node: a frame groups, it does not
+        // obscure.
+        Map<String, Object> frame = vertex(mxConstants.SHAPE_RECTANGLE, "none", "#4A90D9",
+                true, false, 13, mxConstants.FONT_BOLD);
+        frame.put(mxConstants.STYLE_ALIGN, mxConstants.ALIGN_LEFT);
+        frame.put(mxConstants.STYLE_VERTICAL_ALIGN, mxConstants.ALIGN_TOP);
+        frame.put(mxConstants.STYLE_SPACING, 8);
+        frame.put(mxConstants.STYLE_DASHED, true);
+        frame.put(mxConstants.STYLE_FONTCOLOR, "#4A90D9");
+        sheet.putCellStyle(FRAME, frame);
+
         sheet.putCellStyle(INDIVIDUAL, vertex(mxConstants.SHAPE_RHOMBUS, "#F4F0FA", "#7B61A8",
                 false, false, 12, 0));
         sheet.putCellStyle(DATATYPE, vertex(mxConstants.SHAPE_ELLIPSE, "#EEF7F1", "#3E8E5A",

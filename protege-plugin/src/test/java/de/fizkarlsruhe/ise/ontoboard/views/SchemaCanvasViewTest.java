@@ -1,9 +1,11 @@
 package de.fizkarlsruhe.ise.ontoboard.views;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import de.fizkarlsruhe.ise.ontoboard.layout.CanvasLayout;
+import org.protege.editor.owl.model.event.EventType;
 import org.junit.jupiter.api.Test;
 import org.semanticweb.owlapi.apibinding.OWLManager;
 import org.semanticweb.owlapi.model.IRI;
@@ -85,4 +87,82 @@ class SchemaCanvasViewTest {
                 "a stored position must not survive a switch just because its IRI also exists "
                         + "in the new ontology");
     }
+    // ---------- which Protege events mean the diagram is out of date ----------
+
+    /**
+     * The one that was missing. Classification is its own event channel: starting a reasoner
+     * changes no axiom, so neither the ontology-change listener nor the active-ontology listener
+     * hears anything, and the canvas went on showing what it had computed before.
+     *
+     * <p>The symptom was exactly backwards from useful - turn inferences on with no reasoner
+     * started, be told to start one, start one, and still see nothing until you toggled the
+     * button off and on or happened to make an edit.
+     */
+    @Test
+    void classifyingRefreshesTheDiagramWhenInferencesAreShown() {
+        assertTrue(SchemaCanvasView.shouldRefreshFor(EventType.ONTOLOGY_CLASSIFIED, true));
+    }
+
+    /** ELK and HermiT genuinely disagree, so what is drawn is no longer what the reasoner says. */
+    @Test
+    void switchingReasonerRefreshesTheDiagramWhenInferencesAreShown() {
+        assertTrue(SchemaCanvasView.shouldRefreshFor(EventType.REASONER_CHANGED, true));
+    }
+
+    /**
+     * A classification changes nothing visible on an asserted-only diagram, and re-rendering a
+     * large board for no difference is a stutter with no purpose.
+     */
+    @Test
+    void classifyingDoesNotRedrawADiagramThatIsNotShowingInferences() {
+        assertFalse(SchemaCanvasView.shouldRefreshFor(EventType.ONTOLOGY_CLASSIFIED, false));
+        assertFalse(SchemaCanvasView.shouldRefreshFor(EventType.REASONER_CHANGED, false));
+    }
+
+    /** Reverting from disk can change every axiom and fires no axiom-change event. */
+    @Test
+    void reloadingRefreshesWhetherOrNotInferencesAreShown() {
+        assertTrue(SchemaCanvasView.shouldRefreshFor(EventType.ONTOLOGY_RELOADED, false));
+        assertTrue(SchemaCanvasView.shouldRefreshFor(EventType.ONTOLOGY_RELOADED, true));
+    }
+
+    /**
+     * ACTIVE_ONTOLOGY_CHANGED is handled on its own branch, by a full reset rather than a
+     * refresh. Refreshing for it here as well would render the new ontology through the old
+     * layout before the reset had run.
+     */
+    @Test
+    void switchingOntologyIsNotHandledAsAPlainRefresh() {
+        assertFalse(SchemaCanvasView.shouldRefreshFor(EventType.ACTIVE_ONTOLOGY_CHANGED, true));
+    }
+
+    /**
+     * Everything else either cannot alter this diagram or already arrives through the
+     * ontology-change listener, and refreshing twice for one edit makes a large board stutter.
+     */
+    @Test
+    void theRemainingEventsDoNotRedrawTheDiagram() {
+        for (EventType type : new EventType[] {EventType.ONTOLOGY_SAVED,
+                EventType.ONTOLOGY_LOADED, EventType.ONTOLOGY_CREATED,
+                EventType.ONTOLOGY_VISIBILITY_CHANGED, EventType.ENTITY_RENDERER_CHANGED,
+                EventType.ENTITY_RENDERING_CHANGED, EventType.ABOUT_TO_CLASSIFY}) {
+            assertFalse(SchemaCanvasView.shouldRefreshFor(type, true),
+                    type + " should not trigger a redraw");
+        }
+    }
+
+    /**
+     * ABOUT_TO_CLASSIFY specifically: the reasoner has not finished, so refreshing on it would
+     * query a reasoner mid-classification and draw whatever it had at that moment.
+     */
+    @Test
+    void theDiagramIsNotRedrawnBeforeTheReasonerHasFinished() {
+        assertFalse(SchemaCanvasView.shouldRefreshFor(EventType.ABOUT_TO_CLASSIFY, true));
+    }
+
+    @Test
+    void noEventIsNotAnEvent() {
+        assertFalse(SchemaCanvasView.shouldRefreshFor(null, true));
+    }
+
 }

@@ -20,7 +20,7 @@ import java.util.UUID;
  */
 public final class OntologyOperation {
 
-    /** The 16 types in useOperationSync.ts. Keep in step with it and with bridge.mjs. */
+    /** The 18 types in useOperationSync.ts. Keep in step with it and with bridge.mjs. */
     public static final Set<String> TYPES = Collections.unmodifiableSet(
             new HashSet<String>(Arrays.asList(
                     "addClass", "updateClass", "removeClass",
@@ -28,7 +28,11 @@ public final class OntologyOperation {
                     "addIndividual", "updateIndividual",
                     "addLiteral", "updateLiteral", "removeLiteral",
                     "addStickyNote", "updateStickyNote", "removeStickyNote",
-                    "addFrame", "updateFrame", "removeFrame")));
+                    "addFrame", "updateFrame", "removeFrame",
+                    // Editorial notes, definitions, provenance - any annotation but rdfs:label,
+                    // which travels as updateClass/updateIndividual because the web client models
+                    // a label as a field on the entity rather than as an annotation.
+                    "updateAnnotation")));
 
     private final String id;
     private final String type;

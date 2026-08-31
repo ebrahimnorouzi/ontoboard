@@ -4,6 +4,7 @@ import com.mxgraph.swing.mxGraphOutline;
 import com.mxgraph.util.mxEvent;
 import com.mxgraph.util.mxEventSource.mxIEventListener;
 import de.fizkarlsruhe.ise.ontoboard.axiom.AxiomRemoval;
+import de.fizkarlsruhe.ise.ontoboard.axiom.HierarchyAxioms;
 import de.fizkarlsruhe.ise.ontoboard.axiom.EdgeAxioms;
 import de.fizkarlsruhe.ise.ontoboard.axiom.EntityFactory;
 import de.fizkarlsruhe.ise.ontoboard.axiom.RelationDialog;
@@ -16,6 +17,7 @@ import de.fizkarlsruhe.ise.ontoboard.canvas.PrefixColours;
 import de.fizkarlsruhe.ise.ontoboard.canvas.SchemaGraph;
 import de.fizkarlsruhe.ise.ontoboard.canvas.SelectionBridge;
 import de.fizkarlsruhe.ise.ontoboard.canvas.StartPanel;
+import de.fizkarlsruhe.ise.ontoboard.collab.BoardId;
 import de.fizkarlsruhe.ise.ontoboard.collab.CollabDialog;
 import de.fizkarlsruhe.ise.ontoboard.collab.CollabSession;
 import de.fizkarlsruhe.ise.ontoboard.collab.CollabSettings;
@@ -26,10 +28,13 @@ import de.fizkarlsruhe.ise.ontoboard.layout.CanvasLayoutStore;
 import de.fizkarlsruhe.ise.ontoboard.model.CanvasEdge;
 import de.fizkarlsruhe.ise.ontoboard.model.DisplayLabels;
 import de.fizkarlsruhe.ise.ontoboard.model.OntologyProjection;
+import de.fizkarlsruhe.ise.ontoboard.model.CanvasNode;
 import de.fizkarlsruhe.ise.ontoboard.model.Projection;
+import de.fizkarlsruhe.ise.ontoboard.prov.EditWatcher;
 import de.fizkarlsruhe.ise.ontoboard.prov.Provenance;
 import de.fizkarlsruhe.ise.ontoboard.prov.ProvenanceSettings;
 import de.fizkarlsruhe.ise.ontoboard.reason.InferredEdges;
+import de.fizkarlsruhe.ise.ontoboard.reason.ProfileCheck;
 import de.fizkarlsruhe.ise.ontoboard.odk.IdRanges;
 import de.fizkarlsruhe.ise.ontoboard.odk.TermMinter;
 import de.fizkarlsruhe.ise.ontoboard.odk.OdkProjectLoader;
@@ -69,6 +74,7 @@ import org.semanticweb.owlapi.model.IRI;
 import org.semanticweb.owlapi.model.OWLDataFactory;
 import org.semanticweb.owlapi.model.OWLEntity;
 import org.semanticweb.owlapi.model.OWLObjectProperty;
+import org.semanticweb.owlapi.model.OWLAxiom;
 import org.semanticweb.owlapi.model.OWLOntology;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -95,6 +101,8 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
     private File currentOntologyFile;
     private OWLOntologyChangeListener changeListener;
     private OWLModelManagerListener modelManagerListener;
+    /** The last peer-mismatch warning shown, so it is not repeated on every cursor move. */
+    private String lastPeerOntologyWarning;
     private SelectionBridge selectionBridge;
     private OWLSelectionModelListener selectionListener;
     /**
@@ -201,19 +209,20 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             if (collab != null) {
                 collab.publishLocalChanges(changes, canvasHints());
             }
+            stampEditsMadeElsewhere(changes);
             refresh();
         };
         getOWLModelManager().addOntologyChangeListener(changeListener);
 
-        // Axiom edits and active-ontology switches are two separate Protege event
-        // channels. Switching the active ontology fires no axiom change, so without this
-        // listener the canvas silently keeps showing the ontology it initialised
-        // against - see EventType. Only ACTIVE_ONTOLOGY_CHANGED is handled here; every
-        // other EventType is ignored so ordinary edits still go through changeListener
-        // alone and are not double-rendered.
+        // Axiom edits, active-ontology switches and classification are three separate Protege
+        // event channels, and the canvas has to hear all three. Switching the active ontology
+        // fires no axiom change; classifying fires no axiom change either. See
+        // shouldRefreshFor for which of them matter and why.
         modelManagerListener = event -> {
             if (event.isType(EventType.ACTIVE_ONTOLOGY_CHANGED)) {
                 switchToActiveOntology();
+            } else if (shouldRefreshFor(event.getType(), showInferences)) {
+                refresh();
             }
         };
         getOWLModelManager().addListener(modelManagerListener);
@@ -326,6 +335,52 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                 JOptionPane.PLAIN_MESSAGE);
     }
 
+    /**
+     * Whether a model-manager event means the diagram is now out of date.
+     *
+     * <p>Classification is its own event channel. Starting a reasoner, or re-running one after an
+     * edit, changes nothing about the axioms, so neither the ontology-change listener nor the
+     * active-ontology listener hears anything - and the canvas went on showing the inferences it
+     * had computed before, or none at all. The symptom was precisely backwards from useful: turn
+     * inferences on with no reasoner started, get told to start one, start one, and the canvas
+     * still showed nothing until you toggled the button off and on again or happened to make an
+     * edit.
+     *
+     * <p>Only when inferences are actually being shown, because a classification changes nothing a
+     * user can see on an asserted-only diagram, and re-rendering a large board for no visible
+     * difference is a stutter with no purpose.
+     *
+     * <p>Static and package-visible so the policy can be tested; everything around it is Swing.
+     *
+     * @param showingInferences whether the reasoner's conclusions are currently on the diagram
+     */
+    static boolean shouldRefreshFor(EventType type, boolean showingInferences) {
+        if (type == null) {
+            return false;
+        }
+        switch (type) {
+            case ONTOLOGY_CLASSIFIED:
+                // The conclusions have just changed. This is the event the canvas most needed and
+                // was not listening for.
+                return showingInferences;
+            case REASONER_CHANGED:
+                // A different reasoner reaches different conclusions - ELK and HermiT genuinely
+                // disagree on an ontology that uses anything outside OWL EL - so what is drawn is
+                // no longer what the selected reasoner says.
+                return showingInferences;
+            case ONTOLOGY_RELOADED:
+                // Reverted from disk. Every axiom may have changed and no axiom-change event is
+                // fired for it.
+                return true;
+            default:
+                // Everything else - visibility, renderer changes, saves, loads of ontologies that
+                // are not the active one - either cannot alter this diagram or already arrives
+                // through the ontology-change listener, and refreshing twice for one edit makes
+                // a large board stutter.
+                return false;
+        }
+    }
+
     // ------------------------------------------------------------------ inferences
 
     /**
@@ -346,15 +401,19 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                     asserted.getEdges(),
                     getOWLModelManager().getOWLDataFactory());
             if (inferred.isEmpty()) {
+                // Still worth re-rendering: no new edges does not mean no unsatisfiable classes,
+                // and those are the more important of the two things a reasoner has to say.
+                List<CanvasNode> onlyMarked = markUnsatisfiable(asserted.getNodes());
                 setStatus("Nothing further was inferred: the ontology already states what it "
-                        + "entails for the entities on this board.");
-                return asserted;
+                        + "entails for the entities on this board." + unsatisfiableNote(onlyMarked));
+                return new Projection(onlyMarked, asserted.getEdges());
             }
             List<CanvasEdge> combined = new ArrayList<CanvasEdge>(asserted.getEdges());
             combined.addAll(inferred);
+            List<CanvasNode> nodes = markUnsatisfiable(asserted.getNodes());
             setStatus(inferred.size() + " inferred edge" + (inferred.size() == 1 ? "" : "s")
-                    + " shown, dotted and grey.");
-            return new Projection(asserted.getNodes(), combined);
+                    + " shown, dotted and grey." + unsatisfiableNote(nodes));
+            return new Projection(nodes, combined);
         } catch (InferredEdges.NotAvailable unavailable) {
             showInferences = false;
             if (inferencesButton != null) {
@@ -365,6 +424,190 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                     "No inferences available", JOptionPane.INFORMATION_MESSAGE);
             return asserted;
         }
+    }
+
+    /**
+     * The same nodes, with the ones the reasoner says can have no instances marked.
+     *
+     * <p>{@code InferredEdges.unsatisfiableClasses} was computed on every refresh and thrown away
+     * - the single most useful thing a reasoner has to say, calculated and discarded. An
+     * unsatisfiable class is a modelling error, not a shape, and on a diagram that draws it like
+     * everything else it is invisible.
+     */
+    private List<CanvasNode> markUnsatisfiable(List<CanvasNode> nodes) {
+        java.util.Set<String> unsatisfiable = InferredEdges.unsatisfiableClasses(
+                getOWLModelManager().getReasoner(), membership.asSet());
+        if (unsatisfiable.isEmpty()) {
+            return nodes;
+        }
+        List<CanvasNode> marked = new ArrayList<CanvasNode>(nodes.size());
+        for (CanvasNode node : nodes) {
+            marked.add(unsatisfiable.contains(node.getId()) ? node.asUnsatisfiable() : node);
+        }
+        return marked;
+    }
+
+    /** A sentence about unsatisfiable classes, or nothing when there are none. */
+    private static String unsatisfiableNote(List<CanvasNode> nodes) {
+        int count = 0;
+        for (CanvasNode node : nodes) {
+            if (node.isUnsatisfiable()) {
+                count++;
+            }
+        }
+        if (count == 0) {
+            return "";
+        }
+        return "  " + count + " class" + (count == 1 ? "" : "es")
+                + " on this board cannot have instances - shown in red.";
+    }
+
+    /**
+     * Says once when the people on this board are editing a different ontology.
+     *
+     * <p>Once, not on every presence update: peers arrive with every cursor movement, and a
+     * dialog per update would be unusable. The warning is repeated only when the set of
+     * disagreeing peers changes, which is when there is genuinely something new to say.
+     *
+     * <p>A dialog rather than the status line, unlike the other collaboration messages, because
+     * this one means every edit either side makes is landing in the wrong file - it is not a
+     * condition to notice eventually.
+     */
+    private void warnAboutPeersEditingSomethingElse() {
+        if (collab == null) {
+            return;
+        }
+        String warning = collab.peerOntologyWarning();
+        if (warning == null) {
+            lastPeerOntologyWarning = null;
+            return;
+        }
+        setStatus(warning);
+        if (warning.equals(lastPeerOntologyWarning)) {
+            return;
+        }
+        lastPeerOntologyWarning = warning;
+        JOptionPane.showMessageDialog(this, warning, "Different ontologies on one board",
+                JOptionPane.WARNING_MESSAGE);
+    }
+
+    // ------------------------------------------------------------------ notes and frames
+
+    /**
+     * A sticky note on the diagram.
+     *
+     * <p>Deliberately not in the ontology, and the menu says so. A note at x=340, y=90 reading
+     * "check this with Bob" is meaningless without the diagram it is stuck to, and putting it in
+     * the ontology would mean every consumer of every release downloads somebody's reminder to
+     * themselves. The durable, per-term kind that does belong in the ontology is
+     * {@code IAO:0000116}, which OntoBoard > Notes writes.
+     *
+     * <p>Kept in the sidecar, which is committed - so a note does reach collaborators through
+     * git, and reaches them live once the sidecar is synced.
+     */
+    private void createStickyNote(java.awt.Point at) {
+        String text = JOptionPane.showInputDialog(this,
+                "What should the note say?\n\nThis stays on the diagram - it is not written "
+                        + "into the ontology and will not appear in a release.",
+                "Sticky note", JOptionPane.PLAIN_MESSAGE);
+        if (text == null || text.trim().isEmpty()) {
+            return;
+        }
+        CanvasLayout.NoteLayout note = new CanvasLayout.NoteLayout();
+        note.id = SchemaGraph.NOTE_ID_PREFIX + nextAnnotationSuffix();
+        note.text = text.trim();
+        note.x = at == null ? 60 : at.getX();
+        note.y = at == null ? 60 : at.getY();
+        layout.notes.add(note);
+        refresh();
+        saveLayoutTo(currentOntologyFile);
+    }
+
+    /** A labelled region grouping what is inside it. Also diagram-only. */
+    private void createFrame(java.awt.Point at) {
+        String label = JOptionPane.showInputDialog(this,
+                "What is this group called?\n\nA frame is a region on the diagram. If it is "
+                        + "really a module, make it one - an import, or IAO:0000113 in branch - "
+                        + "rather than a rectangle.",
+                "Frame", JOptionPane.PLAIN_MESSAGE);
+        if (label == null || label.trim().isEmpty()) {
+            return;
+        }
+        CanvasLayout.FrameLayout frame = new CanvasLayout.FrameLayout();
+        frame.id = SchemaGraph.FRAME_ID_PREFIX + nextAnnotationSuffix();
+        frame.label = label.trim();
+        frame.x = at == null ? 40 : at.getX();
+        frame.y = at == null ? 40 : at.getY();
+        frame.w = 340;
+        frame.h = 240;
+        layout.frames.add(frame);
+        refresh();
+        saveLayoutTo(currentOntologyFile);
+    }
+
+    /** Changes the text of a note or the label of a frame. */
+    private void editAnnotation(String id) {
+        for (CanvasLayout.NoteLayout note : layout.notes) {
+            if (id.equals(note.id)) {
+                String text = JOptionPane.showInputDialog(this, "Note", note.text);
+                if (text != null && !text.trim().isEmpty()) {
+                    note.text = text.trim();
+                    refresh();
+                    saveLayoutTo(currentOntologyFile);
+                }
+                return;
+            }
+        }
+        for (CanvasLayout.FrameLayout frame : layout.frames) {
+            if (id.equals(frame.id)) {
+                String label = JOptionPane.showInputDialog(this, "Frame name", frame.label);
+                if (label != null && !label.trim().isEmpty()) {
+                    frame.label = label.trim();
+                    refresh();
+                    saveLayoutTo(currentOntologyFile);
+                }
+                return;
+            }
+        }
+    }
+
+    /**
+     * Removes a note or a frame.
+     *
+     * <p>No confirmation, unlike deleting a term: nothing in the ontology changes, the sidecar is
+     * in git, and a prompt for every sticky note would be the kind of friction that stops people
+     * using them.
+     */
+    private void deleteAnnotation(String id) {
+        boolean removed = false;
+        for (java.util.Iterator<CanvasLayout.NoteLayout> notes = layout.notes.iterator();
+                notes.hasNext();) {
+            if (id.equals(notes.next().id)) {
+                notes.remove();
+                removed = true;
+            }
+        }
+        for (java.util.Iterator<CanvasLayout.FrameLayout> frames = layout.frames.iterator();
+                frames.hasNext();) {
+            if (id.equals(frames.next().id)) {
+                frames.remove();
+                removed = true;
+            }
+        }
+        if (removed) {
+            refresh();
+            saveLayoutTo(currentOntologyFile);
+        }
+    }
+
+    /**
+     * A suffix that does not collide with one made on another machine.
+     *
+     * <p>The sidecar is committed and merged, so two people adding a note between pulls would
+     * otherwise both create note-1 and git would resolve it by keeping one of them.
+     */
+    private String nextAnnotationSuffix() {
+        return java.util.UUID.randomUUID().toString().substring(0, 8);
     }
 
     /** Puts a line in the toolbar's status label, reusing the collaboration one. */
@@ -542,7 +785,10 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             collabStatus.setText("Working through git");
             return;
         }
-        CollabSettings settings = CollabDialog.show(this);
+        OWLOntology open = getOWLModelManager().getActiveOntology();
+        String ontologyIri = open != null && open.getOntologyID().getOntologyIRI().isPresent()
+                ? open.getOntologyID().getOntologyIRI().get().toString() : null;
+        CollabSettings settings = CollabDialog.show(this, ontologyIri);
         if (settings == null) {
             return;
         }
@@ -553,7 +799,19 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                     "Working through git", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
-        collab = new CollabSession(settings, new CanvasCollabHost(),
+        // Before connecting, not after. A board that is not this ontology's is legitimate when
+        // it is meant - one board across a pair of related files - but when it is not, the
+        // consequence is somebody else's classes arriving in this file, and nothing later in the
+        // session would say so.
+        String mismatch = BoardId.mismatchWarning(settings.getBoard(), ontologyIri);
+        if (mismatch != null && JOptionPane.showConfirmDialog(this,
+                mismatch + "\n\nConnect anyway?",
+                "This board is for another ontology",
+                JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE)
+                != JOptionPane.YES_OPTION) {
+            return;
+        }
+        collab = new CollabSession(settings.forOntology(ontologyIri), new CanvasCollabHost(),
                 javax.swing.SwingUtilities::invokeLater);
         graphComponent.setPeerCursors(collab.getCursors());
         collaborateButton.setText("Disconnect");
@@ -651,6 +909,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         @Override
         public void onPeersChanged() {
             graphComponent.getGraphControl().repaint();
+            warnAboutPeersEditingSomethingElse();
         }
 
         @Override
@@ -782,6 +1041,33 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                 String iri = graph.getIdForCell(cell);
                 JPopupMenu menu = new JPopupMenu();
 
+                if (iri != null && SchemaGraph.isAnnotationId(iri)) {
+                    // A note or a frame: none of the term actions apply, and offering them would
+                    // be offering to remove axioms from something that has none.
+                    JMenuItem edit = new JMenuItem("Edit this note or frame...");
+                    edit.addActionListener(a -> editAnnotation(iri));
+                    menu.add(edit);
+                    JMenuItem delete = new JMenuItem("Delete this note or frame");
+                    delete.addActionListener(a -> deleteAnnotation(iri));
+                    menu.add(delete);
+                    menu.addSeparator();
+                }
+
+                JMenuItem addNote = new JMenuItem("Put a sticky note here...");
+                addNote.setToolTipText("A note on the diagram. It is not in the ontology and "
+                        + "never appears in a release - see OntoBoard > Notes for one that does.");
+                addNote.addActionListener(a -> createStickyNote(
+                        graphComponent.getGraphControl().getMousePosition()));
+                menu.add(addNote);
+
+                JMenuItem addFrame = new JMenuItem("Draw a frame here...");
+                addFrame.setToolTipText("A labelled region to group what is inside it. Also only "
+                        + "on the diagram.");
+                addFrame.addActionListener(a -> createFrame(
+                        graphComponent.getGraphControl().getMousePosition()));
+                menu.add(addFrame);
+                menu.addSeparator();
+
                 JMenuItem addSelected = new JMenuItem("Add selected entity to canvas");
                 addSelected.addActionListener(a -> addSelectedEntityToCanvas());
                 menu.add(addSelected);
@@ -793,6 +1079,12 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                         refresh();
                     });
                     menu.add(expand);
+
+                    JMenuItem hierarchy = new JMenuItem("Set parent or type...");
+                    hierarchy.setToolTipText("Assert rdfs:subClassOf, rdf:type or "
+                            + "rdfs:subPropertyOf between this term and another on the board");
+                    hierarchy.addActionListener(a -> createHierarchyLinkFrom(iri));
+                    menu.add(hierarchy);
 
                     JMenuItem remove = new JMenuItem("Remove from canvas (keeps axioms)");
                     remove.addActionListener(a -> {
@@ -1048,6 +1340,95 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
     }
 
     /**
+     * Provenance for a term this plugin has just changed, or nothing.
+     *
+     * <p>{@code dcterms:date} answers "when did this term last change", which is the question a
+     * curator asks before trusting a definition. {@link Provenance#stampModified} was written and
+     * tested and never called, so every term in every ontology edited here carried a creation
+     * date and no modification date at all - and the absence reads as "never touched since it was
+     * made", which was false for any term anybody had worked on.
+     *
+     * <p>Stamped where this plugin makes the edit rather than from the change listener. The
+     * listener sees every change including the ones arriving from a collaborator, and stamping
+     * those would record the local user as having modified a term somebody else changed - and
+     * would then publish that stamp back, which is a loop.
+     *
+     * @param iri the term that was edited, not the axiom that did it
+     */
+    private List<OWLOntologyChange> modificationProvenanceFor(OWLOntology ontology, IRI iri) {
+        ProvenanceSettings settings = ProvenanceSettings.load();
+        if (!settings.shouldStamp(ontology, isOdkProject())) {
+            return new ArrayList<OWLOntologyChange>();
+        }
+        List<OWLOntologyChange> changes = new ArrayList<OWLOntologyChange>(
+                Provenance.declareProperties(ontology));
+        changes.addAll(Provenance.stampModified(ontology, iri, settings.canonicalAgent(),
+                today()));
+        return changes;
+    }
+
+    /**
+     * Provenance for edits made in Protege's own editors rather than on the canvas.
+     *
+     * <p>A gap this plugin created. Until this existed, provenance was stamped only where the
+     * canvas made the edit - so a term dragged here recorded who and when, and the same term
+     * re-parented in the class hierarchy, or given a restriction in the Manchester syntax editor,
+     * recorded nothing. Which is most editing. The result was worse than no provenance at all: a
+     * reader sees dates on some terms and none on others and concludes the undated ones were never
+     * touched, when what actually happened is that somebody used a different view.
+     *
+     * <p>Three things make this safe to do from the change listener, which an earlier comment here
+     * rightly said it was not:
+     *
+     * <ul>
+     *   <li><b>Remote changes are skipped.</b> The listener sees a collaborator's edits arriving,
+     *       and stamping those would record the local user as having modified somebody else's
+     *       work - then publish that back, which is a loop.
+     *   <li><b>A stamp is not an edit.</b> {@link EditWatcher} ignores changes that only write
+     *       provenance, which is what terminates the recursion of stamping causing a stamp.
+     *   <li><b>It is applied afterwards, not during.</b> Protege is in the middle of broadcasting
+     *       this change to every listener; applying more changes inside that broadcast is asking
+     *       for trouble. The cost is that Edit &gt; Undo takes two steps - the stamp, then the
+     *       edit - which is the honest price of recording something Protege itself does not.
+     * </ul>
+     */
+    private void stampEditsMadeElsewhere(List<? extends OWLOntologyChange> changes) {
+        if (collab != null && collab.isApplyingRemote()) {
+            return;
+        }
+        final OWLOntology ontology = getOWLModelManager().getActiveOntology();
+        ProvenanceSettings settings = ProvenanceSettings.load();
+        if (ontology == null || !settings.shouldStamp(ontology, isOdkProject())
+                || !EditWatcher.isWorthStamping(ontology, changes)) {
+            return;
+        }
+        final List<OWLOntologyChange> snapshot =
+                new ArrayList<OWLOntologyChange>(changes);
+        final String agent = settings.canonicalAgent();
+        javax.swing.SwingUtilities.invokeLater(() -> {
+            // Recomputed against the ontology as it is now rather than as it was, so an edit
+            // undone or a term deleted in the meantime is not stamped back into existence.
+            List<OWLOntologyChange> stamps =
+                    EditWatcher.stampsFor(ontology, snapshot, agent, today());
+            if (!stamps.isEmpty()) {
+                getOWLModelManager().applyChanges(stamps);
+            }
+        });
+    }
+
+    /**
+     * Whether the open ontology is an ODK project, for the provenance default.
+     *
+     * <p>A project this plugin scaffolded gets provenance by default; somebody else's ontology
+     * does not, because introducing a convention its maintainers never chose would show up as
+     * unexplained churn in their next diff.
+     */
+    private boolean isOdkProject() {
+        return currentOntologyFile != null
+                && TermMinter.findRangesFile(currentOntologyFile) != null;
+    }
+
+    /**
      * Provenance for a term just created, or nothing.
      *
      * <p>Whether to stamp is the ontology's decision more than the user's - see
@@ -1080,8 +1461,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
      * on the machine that wrote it.
      */
     private static String today() {
-        return new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.ROOT)
-                .format(new java.util.Date());
+        return Provenance.today();
     }
 
     /**
@@ -1166,14 +1546,143 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             property = factory.getOWLObjectProperty(propertyIri);
         }
 
-        changes.add(new AddAxiom(ontology, EdgeAxioms.build(factory, choice.getCandidate(),
+        OWLAxiom relation = EdgeAxioms.build(factory, choice.getCandidate(),
                 factory.getOWLClass(IRI.create(sourceIri)), property,
-                factory.getOWLClass(IRI.create(targetIri)))));
+                factory.getOWLClass(IRI.create(targetIri)));
+
+        // Asked here, at the gesture, and not at release time. By release the axiom is one of
+        // thousands and whoever wrote it has long forgotten which arrow it was; right now they
+        // are looking straight at it. The dialog offers readings that leave OWL 2 EL, and both
+        // this plugin's release action and the ODK build it scaffolds classify with ELK - which
+        // ignores what it cannot express without saying so.
+        String outsideProfile = ProfileCheck.warningFor(relation, ProfileCheck.Target.EL);
+        if (outsideProfile != null && JOptionPane.showConfirmDialog(this,
+                outsideProfile + "\n\nWrite it anyway?", "Outside the EL profile",
+                JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE)
+                != JOptionPane.YES_OPTION) {
+            return;
+        }
+        changes.add(new AddAxiom(ontology, relation));
+        // The restriction is asserted about the source class, so the source is what changed.
+        changes.addAll(modificationProvenanceFor(ontology, IRI.create(sourceIri)));
 
         // Applying fires the ontology-change listener, which refreshes the canvas. The edge
         // therefore appears only because the axiom exists - if the change were rejected,
         // no edge would be drawn.
         getOWLModelManager().applyChanges(changes);
+    }
+
+    /**
+     * Asserts the parent, type or sub-property link between this term and another on the board.
+     *
+     * <p>The canvas drew all three of these edges and could create none of them: the legend
+     * advertised {@code rdfs:subClassOf}, {@code rdf:type} and {@code rdfs:subPropertyOf}, the
+     * projection rendered them from the ontology, and the only authoring path - the relation
+     * dialog - offered six property restrictions and no way to say "this is a kind of that". To
+     * add a parent a user had to leave the canvas for Protege's class hierarchy.
+     *
+     * <p>Which of the three is offered is decided from what the two ends are rather than asked,
+     * because only one is ever legal for a given pair - see {@link HierarchyAxioms#applicableTo}.
+     * Offering a choice would be offering two ways to get an error, and letting somebody pick
+     * "subclass of" between an individual and a class is exactly the confusion this diagram
+     * exists to dispel.
+     */
+    private void createHierarchyLinkFrom(String sourceIri) {
+        OWLOntology ontology = getOWLModelManager().getActiveOntology();
+        OWLDataFactory factory = getOWLModelManager().getOWLDataFactory();
+        OWLEntity source = entityOnCanvas(ontology, sourceIri);
+        if (source == null) {
+            return;
+        }
+
+        // Only terms this one could legally be linked to, so the list cannot contain a choice
+        // that produces an error message.
+        List<String> targets = new ArrayList<String>();
+        for (String onCanvas : membership.asSet()) {
+            OWLEntity candidate = entityOnCanvas(ontology, onCanvas);
+            if (candidate != null && !HierarchyAxioms.applicableTo(source, candidate).isEmpty()) {
+                targets.add(onCanvas);
+            }
+        }
+        if (targets.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                    "Nothing on the board can be a parent or a type for "
+                            + getOWLModelManager().getRendering(source) + ".\n\n"
+                            + "A class takes a class as its parent, an individual takes a class "
+                            + "as its type, and a property takes a property of the same kind. "
+                            + "Add one to the board first.",
+                    "Nothing to link to", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        Collections.sort(targets);
+
+        String[] labels = new String[targets.size()];
+        for (int i = 0; i < targets.size(); i++) {
+            labels[i] = getOWLModelManager().getRendering(
+                    entityOnCanvas(ontology, targets.get(i)));
+        }
+        HierarchyAxioms.Kind kind = HierarchyAxioms.applicableTo(source,
+                entityOnCanvas(ontology, targets.get(0))).get(0);
+
+        Object chosen = JOptionPane.showInputDialog(this,
+                getOWLModelManager().getRendering(source) + " " + kind.getDlNotation()
+                        + " ...\n\n" + kind.getExplanation() + "\n",
+                kind.getDisplayName(), JOptionPane.PLAIN_MESSAGE, null, labels, labels[0]);
+        if (chosen == null) {
+            return;
+        }
+        OWLEntity target = entityOnCanvas(ontology,
+                targets.get(indexOf(labels, chosen.toString())));
+
+        // Re-read for the chosen target: the list can hold more than one kind of term, and the
+        // kind used for the prompt came from the first of them.
+        List<HierarchyAxioms.Kind> applicable = HierarchyAxioms.applicableTo(source, target);
+        if (applicable.isEmpty()) {
+            JOptionPane.showMessageDialog(this, HierarchyAxioms.whyNot(source, target),
+                    "Cannot link those", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        OWLAxiom axiom = HierarchyAxioms.build(factory, applicable.get(0), source, target);
+        if (ontology.containsAxiom(axiom)) {
+            JOptionPane.showMessageDialog(this, "That link is already asserted.",
+                    "Nothing to add", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        List<OWLOntologyChange> changes = new ArrayList<OWLOntologyChange>();
+        changes.add(new AddAxiom(ontology, axiom));
+        // The SOURCE term is the one that changed - it gained a parent, a type or a super
+        // property. The target is untouched by this axiom and stamping it would claim an edit
+        // nobody made.
+        changes.addAll(modificationProvenanceFor(ontology, source.getIRI()));
+        // Applying fires the ontology-change listener, which refreshes the canvas and publishes
+        // to the shared session. The edge appears only because the axiom exists.
+        getOWLModelManager().applyChanges(changes);
+    }
+
+    /**
+     * The entity behind an IRI on the board, or null.
+     *
+     * <p>An IRI can name more than one kind of entity in the same ontology - OWL 2 punning - and
+     * the board holds one node per IRI. Classes first because that is what a board is mostly made
+     * of, and because a punned IRI drawn as a class should link as one.
+     */
+    private OWLEntity entityOnCanvas(OWLOntology ontology, String iri) {
+        IRI subject = IRI.create(iri);
+        OWLDataFactory factory = getOWLModelManager().getOWLDataFactory();
+        if (ontology.containsClassInSignature(subject)) {
+            return factory.getOWLClass(subject);
+        }
+        if (ontology.containsIndividualInSignature(subject)) {
+            return factory.getOWLNamedIndividual(subject);
+        }
+        if (ontology.containsObjectPropertyInSignature(subject)) {
+            return factory.getOWLObjectProperty(subject);
+        }
+        if (ontology.containsDataPropertyInSignature(subject)) {
+            return factory.getOWLDataProperty(subject);
+        }
+        return null;
     }
 
     private static int indexOf(String[] values, String needle) {
