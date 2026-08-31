@@ -1,6 +1,8 @@
 package de.fizkarlsruhe.ise.ontoboard.menu;
 
 import de.fizkarlsruhe.ise.ontoboard.odk.Catalog;
+import de.fizkarlsruhe.ise.ontoboard.prov.Provenance;
+import de.fizkarlsruhe.ise.ontoboard.robot.ImportProvenance;
 import de.fizkarlsruhe.ise.ontoboard.robot.OntologySource;
 import de.fizkarlsruhe.ise.ontoboard.robot.RobotException;
 import de.fizkarlsruhe.ise.ontoboard.robot.TermExtract;
@@ -258,8 +260,25 @@ public class ImportTermsAction extends OntoBoardAction {
                         ? ontology.getOntologyID().getOntologyIRI().get() : null, source);
         TermExtract.Result extracted =
                 TermExtract.run(source, terms.getIris(), method, moduleIri);
+        // Which release this module was cut from, recorded in the module itself. Without it a
+        // module in src/ontology/imports/ says nothing about where it came from: nobody dares
+        // regenerate it, because regenerating means guessing, and nobody can tell whether the
+        // definitions in it are current or four years stale. The module becomes a fork of the
+        // upstream ontology that nobody decided to make.
+        extracted.getModule().getOWLOntologyManager().applyChanges(
+                ImportProvenance.stamp(extracted.getModule(), source, Provenance.today()));
+
         result.note("Method: " + method.getLabel());
         result.note("Module IRI: " + moduleIri);
+        ImportProvenance.Report provenance =
+                ImportProvenance.check(extracted.getModule(), source.getOWLOntologyManager());
+        if (provenance.getCutFrom() != null) {
+            result.note("Cut from: " + provenance.getCutFrom());
+        } else if (provenance.getSource() != null) {
+            result.note("Cut from: " + provenance.getSource()
+                    + " - which publishes no version IRI, so the extraction date is the only "
+                    + "record of which release this is.");
+        }
         String unpublishable = TermExtract.warningFor(moduleIri);
         if (unpublishable != null && outcome != Outcome.ADD_AXIOMS) {
             result.warn(unpublishable);
