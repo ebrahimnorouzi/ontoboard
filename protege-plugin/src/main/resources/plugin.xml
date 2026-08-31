@@ -160,6 +160,15 @@
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
+  <extension id="menu.OntoBoard.robot.template"
+             point="org.protege.editor.core.application.EditorKitMenuAction">
+    <name value="Template..."/>
+    <toolTip value="Turn a spreadsheet of terms into axioms - every problem reported at once"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.menu.TemplateAction"/>
+    <path value="ontoboard.menu.OntoBoard.robot/SlotB-C"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
+
   <extension id="menu.OntoBoard.robot.importTerms"
              point="org.protege.editor.core.application.EditorKitMenuAction">
     <name value="Import terms..."/>

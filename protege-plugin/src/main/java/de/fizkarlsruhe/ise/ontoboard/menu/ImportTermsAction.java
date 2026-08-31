@@ -9,7 +9,6 @@ import de.fizkarlsruhe.ise.ontoboard.robot.TermExtract;
 import de.fizkarlsruhe.ise.ontoboard.robot.TermList;
 import java.io.File;
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -17,9 +16,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicReference;
 import javax.swing.JOptionPane;
-import javax.swing.SwingUtilities;
 import org.semanticweb.owlapi.apibinding.OWLManager;
 import org.semanticweb.owlapi.model.AddAxiom;
 import org.semanticweb.owlapi.model.AddImport;
@@ -574,36 +571,6 @@ public class ImportTermsAction extends OntoBoardAction {
             return "file".equalsIgnoreCase(documentUri.getScheme()) ? new File(documentUri) : null;
         } catch (RuntimeException notAFile) {
             return null;
-        }
-    }
-
-    /** Through the model manager, on the dispatch thread - see TransformAction for why both. */
-    private void applyOnEventThread(final List<OWLOntologyChange> changes) {
-        if (SwingUtilities.isEventDispatchThread()) {
-            getOWLModelManager().applyChanges(changes);
-            return;
-        }
-        final AtomicReference<RuntimeException> failure = new AtomicReference<RuntimeException>();
-        try {
-            SwingUtilities.invokeAndWait(new Runnable() {
-                @Override
-                public void run() {
-                    try {
-                        getOWLModelManager().applyChanges(changes);
-                    } catch (RuntimeException thrown) {
-                        failure.set(thrown);
-                    }
-                }
-            });
-        } catch (InterruptedException interrupted) {
-            Thread.currentThread().interrupt();
-            throw new IllegalStateException("interrupted while applying the changes");
-        } catch (InvocationTargetException thrown) {
-            throw new IllegalStateException(thrown.getCause() == null ? thrown.toString()
-                    : String.valueOf(thrown.getCause().getMessage()));
-        }
-        if (failure.get() != null) {
-            throw failure.get();
         }
     }
 

@@ -7,7 +7,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicReference;
 import javax.swing.SwingUtilities;
 import org.semanticweb.owlapi.model.AddAxiom;
 import org.semanticweb.owlapi.model.OWLOntology;
@@ -167,46 +166,6 @@ public class TransformAction extends OntoBoardAction {
             result.note("Edit > Undo reverses all of this in one step.");
         }
         return result.summary(kind.getLabel() + " applied: " + counts + ".").build();
-    }
-
-    /**
-     * Applies through the model manager, on the event dispatch thread.
-     *
-     * <p>Both halves matter. Through the model manager, so Protege fires change events, marks the
-     * ontology dirty and records one undo entry. On the dispatch thread, because applying changes
-     * makes every open view repaint, and driving Swing from the worker thread this action runs on
-     * is the kind of threading bug that shows up as an occasional blank panel weeks later.
-     */
-    private void applyOnEventThread(final List<OWLOntologyChange> changes) {
-        if (SwingUtilities.isEventDispatchThread()) {
-            getOWLModelManager().applyChanges(changes);
-            return;
-        }
-        final AtomicReference<RuntimeException> failure =
-                new AtomicReference<RuntimeException>();
-        try {
-            // invokeAndWait, not invokeLater: the result reports what was applied, and reporting
-            // a change that has not happened yet would be a lie the user could act on.
-            SwingUtilities.invokeAndWait(new Runnable() {
-                @Override
-                public void run() {
-                    try {
-                        getOWLModelManager().applyChanges(changes);
-                    } catch (RuntimeException thrown) {
-                        failure.set(thrown);
-                    }
-                }
-            });
-        } catch (InterruptedException interrupted) {
-            Thread.currentThread().interrupt();
-            throw new IllegalStateException("interrupted while applying the changes");
-        } catch (InvocationTargetException thrown) {
-            throw new IllegalStateException(thrown.getCause() == null
-                    ? thrown.toString() : String.valueOf(thrown.getCause().getMessage()));
-        }
-        if (failure.get() != null) {
-            throw failure.get();
-        }
     }
 
     /**

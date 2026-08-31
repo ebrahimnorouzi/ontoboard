@@ -4,6 +4,7 @@ import java.awt.event.ActionEvent;
 import javax.swing.JOptionPane;
 import org.protege.editor.owl.ui.action.ProtegeOWLAction;
 import org.semanticweb.owlapi.model.OWLOntology;
+import org.semanticweb.owlapi.model.OWLOntologyChange;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -145,5 +146,48 @@ public abstract class OntoBoardAction extends ProtegeOWLAction {
                     + "or later is known to work. (" + failure.getClass().getSimpleName() + ")";
         }
         return "It failed with " + failure.getClass().getSimpleName() + " and no message.";
+    }
+    /**
+     * Applies changes through the model manager, on the dispatch thread.
+     *
+     * <p>Both halves matter and for different reasons. Through the model manager, so Protege
+     * records them for Edit &gt; Undo and every view hears about them - applying to the OWL API
+     * manager directly changes the ontology behind Protege's back. On the dispatch thread, because
+     * applying fires listeners that rebuild Swing components, and doing that from a worker thread
+     * is the kind of threading bug that shows up as an occasional blank panel weeks later.
+     *
+     * <p>{@code invokeAndWait}, not {@code invokeLater}: the result reports what was applied, and
+     * reporting a change that has not happened yet would be a lie the user could act on.
+     *
+     * <p>Three actions had written this separately before it moved here.
+     */
+    protected void applyOnEventThread(final java.util.List<OWLOntologyChange> changes) {
+        if (javax.swing.SwingUtilities.isEventDispatchThread()) {
+            getOWLModelManager().applyChanges(changes);
+            return;
+        }
+        final java.util.concurrent.atomic.AtomicReference<RuntimeException> failure =
+                new java.util.concurrent.atomic.AtomicReference<RuntimeException>();
+        try {
+            javax.swing.SwingUtilities.invokeAndWait(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        getOWLModelManager().applyChanges(changes);
+                    } catch (RuntimeException thrown) {
+                        failure.set(thrown);
+                    }
+                }
+            });
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("interrupted while applying the changes");
+        } catch (java.lang.reflect.InvocationTargetException thrown) {
+            throw new IllegalStateException(thrown.getCause() == null ? thrown.toString()
+                    : String.valueOf(thrown.getCause().getMessage()));
+        }
+        if (failure.get() != null) {
+            throw failure.get();
+        }
     }
 }
