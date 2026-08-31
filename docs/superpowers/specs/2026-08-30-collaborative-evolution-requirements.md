@@ -201,3 +201,62 @@ thing three panels asked for deserves a second look.
 - **Whether curation status belongs in the ontology at all.** It passes the storage rule — bounded,
   standard, useful to an importer — but a project that does not use it will find the annotations
   noise.
+
+---
+
+## 8. What was built, and what the building taught
+
+All six items in §6 are implemented and tested. 1014 tests pass from a clean build.
+
+| Id | Where it lives | Tests |
+|---|---|---|
+| EVO-1 + EVO-2 | `odk/ReleaseDiff.java`, `menu/CompareReleasesAction.java` | `ReleaseDiffTest` |
+| OBS-1 + EVO-2b | `odk/Obsoletion.java`, `menu/ObsoleteAction.java` | `ObsoletionTest` |
+| PROF-1 | `reason/ProfileCheck.java`, `menu/ProfileAction.java`, the warning in `SchemaCanvasView.createRelationFrom` | `ProfileCheckTest` |
+| WHO-1 | `prov/EditorNotes.java` attribution, `menu/AllNotesAction.java` | `EditorNotesTest` |
+| EVO-7 | `prov/EditWatcher.java`, `SchemaCanvasView.stampEditsMadeElsewhere` | `EditWatcherTest` |
+| IMP-1 | `robot/ImportProvenance.java`, `menu/ImportsAction.java` | `ImportProvenanceTest` |
+| TPL-1 | `robot/TemplateSheet.java`, `menu/TemplateAction.java` | `TemplateSheetTest` |
+
+### Five things the implementation found that the analysis did not
+
+1. **A stamp brings its own declarations, and they are not terms.** `EditWatcher` counted the
+   annotation property declarations that accompany every provenance stamp as newly created terms —
+   so the plugin recorded itself as the author of `dcterms:contributor`, and stamped the
+   declarations a stamp had just added. Caught by its own termination test.
+
+2. **An `xsd:date` holding a timestamp.** `EditorNoteAction` passed a full ISO timestamp to a
+   helper that builds an `xsd:date` literal, producing `"2026-08-31T09:14:02Z"^^xsd:date` — outside
+   its own datatype's value space. Three callers had each rolled their own clock and one had rolled
+   it wrong; there is one now.
+
+3. **Computing beats tabulating, demonstrated on the author.** The first `ProfileCheck` test
+   asserted from memory that max-cardinality 1 leaves OWL 2 DL. It leaves EL and lands in RL. That
+   is the entire argument for asking the profile checker rather than keeping a table of which
+   constructs are which.
+
+4. **Checking rows separately invents errors.** Reporting every bad row of a template at once means
+   checking rows in isolation — and a row whose parent is a term the sheet introduces two rows later
+   then looks broken. A confident, precise, wrong finding is worse than the one real error ROBOT
+   gives. The per-row pass is seeded with the whole sheet's terms; a test holds it.
+
+5. **`force=true` tolerates bad rows but not a bad template row.** Established by probe against
+   robot-core 1.9.8, along with: the template row can be validated with no data rows present,
+   `RowParseException` carries row, column and cell as fields, and ROBOT's row numbers already count
+   the two header rows so they match a spreadsheet's own. None of this is documented; all of it
+   shapes the design.
+
+### What is still not covered
+
+- **No Swing surface is under test.** Every action's logic is in a Protégé-free class that is
+  tested; the dialogs, the tables and the canvas gesture are not, and cannot be without a UI
+  harness.
+- **OSGi resolution is unverified.** The bundle builds and its manifest is checked, but no Protégé
+  installation on this machine has loaded it.
+- **The upstream freshness check only sees what is open.** Fetching ChEBI to read one line of its
+  header is not something to do behind a user's back, so `ImportProvenance` answers "not checked"
+  until they open the upstream themselves. A project that never opens its upstreams never learns
+  they moved.
+- **Templates go into the edit file, not a component.** ODK keeps template output in
+  `src/ontology/components/` under the Makefile's ownership. Writing there from the plugin would
+  put two authors on one file, so `TemplateAction` adds to the ontology you have open and says so.
