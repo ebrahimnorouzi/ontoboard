@@ -157,6 +157,13 @@ public final class ReleaseDiff {
             if (!isObsolete(before, iri) && isObsolete(after, iri)) {
                 changes.add(new TermChange(iri, Change.OBSOLETED, labelOf(before, iri),
                         replacedBy(after, iri)));
+                // Nothing else about a retirement is news. Obsoleting a term the OBO way always
+                // prefixes its label with "obsolete " and always takes it out of the hierarchy,
+                // so reporting the relabel and the move as well turned one decision into three
+                // rows - and a curator reading a release note cannot tell that the three are the
+                // same event. Found by running a release history end to end rather than by
+                // testing the diff on its own.
+                continue;
             }
             String labelBefore = labelOf(before, iri);
             String labelAfter = labelOf(after, iri);

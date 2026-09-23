@@ -65,6 +65,28 @@ public final class PizzaOntology {
                 Optional.of(IRI.create(IRI_BASE + "/2026-01-15/pizza.owl"))));
         OWLDataFactory f = manager.getOWLDataFactory();
 
+        // --- the ontology's own metadata ------------------------------------------------
+        // Not decoration: ROBOT report treats a missing title, description or licence as an
+        // ERROR, so without these the project fails its own `make report` and its own CI. Found
+        // by running the real ODK build rather than by reading about it.
+        // Declared before use. An undeclared annotation property is an OWL 2 DL violation in its
+        // own right, so metadata added to satisfy ROBOT report would otherwise push the whole
+        // ontology outside DL - one check satisfied by breaking another.
+        for (String property : new String[] {"title", "description", "license"}) {
+            manager.addAxiom(pizza, f.getOWLDeclarationAxiom(f.getOWLAnnotationProperty(
+                    IRI.create("http://purl.org/dc/terms/" + property))));
+        }
+        manager.addAxiom(pizza, f.getOWLDeclarationAxiom(
+                f.getOWLAnnotationProperty(DEFINITION)));
+
+        ontologyAnnotation(manager, pizza, f, "http://purl.org/dc/terms/title",
+                f.getOWLLiteral("Pizza Ontology"));
+        ontologyAnnotation(manager, pizza, f, "http://purl.org/dc/terms/description",
+                f.getOWLLiteral("A pizza ontology built end to end with OntoBoard, to exercise "
+                        + "the plugin against ODK and ROBOT."));
+        ontologyAnnotation(manager, pizza, f, "http://purl.org/dc/terms/license",
+                IRI.create("https://creativecommons.org/publicdomain/zero/1.0/"));
+
         // --- the vocabulary -------------------------------------------------------------
         for (String name : new String[] {"Pizza", "PizzaBase", "PizzaTopping", "CheeseTopping",
             "VegetableTopping", "MeatTopping", "TomatoTopping", "MozzarellaTopping",
@@ -324,6 +346,12 @@ public final class PizzaOntology {
     private static void subClassOf(OWLOntologyManager m, OWLOntology o, OWLDataFactory f,
             String child, String parent) {
         m.addAxiom(o, f.getOWLSubClassOfAxiom(cls(f, child), cls(f, parent)));
+    }
+
+    private static void ontologyAnnotation(OWLOntologyManager m, OWLOntology o, OWLDataFactory f,
+            String property, org.semanticweb.owlapi.model.OWLAnnotationValue value) {
+        m.applyChange(new org.semanticweb.owlapi.model.AddOntologyAnnotation(o,
+                f.getOWLAnnotation(f.getOWLAnnotationProperty(IRI.create(property)), value)));
     }
 
     private static void label(OWLOntologyManager m, OWLOntology o, OWLDataFactory f, IRI subject,

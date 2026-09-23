@@ -263,4 +263,34 @@ class ProfileCheckTest {
         assertTrue(ProfileCheck.Target.EL.getHelp().contains("ELK"),
                 "EL's help must name the reasoner that makes it matter");
     }
+
+    /**
+     * A violation of the ontology header has no axiom, and OWL API's getAxiom() throws rather
+     * than returning null for it - so asking brought the whole report down with "value cannot be
+     * null at this stage". Found by giving a test ontology the dcterms:title that ROBOT report
+     * demands: the metadata that satisfies one check crashed another.
+     */
+    @Test
+    void aViolationOfTheOntologyHeaderDoesNotBringTheReportDown() {
+        manager.applyChange(new org.semanticweb.owlapi.model.AddOntologyAnnotation(ontology,
+                factory.getOWLAnnotation(
+                        factory.getOWLAnnotationProperty(
+                                IRI.create("http://purl.org/dc/terms/title")),
+                        factory.getOWLLiteral("Never declared"))));
+
+        List<ProfileCheck.Violation> violations =
+                ProfileCheck.violations(ontology, ProfileCheck.Target.DL);
+
+        // The assertion is that this returned at all. What it found is OWL API's business.
+        assertNotNull(violations);
+        for (ProfileCheck.Violation violation : violations) {
+            assertNotNull(violation.getMessage());
+            assertNotNull(violation.getTerms());
+        }
+        // tightestProfile is null here, and rightly so - an undeclared annotation property is
+        // outside OWL 2 DL. The point is that asking does not throw.
+        assertNull(ProfileCheck.tightestProfile(ontology));
+        assertFalse(violations.isEmpty(),
+                "the undeclared annotation property should be reported, not swallowed");
+    }
 }

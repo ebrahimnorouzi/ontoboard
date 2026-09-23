@@ -1,0 +1,322 @@
+package de.fizkarlsruhe.ise.ontoboard.e2e;
+
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import de.fizkarlsruhe.ise.ontoboard.model.CanvasEdge;
+import de.fizkarlsruhe.ise.ontoboard.model.CanvasNode;
+import de.fizkarlsruhe.ise.ontoboard.model.NodeKind;
+import de.fizkarlsruhe.ise.ontoboard.model.OntologyProjection;
+import de.fizkarlsruhe.ise.ontoboard.model.Projection;
+import de.fizkarlsruhe.ise.ontoboard.odk.IdRanges;
+import de.fizkarlsruhe.ise.ontoboard.odk.OdkProjectConfig;
+import de.fizkarlsruhe.ise.ontoboard.odk.OdkScaffold;
+import de.fizkarlsruhe.ise.ontoboard.odk.ReleaseDiff;
+import de.fizkarlsruhe.ise.ontoboard.reason.InferredEdges;
+import de.fizkarlsruhe.ise.ontoboard.reason.ProfileCheck;
+import de.fizkarlsruhe.ise.ontoboard.robot.OntologyMeasurements;
+import de.fizkarlsruhe.ise.ontoboard.robot.QualityReport;
+import de.fizkarlsruhe.ise.ontoboard.robot.Reasoners;
+import de.fizkarlsruhe.ise.ontoboard.robot.TemplateSheet;
+import java.io.File;
+import java.io.IOException;
+import java.nio.charset.Charset;
+import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+import org.junit.jupiter.api.Test;
+import org.semanticweb.owlapi.model.IRI;
+import org.semanticweb.owlapi.model.OWLOntology;
+import org.semanticweb.owlapi.reasoner.OWLReasoner;
+
+/**
+ * Writes the pizza project as a real ODK repository, one release at a time.
+ *
+ * <p>Driven from the command line so an entire release history can be produced and committed
+ * without anything being edited by hand:
+ *
+ * <pre>
+ * mvn -o test -Dtest=PizzaProjectTest -Dpizza.repo=/somewhere -Dpizza.version=v1
+ * </pre>
+ *
+ * <p>Everything it writes comes from the plugin's own code - {@link OdkScaffold} for the project
+ * layout, {@link OntologyProjection} for what the canvas would show, {@link InferredEdges} for what
+ * the reasoner concludes, {@link ReleaseDiff} for the evolution. Nothing here reimplements a
+ * feature in order to demonstrate it, which would prove only that this file works.
+ */
+class PizzaProjectTest {
+
+    private static final String ID = "pizza";
+
+    private File repo;
+    private String version;
+
+    private OWLOntology ontologyFor(String which) throws Exception {
+        if ("v1".equals(which)) {
+            return PizzaOntology.v1();
+        }
+        if ("v2".equals(which)) {
+            return PizzaOntology.v2();
+        }
+        return PizzaOntology.v3();
+    }
+
+    @Test
+    void buildsThePublishableProject() throws Exception {
+        repo = new File(System.getProperty("pizza.repo", "target/pizza-repo"));
+        version = System.getProperty("pizza.version", "v3");
+        OWLOntology pizza = ontologyFor(version);
+
+        // --- the ODK project, scaffolded exactly as the plugin's wizard scaffolds one ----
+        //
+        // The scaffold puts the project in a directory named after the ontology id, under the
+        // target directory it is given - so the project root is not the directory handed to it.
+        // Taking getProjectRoot() rather than assuming means this keeps working if that changes.
+        OdkProjectConfig config = new OdkProjectConfig(ID, "Pizza Ontology",
+                "A pizza ontology built end to end with OntoBoard, to exercise the plugin "
+                        + "against ODK and ROBOT.",
+                PizzaOntology.IRI_BASE, "CC0-1.0", repo.getParentFile());
+        repo = config.getProjectRoot();
+        File ontologyDir = new File(repo, "src/ontology");
+        if (!new File(ontologyDir, ID + "-odk.yaml").isFile()) {
+            // validate() refuses to write into a directory that already exists, which is right -
+            // scaffolding over somebody's project would destroy it. So it is asked only on the
+            // run that actually scaffolds; later releases edit a project that is already there.
+            config.validate();
+            List<File> written = OdkScaffold.create(config);
+            assertFalse(written.isEmpty(), "the scaffold wrote nothing");
+        }
+        assertTrue(new File(ontologyDir, "Makefile").isFile(), "no Makefile - ODK cannot build");
+        assertTrue(new File(ontologyDir, "catalog-v001.xml").isFile(), "no catalog");
+        assertTrue(new File(ontologyDir, ID + "-idranges.owl").isFile(), "no ID ranges");
+
+        // --- this release's edit file ---------------------------------------------------
+        File editFile = new File(ontologyDir, ID + "-edit.owl");
+        pizza.getOWLOntologyManager().saveOntology(pizza, IRI.create(editFile.toURI()));
+        assertTrue(editFile.length() > 0);
+
+        File reports = new File(repo, "reports/" + version);
+        if (!reports.isDirectory() && !reports.mkdirs()) {
+            throw new IOException("could not create " + reports);
+        }
+
+        writeCanvasReport(pizza, reports);
+        writeReasonerReport(pizza, reports);
+        writeRobotReport(pizza, reports);
+        writeProfileReport(pizza, reports);
+        writeIdRangeReport(ontologyDir, reports);
+        writeTemplateReport(pizza, repo, reports);
+        if (!"v1".equals(version)) {
+            writeEvolutionReport(reports);
+        }
+    }
+
+    // ------------------------------------------------------------------ the reports
+
+    /** What the canvas would draw. The closest this machine can get to a screenshot. */
+    private void writeCanvasReport(OWLOntology pizza, File reports) throws IOException {
+        Set<String> onCanvas = OntologyProjection.everythingWorthShowing(pizza);
+        Projection projection = OntologyProjection.project(pizza, onCanvas);
+
+        StringBuilder text = new StringBuilder("# Canvas - " + version + "\n\n");
+        text.append("What OntoBoard's board shows after pressing **Add all**. ");
+        text.append("No Protege was involved in producing this: it is the output of the same\n");
+        text.append("projection the canvas renders, so it is what would be drawn, not a picture\n");
+        text.append("of what was drawn.\n\n");
+        text.append("`Add all` offers **").append(onCanvas.size()).append("** terms.\n\n");
+
+        for (NodeKind kind : NodeKind.values()) {
+            List<String> labels = new ArrayList<String>();
+            for (CanvasNode node : projection.getNodes()) {
+                if (node.getKind() == kind) {
+                    labels.add(node.getLabel());
+                }
+            }
+            if (labels.isEmpty()) {
+                continue;
+            }
+            java.util.Collections.sort(labels);
+            text.append("## ").append(kind).append(" (").append(labels.size()).append(")\n\n");
+            for (String label : labels) {
+                text.append("- ").append(label).append('\n');
+            }
+            text.append('\n');
+        }
+
+        text.append("## Edges\n\n| Kind | Count |\n|---|---|\n");
+        java.util.TreeMap<CanvasEdge.Kind, Integer> counts =
+                new java.util.TreeMap<CanvasEdge.Kind, Integer>();
+        for (CanvasEdge edge : projection.getEdges()) {
+            counts.put(edge.getKind(),
+                    counts.containsKey(edge.getKind()) ? counts.get(edge.getKind()) + 1 : 1);
+        }
+        for (CanvasEdge.Kind kind : counts.keySet()) {
+            text.append("| ").append(kind).append(" | ").append(counts.get(kind)).append(" |\n");
+        }
+        write(new File(reports, "canvas.md"), text.toString());
+    }
+
+    /** Consistency, coherence, and what each reasoner concludes. */
+    private void writeReasonerReport(OWLOntology pizza, File reports) throws IOException {
+        Set<String> onCanvas = OntologyProjection.everythingWorthShowing(pizza);
+        Projection asserted = OntologyProjection.project(pizza, onCanvas);
+
+        StringBuilder text = new StringBuilder("# Reasoning - " + version + "\n\n");
+        for (Reasoners.Choice choice : new Reasoners.Choice[] {
+            Reasoners.Choice.ELK, Reasoners.Choice.HERMIT}) {
+            OWLReasoner reasoner = choice.newFactory().createReasoner(pizza);
+            text.append("## ").append(choice.getLabel()).append("\n\n");
+            text.append("- consistent: **").append(reasoner.isConsistent()).append("**\n");
+            Set<String> unsatisfiable =
+                    InferredEdges.unsatisfiableClasses(reasoner, onCanvas);
+            text.append("- unsatisfiable classes: **").append(unsatisfiable.size())
+                    .append("**").append(unsatisfiable.isEmpty() ? "" : " " + unsatisfiable)
+                    .append('\n');
+
+            List<CanvasEdge> subclasses = InferredEdges.subClassEdges(reasoner, onCanvas,
+                    asserted.getEdges(), pizza.getOWLOntologyManager().getOWLDataFactory());
+            List<CanvasEdge> types = InferredEdges.typeEdges(reasoner, onCanvas,
+                    asserted.getEdges(), pizza.getOWLOntologyManager().getOWLDataFactory());
+            text.append("\n### Inferred subclasses (").append(subclasses.size()).append(")\n\n");
+            for (CanvasEdge edge : subclasses) {
+                text.append("- `").append(shortName(edge.getSourceId())).append("` -> `")
+                        .append(shortName(edge.getTargetId())).append("`\n");
+            }
+            text.append("\n### Inferred types (").append(types.size()).append(")\n\n");
+            for (CanvasEdge edge : types) {
+                text.append("- `").append(shortName(edge.getSourceId())).append("` is a `")
+                        .append(shortName(edge.getTargetId())).append("`\n");
+            }
+            text.append('\n');
+            reasoner.dispose();
+        }
+        write(new File(reports, "reasoning.md"), text.toString());
+    }
+
+    private void writeRobotReport(OWLOntology pizza, File reports) throws IOException {
+        StringBuilder text = new StringBuilder("# ROBOT - " + version + "\n\n## measure\n\n");
+        text.append("| Group | Measure | Value |\n|---|---|---|\n");
+        for (OntologyMeasurements.Measurement m
+                : OntologyMeasurements.run(pizza, OntologyMeasurements.Depth.EXTENDED)) {
+            text.append("| ").append(m.getGroup()).append(" | ").append(m.getLabel())
+                    .append(" | ").append(m.getValue()).append(" |\n");
+        }
+        text.append("\n## report\n\n");
+        try {
+            text.append(QualityReport.run(pizza).size()).append(" findings.\n");
+        } catch (QualityReport.QualityReportException cannotRunHere) {
+            text.append("Did not run on this host.\n\n> ")
+                    .append(cannotRunHere.getMessage()).append('\n');
+        }
+        write(new File(reports, "robot.md"), text.toString());
+    }
+
+    private void writeProfileReport(OWLOntology pizza, File reports) throws IOException {
+        ProfileCheck.Target tightest = ProfileCheck.tightestProfile(pizza);
+        List<ProfileCheck.Violation> outsideEl =
+                ProfileCheck.violations(pizza, ProfileCheck.Target.EL);
+        StringBuilder text = new StringBuilder("# OWL 2 profile - " + version + "\n\n");
+        text.append("Tightest profile: **")
+                .append(tightest == null ? "outside OWL 2 DL" : "OWL 2 " + tightest.getLabel())
+                .append("**\n\n");
+        text.append(outsideEl.size()).append(" axioms outside OWL 2 EL. ");
+        text.append("ELK ignores each of these silently, and ELK is what the ODK build runs.\n\n");
+        for (ProfileCheck.Violation violation : outsideEl) {
+            text.append("- ").append(violation.getMessage()).append('\n');
+        }
+        write(new File(reports, "profile.md"), text.toString());
+    }
+
+    /** The ID range file the scaffold wrote, read back through the plugin's own parser. */
+    private void writeIdRangeReport(File ontologyDir, File reports) throws IOException {
+        File rangesFile = new File(ontologyDir, ID + "-idranges.owl");
+        IdRanges ranges = IdRanges.parse(new String(
+                Files.readAllBytes(rangesFile.toPath()), Charset.forName("UTF-8")));
+        StringBuilder text = new StringBuilder("# ID ranges - " + version + "\n\n");
+        text.append("Read back with the plugin's own parser, so this is what OntoBoard would\n");
+        text.append("mint from - not a copy of the file.\n\n");
+        text.append("| # | Allocated to | Lower | Upper |\n|---|---|---|---|\n");
+        for (IdRanges.Range range : ranges.getRanges()) {
+            text.append("| ").append(range.getNumber())
+                    .append(" | ").append(range.getAllocatedTo())
+                    .append(" | ").append(range.getLower())
+                    .append(" | ").append(range.getUpper()).append(" |\n");
+        }
+        write(new File(reports, "id-ranges.md"), text.toString());
+    }
+
+    /** A ROBOT template, run through the plugin, so the spreadsheet path is exercised too. */
+    private void writeTemplateReport(OWLOntology pizza, File repo, File reports)
+            throws IOException {
+        File templates = new File(repo, "src/templates");
+        templates.mkdirs();
+        File sheet = new File(templates, "extra-toppings.tsv");
+        if (!sheet.isFile()) {
+            StringBuilder tsv = new StringBuilder();
+            tsv.append("ID\tLabel\tParent\tDefinition\n");
+            tsv.append("ID\tLABEL\tSC %\tA IAO:0000115\n");
+            tsv.append(PizzaOntology.NS).append("BasilTopping\tbasil topping\t")
+                    .append(PizzaOntology.NS).append("VegetableTopping\t")
+                    .append("The leaf of Ocimum basilicum, used fresh.\n");
+            tsv.append(PizzaOntology.NS).append("RocketTopping\trocket topping\t")
+                    .append(PizzaOntology.NS).append("VegetableTopping\t")
+                    .append("The leaf of Eruca vesicaria, added after baking.\n");
+            write(sheet, tsv.toString());
+        }
+
+        TemplateSheet.Result result = TemplateSheet.run(sheet.getName(),
+                TemplateSheet.read(sheet), pizza, null,
+                IRI.create(PizzaOntology.IRI_BASE + "/templates/extra-toppings.owl"));
+
+        StringBuilder text = new StringBuilder("# ROBOT template - " + version + "\n\n");
+        text.append("Source: `src/templates/extra-toppings.tsv`\n\n");
+        text.append("- rows of terms: **").append(result.getDataRows()).append("**\n");
+        text.append("- axioms generated: **").append(result.getAxiomCount()).append("**\n");
+        text.append("- problems: **").append(result.getProblems().size()).append("**\n\n");
+        for (TemplateSheet.Problem problem : result.getProblems()) {
+            text.append("- ").append(problem.where()).append(": ")
+                    .append(problem.getMessage()).append('\n');
+        }
+        write(new File(reports, "template.md"), text.toString());
+        assertTrue(result.getProblems().isEmpty(),
+                "the published template should be a clean one: " + result.getProblems());
+    }
+
+    /** What changed since the previous release, term by term. */
+    private void writeEvolutionReport(File reports) throws Exception {
+        String previous = "v2".equals(version) ? "v1" : "v2";
+        ReleaseDiff diff = ReleaseDiff.between(ontologyFor(previous), ontologyFor(version));
+
+        StringBuilder text = new StringBuilder("# Evolution " + previous + " -> " + version
+                + "\n\n");
+        text.append(diff.summary()).append("\n\n");
+        for (ReleaseDiff.Change change : ReleaseDiff.Change.values()) {
+            List<ReleaseDiff.TermChange> of = diff.of(change);
+            if (of.isEmpty()) {
+                continue;
+            }
+            text.append("## ").append(change.getLabel()).append(" (").append(of.size())
+                    .append(")\n\n");
+            for (ReleaseDiff.TermChange one : of) {
+                text.append("- `").append(ReleaseDiff.shortForm(one.getIri())).append("` ")
+                        .append(one.getAfter() == null || one.getAfter().isEmpty() ? ""
+                                : one.getAfter())
+                        .append('\n');
+            }
+            text.append('\n');
+        }
+        write(new File(reports, "evolution.md"), text.toString());
+        write(new File(reports, "release-notes.md"),
+                diff.asReleaseNotes(version, ontologyFor(version)));
+    }
+
+    private static void write(File target, String body) throws IOException {
+        Files.write(target.toPath(), body.getBytes(Charset.forName("UTF-8")));
+    }
+
+    private static String shortName(String iri) {
+        int hash = iri.lastIndexOf('#');
+        return hash < 0 ? iri : iri.substring(hash + 1);
+    }
+}

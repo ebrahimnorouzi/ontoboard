@@ -158,7 +158,7 @@ public final class ProfileCheck {
         OWLProfileReport report = target.profile().checkOntology(ontology);
         Set<OWLAxiom> seen = new LinkedHashSet<OWLAxiom>();
         for (OWLProfileViolation violation : report.getViolations()) {
-            OWLAxiom axiom = violation.getAxiom();
+            OWLAxiom axiom = axiomOf(violation);
             if (axiom != null && !seen.add(axiom)) {
                 continue;
             }
@@ -171,6 +171,28 @@ public final class ProfileCheck {
             violations.add(new Violation(axiom, String.valueOf(violation), terms));
         }
         return violations;
+    }
+
+    /**
+     * The axiom a violation is about, or null when it is about the ontology itself.
+     *
+     * <p>{@code OWLProfileViolation.getAxiom()} <em>throws</em> rather than returning null when
+     * there is no axiom - it runs the value through OWL API's own null check. A violation of the
+     * ontology header, such as an annotation on the ontology using an undeclared property, has no
+     * axiom, so asking it for one brought down the whole profile report with "value cannot be null
+     * at this stage".
+     *
+     * <p>Found by giving a test ontology the {@code dcterms:title} that ROBOT report demands: the
+     * metadata that makes a project pass one check crashed another. Nothing in the OWL API's
+     * signature suggests this - it is declared to return an axiom - so only calling it on a
+     * header violation reveals it.
+     */
+    private static OWLAxiom axiomOf(OWLProfileViolation violation) {
+        try {
+            return violation.getAxiom();
+        } catch (RuntimeException aboutTheOntologyItself) {
+            return null;
+        }
     }
 
     /**

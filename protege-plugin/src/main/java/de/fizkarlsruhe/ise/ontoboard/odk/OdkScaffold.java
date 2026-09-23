@@ -145,6 +145,15 @@ public final class OdkScaffold {
                 // They were declared and not passed, so CI did whatever ROBOT defaults to rather
                 // than what the project said - and a build that says fail_on: ERROR while not
                 // failing on errors is worse than one that says nothing.
+                // profile.txt holds every rule ROBOT knows, at ROBOT's own severity, and it must
+                // stay free of comment lines - ROBOT's parser reads every line as a level and a
+                // rule. Said here because this is a Makefile, where # is a comment, and profile.txt
+                // is the one place it cannot be said.
+                + "# profile.txt lists every ROBOT report rule at its severity. ROBOT does NOT\n"
+                + "# merge it with its defaults - it runs exactly what is in the file, so a rule\n"
+                + "# you delete stops running silently. To relax one, change ERROR to WARN or INFO\n"
+                + "# rather than deleting the line. Do not put comments in profile.txt: ROBOT has\n"
+                + "# no comment syntax there and will refuse to run.\n"
                 + "report:\n"
                 + "\trobot report -i $(ONT)-edit.owl --profile profile.txt \\\n"
                 + "\t  --fail-on ERROR --labels true \\\n"
@@ -238,13 +247,14 @@ public final class OdkScaffold {
      * nobody runs.
      */
     private static String reportProfile() {
-        return "# ROBOT report rules, at ROBOT's own severities.\n"
-                + "#\n"
-                + "# ROBOT does NOT merge this with its defaults - it runs exactly what is here.\n"
-                + "# A rule you delete is a rule that stops running, silently. To relax one,\n"
-                + "# change its level to WARN or INFO rather than removing the line, so the next\n"
-                + "# person can see the decision.\n"
-                + "WARN\tannotation_whitespace\n"
+        // NO COMMENTS. ROBOT's profile parser reads every line as "<LEVEL> <rule>" and has no
+        // comment syntax, so a leading # is parsed as a reporting level and the run dies with
+        // "REPORT LEVEL ERROR '# ...' is not a valid reporting level". An explanatory header here
+        // broke `make report` in every project this scaffold produced - proven by running ODK
+        // against a generated project rather than by reading the documentation, which does not
+        // say so either way. The explanation lives in the Makefile and the README instead, where
+        // # is a comment and a person will actually meet it.
+        return "WARN\tannotation_whitespace\n"
                 + "ERROR\tdeprecated_boolean_datatype\n"
                 + "ERROR\tdeprecated_class_reference\n"
                 + "ERROR\tdeprecated_property_reference\n"

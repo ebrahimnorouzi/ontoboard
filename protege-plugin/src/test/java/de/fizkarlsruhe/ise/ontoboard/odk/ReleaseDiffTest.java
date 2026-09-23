@@ -325,4 +325,36 @@ class ReleaseDiffTest {
         assertEquals(before.getAxiomCount(), diff.getAxiomsBefore());
         assertEquals(after.getAxiomCount(), diff.getAxiomsAfter());
     }
+
+    /**
+     * One retirement is one row. Obsoleting a term the OBO way always prefixes its label with
+     * "obsolete " and always takes it out of the hierarchy, so a diff that reported those as well
+     * turned one decision into three - and a curator reading the release note could not tell that
+     * the three were the same event. Found by running a release history end to end.
+     */
+    @Test
+    void obsoletingATermIsReportedOnceNotThreeTimes() throws Exception {
+        for (OWLOntology version : new OWLOntology[] {before, after}) {
+            declare(version, "Olive");
+            declare(version, "Vegetable");
+            label(version, "Olive", "olive topping");
+            parent(version, "Olive", "Vegetable");
+        }
+        // The real thing, not a hand-rolled imitation: obsoletion is what prefixes the label and
+        // strips the hierarchy, so a test that faked it would not exercise the interaction.
+        manager.applyChanges(Obsoletion.obsolete(after, IRI.create(NS + "Olive"),
+                IRI.create(NS + "Caper"), false, "too specific for this ontology"));
+
+        ReleaseDiff diff = ReleaseDiff.between(before, after);
+
+        int mentions = 0;
+        for (ReleaseDiff.TermChange change : diff.getChanges()) {
+            if (change.getIri().toString().equals(NS + "Olive")) {
+                mentions++;
+                assertEquals(ReleaseDiff.Change.OBSOLETED, change.getChange(),
+                        "a retirement was also reported as " + change.getChange());
+            }
+        }
+        assertEquals(1, mentions, "one retirement should be one row: " + diff.getChanges());
+    }
 }
