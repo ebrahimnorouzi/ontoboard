@@ -185,6 +185,7 @@ public class SchemaGraph extends mxGraph {
             case TYPE:            return SchemaStyles.TYPE;
             case SUB_PROPERTY:    return SchemaStyles.SUB_PROPERTY;
             case INFERRED_SUBCLASS: return SchemaStyles.INFERRED_SUBCLASS;
+            case INFERRED_TYPE:   return SchemaStyles.INFERRED_TYPE;
             case OBJECT_PROPERTY:
             default:              return SchemaStyles.OBJECT_PROPERTY;
         }

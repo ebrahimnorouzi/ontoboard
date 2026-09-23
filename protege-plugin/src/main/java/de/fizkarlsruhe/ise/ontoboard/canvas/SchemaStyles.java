@@ -29,6 +29,9 @@ public final class SchemaStyles {
     public static final String SUB_PROPERTY = "obSubProperty";
     public static final String INFERRED_SUBCLASS = "obInferredSubClass";
 
+    /** A type the reasoner worked out for an individual, rather than one that was stated. */
+    public static final String INFERRED_TYPE = "obInferredType";
+
     /**
      * Properties drawn as nodes rather than as edge labels.
      *
@@ -149,6 +152,12 @@ public final class SchemaStyles {
         // asserted axiom would be the single most misleading thing this canvas could do.
         sheet.putCellStyle(INFERRED_SUBCLASS,
                 edge("#8A94A0", "1 5", mxConstants.ARROW_BLOCK, 1.4f));
+
+        // Same grey and the same dots as an inferred subclass, and the open arrowhead an asserted
+        // type edge uses - so the colour says "the reasoner concluded this" and the head says
+        // "this is a type", which are two independent facts a reader needs at once.
+        sheet.putCellStyle(INFERRED_TYPE,
+                edge("#8A94A0", "1 5", mxConstants.ARROW_OPEN, 1.4f));
 
         sheet.putCellStyle(OBJECT_PROPERTY_NODE, vertex(mxConstants.SHAPE_HEXAGON, "#FFF4E5",
                 "#C77700", false, false, 12, mxConstants.FONT_ITALIC));

@@ -396,10 +396,17 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             return asserted;
         }
         try {
-            List<CanvasEdge> inferred = InferredEdges.subClassEdges(
+            List<CanvasEdge> inferred = new ArrayList<CanvasEdge>(InferredEdges.subClassEdges(
                     getOWLModelManager().getReasoner(), membership.asSet(),
                     asserted.getEdges(),
-                    getOWLModelManager().getOWLDataFactory());
+                    getOWLModelManager().getOWLDataFactory()));
+            // Types as well as subsumptions. Drawing only subsumptions meant a board of
+            // individuals showed nothing when inferences were switched on, which reads as "the
+            // reasoner found nothing" rather than "this tool does not look".
+            inferred.addAll(InferredEdges.typeEdges(
+                    getOWLModelManager().getReasoner(), membership.asSet(),
+                    asserted.getEdges(),
+                    getOWLModelManager().getOWLDataFactory()));
             if (inferred.isEmpty()) {
                 // Still worth re-rendering: no new edges does not mean no unsatisfiable classes,
                 // and those are the more important of the two things a reasoner has to say.
@@ -726,21 +733,17 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
      */
     private void addEverythingToCanvas() {
         OWLOntology ontology = getOWLModelManager().getActiveOntology();
-        List<String> candidates = new ArrayList<String>();
-        for (OWLEntity entity : ontology.getSignature()) {
-            if (entity.isOWLClass() || entity.isOWLNamedIndividual()) {
-                candidates.add(entity.getIRI().toString());
-            }
-        }
+        List<String> candidates = new ArrayList<String>(
+                OntologyProjection.everythingWorthShowing(ontology));
         if (candidates.isEmpty()) {
             JOptionPane.showMessageDialog(this,
-                    "This ontology declares no classes or individuals yet.",
+                    "This ontology declares no classes, individuals or properties yet.",
                     "Nothing to add", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
         if (candidates.size() > 300) {
             int answer = JOptionPane.showConfirmDialog(this,
-                    "This ontology has " + candidates.size() + " classes and individuals.\n\n"
+                    "This ontology has " + candidates.size() + " terms.\n\n"
                             + "A diagram that large is slow to arrange and hard to read. Add them "
                             + "all anyway?",
                     "That is a lot of nodes", JOptionPane.OK_CANCEL_OPTION,
@@ -958,7 +961,8 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         legend.addActionListener(a -> showLegend());
 
         JButton addAll = new JButton("Add all");
-        addAll.setToolTipText("Put every class and individual in the ontology on the board");
+        addAll.setToolTipText("Put every class, individual and property in the ontology on "
+                + "the board");
         addAll.addActionListener(a -> addEverythingToCanvas());
 
         bar.add(addSelectedButton);

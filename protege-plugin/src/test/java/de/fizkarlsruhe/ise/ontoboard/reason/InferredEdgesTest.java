@@ -287,4 +287,126 @@ class InferredEdgesTest {
             return name;
         }
     }
+
+    // ---------- the other half of what a reasoner says ----------
+
+    /**
+     * The gap this closes: class subsumption was drawn and individuals were not, so a board of
+     * individuals showed nothing at all when inferences were switched on - which reads as "the
+     * reasoner found nothing" rather than "this tool does not look".
+     *
+     * <p>The classic teaching case, and the one people check first. A pizza with a cheese topping
+     * is a cheesy pizza without anybody saying so; that conclusion is the entire point of writing
+     * the definition, and it is about an individual.
+     */
+    @Test
+    void anIndividualsInferredTypeIsDrawn() throws Exception {
+        String ns = "http://example.org/pizza#";
+        OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
+        OWLOntology pizza = manager.createOntology(IRI.create("http://example.org/pizza"));
+        OWLDataFactory factory = manager.getOWLDataFactory();
+
+        OWLClass pizzaClass = factory.getOWLClass(IRI.create(ns + "Pizza"));
+        OWLClass cheeseTopping = factory.getOWLClass(IRI.create(ns + "CheeseTopping"));
+        OWLClass cheesyPizza = factory.getOWLClass(IRI.create(ns + "CheesyPizza"));
+        org.semanticweb.owlapi.model.OWLObjectProperty hasTopping =
+                factory.getOWLObjectProperty(IRI.create(ns + "hasTopping"));
+        org.semanticweb.owlapi.model.OWLNamedIndividual margherita =
+                factory.getOWLNamedIndividual(IRI.create(ns + "margherita"));
+        org.semanticweb.owlapi.model.OWLNamedIndividual mozzarella =
+                factory.getOWLNamedIndividual(IRI.create(ns + "mozzarella"));
+
+        manager.addAxiom(pizza, factory.getOWLDeclarationAxiom(hasTopping));
+        // CheesyPizza is DEFINED, which is what makes the conclusion available at all.
+        manager.addAxiom(pizza, factory.getOWLEquivalentClassesAxiom(cheesyPizza,
+                factory.getOWLObjectIntersectionOf(pizzaClass,
+                        factory.getOWLObjectSomeValuesFrom(hasTopping, cheeseTopping))));
+        manager.addAxiom(pizza, factory.getOWLClassAssertionAxiom(pizzaClass, margherita));
+        manager.addAxiom(pizza, factory.getOWLClassAssertionAxiom(cheeseTopping, mozzarella));
+        manager.addAxiom(pizza, factory.getOWLObjectPropertyAssertionAxiom(
+                hasTopping, margherita, mozzarella));
+
+        OWLReasoner elk = new de.fizkarlsruhe.ise.ontoboard.robot.Reasoners.Choice[] {
+            de.fizkarlsruhe.ise.ontoboard.robot.Reasoners.Choice.ELK }[0]
+                .newFactory().createReasoner(pizza);
+        Set<String> onCanvas = new HashSet<String>(Arrays.asList(
+                ns + "margherita", ns + "mozzarella", ns + "Pizza", ns + "CheesyPizza",
+                ns + "CheeseTopping"));
+
+        List<CanvasEdge> inferred = InferredEdges.typeEdges(elk, onCanvas,
+                Collections.<CanvasEdge>emptyList(), factory);
+
+        boolean found = false;
+        for (CanvasEdge edge : inferred) {
+            found |= edge.getSourceId().equals(ns + "margherita")
+                    && edge.getTargetId().equals(ns + "CheesyPizza")
+                    && edge.getKind() == CanvasEdge.Kind.INFERRED_TYPE;
+        }
+        assertTrue(found, "the individual's inferred type was not drawn: " + inferred);
+    }
+
+    /** A type the ontology already states is not redrawn as a conclusion. */
+    @Test
+    void anAssertedTypeIsNotDrawnTwice() throws Exception {
+        String ns = "http://example.org/pizza#";
+        OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
+        OWLOntology pizza = manager.createOntology(IRI.create("http://example.org/pizza"));
+        OWLDataFactory factory = manager.getOWLDataFactory();
+        OWLClass pizzaClass = factory.getOWLClass(IRI.create(ns + "Pizza"));
+        org.semanticweb.owlapi.model.OWLNamedIndividual margherita =
+                factory.getOWLNamedIndividual(IRI.create(ns + "margherita"));
+        manager.addAxiom(pizza, factory.getOWLClassAssertionAxiom(pizzaClass, margherita));
+
+        OWLReasoner elk = de.fizkarlsruhe.ise.ontoboard.robot.Reasoners.Choice.ELK
+                .newFactory().createReasoner(pizza);
+        Set<String> onCanvas = new HashSet<String>(
+                Arrays.asList(ns + "margherita", ns + "Pizza"));
+        List<CanvasEdge> asserted = Collections.singletonList(new CanvasEdge(
+                "a", ns + "margherita", ns + "Pizza", "", CanvasEdge.Kind.TYPE));
+
+        assertTrue(InferredEdges.typeEdges(elk, onCanvas, asserted, factory).isEmpty());
+    }
+
+    /** Inferring towards a class nobody put on the board would drag it on. */
+    @Test
+    void aTypeThatIsNotOnTheBoardIsNotDrawn() throws Exception {
+        String ns = "http://example.org/pizza#";
+        OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
+        OWLOntology pizza = manager.createOntology(IRI.create("http://example.org/pizza"));
+        OWLDataFactory factory = manager.getOWLDataFactory();
+        manager.addAxiom(pizza, factory.getOWLClassAssertionAxiom(
+                factory.getOWLClass(IRI.create(ns + "Pizza")),
+                factory.getOWLNamedIndividual(IRI.create(ns + "margherita"))));
+
+        OWLReasoner elk = de.fizkarlsruhe.ise.ontoboard.robot.Reasoners.Choice.ELK
+                .newFactory().createReasoner(pizza);
+
+        assertTrue(InferredEdges.typeEdges(elk,
+                Collections.singleton(ns + "margherita"),
+                Collections.<CanvasEdge>emptyList(), factory).isEmpty());
+    }
+
+    /** A board is mostly classes; asking each one for its types must not cost the result. */
+    @Test
+    void classesOnTheBoardAreNotMistakenForIndividuals() throws Exception {
+        String ns = "http://example.org/pizza#";
+        OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
+        OWLOntology pizza = manager.createOntology(IRI.create("http://example.org/pizza"));
+        OWLDataFactory factory = manager.getOWLDataFactory();
+        manager.addAxiom(pizza, factory.getOWLDeclarationAxiom(
+                factory.getOWLClass(IRI.create(ns + "Pizza"))));
+
+        OWLReasoner elk = de.fizkarlsruhe.ise.ontoboard.robot.Reasoners.Choice.ELK
+                .newFactory().createReasoner(pizza);
+
+        assertTrue(InferredEdges.typeEdges(elk, Collections.singleton(ns + "Pizza"),
+                Collections.<CanvasEdge>emptyList(), factory).isEmpty());
+    }
+
+    @Test
+    void noReasonerIsReportedForTypesToo() {
+        assertThrows(InferredEdges.NotAvailable.class, () -> InferredEdges.typeEdges(
+                null, Collections.<String>emptySet(), Collections.<CanvasEdge>emptyList(),
+                OWLManager.createOWLOntologyManager().getOWLDataFactory()));
+    }
 }
