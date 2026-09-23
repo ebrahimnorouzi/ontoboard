@@ -6,8 +6,10 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -58,13 +60,81 @@ public final class MakeTargets {
             return Collections.emptyList();
         }
         try {
-            return parse(new String(Files.readAllBytes(makefile.toPath()),
-                    StandardCharsets.UTF_8));
+            String text = new String(Files.readAllBytes(makefile.toPath()),
+                    StandardCharsets.UTF_8);
+            List<String> targets = new ArrayList<String>(parse(text));
+            // Follow the -include. The Makefile OntoBoard generates opens with
+            // "-include $(ONT).Makefile", and both that file's own header and the generated README
+            // tell the user their custom targets belong there. Nothing read it, so a target
+            // somebody added ran perfectly from the shell and never appeared in OntoBoard > Build,
+            // with nothing saying why.
+            for (File included : includedBy(text, makefile.getParentFile())) {
+                if (!included.isFile()) {
+                    // -include is explicitly tolerant of a missing file, so this is not an error.
+                    continue;
+                }
+                try {
+                    for (String target : parse(new String(Files.readAllBytes(included.toPath()),
+                            StandardCharsets.UTF_8))) {
+                        if (!targets.contains(target)) {
+                            targets.add(target);
+                        }
+                    }
+                } catch (IOException unreadable) {
+                    // One unreadable include must not cost the targets already found.
+                    continue;
+                }
+            }
+            return targets;
         } catch (IOException unreadable) {
             // An unreadable Makefile means no targets to offer, which is honest. Guessing a
             // standard set is what the previous version did, and it was wrong.
             return Collections.emptyList();
         }
+    }
+
+    /**
+     * The files a Makefile includes, resolved beside it.
+     *
+     * <p>One level, no recursion: the generated Makefile includes exactly one file, and following
+     * an arbitrary graph to fill a menu is more machinery than the menu is worth. Variables are
+     * expanded from the {@code :=} assignments visible in the same file, which is enough for
+     * {@code -include $(ONT).Makefile}.
+     */
+    private static List<File> includedBy(String makefile, File directory) {
+        List<File> included = new ArrayList<File>();
+        Map<String, String> variables = new LinkedHashMap<String, String>();
+        for (String raw : makefile.split("\r?\n")) {
+            String line = raw.trim();
+            int assign = line.indexOf(":=");
+            if (assign > 0 && !line.startsWith("\t") && !raw.startsWith("\t")) {
+                variables.put(line.substring(0, assign).trim(),
+                        line.substring(assign + 2).trim());
+                continue;
+            }
+            if (!line.startsWith("include ") && !line.startsWith("-include ")) {
+                continue;
+            }
+            String names = line.substring(line.indexOf(' ') + 1).trim();
+            for (String name : names.split("\\s+")) {
+                String resolved = expand(name, variables);
+                if (!resolved.isEmpty()) {
+                    included.add(new File(directory, resolved));
+                }
+            }
+        }
+        return included;
+    }
+
+    /** Expands $(NAME) and $(OTHER) one level deep, which is all the scaffold needs. */
+    private static String expand(String value, Map<String, String> variables) {
+        String expanded = value;
+        for (int pass = 0; pass < 3 && expanded.contains("$("); pass++) {
+            for (Map.Entry<String, String> variable : variables.entrySet()) {
+                expanded = expanded.replace("$(" + variable.getKey() + ")", variable.getValue());
+            }
+        }
+        return expanded.contains("$(") ? "" : expanded;
     }
 
     /**

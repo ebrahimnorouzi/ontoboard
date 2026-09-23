@@ -291,7 +291,11 @@ public final class ReleaseDiff {
                             change.getBefore().isEmpty() ? "(none)" : change.getBefore());
                 }
                 if (kind == Change.OBSOLETED && !change.getAfter().isEmpty()) {
-                    notes.append(" — replaced by `").append(change.getAfter()).append('`');
+                    // The value already says which kind of pointer it is - "replaced by X" for an
+                    // exact replacement, "consider X" for a suggestion - because the difference
+                    // decides whether a consumer can migrate mechanically or has to read each
+                    // use. Prepending "replaced by" here as well said "replaced by consider X".
+                    notes.append(" — ").append(change.getAfter());
                 }
                 notes.append('\n');
             }
@@ -339,10 +343,10 @@ public final class ReleaseDiff {
     private static String replacedBy(OWLOntology ontology, IRI iri) {
         String exact = annotationValue(ontology, iri, Obsoletion.TERM_REPLACED_BY);
         if (!exact.isEmpty()) {
-            return "replaced by " + shortForm(IRI.create(exact));
+            return "replaced by `" + shortForm(IRI.create(exact)) + "`";
         }
         String consider = annotationValue(ontology, iri, Obsoletion.CONSIDER);
-        return consider.isEmpty() ? "" : "consider " + shortForm(IRI.create(consider));
+        return consider.isEmpty() ? "" : "consider `" + shortForm(IRI.create(consider)) + "`";
     }
 
     private static String annotationValue(OWLOntology ontology, IRI iri, IRI property) {

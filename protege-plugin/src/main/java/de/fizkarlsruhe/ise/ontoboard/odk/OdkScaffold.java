@@ -181,8 +181,7 @@ public final class OdkScaffold {
                 // robot verify exits non-zero when a query returns rows, which is what makes a
                 // SPARQL file a check rather than a decoration.
                 + "sparql_test:\n"
-                + "\trobot verify --input $(ONT)-edit.owl \\\\\n"
-                + "\t  --queries ../sparql/*.rq --output-dir .\n\n"
+                + "\trobot verify --input $(ONT)-edit.owl --queries ../sparql/*.rq --output-dir .\n\n"
                 + "clean:\n"
                 + "\t@rm -f tmp_* report.tsv *.bak $(ONT).owl\n\n"
                 + "prepare_release: reason report\n"
@@ -355,7 +354,17 @@ public final class OdkScaffold {
                 + "          robot --version\n"
                 + "      - name: Run QC\n"
                 + "        working-directory: src/ontology\n"
-                + "        run: make test\n";
+                + "        run: make test\n"
+                // The job summary says how many violations there were; only report.tsv says
+                // which. Uploading it is the difference between "QC failed, 3 errors" and knowing
+                // what to fix without reproducing the run on your own machine.
+                + "      - name: Upload the report\n"
+                + "        if: always()\n"
+                + "        uses: actions/upload-artifact@v4\n"
+                + "        with:\n"
+                + "          name: robot-report\n"
+                + "          path: src/ontology/report.tsv\n"
+                + "          if-no-files-found: ignore\n";
     }
 
     /**
