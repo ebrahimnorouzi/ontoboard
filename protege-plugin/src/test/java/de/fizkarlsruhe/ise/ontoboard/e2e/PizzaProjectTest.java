@@ -1,6 +1,7 @@
 package de.fizkarlsruhe.ise.ontoboard.e2e;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import de.fizkarlsruhe.ise.ontoboard.model.CanvasEdge;
@@ -52,6 +53,12 @@ class PizzaProjectTest {
     private File repo;
     private String version;
 
+    /** The ORCID recorded as the curator, fixed so the output is reproducible. */
+    private static final String CURATOR = "https://orcid.org/0000-0002-1825-0097";
+
+    /** The curation date, fixed for the same reason - nothing here reads a clock. */
+    private static final String CURATED_ON = "2026-09-23";
+
     private OWLOntology ontologyFor(String which) throws Exception {
         if ("v1".equals(which)) {
             return PizzaOntology.v1();
@@ -59,7 +66,10 @@ class PizzaProjectTest {
         if ("v2".equals(which)) {
             return PizzaOntology.v2();
         }
-        return PizzaOntology.v3();
+        if ("v3".equals(which)) {
+            return PizzaOntology.v3();
+        }
+        return PizzaOntology.v4(CURATOR, CURATED_ON);
     }
 
     @Test
@@ -110,6 +120,11 @@ class PizzaProjectTest {
         if (!"v1".equals(version)) {
             writeEvolutionReport(reports);
         }
+        if ("v4".equals(version)) {
+            writeCurationReport(pizza, reports);
+            writeImportReport(pizza, ontologyDir, reports);
+        }
+        writeMakeTargetsReport(editFile, reports);
     }
 
     // ------------------------------------------------------------------ the reports
@@ -309,6 +324,139 @@ class PizzaProjectTest {
         write(new File(reports, "evolution.md"), text.toString());
         write(new File(reports, "release-notes.md"),
                 diff.asReleaseNotes(version, ontologyFor(version)));
+    }
+
+    /**
+     * Who did what, and what they said about it.
+     *
+     * <p>The editorial surface a curator spends their time in, and the half of the plugin that
+     * nothing had exercised end to end: provenance on terms, attributed notes, and a link to
+     * where the argument actually happened.
+     */
+    private void writeCurationReport(OWLOntology pizza, File reports) throws IOException {
+        StringBuilder text = new StringBuilder("# Curation - " + version + "\n\n");
+
+        text.append("## Who added what\n\n| Term | Contributor | Created |\n|---|---|---|\n");
+        int stamped = 0;
+        for (org.semanticweb.owlapi.model.OWLClass cls : pizza.getClassesInSignature()) {
+            List<String> contributors =
+                    de.fizkarlsruhe.ise.ontoboard.prov.Provenance.contributorsOf(
+                            pizza, cls.getIRI());
+            if (contributors.isEmpty()) {
+                continue;
+            }
+            stamped++;
+            text.append("| `").append(shortName(cls.getIRI().toString())).append("` | ")
+                    .append(String.join(", ", contributors)).append(" | ")
+                    .append(de.fizkarlsruhe.ise.ontoboard.prov.Provenance.createdOn(
+                            pizza, cls.getIRI()))
+                    .append(" |\n");
+        }
+        text.append("\n").append(stamped).append(" terms carry provenance. The rest predate the ");
+        text.append("convention, which is why they carry none - OntoBoard does not backfill a\n");
+        text.append("claim about who made something it was not there for.\n\n");
+
+        text.append("## Notes\n\n");
+        List<de.fizkarlsruhe.ise.ontoboard.prov.EditorNotes.Note> notes =
+                de.fizkarlsruhe.ise.ontoboard.prov.EditorNotes.allIn(pizza);
+        for (de.fizkarlsruhe.ise.ontoboard.prov.EditorNotes.Note note : notes) {
+            text.append("- **").append(note.getKind().getLabel()).append("** on `")
+                    .append(shortName(note.getSubject().toString())).append("`");
+            String by = note.describeAttribution();
+            text.append(by.isEmpty() ? "" : " (" + by + ")").append("  \n  ")
+                    .append(note.getText()).append('\n');
+        }
+        text.append("\n## Discussion links\n\n");
+        for (org.semanticweb.owlapi.model.OWLClass cls : pizza.getClassesInSignature()) {
+            for (String item : de.fizkarlsruhe.ise.ontoboard.prov.EditorNotes.trackerItemsOn(
+                    pizza, cls.getIRI())) {
+                text.append("- `").append(shortName(cls.getIRI().toString())).append("` -> ")
+                        .append(item).append('\n');
+            }
+        }
+        write(new File(reports, "curation.md"), text.toString());
+
+        assertFalse(notes.isEmpty(), "v4 is the curation pass; it must carry notes");
+    }
+
+    /**
+     * Borrowing terms from somebody else's ontology, with the whole apparatus that makes it
+     * resolve for anyone but the author: a module, a catalog entry, an import declaration, and a
+     * record of which upstream release it came from.
+     */
+    private void writeImportReport(OWLOntology pizza, File ontologyDir, File reports)
+            throws Exception {
+        OWLOntology upstream = PizzaOntology.upstreamFoodOntology();
+        IRI moduleIri = IRI.create(PizzaOntology.IRI_BASE + "/imports/food_import.owl");
+
+        de.fizkarlsruhe.ise.ontoboard.robot.TermExtract.Result extracted =
+                de.fizkarlsruhe.ise.ontoboard.robot.TermExtract.run(upstream,
+                        PizzaOntology.borrowedTerms(),
+                        de.fizkarlsruhe.ise.ontoboard.robot.TermExtract.Method.BOT, moduleIri);
+
+        // Which release it came from, recorded in the module itself.
+        extracted.getModule().getOWLOntologyManager().applyChanges(
+                de.fizkarlsruhe.ise.ontoboard.robot.ImportProvenance.stamp(
+                        extracted.getModule(), upstream, CURATED_ON));
+
+        File imports = new File(ontologyDir, "imports");
+        imports.mkdirs();
+        File moduleFile = new File(imports, "food_import.owl");
+        extracted.getModule().getOWLOntologyManager().saveOntology(
+                extracted.getModule(), IRI.create(moduleFile.toURI()));
+
+        // The catalog entry is the part that makes it resolve for anybody else.
+        de.fizkarlsruhe.ise.ontoboard.odk.Catalog.addEntry(
+                new File(ontologyDir, "catalog-v001.xml"), moduleIri.toString(),
+                "imports/food_import.owl");
+
+        // The import declaration itself. Without it the module is a file nobody reads: the three
+        // pieces - module, catalog entry, import statement - only work together, which is the
+        // whole reason ImportTermsAction does all three rather than leaving two to the user.
+        pizza.getOWLOntologyManager().applyChange(new org.semanticweb.owlapi.model.AddImport(
+                pizza, pizza.getOWLOntologyManager().getOWLDataFactory()
+                        .getOWLImportsDeclaration(moduleIri)));
+        pizza.getOWLOntologyManager().saveOntology(pizza,
+                IRI.create(new File(ontologyDir, ID + "-edit.owl").toURI()));
+
+        de.fizkarlsruhe.ise.ontoboard.robot.ImportProvenance.Report provenance =
+                de.fizkarlsruhe.ise.ontoboard.robot.ImportProvenance.check(
+                        extracted.getModule(), upstream.getOWLOntologyManager());
+
+        StringBuilder text = new StringBuilder("# Borrowed terms - " + version + "\n\n");
+        text.append("Extracted from `").append(upstream.getOntologyID().getOntologyIRI().get())
+                .append("` with ROBOT's BOT module method.\n\n");
+        text.append("- terms requested: **").append(extracted.getRequested()).append("**\n");
+        text.append("- terms missing upstream: **").append(extracted.getMissing().size())
+                .append("**\n");
+        text.append("- axioms in the module: **").append(extracted.getAxiomCount())
+                .append("**\n");
+        text.append("- module IRI: `").append(moduleIri).append("`\n");
+        text.append("- cut from: `").append(provenance.getCutFrom()).append("`\n");
+        text.append("- extracted on: ").append(provenance.getExtractedOn()).append("\n\n");
+        text.append("The module is written to `src/ontology/imports/food_import.owl` and mapped\n");
+        text.append("in `catalog-v001.xml`. Both are committed: an import module that is\n");
+        text.append("gitignored resolves for the person who made it and for nobody else, which\n");
+        text.append("is a defect this run found in OntoBoard's own scaffold.\n");
+        write(new File(reports, "imports.md"), text.toString());
+
+        assertTrue(extracted.getMissing().isEmpty(),
+                "the borrowed terms should all exist upstream: " + extracted.getMissing());
+        assertTrue(extracted.getAxiomCount() > 0, "an empty module is not an import");
+        assertNotNull(provenance.getCutFrom(), "the module must record which release it came from");
+    }
+
+    /** What the generated Makefile actually offers, read by the plugin's own parser. */
+    private void writeMakeTargetsReport(File editFile, File reports) throws IOException {
+        List<String> targets = de.fizkarlsruhe.ise.ontoboard.odk.MakeTargets.of(editFile);
+        StringBuilder text = new StringBuilder("# Make targets - " + version + "\n\n");
+        text.append("Parsed from the generated Makefile by the plugin's own parser, which is\n");
+        text.append("what OntoBoard's Build... dialog offers.\n\n");
+        for (String target : targets) {
+            text.append("- `make ").append(target).append("`\n");
+        }
+        write(new File(reports, "make-targets.md"), text.toString());
+        assertFalse(targets.isEmpty(), "the Build dialog would have nothing to offer");
     }
 
     private static void write(File target, String body) throws IOException {

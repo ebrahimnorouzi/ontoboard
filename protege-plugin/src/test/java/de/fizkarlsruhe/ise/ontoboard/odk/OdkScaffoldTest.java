@@ -464,4 +464,34 @@ class OdkScaffoldTest {
         }
     }
 
+
+    /**
+     * An import module must be committed, not ignored.
+     *
+     * <p>The generated .gitignore used to hold {@code src/ontology/imports/*.owl}. Combined with
+     * the catalog entry and the import declaration that {@code ImportTermsAction} writes - both
+     * committed - that produces a repository whose imports resolve for their author and for
+     * nobody else: clone it and the catalog maps an IRI to a file that is not there. The
+     * generated CI would not catch it either, because {@code make test} reports on the edit file
+     * without loading its imports.
+     */
+    @Test
+    void importModulesAreCommittedNotIgnored() throws Exception {
+        java.nio.file.Path dir = java.nio.file.Files.createTempDirectory("ontoboard-gitignore");
+        OdkProjectConfig config = new OdkProjectConfig("abc", "ABC", "",
+                "http://x.org/abc.owl", "", dir.toFile());
+        OdkScaffold.create(config);
+
+        // .gitignore is at the project root, not under src/ontology like the rest.
+        String ignored = read(new File(config.getProjectRoot(), ".gitignore"));
+
+        for (String line : ignored.split("\\r?\\n")) {
+            assertFalse(line.contains("imports"),
+                    "an ignored import module is an import that resolves only for its author: "
+                            + line);
+        }
+        // Generated output should still be ignored - the point is which things are generated.
+        assertTrue(ignored.contains("report.tsv"), ignored);
+        assertTrue(ignored.contains("tmp_"), ignored);
+    }
 }

@@ -331,8 +331,23 @@ public final class OdkScaffold {
      * keep diagrams private can add the line back; a team that never thinks about it gets the
      * better default.
      */
+    /**
+     * What not to commit: generated output, and nothing else.
+     *
+     * <p>{@code src/ontology/imports/*.owl} used to be here and it was actively harmful. An import
+     * module is not generated output that anyone can reproduce - it is a few dozen axioms this
+     * project chose to copy out of a much larger ontology at a particular release, and ODK
+     * projects commit them. Ignoring them while committing the catalog entry and the import
+     * declaration that point at them produces a repository whose imports resolve for the person
+     * who made them and for nobody else: clone it, and the catalog maps an IRI to a file that is
+     * not there.
+     *
+     * <p>That is exactly the failure {@code ImportTermsAction} writes a catalog entry to prevent,
+     * reintroduced one directory away. CI would not catch it either - the generated workflow runs
+     * {@code make test}, which reports on the edit file without loading its imports.
+     */
     private static String gitignore() {
-        return "tmp_*\nreport.tsv\n*.bak\nsrc/ontology/imports/*.owl\n";
+        return "tmp_*\nreport.tsv\n*.bak\n";
     }
 
     private static String readme(OdkProjectConfig c) {
