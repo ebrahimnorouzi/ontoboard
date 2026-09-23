@@ -6,7 +6,8 @@ import java.util.Objects;
 public final class CanvasEdge {
 
     public enum Kind {
-        SUBCLASS, OBJECT_PROPERTY, DATA_PROPERTY, TYPE, SUB_PROPERTY, INFERRED_SUBCLASS
+        SUBCLASS, OBJECT_PROPERTY, DATA_PROPERTY, TYPE, SUB_PROPERTY, INFERRED_SUBCLASS,
+        INFERRED_TYPE
     }
 
     private final String id;

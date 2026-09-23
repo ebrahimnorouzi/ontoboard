@@ -67,15 +67,7 @@ public final class InferredEdges {
      */
     public static List<CanvasEdge> subClassEdges(OWLReasoner reasoner, Set<String> onCanvas,
             Collection<CanvasEdge> asserted, OWLDataFactory factory) {
-        if (reasoner == null) {
-            throw new NotAvailable("No reasoner is running. Start one from Protege's Reasoner "
-                    + "menu, then show inferences again.");
-        }
-        if (isNoOp(reasoner)) {
-            throw new NotAvailable("The selected reasoner does not infer anything ("
-                    + reasoner.getReasonerName() + "). Choose ELK or HermiT from Protege's "
-                    + "Reasoner menu and start it.");
-        }
+        requireUsable(reasoner);
         Set<String> alreadyDrawn = new HashSet<String>();
         for (CanvasEdge edge : asserted) {
             if (edge.getKind() == CanvasEdge.Kind.SUBCLASS) {
@@ -132,6 +124,104 @@ public final class InferredEdges {
             }
         }
         return inferred;
+    }
+
+    /**
+     * Inferred type edges: individuals on the board that the reasoner puts in a class on the board.
+     *
+     * <p>The other half of what a reasoner has to say, and the half the canvas used to throw away.
+     * Class subsumption was drawn and individuals were not, so a board holding individuals showed
+     * nothing at all when inferences were switched on - which reads as "the reasoner found
+     * nothing" rather than "this tool does not look".
+     *
+     * <p>It is also the payoff case for the classic teaching ontology. A pizza whose toppings are
+     * all vegetarian is a {@code VegetarianPizza} without anybody saying so; that conclusion is
+     * the entire point of writing the definition, and it is about an individual.
+     *
+     * <p>Same two restrictions as {@link #subClassEdges}: only between things already on the
+     * board, and only where no asserted edge says the same. Types are additionally narrowed to
+     * the reasoner's <em>direct</em> types, because every ancestor of a direct type is also a
+     * type - drawing them all would fan every individual out to the whole hierarchy above it.
+     *
+     * @param reasoner a reasoner Protege has started; must not be a no-op one
+     * @param onCanvas IRIs currently on the board
+     * @param asserted the edges the projection already produced, so duplicates are skipped
+     * @param factory the data factory for building the individuals to query
+     * @throws NotAvailable when no usable reasoner is running
+     */
+    public static List<CanvasEdge> typeEdges(OWLReasoner reasoner, Set<String> onCanvas,
+            Collection<CanvasEdge> asserted, OWLDataFactory factory) {
+        requireUsable(reasoner);
+
+        Set<String> alreadyDrawn = new HashSet<String>();
+        for (CanvasEdge edge : asserted) {
+            if (edge.getKind() == CanvasEdge.Kind.TYPE) {
+                alreadyDrawn.add(edge.getSourceId() + " -> " + edge.getTargetId());
+            }
+        }
+
+        List<CanvasEdge> inferred = new ArrayList<CanvasEdge>();
+        Set<String> emitted = new LinkedHashSet<String>();
+        for (String individualIri : sorted(onCanvas)) {
+            Set<String> types;
+            try {
+                types = directTypesOf(reasoner, factory, individualIri);
+            } catch (RuntimeException notAnIndividual) {
+                // Most IRIs on the board are classes, and asking for the types of one is not a
+                // question with an answer. One awkward entity must not cost the whole result.
+                continue;
+            }
+            for (String typeIri : sorted(types)) {
+                if (!onCanvas.contains(typeIri)) {
+                    // Inferring towards a class nobody put on the diagram would drag it on.
+                    continue;
+                }
+                String key = individualIri + " -> " + typeIri;
+                if (alreadyDrawn.contains(key) || !emitted.add(key)) {
+                    continue;
+                }
+                inferred.add(new CanvasEdge("inft|" + individualIri + "|" + typeIri,
+                        individualIri, typeIri, "inferred", CanvasEdge.Kind.INFERRED_TYPE));
+            }
+        }
+        return inferred;
+    }
+
+    /**
+     * The classes the reasoner puts an individual in directly.
+     *
+     * <p>Returns empty for anything that is not a named individual in the ontology, which is most
+     * of what is on a board.
+     */
+    private static Set<String> directTypesOf(OWLReasoner reasoner, OWLDataFactory factory,
+            String iri) {
+        Set<String> types = new LinkedHashSet<String>();
+        org.semanticweb.owlapi.model.OWLNamedIndividual individual =
+                factory.getOWLNamedIndividual(org.semanticweb.owlapi.model.IRI.create(iri));
+        if (!reasoner.getRootOntology().containsIndividualInSignature(
+                individual.getIRI(), org.semanticweb.owlapi.model.parameters.Imports.INCLUDED)) {
+            return types;
+        }
+        for (org.semanticweb.owlapi.model.OWLClass type
+                : reasoner.getTypes(individual, true).getFlattened()) {
+            if (!type.isOWLThing() && !type.isOWLNothing()) {
+                types.add(type.getIRI().toString());
+            }
+        }
+        return types;
+    }
+
+    /** The reasoner check both entry points share, so they fail with one message. */
+    private static void requireUsable(OWLReasoner reasoner) {
+        if (reasoner == null) {
+            throw new NotAvailable("No reasoner is running. Start one from Protege's Reasoner "
+                    + "menu, then show inferences again.");
+        }
+        if (isNoOp(reasoner)) {
+            throw new NotAvailable("The selected reasoner does not infer anything ("
+                    + reasoner.getReasonerName() + "). Choose ELK or HermiT from Protege's "
+                    + "Reasoner menu and start it.");
+        }
     }
 
     /**

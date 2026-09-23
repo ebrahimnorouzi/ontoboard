@@ -38,6 +38,34 @@ public final class OntologyProjection {
         return new CanvasNode(iri(entity), kind, label, EditorNotes.hasNote(ontology, entity));
     }
 
+    /**
+     * Every entity worth putting on a board, for "Add all".
+     *
+     * <p>Classes, individuals, object properties and data properties - the four kinds
+     * {@link #project} draws. The list used to be classes and individuals only, which meant the
+     * one bulk gesture in the tool silently withheld two of the four kinds it can render: press
+     * "Add all" on an ontology built around its object properties and you got the class tree and
+     * no properties, with nothing saying why. The property hierarchy the canvas can draw was
+     * unreachable except by dragging each property across by hand.
+     *
+     * <p>Datatypes are deliberately absent. They appear as nodes only where a data property edge
+     * puts them there, and adding every datatype an ontology mentions would put xsd:string on the
+     * board with nothing attached to it.
+     */
+    public static Set<String> everythingWorthShowing(OWLOntology ontology) {
+        Set<String> iris = new java.util.LinkedHashSet<String>();
+        if (ontology == null) {
+            return iris;
+        }
+        for (org.semanticweb.owlapi.model.OWLEntity entity : ontology.getSignature()) {
+            if (entity.isOWLClass() || entity.isOWLNamedIndividual()
+                    || entity.isOWLObjectProperty() || entity.isOWLDataProperty()) {
+                iris.add(entity.getIRI().toString());
+            }
+        }
+        return iris;
+    }
+
     public static Projection project(OWLOntology ontology, Set<String> onCanvasIris) {
         List<CanvasNode> nodes = new ArrayList<>();
         List<CanvasEdge> edges = new ArrayList<>();

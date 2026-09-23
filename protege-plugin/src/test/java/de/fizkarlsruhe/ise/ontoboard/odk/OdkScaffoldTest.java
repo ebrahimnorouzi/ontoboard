@@ -374,9 +374,21 @@ class OdkScaffoldTest {
         }
     }
 
-    /** Deleting a line is how a check disappears, so the file has to say so. */
+    /**
+     * The profile must contain nothing but rules.
+     *
+     * <p>This test used to assert the opposite - that an explanatory header was present - and that
+     * header broke {@code make report} in every project this scaffold produced. ROBOT's profile
+     * parser reads every line as {@code <LEVEL> <rule>} and has no comment syntax, so a leading
+     * {@code #} is taken for a reporting level and the run dies with "REPORT LEVEL ERROR '# ...'
+     * is not a valid reporting level".
+     *
+     * <p>Neither ROBOT's documentation nor its error message says comments are unsupported; the
+     * only way this surfaced was running the real ODK container against a generated project. The
+     * explanation now lives in the Makefile, where {@code #} is a comment.
+     */
     @Test
-    void theProfileWarnsThatADeletedLineIsADisabledCheck() throws Exception {
+    void theProfileContainsNothingButRules() throws Exception {
         java.nio.file.Path dir = java.nio.file.Files.createTempDirectory("ontoboard-profile");
         OdkProjectConfig config = new OdkProjectConfig("abc", "ABC", "",
                 "http://x.org/abc.owl", "", dir.toFile());
@@ -384,8 +396,37 @@ class OdkScaffoldTest {
 
         String profile = read(config, "profile.txt");
 
-        assertTrue(profile.contains("does NOT merge"), profile);
-        assertTrue(profile.contains("stops running"), profile);
+        for (String line : profile.split("\r?\n")) {
+            if (line.trim().isEmpty()) {
+                continue;
+            }
+            assertFalse(line.startsWith("#"),
+                    "ROBOT parses this as a reporting level and refuses to run: " + line);
+            String[] parts = line.split("\\s+");
+            assertEquals(2, parts.length, "not a '<LEVEL> <rule>' line: " + line);
+            assertTrue(parts[0].equals("ERROR") || parts[0].equals("WARN")
+                            || parts[0].equals("INFO"),
+                    "not a reporting level ROBOT accepts: " + parts[0]);
+        }
+    }
+
+    /**
+     * The warning a deleted line is a disabled check still has to be somewhere a person meets it -
+     * it just cannot be in profile.txt. The Makefile is where the report is actually run from.
+     */
+    @Test
+    void theMakefileExplainsThatADeletedRuleStopsRunning() throws Exception {
+        java.nio.file.Path dir = java.nio.file.Files.createTempDirectory("ontoboard-makefile");
+        OdkProjectConfig config = new OdkProjectConfig("abc", "ABC", "",
+                "http://x.org/abc.owl", "", dir.toFile());
+        OdkScaffold.create(config);
+
+        String makefile = read(config, "Makefile");
+
+        assertTrue(makefile.contains("does NOT"), makefile);
+        assertTrue(makefile.contains("stops running silently"), makefile);
+        assertTrue(makefile.contains("Do not put comments in profile.txt"),
+                "the trap that broke every generated project has to be named: " + makefile);
     }
 
     /** Rule names from a ROBOT profile file, ignoring comments and blank lines. */

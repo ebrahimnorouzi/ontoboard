@@ -175,6 +175,12 @@ public final class CanvasLegend {
                         + "directly. Dotted and grey so it is never mistaken for an asserted "
                         + "axiom - it will disappear if the axioms it followed from change.",
                 null, "#8A94A0", "1 5"));
+        entries.add(new Entry(Form.EDGE, SchemaStyles.INFERRED_TYPE, "Inferred type",
+                "The reasoner worked out that this individual belongs to this class, though "
+                        + "nothing says so directly - usually because the class is defined by "
+                        + "conditions the individual happens to meet. Grey and dotted like any "
+                        + "other conclusion.",
+                null, "#8A94A0", "1 5"));
 
         return entries;
     }
@@ -252,6 +258,8 @@ public final class CanvasLegend {
                 return SchemaStyles.SUB_PROPERTY;
             case INFERRED_SUBCLASS:
                 return SchemaStyles.INFERRED_SUBCLASS;
+            case INFERRED_TYPE:
+                return SchemaStyles.INFERRED_TYPE;
             default:
                 return null;
         }

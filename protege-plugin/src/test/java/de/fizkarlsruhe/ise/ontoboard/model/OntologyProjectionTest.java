@@ -345,4 +345,64 @@ class OntologyProjectionTest {
         assertEquals(plain.hashCode(), marked.hashCode());
     }
 
+
+    // ---------- what "Add all" offers ----------
+
+    /**
+     * The defect this pins: "Add all" collected classes and individuals only, so the one bulk
+     * gesture in the tool silently withheld two of the four kinds the canvas can draw. Press it on
+     * an ontology built around its object properties and you got the class tree and no properties,
+     * with nothing saying why - and the property hierarchy the canvas can render was unreachable
+     * except by dragging each property across by hand.
+     */
+    @Test
+    void addAllOffersPropertiesAsWellAsClassesAndIndividuals() throws Exception {
+        OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
+        OWLOntology ontology = manager.createOntology(IRI.create("http://example.org/o"));
+        OWLDataFactory factory = manager.getOWLDataFactory();
+        String ns = "http://example.org/o#";
+
+        manager.addAxiom(ontology, factory.getOWLDeclarationAxiom(
+                factory.getOWLClass(IRI.create(ns + "Pizza"))));
+        manager.addAxiom(ontology, factory.getOWLDeclarationAxiom(
+                factory.getOWLNamedIndividual(IRI.create(ns + "margherita"))));
+        manager.addAxiom(ontology, factory.getOWLDeclarationAxiom(
+                factory.getOWLObjectProperty(IRI.create(ns + "hasTopping"))));
+        manager.addAxiom(ontology, factory.getOWLDeclarationAxiom(
+                factory.getOWLDataProperty(IRI.create(ns + "hasCalories"))));
+
+        java.util.Set<String> offered = OntologyProjection.everythingWorthShowing(ontology);
+
+        assertTrue(offered.contains(ns + "Pizza"), offered.toString());
+        assertTrue(offered.contains(ns + "margherita"), offered.toString());
+        assertTrue(offered.contains(ns + "hasTopping"),
+                "object properties were left off the board: " + offered);
+        assertTrue(offered.contains(ns + "hasCalories"),
+                "data properties were left off the board: " + offered);
+        assertEquals(4, offered.size(), offered.toString());
+    }
+
+    /**
+     * Datatypes are deliberately not offered: they earn a node only where a data property edge
+     * puts them there, and xsd:string sitting alone on a board attached to nothing is noise.
+     */
+    @Test
+    void addAllDoesNotOfferBareDatatypes() throws Exception {
+        OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
+        OWLOntology ontology = manager.createOntology(IRI.create("http://example.org/o"));
+        OWLDataFactory factory = manager.getOWLDataFactory();
+        manager.addAxiom(ontology, factory.getOWLDataPropertyRangeAxiom(
+                factory.getOWLDataProperty(IRI.create("http://example.org/o#hasCalories")),
+                factory.getOWLDatatype(IRI.create(
+                        "http://www.w3.org/2001/XMLSchema#integer"))));
+
+        for (String iri : OntologyProjection.everythingWorthShowing(ontology)) {
+            assertFalse(iri.startsWith("http://www.w3.org/2001/XMLSchema#"), iri);
+        }
+    }
+
+    @Test
+    void nothingToOfferIsNotAnAnswer() {
+        assertTrue(OntologyProjection.everythingWorthShowing(null).isEmpty());
+    }
 }
