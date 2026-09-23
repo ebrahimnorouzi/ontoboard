@@ -323,8 +323,29 @@ public final class ReleaseDiff {
     }
 
     /** {@code IAO:0100001 term replaced by}, so a reader knows where the term went. */
+    /**
+     * Where a retired term went, however that was recorded.
+     *
+     * <p>This read only {@code IAO:0100001 term replaced by}, so half the feature disappeared
+     * from the release notes: {@code Obsoletion} writes {@code oboInOwl:consider} when the
+     * replacement is a suggestion rather than an equivalent, and the dialog makes that choice
+     * prominent because the difference decides whether a consumer can migrate mechanically. A
+     * reader of the notes was told a term had gone and nothing about where to go instead, which
+     * is the single most useful fact in an obsoletion notice.
+     *
+     * <p>Rendered short, because the value is an IRI: printing the whole thing in a list of bare
+     * term names is unreadable.
+     */
     private static String replacedBy(OWLOntology ontology, IRI iri) {
-        IRI property = IRI.create("http://purl.obolibrary.org/obo/IAO_0100001");
+        String exact = annotationValue(ontology, iri, Obsoletion.TERM_REPLACED_BY);
+        if (!exact.isEmpty()) {
+            return "replaced by " + shortForm(IRI.create(exact));
+        }
+        String consider = annotationValue(ontology, iri, Obsoletion.CONSIDER);
+        return consider.isEmpty() ? "" : "consider " + shortForm(IRI.create(consider));
+    }
+
+    private static String annotationValue(OWLOntology ontology, IRI iri, IRI property) {
         for (OWLAnnotationAssertionAxiom axiom : ontology.getAnnotationAssertionAxioms(iri)) {
             if (property.equals(axiom.getProperty().getIRI())) {
                 return axiom.getValue() instanceof OWLLiteral

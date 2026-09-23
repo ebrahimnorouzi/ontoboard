@@ -243,9 +243,15 @@ public final class TermExtract {
         if (projectIri == null) {
             return moduleIriFor(source);
         }
-        String project = projectIri.toString();
-        int lastSlash = project.lastIndexOf('/');
-        String stem = lastSlash > 0 ? project.substring(0, lastSlash) : project;
+        // The project's namespace, which is its IRI minus any .owl - not its parent. Cutting
+        // at the last slash published the module one level up: for .../obo/mwo.owl it produced
+        // .../obo/imports/iao_import.owl, in OBO's shared root, which belongs to no project and
+        // which every ODK project extracting from IAO would mint identically. That is the exact
+        // collision the javadoc above says this naming exists to prevent.
+        String stem = de.fizkarlsruhe.ise.ontoboard.odk.ProjectIri.stemOf(projectIri.toString());
+        if (stem == null) {
+            return moduleIriFor(source);
+        }
         return IRI.create(stem + "/imports/" + shortNameOf(source) + "_import.owl");
     }
 

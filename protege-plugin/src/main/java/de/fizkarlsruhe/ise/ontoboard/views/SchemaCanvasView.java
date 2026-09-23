@@ -1242,8 +1242,26 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
 
         if (currentOntologyFile != null
                 && CanvasLayoutStore.sidecarFor(currentOntologyFile).isFile()) {
-            CanvasLayout stored = CanvasLayoutStore.load(currentOntologyFile);
-            if (stored.belongsTo(ontologyIriOf(ontology))) {
+            // A sidecar this plugin cannot read must cost the arrangement, never the view.
+            // CanvasLayoutStore.load throws by design - UncheckedIOException on unparseable JSON,
+            // UnsupportedLayoutVersionException on a file written by a newer OntoBoard - and
+            // nothing caught either. This runs from initialiseOWLView, so a half-written sidecar
+            // (an interrupted save, a merge conflict, a colleague on a newer version) stopped the
+            // OntoBoard tab from opening at all, every time, with no way back except finding and
+            // deleting a file whose name the user has no reason to know.
+            CanvasLayout stored;
+            try {
+                stored = CanvasLayoutStore.load(currentOntologyFile);
+            } catch (RuntimeException unreadable) {
+                LOGGER.warn("OntoBoard: cannot read {}; starting with an empty board",
+                        CanvasLayoutStore.sidecarFor(currentOntologyFile), unreadable);
+                setStatus("The saved arrangement could not be read, so the board starts empty. "
+                        + "Your ontology is untouched. " + unreadable.getMessage());
+                stored = null;
+            }
+            if (stored == null) {
+                layout = null;
+            } else if (stored.belongsTo(ontologyIriOf(ontology))) {
                 layout = stored;
                 pruneStaleMembers(ontology, layout);
             } else {
@@ -1290,11 +1308,37 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         return iri.isPresent() ? iri.get().toString() : null;
     }
 
+    /**
+     * Saves the arrangement, or says once that it cannot.
+     *
+     * <p>Caught here so no caller has to. The callers are a debounce {@link Timer} and nine mouse
+     * and menu handlers, none of which has anything above it to catch an exception - so an
+     * ontology opened from somewhere readable but not writable (a read-only checkout, a mounted
+     * share, a protected directory) turned every node drag into an uncaught
+     * {@code UncheckedIOException} on the event thread, 800ms after the user let go of the mouse.
+     *
+     * <p>Reported once per session. A failing drag reports on every mouse release otherwise, and
+     * a dialog per drag is worse than the silence it replaced.
+     */
     private void saveLayoutTo(File file) {
-        if (file != null) {
+        if (file == null) {
+            return;
+        }
+        try {
             CanvasLayoutStore.save(file, layout);
+        } catch (RuntimeException cannotWrite) {
+            if (reportedSaveFailure.compareAndSet(false, true)) {
+                LOGGER.warn("OntoBoard: cannot write {}",
+                        CanvasLayoutStore.sidecarFor(file), cannotWrite);
+                setStatus("This board's arrangement cannot be saved: " + cannotWrite.getMessage()
+                        + " The ontology itself is unaffected.");
+            }
         }
     }
+
+    /** So a board that cannot be saved says so once rather than on every drag. */
+    private final java.util.concurrent.atomic.AtomicBoolean reportedSaveFailure =
+            new java.util.concurrent.atomic.AtomicBoolean();
 
     /**
      * Creates a class or individual and places it where the user clicked.
@@ -1512,10 +1556,17 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         }
         Collections.sort(targets);
 
-        String[] labels = new String[targets.size()];
+        // Options carry their IRI. Round-tripping through the rendered label and looking the
+        // string back up meant two board entries rendering to the same text both resolved to the
+        // first one's IRI - so the axiom was written against a class the user had not picked, and
+        // the canvas then drew the arrow there because the axiom really did say so. Same text is
+        // easy to get: DisplayLabels falls back to the IRI's short name, so a#Pizza and b#Pizza
+        // both render "Pizza", which is precisely the case somebody aligning two ontologies has
+        // on the board.
+        Target[] labels = new Target[targets.size()];
         for (int i = 0; i < targets.size(); i++) {
-            labels[i] = DisplayLabels.forEntity(ontology,
-                    factory.getOWLClass(IRI.create(targets.get(i))));
+            labels[i] = new Target(targets.get(i), DisplayLabels.forEntity(ontology,
+                    factory.getOWLClass(IRI.create(targets.get(i)))));
         }
         String sourceLabel = DisplayLabels.forEntity(ontology,
                 factory.getOWLClass(IRI.create(sourceIri)));
@@ -1526,10 +1577,10 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         if (chosen == null) {
             return;
         }
-        String targetIri = targets.get(indexOf(labels, chosen.toString()));
+        String targetIri = ((Target) chosen).iri;
 
         RelationDialog.Choice choice =
-                RelationDialog.ask(this, ontology, sourceLabel, chosen.toString());
+                RelationDialog.ask(this, ontology, sourceLabel, ((Target) chosen).label);
         if (choice == null) {
             return;
         }
@@ -1620,10 +1671,13 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         }
         Collections.sort(targets);
 
-        String[] labels = new String[targets.size()];
+        // Identity, not rendered text - the same reason as in createRelationFrom. Two board
+        // entries that render alike both resolved to the first one's IRI, so the axiom was
+        // written against a term the user had not chosen.
+        Target[] labels = new Target[targets.size()];
         for (int i = 0; i < targets.size(); i++) {
-            labels[i] = getOWLModelManager().getRendering(
-                    entityOnCanvas(ontology, targets.get(i)));
+            labels[i] = new Target(targets.get(i), getOWLModelManager().getRendering(
+                    entityOnCanvas(ontology, targets.get(i))));
         }
         HierarchyAxioms.Kind kind = HierarchyAxioms.applicableTo(source,
                 entityOnCanvas(ontology, targets.get(0))).get(0);
@@ -1635,8 +1689,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         if (chosen == null) {
             return;
         }
-        OWLEntity target = entityOnCanvas(ontology,
-                targets.get(indexOf(labels, chosen.toString())));
+        OWLEntity target = entityOnCanvas(ontology, ((Target) chosen).iri);
 
         // Re-read for the chosen target: the list can hold more than one kind of term, and the
         // kind used for the prompt came from the first of them.
@@ -1664,39 +1717,6 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         getOWLModelManager().applyChanges(changes);
     }
 
-    /**
-     * The entity behind an IRI on the board, or null.
-     *
-     * <p>An IRI can name more than one kind of entity in the same ontology - OWL 2 punning - and
-     * the board holds one node per IRI. Classes first because that is what a board is mostly made
-     * of, and because a punned IRI drawn as a class should link as one.
-     */
-    private OWLEntity entityOnCanvas(OWLOntology ontology, String iri) {
-        IRI subject = IRI.create(iri);
-        OWLDataFactory factory = getOWLModelManager().getOWLDataFactory();
-        if (ontology.containsClassInSignature(subject)) {
-            return factory.getOWLClass(subject);
-        }
-        if (ontology.containsIndividualInSignature(subject)) {
-            return factory.getOWLNamedIndividual(subject);
-        }
-        if (ontology.containsObjectPropertyInSignature(subject)) {
-            return factory.getOWLObjectProperty(subject);
-        }
-        if (ontology.containsDataPropertyInSignature(subject)) {
-            return factory.getOWLDataProperty(subject);
-        }
-        return null;
-    }
-
-    private static int indexOf(String[] values, String needle) {
-        for (int i = 0; i < values.length; i++) {
-            if (values[i].equals(needle)) {
-                return i;
-            }
-        }
-        return 0;
-    }
 
     /**
      * Retracts the axiom an edge stands for, after confirmation.
@@ -1872,6 +1892,52 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                 createEntityAt(EntityFactory.Kind.CLASS, (int) at.getX(), (int) at.getY());
             }
         });
+    }
+
+    /**
+     * The entity behind an IRI on the board, or null.
+     *
+     * <p>An IRI can name more than one kind of entity in the same ontology - OWL 2 punning - and
+     * the board holds one node per IRI. Classes first because that is what a board is mostly made
+     * of, and because a punned IRI drawn as a class should link as one.
+     */
+    private OWLEntity entityOnCanvas(OWLOntology ontology, String iri) {
+        IRI subject = IRI.create(iri);
+        OWLDataFactory factory = getOWLModelManager().getOWLDataFactory();
+        if (ontology.containsClassInSignature(subject)) {
+            return factory.getOWLClass(subject);
+        }
+        if (ontology.containsIndividualInSignature(subject)) {
+            return factory.getOWLNamedIndividual(subject);
+        }
+        if (ontology.containsObjectPropertyInSignature(subject)) {
+            return factory.getOWLObjectProperty(subject);
+        }
+        if (ontology.containsDataPropertyInSignature(subject)) {
+            return factory.getOWLDataProperty(subject);
+        }
+        return null;
+    }
+
+    /**
+     * A term offered in a chooser, carrying what it is as well as what it looks like.
+     *
+     * <p>{@code JOptionPane} renders options with {@code toString()}, so the dialog looks exactly
+     * as it did - but identity no longer depends on two terms rendering differently.
+     */
+    private static final class Target {
+        private final String iri;
+        private final String label;
+
+        Target(String iri, String label) {
+            this.iri = iri;
+            this.label = label;
+        }
+
+        @Override
+        public String toString() {
+            return label;
+        }
     }
 
     /**

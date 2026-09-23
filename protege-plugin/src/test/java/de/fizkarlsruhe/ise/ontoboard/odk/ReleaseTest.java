@@ -43,19 +43,42 @@ class ReleaseTest {
 
     // ---------- the version IRI ----------
 
-    /** The OBO pattern exactly, so the date can be read out of the IRI without fetching it. */
+/**
+     * The OBO pattern exactly, so the date can be read out of the IRI without fetching it.
+     *
+     * <p>This test asserted {@code .../obo/releases/2026-08-30/mwo.owl} for years, under this
+     * name, and that is not the OBO pattern - the ontology's own id is missing. The code cut the
+     * IRI at its last slash, which removes the project rather than the file extension, so every
+     * OBO ontology released with this plugin would have collided in one {@code obo/releases/}
+     * space. Real OBO releases go.owl as {@code .../obo/go/releases/<date>/go.owl}.
+     */
     @Test
     void theVersionIriFollowsTheOboReleasePattern() {
         assertEquals(
-                IRI.create("http://purl.obolibrary.org/obo/releases/2026-08-30/mwo.owl"),
+                IRI.create("http://purl.obolibrary.org/obo/mwo/releases/2026-08-30/mwo.owl"),
                 Release.versionIri(MWO, "2026-08-30"));
     }
 
+    /**
+     * The rule is mechanical: drop {@code .owl}, append {@code /releases/<date>/<name>.owl}. It
+     * is applied even when that repeats a path segment, because the alternative - noticing that
+     * the parent segment already spells the ontology's name and quietly not repeating it - is a
+     * special case nobody could predict, and it would disagree with the Makefile this plugin
+     * scaffolds, which does the mechanical thing.
+     */
     @Test
-    void aProjectUnderItsOwnPathKeepsThatPath() {
+    void theRuleIsMechanicalEvenWhenThatRepeatsASegment() {
         assertEquals(
-                IRI.create("https://w3id.org/mwo/releases/2026-08-30/mwo.owl"),
+                IRI.create("https://w3id.org/mwo/mwo/releases/2026-08-30/mwo.owl"),
                 Release.versionIri(IRI.create("https://w3id.org/mwo/mwo.owl"), "2026-08-30"));
+    }
+
+    /** An ontology IRI without a .owl suffix - which is what OntoBoard's own wizard produces. */
+    @Test
+    void anIriWithoutAnExtensionStillGetsAReleaseIri() {
+        assertEquals(
+                IRI.create("http://example.org/pizza/releases/2026-08-30/pizza.owl"),
+                Release.versionIri(IRI.create("http://example.org/pizza"), "2026-08-30"));
     }
 
     /**
@@ -84,7 +107,7 @@ class ReleaseTest {
     void stampingSetsBothTheVersionIriAndTheVersionInfo() {
         manager.applyChanges(Release.stamp(ontology, "2026-08-30"));
 
-        assertEquals(IRI.create("http://purl.obolibrary.org/obo/releases/2026-08-30/mwo.owl"),
+        assertEquals(IRI.create("http://purl.obolibrary.org/obo/mwo/releases/2026-08-30/mwo.owl"),
                 Release.versionIriOf(ontology));
         assertEquals("2026-08-30", Release.versionInfoOf(ontology));
     }

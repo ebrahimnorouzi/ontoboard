@@ -4,9 +4,10 @@
 
 - Protégé Desktop 5.5.0 or later. The bundle's `Import-Package` versions
   are declared as `[5.5.0, infinity)`, so it also loads on 5.6.x.
-- `-Xmx500M` in `Protege.l4j.ini` (next to `Protege.exe`) is **too low** once
-  ROBOT operations land in later releases of this plugin. Raise it (e.g.
-  `-Xmx2G` or higher) before relying on those features; leaving it at the
+- `-Xmx500M` in `Protege.l4j.ini` (next to `Protege.exe`) is **too low** for the
+  ROBOT operations this plugin ships today — reasoning, the quality report,
+  transforms, term extraction. Raise it (e.g. `-Xmx2G` or higher) before using
+  them; this is not future work. Leaving it at the
   default risks `OutOfMemoryError` during larger ontology processing.
 
 ## Installing a new version

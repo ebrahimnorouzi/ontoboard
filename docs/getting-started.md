@@ -12,7 +12,7 @@
 4. Restart Protégé, then **Window → Tabs → OntoBoard**.
 
 Protégé **5.6.x** is recommended. It runs on 5.5.0 with fewer ROBOT operations available —
-see [limitations](limitations.md#host-support).
+see [Known constraints](limitations.md#known-constraints).
 
 ### A first session
 

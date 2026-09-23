@@ -1,5 +1,11 @@
 # Features
 
+> **Scope: the web application.** The Protégé plugin is a separate client with a
+> different feature set — see "What it does today" in the
+> [README](../README.md), [feature parity](feature-parity.md) and
+> [limitations](limitations.md).
+
+
 This document provides detailed documentation of all OntoBoard features, including the Manchester Syntax parser grammar, SWRL rule format, ID ranges OWL format, and collaboration scaling guide.
 
 ## Visual Ontology Canvas

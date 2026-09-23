@@ -134,17 +134,34 @@ public final class Obsoletion {
             changes.add(new RemoveAxiom(ontology, axiom));
         }
 
+        // Declared before use, for the same reason the class itself is declared above: an
+        // undeclared annotation property is an OWL 2 DL violation in its own right. Without this,
+        // retiring one term took the whole ontology out of DL - and OntoBoard's own ROBOT >
+        // Profile then reported the violation OntoBoard had just introduced. owl:deprecated needs
+        // no declaration; it is built in.
         if (replacement != null) {
+            IRI pointer = exact ? TERM_REPLACED_BY : CONSIDER;
+            declareProperty(changes, ontology, factory, pointer);
             changes.add(new AddAxiom(ontology, factory.getOWLAnnotationAssertionAxiom(
-                    factory.getOWLAnnotationProperty(exact ? TERM_REPLACED_BY : CONSIDER),
-                    term, replacement)));
+                    factory.getOWLAnnotationProperty(pointer), term, replacement)));
         }
         if (reason != null && !reason.trim().isEmpty()) {
+            declareProperty(changes, ontology, factory, OBSOLESCENCE_REASON);
             changes.add(new AddAxiom(ontology, factory.getOWLAnnotationAssertionAxiom(
                     factory.getOWLAnnotationProperty(OBSOLESCENCE_REASON), term,
                     factory.getOWLLiteral(reason.trim()))));
         }
         return changes;
+    }
+
+    /** Adds a declaration for an annotation property the ontology does not declare yet. */
+    private static void declareProperty(List<OWLOntologyChange> changes, OWLOntology ontology,
+            OWLDataFactory factory, IRI property) {
+        org.semanticweb.owlapi.model.OWLAnnotationProperty declared =
+                factory.getOWLAnnotationProperty(property);
+        if (!ontology.isDeclared(declared)) {
+            changes.add(new AddAxiom(ontology, factory.getOWLDeclarationAxiom(declared)));
+        }
     }
 
     /**

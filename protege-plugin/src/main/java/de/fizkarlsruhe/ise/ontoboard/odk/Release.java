@@ -64,12 +64,18 @@ public final class Release {
             throw new IllegalArgumentException(
                     "the ontology has no IRI, so a release IRI cannot be derived from it");
         }
-        String iri = ontologyIri.toString();
-        int lastSlash = iri.lastIndexOf('/');
-        String stem = lastSlash > 0 ? iri.substring(0, lastSlash) : iri;
-        String file = lastSlash > 0 && lastSlash < iri.length() - 1
-                ? iri.substring(lastSlash + 1) : "ontology.owl";
-        return IRI.create(stem + "/releases/" + date + "/" + file);
+        // Strips the .owl extension, not the last path segment. Cutting at the last slash
+        // removed the ontology's own name - so mwo.owl released as
+        // .../obo/releases/<date>/mwo.owl, in OBO's shared root, where every ontology built with
+        // this plugin would collide. See ProjectIri for the three places that got this wrong and
+        // the three different answers they produced for one release.
+        String versionIri = ProjectIri.releaseIri(ontologyIri.toString(), date);
+        if (versionIri == null) {
+            throw new IllegalArgumentException(
+                    "the ontology IRI '" + ontologyIri + "' has no name to build a release IRI "
+                            + "from");
+        }
+        return IRI.create(versionIri);
     }
 
     /**

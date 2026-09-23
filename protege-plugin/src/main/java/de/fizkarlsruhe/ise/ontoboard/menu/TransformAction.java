@@ -201,7 +201,7 @@ public class TransformAction extends OntoBoardAction {
             // themselves, so fall back to the OWL API's own rendering rather than giving up.
             rows.clear();
             for (OWLOntologyChange change : listed) {
-                rows.add(new String[] {describe(change), String.valueOf(change.getAxiom())});
+                rows.add(new String[] {describe(change), axiomText(change)});
             }
         }
         return rows;
@@ -221,6 +221,24 @@ public class TransformAction extends OntoBoardAction {
             return ((RemoveImport) change).getImportDeclaration().getIRI().toString();
         }
         return getOWLModelManager().getRendering(change.getAxiom());
+    }
+
+    /**
+     * One change as plain text, without Protege.
+     *
+     * <p>{@code OWLOntologyChange.getAxiom()} <em>throws</em> on an import change - OWL API's
+     * {@code ImportChange} unconditionally raises {@code UnsupportedOperationException} - and
+     * Merge imports puts {@code RemoveImport} into every result it produces. The primary renderer
+     * above knows that; the fallback did not, so the path taken when rendering fails threw a
+     * second exception of its own, and the user lost the list of changes that had just been
+     * applied to their ontology. The same shape as the profile-violation crash: a method declared
+     * to return something that throws when there is nothing to return.
+     */
+    private static String axiomText(OWLOntologyChange change) {
+        if (change instanceof RemoveImport) {
+            return ((RemoveImport) change).getImportDeclaration().getIRI().toString();
+        }
+        return change.isAxiomChange() ? String.valueOf(change.getAxiom()) : String.valueOf(change);
     }
 
     /** The operation with this label. */

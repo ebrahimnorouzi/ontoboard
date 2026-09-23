@@ -6,7 +6,9 @@ OntoBoard ships two clients: a **Protégé Desktop plugin** and a **web applicat
 ## Start here
 
 - [Getting started](getting-started.md) — install and first session, for both clients
-- [Features](features.md) — what each client actually does today
+- [Features](features.md) — the **web application**, feature by feature. For the plugin,
+  see "What it does today" in the [README](../README.md) and
+  [feature parity](feature-parity.md)
 - [Collaboration](collaboration.md) — the two modes, and how to set up a server
 - [Testing collaboration locally](testing-collaboration-locally.md) — two Protégé instances on one machine
 - [Feature parity](feature-parity.md) — what the web app does, what the plugin does,
@@ -15,8 +17,9 @@ OntoBoard ships two clients: a **Protégé Desktop plugin** and a **web applicat
 
 ## Going deeper
 
-- [Architecture](architecture.md) — how the plugin binds to Protégé's model, and how the
-  web application's collaboration works
+- [Architecture](architecture.md) — the **web application's** services and collaboration.
+  The plugin's binding to Protégé, and the OSGi constraints behind it, are in
+  [development](development.md)
 - [Development](development.md) — building, testing, and the OSGi constraints that are
   load-bearing
 - [API reference](api-reference.md) — the web application's REST API

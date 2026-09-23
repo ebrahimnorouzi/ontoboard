@@ -156,7 +156,12 @@ public final class MakeRun {
     /** The targets worth offering, best first, or an empty list when there is no Makefile. */
     public static List<String> targetsFor(File editFile) {
         try {
-            return MakeTargets.of(editFile);
+            // ordered, not raw file order. MakeTargets.ordered exists to put all, test, reason,
+            // report and prepare_release ahead of the rest - its own javadoc calls that "the
+            // difference between a usable menu and a wall" for a Makefile with forty targets -
+            // and the only menu that offers targets never called it, while its help text told the
+            // user the order was curated.
+            return MakeTargets.ordered(MakeTargets.of(editFile));
         } catch (RuntimeException noMakefile) {
             return new ArrayList<String>();
         }

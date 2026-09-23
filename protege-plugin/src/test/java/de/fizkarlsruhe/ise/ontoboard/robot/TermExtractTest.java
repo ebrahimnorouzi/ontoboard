@@ -382,7 +382,10 @@ class TermExtractTest {
         IRI moduleIri = TermExtract.moduleIriIn(
                 IRI.create("http://purl.obolibrary.org/obo/mwo.owl"), source);
 
-        assertEquals(IRI.create("http://purl.obolibrary.org/obo/imports/source_import.owl"),
+        // Under the project, not beside it. This asserted .../obo/imports/source_import.owl -
+        // OBO's shared root, which belongs to no project and which every ODK project extracting
+        // from the same source would mint identically. The test's own name said the opposite.
+        assertEquals(IRI.create("http://purl.obolibrary.org/obo/mwo/imports/source_import.owl"),
                 moduleIri);
     }
 

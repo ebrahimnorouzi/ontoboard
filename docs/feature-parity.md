@@ -25,8 +25,10 @@ OntoBoard versions would duplicate mature tools and is the wrong use of effort.
 links, notifications, an admin page — these are not ontology features, they are what a
 multi-tenant web service needs. A desktop plugin has no use for them.
 
-What genuinely remains is the ODK/ROBOT pipeline surface, the pattern library, provenance,
-quality reporting, GitHub integration, and live collaboration.
+What genuinely remains is the ODK pattern library, the SPARQL panel, Widoco documentation,
+pull requests, and threaded comments. The ODK/ROBOT pipeline surface, provenance, quality
+reporting, git tooling and live collaboration all ship — this document said otherwise for
+several releases, because the plugin grew faster than the table did.
 
 ---
 
@@ -62,7 +64,7 @@ individual views in a tabbed column beside the canvas, so none of this needs a t
 | Selection synced with the editor | ➖ | ✅ | **New capability** — impossible in the web app |
 | Live redraw on external edits | ➖ | ✅ | Canvas is a view over Protégé's model |
 | Layout persistence | ✅ | ✅ | Plugin keeps it in a sidecar, so the ontology stays byte-clean |
-| Frames and sticky notes | ✅ | ❌ | **Build.** Small; sidecar format already reserves them |
+| Frames and sticky notes | ✅ | ✅ | Right-click the canvas; kept in the sidecar |
 | Undo/redo | ✅ | ✅ | Protégé's own undo, which is stronger than the web app's 50-snapshot stack |
 
 ## 3. Reasoning and quality
@@ -72,8 +74,8 @@ individual views in a tabbed column beside the canvas, so none of this needs a t
 | ELK, HermiT, JFact, Pellet | ✅ | 🧩 | Bundled reasoner plugins, with incremental and background reasoning the web app lacked |
 | Explanation / justification | ✅ | 🧩 | `explanation-workbench`, bundled |
 | Consistency checking | ✅ | 🧩 | Protégé |
-| ROBOT report | ✅ | 🔶 | Core built and tested; **needs a view**. Requires Protégé 5.6.x |
-| ROBOT commands | 🔶 7 of 24 | ❌ | **Build.** All 21 `Operation` classes are reachable in the embedded `robot-core` |
+| ROBOT report | ✅ | ✅ | *ROBOT → Quality report…*, all 32 rules. Needs Protégé 5.6.x — see Host support |
+| ROBOT commands | 🔶 7 of 24 | 🔶 6 as menu commands | measure, report, profile, transform (relax/reduce/repair/merge), extract, template |
 | OOPS! pitfall check | ✅ | ❌ | **Build.** An HTTP call to the OOPS! service |
 | OQuaRE metrics | ✅ | ❌ | **Build.** Port `quality.py` |
 | Analysis: unused, deprecated, circular imports | ✅ | ❌ | **Build.** OWL API traversals, small |
@@ -86,10 +88,10 @@ individual views in a tabbed column beside the canvas, so none of this needs a t
 | ODK project scaffolding | ✅ | ✅ | Same file tree, no Docker needed |
 | Open an existing ODK repo | ✅ | ✅ | Detects the repo, refuses to guess between edit files |
 | `odk.yaml` editing | ✅ | ❌ | **Build.** Small |
-| Makefile target execution + live log | ✅ | ❌ | **Build.** `ProcessBuilder`; needs `make` on PATH |
-| Build error explanations | ✅ | ❌ | **Build.** Pattern-match ROBOT/ODK output |
-| Import resolution + catalog | ✅ | ❌ | **Build.** `OWLOntologyIRIMapper` + catalog writer |
-| ID range management | ✅ | 🔶 | Scaffold writes the file; **no editor yet** |
+| Makefile target execution | ✅ | ✅ | *Project → Build…*; the transcript is shown afterwards, not streamed live |
+| Build error explanations | ✅ | ✅ | `MakeRun.explain` names the cause for missing rules, missing robot, OOM and report violations |
+| Import resolution + catalog | ✅ | ✅ | *Project → Imports* reports what did not resolve; *ROBOT → Import terms…* writes module, catalog entry and import together |
+| ID range management | ✅ | ✅ | *Project → ID ranges…* allocates a range and rewrites the file |
 | Multi-file / file switcher | ✅ | ➖ | Protégé's own ontology switcher |
 
 ## 5. Data integration
@@ -97,14 +99,14 @@ individual views in a tabbed column beside the canvas, so none of this needs a t
 | Feature | Web app | Plugin | Assessment |
 |---|---|---|---|
 | ODP pattern library | ✅ 13 patterns | ❌ | **Build.** Distinctive and valuable; `patterns-repository/` is already in the repo |
-| CSV → ROBOT template wizard | ✅ | 🧩/❌ | Cellfie is bundled and does spreadsheet→OWL. A ROBOT-template-specific wizard is **optional** |
+| CSV → ROBOT template wizard | ✅ | ✅ | *ROBOT → Template…*, TSV or CSV, every bad row reported at once. XLSX is unavailable — see Known constraints |
 | SPARQL query panel | ✅ | 🧩 | `sparql-query-plugin`, bundled |
-| GitHub import | ✅ | ❌ | **Build.** JGit ships with Protégé; also the basis of git-mode collaboration |
+| GitHub import | ✅ | ✅ | *Project → Open from GitHub…* clones and opens the edit file |
 | Export formats | ✅ | 🔶 | Protégé exports OWL formats; ROBOT `convert` would add OBO/JSON-LD |
 | ZIP export | ✅ | ➖ | It is a folder on disk |
 | Widoco HTML docs | ✅ | ❌ | **Build.** External 39 MB jar, invoked as a subprocess |
 | Prefix management | ✅ | 🔶 | Colouring done; editing prefixes not |
-| Provenance (PROV-O, Dublin Core) | ✅ | ❌ | **Build.** A change listener; small |
+| Provenance (Dublin Core) | ✅ | ✅ | `dcterms:contributor`/`created`/`date`, stamped for edits made anywhere in Protégé, not only on the canvas |
 
 ## 6. Collaboration
 
@@ -114,8 +116,8 @@ individual views in a tabbed column beside the canvas, so none of this needs a t
 | Cursor sharing | ✅ | ✅ | Graph-space, so a cursor lands on the same entity at any zoom |
 | Semantic merge engine | ✅ | ✅* | *Reused server-side rather than reimplemented in Java — deliberate |
 | Entity locking | ✅ | ❌ | **Build.** Advisory in both |
-| Comments, @mentions | ✅ | ❌ | **Build.** REST against the existing backend |
-| Git-based collaboration | ❌ | ❌ | **Build.** Branch, commit, push, `ROBOT diff`. How OBO ontologies are actually built |
+| Comments, @mentions | ✅ | 🔶 | Attributed editor and curator notes ship, and *Notes → Discussion link…* points at the issue. No reply threads, no @mentions |
+| Git-based collaboration | ❌ | ✅ | *Git…* does status, stage, commit, pull, push and branch; *Project → Compare releases…* diffs two versions term by term. No pull requests |
 | Task board (Kanban) | ✅ | ➖ | Belongs in the web app; a desktop plugin is the wrong home |
 
 ## 7. Web-application machinery
@@ -138,17 +140,32 @@ These stay in the web app, which is why it is retained.
 
 Ranked by value per unit of effort, not by how the list happens to be ordered above.
 
+### Done
+
+| Work | Release |
+|---|---|
+| Live collaboration client + cursors | 1.9.0 |
+| ROBOT surface — report, transforms, measure, term import, templates, profile | 1.10.0–1.19.0 |
+| ODK surface — Makefile targets, build runner, import resolution, ID ranges | 1.13.0–1.19.0 |
+| Git tooling — clone, status, commit, pull, push, branch, release comparison | 1.19.0 |
+| Provenance, editorial notes, discussion links, obsoletion | 1.19.0 |
+| Frames and sticky notes | 1.19.0 |
+| Properties and inferred individual types on the canvas | 1.20.0 |
+
+Most of that shipped under an unchanged version number, which is how this table came to
+describe a plugin several releases behind the one being downloaded.
+
+### Next
+
 | # | Work | Why it is next |
 |---|---|---|
-| ~~1~~ | ~~Live collaboration client + cursors~~ | **Done in 1.9.0.** Also fixed a bridge defect that stopped any operation crossing between Protégé and a browser in either direction |
-| 1 | **Git mode** (branch, commit, push, `ROBOT diff`) | Serves every team without a server, and it is the ODK release workflow. Git mode is *selectable* today; the in-plugin commit and diff tooling is not built |
-| 3 | **ROBOT/ODK views** — report, commands, Makefile targets, live log | The reason Protégé was chosen; `robot-core` is embedded and idle |
-| 4 | **ODP pattern library** | Distinctive, and `patterns-repository/` is already here |
-| 5 | **Provenance, prefixes, ID ranges** | Small each, and they complete the ODK story |
-| 6 | **Quality** — OOPS!, OQuaRE, analysis | Rounds out the report view |
-| 7 | **GitHub import, Widoco, export formats** | Useful, not blocking |
-| 8 | **Frames and sticky notes** | Cosmetic; the sidecar already reserves them |
-| 9 | **Comments, entity locking** | After the collaboration client works end to end |
+| 1 | **Pull requests** | The rest of the git surface ships; opening and reviewing a PR still means leaving Protégé |
+| 2 | **SPARQL** | The scaffold writes `src/sparql/check_labels.rq` and the generated build now runs it — the plugin still cannot |
+| 3 | **ODP pattern library** | Distinctive, and `patterns-repository/` is already here |
+| 4 | **Quality** — OOPS!, OQuaRE | Rounds out the report view |
+| 5 | **Widoco, export formats, prefix editing** | Useful, not blocking |
+| 6 | **Entity locking, threaded comments** | After live collaboration has been used in anger |
+| 7 | **Collaboration vocabulary** | The nine axiom kinds the live protocol cannot carry |
 
 **Deliberately not building:** anything marked 🧩 (Protégé already provides it — duplicating
 mature plugins is waste) or ➖ (web-application machinery with no desktop meaning).
@@ -161,5 +178,5 @@ mature plugins is waste) or ➖ (web-application machinery with no desktop meani
   real `Y.Doc` and real sockets; the client's against a real WebSocket server; the loop guard
   against a host that re-fires its change listener the way Protégé does. What no test covers is
   "two people see each other's cursors", which needs a server, a browser and Protégé at once.
-- **No plugin UI is covered by tests.** 1036 tests cover logic; every Swing surface is verified
+- **No plugin UI is covered by tests.** 1045 tests cover logic; every Swing surface is verified
   by hand.

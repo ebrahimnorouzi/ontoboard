@@ -9,7 +9,7 @@ Two codebases: the Protégé plugin (`protege-plugin/`, Java) and the web applic
 
 ```bash
 cd protege-plugin
-mvn clean test        # 1036 tests
+mvn clean test        # 1045 tests
 mvn clean package     # -> target/ontoboard-<version>.jar
 ```
 
@@ -185,7 +185,7 @@ persisted through the backend REST API, not Yjs. Anything added to the collabora
 must respect that split.
 
 `frontend/src/collab/` holds the operation protocol (`useOperationSync.ts`), the semantic
-merge engine (`mergeEngine.ts`) and the conflict UI. The plugin's forthcoming collaboration
+merge engine (`mergeEngine.ts`) and the conflict UI. The plugin's collaboration
 client speaks a JSON bridge onto the same `Y.Doc` rather than reimplementing the merge
 engine in Java, so the merge rules keep a single implementation.
 

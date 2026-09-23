@@ -36,10 +36,14 @@ class OdkScaffoldTest {
         File root = config.getProjectRoot();
         File ontology = new File(new File(root, "src"), "ontology");
         for (String expected : new String[] {
-            "mwo-edit.owl", "mwo.owl", "mwo-odk.yaml", "Makefile", "mwo.Makefile",
+            "mwo-edit.owl", "mwo-odk.yaml", "Makefile", "mwo.Makefile",
             "mwo-idranges.owl", "catalog-v001.xml", "profile.txt"}) {
             assertTrue(new File(ontology, expected).isFile(), "missing " + expected);
         }
+        // mwo.owl is NOT seeded: it is what `make reason` writes and `make clean` deletes, so a
+        // committed hand-made copy meant every build dirtied the tree.
+        assertFalse(new File(ontology, "mwo.owl").isFile(),
+                "the reasoned product should not be seeded as a file to commit");
         assertTrue(new File(ontology, "imports").isDirectory());
         assertTrue(new File(new File(root, "src"), "sparql").isDirectory());
         assertTrue(new File(root, "README.md").isFile());
@@ -257,7 +261,7 @@ class OdkScaffoldTest {
     @Test
     void reportsEveryFileItWrote(@TempDir Path dir) {
         List<File> written = OdkScaffold.create(config(dir.toFile()));
-        assertTrue(written.size() >= 12, "expected the full workspace, got " + written.size());
+        assertTrue(written.size() >= 11, "expected the full workspace, got " + written.size());
         for (File file : written) {
             assertTrue(file.isFile(), "reported but not written: " + file);
         }
@@ -486,12 +490,47 @@ class OdkScaffoldTest {
         String ignored = read(new File(config.getProjectRoot(), ".gitignore"));
 
         for (String line : ignored.split("\\r?\\n")) {
+            if (line.trim().startsWith("#") || line.trim().isEmpty()) {
+                // Comments explain why imports are NOT ignored, so they mention the word.
+                continue;
+            }
             assertFalse(line.contains("imports"),
                     "an ignored import module is an import that resolves only for its author: "
                             + line);
         }
+        // The reasoned product is generated, so it IS ignored - that is the other half.
+        assertTrue(ignored.contains("src/ontology/abc.owl"), ignored);
         // Generated output should still be ignored - the point is which things are generated.
         assertTrue(ignored.contains("report.tsv"), ignored);
         assertTrue(ignored.contains("tmp_"), ignored);
+    }
+
+    /**
+     * The ontology id and the IRI's own name must be the same word.
+     *
+     * <p>ODK names the built artefact after the id ({@code $(ONT).owl}) and the release version
+     * IRI after the ontology IRI. Let them differ and one release is published as
+     * {@code .../pizza/releases/<date>/mwo.owl} - a namespace naming one thing, a file naming
+     * another - with nothing failing. Found by a test comparing the two generators directly
+     * rather than asserting a literal.
+     */
+    @Test
+    void aBaseIriThatDisagreesWithTheIdIsRejected(@TempDir Path dir) {
+        IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class,
+                () -> new OdkProjectConfig("mwo", "MWO", "", "http://example.org/pizza", "",
+                        dir.toFile()).validate());
+
+        assertTrue(thrown.getMessage().contains("pizza"), thrown.getMessage());
+        assertTrue(thrown.getMessage().contains("mwo"), thrown.getMessage());
+        assertTrue(thrown.getMessage().length() > 80,
+                "the message must say what to do about it: " + thrown.getMessage());
+    }
+
+    @Test
+    void aBaseIriThatAgreesWithTheIdIsAccepted(@TempDir Path dir) {
+        new OdkProjectConfig("mwo", "MWO", "", "http://purl.obolibrary.org/obo/mwo.owl", "",
+                dir.toFile()).validate();
+        new OdkProjectConfig("pizza", "Pizza", "", "http://example.org/pizza", "",
+                dir.toFile()).validate();
     }
 }

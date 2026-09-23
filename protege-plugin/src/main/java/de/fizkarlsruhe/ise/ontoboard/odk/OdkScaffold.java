@@ -26,6 +26,16 @@ public final class OdkScaffold {
 
     private static final Charset UTF8 = Charset.forName("UTF-8");
 
+    /**
+     * The ROBOT the generated CI installs.
+     *
+     * <p>Matched to the robot-core this plugin embeds, so the quality report a user sees in
+     * Protege and the one their CI produces come from the same rules. They are only as matched as
+     * somebody keeps them: a test reads the version out of the dependency and fails if these
+     * drift apart.
+     */
+    static final String ROBOT_VERSION = "1.9.8";
+
     private OdkScaffold() {
     }
 
@@ -54,10 +64,14 @@ public final class OdkScaffold {
         String id = config.getOntologyId();
         List<File> written = new ArrayList<File>();
 
-        // The edit file is what Protege opens; the release file starts as a copy.
-        String editOwl = editOwl(config);
-        written.add(write(new File(ontology, id + "-edit.owl"), editOwl));
-        written.add(write(new File(ontology, id + ".owl"), editOwl));
+        // The edit file is what Protege opens.
+        //
+        // src/ontology/<id>.owl is deliberately NOT seeded. It is what `make reason` produces and
+        // what `make clean` deletes, so committing a hand-made copy of the edit file under that
+        // name meant every build dirtied the working tree and every clean deleted a tracked file.
+        // It is gitignored instead. The artefact that belongs in version control is the one
+        // prepare_release copies to the project root, which a PURL can resolve to.
+        written.add(write(new File(ontology, id + "-edit.owl"), editOwl(config)));
 
         written.add(write(new File(ontology, id + "-odk.yaml"), odkYaml(config)));
         written.add(write(new File(ontology, "Makefile"), generatedMakefile(config)));
@@ -68,7 +82,7 @@ public final class OdkScaffold {
         written.add(write(new File(new File(src, "sparql"), "check_labels.rq"), checkLabels()));
         written.add(write(new File(new File(new File(root, ".github"), "workflows"), "qc.yml"),
                 workflow(config)));
-        written.add(write(new File(root, ".gitignore"), gitignore()));
+        written.add(write(new File(root, ".gitignore"), gitignore(config)));
         written.add(write(new File(root, "README.md"), readme(config)));
         return written;
     }
@@ -135,10 +149,16 @@ public final class OdkScaffold {
                 + "ONT := $(ONT_ID)\n"
                 + "TODAY := $(shell date +%Y-%m-%d)\n\n"
                 + "-include $(ONT).Makefile\n\n"
-                + ".PHONY: all test reason report clean prepare_release\n\n"
+                + ".PHONY: all test reason report sparql_test clean prepare_release\n\n"
                 + "all: reason report\n"
                 + "\t@echo \"Build complete: $(ONT)\"\n\n"
-                + "test: report\n\n"
+                // reason and sparql_test as well as report, because "test" is what CI runs and
+                // what the README tells a user to run. report is SPARQL over the axioms; it never
+                // starts a reasoner, so an inconsistent ontology or an unsatisfiable class - the
+                // worst thing that can be wrong with an ontology - passed QC green. And the
+                // scaffold wrote src/sparql/check_labels.rq while nothing anywhere ran it, so a
+                // project advertised a quality check it did not perform.
+                + "test: reason report sparql_test\n\n"
                 + "reason:\n"
                 + "\trobot reason -r ELK -i $(ONT)-edit.owl -o $(ONT).owl\n\n"
                 // --fail-on and --labels are passed because the YAML above declares them.
@@ -158,6 +178,11 @@ public final class OdkScaffold {
                 + "\trobot report -i $(ONT)-edit.owl --profile profile.txt \\\n"
                 + "\t  --fail-on ERROR --labels true \\\n"
                 + "\t  --output report.tsv --format tsv\n\n"
+                // robot verify exits non-zero when a query returns rows, which is what makes a
+                // SPARQL file a check rather than a decoration.
+                + "sparql_test:\n"
+                + "\trobot verify --input $(ONT)-edit.owl \\\\\n"
+                + "\t  --queries ../sparql/*.rq --output-dir .\n\n"
                 + "clean:\n"
                 + "\t@rm -f tmp_* report.tsv *.bak $(ONT).owl\n\n"
                 + "prepare_release: reason report\n"
@@ -166,7 +191,12 @@ public final class OdkScaffold {
                 // destroys the last - which is what the previous single cp did.
                 + "\t@mkdir -p ../../releases/$(TODAY)\n"
                 + "\trobot annotate --input $(ONT).owl \\\n"
-                + "\t  --version-iri \"" + c.getBaseIri() + "/releases/$(TODAY)/$(ONT).owl\" \\\n"
+                // ProjectIri.stemOf, not the raw base IRI: a base ending in .owl - which is
+                // what the wizard defaults to - produced .../obo/mwo.owl/releases/<date>/mwo.owl,
+                // a third spelling of the same release. The ID-ranges IRI below already stripped
+                // the extension, so the generator disagreed with itself in one file.
+                + "\t  --version-iri \"" + ProjectIri.stemOf(c.getBaseIri())
+                + "/releases/$(TODAY)/$(ONT).owl\" \\\n"
                 + "\t  --annotation owl:versionInfo \"$(TODAY)\" \\\n"
                 + "\t  --output ../../releases/$(TODAY)/$(ONT).owl\n"
                 + "\t@cp ../../releases/$(TODAY)/$(ONT).owl ../../$(ONT).owl\n";
@@ -309,12 +339,20 @@ public final class OdkScaffold {
                 + "    runs-on: ubuntu-latest\n"
                 + "    steps:\n"
                 + "      - uses: actions/checkout@v4\n"
+                // Pinned, and allowed to fail. "latest" meant CI could move to a ROBOT that
+                // reports differently from the one OntoBoard embeds, without anybody deciding to.
+                // And without --fail, curl exits 0 on a missing asset and writes the nine bytes
+                // "Not Found" into robot.jar - so the step named "Install ROBOT" went green and
+                // the failure surfaced later as a corrupt-jar error pointing at the ontology.
                 + "      - name: Install ROBOT\n"
                 + "        run: |\n"
-                + "          curl -L -o robot.jar https://github.com/ontodev/robot/releases/"
-                + "latest/download/robot.jar\n"
-                + "          echo 'java -jar '\"$PWD\"'/robot.jar \"$@\"' > /usr/local/bin/robot\n"
-                + "          chmod +x /usr/local/bin/robot\n"
+                + "          curl -fsSL --retry 3 -o robot.jar \\\n"
+                + "            https://github.com/ontodev/robot/releases/download/v"
+                + ROBOT_VERSION + "/robot.jar\n"
+                + "          printf '#!/bin/sh\\nexec java -jar %s/robot.jar \"$@\"\\n' "
+                + "\"$PWD\" | sudo tee /usr/local/bin/robot > /dev/null\n"
+                + "          sudo chmod +x /usr/local/bin/robot\n"
+                + "          robot --version\n"
                 + "      - name: Run QC\n"
                 + "        working-directory: src/ontology\n"
                 + "        run: make test\n";
@@ -346,8 +384,22 @@ public final class OdkScaffold {
      * reintroduced one directory away. CI would not catch it either - the generated workflow runs
      * {@code make test}, which reports on the edit file without loading its imports.
      */
-    private static String gitignore() {
-        return "tmp_*\nreport.tsv\n*.bak\n";
+    private static String gitignore(OdkProjectConfig c) {
+        return "# Build products only.\n"
+                + "#\n"
+                + "# The release artefact - <id>.owl at the project ROOT, written by\n"
+                + "# `make prepare_release` - is deliberately not here. That one is the\n"
+                + "# product, and ODK projects commit it so a PURL resolves to something.\n"
+                + "#\n"
+                + "# Import modules under src/ontology/imports/ are not here either. A\n"
+                + "# module is not reproducible output: it is a few dozen axioms this\n"
+                + "# project chose to copy from a much larger ontology at a particular\n"
+                + "# release. Ignore it and the catalog entry beside it points at a file\n"
+                + "# nobody else has.\n"
+                + "tmp_*\n"
+                + "report.tsv\n"
+                + "*.bak\n"
+                + "src/ontology/" + c.getOntologyId() + ".owl\n";
     }
 
     private static String readme(OdkProjectConfig c) {
