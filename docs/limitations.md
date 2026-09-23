@@ -16,16 +16,18 @@ The plugin is early. These exist in the web application but not yet here:
   and imports do **not** travel; the plugin counts them and says so in the toolbar rather
   than dropping them silently. Use git for work on those. See
   [collaboration](collaboration.md).
-- **Comments and discussion** — none.
+- **Threaded comments and discussion** — a term can be linked to its issue with
+  *Notes → Discussion link…*, which writes `IAO:0000233 term tracker item`, and editorial
+  notes (`IAO:0000116`/`IAO:0000232`) carry an author and date. But the argument itself
+  lives in the tracker: there is no reply thread inside the ontology, deliberately, because
+  an unbounded mutable conversation would appear in every release and every diff.
 - **Ontology design pattern library** — the bundled ODPA patterns are not exposed.
-- **CSV / ROBOT template import** — no wizard.
-- **SPARQL query panel.**
-- **GitHub integration** — no clone, branch, commit or PR support.
+- **SPARQL query panel** — the ODK scaffold writes `src/sparql/check_labels.rq` and nothing
+  in the plugin can run it.
+- **Pull requests** — *Git…* does status, stage, commit, pull, push and branch, and
+  *Open from GitHub…* clones. Opening or reviewing a PR still means leaving Protégé.
 - **Widoco HTML documentation.**
-- **Import resolution and catalog management UI.**
-- **ID range management UI** — the ODK wizard writes an id-ranges file, but nothing edits it.
-- **Provenance stamping** (PROV-O / Dublin Core on edit).
-- **Frames and sticky notes** — the sidecar format reserves them; nothing draws them.
+- **Entity locking** — nothing stops two live collaborators editing the same term at once.
 
 ### Known constraints
 
@@ -55,8 +57,8 @@ The plugin is early. These exist in the web application but not yet here:
 
 ### Not covered by tests
 
-322 tests cover projection, axiom construction, layout persistence, ODK scaffolding, report
-parsing and the OSGi configuration. They do **not** cover any Swing UI: the palette panel,
+1035 tests cover projection, axiom construction, layout persistence, ODK scaffolding, report
+parsing and the OSGi configuration. They do **not** cover any Swing UI:
 dialogs, toolbar, minimap, drop handling, and every visual choice need a display and are
 verified by hand. Treat visual behaviour as unverified after each change.
 
@@ -79,16 +81,23 @@ verified by hand. Treat visual behaviour as unverified after each change.
 
 Ordered by what is being worked on:
 
-1. **Git tooling in the plugin** — branch, commit, push and `ROBOT diff` from the OntoBoard
-   tab. Git mode is selectable today, but doing the git part still means leaving Protégé.
-2. **ROBOT and ODK surface in the plugin** — report view, reasoning, Makefile targets,
-   import resolution.
-3. **Data integration** — pattern library, CSV/template wizard, SPARQL, GitHub.
-4. **Quality** — ROBOT report UI, OOPS!, OQuaRE, provenance, ID ranges.
-5. **Comments and entity locking** — once live collaboration has been used in anger.
+1. **Pull requests** — the rest of the git surface ships; opening and reviewing a PR does not.
+2. **SPARQL** — the scaffold writes a check the plugin cannot run, which is the wrong way
+   round.
+3. **Pattern library and Widoco.**
+4. **Entity locking** — once live collaboration has been used in anger.
+5. **Collaboration vocabulary** — the nine axiom kinds the live protocol cannot carry.
 
-Done: live collaboration and cursors (1.9.0); the entity-view column and the tab layout that
-actually reaches upgraded users (1.8.0).
+Done, with the release that did it: live collaboration and cursors (1.9.0); the entity-view
+column and tab layout (1.8.0); ROBOT transforms, term import and the quality report
+(1.10.0–1.18.0); git tooling, the ODK build runner, ID range editing, provenance stamping,
+editorial notes, frames and sticky notes, obsoletion, OWL 2 profile checking, release
+comparison and ROBOT templates (1.19.0); properties and inferred individual types on the
+canvas (1.20.0).
+
+Those middle releases all shipped under one unchanged version number, which is why the list
+above names versions at all — see the note in [development](development.md) about what that
+cost.
 
 Specs and plans live in [superpowers/](superpowers/), including the reasoning behind
 decisions that were reversed — the plugin was briefly intended to replace the web

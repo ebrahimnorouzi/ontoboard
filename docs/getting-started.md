@@ -21,9 +21,10 @@ spaces — it becomes file names and IRIs), a title, and a folder. Leave Base IR
 the OBO convention. It writes a full ODK repository and opens the edit file.
 
 **Put something on the canvas.** The canvas starts empty on purpose — Protégé opens
-ontologies with 100,000+ classes and drawing all of them would hang. Either drag *Class*
-from the palette on the left, or select an entity in the class hierarchy and use
-*Add selected entity to canvas* from the right-click menu.
+ontologies with 100,000+ classes and drawing all of them would hang. Double-click empty
+canvas to create a class there; drag existing terms in from the entity trees on the left;
+select one and press *Add selected*; or press *Add all* for a small ontology, which brings
+in every class, individual, object property and data property.
 
 **Grow the diagram.** Right-click a node and *Expand neighbours (1 hop)* to pull in what it
 is directly related to. Drag nodes to arrange them, or use the toolbar's layout algorithms.

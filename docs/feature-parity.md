@@ -53,7 +53,7 @@ individual views in a tabbed column beside the canvas, so none of this needs a t
 | Feature | Web app | Plugin | Assessment |
 |---|---|---|---|
 | Graph canvas, drag, pan, zoom | ✅ | ✅ | JGraphX |
-| Create entities on canvas | ✅ | ✅ | Double-click or palette drag |
+| Create entities on canvas | ✅ | ✅ | Double-click empty canvas, or drag from the entity trees |
 | Draw edges that write axioms | ✅ | ✅ | Plugin is **better**: six OWLAx readings vs the web app's `rdfs:domain`/`range`, which silently intersects domains |
 | Delete axioms from canvas | ✅ | ✅ | With a confirmation distinct from removing from canvas |
 | Layout algorithms | ✅ | ✅ | Hierarchical, organic, circle, grid |
@@ -161,5 +161,5 @@ mature plugins is waste) or ➖ (web-application machinery with no desktop meani
   real `Y.Doc` and real sockets; the client's against a real WebSocket server; the loop guard
   against a host that re-fires its change listener the way Protégé does. What no test covers is
   "two people see each other's cursors", which needs a server, a browser and Protégé at once.
-- **No plugin UI is covered by tests.** 322 tests cover logic; every Swing surface is verified
+- **No plugin UI is covered by tests.** 1035 tests cover logic; every Swing surface is verified
   by hand.

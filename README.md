@@ -60,15 +60,22 @@ No Docker needed to create it; running its `make` targets needs `make` and ROBOT
 
 **Work in one place** — the tab puts Protégé's own entity views in a tabbed column on the
 left — Classes, Object properties, Data properties, Annotation properties, Datatypes,
-Individuals — with the canvas beside them. Select something in a tree and click *Add* on the
-canvas toolbar; the button names what it will add, so there is no guessing.
+Individuals — with the canvas beside them. Select something in a tree and click *Add selected* on
+the canvas toolbar; the button names what it will add, so there is no guessing.
 
 **Draw the schema** — an opt-in canvas that starts empty and grows as you add entities,
 because Protégé routinely opens ontologies with 100,000+ classes and rendering all of them
-would hang. Drag *Class* or *Individual* from the palette onto the board, expand a node's
-neighbours one hop at a time, and arrange with hierarchical, organic, circle or grid
-layouts. Nodes are labelled from `rdfs:label` and coloured by namespace, so imported
-vocabulary is distinguishable at a glance.
+would hang. Double-click empty canvas to create a class there, drag existing terms in from
+Protégé's own trees, or press *Add all* for a whole small ontology — classes, individuals,
+object properties and data properties alike. Expand a node's neighbours one hop at a time,
+and arrange with hierarchical, organic, circle or grid layouts. Nodes are labelled from
+`rdfs:label` and coloured by namespace, so imported vocabulary is distinguishable at a
+glance.
+
+**See what the reasoner concluded** — press *Inferences* with a reasoner running and the
+board also draws what it worked out: subsumptions the ontology does not state, and the
+classes an individual turns out to belong to. Grey and dotted, never mistaken for an
+asserted axiom, and unsatisfiable classes go red.
 
 **Edit real axioms** — drawing a relation asks which property and *how the arrow should be
 read*, offering the six OWLAx candidate forms (existential, scoped/global domain and range,
@@ -88,11 +95,30 @@ run one? Leave the fields empty and collaborate through git — commit and push 
 and what the live vocabulary can and cannot carry, are in
 [docs/collaboration.md](docs/collaboration.md).
 
+**Run ROBOT and ODK without leaving Protégé** — the *OntoBoard* menu carries twenty
+commands against the ontology you have open:
+
+| Group | Commands |
+|---|---|
+| Project | New ODK project, Open from GitHub, ID ranges, Build, Imports, Release, Compare releases |
+| ROBOT | Measure, Quality report, Profile, Transform (relax/reduce/repair/merge), Import terms, Template |
+| Terms | Obsolete the selected term |
+| Notes | Note on the selected term, All notes, Discussion link |
+| Other | Git, Provenance, Collaboration |
+
+*Template* turns a spreadsheet into axioms and reports every bad row at once rather than
+stopping at the first. *Import terms* extracts a module from another ontology and wires up
+the import, catalog entry and all, recording which upstream release it came from. *Compare
+releases* says what changed term by term — added, obsoleted, redefined, moved — and writes
+the release notes from it. *Obsolete* retires a term the OBO way so everything that
+referenced it still resolves.
+
 ### Not built yet
 
-The ontology design pattern library, CSV/ROBOT template import, SPARQL queries, GitHub
-integration, Widoco documentation, import resolution, provenance stamping, and frames/sticky
-notes. Full list in [docs/limitations.md](docs/limitations.md).
+The ontology design pattern library, SPARQL query panel, Widoco documentation, pull-request
+support in the git tooling, and threaded comments (a term can be *linked* to its issue, but
+the discussion lives there, not in the ontology). Full list, with the host constraints that
+matter more, in [docs/limitations.md](docs/limitations.md).
 
 ### Host support
 
@@ -114,7 +140,7 @@ unavailable and why rather than failing obscurely.
 ```bash
 cd protege-plugin
 mvn clean package          # -> target/ontoboard-<version>.jar
-mvn test                   # 322 tests
+mvn test                   # 1035 tests
 ```
 
 Java 8 bytecode is emitted deliberately (`maven.compiler.release=8`) so the bundle loads on
