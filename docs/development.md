@@ -9,7 +9,7 @@ Two codebases: the Protégé plugin (`protege-plugin/`, Java) and the web applic
 
 ```bash
 cd protege-plugin
-mvn clean test        # 1062 tests
+mvn clean test        # 1068 tests (2 need Docker and skip without it)
 mvn clean package     # -> target/ontoboard-<version>.jar
 ```
 

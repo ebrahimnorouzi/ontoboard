@@ -32,8 +32,8 @@ already use, and the web application is where a team works together.
 
 ### Requirements
 
-- **Protégé Desktop 5.6.x recommended.** It loads on 5.5.0 too, but with a reduced ROBOT
-  surface — see [Host support](#host-support).
+- **Protégé Desktop 5.6.x or 5.5.0.** Both are tested against each release and both now run
+  the full shipped ROBOT surface — see [Host support](#host-support).
 - Java 8 or newer (Protégé bundles its own JRE).
 
 The jar is ~64 MB because ROBOT and its dependencies are embedded so the pipeline runs
@@ -126,15 +126,23 @@ ROBOT runs in-process against the ontology Protégé has open. Which ROBOT opera
 available depends on the host's OWL API, because OWL API moved its RDF layer from Sesame to
 RDF4J at 4.5.25 and `robot-core` targets the newer form:
 
-| Protégé | OWL API | ROBOT |
+| Protégé | OWL API | Every shipped ROBOT operation, including `report` |
 |---|---|---|
-| **5.6.x** | 4.5.29 | everything except `report` |
-| 5.5.0 | 4.5.9 | everything except `report` and SPARQL `query` |
+| **5.6.x** | 4.5.29 | yes — verified in-host, 1.25.0 |
+| 5.5.0 | 4.5.9 | yes — verified in-host, 1.25.0 |
 
-`report` fails on **both** hosts, for a different reason: ROBOT finds its report queries by
-asking its own classloader for a directory and accepting only `file:` and `jar:` URLs, and an
-OSGi bundle resource is neither. `export` works on both — it was listed as blocked in error.
-See [limitations](docs/limitations.md#known-constraints).
+This table said "everything except `report`" for both hosts until 1.25.0, and that was true:
+ROBOT located its report queries by asking its classloader for a *directory* and accepting only
+`file:` and `jar:` URLs, and a bundle resource is neither, so the quality report had never
+worked inside the plugin. It does now — the queries are read as streams and run over a Jena
+model built without Rio, which is also why 5.5.0's older OWL API is no longer a barrier to it.
+
+Two things check that rather than one claim in a README: `RobotParityTest` requires the
+plugin's findings to match `robot report` run inside `obolibrary/odkfull` over the same
+ontology and profile, and the plugin runs a self-check at startup whose verdict
+`tools/smoke.ps1` asserts against both installs
+([receipt](protege-plugin/tools/smoke-receipt/1.25.0.txt)). `export` was listed as blocked by
+the OWL API and never was. See [limitations](docs/limitations.md#known-constraints).
 
 One jar serves both — OWL API is imported from the host rather than embedded, so the
 available surface simply follows the host. On 5.5.0 the plugin explains which operations are
@@ -145,7 +153,7 @@ unavailable and why rather than failing obscurely.
 ```bash
 cd protege-plugin
 mvn clean package          # -> target/ontoboard-<version>.jar
-mvn test                   # 1062 tests
+mvn test                   # 1068 tests (2 need Docker and skip without it)
 ```
 
 Java 8 bytecode is emitted deliberately (`maven.compiler.release=8`) so the bundle loads on

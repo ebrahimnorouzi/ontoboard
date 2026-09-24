@@ -2,6 +2,15 @@
 <?eclipse version="3.0"?>
 <plugin>
 
+  <!-- Runs SelfCheck when an ontology is opened and writes one greppable verdict to
+       protege.log. The quality report was broken inside the bundle for nine versions while
+       every test passed, because the defect was Felix's classloader rather than the logic;
+       this is what lets tools/smoke.ps1 assert that it works where it actually has to. -->
+  <extension id="OntoBoardStartup" point="org.protege.editor.core.application.EditorKitHook">
+    <class value="de.fizkarlsruhe.ise.ontoboard.OntoBoardStartup"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
+
   <!-- OntoBoardTab subclasses Protege's OWLWorkspaceViewsTab only so that a changed
        viewconfig-ontoboardtab.xml reaches users who have already opened the tab; Protege
        otherwise restores the arrangement it saved and ignores the new default. -->

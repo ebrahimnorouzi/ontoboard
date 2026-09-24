@@ -1,0 +1,71 @@
+OntoBoard 1.25.0 - host smoke receipt
+
+Produced by tools/smoke.ps1. This file is what CI checks for: a version that has never been
+loaded in a Protege cannot reach main.
+
+  2026-09-24  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS
+  2026-09-24  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS
+
+What is new in this receipt: the host now reports on ROBOT, not just on resolution. 1.25.0 adds an
+EditorKitHook (OntoBoardStartup) that runs SelfCheck when Protege builds an editor kit and writes
+one greppable verdict to protege.log, which smoke.ps1 waits for and asserts. Both hosts printed,
+verbatim:
+
+  OntoBoard self-check ok: robot report profile readable - 32 rules read from robot-core's
+      report_profile.txt, expected 32
+  OntoBoard self-check ok: robot report queries readable - 32/32 rules resolved a .rq file
+  OntoBoard self-check ok: jena reads what the owl api writes - 4 triples round-tripped
+      through RDF/XML
+  OntoBoard self-check ok: robot report runs end to end - 5 findings over a three-axiom
+      ontology that has no labels, no title and no licence
+  OntoBoard self-check: PASS 4/4
+
+Why those four lines matter more than they look. ROBOT's quality report had never worked inside
+this plugin, on either host, for nine versions - ReportOperation locates its queries with
+ClassLoader.getResource("report_queries") and accepts only file: and jar: URLs, and Felix answers
+bundle:. No test could fail on it, because Maven runs against an exploded classpath where that
+call succeeds. robot-core and Jena are also nested jars on Bundle-ClassPath rather than exploded
+classes, so "the resources are reachable" was a claim about Felix's classloader and nothing else.
+These four lines are that claim, checked where it has to hold.
+
+Asserted in both runs:
+  - exactly one ontoboard jar in plugins/ (singleton bundle; two is a collision, not an upgrade)
+  - "Starting bundle ontoboard"
+  - "Plugin: OntoBoard (1.25.0)" - the version Felix actually resolved, not the one on disk
+  - "OntoBoard self-check: PASS 4/4" - and an absent verdict now fails, because it would mean the
+    hook did not run
+  - no unresolved constraint, java.* import, UnsupportedClassVersionError or truncated jar
+    attributable to our bundle
+  - no de.fizkarlsruhe stack frame
+  - no OutOfMemoryError at -Xmx500M, which is what Protege.l4j.ini gives a user who
+    double-clicks Protege.exe (run.bat hands out -Xmx32G and would have hidden one)
+
+Protege 5.5.0 specifically. docs/limitations.md said the report could not work there at all, on
+the grounds that robot-core 1.9.8 is built against OWL API 4.5.29's RDF4J-based Rio API while
+5.5.0 supplies 4.5.9's openrdf one. That barrier is real but it only ever applied to code that
+constructs a RioRenderer. The report no longer does: OntologyDataset serialises with the OWL API
+to RDF/XML bytes and reads them back with Jena, which needs no OWL API at all. The PASS above on
+4.5.9 is the evidence. The documentation has been corrected.
+
+Verified outside the host, in the same session:
+  - RobotParityTest runs `robot report` inside obolibrary/odkfull (ROBOT 1.9.10) over the same
+    ontology and the same profile, and requires an identical violation set. Both fixtures matched
+    exactly: fixture-tiny 7/7 rows (5 ERROR, 2 WARN), pizza v2 21/21 rows (15 WARN, 6 INFO). The
+    profile is written out from the plugin's own rule set and passed to the container, so a
+    difference in ROBOT versions cannot make this agree or disagree by accident.
+
+Not asserted, and not claimed:
+  - that the OntoBoard tab renders, or that any of the 21 menu items works. Protege restores the
+    previous workspace, and a killed process logs no shutdown, so a tab assertion here would be
+    an assertion about the last session. Driving the actions is Phase 2's self-test bundle.
+  - that any ROBOT operation other than report runs in-bundle. The self-check covers report
+    because that is the one known to have been broken; extending it is cheap and should follow.
+
+Neighbours that fail to install in Protege-5.5.0, unrelated to us and not fixed here:
+  cellfie-2.2.4.jar        (its own manifest imports java.awt, which OSGi forbids)
+  swrltab-plugin-2.1.3.jar
+Unchanged from the 1.24.0 receipt.
+
+ontoboard-1.24.0.jar was removed from both plugins/ directories before 1.25.0 was copied in, and
+the copy's byte length was compared against the source before launching - a truncated copy is a
+hazard docs/development.md warns about and one was caught mid-write earlier in this project.

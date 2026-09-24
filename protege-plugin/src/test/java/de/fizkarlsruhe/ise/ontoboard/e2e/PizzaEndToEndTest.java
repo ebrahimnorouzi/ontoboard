@@ -60,6 +60,9 @@ import org.semanticweb.owlapi.reasoner.OWLReasoner;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class PizzaEndToEndTest {
 
+    /** Platform newline, spelled once. */
+    private static final String NL = System.lineSeparator();
+
     private static final String NS = PizzaOntology.NS;
     private static File out;
 
@@ -326,32 +329,20 @@ class PizzaEndToEndTest {
         report("05-robot-measure.txt", measure.toString());
         assertFalse(measurements.isEmpty(), "ROBOT measure produced nothing");
 
-        // ROBOT report either runs or explains why this host cannot support it. robot-core
-        // 1.9.8 routes it through Rio, which needs OWL API 4.5.25 or newer; Protege 5.5 supplies
-        // 4.5.9. Recording which of the two happened is the useful thing for a reproducible run -
-        // failing here would say "the plugin is broken" about a host limitation it already
-        // diagnoses for the user.
-        StringBuilder quality = new StringBuilder("ROBOT report\n============\n\n");
-        try {
-            List<QualityFinding> findings = QualityReport.run(pizza);
-            quality.append(findings.size()).append(" findings\n\n");
-            for (QualityFinding finding : findings) {
-                quality.append(String.format("%-8s %-34s %s%n", finding.getSeverity(),
-                        finding.getRule(), finding.getSubject()));
-            }
-            assertNotNull(findings);
-        } catch (QualityReport.QualityReportException cannotRunHere) {
-            quality.append("Did not run on this host.\n\n");
-            quality.append(cannotRunHere.getMessage()).append("\n\n");
-            quality.append("This is the documented OWL API incompatibility, not a defect in the\n");
-            quality.append("plugin: robot-core routes report through Rio, which needs OWL API\n");
-            quality.append("4.5.25 or newer, and Protege 5.5 supplies 4.5.9. Reasoning, loading\n");
-            quality.append("and saving are unaffected. Every other ROBOT operation in this run\n");
-            quality.append("worked.\n");
-            assertTrue(cannotRunHere.isHostIncompatibility(),
-                    "a report failure must be the known incompatibility carrying an explanation, "
-                            + "never a bare crash: " + cannotRunHere.getMessage());
+        // The report must run. This block used to accept "did not run on this host" and record it
+        // as the documented Rio/OWL-API incompatibility - the wrong diagnosis, and worse, a test
+        // that passed for nine versions while the feature was broken on every host. The real cause
+        // was OSGi resource enumeration, and QualityReport no longer goes near it.
+        StringBuilder quality = new StringBuilder("ROBOT report" + NL + "============" + NL + NL);
+        List<QualityFinding> findings = QualityReport.run(pizza);
+        quality.append(findings.size()).append(" findings").append(NL).append(NL);
+        for (QualityFinding finding : findings) {
+            quality.append(String.format("%-8s %-34s %s%n", finding.getSeverity(),
+                    finding.getRule(), finding.getSubject()));
         }
+        assertFalse(findings.isEmpty(),
+                "this pizza has no definitions and no ontology licence, so ROBOT's default profile "
+                        + "must report violations - an empty report means the rules did not run");
         report("06-robot-report.txt", quality.toString());
 
         StringBuilder transforms = new StringBuilder("ROBOT transforms\n================\n\n");

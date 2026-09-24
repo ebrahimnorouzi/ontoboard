@@ -81,7 +81,7 @@ if ($jars.Count -gt 1) {
 
 Write-Host "install   $Install"
 Write-Host "jar       $($jars[0].Name)  ($([math]::Round($jars[0].Length / 1MB, 1)) MB)"
-Write-Host "expecting Plugin: OntoBoard ($Version)"
+Write-Host "expecting Plugin: OntoBoard ($Version) and OntoBoard self-check: PASS"
 Write-Host "heap      -Xmx$Heap"
 
 # ---------------------------------------------------------------- the launch line, from run.bat
@@ -165,7 +165,7 @@ while ((Get-Date) -lt $deadline) {
     Start-Sleep -Seconds 3
     Write-Host -NoNewline '.'
     $slice = New-LogSlice
-    if ($slice -match 'Plugin: OntoBoard \(') { break }
+    if ($slice -match 'OntoBoard self-check: (PASS|FAIL)') { break }
     if (Test-OurFailure $slice) { break }
     if ($started.HasExited) { break }
 }
@@ -197,6 +197,20 @@ if (-not $versionMatch.Success) {
     # not just the presence of a line.
     $problems += ("resolved OntoBoard $($versionMatch.Groups[1].Value), expected $Version - " +
         'a stale Felix cache, or the wrong jar')
+}
+
+# The self-check. This is the assertion that makes a release receipt worth having: the plugin runs
+# ROBOT's report over a small ontology inside the bundle and says so. Protege 5.x opens an empty
+# ontology at startup, which builds an OWLEditorKit, which is what invokes the hook - so an absent
+# verdict means the hook did not run, and that is itself a defect worth failing on.
+$verdict = [regex]::Match($slice, 'OntoBoard self-check: (PASS|FAIL) (\d+)/(\d+)')
+if (-not $verdict.Success) {
+    $problems += ('OntoBoard never logged a self-check verdict. The EditorKitHook ' +
+        '(OntoBoardStartup) did not run, so nothing confirms ROBOT works inside the bundle.')
+} elseif ($verdict.Groups[1].Value -ne 'PASS') {
+    $failedChecks = [regex]::Matches($slice, '.*OntoBoard self-check FAILED:.*')
+    $problems += "self-check $($verdict.Groups[2].Value)/$($verdict.Groups[3].Value) checks passed"
+    foreach ($hit in $failedChecks) { $problems += "  $($hit.Value.Trim())" }
 }
 
 foreach ($failure in (Get-OurFailures $slice)) { $problems += $failure }
@@ -235,6 +249,11 @@ if ($othersFailed.Count -gt 0) {
 
 Write-Host ''
 Write-Host "PASSED  OntoBoard $Version resolved and started  ($Install, -Xmx$Heap)" -ForegroundColor Green
+# Quoted verbatim so a release receipt can record what the host actually reported, rather than the
+# script's summary of it.
+foreach ($line in [regex]::Matches($slice, '.*OntoBoard self-check.*')) {
+    Write-Host "  $($line.Value.Trim() -replace '^.*?OntoBoard self-check', 'OntoBoard self-check')"
+}
 if ($slice -match "Saved tab state for 'OntoBoard' tab") {
     Write-Host '        the OntoBoard tab was open in the restored workspace'
 } else {
