@@ -93,6 +93,21 @@ public final class OntologyDataset {
                         : org.semanticweb.owlapi.model.IRI.create(
                                 "http://www.ontoboard.org/report-subject"));
         manager.addAxioms(merged, ontology.getAxioms(Imports.INCLUDED));
+
+        // Ontology annotations are not axioms, so addAxioms does not carry them. Without this the
+        // merged copy loses the ontology's own dcterms:title, description and license - and
+        // ROBOT's report then flags missing_ontology_title, missing_ontology_description and
+        // missing_ontology_license as ERRORs on an ontology that declares all three. It fired on
+        // every ontology with an import, which is every real ODK project, and it was invisible
+        // here because this method returns early when there are none.
+        //
+        // The root ontology's annotations only. An import's title belongs to the import; copying
+        // it would put two titles on one subject and trade three false errors for a
+        // multiple-labels problem of our own making.
+        for (org.semanticweb.owlapi.model.OWLAnnotation annotation : ontology.getAnnotations()) {
+            manager.applyChange(new org.semanticweb.owlapi.model.AddOntologyAnnotation(
+                    merged, annotation));
+        }
         return merged;
     }
 }

@@ -169,6 +169,15 @@
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
+  <extension id="menu.OntoBoard.robot.sparql"
+             point="org.protege.editor.core.application.EditorKitMenuAction">
+    <name value="SPARQL..."/>
+    <path value="ontoboard.menu.OntoBoard.robot/SlotA-E"/>
+    <toolTip value="Run a SPARQL query, or the project's own checks in src/sparql"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.menu.SparqlAction"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
+
   <extension id="menu.OntoBoard.robot.transform"
              point="org.protege.editor.core.application.EditorKitMenuAction">
     <name value="Transform..."/>

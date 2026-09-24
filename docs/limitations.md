@@ -22,12 +22,11 @@ The plugin is early. These exist in the web application but not yet here:
   lives in the tracker: there is no reply thread inside the ontology, deliberately, because
   an unbounded mutable conversation would appear in every release and every diff.
 - **Ontology design pattern library** — the bundled ODPA patterns are not exposed.
-- **SPARQL query panel** — the ODK scaffold writes `src/sparql/check_labels.rq` and nothing
-  in the plugin can run it. What changed in 1.25.0 is that the obstacle is gone rather than the
-  feature being done: `OntologyDataset` already produces a Jena model on both hosts and
-  `jena-arq` is already embedded, so this is now a panel and a menu item, not a compatibility
-  problem. Protégé 5.6.9 also ships `sparql-query-plugin`, which covers ad-hoc querying; the
-  gap OntoBoard should close is running *the project's own* committed `.rq` checks.
+- ~~**SPARQL query panel**~~ — **done in 1.33.0.** *ROBOT → SPARQL…* runs a query you write, or
+  the project's own checks in `src/sparql` with the same pass/fail convention `make sparql_test`
+  uses. `SELECT` and `ASK` only: a curator exploring a query should not be one typo away from an
+  `INSERT`. Protégé 5.6.9 also ships `sparql-query-plugin` for ad-hoc querying; what OntoBoard
+  adds is running *the project's own committed checks* against the ontology in front of you.
 - **Pull requests** — *Git…* does status, stage, commit, pull, push and branch, and
   *Open from GitHub…* clones. Opening or reviewing a PR still means leaving Protégé.
 - **Widoco HTML documentation.**
@@ -88,9 +87,12 @@ The plugin is early. These exist in the web application but not yet here:
 
   Nothing the plugin ships touches Rio, and the report no longer does, which is why it passes
   on 4.5.9. `export` was also listed as blocked by this and never was: its constant pool
-  contains no match for `rdf4j`, `openrdf` or `rio`. For what gets built next: a SPARQL panel
-  must build its model with `OntologyDataset`, never with `QueryOperation.loadOntologyAsModel`,
-  and then it works on both hosts.
+  contains no match for `rdf4j`, `openrdf` or `rio`. And `QueryOperation` cannot be called at
+  all - not one method. Its constant pool carries
+  `RioRenderer.<init>(OWLOntology, org.eclipse.rdf4j.rio.RDFHandler, ...)`, so resolving the class
+  throws `NoClassDefFoundError` before any method body runs. That was established by calling
+  `execQuery`, after a per-method disassembly wrongly suggested only the loaders were affected.
+  `SparqlQuery` therefore executes with Jena directly, the way `RuleRunner` does.
 - **ROBOT cannot write `.xlsx` output from inside the bundle.** `log4j-api` is excluded
   because it declares its own OSGi `Bundle-Activator` (`org.apache.logging.log4j.util.Activator`,
   in its manifest) and bnd rejects a second one, which leaves Apache POI without the logging
@@ -123,7 +125,7 @@ The plugin is early. These exist in the web application but not yet here:
 
 ### Not covered by tests
 
-1094 tests cover projection, axiom construction, layout persistence, ODK scaffolding, the
+1104 tests cover projection, axiom construction, layout persistence, ODK scaffolding, the
 report's rule execution and the OSGi configuration. Two of them reach outside the JVM:
 `RobotParityTest` compares the report against real ROBOT in `obolibrary/odkfull`, and
 `OdkBuildTest` runs a freshly scaffolded project's own `make test` and `make prepare_release` in
@@ -172,12 +174,9 @@ report for nine versions.
 Ordered by what is being worked on:
 
 1. **Pull requests** — the rest of the git surface ships; opening and reviewing a PR does not.
-2. **SPARQL** — the scaffold writes a check the plugin cannot run, which is the wrong way
-   round. No longer blocked by anything: `OntologyDataset` and the embedded `jena-arq` are
-   what it needs, and both hosts can do it.
-3. **Pattern library and Widoco.**
-4. **Entity locking** — once live collaboration has been used in anger.
-5. **Collaboration vocabulary** — the nine axiom kinds the live protocol cannot carry.
+2. **Pattern library and Widoco.**
+3. **Entity locking** — once live collaboration has been used in anger.
+4. **Collaboration vocabulary** — the nine axiom kinds the live protocol cannot carry.
 
 Done, with the release that did it: live collaboration and cursors (1.9.0); the entity-view
 column and tab layout (1.8.0); ROBOT transforms, term import and the quality report
@@ -187,7 +186,8 @@ comparison and ROBOT templates (1.19.0); properties and inferred individual type
 canvas (1.20.0); ROBOT's quality report actually running inside the bundle, on both hosts,
 checked against real ROBOT and against a startup self-check in the host (1.25.0); ROBOT term
 export as TSV, CSV, JSON, YAML or HTML, with the same in-host check (1.26.0); explanations for
-unsatisfiable classes and inconsistency, with ROBOT's axiom-impact summary (1.31.0); a generated ODK
+unsatisfiable classes and inconsistency, with ROBOT's axiom-impact summary (1.31.0); SPARQL,
+including the project's own committed checks (1.33.0); a generated ODK
 build that honours its own catalog, rejects equivalences nobody asserted, and gates a release on
 the same checks CI runs (1.28.0).
 
