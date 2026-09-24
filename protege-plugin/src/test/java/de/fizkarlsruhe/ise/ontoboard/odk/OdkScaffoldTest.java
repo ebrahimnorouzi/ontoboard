@@ -54,6 +54,9 @@ class OdkScaffoldTest {
         assertTrue(new File(new File(root, "src"), "sparql").isDirectory());
         assertTrue(new File(root, "README.md").isFile());
         assertTrue(new File(root, ".gitignore").isFile());
+        // Line endings pinned, or a Windows clone gets CRLF in the working tree and every byte
+        // comparison against regenerated content differs on that machine alone.
+        assertTrue(new File(root, ".gitattributes").isFile());
         assertTrue(new File(new File(new File(root, ".github"), "workflows"), "qc.yml").isFile());
     }
 
@@ -753,14 +756,27 @@ class OdkScaffoldTest {
     void theCiInstallsTheRobotThePluginEmbeds() throws Exception {
         String pom = new String(Files.readAllBytes(new File("pom.xml").toPath()),
                 Charset.forName("UTF-8"));
+
+        // The dependency must take the property rather than a literal, or there are two versions
+        // again and this test is checking one of them against itself.
         int robotCore = pom.indexOf("<artifactId>robot-core</artifactId>");
         assertTrue(robotCore > 0, "robot-core is not a dependency any more");
         int versionStart = pom.indexOf("<version>", robotCore) + "<version>".length();
-        String embedded = pom.substring(versionStart, pom.indexOf("</version>", versionStart));
+        String declaredOnDependency = pom.substring(versionStart,
+                pom.indexOf("</version>", versionStart));
+        assertEquals("${robot.version}", declaredOnDependency,
+                "robot-core must take the version from the property, so there is exactly one "
+                        + "place it is written");
+
+        int property = pom.indexOf("<robot.version>") + "<robot.version>".length();
+        assertTrue(property > "<robot.version>".length(), "no robot.version property in pom.xml");
+        String embedded = pom.substring(property, pom.indexOf("</robot.version>", property));
 
         assertEquals(embedded, OdkScaffold.ROBOT_VERSION,
                 "the generated CI installs ROBOT " + OdkScaffold.ROBOT_VERSION + " while the "
                         + "plugin embeds robot-core " + embedded + ", so a user's CI and their "
                         + "Protege would report against different rules");
+        assertFalse(OdkScaffold.ROBOT_VERSION.contains("${"),
+                "resource filtering did not run: ROBOT_VERSION is still a placeholder");
     }
 }
