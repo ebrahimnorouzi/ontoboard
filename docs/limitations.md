@@ -31,11 +31,28 @@ The plugin is early. These exist in the web application but not yet here:
 
 ### Known constraints
 
-- **ROBOT coverage depends on the host's OWL API.** On Protégé 5.5.0 (OWL API 4.5.9),
-  ROBOT's report, SPARQL query and export fail, because OWL API moved its RDF layer from
-  Sesame to RDF4J at 4.5.25 and `robot-core` targets the newer form. Loading, reasoning,
-  saving and conversion work. Protégé 5.6.x (OWL API 4.5.29) has the full surface. The
-  plugin reports which operations are unavailable rather than failing obscurely.
+- **Two separate barriers, not one.** This entry used to name only the OWL API one and got
+  the consequences wrong in both directions.
+
+  *The OWL API barrier.* OWL API moved its RDF layer from Sesame to RDF4J at 4.5.25, and
+  `robot-core` targets the newer form. The single call site is
+  `QueryOperation.loadOntologyAsModel`, so **SPARQL query** fails on Protégé 5.5.0 (OWL API
+  4.5.9) and works on 5.6.x (4.5.29). **`export` has no Rio reference at all** — its constant
+  pool contains no match for `rdf4j`, `openrdf` or `rio` — so it is not blocked by this and
+  never was. It was listed here in error.
+
+  *The bundle-resource barrier, which affects both hosts.* `ReportOperation` finds its
+  queries with `ReportOperation.class.getClassLoader().getResource("report_queries")` and then
+  compares `URL.getProtocol()` against `"file"` and `"jar"`. Inside an OSGi bundle the
+  protocol is neither, so it throws `IOException: Cannot access report query files` — and
+  **ROBOT report therefore fails on 5.6.x too**, which this entry previously promised would
+  have "the full surface". Confirmed from `~/.Protege/logs/protege.log:399033`, under OntoBoard
+  1.15.0 on the 5.5.0 install. No public `ReportOperation` entry point accepts a query map, so
+  every path routes through that private method; fixing it means loading robot-core's report
+  classes from an extracted copy of the jar, where the protocol is `jar:`.
+
+  Of the 16 ROBOT operation classes this plugin could use, `ReportOperation` is the only one
+  that enumerates a resource *directory*, so the second barrier is bounded to it.
 - **ROBOT's XLSX template path is unavailable.** `log4j-api` is excluded from the bundle
   because it declares its own OSGi `Bundle-Activator` and bnd rejects two, which leaves
   Apache POI without a logging backend. TSV templates are unaffected.
@@ -57,7 +74,7 @@ The plugin is early. These exist in the web application but not yet here:
 
 ### Not covered by tests
 
-1060 tests cover projection, axiom construction, layout persistence, ODK scaffolding, report
+1062 tests cover projection, axiom construction, layout persistence, ODK scaffolding, report
 parsing and the OSGi configuration. They do **not** cover any Swing UI:
 dialogs, toolbar, minimap, drop handling, and every visual choice need a display and are
 verified by hand. Treat visual behaviour as unverified after each change.

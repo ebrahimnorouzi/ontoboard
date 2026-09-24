@@ -377,17 +377,6 @@ public final class OdkScaffold {
     }
 
     /**
-     * Build products and scratch files only.
-     *
-     * <p>Note what is deliberately NOT here: {@code *.ontoboard.json}. An earlier version
-     * ignored the canvas sidecar, which meant two people cloning the repository each got an
-     * empty board and neither could see the other's diagram at all. The file exists precisely
-     * so a diagram can be shared without touching the ontology, and ignoring it removed the
-     * only way to share it. It is small, stable and diffs cleanly. A team that would rather
-     * keep diagrams private can add the line back; a team that never thinks about it gets the
-     * better default.
-     */
-    /**
      * What not to commit: generated output, and nothing else.
      *
      * <p>{@code src/ontology/imports/*.owl} used to be here and it was actively harmful. An import

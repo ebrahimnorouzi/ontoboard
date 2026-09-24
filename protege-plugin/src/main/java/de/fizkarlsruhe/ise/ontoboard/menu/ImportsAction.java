@@ -141,6 +141,13 @@ public class ImportsAction extends OntoBoardAction {
 
     /** The last path segment, so a warning line does not begin with sixty characters of PURL. */
     private static String shortName(String iri) {
+        // DisplayLabels handles a fragment and a path segment; an import IRI is usually
+        // path-shaped but nothing guarantees it.
+        String shortForm = de.fizkarlsruhe.ise.ontoboard.model.DisplayLabels.shortNameOf(
+                org.semanticweb.owlapi.model.IRI.create(iri));
+        if (shortForm != null && !shortForm.isEmpty()) {
+            return shortForm;
+        }
         int slash = iri.lastIndexOf('/');
         return slash < 0 || slash == iri.length() - 1 ? iri : iri.substring(slash + 1);
     }

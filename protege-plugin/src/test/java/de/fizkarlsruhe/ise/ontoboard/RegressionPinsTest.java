@@ -27,7 +27,6 @@ import org.semanticweb.owlapi.apibinding.OWLManager;
 import org.semanticweb.owlapi.model.IRI;
 import org.semanticweb.owlapi.model.OWLDataFactory;
 import org.semanticweb.owlapi.model.OWLOntology;
-import org.semanticweb.owlapi.model.OWLOntologyChange;
 import org.semanticweb.owlapi.model.OWLOntologyManager;
 
 /**
@@ -358,5 +357,62 @@ class RegressionPinsTest {
         assertTrue(ignoresBuildProduct,
                 "what `make reason` writes and `make clean` deletes must not be tracked: "
                         + ignored);
+    }
+
+    // ---------------------------------------------------------------- rendering
+
+    /**
+     * A term's short form comes from its fragment, not from its last path segment.
+     *
+     * <p>Four copies of this existed. Consolidating them onto ProjectIri.nameOf was wrong and the
+     * suite caught it: that helper answers a different question - a project's own namespace, which
+     * is path-shaped - so it rendered {@code .../o#Substance} as {@code o#Substance}. Two helpers
+     * that look alike and answer different questions is exactly how the four copies happened.
+     */
+    @Test
+    void aTermsShortFormComesFromItsFragment() {
+        assertEquals("Substance", ReleaseDiff.shortForm(IRI.create("http://example.org/o#Substance")));
+        assertEquals("CHEBI_15377",
+                ReleaseDiff.shortForm(IRI.create("http://purl.obolibrary.org/obo/CHEBI_15377")));
+        assertEquals("o", ReleaseDiff.shortForm(IRI.create("http://example.org/o#")));
+        assertEquals("o", ReleaseDiff.shortForm(IRI.create("http://example.org/o/")));
+    }
+
+    /**
+     * The relation dialog's explanation survives a label containing a capital A or B.
+     *
+     * <p>It substituted every capital A and B in the sentence rather than a placeholder, so three
+     * of the six explanations - which contain "Anything", "An A" and "a B" as ordinary words -
+     * came out mangled, and a second pass rewrote text the first had just inserted.
+     */
+    @Test
+    void everyRelationExplanationSurvivesAwkwardLabels() {
+        for (de.fizkarlsruhe.ise.ontoboard.axiom.EdgeAxioms.Candidate candidate
+                : de.fizkarlsruhe.ise.ontoboard.axiom.EdgeAxioms.Candidate.values()) {
+            String template = candidate.getExplanation();
+            String explained = candidate.explainedFor("American Hot", "Basil Topping");
+
+            // Only the placeholders the template actually has. A global domain axiom is
+            // ExistsR.Thing SubClassOf A - it genuinely does not mention the target, and a global
+            // range does not mention the source, so demanding both would be asserting something
+            // false about the logic.
+            if (template.contains("{source}")) {
+                assertTrue(explained.contains("American Hot"),
+                        candidate + " lost the source label: " + explained);
+            }
+            if (template.contains("{target}")) {
+                assertTrue(explained.contains("Basil Topping"),
+                        candidate + " lost the target label: " + explained);
+            }
+            assertTrue(template.contains("{source}") || template.contains("{target}"),
+                    candidate + " names neither term, so it explains nothing: " + template);
+            assertFalse(explained.contains("American Hotn"),
+                    candidate + " spliced the label into a word: " + explained);
+            assertFalse(explained.contains("{source}") || explained.contains("{target}"),
+                    candidate + " left a placeholder unsubstituted: " + explained);
+            // "Anything" must survive as a word wherever an explanation uses it.
+            assertFalse(explained.matches(".*\bA[a-z]*merican.*"),
+                    candidate + " rewrote a word it should not have: " + explained);
+        }
     }
 }

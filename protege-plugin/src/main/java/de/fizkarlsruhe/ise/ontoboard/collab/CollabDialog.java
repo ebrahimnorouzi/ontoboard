@@ -40,11 +40,6 @@ public final class CollabDialog {
     }
 
     /**
-     * Shows the dialog.
-     *
-     * @return the settings the user confirmed, already saved, or null if they cancelled
-     */
-    /**
      * The settings dialog, without an ontology to derive a board from.
      *
      * <p>Kept for callers that have none. Prefer {@link #show(Component, String)}: a board id

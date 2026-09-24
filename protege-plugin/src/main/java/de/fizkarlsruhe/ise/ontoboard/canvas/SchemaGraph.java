@@ -135,11 +135,6 @@ public class SchemaGraph extends mxGraph {
     }
 
     /**
-     * Appends an inline {@code strokeColor} override to the named style, so every namespace
-     * gets a distinguishable outline while the shape still says what kind of thing it is.
-     * mxGraph reads {@code "styleName;key=value"} as style-plus-overrides.
-     */
-    /**
      * The style a node would be drawn with, for a test.
      *
      * <p>Rendering needs a live mxGraph; the decision about which marker wins does not, and it is
@@ -149,6 +144,11 @@ public class SchemaGraph extends mxGraph {
         return styleFor(node, new PrefixColours(new java.util.HashMap<String, String>()));
     }
 
+    /**
+     * Appends an inline {@code strokeColor} override to the named style, so every namespace
+     * gets a distinguishable outline while the shape still says what kind of thing it is.
+     * mxGraph reads {@code "styleName;key=value"} as style-plus-overrides.
+     */
     private static String styleFor(CanvasNode node, PrefixColours colours) {
         // Border WEIGHT for a note, because every other channel is taken and says something
         // else: the shape says what kind of thing it is, the stroke colour says which namespace

@@ -108,6 +108,20 @@ public class CompareReleasesAction extends OntoBoardAction {
         File projectRoot = ReleaseAction.projectRootOf(editFile);
         String id = Release.ontologyIdFrom(editFile);
 
+        // "From" must be the earlier of the two. Both dropdowns are filled newest-first and the
+        // From default is the newest release, so picking the top of each - the natural way to
+        // "compare the last two releases" - handed them over backwards. ReleaseDiff.between is
+        // asymmetric, so every term added since the older release came back as REMOVED, and the
+        // deliberate data-loss warning fired: "N terms were removed rather than obsoleted.
+        // Anything that imported them now references nothing." A false alarm of exactly the kind
+        // that teaches people to ignore real ones. Release names are ISO dates, so they compare.
+        if (!WORKING_COPY.equals(to) && from.compareTo(to) >= 0) {
+            return result.failed("'From' must be an earlier release than 'To'. You picked From="
+                    + from + " and To=" + to + ", which would report everything added since "
+                    + to + " as having been removed. Both lists are newest-first, so the earlier "
+                    + "release is further down.").build();
+        }
+
         OWLOntology earlier;
         OWLOntology later;
         try {

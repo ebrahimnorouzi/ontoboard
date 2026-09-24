@@ -179,13 +179,6 @@ public final class Obsoletion {
     }
 
     /**
-     * Logical axioms mentioning the term, anywhere in them.
-     *
-     * <p>Not only the ones where it is the subject: a term that appears in somebody else's
-     * restriction is still logically entangled, and leaving that axiom behind means the ontology
-     * goes on reasoning through a term nobody should use.
-     */
-    /**
      * Every logical axiom the term takes part in.
      *
      * <p>By entity rather than by an assumed class. This built {@code OWLClass(term)} and asked

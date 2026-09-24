@@ -290,12 +290,6 @@ public final class GitClone {
     }
 
     /**
-     * Runs a command and collects its output.
-     *
-     * <p>stderr merged into stdout because git writes progress to one and errors to the other, and
-     * a failure message split across two streams is reassembled wrongly as often as not.
-     */
-    /**
      * Runs commands for real, through the shared {@link ProcessRunner}.
      *
      * <p>The hardened implementation lives there because {@code make} needs exactly the same

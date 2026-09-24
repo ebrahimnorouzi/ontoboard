@@ -29,29 +29,42 @@ public final class EdgeAxioms {
 
         /** {@code SubClassOf(A ObjectSomeValuesFrom(R B))} - every A relates to some B. */
         EXISTENTIAL("Existential", "A ⊑ ∃R.B",
-                "Every A is related to some B. Usually what an arrow means."),
+                "Every {source} is related to some {target}. Usually what an arrow means."),
 
         /** {@code SubClassOf(ObjectSomeValuesFrom(R B) A)} - only A's relate to B via R. */
         SCOPED_DOMAIN("Scoped domain", "∃R.B ⊑ A",
-                "Anything that relates to a B via R must be an A."),
+                "Anything that relates to a {target} via R must be a {source}."),
 
         /** {@code SubClassOf(A ObjectAllValuesFrom(R B))} - A relates only to B's. */
         SCOPED_RANGE("Scoped range", "A ⊑ ∀R.B",
-                "When an A relates via R, it relates only to B's."),
+                "When a {source} relates via R, it relates only to {target}."),
 
         /** {@code ObjectPropertyDomain(R A)} - global, and intersects across edges. */
         GLOBAL_DOMAIN("Global domain", "∃R.⊤ ⊑ A",
-                "Anything with an R at all is an A. Global: a second edge with the same "
-                        + "property narrows the domain to the intersection."),
+                "Anything with an R at all is a {source}. Global: a second edge with the "
+                        + "same property narrows the domain to the intersection."),
 
         /** {@code ObjectPropertyRange(R B)} - global, and intersects across edges. */
         GLOBAL_RANGE("Global range", "⊤ ⊑ ∀R.B",
-                "Every R points at a B. Global: a second edge with the same property "
-                        + "narrows the range to the intersection."),
+                "Every R points at a {target}. Global: a second edge with the same "
+                        + "property narrows the range to the intersection."),
 
         /** {@code SubClassOf(A ObjectMaxCardinality(1 R B))} - at most one B per A. */
         FUNCTIONALITY("Functionality", "A ⊑ ≤1 R.B",
-                "An A relates to at most one B via R.");
+                "A {source} relates to at most one {target} via R.");
+
+        /**
+         * The explanation with the two terms filled in.
+         *
+         * <p>Here rather than in the dialog so the placeholders and the substitution cannot drift
+         * apart, and done in one pass so a label inserted for {@code {source}} is never rescanned
+         * for {@code {target}}.
+         */
+        public String explainedFor(String source, String target) {
+            return explanation
+                    .replace("{source}", source == null ? "A" : source)
+                    .replace("{target}", target == null ? "B" : target);
+        }
 
         private final String displayName;
         private final String dlNotation;

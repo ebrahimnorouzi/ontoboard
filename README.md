@@ -128,8 +128,13 @@ RDF4J at 4.5.25 and `robot-core` targets the newer form:
 
 | Protégé | OWL API | ROBOT |
 |---|---|---|
-| **5.6.x** | 4.5.29 | all operations, including report, query and export |
-| 5.5.0 | 4.5.9 | loading, reasoning, saving and conversion only |
+| **5.6.x** | 4.5.29 | everything except `report` |
+| 5.5.0 | 4.5.9 | everything except `report` and SPARQL `query` |
+
+`report` fails on **both** hosts, for a different reason: ROBOT finds its report queries by
+asking its own classloader for a directory and accepting only `file:` and `jar:` URLs, and an
+OSGi bundle resource is neither. `export` works on both — it was listed as blocked in error.
+See [limitations](docs/limitations.md#known-constraints).
 
 One jar serves both — OWL API is imported from the host rather than embedded, so the
 available surface simply follows the host. On 5.5.0 the plugin explains which operations are
@@ -140,7 +145,7 @@ unavailable and why rather than failing obscurely.
 ```bash
 cd protege-plugin
 mvn clean package          # -> target/ontoboard-<version>.jar
-mvn test                   # 1060 tests
+mvn test                   # 1062 tests
 ```
 
 Java 8 bytecode is emitted deliberately (`maven.compiler.release=8`) so the bundle loads on

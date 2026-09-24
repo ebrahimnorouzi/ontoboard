@@ -244,6 +244,26 @@ public class ReleaseAction extends OntoBoardAction {
         // build published to two different places, and the menu's copy was one `git add -A` would
         // not even stage.
         File published = new File(projectRoot, id + ".owl");
+        // Never the file the user has open. projectRootOf falls back to the ontology's own
+        // directory for any layout that is not src/ontology/, and ontologyIdFrom only strips an
+        // "-edit" suffix - so an ontology opened at C:/work/pizza.owl gave a project root of
+        // C:/work and a published path of C:/work/pizza.owl, which is the edit file. The release
+        // was then written over it: inferences materialised as asserted axioms, editorial notes
+        // stripped if that box was ticked, a dated versionIRI stamped in - while the dialog said
+        // the edit file would not be modified.
+        try {
+            if (published.getCanonicalFile().equals(editFile.getCanonicalFile())) {
+                return result.failed("The release would be written over " + editFile.getName()
+                        + ", which is the file you have open. That happens when the ontology is "
+                        + "not in an ODK layout: the published copy is named after the ontology "
+                        + "and lands beside it. Move the ontology into src/ontology/ (or rename "
+                        + "it <id>-edit.owl) so the release has somewhere of its own to go.")
+                        .build();
+            }
+        } catch (java.io.IOException cannotCompare) {
+            return result.failed("Could not work out where the release would go relative to "
+                    + editFile.getName() + ": " + cannotCompare.getMessage()).build();
+        }
         try {
             if (dated.getParentFile() != null && !dated.getParentFile().isDirectory()
                     && !dated.getParentFile().mkdirs()) {

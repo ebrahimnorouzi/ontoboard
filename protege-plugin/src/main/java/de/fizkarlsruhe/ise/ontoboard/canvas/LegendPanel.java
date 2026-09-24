@@ -45,7 +45,11 @@ public final class LegendPanel extends JPanel {
                 section = entry.getForm();
                 at.gridx = 0;
                 at.gridwidth = 2;
-                add(heading(section == CanvasLegend.Form.NODE ? "Things" : "Relationships"), at);
+                // Three kinds, not two. MODIFIER rows - a term carrying an editorial note, an
+                // unsatisfiable class - fell into the "Relationships" branch of a two-way
+                // conditional and were headed as relationships and drawn as arrows, which is the
+                // opposite of what they are: a change to how an existing shape is drawn.
+                add(heading(headingFor(section)), at);
                 at.gridy++;
                 at.gridwidth = 1;
             }
@@ -54,6 +58,19 @@ public final class LegendPanel extends JPanel {
             at.gridx = 1;
             add(describe(entry), at);
             at.gridy++;
+        }
+    }
+
+    /** The section heading for a form. Three kinds, so not a conditional. */
+    private static String headingFor(CanvasLegend.Form form) {
+        switch (form) {
+            case NODE:
+                return "Things";
+            case EDGE:
+                return "Relationships";
+            case MODIFIER:
+            default:
+                return "Markers on a thing";
         }
     }
 
@@ -91,10 +108,13 @@ public final class LegendPanel extends JPanel {
             try {
                 g.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
                         RenderingHints.VALUE_ANTIALIAS_ON);
-                if (entry.getForm() == CanvasLegend.Form.NODE) {
-                    paintNode(g, x, y);
-                } else {
+                if (entry.getForm() == CanvasLegend.Form.EDGE) {
                     paintEdge(g, x, y);
+                } else {
+                    // NODE and MODIFIER both illustrate a box. A modifier's whole point is that it
+                    // is a box drawn differently - a heavier border, a red outline - so drawing it
+                    // as a line said nothing about what the user would actually see.
+                    paintNode(g, x, y);
                 }
             } finally {
                 g.dispose();

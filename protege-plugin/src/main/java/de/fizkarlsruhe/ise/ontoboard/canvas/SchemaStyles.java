@@ -42,7 +42,6 @@ public final class SchemaStyles {
     public static final String OBJECT_PROPERTY_NODE = "obObjectPropertyNode";
     public static final String DATA_PROPERTY_NODE = "obDataPropertyNode";
 
-    /** Canvas background - a hair off white so white node fills read as raised. */
     /** A sticky note: annotation on the diagram, not in the ontology. */
     public static final String STICKY_NOTE = "obStickyNote";
 
@@ -72,6 +71,7 @@ public final class SchemaStyles {
      */
     public static final int NOTED_STROKE_WIDTH = 3;
 
+    /** Canvas background - a hair off white so white node fills read as raised. */
     public static final String CANVAS_BACKGROUND = "#F7F8FA";
 
     private static final String FONT = "Segoe UI, Helvetica Neue, Arial, sans-serif";

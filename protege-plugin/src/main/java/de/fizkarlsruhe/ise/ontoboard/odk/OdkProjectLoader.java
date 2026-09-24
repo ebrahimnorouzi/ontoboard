@@ -204,7 +204,6 @@ public final class OdkProjectLoader {
         return ontologyId;
     }
 
-    /** Makefile targets worth offering, when a Makefile is present. */
     /**
      * The targets this project's Makefile actually offers, most-used first.
      *
