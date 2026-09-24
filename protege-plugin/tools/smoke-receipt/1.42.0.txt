@@ -1,0 +1,53 @@
+OntoBoard 1.42.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-09-24  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 7/7  test 6/6
+  2026-09-24  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 7/7  test 6/6
+
+RELEASE_DIFF - what will consumers actually see change?
+
+ODK's release_diff target is one line:
+
+  $(ROBOT) diff --labels true --left tmp/current-release.owl --right $(ONT).owl -f markdown -o $@
+
+and tmp/current-release.owl is downloaded from the published PURL. The question it answers is the
+one a release pull request has to answer, and a local release cannot: not "what changed since the
+release we kept a copy of" but "what changed against what is actually published".
+
+Project > Compare releases... now takes a URL for the 'From' side. Fill it in and the release is
+downloaded and compared against the later version chosen; leave it empty and the dated local
+releases work as before. The axiom diff can be written to a file, which is the reports/
+release-diff.md that target produces.
+
+Everything else was already there: AxiomDiff has had ROBOT's diff with labels on and markdown
+output since 1.34.0. What was missing was the two ends - fetching the published artefact, and
+writing the file.
+
+A PURL that has never been published resolves to nothing, and that is the common case for a
+project's first release. The failure says so in those words rather than reporting a download
+error, because "your PURL is not live yet" and "the network is down" call for different actions.
+
+Asserted in both runs:
+  - exactly one ontoboard jar in plugins/; "Starting bundle ontoboard"
+  - "Plugin: OntoBoard (1.42.0)" - the version Felix resolved, not the one on disk
+  - "OntoBoard self-check: PASS 7/7", including menu classes resolve - 29/29
+  - "OntoBoard self-test: PASS - 6 of 6 menu items ran"
+  - no unresolved constraint, java.* import, UnsupportedClassVersionError, truncated jar,
+    de.fizkarlsruhe stack frame, or OutOfMemoryError at -Xmx500M
+
+Verified outside the host: 1135 tests pass, 1 skipped.
+
+Not asserted, and not claimed:
+  - the published-release path has no automated test, for the same reason the mirror does not: it
+    downloads. The local release comparison it sits beside is covered by ReleaseDiffTest and by
+    CompareReleasesAction's own tests.
+  - the self-test still covers six of roughly twenty menu items. Compare releases... is not among
+    them - it needs a project with dated releases, and the self-test uses a scratch ontology with
+    no project at all. Covering the file-and-project actions means giving the self-test a scratch
+    ODK project, which in turn means those actions taking a project root rather than discovering
+    it from the open ontology. That is a refactor with real regression risk and it has not been
+    done.
+
+Neighbours that fail to install in Protege-5.5.0, unrelated to us:
+  cellfie-2.2.4.jar, swrltab-plugin-2.1.3.jar
