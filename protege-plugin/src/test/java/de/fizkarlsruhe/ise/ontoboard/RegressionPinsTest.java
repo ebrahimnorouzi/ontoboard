@@ -319,7 +319,11 @@ class RegressionPinsTest {
                 "CI must reason, or an inconsistent ontology passes: " + testLine);
         assertTrue(testLine.contains("sparql_test"),
                 "the scaffolded SPARQL check must run: " + testLine);
-        assertTrue(makefile.contains("robot verify"), makefile);
+        // "$(ROBOT) verify", not "robot verify": every robot call in the generated Makefile
+        // now goes through a ROBOT variable that carries --catalog, so that the catalog entries
+        // "Import terms..." writes actually resolve. The pin is about the SPARQL check really
+        // being invoked, which it still is.
+        assertTrue(makefile.contains("$(ROBOT) verify"), makefile);
         assertTrue(makefile.contains(".DEFAULT_GOAL := all"),
                 "without this the first target of an included Makefile becomes the default goal");
 

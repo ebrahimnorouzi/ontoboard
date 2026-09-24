@@ -150,7 +150,16 @@ public final class OdkScaffold {
                 + "# Put custom targets in " + id + ".Makefile, which is included below.\n\n"
                 + "ONT_ID := " + id + "\n"
                 + "ONT := $(ONT_ID)\n"
-                + "TODAY := $(shell date +%Y-%m-%d)\n\n"
+                + "TODAY := $(shell date +%Y-%m-%d)\n"
+                // Every robot call goes through $(ROBOT) so that --catalog is not optional.
+                // Without it the catalog beside this file is inert: ROBOT resolves an owl:imports
+                // over the network, or fails offline, and the whole point of the catalog entry that
+                // "Import terms..." writes is that the import resolves without the network. The
+                // scaffold wrote the catalog and then ignored it, so the plugin's own feature was
+                // undone by the plugin's own Makefile. Real ODK does exactly this:
+                // ROBOT = robot --catalog $(CATALOG).
+                + "CATALOG := catalog-v001.xml\n"
+                + "ROBOT := robot --catalog $(CATALOG)\n\n"
                 // Stated, not inherited from file order. `include` splices the custom
                 // Makefile in at this point, so the first target a user wrote there became make's
                 // default goal - a bare `make` then built whatever they happened to add first
@@ -168,8 +177,18 @@ public final class OdkScaffold {
                 // scaffold wrote src/sparql/check_labels.rq while nothing anywhere ran it, so a
                 // project advertised a quality check it did not perform.
                 + "test: reason report sparql_test\n\n"
+                // --equivalent-classes-allowed asserted-only, because ROBOT's default is
+                // EquivalentClassReasoningMode.ALL: a reasoner that concludes two *named* classes
+                // are equivalent is almost always reporting a modelling mistake - two terms defined
+                // identically, usually by different editors - and the default lets it through
+                // without a word. asserted-only fails the build unless the equivalence was written
+                // down deliberately. --exclude-tautologies structural drops the inferences that are
+                // true of any ontology and only pad the output. Real ODK passes both, in reason_test.
                 + "reason:\n"
-                + "\trobot reason -r ELK -i $(ONT)-edit.owl -o $(ONT).owl\n\n"
+                + "\t$(ROBOT) reason -r ELK -i $(ONT)-edit.owl \\\n"
+                + "\t  --equivalent-classes-allowed asserted-only \\\n"
+                + "\t  --exclude-tautologies structural \\\n"
+                + "\t  -o $(ONT).owl\n\n"
                 // --fail-on and --labels are passed because the YAML above declares them.
                 // They were declared and not passed, so CI did whatever ROBOT defaults to rather
                 // than what the project said - and a build that says fail_on: ERROR while not
@@ -184,21 +203,25 @@ public final class OdkScaffold {
                 + "# rather than deleting the line. Do not put comments in profile.txt: ROBOT has\n"
                 + "# no comment syntax there and will refuse to run.\n"
                 + "report:\n"
-                + "\trobot report -i $(ONT)-edit.owl --profile profile.txt \\\n"
+                + "\t$(ROBOT) report -i $(ONT)-edit.owl --profile profile.txt \\\n"
                 + "\t  --fail-on ERROR --labels true \\\n"
                 + "\t  --output report.tsv --format tsv\n\n"
                 // robot verify exits non-zero when a query returns rows, which is what makes a
                 // SPARQL file a check rather than a decoration.
                 + "sparql_test:\n"
-                + "\trobot verify --input $(ONT)-edit.owl --queries ../sparql/*.rq --output-dir .\n\n"
+                + "\t$(ROBOT) verify --input $(ONT)-edit.owl --queries ../sparql/*.rq --output-dir .\n\n"
                 + "clean:\n"
                 + "\t@rm -f tmp_* report.tsv *.bak *.csv $(ONT).owl\n\n"
-                + "prepare_release: reason report\n"
+                // test, not "reason report". prepare_release used to run a weaker gate than
+                // `make test` did: it left out sparql_test, so a release could be cut while one of
+                // the project's own SPARQL checks was failing. A release gate that is weaker than
+                // the CI gate is the wrong way round - the release is the artefact people cite.
+                + "prepare_release: test\n"
                 // Dated and stamped, not copied. A release with no owl:versionIRI cannot be
                 // cited or pinned by anyone downstream, and an undated copy means each release
                 // destroys the last - which is what the previous single cp did.
                 + "\t@mkdir -p ../../releases/$(TODAY)\n"
-                + "\trobot annotate --input $(ONT).owl \\\n"
+                + "\t$(ROBOT) annotate --input $(ONT).owl \\\n"
                 // ProjectIri.stemOf, not the raw base IRI: a base ending in .owl - which is
                 // what the wizard defaults to - produced .../obo/mwo.owl/releases/<date>/mwo.owl,
                 // a third spelling of the same release. The ID-ranges IRI below already stripped
@@ -256,7 +279,14 @@ public final class OdkScaffold {
     private static String catalog() {
         return "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
                 + "<catalog prefer=\"public\" xmlns=\"urn:oasis:names:tc:entity:xmlns:xml:catalog\">\n"
-                + "    <!-- Map import IRIs to local files in imports/ as you add them. -->\n"
+                + "    <!-- Map import IRIs to local files in imports/ as you add them.\n"
+                + "         ROBOT > Import terms... adds an entry here for every module it saves,\n"
+                // No double hyphen anywhere in here: "--" is illegal inside an XML comment, and a
+                // catalog that does not parse fails every robot call in the generated build. An
+                // earlier wording of this comment named the catalog command-line flag literally and
+                // broke `make` outright - found by running the scaffolded project, not by reading it.
+                + "         and the Makefile hands this file to robot with its catalog option, so\n"
+                + "         those imports resolve from disk with no network. -->\n"
                 + "</catalog>\n";
     }
 
@@ -422,9 +452,17 @@ public final class OdkScaffold {
                 + "## Building\n\n"
                 + "From `src/ontology`, with `make` and ROBOT on your PATH:\n\n"
                 + "```\n"
-                + "make reason   # classify with ELK into " + id + ".owl\n"
-                + "make report   # ROBOT quality report -> report.tsv\n"
-                + "make test     # what CI runs\n"
+                // All seven, not three. The build had a default goal and a release target that the
+                // README never mentioned, so the two commands a maintainer most needs - the bare
+                // `make`, and the one that cuts a release - were the two they had to find by
+                // reading the Makefile they are told not to edit.
+                + "make all        # reason, then report - and what a bare `make` runs\n"
+                + "make reason     # classify with ELK into " + id + ".owl\n"
+                + "make report     # ROBOT quality report -> report.tsv\n"
+                + "make sparql_test  # run every check in ../sparql over the edit file\n"
+                + "make test       # what CI runs: reason, report and sparql_test\n"
+                + "make prepare_release  # test, then a dated, version-stamped release\n"
+                + "make clean      # delete the generated files\n"
                 + "```\n\n"
                 + "Custom targets go in `" + id + ".Makefile`, which the build includes and\n"
                 + "never overwrites. `Makefile` itself is generated - do not edit it.\n\n"

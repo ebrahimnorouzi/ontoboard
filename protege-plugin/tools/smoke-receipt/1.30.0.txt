@@ -1,0 +1,82 @@
+OntoBoard 1.30.0 - host smoke receipt
+
+Produced by tools/smoke.ps1. This file is what CI checks for: a version that has never been
+loaded in a Protege cannot reach main.
+
+  2026-09-24  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS
+  2026-09-24  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS
+
+Both hosts printed:
+
+  OntoBoard self-check ok: robot report profile readable - 32 rules read from robot-core's
+      report_profile.txt, expected 32
+  OntoBoard self-check ok: robot report queries readable - 32/32 rules resolved a .rq file
+  OntoBoard self-check ok: jena reads what the owl api writes - 4 triples round-tripped
+      through RDF/XML
+  OntoBoard self-check ok: robot report runs end to end - 5 findings over a three-axiom
+      ontology that has no labels, no title and no licence
+  OntoBoard self-check ok: robot export runs end to end - 2 terms across 4 columns,
+      written as tsv
+  OntoBoard self-check: PASS 5/5
+
+Why the version jumps from 1.26.0 to 1.30.0. 1.27.0, 1.28.0 and 1.29.0 were each built and
+loaded in both hosts during this session, and each was then invalidated by the next fix before it
+could be committed - so none was ever released and none has a receipt. The numbers are spent
+rather than skipped. Reusing one would have been worse: Felix keys its bundle cache on symbolic
+name AND version, so a second, different jar under a number the host has already cached can
+resolve to the old one, and this receipt would record a pass for code that never ran.
+
+That is not hypothetical. Two smoke runs overlapped in this session because the second was
+started while the first still held the plugins directory, and smoke.ps1 caught it exactly as
+designed:
+
+  FAILED  C:\Users\eno\Documents\Protege-5.5.0  -Xmx500M
+    - resolved OntoBoard 1.29.0, expected 1.28.0 - a stale Felix cache, or the wrong jar
+
+The runs above were made with nothing else touching either install.
+
+What this release changes, all of it in the project the ODK wizard generates. None of it was
+found by reading the generated files; all of it was found by running them in obolibrary/odkfull:
+
+  - catalog-v001.xml contained "--" inside an XML comment, which XML forbids. robot parses the
+    catalog before doing anything else, so `make` died on the first call with
+    "The string \"--\" is not permitted within comments". Every string assertion about that file
+    passed. OdkScaffoldTest now parses every generated XML file rather than reading it.
+  - No generated robot invocation passed the catalog at all. That mattered because
+    ROBOT > Import terms... writes a catalog entry for each module it saves, precisely so the
+    import resolves from disk with no network - and the build then resolved it over the network,
+    or failed offline. Every call now goes through $(ROBOT), defined once as
+    "robot --catalog $(CATALOG)", the way real ODK does it; the pin forbids a bare robot call in
+    any recipe rather than checking for the flag, so a recipe added later cannot reintroduce it.
+  - reason accepted equivalences nobody asserted. ROBOT's default for equivalent-classes-allowed
+    is EquivalentClassReasoningMode.ALL, read off ReasonOperation.getDefaultOptions' bytecode, so
+    a reasoner concluding that two named classes are the same - almost always two terms defined
+    identically by different editors - passed the build in silence. The recipe now passes
+    asserted-only and exclude-tautologies structural, as ODK's reason_test does.
+  - prepare_release ran a weaker gate than `make test`: it omitted sparql_test, so a release
+    could be cut while one of the project's own SPARQL checks was failing. It now depends on
+    test.
+  - The generated README documented 3 of the 7 targets. The two it omitted were the default goal
+    and prepare_release - the bare `make`, and the command that cuts a release - so a maintainer
+    had to read the Makefile they are told not to edit. A pin now requires every .PHONY target to
+    appear in the README.
+
+Verified outside the host:
+  - 1086 tests pass, 1 skipped.
+  - OdkBuildTest (new) scaffolds a project and runs its own `make test` and `make prepare_release`
+    inside obolibrary/odkfull. Both pass: "No violations found.", "PASS Rule
+    ../sparql/check_labels.rq: 0 violation(s)", and a dated release carrying
+    versionIRI http://example.org/demo/releases/<date>/demo.owl. Skipped, not passed, without
+    Docker.
+  - RobotParityTest still matches real ROBOT 1.9.10 exactly: fixture-tiny 7/7, pizza v2 21/21.
+
+Not asserted, and not claimed:
+  - that the OntoBoard tab renders, or that any of the 22 menu items works when clicked. Driving
+    those is still Phase 2's self-test bundle.
+  - that ROBOT operations beyond report and export run in-bundle. 13 of robot-core's 21
+    *Operation classes are still not wrapped at all.
+
+Neighbours that fail to install in Protege-5.5.0, unrelated to us and not fixed here:
+  cellfie-2.2.4.jar        (its own manifest imports java.awt, which OSGi forbids)
+  swrltab-plugin-2.1.3.jar
+Unchanged since the 1.24.0 receipt.

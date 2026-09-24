@@ -123,11 +123,18 @@ The plugin is early. These exist in the web application but not yet here:
 
 ### Not covered by tests
 
-1079 tests cover projection, axiom construction, layout persistence, ODK scaffolding, the
+1086 tests cover projection, axiom construction, layout persistence, ODK scaffolding, the
 report's rule execution and the OSGi configuration. Two of them reach outside the JVM:
-`RobotParityTest` compares the report against real ROBOT in `obolibrary/odkfull` and is
-*skipped*, not failed, where Docker is absent — so a green run on a machine without Docker
-proves less than it looks. They do **not** cover any Swing UI:
+`RobotParityTest` compares the report against real ROBOT in `obolibrary/odkfull`, and
+`OdkBuildTest` runs a freshly scaffolded project's own `make test` and `make prepare_release` in
+that image. Both are *skipped*, not failed, where Docker is absent — so a green run on a machine
+without Docker proves less than it looks.
+
+`OdkBuildTest` earns its keep: three defects in the generated build had survived a 30-assertion
+test class and were found the first time anyone executed it — a `--` inside an XML comment in the
+catalog, which made `make` die on the first robot call; no robot invocation passing the catalog at
+all; and a release gate weaker than the CI gate. Asserting what a generated file *says* is not the
+same as running it. They do **not** cover any Swing UI:
 dialogs, toolbar, minimap, drop handling, and every visual choice need a display and are
 verified by hand. Treat visual behaviour as unverified after each change.
 
@@ -178,7 +185,9 @@ editorial notes, frames and sticky notes, obsoletion, OWL 2 profile checking, re
 comparison and ROBOT templates (1.19.0); properties and inferred individual types on the
 canvas (1.20.0); ROBOT's quality report actually running inside the bundle, on both hosts,
 checked against real ROBOT and against a startup self-check in the host (1.25.0); ROBOT term
-export as TSV, CSV, JSON, YAML or HTML, with the same in-host check (1.26.0).
+export as TSV, CSV, JSON, YAML or HTML, with the same in-host check (1.26.0); a generated ODK
+build that honours its own catalog, rejects equivalences nobody asserted, and gates a release on
+the same checks CI runs (1.28.0).
 
 Those middle releases all shipped under one unchanged version number, which is why the list
 above names versions at all — see the note in [development](development.md) about what that
