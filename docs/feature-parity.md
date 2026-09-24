@@ -103,6 +103,7 @@ individual views in a tabbed column beside the canvas, so none of this needs a t
 | SPARQL query panel | ✅ | 🧩 | `sparql-query-plugin`, bundled |
 | GitHub import | ✅ | ✅ | *Project → Open from GitHub…* clones and opens the edit file |
 | Export formats | ✅ | 🔶 | Protégé exports OWL formats; ROBOT `convert` would add OBO/JSON-LD |
+| In-host self-test | ➖ | ✅ | *OntoBoard → Run self-test*, and `smoke.ps1 -SelfTest`, actually run six read-only ROBOT menu items in Protégé against a scratch ontology and assert what each reported |
 | Rebuildable import modules | ➖ | ✅ | *Import terms…* now writes `imports/<name>_terms.txt` beside the module, and *Project → Refresh imports…* reports whether every import can be rebuilt from the repository's own lists, then rebuilds them — ODK's `all_imports`/`refresh-imports` |
 | Bulk IRI rename | ➖ | ✅ | *ROBOT → Rename IRIs…* moves whole IRIs or a whole namespace, previewed before it applies and undoable in one step. Protégé renames one entity at a time |
 | Materialize inferred relations | ➖ | ✅ | *ROBOT → Transform… → Materialize relations*. Where Reason asserts inferred subclass axioms, this asserts inferred existential relations, so a consumer that cannot reason still sees them |

@@ -148,13 +148,30 @@ read what the OWL API writes, the report produces findings end to end, the expor
 end to end, the explanation of a deliberately unsatisfiable class produces a justification, and
 every class `plugin.xml` names loads *and constructs*.
 
-That last one is half of what the plan calls Phase 2, and worth being precise about.
-`PluginXmlTest` already calls `Class.forName` on each of those classes — on Maven's classpath,
-where everything resolves. Felix is a different class space, and a menu action referencing a
-Protégé type the bundle never imported passes that test and dies on click, invisibly, because an
-action that fails to load simply does nothing. So all 27 are now loaded and constructed in the
-host. What this still does not do is *click* them: it can tell you an item is dead, not that its
-dialog is wrong.
+That last one is half of what the plan calls Phase 2. `PluginXmlTest` already calls
+`Class.forName` on each of those classes — on Maven's classpath, where everything resolves. Felix
+is a different class space, and a menu action referencing a Protégé type the bundle never imported
+passes that test and dies on click, invisibly, because an action that fails to load simply does
+nothing. All 29 are now loaded *and constructed* in the host.
+
+The other half arrived in 1.40.0. `tools/smoke.ps1 -SelfTest` sets `-Dontoboard.selftest=true`, and
+the startup hook then drives six read-only ROBOT menu items against a scratch ontology and logs
+what each reported — Measure, Quality report, Explain, SPARQL, Export terms, Profile. A person can
+run the same thing from *OntoBoard → Run self-test*; both go through one implementation, because a
+self-test with two implementations grows a version nobody runs.
+
+It earned itself immediately: on its first run it found `QualityReportAction` throwing
+`NullPointerException`, because its `options` field had no initial value and `run()` therefore
+worked only after `configure()`. From the menu `configure()` always runs, so no user could reach
+it — a latent trap rather than a live bug — but it was invisible to 1133 unit tests and to anyone
+clicking the item.
+
+**Six of roughly twenty items, and the rest are excluded on purpose.** *Transform* defaults to
+applying its changes and would push them through the live session's model manager. *Rename IRIs*,
+*Import terms*, *Obsolete*, *Release*, *Build*, *Git*, *Open from GitHub* and *New ODK project*
+write files, need a configured project, or reach the network. The canvas, notes and collaboration
+items are Swing surfaces and nothing here opens a window. So this does not "drive the menu" — it
+drives the six read-only ROBOT operations, in the host, and says so in its own output.
 
 The export check is there for a specific reason. Its safety rested on a chain of inferences — POI
 is reached only by `Table.asWorkbook`, which `write` calls only for `xlsx`, which the plugin does
