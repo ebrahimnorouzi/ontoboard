@@ -6,6 +6,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import org.obolibrary.robot.IOHelper;
+import org.obolibrary.robot.MaterializeOperation;
 import org.obolibrary.robot.MergeOperation;
 import org.obolibrary.robot.ReasonOperation;
 import org.obolibrary.robot.ReduceOperation;
@@ -62,6 +63,24 @@ public final class RobotTransform {
                         + "consumers which cannot handle equivalence still see the hierarchy. It "
                         + "only adds axioms; nothing is removed.",
                 false),
+
+        /**
+         * {@code robot materialize}: writes down the existential relations the reasoner infers.
+         *
+         * <p>Different from {@code reason}, which asserts inferred <em>subclass</em> axioms.
+         * Materialize asserts inferred relations - that every pizza with a mozzarella topping
+         * <em>has topping</em> some cheese topping - which a plain reasoner leaves implicit and
+         * which most downstream consumers cannot compute for themselves.
+         */
+        MATERIALIZE("Materialize relations",
+                "Asserts the existential relations the reasoner infers, over every object property "
+                        + "in the ontology. Where 'Reason' writes down inferred subclass axioms, "
+                        + "this writes down inferred relations - so a consumer that cannot reason "
+                        + "still sees them.\n\nIt uses an expression-materializing reasoner over "
+                        + "the reasoner you choose, so it costs more than the others and grows the "
+                        + "ontology. Release pipelines run it; an editing session usually should "
+                        + "not.",
+                true),
 
         /**
          * {@code robot reason}: writes down what the reasoner works out.
@@ -301,6 +320,17 @@ public final class RobotTransform {
                 return;
             case REPAIR:
                 RepairOperation.repair(copy, new IOHelper());
+                return;
+            case MATERIALIZE:
+                // Every object property in the signature, not an empty set: ROBOT's CLI selects
+                // properties with --term, and handing the operation nothing selects nothing, which
+                // would report "no change" on an ontology it could have said plenty about.
+                MaterializeOperation.materialize(copy, reasonerFactory == null
+                                ? new StructuralReasonerFactory() : reasonerFactory,
+                        new java.util.HashSet<org.semanticweb.owlapi.model.OWLObjectProperty>(
+                                copy.getObjectPropertiesInSignature(
+                                        org.semanticweb.owlapi.model.parameters.Imports.INCLUDED)),
+                        MaterializeOperation.getDefaultOptions());
                 return;
             case MERGE_IMPORTS:
             default:
