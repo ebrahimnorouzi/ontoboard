@@ -54,7 +54,9 @@ public class RefreshImportsAction extends OntoBoardAction {
 
     @Override
     protected boolean configure() {
-        List<ImportModules.Module> modules = ImportModules.modulesIn(projectRoot());
+        List<ImportModules.Module> modules = ImportModules.modulesIn(
+                projectRootOf(getOWLModelManager() == null ? null
+                        : getOWLModelManager().getActiveOntology()));
         int rebuildable = 0;
         for (ImportModules.Module module : modules) {
             if (module.isRebuildable()) {
@@ -104,7 +106,7 @@ public class RefreshImportsAction extends OntoBoardAction {
 
     @Override
     protected OperationResult run(OWLOntology ontology) {
-        File root = projectRoot();
+        File root = projectRootOf(ontology);
         OperationResult.Builder result = OperationResult.of(operationName())
                 .columns("Import", "Module", "Term list", "Source");
 
@@ -140,7 +142,7 @@ public class RefreshImportsAction extends OntoBoardAction {
                 continue;
             }
             if (rebuild) {
-                rebuilt += rebuildOne(module, source, result) ? 1 : 0;
+                rebuilt += rebuildOne(module, source, root, result) ? 1 : 0;
             }
         }
 
@@ -162,7 +164,7 @@ public class RefreshImportsAction extends OntoBoardAction {
     }
 
     /** Re-extracts one module from its recorded source. */
-    private boolean rebuildOne(ImportModules.Module module, String source,
+    private boolean rebuildOne(ImportModules.Module module, String source, File root,
             OperationResult.Builder result) {
         try {
             List<IRI> terms = ImportModules.readTerms(module.getTermsFile());
@@ -176,7 +178,7 @@ public class RefreshImportsAction extends OntoBoardAction {
                 return false;
             }
 
-            OWLOntology upstream = upstreamFor(module, source, result);
+            OWLOntology upstream = upstreamFor(module, source, root, result);
             IRI moduleIri = IRI.create(module.getModuleFile().toURI());
             TermExtract.Result extracted = TermExtract.run(upstream, terms,
                     TermExtract.DEFAULT_METHOD, moduleIri);
@@ -204,10 +206,10 @@ public class RefreshImportsAction extends OntoBoardAction {
      * {@code MirrorOperation}'s job, so it brings the whole imports closure and a catalog with it
      * rather than one file that then cannot resolve its own imports.
      */
-    private OWLOntology upstreamFor(ImportModules.Module module, String source,
+    private OWLOntology upstreamFor(ImportModules.Module module, String source, File root,
             OperationResult.Builder result) throws Exception {
-        File mirrorDirectory = ImportModules.mirrorDirectoryIn(projectRoot());
-        boolean mirrored = ImportModules.hasMirror(projectRoot());
+        File mirrorDirectory = ImportModules.mirrorDirectoryIn(root);
+        boolean mirrored = ImportModules.hasMirror(root);
 
         if (!updateMirror && mirrored) {
             try {
@@ -252,21 +254,4 @@ public class RefreshImportsAction extends OntoBoardAction {
         }
     }
 
-    /** The ODK project the open ontology belongs to, or null when it has never been saved. */
-    private File projectRoot() {
-        try {
-            OWLOntology ontology = getOWLModelManager().getActiveOntology();
-            if (ontology == null) {
-                return null;
-            }
-            URI documentUri = getOWLModelManager().getOWLOntologyManager()
-                    .getOntologyDocumentIRI(ontology).toURI();
-            if (!"file".equalsIgnoreCase(documentUri.getScheme())) {
-                return null;
-            }
-            return ReleaseAction.projectRootOf(new File(documentUri));
-        } catch (RuntimeException notAFile) {
-            return null;
-        }
-    }
 }

@@ -1,0 +1,71 @@
+OntoBoard 1.44.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-09-24  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 7/7  test 9/9
+  2026-09-24  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 7/7  test 9/9
+
+NINE OF NINE, AGAINST A REAL PROJECT
+
+  ROBOT > Measure...            ok | 50 metrics
+  ROBOT > Quality report...     ok | 6 findings, 2 of them errors
+  ROBOT > Explain...            ok | Consistent, nothing to explain
+  ROBOT > SPARQL...             ok | 1 row
+  ROBOT > Export terms...       ok | 2 terms, 4 columns
+  ROBOT > Profile...            ok | 3 axioms outside OWL 2 EL
+  Project > Imports...          ok | This ontology imports nothing
+  Project > Refresh imports...  ok | No imports. Nothing under src/ontology/imports
+  Notes > All notes...          ok | No editorial notes in this ontology
+
+The three new ones are project-aware: they look for src/ontology, a catalog, imports/. They could
+not be covered before because the self-test used an ontology held in memory, and an ontology with
+no file has no project - so those actions could only ever have reported "this has not been saved",
+which tests nothing. The subject is now a throwaway ODK project scaffolded by the wizard's own
+code, into a temp directory, deleted afterwards.
+
+WHAT MADE THAT POSSIBLE, AND WHY IT IS ALSO A CLEANUP
+
+Seven actions carried their own private copy of fileOf(OWLOntology), each asking the *model
+manager's* manager for the document IRI. That answers for the ontology Protege has open and for
+nothing else, which is precisely why every project-aware action was unusable against anything built
+elsewhere. One implementation now lives in OntoBoardAction and asks the ontology's own manager
+first, falling back to the model manager.
+
+That is also just more correct: a document IRI belongs to the manager that loaded the ontology, and
+for anything Protege owns that manager *is* the model manager's - so nothing changes for the normal
+case. Seven copies became one, and the self-test gained three items as a side effect rather than as
+the point.
+
+TWO THINGS THE SELF-TEST CAUGHT ON ITSELF
+
+  Could not build the scratch project to test against: Base IRI must end in the ontology ID.
+
+OdkProjectConfig.validate refused the scratch project, correctly - id "selftest" against a base IRI
+ending "self-test.owl". The scaffold's own validation did its job on the first run.
+
+And smoke.ps1 reported that failure as "the self-test reported FAIL" and nothing else, because it
+listed only failed *items* - and there were none, the run having died before any item started. It
+prints the verdict line itself now. A test harness that cannot say why it failed is half a harness.
+
+Asserted in both runs:
+  - exactly one ontoboard jar in plugins/; "Starting bundle ontoboard"
+  - "Plugin: OntoBoard (1.44.0)" - the version Felix resolved, not the one on disk
+  - "OntoBoard self-check: PASS 7/7", including menu classes resolve - 29/29
+  - "OntoBoard self-test: PASS - 9 of 9 menu items ran"
+  - no unresolved constraint, java.* import, UnsupportedClassVersionError, truncated jar,
+    de.fizkarlsruhe stack frame, or OutOfMemoryError at -Xmx500M
+
+Verified outside the host: 1135 tests pass, 1 skipped.
+
+Not asserted, and not claimed:
+  - nine of roughly twenty items. Still excluded, and now for one honest reason each rather than a
+    blanket one: Transform applies its changes by default; Rename, Import terms, Obsolete, Release,
+    Build, Git, Open from GitHub and New ODK project write files, run make or reach the network;
+    Compare releases needs a project with dated releases, which a freshly scaffolded one has none
+    of. The canvas, notes-editing and collaboration items are Swing surfaces.
+  - the write-and-network actions could now be covered - the scratch project makes it possible -
+    but each needs its own fixture (a release history, a git remote, an upstream to import from),
+    and inventing those badly would be worse than the gap.
+
+Neighbours that fail to install in Protege-5.5.0, unrelated to us:
+  cellfie-2.2.4.jar, swrltab-plugin-2.1.3.jar

@@ -233,9 +233,15 @@ if ($SelfTest) {
         $problems += ('-SelfTest was asked for but OntoBoard never logged a self-test verdict. ' +
             'Either the system property did not reach the JVM, or the self-test did not run.')
     } elseif ($test.Groups[1].Value -ne 'PASS') {
-        $failedItems = [regex]::Matches($slice, '.*OntoBoard self-test item: .*FAILED.*')
-        $problems += 'the self-test reported FAIL'
-        foreach ($hit in $failedItems) { $problems += "  $($hit.Value.Trim())" }
+        # The verdict line itself first: the self-test can fail before it runs a single item -
+        # it did, on a bad scratch-project IRI - and listing only failed items said nothing at all.
+        $verdictLine = [regex]::Match($slice, '.*OntoBoard self-test: FAIL.*')
+        $problems += $(if ($verdictLine.Success) {
+            $verdictLine.Value.Trim() -replace '^.*?OntoBoard self-test', 'OntoBoard self-test'
+        } else { 'the self-test reported FAIL' })
+        foreach ($hit in [regex]::Matches($slice, '.*OntoBoard self-test item: .*FAILED.*')) {
+            $problems += "  $($hit.Value.Trim())"
+        }
     }
 }
 

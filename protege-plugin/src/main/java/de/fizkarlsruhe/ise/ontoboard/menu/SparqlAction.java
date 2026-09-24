@@ -54,7 +54,9 @@ public class SparqlAction extends OntoBoardAction {
 
     @Override
     protected boolean configure() {
-        List<File> checks = SparqlQuery.checksIn(projectRoot());
+        List<File> checks = SparqlQuery.checksIn(
+                projectRootOf(getOWLModelManager() == null ? null
+                        : getOWLModelManager().getActiveOntology()));
         String checksHelp = checks.isEmpty()
                 ? "This project has no src/sparql directory, or nothing with a .rq extension in "
                         + "it. The ODK wizard writes check_labels.rq there, and the generated "
@@ -135,7 +137,7 @@ public class SparqlAction extends OntoBoardAction {
     }
 
     private OperationResult runProjectChecks(OWLOntology ontology) {
-        File root = projectRoot();
+        File root = projectRootOf(ontology);
         List<File> files = SparqlQuery.checksIn(root);
         OperationResult.Builder result = OperationResult.of(operationName())
                 .columns("Check", "Result", "Detail");
@@ -190,23 +192,6 @@ public class SparqlAction extends OntoBoardAction {
         return result.summary(summary).build();
     }
 
-    /** The ODK project the open ontology belongs to, or null when it has never been saved. */
-    private File projectRoot() {
-        try {
-            OWLOntology ontology = getOWLModelManager().getActiveOntology();
-            if (ontology == null) {
-                return null;
-            }
-            URI documentUri = getOWLModelManager().getOWLOntologyManager()
-                    .getOntologyDocumentIRI(ontology).toURI();
-            if (!"file".equalsIgnoreCase(documentUri.getScheme())) {
-                return null;
-            }
-            return ReleaseAction.projectRootOf(new File(documentUri));
-        } catch (RuntimeException notAFile) {
-            return null;
-        }
-    }
 
     private static String names(List<File> files) {
         StringBuilder text = new StringBuilder();

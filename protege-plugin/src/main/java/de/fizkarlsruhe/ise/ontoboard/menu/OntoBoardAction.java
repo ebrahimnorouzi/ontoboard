@@ -1,6 +1,7 @@
 package de.fizkarlsruhe.ise.ontoboard.menu;
 
 import java.awt.event.ActionEvent;
+import java.io.File;
 import javax.swing.JOptionPane;
 import org.protege.editor.owl.ui.action.ProtegeOWLAction;
 import org.semanticweb.owlapi.model.OWLOntology;
@@ -161,6 +162,57 @@ public abstract class OntoBoardAction extends ProtegeOWLAction {
      *
      * <p>Three actions had written this separately before it moved here.
      */
+    /**
+     * The file an ontology was loaded from, or null when it has never been saved.
+     *
+     * <p>Seven actions carried a private copy of this, each asking the <em>model manager's</em>
+     * manager for the document IRI. That works for the ontology Protege has open and for nothing
+     * else, which made every project-aware action unusable against an ontology built in memory -
+     * including by the self-test, which is why they were excluded from it.
+     *
+     * <p>Asking the ontology's own manager first is also simply more correct: a document IRI is a
+     * property of the manager that loaded the ontology, and for anything Protege owns that manager
+     * <em>is</em> the model manager's, so nothing changes for the normal case. The fallback is kept
+     * because an ontology can be handed about between managers.
+     */
+    protected File fileOf(OWLOntology ontology) {
+        if (ontology == null) {
+            return null;
+        }
+        File own = fileFrom(ontology.getOWLOntologyManager(), ontology);
+        if (own != null) {
+            return own;
+        }
+        return getOWLModelManager() == null
+                ? null
+                : fileFrom(getOWLModelManager().getOWLOntologyManager(), ontology);
+    }
+
+    /**
+     * The ODK project an ontology belongs to, or null when it has never been saved.
+     *
+     * <p>Takes the ontology rather than reading the open one, so an action can be run against
+     * something other than the user's session - which is what lets the self-test drive the
+     * project-aware actions against a scratch project instead of skipping them.
+     */
+    protected File projectRootOf(OWLOntology ontology) {
+        File file = fileOf(ontology);
+        return file == null ? null : ReleaseAction.projectRootOf(file);
+    }
+
+    private static File fileFrom(org.semanticweb.owlapi.model.OWLOntologyManager manager,
+            OWLOntology ontology) {
+        if (manager == null) {
+            return null;
+        }
+        try {
+            java.net.URI documentUri = manager.getOntologyDocumentIRI(ontology).toURI();
+            return "file".equalsIgnoreCase(documentUri.getScheme()) ? new File(documentUri) : null;
+        } catch (RuntimeException notAFile) {
+            return null;
+        }
+    }
+
     protected void applyOnEventThread(final java.util.List<OWLOntologyChange> changes) {
         if (javax.swing.SwingUtilities.isEventDispatchThread()) {
             getOWLModelManager().applyChanges(changes);

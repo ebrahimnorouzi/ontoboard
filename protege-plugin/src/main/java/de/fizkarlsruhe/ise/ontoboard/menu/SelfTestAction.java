@@ -1,5 +1,6 @@
 package de.fizkarlsruhe.ise.ontoboard.menu;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -89,11 +90,13 @@ public class SelfTestAction extends OntoBoardAction {
         OperationResult.Builder result = OperationResult.of(operationName())
                 .columns("Menu item", "Result", "What it reported");
 
+        File projectRoot;
         OWLOntology scratch;
         try {
-            scratch = scratchOntology();
+            projectRoot = scratchProject();
+            scratch = editFileOf(projectRoot);
         } catch (Exception cannotBuild) {
-            return result.failed("Could not build the scratch ontology to test against: "
+            return result.failed("Could not build the scratch project to test against: "
                     + cannotBuild.getMessage()).build();
         }
 
@@ -104,6 +107,12 @@ public class SelfTestAction extends OntoBoardAction {
         underTest.put("ROBOT > SPARQL...", new SparqlAction());
         underTest.put("ROBOT > Export terms...", new ExportAction());
         underTest.put("ROBOT > Profile...", new ProfileAction());
+        // These three need a project on disk, which is why the subject is a scaffolded one rather
+        // than an ontology held in memory. They report and change nothing: Refresh imports...
+        // audits unless asked to rebuild, and the other two only read.
+        underTest.put("Project > Imports...", new ImportsAction());
+        underTest.put("Project > Refresh imports...", new RefreshImportsAction());
+        underTest.put("Notes > All notes...", new AllNotesAction());
 
         int failed = 0;
         for (Map.Entry<String, OntoBoardAction> entry : underTest.entrySet()) {
@@ -120,7 +129,9 @@ public class SelfTestAction extends OntoBoardAction {
         for (String skipped : skippedWithReasons()) {
             result.note(skipped);
         }
-        result.note("Ran against a scratch ontology, not the one you have open.");
+        result.note("Ran against a scratch ODK project in " + projectRoot.getAbsolutePath()
+                + ", not the ontology you have open.");
+        deleteTree(projectRoot.getParentFile());
 
         if (failed > 0) {
             return result.failed(failed + " of " + underTest.size()
@@ -171,31 +182,56 @@ public class SelfTestAction extends OntoBoardAction {
         skipped.add("Not run - Transform...: it defaults to applying its changes, and without its "
                 + "dialog it would push them through the live session's model manager.");
         skipped.add("Not run - Rename IRIs..., Import terms..., Obsolete..., Release..., Build..., "
-                + "Git..., Open from GitHub..., New ODK project...: they write files, need a "
-                + "configured project, or reach the network.");
+                + "Git..., Open from GitHub..., New ODK project..., Compare releases...: they "
+                + "write files, run make, reach the network, or need a project with dated "
+                + "releases that a freshly scaffolded one does not have.");
         skipped.add("Not run - the canvas, the notes and the collaboration items: they are Swing "
                 + "surfaces, and nothing here opens a window.");
         return skipped;
     }
 
     /**
-     * A small ontology with something for each operation to say.
+     * A throwaway ODK project, scaffolded by the wizard's own code.
      *
-     * <p>One labelled class, one unlabelled class with a parent - so the quality report has a
-     * violation to find - a property, and no ontology metadata, which is three more. Consistent and
-     * satisfiable, so Explain's answer is "nothing to explain", which is itself the outcome worth
-     * checking: it must read as success rather than as an empty failure.
+     * <p>A project on disk rather than an ontology in memory, because half the menu is
+     * project-aware: it looks for {@code src/ontology}, a catalog, {@code src/sparql}, release
+     * directories. An ontology with no file has no project, so those actions could only ever report
+     * "this has not been saved" - which tests nothing.
+     *
+     * <p>Scaffolded with {@link OdkScaffold} rather than assembled here, so what is tested against
+     * is the layout the wizard really produces. If the scaffold changes, this follows it.
      */
-    private OWLOntology scratchOntology() throws Exception {
+    private File scratchProject() throws Exception {
+        File into = java.nio.file.Files.createTempDirectory("ontoboard-selftest").toFile();
+        de.fizkarlsruhe.ise.ontoboard.odk.OdkProjectConfig config =
+                new de.fizkarlsruhe.ise.ontoboard.odk.OdkProjectConfig("selftest",
+                        "OntoBoard self-test",
+                        "A throwaway project the self-test builds and deletes.",
+                        // Must end in the ontology id - OdkProjectConfig.validate enforces it,
+                        // and caught this the first time the self-test ran.
+                        "http://www.ontoboard.org/selftest.owl",
+                        "https://creativecommons.org/publicdomain/zero/1.0/", into);
+        de.fizkarlsruhe.ise.ontoboard.odk.OdkScaffold.create(config);
+        return config.getProjectRoot();
+    }
+
+    /**
+     * The project's edit file, with a few axioms added so the operations have something to say.
+     *
+     * <p>The scaffold writes an edit file carrying metadata and no terms. A quality report over
+     * that finds nothing, which is a passing result that proves very little - so Person, Agent and
+     * a property go in, and Person deliberately carries no label.
+     */
+    private OWLOntology editFileOf(File projectRoot) throws Exception {
+        File editFile = new File(new File(new File(projectRoot, "src"), "ontology"),
+                "selftest-edit.owl");
         OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
+        OWLOntology ontology = manager.loadOntologyFromOntologyDocument(editFile);
         OWLDataFactory factory = manager.getOWLDataFactory();
-        OWLOntology ontology = manager.createOntology(
-                IRI.create("http://www.ontoboard.org/self-test"));
 
         OWLClass agent = factory.getOWLClass(IRI.create(NS + "Agent"));
         OWLClass person = factory.getOWLClass(IRI.create(NS + "Person"));
         OWLObjectProperty knows = factory.getOWLObjectProperty(IRI.create(NS + "knows"));
-
         manager.addAxiom(ontology, factory.getOWLDeclarationAxiom(agent));
         manager.addAxiom(ontology, factory.getOWLDeclarationAxiom(person));
         manager.addAxiom(ontology, factory.getOWLDeclarationAxiom(knows));
@@ -203,8 +239,27 @@ public class SelfTestAction extends OntoBoardAction {
         manager.addAxiom(ontology, factory.getOWLObjectPropertyDomainAxiom(knows, person));
         manager.addAxiom(ontology, factory.getOWLAnnotationAssertionAxiom(factory.getRDFSLabel(),
                 agent.getIRI(), factory.getOWLLiteral("agent")));
+
+        // Saved, so the actions that ask where this ontology lives get an answer.
+        manager.saveOntology(ontology, IRI.create(editFile.toURI()));
         return ontology;
     }
+
+    /** Removes the scratch project. A self-test that litters temp directories is a nuisance. */
+    private static void deleteTree(File root) {
+        if (root == null || !root.exists()) {
+            return;
+        }
+        File[] children = root.listFiles();
+        if (children != null) {
+            for (File child : children) {
+                deleteTree(child);
+            }
+        }
+        // Best effort: a file still held open is not worth failing the self-test over.
+        root.delete();
+    }
+
 
     private static String describe(Throwable failure) {
         String message = failure.getMessage();
