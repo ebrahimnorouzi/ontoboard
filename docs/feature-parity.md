@@ -103,6 +103,7 @@ individual views in a tabbed column beside the canvas, so none of this needs a t
 | SPARQL query panel | ✅ | 🧩 | `sparql-query-plugin`, bundled |
 | GitHub import | ✅ | ✅ | *Project → Open from GitHub…* clones and opens the edit file |
 | Export formats | ✅ | 🔶 | Protégé exports OWL formats; ROBOT `convert` would add OBO/JSON-LD |
+| Update an existing project | ➖ | ✅ | *Project → Update project files…* re-renders the generated files of a project that already exists, from its own `-odk.yaml` — ODK's `update_repo`. Previewed first; never touches the ontology, the custom Makefile, the ID ranges, the catalog, the report profile or the SPARQL checks |
 | In-host self-test | ➖ | ✅ | *OntoBoard → Run self-test*, and `smoke.ps1 -SelfTest`, actually run nine menu items in Protégé against a throwaway scaffolded ODK project and assert what each reported |
 | Diff against the published release | ➖ | ✅ | *Compare releases…* takes a URL for the 'From' side and writes ROBOT's markdown diff to a file — ODK's `release_diff`, which answers what consumers will see change |
 | Mirrored upstream ontologies | ➖ | ✅ | *Refresh imports…* keeps downloaded copies under `src/ontology/mirror/` (ODK's layout, gitignored because CHEBI alone is hundreds of MB) so a later rebuild works offline and records what it actually built from |
@@ -193,5 +194,5 @@ mature plugins is waste) or ➖ (web-application machinery with no desktop meani
   real `Y.Doc` and real sockets; the client's against a real WebSocket server; the loop guard
   against a host that re-fires its change listener the way Protégé does. What no test covers is
   "two people see each other's cursors", which needs a server, a browser and Protégé at once.
-- **No plugin UI is covered by tests.** 1135 tests cover logic; every Swing surface is verified
+- **No plugin UI is covered by tests.** 1148 tests cover logic; every Swing surface is verified
   by hand.
