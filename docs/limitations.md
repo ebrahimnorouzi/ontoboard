@@ -125,7 +125,7 @@ The plugin is early. These exist in the web application but not yet here:
 
 ### Not covered by tests
 
-1114 tests cover projection, axiom construction, layout persistence, ODK scaffolding, the
+1122 tests cover projection, axiom construction, layout persistence, ODK scaffolding, the
 report's rule execution and the OSGi configuration. Two of them reach outside the JVM:
 `RobotParityTest` compares the report against real ROBOT in `obolibrary/odkfull`, and
 `OdkBuildTest` runs a freshly scaffolded project's own `make test` and `make prepare_release` in
@@ -152,7 +152,7 @@ That last one is half of what the plan calls Phase 2, and worth being precise ab
 `PluginXmlTest` already calls `Class.forName` on each of those classes — on Maven's classpath,
 where everything resolves. Felix is a different class space, and a menu action referencing a
 Protégé type the bundle never imported passes that test and dies on click, invisibly, because an
-action that fails to load simply does nothing. So all 26 are now loaded and constructed in the
+action that fails to load simply does nothing. So all 27 are now loaded and constructed in the
 host. What this still does not do is *click* them: it can tell you an item is dead, not that its
 dialog is wrong.
 
@@ -197,7 +197,7 @@ unsatisfiable classes and inconsistency, with ROBOT's axiom-impact summary (1.31
 including the project's own committed checks (1.33.0); ROBOT's axiom-level diff beside the
 term-level one, and a startup check that every class plugin.xml names really loads under Felix
 (1.34.0); ROBOT's materialize, which asserts inferred relations rather than inferred subclass
-axioms (1.35.0); a generated ODK
+axioms, and bulk IRI renaming for moving a namespace (1.35.0-1.36.0); a generated ODK
 build that honours its own catalog, rejects equivalences nobody asserted, and gates a release on
 the same checks CI runs (1.28.0).
 

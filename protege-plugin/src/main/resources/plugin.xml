@@ -196,6 +196,15 @@
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
+  <extension id="menu.OntoBoard.robot.rename"
+             point="org.protege.editor.core.application.EditorKitMenuAction">
+    <name value="Rename IRIs..."/>
+    <path value="ontoboard.menu.OntoBoard.robot/SlotB-RN"/>
+    <toolTip value="Move terms to new IRIs, or a whole namespace at once - previewed before it applies"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.menu.RenameAction"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
+
   <extension id="menu.OntoBoard.robot.template"
              point="org.protege.editor.core.application.EditorKitMenuAction">
     <name value="Template..."/>
