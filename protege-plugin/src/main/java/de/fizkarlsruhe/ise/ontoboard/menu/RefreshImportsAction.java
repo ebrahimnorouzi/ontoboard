@@ -11,6 +11,7 @@ import java.util.Map;
 import org.semanticweb.owlapi.apibinding.OWLManager;
 import org.semanticweb.owlapi.model.IRI;
 import org.semanticweb.owlapi.model.OWLOntology;
+import org.semanticweb.owlapi.model.OWLOntologyManager;
 
 /**
  * Project &gt; Refresh imports - are this project's import modules rebuildable, and rebuild them.
@@ -36,8 +37,10 @@ public class RefreshImportsAction extends OntoBoardAction {
     private static final long serialVersionUID = 1L;
 
     private static final String OPTION_REBUILD = "rebuild";
+    private static final String OPTION_MIRROR = "mirror";
 
     private volatile boolean rebuild;
+    private volatile boolean updateMirror;
 
     @Override
     protected String operationName() {
@@ -74,13 +77,28 @@ public class RefreshImportsAction extends OntoBoardAction {
                                         + "worth asking about a repository you have just cloned: "
                                         + "can it be rebuilt at all?\n\nTurning it on re-extracts "
                                         + "each module from the source recorded in its term list, "
-                                        + "which downloads that source. It is the same job as "
-                                        + "`make refresh-imports`.")
+                                        + "which downloads that source unless it is mirrored. It "
+                                        + "is the same job as `make refresh-imports`.")
+                                .build(),
+                        Parameter.of(OPTION_MIRROR, "Download fresh copies first (update the "
+                                + "mirror)", Parameter.Kind.FLAG)
+                                .defaultValue("false")
+                                .help("ODK keeps a downloaded copy of each upstream ontology under "
+                                        + "src/ontology/mirror/, and extracts modules from that "
+                                        + "rather than from the network. Two things follow: a "
+                                        + "rebuild works offline once the mirror exists, and a "
+                                        + "module records what it was actually built from rather "
+                                        + "than whatever the upstream was that afternoon.\n\n"
+                                        + "With this off, a rebuild uses the mirror when there is "
+                                        + "one and downloads when there is not. With it on, every "
+                                        + "source is downloaded again and the mirror is replaced - "
+                                        + "which is what you want when upstream has released.")
                                 .build()));
         if (chosen == null) {
             return false;
         }
         rebuild = "true".equalsIgnoreCase(chosen.get(OPTION_REBUILD));
+        updateMirror = "true".equalsIgnoreCase(chosen.get(OPTION_MIRROR));
         return true;
     }
 
@@ -132,6 +150,10 @@ public class RefreshImportsAction extends OntoBoardAction {
                     + "layout exists to provide, and it is what makes a clone buildable.");
         }
         if (!rebuild) {
+            result.note(ImportModules.hasMirror(root)
+                    ? "This project has a mirror, so a rebuild would work offline."
+                    : "This project has no mirror, so a rebuild would download each source. "
+                            + "Turn on the mirror option to keep local copies.");
             result.note("Nothing was changed - 'Rebuild the modules' was off.");
             return result.summary(modules.size() + " imports, "
                     + (modules.size() - notRebuildable) + " rebuildable.").build();
@@ -154,8 +176,7 @@ public class RefreshImportsAction extends OntoBoardAction {
                 return false;
             }
 
-            OWLOntology upstream = OntologySource.load(OWLManager.createOWLOntologyManager(),
-                    IRI.create(source));
+            OWLOntology upstream = upstreamFor(module, source, result);
             IRI moduleIri = IRI.create(module.getModuleFile().toURI());
             TermExtract.Result extracted = TermExtract.run(upstream, terms,
                     TermExtract.DEFAULT_METHOD, moduleIri);
@@ -173,6 +194,54 @@ public class RefreshImportsAction extends OntoBoardAction {
                     + cannotRebuild.getMessage());
             return false;
         }
+    }
+
+    /**
+     * The upstream ontology, from the mirror where possible.
+     *
+     * <p>Reading the mirror is what makes a refresh repeatable and offline. Downloading replaces
+     * it, which is what "upstream has released" calls for - and writing the mirror is
+     * {@code MirrorOperation}'s job, so it brings the whole imports closure and a catalog with it
+     * rather than one file that then cannot resolve its own imports.
+     */
+    private OWLOntology upstreamFor(ImportModules.Module module, String source,
+            OperationResult.Builder result) throws Exception {
+        File mirrorDirectory = ImportModules.mirrorDirectoryIn(projectRoot());
+        boolean mirrored = ImportModules.hasMirror(projectRoot());
+
+        if (!updateMirror && mirrored) {
+            try {
+                // AutoIRIMapper scans the directory and maps each ontology's own IRI to its file,
+                // so loading the source IRI resolves locally with no network at all.
+                OWLOntologyManager offline = OWLManager.createOWLOntologyManager();
+                offline.getIRIMappers().add(
+                        new org.semanticweb.owlapi.util.AutoIRIMapper(mirrorDirectory, true));
+                OWLOntology fromMirror = offline.loadOntology(IRI.create(source));
+                result.note(module.getName() + ": read " + source + " from the mirror.");
+                return fromMirror;
+            } catch (Exception notInMirror) {
+                result.note(module.getName() + ": not in the mirror (" + notInMirror.getMessage()
+                        + "), downloading instead.");
+            }
+        }
+
+        OWLOntology downloaded = OntologySource.load(OWLManager.createOWLOntologyManager(),
+                IRI.create(source));
+        try {
+            if (!mirrorDirectory.isDirectory() && !mirrorDirectory.mkdirs()) {
+                throw new java.io.IOException("could not create " + mirrorDirectory);
+            }
+            org.obolibrary.robot.MirrorOperation.mirror(downloaded, mirrorDirectory,
+                    new File(mirrorDirectory, "catalog-v001.xml"));
+            result.note(module.getName() + ": mirrored " + source + " into "
+                    + ImportModules.MIRROR_DIRECTORY + ".");
+        } catch (Exception cannotMirror) {
+            // The extraction can still go ahead from the copy in memory; only the repeatability is
+            // lost, and saying so is better than failing a refresh that otherwise worked.
+            result.warn(module.getName() + ": downloaded " + source + " but could not mirror it ("
+                    + cannotMirror.getMessage() + "), so the next refresh will download again.");
+        }
+        return downloaded;
     }
 
     private String sourceOf(ImportModules.Module module) {

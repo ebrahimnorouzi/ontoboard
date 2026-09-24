@@ -125,7 +125,7 @@ The plugin is early. These exist in the web application but not yet here:
 
 ### Not covered by tests
 
-1133 tests cover projection, axiom construction, layout persistence, ODK scaffolding, the
+1135 tests cover projection, axiom construction, layout persistence, ODK scaffolding, the
 report's rule execution and the OSGi configuration. Two of them reach outside the JVM:
 `RobotParityTest` compares the report against real ROBOT in `obolibrary/odkfull`, and
 `OdkBuildTest` runs a freshly scaffolded project's own `make test` and `make prepare_release` in
@@ -216,7 +216,7 @@ term-level one, and a startup check that every class plugin.xml names really loa
 (1.34.0); ROBOT's materialize, which asserts inferred relations rather than inferred subclass
 axioms, bulk IRI renaming for moving a namespace, and SPARQL results written as TSV the way ODK's
 `custom_reports` does, and committed term lists so an import module can be rebuilt from the
-repository rather than kept as a blob (1.35.0-1.38.0); a generated ODK
+repository rather than kept as a blob, and a mirror so a rebuild works offline (1.35.0-1.41.0); a generated ODK
 build that honours its own catalog, rejects equivalences nobody asserted, and gates a release on
 the same checks CI runs (1.28.0).
 

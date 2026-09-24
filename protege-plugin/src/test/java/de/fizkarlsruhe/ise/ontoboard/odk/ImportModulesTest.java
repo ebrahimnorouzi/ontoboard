@@ -143,4 +143,37 @@ class ImportModulesTest {
         assertTrue(ImportModules.readTerms(new File(dir, "nope.txt")).isEmpty());
         assertEquals(null, ImportModules.sourceIn(new File(dir, "nope.txt")));
     }
+
+    /**
+     * A project with a mirror can refresh offline; one without cannot.
+     *
+     * <p>That is the whole point of ODK's mirror/ directory, and the question Refresh imports...
+     * answers before it offers to rebuild: will this need the network?
+     */
+    @Test
+    void amirrorIsDetectedOnlyWhenThereIsSomethingInIt(@TempDir File dir) throws Exception {
+        assertFalse(ImportModules.hasMirror(dir), "nothing mirrored yet");
+        assertFalse(ImportModules.hasMirror(null));
+
+        File mirror = ImportModules.mirrorDirectoryIn(dir);
+        assertTrue(mirror.mkdirs());
+        assertFalse(ImportModules.hasMirror(dir), "an empty mirror directory is not a mirror");
+
+        Files.write(new File(mirror, "notes.txt").toPath(),
+                "not an ontology".getBytes(StandardCharsets.UTF_8));
+        assertFalse(ImportModules.hasMirror(dir), "a stray text file is not a mirrored ontology");
+
+        Files.write(new File(mirror, "iao.owl").toPath(),
+                "<rdf:RDF/>".getBytes(StandardCharsets.UTF_8));
+        assertTrue(ImportModules.hasMirror(dir), "now there is something to extract from");
+    }
+
+    /** The mirror lives where ODK puts it, beside imports rather than inside it. */
+    @Test
+    void themirrorIsWhereOdkPutsIt(@TempDir File dir) {
+        assertEquals("mirror", ImportModules.mirrorDirectoryIn(dir).getName());
+        assertEquals("ontology", ImportModules.mirrorDirectoryIn(dir).getParentFile().getName());
+        assertEquals(ImportModules.importsDirectoryIn(dir).getParentFile(),
+                ImportModules.mirrorDirectoryIn(dir).getParentFile());
+    }
 }

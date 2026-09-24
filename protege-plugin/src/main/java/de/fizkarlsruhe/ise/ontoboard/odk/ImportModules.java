@@ -36,6 +36,9 @@ public final class ImportModules {
     /** Where an ODK project keeps its import modules and their term lists. */
     public static final String IMPORTS_DIRECTORY = "src/ontology/imports";
 
+    /** Where an ODK project keeps downloaded copies of the ontologies it imports from. */
+    public static final String MIRROR_DIRECTORY = "src/ontology/mirror";
+
     /** What ODK calls the list for an import named {@code x}. */
     private static final String TERMS_SUFFIX = "_terms.txt";
 
@@ -83,6 +86,36 @@ public final class ImportModules {
         public boolean isRebuildable() {
             return termsFile.isFile();
         }
+    }
+
+    /**
+     * Where a project keeps downloaded copies of the ontologies it imports from.
+     *
+     * <p>ODK's {@code mirror/}. The point is that a refresh does not have to go back to the
+     * network: the upstream ontology is downloaded once, and every extraction after that reads the
+     * local copy. It also pins what a module was built from, which is the difference between "we
+     * extracted these terms from CHEBI" and "we extracted these terms from whatever CHEBI was that
+     * afternoon".
+     */
+    public static File mirrorDirectoryIn(File projectRoot) {
+        return new File(projectRoot, MIRROR_DIRECTORY);
+    }
+
+    /** Whether this project has anything mirrored, and so can refresh without the network. */
+    public static boolean hasMirror(File projectRoot) {
+        if (projectRoot == null) {
+            return false;
+        }
+        File[] mirrored = mirrorDirectoryIn(projectRoot).listFiles();
+        if (mirrored == null) {
+            return false;
+        }
+        for (File file : mirrored) {
+            if (file.isFile() && file.getName().toLowerCase().endsWith(".owl")) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** The imports directory of a project, whether or not it exists yet. */
