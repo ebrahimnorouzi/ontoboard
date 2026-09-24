@@ -30,6 +30,7 @@ public class SparqlAction extends OntoBoardAction {
 
     private static final String OPTION_MODE = "mode";
     private static final String OPTION_QUERY = "query";
+    private static final String OPTION_OUTPUT = "output";
 
     private static final String MODE_QUERY = "Run a query I write";
     private static final String MODE_CHECKS = "Run this project's checks (src/sparql)";
@@ -39,6 +40,7 @@ public class SparqlAction extends OntoBoardAction {
 
     private volatile boolean runChecks;
     private volatile String sparql = SparqlQuery.exampleQuery();
+    private volatile File output;
 
     @Override
     protected String operationName() {
@@ -78,12 +80,26 @@ public class SparqlAction extends OntoBoardAction {
                                         + "with no rdfs:label; it runs as-is, so it is a working "
                                         + "starting point for the prefixes.\n\nCONSTRUCT, DESCRIBE "
                                         + "and the update forms are refused: this panel reads.")
+                                .build(),
+                        Parameter.of(OPTION_OUTPUT, "Save results to (optional)",
+                                Parameter.Kind.FILE)
+                                .help("Writes the answer as TSV. This is what ODK's "
+                                        + "custom_reports target does - "
+                                        + "`robot query -f tsv -s <query>.sparql <report>.tsv` for "
+                                        + "each export a project configures - and the file is the "
+                                        + "point: something a spreadsheet opens, or a script diffs "
+                                        + "between releases.\n\nWhen running the project's "
+                                        + "checks, name a DIRECTORY instead: one TSV is written "
+                                        + "per check that found violations, which is what "
+                                        + "`robot verify --output-dir` produces.")
                                 .build()));
         if (chosen == null) {
             return false;
         }
         runChecks = MODE_CHECKS.equals(chosen.get(OPTION_MODE));
         sparql = chosen.get(OPTION_QUERY);
+        String path = chosen.get(OPTION_OUTPUT);
+        output = path == null || path.trim().isEmpty() ? null : new File(path.trim());
         return true;
     }
 
@@ -110,7 +126,12 @@ public class SparqlAction extends OntoBoardAction {
             result.row(row.toArray(new String[0]));
             shown++;
         }
-        return result.summary(answer.size() + (answer.size() == 1 ? " row" : " rows")).build();
+        if (output != null) {
+            SparqlQuery.writeTsv(answer, output);
+            result.wrote(output);
+        }
+        return result.summary(answer.size() + (answer.size() == 1 ? " row" : " rows")
+                + (output == null ? "" : ", written to " + output.getName())).build();
     }
 
     private OperationResult runProjectChecks(OWLOntology ontology) {
@@ -140,6 +161,24 @@ public class SparqlAction extends OntoBoardAction {
                         check.getViolations() + " violations");
                 result.warn(check.getName() + " found " + check.getViolations() + " violations, so "
                         + "this project's `make sparql_test` would fail.");
+                // One TSV per failing check, the way `robot verify --output-dir` does it - the
+                // violations are what somebody has to work through, and a count is not a worklist.
+                if (output != null) {
+                    File into = new File(output, check.getName().replaceAll("\\.rq$", "") + ".tsv");
+                    try {
+                        if (output.isDirectory() || output.mkdirs()) {
+                            SparqlQuery.writeTsv(check.getAnswer(), into);
+                            result.wrote(into);
+                        } else {
+                            result.warn("Could not write violations to " + output.getAbsolutePath()
+                                    + ": it is not a directory. Name a directory when running the "
+                                    + "project's checks.");
+                        }
+                    } catch (RuntimeException cannotWrite) {
+                        result.warn("Could not write " + into.getName() + ": "
+                                + cannotWrite.getMessage());
+                    }
+                }
             }
         }
 

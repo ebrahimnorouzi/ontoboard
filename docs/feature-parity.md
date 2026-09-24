@@ -107,6 +107,7 @@ individual views in a tabbed column beside the canvas, so none of this needs a t
 | Materialize inferred relations | ➖ | ✅ | *ROBOT → Transform… → Materialize relations*. Where Reason asserts inferred subclass axioms, this asserts inferred existential relations, so a consumer that cannot reason still sees them |
 | Axiom-level release diff | ➖ | ✅ | *Project → Compare releases…*, opt-in alongside the term-level table. ROBOT's own `diff`, with labels on, because the two answer different questions |
 | SPARQL over the open ontology | ✅ | ✅ | *ROBOT → SPARQL…* runs a query you write, or the project's own `src/sparql/*.rq` checks with the pass/fail convention `make sparql_test` uses. SELECT and ASK only |
+| SPARQL results as TSV | ➖ | ✅ | The same dialog writes results to a file — what ODK's `custom_reports` target produces — and one TSV per failing check, as `robot verify --output-dir` does |
 | Explanation of unsatisfiability | ➖ | ✅ | *ROBOT → Explain…* names every unsatisfiable class, the axioms behind each, and which single axiom appears in the most justifications. Protégé's explanation workbench explains one entailment you have already selected; this starts from "the reasoner went red" |
 | Term table export | ➖ | ✅ | *ROBOT → Export terms…* writes one row per term and the columns you choose, as TSV, CSV, JSON, YAML or HTML. Not in the web application. `xlsx` is the one format the bundle cannot write — see Known constraints |
 | ZIP export | ✅ | ➖ | It is a folder on disk |
@@ -188,5 +189,5 @@ mature plugins is waste) or ➖ (web-application machinery with no desktop meani
   real `Y.Doc` and real sockets; the client's against a real WebSocket server; the loop guard
   against a host that re-fires its change listener the way Protégé does. What no test covers is
   "two people see each other's cursors", which needs a server, a browser and Protégé at once.
-- **No plugin UI is covered by tests.** 1122 tests cover logic; every Swing surface is verified
+- **No plugin UI is covered by tests.** 1125 tests cover logic; every Swing surface is verified
   by hand.

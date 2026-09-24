@@ -1,0 +1,71 @@
+OntoBoard 1.37.0 - host smoke receipt
+
+Produced by tools/smoke.ps1. This file is what CI checks for: a version that has never been
+loaded in a Protege cannot reach main.
+
+  2026-09-24  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  self-check 7/7
+  2026-09-24  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  self-check 7/7
+
+  OntoBoard self-check ok: menu classes resolve - 27/27 classes named in plugin.xml loaded
+
+SPARQL RESULTS AS FILES - ODK's custom_reports, and robot verify --output-dir
+
+ROBOT > SPARQL... gains an optional output. Two shapes, because the two modes produce two things:
+
+  Running a query you wrote, naming a FILE writes the answer as TSV. That is exactly what ODK's
+  custom_reports target does - the fixture Makefile's recipe is
+  `$(ROBOT) query -f tsv --use-graphs true -i $< -s $(SPARQLDIR)/<name>.sparql
+  $(REPORTDIR)/<name>.tsv` for each export configured in the project's YAML - and the file is the
+  point. Somebody opens it in a spreadsheet, or a script diffs it between releases. Looking at the
+  rows on screen is the other half of the same job.
+
+  Running the project's checks, naming a DIRECTORY writes one TSV per check that found violations,
+  which is what `robot verify --output-dir` produces and what the scaffold's own sparql_test
+  target asks for. A count is not a worklist: the violations are what somebody has to work
+  through.
+
+Tabs and newlines inside a value become spaces. A TSV whose cells contain tabs is not a TSV, and a
+definition containing a newline would silently shift every following column - the file would look
+correct until somebody counted. A test builds an ontology with a label containing both and asserts
+every line still has exactly two columns.
+
+WHAT WAS DELIBERATELY NOT DONE, AND WHY
+
+FilterOperation. robot-core's version is a single method - filter(OWLOntology,
+Set<OWLObjectProperty>) - which keeps only the axioms involving a given set of object properties.
+That is a small fraction of what `robot filter` does on the command line: the term selection, the
+axiom-type selectors and the signature options all live in robot-command, which this bundle does
+not embed. A menu item called "Filter" would promise ROBOT's filter and deliver a relation subset,
+and somebody would reasonably file a bug about the options that are not there. Left out on the
+same grounds as Unmerge in 1.36.0: a feature that mostly is not the feature its name claims.
+
+That leaves MirrorOperation as the only robot-core operation genuinely still worth wrapping. It
+downloads upstream ontologies, so unlike everything wrapped so far it needs the network, which
+changes how it can be tested - OdkBuildTest and RobotParityTest both run offline today.
+
+Asserted in both runs:
+  - exactly one ontoboard jar in plugins/ (singleton bundle; two is a collision, not an upgrade)
+  - "Starting bundle ontoboard"
+  - "Plugin: OntoBoard (1.37.0)" - the version Felix actually resolved, not the one on disk
+  - "OntoBoard self-check: PASS 7/7", including menu classes resolve - 27/27
+  - no unresolved constraint, java.* import, UnsupportedClassVersionError or truncated jar
+    attributable to our bundle
+  - no de.fizkarlsruhe stack frame
+  - no OutOfMemoryError at -Xmx500M
+
+Verified outside the host:
+  - 1125 tests pass, 1 skipped.
+  - RobotParityTest still matches real ROBOT 1.9.10 exactly on both fixtures.
+  - OdkBuildTest still runs a scaffolded project's make test and make prepare_release in
+    obolibrary/odkfull.
+
+Not asserted, and not claimed:
+  - that any menu item does the right thing when clicked. Only that clicking one will not fail to
+    find its class. Driving the actions is the remaining half of Phase 2.
+  - 13 of robot-core's 21 *Operation classes are referenced, unchanged from 1.36.0: this release
+    added no new operation, it added output to one already wrapped.
+
+Neighbours that fail to install in Protege-5.5.0, unrelated to us and not fixed here:
+  cellfie-2.2.4.jar        (its own manifest imports java.awt, which OSGi forbids)
+  swrltab-plugin-2.1.3.jar
+Unchanged since the 1.24.0 receipt.

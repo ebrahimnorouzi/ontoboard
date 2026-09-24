@@ -276,6 +276,47 @@ public final class SparqlQuery {
                 "ORDER BY ?class"));
     }
 
+    /**
+     * Writes an answer as TSV, the way ODK's {@code custom_reports} target does.
+     *
+     * <p>That target is {@code robot query -f tsv -i <edit> -s <query>.sparql <report>.tsv} for each
+     * export a project configures, and the file it produces is the point: a report somebody reads
+     * in a spreadsheet or a script diffs between releases. Running the query and looking at it on
+     * screen is the other half of the same job, which is why both are offered.
+     *
+     * <p>Tabs and newlines inside a value become spaces. A TSV whose cells contain tabs is not a
+     * TSV, and a definition with a newline in it would silently shift every following column.
+     *
+     * @throws RobotException if the file cannot be written
+     */
+    public static void writeTsv(Answer answer, File file) {
+        if (answer == null || file == null) {
+            throw new IllegalArgumentException("an answer and a file are both needed");
+        }
+        StringBuilder text = new StringBuilder();
+        appendRow(text, answer.getColumns());
+        for (List<String> row : answer.getRows()) {
+            appendRow(text, row);
+        }
+        try {
+            Files.write(file.toPath(), text.toString().getBytes(StandardCharsets.UTF_8));
+        } catch (IOException cannotWrite) {
+            throw new RobotException("Could not write " + file.getName() + ": "
+                    + cannotWrite.getMessage(), cannotWrite);
+        }
+    }
+
+    private static void appendRow(StringBuilder text, List<String> values) {
+        for (int i = 0; i < values.size(); i++) {
+            if (i > 0) {
+                text.append('\t');
+            }
+            String value = values.get(i);
+            text.append(value == null ? "" : value.replaceAll("[\\t\\r\\n]", " "));
+        }
+        text.append('\n');
+    }
+
     /** The ontology and its imports as a Jena dataset ROBOT can query. */
     private static Dataset datasetOf(OWLOntology ontology) {
         // DatasetFactory.create copies the model into the default graph, which is what an

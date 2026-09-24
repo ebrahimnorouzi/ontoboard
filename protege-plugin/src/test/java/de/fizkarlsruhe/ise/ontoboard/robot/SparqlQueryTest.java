@@ -173,4 +173,74 @@ class SparqlQueryTest {
         assertTrue(SparqlQuery.checksIn(null).isEmpty());
         assertTrue(SparqlQuery.verify(null, new ArrayList<File>()).isEmpty());
     }
+
+    /** Newline and tab as characters, so no escape has to survive a shell on the way here. */
+    private static final String NL = String.valueOf((char) 10);
+    private static final String TAB = String.valueOf((char) 9);
+
+    /**
+     * Results write as TSV, which is what ODK's custom_reports target produces.
+     *
+     * <p>That target is {@code robot query -f tsv -s <query>.sparql <report>.tsv} for each export a
+     * project configures, and the file is the point - something a spreadsheet opens, or a script
+     * diffs between releases.
+     */
+    @Test
+    void resultsWriteAsTsvWithAHeaderRow(@TempDir File dir) throws Exception {
+        SparqlQuery.Answer answer = SparqlQuery.run(PizzaOntology.v2(),
+                "PREFIX owl: <http://www.w3.org/2002/07/owl#>" + NL
+                        + "SELECT ?c WHERE { ?c a owl:Class . FILTER(!isBlank(?c)) }");
+        File tsv = new File(dir, "classes.tsv");
+
+        SparqlQuery.writeTsv(answer, tsv);
+
+        String text = new String(Files.readAllBytes(tsv.toPath()), StandardCharsets.UTF_8);
+        String[] lines = text.split(NL);
+        assertEquals("c", lines[0], "the first line must be the header");
+        assertEquals(answer.size() + 1, lines.length, "one line per row, plus the header");
+        assertTrue(text.contains("http://example.org/pizza#"), text.substring(0, 120));
+    }
+
+    /**
+     * A tab or newline inside a value becomes a space.
+     *
+     * <p>A TSV whose cells contain tabs is not a TSV: a definition with a newline in it would
+     * silently shift every following column, and the file would look correct until somebody
+     * counted.
+     */
+    @Test
+    void tabsAndNewlinesInValuesDoNotBreakTheColumns(@TempDir File dir) throws Exception {
+        org.semanticweb.owlapi.model.OWLOntologyManager manager =
+                org.semanticweb.owlapi.apibinding.OWLManager.createOWLOntologyManager();
+        OWLOntology awkward = manager.createOntology(
+                org.semanticweb.owlapi.model.IRI.create("http://example.org/odd"));
+        org.semanticweb.owlapi.model.OWLDataFactory factory = manager.getOWLDataFactory();
+        org.semanticweb.owlapi.model.OWLClass thing = factory.getOWLClass(
+                org.semanticweb.owlapi.model.IRI.create("http://example.org/odd#Thing"));
+        manager.addAxiom(awkward, factory.getOWLDeclarationAxiom(thing));
+        manager.addAxiom(awkward, factory.getOWLAnnotationAssertionAxiom(factory.getRDFSLabel(),
+                thing.getIRI(), factory.getOWLLiteral("has" + TAB + "a tab and" + NL + "a line")));
+
+        SparqlQuery.Answer answer = SparqlQuery.run(awkward,
+                "PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>" + NL
+                        + "SELECT ?c ?l WHERE { ?c rdfs:label ?l }");
+        File tsv = new File(dir, "odd.tsv");
+        SparqlQuery.writeTsv(answer, tsv);
+
+        String text = new String(Files.readAllBytes(tsv.toPath()), StandardCharsets.UTF_8);
+        for (String line : text.split(NL)) {
+            assertEquals(2, line.split(TAB, -1).length,
+                    "every line must have exactly two columns: " + line);
+        }
+    }
+
+    @Test
+    void writingNeedsBothAnAnswerAndAFile(@TempDir File dir) throws Exception {
+        SparqlQuery.Answer answer =
+                SparqlQuery.run(PizzaOntology.v1(), SparqlQuery.exampleQuery());
+
+        assertThrows(IllegalArgumentException.class, () -> SparqlQuery.writeTsv(answer, null));
+        assertThrows(IllegalArgumentException.class,
+                () -> SparqlQuery.writeTsv(null, new File(dir, "x.tsv")));
+    }
 }
