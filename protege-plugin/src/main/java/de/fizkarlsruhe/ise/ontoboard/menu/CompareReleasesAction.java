@@ -2,6 +2,8 @@ package de.fizkarlsruhe.ise.ontoboard.menu;
 
 import de.fizkarlsruhe.ise.ontoboard.odk.Release;
 import de.fizkarlsruhe.ise.ontoboard.odk.ReleaseDiff;
+import de.fizkarlsruhe.ise.ontoboard.robot.AxiomDiff;
+import de.fizkarlsruhe.ise.ontoboard.robot.RobotException;
 import de.fizkarlsruhe.ise.ontoboard.robot.OntologySource;
 import de.fizkarlsruhe.ise.ontoboard.robot.RobotException;
 import java.io.File;
@@ -34,6 +36,10 @@ public class CompareReleasesAction extends OntoBoardAction {
     private static final String OPTION_FROM = "from";
     private static final String OPTION_TO = "to";
     private static final String OPTION_NOTES = "notes";
+    private static final String OPTION_AXIOMS = "axioms";
+
+    /** Enough of an axiom diff to review; the whole of a large one is unreadable in a dialog. */
+    private static final int MAX_AXIOM_LINES = 300;
 
     /** What the later side is when somebody wants to compare a release against their edits. */
     private static final String WORKING_COPY = "what I have open now";
@@ -41,6 +47,7 @@ public class CompareReleasesAction extends OntoBoardAction {
     private volatile String from = "";
     private volatile String to = WORKING_COPY;
     private volatile boolean writeNotes;
+    private volatile boolean showAxioms;
 
     @Override
     protected String operationName() {
@@ -81,6 +88,18 @@ public class CompareReleasesAction extends OntoBoardAction {
                                 + "against your unreleased edits, which is the question to ask "
                                 + "before cutting the next one.")
                         .build(),
+                Parameter.of(OPTION_AXIOMS, "Also list every axiom that changed",
+                        Parameter.Kind.FLAG)
+                        .defaultValue("false")
+                        .help("The table above answers what a release note is written from - which "
+                                + "terms were added, obsoleted, redefined or moved. This adds "
+                                + "ROBOT's own axiom diff underneath it, which answers what "
+                                + "exactly changed.\n\nThey are different questions: a term that "
+                                + "gained a definition and a term that changed parents both look "
+                                + "like 'some axioms went, some came' to an axiom diff, which is "
+                                + "why the term-level table exists. Turn this on when reviewing a "
+                                + "release rather than describing it.")
+                        .build(),
                 Parameter.of(OPTION_NOTES, "Write release notes beside the later release",
                         Parameter.Kind.FLAG)
                         .defaultValue("false")
@@ -98,6 +117,7 @@ public class CompareReleasesAction extends OntoBoardAction {
         from = chosen.get(OPTION_FROM);
         to = chosen.get(OPTION_TO);
         writeNotes = "true".equalsIgnoreCase(chosen.get(OPTION_NOTES));
+        showAxioms = "true".equalsIgnoreCase(chosen.get(OPTION_AXIOMS));
         return true;
     }
 
@@ -167,7 +187,45 @@ public class CompareReleasesAction extends OntoBoardAction {
                     + "nowhere to put them.");
         }
 
+        if (showAxioms) {
+            appendAxiomDiff(result, earlier, later);
+        }
+
         return result.summary(diff.summary()).build();
+    }
+
+    /**
+     * ROBOT's axiom diff, as notes under the term-level table.
+     *
+     * <p>Notes rather than rows: the table's columns are term-shaped - change, term, before, after -
+     * and an axiom diff has no such shape. Forcing it into those columns would misrepresent it.
+     *
+     * <p>A failure here is a warning, not a failure of the whole comparison: the term-level answer
+     * is the one the user asked for, and it has already been computed.
+     */
+    private void appendAxiomDiff(OperationResult.Builder result, OWLOntology earlier,
+            OWLOntology later) {
+        try {
+            AxiomDiff.Result axioms = AxiomDiff.between(earlier, later, AxiomDiff.defaultOptions());
+            if (axioms.isIdentical()) {
+                result.note("Axiom diff: the two are identical axiom for axiom.");
+                return;
+            }
+            java.util.List<String> lines = axioms.getLines();
+            result.note("Axiom diff (" + lines.size() + " lines):");
+            int shown = 0;
+            for (String line : lines) {
+                if (shown >= MAX_AXIOM_LINES) {
+                    result.note("  ... " + (lines.size() - MAX_AXIOM_LINES) + " more lines.");
+                    break;
+                }
+                result.note("  " + line);
+                shown++;
+            }
+        } catch (RobotException cannotDiff) {
+            result.warn("The axiom diff could not be produced, so only the term-level comparison "
+                    + "above is available: " + cannotDiff.getMessage());
+        }
     }
 
     /**

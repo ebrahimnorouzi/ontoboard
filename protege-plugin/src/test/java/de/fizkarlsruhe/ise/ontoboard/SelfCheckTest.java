@@ -21,7 +21,7 @@ class SelfCheckTest {
     void everyCheckPassesOnTheClasspath() {
         SelfCheck.Result result = SelfCheck.run();
 
-        assertEquals(6, result.getChecks().size(), "expected six checks: " + result.getChecks());
+        assertEquals(7, result.getChecks().size(), "expected seven checks: " + result.getChecks());
         assertTrue(result.isPassed(), "the self-check must pass where the resources are reachable, "
                 + "otherwise it cannot distinguish a bundle problem from its own bug: "
                 + result.getChecks());
@@ -56,6 +56,24 @@ class SelfCheckTest {
         assertFalse(explain.getDetail().startsWith("0 "), explain.getDetail());
     }
 
+    /**
+     * Every class plugin.xml names loads and constructs.
+     *
+     * <p>Green here proves only that they resolve on Maven's classpath - which
+     * {@code PluginXmlTest} already knew. The value of this check is where it runs: under Felix, an
+     * action that references a Protege type the bundle never imported loads in a test and dies on
+     * click.
+     */
+    @Test
+    void theMenuCheckLoadsEveryDeclaredClass() {
+        SelfCheck.Check menu = SelfCheck.run().getChecks().get(6);
+
+        assertTrue(menu.isPassed(), menu.toString());
+        assertTrue(menu.getDetail().contains("classes named in plugin.xml loaded"),
+                menu.getDetail());
+        assertFalse(menu.getDetail().startsWith("0/"), menu.getDetail());
+    }
+
     /** An empty report is the failure mode this whole check exists to catch, so 0 must not pass. */
     @Test
     void anEmptyReportIsAFailureNotGoodNews() {
@@ -77,7 +95,7 @@ class SelfCheckTest {
     void theSummaryIsTheLineTheSmokeScriptMatches() {
         SelfCheck.Result result = SelfCheck.run();
 
-        assertEquals("OntoBoard self-check: PASS 6/6", result.summary());
+        assertEquals("OntoBoard self-check: PASS 7/7", result.summary());
         assertTrue(result.summary().startsWith("OntoBoard self-check: "),
                 "tools/smoke.ps1 matches this prefix");
     }

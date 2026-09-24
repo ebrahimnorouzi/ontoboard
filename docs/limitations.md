@@ -125,7 +125,7 @@ The plugin is early. These exist in the web application but not yet here:
 
 ### Not covered by tests
 
-1104 tests cover projection, axiom construction, layout persistence, ODK scaffolding, the
+1112 tests cover projection, axiom construction, layout persistence, ODK scaffolding, the
 report's rule execution and the OSGi configuration. Two of them reach outside the JVM:
 `RobotParityTest` compares the report against real ROBOT in `obolibrary/odkfull`, and
 `OdkBuildTest` runs a freshly scaffolded project's own `make test` and `make prepare_release` in
@@ -142,12 +142,19 @@ verified by hand. Treat visual behaviour as unverified after each change.
 
 Behaviour *inside the bundle* is a third category, and the one that has cost the most. No test
 can see it, because Maven's classpath is not Felix's. `OntoBoardStartup` now runs `SelfCheck`
-at startup and `tools/smoke.ps1` asserts the verdict, so five things are checked in the host on
+at startup and `tools/smoke.ps1` asserts the verdict, so seven things are checked in the host on
 every release: robot-core's profile is readable, all 32 of its queries are readable, Jena can
 read what the OWL API writes, the report produces findings end to end, the export produces terms
-end to end, and the explanation of a deliberately unsatisfiable class produces a justification.
-That is six things, not the 23 menu items — driving those is still Phase 2's
-self-test bundle.
+end to end, the explanation of a deliberately unsatisfiable class produces a justification, and
+every class `plugin.xml` names loads *and constructs*.
+
+That last one is half of what the plan calls Phase 2, and worth being precise about.
+`PluginXmlTest` already calls `Class.forName` on each of those classes — on Maven's classpath,
+where everything resolves. Felix is a different class space, and a menu action referencing a
+Protégé type the bundle never imported passes that test and dies on click, invisibly, because an
+action that fails to load simply does nothing. So all 26 are now loaded and constructed in the
+host. What this still does not do is *click* them: it can tell you an item is dead, not that its
+dialog is wrong.
 
 The export check is there for a specific reason. Its safety rested on a chain of inferences — POI
 is reached only by `Table.asWorkbook`, which `write` calls only for `xlsx`, which the plugin does
@@ -187,7 +194,9 @@ canvas (1.20.0); ROBOT's quality report actually running inside the bundle, on b
 checked against real ROBOT and against a startup self-check in the host (1.25.0); ROBOT term
 export as TSV, CSV, JSON, YAML or HTML, with the same in-host check (1.26.0); explanations for
 unsatisfiable classes and inconsistency, with ROBOT's axiom-impact summary (1.31.0); SPARQL,
-including the project's own committed checks (1.33.0); a generated ODK
+including the project's own committed checks (1.33.0); ROBOT's axiom-level diff beside the
+term-level one, and a startup check that every class plugin.xml names really loads under Felix
+(1.34.0); a generated ODK
 build that honours its own catalog, rejects equivalences nobody asserted, and gates a release on
 the same checks CI runs (1.28.0).
 
