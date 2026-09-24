@@ -45,7 +45,12 @@ param(
     [string] $Ontology,
 
     # How long to wait for the startup markers before giving up.
-    [int] $WaitSeconds = 120
+    [int] $WaitSeconds = 120,
+
+    # Also drive the read-only ROBOT menu items and assert what each reported. Off by default
+    # because it starts a reasoner and runs six operations, which makes the run slower; on for a
+    # release, because "the menu items still work" is otherwise a claim nobody has checked.
+    [switch] $SelfTest
 )
 
 $ErrorActionPreference = 'Stop'
@@ -81,7 +86,8 @@ if ($jars.Count -gt 1) {
 
 Write-Host "install   $Install"
 Write-Host "jar       $($jars[0].Name)  ($([math]::Round($jars[0].Length / 1MB, 1)) MB)"
-Write-Host "expecting Plugin: OntoBoard ($Version) and OntoBoard self-check: PASS"
+Write-Host ("expecting Plugin: OntoBoard ($Version) and OntoBoard self-check: PASS" +
+    $(if ($SelfTest) { ' and OntoBoard self-test: PASS' } else { '' }))
 Write-Host "heap      -Xmx$Heap"
 
 # ---------------------------------------------------------------- the launch line, from run.bat
@@ -95,6 +101,11 @@ if (-not $launchLine) { Fail "could not find the java line in $runBat" }
 
 $arguments = $launchLine -replace '^\s*jre\\bin\\java\s+', '' -replace '\s*%1\s*$', ''
 $arguments = $arguments -replace '-Xmx\S+', "-Xmx$Heap"
+if ($SelfTest) {
+    # Read by OntoBoardStartup, which then drives SelfTestAction. Inserted before -jar/-cp rather
+    # than appended: a JVM option after the main class is an argument to the program, not to java.
+    $arguments = "-Dontoboard.selftest=true $arguments"
+}
 if ($Ontology) {
     if (-not (Test-Path -LiteralPath $Ontology)) { Fail "no such ontology: $Ontology" }
     $arguments = "$arguments `"$Ontology`""
@@ -165,7 +176,10 @@ while ((Get-Date) -lt $deadline) {
     Start-Sleep -Seconds 3
     Write-Host -NoNewline '.'
     $slice = New-LogSlice
-    if ($slice -match 'OntoBoard self-check: (PASS|FAIL)') { break }
+    # With -SelfTest there is a second verdict to wait for, and it comes after the first.
+    if ($SelfTest) {
+        if ($slice -match 'OntoBoard self-test: (PASS|FAIL)') { break }
+    } elseif ($slice -match 'OntoBoard self-check: (PASS|FAIL)') { break }
     if (Test-OurFailure $slice) { break }
     if ($started.HasExited) { break }
 }
@@ -213,6 +227,24 @@ if (-not $verdict.Success) {
     foreach ($hit in $failedChecks) { $problems += "  $($hit.Value.Trim())" }
 }
 
+if ($SelfTest) {
+    $test = [regex]::Match($slice, 'OntoBoard self-test: (PASS|FAIL)')
+    if (-not $test.Success) {
+        $problems += ('-SelfTest was asked for but OntoBoard never logged a self-test verdict. ' +
+            'Either the system property did not reach the JVM, or the self-test did not run.')
+    } elseif ($test.Groups[1].Value -ne 'PASS') {
+        # The verdict line itself first: the self-test can fail before it runs a single item -
+        # it did, on a bad scratch-project IRI - and listing only failed items said nothing at all.
+        $verdictLine = [regex]::Match($slice, '.*OntoBoard self-test: FAIL.*')
+        $problems += $(if ($verdictLine.Success) {
+            $verdictLine.Value.Trim() -replace '^.*?OntoBoard self-test', 'OntoBoard self-test'
+        } else { 'the self-test reported FAIL' })
+        foreach ($hit in [regex]::Matches($slice, '.*OntoBoard self-test item: .*FAILED.*')) {
+            $problems += "  $($hit.Value.Trim())"
+        }
+    }
+}
+
 foreach ($failure in (Get-OurFailures $slice)) { $problems += $failure }
 
 # These two name no bundle, so they are matched anywhere in the slice. A truncated jar and a
@@ -251,8 +283,8 @@ Write-Host ''
 Write-Host "PASSED  OntoBoard $Version resolved and started  ($Install, -Xmx$Heap)" -ForegroundColor Green
 # Quoted verbatim so a release receipt can record what the host actually reported, rather than the
 # script's summary of it.
-foreach ($line in [regex]::Matches($slice, '.*OntoBoard self-check.*')) {
-    Write-Host "  $($line.Value.Trim() -replace '^.*?OntoBoard self-check', 'OntoBoard self-check')"
+foreach ($line in [regex]::Matches($slice, '.*OntoBoard self-(check|test).*')) {
+    Write-Host "  $($line.Value.Trim() -replace '^.*?OntoBoard self-', 'OntoBoard self-')"
 }
 if ($slice -match "Saved tab state for 'OntoBoard' tab") {
     Write-Host '        the OntoBoard tab was open in the restored workspace'

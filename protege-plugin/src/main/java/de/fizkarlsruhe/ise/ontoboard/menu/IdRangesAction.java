@@ -257,16 +257,4 @@ public class IdRangesAction extends OntoBoardAction {
     }
 
     /** The ontology's own file, or null when it has never been saved. */
-    private File fileOf(OWLOntology ontology) {
-        if (ontology == null) {
-            return null;
-        }
-        try {
-            URI documentUri = getOWLModelManager().getOWLOntologyManager()
-                    .getOntologyDocumentIRI(ontology).toURI();
-            return "file".equalsIgnoreCase(documentUri.getScheme()) ? new File(documentUri) : null;
-        } catch (RuntimeException notAFile) {
-            return null;
-        }
-    }
 }

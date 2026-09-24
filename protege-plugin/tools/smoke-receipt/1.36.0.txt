@@ -1,0 +1,80 @@
+OntoBoard 1.36.0 - host smoke receipt
+
+Produced by tools/smoke.ps1. This file is what CI checks for: a version that has never been
+loaded in a Protege cannot reach main.
+
+  2026-09-24  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  self-check 7/7
+  2026-09-24  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  self-check 7/7
+
+  OntoBoard self-check ok: menu classes resolve - 27/27 classes named in plugin.xml loaded
+
+ROBOT > Rename IRIs...
+
+Moving a namespace is the job: an ontology drafted under http://example.org/ that is about to be
+published under http://purl.obolibrary.org/obo/. Protege renames one entity at a time and cannot
+be told "everything under this prefix", so a few hundred terms is an afternoon of clicking and a
+real chance of missing one.
+
+Two modes - whole IRIs, or prefixes - previewed before anything is applied, with "Apply the
+changes" off by default. The changes go through Protege's model manager, so Edit > Undo reverses
+an entire namespace migration in one step. A bulk IRI change is exactly what somebody wants to
+look at first and undo second.
+
+Two decisions worth recording, both made because the obvious version was worse:
+
+  ROBOT's three-argument renameFull delegates to the four-argument one with false, which makes it
+  throw MISSING ENTITY ERROR and abandon the whole rename the moment one mapping names an IRI the
+  ontology does not have. For a list pasted out of a spreadsheet that is the wrong trade. The
+  four-argument form with true renames what matches; TermRename then reports the lines that
+  matched nothing, because a mapping that silently does nothing is how somebody concludes a rename
+  worked when it did not. Found by a test that expected a report and got an exception.
+
+  Mappings parse from "old -> new" or from a tab, because one comes from a text editor and the
+  other from a spreadsheet column pair, and refusing either sends somebody off to reformat a list
+  by hand. A line with neither separator names its own line number rather than being dropped.
+
+RenameOperation was cleared with javap -v over its whole constant pool - no RDF4J, no openrdf, no
+POI.
+
+WHAT WAS DELIBERATELY NOT DONE
+
+UnmergeOperation. It removes one ontology's axioms from another, and inside Protege there is
+almost nothing for it to do: the open ontology either declares imports, in which case its own
+axioms and its imports' are already separate, or it does not. The only case it addresses is an
+ontology that both imports something and duplicates that import's axioms in its own file, which is
+rare and which a curator would not think to look for. Wiring it into Transform would also have
+needed the copy-with-shadow-import strategy changed, because that shadow deliberately holds
+closure-minus-own axioms - so there is nothing duplicated for unmerge to find there either. Left
+out rather than added as a menu item that would report "nothing to change" on every ontology
+anybody tried it on.
+
+Asserted in both runs:
+  - exactly one ontoboard jar in plugins/ (singleton bundle; two is a collision, not an upgrade)
+  - "Starting bundle ontoboard"
+  - "Plugin: OntoBoard (1.36.0)" - the version Felix actually resolved, not the one on disk
+  - "OntoBoard self-check: PASS 7/7", including menu classes resolve - 27/27
+  - no unresolved constraint, java.* import, UnsupportedClassVersionError or truncated jar
+    attributable to our bundle
+  - no de.fizkarlsruhe stack frame
+  - no OutOfMemoryError at -Xmx500M
+
+Verified outside the host:
+  - 1122 tests pass, 1 skipped.
+  - RobotParityTest still matches real ROBOT 1.9.10 exactly on both fixtures.
+  - OdkBuildTest still runs a scaffolded project's make test and make prepare_release in
+    obolibrary/odkfull.
+
+Not asserted, and not claimed:
+  - that any menu item does the right thing when clicked. Only that clicking one will not fail to
+    find its class.
+  - The plugin references 13 of robot-core's 21 *Operation classes: Diff, Explain, Export, Extract,
+    Materialize, Merge, Mireot, Reason, Reduce, Relax, Rename, Repair, Report. 8 remain unwrapped:
+    Expand, Filter, Measure, Mirror, Python, Query, Template, Unmerge - of which Expand and Query
+    are proven unusable in a bundle, Measure and Template already have menu items reaching
+    robot-core another way, Python needs a py4j gateway this bundle does not ship, and Unmerge was
+    left out for the reason above. Filter and Mirror are the two genuinely still to do.
+
+Neighbours that fail to install in Protege-5.5.0, unrelated to us and not fixed here:
+  cellfie-2.2.4.jar        (its own manifest imports java.awt, which OSGi forbids)
+  swrltab-plugin-2.1.3.jar
+Unchanged since the 1.24.0 receipt.

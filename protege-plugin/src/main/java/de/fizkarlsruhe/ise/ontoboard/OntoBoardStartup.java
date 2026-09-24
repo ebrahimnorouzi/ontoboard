@@ -27,6 +27,14 @@ public class OntoBoardStartup extends OWLEditorKitHook {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(OntoBoardStartup.class);
 
+    /**
+     * Set this to run the self-test at startup as well as the self-check.
+     *
+     * <p>A system property rather than a preference, because the thing that needs to set it is
+     * {@code tools/smoke.ps1}, launching Protege from a script before a release.
+     */
+    static final String SELF_TEST_PROPERTY = "ontoboard.selftest";
+
     @Override
     public void initialise() {
         try {
@@ -50,6 +58,54 @@ public class OntoBoardStartup extends OWLEditorKitHook {
             LOGGER.error("OntoBoard self-check: FAIL 0/0 - the check itself could not run",
                     neverLetThisStopProtege);
         }
+
+        // Only when asked. The self-test runs six ROBOT operations, which takes a second or two and
+        // starts a reasoner - not something to do to somebody who just wanted to open an ontology.
+        // tools/smoke.ps1 -SelfTest sets this, which is what turns "a maintainer can run the
+        // self-test" into "the release process runs it and asserts the result".
+        if (Boolean.getBoolean(SELF_TEST_PROPERTY)) {
+            runSelfTest();
+        }
+    }
+
+    /**
+     * Drives the read-only menu items and logs what each reported.
+     *
+     * <p>Reuses {@code SelfTestAction} rather than reimplementing it, so the automated run and the
+     * menu item cannot drift: if one works the other does.
+     */
+    private void runSelfTest() {
+        try {
+            de.fizkarlsruhe.ise.ontoboard.menu.SelfTestAction test =
+                    new de.fizkarlsruhe.ise.ontoboard.menu.SelfTestAction();
+            test.setEditorKit(getEditorKit());
+            test.initialise();
+            de.fizkarlsruhe.ise.ontoboard.menu.OperationResult outcome = test.selfTest();
+
+            for (java.util.List<String> row : outcome.getRows()) {
+                // "item | result | what it reported", one line each, so a failure names itself.
+                LOGGER.info("OntoBoard self-test item: {}", join(row));
+            }
+            if (outcome.isSuccess()) {
+                LOGGER.info("OntoBoard self-test: PASS - {}", outcome.getSummary());
+            } else {
+                LOGGER.error("OntoBoard self-test: FAIL - {}", outcome.getSummary());
+            }
+        } catch (Throwable neverLetThisStopProtege) {
+            LOGGER.error("OntoBoard self-test: FAIL - the self-test itself could not run",
+                    neverLetThisStopProtege);
+        }
+    }
+
+    private static String join(java.util.List<String> cells) {
+        StringBuilder text = new StringBuilder();
+        for (String cell : cells) {
+            if (text.length() > 0) {
+                text.append(" | ");
+            }
+            text.append(cell);
+        }
+        return text.toString();
     }
 
     @Override

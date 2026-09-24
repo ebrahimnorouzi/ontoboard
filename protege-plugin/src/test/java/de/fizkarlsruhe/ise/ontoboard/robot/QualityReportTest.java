@@ -196,6 +196,58 @@ class QualityReportTest {
                 QualityReport.optionsFor(edit).get(QualityReport.OPTION_PROFILE));
     }
 
+    /**
+     * An ontology that has imports keeps its own title, description and licence.
+     *
+     * <p>The report merges the imports closure into a fresh ontology so the rules see one graph.
+     * That merge copied axioms - and ontology annotations are not axioms, so dcterms:title,
+     * dcterms:description and dcterms:license were silently dropped, and the report answered
+     * missing_ontology_title, missing_ontology_description and missing_ontology_license as ERRORs
+     * about an ontology that declares all three.
+     *
+     * <p>It fired on every ontology with an import, which is every real ODK project, and on none
+     * without - so every fixture in this suite missed it. It was found by reading a generated
+     * release report and noticing that v4 had three errors its three predecessors did not.
+     */
+    @Test
+    void anOntologyWithImportsKeepsItsOwnMetadata() throws Exception {
+        org.semanticweb.owlapi.model.OWLOntologyManager manager =
+                OWLManager.createOWLOntologyManager();
+        org.semanticweb.owlapi.model.OWLDataFactory factory = manager.getOWLDataFactory();
+
+        org.semanticweb.owlapi.model.IRI importedIri =
+                org.semanticweb.owlapi.model.IRI.create("http://example.org/imported");
+        manager.createOntology(importedIri);
+
+        org.semanticweb.owlapi.model.IRI mainIri =
+                org.semanticweb.owlapi.model.IRI.create("http://example.org/withimports");
+        OWLOntology main = manager.createOntology(mainIri);
+        manager.applyChange(new org.semanticweb.owlapi.model.AddImport(main,
+                factory.getOWLImportsDeclaration(importedIri)));
+        for (String[] pair : new String[][] {
+                {"title", "A Titled Ontology"},
+                {"description", "It has a description too."}}) {
+            manager.applyChange(new org.semanticweb.owlapi.model.AddOntologyAnnotation(main,
+                    factory.getOWLAnnotation(factory.getOWLAnnotationProperty(
+                            org.semanticweb.owlapi.model.IRI.create(
+                                    "http://purl.org/dc/terms/" + pair[0])),
+                            factory.getOWLLiteral(pair[1]))));
+        }
+        manager.applyChange(new org.semanticweb.owlapi.model.AddOntologyAnnotation(main,
+                factory.getOWLAnnotation(factory.getOWLAnnotationProperty(
+                        org.semanticweb.owlapi.model.IRI.create(
+                                "http://purl.org/dc/terms/license")),
+                        org.semanticweb.owlapi.model.IRI.create(
+                                "https://creativecommons.org/publicdomain/zero/1.0/"))));
+
+        TreeSet<String> rules = rulesIn(QualityReport.run(main));
+
+        assertFalse(rules.contains("missing_ontology_title"),
+                "the ontology declares dcterms:title; the merge must not lose it: " + rules);
+        assertFalse(rules.contains("missing_ontology_description"), rules.toString());
+        assertFalse(rules.contains("missing_ontology_license"), rules.toString());
+    }
+
     private static TreeSet<String> rulesIn(List<QualityFinding> findings) {
         TreeSet<String> rules = new TreeSet<String>();
         for (QualityFinding finding : findings) {

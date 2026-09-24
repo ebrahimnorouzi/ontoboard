@@ -22,12 +22,11 @@ The plugin is early. These exist in the web application but not yet here:
   lives in the tracker: there is no reply thread inside the ontology, deliberately, because
   an unbounded mutable conversation would appear in every release and every diff.
 - **Ontology design pattern library** — the bundled ODPA patterns are not exposed.
-- **SPARQL query panel** — the ODK scaffold writes `src/sparql/check_labels.rq` and nothing
-  in the plugin can run it. What changed in 1.25.0 is that the obstacle is gone rather than the
-  feature being done: `OntologyDataset` already produces a Jena model on both hosts and
-  `jena-arq` is already embedded, so this is now a panel and a menu item, not a compatibility
-  problem. Protégé 5.6.9 also ships `sparql-query-plugin`, which covers ad-hoc querying; the
-  gap OntoBoard should close is running *the project's own* committed `.rq` checks.
+- ~~**SPARQL query panel**~~ — **done in 1.33.0.** *ROBOT → SPARQL…* runs a query you write, or
+  the project's own checks in `src/sparql` with the same pass/fail convention `make sparql_test`
+  uses. `SELECT` and `ASK` only: a curator exploring a query should not be one typo away from an
+  `INSERT`. Protégé 5.6.9 also ships `sparql-query-plugin` for ad-hoc querying; what OntoBoard
+  adds is running *the project's own committed checks* against the ontology in front of you.
 - **Pull requests** — *Git…* does status, stage, commit, pull, push and branch, and
   *Open from GitHub…* clones. Opening or reviewing a PR still means leaving Protégé.
 - **Widoco HTML documentation.**
@@ -88,9 +87,12 @@ The plugin is early. These exist in the web application but not yet here:
 
   Nothing the plugin ships touches Rio, and the report no longer does, which is why it passes
   on 4.5.9. `export` was also listed as blocked by this and never was: its constant pool
-  contains no match for `rdf4j`, `openrdf` or `rio`. For what gets built next: a SPARQL panel
-  must build its model with `OntologyDataset`, never with `QueryOperation.loadOntologyAsModel`,
-  and then it works on both hosts.
+  contains no match for `rdf4j`, `openrdf` or `rio`. And `QueryOperation` cannot be called at
+  all - not one method. Its constant pool carries
+  `RioRenderer.<init>(OWLOntology, org.eclipse.rdf4j.rio.RDFHandler, ...)`, so resolving the class
+  throws `NoClassDefFoundError` before any method body runs. That was established by calling
+  `execQuery`, after a per-method disassembly wrongly suggested only the loaders were affected.
+  `SparqlQuery` therefore executes with Jena directly, the way `RuleRunner` does.
 - **ROBOT cannot write `.xlsx` output from inside the bundle.** `log4j-api` is excluded
   because it declares its own OSGi `Bundle-Activator` (`org.apache.logging.log4j.util.Activator`,
   in its manifest) and bnd rejects a second one, which leaves Apache POI without the logging
@@ -123,7 +125,7 @@ The plugin is early. These exist in the web application but not yet here:
 
 ### Not covered by tests
 
-1086 tests cover projection, axiom construction, layout persistence, ODK scaffolding, the
+1135 tests cover projection, axiom construction, layout persistence, ODK scaffolding, the
 report's rule execution and the OSGi configuration. Two of them reach outside the JVM:
 `RobotParityTest` compares the report against real ROBOT in `obolibrary/odkfull`, and
 `OdkBuildTest` runs a freshly scaffolded project's own `make test` and `make prepare_release` in
@@ -140,11 +142,47 @@ verified by hand. Treat visual behaviour as unverified after each change.
 
 Behaviour *inside the bundle* is a third category, and the one that has cost the most. No test
 can see it, because Maven's classpath is not Felix's. `OntoBoardStartup` now runs `SelfCheck`
-at startup and `tools/smoke.ps1` asserts the verdict, so five things are checked in the host on
+at startup and `tools/smoke.ps1` asserts the verdict, so seven things are checked in the host on
 every release: robot-core's profile is readable, all 32 of its queries are readable, Jena can
-read what the OWL API writes, the report produces findings end to end, and the export produces
-terms end to end. That is five things, not the 22 menu items — driving those is still Phase 2's
-self-test bundle.
+read what the OWL API writes, the report produces findings end to end, the export produces terms
+end to end, the explanation of a deliberately unsatisfiable class produces a justification, and
+every class `plugin.xml` names loads *and constructs*.
+
+That last one is half of what the plan calls Phase 2. `PluginXmlTest` already calls
+`Class.forName` on each of those classes — on Maven's classpath, where everything resolves. Felix
+is a different class space, and a menu action referencing a Protégé type the bundle never imported
+passes that test and dies on click, invisibly, because an action that fails to load simply does
+nothing. All 29 are now loaded *and constructed* in the host.
+
+The other half arrived in 1.40.0 and grew in 1.44.0. `tools/smoke.ps1 -SelfTest` sets
+`-Dontoboard.selftest=true`, and the startup hook then drives **nine** menu items against a
+throwaway ODK project — scaffolded by the wizard's own code into a temp directory and deleted
+afterwards — logging what each reported: Measure, Quality report, Explain, SPARQL, Export terms,
+Profile, Imports, Refresh imports, All notes. A person can run the same thing from *OntoBoard →
+Run self-test*; both go through one implementation, because a self-test with two implementations
+grows a version nobody runs.
+
+A real project rather than an ontology in memory, because half the menu is project-aware — it
+looks for `src/ontology`, a catalog, `imports/`. What unlocked that was removing seven private
+copies of `fileOf(OWLOntology)`, each of which asked the *model manager's* manager for the document
+IRI and so answered only for the ontology Protégé has open.
+
+It earned itself immediately: on its first run it found `QualityReportAction` throwing
+`NullPointerException`, because its `options` field had no initial value and `run()` therefore
+worked only after `configure()`. From the menu `configure()` always runs, so no user could reach
+it — a latent trap rather than a live bug — but it was invisible to 1133 unit tests and to anyone
+clicking the item.
+
+**Nine of roughly twenty items, and the rest are excluded for one stated reason each.**
+*Transform* defaults to applying its changes and would push them through the live session's model
+manager. *Rename IRIs*, *Import terms*, *Obsolete*, *Release*, *Build*, *Git*, *Open from GitHub*
+and *New ODK project* write files, run `make`, or reach the network. *Compare releases* needs a
+project with dated releases, which a freshly scaffolded one has none of. The canvas, note-editing
+and collaboration items are Swing surfaces and nothing here opens a window.
+
+Those could now be covered — the scratch project makes it possible — but each needs its own
+fixture: a release history, a git remote, an upstream to import from. Inventing those badly would
+be worse than the gap. So this still does not "drive the menu", and says so in its own output.
 
 The export check is there for a specific reason. Its safety rested on a chain of inferences — POI
 is reached only by `Table.asWorkbook`, which `write` calls only for `xlsx`, which the plugin does
@@ -171,12 +209,9 @@ report for nine versions.
 Ordered by what is being worked on:
 
 1. **Pull requests** — the rest of the git surface ships; opening and reviewing a PR does not.
-2. **SPARQL** — the scaffold writes a check the plugin cannot run, which is the wrong way
-   round. No longer blocked by anything: `OntologyDataset` and the embedded `jena-arq` are
-   what it needs, and both hosts can do it.
-3. **Pattern library and Widoco.**
-4. **Entity locking** — once live collaboration has been used in anger.
-5. **Collaboration vocabulary** — the nine axiom kinds the live protocol cannot carry.
+2. **Pattern library and Widoco.**
+3. **Entity locking** — once live collaboration has been used in anger.
+4. **Collaboration vocabulary** — the nine axiom kinds the live protocol cannot carry.
 
 Done, with the release that did it: live collaboration and cursors (1.9.0); the entity-view
 column and tab layout (1.8.0); ROBOT transforms, term import and the quality report
@@ -185,7 +220,14 @@ editorial notes, frames and sticky notes, obsoletion, OWL 2 profile checking, re
 comparison and ROBOT templates (1.19.0); properties and inferred individual types on the
 canvas (1.20.0); ROBOT's quality report actually running inside the bundle, on both hosts,
 checked against real ROBOT and against a startup self-check in the host (1.25.0); ROBOT term
-export as TSV, CSV, JSON, YAML or HTML, with the same in-host check (1.26.0); a generated ODK
+export as TSV, CSV, JSON, YAML or HTML, with the same in-host check (1.26.0); explanations for
+unsatisfiable classes and inconsistency, with ROBOT's axiom-impact summary (1.31.0); SPARQL,
+including the project's own committed checks (1.33.0); ROBOT's axiom-level diff beside the
+term-level one, and a startup check that every class plugin.xml names really loads under Felix
+(1.34.0); ROBOT's materialize, which asserts inferred relations rather than inferred subclass
+axioms, bulk IRI renaming for moving a namespace, and SPARQL results written as TSV the way ODK's
+`custom_reports` does, and committed term lists so an import module can be rebuilt from the
+repository rather than kept as a blob, a mirror so a rebuild works offline, and a diff against the published release (1.35.0-1.42.0); a generated ODK
 build that honours its own catalog, rejects equivalences nobody asserted, and gates a release on
 the same checks CI runs (1.28.0).
 

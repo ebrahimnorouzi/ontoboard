@@ -1,0 +1,58 @@
+OntoBoard 1.35.0 - host smoke receipt
+
+Produced by tools/smoke.ps1. This file is what CI checks for: a version that has never been
+loaded in a Protege cannot reach main.
+
+  2026-09-24  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  self-check 7/7
+  2026-09-24  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  self-check 7/7
+
+ROBOT > Transform... > Materialize relations
+
+Where "Reason" asserts the subclass axioms a reasoner infers, materialize asserts the existential
+relations it infers - that a pizza with a mozzarella topping has a topping that is a cheese
+topping. A plain reasoner leaves that implicit and a downstream consumer cannot work it out, which
+is why OBO release pipelines run it.
+
+It is offered over every object property in the imports closure, not over an empty set. ROBOT's
+CLI selects properties with --term, and handing the operation an empty selection selects nothing -
+the operation would run an expensive reasoner and then report "no change" on an ontology it could
+have said plenty about. RobotTransformTest asserts it adds axioms and removes none, because an
+operation that changes nothing is indistinguishable from one that is broken.
+
+MaterializeOperation was checked with javap -v over its whole constant pool - no RDF4J, no
+openrdf, no POI - which is the check that matters after ReportOperation and QueryOperation both
+turned out to be unusable in a bundle for reasons no method signature revealed.
+
+Nothing was needed in TransformAction: it builds its dropdown from Kind.values(), so the new
+operation and its help text appear on their own. That is the design paying off rather than a
+change worth claiming.
+
+Asserted in both runs:
+  - exactly one ontoboard jar in plugins/ (singleton bundle; two is a collision, not an upgrade)
+  - "Starting bundle ontoboard"
+  - "Plugin: OntoBoard (1.35.0)" - the version Felix actually resolved, not the one on disk
+  - "OntoBoard self-check: PASS 7/7", including menu classes resolve - 26/26
+  - no unresolved constraint, java.* import, UnsupportedClassVersionError or truncated jar
+    attributable to our bundle
+  - no de.fizkarlsruhe stack frame
+  - no OutOfMemoryError at -Xmx500M
+
+Verified outside the host:
+  - 1114 tests pass, 1 skipped.
+  - RobotParityTest still matches real ROBOT 1.9.10 exactly on both fixtures.
+  - OdkBuildTest still runs a scaffolded project's make test and make prepare_release in
+    obolibrary/odkfull.
+
+Not asserted, and not claimed:
+  - that any menu item does the right thing when clicked. Only that clicking one will not fail to
+    find its class.
+  - The plugin references 12 of robot-core's 21 *Operation classes: Diff, Explain, Export, Extract,
+    Materialize, Merge, Mireot, Reason, Reduce, Relax, Repair, Report. 9 remain unwrapped: Expand,
+    Filter, Measure, Mirror, Python, Query, Rename, Template, Unmerge - of which Expand and Query
+    are proven unusable inside a bundle, Measure and Template already have menu items reaching
+    robot-core by another route, and Python needs a py4j gateway this bundle does not ship.
+
+Neighbours that fail to install in Protege-5.5.0, unrelated to us and not fixed here:
+  cellfie-2.2.4.jar        (its own manifest imports java.awt, which OSGi forbids)
+  swrltab-plugin-2.1.3.jar
+Unchanged since the 1.24.0 receipt.

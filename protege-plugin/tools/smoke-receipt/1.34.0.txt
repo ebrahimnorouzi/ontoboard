@@ -1,0 +1,78 @@
+OntoBoard 1.34.0 - host smoke receipt
+
+Produced by tools/smoke.ps1. This file is what CI checks for: a version that has never been
+loaded in a Protege cannot reach main.
+
+  2026-09-24  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  self-check 7/7
+  2026-09-24  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  self-check 7/7
+
+The seventh line is the one worth reading:
+
+  OntoBoard self-check ok: menu classes resolve - 26/26 classes named in plugin.xml loaded
+
+EVERY MENU CLASS NOW LOADS AND CONSTRUCTS IN THE HOST
+
+PluginXmlTest has called Class.forName on each of those 26 classes for a long time - on Maven's
+classpath, where everything resolves. Felix is a different class space. A menu action that
+references a Protege type this bundle never imported passes that test and throws
+NoClassDefFoundError the moment a user clicks the item, and nothing anywhere would say so, because
+a Protege action that fails to load simply does nothing visible. That is the same shape of defect
+as the quality report, which sat broken for nine versions while every test stayed green.
+
+Constructed, not merely loaded. Loading proves the class file is reachable; constructing runs the
+static initialiser and the constructor, which is where a missing dependency actually surfaces.
+Protege's actions are AbstractAction subclasses whose constructors do no work and open no windows,
+so this costs milliseconds and has no side effects. initialise() is what Protege calls later and
+this does not call it.
+
+Be precise about what this is: it is half of what docs/superpowers' plan calls Phase 2. It can
+tell you a menu item is dead. It cannot tell you its dialog is wrong, its parameters are
+mislabelled, or its result is empty - nothing here clicks anything. Driving the actions is still
+outstanding.
+
+ALSO IN THIS RELEASE
+
+ROBOT's axiom-level diff, as an opt-in beside the term-level comparison in
+Project > Compare releases... They answer different questions and both are wanted: the term-level
+table is what a release note is written from - which terms were added, obsoleted, redefined or
+moved - and it exists because an axiom diff cannot answer that. A term that gained a definition
+and a term that changed parents both look like "some axioms went, some came" to an axiom diff.
+The axiom diff answers what exactly changed, which is the question when reviewing a release rather
+than describing it. Labels are on, because a diff of forty axioms written as bare IRIs is one
+nobody reads; ROBOT defaults them off.
+
+DiffOperation was checked the way the last two ROBOT classes had to be: javap -v over the whole
+constant pool, not a per-method disassembly. It contains no reference to RDF4J, openrdf or Apache
+POI, which is why it can be called at all - ReportOperation and QueryOperation both turned out to
+be unusable in a bundle for reasons no method signature revealed.
+
+Asserted in both runs:
+  - exactly one ontoboard jar in plugins/ (singleton bundle; two is a collision, not an upgrade)
+  - "Starting bundle ontoboard"
+  - "Plugin: OntoBoard (1.34.0)" - the version Felix actually resolved, not the one on disk
+  - "OntoBoard self-check: PASS 7/7" - an absent verdict fails, because it would mean the hook
+    did not run
+  - no unresolved constraint, java.* import, UnsupportedClassVersionError or truncated jar
+    attributable to our bundle
+  - no de.fizkarlsruhe stack frame
+  - no OutOfMemoryError at -Xmx500M
+
+Verified outside the host:
+  - 1112 tests pass, 1 skipped.
+  - RobotParityTest still matches real ROBOT 1.9.10 exactly on both fixtures.
+  - OdkBuildTest still runs a scaffolded project's make test and make prepare_release in
+    obolibrary/odkfull.
+
+Not asserted, and not claimed:
+  - that the OntoBoard tab renders, or that any menu item does the right thing when clicked. Only
+    that clicking one will not fail to find its class.
+  - The plugin references 11 of robot-core's 21 *Operation classes: Diff, Explain, Export, Extract,
+    Merge, Mireot, Reason, Reduce, Relax, Repair, Report. 10 remain unwrapped: Expand, Filter,
+    Materialize, Measure, Mirror, Python, Query, Rename, Template, Unmerge - of which Expand and
+    Query are proven unusable inside a bundle, and Measure and Template already have menu items
+    reaching robot-core by another route.
+
+Neighbours that fail to install in Protege-5.5.0, unrelated to us and not fixed here:
+  cellfie-2.2.4.jar        (its own manifest imports java.awt, which OSGi forbids)
+  swrltab-plugin-2.1.3.jar
+Unchanged since the 1.24.0 receipt.

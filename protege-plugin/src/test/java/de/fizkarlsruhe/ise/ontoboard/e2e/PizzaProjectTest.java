@@ -15,11 +15,13 @@ import de.fizkarlsruhe.ise.ontoboard.odk.OdkScaffold;
 import de.fizkarlsruhe.ise.ontoboard.odk.ReleaseDiff;
 import de.fizkarlsruhe.ise.ontoboard.reason.InferredEdges;
 import de.fizkarlsruhe.ise.ontoboard.reason.ProfileCheck;
+import de.fizkarlsruhe.ise.ontoboard.robot.Explanations;
 import de.fizkarlsruhe.ise.ontoboard.robot.OntologyMeasurements;
 import de.fizkarlsruhe.ise.ontoboard.robot.QualityFinding;
 import de.fizkarlsruhe.ise.ontoboard.robot.QualityReport;
 import de.fizkarlsruhe.ise.ontoboard.robot.Reasoners;
 import de.fizkarlsruhe.ise.ontoboard.robot.TemplateSheet;
+import de.fizkarlsruhe.ise.ontoboard.robot.TermExport;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
@@ -127,6 +129,8 @@ class PizzaProjectTest {
         writeCanvasReport(pizza, reports);
         writeReasonerReport(pizza, reports);
         writeRobotReport(pizza, reports);
+        writeExportReport(pizza, reports);
+        writeExplainReport(pizza, reports);
         writeProfileReport(pizza, reports);
         writeIdRangeReport(ontologyDir, reports);
         writeTemplateReport(pizza, repo, reports);
@@ -239,6 +243,129 @@ class PizzaProjectTest {
                     .append(finding.getSubject()).append(" |").append(LF);
         }
         write(new File(reports, "robot.md"), text.toString());
+    }
+
+    /**
+     * ROBOT's export of every term, as the file a curator would actually take away.
+     *
+     * <p>Written as a real TSV beside the Markdown, not quoted into it: the point of an export is
+     * that something else can read it, and a table pasted into prose cannot be opened in a
+     * spreadsheet.
+     */
+    private void writeExportReport(OWLOntology pizza, File reports) throws IOException {
+        java.util.List<String> columns = new ArrayList<String>(TermExport.defaultColumns());
+        for (String available : TermExport.annotationColumns(pizza)) {
+            // Only what this ontology really declares: ROBOT fails the whole export on a column it
+            // cannot resolve, so offering one that is not there would break the release.
+            if (!columns.contains(available)) {
+                columns.add(available);
+            }
+        }
+
+        java.util.Map<String, String> options = TermExport.defaultOptions();
+        options.put(TermExport.OPTION_INCLUDE, "classes properties individuals");
+        TermExport.Result export = TermExport.run(pizza, columns, options);
+
+        File tsv = new File(reports, "terms.tsv");
+        export.save(tsv);
+
+        StringBuilder text = new StringBuilder("# ROBOT export - " + version + LF + LF);
+        text.append("[`terms.tsv`](terms.tsv) - ").append(export.getTermCount())
+                .append(" terms, ").append(export.getColumns().size()).append(" columns.")
+                .append(LF).append(LF);
+        text.append("Columns: `").append(join(export.getColumns(), "`, `")).append('`')
+                .append(LF).append(LF);
+        text.append("Classes, properties and individuals together, because a release ought to be ")
+                .append("able to hand somebody every term it defines.").append(LF).append(LF);
+        text.append("First rows:").append(LF).append(LF);
+        text.append("| ").append(join(java.util.Arrays.asList(export.getRows().get(0)), " | "))
+                .append(" |").append(LF);
+        text.append("|").append(repeat("---|", export.getRows().get(0).length)).append(LF);
+        for (int row = 1; row < Math.min(export.getRows().size(), 11); row++) {
+            text.append("| ")
+                    .append(join(java.util.Arrays.asList(export.getRows().get(row)), " | "))
+                    .append(" |").append(LF);
+        }
+        write(new File(reports, "export.md"), text.toString());
+    }
+
+    /**
+     * ROBOT's explanation, on this release and on a copy broken on purpose.
+     *
+     * <p>Both halves matter. On the release it must find nothing - that is the claim the release
+     * makes about itself, and recording "nothing to explain" is what makes it checkable. On the
+     * deliberately broken copy it must find something, because a feature that reports nothing on a
+     * healthy ontology and nothing on a broken one is indistinguishable from a feature that does
+     * not work.
+     */
+    private void writeExplainReport(OWLOntology pizza, File reports) throws Exception {
+        StringBuilder text = new StringBuilder("# ROBOT explain - " + version + LF + LF);
+
+        Explanations.Result clean =
+                Explanations.run(pizza, Reasoners.Choice.HERMIT.newFactory());
+        text.append("## This release").append(LF).append(LF);
+        if (clean.isClean()) {
+            text.append("Consistent, with no unsatisfiable classes. Nothing to explain.")
+                    .append(LF).append(LF);
+        } else {
+            text.append("**").append(clean.getUnsatisfiable().size())
+                    .append(" unsatisfiable classes.** This should not happen in a release.")
+                    .append(LF).append(LF);
+            appendJustifications(text, clean);
+        }
+
+        // The same fixture the unit tests use, so the two cannot drift.
+        Explanations.Result broken = Explanations.run(PizzaOntology.withUnsatisfiableClass(),
+                Reasoners.Choice.HERMIT.newFactory());
+        text.append("## A copy broken on purpose").append(LF).append(LF);
+        text.append("`PizzaOntology.withUnsatisfiableClass()` - the same fixture the test suite ")
+                .append("uses, so this report and the tests cannot drift apart.").append(LF)
+                .append(LF);
+        text.append("Unsatisfiable: ").append(join(broken.getUnsatisfiable(), ", "))
+                .append(LF).append(LF);
+        appendJustifications(text, broken);
+        if (!broken.getImpactSummary().trim().isEmpty()) {
+            text.append("### Which axiom to fix first").append(LF).append(LF);
+            text.append("ROBOT's own summary, by how many justifications each axiom appears in:")
+                    .append(LF).append(LF).append("```").append(LF)
+                    .append(broken.getImpactSummary().trim()).append(LF).append("```")
+                    .append(LF);
+        }
+        write(new File(reports, "explain.md"), text.toString());
+    }
+
+    private void appendJustifications(StringBuilder text, Explanations.Result result) {
+        for (java.util.Map.Entry<String, java.util.List<Explanations.Justification>> entry
+                : Explanations.byEntailment(result).entrySet()) {
+            text.append("### ").append(entry.getKey()).append(LF).append(LF);
+            int n = 1;
+            for (Explanations.Justification justification : entry.getValue()) {
+                text.append("Justification ").append(n++).append(':').append(LF).append(LF);
+                for (String axiom : justification.getAxioms()) {
+                    text.append("- `").append(axiom).append('`').append(LF);
+                }
+                text.append(LF);
+            }
+        }
+    }
+
+    private static String join(java.util.List<String> values, String separator) {
+        StringBuilder text = new StringBuilder();
+        for (String value : values) {
+            if (text.length() > 0) {
+                text.append(separator);
+            }
+            text.append(value == null ? "" : value.replace('|', '/'));
+        }
+        return text.toString();
+    }
+
+    private static String repeat(String what, int times) {
+        StringBuilder text = new StringBuilder();
+        for (int i = 0; i < times; i++) {
+            text.append(what);
+        }
+        return text.toString();
     }
 
     private void writeProfileReport(OWLOntology pizza, File reports) throws IOException {

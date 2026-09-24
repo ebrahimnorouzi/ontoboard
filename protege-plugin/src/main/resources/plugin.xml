@@ -115,6 +115,15 @@
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
+  <extension id="menu.OntoBoard.project.refreshImports"
+             point="org.protege.editor.core.application.EditorKitMenuAction">
+    <name value="Refresh imports..."/>
+    <path value="ontoboard.menu.OntoBoard.project/SlotA-RI"/>
+    <toolTip value="Can this project's import modules be rebuilt from its own term lists - and rebuild them"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.menu.RefreshImportsAction"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
+
   <extension id="menu.OntoBoard.project.compare"
              point="org.protege.editor.core.application.EditorKitMenuAction">
     <name value="Compare releases..."/>
@@ -160,6 +169,24 @@
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
+  <extension id="menu.OntoBoard.robot.explain"
+             point="org.protege.editor.core.application.EditorKitMenuAction">
+    <name value="Explain..."/>
+    <path value="ontoboard.menu.OntoBoard.robot/SlotA-D"/>
+    <toolTip value="Which axioms make a class unsatisfiable, or the ontology inconsistent"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.menu.ExplainAction"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
+
+  <extension id="menu.OntoBoard.robot.sparql"
+             point="org.protege.editor.core.application.EditorKitMenuAction">
+    <name value="SPARQL..."/>
+    <path value="ontoboard.menu.OntoBoard.robot/SlotA-E"/>
+    <toolTip value="Run a SPARQL query, or the project's own checks in src/sparql"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.menu.SparqlAction"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
+
   <extension id="menu.OntoBoard.robot.transform"
              point="org.protege.editor.core.application.EditorKitMenuAction">
     <name value="Transform..."/>
@@ -175,6 +202,15 @@
     <path value="ontoboard.menu.OntoBoard.robot/SlotB-EX"/>
     <toolTip value="Write every term and the columns you choose to a TSV, CSV, JSON, YAML or HTML file"/>
     <class value="de.fizkarlsruhe.ise.ontoboard.menu.ExportAction"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
+
+  <extension id="menu.OntoBoard.robot.rename"
+             point="org.protege.editor.core.application.EditorKitMenuAction">
+    <name value="Rename IRIs..."/>
+    <path value="ontoboard.menu.OntoBoard.robot/SlotB-RN"/>
+    <toolTip value="Move terms to new IRIs, or a whole namespace at once - previewed before it applies"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.menu.RenameAction"/>
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
@@ -264,6 +300,15 @@
   </extension>
 
   <!-- = Collaboration = -->
+
+  <extension id="menu.OntoBoard.selftest"
+             point="org.protege.editor.core.application.EditorKitMenuAction">
+    <name value="Run self-test"/>
+    <path value="ontoboard.menu.OntoBoard/SlotZ-Z"/>
+    <toolTip value="Actually runs the read-only ROBOT menu items against a scratch ontology and reports"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.menu.SelfTestAction"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
 
   <extension id="menu.OntoBoard.collaboration"
              point="org.protege.editor.core.application.EditorKitMenuAction">

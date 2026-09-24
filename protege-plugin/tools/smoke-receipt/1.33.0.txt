@@ -1,0 +1,90 @@
+OntoBoard 1.33.0 - host smoke receipt
+
+Produced by tools/smoke.ps1. This file is what CI checks for: a version that has never been
+loaded in a Protege cannot reach main.
+
+  2026-09-24  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  self-check 6/6
+  2026-09-24  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  self-check 6/6
+
+Two things in this release, and the first was found by the pizza repository rather than by a test.
+
+1. THE REPORT LIED ON EVERY ONTOLOGY WITH AN IMPORT
+
+The report merges the imports closure into one graph before running the rules, so they see a
+single ontology. That merge copied axioms - and ontology annotations are not axioms. So the
+ontology's own dcterms:title, dcterms:description and dcterms:license were dropped, and the report
+then answered missing_ontology_title, missing_ontology_description and missing_ontology_license as
+ERRORs about an ontology that declares all three.
+
+It fired on every ontology with an owl:imports, which is every real ODK project, and on none
+without - so every fixture in this suite missed it, including the two the parity test uses. What
+found it was reading the generated release reports in the pizza repository and noticing that v4
+had three errors its three predecessors did not. v4 is the release with an import.
+
+  plugin, pizza v4, before:  24 findings - 3 ERROR, 15 WARN, 6 INFO
+  plugin, pizza v4, after:   21 findings - 15 WARN, 6 INFO
+  robot 1.9.10, same file:   ERROR: 0, WARN: 15, INFO: 6
+
+QualityReportTest.anOntologyWithImportsKeepsItsOwnMetadata pins it, and was checked against the
+unfixed code: without the fix it fails naming all three false errors.
+
+2. ROBOT > SPARQL...
+
+The ODK scaffold writes src/sparql/check_labels.rq and a sparql_test target that runs it, and
+nothing in the plugin could run the file it had just written. Now it can, in two modes: a query
+you write, or the project's own checks with the same pass/fail convention the build uses - a check
+is a SELECT whose rows are the violations, so it passes by returning nothing.
+
+SELECT and ASK only. CONSTRUCT, DESCRIBE and the update forms are refused: a curator exploring a
+query should not be one typo away from an INSERT.
+
+  ROBOT's QueryOperation cannot be called at all - not one method of it. Its constant pool carries
+  RioRenderer.<init>(OWLOntology, org.eclipse.rdf4j.rio.RDFHandler, OWLDocumentFormat,
+  org.eclipse.rdf4j.model.Resource[]), so resolving the class throws
+  NoClassDefFoundError: org/eclipse/rdf4j/rio/RDFHandler before any method body runs.
+
+  An earlier note in this project said only the loadOntology* methods were affected and that
+  execQuery was safe. That was wrong, and it came from a per-method disassembly whose awk range
+  never captured the body - the same mistake, twice, about the same class. Calling execQuery is
+  what settled it. SparqlQuery executes with Jena directly, exactly as RuleRunner does for the
+  report rules.
+
+No seventh self-check was added. The SPARQL path is OntologyDataset plus Jena's ARQ, and both are
+already exercised in the host by check 3 (jena reads what the owl api writes) and check 4 (the
+report, which parses and runs 32 SPARQL queries through the same ARQ engine). A check that
+re-proves what another check already proves costs startup time and buys nothing.
+
+Asserted in both runs:
+  - exactly one ontoboard jar in plugins/ (singleton bundle; two is a collision, not an upgrade)
+  - "Starting bundle ontoboard"
+  - "Plugin: OntoBoard (1.33.0)" - the version Felix actually resolved, not the one on disk
+  - "OntoBoard self-check: PASS 6/6" - an absent verdict fails, because it would mean the hook
+    did not run
+  - no unresolved constraint, java.* import, UnsupportedClassVersionError or truncated jar
+    attributable to our bundle
+  - no de.fizkarlsruhe stack frame
+  - no OutOfMemoryError at -Xmx500M
+
+Verified outside the host:
+  - 1104 tests pass, 1 skipped.
+  - RobotParityTest still matches real ROBOT 1.9.10 exactly on both fixtures.
+  - OdkBuildTest still runs a scaffolded project's make test and make prepare_release in
+    obolibrary/odkfull.
+  - The pizza repository was regenerated end to end and released as v7. make reason, report, test
+    and prepare_release all exit 0 there, and the plugin's own report for v4 now matches real
+    ROBOT's counts exactly.
+
+Not asserted, and not claimed:
+  - that the OntoBoard tab renders, or that any of the 24 menu items works when clicked. Driving
+    those is still Phase 2's self-test bundle.
+  - The plugin references 10 of robot-core's 21 *Operation classes: Explain, Export, Extract,
+    Merge, Mireot, Reason, Reduce, Relax, Repair, Report. QueryOperation is deliberately NOT among
+    them - the SPARQL feature exists and that class is proven unusable in a bundle, which is why
+    SparqlQuery goes to Jena directly. 11 remain unwrapped: Diff, Expand, Filter, Materialize,
+    Measure, Mirror, Python, Query, Rename, Template, Unmerge. (Measure and Template have menu
+    items, reaching robot-core through metrics.OntologyMetrics and Template instead.)
+
+Neighbours that fail to install in Protege-5.5.0, unrelated to us and not fixed here:
+  cellfie-2.2.4.jar        (its own manifest imports java.awt, which OSGi forbids)
+  swrltab-plugin-2.1.3.jar
+Unchanged since the 1.24.0 receipt.

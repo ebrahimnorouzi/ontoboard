@@ -1,7 +1,9 @@
 package de.fizkarlsruhe.ise.ontoboard;
 
+import de.fizkarlsruhe.ise.ontoboard.robot.Explanations;
 import de.fizkarlsruhe.ise.ontoboard.robot.OntologyDataset;
 import de.fizkarlsruhe.ise.ontoboard.robot.QualityFinding;
+import de.fizkarlsruhe.ise.ontoboard.robot.Reasoners;
 import de.fizkarlsruhe.ise.ontoboard.robot.ReportQueries;
 import de.fizkarlsruhe.ise.ontoboard.robot.RuleRunner;
 import de.fizkarlsruhe.ise.ontoboard.robot.TermExport;
@@ -198,7 +200,132 @@ public final class SelfCheck {
             checks.add(new Check("robot export runs end to end", false, describe(cannot)));
         }
 
+        try {
+            // owlexplanation is an embedded jar, and Protege *exports* the package one of its
+            // classes lives in - the two-copies-one-package situation that resolves differently
+            // depending on what else is installed. Explanations deliberately avoids the class in
+            // question, but that is an argument, and an argument about a classloader is what was
+            // wrong about the report for nine versions. So the explanation path runs here too.
+            Explanations.Result explained = Explanations.run(unsatisfiableOntology(),
+                    Reasoners.Choice.ELK.newFactory(), 1);
+            checks.add(new Check("robot explain runs end to end",
+                    !explained.isClean() && !explained.getJustifications().isEmpty(),
+                    explained.getUnsatisfiable().size() + " unsatisfiable class explained by "
+                            + explained.getJustifications().size() + " justification(s)"));
+        } catch (Exception | LinkageError cannot) {
+            checks.add(new Check("robot explain runs end to end", false, describe(cannot)));
+        }
+
+        checks.add(menuClassesResolve());
+
         return new Result(checks);
+    }
+
+    /**
+     * Every class plugin.xml names can be loaded and constructed, here, under Felix.
+     *
+     * <p>{@code PluginXmlTest} already calls {@code Class.forName} on each of them - on Maven's
+     * classpath, where everything resolves. Felix is a different class space: a menu action that
+     * references a Protege type the bundle never imported resolves fine in a test and throws
+     * {@code NoClassDefFoundError} the moment a user clicks the item. Nothing in the plugin would
+     * notice, because a menu action that fails to load simply does nothing visible.
+     *
+     * <p>Constructed, not merely loaded. Loading proves the class file is reachable; constructing
+     * proves its static initialiser and its constructor run, which is where a missing dependency
+     * usually surfaces. Protege's actions are {@code AbstractAction} subclasses whose constructors
+     * do no work and open no windows, so this is cheap and has no side effects - {@code initialise}
+     * is what Protege calls later, and this does not call it.
+     *
+     * <p>This is the resolvable half of what the plan calls Phase 2. It does not click anything, so
+     * it cannot tell you a dialog is wrong; it can tell you an item is dead.
+     */
+    private static Check menuClassesResolve() {
+        List<String> declared;
+        try {
+            declared = declaredClasses();
+        } catch (Exception | LinkageError cannotRead) {
+            return new Check("menu classes resolve", false,
+                    "plugin.xml could not be read: " + describe(cannotRead));
+        }
+        if (declared.isEmpty()) {
+            return new Check("menu classes resolve", false,
+                    "plugin.xml named no classes, which cannot be right");
+        }
+
+        List<String> broken = new ArrayList<String>();
+        int loaded = 0;
+        for (String name : declared) {
+            try {
+                Class<?> type = Class.forName(name, true, SelfCheck.class.getClassLoader());
+                // Only ours. A Protege class named here belongs to Protege's own bundle, and
+                // constructing one of those would be testing Protege.
+                if (name.startsWith("de.fizkarlsruhe.")) {
+                    type.newInstance();
+                }
+                loaded++;
+            } catch (Exception | LinkageError cannotLoad) {
+                broken.add(shortName(name) + " (" + describe(cannotLoad) + ")");
+            }
+        }
+        return new Check("menu classes resolve", broken.isEmpty(),
+                loaded + "/" + declared.size() + " classes named in plugin.xml loaded"
+                        + (broken.isEmpty() ? "" : ", broken: " + broken));
+    }
+
+    /** The {@code <class value="..."/>} entries in plugin.xml, in document order, deduplicated. */
+    private static List<String> declaredClasses() throws Exception {
+        List<String> names = new ArrayList<String>();
+        java.io.InputStream in = SelfCheck.class.getClassLoader()
+                .getResourceAsStream("plugin.xml");
+        if (in == null) {
+            throw new java.io.IOException("plugin.xml is not on the bundle classpath");
+        }
+        try {
+            org.w3c.dom.NodeList declared = javax.xml.parsers.DocumentBuilderFactory.newInstance()
+                    .newDocumentBuilder().parse(in).getElementsByTagName("class");
+            for (int i = 0; i < declared.getLength(); i++) {
+                String name = ((org.w3c.dom.Element) declared.item(i)).getAttribute("value");
+                if (name != null && !name.trim().isEmpty() && !names.contains(name.trim())) {
+                    names.add(name.trim());
+                }
+            }
+        } finally {
+            try {
+                in.close();
+            } catch (java.io.IOException ignored) {
+                // Closing a classpath resource cannot usefully fail.
+            }
+        }
+        return names;
+    }
+
+    private static String shortName(String className) {
+        int dot = className.lastIndexOf('.');
+        return dot < 0 ? className : className.substring(dot + 1);
+    }
+
+    /**
+     * Two disjoint parents, one child - the smallest ontology with something to explain.
+     *
+     * <p>Disjointness rather than negation, so ELK can do it: ELK is much cheaper to start than
+     * HermiT, and this runs every time a user opens an ontology.
+     */
+    private static OWLOntology unsatisfiableOntology() throws Exception {
+        OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
+        OWLDataFactory factory = manager.getOWLDataFactory();
+        OWLOntology ontology = manager.createOntology(
+                IRI.create("http://www.ontoboard.org/self-check/unsatisfiable"));
+        String ns = "http://www.ontoboard.org/self-check/unsatisfiable#";
+        org.semanticweb.owlapi.model.OWLClass person =
+                factory.getOWLClass(IRI.create(ns + "Person"));
+        org.semanticweb.owlapi.model.OWLClass robot =
+                factory.getOWLClass(IRI.create(ns + "Robot"));
+        org.semanticweb.owlapi.model.OWLClass android =
+                factory.getOWLClass(IRI.create(ns + "Android"));
+        manager.addAxiom(ontology, factory.getOWLDisjointClassesAxiom(person, robot));
+        manager.addAxiom(ontology, factory.getOWLSubClassOfAxiom(android, person));
+        manager.addAxiom(ontology, factory.getOWLSubClassOfAxiom(android, robot));
+        return ontology;
     }
 
     /**

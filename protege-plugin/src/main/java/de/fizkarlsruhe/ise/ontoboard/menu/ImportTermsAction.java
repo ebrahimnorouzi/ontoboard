@@ -5,6 +5,7 @@ import de.fizkarlsruhe.ise.ontoboard.prov.Provenance;
 import de.fizkarlsruhe.ise.ontoboard.robot.ImportProvenance;
 import de.fizkarlsruhe.ise.ontoboard.robot.OntologySource;
 import de.fizkarlsruhe.ise.ontoboard.robot.RobotException;
+import de.fizkarlsruhe.ise.ontoboard.odk.ImportModules;
 import de.fizkarlsruhe.ise.ontoboard.robot.TermExtract;
 import de.fizkarlsruhe.ise.ontoboard.robot.TermList;
 import java.io.File;
@@ -303,10 +304,12 @@ public class ImportTermsAction extends OntoBoardAction {
             case ADD_AXIOMS:
                 return copyIn(ontology, extracted, result);
             case SAVE_ONLY:
-                return save(extracted, result, false, ontology, moduleIri, source);
+                return save(extracted, result, false, ontology, moduleIri, source,
+                        terms.getIris(), sourceIri);
             case SAVE_AND_IMPORT:
             default:
-                return save(extracted, result, true, ontology, moduleIri, source);
+                return save(extracted, result, true, ontology, moduleIri, source,
+                        terms.getIris(), sourceIri);
         }
     }
 
@@ -384,7 +387,8 @@ public class ImportTermsAction extends OntoBoardAction {
 
     /** Writes the module, and optionally wires it up as an import. */
     private OperationResult save(TermExtract.Result extracted, OperationResult.Builder result,
-            boolean andImport, OWLOntology ontology, IRI moduleIri, OWLOntology source) {
+            boolean andImport, OWLOntology ontology, IRI moduleIri, OWLOntology source,
+            java.util.List<IRI> requestedTerms, IRI sourceIri) {
         File target = moduleFileFor(ontology, source);
         if (target == null) {
             return result.failed("This ontology has not been saved, so there is nowhere to put "
@@ -413,6 +417,14 @@ public class ImportTermsAction extends OntoBoardAction {
                     + cannotSave.getMessage()).build();
         }
         result.wrote(target);
+
+        // The term list, beside the module. An ODK project does not commit a module as a finished
+        // artefact - it commits the list of terms it wants and rebuilds the module from it, which
+        // is what makes `make refresh-imports` meaningful. Writing only the module leaves the next
+        // person a binary blob they cannot reproduce, extend, or tell has gone stale against its
+        // source. This plugin wrote only the module until 1.38.0.
+        writeTermList(result, ontology, source, target, requestedTerms, sourceIri);
+
         if (isOutsideTheProject(ontology, target)) {
             result.warn("The module is outside the ontology's own directory, so it will not be "
                     + "committed with the project and the catalog entry pointing at it will not "
@@ -497,6 +509,41 @@ public class ImportTermsAction extends OntoBoardAction {
      * <p>Named after the source is the whole point. A single fixed default meant every import
      * wrote to the same file, so the second one silently replaced the first.
      */
+    /**
+     * Writes {@code imports/<name>_terms.txt} beside the module.
+     *
+     * <p>A warning rather than a failure if it cannot be written: the module and the catalog entry
+     * are already on disk and working, and losing those over a term list would be the wrong trade.
+     * But it is a warning and not a note, because a module without its list is the state this is
+     * here to prevent.
+     */
+    private void writeTermList(OperationResult.Builder result, OWLOntology ontology,
+            OWLOntology source, File moduleFile, java.util.List<IRI> terms, IRI sourceIri) {
+        File projectRoot = projectRootFor(ontology);
+        if (projectRoot == null) {
+            result.warn("No term list was written: this ontology has not been saved, so there is "
+                    + "no project directory to put one in. Without imports/"
+                    + TermExtract.shortNameOf(source) + "_terms.txt nobody can rebuild this "
+                    + "module.");
+            return;
+        }
+        try {
+            File written = ImportModules.writeTerms(projectRoot, TermExtract.shortNameOf(source),
+                    terms, sourceIri == null ? null : sourceIri.toString());
+            result.wrote(written);
+        } catch (IOException cannotWrite) {
+            result.warn("Wrote the module but could not write its term list: "
+                    + cannotWrite.getMessage() + ". Without it nobody can rebuild "
+                    + moduleFile.getName() + ".");
+        }
+    }
+
+    /** The ODK project the open ontology belongs to, or null when it has never been saved. */
+    private File projectRootFor(OWLOntology ontology) {
+        File ontologyFile = fileOf(ontology);
+        return ontologyFile == null ? null : ReleaseAction.projectRootOf(ontologyFile);
+    }
+
     private File moduleFileFor(OWLOntology ontology, OWLOntology source) {
         if (!isBlank(moduleFileText)) {
             return new File(moduleFileText.trim());
@@ -561,18 +608,6 @@ public class ImportTermsAction extends OntoBoardAction {
     }
 
     /** The ontology's own file, or null when it has never been saved. */
-    private File fileOf(OWLOntology ontology) {
-        if (ontology == null) {
-            return null;
-        }
-        try {
-            URI documentUri = getOWLModelManager().getOWLOntologyManager()
-                    .getOntologyDocumentIRI(ontology).toURI();
-            return "file".equalsIgnoreCase(documentUri.getScheme()) ? new File(documentUri) : null;
-        } catch (RuntimeException notAFile) {
-            return null;
-        }
-    }
 
     private static TermExtract.Method methodByLabel(String label) {
         for (TermExtract.Method available : TermExtract.Method.values()) {

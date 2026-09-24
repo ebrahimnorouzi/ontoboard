@@ -456,13 +456,4 @@ public class ReleaseAction extends OntoBoardAction {
     }
 
     /** The ontology's own file, or null when it has never been saved. */
-    private File fileOf(OWLOntology ontology) {
-        try {
-            URI documentUri = getOWLModelManager().getOWLOntologyManager()
-                    .getOntologyDocumentIRI(ontology).toURI();
-            return "file".equalsIgnoreCase(documentUri.getScheme()) ? new File(documentUri) : null;
-        } catch (RuntimeException notAFile) {
-            return null;
-        }
-    }
 }

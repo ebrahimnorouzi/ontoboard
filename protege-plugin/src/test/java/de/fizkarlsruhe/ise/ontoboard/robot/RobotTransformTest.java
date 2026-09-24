@@ -467,4 +467,33 @@ class RobotTransformTest {
         assertThrows(IllegalArgumentException.class,
                 () -> RobotTransform.preview(null, RobotTransform.Kind.RELAX, null));
     }
+
+    /**
+     * Materialize writes down inferred relations, which is a different job from Reason.
+     *
+     * <p>Reason asserts inferred subclass axioms. Materialize asserts inferred existential
+     * relations - that a pizza with a mozzarella topping has a topping that is a cheese topping -
+     * which a plain reasoner leaves implicit and a downstream consumer cannot work out. Asserting
+     * that it adds axioms is the whole claim: an operation that runs an expensive reasoner and
+     * changes nothing would look identical to one that is broken.
+     */
+    @Test
+    void materializeAssertsInferredRelations() throws Exception {
+        org.semanticweb.owlapi.model.OWLOntology pizza =
+                de.fizkarlsruhe.ise.ontoboard.e2e.PizzaOntology.v2();
+
+        RobotTransform.Diff diff = RobotTransform.preview(pizza, RobotTransform.Kind.MATERIALIZE,
+                Reasoners.Choice.ELK.newFactory());
+
+        assertTrue(diff.getAdded() > 0,
+                "materialize over an ontology with defined classes must assert something: " + diff);
+        assertEquals(0, diff.getRemoved(), "materialize only adds: " + diff);
+    }
+
+    /** It needs a reasoner, and the enum has to say so or the dialog will not offer one. */
+    @Test
+    void materializeDeclaresThatItNeedsAReasoner() {
+        assertTrue(RobotTransform.Kind.MATERIALIZE.needsReasoner());
+        assertFalse(RobotTransform.Kind.MATERIALIZE.getHelp().trim().isEmpty());
+    }
 }

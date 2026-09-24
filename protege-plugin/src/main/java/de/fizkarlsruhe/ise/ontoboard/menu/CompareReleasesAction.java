@@ -2,6 +2,8 @@ package de.fizkarlsruhe.ise.ontoboard.menu;
 
 import de.fizkarlsruhe.ise.ontoboard.odk.Release;
 import de.fizkarlsruhe.ise.ontoboard.odk.ReleaseDiff;
+import de.fizkarlsruhe.ise.ontoboard.robot.AxiomDiff;
+import de.fizkarlsruhe.ise.ontoboard.robot.RobotException;
 import de.fizkarlsruhe.ise.ontoboard.robot.OntologySource;
 import de.fizkarlsruhe.ise.ontoboard.robot.RobotException;
 import java.io.File;
@@ -34,6 +36,12 @@ public class CompareReleasesAction extends OntoBoardAction {
     private static final String OPTION_FROM = "from";
     private static final String OPTION_TO = "to";
     private static final String OPTION_NOTES = "notes";
+    private static final String OPTION_AXIOMS = "axioms";
+    private static final String OPTION_PUBLISHED = "published";
+    private static final String OPTION_DIFF_FILE = "diffFile";
+
+    /** Enough of an axiom diff to review; the whole of a large one is unreadable in a dialog. */
+    private static final int MAX_AXIOM_LINES = 300;
 
     /** What the later side is when somebody wants to compare a release against their edits. */
     private static final String WORKING_COPY = "what I have open now";
@@ -41,6 +49,9 @@ public class CompareReleasesAction extends OntoBoardAction {
     private volatile String from = "";
     private volatile String to = WORKING_COPY;
     private volatile boolean writeNotes;
+    private volatile boolean showAxioms;
+    private volatile String publishedUrl = "";
+    private volatile File diffFile;
 
     @Override
     protected String operationName() {
@@ -81,6 +92,36 @@ public class CompareReleasesAction extends OntoBoardAction {
                                 + "against your unreleased edits, which is the question to ask "
                                 + "before cutting the next one.")
                         .build(),
+                Parameter.of(OPTION_PUBLISHED, "Or compare against a published release (URL)",
+                        Parameter.Kind.TEXT)
+                        .help("Fill this in and it replaces the 'From' side: the release is "
+                                + "downloaded from this address and compared against the later "
+                                + "version you chose.\n\nThis is ODK's release_diff - it "
+                                + "downloads the currently published release and diffs the new "
+                                + "build against it, which answers the question a release PR has "
+                                + "to answer: what will consumers see change?\n\nUsually the "
+                                + "ontology's own PURL, which resolves to whatever is published "
+                                + "now.")
+                        .build(),
+                Parameter.of(OPTION_DIFF_FILE, "Write the axiom diff to (optional)",
+                        Parameter.Kind.FILE)
+                        .help("Writes ROBOT's axiom diff as markdown, which is what ODK's "
+                                + "release_diff target produces at reports/release-diff.md. Needs "
+                                + "'Also list every axiom that changed' to be on - that is the "
+                                + "diff being written.")
+                        .build(),
+                Parameter.of(OPTION_AXIOMS, "Also list every axiom that changed",
+                        Parameter.Kind.FLAG)
+                        .defaultValue("false")
+                        .help("The table above answers what a release note is written from - which "
+                                + "terms were added, obsoleted, redefined or moved. This adds "
+                                + "ROBOT's own axiom diff underneath it, which answers what "
+                                + "exactly changed.\n\nThey are different questions: a term that "
+                                + "gained a definition and a term that changed parents both look "
+                                + "like 'some axioms went, some came' to an axiom diff, which is "
+                                + "why the term-level table exists. Turn this on when reviewing a "
+                                + "release rather than describing it.")
+                        .build(),
                 Parameter.of(OPTION_NOTES, "Write release notes beside the later release",
                         Parameter.Kind.FLAG)
                         .defaultValue("false")
@@ -98,6 +139,12 @@ public class CompareReleasesAction extends OntoBoardAction {
         from = chosen.get(OPTION_FROM);
         to = chosen.get(OPTION_TO);
         writeNotes = "true".equalsIgnoreCase(chosen.get(OPTION_NOTES));
+        showAxioms = "true".equalsIgnoreCase(chosen.get(OPTION_AXIOMS));
+        publishedUrl = chosen.get(OPTION_PUBLISHED) == null
+                ? "" : chosen.get(OPTION_PUBLISHED).trim();
+        String diffPath = chosen.get(OPTION_DIFF_FILE);
+        diffFile = diffPath == null || diffPath.trim().isEmpty()
+                ? null : new File(diffPath.trim());
         return true;
     }
 
@@ -125,7 +172,9 @@ public class CompareReleasesAction extends OntoBoardAction {
         OWLOntology earlier;
         OWLOntology later;
         try {
-            earlier = load(Release.releaseFile(projectRoot, id, from));
+            earlier = publishedUrl.isEmpty()
+                    ? load(Release.releaseFile(projectRoot, id, from))
+                    : loadPublished(publishedUrl, result);
             later = WORKING_COPY.equals(to) ? ontology
                     : load(Release.releaseFile(projectRoot, id, to));
         } catch (RobotException cannotLoad) {
@@ -167,7 +216,59 @@ public class CompareReleasesAction extends OntoBoardAction {
                     + "nowhere to put them.");
         }
 
+        if (showAxioms) {
+            appendAxiomDiff(result, earlier, later);
+        }
+
         return result.summary(diff.summary()).build();
+    }
+
+    /**
+     * ROBOT's axiom diff, as notes under the term-level table.
+     *
+     * <p>Notes rather than rows: the table's columns are term-shaped - change, term, before, after -
+     * and an axiom diff has no such shape. Forcing it into those columns would misrepresent it.
+     *
+     * <p>A failure here is a warning, not a failure of the whole comparison: the term-level answer
+     * is the one the user asked for, and it has already been computed.
+     */
+    private void appendAxiomDiff(OperationResult.Builder result, OWLOntology earlier,
+            OWLOntology later) {
+        try {
+            AxiomDiff.Result axioms = AxiomDiff.between(earlier, later, AxiomDiff.defaultOptions());
+            if (axioms.isIdentical()) {
+                result.note("Axiom diff: the two are identical axiom for axiom.");
+                if (diffFile != null) {
+                    result.note("Nothing written to " + diffFile.getName()
+                            + ": there is no difference to write.");
+                }
+                return;
+            }
+            if (diffFile != null) {
+                try {
+                    java.nio.file.Files.write(diffFile.toPath(),
+                            axioms.getText().getBytes("UTF-8"));
+                    result.wrote(diffFile);
+                } catch (java.io.IOException cannotWrite) {
+                    result.warn("Could not write " + diffFile.getAbsolutePath() + ": "
+                            + cannotWrite.getMessage());
+                }
+            }
+            java.util.List<String> lines = axioms.getLines();
+            result.note("Axiom diff (" + lines.size() + " lines):");
+            int shown = 0;
+            for (String line : lines) {
+                if (shown >= MAX_AXIOM_LINES) {
+                    result.note("  ... " + (lines.size() - MAX_AXIOM_LINES) + " more lines.");
+                    break;
+                }
+                result.note("  " + line);
+                shown++;
+            }
+        } catch (RobotException cannotDiff) {
+            result.warn("The axiom diff could not be produced, so only the term-level comparison "
+                    + "above is available: " + cannotDiff.getMessage());
+        }
     }
 
     /**
@@ -177,6 +278,26 @@ public class CompareReleasesAction extends OntoBoardAction {
      * loading it into Protege's would either collide with what is open or silently return the
      * open one - which would compare a thing with itself and report that nothing had changed.
      */
+    /**
+     * The published release, downloaded.
+     *
+     * <p>ODK's release_diff fetches the currently published artefact and diffs the new build
+     * against it, which is the question a release pull request has to answer: what will consumers
+     * see change? A local release cannot answer that - it is what this project believes it
+     * published, not what is actually there.
+     */
+    private OWLOntology loadPublished(String url, OperationResult.Builder result) {
+        result.note("From: " + url + " (downloaded)");
+        try {
+            return OntologySource.load(OWLManager.createOWLOntologyManager(),
+                    org.semanticweb.owlapi.model.IRI.create(url));
+        } catch (RuntimeException cannotLoad) {
+            throw new RobotException("Could not download the published release from " + url
+                    + ": " + cannotLoad.getMessage() + ". A PURL that has never been published "
+                    + "resolves to nothing, which is the usual reason.", cannotLoad);
+        }
+    }
+
     private OWLOntology load(File release) {
         if (!release.isFile()) {
             throw new RobotException("There is no release at " + release.getAbsolutePath());
@@ -207,16 +328,4 @@ public class CompareReleasesAction extends OntoBoardAction {
     }
 
     /** The ontology's own file, or null when it has never been saved. */
-    private File fileOf(OWLOntology ontology) {
-        if (ontology == null) {
-            return null;
-        }
-        try {
-            URI documentUri = getOWLModelManager().getOWLOntologyManager()
-                    .getOntologyDocumentIRI(ontology).toURI();
-            return "file".equalsIgnoreCase(documentUri.getScheme()) ? new File(documentUri) : null;
-        } catch (RuntimeException notAFile) {
-            return null;
-        }
-    }
 }
