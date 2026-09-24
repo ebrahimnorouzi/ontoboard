@@ -154,11 +154,18 @@ is a different class space, and a menu action referencing a Protégé type the b
 passes that test and dies on click, invisibly, because an action that fails to load simply does
 nothing. All 29 are now loaded *and constructed* in the host.
 
-The other half arrived in 1.40.0. `tools/smoke.ps1 -SelfTest` sets `-Dontoboard.selftest=true`, and
-the startup hook then drives six read-only ROBOT menu items against a scratch ontology and logs
-what each reported — Measure, Quality report, Explain, SPARQL, Export terms, Profile. A person can
-run the same thing from *OntoBoard → Run self-test*; both go through one implementation, because a
-self-test with two implementations grows a version nobody runs.
+The other half arrived in 1.40.0 and grew in 1.44.0. `tools/smoke.ps1 -SelfTest` sets
+`-Dontoboard.selftest=true`, and the startup hook then drives **nine** menu items against a
+throwaway ODK project — scaffolded by the wizard's own code into a temp directory and deleted
+afterwards — logging what each reported: Measure, Quality report, Explain, SPARQL, Export terms,
+Profile, Imports, Refresh imports, All notes. A person can run the same thing from *OntoBoard →
+Run self-test*; both go through one implementation, because a self-test with two implementations
+grows a version nobody runs.
+
+A real project rather than an ontology in memory, because half the menu is project-aware — it
+looks for `src/ontology`, a catalog, `imports/`. What unlocked that was removing seven private
+copies of `fileOf(OWLOntology)`, each of which asked the *model manager's* manager for the document
+IRI and so answered only for the ontology Protégé has open.
 
 It earned itself immediately: on its first run it found `QualityReportAction` throwing
 `NullPointerException`, because its `options` field had no initial value and `run()` therefore
@@ -166,12 +173,16 @@ worked only after `configure()`. From the menu `configure()` always runs, so no 
 it — a latent trap rather than a live bug — but it was invisible to 1133 unit tests and to anyone
 clicking the item.
 
-**Six of roughly twenty items, and the rest are excluded on purpose.** *Transform* defaults to
-applying its changes and would push them through the live session's model manager. *Rename IRIs*,
-*Import terms*, *Obsolete*, *Release*, *Build*, *Git*, *Open from GitHub* and *New ODK project*
-write files, need a configured project, or reach the network. The canvas, notes and collaboration
-items are Swing surfaces and nothing here opens a window. So this does not "drive the menu" — it
-drives the six read-only ROBOT operations, in the host, and says so in its own output.
+**Nine of roughly twenty items, and the rest are excluded for one stated reason each.**
+*Transform* defaults to applying its changes and would push them through the live session's model
+manager. *Rename IRIs*, *Import terms*, *Obsolete*, *Release*, *Build*, *Git*, *Open from GitHub*
+and *New ODK project* write files, run `make`, or reach the network. *Compare releases* needs a
+project with dated releases, which a freshly scaffolded one has none of. The canvas, note-editing
+and collaboration items are Swing surfaces and nothing here opens a window.
+
+Those could now be covered — the scratch project makes it possible — but each needs its own
+fixture: a release history, a git remote, an upstream to import from. Inventing those badly would
+be worse than the gap. So this still does not "drive the menu", and says so in its own output.
 
 The export check is there for a specific reason. Its safety rested on a chain of inferences — POI
 is reached only by `Table.asWorkbook`, which `write` calls only for `xlsx`, which the plugin does
