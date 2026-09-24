@@ -1099,9 +1099,23 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                 }
                 if (cell != null && graph.getModel().isEdge(cell)) {
                     final String edgeId = graph.getIdForCell(cell);
-                    JMenuItem deleteAxiom = new JMenuItem("Delete axiom from ontology...");
-                    deleteAxiom.addActionListener(a -> deleteAxiomFor(edgeId));
-                    menu.add(deleteAxiom);
+                    if (isInferred(edgeId)) {
+                        // An inferred edge has no axiom behind it, so there is nothing to delete.
+                        // Offering the item anyway produced "Cannot work out which axiom edge
+                        // 'inf|...' stands for", which reads as a plugin defect rather than as the
+                        // plain fact that the reasoner worked this out and the ontology does not
+                        // say it. A disabled item explains; a missing one leaves the user
+                        // right-clicking again to check they had not misread the menu.
+                        JMenuItem inferred = new JMenuItem("Inferred - no axiom to delete");
+                        inferred.setEnabled(false);
+                        inferred.setToolTipText("The reasoner worked this out; the ontology does "
+                                + "not assert it. Nothing to remove.");
+                        menu.add(inferred);
+                    } else {
+                        JMenuItem deleteAxiom = new JMenuItem("Delete axiom from ontology...");
+                        deleteAxiom.addActionListener(a -> deleteAxiomFor(edgeId));
+                        menu.add(deleteAxiom);
+                    }
                 }
 
                 menu.addSeparator();
@@ -1253,11 +1267,20 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             try {
                 stored = CanvasLayoutStore.load(currentOntologyFile);
             } catch (RuntimeException unreadable) {
-                LOGGER.warn("OntoBoard: cannot read {}; starting with an empty board",
-                        CanvasLayoutStore.sidecarFor(currentOntologyFile), unreadable);
+                LOGGER.warn("OntoBoard: cannot read {}; starting with an empty board and leaving "
+                        + "the file alone", CanvasLayoutStore.sidecarFor(currentOntologyFile),
+                        unreadable);
                 setStatus("The saved arrangement could not be read, so the board starts empty. "
-                        + "Your ontology is untouched. " + unreadable.getMessage());
+                        + "The file has been left alone rather than overwritten, and your "
+                        + "ontology is untouched. " + unreadable.getMessage());
                 stored = null;
+                // The line that makes the rest of this true. Without it the guard was worse than
+                // the crash it replaced: currentOntologyFile still pointed at the ontology, so
+                // the 800ms debounce timer wrote an empty board over the sidecar after the first
+                // node drag - destroying a file that, in the case this guard exists for, is
+                // perfectly good data written by a newer OntoBoard. The sibling branch below got
+                // this right and said why; this one omitted exactly that line.
+                currentOntologyFile = null;
             }
             if (stored == null) {
                 layout = null;
@@ -1726,6 +1749,13 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
      * user's work. Legacy rdfs:domain/rdfs:range edges get an extra warning because those
      * axioms are global - every other arrow drawn with the same property depends on them.
      */
+    /** Whether this edge is the reasoner's conclusion rather than an axiom in the ontology. */
+    private static boolean isInferred(String edgeId) {
+        return edgeId != null
+                && (edgeId.startsWith(InferredEdges.SUBCLASS_ID_PREFIX)
+                        || edgeId.startsWith(InferredEdges.TYPE_ID_PREFIX));
+    }
+
     private void deleteAxiomFor(String edgeId) {
         OWLOntology ontology = getOWLModelManager().getActiveOntology();
         List<OWLOntologyChange> removals;

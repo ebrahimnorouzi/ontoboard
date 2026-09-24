@@ -237,7 +237,13 @@ public class ReleaseAction extends OntoBoardAction {
         }
 
         File dated = Release.releaseFile(projectRoot, id, date);
-        File published = new File(editFile.getParentFile(), id + ".owl");
+        // The project root, which is where the generated Makefile's prepare_release copies it
+        // (cp ../../releases/$(TODAY)/$(ONT).owl ../../$(ONT).owl) and where a PURL resolves. This
+        // wrote src/ontology/<id>.owl instead - the file `make reason` overwrites and `make clean`
+        // deletes, and which the scaffold gitignores for exactly that reason. So the menu and the
+        // build published to two different places, and the menu's copy was one `git add -A` would
+        // not even stage.
+        File published = new File(projectRoot, id + ".owl");
         try {
             if (dated.getParentFile() != null && !dated.getParentFile().isDirectory()
                     && !dated.getParentFile().mkdirs()) {
@@ -270,6 +276,8 @@ public class ReleaseAction extends OntoBoardAction {
 
         result.note("The dated copy is what the version IRI names, so leave it alone - it is the "
                 + "only thing that makes the IRI mean anything.");
+        result.note("The copy at the project root is the same file under the name a PURL resolves "
+                + "to, which is where `make prepare_release` puts it as well.");
         if (!merge && !release.getImportsDeclarations().isEmpty()) {
             // Found by releasing a real project: the dated copy sits under releases/, outside the
             // directory catalog-v001.xml covers, so its imports resolve only over the network.

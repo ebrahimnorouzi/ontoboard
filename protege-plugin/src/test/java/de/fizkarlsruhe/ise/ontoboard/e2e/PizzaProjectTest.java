@@ -86,7 +86,8 @@ class PizzaProjectTest {
         OdkProjectConfig config = new OdkProjectConfig(ID, "Pizza Ontology",
                 "A pizza ontology built end to end with OntoBoard, to exercise the plugin "
                         + "against ODK and ROBOT.",
-                PizzaOntology.IRI_BASE, "CC0-1.0", repo.getParentFile());
+                PizzaOntology.IRI_BASE,
+                "https://creativecommons.org/publicdomain/zero/1.0/", repo.getParentFile());
         repo = config.getProjectRoot();
         File ontologyDir = new File(repo, "src/ontology");
         if (!new File(ontologyDir, ID + "-odk.yaml").isFile()) {
@@ -111,6 +112,14 @@ class PizzaProjectTest {
             throw new IOException("could not create " + reports);
         }
 
+        // The import first. It adds an owl:imports to the ontology and re-saves the edit file,
+        // so measuring before it ran described an ontology with no imports - every "... incl"
+        // measure equal to its own non-incl twin, in a report sitting beside imports.md, which
+        // documented the module it could not see.
+        if ("v4".equals(version)) {
+            writeImportReport(pizza, ontologyDir, reports);
+        }
+
         writeCanvasReport(pizza, reports);
         writeReasonerReport(pizza, reports);
         writeRobotReport(pizza, reports);
@@ -122,7 +131,6 @@ class PizzaProjectTest {
         }
         if ("v4".equals(version)) {
             writeCurationReport(pizza, reports);
-            writeImportReport(pizza, ontologyDir, reports);
         }
         writeMakeTargetsReport(editFile, reports);
     }
@@ -235,8 +243,16 @@ class PizzaProjectTest {
         text.append("Tightest profile: **")
                 .append(tightest == null ? "outside OWL 2 DL" : "OWL 2 " + tightest.getLabel())
                 .append("**\n\n");
-        text.append(outsideEl.size()).append(" axioms outside OWL 2 EL. ");
-        text.append("ELK ignores each of these silently, and ELK is what the ODK build runs.\n\n");
+        text.append(outsideEl.size()).append(" axioms outside OWL 2 EL.");
+        if (outsideEl.isEmpty()) {
+            // Said unconditionally, this read "0 axioms outside OWL 2 EL. ELK ignores each of
+            // these silently" - a warning about nothing, on the one release with no ELK blind spot.
+            text.append(" Everything here is inside the profile the ODK build reasons with, so ");
+            text.append("ELK sees all of it.\n\n");
+        } else {
+            text.append(" ELK ignores each of these silently, and ELK is what the ODK build ");
+            text.append("runs.\n\n");
+        }
         for (ProfileCheck.Violation violation : outsideEl) {
             text.append("- ").append(violation.getMessage()).append('\n');
         }
@@ -300,12 +316,27 @@ class PizzaProjectTest {
 
     /** What changed since the previous release, term by term. */
     private void writeEvolutionReport(File reports) throws Exception {
-        String previous = "v2".equals(version) ? "v1" : "v2";
+        // The release before this one, from the ordered list. A two-way ternary meant v4 was
+        // compared with v2, so its notes reprinted v3's changes under a v4 heading and said
+        // nothing about what v4 actually did.
+        List<String> order = java.util.Arrays.asList("v1", "v2", "v3", "v4");
+        int index = order.indexOf(version);
+        if (index <= 0) {
+            throw new IllegalStateException("no release before " + version);
+        }
+        String previous = order.get(index - 1);
         ReleaseDiff diff = ReleaseDiff.between(ontologyFor(previous), ontologyFor(version));
 
         StringBuilder text = new StringBuilder("# Evolution " + previous + " -> " + version
                 + "\n\n");
         text.append(diff.summary()).append("\n\n");
+        if (diff.getChanges().isEmpty()) {
+            // A release can change a great deal without touching a term. Saying so beats an empty
+            // page, and beats the previous behaviour of quietly reprinting the last release.
+            text.append("This release changed no term. What it did change - provenance, notes, ");
+            text.append("imports, ontology metadata - is not a term change; see the other ");
+            text.append("reports in this directory.\n");
+        }
         for (ReleaseDiff.Change change : ReleaseDiff.Change.values()) {
             List<ReleaseDiff.TermChange> of = diff.of(change);
             if (of.isEmpty()) {

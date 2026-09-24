@@ -281,10 +281,18 @@ class TermExtractTest {
                 result.getModule().getOntologyID().getOntologyIRI());
     }
 
-    /** ODK names these imports/&lt;name&gt;_import.owl, and a familiar name is worth having. */
+    /**
+     * ODK names these imports/&lt;name&gt;_import.owl, and a familiar name is worth having.
+     *
+     * <p>Under the source's own namespace, not beside it. This asserted
+     * {@code http://example.org/imports/source_import.owl} - one level up, in whatever namespace
+     * happens to sit above, which for an OBO ontology is OBO's shared root. Every project
+     * extracting from the same source would have minted the identical IRI, and OWL API keeps
+     * whichever module it loaded first.
+     */
     @Test
     void theDerivedIriFollowsTheOdkNamingConvention() {
-        assertEquals(IRI.create("http://example.org/imports/source_import.owl"),
+        assertEquals(IRI.create("http://example.org/source/imports/source_import.owl"),
                 TermExtract.moduleIriFor(source));
     }
 

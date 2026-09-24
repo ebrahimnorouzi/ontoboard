@@ -232,8 +232,20 @@ public final class ReleaseDiff {
     /** A sentence a person reads, rather than a count of axioms. */
     public String summary() {
         if (changes.isEmpty()) {
+            // The axiom counts even here, because "nothing changed" was saying something false.
+            // This comparison is about terms - added, obsoleted, relabelled, redefined, moved -
+            // and a release can change a great deal without touching any of them: provenance
+            // stamps, editorial notes, an import, ontology metadata. A curation release did
+            // exactly that, and the notes told the reader nothing had changed while thirteen
+            // axioms had.
+            if (axiomsBefore != axiomsAfter) {
+                return "No term was added, retired, relabelled, redefined or moved, but the "
+                        + "ontology changed: " + axiomsBefore + " axioms to " + axiomsAfter
+                        + ". Annotations, imports and ontology metadata are not term changes and "
+                        + "are not listed here.";
+            }
             return "Nothing changed: the two versions have the same terms, labels, definitions "
-                    + "and parents.";
+                    + "and parents, and the same number of axioms.";
         }
         StringBuilder text = new StringBuilder();
         for (Change change : Change.values()) {

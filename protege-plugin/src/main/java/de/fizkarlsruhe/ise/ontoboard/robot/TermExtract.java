@@ -319,7 +319,14 @@ public final class TermExtract {
         if (name.isEmpty()) {
             name = "extract";
         }
-        String stem = lastSlash >= 0 ? base.substring(0, lastSlash) : base;
+        // ProjectIri.stemOf, not a cut at the last slash. This is the fallback moduleIriIn
+        // delegates to on both of its null paths, so fixing moduleIriIn alone left the defect one
+        // branch deeper: a source of .../obo/iao.owl minted .../obo/imports/iao_import.owl, the
+        // OBO shared root that this class's own comments say must never be minted.
+        String stem = de.fizkarlsruhe.ise.ontoboard.odk.ProjectIri.stemOf(base);
+        if (stem == null) {
+            stem = base;
+        }
         return IRI.create(stem + "/imports/" + name + "_import.owl");
     }
 }

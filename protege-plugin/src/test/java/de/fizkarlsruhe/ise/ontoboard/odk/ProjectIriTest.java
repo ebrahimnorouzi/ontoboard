@@ -22,6 +22,11 @@ import org.semanticweb.owlapi.model.IRI;
  */
 class ProjectIriTest {
 
+    /** A real licence: ROBOT reports a missing ontology licence as an ERROR, and
+     * the generated CI fails on errors, so a project without one fails its own build. */
+    private static final String CC0 =
+            "https://creativecommons.org/publicdomain/zero/1.0/";
+
     /** Strip the extension, never a path segment: the segment is the project's identity. */
     @Test
     void theStemIsTheIriWithoutItsExtension() {
@@ -82,7 +87,7 @@ class ProjectIriTest {
             "https://w3id.org/mwo/mwo.owl"}) {
 
             Path into = Files.createTempDirectory(dir, "proj");
-            OdkProjectConfig config = new OdkProjectConfig("mwo", "MWO", "", baseIri, "",
+            OdkProjectConfig config = new OdkProjectConfig("mwo", "MWO", "", baseIri, CC0,
                     into.toFile());
             OdkScaffold.create(config);
             String makefile = new String(Files.readAllBytes(

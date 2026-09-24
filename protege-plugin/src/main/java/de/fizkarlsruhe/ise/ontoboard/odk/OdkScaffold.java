@@ -117,7 +117,10 @@ public final class OdkScaffold {
                 // prerequisite is the reason this plugin embeds robot-core. Telling a user to run
                 // a file that does not exist is worse than telling them nothing.
                 + "# This project's Makefile calls robot directly, so it needs make and robot on\n"
-                + "# PATH - not Docker. Edit the Makefile by hand; nothing regenerates it.\n"
+                + "# PATH - not Docker. Nothing regenerates the Makefile from this file:\n"
+                + "# ODK's `make update_repo` is not part of this project. Put your own\n"
+                + "# rules in " + c.getOntologyId() + ".Makefile, which the build includes\n"
+                + "# and never overwrites.\n"
                 + "id: " + c.getOntologyId() + "\n"
                 + "title: \"" + c.getTitle() + "\"\n"
                 + "description: \"" + c.getDescription() + "\"\n"
@@ -148,6 +151,12 @@ public final class OdkScaffold {
                 + "ONT_ID := " + id + "\n"
                 + "ONT := $(ONT_ID)\n"
                 + "TODAY := $(shell date +%Y-%m-%d)\n\n"
+                // Stated, not inherited from file order. `include` splices the custom
+                // Makefile in at this point, so the first target a user wrote there became make's
+                // default goal - a bare `make` then built whatever they happened to add first
+                // instead of the project. Moving the include below `all` would fix it too, but
+                // only until somebody moved it back.
+                + ".DEFAULT_GOAL := all\n\n"
                 + "-include $(ONT).Makefile\n\n"
                 + ".PHONY: all test reason report sparql_test clean prepare_release\n\n"
                 + "all: reason report\n"
@@ -183,7 +192,7 @@ public final class OdkScaffold {
                 + "sparql_test:\n"
                 + "\trobot verify --input $(ONT)-edit.owl --queries ../sparql/*.rq --output-dir .\n\n"
                 + "clean:\n"
-                + "\t@rm -f tmp_* report.tsv *.bak $(ONT).owl\n\n"
+                + "\t@rm -f tmp_* report.tsv *.bak *.csv $(ONT).owl\n\n"
                 + "prepare_release: reason report\n"
                 // Dated and stamped, not copied. A release with no owl:versionIRI cannot be
                 // cited or pinned by anyone downstream, and an undated copy means each release
@@ -407,6 +416,8 @@ public final class OdkScaffold {
                 + "# nobody else has.\n"
                 + "tmp_*\n"
                 + "report.tsv\n"
+                + "# robot verify writes one CSV per failing query into src/ontology.\n"
+                + "src/ontology/*.csv\n"
                 + "*.bak\n"
                 + "src/ontology/" + c.getOntologyId() + ".owl\n";
     }

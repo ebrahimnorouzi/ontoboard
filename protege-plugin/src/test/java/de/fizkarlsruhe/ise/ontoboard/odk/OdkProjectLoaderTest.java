@@ -13,9 +13,14 @@ import org.junit.jupiter.api.io.TempDir;
 
 class OdkProjectLoaderTest {
 
+    /** A real licence: ROBOT reports a missing ontology licence as an ERROR, and
+     * the generated CI fails on errors, so a project without one fails its own build. */
+    private static final String CC0 =
+            "https://creativecommons.org/publicdomain/zero/1.0/";
+
     private static File scaffold(Path dir) {
         OdkProjectConfig config = new OdkProjectConfig("mwo", "Materials Workflow Ontology",
-                "", "http://purl.obolibrary.org/obo/mwo.owl", "", dir.toFile());
+                "", "http://purl.obolibrary.org/obo/mwo.owl", CC0, dir.toFile());
         OdkScaffold.create(config);
         return config.getProjectRoot();
     }
