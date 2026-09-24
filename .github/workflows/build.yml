@@ -1,0 +1,71 @@
+# The repository's first CI.
+#
+# Until now 1,062 tests ran on one laptop, by hand, when somebody remembered. Four audit rounds
+# found 70 defects in code that passed those tests every time they were run - which is an argument
+# for running them without being asked, not against the tests.
+#
+# What this cannot do: the smoke test. It needs a Protege install, a bundled JRE and a desktop, and
+# GitHub's runners have none of the three. Host verification stays a local command
+# (protege-plugin/tools/smoke.ps1) whose result is committed as a receipt under
+# protege-plugin/tools/smoke-receipt/. This job checks the receipt exists for the version being
+# built - so a release cannot reach main without somebody having run it in a host.
+name: build
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Java 11: the bundle targets the Java 8 API surface deliberately
+      # (maven.compiler.release=8, asserted by BundleConfigurationTest), but the build itself and
+      # robot-core's dependencies need a newer JDK to compile.
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '11'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Test
+        working-directory: protege-plugin
+        # Not -o. Offline is right locally, where the repository is warm; in CI it would fail on a
+        # cold cache and say nothing useful about the code.
+        run: mvn -B clean test
+
+      - name: Package
+        working-directory: protege-plugin
+        run: mvn -B -DskipTests package
+
+      # A 64 MB jar can be truncated by a copy that reports success, and the symptom is a plugin
+      # that silently never appears. Cheap to check, and it has happened here.
+      - name: Check the jar is not truncated
+        working-directory: protege-plugin
+        run: |
+          jar=$(ls target/ontoboard-*.jar)
+          unzip -t "$jar" > /dev/null
+          echo "$jar is a valid archive"
+
+      - name: Require a host smoke receipt for this version
+        working-directory: protege-plugin
+        run: |
+          version=$(grep -m1 '^  <version>' pom.xml | sed 's/.*<version>\(.*\)<\/version>.*/\1/')
+          receipt="tools/smoke-receipt/$version.txt"
+          if [ ! -f "$receipt" ]; then
+            echo "::error::No host smoke receipt at protege-plugin/$receipt."
+            echo "Versions 1.20.0 to 1.24.0 shipped without ever being loaded in a Protege."
+            echo "Run tools/smoke.ps1 against both supported installs and commit the receipt."
+            exit 1
+          fi
+          echo "Receipt found:"
+          cat "$receipt"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: surefire-reports
+          path: protege-plugin/target/surefire-reports/
+          if-no-files-found: ignore
