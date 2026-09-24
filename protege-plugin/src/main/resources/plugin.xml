@@ -115,6 +115,15 @@
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
+  <extension id="menu.OntoBoard.project.refreshImports"
+             point="org.protege.editor.core.application.EditorKitMenuAction">
+    <name value="Refresh imports..."/>
+    <path value="ontoboard.menu.OntoBoard.project/SlotA-RI"/>
+    <toolTip value="Can this project's import modules be rebuilt from its own term lists - and rebuild them"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.menu.RefreshImportsAction"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
+
   <extension id="menu.OntoBoard.project.compare"
              point="org.protege.editor.core.application.EditorKitMenuAction">
     <name value="Compare releases..."/>

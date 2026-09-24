@@ -1,0 +1,71 @@
+OntoBoard 1.38.0 - host smoke receipt
+
+Produced by tools/smoke.ps1.
+
+  2026-09-24  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  self-check 7/7
+  2026-09-24  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  self-check 7/7
+
+  OntoBoard self-check ok: menu classes resolve - 28/28 classes named in plugin.xml loaded
+
+IMPORT MODULES ARE REBUILDABLE AGAIN
+
+An ODK project does not commit an import module as a finished artefact. It commits the list of
+terms it wants - imports/iao_terms.txt - and regenerates the module from it whenever the upstream
+ontology moves. That is what makes `make refresh-imports` mean anything, and it is the difference
+between a repository somebody else can build and one carrying a binary blob nobody dares touch.
+
+This plugin wrote the module and not the list. ROBOT > Import terms... would extract
+imports/iao_import.owl, add the import statement and write the catalog entry - all correct, all
+useful - and the next person to clone the repository had a module they could not reproduce, could
+not extend, and could not tell had gone stale. The one file that makes the ODK imports/ layout
+work was the one file missing.
+
+  Import terms... now writes imports/<name>_terms.txt beside the module, recording the terms and
+  the source they came from. Sorted and deduplicated, because extraction order is not stable and a
+  list that reshuffles on every rebuild makes every refresh look like a change - after which
+  nobody reads the diffs.
+
+  Project > Refresh imports... answers both halves. By default it only reports: which imports have
+  a term list, which have a module, which record their source. That audit needs no network and is
+  the question worth asking about a repository you have just cloned - can it be rebuilt at all?
+  Turning on the rebuild re-extracts each module from its recorded source, which is the in-Protege
+  equivalent of ODK's refresh-imports.
+
+A project built with an earlier OntoBoard will report imports that cannot be rebuilt. That is
+correct and deliberate: those modules really cannot be, and re-running Import terms... for each
+writes the missing list. The audit is meant to surface exactly this.
+
+The rebuild reports a term that is in the list but no longer in the upstream ontology, rather than
+dropping it. An upstream obsoletion is precisely the thing a refresh exists to discover, and a
+module that silently comes back three terms smaller is how somebody ships a release missing a
+definition.
+
+Asserted in both runs:
+  - exactly one ontoboard jar in plugins/ (singleton bundle; two is a collision, not an upgrade)
+  - "Starting bundle ontoboard"
+  - "Plugin: OntoBoard (1.38.0)" - the version Felix actually resolved, not the one on disk
+  - "OntoBoard self-check: PASS 7/7", including menu classes resolve - 28/28
+  - no unresolved constraint, java.* import, UnsupportedClassVersionError or truncated jar
+    attributable to our bundle
+  - no de.fizkarlsruhe stack frame
+  - no OutOfMemoryError at -Xmx500M
+
+Verified outside the host:
+  - 1133 tests pass, 1 skipped.
+  - ImportModulesTest covers the states that matter, including the two the audit exists to find: a
+    term list with no module yet (a fresh clone) and a module with no term list (what this plugin
+    used to produce).
+  - RobotParityTest and OdkBuildTest still pass against obolibrary/odkfull.
+
+Not asserted, and not claimed:
+  - the rebuild path itself is not covered by an automated test, because it downloads an upstream
+    ontology and every other test in this suite runs offline. It is exercised by hand only.
+  - that any menu item does the right thing when clicked - only that clicking one will not fail to
+    find its class.
+  - ODK's mirror/ directory is not implemented. ODK downloads a full upstream copy to mirror/ and
+    extracts from that, so a refresh can be repeated without the network; this re-downloads each
+    time. That is the remaining half of the import story.
+
+Neighbours that fail to install in Protege-5.5.0, unrelated to us and not fixed here:
+  cellfie-2.2.4.jar        (its own manifest imports java.awt, which OSGi forbids)
+  swrltab-plugin-2.1.3.jar
