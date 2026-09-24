@@ -4,6 +4,7 @@ import de.fizkarlsruhe.ise.ontoboard.robot.OntologyDataset;
 import de.fizkarlsruhe.ise.ontoboard.robot.QualityFinding;
 import de.fizkarlsruhe.ise.ontoboard.robot.ReportQueries;
 import de.fizkarlsruhe.ise.ontoboard.robot.RuleRunner;
+import de.fizkarlsruhe.ise.ontoboard.robot.TermExport;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -32,7 +33,8 @@ import org.semanticweb.owlapi.model.OWLOntologyManager;
  * {@code tools/smoke.ps1} asserts it.
  *
  * <p>Cheap on purpose: a three-axiom ontology held in memory, no file and no network, so the cost to
- * a user opening Protege is milliseconds. This is a smoke check, not a test suite.
+ * a user opening Protege is milliseconds. This is a smoke check, not a test suite - it covers the
+ * ROBOT paths whose in-bundle behaviour cannot be established any other way, not the 21 menu items.
  *
  * <p>No Protege types and no Swing, so it is testable directly - though a green test here proves
  * only that the logic works on a classpath. {@link OntoBoardStartup} is what runs it where it counts.
@@ -173,6 +175,27 @@ public final class SelfCheck {
                             + "no title and no licence"));
         } catch (RuntimeException | LinkageError cannot) {
             checks.add(new Check("robot report runs end to end", false, describe(cannot)));
+        }
+
+        try {
+            // new IOHelper() and createExportTable are the two calls on the export path that could
+            // fail here and nowhere else: IOHelper reads its own resources, and export.Table is the
+            // class that references Apache POI - whose logging backend this bundle cannot embed.
+            // Only Table.asWorkbook touches POI, so this must pass; if it ever does not, "Export
+            // terms..." is broken in the host while every test still passes, which is precisely the
+            // failure this whole class exists to catch.
+            List<String> columns = TermExport.defaultColumns();
+            TermExport.Result export = subject == null
+                    ? null
+                    : TermExport.run(subject, columns, TermExport.defaultOptions());
+            checks.add(new Check("robot export runs end to end",
+                    export != null && !export.getRows().isEmpty(),
+                    export == null
+                            ? "no ontology to export"
+                            : export.getTermCount() + " terms across " + columns.size()
+                                    + " columns, written as " + export.getFormat()));
+        } catch (RuntimeException | LinkageError cannot) {
+            checks.add(new Check("robot export runs end to end", false, describe(cannot)));
         }
 
         return new Result(checks);

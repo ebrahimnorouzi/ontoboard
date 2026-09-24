@@ -101,7 +101,7 @@ commands against the ontology you have open:
 | Group | Commands |
 |---|---|
 | Project | New ODK project, Open from GitHub, ID ranges, Build, Imports, Release, Compare releases |
-| ROBOT | Measure, Quality report, Profile, Transform (relax/reduce/repair/merge), Import terms, Template |
+| ROBOT | Measure, Quality report, Profile, Transform (relax/reduce/repair/merge), Import terms, Template, Export terms |
 | Terms | Obsolete the selected term |
 | Notes | Note on the selected term, All notes, Discussion link |
 | Other | Git, Provenance, Collaboration |
@@ -135,7 +135,12 @@ This table said "everything except `report`" for both hosts until 1.25.0, and th
 ROBOT located its report queries by asking its classloader for a *directory* and accepting only
 `file:` and `jar:` URLs, and a bundle resource is neither, so the quality report had never
 worked inside the plugin. It does now — the queries are read as streams and run over a Jena
-model built without Rio, which is also why 5.5.0's older OWL API is no longer a barrier to it.
+model built without Rio.
+
+The host column is no longer the interesting axis. What limits ROBOT inside this plugin is OSGi,
+not the OWL API version: neither Protégé's OWL API bundle exports the RDF4J packages
+`robot-core` needs for its Rio paths, so those fail identically on 5.6.9 and 5.5.0. See
+[limitations](docs/limitations.md#known-constraints) for which operations that still rules out.
 
 Two things check that rather than one claim in a README: `RobotParityTest` requires the
 plugin's findings to match `robot report` run inside `obolibrary/odkfull` over the same
@@ -153,7 +158,7 @@ unavailable and why rather than failing obscurely.
 ```bash
 cd protege-plugin
 mvn clean package          # -> target/ontoboard-<version>.jar
-mvn test                   # 1068 tests (2 need Docker and skip without it)
+mvn test                   # 1079 tests (2 need Docker and skip without it)
 ```
 
 Java 8 bytecode is emitted deliberately (`maven.compiler.release=8`) so the bundle loads on

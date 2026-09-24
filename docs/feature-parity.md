@@ -103,6 +103,7 @@ individual views in a tabbed column beside the canvas, so none of this needs a t
 | SPARQL query panel | ✅ | 🧩 | `sparql-query-plugin`, bundled |
 | GitHub import | ✅ | ✅ | *Project → Open from GitHub…* clones and opens the edit file |
 | Export formats | ✅ | 🔶 | Protégé exports OWL formats; ROBOT `convert` would add OBO/JSON-LD |
+| Term table export | ➖ | ✅ | *ROBOT → Export terms…* writes one row per term and the columns you choose, as TSV, CSV, JSON, YAML or HTML. Not in the web application. `xlsx` is the one format the bundle cannot write — see Known constraints |
 | ZIP export | ✅ | ➖ | It is a folder on disk |
 | Widoco HTML docs | ✅ | ❌ | **Build.** External 39 MB jar, invoked as a subprocess |
 | Prefix management | ✅ | 🔶 | Colouring done; editing prefixes not |
@@ -172,11 +173,15 @@ mature plugins is waste) or ➖ (web-application machinery with no desktop meani
 
 ## Honest caveats
 
-- **ROBOT-dependent features need Protégé 5.6.x.** On 5.5.0 the report, SPARQL query and
-  export paths fail on an OWL API incompatibility. See [limitations](limitations.md).
+- **ROBOT-dependent features run on both supported hosts** as of 1.26.0, and the startup
+  self-check says so in each one's own log. This entry previously said they needed Protégé 5.6.x
+  because "the report, SPARQL query and export paths fail on an OWL API incompatibility", which
+  was wrong three times over: the report failed on *both* hosts and for an OSGi reason, export
+  has no RDF-layer dependency at all, and SPARQL query is not implemented, so it cannot fail.
+  What the OWL API version does still rule out is listed in [limitations](limitations.md).
 - **Collaboration is verified in pieces, not end to end.** The bridge's side is proved against a
   real `Y.Doc` and real sockets; the client's against a real WebSocket server; the loop guard
   against a host that re-fires its change listener the way Protégé does. What no test covers is
   "two people see each other's cursors", which needs a server, a browser and Protégé at once.
-- **No plugin UI is covered by tests.** 1068 tests cover logic; every Swing surface is verified
+- **No plugin UI is covered by tests.** 1079 tests cover logic; every Swing surface is verified
   by hand.

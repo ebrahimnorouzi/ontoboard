@@ -66,19 +66,31 @@ The plugin is early. These exist in the web application but not yet here:
   the same profile and requires an identical violation set — 7/7 rows on `fixture-tiny`, 21/21
   on pizza v2. And `OntoBoardStartup` runs `SelfCheck` in the host at startup, which
   `tools/smoke.ps1` asserts; the 1.25.0 receipt records `PASS 4/4` on **both** installs.
-- **The OWL API Rio barrier is real, and nothing the plugin ships touches it.** OWL API moved
-  its RDF layer from Sesame to RDF4J at 4.5.25 and `robot-core` targets the newer form, so a
-  code path that constructs a `RioRenderer` fails on Protégé 5.5.0's 4.5.9 and works on
-  5.6.x's 4.5.29. In `robot-core` the call site is `QueryOperation.loadOntologyAsModel`, and
-  the plugin has no reference to it — `OntologyDataset` goes through RDF/XML bytes instead,
-  which every OWL API version can write and Jena can read without any OWL API at all.
+- **The Rio barrier applies to both hosts, and it is an OSGi barrier rather than a version
+  one.** This was described here for five versions as a 5.5.0 problem, and that was wrong.
 
-  So this entry no longer describes a limitation of anything that ships. It used to say the
-  report "could not work" on 5.5.0; the 1.25.0 receipt shows it passing there on OWL API
-  4.5.9. `export` was also listed as blocked by this and never was — its constant pool
-  contains no match for `rdf4j`, `openrdf` or `rio`. The practical consequence is for whatever
-  is built next: a SPARQL panel should build its model with `OntologyDataset`, not with
-  `QueryOperation`, and then it works on both hosts.
+  The version story is true as far as it goes: OWL API moved its RDF layer from Sesame to
+  RDF4J at 4.5.25, `robot-core` targets the newer form, so `RioRenderer`'s constructor takes
+  an `org.eclipse.rdf4j.rio.RDFHandler` on 4.5.29 and an `org.openrdf.rio.RDFHandler` on
+  4.5.9. But inside a bundle that difference never gets a chance to matter. **Neither
+  `owlapi-osgidistribution` exports any `org.openrdf.*` or `org.eclipse.rdf4j.*` package** —
+  4.5.9 keeps 16 such jars and 4.5.29 keeps 17 on their own private `Bundle-ClassPath`, and
+  the `Export-Package` header of each lists 75 and 82 packages with not one of them among
+  these — and OntoBoard embeds no rdf4j jar either. So an rdf4j type is simply invisible to
+  our bundle, on 5.6.9 exactly as on 5.5.0, and a Rio path fails with
+  `NoClassDefFoundError` before any signature is compared.
+
+  Two consequences worth stating plainly. `OntologyDataset` is not a 5.5.0 workaround; it is
+  the only way this plugin can get a Jena model at all, on either host. And a robot-core
+  operation whose *static initialiser* touches rdf4j — `ExpandOperation` reads
+  `org.eclipse.rdf4j.model.vocabulary.DCTERMS.SOURCE` there — cannot be wrapped at all,
+  because merely loading the class throws.
+
+  Nothing the plugin ships touches Rio, and the report no longer does, which is why it passes
+  on 4.5.9. `export` was also listed as blocked by this and never was: its constant pool
+  contains no match for `rdf4j`, `openrdf` or `rio`. For what gets built next: a SPARQL panel
+  must build its model with `OntologyDataset`, never with `QueryOperation.loadOntologyAsModel`,
+  and then it works on both hosts.
 - **ROBOT cannot write `.xlsx` output from inside the bundle.** `log4j-api` is excluded
   because it declares its own OSGi `Bundle-Activator` (`org.apache.logging.log4j.util.Activator`,
   in its manifest) and bnd rejects a second one, which leaves Apache POI without the logging
@@ -111,7 +123,7 @@ The plugin is early. These exist in the web application but not yet here:
 
 ### Not covered by tests
 
-1068 tests cover projection, axiom construction, layout persistence, ODK scaffolding, the
+1079 tests cover projection, axiom construction, layout persistence, ODK scaffolding, the
 report's rule execution and the OSGi configuration. Two of them reach outside the JVM:
 `RobotParityTest` compares the report against real ROBOT in `obolibrary/odkfull` and is
 *skipped*, not failed, where Docker is absent — so a green run on a machine without Docker
@@ -121,10 +133,16 @@ verified by hand. Treat visual behaviour as unverified after each change.
 
 Behaviour *inside the bundle* is a third category, and the one that has cost the most. No test
 can see it, because Maven's classpath is not Felix's. `OntoBoardStartup` now runs `SelfCheck`
-at startup and `tools/smoke.ps1` asserts the verdict, so four things are checked in the host on
+at startup and `tools/smoke.ps1` asserts the verdict, so five things are checked in the host on
 every release: robot-core's profile is readable, all 32 of its queries are readable, Jena can
-read what the OWL API writes, and the report produces findings end to end. That is four things,
-not the 21 menu items — driving those is still Phase 2's self-test bundle.
+read what the OWL API writes, the report produces findings end to end, and the export produces
+terms end to end. That is five things, not the 22 menu items — driving those is still Phase 2's
+self-test bundle.
+
+The export check is there for a specific reason. Its safety rested on a chain of inferences — POI
+is reached only by `Table.asWorkbook`, which `write` calls only for `xlsx`, which the plugin does
+not offer — and a chain of inferences about a classloader is exactly what was wrong about the
+report for nine versions.
 
 ## Web application
 
@@ -159,7 +177,8 @@ column and tab layout (1.8.0); ROBOT transforms, term import and the quality rep
 editorial notes, frames and sticky notes, obsoletion, OWL 2 profile checking, release
 comparison and ROBOT templates (1.19.0); properties and inferred individual types on the
 canvas (1.20.0); ROBOT's quality report actually running inside the bundle, on both hosts,
-checked against real ROBOT and against a startup self-check in the host (1.25.0).
+checked against real ROBOT and against a startup self-check in the host (1.25.0); ROBOT term
+export as TSV, CSV, JSON, YAML or HTML, with the same in-host check (1.26.0).
 
 Those middle releases all shipped under one unchanged version number, which is why the list
 above names versions at all — see the note in [development](development.md) about what that

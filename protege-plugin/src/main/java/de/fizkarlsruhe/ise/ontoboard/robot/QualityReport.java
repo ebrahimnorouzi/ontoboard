@@ -17,13 +17,17 @@ import org.semanticweb.owlapi.model.OWLOntology;
  * subprocess, no Docker, and without writing the ontology to a temporary file first. The
  * retired web application needed a Java container to do the same thing.
  *
- * <p><b>Why this does not call {@code ReportOperation}.</b> Every public entry point it offers -
- * {@code getReport}, all six {@code report} overloads, {@code getTDBReport} - reaches ROBOT's query
- * files through {@code ClassLoader.getResource("report_queries")} and accepts only the {@code file}
- * and {@code jar} URL protocols. Felix answers {@code bundle}, so all of them throw "Cannot access
- * report query files". So {@link ReportQueries} reads ROBOT's own profile and ROBOT's own SPARQL as
- * streams, and {@link RuleRunner} executes them over a Jena model from {@link OntologyDataset}. The
- * rules, the severities and the queries are ROBOT's; only the plumbing is ours.
+ * <p><b>Why this does not call {@code ReportOperation.getReport}.</b> It, all six {@code report}
+ * overloads and all three {@code getTDBReport} overloads reach ROBOT's query files through
+ * {@code ClassLoader.getResource("report_queries")} and accept only the {@code file} and {@code jar}
+ * URL protocols. Felix answers {@code bundle}, so all of them throw "Cannot access report query
+ * files". {@link ReportQueries} reads ROBOT's own profile and ROBOT's own SPARQL as streams instead,
+ * and {@link RuleRunner} executes them over a Jena model from {@link OntologyDataset}. The rules,
+ * the severities and the queries are ROBOT's; only the plumbing is ours.
+ *
+ * <p>{@code getViolations} is the one public entry point that escapes that lookup, because it is
+ * handed the SPARQL. {@link ReportQueries} explains why it is not used and what would make it the
+ * better choice.
  *
  * <p>Apache POI is still untouched on this path - {@code asWorkbook} would fail at runtime, because
  * the bundle deliberately excludes POI's logging backend.
@@ -86,9 +90,9 @@ public final class QualityReport {
      *     than showing an empty list, which for a quality tool would be a dangerous lie.
      */
     public static List<QualityFinding> run(OWLOntology ontology, Map<String, String> options) {
-        // Not ReportOperation.getReport. That - and all six report() overloads, and getTDBReport -
-        // route through a private getDefaultQueryStrings which locates ROBOT's queries with
-        // ClassLoader.getResource("report_queries") and accepts only "file" and "jar" URL
+        // Not ReportOperation.getReport. That - and all six report() overloads, and all three
+        // getTDBReport overloads - route through a private getDefaultQueryStrings which locates
+        // ROBOT's queries with getResource("report_queries") and accepts only "file" and "jar" URL
         // protocols. Inside an OSGi bundle Felix answers "bundle", so it throws
         // "Cannot access report query files" and the quality report has never worked inside this
         // plugin, on either supported Protege. The failure is in ~/.Protege/logs/protege.log from

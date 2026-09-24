@@ -1,0 +1,75 @@
+OntoBoard 1.26.0 - host smoke receipt
+
+Produced by tools/smoke.ps1. This file is what CI checks for: a version that has never been
+loaded in a Protege cannot reach main.
+
+  2026-09-24  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS
+  2026-09-24  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS
+
+Both hosts printed, verbatim:
+
+  OntoBoard self-check ok: robot report profile readable - 32 rules read from robot-core's
+      report_profile.txt, expected 32
+  OntoBoard self-check ok: robot report queries readable - 32/32 rules resolved a .rq file
+  OntoBoard self-check ok: jena reads what the owl api writes - 4 triples round-tripped
+      through RDF/XML
+  OntoBoard self-check ok: robot report runs end to end - 5 findings over a three-axiom
+      ontology that has no labels, no title and no licence
+  OntoBoard self-check ok: robot export runs end to end - 2 terms across 4 columns,
+      written as tsv
+  OntoBoard self-check: PASS 5/5
+
+What is new in this one: the fifth line. 1.26.0 adds ROBOT > Export terms..., and the two calls
+on that path which could fail in a bundle and nowhere else are now exercised in the host:
+
+  - new IOHelper(), which reads resources of its own.
+  - ExportOperation.createExportTable, which builds an org.obolibrary.robot.export.Table - and
+    Table is one of the four robot-core classes that reference Apache POI. POI is embedded here
+    but the log4j 2 API it needs is not, because log4j-api declares its own OSGi Bundle-Activator
+    and bnd rejects a second one; log4j-over-slf4j supplies only the log4j 1.x API. So any POI
+    class initialisation throws NoClassDefFoundError. The reason export still works is that POI
+    is confined to Table.asWorkbook, which write() reaches only for xlsx - and xlsx is the one
+    format this plugin does not offer. That was a chain of four inferences, and the line above is
+    what turns it into an observation.
+
+The same caution produced a real defect during the same session, caught by a test rather than by
+a user: Table.write has no branch for yaml - its bytecode dispatches on tsv, csv, html, html-list,
+json and xlsx only - so asking ROBOT to write a .yaml silently produced no file. TermExport now
+writes that one itself from Table.toYAML(). A test requiring every offered format to produce a
+non-empty file is what found it, and is what keeps the offered list and the writer from drifting.
+
+Asserted in both runs:
+  - exactly one ontoboard jar in plugins/ (singleton bundle; two is a collision, not an upgrade)
+  - "Starting bundle ontoboard"
+  - "Plugin: OntoBoard (1.26.0)" - the version Felix actually resolved, not the one on disk
+  - "OntoBoard self-check: PASS 5/5" - an absent verdict fails, because it would mean the hook
+    did not run
+  - no unresolved constraint, java.* import, UnsupportedClassVersionError or truncated jar
+    attributable to our bundle
+  - no de.fizkarlsruhe stack frame
+  - no OutOfMemoryError at -Xmx500M, which is what Protege.l4j.ini gives a user who
+    double-clicks Protege.exe (run.bat hands out -Xmx32G and would have hidden one)
+
+Verified outside the host, in the same session:
+  - 1079 tests pass, 1 skipped.
+  - RobotParityTest still matches real ROBOT 1.9.10 in obolibrary/odkfull over the same ontology
+    and profile: fixture-tiny 7/7 rows, pizza v2 21/21.
+  - TermExportTest writes a file in every format the plugin offers and asserts each is non-empty
+    and names a pizza term.
+
+Not asserted, and not claimed:
+  - that the OntoBoard tab renders, or that any of the 22 menu items works when clicked. Protege
+    restores the previous workspace and a killed process logs no shutdown, so a tab assertion
+    here would be an assertion about the last session. Driving the actions is Phase 2's self-test
+    bundle.
+  - that the remaining ROBOT operations run in-bundle. The self-check covers report and export,
+    which are the two whose in-bundle safety rested on an argument rather than an observation.
+    13 of robot-core's 21 *Operation classes are still not wrapped at all.
+
+Neighbours that fail to install in Protege-5.5.0, unrelated to us and not fixed here:
+  cellfie-2.2.4.jar        (its own manifest imports java.awt, which OSGi forbids)
+  swrltab-plugin-2.1.3.jar
+Unchanged from the 1.24.0 and 1.25.0 receipts.
+
+ontoboard-1.25.0.jar was removed from both plugins/ directories before 1.26.0 was copied in, and
+the copy's byte length was compared against the source before launching.

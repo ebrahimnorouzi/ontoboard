@@ -21,7 +21,7 @@ class SelfCheckTest {
     void everyCheckPassesOnTheClasspath() {
         SelfCheck.Result result = SelfCheck.run();
 
-        assertEquals(4, result.getChecks().size(), "expected four checks: " + result.getChecks());
+        assertEquals(5, result.getChecks().size(), "expected five checks: " + result.getChecks());
         assertTrue(result.isPassed(), "the self-check must pass where the resources are reachable, "
                 + "otherwise it cannot distinguish a bundle problem from its own bug: "
                 + result.getChecks());
@@ -36,6 +36,15 @@ class SelfCheckTest {
         assertTrue(profile.getDetail().startsWith(SelfCheck.EXPECTED_RULES + " rules"),
                 "robot-core 1.9.8 ships " + SelfCheck.EXPECTED_RULES + " report rules; a change "
                         + "here means a robot-core upgrade moved them: " + profile.getDetail());
+    }
+
+    /** The export must produce rows in the host, where POI and IOHelper could fail and nowhere else. */
+    @Test
+    void theExportCheckProducesTerms() {
+        SelfCheck.Check export = SelfCheck.run().getChecks().get(4);
+
+        assertTrue(export.isPassed(), export.toString());
+        assertFalse(export.getDetail().startsWith("0 terms"), export.getDetail());
     }
 
     /** An empty report is the failure mode this whole check exists to catch, so 0 must not pass. */
@@ -59,7 +68,7 @@ class SelfCheckTest {
     void theSummaryIsTheLineTheSmokeScriptMatches() {
         SelfCheck.Result result = SelfCheck.run();
 
-        assertEquals("OntoBoard self-check: PASS 4/4", result.summary());
+        assertEquals("OntoBoard self-check: PASS 5/5", result.summary());
         assertTrue(result.summary().startsWith("OntoBoard self-check: "),
                 "tools/smoke.ps1 matches this prefix");
     }

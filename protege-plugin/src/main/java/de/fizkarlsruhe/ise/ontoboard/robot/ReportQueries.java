@@ -22,10 +22,30 @@ import java.util.Map;
  *
  * and then compares {@code URL.getProtocol()} against {@code "file"} and {@code "jar"}. Inside an
  * OSGi bundle a resource URL is neither - Felix hands back {@code bundle:} - so it falls through to
- * {@code throw new IOException("Cannot access report query files")}. Every public entry point into
- * the report goes through it: {@code getReport}, all six {@code report} overloads, and
- * {@code getTDBReport}, which looked like an escape until its bytecode turned out to call
- * {@code getReportQueries} too.
+ * {@code throw new IOException("Cannot access report query files")}. Every entry point that
+ * <em>chooses</em> the queries goes through it: {@code getReport}, all six {@code report} overloads,
+ * and all three {@code getTDBReport} overloads.
+ *
+ * <p><b>One correction, because this file previously overstated the case.</b> It said "every public
+ * entry point", and that is false.
+ * {@code getViolations(IOHelper, Dataset, String, String, Map)} is public and takes the SPARQL as a
+ * {@code String} parameter, so it never reaches {@code getReportQueries}: {@code javap -c} shows its
+ * body calling only {@code OptionsHelper}, {@code Dataset.begin}/{@code end},
+ * {@code QueryOperation.execQuery} and {@code getViolationsFromResults}. An earlier audit in this
+ * project asserted that no such method exists; it does, and saying otherwise here was wrong.
+ *
+ * <p>So why does {@link RuleRunner} still run the queries itself? Because what
+ * {@code getViolations} adds is ROBOT's own row-to-{@code Violation} mapping, and that mapping is
+ * the part already shown to be equivalent: it reads {@code ?entity}, {@code ?property} and
+ * {@code ?value} through a private {@code getQueryResultOrNull}, which is what {@code RuleRunner}
+ * does, and {@code RobotParityTest} demonstrates the two produce identical violation sets - 7/7 rows
+ * on {@code fixture-tiny}, 21/21 on pizza v2, against real ROBOT in {@code obolibrary/odkfull}.
+ * Against that, {@code getViolations} would add two new in-bundle risks for no measured gain: a
+ * {@code new IOHelper()} on the report path, and a Jena {@code Dataset} that must support
+ * {@code begin}/{@code end}, which the obvious {@code DatasetFactory.create(model)} does not. It is
+ * the better call if a future rule binds variables this code does not handle - all 33 of ROBOT's
+ * queries are {@code SELECT DISTINCT ?entity ?property ?value} today, and {@code OdkScaffoldTest}
+ * pins that.
  *
  * <p>So ROBOT's quality report has never worked inside this plugin, on either supported Protege.
  * The failure is in {@code ~/.Protege/logs/protege.log} at 2026-08-28 under OntoBoard 1.15.0, and

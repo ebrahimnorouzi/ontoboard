@@ -14,16 +14,22 @@ import org.semanticweb.owlapi.model.parameters.Imports;
  * The open ontology as a Jena model, so SPARQL can be run over it without ROBOT's Rio path.
  *
  * <p>ROBOT's own route to this is {@code QueryOperation.loadOntologyAsModel}, which constructs an
- * OWL API {@code RioRenderer}. That constructor takes an {@code org.openrdf.rio.RDFHandler} on
- * Protege 5.5.0's OWL API 4.5.9 and an {@code org.eclipse.rdf4j.rio.RDFHandler} on 5.6.9's 4.5.29,
- * and {@code robot-core} is compiled against the newer one - so calling it fails with
- * {@code NoSuchMethodError} on 5.5.0. That is the barrier {@code docs/limitations.md} has always
- * described, and it is real, but it applies to this one call site.
+ * OWL API {@code RioRenderer}. The documented reason that fails is a signature change - the
+ * constructor takes an {@code org.openrdf.rio.RDFHandler} on Protege 5.5.0's OWL API 4.5.9 and an
+ * {@code org.eclipse.rdf4j.rio.RDFHandler} on 5.6.9's 4.5.29, and {@code robot-core} is compiled
+ * against the newer one.
  *
- * <p>Going through bytes instead sidesteps it entirely: the OWL API writes RDF/XML, which every
- * version can do, and Jena reads RDF/XML, which needs no OWL API at all. So this works on both
- * hosts, which is why the quality report can now work on 5.5.0 - something the documentation called
- * impossible.
+ * <p>That is true and it is not the binding constraint. <b>Neither {@code owlapi-osgidistribution}
+ * exports any {@code org.openrdf.*} or {@code org.eclipse.rdf4j.*} package</b>: 4.5.9 keeps 16 such
+ * jars and 4.5.29 keeps 17 on their own private {@code Bundle-ClassPath}, their
+ * {@code Export-Package} headers list 75 and 82 packages with none of these among them, and this
+ * bundle embeds no rdf4j jar. So an rdf4j type is invisible here on 5.6.9 exactly as on 5.5.0, and
+ * the call dies with {@code NoClassDefFoundError} before any signature is compared.
+ *
+ * <p>Which makes this class the only route to a Jena model in this bundle, on either host, rather
+ * than a workaround for the older OWL API. Going through bytes sidesteps the whole question: the
+ * OWL API writes RDF/XML, which every version can do, and Jena reads RDF/XML, which needs no OWL
+ * API at all.
  *
  * <p>In memory rather than through a temporary file. An ontology large enough to make that a
  * problem is one where the report itself would be the bottleneck, and a temporary file is a thing

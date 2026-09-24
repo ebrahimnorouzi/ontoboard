@@ -47,6 +47,15 @@ constructs a RioRenderer. The report no longer does: OntologyDataset serialises 
 to RDF/XML bytes and reads them back with Jena, which needs no OWL API at all. The PASS above on
 4.5.9 is the evidence. The documentation has been corrected.
 
+Added after the runs above, because it makes the 5.6.9 PASS mean more than first written: the
+Rio barrier is not a 5.5.0 problem at all. Neither owlapi-osgidistribution exports any
+org.openrdf.* or org.eclipse.rdf4j.* package - 4.5.9 keeps 16 such jars and 4.5.29 keeps 17 on
+their own private Bundle-ClassPath, and their Export-Package headers list 75 and 82 packages
+with none of these among them - and OntoBoard embeds no rdf4j jar. So a Rio path throws
+NoClassDefFoundError on BOTH hosts, and OntologyDataset is not a workaround for the older OWL
+API but the only route to a Jena model on either. Checked by unfolding both manifests and
+counting their exports; no behaviour above changes.
+
 Verified outside the host, in the same session:
   - RobotParityTest runs `robot report` inside obolibrary/odkfull (ROBOT 1.9.10) over the same
     ontology and the same profile, and requires an identical violation set. Both fixtures matched

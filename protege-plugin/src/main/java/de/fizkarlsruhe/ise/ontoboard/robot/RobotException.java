@@ -27,11 +27,16 @@ public class RobotException extends RuntimeException {
     /**
      * True when the host's OWL API is too old, rather than something transient.
      *
-     * <p>Worth separating because the two need different advice: one is "upgrade to Protege 5.6",
-     * the other is "look at your ontology". Several ROBOT operations route through an RDF layer
-     * that changed from Sesame to RDF4J at OWL API 4.5.25, and Protege 5.5.0 ships 4.5.9 - so they
-     * fail with {@link LinkageError} rather than an exception, on an installation where nothing is
-     * wrong except the version.
+     * <p>Worth separating because the two need different advice: one is about the installation, the
+     * other is "look at your ontology". Several ROBOT operations route through an RDF layer that
+     * changed from Sesame to RDF4J at OWL API 4.5.25, so they fail with {@link LinkageError} rather
+     * than an exception.
+     *
+     * <p>This used to say the advice was "upgrade to Protege 5.6", which was wrong: neither
+     * Protege's OWL API bundle exports the RDF4J packages robot-core needs, so those paths fail on
+     * 5.6.9 too - see {@link OntologyDataset}. A {@link LinkageError} here therefore means "this
+     * operation cannot run in an OSGi bundle", not "your Protege is too old", and upgrading will not
+     * help. Kept as a distinct kind because it still is not the user's ontology's fault.
      */
     public boolean isHostIncompatibility() {
         return getCause() instanceof LinkageError;
