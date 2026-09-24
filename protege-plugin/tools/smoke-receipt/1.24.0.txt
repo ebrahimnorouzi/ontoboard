@@ -1,0 +1,31 @@
+OntoBoard 1.24.0 - host smoke receipt
+
+Produced by tools/smoke.ps1. This file is what CI checks for: a version that has never been
+loaded in a Protege cannot reach main. Versions 1.20.0 through 1.24.0 shipped without one, which
+is why the check exists.
+
+  2026-09-24  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS
+  2026-09-24  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS
+
+Asserted in both runs:
+  - exactly one ontoboard jar in plugins/ (singleton bundle; two is a collision, not an upgrade)
+  - "Starting bundle ontoboard"
+  - "Plugin: OntoBoard (1.24.0)" - the version Felix actually resolved, not the one on disk
+  - no unresolved constraint, java.* import, UnsupportedClassVersionError or truncated jar
+    attributable to our bundle
+  - no de.fizkarlsruhe stack frame
+  - no OutOfMemoryError at -Xmx500M, which is what Protege.l4j.ini gives a user who
+    double-clicks Protege.exe (run.bat hands out -Xmx32G and would have hidden one)
+
+Not asserted, and not claimed:
+  - that the OntoBoard tab renders, or that any of the 21 menu items works. Protege restores the
+    previous workspace, and a killed process logs no shutdown, so a tab assertion here would be
+    an assertion about the last session. Driving the actions is Phase 2's self-test bundle.
+
+Neighbours that fail to install in Protege-5.5.0, unrelated to us and not fixed here:
+  cellfie-2.2.4.jar        (its own manifest imports java.awt, which OSGi forbids)
+  swrltab-plugin-2.1.3.jar
+Both installs also hold duplicate copies of several plugins; Protege warns and uses the newest.
+
+The previous jar, ontoboard-1.19.0.jar, was backed up to ~/Documents/ontoboard-jar-backup/
+before being removed from both plugins/ directories.

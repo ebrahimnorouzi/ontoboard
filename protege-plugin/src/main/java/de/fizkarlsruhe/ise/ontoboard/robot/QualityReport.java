@@ -6,9 +6,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import org.obolibrary.robot.IOHelper;
 import org.obolibrary.robot.ReportOperation;
-import org.obolibrary.robot.checks.Report;
 import org.semanticweb.owlapi.model.OWLOntology;
 
 /**
@@ -19,18 +17,22 @@ import org.semanticweb.owlapi.model.OWLOntology;
  * subprocess, no Docker, and without writing the ontology to a temporary file first. The
  * retired web application needed a Java container to do the same thing.
  *
- * <p>Results come from {@code Report.toTable(...).toList(...)} rather than the {@code error}
- * / {@code warn} / {@code info} fields, which are deprecated in robot-core 1.9.8 and have no
- * supported replacement returning {@code Violation} objects. The table route is also the one
- * ROBOT's own CLI uses, and it avoids Apache POI - whose logging backend this bundle
- * deliberately excludes, so touching {@code asWorkbook} would fail at runtime.
+ * <p><b>Why this does not call {@code ReportOperation.getReport}.</b> It, all six {@code report}
+ * overloads and all three {@code getTDBReport} overloads reach ROBOT's query files through
+ * {@code ClassLoader.getResource("report_queries")} and accept only the {@code file} and {@code jar}
+ * URL protocols. Felix answers {@code bundle}, so all of them throw "Cannot access report query
+ * files". {@link ReportQueries} reads ROBOT's own profile and ROBOT's own SPARQL as streams instead,
+ * and {@link RuleRunner} executes them over a Jena model from {@link OntologyDataset}. The rules,
+ * the severities and the queries are ROBOT's; only the plumbing is ours.
+ *
+ * <p>{@code getViolations} is the one public entry point that escapes that lookup, because it is
+ * handed the SPARQL. {@link ReportQueries} explains why it is not used and what would make it the
+ * better choice.
+ *
+ * <p>Apache POI is still untouched on this path - {@code asWorkbook} would fail at runtime, because
+ * the bundle deliberately excludes POI's logging backend.
  */
 public final class QualityReport {
-
-    /** ROBOT emits a header row first; these name the columns we care about. */
-    private static final String LEVEL = "level";
-    private static final String RULE = "rule";
-    private static final String SUBJECT = "subject";
 
     private QualityReport() {
     }
@@ -88,86 +90,63 @@ public final class QualityReport {
      *     than showing an empty list, which for a quality tool would be a dangerous lie.
      */
     public static List<QualityFinding> run(OWLOntology ontology, Map<String, String> options) {
-        List<String[]> rows;
+        // Not ReportOperation.getReport. That - and all six report() overloads, and all three
+        // getTDBReport overloads - route through a private getDefaultQueryStrings which locates
+        // ROBOT's queries with getResource("report_queries") and accepts only "file" and "jar" URL
+        // protocols. Inside an OSGi bundle Felix answers "bundle", so it throws
+        // "Cannot access report query files" and the quality report has never worked inside this
+        // plugin, on either supported Protege. The failure is in ~/.Protege/logs/protege.log from
+        // 2026-08-28 under OntoBoard 1.15.0; it sat there for nine versions while the docs blamed
+        // the OWL API and promised Protege 5.6.x had the full surface.
+        //
+        // Directory *enumeration* is the only thing that fails. getResourceAsStream on a known
+        // path works, so ReportQueries reads ROBOT's own profile and ROBOT's own SPARQL out of the
+        // embedded robot-core jar, and RuleRunner executes them over a Jena model built by
+        // OntologyDataset. The rules, severities and queries are all ROBOT's; only the plumbing is
+        // ours. See ReportQueries for what that costs.
         try {
-            IOHelper ioHelper = new IOHelper();
             Map<String, String> effective = options == null
                     ? ReportOperation.getDefaultOptions()
                     : new java.util.LinkedHashMap<String, String>(options);
-            Report report = ReportOperation.getReport(ontology, ioHelper, effective);
-            rows = report.toTable("tsv").toList("tsv");
+            // A copy, because RuleRunner hands back an unmodifiable list and the order it comes
+            // in is the profile's, not the one this report presents.
+            List<QualityFinding> findings = new ArrayList<QualityFinding>(
+                    RuleRunner.run(ontology, severitiesFor(effective)));
+            sortMostSevereFirst(findings);
+            return findings;
+        } catch (RobotException cannotRun) {
+            throw new QualityReportException(cannotRun.getMessage(), cannotRun);
         } catch (LinkageError incompatible) {
-            // robot-core 1.9.8 is built against OWL API 4.5.29, whose Rio API uses RDF4J.
-            // Protege 5.5.0 ships OWL API 4.5.9, whose RioRenderer still takes a Sesame
-            // handler - the switch happened at 4.5.25. Any ROBOT operation routed through
-            // Rio therefore fails at the call, not at load time, so it cannot be detected
-            // up front. Adding RDF4J jars does not help: the incompatible signature is
-            // inside OWL API itself.
+            // Kept, narrowed, and no longer about the report. Nothing on this path touches Rio
+            // any more - OntologyDataset goes through RDF/XML bytes precisely to avoid it - so if
+            // a LinkageError still arrives it is a genuine host incompatibility and should say so
+            // without naming a cause we have ruled out.
             throw new QualityReportException(
-                    "ROBOT's report needs OWL API 4.5.25 or newer, but this Protege supplies "
-                            + "4.5.9. Reasoning and conversion still work; the report, SPARQL "
-                            + "query and export do not. Protege 5.6.x ships OWL API 4.5.29 and "
-                            + "resolves this.", incompatible);
-        } catch (Exception failure) {
+                    "ROBOT could not run against this Protege's OWL API: "
+                            + incompatible.getMessage() + ". Protege 5.6.x ships OWL API 4.5.29, "
+                            + "which is the version robot-core is built against.", incompatible);
+        } catch (RuntimeException failure) {
             throw new QualityReportException(failure);
         }
-        return parse(rows);
     }
 
     /**
-     * Turns ROBOT's table into findings. Package-private so the parsing - the part with real
-     * edge cases - is testable without running ROBOT or opening a window.
+     * The rule-to-severity map this run should use.
+     *
+     * <p>A project's own {@code profile.txt} wins when one is configured, so the plugin and that
+     * project's CI agree about what counts as a violation - which is the whole reason
+     * {@link #optionsFor(File)} exists. Otherwise ROBOT's defaults, read from ROBOT's own profile
+     * rather than from a list written here.
      */
-    static List<QualityFinding> parse(List<String[]> rows) {
-        List<QualityFinding> findings = new ArrayList<QualityFinding>();
-        if (rows == null || rows.isEmpty()) {
-            return findings;
+    static Map<String, String> severitiesFor(Map<String, String> options) {
+        String profilePath = options == null ? null : options.get(OPTION_PROFILE);
+        if (profilePath != null && !profilePath.trim().isEmpty()) {
+            Map<String, String> fromProject = ReportQueries.severitiesIn(new File(profilePath));
+            if (!fromProject.isEmpty()) {
+                return fromProject;
+            }
         }
-        String[] header = rows.get(0);
-        // Locate columns by name rather than position: ROBOT's column order is not a
-        // contract, and silently reading the wrong column would mislabel every finding.
-        int levelAt = indexOf(header, LEVEL);
-        int ruleAt = indexOf(header, RULE);
-        int subjectAt = indexOf(header, SUBJECT);
-
-        for (int i = 1; i < rows.size(); i++) {
-            String[] row = rows.get(i);
-            if (row == null || row.length == 0) {
-                continue;
-            }
-            QualityFinding.Severity severity = severityOf(cell(row, levelAt));
-            if (severity == null) {
-                continue;
-            }
-            findings.add(new QualityFinding(severity, cell(row, ruleAt),
-                    cell(row, subjectAt), detailOf(header, row, levelAt, ruleAt, subjectAt)));
-        }
-        sortMostSevereFirst(findings);
-        return findings;
-    }
-
-    /**
-     * Everything that is not level, rule or subject, joined into one readable line, so a
-     * column ROBOT adds in a future version still reaches the user instead of vanishing.
-     */
-    private static String detailOf(String[] header, String[] row, int levelAt, int ruleAt,
-            int subjectAt) {
-        StringBuilder detail = new StringBuilder();
-        for (int c = 0; c < row.length; c++) {
-            if (c == levelAt || c == ruleAt || c == subjectAt) {
-                continue;
-            }
-            String value = row[c];
-            if (value == null || value.trim().isEmpty()) {
-                continue;
-            }
-            if (detail.length() > 0) {
-                detail.append("; ");
-            }
-            String name = c < header.length && header[c] != null ? header[c].trim() : "";
-            detail.append(name.isEmpty() ? value.trim() : name + " " + value.trim());
-        }
-        return detail.toString();
+        return ReportQueries.defaultSeverities();
     }
 
     private static void sortMostSevereFirst(List<QualityFinding> findings) {
@@ -186,40 +165,6 @@ public final class QualityReport {
         });
     }
 
-    static QualityFinding.Severity severityOf(String level) {
-        if (level == null) {
-            return null;
-        }
-        String normalised = level.trim().toUpperCase();
-        if (normalised.startsWith("ERROR")) {
-            return QualityFinding.Severity.ERROR;
-        }
-        if (normalised.startsWith("WARN")) {
-            return QualityFinding.Severity.WARN;
-        }
-        if (normalised.startsWith("INFO")) {
-            return QualityFinding.Severity.INFO;
-        }
-        return null;
-    }
-
-    private static int indexOf(String[] header, String wanted) {
-        for (int i = 0; i < header.length; i++) {
-            if (header[i] != null
-                    && header[i].trim().toLowerCase().startsWith(wanted)) {
-                return i;
-            }
-        }
-        return -1;
-    }
-
-    private static String cell(String[] row, int index) {
-        if (index < 0 || index >= row.length || row[index] == null) {
-            return "";
-        }
-        return row[index].trim();
-    }
-
     /**
      * Signals that the report could not be produced, as distinct from finding nothing.
      *
@@ -231,7 +176,25 @@ public final class QualityReport {
         private static final long serialVersionUID = 1L;
 
         QualityReportException(Throwable cause) {
-            super("ROBOT could not produce a quality report: " + cause.getMessage(), cause);
+            super("ROBOT could not produce a quality report: " + describe(cause), cause);
+        }
+
+        /**
+         * The cause in words a user can act on.
+         *
+         * <p>{@code getMessage()} alone renders a message-less exception - an NPE, an
+         * {@code UnsupportedOperationException} - as the literal text "null", which tells a user
+         * nothing and tells a maintainer almost nothing. The class name is a poor explanation but
+         * it is an explanation.
+         */
+        private static String describe(Throwable cause) {
+            if (cause == null) {
+                return "no reason given";
+            }
+            String message = cause.getMessage();
+            return message == null || message.trim().isEmpty()
+                    ? cause.getClass().getName()
+                    : message;
         }
 
         QualityReportException(String message, Throwable cause) {

@@ -74,7 +74,7 @@ individual views in a tabbed column beside the canvas, so none of this needs a t
 | ELK, HermiT, JFact, Pellet | ✅ | 🧩 | Bundled reasoner plugins, with incremental and background reasoning the web app lacked |
 | Explanation / justification | ✅ | 🧩 | `explanation-workbench`, bundled |
 | Consistency checking | ✅ | 🧩 | Protégé |
-| ROBOT report | ✅ | ✅ | *ROBOT → Quality report…*, all 32 rules. Needs Protégé 5.6.x — see Host support |
+| ROBOT report | ✅ | ✅ | *ROBOT → Quality report…*, all 32 of ROBOT's rules, on both hosts. Checked against real ROBOT in `obolibrary/odkfull` and by a startup self-check in the host |
 | ROBOT commands | 🔶 7 of 24 | 🔶 6 as menu commands | measure, report, profile, transform (relax/reduce/repair/merge), extract, template |
 | OOPS! pitfall check | ✅ | ❌ | **Build.** An HTTP call to the OOPS! service |
 | OQuaRE metrics | ✅ | ❌ | **Build.** Port `quality.py` |
@@ -99,10 +99,11 @@ individual views in a tabbed column beside the canvas, so none of this needs a t
 | Feature | Web app | Plugin | Assessment |
 |---|---|---|---|
 | ODP pattern library | ✅ 13 patterns | ❌ | **Build.** Distinctive and valuable; `patterns-repository/` is already in the repo |
-| CSV → ROBOT template wizard | ✅ | ✅ | *ROBOT → Template…*, TSV or CSV, every bad row reported at once. XLSX is unavailable — see Known constraints |
+| CSV → ROBOT template wizard | ✅ | ✅ | *ROBOT → Template…*, TSV or CSV, every bad row reported at once. robot-core 1.9.8 reads no XLSX templates at all, so this is not a gap against ROBOT |
 | SPARQL query panel | ✅ | 🧩 | `sparql-query-plugin`, bundled |
 | GitHub import | ✅ | ✅ | *Project → Open from GitHub…* clones and opens the edit file |
 | Export formats | ✅ | 🔶 | Protégé exports OWL formats; ROBOT `convert` would add OBO/JSON-LD |
+| Term table export | ➖ | ✅ | *ROBOT → Export terms…* writes one row per term and the columns you choose, as TSV, CSV, JSON, YAML or HTML. Not in the web application. `xlsx` is the one format the bundle cannot write — see Known constraints |
 | ZIP export | ✅ | ➖ | It is a folder on disk |
 | Widoco HTML docs | ✅ | ❌ | **Build.** External 39 MB jar, invoked as a subprocess |
 | Prefix management | ✅ | 🔶 | Colouring done; editing prefixes not |
@@ -172,11 +173,15 @@ mature plugins is waste) or ➖ (web-application machinery with no desktop meani
 
 ## Honest caveats
 
-- **ROBOT-dependent features need Protégé 5.6.x.** On 5.5.0 the report, SPARQL query and
-  export paths fail on an OWL API incompatibility. See [limitations](limitations.md).
+- **ROBOT-dependent features run on both supported hosts** as of 1.26.0, and the startup
+  self-check says so in each one's own log. This entry previously said they needed Protégé 5.6.x
+  because "the report, SPARQL query and export paths fail on an OWL API incompatibility", which
+  was wrong three times over: the report failed on *both* hosts and for an OSGi reason, export
+  has no RDF-layer dependency at all, and SPARQL query is not implemented, so it cannot fail.
+  What the OWL API version does still rule out is listed in [limitations](limitations.md).
 - **Collaboration is verified in pieces, not end to end.** The bridge's side is proved against a
   real `Y.Doc` and real sockets; the client's against a real WebSocket server; the loop guard
   against a host that re-fires its change listener the way Protégé does. What no test covers is
   "two people see each other's cursors", which needs a server, a browser and Protégé at once.
-- **No plugin UI is covered by tests.** 1062 tests cover logic; every Swing surface is verified
+- **No plugin UI is covered by tests.** 1086 tests cover logic; every Swing surface is verified
   by hand.

@@ -19,7 +19,8 @@ import org.semanticweb.owlapi.model.OWLOntology;
  * CURIE provider, so unlike {@code report} it does not touch the RDF layer that differs between
  * OWL API 4.5.9 and 4.5.29. It should therefore work on Protege 5.5.0 as well as 5.6.x - but that
  * is a claim about a code path, so {@link LinkageError} is still caught and explained rather than
- * assumed away.
+ * assumed away. ("unlike {@code report}" is now only history: the report was moved off that layer
+ * in 1.25.0 and runs on both hosts too.)
  *
  * <p>Metrics come back from ROBOT as an unordered map of forty-odd keys with machine names like
  * {@code tbox_axiom_count}. Presented raw that is a wall of text, so this class does the two

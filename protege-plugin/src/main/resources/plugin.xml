@@ -2,6 +2,15 @@
 <?eclipse version="3.0"?>
 <plugin>
 
+  <!-- Runs SelfCheck when an ontology is opened and writes one greppable verdict to
+       protege.log. The quality report was broken inside the bundle for nine versions while
+       every test passed, because the defect was Felix's classloader rather than the logic;
+       this is what lets tools/smoke.ps1 assert that it works where it actually has to. -->
+  <extension id="OntoBoardStartup" point="org.protege.editor.core.application.EditorKitHook">
+    <class value="de.fizkarlsruhe.ise.ontoboard.OntoBoardStartup"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
+
   <!-- OntoBoardTab subclasses Protege's OWLWorkspaceViewsTab only so that a changed
        viewconfig-ontoboardtab.xml reaches users who have already opened the tab; Protege
        otherwise restores the arrangement it saved and ignores the new default. -->
@@ -127,7 +136,7 @@
   <extension id="menu.OntoBoard.robot.measure"
              point="org.protege.editor.core.application.EditorKitMenuAction">
     <name value="Measure..."/>
-    <toolTip value="Size, expressivity and shape of this ontology - works on Protege 5.5 too"/>
+    <toolTip value="Size, expressivity and shape of this ontology"/>
     <class value="de.fizkarlsruhe.ise.ontoboard.menu.MeasureAction"/>
     <path value="ontoboard.menu.OntoBoard.robot/SlotA-A"/>
     <editorKitId value="OWLEditorKit"/>
@@ -136,7 +145,7 @@
   <extension id="menu.OntoBoard.robot.report"
              point="org.protege.editor.core.application.EditorKitMenuAction">
     <name value="Quality report..."/>
-    <toolTip value="What ROBOT's default profile finds wrong - needs Protege 5.6"/>
+    <toolTip value="Every violation ROBOT's 32 rules find, or your project's own profile.txt"/>
     <class value="de.fizkarlsruhe.ise.ontoboard.menu.QualityReportAction"/>
     <path value="ontoboard.menu.OntoBoard.robot/SlotA-B"/>
     <editorKitId value="OWLEditorKit"/>
@@ -157,6 +166,15 @@
     <toolTip value="Relax, reduce, repair or merge imports - applied so Protege can undo it"/>
     <class value="de.fizkarlsruhe.ise.ontoboard.menu.TransformAction"/>
     <path value="ontoboard.menu.OntoBoard.robot/SlotB-A"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
+
+  <extension id="menu.OntoBoard.robot.export"
+             point="org.protege.editor.core.application.EditorKitMenuAction">
+    <name value="Export terms..."/>
+    <path value="ontoboard.menu.OntoBoard.robot/SlotB-EX"/>
+    <toolTip value="Write every term and the columns you choose to a TSV, CSV, JSON, YAML or HTML file"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.menu.ExportAction"/>
     <editorKitId value="OWLEditorKit"/>
   </extension>
 

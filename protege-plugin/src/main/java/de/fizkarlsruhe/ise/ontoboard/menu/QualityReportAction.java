@@ -21,9 +21,12 @@ import org.semanticweb.owlapi.model.OWLOntology;
  * therefore detected and offered as the default, and the result records which one was used, so two
  * reports can be compared.
  *
- * <p>Needs Protege 5.6.x: ROBOT's report goes through the RDF layer that moved from Sesame to
- * RDF4J at OWL API 4.5.25, and 5.5.0 ships 4.5.9. The failure explains itself rather than
- * surfacing as a stack trace.
+ * <p>Runs on both supported hosts as of 1.25.0. This said "Needs Protege 5.6.x" and blamed the
+ * OWL API's move from Sesame to RDF4J at 4.5.25, which was the wrong diagnosis twice over: the
+ * report failed on 5.6.x as well, because {@code ReportOperation} cannot reach its own query files
+ * inside an OSGi bundle, and nothing on the current path touches the RDF layer at all - see
+ * {@link de.fizkarlsruhe.ise.ontoboard.robot.ReportQueries}. The 1.25.0 smoke receipt records it
+ * passing on 5.5.0's OWL API 4.5.9.
  */
 public class QualityReportAction extends OntoBoardAction {
 

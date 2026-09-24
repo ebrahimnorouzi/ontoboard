@@ -14,7 +14,29 @@ public final class QualityFinding {
     public enum Severity {
         ERROR,
         WARN,
-        INFO
+        INFO;
+
+        /**
+         * The severity named by a ROBOT profile line, defaulting to {@code WARN}.
+         *
+         * <p>A level this code does not recognise becomes a warning rather than an exception. A
+         * project is entitled to write something odd in its own profile.txt, and losing the whole
+         * report over one unparseable word would be a worse answer than reporting the violation at
+         * a level somebody has to look at.
+         */
+        public static Severity of(String level) {
+            if (level != null) {
+                String normalised = level.trim().toUpperCase(java.util.Locale.ROOT);
+                for (Severity candidate : values()) {
+                    // startsWith, not equals: ROBOT writes "WARN" in a profile and "Warning" in a
+                    // report table, and both mean the same level.
+                    if (normalised.startsWith(candidate.name())) {
+                        return candidate;
+                    }
+                }
+            }
+            return WARN;
+        }
     }
 
     private final Severity severity;

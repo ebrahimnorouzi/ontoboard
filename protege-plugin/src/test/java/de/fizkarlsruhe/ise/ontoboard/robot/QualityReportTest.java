@@ -1,149 +1,206 @@
 package de.fizkarlsruhe.ise.ontoboard.robot;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeSet;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.semanticweb.owlapi.apibinding.OWLManager;
 import org.semanticweb.owlapi.model.OWLOntology;
 
+/**
+ * The quality report, end to end against real ROBOT rules and a real ontology.
+ *
+ * <p>These tests run ROBOT's own SPARQL rather than a table this code invented, because the defect
+ * they hold shut was invisible to a parser test: {@code ReportOperation} cannot reach its query
+ * files inside an OSGi bundle, so for nine versions the report threw on both supported Protege
+ * installs while the unit tests - which only ever exercised the TSV parsing - stayed green.
+ */
 class QualityReportTest {
 
-    private static List<String[]> table(String[]... rows) {
-        return new ArrayList<String[]>(Arrays.asList(rows));
-    }
-
-    @Test
-    void parsesLevelRuleAndSubjectByColumnName() {
-        List<QualityFinding> findings = QualityReport.parse(table(
-                new String[] {"Level", "Rule Name", "Subject", "Property", "Value"},
-                new String[] {"ERROR", "missing_label", "ex:Person", "rdfs:label", ""}));
-
-        assertEquals(1, findings.size());
-        QualityFinding finding = findings.get(0);
-        assertEquals(QualityFinding.Severity.ERROR, finding.getSeverity());
-        assertEquals("missing_label", finding.getRule());
-        assertEquals("ex:Person", finding.getSubject());
-    }
-
-    /**
-     * ROBOT's column order is not a contract. Reading by position would silently mislabel
-     * every finding if a future version reordered them.
-     */
-    @Test
-    void columnsAreFoundByNameNotPosition() {
-        List<QualityFinding> findings = QualityReport.parse(table(
-                new String[] {"Subject", "Value", "Level", "Rule Name"},
-                new String[] {"ex:Person", "", "WARN", "missing_definition"}));
-
-        assertEquals(1, findings.size());
-        assertEquals(QualityFinding.Severity.WARN, findings.get(0).getSeverity());
-        assertEquals("missing_definition", findings.get(0).getRule());
-        assertEquals("ex:Person", findings.get(0).getSubject());
-    }
-
-    @Test
-    void mostSevereComesFirstAndTheOrderIsStable() {
-        List<QualityFinding> findings = QualityReport.parse(table(
-                new String[] {"Level", "Rule Name", "Subject"},
-                new String[] {"INFO", "zzz_rule", "ex:C"},
-                new String[] {"ERROR", "bbb_rule", "ex:A"},
-                new String[] {"WARN", "aaa_rule", "ex:B"},
-                new String[] {"ERROR", "aaa_rule", "ex:D"}));
-
-        assertEquals(4, findings.size());
-        assertEquals(QualityFinding.Severity.ERROR, findings.get(0).getSeverity());
-        assertEquals("aaa_rule", findings.get(0).getRule(), "ties break by rule name");
-        assertEquals(QualityFinding.Severity.ERROR, findings.get(1).getSeverity());
-        assertEquals(QualityFinding.Severity.WARN, findings.get(2).getSeverity());
-        assertEquals(QualityFinding.Severity.INFO, findings.get(3).getSeverity());
-    }
-
-    /** A column ROBOT adds later must still reach the user rather than vanishing. */
-    @Test
-    void unrecognisedColumnsAreKeptInTheMessage() {
-        List<QualityFinding> findings = QualityReport.parse(table(
-                new String[] {"Level", "Rule Name", "Subject", "Property", "Something New"},
-                new String[] {"ERROR", "r", "ex:P", "rdfs:label", "surprising detail"}));
-
-        String message = findings.get(0).getMessage();
-        assertTrue(message.contains("surprising detail"), "got: " + message);
-        assertTrue(message.contains("Property"), "column names give the values context");
-    }
-
-    @Test
-    void rowsWithAnUnknownLevelAreSkippedRatherThanMisreported() {
-        List<QualityFinding> findings = QualityReport.parse(table(
-                new String[] {"Level", "Rule Name", "Subject"},
-                new String[] {"", "r", "ex:A"},
-                new String[] {"NONSENSE", "r", "ex:B"},
-                new String[] {"ERROR", "r", "ex:C"}));
-
-        assertEquals(1, findings.size());
-        assertEquals("ex:C", findings.get(0).getSubject());
-    }
-
-    @Test
-    void anEmptyOrHeaderOnlyTableYieldsNoFindings() {
-        assertTrue(QualityReport.parse(null).isEmpty());
-        assertTrue(QualityReport.parse(new ArrayList<String[]>()).isEmpty());
-        assertTrue(QualityReport.parse(table(
-                new String[] {"Level", "Rule Name", "Subject"})).isEmpty());
-    }
-
-    @Test
-    void shortRowsDoNotThrow() {
-        List<QualityFinding> findings = QualityReport.parse(table(
-                new String[] {"Level", "Rule Name", "Subject", "Property"},
-                new String[] {"ERROR"}));
-
-        assertEquals(1, findings.size());
-        assertEquals("", findings.get(0).getSubject());
-    }
-
-    @Test
-    void severityParsingIsCaseAndSuffixTolerant() {
-        assertEquals(QualityFinding.Severity.ERROR, QualityReport.severityOf("error"));
-        assertEquals(QualityFinding.Severity.WARN, QualityReport.severityOf(" Warning "));
-        assertEquals(QualityFinding.Severity.INFO, QualityReport.severityOf("INFO"));
-        assertEquals(null, QualityReport.severityOf("debug"));
-        assertEquals(null, QualityReport.severityOf(null));
-    }
-
-    /**
-     * End-to-end against real ROBOT and a real ontology. This asserts what actually happens
-     * on the host rather than what we wish happened.
-     *
-     * <p>robot-core 1.9.8 is built against OWL API 4.5.29, whose Rio API uses RDF4J. Protege
-     * 5.5.0 supplies OWL API 4.5.9, whose RioRenderer still takes a Sesame handler - the
-     * switch landed in 4.5.25. So every ROBOT operation routed through Rio (report, query,
-     * export) throws NoSuchMethodError at the call site. Reasoning, loading and saving are
-     * unaffected, which is why the earlier compatibility probe passed.
-     *
-     * <p>The test accepts either outcome and pins the diagnosis: if a future host ships a
-     * newer OWL API the report simply works, and if it does not, the failure must be the
-     * documented incompatibility carrying an explanation - never a bare crash.
-     */
-    @Test
-    void reportEitherRunsOrExplainsWhyTheHostCannotSupportIt() throws Exception {
-        OWLOntology ontology = OWLManager.createOWLOntologyManager()
-                .loadOntologyFromOntologyDocument(new File("src/test/resources/fixture-tiny.ttl"));
-        try {
-            List<QualityFinding> findings = QualityReport.run(ontology);
-            for (QualityFinding finding : findings) {
-                assertTrue(finding.getSeverity() != null);
-                assertTrue(finding.getRule() != null);
+    /** The subject IRIs of every finding for one rule. */
+    private static List<String> subjectsFor(List<QualityFinding> findings, String rule) {
+        List<String> subjects = new ArrayList<String>();
+        for (QualityFinding finding : findings) {
+            if (rule.equals(finding.getRule())) {
+                subjects.add(finding.getSubject());
             }
-        } catch (QualityReport.QualityReportException expected) {
-            assertTrue(expected.isHostIncompatibility(),
-                    "a report failure must be the known OWL API incompatibility, not something "
-                            + "unexplained; got: " + expected.getMessage());
-            assertTrue(expected.getMessage().contains("4.5.25"),
-                    "the message must name the OWL API version needed so a user can act on it");
         }
+        return subjects;
+    }
+
+    private static OWLOntology tiny() throws Exception {
+        return OWLManager.createOWLOntologyManager()
+                .loadOntologyFromOntologyDocument(new File("src/test/resources/fixture-tiny.ttl"));
+    }
+
+    /**
+     * The report runs. Not "runs or explains why it cannot" - that was the shape of this test
+     * while the report was broken everywhere, and it passed throughout.
+     */
+    @Test
+    void theReportRunsAndFindsRealViolations() throws Exception {
+        List<QualityFinding> findings = QualityReport.run(tiny());
+
+        assertFalse(findings.isEmpty(), "fixture-tiny has no labels and no ontology metadata, so "
+                + "ROBOT's default profile must report violations");
+        for (QualityFinding finding : findings) {
+            assertTrue(finding.getSeverity() != null, "every finding needs a severity");
+            assertTrue(finding.getRule() != null && !finding.getRule().isEmpty(),
+                    "every finding needs the rule that produced it");
+            assertTrue(finding.getSubject() != null && !finding.getSubject().isEmpty(),
+                    "a finding with no subject is one a curator cannot act on");
+        }
+    }
+
+    /**
+     * Named rules against named subjects, so a change in the plumbing that returns plausible
+     * nonsense fails here.
+     *
+     * <p>{@code missing_label} excludes an entity whose only triple is {@code rdf:type} - see the
+     * {@code FILTER EXISTS} at the end of ROBOT's own query. In this fixture that leaves Person
+     * (which has a superclass) and worksFor (which has a domain and range), and excludes Agent,
+     * Organization and alice. Asserting the exclusions matters as much as the hits: it shows
+     * ROBOT's filters are really being evaluated and not approximated here.
+     */
+    @Test
+    void missingLabelFindsExactlyWhatRobotsOwnQuerySelects() throws Exception {
+        List<String> subjects = subjectsFor(QualityReport.run(tiny()), "missing_label");
+
+        assertTrue(subjects.contains("http://example.org/tiny#Person"), subjects.toString());
+        assertTrue(subjects.contains("http://example.org/tiny#worksFor"), subjects.toString());
+        assertFalse(subjects.contains("http://example.org/tiny#Agent"),
+                "Agent's only triple is rdf:type, which ROBOT's query excludes: " + subjects);
+        assertFalse(subjects.contains("http://example.org/tiny#alice"),
+                "alice's only triples are rdf:type, which ROBOT's query excludes: " + subjects);
+    }
+
+    /** The ontology itself is a subject: fixture-tiny declares no title, description or licence. */
+    @Test
+    void ontologyLevelRulesReportTheOntology() throws Exception {
+        List<QualityFinding> findings = QualityReport.run(tiny());
+
+        for (String rule : new String[] {"missing_ontology_title", "missing_ontology_description",
+                "missing_ontology_license"}) {
+            assertEquals(java.util.Collections.singletonList("http://example.org/tiny"),
+                    subjectsFor(findings, rule), rule + " should name the ontology");
+        }
+    }
+
+    /**
+     * Every rule in ROBOT's default profile actually runs.
+     *
+     * <p>The failure this guards against is not a crash but a quiet one: a report that checks 7 of
+     * 32 rules and says nothing about the other 25 looks exactly like a clean ontology. ROBOT ships
+     * a query for all 32 profile entries, so a single skip means a rule was renamed or moved by a
+     * robot-core upgrade and a check has silently stopped running.
+     */
+    @Test
+    void allThirtyTwoOfRobotsDefaultRulesRun() throws Exception {
+        Map<String, String> defaults = ReportQueries.defaultSeverities();
+        assertEquals(32, defaults.size(), "robot-core 1.9.8's profile lists 32 rules: " + defaults);
+
+        RuleRunner.Outcome outcome = RuleRunner.runWithDetail(tiny(), defaults);
+        assertEquals(new ArrayList<RuleRunner.Skipped>(), new ArrayList<RuleRunner.Skipped>(
+                outcome.getSkipped()), "no rule in ROBOT's own profile may be skipped");
+    }
+
+    /** Most severe first, and stable, so working through the table one row at a time works. */
+    @Test
+    void findingsComeBackMostSevereFirst() throws Exception {
+        List<QualityFinding> findings = QualityReport.run(tiny());
+
+        QualityFinding.Severity previous = null;
+        for (QualityFinding finding : findings) {
+            if (previous != null) {
+                assertTrue(previous.compareTo(finding.getSeverity()) <= 0,
+                        "severity order broke at " + finding.getRule() + " (" + previous + " then "
+                                + finding.getSeverity() + ")");
+            }
+            previous = finding.getSeverity();
+        }
+    }
+
+    /**
+     * A project's own profile.txt decides both which rules run and at what level.
+     *
+     * <p>This is the whole point of {@link QualityReport#optionsFor(File)}: the plugin and that
+     * project's {@code make report} must agree about what counts as a violation. ROBOT does not
+     * merge a given profile with its defaults, and neither does this.
+     */
+    @Test
+    void aProjectsOwnProfileWinsOverRobotsDefaults(@TempDir File dir) throws Exception {
+        File profile = new File(dir, "profile.txt");
+        Files.write(profile.toPath(), "INFO\tmissing_label\n".getBytes(StandardCharsets.UTF_8));
+
+        Map<String, String> options = new LinkedHashMap<String, String>();
+        options.put(QualityReport.OPTION_PROFILE, profile.getAbsolutePath());
+        List<QualityFinding> findings = QualityReport.run(tiny(), options);
+
+        assertEquals(new TreeSet<String>(java.util.Collections.singletonList("missing_label")),
+                rulesIn(findings), "only the rule the project's profile names should have run");
+        for (QualityFinding finding : findings) {
+            assertEquals(QualityFinding.Severity.INFO, finding.getSeverity(),
+                    "the project downgraded missing_label, so the plugin must report it as INFO");
+        }
+    }
+
+    /** A rule this ROBOT does not ship is reported as unchecked, not thrown and not ignored. */
+    @Test
+    void aRuleWithNoQueryIsReportedAsSkipped(@TempDir File dir) throws Exception {
+        Map<String, String> severities = new LinkedHashMap<String, String>();
+        severities.put("missing_label", "ERROR");
+        severities.put("a_rule_robot_has_never_shipped", "ERROR");
+
+        RuleRunner.Outcome outcome = RuleRunner.runWithDetail(tiny(), severities);
+
+        assertEquals(1, outcome.getSkipped().size(), outcome.getSkipped().toString());
+        assertEquals("a_rule_robot_has_never_shipped", outcome.getSkipped().get(0).getRule());
+        assertFalse(outcome.getFindings().isEmpty(),
+                "the 31 runnable rules must still produce their findings");
+    }
+
+    /** An unreadable or absent project profile falls back to ROBOT's defaults, not to silence. */
+    @Test
+    void anAbsentProjectProfileFallsBackToRobotsDefaults(@TempDir File dir) throws IOException {
+        assertTrue(ReportQueries.severitiesIn(new File(dir, "nope.txt")).isEmpty());
+        assertTrue(ReportQueries.severitiesIn(null).isEmpty());
+
+        Map<String, String> options = new LinkedHashMap<String, String>();
+        options.put(QualityReport.OPTION_PROFILE, new File(dir, "nope.txt").getAbsolutePath());
+        assertEquals(32, QualityReport.severitiesFor(options).size(),
+                "no usable project profile means ROBOT's 32 defaults, never an empty rule set");
+    }
+
+    /** {@code profile.txt} beside the edit file is what ODK projects ship, including ours. */
+    @Test
+    void theProfileBesideTheEditFileIsFound(@TempDir File dir) throws IOException {
+        File edit = new File(dir, "pizza-edit.owl");
+        Files.write(edit.toPath(), "x".getBytes(StandardCharsets.UTF_8));
+        assertEquals(null, QualityReport.profileBeside(edit));
+
+        File profile = new File(dir, "profile.txt");
+        Files.write(profile.toPath(), "ERROR\tmissing_label\n".getBytes(StandardCharsets.UTF_8));
+        assertEquals(profile, QualityReport.profileBeside(edit));
+        assertEquals(profile.getAbsolutePath(),
+                QualityReport.optionsFor(edit).get(QualityReport.OPTION_PROFILE));
+    }
+
+    private static TreeSet<String> rulesIn(List<QualityFinding> findings) {
+        TreeSet<String> rules = new TreeSet<String>();
+        for (QualityFinding finding : findings) {
+            rules.add(finding.getRule());
+        }
+        return rules;
     }
 }

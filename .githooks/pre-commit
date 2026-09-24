@@ -33,6 +33,28 @@ if [ -z "$version_now" ]; then
     exit 1
 fi
 
+# A bumped version needs a host smoke receipt. Five releases - 1.20.0 through 1.24.0 - shipped
+# without ever being loaded in a Protege, and the defect the host did find (robot report failing on
+# both hosts for an OSGi reason) sat in the log for nine versions. A receipt is cheap; a blind
+# release costs a user.
+if [ "$version_now" != "$version_head" ]; then
+    receipt="protege-plugin/tools/smoke-receipt/$version_now.txt"
+    if [ ! -f "$receipt" ]; then
+        echo >&2
+        echo "pre-commit: REFUSED - version bumped to $version_now with no host smoke receipt." >&2
+        echo >&2
+        echo "  expected: $receipt" >&2
+        echo >&2
+        echo "Run it against both supported installs and commit the receipt with the bump:" >&2
+        echo "  pwsh -File protege-plugin/tools/smoke.ps1 -Install \$HOME/Documents/Protege-5.6.9" >&2
+        echo "  pwsh -File protege-plugin/tools/smoke.ps1 -Install \$HOME/Documents/Protege-5.5.0" >&2
+        echo >&2
+        echo "If no Protege is available today, commit with --no-verify and say so in the message." >&2
+        echo >&2
+        exit 1
+    fi
+fi
+
 if [ "$version_now" = "$version_head" ]; then
     echo >&2
     echo "pre-commit: REFUSED - shipped plugin code changed and the version did not." >&2

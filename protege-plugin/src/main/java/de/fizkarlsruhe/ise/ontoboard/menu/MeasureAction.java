@@ -7,9 +7,10 @@ import org.semanticweb.owlapi.model.OWLOntology;
 /**
  * ROBOT &gt; Measure - size, expressivity and shape of the open ontology.
  *
- * <p>The cheapest useful thing on the menu, and the only ROBOT operation that works on Protege
- * 5.5.0: it needs no reasoner and never touches the RDF layer that differs between OWL API 4.5.9
- * and 4.5.29, which is what stops {@code report} running there.
+ * <p>The cheapest useful thing on the menu: it needs no reasoner and touches no RDF layer, so it is
+ * the one operation with nothing that could go wrong in a bundle. This used to add "and the only
+ * ROBOT operation that works on Protege 5.5.0", which stopped being true in 1.25.0 - the report runs
+ * on both hosts now, and the barrier it named was never the reason anyway.
  */
 public class MeasureAction extends OntoBoardAction {
 

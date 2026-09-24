@@ -2,6 +2,7 @@ package de.fizkarlsruhe.ise.ontoboard.odk;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -226,6 +227,176 @@ class OdkScaffoldTest {
         assertTrue(makefile.contains("releases/$(TODAY)"),
                 "an undated release directory means each release overwrites the last");
         assertTrue(makefile.contains("TODAY :="), "TODAY has to be defined to be used");
+    }
+
+    /**
+     * Every robot call in the generated build must honour the catalog.
+     *
+     * <p>The scaffold wrote catalog-v001.xml and then invoked robot four times without
+     * {@code --catalog}, so the catalog was inert. That mattered because <em>Import terms...</em>
+     * writes a catalog entry for every module it saves, precisely so the import resolves from disk
+     * with no network - and then {@code make} resolved it over the network anyway, or failed
+     * offline. The plugin's own feature was undone by the plugin's own Makefile.
+     *
+     * <p>Pinned as "no bare robot call" rather than "contains --catalog", because a fifth recipe
+     * added later would otherwise reintroduce the bug while this test stayed green.
+     */
+    @Test
+    void everyRobotCallInTheGeneratedMakefileUsesTheCatalog(@TempDir Path dir) throws Exception {
+        OdkProjectConfig config = config(dir.toFile());
+        OdkScaffold.create(config);
+        String makefile = read(config, "Makefile");
+
+        assertTrue(makefile.contains("CATALOG := catalog-v001.xml"),
+                "the catalog file the scaffold writes must be named as a variable: " + makefile);
+        assertTrue(makefile.contains("ROBOT := robot --catalog $(CATALOG)"),
+                "robot must be defined once, with the catalog: " + makefile);
+
+        java.util.List<String> bare = new java.util.ArrayList<String>();
+        String newline = String.valueOf((char) 10);
+        String tab = String.valueOf((char) 9);
+        for (String line : makefile.split(newline)) {
+            // Recipe lines only - a tab is what make requires - so the ROBOT definition and the
+            // comments that mention robot are not mistaken for invocations.
+            if (line.startsWith(tab) && line.contains("robot ")
+                    && !line.contains("$(ROBOT)")) {
+                bare.add(line.trim());
+            }
+        }
+        assertTrue(bare.isEmpty(),
+                "these recipe lines call robot without the catalog: " + bare);
+    }
+
+    /**
+     * The release gate must not be weaker than the CI gate.
+     *
+     * <p>prepare_release ran "reason report" while test ran "reason report sparql_test", so a
+     * release could be cut while one of the project's own SPARQL checks was failing - and the
+     * release is the artefact other people cite.
+     */
+    @Test
+    void prepareReleaseRunsTheSameGateAsTest(@TempDir Path dir) throws Exception {
+        OdkProjectConfig config = config(dir.toFile());
+        OdkScaffold.create(config);
+        String makefile = read(config, "Makefile");
+
+        String newline = String.valueOf((char) 10);
+        String release = null;
+        String test = null;
+        for (String line : makefile.split(newline)) {
+            if (line.startsWith("prepare_release:")) {
+                release = line;
+            }
+            if (line.startsWith("test:")) {
+                test = line;
+            }
+        }
+        assertNotNull(release, makefile);
+        assertNotNull(test, makefile);
+        assertTrue(release.contains("test"),
+                "prepare_release must depend on the full test gate, not a subset of it: " + release);
+        assertTrue(test.contains("sparql_test"),
+                "and that gate must include the SPARQL check: " + test);
+    }
+
+    /**
+     * A reasoner that invents an equivalence between two named classes must fail the build.
+     *
+     * <p>ROBOT's default for equivalent-classes-allowed is EquivalentClassReasoningMode.ALL, read
+     * off ReasonOperation.getDefaultOptions' bytecode - so without this flag two terms accidentally
+     * defined identically are inferred equivalent and the build says nothing. ODK passes
+     * asserted-only for exactly this reason.
+     */
+    @Test
+    void reasoningRejectsEquivalencesNobodyAsserted(@TempDir Path dir) throws Exception {
+        OdkProjectConfig config = config(dir.toFile());
+        OdkScaffold.create(config);
+        String makefile = read(config, "Makefile");
+
+        assertTrue(makefile.contains("--equivalent-classes-allowed asserted-only"),
+                "ROBOT defaults to allowing every inferred equivalence: " + makefile);
+        assertTrue(makefile.contains("--exclude-tautologies structural"), makefile);
+    }
+
+    /**
+     * Every XML file the scaffold writes must actually parse.
+     *
+     * <p>A comment in catalog-v001.xml once contained a double hyphen, which XML forbids inside a
+     * comment. The file looked fine, every string assertion about it passed, and `make` died on the
+     * first robot call with "The string \"--\" is not permitted within comments" - because robot
+     * reads the catalog before doing anything else. Reading a generated file is not the same as
+     * parsing it.
+     */
+    @Test
+    void everyGeneratedXmlFileParses(@TempDir Path dir) throws Exception {
+        OdkProjectConfig config = config(dir.toFile());
+        OdkScaffold.create(config);
+
+        javax.xml.parsers.DocumentBuilderFactory factory =
+                javax.xml.parsers.DocumentBuilderFactory.newInstance();
+        int parsed = 0;
+        for (File file : allFilesUnder(config.getProjectRoot())) {
+            String name = file.getName().toLowerCase(java.util.Locale.ROOT);
+            if (!name.endsWith(".xml") && !name.endsWith(".owl")) {
+                continue;
+            }
+            // Manchester-syntax .owl files are not XML; only try the ones that announce themselves.
+            String text = new String(java.nio.file.Files.readAllBytes(file.toPath()),
+                    Charset.forName("UTF-8")).trim();
+            if (!text.startsWith("<?xml") && !text.startsWith("<")) {
+                continue;
+            }
+            factory.newDocumentBuilder().parse(file);
+            parsed++;
+        }
+        assertTrue(parsed >= 2, "expected at least the catalog and the edit file, parsed " + parsed);
+    }
+
+    private static java.util.List<File> allFilesUnder(File root) {
+        java.util.List<File> found = new java.util.ArrayList<File>();
+        File[] children = root.listFiles();
+        if (children == null) {
+            return found;
+        }
+        for (File child : children) {
+            if (child.isDirectory()) {
+                found.addAll(allFilesUnder(child));
+            } else {
+                found.add(child);
+            }
+        }
+        return found;
+    }
+
+    /**
+     * Every target the build declares must be documented where a maintainer will look.
+     *
+     * <p>The README listed three of seven. The two it omitted were the two that matter most: the
+     * default goal, which is what a bare {@code make} runs, and {@code prepare_release}, which is
+     * how a release is cut. A maintainer had to read the Makefile they are explicitly told not to
+     * edit in order to find them.
+     */
+    @Test
+    void theReadmeDocumentsEveryTargetTheBuildDeclares(@TempDir Path dir) throws Exception {
+        OdkProjectConfig config = config(dir.toFile());
+        OdkScaffold.create(config);
+        String makefile = read(config, "Makefile");
+        String readme = read(new File(config.getProjectRoot(), "README.md"));
+
+        String newline = String.valueOf((char) 10);
+        java.util.List<String> undocumented = new java.util.ArrayList<String>();
+        for (String line : makefile.split(newline)) {
+            if (!line.startsWith(".PHONY:")) {
+                continue;
+            }
+            for (String target : line.substring(".PHONY:".length()).trim().split(" +")) {
+                if (!target.isEmpty() && !readme.contains("make " + target)) {
+                    undocumented.add(target);
+                }
+            }
+        }
+        assertTrue(undocumented.isEmpty(),
+                "the generated README documents no way to run these: " + undocumented);
     }
 
     private static String read(OdkProjectConfig config, String name) throws Exception {

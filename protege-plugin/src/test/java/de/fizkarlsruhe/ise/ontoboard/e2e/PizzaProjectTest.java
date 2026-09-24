@@ -16,6 +16,7 @@ import de.fizkarlsruhe.ise.ontoboard.odk.ReleaseDiff;
 import de.fizkarlsruhe.ise.ontoboard.reason.InferredEdges;
 import de.fizkarlsruhe.ise.ontoboard.reason.ProfileCheck;
 import de.fizkarlsruhe.ise.ontoboard.robot.OntologyMeasurements;
+import de.fizkarlsruhe.ise.ontoboard.robot.QualityFinding;
 import de.fizkarlsruhe.ise.ontoboard.robot.QualityReport;
 import de.fizkarlsruhe.ise.ontoboard.robot.Reasoners;
 import de.fizkarlsruhe.ise.ontoboard.robot.TemplateSheet;
@@ -47,6 +48,9 @@ import org.semanticweb.owlapi.reasoner.OWLReasoner;
  * feature in order to demonstrate it, which would prove only that this file works.
  */
 class PizzaProjectTest {
+
+    /** Newline for the Markdown this writes, spelled once. */
+    private static final String LF = "\n";
 
     private static final String ID = "pizza";
 
@@ -225,12 +229,14 @@ class PizzaProjectTest {
             text.append("| ").append(m.getGroup()).append(" | ").append(m.getLabel())
                     .append(" | ").append(m.getValue()).append(" |\n");
         }
-        text.append("\n## report\n\n");
-        try {
-            text.append(QualityReport.run(pizza).size()).append(" findings.\n");
-        } catch (QualityReport.QualityReportException cannotRunHere) {
-            text.append("Did not run on this host.\n\n> ")
-                    .append(cannotRunHere.getMessage()).append('\n');
+        text.append(LF).append("## report").append(LF).append(LF);
+        java.util.List<QualityFinding> findings = QualityReport.run(pizza);
+        text.append(findings.size()).append(" findings, by rule:").append(LF).append(LF);
+        text.append("| Level | Rule | Subject |").append(LF).append("|---|---|---|").append(LF);
+        for (QualityFinding finding : findings) {
+            text.append("| ").append(finding.getSeverity()).append(" | ")
+                    .append(finding.getRule()).append(" | ")
+                    .append(finding.getSubject()).append(" |").append(LF);
         }
         write(new File(reports, "robot.md"), text.toString());
     }
