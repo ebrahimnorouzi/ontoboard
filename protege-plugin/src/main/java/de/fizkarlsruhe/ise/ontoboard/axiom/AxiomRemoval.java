@@ -52,7 +52,17 @@ public final class AxiomRemoval {
             throw new UnknownEdgeException(String.valueOf(edgeId), "empty id");
         }
         OWLDataFactory f = ontology.getOWLOntologyManager().getOWLDataFactory();
-        String[] parts = edgeId.split("\\|");
+        // Split keeping empty segments. Java's default split drops trailing empties, so an id of
+        // nothing but delimiters - "|", "||" - yields a ZERO-length array, and parts[0] threw
+        // ArrayIndexOutOfBoundsException instead of the UnknownEdgeException this class documents
+        // as its refusal. Both callers catch only UnknownEdgeException, so it escaped: onto the
+        // event thread from an inbound collaboration operation whose data.id a peer controls, and
+        // past the dialog in the canvas. With -1 the empty segments survive and the existing
+        // length checks do the work.
+        String[] parts = edgeId.split("\\|", -1);
+        if (parts.length == 0) {
+            throw new UnknownEdgeException(edgeId, "no segments");
+        }
 
         if ("sub".equals(parts[0])) {
             require(parts, 3, edgeId);

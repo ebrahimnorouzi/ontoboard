@@ -257,12 +257,20 @@ public class OpenFromGitHubAction extends OntoBoardAction {
      * guess and say so.
      */
     private File fileToOpen(File checkout, String hintedPath, OperationResult.Builder result) {
-        if (hintedPath != null && !hintedPath.trim().isEmpty()) {
-            File hinted = new File(checkout, hintedPath.trim());
-            if (hinted.isFile()) {
-                result.note("Opening the file the link pointed at.");
-                return hinted;
-            }
+        // Contained, because the path comes from whatever the user pasted. A blob URL ending
+        // ../../../../some/other/project.owl used to clone the repository the link named and then
+        // open an ontology from somewhere else on the disk, under the note below claiming it was
+        // the file the link pointed at.
+        File hinted = de.fizkarlsruhe.ise.ontoboard.git.InsideRepository.resolve(
+                checkout, hintedPath);
+        if (hinted != null && hinted.isFile()) {
+            result.note("Opening the file the link pointed at.");
+            return hinted;
+        }
+        if (hinted == null && hintedPath != null && !hintedPath.trim().isEmpty()) {
+            result.warn("The link's path '" + hintedPath.trim() + "' points outside the "
+                    + "repository, so it was ignored and the project's own layout was used "
+                    + "instead.");
         }
         try {
             OdkProjectLoader.Detected project = OdkProjectLoader.detect(checkout);

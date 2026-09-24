@@ -103,9 +103,18 @@ public final class Obsoletion {
         // obsolete term that is not in the signature is indistinguishable from a deleted one,
         // which is the precise failure this whole class exists to prevent. Caught by its own
         // test: the term vanished, and the release comparison read it as removed.
-        OWLClass declared = factory.getOWLClass(term);
-        if (!ontology.isDeclared(declared)) {
-            changes.add(new AddAxiom(ontology, factory.getOWLDeclarationAxiom(declared)));
+        // Whatever kind of thing it actually is, not a class by assumption. The menu item is
+        // top-level and takes whatever is selected, and whyNot only asks whether the IRI is in the
+        // signature - true for a property or an individual. Treating one of those as a class wrote
+        // Declaration(Class(P)) for an IRI that is a property, found no axioms to strip because an
+        // axiom about a property carries OWLObjectProperty(P) in its signature and not
+        // OWLClass(P), and then reported that the term had been retired and its axioms removed.
+        // The user was told a retirement had happened that had not.
+        Set<OWLEntity> subjects = ontology.getEntitiesInSignature(term);
+        for (OWLEntity subject : subjects) {
+            if (!ontology.isDeclared(subject)) {
+                changes.add(new AddAxiom(ontology, factory.getOWLDeclarationAxiom(subject)));
+            }
         }
 
         changes.add(new AddAxiom(ontology, factory.getOWLAnnotationAssertionAxiom(
@@ -132,6 +141,11 @@ public final class Obsoletion {
         // undeclared - the ontology goes on entailing things through a term nobody should use.
         for (OWLAxiom axiom : logicalAxiomsAbout(ontology, term)) {
             changes.add(new RemoveAxiom(ontology, axiom));
+        }
+        if (subjects.isEmpty()) {
+            // Nothing in the signature under that IRI. whyNot should have caught it; if it did
+            // not, adding annotations to an IRI the ontology does not know is not a retirement.
+            return new ArrayList<OWLOntologyChange>();
         }
 
         // Declared before use, for the same reason the class itself is declared above: an
@@ -171,16 +185,24 @@ public final class Obsoletion {
      * restriction is still logically entangled, and leaving that axiom behind means the ontology
      * goes on reasoning through a term nobody should use.
      */
+    /**
+     * Every logical axiom the term takes part in.
+     *
+     * <p>By entity rather than by an assumed class. This built {@code OWLClass(term)} and asked
+     * whether each axiom's signature contained it, which finds nothing for a property or an
+     * individual - {@code OWLClassImpl.equals} is false for an {@code OWLObjectProperty} with the
+     * same IRI - so obsoleting a property stripped no axioms while reporting that it had.
+     */
     static Set<OWLAxiom> logicalAxiomsAbout(OWLOntology ontology, IRI term) {
-        Set<OWLAxiom> axioms = new LinkedHashSet<OWLAxiom>();
-        OWLClass subject = ontology.getOWLOntologyManager().getOWLDataFactory()
-                .getOWLClass(term);
-        for (OWLLogicalAxiom axiom : ontology.getLogicalAxioms()) {
-            if (axiom.getSignature().contains(subject)) {
-                axioms.add(axiom);
+        Set<OWLAxiom> about = new LinkedHashSet<OWLAxiom>();
+        for (OWLEntity subject : ontology.getEntitiesInSignature(term)) {
+            for (OWLAxiom axiom : ontology.getReferencingAxioms(subject)) {
+                if (axiom instanceof OWLLogicalAxiom) {
+                    about.add(axiom);
+                }
             }
         }
-        return axioms;
+        return about;
     }
 
     /**
@@ -196,18 +218,17 @@ public final class Obsoletion {
         if (ontology == null || term == null) {
             return referencing;
         }
-        OWLClass subject = ontology.getOWLOntologyManager().getOWLDataFactory()
-                .getOWLClass(term);
-        for (OWLLogicalAxiom axiom : ontology.getLogicalAxioms()) {
-            if (!axiom.getSignature().contains(subject)) {
-                continue;
-            }
+        // Whatever kind the term is, and whatever kinds reference it. Asking only about
+        // OWLClass(term) found nothing when the term was a property, so the dialog told the user
+        // no other term would lose a connection - while every axiom using that property was about
+        // to be stripped.
+        for (OWLAxiom axiom : logicalAxiomsAbout(ontology, term)) {
             for (OWLEntity entity : axiom.getSignature()) {
-                if (entity.isOWLClass() && !entity.getIRI().equals(term)
-                        && !entity.asOWLClass().isOWLThing()
-                        && !entity.asOWLClass().isOWLNothing()) {
-                    referencing.add(entity.getIRI());
+                if (entity.getIRI().equals(term) || entity.isTopEntity()
+                        || entity.isBottomEntity()) {
+                    continue;
                 }
+                referencing.add(entity.getIRI());
             }
         }
         return referencing;

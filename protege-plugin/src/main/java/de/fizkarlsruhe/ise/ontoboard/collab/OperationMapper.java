@@ -687,9 +687,14 @@ public final class OperationMapper {
      * removed; the addition half of the pair still applies.
      */
     private static Inbound annotationChanges(OWLOntology ontology, Map<String, Object> data) {
+        // Null, not empty, when a key is absent - and an operation arrives from whatever is on
+        // the board: a web client, a third-party one, or a hostile one. The bridge validates only
+        // the id and the type, so data can be anything or nothing, and dereferencing these four
+        // fields threw NullPointerException onto the Swing event thread.
         String subjectIri = text(data, "iri");
         String propertyIri = text(data, "property");
-        if (subjectIri.isEmpty() || propertyIri.isEmpty()) {
+        if (subjectIri == null || subjectIri.isEmpty()
+                || propertyIri == null || propertyIri.isEmpty()) {
             return skipped("an annotation operation with no subject or no property");
         }
         OWLDataFactory factory = ontology.getOWLOntologyManager().getOWLDataFactory();
@@ -698,6 +703,8 @@ public final class OperationMapper {
                 IRI.create(propertyIri));
         String value = text(data, "value");
         String previous = text(data, "previous");
+        value = value == null ? "" : value;
+        previous = previous == null ? "" : previous;
         boolean valueIsIri = Boolean.TRUE.equals(data.get("valueIsIri"))
                 || "true".equals(String.valueOf(data.get("valueIsIri")));
 
