@@ -160,6 +160,15 @@
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
+  <extension id="menu.OntoBoard.robot.explain"
+             point="org.protege.editor.core.application.EditorKitMenuAction">
+    <name value="Explain..."/>
+    <path value="ontoboard.menu.OntoBoard.robot/SlotA-D"/>
+    <toolTip value="Which axioms make a class unsatisfiable, or the ontology inconsistent"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.menu.ExplainAction"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
+
   <extension id="menu.OntoBoard.robot.transform"
              point="org.protege.editor.core.application.EditorKitMenuAction">
     <name value="Transform..."/>

@@ -103,6 +103,7 @@ individual views in a tabbed column beside the canvas, so none of this needs a t
 | SPARQL query panel | ✅ | 🧩 | `sparql-query-plugin`, bundled |
 | GitHub import | ✅ | ✅ | *Project → Open from GitHub…* clones and opens the edit file |
 | Export formats | ✅ | 🔶 | Protégé exports OWL formats; ROBOT `convert` would add OBO/JSON-LD |
+| Explanation of unsatisfiability | ➖ | ✅ | *ROBOT → Explain…* names every unsatisfiable class, the axioms behind each, and which single axiom appears in the most justifications. Protégé's explanation workbench explains one entailment you have already selected; this starts from "the reasoner went red" |
 | Term table export | ➖ | ✅ | *ROBOT → Export terms…* writes one row per term and the columns you choose, as TSV, CSV, JSON, YAML or HTML. Not in the web application. `xlsx` is the one format the bundle cannot write — see Known constraints |
 | ZIP export | ✅ | ➖ | It is a folder on disk |
 | Widoco HTML docs | ✅ | ❌ | **Build.** External 39 MB jar, invoked as a subprocess |
@@ -183,5 +184,5 @@ mature plugins is waste) or ➖ (web-application machinery with no desktop meani
   real `Y.Doc` and real sockets; the client's against a real WebSocket server; the loop guard
   against a host that re-fires its change listener the way Protégé does. What no test covers is
   "two people see each other's cursors", which needs a server, a browser and Protégé at once.
-- **No plugin UI is covered by tests.** 1086 tests cover logic; every Swing surface is verified
+- **No plugin UI is covered by tests.** 1094 tests cover logic; every Swing surface is verified
   by hand.

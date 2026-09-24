@@ -101,7 +101,7 @@ commands against the ontology you have open:
 | Group | Commands |
 |---|---|
 | Project | New ODK project, Open from GitHub, ID ranges, Build, Imports, Release, Compare releases |
-| ROBOT | Measure, Quality report, Profile, Transform (relax/reduce/repair/merge), Import terms, Template, Export terms |
+| ROBOT | Measure, Quality report, Explain, Profile, Transform (relax/reduce/repair/merge), Import terms, Template, Export terms |
 | Terms | Obsolete the selected term |
 | Notes | Note on the selected term, All notes, Discussion link |
 | Other | Git, Provenance, Collaboration |
@@ -158,7 +158,7 @@ unavailable and why rather than failing obscurely.
 ```bash
 cd protege-plugin
 mvn clean package          # -> target/ontoboard-<version>.jar
-mvn test                   # 1086 tests (4 need Docker and skip without it)
+mvn test                   # 1094 tests (4 need Docker and skip without it)
 ```
 
 Java 8 bytecode is emitted deliberately (`maven.compiler.release=8`) so the bundle loads on

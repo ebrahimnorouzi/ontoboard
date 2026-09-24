@@ -1,7 +1,9 @@
 package de.fizkarlsruhe.ise.ontoboard;
 
+import de.fizkarlsruhe.ise.ontoboard.robot.Explanations;
 import de.fizkarlsruhe.ise.ontoboard.robot.OntologyDataset;
 import de.fizkarlsruhe.ise.ontoboard.robot.QualityFinding;
+import de.fizkarlsruhe.ise.ontoboard.robot.Reasoners;
 import de.fizkarlsruhe.ise.ontoboard.robot.ReportQueries;
 import de.fizkarlsruhe.ise.ontoboard.robot.RuleRunner;
 import de.fizkarlsruhe.ise.ontoboard.robot.TermExport;
@@ -198,7 +200,47 @@ public final class SelfCheck {
             checks.add(new Check("robot export runs end to end", false, describe(cannot)));
         }
 
+        try {
+            // owlexplanation is an embedded jar, and Protege *exports* the package one of its
+            // classes lives in - the two-copies-one-package situation that resolves differently
+            // depending on what else is installed. Explanations deliberately avoids the class in
+            // question, but that is an argument, and an argument about a classloader is what was
+            // wrong about the report for nine versions. So the explanation path runs here too.
+            Explanations.Result explained = Explanations.run(unsatisfiableOntology(),
+                    Reasoners.Choice.ELK.newFactory(), 1);
+            checks.add(new Check("robot explain runs end to end",
+                    !explained.isClean() && !explained.getJustifications().isEmpty(),
+                    explained.getUnsatisfiable().size() + " unsatisfiable class explained by "
+                            + explained.getJustifications().size() + " justification(s)"));
+        } catch (Exception | LinkageError cannot) {
+            checks.add(new Check("robot explain runs end to end", false, describe(cannot)));
+        }
+
         return new Result(checks);
+    }
+
+    /**
+     * Two disjoint parents, one child - the smallest ontology with something to explain.
+     *
+     * <p>Disjointness rather than negation, so ELK can do it: ELK is much cheaper to start than
+     * HermiT, and this runs every time a user opens an ontology.
+     */
+    private static OWLOntology unsatisfiableOntology() throws Exception {
+        OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
+        OWLDataFactory factory = manager.getOWLDataFactory();
+        OWLOntology ontology = manager.createOntology(
+                IRI.create("http://www.ontoboard.org/self-check/unsatisfiable"));
+        String ns = "http://www.ontoboard.org/self-check/unsatisfiable#";
+        org.semanticweb.owlapi.model.OWLClass person =
+                factory.getOWLClass(IRI.create(ns + "Person"));
+        org.semanticweb.owlapi.model.OWLClass robot =
+                factory.getOWLClass(IRI.create(ns + "Robot"));
+        org.semanticweb.owlapi.model.OWLClass android =
+                factory.getOWLClass(IRI.create(ns + "Android"));
+        manager.addAxiom(ontology, factory.getOWLDisjointClassesAxiom(person, robot));
+        manager.addAxiom(ontology, factory.getOWLSubClassOfAxiom(android, person));
+        manager.addAxiom(ontology, factory.getOWLSubClassOfAxiom(android, robot));
+        return ontology;
     }
 
     /**

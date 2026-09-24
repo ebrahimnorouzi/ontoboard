@@ -21,7 +21,7 @@ class SelfCheckTest {
     void everyCheckPassesOnTheClasspath() {
         SelfCheck.Result result = SelfCheck.run();
 
-        assertEquals(5, result.getChecks().size(), "expected five checks: " + result.getChecks());
+        assertEquals(6, result.getChecks().size(), "expected six checks: " + result.getChecks());
         assertTrue(result.isPassed(), "the self-check must pass where the resources are reachable, "
                 + "otherwise it cannot distinguish a bundle problem from its own bug: "
                 + result.getChecks());
@@ -47,6 +47,15 @@ class SelfCheckTest {
         assertFalse(export.getDetail().startsWith("0 terms"), export.getDetail());
     }
 
+    /** The explanation path must produce a justification, not merely fail to throw. */
+    @Test
+    void theExplainCheckProducesAJustification() {
+        SelfCheck.Check explain = SelfCheck.run().getChecks().get(5);
+
+        assertTrue(explain.isPassed(), explain.toString());
+        assertFalse(explain.getDetail().startsWith("0 "), explain.getDetail());
+    }
+
     /** An empty report is the failure mode this whole check exists to catch, so 0 must not pass. */
     @Test
     void anEmptyReportIsAFailureNotGoodNews() {
@@ -68,7 +77,7 @@ class SelfCheckTest {
     void theSummaryIsTheLineTheSmokeScriptMatches() {
         SelfCheck.Result result = SelfCheck.run();
 
-        assertEquals("OntoBoard self-check: PASS 5/5", result.summary());
+        assertEquals("OntoBoard self-check: PASS 6/6", result.summary());
         assertTrue(result.summary().startsWith("OntoBoard self-check: "),
                 "tools/smoke.ps1 matches this prefix");
     }

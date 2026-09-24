@@ -123,7 +123,7 @@ The plugin is early. These exist in the web application but not yet here:
 
 ### Not covered by tests
 
-1086 tests cover projection, axiom construction, layout persistence, ODK scaffolding, the
+1094 tests cover projection, axiom construction, layout persistence, ODK scaffolding, the
 report's rule execution and the OSGi configuration. Two of them reach outside the JVM:
 `RobotParityTest` compares the report against real ROBOT in `obolibrary/odkfull`, and
 `OdkBuildTest` runs a freshly scaffolded project's own `make test` and `make prepare_release` in
@@ -142,8 +142,9 @@ Behaviour *inside the bundle* is a third category, and the one that has cost the
 can see it, because Maven's classpath is not Felix's. `OntoBoardStartup` now runs `SelfCheck`
 at startup and `tools/smoke.ps1` asserts the verdict, so five things are checked in the host on
 every release: robot-core's profile is readable, all 32 of its queries are readable, Jena can
-read what the OWL API writes, the report produces findings end to end, and the export produces
-terms end to end. That is five things, not the 22 menu items — driving those is still Phase 2's
+read what the OWL API writes, the report produces findings end to end, the export produces terms
+end to end, and the explanation of a deliberately unsatisfiable class produces a justification.
+That is six things, not the 23 menu items — driving those is still Phase 2's
 self-test bundle.
 
 The export check is there for a specific reason. Its safety rested on a chain of inferences — POI
@@ -185,7 +186,8 @@ editorial notes, frames and sticky notes, obsoletion, OWL 2 profile checking, re
 comparison and ROBOT templates (1.19.0); properties and inferred individual types on the
 canvas (1.20.0); ROBOT's quality report actually running inside the bundle, on both hosts,
 checked against real ROBOT and against a startup self-check in the host (1.25.0); ROBOT term
-export as TSV, CSV, JSON, YAML or HTML, with the same in-host check (1.26.0); a generated ODK
+export as TSV, CSV, JSON, YAML or HTML, with the same in-host check (1.26.0); explanations for
+unsatisfiable classes and inconsistency, with ROBOT's axiom-impact summary (1.31.0); a generated ODK
 build that honours its own catalog, rejects equivalences nobody asserted, and gates a release on
 the same checks CI runs (1.28.0).
 
