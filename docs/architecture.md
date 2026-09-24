@@ -1,5 +1,11 @@
 # Architecture
 
+> **Scope: the web application.** The Protégé plugin is a separate client with a
+> different feature set — see "What it does today" in the
+> [README](../README.md), [feature parity](feature-parity.md) and
+> [limitations](limitations.md).
+
+
 OntoBoard is a 5-service microservice architecture orchestrated with Docker Compose. This document describes the system design, data flow, directory structure, and API surface.
 
 ## System Overview

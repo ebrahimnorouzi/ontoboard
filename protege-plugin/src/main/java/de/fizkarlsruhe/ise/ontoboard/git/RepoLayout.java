@@ -56,8 +56,10 @@ public final class RepoLayout {
         if (repository == null || !repository.isDirectory()) {
             return null;
         }
-        if (hintedPath != null && !hintedPath.trim().isEmpty()) {
-            File hinted = new File(repository, hintedPath.trim());
+        // Contained: the path comes from a pasted URL, and resolve returns null rather than a
+        // file outside the checkout. See InsideRepository.
+        File hinted = InsideRepository.resolve(repository, hintedPath);
+        if (hinted != null) {
             if (hinted.isFile() && isOntology(hinted)) {
                 return hinted;
             }

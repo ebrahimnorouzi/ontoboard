@@ -243,9 +243,15 @@ public final class TermExtract {
         if (projectIri == null) {
             return moduleIriFor(source);
         }
-        String project = projectIri.toString();
-        int lastSlash = project.lastIndexOf('/');
-        String stem = lastSlash > 0 ? project.substring(0, lastSlash) : project;
+        // The project's namespace, which is its IRI minus any .owl - not its parent. Cutting
+        // at the last slash published the module one level up: for .../obo/mwo.owl it produced
+        // .../obo/imports/iao_import.owl, in OBO's shared root, which belongs to no project and
+        // which every ODK project extracting from IAO would mint identically. That is the exact
+        // collision the javadoc above says this naming exists to prevent.
+        String stem = de.fizkarlsruhe.ise.ontoboard.odk.ProjectIri.stemOf(projectIri.toString());
+        if (stem == null) {
+            return moduleIriFor(source);
+        }
         return IRI.create(stem + "/imports/" + shortNameOf(source) + "_import.owl");
     }
 
@@ -313,7 +319,14 @@ public final class TermExtract {
         if (name.isEmpty()) {
             name = "extract";
         }
-        String stem = lastSlash >= 0 ? base.substring(0, lastSlash) : base;
+        // ProjectIri.stemOf, not a cut at the last slash. This is the fallback moduleIriIn
+        // delegates to on both of its null paths, so fixing moduleIriIn alone left the defect one
+        // branch deeper: a source of .../obo/iao.owl minted .../obo/imports/iao_import.owl, the
+        // OBO shared root that this class's own comments say must never be minted.
+        String stem = de.fizkarlsruhe.ise.ontoboard.odk.ProjectIri.stemOf(base);
+        if (stem == null) {
+            stem = base;
+        }
         return IRI.create(stem + "/imports/" + name + "_import.owl");
     }
 }

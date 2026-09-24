@@ -80,9 +80,13 @@ public final class TermMinter {
         try {
             String text = new String(Files.readAllBytes(found.toPath()), StandardCharsets.UTF_8);
             return new TermMinter(Style.NUMERIC, IdRanges.parse(text), editor, found);
-        } catch (IOException unreadable) {
-            return new TermMinter(Style.FROM_NAME, null, editor, null);
-        } catch (IdRanges.NoRangeException malformed) {
+        } catch (IOException | RuntimeException unusable) {
+            // Every way the file can be unusable, not the two that were thought of. IdRanges.parse
+            // also throws IllegalArgumentException for a block whose bounds run backwards and
+            // NumberFormatException for a non-numeric iddigits or bound, and neither was caught -
+            // so one typo in a metadata file stopped "New class here..." with an exception from a
+            // code path that had nothing to do with creating a class. Falling back to naming from
+            // the typed name is what this method's javadoc already promises.
             return new TermMinter(Style.FROM_NAME, null, editor, null);
         }
     }

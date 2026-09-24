@@ -222,7 +222,22 @@ public final class CollabSession implements CollabClient.Listener {
             host.onStatus("Received a change with no ontology open; it was not applied", true);
             return;
         }
-        OperationMapper.Inbound inbound = OperationMapper.toChanges(operation, ontology);
+        // An operation is data from somewhere else - a web client, a third-party one, or one that
+        // is simply wrong - and the bridge validates only its id and its type. Everything below
+        // this point runs on the event thread, so one malformed field used to be enough to put an
+        // exception there and take the session down. Dropping the operation and saying so keeps
+        // the session alive; the two copies are out of step either way, and a live session that
+        // reports a gap is worth more than a dead one that does not.
+        OperationMapper.Inbound inbound;
+        try {
+            inbound = OperationMapper.toChanges(operation, ontology);
+        } catch (RuntimeException malformed) {
+            LOGGER.warn("OntoBoard: could not read {} from a peer; it was not applied",
+                    operation, malformed);
+            host.onStatus("A change from another editor could not be read and was not applied",
+                    true);
+            return;
+        }
         if (!inbound.isUnderstood()) {
             LOGGER.info("OntoBoard: ignoring {} - {}", operation, inbound.getSkippedReason());
             return;

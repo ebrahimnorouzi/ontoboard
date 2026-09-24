@@ -36,6 +36,18 @@ import org.semanticweb.owlapi.reasoner.OWLReasoner;
  */
 public final class InferredEdges {
 
+    /**
+     * The id prefix of an inferred subclass edge.
+     *
+     * <p>Public because the canvas has to tell an inferred edge from an asserted one to decide
+     * what its context menu may offer, and a second copy of the string in the view is how the two
+     * drift apart.
+     */
+    public static final String SUBCLASS_ID_PREFIX = "inf|";
+
+    /** The id prefix of an inferred type edge. */
+    public static final String TYPE_ID_PREFIX = "inft|";
+
     /** What a reasoner could not tell us, and why. */
     public static final class NotAvailable extends RuntimeException {
         private static final long serialVersionUID = 1L;
@@ -119,7 +131,7 @@ public final class InferredEdges {
                 if (alreadyDrawn.contains(key) || !emitted.add(key)) {
                     continue;
                 }
-                inferred.add(new CanvasEdge("inf|" + childIri + "|" + parentIri, childIri,
+                inferred.add(new CanvasEdge(SUBCLASS_ID_PREFIX + childIri + "|" + parentIri, childIri,
                         parentIri, "inferred", CanvasEdge.Kind.INFERRED_SUBCLASS));
             }
         }
@@ -180,7 +192,7 @@ public final class InferredEdges {
                 if (alreadyDrawn.contains(key) || !emitted.add(key)) {
                     continue;
                 }
-                inferred.add(new CanvasEdge("inft|" + individualIri + "|" + typeIri,
+                inferred.add(new CanvasEdge(TYPE_ID_PREFIX + individualIri + "|" + typeIri,
                         individualIri, typeIri, "inferred", CanvasEdge.Kind.INFERRED_TYPE));
             }
         }

@@ -64,6 +64,50 @@ public final class OdkProjectConfig {
                             + "named after a folder on your machine and would not mean the same "
                             + "thing to anyone else.");
         }
+        // The id and the IRI's own name have to be the same word. ODK assumes it everywhere: the
+        // Makefile writes $(ONT).owl, the ID-range prefix is built from the id, and the release
+        // version IRI is built from the IRI. Let them differ and the same release is published as
+        // .../pizza/releases/<date>/mwo.owl - an IRI whose last segment names one thing and whose
+        // namespace names another, with a file on disk called after only one of them. Nothing
+        // fails; the artefacts are simply inconsistent forever. Caught here because a version IRI
+        // cannot be taken back once anybody has imported it.
+        String iriName = ProjectIri.nameOf(baseIri);
+        if (iriName != null && !iriName.equals(ontologyId)) {
+            throw new IllegalArgumentException(
+                    "Base IRI must end in the ontology ID. '" + baseIri + "' ends in '" + iriName
+                            + "' but the ID is '" + ontologyId + "', and ODK uses the ID for file "
+                            + "names while using the IRI for release identifiers - so the same "
+                            + "release would be published under two different names. Use '"
+                            + ProjectIri.stemOf(baseIri) + "' with ID '" + iriName + "', or keep "
+                            + "the ID and use an IRI ending in '" + ontologyId + ".owl'.");
+        }
+        // A licence at all, because the project fails its own CI without one. ROBOT's default
+        // profile - which this scaffold writes out in full, at ROBOT's own severities - treats
+        // missing_ontology_license as an ERROR, and the generated report recipe passes
+        // --fail-on ERROR. So a project scaffolded without a licence went red on its first push,
+        // over something the user was never asked about. Asked here, once.
+        if (license.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "A licence is required, for example 'https://creativecommons.org/licenses/"
+                            + "by/4.0/' or 'https://creativecommons.org/publicdomain/zero/1.0/'. "
+                            + "ROBOT's report treats a missing ontology licence as an ERROR and "
+                            + "the generated CI fails on errors, so a project without one fails "
+                            + "its own first build.");
+        }
+        // And an absolute IRI, because it goes straight into rdf:resource. An SPDX identifier like
+        // "CC0-1.0" is what people reach for - this project's own pizza test used one - and it is
+        // not a licence IRI: in rdf:resource it is a relative reference, which Protege resolves
+        // against the file's own location on save, so the ontology's licence ends up naming a path
+        // on one machine. The same failure the base-IRI check exists to prevent, one field down,
+        // and nothing downstream catches it: ROBOT only asks whether a licence is present.
+        if (!license.startsWith("http://") && !license.startsWith("https://")) {
+            throw new IllegalArgumentException(
+                    "The licence must be an absolute http or https IRI, for example "
+                            + "'https://creativecommons.org/licenses/by/4.0/'. Got: '" + license
+                            + "'. An SPDX identifier such as 'CC0-1.0' is not one: it goes into "
+                            + "rdf:resource, where a relative value is resolved against this "
+                            + "computer's file path when the ontology is saved.");
+        }
         if (targetDirectory == null) {
             throw new IllegalArgumentException("Choose a folder for the new project.");
         }

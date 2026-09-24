@@ -258,6 +258,95 @@ public final class PizzaOntology {
         return pizza;
     }
 
+    // ------------------------------------------------------------------ v4
+
+    /**
+     * The fourth release: a curation pass.
+     *
+     * <p>Everything up to v3 was modelling. This is the editorial surface a curator actually
+     * spends their time in, and none of it was exercised end to end before: who added a term and
+     * when, notes for whoever edits it next, a link to where the argument happened, and terms
+     * borrowed from somebody else's ontology.
+     *
+     * @param agent the ORCID to record; the caller owns identity as well as the clock
+     * @param isoDate {@code YYYY-MM-DD}
+     */
+    public static OWLOntology v4(String agent, String isoDate) throws OWLOntologyCreationException {
+        OWLOntology pizza = v3();
+        OWLOntologyManager manager = pizza.getOWLOntologyManager();
+        OWLDataFactory f = manager.getOWLDataFactory();
+        version(manager, pizza, "2026-09-23");
+
+        manager.applyChanges(de.fizkarlsruhe.ise.ontoboard.prov.Provenance
+                .declareProperties(pizza));
+        manager.applyChanges(de.fizkarlsruhe.ise.ontoboard.prov.EditorNotes
+                .declareProperties(pizza));
+
+        // Who made the terms this release added, recorded the way released OBO ontologies do it.
+        for (String name : new String[] {"CaperTopping", "CuredMeatTopping"}) {
+            manager.applyChanges(de.fizkarlsruhe.ise.ontoboard.prov.Provenance
+                    .stampNew(pizza, term(name), agent, isoDate));
+        }
+
+        // A note for whoever edits this next, attributed, and a link to where the argument is.
+        manager.applyChanges(de.fizkarlsruhe.ise.ontoboard.prov.EditorNotes.addNote(
+                pizza, term("VegetarianPizza"),
+                de.fizkarlsruhe.ise.ontoboard.prov.EditorNotes.Kind.EDITOR,
+                "Defined with a universal restriction, so ELK cannot classify it and the ODK "
+                        + "build will not. Decide whether that matters before relying on it.",
+                agent, isoDate));
+        manager.applyChanges(de.fizkarlsruhe.ise.ontoboard.prov.EditorNotes.addNote(
+                pizza, term("CaperTopping"),
+                de.fizkarlsruhe.ise.ontoboard.prov.EditorNotes.Kind.CURATOR,
+                "Added to replace the obsoleted olive topping. Definition taken from the "
+                        + "Capparis entry rather than written fresh.",
+                agent, isoDate));
+        manager.applyChanges(de.fizkarlsruhe.ise.ontoboard.prov.EditorNotes.addTrackerItem(
+                pizza, term("VegetarianPizza"),
+                "https://github.com/ebrahimnorouzi/pizza-ontoboard-odk-test/issues/1"));
+
+        return pizza;
+    }
+
+    /**
+     * A small upstream to borrow terms from, so the import path can be exercised offline.
+     *
+     * <p>A real one would be ChEBI. Downloading ChEBI to prove that an extraction works is not a
+     * test, it is a network dependency pretending to be one - so this is a plausible stand-in with
+     * a version IRI, which is what the import provenance records.
+     */
+    public static OWLOntology upstreamFoodOntology() throws OWLOntologyCreationException {
+        OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
+        OWLOntology food = manager.createOntology(new OWLOntologyID(
+                Optional.of(IRI.create("http://example.org/food")),
+                Optional.of(IRI.create("http://example.org/food/2026-05-01/food.owl"))));
+        OWLDataFactory f = manager.getOWLDataFactory();
+        String ns = "http://example.org/food#";
+
+        for (String[] pair : new String[][] {
+            {"FoodMaterial", null}, {"DairyProduct", "FoodMaterial"},
+            {"Cheese", "DairyProduct"}, {"Vegetable", "FoodMaterial"},
+            {"Fruit", "FoodMaterial"}, {"Tomato", "Fruit"}}) {
+            OWLClass cls = f.getOWLClass(IRI.create(ns + pair[0]));
+            manager.addAxiom(food, f.getOWLDeclarationAxiom(cls));
+            manager.addAxiom(food, f.getOWLAnnotationAssertionAxiom(f.getRDFSLabel(),
+                    cls.getIRI(), f.getOWLLiteral(readable(pair[0]))));
+            if (pair[1] != null) {
+                manager.addAxiom(food, f.getOWLSubClassOfAxiom(cls,
+                        f.getOWLClass(IRI.create(ns + pair[1]))));
+            }
+        }
+        return food;
+    }
+
+    /** The terms the pizza ontology borrows from the food ontology. */
+    public static List<IRI> borrowedTerms() {
+        List<IRI> terms = new ArrayList<IRI>();
+        terms.add(IRI.create("http://example.org/food#Cheese"));
+        terms.add(IRI.create("http://example.org/food#Tomato"));
+        return terms;
+    }
+
     // ------------------------------------------------------------------ the deliberate faults
 
     /**

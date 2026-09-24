@@ -9,8 +9,44 @@ Two codebases: the Protégé plugin (`protege-plugin/`, Java) and the web applic
 
 ```bash
 cd protege-plugin
-mvn clean test        # 322 tests
+mvn clean test        # 1060 tests
 mvn clean package     # -> target/ontoboard-<version>.jar
+```
+
+**Always `clean`.** Incremental compilation in this module has repeatedly reported passing
+tests compiled against stale classes — on one occasion hiding a source file that did not
+compile at all. If a result matters, delete `target/` first.
+
+### Bump the version in the same commit as the change
+
+The version lives in exactly one place, `protege-plugin/pom.xml`; bnd derives
+`Bundle-Version` from it. Bump the minor for any release anyone else might install.
+
+This is not bookkeeping. Twenty-six commits once shipped under an unchanged `1.18.0`,
+covering ROBOT transforms, term import, git tooling, the ODK build runner, release
+comparison, obsoletion, profile checking, provenance and ROBOT templates. The result was
+that `ontoboard-1.18.0.jar` identified at least twenty-six different builds, nobody could
+say which one they had, and — because Felix keys its bundle cache on symbolic name *and*
+version — dropping a newer same-versioned jar into `plugins/` can leave the cached older
+one running. Hence the `rm -f` below, and hence this paragraph.
+
+### End-to-end run
+
+```bash
+mvn -o test -Dtest=PizzaEndToEndTest -De2e.out=<dir>
+```
+
+Builds a pizza ontology in three releases and drives it through the canvas projection, ELK,
+HermiT, ROBOT and the release diff, writing every report to `<dir>`. It does not open
+Protégé and draws nothing, so it catches defects in *what* the canvas would show and not in
+the painting of it. Two shipped defects were found this way — `Add all` silently dropping
+every property, and inferences never being computed for individuals — because both were
+invisible to a unit test of the thing itself.
+
+`PizzaProjectTest` goes further and writes a whole ODK project, one release at a time:
+
+```bash
+mvn -o test -Dtest=PizzaProjectTest -Dpizza.repo=<dir> -Dpizza.version=v1   # or v2, v3
 ```
 
 ### Deploy locally
@@ -113,7 +149,7 @@ selection.
 ```
 de.fizkarlsruhe.ise.ontoboard
 ├── views/      SchemaCanvasView — the Protégé ViewComponent
-├── canvas/     JGraphX rendering, styles, palette, layouts, export, selection bridge
+├── canvas/     JGraphX rendering, styles, legend, layouts, export, selection bridge
 ├── model/      OWL -> canvas projection, labels
 ├── axiom/      entity creation, OWLAx edge axioms, axiom removal
 ├── layout/     sidecar persistence
@@ -149,7 +185,7 @@ persisted through the backend REST API, not Yjs. Anything added to the collabora
 must respect that split.
 
 `frontend/src/collab/` holds the operation protocol (`useOperationSync.ts`), the semantic
-merge engine (`mergeEngine.ts`) and the conflict UI. The plugin's forthcoming collaboration
+merge engine (`mergeEngine.ts`) and the conflict UI. The plugin's collaboration
 client speaks a JSON bridge onto the same `Y.Doc` rather than reimplementing the merge
 engine in Java, so the merge rules keep a single implementation.
 

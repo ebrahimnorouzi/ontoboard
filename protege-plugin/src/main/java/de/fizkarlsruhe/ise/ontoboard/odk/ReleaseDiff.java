@@ -232,8 +232,20 @@ public final class ReleaseDiff {
     /** A sentence a person reads, rather than a count of axioms. */
     public String summary() {
         if (changes.isEmpty()) {
+            // The axiom counts even here, because "nothing changed" was saying something false.
+            // This comparison is about terms - added, obsoleted, relabelled, redefined, moved -
+            // and a release can change a great deal without touching any of them: provenance
+            // stamps, editorial notes, an import, ontology metadata. A curation release did
+            // exactly that, and the notes told the reader nothing had changed while thirteen
+            // axioms had.
+            if (axiomsBefore != axiomsAfter) {
+                return "No term was added, retired, relabelled, redefined or moved, but the "
+                        + "ontology changed: " + axiomsBefore + " axioms to " + axiomsAfter
+                        + ". Annotations, imports and ontology metadata are not term changes and "
+                        + "are not listed here.";
+            }
             return "Nothing changed: the two versions have the same terms, labels, definitions "
-                    + "and parents.";
+                    + "and parents, and the same number of axioms.";
         }
         StringBuilder text = new StringBuilder();
         for (Change change : Change.values()) {
@@ -291,7 +303,11 @@ public final class ReleaseDiff {
                             change.getBefore().isEmpty() ? "(none)" : change.getBefore());
                 }
                 if (kind == Change.OBSOLETED && !change.getAfter().isEmpty()) {
-                    notes.append(" — replaced by `").append(change.getAfter()).append('`');
+                    // The value already says which kind of pointer it is - "replaced by X" for an
+                    // exact replacement, "consider X" for a suggestion - because the difference
+                    // decides whether a consumer can migrate mechanically or has to read each
+                    // use. Prepending "replaced by" here as well said "replaced by consider X".
+                    notes.append(" — ").append(change.getAfter());
                 }
                 notes.append('\n');
             }
@@ -323,8 +339,29 @@ public final class ReleaseDiff {
     }
 
     /** {@code IAO:0100001 term replaced by}, so a reader knows where the term went. */
+    /**
+     * Where a retired term went, however that was recorded.
+     *
+     * <p>This read only {@code IAO:0100001 term replaced by}, so half the feature disappeared
+     * from the release notes: {@code Obsoletion} writes {@code oboInOwl:consider} when the
+     * replacement is a suggestion rather than an equivalent, and the dialog makes that choice
+     * prominent because the difference decides whether a consumer can migrate mechanically. A
+     * reader of the notes was told a term had gone and nothing about where to go instead, which
+     * is the single most useful fact in an obsoletion notice.
+     *
+     * <p>Rendered short, because the value is an IRI: printing the whole thing in a list of bare
+     * term names is unreadable.
+     */
     private static String replacedBy(OWLOntology ontology, IRI iri) {
-        IRI property = IRI.create("http://purl.obolibrary.org/obo/IAO_0100001");
+        String exact = annotationValue(ontology, iri, Obsoletion.TERM_REPLACED_BY);
+        if (!exact.isEmpty()) {
+            return "replaced by `" + shortForm(IRI.create(exact)) + "`";
+        }
+        String consider = annotationValue(ontology, iri, Obsoletion.CONSIDER);
+        return consider.isEmpty() ? "" : "consider `" + shortForm(IRI.create(consider)) + "`";
+    }
+
+    private static String annotationValue(OWLOntology ontology, IRI iri, IRI property) {
         for (OWLAnnotationAssertionAxiom axiom : ontology.getAnnotationAssertionAxioms(iri)) {
             if (property.equals(axiom.getProperty().getIRI())) {
                 return axiom.getValue() instanceof OWLLiteral
