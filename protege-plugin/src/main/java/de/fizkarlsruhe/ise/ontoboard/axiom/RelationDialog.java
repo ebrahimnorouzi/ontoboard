@@ -152,7 +152,12 @@ public final class RelationDialog {
             label.setText("");
             return;
         }
-        label.setText("<html><i>" + candidate.getExplanation()
-                .replace("A", source).replace("B", target) + "</i></html>");
+        // Named placeholders, substituted once. This replaced every capital A and B in the
+        // sentence, so three of the six explanations - which contain "Anything", "An A" and "a B"
+        // as ordinary words - came out mangled: with a source labelled "American Hot" the user was
+        // told "American Hotnything that relates to a cheese topping via R must be a American
+        // Hot." And because the second replace ran over text the first had just inserted, a label
+        // containing a B was rewritten again.
+        label.setText("<html><i>" + candidate.explainedFor(source, target) + "</i></html>");
     }
 }

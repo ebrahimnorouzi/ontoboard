@@ -1,7 +1,6 @@
 package de.fizkarlsruhe.ise.ontoboard.git;
 
 import java.io.File;
-import java.io.IOException;
 import java.nio.file.Path;
 
 /**
@@ -48,16 +47,4 @@ public final class InsideRepository {
         }
     }
 
-    /**
-     * Whether {@code candidate} is inside {@code repository}.
-     *
-     * @throws IOException never; kept out of the signature deliberately so callers stay readable
-     */
-    public static boolean contains(File repository, File candidate) {
-        if (repository == null || candidate == null) {
-            return false;
-        }
-        Path root = repository.getAbsoluteFile().toPath().normalize();
-        return candidate.getAbsoluteFile().toPath().normalize().startsWith(root);
-    }
 }

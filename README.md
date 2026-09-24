@@ -140,7 +140,7 @@ unavailable and why rather than failing obscurely.
 ```bash
 cd protege-plugin
 mvn clean package          # -> target/ontoboard-<version>.jar
-mvn test                   # 1060 tests
+mvn test                   # 1062 tests
 ```
 
 Java 8 bytecode is emitted deliberately (`maven.compiler.release=8`) so the bundle loads on

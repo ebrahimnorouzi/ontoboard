@@ -99,6 +99,21 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
      * {@link #switchToActiveOntology()} for why that distinction matters.
      */
     private File currentOntologyFile;
+
+    /**
+     * Where the board's arrangement may be written, or null when it may not.
+     *
+     * <p>Separate from {@link #currentOntologyFile} because that field answers a different
+     * question - which project the open ontology belongs to - and the two were one field. Refusing
+     * to write a sidecar therefore also switched off ID-range minting and provenance for the rest
+     * of the session: {@code TermMinter.forOntologyFile(null, ...)} falls back to naming from the
+     * typed text, so "New class here..." in an ODK project silently minted
+     * {@code ontologyIri#TypedName} instead of an identifier from the editor's own block - outside
+     * the project's scheme, permanently, which is what the ID ranges exist to prevent.
+     *
+     * <p>Nulling a field to protect a file must not change what the identifiers mean.
+     */
+    private File layoutFile;
     private OWLOntologyChangeListener changeListener;
     private OWLModelManagerListener modelManagerListener;
     /** The last peer-mismatch warning shown, so it is not repeated on every cursor move. */
@@ -184,7 +199,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         selectionBridge = new SelectionBridge(graph, this::pushSelectionToProtege);
         selectionBridge.install();
 
-        positionSaveTimer = new Timer(800, event -> saveLayoutTo(currentOntologyFile));
+        positionSaveTimer = new Timer(800, event -> saveLayoutTo(layoutFile));
         positionSaveTimer.setRepeats(false);
         cellsMovedListener = (sender, event) -> {
             capturePositions();
@@ -259,7 +274,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             positionSaveTimer.stop();
         }
         capturePositions();
-        saveLayoutTo(currentOntologyFile);
+        saveLayoutTo(layoutFile);
     }
 
     /**
@@ -527,7 +542,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         note.y = at == null ? 60 : at.getY();
         layout.notes.add(note);
         refresh();
-        saveLayoutTo(currentOntologyFile);
+        saveLayoutTo(layoutFile);
     }
 
     /** A labelled region grouping what is inside it. Also diagram-only. */
@@ -549,7 +564,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         frame.h = 240;
         layout.frames.add(frame);
         refresh();
-        saveLayoutTo(currentOntologyFile);
+        saveLayoutTo(layoutFile);
     }
 
     /** Changes the text of a note or the label of a frame. */
@@ -560,7 +575,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                 if (text != null && !text.trim().isEmpty()) {
                     note.text = text.trim();
                     refresh();
-                    saveLayoutTo(currentOntologyFile);
+                    saveLayoutTo(layoutFile);
                 }
                 return;
             }
@@ -571,7 +586,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                 if (label != null && !label.trim().isEmpty()) {
                     frame.label = label.trim();
                     refresh();
-                    saveLayoutTo(currentOntologyFile);
+                    saveLayoutTo(layoutFile);
                 }
                 return;
             }
@@ -603,7 +618,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         }
         if (removed) {
             refresh();
-            saveLayoutTo(currentOntologyFile);
+            saveLayoutTo(layoutFile);
         }
     }
 
@@ -718,7 +733,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         }
         if (removed > 0) {
             refresh();
-            saveLayoutTo(currentOntologyFile);
+            saveLayoutTo(layoutFile);
         }
         return removed;
     }
@@ -765,7 +780,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             refresh();
             CanvasLayouts.apply(graph, CanvasLayouts.Algorithm.HIERARCHICAL);
             capturePositions();
-            saveLayoutTo(currentOntologyFile);
+            saveLayoutTo(layoutFile);
         }
     }
 
@@ -1167,7 +1182,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
      */
     private void switchToActiveOntology() {
         capturePositions();
-        saveLayoutTo(currentOntologyFile);
+        saveLayoutTo(layoutFile);
 
         loadLayoutForActiveOntology();
         refresh();
@@ -1251,6 +1266,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
      */
     private void loadLayoutForActiveOntology() {
         currentOntologyFile = activeOntologyFile();
+        layoutFile = currentOntologyFile;
         OWLOntology ontology = getOWLModelManager().getActiveOntology();
         layout = null;
 
@@ -1280,7 +1296,13 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                 // node drag - destroying a file that, in the case this guard exists for, is
                 // perfectly good data written by a newer OntoBoard. The sibling branch below got
                 // this right and said why; this one omitted exactly that line.
-                currentOntologyFile = null;
+                //
+                // layoutFile only. The first version of this guard cleared currentOntologyFile,
+                // which the ID ranges and the provenance settings also read - so refusing to write
+                // a sidecar quietly switched off minting from the editor's own block, and "New
+                // class here..." started naming terms after the typed text, outside the project's
+                // scheme, permanently.
+                layoutFile = null;
             }
             if (stored == null) {
                 layout = null;
@@ -1297,7 +1319,9 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                         + "with an empty board rather than overwriting it.",
                         CanvasLayoutStore.sidecarFor(currentOntologyFile).getName(),
                         stored.ontologyIri, ontologyIriOf(ontology));
-                currentOntologyFile = null; // so nothing is written back over it
+                // So nothing is written back over it. Same distinction as above: the arrangement
+                // is not saved, and the project is still the project.
+                layoutFile = null;
             }
         }
         if (layout == null) {
@@ -1407,7 +1431,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         layout.nodes.put(iri.toString(), new CanvasLayout.NodeLayout(x, y));
         membership.add(iri.toString());
         refresh();
-        saveLayoutTo(currentOntologyFile);
+        saveLayoutTo(layoutFile);
     }
 
     /**
@@ -1611,16 +1635,30 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         List<OWLOntologyChange> changes = new ArrayList<OWLOntologyChange>();
         OWLObjectProperty property = choice.getProperty();
         if (property == null) {
+            // Through the same minter that createEntityAt uses. This called EntityFactory.iriFor
+            // directly, so a new property got ontologyIri#TypedName with no label - the exact
+            // fallback createEntityAt refuses in writing, on the grounds that "the whole point of
+            // the ranges is that nobody mints outside their block". A project can therefore have
+            // its classes inside its scheme and its properties outside it, which is worse than
+            // either policy applied consistently.
+            TermMinter minter = TermMinter.forOntologyFile(currentOntologyFile, editorName());
             IRI propertyIri;
             try {
-                propertyIri = EntityFactory.iriFor(ontology, choice.getNewPropertyName());
+                propertyIri = minter.mintFor(ontology, choice.getNewPropertyName());
             } catch (IllegalArgumentException invalid) {
                 JOptionPane.showMessageDialog(this, invalid.getMessage(),
                         "Cannot use that name", JOptionPane.WARNING_MESSAGE);
                 return;
+            } catch (IdRanges.NoRangeException cannotMint) {
+                JOptionPane.showMessageDialog(this, cannotMint.getMessage(),
+                        "Cannot mint an identifier", JOptionPane.WARNING_MESSAGE);
+                return;
             }
-            changes.addAll(EntityFactory.declare(ontology, propertyIri,
-                    EntityFactory.Kind.OBJECT_PROPERTY));
+            // declare, not EntityFactory.declare: in numeric mode the typed text becomes the
+            // rdfs:label, which is the only thing that makes MWO_0001000 readable afterwards.
+            changes.addAll(minter.declare(ontology, propertyIri,
+                    EntityFactory.Kind.OBJECT_PROPERTY, choice.getNewPropertyName()));
+            changes.addAll(provenanceFor(ontology, propertyIri, minter.isNumeric()));
             property = factory.getOWLObjectProperty(propertyIri);
         }
 
@@ -1741,6 +1779,13 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
     }
 
 
+    /** Whether this edge is the reasoner's conclusion rather than an axiom in the ontology. */
+    private static boolean isInferred(String edgeId) {
+        return edgeId != null
+                && (edgeId.startsWith(InferredEdges.SUBCLASS_ID_PREFIX)
+                        || edgeId.startsWith(InferredEdges.TYPE_ID_PREFIX));
+    }
+
     /**
      * Retracts the axiom an edge stands for, after confirmation.
      *
@@ -1749,13 +1794,6 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
      * user's work. Legacy rdfs:domain/rdfs:range edges get an extra warning because those
      * axioms are global - every other arrow drawn with the same property depends on them.
      */
-    /** Whether this edge is the reasoner's conclusion rather than an axiom in the ontology. */
-    private static boolean isInferred(String edgeId) {
-        return edgeId != null
-                && (edgeId.startsWith(InferredEdges.SUBCLASS_ID_PREFIX)
-                        || edgeId.startsWith(InferredEdges.TYPE_ID_PREFIX));
-    }
-
     private void deleteAxiomFor(String edgeId) {
         OWLOntology ontology = getOWLModelManager().getActiveOntology();
         List<OWLOntologyChange> removals;
@@ -1892,7 +1930,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             return false;
         }
         refresh();
-        saveLayoutTo(currentOntologyFile);
+        saveLayoutTo(layoutFile);
         return true;
     }
 

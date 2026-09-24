@@ -25,7 +25,6 @@ import java.util.Set;
  */
 public final class CanvasLegend {
 
-    /** Whether a row is drawn as a box or as a line. */
     /**
      * What a legend row illustrates.
      *
@@ -278,7 +277,6 @@ public final class CanvasLegend {
         return false;
     }
 
-    /** Style names the legend mentions, for a test that checks nothing is invented. */
     /**
      * The styles the legend explains that correspond to a kind the canvas draws.
      *

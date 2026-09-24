@@ -1,0 +1,54 @@
+#!/bin/sh
+#
+# Refuse a commit that changes shipped plugin code without bumping the version.
+#
+# docs/development.md has said to bump the version in the same commit since round 2. The rule was
+# then broken in round 2, in round 3 and in round 3.5 - three consecutive times, by the same person
+# who wrote it down, twice within four commits of writing it down. An audit put it plainly: this is
+# worth a check that runs on commit rather than a fourth paragraph.
+#
+# Why it matters, from that same guide: Felix keys its bundle cache on symbolic name AND version.
+# Two jars with one version number means somebody who installs "the fixed one" may keep running the
+# unfixed one, and nobody can say which build they have.
+#
+# Install once:  git config core.hooksPath .githooks
+# Bypass once:   git commit --no-verify   (for a docs-only or test-only commit the check misjudges)
+
+POM="protege-plugin/pom.xml"
+
+staged_main=$(git diff --cached --name-only --diff-filter=ACMR \
+    -- 'protege-plugin/src/main/' 'protege-plugin/pom.xml' \
+    | grep -v '^protege-plugin/pom.xml$' || true)
+
+if [ -z "$staged_main" ]; then
+    exit 0
+fi
+
+version_now=$(grep -m1 '^  <version>' "$POM" 2>/dev/null | sed 's/.*<version>\(.*\)<\/version>.*/\1/')
+version_head=$(git show HEAD:"$POM" 2>/dev/null \
+    | grep -m1 '^  <version>' | sed 's/.*<version>\(.*\)<\/version>.*/\1/')
+
+if [ -z "$version_now" ]; then
+    echo "pre-commit: could not read the version from $POM - check the hook, not the commit." >&2
+    exit 1
+fi
+
+if [ "$version_now" = "$version_head" ]; then
+    echo >&2
+    echo "pre-commit: REFUSED - shipped plugin code changed and the version did not." >&2
+    echo >&2
+    echo "  version: $version_now (unchanged from HEAD)" >&2
+    echo "  changed:" >&2
+    echo "$staged_main" | sed 's/^/    /' >&2
+    echo >&2
+    echo "Bump the minor in $POM in this same commit. Felix keys its bundle cache on symbolic" >&2
+    echo "name and version, so two jars under one number means a user who installs the fixed" >&2
+    echo "one may keep running the unfixed one." >&2
+    echo >&2
+    echo "If this really is a change nobody would install differently, commit with --no-verify" >&2
+    echo "and say why in the message." >&2
+    echo >&2
+    exit 1
+fi
+
+exit 0

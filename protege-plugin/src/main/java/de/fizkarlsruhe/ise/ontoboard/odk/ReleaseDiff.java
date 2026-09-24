@@ -338,7 +338,6 @@ public final class ReleaseDiff {
         return false;
     }
 
-    /** {@code IAO:0100001 term replaced by}, so a reader knows where the term went. */
     /**
      * Where a retired term went, however that was recorded.
      *
@@ -426,6 +425,17 @@ public final class ReleaseDiff {
 
     /** The readable end of an IRI, for notes a person reads. */
     public static String shortForm(IRI iri) {
+        // DisplayLabels.shortNameOf, which takes the fragment first and only then the last path
+        // segment. ProjectIri.nameOf is the wrong helper here and a test caught it: that one is
+        // about a project's own namespace, which is path-shaped, so it rendered
+        // http://example.org/o#Substance as "o#Substance". Two similar-looking helpers answering
+        // two different questions - which is why the consolidation had to pick, not just pick one.
+        if (iri != null) {
+            String shortForm = de.fizkarlsruhe.ise.ontoboard.model.DisplayLabels.shortNameOf(iri);
+            if (shortForm != null && !shortForm.isEmpty()) {
+                return shortForm;
+            }
+        }
         String text = iri.toString();
         int hash = text.lastIndexOf('#');
         int slash = text.lastIndexOf('/');

@@ -283,18 +283,23 @@ public final class TermExtract {
                 + "and extract again.";
     }
 
-    /** The last path segment of an ontology's IRI, without any .owl. */
+    /**
+     * The source's short name, for naming a module file.
+     *
+     * <p>Delegates to {@link DisplayLabels#shortNameOf}, which strips a single trailing {@code /}
+     * or {@code #} before taking the last segment. This had its own last-slash cut without that,
+     * and the result is not display text - it becomes a file name and part of a published module
+     * IRI, so a source IRI ending in {@code /} produced a module called after the whole IRI.
+     */
     public static String shortNameOf(OWLOntology source) {
-        String base = source != null && source.getOntologyID().getOntologyIRI().isPresent()
-                ? source.getOntologyID().getOntologyIRI().get().toString()
-                : "extract";
-        int lastSlash = base.lastIndexOf('/');
-        String name = lastSlash >= 0 && lastSlash < base.length() - 1
-                ? base.substring(lastSlash + 1) : base;
-        if (name.toLowerCase().endsWith(".owl")) {
-            name = name.substring(0, name.length() - ".owl".length());
+        if (source == null || !source.getOntologyID().getOntologyIRI().isPresent()) {
+            return "extract";
         }
-        return name.isEmpty() ? "extract" : name;
+        // ProjectIri.nameOf strips a trailing / or # and then the .owl, which is what this did by
+        // hand for the extension and not at all for the delimiters.
+        String name = de.fizkarlsruhe.ise.ontoboard.odk.ProjectIri.nameOf(
+                source.getOntologyID().getOntologyIRI().get().toString());
+        return name == null || name.isEmpty() ? "extract" : name;
     }
 
     /**

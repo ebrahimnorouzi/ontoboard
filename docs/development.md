@@ -9,7 +9,7 @@ Two codebases: the Protégé plugin (`protege-plugin/`, Java) and the web applic
 
 ```bash
 cd protege-plugin
-mvn clean test        # 1060 tests
+mvn clean test        # 1062 tests
 mvn clean package     # -> target/ontoboard-<version>.jar
 ```
 
@@ -29,6 +29,16 @@ that `ontoboard-1.18.0.jar` identified at least twenty-six different builds, nob
 say which one they had, and — because Felix keys its bundle cache on symbolic name *and*
 version — dropping a newer same-versioned jar into `plugins/` can leave the cached older
 one running. Hence the `rm -f` below, and hence this paragraph.
+
+The rule was then broken three times in a row by the person who wrote it, twice within four
+commits of writing it. So it is a hook now rather than a paragraph:
+
+```bash
+git config core.hooksPath .githooks    # once per clone
+```
+
+`.githooks/pre-commit` refuses a commit that touches `protege-plugin/src/main/` without changing
+the version. Use `--no-verify` for the commits it misjudges, and say why in the message.
 
 ### End-to-end run
 
