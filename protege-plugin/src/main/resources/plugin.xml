@@ -301,6 +301,15 @@
 
   <!-- = Collaboration = -->
 
+  <extension id="menu.OntoBoard.selftest"
+             point="org.protege.editor.core.application.EditorKitMenuAction">
+    <name value="Run self-test"/>
+    <path value="ontoboard.menu.OntoBoard/SlotZ-Z"/>
+    <toolTip value="Actually runs the read-only ROBOT menu items against a scratch ontology and reports"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.menu.SelfTestAction"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
+
   <extension id="menu.OntoBoard.collaboration"
              point="org.protege.editor.core.application.EditorKitMenuAction">
     <name value="Collaboration..."/>

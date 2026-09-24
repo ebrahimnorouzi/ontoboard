@@ -2,6 +2,7 @@ package de.fizkarlsruhe.ise.ontoboard.menu;
 
 import de.fizkarlsruhe.ise.ontoboard.robot.QualityFinding;
 import de.fizkarlsruhe.ise.ontoboard.robot.QualityReport;
+import org.obolibrary.robot.ReportOperation;
 import java.io.File;
 import java.net.URI;
 import java.util.Arrays;
@@ -32,7 +33,20 @@ public class QualityReportAction extends OntoBoardAction {
 
     private static final long serialVersionUID = 1L;
 
-    private volatile Map<String, String> options;
+    /**
+     * ROBOT's defaults until {@link #configure()} replaces them with the project's.
+     *
+     * <p>Not null. Every other action in this package starts its fields at a usable value, and this
+     * one did not - so {@code run} worked only if {@code configure} had been called first, which it
+     * always is from the menu. The first time anything else called {@code run} - the self-test
+     * added in 1.39.0 - it threw NullPointerException on {@code options.get(OPTION_FAIL_ON)}, two
+     * lines after {@code QualityReport.run} had quietly handled the null itself.
+     *
+     * <p>No user could reach it. It is fixed because an action whose correctness depends on the
+     * order two of its own methods are called is a trap for the next person, and because the
+     * self-test cannot open dialogs.
+     */
+    private volatile Map<String, String> options = ReportOperation.getDefaultOptions();
     private volatile String profileDescription = "ROBOT's built-in profile";
 
     @Override

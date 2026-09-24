@@ -1,0 +1,75 @@
+OntoBoard 1.40.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-09-24  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 7/7  test 6/6
+  2026-09-24  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 7/7  test 6/6
+
+THE MENU ITEMS ARE RUN NOW, NOT JUST LOADED
+
+Both hosts printed, verbatim:
+
+  OntoBoard self-test item: ROBOT > Measure... | ok | 50 metrics for OntologyID(...self-test...)
+  OntoBoard self-test item: ROBOT > Quality report... | ok | 9 findings, 5 of them errors
+  OntoBoard self-test item: ROBOT > Explain... | ok | Consistent, with no unsatisfiable classes -
+      nothing to explain.
+  OntoBoard self-test item: ROBOT > SPARQL... | ok | 1 row
+  OntoBoard self-test item: ROBOT > Export terms... | ok | 2 terms, 4 columns, not written to a file
+  OntoBoard self-test item: ROBOT > Profile... | ok | This ontology is in OWL 2 EL. Every axiom is
+      one a EL reasoner can act on.
+  OntoBoard self-test: PASS - 6 of 6 menu items ran. 3 others are not covered here.
+
+This is the half of Phase 2 the startup check could not reach. SelfCheck proves every action class
+loads and constructs under Felix - which catches a dead menu item, and nothing more, because
+loading a class is not running it. SelfTestAction wires each action the way Protege does
+(setEditorKit, initialise) and calls its run against a scratch ontology built for the purpose, so
+what is exercised is the real action in the real bundle with a real editor kit.
+
+Two ways in, one implementation: OntoBoard > Run self-test for a person, and
+-Dontoboard.selftest=true for smoke.ps1 -SelfTest. The automated run is what matters - a self-test
+only a human can trigger is one that gets skipped before exactly the release that needed it.
+
+IT FOUND A DEFECT ON ITS FIRST RUN
+
+  OntoBoard self-test item: ROBOT > Quality report... | FAILED | threw NullPointerException
+
+QualityReportAction's options field was declared with no initial value, so run() worked only if
+configure() had been called first. From the menu it always is, so no user could reach this - and
+the honest description is a latent trap rather than a bug anybody was hitting. But every other
+action in that package starts its fields at a usable value, this one did not, and the failure
+landed two lines after QualityReport.run had itself handled the null perfectly well. It now starts
+at ROBOT's defaults.
+
+That is the argument for this kind of test in one paragraph: the defect was invisible to 1133 unit
+tests and to a human clicking the item, and it took four seconds to find once something called the
+action a way the menu does not.
+
+WHAT IS NOT COVERED, PRECISELY
+
+Six of roughly twenty items. The rest are excluded on purpose and the reasons are in the result:
+
+  Transform... defaults to apply = true. Without its dialog it would compute a relax and push the
+  changes through the live session's model manager - not the scratch ontology's. A self-test that
+  edits an ontology is not a test.
+
+  Rename IRIs..., Import terms..., Obsolete..., Release..., Build..., Git..., Open from GitHub...,
+  New ODK project...: they write files, need a configured project, or reach the network.
+
+  The canvas, notes and collaboration items are Swing surfaces and nothing here opens a window.
+
+So this does not "drive the menu". It drives the six read-only ROBOT operations, in the host, and
+says so.
+
+Asserted in both runs:
+  - exactly one ontoboard jar in plugins/; "Starting bundle ontoboard"
+  - "Plugin: OntoBoard (1.40.0)" - the version Felix resolved, not the one on disk
+  - "OntoBoard self-check: PASS 7/7", including menu classes resolve - 29/29
+  - "OntoBoard self-test: PASS" - and an absent verdict fails when -SelfTest was asked for, because
+    that would mean the property never reached the JVM
+  - no unresolved constraint, java.* import, UnsupportedClassVersionError, truncated jar,
+    de.fizkarlsruhe stack frame, or OutOfMemoryError at -Xmx500M
+
+Verified outside the host: 1133 tests pass, 1 skipped.
+
+Neighbours that fail to install in Protege-5.5.0, unrelated to us:
+  cellfie-2.2.4.jar, swrltab-plugin-2.1.3.jar
