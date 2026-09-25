@@ -1,0 +1,73 @@
+OntoBoard 1.49.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-09-25  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 8/8  test 9/9
+  2026-09-25  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 8/8  test 9/9
+
+REASON NOW PREVIEWS WHAT THE BUILD WILL WRITE
+
+1.48.0 added a suite that runs nine operations both through the plugin and as the `robot` command in
+obolibrary/odkfull, and required the same answer. A rule of that suite is that each comparison passes
+the options the plugin's own call passes - otherwise it compares two questions and reports the
+difference as a defect.
+
+Applying that rule to `reason` exposed a fifth defect, of a kind the other four were not. Nothing was
+passed to the wrong parameter and no result was half-read. Both sides were running ROBOT correctly.
+They were asking different questions:
+
+  the plugin       ReasonOperation.reason(ontology, factory)        -- ROBOT's bare defaults
+  make reason      robot reason -r ELK \
+                     --equivalent-classes-allowed asserted-only \
+                     --exclude-tautologies structural
+
+and OntoBoard writes that Makefile itself.
+
+On pizza v2 the preview showed seven new axioms where `make reason` writes two. The five extra were
+
+  SubClassOf(pizza:Country owl:Thing)
+  SubClassOf(pizza:Pizza owl:Thing)
+  SubClassOf(pizza:PizzaBase owl:Thing)
+  SubClassOf(pizza:PizzaTopping owl:Thing)
+  SubClassOf(pizza:VegetarianPizza owl:Thing)
+
+- true of any ontology whatsoever, which is exactly what --exclude-tautologies structural drops. A
+curator reviewing inferences before cutting a release was reading five lines that were never going to
+ship, and could reasonably have concluded the reasoner had found more than it had. Reviewing
+inferences before applying them is what the dialog exists for, so showing a set the build will not
+produce is the one thing it must not do.
+
+The help text on that menu item had said, for twenty-four versions, "This is what 'make reason'
+does". It now is.
+
+ONE SOURCE FOR THE TWO FLAGS
+
+RobotTransform.reasonOptions() holds ROBOT's defaults plus those two overrides, and OdkScaffold
+builds the Makefile's flags from the same constants rather than spelling them again. The parity test
+invokes the command line from those constants too. The preview, the generated build and the test
+therefore cannot drift apart without one of them failing - which is the part worth having, because
+this defect was not a mistake anybody made once. It was two correct pieces of code written months
+apart that nobody had put side by side.
+
+WHAT THE OLDER TESTS SAY ABOUT THEMSELVES
+
+Not one of the 1161 tests failed when this behaviour changed. The tautologies had been in the shipped
+output since Reason was added and nothing had ever pinned them, either way. A test that asserts a
+transform "added some axioms" passes on both answers.
+
+The new assertion is narrower than equality on purpose: as well as requiring the same set as the
+command line, it requires that no axiom in the plugin's result mentions owl:Thing. Equality alone
+would still pass if both sides started including tautologies again.
+
+VERIFIED OUTSIDE THE HOST
+
+1161 tests pass, 0 failures. Fourteen need Docker and were run with it - RobotParityTest (3),
+RobotCliParityTest (9), OdkBuildTest (2).
+
+The generated Makefile's text is unchanged. The diff to OdkScaffold replaces two string literals with
+the same two values built from the shared constants and adds an import - nothing else - and
+OdkScaffoldTest asserts both flag lines as exact substrings and passes. So a project that regenerates
+its files sees no diff from this.
+
+Pizza: v11 remains the published state. The plugin's Reason preview of it changes; its generated
+files do not.

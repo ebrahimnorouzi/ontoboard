@@ -1,5 +1,6 @@
 package de.fizkarlsruhe.ise.ontoboard.odk;
 
+import de.fizkarlsruhe.ise.ontoboard.robot.RobotTransform;
 import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -301,8 +302,13 @@ public final class OdkScaffold {
                 // true of any ontology and only pad the output. Real ODK passes both, in reason_test.
                 + "reason:\n"
                 + "\t$(ROBOT) reason -r ELK -i $(ONT)-edit.owl \\\n"
-                + "\t  --equivalent-classes-allowed asserted-only \\\n"
-                + "\t  --exclude-tautologies structural \\\n"
+                // Both flags come from RobotTransform rather than being spelled here, because the
+                // plugin's own Reason preview passes them too and the two have to stay the same
+                // question. They did not until 1.49.0.
+                + "\t  --" + RobotTransform.OPTION_EQUIVALENT_CLASSES_ALLOWED + " "
+                + RobotTransform.EQUIVALENT_CLASSES_ALLOWED + " \\\n"
+                + "\t  --" + RobotTransform.OPTION_EXCLUDE_TAUTOLOGIES + " "
+                + RobotTransform.EXCLUDE_TAUTOLOGIES + " \\\n"
                 + "\t  -o $(ONT).owl\n\n"
                 // --fail-on and --labels are passed because the YAML above declares them.
                 // They were declared and not passed, so CI did whatever ROBOT defaults to rather

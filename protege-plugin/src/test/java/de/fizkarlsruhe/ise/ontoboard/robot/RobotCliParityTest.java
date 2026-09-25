@@ -73,21 +73,32 @@ class RobotCliParityTest {
     // ======================================================================= reason
 
     /**
-     * The axioms the reasoner adds are the same ones.
+     * The axioms the reasoner adds are the same ones {@code make reason} adds.
      *
-     * <p>The operation an OBO release is built on: {@code make reason} is what produces the
-     * artefact people download. If the plugin's "Reason" inferred a different set from the build's,
-     * a curator would be checking their work against something other than what ships.
+     * <p>The operation an OBO release is built on: {@code make reason} is what produces the artefact
+     * people download. So this compares against the generated Makefile's invocation, not against
+     * ROBOT's bare defaults - a curator reviewing inferences before a release is asking what the
+     * build will write, and any other comparison answers a question nobody has.
+     *
+     * <p>That distinction was the point. Until 1.49.0 the plugin passed ROBOT's defaults while the
+     * Makefile passed these two options, so the preview showed seven new axioms on pizza v2 where
+     * the build writes two - five {@code SubClassOf owl:Thing} tautologies that were never going to
+     * ship. The flags below are the plugin's own constants, so this cannot be "fixed" by quietly
+     * changing the comparison to match whatever the plugin does.
      */
     @Test
-    void reasonInfersTheSameAxioms(@TempDir File dir) throws Exception {
+    void reasonInfersWhatTheBuildInfers(@TempDir File dir) throws Exception {
         assumeTrue(imageIsAvailable(), IMAGE + " is not available");
 
         OWLOntology pizza = PizzaOntology.v2();
         File input = save(pizza, dir, "in.owl");
 
-        // ROBOT's own reason, with the defaults the plugin's call uses.
-        run(dir, "reason", "-r", "ELK", "-i", input.getName(), "-o", "reasoned.owl");
+        run(dir, "reason", "-r", "ELK", "-i", input.getName(),
+                "--" + RobotTransform.OPTION_EQUIVALENT_CLASSES_ALLOWED,
+                RobotTransform.EQUIVALENT_CLASSES_ALLOWED,
+                "--" + RobotTransform.OPTION_EXCLUDE_TAUTOLOGIES,
+                RobotTransform.EXCLUDE_TAUTOLOGIES,
+                "-o", "reasoned.owl");
 
         // Subtracting the in-memory pizza from the reloaded output would report thirty inferences
         // that are nothing of the kind: OWL API writes a plain literal for an xsd:string one and
@@ -101,7 +112,15 @@ class RobotCliParityTest {
 
         assertFalse(byRobot.isEmpty(), "ELK infers something about the pizza, or this proves nothing");
         assertEquals(describe(byRobot), describe(byPlugin),
-                "the plugin must infer exactly what robot reason infers");
+                "the plugin must infer exactly what a generated project's make reason infers");
+
+        // And specifically: none of them is a tautology, which is what the excluded option buys and
+        // the visible half of the bug this test was written for.
+        for (String axiom : byPlugin) {
+            assertFalse(axiom.contains("owl:Thing"),
+                    "make reason excludes structural tautologies, so the preview must not show "
+                            + "one: " + axiom);
+        }
     }
 
     // ======================================================================= measure

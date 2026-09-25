@@ -150,7 +150,9 @@ And the plugin runs a self-check at startup whose verdict `tools/smoke.ps1` asse
 installs ([receipt](protege-plugin/tools/smoke-receipt/1.25.0.txt)).
 
 Before 1.48.0 only the report was compared this way, and the rest rested on not throwing.
-Comparing them found four defects that a passing test suite had not: see
+Comparing them found five defects that a passing test suite had not - including a Reason preview
+that showed inferences the generated build would have dropped, because the plugin passed ROBOT's
+defaults where the Makefile passes two overrides. See
 [limitations](docs/limitations.md#known-constraints), which also records the one place the plugin
 and `robot validate-profile` deliberately disagree.
 

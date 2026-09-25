@@ -3,7 +3,9 @@ package de.fizkarlsruhe.ise.ontoboard.robot;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import org.obolibrary.robot.IOHelper;
 import org.obolibrary.robot.MaterializeOperation;
@@ -91,7 +93,9 @@ public final class RobotTransform {
                 "Runs the reasoner and writes its conclusions into the ontology as ordinary "
                         + "subclass axioms, so a consumer who never runs a reasoner still sees the "
                         + "full hierarchy. This is what 'make reason' does and what turns an edit "
-                        + "file into a release. It only adds - but it adds what the reasoner "
+                        + "file into a release - with the same two options the generated Makefile "
+                        + "passes, so what you see here is what the build will write. It only adds "
+                        + "- but it adds what the reasoner "
                         + "believes, so an ontology with a modelling mistake gets the mistake "
                         + "written down as fact. Look at the result before applying it.",
                 true),
@@ -158,6 +162,46 @@ public final class RobotTransform {
     }
 
     /** What an operation would do, without having done it. */
+    /**
+     * The two options a generated project's {@code make reason} passes, and their values.
+     *
+     * <p>Public and shared with {@code OdkScaffold}, which writes them into the Makefile, because
+     * the preview in this plugin and the build that produces the release have to be the same
+     * question. Until 1.49.0 they were not: this called {@code ReasonOperation.reason(ontology,
+     * factory)}, ROBOT's bare defaults, while the Makefile passed both of these. On pizza v2 the
+     * preview therefore showed seven new axioms where {@code make reason} writes two - the other
+     * five being {@code SubClassOf owl:Thing} tautologies the build drops. A curator reviewing
+     * inferences before a release was reading five lines that were never going to ship.
+     *
+     * <p>{@code equivalent-classes-allowed=asserted-only}: ROBOT defaults to allowing a reasoner to
+     * conclude that two <em>named</em> classes are equivalent, which is almost always a modelling
+     * mistake rather than a discovery. {@code exclude-tautologies=structural}: drops what is true of
+     * any ontology whatsoever. Real ODK passes both.
+     */
+    public static final String OPTION_EQUIVALENT_CLASSES_ALLOWED = "equivalent-classes-allowed";
+
+    /** @see #OPTION_EQUIVALENT_CLASSES_ALLOWED */
+    public static final String EQUIVALENT_CLASSES_ALLOWED = "asserted-only";
+
+    /** @see #OPTION_EQUIVALENT_CLASSES_ALLOWED */
+    public static final String OPTION_EXCLUDE_TAUTOLOGIES = "exclude-tautologies";
+
+    /** @see #OPTION_EQUIVALENT_CLASSES_ALLOWED */
+    public static final String EXCLUDE_TAUTOLOGIES = "structural";
+
+    /**
+     * ROBOT's own reason defaults with the two a generated build overrides.
+     *
+     * @see #OPTION_EQUIVALENT_CLASSES_ALLOWED
+     */
+    public static Map<String, String> reasonOptions() {
+        Map<String, String> options =
+                new LinkedHashMap<String, String>(ReasonOperation.getDefaultOptions());
+        options.put(OPTION_EQUIVALENT_CLASSES_ALLOWED, EQUIVALENT_CLASSES_ALLOWED);
+        options.put(OPTION_EXCLUDE_TAUTOLOGIES, EXCLUDE_TAUTOLOGIES);
+        return options;
+    }
+
     public static final class Diff {
         private final List<OWLOntologyChange> changes;
         private final int added;
@@ -312,7 +356,7 @@ public final class RobotTransform {
                 return;
             case REASON:
                 ReasonOperation.reason(copy, reasonerFactory == null
-                        ? new StructuralReasonerFactory() : reasonerFactory);
+                        ? new StructuralReasonerFactory() : reasonerFactory, reasonOptions());
                 return;
             case REDUCE:
                 ReduceOperation.reduce(copy, reasonerFactory == null

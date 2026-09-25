@@ -95,6 +95,24 @@ The plugin is early. These exist in the web application but not yet here:
   versions render an axiom slightly differently — an explicit `^^xsd:string` on a plain literal, and
   a space before one closing parenthesis — and the suite normalises exactly those two renderings and
   nothing else.
+- **Reason previews what the build will write, which it did not until 1.49.0.** The comparison
+  above is against the options each call passes, and for `reason` that exposed something the option
+  check could not: the plugin was passing ROBOT's bare defaults while the Makefile OntoBoard itself
+  generates passes `--equivalent-classes-allowed asserted-only --exclude-tautologies structural`.
+
+  Both calls were running ROBOT correctly. They were asking different questions. On pizza v2 the
+  preview showed seven new axioms where `make reason` writes two, the other five being
+  `SubClassOf owl:Thing` tautologies that the build drops and that were never going to reach a
+  release. A curator reviewing inferences before cutting one was reading five lines of noise and
+  might reasonably have concluded the ontology said more than it does.
+
+  `RobotTransform.reasonOptions()` now holds those two options, `OdkScaffold` builds the Makefile's
+  flags from the same constants, and the parity test runs the command line with them - so the
+  preview, the generated build and the test cannot drift apart without one of them failing.
+
+  Worth noting what this says about the older tests: not one of them failed when this changed. The
+  tautologies were in the shipped output for twenty-four versions and nothing had ever pinned them
+  either way.
 - **The plugin's OWL 2 DL check and `robot validate-profile` disagree, on purpose.** The OWL API
   adds a missing annotation-property declaration while parsing. So an ontology that is outside DL
   for exactly that reason — a curator typed a property name into Protégé and never declared it — is
@@ -276,7 +294,8 @@ existing project's generated files so a generator fix reaches projects that alre
 (1.35.0-1.45.0); an OWL 2 DL profile gate in the generated build, and a collaboration fix so an
 incoming annotation declares its property rather than pushing the ontology outside DL (1.46.0);
 nine operations compared against the real `robot` command rather than only the report, and the four
-defects that comparison found (1.48.0); a generated ODK
+defects that comparison found (1.48.0); a Reason preview that passes the same options as the
+generated build, so it shows what a release will contain (1.49.0); a generated ODK
 build that honours its own catalog, rejects equivalences nobody asserted, and gates a release on
 the same checks CI runs (1.28.0).
 
