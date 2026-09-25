@@ -65,6 +65,48 @@ The plugin is early. These exist in the web application but not yet here:
   the same profile and requires an identical violation set — 7/7 rows on `fixture-tiny`, 21/21
   on pizza v2. And `OntoBoardStartup` runs `SelfCheck` in the host at startup, which
   `tools/smoke.ps1` asserts; the 1.25.0 receipt records `PASS 4/4` on **both** installs.
+- **Every operation is now compared against the real command line, not just the report.** Until
+  1.48.0 `report` was the only one. The evidence for the rest was that they did not throw, which is
+  weaker than it sounds: a wrapper that passes an option in the wrong place produces plausible
+  output that nobody can tell is wrong.
+
+  `RobotCliParityTest` runs nine operations twice — once in process through the plugin, once as the
+  `robot` command a project's CI actually runs in `obolibrary/odkfull` — over the same pizza, and
+  requires the answers to match: `reason` (the inferred axioms), `measure` (every metric name and
+  value), `export` (the table, row for row), `extract` (the module, axiom for axiom), `diff` (the
+  text), `verify` (which checks fail and with how many violations), `explain` (which classes, and
+  the axioms the justification rests on) and `template` (the axioms built).
+
+  Each comparison passes the options the plugin's own call passes, not the ones a Makefile passes —
+  comparing `robot reason --exclude-tautologies` against a plugin call that asks for ROBOT's
+  defaults would be comparing two different questions and reporting the difference as a defect.
+
+  Doing this found four real defects, none of which threw: a written export joined a multi-valued
+  cell with the string `tsv` instead of a bar, because the format name was passed where ROBOT wants
+  the separator; the measurements panel silently omitted a whole class of metrics, including the
+  axiom-type breakdown, because only two of `MeasureResult`'s three maps were read — twelve of the
+  ninety-eight it reports for pizza v2; the set-valued metrics came
+  out in hash order, so the panel reshuffled between runs and never matched a build's metrics file;
+  and the explanation named one class two ways at once.
+
+  The suite deliberately compares two ROBOT versions: the plugin embeds robot-core 1.9.8 and
+  `odkfull` ships 1.9.10. Pinning both to one version would make it agree with itself and answer a
+  question nobody asked, since what a project's CI runs is `odkfull`. The cost is that their OWL API
+  versions render an axiom slightly differently — an explicit `^^xsd:string` on a plain literal, and
+  a space before one closing parenthesis — and the suite normalises exactly those two renderings and
+  nothing else.
+- **The plugin's OWL 2 DL check and `robot validate-profile` disagree, on purpose.** The OWL API
+  adds a missing annotation-property declaration while parsing. So an ontology that is outside DL
+  for exactly that reason — a curator typed a property name into Protégé and never declared it — is
+  inside DL again by the time it has been written and read back. `robot validate-profile` only ever
+  sees the file and reports it in profile; the plugin checks the ontology being edited and reports
+  the violation.
+
+  The plugin is the more useful of the two here, because the point of a profile check in an editor
+  is to catch this while it can still be fixed by hand. But a curator who runs both and gets two
+  answers deserves to know which is which, so `RobotCliParityTest` pins the disagreement rather than
+  leaving it as a surprise — and so nobody later makes the plugin agree with the command line by
+  deleting the check that does the work.
 - **The Rio barrier applies to both hosts, and it is an OSGi barrier rather than a version
   one.** This was described here for five versions as a 5.5.0 problem, and that was wrong.
 
@@ -125,12 +167,14 @@ The plugin is early. These exist in the web application but not yet here:
 
 ### Not covered by tests
 
-1151 tests cover projection, axiom construction, layout persistence, ODK scaffolding, the
-report's rule execution and the OSGi configuration. Two of them reach outside the JVM:
-`RobotParityTest` compares the report against real ROBOT in `obolibrary/odkfull`, and
+1161 tests cover projection, axiom construction, layout persistence, ODK scaffolding, the
+report's rule execution and the OSGi configuration. Fourteen of them reach outside the JVM:
+`RobotParityTest` compares the report against real ROBOT in `obolibrary/odkfull`,
+`RobotCliParityTest` compares nine more operations against the same image's `robot` command, and
 `OdkBuildTest` runs a freshly scaffolded project's own `make test` and `make prepare_release` in
-that image. Both are *skipped*, not failed, where Docker is absent — so a green run on a machine
-without Docker proves less than it looks.
+that image. All are *skipped*, not failed, where Docker is absent — so a green run on a machine
+without Docker proves considerably less than it looks, and now says nothing at all about whether
+this plugin agrees with ROBOT.
 
 `OdkBuildTest` earns its keep: three defects in the generated build had survived a 30-assertion
 test class and were found the first time anyone executed it — a `--` inside an XML comment in the
@@ -230,7 +274,9 @@ axioms, bulk IRI renaming for moving a namespace, and SPARQL results written as 
 repository rather than kept as a blob, a mirror so a rebuild works offline, a diff against the published release, and re-rendering an
 existing project's generated files so a generator fix reaches projects that already exist
 (1.35.0-1.45.0); an OWL 2 DL profile gate in the generated build, and a collaboration fix so an
-incoming annotation declares its property rather than pushing the ontology outside DL (1.46.0); a generated ODK
+incoming annotation declares its property rather than pushing the ontology outside DL (1.46.0);
+nine operations compared against the real `robot` command rather than only the report, and the four
+defects that comparison found (1.48.0); a generated ODK
 build that honours its own catalog, rejects equivalences nobody asserted, and gates a release on
 the same checks CI runs (1.28.0).
 

@@ -142,12 +142,17 @@ not the OWL API version: neither Protégé's OWL API bundle exports the RDF4J pa
 `robot-core` needs for its Rio paths, so those fail identically on 5.6.9 and 5.5.0. See
 [limitations](docs/limitations.md#known-constraints) for which operations that still rules out.
 
-Two things check that rather than one claim in a README: `RobotParityTest` requires the
-plugin's findings to match `robot report` run inside `obolibrary/odkfull` over the same
-ontology and profile, and the plugin runs a self-check at startup whose verdict
-`tools/smoke.ps1` asserts against both installs
-([receipt](protege-plugin/tools/smoke-receipt/1.25.0.txt)). `export` was listed as blocked by
-the OWL API and never was. See [limitations](docs/limitations.md#known-constraints).
+Two things check that rather than one claim in a README. `RobotCliParityTest` and
+`RobotParityTest` run nine operations twice — once through the plugin, once as the `robot`
+command inside `obolibrary/odkfull`, which is the image a project's CI uses — and require the
+same answer: reason, measure, export, extract, diff, verify, explain, template and the report.
+And the plugin runs a self-check at startup whose verdict `tools/smoke.ps1` asserts against both
+installs ([receipt](protege-plugin/tools/smoke-receipt/1.25.0.txt)).
+
+Before 1.48.0 only the report was compared this way, and the rest rested on not throwing.
+Comparing them found four defects that a passing test suite had not: see
+[limitations](docs/limitations.md#known-constraints), which also records the one place the plugin
+and `robot validate-profile` deliberately disagree.
 
 One jar serves both — OWL API is imported from the host rather than embedded, so the
 available surface simply follows the host. On 5.5.0 the plugin explains which operations are
@@ -158,7 +163,7 @@ unavailable and why rather than failing obscurely.
 ```bash
 cd protege-plugin
 mvn clean package          # -> target/ontoboard-<version>.jar
-mvn test                   # 1151 tests (4 need Docker and skip without it)
+mvn test                   # 1161 tests (14 need Docker and skip without it)
 ```
 
 Java 8 bytecode is emitted deliberately (`maven.compiler.release=8`) so the bundle loads on

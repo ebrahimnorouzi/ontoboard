@@ -11,6 +11,7 @@ import java.util.Locale;
 import java.util.Map;
 import org.obolibrary.robot.ExportOperation;
 import org.obolibrary.robot.IOHelper;
+import org.obolibrary.robot.OptionsHelper;
 import org.obolibrary.robot.export.Table;
 import org.semanticweb.owlapi.model.OWLOntology;
 
@@ -53,6 +54,9 @@ public final class TermExport {
 
     /** The format ROBOT can produce but this bundle cannot, and the only one. */
     public static final String UNSUPPORTED_FORMAT = "xlsx";
+
+    /** ROBOT's own default separator between two values in one cell. */
+    private static final String DEFAULT_SPLIT = "|";
 
     /** YAML is rendered by ROBOT but not written by it; see {@link #formats()}. */
     private static final String YAML = "yaml";
@@ -177,12 +181,16 @@ public final class TermExport {
         private final List<String[]> rows;
         private final String format;
         private final List<String> columns;
+        private final Map<String, String> options;
 
-        Result(Table table, List<String[]> rows, String format, List<String> columns) {
+        Result(Table table, List<String[]> rows, String format, List<String> columns,
+                Map<String, String> options) {
             this.table = table;
             this.rows = Collections.unmodifiableList(rows);
             this.format = format;
             this.columns = Collections.unmodifiableList(columns);
+            this.options = Collections.unmodifiableMap(
+                    new LinkedHashMap<String, String>(options));
         }
 
         /** Every row including ROBOT's header row, so the header cannot drift from the data. */
@@ -226,12 +234,25 @@ public final class TermExport {
                     java.nio.file.Files.write(file.toPath(),
                             table.toYAML().getBytes(java.nio.charset.StandardCharsets.UTF_8));
                 } else {
-                    table.write(file.getAbsolutePath(), format);
+                    // ROBOT's own CLI entry point rather than Table.write directly: saveTable is
+                    // what robot export calls, and it reads `split` and `standalone` out of this
+                    // same option map. Calling the writer ourselves means re-deriving those two
+                    // arguments, and passing the wrong thing for one of them is exactly the defect
+                    // this replaced - the format was handed to the split parameter, so every
+                    // multi-valued cell was joined with the word "tsv" instead of a bar.
+                    ExportOperation.saveTable(table, file.getAbsolutePath(), options);
                 }
+            } catch (RobotException alreadyExplained) {
+                throw alreadyExplained;
             } catch (IOException cannotWrite) {
                 throw new RobotException("Could not write " + file.getName() + ": "
                         + cannotWrite.getMessage(), cannotWrite);
-            } catch (RuntimeException | LinkageError failure) {
+            } catch (LinkageError failure) {
+                throw new RobotException("ROBOT could not write this export as " + format + ": "
+                        + describe(failure), failure);
+            } catch (Exception failure) {
+                // saveTable declares Exception, and throws it for a format its writer has no
+                // branch for.
                 throw new RobotException("ROBOT could not write this export as " + format + ": "
                         + describe(failure), failure);
             }
@@ -273,9 +294,12 @@ public final class TermExport {
                 table.setSortColumns();
                 table.sortRows();
             }
-            List<String[]> rows = table.toList(format);
+            // The split, not the format: Table already knows its format - it was built with it -
+            // and this argument is the string ROBOT puts between two values in one cell.
+            String split = OptionsHelper.getOption(effective, OPTION_SPLIT, DEFAULT_SPLIT);
+            List<String[]> rows = table.toList(split);
             return new Result(table, rows == null ? new ArrayList<String[]>() : rows, format,
-                    wanted);
+                    wanted, effective);
         } catch (IllegalArgumentException badColumn) {
             // ROBOT's own message names the column, which is the one thing the user needs.
             throw new RobotException(badColumn.getMessage(), badColumn);

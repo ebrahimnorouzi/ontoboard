@@ -1,0 +1,137 @@
+OntoBoard 1.48.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-09-25  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 8/8  test 9/9
+  2026-09-25  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 8/8  test 9/9
+
+WHAT THIS VERSION IS
+
+Until now, exactly one of the operations this plugin offers had been checked against the ROBOT a
+project's CI actually runs: the quality report. For the other twelve the evidence was that they did
+not throw.
+
+That is a weaker claim than it looks. A wrapper that hands an option to the wrong parameter, or
+reimplements a step, or reads two of three result maps, produces output that looks entirely
+plausible and that nobody can tell is wrong by looking at it. Every test here passed, on both
+hosts, for many versions, while four such defects sat in the shipped jar.
+
+RobotCliParityTest now runs nine operations twice - once in process through the plugin, once as the
+`robot` command inside obolibrary/odkfull - over the same pizza, and requires the same answer:
+
+  reason     the axioms ELK adds
+  measure    every metric name, and its value
+  export     the table, row for row
+  extract    the module, axiom for axiom
+  diff       the text DiffOperation writes
+  verify     which checks fail, and with how many violations
+  explain    which classes are unsatisfiable, and the axioms the justification rests on
+  template   the axioms built from a template
+  report     (RobotParityTest, since 1.25.0) the violation set
+
+Each comparison passes the options the plugin's own call passes, not the ones a project's Makefile
+passes. Comparing `robot reason --exclude-tautologies structural` against a plugin call that asks
+for ROBOT's defaults would be comparing two different questions and reporting the difference as a
+defect - which is how a parity suite ends up being disabled six months later.
+
+FOUR DEFECTS IT FOUND, NONE OF WHICH THREW
+
+1. A written export joined a multi-valued cell with the string "tsv".
+
+   Table.write's second argument is the string ROBOT puts between two values in one cell, not the
+   format - Table already knows its format, it was constructed with it. The plugin passed the
+   format. So a cell with two superclasses came out as
+
+     'has base' some 'pizza base'tsv'has topping' some 'pizza topping'
+
+   where robot export writes a bar. The same mistake was in run(), so the table in the dialog had
+   it too, not only the file. The fix calls ExportOperation.saveTable - the entry point robot
+   export itself calls, which reads `split` and `standalone` out of the option map the plugin
+   already had - so there is no second place for the two arguments to be got wrong.
+
+   OPTION_SPLIT had been declared since the class was written, and never read.
+
+2. The measurements panel omitted a whole class of metrics, silently, on every ontology.
+
+   MeasureResult holds three maps: simple values, lists, and name-to-number breakdowns. The plugin
+   read two. Missing were axiom_type_count (how many of each axiom type - the most informative
+   thing measure produces), class_expression_count, namespace_entity_count,
+   namespace_axiom_count, datatypes_axiom_count, curie_map and their _incl variants.
+
+   Measured on pizza v2: the panel now shows 98 metrics where it showed 86, the twelve difference
+   being that third map. `robot measure -m all` lists eleven of the twelve for that ontology.
+   Both hosts report 60 for the smaller self-test ontology.
+
+   The class's own comment said hiding a metric "would make the panel quietly incomplete as ROBOT
+   grows". It was already incomplete when that was written.
+
+3. The set-valued metrics came out in hash order.
+
+   ROBOT collects axiom_types, constructs and datatypes_builtin with putSet, so the list it returns
+   has whatever order the set iterated in. The panel therefore reshuffled between runs on the same
+   ontology, and never matched the metrics file a build writes, because robot measure sorts them.
+   Sorted here now.
+
+4. The explanation named one class two ways at once.
+
+   The justifications are rendered with labels, so a class read "impossible pizza". The list of
+   unsatisfiable classes beside them used the IRI fragment, so the same class read
+   "ImpossiblePizza". One class, two names, one dialog. It now uses DisplayLabels.forEntity, which
+   is what the renderer three lines away already used, and what robot explain writes.
+
+ONE DISAGREEMENT, KEPT ON PURPOSE
+
+The plugin's OWL 2 DL check and `robot validate-profile --profile DL` do not agree, and should not.
+
+The OWL API adds a missing annotation-property declaration while parsing. An ontology that is
+outside DL for exactly that reason - a curator typed a property name into Protege and never
+declared it - is back inside DL by the time it has been written to a file and read again.
+validate-profile only ever sees the file, so it reports the ontology in profile. The plugin checks
+the ontology being edited, before it is saved, and reports the violation.
+
+The plugin is the more useful of the two here: catching this while it can still be fixed by hand is
+the entire point of a profile check in an editor. But a curator who runs both and gets two answers
+deserves to know which is which, so the test pins the disagreement in both directions - the plugin
+sees it live, and agrees with the command line once the file has been reloaded. If the OWL API ever
+stops repairing on load, that test fails and says so, rather than the docs going quietly stale.
+
+TWO ROBOT VERSIONS, DELIBERATELY
+
+The plugin embeds robot-core 1.9.8. obolibrary/odkfull ships ROBOT 1.9.10. Pinning both to one
+version would make the suite agree with itself and answer a question nobody asked: what a project's
+CI runs is odkfull.
+
+The cost is that the two carry different OWL API versions and render an axiom slightly differently.
+Exactly two renderings differ on these fixtures, and the suite normalises exactly those two:
+
+  - ours writes rdf:datatype="&xsd;string" on a plain literal and the newer one takes it as read,
+    which OWL 2 allows - a literal with no language tag is an xsd:string. Without normalising, every
+    label in the ontology reads as a difference and buries the real ones. This one cost an hour
+    before the two files were put side by side.
+  - one closing parenthesis in EquivalentClasses is preceded by a space in one version. The plugin
+    contributes no rendering on that path at all - it returns what DiffOperation.compare wrote into
+    its writer - so the space is not the plugin's to fix.
+
+Everything that would signal a real disagreement survives both: which axioms, how many, the sign on
+each one, and every metric value.
+
+THE SELF-CHECK GREW A CHECK, AND WHY THAT MATTERS
+
+8/8, not 7/7. The new one writes an export to a temporary file and reads the separator back out.
+
+The old export check stopped at building a table, and that gap is exactly how defect 1 shipped:
+run() was exercised in the host, save() was not, and both were wrong. The check uses the
+unsatisfiable fixture because Android has two superclasses, which is the only thing that makes a
+separator visible at all.
+
+SelfCheckTest used to find its checks by position - getChecks().get(4). Inserting a check in the
+middle silently repointed four tests at their neighbours, where they would have kept passing while
+testing the wrong thing. They look checks up by name now, and an unknown name fails with the list.
+
+VERIFIED OUTSIDE THE HOST
+
+1161 tests pass, 0 failures. Fourteen of them need Docker and were run with it: RobotParityTest (3),
+RobotCliParityTest (9) and OdkBuildTest (2). A run without Docker now says nothing at all about
+whether this plugin agrees with ROBOT, which is worth saying plainly.
+
+Pizza: v11 remains the published state; this version changes no generated output.

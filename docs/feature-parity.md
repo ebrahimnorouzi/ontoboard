@@ -75,6 +75,7 @@ individual views in a tabbed column beside the canvas, so none of this needs a t
 | Explanation / justification | ✅ | 🧩 | `explanation-workbench`, bundled |
 | Consistency checking | ✅ | 🧩 | Protégé |
 | ROBOT report | ✅ | ✅ | *ROBOT → Quality report…*, all 32 of ROBOT's rules, on both hosts. Checked against real ROBOT in `obolibrary/odkfull` and by a startup self-check in the host |
+| Agreement with the `robot` command | n/a | ✅ | Nine operations — reason, measure, export, extract, diff, verify, explain, template and the report — are run both in the plugin and as the `robot` command inside `obolibrary/odkfull` and required to give the same answer. Only the report was checked this way before 1.48.0 |
 | ROBOT commands | 🔶 7 of 24 | 🔶 6 as menu commands | measure, report, profile, transform (relax/reduce/repair/merge), extract, template |
 | OOPS! pitfall check | ✅ | ❌ | **Build.** An HTTP call to the OOPS! service |
 | OQuaRE metrics | ✅ | ❌ | **Build.** Port `quality.py` |
@@ -195,5 +196,5 @@ mature plugins is waste) or ➖ (web-application machinery with no desktop meani
   real `Y.Doc` and real sockets; the client's against a real WebSocket server; the loop guard
   against a host that re-fires its change listener the way Protégé does. What no test covers is
   "two people see each other's cursors", which needs a server, a browser and Protégé at once.
-- **No plugin UI is covered by tests.** 1151 tests cover logic; every Swing surface is verified
+- **No plugin UI is covered by tests.** 1161 tests cover logic; every Swing surface is verified
   by hand.
