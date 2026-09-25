@@ -21,6 +21,41 @@ class CanvasLayoutsTest {
     private static final String PERSON = "http://example.org/tiny#Person";
     private static final String AGENT = "http://example.org/tiny#Agent";
 
+    private static final String NOTE_ID = SchemaGraph.NOTE_ID_PREFIX + "1";
+    private static final String FRAME_ID = SchemaGraph.FRAME_ID_PREFIX + "1";
+
+    /** Two overlapping terms plus one note and one frame, all at known positions. */
+    private static SchemaGraph graphWithAnnotations() {
+        SchemaGraph graph = new SchemaGraph();
+        CanvasLayout layout = new CanvasLayout();
+        layout.nodes.put(PERSON, new CanvasLayout.NodeLayout(0, 0));
+        layout.nodes.put(AGENT, new CanvasLayout.NodeLayout(0, 0));
+
+        CanvasLayout.NoteLayout note = new CanvasLayout.NoteLayout();
+        note.id = NOTE_ID;
+        note.text = "check this with Bob";
+        note.x = 900;
+        note.y = 40;
+        layout.notes.add(note);
+
+        CanvasLayout.FrameLayout frame = new CanvasLayout.FrameLayout();
+        frame.id = FRAME_ID;
+        frame.label = "Toppings";
+        frame.x = 500;
+        frame.y = 500;
+        frame.w = 340;
+        frame.h = 240;
+        layout.frames.add(frame);
+
+        graph.render(new Projection(Arrays.asList(
+                new CanvasNode(PERSON, NodeKind.CLASS, "Person"),
+                new CanvasNode(AGENT, NodeKind.CLASS, "Agent")),
+                Collections.singletonList(
+                        new CanvasEdge("sub|1", PERSON, AGENT, "", CanvasEdge.Kind.SUBCLASS))),
+                layout);
+        return graph;
+    }
+
     private static SchemaGraph stackedGraph() {
         SchemaGraph graph = new SchemaGraph();
         CanvasLayout layout = new CanvasLayout();
@@ -34,6 +69,48 @@ class CanvasLayoutsTest {
                         new CanvasEdge("sub|1", PERSON, AGENT, "", CanvasEdge.Kind.SUBCLASS))),
                 layout);
         return graph;
+    }
+
+    /**
+     * A layout arranges terms and leaves annotations alone.
+     *
+     * <p>A frame is a rectangle drawn round a group of classes. Laid out as if it were a term it
+     * lands in a cell of its own and encloses nothing, which destroys the only thing it is for; a
+     * note pinned beside the class it comments on ends up in a row among the classes. Both happened
+     * for every algorithm, because the library layouts are handed the default parent and
+     * {@code applyGrid} walked all of its children.
+     */
+    @Test
+    void noAlgorithmMovesAStickyNoteOrAFrame() {
+        for (CanvasLayouts.Algorithm algorithm : CanvasLayouts.Algorithm.values()) {
+            SchemaGraph graph = graphWithAnnotations();
+            mxCell note = (mxCell) graph.getCellForId(NOTE_ID);
+            mxCell frame = (mxCell) graph.getCellForId(FRAME_ID);
+            double noteX = note.getGeometry().getX();
+            double noteY = note.getGeometry().getY();
+            double frameW = frame.getGeometry().getWidth();
+
+            CanvasLayouts.apply(graph, algorithm);
+
+            assertEquals(noteX, note.getGeometry().getX(), 0.001,
+                    algorithm + " moved a sticky note");
+            assertEquals(noteY, note.getGeometry().getY(), 0.001,
+                    algorithm + " moved a sticky note");
+            assertEquals(frameW, frame.getGeometry().getWidth(), 0.001,
+                    algorithm + " resized a frame");
+        }
+    }
+
+    /** And it still arranges the terms, or the exclusion has thrown out the point. */
+    @Test
+    void theTermsAreStillArrangedWhenAnnotationsArePresent() {
+        SchemaGraph graph = graphWithAnnotations();
+        CanvasLayouts.apply(graph, CanvasLayouts.Algorithm.HIERARCHICAL);
+
+        mxCell person = (mxCell) graph.getCellForId(PERSON);
+        mxCell agent = (mxCell) graph.getCellForId(AGENT);
+        assertNotEquals(person.getGeometry().getY(), agent.getGeometry().getY(),
+                "the terms must still be laid out with a note and a frame on the board");
     }
 
     @Test

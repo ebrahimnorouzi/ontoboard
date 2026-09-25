@@ -1,0 +1,108 @@
+OntoBoard 1.51.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-09-25  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 8/8  test 9/9
+  2026-09-25  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 8/8  test 9/9
+
+WHERE THESE CAME FROM
+
+1.50.0 made live collaboration work for the first time. That immediately made a class of defect
+reachable that had been dormant since the feature shipped, because nothing had ever got as far as
+exchanging an operation between two peers. An audit of the collaboration stack, the canvas wiring and
+the cross-language protocol produced 122 findings; three of the high-severity ones were independently
+corroborated by the fixes already made in 1.50.0, which is some evidence the rest are worth reading.
+
+Three are fixed here. Each was confirmed by reading the code before being believed, and each is
+pinned by a test confirmed to fail against the unfixed version.
+
+A caveat on the audit itself, so nobody over-reads it: the adversarial verification stage was cut
+short by a session limit, so 47 of the findings are unverified leads rather than confirmed defects.
+Absence from a "confirmed" list means not checked, not disproven. The three below were verified by
+hand here.
+
+1. RENAMING ONE LANGUAGE'S LABEL DELETED ALL THE OTHERS
+
+The worst of the three, because it is data loss and it is invisible for months.
+
+A label change arrived as "this term's label is now X", and relabel() removed *every* rdfs:label on
+the term before adding the new one. So on any ontology with translations - which is most OBO
+ontologies of any size - a curator renaming the English label silently deleted the German and French
+labels on every other peer, and the operation carried nothing to put them back from.
+
+Measured while pinning it: three labels on one term collapse to one at the receiving peer, before any
+rename happens at all, because each arriving label wiped the previous one.
+
+The operation now carries the language tag beside the text, and a peer replaces only the label in
+that language. An operation with no tag is taken as being about the untagged label, which is what an
+older peer means by it - so an old peer talking to a new one loses nothing, and the new one stops
+destroying what it was never told about. The extra field is invisible to the web client, which reads
+updates.label and ignores what it does not recognise.
+
+2. A SESSION FOLLOWED PROTEGE'S ACTIVE ONTOLOGY INSTEAD OF ITS OWN
+
+Two faces of one mistake: the session resolved "the ontology" afresh on every operation, from
+host.activeOntology().
+
+  - Outbound: Protege reports every loaded ontology's changes through one listener, and an ODK
+    project has several loaded at once - the edit file plus every import module under imports/. So
+    touching an import module published somebody else's vocabulary onto the board, and every peer
+    applied it to their own edit file.
+  - Inbound: switching the active ontology while connected redirected peers' edits into whatever file
+    was now in front of the user.
+
+A board belongs to an ontology - that is the entire basis of the peer-mismatch warning - so a session
+is now bound to one when it starts. It publishes only that ontology's changes, and applies what
+arrives only to it. Changes to another ontology are skipped silently rather than counted as
+unshareable: there is nothing wrong with the axiom, it simply is not that board's business, and a
+count would send the user hunting for a protocol limitation that is not there.
+
+The canvas also ends a session when the user switches ontology, and says why. Nothing is corrupted by
+staying connected now that both directions are checked - but a toolbar reading "Collaborating" over an
+ontology that is not being shared says the opposite of the truth.
+
+3. THE DOCUMENTED PORT PROTECTION DID NOT EXIST
+
+docs/collaboration.md has promised in two places, since the feature shipped, that the plugin refuses
+a ws://...:1234 address - the browser's Yjs endpoint. Nothing checked the port. The failure it
+claimed to prevent is the worst kind: a Yjs endpoint accepts the socket and then never answers a word
+of JSON, so the plugin sits on "Connecting..." indefinitely with nothing in any log to explain it.
+
+Made true rather than deleted, because the mistake is easy - a 4 typed for a 5 - and the refusal now
+names the fix. Matched on the conventional port alone: a team that has deliberately moved the bridge
+to 1234 is not helped by being refused, but that arrangement means moving the browser endpoint too and
+is rare enough not to design for.
+
+Worth recording that this one was in a document I had just extended: the pizza project's
+COLLABORATION.md, written in 1.50.0, repeated the claim. Repeating a claim from the docs is how a
+false one survives a rewrite.
+
+WHAT IS PINNED NOW
+
+CollabLiveTest is 8 tests, all against the shipped server over a real socket:
+
+  a peer can join; an axiom crosses; a label crosses; a rename replaces rather than duplicates;
+  renaming one language leaves the others alone; an editorial note crosses; a peer never receives its
+  own edits; an edit to another ontology never reaches the board; two peers on different ontologies
+  are warned and two on the same one are not.
+
+Plus collab/__tests__/server-boot.test.mjs, 4 tests, from the JavaScript side.
+
+1169 tests, 0 failures, 1 skipped. 45 JavaScript tests pass.
+
+STILL OPEN FROM THE AUDIT
+
+Named rather than quietly left, and none of it verified beyond one finder's reading:
+
+  - No catch-up on join or reconnect: a peer permanently misses every edit made while it was away.
+    The shared log is in the Y.Doc and nothing replays it. This is the largest remaining gap.
+  - Two peers renaming the same term converge on whichever arrived last, with no conflict detection.
+  - A ghost session if the user disconnects during a slow connect handshake: Java-WebSocket's close()
+    is a no-op before its write thread exists, so a socket that connects afterwards still sends hello
+    and starts applying peers' edits. Verified in depth by one verifier that did complete.
+  - Non-label annotation values lose their datatype and language tag on the wire.
+  - Axiom annotations are dropped, and retracting an annotated axiom silently does nothing.
+  - Canvas: Arrange never saves the layout it produces, and moving a sticky note or frame is lost on
+    the next refresh.
+  - Web-canvas edges arriving from a browser become existential restrictions on rdfs:subClassOf and
+    rdf:type, which is nonsense as OWL.

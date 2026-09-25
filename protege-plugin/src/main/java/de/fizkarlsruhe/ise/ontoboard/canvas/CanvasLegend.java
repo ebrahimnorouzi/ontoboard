@@ -23,6 +23,8 @@ import java.util.Set;
  * and reading them back would mean constructing an mxGraph - which cannot be done in a headless
  * test.
  */
+import java.util.Map;
+import java.util.TreeMap;
 public final class CanvasLegend {
 
     /**
@@ -101,6 +103,69 @@ public final class CanvasLegend {
         public String toString() {
             return label;
         }
+    }
+
+    /**
+     * One namespace and the colour this board gave it.
+     *
+     * <p>Deliberately not an {@link Entry}. An Entry names a style in {@link SchemaStyles} and
+     * {@code CanvasLegendTest} asserts that every one of them exists in the stylesheet and that its
+     * colours match it. A namespace colour is nothing of the kind: it is assigned per board by
+     * {@link PrefixColours} and applied as an inline {@code strokeColor} override, so it has no
+     * stylesheet entry to match and putting it in that list would have to weaken the test that keeps
+     * the rest honest.
+     */
+    public static final class Namespace {
+        private final String prefix;
+        private final String colour;
+
+        Namespace(String prefix, String colour) {
+            this.prefix = prefix;
+            this.colour = colour;
+        }
+
+        /** The namespace, as the board knows it - a prefix, or the IRI when there is no prefix. */
+        public String getPrefix() {
+            return prefix;
+        }
+
+        /** {@code #RRGGBB}. */
+        public String getColour() {
+            return colour;
+        }
+
+        @Override
+        public String toString() {
+            return prefix + " " + colour;
+        }
+    }
+
+    /**
+     * The namespaces on this board and their colours, in a stable order.
+     *
+     * <p>The reason this exists: the canvas outlines every node in a colour derived from its
+     * namespace, and the legend said nothing about it. So a board with two vocabularies showed
+     * purple-outlined boxes beside a legend whose only purple swatch was "Individual", and the
+     * reasonable reading - that purple meant individual - was wrong. A key that omits the channel
+     * carrying the most information is worse than no key, because it invites a confident
+     * misreading.
+     *
+     * <p>Sorted by prefix so the same board produces the same key twice running; a map's iteration
+     * order would not.
+     */
+    public static List<Namespace> namespaces(Map<String, String> prefixColours) {
+        List<Namespace> rows = new ArrayList<Namespace>();
+        if (prefixColours == null) {
+            return rows;
+        }
+        for (Map.Entry<String, String> assigned
+                : new TreeMap<String, String>(prefixColours).entrySet()) {
+            if (assigned.getKey() != null && assigned.getValue() != null
+                    && !assigned.getKey().trim().isEmpty()) {
+                rows.add(new Namespace(assigned.getKey(), assigned.getValue()));
+            }
+        }
+        return rows;
     }
 
     private CanvasLegend() {

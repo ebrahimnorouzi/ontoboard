@@ -399,6 +399,16 @@ public final class OperationMapper {
         String label = adding ? literalText(axiom.getValue()) : shortForm(subject.toString());
         Map<String, Object> updates = new LinkedHashMap<String, Object>();
         updates.put("label", label);
+        // The language tag travels beside the text, and has to. Without it a peer cannot tell
+        // which of several labels is being replaced, and the only safe thing it can do is replace
+        // all of them - which is what this used to make it do, deleting every other language on the
+        // term. An extra field rather than a new operation type: the web client reads
+        // updates.label and ignores what it does not know, so this is invisible to it and to any
+        // older plugin, both of which then behave exactly as they did before.
+        String language = literalLanguage(axiom.getValue());
+        if (!language.isEmpty()) {
+            updates.put("lang", language);
+        }
         Map<String, Object> data = new LinkedHashMap<String, Object>();
         data.put("iri", subject.toString());
         data.put("updates", updates);
@@ -752,6 +762,20 @@ public final class OperationMapper {
         return value == null ? "" : value.toString();
     }
 
+    /**
+     * The language tag on an annotation value, or empty when it has none.
+     *
+     * <p>Empty covers both a plain literal and an {@code xsd:string} one, which OWL 2 treats as the
+     * same thing, and an IRI value - none of which is in any language.
+     */
+    private static String literalLanguage(org.semanticweb.owlapi.model.OWLAnnotationValue value) {
+        if (value instanceof OWLLiteral) {
+            String tag = ((OWLLiteral) value).getLang();
+            return tag == null ? "" : tag.trim();
+        }
+        return "";
+    }
+
     private static List<OWLOntologyChange> relabel(OWLOntology ontology, OWLDataFactory factory,
             Map<String, Object> data) {
         String iri = text(data, "iri");
@@ -761,9 +785,12 @@ public final class OperationMapper {
         }
         Object updates = data.get("updates");
         String label = null;
+        String language = "";
         if (updates instanceof Map) {
             Object value = ((Map<?, ?>) updates).get("label");
             label = value == null ? null : String.valueOf(value);
+            Object tag = ((Map<?, ?>) updates).get("lang");
+            language = tag == null ? "" : String.valueOf(tag).trim();
         }
         if (label == null) {
             // An update that changes something other than the label - a colour, a position.
@@ -771,13 +798,22 @@ public final class OperationMapper {
             return changes;
         }
         IRI subject = IRI.create(iri);
-        for (OWLAnnotationAssertionAxiom existing : ontology.getAnnotationAssertionAxioms(subject)) {
-            if (RDFS_LABEL.equals(existing.getProperty().getIRI())) {
+        // Only the label in the same language as the one that changed. Removing every rdfs:label
+        // was silent data loss on any ontology with more than one: a curator renaming the English
+        // label of a term deleted its German and French labels on every other peer, and there was
+        // nothing in the operation to put them back with. An operation carrying no language is
+        // taken as being about the untagged label, which is what an older peer means by it.
+        for (OWLAnnotationAssertionAxiom existing
+                : ontology.getAnnotationAssertionAxioms(subject)) {
+            if (RDFS_LABEL.equals(existing.getProperty().getIRI())
+                    && language.equalsIgnoreCase(literalLanguage(existing.getValue()))) {
                 changes.add(new RemoveAxiom(ontology, existing));
             }
         }
         addIfAbsent(changes, ontology, factory.getOWLAnnotationAssertionAxiom(
-                factory.getRDFSLabel(), subject, factory.getOWLLiteral(label)));
+                factory.getRDFSLabel(), subject,
+                language.isEmpty() ? factory.getOWLLiteral(label)
+                        : factory.getOWLLiteral(label, language)));
         return changes;
     }
 
