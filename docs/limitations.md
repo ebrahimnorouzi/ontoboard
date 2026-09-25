@@ -65,6 +65,107 @@ The plugin is early. These exist in the web application but not yet here:
   the same profile and requires an identical violation set — 7/7 rows on `fixture-tiny`, 21/21
   on pizza v2. And `OntoBoardStartup` runs `SelfCheck` in the host at startup, which
   `tools/smoke.ps1` asserts; the 1.25.0 receipt records `PASS 4/4` on **both** installs.
+- **Every operation is now compared against the real command line, not just the report.** Until
+  1.48.0 `report` was the only one. The evidence for the rest was that they did not throw, which is
+  weaker than it sounds: a wrapper that passes an option in the wrong place produces plausible
+  output that nobody can tell is wrong.
+
+  `RobotCliParityTest` runs nine operations twice — once in process through the plugin, once as the
+  `robot` command a project's CI actually runs in `obolibrary/odkfull` — over the same pizza, and
+  requires the answers to match: `reason` (the inferred axioms), `measure` (every metric name and
+  value), `export` (the table, row for row), `extract` (the module, axiom for axiom), `diff` (the
+  text), `verify` (which checks fail and with how many violations), `explain` (which classes, and
+  the axioms the justification rests on) and `template` (the axioms built).
+
+  Each comparison passes the options the plugin's own call passes, not the ones a Makefile passes —
+  comparing `robot reason --exclude-tautologies` against a plugin call that asks for ROBOT's
+  defaults would be comparing two different questions and reporting the difference as a defect.
+
+  Doing this found four real defects, none of which threw: a written export joined a multi-valued
+  cell with the string `tsv` instead of a bar, because the format name was passed where ROBOT wants
+  the separator; the measurements panel silently omitted a whole class of metrics, including the
+  axiom-type breakdown, because only two of `MeasureResult`'s three maps were read — twelve of the
+  ninety-eight it reports for pizza v2; the set-valued metrics came
+  out in hash order, so the panel reshuffled between runs and never matched a build's metrics file;
+  and the explanation named one class two ways at once.
+
+  The suite deliberately compares two ROBOT versions: the plugin embeds robot-core 1.9.8 and
+  `odkfull` ships 1.9.10. Pinning both to one version would make it agree with itself and answer a
+  question nobody asked, since what a project's CI runs is `odkfull`. The cost is that their OWL API
+  versions render an axiom slightly differently — an explicit `^^xsd:string` on a plain literal, and
+  a space before one closing parenthesis — and the suite normalises exactly those two renderings and
+  nothing else.
+- **Live collaboration did not work at all before 1.50.0, and its tests all passed.** Worth reading
+  as a method failure rather than three bugs, because the method is reusable and the bugs are not.
+
+  The plugin's collaboration tests drive the client against a fake transport. The server's tests
+  drive the bridge against a document loader they supply themselves. Both suites are thorough - 130
+  Java tests and 41 JavaScript ones - and between them they establish that each side is
+  self-consistent. Neither can say anything about the join, and the join was where all three defects
+  were:
+
+  1. `server.mjs` called `openDirectConnection` on the `Server` wrapper rather than on the
+     `Hocuspocus` instance it holds. Resolving a board threw, the bridge answered "could not open
+     board" and closed the socket, so **no Protégé peer could join any board in any release**.
+  2. `CollabMessages` flattened nested payload fields to strings, with a comment saying nested
+     structures were "stringified rather than lost". They were lost. A label travels as
+     `data.updates.label`, the code applying it asks `updates instanceof Map`, and a String is not a
+     Map - so **renaming or labelling a term never reached a peer**, silently. Outbound was fine,
+     which is why no round trip inside one language could show it.
+  3. `livePeers` in the bridge left the `ontology` field out of the payload it broadcast, though the
+     connection record carried it. So every peer's ontology arrived empty and
+     `CollabSession.peerOntologyWarning` - the warning that two people on a colliding board id are
+     editing unrelated ontologies - **could never fire**.
+
+  All three are now pinned by tests that cross the socket: `CollabLiveTest` starts the shipped
+  server, connects two sessions and requires edits, labels, renames, notes and the mismatch warning
+  to arrive; `collab/__tests__/server-boot.test.mjs` does the same from the JavaScript side. Each was
+  confirmed to fail against the unfixed code before being kept.
+
+  The lesson, stated so it outlives the fix: **a test that injects a dependency cannot check the
+  wiring.** Where two implementations meet, one test has to run both.
+- **Live mode cannot carry every axiom, and the number is measured.** Offering every axiom in pizza
+  v5 to a live session, 96 of 141 travel and 45 do not. `SubClassOf`, class and individual
+  declarations, `rdfs:label` including renames, `ClassAssertion` and every annotation cross.
+  `EquivalentClasses`, `DisjointClasses`, domain, range, property chains, `owl:hasKey`, property
+  declarations and every `ObjectPropertyAssertion` do not, because the shared vocabulary has
+  eighteen operation types fixed by the web client and an axiom with no operation cannot cross.
+
+  The plugin reports this rather than hiding it - the toolbar shows `N changes not shared` with the
+  reason in its tooltip. The practical consequence is worth saying plainly: live mode is for drawing
+  a hierarchy, naming terms and leaving notes. It is not a way to build a release, because most of
+  the logical content is in the second list. `reports/v5/collaboration.md` in the pizza project
+  carries the per-axiom-type table.
+- **Reason previews what the build will write, which it did not until 1.49.0.** The comparison
+  above is against the options each call passes, and for `reason` that exposed something the option
+  check could not: the plugin was passing ROBOT's bare defaults while the Makefile OntoBoard itself
+  generates passes `--equivalent-classes-allowed asserted-only --exclude-tautologies structural`.
+
+  Both calls were running ROBOT correctly. They were asking different questions. On pizza v2 the
+  preview showed seven new axioms where `make reason` writes two, the other five being
+  `SubClassOf owl:Thing` tautologies that the build drops and that were never going to reach a
+  release. A curator reviewing inferences before cutting one was reading five lines of noise and
+  might reasonably have concluded the ontology said more than it does.
+
+  `RobotTransform.reasonOptions()` now holds those two options, `OdkScaffold` builds the Makefile's
+  flags from the same constants, and the parity test runs the command line with them - so the
+  preview, the generated build and the test cannot drift apart without one of them failing.
+
+  Worth noting what this says about the older tests: not one of them failed when this changed. The
+  tautologies were in the shipped output for twenty-four versions and nothing had ever pinned them
+  either way.
+- **The plugin's OWL 2 DL check and `robot validate-profile` disagree, on purpose.** The OWL API
+  adds a missing annotation-property declaration while parsing. So an ontology that is outside DL
+  for exactly that reason — a curator typed a property name into Protégé and never declared it — is
+  inside DL again by the time it has been written and read back. `robot validate-profile` only ever
+  sees the file and reports it in profile; the plugin checks the ontology being edited and reports
+  the violation.
+
+  The plugin is the more useful of the two here, because the point of a profile check in an editor
+  is to catch this while it can still be fixed by hand. But a curator who runs both and gets two
+  answers deserves to know which is which, so `RobotCliParityTest` pins the disagreement rather than
+  leaving it as a surprise — and so nobody later makes the plugin agree with the command line by
+  deleting the check that does the work.
 - **The Rio barrier applies to both hosts, and it is an OSGi barrier rather than a version
   one.** This was described here for five versions as a 5.5.0 problem, and that was wrong.
 
@@ -125,12 +226,14 @@ The plugin is early. These exist in the web application but not yet here:
 
 ### Not covered by tests
 
-1151 tests cover projection, axiom construction, layout persistence, ODK scaffolding, the
-report's rule execution and the OSGi configuration. Two of them reach outside the JVM:
-`RobotParityTest` compares the report against real ROBOT in `obolibrary/odkfull`, and
+1167 tests cover projection, axiom construction, layout persistence, ODK scaffolding, the
+report's rule execution and the OSGi configuration. Fourteen of them reach outside the JVM:
+`RobotParityTest` compares the report against real ROBOT in `obolibrary/odkfull`,
+`RobotCliParityTest` compares nine more operations against the same image's `robot` command, and
 `OdkBuildTest` runs a freshly scaffolded project's own `make test` and `make prepare_release` in
-that image. Both are *skipped*, not failed, where Docker is absent — so a green run on a machine
-without Docker proves less than it looks.
+that image. All are *skipped*, not failed, where Docker is absent — so a green run on a machine
+without Docker proves considerably less than it looks, and now says nothing at all about whether
+this plugin agrees with ROBOT.
 
 `OdkBuildTest` earns its keep: three defects in the generated build had survived a 30-assertion
 test class and were found the first time anyone executed it — a `--` inside an XML comment in the
@@ -230,7 +333,12 @@ axioms, bulk IRI renaming for moving a namespace, and SPARQL results written as 
 repository rather than kept as a blob, a mirror so a rebuild works offline, a diff against the published release, and re-rendering an
 existing project's generated files so a generator fix reaches projects that already exist
 (1.35.0-1.45.0); an OWL 2 DL profile gate in the generated build, and a collaboration fix so an
-incoming annotation declares its property rather than pushing the ontology outside DL (1.46.0); a generated ODK
+incoming annotation declares its property rather than pushing the ontology outside DL (1.46.0);
+nine operations compared against the real `robot` command rather than only the report, and the four
+defects that comparison found (1.48.0); a Reason preview that passes the same options as the
+generated build, so it shows what a release will contain (1.49.0); live collaboration verified over a
+real socket for the first time, and the three defects that had made it inert in every release
+(1.50.0); a generated ODK
 build that honours its own catalog, rejects equivalences nobody asserted, and gates a release on
 the same checks CI runs (1.28.0).
 

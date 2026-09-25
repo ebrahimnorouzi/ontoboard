@@ -140,7 +140,11 @@ public final class Explanations {
 
             List<String> unsatisfiable = new ArrayList<String>();
             for (OWLClass bad : reasoner.getUnsatisfiableClasses().getEntitiesMinusBottom()) {
-                unsatisfiable.add(DisplayLabels.shortNameOf(bad.getIRI()));
+                // forEntity, not shortNameOf: the justifications beside this list are rendered
+                // with labels, so naming the same class ImpossiblePizza here and "impossible
+                // pizza" three lines down made one class look like two. It is also the name
+                // robot explain writes.
+                unsatisfiable.add(DisplayLabels.forEntity(ontology, bad));
             }
             Collections.sort(unsatisfiable);
             if (unsatisfiable.isEmpty()) {

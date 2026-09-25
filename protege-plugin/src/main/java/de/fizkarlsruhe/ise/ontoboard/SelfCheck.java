@@ -7,7 +7,11 @@ import de.fizkarlsruhe.ise.ontoboard.robot.Reasoners;
 import de.fizkarlsruhe.ise.ontoboard.robot.ReportQueries;
 import de.fizkarlsruhe.ise.ontoboard.robot.RuleRunner;
 import de.fizkarlsruhe.ise.ontoboard.robot.TermExport;
+import java.io.File;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -201,6 +205,21 @@ public final class SelfCheck {
         }
 
         try {
+            // And the writing, which is a different path from the building - ExportOperation
+            // .saveTable rather than createExportTable. Until 1.48.0 this check stopped at building
+            // a table, and the bug it would have caught is the one that shipped: the format name
+            // was passed where ROBOT wants the string that separates two values in one cell, so
+            // every multi-valued cell in a written export read "pizza basetsvpizza topping".
+            //
+            // The fixture is the unsatisfiable one because Android has two superclasses, which is
+            // the only thing that makes the separator visible at all.
+            checks.add(exportSeparatorCheck());
+        } catch (Exception | LinkageError cannot) {
+            checks.add(new Check("robot export writes ROBOT's cell separator", false,
+                    describe(cannot)));
+        }
+
+        try {
             // owlexplanation is an embedded jar, and Protege *exports* the package one of its
             // classes lives in - the two-copies-one-package situation that resolves differently
             // depending on what else is installed. Explanations deliberately avoids the class in
@@ -310,6 +329,54 @@ public final class SelfCheck {
      * <p>Disjointness rather than negation, so ELK can do it: ELK is much cheaper to start than
      * HermiT, and this runs every time a user opens an ontology.
      */
+    /**
+     * Writes an export whose cell holds two values, and reads the separator back out of the file.
+     *
+     * @throws Exception if the export cannot be built or written, which the caller reports as the
+     *     failed check
+     */
+    private static Check exportSeparatorCheck() throws Exception {
+        String name = "robot export writes ROBOT's cell separator";
+        List<String> columns = Arrays.asList("IRI", "SubClass Of");
+        TermExport.Result export = TermExport.run(unsatisfiableOntology(), columns,
+                TermExport.defaultOptions());
+        File file = File.createTempFile("ontoboard-self-check-", ".tsv");
+        try {
+            export.save(file);
+            String written = new String(Files.readAllBytes(file.toPath()),
+                    StandardCharsets.UTF_8);
+            // The cell holds whatever this fixture's entities render as - it has no labels, so full
+            // IRIs - and what matters is not the spelling but that the two values are separated by
+            // ROBOT's bar and by nothing else. Asserting on the names would break the moment the
+            // fixture gained a label, which is not what this check is about.
+            String cell = twoSuperclassCell(written);
+            String[] values = cell.split("\\|", -1);
+            boolean joinedWithABar = values.length == 2
+                    && !values[0].trim().isEmpty() && !values[1].trim().isEmpty();
+            return new Check(name, joinedWithABar,
+                    joinedWithABar
+                            ? "a two-valued cell is joined with a bar, as robot export joins it"
+                            : "a two-valued cell is not joined with a bar, so Export terms... "
+                                    + "writes files a consumer cannot split. The cell was \""
+                                    + cell + "\" in:\n" + written);
+        } finally {
+            if (!file.delete()) {
+                file.deleteOnExit();
+            }
+        }
+    }
+
+    /** The SubClass Of cell of the one row that has two superclasses. */
+    private static String twoSuperclassCell(String tsv) {
+        for (String line : tsv.split("\\r?\\n")) {
+            String[] cells = line.split("\t", -1);
+            if (cells.length == 2 && cells[0].endsWith("#Android")) {
+                return cells[1];
+            }
+        }
+        return "";
+    }
+
     private static OWLOntology unsatisfiableOntology() throws Exception {
         OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
         OWLDataFactory factory = manager.getOWLDataFactory();

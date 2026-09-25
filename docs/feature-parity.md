@@ -75,6 +75,7 @@ individual views in a tabbed column beside the canvas, so none of this needs a t
 | Explanation / justification | ✅ | 🧩 | `explanation-workbench`, bundled |
 | Consistency checking | ✅ | 🧩 | Protégé |
 | ROBOT report | ✅ | ✅ | *ROBOT → Quality report…*, all 32 of ROBOT's rules, on both hosts. Checked against real ROBOT in `obolibrary/odkfull` and by a startup self-check in the host |
+| Agreement with the `robot` command | n/a | ✅ | Nine operations — reason, measure, export, extract, diff, verify, explain, template and the report — are run both in the plugin and as the `robot` command inside `obolibrary/odkfull` and required to give the same answer. Only the report was checked this way before 1.48.0 |
 | ROBOT commands | 🔶 7 of 24 | 🔶 6 as menu commands | measure, report, profile, transform (relax/reduce/repair/merge), extract, template |
 | OOPS! pitfall check | ✅ | ❌ | **Build.** An HTTP call to the OOPS! service |
 | OQuaRE metrics | ✅ | ❌ | **Build.** Port `quality.py` |
@@ -125,8 +126,9 @@ individual views in a tabbed column beside the canvas, so none of this needs a t
 
 | Feature | Web app | Plugin | Assessment |
 |---|---|---|---|
-| Real-time multi-user editing | ✅ | ✅ | Against a server the team runs; see [collaboration](collaboration.md) |
+| Real-time multi-user editing | ✅ | ✅ | Against a server the team runs; see [collaboration](collaboration.md). Verified over a real socket since 1.50.0 - and inert in every release before it |
 | Cursor sharing | ✅ | ✅ | Graph-space, so a cursor lands on the same entity at any zoom |
+| Warning when peers edit different ontologies | ➖ | ✅ | Two people whose board id collides otherwise apply each other's axioms in silence. The warning names the peer. It could never fire before 1.50.0 |
 | Semantic merge engine | ✅ | ✅* | *Reused server-side rather than reimplemented in Java — deliberate |
 | Entity locking | ✅ | ❌ | **Build.** Advisory in both |
 | Comments, @mentions | ✅ | 🔶 | Attributed editor and curator notes ship, and *Notes → Discussion link…* points at the issue. No reply threads, no @mentions |
@@ -178,7 +180,7 @@ describe a plugin several releases behind the one being downloaded.
 | 4 | **Quality** — OOPS!, OQuaRE | Rounds out the report view |
 | 5 | **Widoco, export formats, prefix editing** | Useful, not blocking |
 | 6 | **Entity locking, threaded comments** | After live collaboration has been used in anger |
-| 7 | **Collaboration vocabulary** | The nine axiom kinds the live protocol cannot carry |
+| 7 | **Collaboration vocabulary** | Measured on pizza v5: 45 of 141 axioms cannot travel - every `EquivalentClasses`, `DisjointClasses`, domain, range, property chain and `ObjectPropertyAssertion`, and property declarations. See `reports/v5/collaboration.md` in the pizza project for the table |
 
 **Deliberately not building:** anything marked 🧩 (Protégé already provides it — duplicating
 mature plugins is waste) or ➖ (web-application machinery with no desktop meaning).
@@ -191,9 +193,17 @@ mature plugins is waste) or ➖ (web-application machinery with no desktop meani
   was wrong three times over: the report failed on *both* hosts and for an OSGi reason, export
   has no RDF-layer dependency at all, and SPARQL query is not implemented, so it cannot fail.
   What the OWL API version does still rule out is listed in [limitations](limitations.md).
-- **Collaboration is verified in pieces, not end to end.** The bridge's side is proved against a
-  real `Y.Doc` and real sockets; the client's against a real WebSocket server; the loop guard
-  against a host that re-fires its change listener the way Protégé does. What no test covers is
-  "two people see each other's cursors", which needs a server, a browser and Protégé at once.
-- **No plugin UI is covered by tests.** 1151 tests cover logic; every Swing surface is verified
+- **Collaboration is verified end to end as of 1.50.0, and was entirely broken before it.** It used
+  to be verified "in pieces, not end to end" - the bridge against a real `Y.Doc`, the client against
+  a real WebSocket server, the loop guard against a host that re-fires its change listener. Every
+  piece passed. The feature did not work at all: no peer could join any board, because
+  `server.mjs` resolved a board on the wrong object and the bridge refused every connection.
+
+  Two pieces that each pass can still be joined together wrongly, and neither piece's tests can see
+  it - the bridge's tests inject their own document loader, the plugin's tests inject their own
+  transport, so the line between them was never executed. `CollabLiveTest` (6 tests) and
+  `collab/__tests__/server-boot.test.mjs` (4) now start the shipped server and speak to it over a
+  socket, in both languages. What is still not covered is a *browser* and Protégé at once; Protégé
+  to Protégé through the real server is covered.
+- **No plugin UI is covered by tests.** 1167 tests cover logic; every Swing surface is verified
   by hand.

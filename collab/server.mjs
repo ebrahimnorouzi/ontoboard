@@ -75,7 +75,14 @@ startBridge({
   port: BRIDGE_PORT,
   secret: SECRET_KEY,
   getDoc: async (board) => {
-    const connection = await server.openDirectConnection(board);
+    // server.hocuspocus, not server. `openDirectConnection` is a method of the Hocuspocus class;
+    // `Server` is a thin wrapper that holds one as `this.hocuspocus` and does not re-export it.
+    // Calling it on the wrapper threw "server.openDirectConnection is not a function" for every
+    // board, the bridge reported that back as "could not open board" and closed the socket, and so
+    // no Protege peer could ever join a session - the feature was inert from the first release that
+    // shipped this line. Nothing caught it because the bridge's own tests inject their own getDoc
+    // and never load server.mjs.
+    const connection = await server.hocuspocus.openDirectConnection(board);
     return connection.document;
   },
 });

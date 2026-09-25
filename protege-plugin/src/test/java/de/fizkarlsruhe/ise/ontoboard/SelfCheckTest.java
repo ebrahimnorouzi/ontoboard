@@ -3,6 +3,7 @@ package de.fizkarlsruhe.ise.ontoboard;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import org.junit.jupiter.api.Test;
 
@@ -21,7 +22,7 @@ class SelfCheckTest {
     void everyCheckPassesOnTheClasspath() {
         SelfCheck.Result result = SelfCheck.run();
 
-        assertEquals(7, result.getChecks().size(), "expected seven checks: " + result.getChecks());
+        assertEquals(8, result.getChecks().size(), "expected eight checks: " + result.getChecks());
         assertTrue(result.isPassed(), "the self-check must pass where the resources are reachable, "
                 + "otherwise it cannot distinguish a bundle problem from its own bug: "
                 + result.getChecks());
@@ -30,7 +31,7 @@ class SelfCheckTest {
     /** The rule count is the check most likely to drift, so it is stated and asserted. */
     @Test
     void theProfileCheckCountsRobotsOwnRules() {
-        SelfCheck.Check profile = SelfCheck.run().getChecks().get(0);
+        SelfCheck.Check profile = checkNamed("robot report profile readable");
 
         assertTrue(profile.isPassed(), profile.toString());
         assertTrue(profile.getDetail().startsWith(SelfCheck.EXPECTED_RULES + " rules"),
@@ -41,16 +42,32 @@ class SelfCheckTest {
     /** The export must produce rows in the host, where POI and IOHelper could fail and nowhere else. */
     @Test
     void theExportCheckProducesTerms() {
-        SelfCheck.Check export = SelfCheck.run().getChecks().get(4);
+        SelfCheck.Check export = checkNamed("robot export runs end to end");
 
         assertTrue(export.isPassed(), export.toString());
         assertFalse(export.getDetail().startsWith("0 terms"), export.getDetail());
     }
 
+    /**
+     * Writing an export is a different path from building one, and it had its own bug.
+     *
+     * <p>Until 1.48.0 the export check stopped at building a table. The writing was handed ROBOT's
+     * format name where ROBOT wants the string that separates two values in one cell, so a
+     * multi-valued cell came out as {@code pizza basetsvpizza topping} - in the written file and in
+     * the dialog. Nothing threw, which is why only a comparison against the real command line found
+     * it.
+     */
+    @Test
+    void theExportSeparatorCheckWritesABar() {
+        SelfCheck.Check separator = checkNamed("robot export writes ROBOT's cell separator");
+
+        assertTrue(separator.isPassed(), separator.toString());
+    }
+
     /** The explanation path must produce a justification, not merely fail to throw. */
     @Test
     void theExplainCheckProducesAJustification() {
-        SelfCheck.Check explain = SelfCheck.run().getChecks().get(5);
+        SelfCheck.Check explain = checkNamed("robot explain runs end to end");
 
         assertTrue(explain.isPassed(), explain.toString());
         assertFalse(explain.getDetail().startsWith("0 "), explain.getDetail());
@@ -66,7 +83,7 @@ class SelfCheckTest {
      */
     @Test
     void theMenuCheckLoadsEveryDeclaredClass() {
-        SelfCheck.Check menu = SelfCheck.run().getChecks().get(6);
+        SelfCheck.Check menu = checkNamed("menu classes resolve");
 
         assertTrue(menu.isPassed(), menu.toString());
         assertTrue(menu.getDetail().contains("classes named in plugin.xml loaded"),
@@ -77,7 +94,7 @@ class SelfCheckTest {
     /** An empty report is the failure mode this whole check exists to catch, so 0 must not pass. */
     @Test
     void anEmptyReportIsAFailureNotGoodNews() {
-        SelfCheck.Check endToEnd = SelfCheck.run().getChecks().get(3);
+        SelfCheck.Check endToEnd = checkNamed("robot report runs end to end");
 
         assertTrue(endToEnd.isPassed(), endToEnd.toString());
         assertFalse(endToEnd.getDetail().startsWith("0 findings"),
@@ -95,8 +112,29 @@ class SelfCheckTest {
     void theSummaryIsTheLineTheSmokeScriptMatches() {
         SelfCheck.Result result = SelfCheck.run();
 
-        assertEquals("OntoBoard self-check: PASS 7/7", result.summary());
+        assertEquals("OntoBoard self-check: PASS 8/8", result.summary());
         assertTrue(result.summary().startsWith("OntoBoard self-check: "),
                 "tools/smoke.ps1 matches this prefix");
+    }
+
+    /**
+     * A check by name rather than by position.
+     *
+     * <p>These were indexed by position until 1.48.0, which meant inserting a check in the middle
+     * silently repointed four tests at their neighbours - they kept passing while testing the wrong
+     * thing. A name that no longer exists fails here instead, and names the alternatives.
+     */
+    private static SelfCheck.Check checkNamed(String name) {
+        for (SelfCheck.Check check : SelfCheck.run().getChecks()) {
+            if (name.equals(check.getName())) {
+                return check;
+            }
+        }
+        StringBuilder available = new StringBuilder();
+        for (SelfCheck.Check check : SelfCheck.run().getChecks()) {
+            available.append("\n  ").append(check.getName());
+        }
+        fail("no self-check named \"" + name + "\". The checks are:" + available);
+        return null;
     }
 }

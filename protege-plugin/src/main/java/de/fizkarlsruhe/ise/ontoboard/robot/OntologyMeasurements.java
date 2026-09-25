@@ -2,10 +2,12 @@ package de.fizkarlsruhe.ise.ontoboard.robot;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import org.obolibrary.robot.metrics.MeasureResult;
 import org.obolibrary.robot.metrics.MetricsLabels;
 import org.obolibrary.robot.metrics.OntologyMetrics;
@@ -41,11 +43,13 @@ public final class OntologyMeasurements {
     /** One metric, ready to put in a table. */
     public static final class Measurement {
         private final String group;
+        private final String key;
         private final String label;
         private final String value;
 
-        Measurement(String group, String label, String value) {
+        Measurement(String group, String key, String label, String value) {
             this.group = group;
+            this.key = key;
             this.label = label;
             this.value = value;
         }
@@ -53,6 +57,19 @@ public final class OntologyMeasurements {
         /** The section this belongs under, for a grouped table. */
         public String getGroup() {
             return group;
+        }
+
+        /**
+         * ROBOT's own name for this metric, as {@code robot measure} writes it - {@code
+         * class_count}, {@code owl2_dl}.
+         *
+         * <p>Kept alongside the humanised label because this is the name that appears in a build's
+         * output and in anything downstream of it. A curator comparing this panel with a metrics
+         * file their CI produced needs the name both of them use, and it is the only name a test
+         * can compare against the command line without reimplementing {@link #humanise}.
+         */
+        public String getKey() {
+            return key;
         }
 
         /** A human-readable name, derived from ROBOT's machine key. */
@@ -159,7 +176,7 @@ public final class OntologyMeasurements {
             String name = (String) group[0];
             for (String key : (String[]) group[1]) {
                 if (data.containsKey(key)) {
-                    rows.add(new Measurement(name, humanise(key), text(data.get(key))));
+                    rows.add(new Measurement(name, key, humanise(key), text(data.get(key))));
                     placed.add(key);
                 }
             }
@@ -169,14 +186,23 @@ public final class OntologyMeasurements {
         List<String> leftovers = new ArrayList<String>(data.keySet());
         for (String key : leftovers) {
             if (!placed.contains(key)) {
-                rows.add(new Measurement(OTHER_GROUP, humanise(key), text(data.get(key))));
+                rows.add(new Measurement(OTHER_GROUP, key, humanise(key), text(data.get(key))));
             }
         }
         // List-valued metrics (axiom types used, profile violations) matter but do not fit a
         // single cell, so they are joined rather than omitted.
         for (Map.Entry<String, List<Object>> entry : result.getListData().entrySet()) {
-            rows.add(new Measurement(OTHER_GROUP, humanise(entry.getKey()),
-                    join(entry.getValue())));
+            rows.add(new Measurement(OTHER_GROUP, entry.getKey(), humanise(entry.getKey()),
+                    joinSorted(entry.getValue())));
+        }
+        // And the third shape. ROBOT returns metrics in three maps, not two: simple values, lists,
+        // and name-to-number breakdowns - how many of each axiom type, how many entities per
+        // namespace, the CURIE map. Reading only the first two dropped eleven metrics from this
+        // panel on every ontology, silently, including the axiom-type breakdown that is the most
+        // informative thing measure produces. `robot measure -m all` writes all three.
+        for (Map.Entry<String, Map<String, Object>> entry : result.getMapData().entrySet()) {
+            rows.add(new Measurement(OTHER_GROUP, entry.getKey(), humanise(entry.getKey()),
+                    joinMap(entry.getValue())));
         }
         return rows;
     }
@@ -192,6 +218,47 @@ public final class OntologyMeasurements {
 
     private static String text(Object value) {
         return value == null ? "" : String.valueOf(value);
+    }
+
+    /**
+     * A name-to-number breakdown as one cell, each entry written the way ROBOT writes it.
+     *
+     * <p>{@code robot measure} gives each entry a row of its own with the name and the number in
+     * one field, separated by a space - {@code AnnotationAssertion 30}. That spelling is kept so a
+     * value here can be found in a metrics file a build produced. The entries are joined rather
+     * than given a row each for the same reason the list-valued ones are: a breakdown with fifty
+     * namespaces in it would otherwise crowd out every other metric in the panel.
+     */
+    private static String joinMap(Map<String, Object> values) {
+        if (values == null || values.isEmpty()) {
+            return "";
+        }
+        List<Object> entries = new ArrayList<Object>();
+        for (Map.Entry<String, Object> entry : new TreeMap<String, Object>(values).entrySet()) {
+            entries.add(entry.getKey() + " " + text(entry.getValue()));
+        }
+        return join(entries);
+    }
+
+    /**
+     * The entries of a set-valued metric, in a fixed order.
+     *
+     * <p>ROBOT collects these with {@code putSet}, so the list it hands back has no meaningful
+     * order at all - it is whatever the set iterated in. Rendering that straight gave this panel a
+     * different ordering of the axiom types and the OWL constructs from one run to the next, and
+     * one that never matched the metrics file a build writes, because {@code robot measure} sorts
+     * them. Sorting here makes the cell both stable and the same text.
+     */
+    private static String joinSorted(List<Object> values) {
+        if (values == null || values.isEmpty()) {
+            return "";
+        }
+        List<String> sorted = new ArrayList<String>();
+        for (Object value : values) {
+            sorted.add(text(value));
+        }
+        Collections.sort(sorted);
+        return join(new ArrayList<Object>(sorted));
     }
 
     private static String join(List<Object> values) {
