@@ -947,7 +947,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         JComboBox<CanvasLayouts.Algorithm> algorithms =
                 new JComboBox<>(CanvasLayouts.Algorithm.values());
         JButton arrange = new JButton("Arrange");
-        arrange.addActionListener(a -> CanvasLayouts.apply(graph,
+        arrange.addActionListener(a -> arrangeWith(
                 (CanvasLayouts.Algorithm) algorithms.getSelectedItem()));
 
         collaborateButton = new JButton("Collaborate...");
@@ -1003,6 +1003,28 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
      * interesting decision - the file type - in the toolbar while the one that matters, how big,
      * was not offered at all.
      */
+    /**
+     * Arranges the board and keeps the result.
+     *
+     * <p>The capture and the save are the point. Without them an arrangement lived only in the live
+     * graph, so the next {@code refresh()} - any edit anywhere in Protege - redrew every node from
+     * the stored positions and the arrangement was gone. Somebody who arranged thirty classes into
+     * a readable tree and then added one subclass watched the tree collapse.
+     *
+     * <p>Both other callers of {@code CanvasLayouts.apply} already did this; only the toolbar button
+     * did not, which is the kind of difference that survives because each path looks right alone.
+     */
+    private void arrangeWith(CanvasLayouts.Algorithm algorithm) {
+        if (algorithm == null) {
+            return;
+        }
+        CanvasLayouts.apply(graph, algorithm);
+        capturePositions();
+        saveLayoutTo(layoutFile);
+        setStatus("Arranged the board: " + algorithm.getDisplayName()
+                + ". Notes and frames were left where they are.");
+    }
+
     private void exportWithOptions() {
         JComboBox<String> format = new JComboBox<String>(new String[] {
             "PNG - a picture, for slides and papers",
@@ -1072,18 +1094,36 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                     menu.addSeparator();
                 }
 
+                // Where the user actually right-clicked, in graph coordinates, worked out
+                // once while the event is still in hand.
+                //
+                // Four call sites below used to get this wrong in two different ways. The note and
+                // frame items asked `getGraphControl().getMousePosition()` from inside their action
+                // listeners - by which time the pointer is over the menu, not the canvas, so it
+                // returns null and both fell back to (60, 60). Every note a curator placed landed
+                // in the top-left corner, stacked on the ones before it, however far away they were
+                // looking. "New class here..." captured the raw event coordinates, which are
+                // graph-control pixels: correct at 100% zoom and wrong by the scale factor at any
+                // other, so after a wheel-zoom a term appeared nowhere near the click.
+                //
+                // getPointForEvent is JGraphX's own converter and handles scale and translation. The
+                // double-click path has always used it, which is why that one gesture was right.
+                // Using the library's arithmetic rather than repeating it here is also why there is
+                // no unit test for the conversion: there is no longer any arithmetic of ours to test.
+                com.mxgraph.util.mxPoint graphPoint = graphComponent.getPointForEvent(event);
+                final java.awt.Point where =
+                        new java.awt.Point((int) graphPoint.getX(), (int) graphPoint.getY());
+
                 JMenuItem addNote = new JMenuItem("Put a sticky note here...");
                 addNote.setToolTipText("A note on the diagram. It is not in the ontology and "
                         + "never appears in a release - see OntoBoard > Notes for one that does.");
-                addNote.addActionListener(a -> createStickyNote(
-                        graphComponent.getGraphControl().getMousePosition()));
+                addNote.addActionListener(a -> createStickyNote(where));
                 menu.add(addNote);
 
                 JMenuItem addFrame = new JMenuItem("Draw a frame here...");
                 addFrame.setToolTipText("A labelled region to group what is inside it. Also only "
                         + "on the diagram.");
-                addFrame.addActionListener(a -> createFrame(
-                        graphComponent.getGraphControl().getMousePosition()));
+                addFrame.addActionListener(a -> createFrame(where));
                 menu.add(addFrame);
                 menu.addSeparator();
 
@@ -1135,17 +1175,14 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
 
                 menu.addSeparator();
 
-                final int clickX = event.getX();
-                final int clickY = event.getY();
-
                 JMenuItem newClass = new JMenuItem("New class here...");
                 newClass.addActionListener(a -> createEntityAt(
-                        EntityFactory.Kind.CLASS, clickX, clickY));
+                        EntityFactory.Kind.CLASS, where.x, where.y));
                 menu.add(newClass);
 
                 JMenuItem newIndividual = new JMenuItem("New individual here...");
                 newIndividual.addActionListener(a -> createEntityAt(
-                        EntityFactory.Kind.INDIVIDUAL, clickX, clickY));
+                        EntityFactory.Kind.INDIVIDUAL, where.x, where.y));
                 menu.add(newIndividual);
 
                 if (iri != null && membership.contains(iri)) {
@@ -1272,19 +1309,66 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
 
     /** Copies live cell geometry back into the layout so it survives the next save. */
     private void capturePositions() {
-        for (String iri : membership.asSet()) {
-            Object cell = graph.getCellForId(iri);
-            if (cell instanceof com.mxgraph.model.mxCell) {
+        captureInto(layout, membership.asSet(), new Bounds() {
+            @Override
+            public double[] of(String id) {
+                Object cell = graph.getCellForId(id);
+                if (!(cell instanceof com.mxgraph.model.mxCell)) {
+                    return null;
+                }
                 com.mxgraph.model.mxGeometry geometry =
                         ((com.mxgraph.model.mxCell) cell).getGeometry();
-                if (geometry != null) {
-                    CanvasLayout.NodeLayout node = layout.nodes
-                            .computeIfAbsent(iri, k -> new CanvasLayout.NodeLayout());
-                    node.x = geometry.getX();
-                    node.y = geometry.getY();
-                    node.w = geometry.getWidth();
-                    node.h = geometry.getHeight();
-                }
+                return geometry == null ? null : new double[] {
+                        geometry.getX(), geometry.getY(),
+                        geometry.getWidth(), geometry.getHeight() };
+            }
+        });
+    }
+
+    /** Where a cell is now, as {@code {x, y, w, h}}, or null when it is not on the board. */
+    interface Bounds {
+        double[] of(String id);
+    }
+
+    /**
+     * Copies live geometry back into the layout - terms, sticky notes and frames alike.
+     *
+     * <p>Notes and frames were missing, and their absence was invisible: the {@code CELLS_MOVED}
+     * listener ran, this captured nothing about them, and an unchanged sidecar was saved. The next
+     * refresh - which any edit anywhere in Protege triggers - redrew both from the position they
+     * had before the user moved them. Dragging a note beside the class it comments on and then
+     * editing anything put it back in the corner; a frame resized to enclose a group snapped back.
+     *
+     * <p>Separated from the view and given a {@link Bounds} lookup so a test can drive it without a
+     * live {@code OWLEditorKit} - which is why the gap survived, there was nothing a unit test
+     * could call. Package-private for the same reason {@link #resetLayoutForOntology} is.
+     */
+    static void captureInto(CanvasLayout layout, java.util.Set<String> terms, Bounds bounds) {
+        for (String iri : terms) {
+            double[] box = bounds.of(iri);
+            if (box != null) {
+                CanvasLayout.NodeLayout node =
+                        layout.nodes.computeIfAbsent(iri, k -> new CanvasLayout.NodeLayout());
+                node.x = box[0];
+                node.y = box[1];
+                node.w = box[2];
+                node.h = box[3];
+            }
+        }
+        for (CanvasLayout.NoteLayout note : layout.notes) {
+            double[] box = bounds.of(note.id);
+            if (box != null) {
+                note.x = box[0];
+                note.y = box[1];
+            }
+        }
+        for (CanvasLayout.FrameLayout frame : layout.frames) {
+            double[] box = bounds.of(frame.id);
+            if (box != null) {
+                frame.x = box[0];
+                frame.y = box[1];
+                frame.w = box[2];
+                frame.h = box[3];
             }
         }
     }

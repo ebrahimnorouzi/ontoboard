@@ -1,1 +1,9 @@
 target/
+
+# Any other spelling of the build directory. The rule above matches one exact name, and a stray
+# "target_test-classes/" holding 120 .class files got as far as a commit because it matched nothing.
+target_*/
+
+# No compiled class belongs in source control here, whichever directory it lands in. A belt to the
+# braces above: the next accident will not necessarily be named after "target" at all.
+*.class

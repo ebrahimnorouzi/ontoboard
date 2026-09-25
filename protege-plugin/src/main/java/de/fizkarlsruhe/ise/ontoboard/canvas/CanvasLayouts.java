@@ -5,6 +5,10 @@ import com.mxgraph.layout.mxCircleLayout;
 import com.mxgraph.layout.mxIGraphLayout;
 import com.mxgraph.layout.mxOrganicLayout;
 import com.mxgraph.model.mxGeometry;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 /** Automatic arrangements, mapping the retired web app's layout menu onto JGraphX. */
 public final class CanvasLayouts {
@@ -53,18 +57,54 @@ public final class CanvasLayouts {
     private CanvasLayouts() {
     }
 
+    /**
+     * Arranges the terms on the board, leaving sticky notes and frames where the user put them.
+     *
+     * <p>Annotations are not terms and must not be laid out as if they were. A frame is a region
+     * drawn around a group of classes; slotted into a grid it lands in a cell of its own and
+     * encloses nothing, which destroys the only thing it was for. A note pinned beside the class it
+     * comments on ends up in a row among the classes.
+     *
+     * <p>The library layouts take a parent rather than a vertex list, so their reach cannot be
+     * restricted up front. Annotation positions are therefore snapshotted and put back afterwards,
+     * which works identically for all three algorithms and needs no knowledge of what each does.
+     * {@link #applyGrid} builds its own vertex list and filters instead.
+     */
     public static void apply(SchemaGraph graph, Algorithm algorithm) {
         graph.getModel().beginUpdate();
         try {
+            Map<Object, mxGeometry> annotations = annotationGeometries(graph);
             if (algorithm == Algorithm.GRID) {
                 applyGrid(graph);
             } else {
                 mxIGraphLayout layout = createLibraryLayout(graph, algorithm);
                 layout.execute(graph.getDefaultParent());
             }
+            for (Map.Entry<Object, mxGeometry> kept : annotations.entrySet()) {
+                graph.getModel().setGeometry(kept.getKey(), kept.getValue());
+            }
         } finally {
             graph.getModel().endUpdate();
         }
+    }
+
+    /** Where every note and frame sits now, so a layout cannot move it. */
+    private static Map<Object, mxGeometry> annotationGeometries(SchemaGraph graph) {
+        Map<Object, mxGeometry> geometries = new LinkedHashMap<Object, mxGeometry>();
+        for (Object vertex : graph.getChildVertices(graph.getDefaultParent())) {
+            if (isAnnotation(graph, vertex)) {
+                mxGeometry geometry = graph.getModel().getGeometry(vertex);
+                if (geometry != null) {
+                    geometries.put(vertex, (mxGeometry) geometry.clone());
+                }
+            }
+        }
+        return geometries;
+    }
+
+    /** Whether a cell is a sticky note or a frame rather than a term. */
+    static boolean isAnnotation(SchemaGraph graph, Object vertex) {
+        return SchemaGraph.isAnnotationId(graph.getIdForCell(vertex));
     }
 
     private static mxIGraphLayout createLibraryLayout(SchemaGraph graph, Algorithm algorithm) {
@@ -93,7 +133,14 @@ public final class CanvasLayouts {
      * are always {@code >= 0}, so every resulting coordinate is non-negative.
      */
     private static void applyGrid(SchemaGraph graph) {
-        Object[] vertices = graph.getChildVertices(graph.getDefaultParent());
+        // Terms only. An annotation left in this list would take a grid cell and be moved into it.
+        List<Object> terms = new ArrayList<Object>();
+        for (Object vertex : graph.getChildVertices(graph.getDefaultParent())) {
+            if (!isAnnotation(graph, vertex)) {
+                terms.add(vertex);
+            }
+        }
+        Object[] vertices = terms.toArray();
 
         double pitchWidth = DEFAULT_NODE_WIDTH;
         double pitchHeight = DEFAULT_NODE_HEIGHT;

@@ -56,7 +56,7 @@ individual views in a tabbed column beside the canvas, so none of this needs a t
 |---|---|---|---|
 | Graph canvas, drag, pan, zoom | ✅ | ✅ | JGraphX |
 | Create entities on canvas | ✅ | ✅ | Double-click empty canvas, or drag from the entity trees |
-| Draw edges that write axioms | ✅ | ✅ | Plugin is **better**: six OWLAx readings vs the web app's `rdfs:domain`/`range`, which silently intersects domains |
+| Write axioms from the canvas | ✅ | ✅ | Plugin is **better** on the axiom: six OWLAx readings vs the web app's `rdfs:domain`/`range`, which silently intersects domains. Worse on the gesture: *Create relation from this node…* in the node menu, not drag-to-connect - `setConnectable(false)` in `SchemaCanvasView`. Until 1.52.0 this row said "draw edges", which sent people hunting for a connection handle that is not there |
 | Delete axioms from canvas | ✅ | ✅ | With a confirmation distinct from removing from canvas |
 | Layout algorithms | ✅ | ✅ | Hierarchical, organic, circle, grid |
 | Minimap, PNG/SVG export | ✅ | ✅ | |
@@ -65,7 +65,8 @@ individual views in a tabbed column beside the canvas, so none of this needs a t
 | Live redraw on external edits | ➖ | ✅ | Canvas is a view over Protégé's model |
 | Layout persistence | ✅ | ✅ | Plugin keeps it in a sidecar, so the ontology stays byte-clean |
 | Frames and sticky notes | ✅ | ✅ | Right-click the canvas; kept in the sidecar |
-| Undo/redo | ✅ | ✅ | Protégé's own undo, which is stronger than the web app's 50-snapshot stack |
+| Undo/redo, axioms | ✅ | ✅ | Protégé's own undo, which is stronger than the web app's 50-snapshot stack |
+| Undo/redo, the board itself | ✅ | ❌ | **Build.** Arrangement, board membership, notes and frames are not axioms, so Protégé has nothing to undo. Removing twelve arranged nodes is final. Until 1.52.0 the row above covered for this |
 
 ## 3. Reasoning and quality
 
@@ -205,5 +206,5 @@ mature plugins is waste) or ➖ (web-application machinery with no desktop meani
   `collab/__tests__/server-boot.test.mjs` (4) now start the shipped server and speak to it over a
   socket, in both languages. What is still not covered is a *browser* and Protégé at once; Protégé
   to Protégé through the real server is covered.
-- **No plugin UI is covered by tests.** 1169 tests cover logic; every Swing surface is verified
+- **No plugin UI is covered by tests.** 1174 tests cover logic; every Swing surface is verified
   by hand.

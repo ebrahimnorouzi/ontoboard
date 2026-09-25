@@ -6,6 +6,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import de.fizkarlsruhe.ise.ontoboard.layout.CanvasLayout;
 import org.protege.editor.owl.model.event.EventType;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.semanticweb.owlapi.apibinding.OWLManager;
 import org.semanticweb.owlapi.model.IRI;
@@ -22,6 +25,8 @@ import org.semanticweb.owlapi.model.OWLOntologyManager;
  * listener wiring, and no Swing involved.
  */
 class SchemaCanvasViewTest {
+
+    private static final String PERSON = "http://example.org/tiny#Person";
 
     private static CanvasLayout layoutWithSomethingInEveryPerOntologyCollection() {
         CanvasLayout layout = new CanvasLayout();
@@ -165,4 +170,88 @@ class SchemaCanvasViewTest {
         assertFalse(SchemaCanvasView.shouldRefreshFor(null, true));
     }
 
+
+    // ================================================== what capturePositions writes back
+
+    /**
+     * Moving a sticky note or resizing a frame is kept.
+     *
+     * <p>It was not. {@code capturePositions} walked the entity nodes only, so the
+     * {@code CELLS_MOVED} listener fired, this captured nothing about notes or frames, and an
+     * unchanged sidecar was saved. The next refresh - which any edit anywhere in Protege triggers -
+     * redrew both from the position they had before the drag. A note dragged beside the class it
+     * comments on went back to the corner; a frame resized to enclose a group snapped back.
+     *
+     * <p>Nothing could have caught it, which is the more useful half of the story: the capture was
+     * an inline loop in a 2,114-line view over a live {@code mxGraph}, so there was no seam a unit
+     * test could reach. It is a static function over a {@code Bounds} lookup now, and this is the
+     * test that was impossible to write before.
+     */
+    @Test
+    void captureKeepsNoteAndFramePositions() {
+        CanvasLayout layout = new CanvasLayout();
+        layout.nodes.put(PERSON, new CanvasLayout.NodeLayout(0, 0));
+
+        CanvasLayout.NoteLayout note = new CanvasLayout.NoteLayout();
+        note.id = "ontoboard-note-1";
+        note.text = "check this with Bob";
+        note.x = 60;
+        note.y = 60;
+        layout.notes.add(note);
+
+        CanvasLayout.FrameLayout frame = new CanvasLayout.FrameLayout();
+        frame.id = "ontoboard-frame-1";
+        frame.label = "Toppings";
+        frame.x = 40;
+        frame.y = 40;
+        frame.w = 340;
+        frame.h = 240;
+        layout.frames.add(frame);
+
+        // What the user did: dragged the term, dragged the note beside it, grew the frame.
+        final Map<String, double[]> moved = new HashMap<String, double[]>();
+        moved.put(PERSON, new double[] {300, 120, 160, 60});
+        moved.put("ontoboard-note-1", new double[] {480, 140, 180, 100});
+        moved.put("ontoboard-frame-1", new double[] {200, 80, 620, 400});
+
+        SchemaCanvasView.captureInto(layout, Collections.singleton(PERSON),
+                new SchemaCanvasView.Bounds() {
+                    @Override
+                    public double[] of(String id) {
+                        return moved.get(id);
+                    }
+                });
+
+        assertEquals(300, layout.nodes.get(PERSON).x, 0.001);
+        assertEquals(480, note.x, 0.001, "the note must keep where it was dragged");
+        assertEquals(140, note.y, 0.001, "the note must keep where it was dragged");
+        assertEquals(200, frame.x, 0.001, "the frame must keep where it was dragged");
+        assertEquals(620, frame.w, 0.001, "the frame must keep the width it was given");
+        assertEquals(400, frame.h, 0.001, "the frame must keep the height it was given");
+    }
+
+    /** A cell that is no longer on the board leaves its stored position alone. */
+    @Test
+    void captureLeavesAbsentCellsUntouched() {
+        CanvasLayout layout = new CanvasLayout();
+        CanvasLayout.NoteLayout note = new CanvasLayout.NoteLayout();
+        note.id = "ontoboard-note-1";
+        note.x = 77;
+        note.y = 88;
+        layout.notes.add(note);
+
+        SchemaCanvasView.captureInto(layout, Collections.<String>emptySet(),
+                new SchemaCanvasView.Bounds() {
+                    @Override
+                    public double[] of(String id) {
+                        // Nothing is on the board - a refresh that has not run yet, or a note the
+                        // renderer skipped. Overwriting with zeros would move it to the corner,
+                        // which is the same data loss by a different route.
+                        return null;
+                    }
+                });
+
+        assertEquals(77, note.x, 0.001);
+        assertEquals(88, note.y, 0.001);
+    }
 }

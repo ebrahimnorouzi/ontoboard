@@ -1,0 +1,115 @@
+OntoBoard 1.52.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-09-25  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 8/8  test 9/9
+  2026-09-25  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 8/8  test 9/9
+
+Both lines are the rebuilt jar. An earlier 1.52.0 build was smoked on both hosts and is not what this
+records: the coordinate fix landed after it, so that jar is not the artefact being shipped. A receipt
+that described it would name a build nobody will run.
+THE CANVAS STOPPED LOSING WORK
+
+Four defects, all found by auditing the canvas rather than using it, and all of the same kind: the
+board forgot something the user had told it. A missing feature is a disappointment; silently
+discarding an arrangement somebody spent ten minutes on is worse, so these came before anything new.
+
+A plan for the rest is in docs/superpowers/specs/2026-09-25-canvas-interface-plan.md, written before
+any of this was implemented. Its one load-bearing judgement, since the brief was "like a Miro board":
+take the affordances, keep OWL's semantics. A whiteboard has no truth outside itself, while here every
+node is an entity with an IRI and every edge is an axiom - so a drag between two classes has asked a
+question, which property and whether this is some, only or a subclass, and the professional answer is
+to ask rather than guess. Guessing is how SubClassOf(A, ObjectSomeValuesFrom(rdfs:subClassOf, B))
+reaches somebody's release, which is what the inbound web-canvas path does today.
+
+1. MOVING A STICKY NOTE OR RESIZING A FRAME WAS DISCARDED
+
+capturePositions walked the entity nodes and nothing else. The CELLS_MOVED listener fired, this
+captured nothing about notes or frames, and an unchanged sidecar was written. The next refresh - which
+any edit anywhere in Protege triggers - redrew both from the position they had before the drag.
+
+So: drag a note beside the class it comments on, add one subclass in the class hierarchy, and the note
+is back in the corner. Resize a frame to enclose a group of toppings, and it snaps back.
+
+Nothing could have caught it, and that is the more useful half. The capture was an inline loop in a
+2,114-line view over a live mxGraph - there was no seam a unit test could reach. It is a static
+function over a Bounds lookup now, and the two tests that were impossible to write before are in
+SchemaCanvasViewTest. Confirmed failing against the old code first: a note dragged to x=480 reverts
+to 60.
+
+2. ARRANGE NEVER SAVED WHAT IT PRODUCED
+
+The toolbar button applied a layout to the live graph and stopped there. Both other callers of
+CanvasLayouts.apply - Add all, and the first-time auto-arrange - follow it with capturePositions and
+saveLayoutTo. Only the button did not.
+
+Arrange thirty classes into a readable hierarchy, add one subclass, and the tree collapses back to
+wherever the nodes were before. The difference survived because each path reads correctly on its own;
+it is only visible when the three are put side by side.
+
+3. LAYOUTS TREATED NOTES AND FRAMES AS TERMS
+
+A frame is a rectangle drawn round a group of classes. Laid out as though it were a class it lands in
+a grid cell of its own and encloses nothing, which destroys the only thing a frame is for. A note
+pinned beside the class it comments on ends up in a row among the classes.
+
+The library layouts take a parent rather than a vertex list, so their reach cannot be restricted up
+front; annotation geometry is snapshotted and put back instead, which works identically for all three
+algorithms and needs no knowledge of what each one does. The grid path builds its own list and
+filters. Confirmed failing first: the hierarchical layout moved a note from x=900 to x=622.
+
+4. FOUR COORDINATE BUGS, ONE CAUSE
+
+Two mechanisms, both in the context menu, and neither obvious from reading the call:
+
+  - "Put a sticky note here..." and "Draw a frame here..." asked
+    getGraphControl().getMousePosition() from inside their action listeners. By the time a listener
+    runs the pointer is over the menu, not the canvas, so that returns null - and both fell back to
+    (60, 60). Every note a curator placed landed in the top-left corner, stacked on the ones before
+    it, however far away they were looking. The word "here" in both menu items was false.
+  - "New class here..." captured the raw event coordinates, which are graph-control pixels. Correct
+    at 100% zoom and wrong by the scale factor at any other, so after one wheel-zoom a term appeared
+    nowhere near the click.
+
+All four now take one point, converted once from the event by getPointForEvent - JGraphX's own
+converter, which handles scale and translation. The double-click path has always used it, which is
+exactly why that one gesture was the only correct one. There is no unit test for the conversion
+because there is no longer any arithmetic of ours to test, which is the better outcome.
+
+TWO DOCUMENTED CAPABILITIES THAT DID NOT EXIST
+
+Found by the same audit, and corrected in docs/feature-parity.md rather than implemented, because
+both are real work and neither is in this version:
+
+  - "Draw edges that write axioms" was ticked for the plugin and called better than the web app's.
+    The axiom half is true and better - six OWLAx readings against the web app's domain/range, which
+    silently intersects domains. The gesture half is not: setConnectable(false) in SchemaCanvasView,
+    with a comment saying a later task turns it on. The capability lives in the node context menu,
+    so a reader of that table went hunting for a connection handle that is not there.
+  - "Undo/redo" was ticked, on the grounds that Protege's own undo is stronger than the web app's
+    50-snapshot stack. True of axioms, and the board is not axioms: arrangement, membership, notes
+    and frames have nothing for Protege to undo. Selecting twelve arranged nodes and pressing Delete
+    is final. That row now says so, and the gap is its own row.
+
+NUMBERS
+
+1174 tests, 0 failures, 1 skipped. Worth one sentence because two runs of this build reported 1173
+and 1174 and both looked plausible: there are exactly 1174 @Test occurrences in src/test/java, so
+1174 is the true figure and the 1173 was a report lost to a racing target/ removal, not a
+nondeterministic test.
+
+45 JavaScript tests pass. 14 tests need Docker and 8 need node; all ran.
+
+AND ONE MISTAKE OF MY OWN, CAUGHT BEFORE IT WAS PUSHED
+
+The first attempt at this commit contained 120 .class files. A stray "target_test-classes/" directory
+appeared in protege-plugin/ during the session and protege-plugin/.gitignore ignores "target/" - one
+exact name, which that does not match. git add -A took the lot.
+
+Caught by reading what git status listed rather than the commit's exit code, and removed by amending
+before any push. The ignore file now also covers target_*/ and *.class, the second as a belt to the
+braces: the next accident need not be named after "target" at all.
+
+This is the second time in this sequence that build output has walked into a commit through a gap in
+.gitignore - 1.47.0 was validate-profile.txt, listed in the generated Makefile's clean target and
+nowhere else. Both were found the same way. Neither was found by a test, and neither would have been.

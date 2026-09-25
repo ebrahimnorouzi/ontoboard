@@ -237,9 +237,24 @@ The plugin is early. These exist in the web application but not yet here:
 - **`make` targets need `make` and ROBOT on PATH.** The ODK wizard creates a project without
   Docker, but building it is a normal ODK build.
 
+- **The canvas lost work in two ways until 1.52.0, and neither could be caught by a test.**
+  `capturePositions` walked entity nodes only, so moving a sticky note or resizing a frame was
+  discarded on the next refresh - which any edit anywhere in Protégé triggers. And the toolbar's
+  `Arrange` never saved what it produced, while the two other callers of the same layout code did, so
+  a hierarchical arrangement of thirty classes reverted the moment anything else changed.
+
+  Both were unreachable from a test: the capture was an inline loop inside a 2,114-line view over a
+  live `mxGraph`. It is a static function over a geometry lookup now, and the two tests that were
+  impossible to write before are in `SchemaCanvasViewTest`. The layouts also leave notes and frames
+  alone - a frame slotted into a grid encloses nothing, which destroys the only thing it is for.
+
+  What remains, and is named in [the canvas plan](superpowers/specs/2026-09-25-canvas-interface-plan.md):
+  no undo for anything the board owns, four coordinate-conversion bugs that put created things where
+  the user did not click, no search, and tooltips that show internal ids.
+
 ### Not covered by tests
 
-1169 tests cover projection, axiom construction, layout persistence, ODK scaffolding, the
+1174 tests cover projection, axiom construction, layout persistence, ODK scaffolding, the
 report's rule execution and the OSGi configuration. Fourteen of them reach outside the JVM:
 `RobotParityTest` compares the report against real ROBOT in `obolibrary/odkfull`,
 `RobotCliParityTest` compares nine more operations against the same image's `robot` command, and
