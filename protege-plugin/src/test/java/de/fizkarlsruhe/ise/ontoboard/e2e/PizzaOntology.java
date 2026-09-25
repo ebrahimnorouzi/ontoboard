@@ -45,6 +45,10 @@ public final class PizzaOntology {
     public static final String NS = IRI_BASE + "#";
 
     /** {@code IAO:0000115 definition}, so ReleaseDiff sees definitions where it looks for them. */
+    /** {@code IAO:0000119}, where an OBO ontology records where a definition came from. */
+    private static final IRI DEFINITION_SOURCE =
+            IRI.create("http://purl.obolibrary.org/obo/IAO_0000119");
+
     private static final IRI DEFINITION =
             IRI.create("http://purl.obolibrary.org/obo/IAO_0000115");
 
@@ -315,6 +319,144 @@ public final class PizzaOntology {
      * test, it is a network dependency pretending to be one - so this is a plausible stand-in with
      * a version IRI, which is what the import provenance records.
      */
+    /**
+     * v5: the constructs a curated OBO release actually contains, and three real defects.
+     *
+     * <p>v1-v4 are deliberately tidy, which makes them poor at finding bugs: every one is classes,
+     * object properties, subclass axioms and individuals - the easy quarter of OWL. This release
+     * adds what a real ontology grows into, and each of these is a construct the plugin had never
+     * been tested against:
+     *
+     * <ul>
+     *   <li>a data property with a domain and an {@code xsd:integer} range, and a value asserted on
+     *       an individual;
+     *   <li>a property chain, {@code hasTopping o hasIngredient -> hasIngredient}, kept inside OWL 2
+     *       EL so ELK - which the ODK build reasons with - can actually use it;
+     *   <li>an annotation on an axiom, which the plugin's live collaboration cannot carry but the
+     *       release pipeline has to survive;
+     *   <li>a definition citing its source through {@code IAO:0000119}.
+     * </ul>
+     *
+     * <p>Clean, deliberately: this is a release, so it has to pass its own
+     * {@code make report --fail-on ERROR}. The version carrying mistakes is
+     * {@link #v5WithCurationMistakes}, and that is the one the parity test runs - because a release
+     * with nothing wrong cannot tell you whether the report would have found anything.
+     */
+    public static OWLOntology v5(String agent, String isoDate) throws OWLOntologyCreationException {
+        OWLOntology pizza = v4(agent, isoDate);
+        OWLOntologyManager m = pizza.getOWLOntologyManager();
+        OWLDataFactory f = m.getOWLDataFactory();
+        version(m, pizza, "2026-09-25");
+
+        // Declared before use. An undeclared annotation property is an OWL 2 DL violation in its
+        // own right - v1 declares dcterms:title and friends for exactly this reason - and leaving
+        // IAO:0000119 undeclared put this release outside DL. The plugin's own Profile report caught
+        // it; ROBOT's validate-profile did not, because the OWL API's RDF parser adds the missing
+        // declaration on load, so the violation exists only in the live ontology.
+        m.addAxiom(pizza, f.getOWLDeclarationAxiom(
+                f.getOWLAnnotationProperty(DEFINITION_SOURCE)));
+
+        // --- a data property, with a domain and a range -----------------------------------
+        org.semanticweb.owlapi.model.OWLDataProperty calories =
+                f.getOWLDataProperty(term("hasCalories"));
+        m.addAxiom(pizza, f.getOWLDeclarationAxiom(calories));
+        label(m, pizza, f, term("hasCalories"), "has calories");
+        define(m, pizza, f, term("hasCalories"), "Energy content of one serving, in kilocalories.");
+        m.addAxiom(pizza, f.getOWLDataPropertyDomainAxiom(calories, cls(f, "Pizza")));
+        m.addAxiom(pizza, f.getOWLDataPropertyRangeAxiom(calories,
+                f.getIntegerOWLDatatype()));
+
+        // --- a property chain ------------------------------------------------------------
+        // hasTopping o hasIngredient -> hasIngredient: a pizza has whatever its toppings have.
+        // Inside OWL 2 EL, so ELK can use it - which is what the ODK build reasons with.
+        declareObjectProperty(m, pizza, f, "hasIngredient",
+                "Relates a pizza or a topping to something it is made of.");
+        m.addAxiom(pizza, f.getOWLSubPropertyChainOfAxiom(
+                java.util.Arrays.asList(objectProperty(f, "hasTopping"),
+                        objectProperty(f, "hasIngredient")),
+                objectProperty(f, "hasIngredient")));
+
+        // --- an annotation on an axiom ---------------------------------------------------
+        // The plugin's live collaboration cannot carry these, which docs/limitations.md says. The
+        // release pipeline has to survive them regardless: ROBOT and the OWL API both handle them,
+        // and an ontology that lost them on a round trip would lose provenance nobody could see go.
+        declareClass(m, pizza, f, "SeafoodTopping");
+        define(m, pizza, f, term("SeafoodTopping"), "A topping from an aquatic animal.");
+        m.addAxiom(pizza, f.getOWLSubClassOfAxiom(cls(f, "SeafoodTopping"),
+                cls(f, "PizzaTopping"),
+                java.util.Collections.singleton(f.getOWLAnnotation(
+                        f.getOWLAnnotationProperty(DEFINITION_SOURCE),
+                        f.getOWLLiteral("Agreed at the 2026-09-25 curation call.")))));
+
+        // --- a definition that cites where it came from ----------------------------------
+        m.addAxiom(pizza, f.getOWLAnnotationAssertionAxiom(
+                f.getOWLAnnotationProperty(DEFINITION_SOURCE), term("SeafoodTopping"),
+                f.getOWLLiteral("https://en.wikipedia.org/wiki/Seafood_pizza")));
+
+        // --- a datatype value on an individual -------------------------------------------
+        // "margherita" is the individual v2 declared. Naming a different one here created an
+        // undeclared, unlabelled individual out of nothing - which ROBOT's report caught as
+        // missing_label the first time v5 was run. Worth recording: the report found a defect in
+        // the fixture written to exercise the report.
+        m.addAxiom(pizza, f.getOWLDataPropertyAssertionAxiom(calories,
+                individual(f, "margherita"), f.getOWLLiteral(850)));
+
+        // A second seafood topping, so the new branch is not a single leaf.
+        declareClass(m, pizza, f, "AnchovyTopping");
+        subClassOf(m, pizza, f, "AnchovyTopping", "SeafoodTopping");
+        define(m, pizza, f, term("AnchovyTopping"),
+                "A topping of small preserved fish of the family Engraulidae.");
+
+        return pizza;
+    }
+
+    /**
+     * v5 with three curation mistakes a real editor makes, and ROBOT's report is meant to catch.
+     *
+     * <p>Separate from {@link #v5} on purpose. v5 is a release: it has to pass its own
+     * {@code make report --fail-on ERROR}, and an ontology carrying deliberate errors could never be
+     * published. This one is for testing the report, and it is the fixture
+     * {@code RobotParityTest} runs against real ROBOT - because a release with nothing wrong cannot
+     * tell you whether the report would have found anything.
+     *
+     * <ul>
+     *   <li>a second {@code rdfs:label} on one term, which is {@code multiple_labels} at ERROR
+     *       ({@code duplicate_label} is the different rule, for two terms sharing one label);
+     *   <li>a definition copied from another term, which is {@code duplicate_definition};
+     *   <li>a logical axiom referring to the {@code OliveTopping} that v3 obsoleted, which is
+     *       {@code deprecated_class_reference}.
+     * </ul>
+     */
+    public static OWLOntology v5WithCurationMistakes(String agent, String isoDate)
+            throws OWLOntologyCreationException {
+        OWLOntology pizza = v5(agent, isoDate);
+        OWLOntologyManager m = pizza.getOWLOntologyManager();
+        OWLDataFactory f = m.getOWLDataFactory();
+
+        // 1. A second label on one term: multiple_labels.
+        label(m, pizza, f, term("SeafoodTopping"), "sea food topping");
+
+        // 2. A definition copied verbatim from another term: duplicate_definition.
+        declareClass(m, pizza, f, "ScampiTopping");
+        subClassOf(m, pizza, f, "ScampiTopping", "SeafoodTopping");
+        define(m, pizza, f, term("ScampiTopping"), "A topping from an aquatic animal.");
+
+        // 3. A reference to the term v3 obsoleted: deprecated_class_reference. ROBOT reports the
+        // subject of this one as the literal string "blank node" - its own query does
+        // BIND("blank node" as ?entity) for an anonymous expression - so the finding names the
+        // obsolete term but not the class that references it. That is ROBOT's limitation, and the
+        // plugin reproduces it exactly rather than inventing a better subject, because agreeing
+        // with the build is worth more than a nicer table.
+        declareClass(m, pizza, f, "NostalgiaPizza");
+        subClassOf(m, pizza, f, "NostalgiaPizza", "Pizza");
+        define(m, pizza, f, term("NostalgiaPizza"), "A pizza as it used to be made.");
+        m.addAxiom(pizza, f.getOWLSubClassOfAxiom(cls(f, "NostalgiaPizza"),
+                f.getOWLObjectSomeValuesFrom(objectProperty(f, "hasTopping"),
+                        cls(f, "OliveTopping"))));
+
+        return pizza;
+    }
+
     public static OWLOntology upstreamFoodOntology() throws OWLOntologyCreationException {
         OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
         OWLOntology food = manager.createOntology(new OWLOntologyID(

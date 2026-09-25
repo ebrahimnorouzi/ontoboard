@@ -76,6 +76,30 @@ class RobotParityTest {
         assertParity(dir, saved.getName(), pizza);
     }
 
+    /**
+     * v5, the release that carries the awkward constructs and three deliberate defects.
+     *
+     * <p>v1-v4 are classes, object properties, subclass axioms and individuals - the easy quarter of
+     * OWL. v5 adds a data property with a domain and range, a property chain, an annotation on an
+     * axiom, a definition citing its source, a datatype value on an individual, and three problems
+     * ROBOT is supposed to find: a second label, a copied definition, and a reference to the term v3
+     * obsoleted.
+     *
+     * <p>Which makes it the fixture most likely to expose a difference between the plugin's report
+     * and real ROBOT's, because it is the first one that goes near the parts of OWL the plugin has
+     * never been tested against.
+     */
+    @Test
+    void theReportMatchesRealRobotOnTheAwkwardPizza(@TempDir File dir) throws Exception {
+        OWLOntology pizza =
+                de.fizkarlsruhe.ise.ontoboard.e2e.PizzaOntology.v5WithCurationMistakes(
+                        "https://orcid.org/0000-0002-1825-0097", "2026-09-25");
+        File saved = new File(dir, "subject.owl");
+        pizza.getOWLOntologyManager().saveOntology(pizza, new RDFXMLDocumentFormat(),
+                org.semanticweb.owlapi.model.IRI.create(saved.toURI()));
+        assertParity(dir, saved.getName(), pizza);
+    }
+
     // ============================================================================== the comparison
 
     /**

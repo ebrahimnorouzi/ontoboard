@@ -51,7 +51,14 @@ class OdkBuildTest {
      * <p>A scaffold that generates a project failing its own CI on the first commit would be worse
      * than one that generated nothing: the new maintainer's first experience is a red build they did
      * not cause. This asserts the whole gate - reason, report against the project's own 32-rule
-     * profile with {@code --fail-on ERROR}, and the scaffolded SPARQL check.
+     * profile with {@code --fail-on ERROR}, the scaffolded SPARQL check, and the OWL 2 DL profile
+     * validation.
+     *
+     * <p>Each assertion names the output it expects rather than trusting the exit code, because a
+     * target silently dropped from the {@code test} chain would still exit 0. The profile validation
+     * was missing from this scaffold entirely until 1.46.0 while real ODK had always had it, so an
+     * ontology could drift out of OWL 2 DL with CI staying green - and a passing build was exactly
+     * what that looked like.
      */
     @Test
     void afreshProjectPassesItsOwnTestGate(@TempDir File dir) throws Exception {
@@ -64,6 +71,19 @@ class OdkBuildTest {
                 "robot report must find nothing wrong with a freshly generated project: " + output);
         assertTrue(output.contains("PASS Rule"),
                 "the scaffolded SPARQL check must run and pass: " + output);
+        assertTrue(output.contains("validate-profile"),
+                "make test must validate the OWL 2 DL profile, as real ODK's test target does - "
+                        + "otherwise an ontology can leave DL with CI green: " + output);
+        // robot validate-profile writes its verdict to the output file, not to stdout - the recipe
+        // only cats it when the command fails. So the file is where the answer is, and asserting on
+        // stdout would have passed whether the ontology was in profile or not.
+        File verdict = new File(new File(new File(project, "src"), "ontology"),
+                "validate-profile.txt");
+        assertTrue(verdict.isFile(), "validate-profile wrote no report: " + output);
+        String text = new String(java.nio.file.Files.readAllBytes(verdict.toPath()),
+                java.nio.charset.Charset.forName("UTF-8"));
+        assertTrue(text.contains("in profile"),
+                "a freshly generated project must be in OWL 2 DL: " + text);
     }
 
     /**

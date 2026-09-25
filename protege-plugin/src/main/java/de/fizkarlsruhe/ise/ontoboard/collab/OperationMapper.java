@@ -720,6 +720,21 @@ public final class OperationMapper {
             }
         }
         if (!value.isEmpty()) {
+            // The property, declared, before the annotation that uses it. "Use of undeclared
+            // annotation property" is an OWL 2 DL violation, and this is the one writer in the
+            // plugin where the property IRI comes from outside - whatever a web client, a
+            // third-party client or a hostile one puts in the operation. Provenance, EditorNotes
+            // and Obsoletion all do this already; this path did not.
+            //
+            // The violation is easy to miss, which is why it survived: the OWL API's RDF parser
+            // adds the missing declaration on load, so the ontology tests clean again as soon as it
+            // is saved and reopened, and `robot validate-profile` never sees it. What does see it is
+            // the live ontology in front of the editor - OntoBoard's own Profile report - and any
+            // reasoner asked to work on the session before a save.
+            //
+            // Only on the adding side. A removal introduces no property, so declaring one there
+            // would add an entity while deleting an annotation.
+            changes.addAll(declareIfAbsent(ontology, property));
             addIfAbsent(changes, ontology, factory.getOWLAnnotationAssertionAxiom(property,
                     subject, valueIsIri ? IRI.create(value) : factory.getOWLLiteral(value)));
         }

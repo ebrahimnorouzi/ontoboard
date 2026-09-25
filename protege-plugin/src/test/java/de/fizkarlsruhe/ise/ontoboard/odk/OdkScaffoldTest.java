@@ -50,7 +50,17 @@ class OdkScaffoldTest {
         // committed hand-made copy meant every build dirtied the tree.
         assertFalse(new File(ontology, "mwo.owl").isFile(),
                 "the reasoned product should not be seeded as a file to commit");
-        assertTrue(new File(ontology, "imports").isDirectory());
+        // imports/ is NOT created up front. It was, and empty - which git does not track, so it
+        // never survived a clone anyway. ImportModules and ImportTermsAction create it when they
+        // write the first module, which is when it starts meaning anything.
+        assertFalse(new File(ontology, "imports").exists(),
+                "an empty imports/ advertises a capability and does not survive a clone");
+        for (String advertisesNothing : new String[] {"metadata", "scripts", "patterns"}) {
+            assertFalse(new File(new File(root, "src"), advertisesNothing).exists(),
+                    "src/" + advertisesNothing + " was created empty and never used");
+        }
+        assertFalse(new File(root, "docs").exists(), "docs/ was created empty and never used");
+        // src/sparql does get a file, so it is created.
         assertTrue(new File(new File(root, "src"), "sparql").isDirectory());
         assertTrue(new File(root, "README.md").isFile());
         assertTrue(new File(root, ".gitignore").isFile());

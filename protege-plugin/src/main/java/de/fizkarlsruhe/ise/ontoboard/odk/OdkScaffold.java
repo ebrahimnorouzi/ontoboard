@@ -153,13 +153,16 @@ public final class OdkScaffold {
         File src = new File(root, "src");
         File ontology = new File(src, "ontology");
 
+        // Only directories that receive a file. src/metadata, src/scripts, src/patterns and docs
+        // were created empty, and an empty directory advertises a capability that is not there -
+        // the same pathology as a YAML key nothing reads. Worse, git does not track empty
+        // directories at all, so they did not survive a clone: the scaffold was creating four
+        // things that existed on the author's machine and nowhere else.
+        //
+        // imports/ goes the same way. ImportModules and ImportTermsAction both create it when they
+        // write into it, which is the moment it starts meaning something.
         mkdirs(ontology);
-        mkdirs(new File(ontology, "imports"));
-        mkdirs(new File(src, "metadata"));
-        mkdirs(new File(src, "scripts"));
         mkdirs(new File(src, "sparql"));
-        mkdirs(new File(src, "patterns"));
-        mkdirs(new File(root, "docs"));
         mkdirs(new File(new File(root, ".github"), "workflows"));
 
         String id = config.getOntologyId();
@@ -279,7 +282,7 @@ public final class OdkScaffold {
                 // only until somebody moved it back.
                 + ".DEFAULT_GOAL := all\n\n"
                 + "-include $(ONT).Makefile\n\n"
-                + ".PHONY: all test reason report sparql_test clean prepare_release\n\n"
+                + ".PHONY: all test reason report sparql_test validate_profile clean prepare_release\n\n"
                 + "all: reason report\n"
                 + "\t@echo \"Build complete: $(ONT)\"\n\n"
                 // reason and sparql_test as well as report, because "test" is what CI runs and
@@ -288,7 +291,7 @@ public final class OdkScaffold {
                 // worst thing that can be wrong with an ontology - passed QC green. And the
                 // scaffold wrote src/sparql/check_labels.rq while nothing anywhere ran it, so a
                 // project advertised a quality check it did not perform.
-                + "test: reason report sparql_test\n\n"
+                + "test: reason report sparql_test validate_profile\n\n"
                 // --equivalent-classes-allowed asserted-only, because ROBOT's default is
                 // EquivalentClassReasoningMode.ALL: a reasoner that concludes two *named* classes
                 // are equivalent is almost always reporting a modelling mistake - two terms defined
@@ -322,8 +325,26 @@ public final class OdkScaffold {
                 // SPARQL file a check rather than a decoration.
                 + "sparql_test:\n"
                 + "\t$(ROBOT) verify --input $(ONT)-edit.owl --queries ../sparql/*.rq --output-dir .\n\n"
+                // Real ODK validates the OWL 2 DL profile as part of its own `test` target and this
+                // scaffold did not, so an ontology could drift out of DL with CI staying green.
+                // Outside DL means the guarantees every OWL reasoner relies on no longer hold: a
+                // reasoner may give a different answer, or none, and nothing would have said so.
+                //
+                // merge then convert first, as ODK does. The merge folds in the imports closure -
+                // a violation can be created by the combination rather than by either side - and
+                // the functional-syntax round trip normalises what the RDF/XML parser would
+                // otherwise leave implicit, so the check answers for the artefact rather than for
+                // one serialisation of it.
+                //
+                // `|| { cat ... ; exit 1; }` because robot writes the reasons into the output file
+                // and a bare non-zero exit tells a user only that something is wrong.
+                + "validate_profile:\n"
+                + "\t$(ROBOT) merge -i $(ONT)-edit.owl convert -f ofn -o tmp_validate.ofn\n"
+                + "\t$(ROBOT) validate-profile --profile DL -i tmp_validate.ofn \\\n"
+                + "\t  -o validate-profile.txt || { cat validate-profile.txt; exit 1; }\n"
+                + "\t@rm -f tmp_validate.ofn\n\n"
                 + "clean:\n"
-                + "\t@rm -f tmp_* report.tsv *.bak *.csv $(ONT).owl\n\n"
+                + "\t@rm -f tmp_* report.tsv validate-profile.txt *.bak *.csv $(ONT).owl\n\n"
                 // test, not "reason report". prepare_release used to run a weaker gate than
                 // `make test` did: it left out sparql_test, so a release could be cut while one of
                 // the project's own SPARQL checks was failing. A release gate that is weaker than
@@ -608,6 +629,7 @@ public final class OdkScaffold {
                 + "make reason     # classify with ELK into " + id + ".owl\n"
                 + "make report     # ROBOT quality report -> report.tsv\n"
                 + "make sparql_test  # run every check in ../sparql over the edit file\n"
+                + "make validate_profile  # fail if the ontology has left OWL 2 DL\n"
                 + "make test       # what CI runs: reason, report and sparql_test\n"
                 + "make prepare_release  # test, then a dated, version-stamped release\n"
                 + "make clean      # delete the generated files\n"
