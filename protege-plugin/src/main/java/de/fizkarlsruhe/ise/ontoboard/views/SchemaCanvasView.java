@@ -716,33 +716,143 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
 
                     @Override
                     public void actionPerformed(java.awt.event.ActionEvent event) {
-                        removeSelectionFromCanvas();
+                        reportRemoval(removeSelectionFromCanvas());
+                    }
+                });
+
+        // Escape clears the selection. Documented in the testing guide and simply absent, so the
+        // only way out of a rubber-band selection was to click empty canvas and hope not to hit a
+        // node - with Delete one keystroke away from removing whatever was still selected.
+        keys.put(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_ESCAPE, 0),
+                "ontoboard.clearSelection");
+        graphComponent.getActionMap().put("ontoboard.clearSelection",
+                new javax.swing.AbstractAction() {
+                    private static final long serialVersionUID = 1L;
+
+                    @Override
+                    public void actionPerformed(java.awt.event.ActionEvent event) {
+                        graph.clearSelection();
                     }
                 });
     }
 
     /**
-     * Takes every selected node off the board, leaving the ontology untouched.
+     * Says what Delete did, in one sentence, and whether the ontology was touched.
      *
-     * @return how many were removed
+     * <p>That last clause carries more weight here than in most software. "Removed from the board"
+     * and "deleted from the ontology" look identical on a canvas - the node disappears either way -
+     * and the current interface distinguished them nowhere. A curator who believes they have retired
+     * a term and has only hidden it will find out at the next release; one who believes the reverse
+     * will spend an afternoon looking for a class that is still there.
+     *
+     * <p>Delete discarded the count this reports. Pressing it on a sticky note, a frame or an edge
+     * did nothing at all and said nothing either, so the reasonable conclusion was that the keyboard
+     * shortcut was broken.
      */
-    private int removeSelectionFromCanvas() {
+    private void reportRemoval(Removal removal) {
+        if (removal.nothingSelected()) {
+            setStatus("Nothing is selected. Click a node, or drag a box around several.");
+            return;
+        }
+        StringBuilder said = new StringBuilder();
+        if (removal.terms > 0) {
+            said.append(removal.terms).append(removal.terms == 1 ? " term" : " terms")
+                    .append(" taken off the board. The ontology is unchanged - they are still "
+                            + "there, and Add all or the entity trees will bring them back.");
+        }
+        if (removal.annotations > 0) {
+            if (said.length() > 0) {
+                said.append(' ');
+            }
+            said.append(removal.annotations)
+                    .append(removal.annotations == 1 ? " note or frame deleted."
+                            : " notes and frames deleted.");
+        }
+        if (removal.skipped > 0) {
+            if (said.length() > 0) {
+                said.append(' ');
+            }
+            // Edges are the common case, and the distinction is the point: an edge is an axiom, so
+            // removing one is a change to the ontology and belongs behind the confirmation the
+            // context menu already has.
+            said.append(removal.skipped)
+                    .append(removal.skipped == 1 ? " selected item was left alone"
+                            : " selected items were left alone")
+                    .append(" - an arrow is an axiom, so use the right-click menu to remove one.");
+        }
+        setStatus(said.toString());
+    }
+
+    /** What one Delete did, so it can be reported rather than counted and dropped. */
+    static final class Removal {
+        private final int terms;
+        private final int annotations;
+        private final int skipped;
+
+        Removal(int terms, int annotations, int skipped) {
+            this.terms = terms;
+            this.annotations = annotations;
+            this.skipped = skipped;
+        }
+
+        boolean nothingSelected() {
+            return terms == 0 && annotations == 0 && skipped == 0;
+        }
+
+        int getTerms() {
+            return terms;
+        }
+
+        int getAnnotations() {
+            return annotations;
+        }
+
+        int getSkipped() {
+            return skipped;
+        }
+    }
+
+    /**
+     * Takes the selection off the board, leaving the ontology untouched.
+     *
+     * <p>Three outcomes, counted separately because they mean different things to the user. A term
+     * comes off the board and stays in the ontology. A sticky note or a frame is deleted outright -
+     * it exists nowhere else, so there is nothing to come off. Anything else, an edge in practice, is
+     * left alone: an edge is an axiom, and removing one is a change to the ontology that belongs
+     * behind the confirmation the context menu already has.
+     *
+     * <p>Notes and frames used to fall into a silent gap. {@code membership.remove} returns false for
+     * an id that is not a term, so pressing Delete on a note did nothing and said nothing, and the
+     * shortcut looked broken.
+     */
+    private Removal removeSelectionFromCanvas() {
         Object[] selected = graph.getSelectionCells();
         if (selected == null || selected.length == 0) {
-            return 0;
+            return new Removal(0, 0, 0);
         }
-        int removed = 0;
+        int terms = 0;
+        int annotations = 0;
+        int skipped = 0;
         for (Object cell : selected) {
-            String iri = graph.getIdForCell(cell);
-            if (iri != null && membership.remove(iri)) {
-                removed++;
+            String id = graph.getIdForCell(cell);
+            if (id == null) {
+                skipped++;
+            } else if (SchemaGraph.isAnnotationId(id)) {
+                // deleteAnnotation refreshes and saves for itself, which is why this loop does not
+                // count it towards the redraw below.
+                deleteAnnotation(id);
+                annotations++;
+            } else if (membership.remove(id)) {
+                terms++;
+            } else {
+                skipped++;
             }
         }
-        if (removed > 0) {
+        if (terms > 0) {
             refresh();
             saveLayoutTo(layoutFile);
         }
-        return removed;
+        return new Removal(terms, annotations, skipped);
     }
 
     /**
@@ -875,13 +985,13 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             return;
         }
         lastCursorSentAt = now;
-        double scale = graph.getView().getScale();
-        if (scale <= 0) {
-            scale = 1;
-        }
-        // The event is on the graph control, which is the scrolled content, so only the zoom has
-        // to be undone - the mirror of PeerCursorLayer, and of toGraphPoint minus its scroll term.
-        collab.publishCursor(event.getX() / scale, event.getY() / scale,
+        // The event is on the graph control, which is the scrolled content, so only the zoom and
+        // the view translate have to be undone - the mirror of PeerCursorLayer. Through the shared
+        // converter rather than inline: this path had the arithmetic right and the drop path did not,
+        // and one function is what stops them differing again. It also picks up the translate term,
+        // which the inline version omitted - zero on a default view, not in general.
+        Point inGraph = graphPointFromControl(event.getX(), event.getY());
+        collab.publishCursor(inGraph.x, inGraph.y,
                 selectionBridge == null ? null : selectionBridge.currentCanvasSelection());
     }
 
@@ -1995,8 +2105,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                     try {
                         Object payload = support.getTransferable().getTransferData(
                                 OWLObjectDataFlavor.OWL_OBJECT_DATA_FLAVOR);
-                        Point graphPoint =
-                                toGraphPoint(support.getDropLocation().getDropPoint());
+                        Point graphPoint = graphPointOfDrop(support);
                         if (dropEntities(payload, graphPoint)) {
                             return true;
                         }
@@ -2138,23 +2247,59 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
     }
 
     /**
-     * Converts a point in the component's coordinates to graph coordinates.
+     * Where a drop landed, in graph coordinates.
      *
-     * <p>A drop point arrives relative to the visible component, so it has to be shifted by
-     * the scroll position and divided by the zoom - otherwise a node dropped on a scrolled or
-     * zoomed canvas appears somewhere else entirely.
+     * <p>The scroll offset used to be added here, and that was the bug. The same
+     * {@code TransferHandler} instance is installed on two components - on {@code graphComponent}
+     * and again on {@code graphComponent.getGraphControl()} - and a drop point is relative to
+     * whichever one received it. The graph control is the full-size canvas <em>inside</em> the
+     * viewport, so its coordinates already account for scrolling; adding the offset counted it
+     * twice. On a board scrolled down 500 pixels, a class dropped in the middle of the visible area
+     * was recorded 500 units below it - off-screen, so the drop looked like it had done nothing.
+     *
+     * <p>Worth noting where the right answer already was: {@link #shareCursor} converts a graph
+     * control event with a comment saying only the zoom had to be undone - naming this very method as
+     * the one that wrongly added a scroll term. The right arithmetic was written down eight lines
+     * from the wrong one, and the comment flagged the difference without resolving it. Both now
+     * call the same function.
      */
-    private Point toGraphPoint(Point componentPoint) {
-        Point scrolled = new Point(componentPoint);
-        if (graphComponent.getViewport() != null) {
-            Point offset = graphComponent.getViewport().getViewPosition();
-            scrolled.translate(offset.x, offset.y);
-        }
-        double scale = graph.getView().getScale();
-        if (scale <= 0) {
-            scale = 1;
-        }
-        return new Point((int) (scrolled.x / scale), (int) (scrolled.y / scale));
+    private Point graphPointOfDrop(javax.swing.TransferHandler.TransferSupport support) {
+        Point dropped = support.getDropLocation().getDropPoint();
+        java.awt.Component onto = support.getComponent();
+        Point onControl = onto == null || onto == graphComponent.getGraphControl()
+                ? dropped
+                : javax.swing.SwingUtilities.convertPoint(onto, dropped,
+                        graphComponent.getGraphControl());
+        return graphPointFromControl(onControl.x, onControl.y);
+    }
+
+    /** {@link #graphPointFromControl(int, int, double, double, double)} for this graph's view. */
+    private Point graphPointFromControl(int controlX, int controlY) {
+        com.mxgraph.util.mxPoint translate = graph.getView().getTranslate();
+        return graphPointFromControl(controlX, controlY, graph.getView().getScale(),
+                translate == null ? 0 : translate.getX(),
+                translate == null ? 0 : translate.getY());
+    }
+
+    /**
+     * The arithmetic {@code mxGraphComponent.getPointForEvent} performs, over a point already in the
+     * graph control's coordinates.
+     *
+     * <p>One function for every gesture that turns a position on screen into a position in the
+     * diagram. There were three different answers before: the double-click path called the library's
+     * own converter and was right, the cursor-sharing path divided by the zoom and was right, and the
+     * drop path added the scroll offset as well and was wrong. Three spellings of one calculation is
+     * how one of them stays wrong.
+     *
+     * <p>Static and package-private so it can be tested without a live component, which the inline
+     * versions could not be. There is deliberately no scroll term, and the test asserting its absence
+     * is what will keep it from coming back.
+     */
+    static Point graphPointFromControl(int controlX, int controlY, double scale,
+            double translateX, double translateY) {
+        double zoom = scale <= 0 ? 1 : scale;
+        return new Point((int) (controlX / zoom - translateX),
+                (int) (controlY / zoom - translateY));
     }
 
     /**

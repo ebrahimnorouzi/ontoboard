@@ -439,12 +439,49 @@ public final class OperationMapper {
             return annotationOperation((IRI) axiom.getSubject(),
                     axiom.getProperty().getIRI(), iriValue, true, adding, userId);
         }
+        OWLLiteral literal = (OWLLiteral) axiom.getValue();
         return annotationOperation((IRI) axiom.getSubject(), axiom.getProperty().getIRI(),
-                ((OWLLiteral) axiom.getValue()).getLiteral(), false, adding, userId);
+                literal.getLiteral(), false, adding, userId,
+                datatypeToCarry(literal), literal.getLang());
     }
+
+    /**
+     * The datatype worth putting on the wire, or empty for the ordinary case.
+     *
+     * <p>{@code xsd:string} is omitted because it is what a plain literal reports and what the
+     * receiving side builds by default, so carrying it would change every payload to fix the few
+     * that need it. A language-tagged literal has datatype {@code rdf:langString}, which the tag
+     * already implies.
+     */
+    private static String datatypeToCarry(OWLLiteral literal) {
+        if (literal.hasLang()) {
+            return "";
+        }
+        String datatype = literal.getDatatype().getIRI().toString();
+        return XSD_STRING.equals(datatype) ? "" : datatype;
+    }
+
+    /** What OWL API reports for a plain literal, and what the default rebuild produces. */
+    private static final String XSD_STRING = "http://www.w3.org/2001/XMLSchema#string";
 
     private static Outbound annotationOperation(IRI subject, IRI property, String value,
             boolean valueIsIri, boolean adding, String userId) {
+        return annotationOperation(subject, property, value, valueIsIri, adding, userId, "", "");
+    }
+
+    /**
+     * @param datatype the literal's datatype IRI, or empty when it is {@code xsd:string} or the
+     *     value is an IRI. Carried because rebuilding every literal as {@code xsd:string} made
+     *     obsoletion stop working across a session: {@code Obsoletion} writes
+     *     {@code owl:deprecated "true"^^xsd:boolean}, a peer rebuilt it as
+     *     {@code "true"^^xsd:string}, and {@code isDeprecatedIRIAssertion} is false for that - so a
+     *     term retired on one machine was live on the other, with both files claiming to say the
+     *     same thing.
+     * @param language the language tag, or empty. Same reasoning: {@code skos:prefLabel "Pizza"@de}
+     *     arriving untagged is a textual divergence that shows up in the next release diff.
+     */
+    private static Outbound annotationOperation(IRI subject, IRI property, String value,
+            boolean valueIsIri, boolean adding, String userId, String datatype, String language) {
         Map<String, Object> data = new LinkedHashMap<String, Object>();
         data.put("iri", subject.toString());
         data.put("property", property.toString());
@@ -454,6 +491,14 @@ public final class OperationMapper {
         data.put("value", adding ? value : "");
         data.put("previous", adding ? "" : value);
         data.put("valueIsIri", Boolean.valueOf(valueIsIri));
+        // Only when there is something to say. An operation identical to what an older plugin and
+        // the web client already produce is one they both keep understanding.
+        if (datatype != null && !datatype.isEmpty()) {
+            data.put("datatype", datatype);
+        }
+        if (language != null && !language.isEmpty()) {
+            data.put("lang", language);
+        }
         return mapped("updateAnnotation", userId, data);
     }
 
@@ -717,13 +762,21 @@ public final class OperationMapper {
         previous = previous == null ? "" : previous;
         boolean valueIsIri = Boolean.TRUE.equals(data.get("valueIsIri"))
                 || "true".equals(String.valueOf(data.get("valueIsIri")));
+        String datatype = text(data, "datatype");
+        String language = text(data, "lang");
 
         List<OWLOntologyChange> changes = new ArrayList<OWLOntologyChange>();
         if (!previous.isEmpty()) {
             for (OWLAnnotationAssertionAxiom existing
                     : ontology.getAnnotationAssertionAxioms(subject)) {
+                // Matched on the datatype and tag as well as the text, when the operation
+                // supplies them. Without that, a removal of owl:deprecated "true"^^xsd:boolean
+                // matches an xsd:string "true" on this side and retracts the wrong axiom - which is
+                // the same confusion the datatype was added to end, arriving from the other
+                // direction.
                 if (property.equals(existing.getProperty())
-                        && previous.equals(valueTextOf(existing.getValue()))) {
+                        && previous.equals(valueTextOf(existing.getValue()))
+                        && literalMatches(existing.getValue(), datatype, language)) {
                     changes.add(new RemoveAxiom(ontology, existing));
                     break;
                 }
@@ -746,12 +799,57 @@ public final class OperationMapper {
             // would add an entity while deleting an annotation.
             changes.addAll(declareIfAbsent(ontology, property));
             addIfAbsent(changes, ontology, factory.getOWLAnnotationAssertionAxiom(property,
-                    subject, valueIsIri ? IRI.create(value) : factory.getOWLLiteral(value)));
+                    subject, valueIsIri ? IRI.create(value)
+                            : literalOf(factory, value, datatype, language)));
         }
         if (changes.isEmpty()) {
             return skipped("an annotation that is already as the peer describes it");
         }
         return understood(changes);
+    }
+
+    /**
+     * The literal a peer described, with its tag or datatype where one was given.
+     *
+     * <p>Rebuilding everything as {@code xsd:string} is what made obsoletion stop crossing:
+     * {@code owl:deprecated "true"^^xsd:boolean} became {@code "true"^^xsd:string}, and OWL API's
+     * {@code isDeprecatedIRIAssertion} is false for that - so a term retired on one machine stayed
+     * live on the other while both files claimed to say the same thing. Nothing reported it, because
+     * no reasoner interprets an annotation and the text matched.
+     */
+    private static OWLLiteral literalOf(OWLDataFactory factory, String value, String datatype,
+            String language) {
+        if (language != null && !language.trim().isEmpty()) {
+            return factory.getOWLLiteral(value, language.trim());
+        }
+        if (datatype != null && !datatype.trim().isEmpty()) {
+            return factory.getOWLLiteral(value,
+                    factory.getOWLDatatype(IRI.create(datatype.trim())));
+        }
+        return factory.getOWLLiteral(value);
+    }
+
+    /**
+     * Whether an existing value carries the tag and datatype the operation named.
+     *
+     * <p>An operation that names neither matches anything with the right text, which is what an
+     * older peer's operations look like and what keeps them working.
+     */
+    private static boolean literalMatches(org.semanticweb.owlapi.model.OWLAnnotationValue existing,
+            String datatype, String language) {
+        boolean wantsLanguage = language != null && !language.trim().isEmpty();
+        boolean wantsDatatype = datatype != null && !datatype.trim().isEmpty();
+        if (!wantsLanguage && !wantsDatatype) {
+            return true;
+        }
+        if (!(existing instanceof OWLLiteral)) {
+            return false;
+        }
+        OWLLiteral literal = (OWLLiteral) existing;
+        if (wantsLanguage) {
+            return language.trim().equalsIgnoreCase(literal.getLang());
+        }
+        return datatype.trim().equals(literal.getDatatype().getIRI().toString());
     }
 
     /** An annotation value as text, whether it is a literal or an IRI. */
