@@ -124,6 +124,19 @@ The plugin is early. These exist in the web application but not yet here:
 
   The lesson, stated so it outlives the fix: **a test that injects a dependency cannot check the
   wiring.** Where two implementations meet, one test has to run both.
+- **A live session belongs to one ontology, and did not before 1.51.0.** It resolved "the
+  ontology" from Protégé's current selection on every operation, which broke in both directions: an
+  edit to any other loaded ontology - an ODK project has every import module loaded alongside the
+  edit file - was published to the board and applied to every peer's edit file, and switching the
+  active ontology while connected redirected peers' edits into whatever file was now in front of the
+  user. A session is now bound at start; changes to another ontology are skipped silently, because
+  there is nothing wrong with the axiom and counting it as unshareable would send the user hunting
+  for a protocol limitation that does not exist.
+- **Renaming a term used to delete its labels in every other language.** A label change said only
+  "this term's label is now X", and applying it removed every `rdfs:label` on the term. Three labels
+  on one term collapsed to one at the receiving peer. The operation now carries the language tag and
+  a peer replaces only that language; an operation with no tag is taken as the untagged label, which
+  is what an older peer means by it, so the two versions interoperate without loss.
 - **Live mode cannot carry every axiom, and the number is measured.** Offering every axiom in pizza
   v5 to a live session, 96 of 141 travel and 45 do not. `SubClassOf`, class and individual
   declarations, `rdfs:label` including renames, `ClassAssertion` and every annotation cross.
@@ -226,7 +239,7 @@ The plugin is early. These exist in the web application but not yet here:
 
 ### Not covered by tests
 
-1167 tests cover projection, axiom construction, layout persistence, ODK scaffolding, the
+1169 tests cover projection, axiom construction, layout persistence, ODK scaffolding, the
 report's rule execution and the OSGi configuration. Fourteen of them reach outside the JVM:
 `RobotParityTest` compares the report against real ROBOT in `obolibrary/odkfull`,
 `RobotCliParityTest` compares nine more operations against the same image's `robot` command, and

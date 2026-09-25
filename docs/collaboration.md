@@ -58,8 +58,11 @@ It opens **two** ports, and the difference matters:
 Both serve the *same* documents — [`server.mjs`](../collab/server.mjs) attaches the bridge to
 Hocuspocus through `openDirectConnection`, so a Protégé user and a browser user are in one
 session rather than two that happen to look alike. Point the plugin at **1235**. Pointing it at
-1234 fails in a confusing way, because a Yjs endpoint will accept the connection and then never
-understand a word; the plugin refuses a `ws://…:1234` address for that reason.
+1234 fails in a confusing way, because a Yjs endpoint accepts the connection and then never
+understands a word - the plugin would sit on "Connecting…" indefinitely with nothing in any log to
+explain it. So the plugin refuses a `ws://…:1234` address outright and says which port to use
+instead. That refusal was documented here from the start and only became real in 1.51.0; before
+that, an address on 1234 was accepted and hung.
 
 Without Docker:
 
@@ -227,7 +230,7 @@ location /collab-bridge {
 
 Work down this list; it is ordered by how often each one is the answer.
 
-1. **Is the port 1235?** Not 1234. The plugin refuses 1234 outright, but a proxy in front might
+1. **Is the port 1235?** Not 1234. The plugin refuses 1234 outright (since 1.51.0), but a proxy in front might
    not.
 2. **Do the two `SECRET_KEY` values match?** See step 2 above. This is the most common cause of
    a token that looks valid and is not.

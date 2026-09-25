@@ -66,6 +66,18 @@ public final class CollabSession implements CollabClient.Listener {
     private final CollabSettings settings;
     private final Host host;
     private final PeerCursors cursors = new PeerCursors();
+
+    /**
+     * The one ontology this session is about, fixed when it starts.
+     *
+     * <p>Not read from the host per operation, which is what it used to do. A board belongs to an
+     * ontology - that is the whole basis of the peer-mismatch warning - so a session that resolves
+     * "the ontology" afresh each time follows Protege's active-ontology selection instead, and two
+     * things go wrong at once. A peer's edits land in whatever file the user has since switched to,
+     * and the user's edits to that unrelated file are published to the original board. Neither is
+     * visible until somebody notices a class they never wrote.
+     */
+    private OWLOntology subject;
     private final CollabTransport client;
 
     private final Object lock = new Object();
@@ -112,7 +124,19 @@ public final class CollabSession implements CollabClient.Listener {
         this.client = transport;
     }
 
+    /** The ontology this session syncs, or null before it has started. */
+    public OWLOntology getSubject() {
+        synchronized (lock) {
+            return subject;
+        }
+    }
+
     public void start() {
+        synchronized (lock) {
+            // Fixed here, once. Every later decision - what to publish, where to apply what
+            // arrives - is made against this and not against Protege's current selection.
+            subject = host.activeOntology();
+        }
         client.start();
     }
 
@@ -167,7 +191,18 @@ public final class CollabSession implements CollabClient.Listener {
         int published = 0;
         int unshareable = 0;
         String reason = null;
+        OWLOntology mine = getSubject();
         for (OWLOntologyChange change : changes) {
+            if (mine != null && change.getOntology() != null
+                    && !mine.equals(change.getOntology())) {
+                // Another ontology entirely - most often an import module, which Protege reports
+                // through the same listener as the edit file. Publishing it would push somebody
+                // else's vocabulary onto this board and into every peer's edit file. Skipped
+                // rather than counted as unshareable: there is nothing wrong with the axiom, it
+                // simply is not this board's business, and a count would send the user looking for
+                // a protocol limitation that is not there.
+                continue;
+            }
             OperationMapper.Outbound mapped = OperationMapper.toOperation(change,
                     settings.getDisplayName(), hints == null ? OperationMapper.NO_HINTS : hints);
             if (mapped.isMapped()) {
@@ -215,7 +250,12 @@ public final class CollabSession implements CollabClient.Listener {
 
     @Override
     public void onOperation(OntologyOperation operation) {
-        OWLOntology ontology = host.activeOntology();
+        // The ontology this session is about, not the one Protege happens to be showing. See the
+        // field's own note for what reading it from the host each time did.
+        OWLOntology ontology = getSubject();
+        if (ontology == null) {
+            ontology = host.activeOntology();
+        }
         if (ontology == null) {
             // Nothing open to apply it to. Dropping is the only option, and saying so beats
             // failing silently - the two copies are now out of step.

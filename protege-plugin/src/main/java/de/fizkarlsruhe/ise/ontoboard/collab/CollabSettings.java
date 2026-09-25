@@ -97,6 +97,43 @@ public final class CollabSettings {
                             + "'. The plugin connects to the JSON bridge (default port 1235), "
                             + "not to the browser endpoint on 1234.");
         }
+        if (isBrowserEndpoint(bridgeUrl)) {
+            // docs/collaboration.md has promised this refusal in two places since the feature
+            // shipped, and nothing checked the port - so the documented protection did not exist.
+            // It is worth having rather than deleting, because the failure it prevents is the worst
+            // kind: a Yjs endpoint accepts the socket and then never answers a word of JSON, so the
+            // plugin sits on "Connecting..." indefinitely with nothing in any log to explain it.
+            throw new IllegalArgumentException(
+                    "Port " + HOCUSPOCUS_PORT + " is the browser endpoint, which speaks Yjs rather "
+                            + "than JSON. It would accept this connection and then never answer, so "
+                            + "the plugin would wait indefinitely. Use the JSON bridge on port "
+                            + BRIDGE_PORT + " - the same address with " + BRIDGE_PORT + " in place "
+                            + "of " + HOCUSPOCUS_PORT + ".");
+        }
+    }
+
+    /** The Yjs endpoint's conventional port, which the plugin cannot speak to. */
+    private static final int HOCUSPOCUS_PORT = 1234;
+
+    /** The JSON bridge's conventional port, which it can. */
+    private static final int BRIDGE_PORT = 1235;
+
+    /**
+     * Whether an address points at the Yjs endpoint rather than the JSON bridge.
+     *
+     * <p>Matched on the port alone, and only the conventional one. A team that has moved the bridge
+     * onto 1234 deliberately is not helped by being refused, but that arrangement requires moving
+     * the browser endpoint too and is rare enough not to design for; a typed 4 in place of a 5 is
+     * not.
+     */
+    private static boolean isBrowserEndpoint(String address) {
+        try {
+            return new java.net.URI(address).getPort() == HOCUSPOCUS_PORT;
+        } catch (java.net.URISyntaxException notAnAddress) {
+            // Left to fail at connect time with its own message; guessing at a malformed address is
+            // how a validator starts refusing things that would have worked.
+            return false;
+        }
     }
 
     public String getBridgeUrl() {

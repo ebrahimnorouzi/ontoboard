@@ -1,6 +1,7 @@
 package de.fizkarlsruhe.ise.ontoboard.collab;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -324,6 +325,143 @@ class CollabLiveTest {
                 "a rename must replace the label, not leave both on the term");
     }
 
+
+    /**
+     * Renaming one language's label leaves the others alone.
+     *
+     * <p>Data loss, and the sort that is discovered months later by somebody asking where the German
+     * labels went. A label change used to arrive as "this term's label is now X", and the code
+     * applying it removed <em>every</em> {@code rdfs:label} on the term before adding the new one -
+     * so a curator renaming an English label silently deleted the German and French labels on every
+     * other peer, with nothing in the operation to put them back from.
+     *
+     * <p>The operation now carries the language tag beside the text, and a peer replaces only the
+     * label in that language. An operation with no tag is taken as being about the untagged label,
+     * which is what an older peer means by it - so an old peer talking to a new one loses nothing,
+     * and the new one stops destroying what it was never told about.
+     */
+    @Test
+    void renamingOneLanguageLeavesTheOtherLanguagesAlone() throws Exception {
+        assumeTrue(CollabHarness.isAvailable(), "node or collab/node_modules is not available");
+        harness.start();
+
+        Scratch alice = new Scratch("http://example.org/live/multilingual");
+        Scratch bob = new Scratch("http://example.org/live/multilingual");
+        CollabHarness.Peer a = harness.join("alice", "lang-board", alice.ontology);
+        final CollabHarness.Peer b = harness.join("bob", "lang-board", bob.ontology);
+        assertTrue(harness.waitUntilConnected(a, b), connectionFailure(a, b));
+
+        final OWLClass pizza = alice.factory.getOWLClass(IRI.create(alice.iri + "#Pizza"));
+
+        // A term with three labels, which is ordinary in an OBO ontology with translations.
+        List<OWLOntologyChange> creation = new ArrayList<OWLOntologyChange>();
+        creation.add(new AddAxiom(alice.ontology, alice.factory.getOWLDeclarationAxiom(pizza)));
+        creation.add(labelChange(alice, pizza, "pizza", "en"));
+        creation.add(labelChange(alice, pizza, "Pizza", "de"));
+        creation.add(labelChange(alice, pizza, "pizza", null));
+        alice.manager.applyChanges(creation);
+        a.getSession().publishLocalChanges(creation, OperationMapper.NO_HINTS);
+
+        harness.waitFor(new CollabHarness.Condition() {
+            @Override
+            public boolean isMet() {
+                return labelCount(b.getOntology(), pizza) >= 3;
+            }
+        });
+        assertEquals(3, labelCount(b.getOntology(), pizza),
+                "bob must have all three labels before the rename, or this proves nothing. He has "
+                        + labelsOf(b.getOntology(), pizza));
+
+        // Alice renames only the English one.
+        List<OWLOntologyChange> rename = new ArrayList<OWLOntologyChange>();
+        rename.add(new RemoveAxiom(alice.ontology,
+                alice.factory.getOWLAnnotationAssertionAxiom(alice.factory.getRDFSLabel(),
+                        pizza.getIRI(), alice.factory.getOWLLiteral("pizza", "en"))));
+        rename.add(labelChange(alice, pizza, "pizza pie", "en"));
+        alice.manager.applyChanges(rename);
+        a.getSession().publishLocalChanges(rename, OperationMapper.NO_HINTS);
+
+        harness.waitFor(new CollabHarness.Condition() {
+            @Override
+            public boolean isMet() {
+                return labelsOf(b.getOntology(), pizza).contains("pizza pie@en");
+            }
+        });
+
+        String labels = labelsOf(b.getOntology(), pizza);
+        assertTrue(labels.contains("pizza pie@en"), "the English label must be the new one: " + labels);
+        assertTrue(labels.contains("Pizza@de"),
+                "the German label must survive a rename of the English one: " + labels);
+        assertTrue(labels.contains("pizza@"),
+                "the untagged label must survive too: " + labels);
+        assertEquals(3, labelCount(b.getOntology(), pizza),
+                "still three labels, one of them changed - not one label, or four: " + labels);
+    }
+
+
+    /**
+     * An edit to a different ontology does not reach the board.
+     *
+     * <p>Protégé reports every loaded ontology's changes through one listener, and an ODK project has
+     * several loaded at once - the edit file plus every import module under {@code imports/}. The
+     * session used to publish whatever it was handed, so touching an import module pushed somebody
+     * else's vocabulary onto the board, and every peer applied it to their own edit file.
+     *
+     * <p>The same defect had a second face: inbound operations were applied to whatever Protégé had
+     * made active since the session started, so switching ontology while connected redirected a
+     * peer's edits into an unrelated file. A session is now bound to one ontology when it starts, and
+     * both directions are checked against it.
+     */
+    @Test
+    void anEditToAnotherOntologyIsNotPublished() throws Exception {
+        assumeTrue(CollabHarness.isAvailable(), "node or collab/node_modules is not available");
+        harness.start();
+
+        Scratch alice = new Scratch("http://example.org/live/edit-file");
+        Scratch bob = new Scratch("http://example.org/live/edit-file");
+        CollabHarness.Peer a = harness.join("alice", "binding-board", alice.ontology);
+        final CollabHarness.Peer b = harness.join("bob", "binding-board", bob.ontology);
+        assertTrue(harness.waitUntilConnected(a, b), connectionFailure(a, b));
+        assertEquals(alice.ontology, a.getSession().getSubject(),
+                "the session must be bound to the ontology it started on");
+
+        // A second ontology in the same manager, standing in for an import module.
+        OWLOntology importModule = alice.manager.createOntology(
+                IRI.create("http://example.org/live/food-import"));
+        OWLClass borrowed = alice.factory.getOWLClass(
+                IRI.create("http://example.org/live/food-import#Cheese"));
+        List<OWLOntologyChange> intoTheModule = new ArrayList<OWLOntologyChange>();
+        intoTheModule.add(new AddAxiom(importModule,
+                alice.factory.getOWLDeclarationAxiom(borrowed)));
+        alice.manager.applyChanges(intoTheModule);
+
+        assertEquals(0, a.getSession().publishLocalChanges(intoTheModule, OperationMapper.NO_HINTS),
+                "an edit to another ontology must not be published to this board");
+        assertEquals(0, a.getSession().getUnshareableCount(),
+                "and must not be counted as an unshareable axiom either - there is nothing wrong "
+                        + "with it, it is simply not this board's business");
+
+        // And the edit file still works, so the filter has not broken the ordinary case.
+        final OWLClass calzone = alice.factory.getOWLClass(IRI.create(alice.iri + "#Calzone"));
+        List<OWLOntologyChange> intoTheEditFile = new ArrayList<OWLOntologyChange>();
+        intoTheEditFile.add(new AddAxiom(alice.ontology,
+                alice.factory.getOWLDeclarationAxiom(calzone)));
+        alice.manager.applyChanges(intoTheEditFile);
+        assertEquals(1, a.getSession().publishLocalChanges(intoTheEditFile,
+                OperationMapper.NO_HINTS), "the edit file's own changes must still publish");
+
+        harness.waitFor(new CollabHarness.Condition() {
+            @Override
+            public boolean isMet() {
+                return b.getOntology().containsClassInSignature(calzone.getIRI());
+            }
+        });
+        assertTrue(b.getOntology().containsClassInSignature(calzone.getIRI()),
+                "bob must receive the edit-file change");
+        assertFalse(b.getOntology().containsClassInSignature(borrowed.getIRI()),
+                "bob must never have been sent the import module's class: " + b.getApplied());
+    }
+
     // ===================================================================== plumbing
 
     private String connectionFailure(CollabHarness.Peer... peers) {
@@ -332,6 +470,29 @@ class CollabLiveTest {
             text.append("\n  ").append(peer.getUser()).append(": ").append(peer.getStatus());
         }
         return text.append("\nServer said:\n").append(harness.output()).toString();
+    }
+
+    /** An rdfs:label addition, with a language tag when one is given. */
+    private static OWLOntologyChange labelChange(Scratch peer, OWLClass subject, String text,
+            String language) {
+        return new AddAxiom(peer.ontology, peer.factory.getOWLAnnotationAssertionAxiom(
+                peer.factory.getRDFSLabel(), subject.getIRI(),
+                language == null ? peer.factory.getOWLLiteral(text)
+                        : peer.factory.getOWLLiteral(text, language)));
+    }
+
+    /** Every label on a term as {@code text@tag}, sorted, for a failure message worth reading. */
+    private static String labelsOf(OWLOntology ontology, OWLClass subject) {
+        java.util.TreeSet<String> labels = new java.util.TreeSet<String>();
+        for (OWLAnnotationAssertionAxiom axiom
+                : ontology.getAnnotationAssertionAxioms(subject.getIRI())) {
+            if (axiom.getProperty().isLabel() && axiom.getValue().asLiteral().isPresent()) {
+                org.semanticweb.owlapi.model.OWLLiteral literal =
+                        axiom.getValue().asLiteral().get();
+                labels.add(literal.getLiteral() + "@" + literal.getLang());
+            }
+        }
+        return labels.toString();
     }
 
     /** The rdfs:label on a class, or null. */

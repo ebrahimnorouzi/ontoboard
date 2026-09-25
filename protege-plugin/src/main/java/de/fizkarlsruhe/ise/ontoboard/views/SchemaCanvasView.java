@@ -1184,8 +1184,46 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         capturePositions();
         saveLayoutTo(layoutFile);
 
+        stopCollaborationIfTheOntologyChanged();
         loadLayoutForActiveOntology();
         refresh();
+    }
+
+    /**
+     * Ends a live session when the user switches to a different ontology.
+     *
+     * <p>A board belongs to an ontology, and after a switch the canvas is showing something the
+     * session is not about: peer cursors are positions in the other ontology's diagram, and the
+     * edits being made here are not the ones the board carries. {@link CollabSession} now refuses to
+     * publish or apply across that boundary, so nothing is corrupted by staying connected - but a
+     * connected toolbar over an ontology that is not being shared says the opposite of the truth,
+     * which is its own kind of wrong.
+     *
+     * <p>So it disconnects and says why, rather than leaving a half-state to be discovered. Coming
+     * back to the original ontology does not reconnect on its own; that would be a surprising amount
+     * of initiative for something holding a credential.
+     */
+    private void stopCollaborationIfTheOntologyChanged() {
+        if (collab == null) {
+            return;
+        }
+        OWLOntology sessionOntology = collab.getSubject();
+        OWLOntology nowActive = getOWLModelManager().getActiveOntology();
+        if (sessionOntology == null || sessionOntology.equals(nowActive)) {
+            return;
+        }
+        collab.stop();
+        collab = null;
+        graphComponent.setPeerCursors(null);
+        lastPeerOntologyWarning = null;
+        collaborateButton.setText("Collaborate...");
+        String message = "Disconnected: the session was for "
+                + ontologyIriOf(sessionOntology)
+                + ", and you have switched to another ontology. Collaborate... to start a session "
+                + "for this one.";
+        collabStatus.setText("Disconnected - you switched ontology");
+        collabStatus.setToolTipText(message);
+        LOGGER.info("OntoBoard: {}", message);
     }
 
     /**

@@ -177,9 +177,12 @@ These are in the plan, not in the build. Testing them will find nothing:
 - **Threaded comments and @mentions** — no reply threads and no comment operation in the shared
   vocabulary. *Notes → Discussion link…* points at an issue tracker instead, which is where an OBO
   project's discussion usually lives anyway.
-- **Sticky notes and frames** — the shared vocabulary has operations for them and the sidecar reserves
-  fields; nothing draws them. An inbound `addStickyNote` is logged and ignored, which is why the log
-  line exists.
+- **Sticky notes and frames, *live*** — they are built and drawn: right-click the canvas for
+  *Add note* or *Add frame*, and both are editable in place. What they do not do is travel through
+  the live session. They live in the sidecar rather than in the ontology - deliberately, since a
+  diagram annotation is not an axiom and has no business in a release - so they reach a colleague
+  when the sidecar is committed, not as you type. An inbound `addStickyNote` from a web client is
+  logged and ignored, which is why that log line exists.
 - **Entity locking** — advisory locking is in neither the plugin nor the web app.
 
 Three items that used to be on this list now ship, and testing them *will* find something:
