@@ -604,6 +604,9 @@ public final class OdkScaffold {
                 + "src/ontology/mirror/\n"
                 + "tmp_*\n"
                 + "report.tsv\n"
+                // validate_profile writes this. It was added to `clean` and not here, so a
+                // project would have committed its own build output.
+                + "validate-profile.txt\n"
                 + "# robot verify writes one CSV per failing query into src/ontology.\n"
                 + "src/ontology/*.csv\n"
                 + "*.bak\n"
