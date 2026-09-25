@@ -1,0 +1,100 @@
+OntoBoard 1.46.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-09-25  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 7/7  test 9/9
+  2026-09-25  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 7/7  test 9/9
+
+FOUR DEFECTS, FOUND BY A RICHER PIZZA
+
+v1-v4 of the pizza fixture are classes, object properties, subclass axioms and individuals - the
+easy quarter of OWL, and therefore poor at finding bugs. v5 adds what a real ontology grows into: a
+data property with a domain and an xsd:integer range, a value asserted on an individual, a property
+chain kept inside OWL 2 EL so ELK can use it, an annotation on an axiom, and a definition citing its
+source through IAO:0000119. Four defects came out of it.
+
+1. AN INCOMING COLLABORATION ANNOTATION DID NOT DECLARE ITS PROPERTY
+
+The real one. OperationMapper writes an annotation whose property IRI arrives from outside - from
+whatever is on the board: a web client, a third-party client, a hostile one - and never declared it.
+"Use of undeclared annotation property" is an OWL 2 DL violation, so one collaborator annotating a
+term with a property the local ontology did not declare put that ontology outside DL.
+
+Every sibling writer already did this correctly. Provenance, EditorNotes and Obsoletion each declare
+their annotation property behind an isDeclared guard, and PizzaOntology.v1 carries a comment
+explaining why. The collaboration path was the one that did not, and it is the only one where the
+property comes from a stranger.
+
+It survived because it is nearly invisible: the OWL API's RDF parser adds the missing declaration on
+load, so the ontology tests clean again the moment it is saved and reopened, and
+`robot validate-profile` never sees it. What does see it is the live ontology in front of the editor
+- OntoBoard's own Profile report - and any reasoner asked to work on the session before a save.
+
+Found by adding IAO:0000119 to the fixture without declaring it, noticing the Profile report say
+"outside OWL 2 DL", and then asking which of the plugin's own writers would do the same thing.
+Reproduced by a failing test first, then fixed.
+
+2. THE GENERATED BUILD DID NOT VALIDATE THE OWL 2 DL PROFILE
+
+Real ODK's `test` target depends on validate_profile_owl2dl_$(ONT).owl.txt, which runs
+`robot validate-profile --profile DL` and fails the build. This scaffold had no profile validation
+at all, so a project could drift out of OWL 2 DL with CI staying green - and outside DL the
+guarantees every OWL reasoner relies on no longer hold: a reasoner may give a different answer, or
+none, and nothing would have said so.
+
+`make test` now depends on a validate_profile target, which merges and converts to functional
+syntax first as ODK does - the merge folds in the imports closure, because a violation can be
+created by the combination rather than by either side, and the round trip makes the check answer for
+the artefact rather than for one serialisation of it.
+
+OdkBuildTest asserts the command ran AND reads the verdict file, because robot writes its answer to
+the output file rather than to stdout: the first version of that assertion looked at stdout and would
+have passed whether the ontology was in profile or not.
+
+3. THE PIZZA HARNESS RETURNED THE WRONG ONTOLOGY FOR AN UNKNOWN VERSION
+
+ontologyFor ended in `return PizzaOntology.v4(...)`, so `-Dpizza.version=v6` - or a typo - generated
+v4's ontology and filed every report under v6. A wrong release nobody would have any reason to
+doubt. It now refuses a version it does not know.
+
+The version list was also duplicated: a chain of ifs in ontologyFor and a hardcoded
+Arrays.asList("v1","v2","v3","v4") in the evolution report. Adding v5 broke the second with "no
+release before v5" while the first happily built it. One list now.
+
+4. A MAVEN WARNING THIS PROJECT INTRODUCED IN 1.45.0
+
+"The encoding used to copy filtered properties files has not been set." ontoboard-build.properties
+is filtered, and it carries the ROBOT version that ends up in a generated CI file, so the encoding
+being a guess was worth one line of pom to fix.
+
+AND TWO IN THE FIXTURE ITSELF, BOTH CAUGHT BY THE TOOLING
+
+The calories value was asserted on "MargheritaExample", an individual that does not exist - the
+fixture's individual is "margherita" - so it created an undeclared, unlabelled one out of nothing.
+ROBOT's report caught it as missing_label on the first run of v5.
+
+And IAO:0000119 was used without being declared, which is what put v5 outside OWL 2 DL. The
+plugin's own Profile report caught that one. Both are now fixed, and v5 reports "Tightest profile:
+OWL 2 DL".
+
+WHAT WAS CHECKED AND FOUND CORRECT
+
+  The report agrees with real ROBOT on v5 exactly, including the constructs it had never been tested
+  against. RobotParityTest runs the version carrying three deliberate curation mistakes - a second
+  label, a copied definition, a reference to the term v3 obsoleted - and the violation sets are
+  identical: 25 findings, 5 ERRORs.
+
+  ROBOT reports the subject of deprecated_class_reference as the literal string "blank node" when the
+  reference is inside an anonymous expression. Its own query does BIND("blank node" as ?entity). The
+  plugin reproduces that rather than inventing a better subject, because agreeing with the build is
+  worth more than a nicer table. Noted, not changed.
+
+  ELK reasons over the property chain, and the full ODK build - reason, report, test,
+  prepare_release - exits 0 on v5 in obolibrary/odkfull.
+
+Verified outside the host: 1151 tests pass, 1 skipped.
+
+Not asserted, and not claimed:
+  - the collaboration fix is covered by unit tests, not by two Protege instances talking to each
+    other. Nothing in this suite drives a real session pair.
+  - the self-test still covers 9 of roughly 20 menu items.

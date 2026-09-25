@@ -115,6 +115,15 @@
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
+  <extension id="menu.OntoBoard.project.update"
+             point="org.protege.editor.core.application.EditorKitMenuAction">
+    <name value="Update project files..."/>
+    <path value="ontoboard.menu.OntoBoard.project/SlotA-UP"/>
+    <toolTip value="Re-render this project's generated files from its own -odk.yaml, previewed first"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.menu.UpdateProjectAction"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
+
   <extension id="menu.OntoBoard.project.refreshImports"
              point="org.protege.editor.core.application.EditorKitMenuAction">
     <name value="Refresh imports..."/>

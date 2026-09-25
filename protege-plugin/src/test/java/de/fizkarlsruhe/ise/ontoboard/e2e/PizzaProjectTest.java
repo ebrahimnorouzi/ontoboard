@@ -65,7 +65,25 @@ class PizzaProjectTest {
     /** The curation date, fixed for the same reason - nothing here reads a clock. */
     private static final String CURATED_ON = "2026-09-23";
 
+    /**
+     * Every release, oldest first.
+     *
+     * <p>One list, used both to build an ontology and to find the release before it. They were two
+     * - a chain of ifs here and a hardcoded {@code Arrays.asList("v1", "v2", "v3", "v4")} in the
+     * evolution report - and adding v5 broke the second with "no release before v5" while the first
+     * happily built it.
+     */
+    private static final List<String> VERSIONS =
+            java.util.Arrays.asList("v1", "v2", "v3", "v4", "v5");
+
     private OWLOntology ontologyFor(String which) throws Exception {
+        // A version this does not know is refused, not quietly turned into v4. The fall-through
+        // return meant `-Dpizza.version=v6` - or a typo - generated v4's ontology and filed every
+        // report under v6, which is a wrong release nobody would have any reason to doubt.
+        if (!VERSIONS.contains(which)) {
+            throw new IllegalArgumentException("No such pizza version: '" + which + "'. Known: "
+                    + VERSIONS);
+        }
         if ("v1".equals(which)) {
             return PizzaOntology.v1();
         }
@@ -75,7 +93,10 @@ class PizzaProjectTest {
         if ("v3".equals(which)) {
             return PizzaOntology.v3();
         }
-        return PizzaOntology.v4(CURATOR, CURATED_ON);
+        if ("v4".equals(which)) {
+            return PizzaOntology.v4(CURATOR, CURATED_ON);
+        }
+        return PizzaOntology.v5(CURATOR, CURATED_ON);
     }
 
     @Test
@@ -449,10 +470,10 @@ class PizzaProjectTest {
 
     /** What changed since the previous release, term by term. */
     private void writeEvolutionReport(File reports) throws Exception {
-        // The release before this one, from the ordered list. A two-way ternary meant v4 was
+        // The release before this one, from the one ordered list. A two-way ternary meant v4 was
         // compared with v2, so its notes reprinted v3's changes under a v4 heading and said
-        // nothing about what v4 actually did.
-        List<String> order = java.util.Arrays.asList("v1", "v2", "v3", "v4");
+        // nothing about what v4 actually did; a second hardcoded copy of the list then broke on v5.
+        List<String> order = VERSIONS;
         int index = order.indexOf(version);
         if (index <= 0) {
             throw new IllegalStateException("no release before " + version);

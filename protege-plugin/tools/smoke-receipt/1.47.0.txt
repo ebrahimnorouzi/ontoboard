@@ -1,0 +1,28 @@
+OntoBoard 1.47.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-09-25  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 7/7  test 9/9
+  2026-09-25  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 7/7  test 9/9
+
+ONE LINE, AND WHY IT GETS ITS OWN VERSION
+
+validate-profile.txt is added to the generated .gitignore. 1.46.0 added the validate_profile target
+and listed its output file in `clean` but not in .gitignore - so the first project to run `make test`
+after updating would have committed its own build output, and then seen it change on every run.
+
+Found by running the pizza project's build and reading `git status` rather than the exit code: the
+file sat there untracked, which is the only place that mistake is visible.
+
+It could have been folded into 1.46.0, whose receipt was written minutes earlier. It was not, because
+the receipt for 1.46.0 records a jar that was loaded in two Protege installs, and quietly changing
+shipped code under that version number would make the receipt describe a build nobody ran. Felix
+keys its bundle cache on symbolic name and version; two jars under one number is how somebody ends
+up running the unfixed one while believing otherwise. docs/development.md says so, the pre-commit
+hook enforces it, and this project has broken that rule three times before.
+
+Verified outside the host: 1151 tests pass, 0 skipped - Docker was running, so RobotParityTest and
+OdkBuildTest both ran rather than skipping, and the jar existed so BundleConfigurationTest ran too.
+That is the first fully unskipped run in this sequence.
+
+Pizza: v11 published, carrying ontology v5 and the four defects it found.

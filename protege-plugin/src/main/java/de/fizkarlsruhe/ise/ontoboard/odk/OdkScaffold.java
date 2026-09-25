@@ -29,12 +29,51 @@ public final class OdkScaffold {
     /**
      * The ROBOT the generated CI installs.
      *
-     * <p>Matched to the robot-core this plugin embeds, so the quality report a user sees in
-     * Protege and the one their CI produces come from the same rules. They are only as matched as
-     * somebody keeps them: a test reads the version out of the dependency and fails if these
-     * drift apart.
+     * <p>Read from {@code ontoboard-build.properties}, which Maven fills in from the single
+     * {@code robot.version} property in {@code pom.xml} - the same property that picks the
+     * robot-core this bundle embeds. So the version a user's CI installs and the version their
+     * Protege reports with cannot drift apart, because there is only one of them.
+     *
+     * <p>It used to be a second literal here, kept in step with the pom by a test. That works right
+     * up until somebody bumps one and not the other between test runs, and the plan's F9 asks for
+     * "one embedded ROBOT version, declared once" rather than two that are checked.
      */
-    static final String ROBOT_VERSION = "1.9.8";
+    static final String ROBOT_VERSION = buildProperty("robot.version");
+
+    /**
+     * One value out of the filtered build properties.
+     *
+     * @throws IllegalStateException when the resource is missing or was never filtered - both mean
+     *     the bundle was built wrongly, and a generated CI that installs ROBOT
+     *     {@code ${robot.version}} would fail confusingly much later
+     */
+    private static String buildProperty(String key) {
+        java.io.InputStream in = OdkScaffold.class.getClassLoader()
+                .getResourceAsStream("ontoboard-build.properties");
+        if (in == null) {
+            throw new IllegalStateException("ontoboard-build.properties is not on the classpath; "
+                    + "the plugin was built without resource filtering.");
+        }
+        try {
+            java.util.Properties properties = new java.util.Properties();
+            properties.load(in);
+            String value = properties.getProperty(key);
+            if (value == null || value.trim().isEmpty() || value.contains("${")) {
+                throw new IllegalStateException("ontoboard-build.properties has no usable " + key
+                        + " (got '" + value + "'); Maven resource filtering did not run.");
+            }
+            return value.trim();
+        } catch (java.io.IOException cannotRead) {
+            throw new IllegalStateException("Could not read ontoboard-build.properties: "
+                    + cannotRead.getMessage(), cannotRead);
+        } finally {
+            try {
+                in.close();
+            } catch (java.io.IOException ignored) {
+                // Closing a classpath resource cannot usefully fail.
+            }
+        }
+    }
 
     private OdkScaffold() {
     }
@@ -45,6 +84,68 @@ public final class OdkScaffold {
      * @return every file written, in creation order, so the caller can report what happened
      * @throws IllegalArgumentException if the config is invalid or the target already exists
      */
+    /**
+     * The files a regenerator may rewrite, as relative path to content.
+     *
+     * <p>Split out from {@link #create} because Phase 3's regenerator has to render exactly these
+     * and no others, and because a second copy of the list would drift from this one. Anything
+     * absent is a file somebody owns: see {@link #SEEDED_FILES}.
+     *
+     * <p>Paths use {@code /} so they read the same on every platform and can be compared in a test.
+     */
+    public static java.util.Map<String, String> regenerableFiles(OdkProjectConfig config,
+            String robotVersion) {
+        String id = config.getOntologyId();
+        java.util.Map<String, String> files = new java.util.LinkedHashMap<String, String>();
+        files.put("src/ontology/Makefile", generatedMakefile(config));
+        files.put(".github/workflows/qc.yml", workflow(config, robotVersion));
+        files.put(".gitattributes", gitattributes());
+        files.put(".gitignore", gitignore(config));
+        files.put("README.md", readme(config));
+        return files;
+    }
+
+    /**
+     * The files the scaffold writes once and a regenerator must never touch, and why.
+     *
+     * <p>Not a detail. Three of these are jointly owned or hold state the generator cannot know:
+     *
+     * <ul>
+     *   <li>{@code <id>-edit.owl} - the user's ontology. Obviously.
+     *   <li>{@code <id>.Makefile} - explicitly promised never to be overwritten.
+     *   <li>{@code <id>-odk.yaml} - the regenerator's own input. Re-rendering it would discard any
+     *       comment or key a user added, which is the file they are meant to edit.
+     *   <li>{@code <id>-idranges.owl} - holds every editor's allocated range. The template writes
+     *       one range for {@code System.getProperty("user.name")}, so regenerating it on another
+     *       machine would replace other people's allocations with the current account's.
+     *   <li>{@code catalog-v001.xml} - {@code Catalog.addEntry} writes real import mappings into it.
+     *       The template is an empty catalog, so re-rendering would delete them and every robot
+     *       call in the build would stop resolving its imports.
+     *   <li>{@code profile.txt} - the generated Makefile <em>tells the user to edit this file</em>:
+     *       "To relax one, change ERROR to WARN or INFO rather than deleting the line." Re-rendering
+     *       it would silently re-arm every rule a project had deliberately relaxed, and their next
+     *       CI run would go red for something nobody changed.
+     *   <li>{@code src/sparql/*.rq} - the project's own quality checks. The scaffold writes
+     *       {@code check_labels.rq} as a starting point; a project edits it and adds more, and
+     *       {@code sparql_test} runs whatever it finds.
+     * </ul>
+     *
+     * <p>The four that remain regenerable all announce themselves as generated - the Makefile's
+     * first line is "WARNING: generated by OntoBoard. Do NOT edit by hand." A user may still have
+     * edited the README or the .gitignore, which is exactly why the action previews the diff and
+     * writes nothing unless asked.
+     */
+    public static java.util.List<String> seededFilesFor(String id) {
+        return java.util.Collections.unmodifiableList(java.util.Arrays.asList(
+                "src/ontology/" + id + "-edit.owl",
+                "src/ontology/" + id + ".Makefile",
+                "src/ontology/" + id + "-odk.yaml",
+                "src/ontology/" + id + "-idranges.owl",
+                "src/ontology/catalog-v001.xml",
+                "src/ontology/profile.txt",
+                "src/sparql/check_labels.rq"));
+    }
+
     public static List<File> create(OdkProjectConfig config) {
         config.validate();
 
@@ -52,13 +153,16 @@ public final class OdkScaffold {
         File src = new File(root, "src");
         File ontology = new File(src, "ontology");
 
+        // Only directories that receive a file. src/metadata, src/scripts, src/patterns and docs
+        // were created empty, and an empty directory advertises a capability that is not there -
+        // the same pathology as a YAML key nothing reads. Worse, git does not track empty
+        // directories at all, so they did not survive a clone: the scaffold was creating four
+        // things that existed on the author's machine and nowhere else.
+        //
+        // imports/ goes the same way. ImportModules and ImportTermsAction both create it when they
+        // write into it, which is the moment it starts meaning something.
         mkdirs(ontology);
-        mkdirs(new File(ontology, "imports"));
-        mkdirs(new File(src, "metadata"));
-        mkdirs(new File(src, "scripts"));
         mkdirs(new File(src, "sparql"));
-        mkdirs(new File(src, "patterns"));
-        mkdirs(new File(root, "docs"));
         mkdirs(new File(new File(root, ".github"), "workflows"));
 
         String id = config.getOntologyId();
@@ -73,17 +177,22 @@ public final class OdkScaffold {
         // prepare_release copies to the project root, which a PURL can resolve to.
         written.add(write(new File(ontology, id + "-edit.owl"), editOwl(config)));
 
-        written.add(write(new File(ontology, id + "-odk.yaml"), odkYaml(config)));
-        written.add(write(new File(ontology, "Makefile"), generatedMakefile(config)));
+        // The seeded ones, which nothing regenerates.
+        written.add(write(new File(ontology, id + "-odk.yaml"), odkYaml(config, ROBOT_VERSION)));
         written.add(write(new File(ontology, id + ".Makefile"), customMakefile(config)));
         written.add(write(new File(ontology, id + "-idranges.owl"), idRanges(config)));
         written.add(write(new File(ontology, "catalog-v001.xml"), catalog()));
         written.add(write(new File(ontology, "profile.txt"), reportProfile()));
         written.add(write(new File(new File(src, "sparql"), "check_labels.rq"), checkLabels()));
-        written.add(write(new File(new File(new File(root, ".github"), "workflows"), "qc.yml"),
-                workflow(config)));
-        written.add(write(new File(root, ".gitignore"), gitignore(config)));
-        written.add(write(new File(root, "README.md"), readme(config)));
+
+        // And the regenerable ones, through the same map the regenerator uses - so a file added
+        // there is created here too, and the two cannot disagree about what is generated.
+        for (java.util.Map.Entry<String, String> file
+                : regenerableFiles(config, ROBOT_VERSION).entrySet()) {
+            File target = new File(root, file.getKey().replace('/', File.separatorChar));
+            mkdirs(target.getParentFile());
+            written.add(write(target, file.getValue()));
+        }
         return written;
     }
 
@@ -109,7 +218,7 @@ public final class OdkScaffold {
                 + "</rdf:RDF>\n";
     }
 
-    private static String odkYaml(OdkProjectConfig c) {
+    private static String odkYaml(OdkProjectConfig c, String robotVersion) {
         return "# ODK configuration for " + c.getTitle() + "\n"
                 // Not "sh run.sh make update_repo". That is ODK's own instruction and it
                 // names a 150-line Docker wrapper around obolibrary/odkfull - which this scaffold
@@ -126,6 +235,12 @@ public final class OdkScaffold {
                 + "description: \"" + c.getDescription() + "\"\n"
                 + "uribase: " + uriBase(c) + "\n"
                 + (c.getLicense().isEmpty() ? "" : "license: " + c.getLicense() + "\n")
+                // The project's own ROBOT version, not the plugin's. Seeded from whatever OntoBoard
+                // created the project and read back by the regenerator, so re-rendering qc.yml
+                // never silently moves a project onto a different ROBOT because a different
+                // OntoBoard happened to run - which would make the regenerated file depend on the
+                // tool rather than on the project, and break the one property regeneration needs.
+                + "robot_version: " + robotVersion + "\n"
                 // Only what the Makefile actually produces. It listed base, full, obo and json
                 // before, and built one .owl - so a user following the generated configuration
                 // went looking for four artefacts, found one, and had no way to tell whether the
@@ -167,7 +282,7 @@ public final class OdkScaffold {
                 // only until somebody moved it back.
                 + ".DEFAULT_GOAL := all\n\n"
                 + "-include $(ONT).Makefile\n\n"
-                + ".PHONY: all test reason report sparql_test clean prepare_release\n\n"
+                + ".PHONY: all test reason report sparql_test validate_profile clean prepare_release\n\n"
                 + "all: reason report\n"
                 + "\t@echo \"Build complete: $(ONT)\"\n\n"
                 // reason and sparql_test as well as report, because "test" is what CI runs and
@@ -176,7 +291,7 @@ public final class OdkScaffold {
                 // worst thing that can be wrong with an ontology - passed QC green. And the
                 // scaffold wrote src/sparql/check_labels.rq while nothing anywhere ran it, so a
                 // project advertised a quality check it did not perform.
-                + "test: reason report sparql_test\n\n"
+                + "test: reason report sparql_test validate_profile\n\n"
                 // --equivalent-classes-allowed asserted-only, because ROBOT's default is
                 // EquivalentClassReasoningMode.ALL: a reasoner that concludes two *named* classes
                 // are equivalent is almost always reporting a modelling mistake - two terms defined
@@ -210,8 +325,26 @@ public final class OdkScaffold {
                 // SPARQL file a check rather than a decoration.
                 + "sparql_test:\n"
                 + "\t$(ROBOT) verify --input $(ONT)-edit.owl --queries ../sparql/*.rq --output-dir .\n\n"
+                // Real ODK validates the OWL 2 DL profile as part of its own `test` target and this
+                // scaffold did not, so an ontology could drift out of DL with CI staying green.
+                // Outside DL means the guarantees every OWL reasoner relies on no longer hold: a
+                // reasoner may give a different answer, or none, and nothing would have said so.
+                //
+                // merge then convert first, as ODK does. The merge folds in the imports closure -
+                // a violation can be created by the combination rather than by either side - and
+                // the functional-syntax round trip normalises what the RDF/XML parser would
+                // otherwise leave implicit, so the check answers for the artefact rather than for
+                // one serialisation of it.
+                //
+                // `|| { cat ... ; exit 1; }` because robot writes the reasons into the output file
+                // and a bare non-zero exit tells a user only that something is wrong.
+                + "validate_profile:\n"
+                + "\t$(ROBOT) merge -i $(ONT)-edit.owl convert -f ofn -o tmp_validate.ofn\n"
+                + "\t$(ROBOT) validate-profile --profile DL -i tmp_validate.ofn \\\n"
+                + "\t  -o validate-profile.txt || { cat validate-profile.txt; exit 1; }\n"
+                + "\t@rm -f tmp_validate.ofn\n\n"
                 + "clean:\n"
-                + "\t@rm -f tmp_* report.tsv *.bak *.csv $(ONT).owl\n\n"
+                + "\t@rm -f tmp_* report.tsv validate-profile.txt *.bak *.csv $(ONT).owl\n\n"
                 // test, not "reason report". prepare_release used to run a weaker gate than
                 // `make test` did: it left out sparql_test, so a release could be cut while one of
                 // the project's own SPARQL checks was failing. A release gate that is weaker than
@@ -274,6 +407,34 @@ public final class OdkScaffold {
     private static String firstEditor() {
         String name = System.getProperty("user.name", "");
         return name.trim().isEmpty() ? "FirstEditor" : name.trim();
+    }
+
+    /**
+     * Pins line endings, so the project is the same bytes on every machine.
+     *
+     * <p>Git is commonly configured with {@code core.autocrlf=true}, which rewrites text files to
+     * CRLF on checkout while storing LF. Everything this scaffold writes is LF, so without this a
+     * Windows clone has CRLF in the working tree and any byte comparison against freshly generated
+     * content fails - including the one <em>Project &gt; Update project files...</em> makes, which
+     * would then report every generated file as changed on that machine and nowhere else.
+     *
+     * <p>{@code eol=lf} rather than {@code text=auto}: ROBOT, make and the OWL files are all
+     * happier with LF on every platform, and "the same everywhere" is worth more here than matching
+     * a local convention.
+     */
+    private static String gitattributes() {
+        return "# Line endings are pinned so this project is the same bytes on every machine.\n"
+                + "#\n"
+                + "# Git is often configured with core.autocrlf=true, which rewrites text files to\n"
+                + "# CRLF on checkout. Everything OntoBoard generates is LF, so without this a\n"
+                + "# Windows clone gets CRLF in the working tree - and then any byte comparison\n"
+                + "# against regenerated content differs on that machine and nowhere else.\n"
+                + "* text=auto eol=lf\n"
+                + "\n"
+                + "# Not text: these are binary or effectively so.\n"
+                + "*.png binary\n"
+                + "*.jpg binary\n"
+                + "*.zip binary\n";
     }
 
     private static String catalog() {
@@ -367,7 +528,7 @@ public final class OdkScaffold {
                 + "}\n";
     }
 
-    private static String workflow(OdkProjectConfig c) {
+    private static String workflow(OdkProjectConfig c, String robotVersion) {
         return "name: QC\n\n"
                 + "on:\n"
                 + "  push:\n"
@@ -386,7 +547,7 @@ public final class OdkScaffold {
                 + "        run: |\n"
                 + "          curl -fsSL --retry 3 -o robot.jar \\\n"
                 + "            https://github.com/ontodev/robot/releases/download/v"
-                + ROBOT_VERSION + "/robot.jar\n"
+                + robotVersion + "/robot.jar\n"
                 + "          printf '#!/bin/sh\\nexec java -jar %s/robot.jar \"$@\"\\n' "
                 + "\"$PWD\" | sudo tee /usr/local/bin/robot > /dev/null\n"
                 + "          sudo chmod +x /usr/local/bin/robot\n"
@@ -443,6 +604,9 @@ public final class OdkScaffold {
                 + "src/ontology/mirror/\n"
                 + "tmp_*\n"
                 + "report.tsv\n"
+                // validate_profile writes this. It was added to `clean` and not here, so a
+                // project would have committed its own build output.
+                + "validate-profile.txt\n"
                 + "# robot verify writes one CSV per failing query into src/ontology.\n"
                 + "src/ontology/*.csv\n"
                 + "*.bak\n"
@@ -468,6 +632,7 @@ public final class OdkScaffold {
                 + "make reason     # classify with ELK into " + id + ".owl\n"
                 + "make report     # ROBOT quality report -> report.tsv\n"
                 + "make sparql_test  # run every check in ../sparql over the edit file\n"
+                + "make validate_profile  # fail if the ontology has left OWL 2 DL\n"
                 + "make test       # what CI runs: reason, report and sparql_test\n"
                 + "make prepare_release  # test, then a dated, version-stamped release\n"
                 + "make clean      # delete the generated files\n"

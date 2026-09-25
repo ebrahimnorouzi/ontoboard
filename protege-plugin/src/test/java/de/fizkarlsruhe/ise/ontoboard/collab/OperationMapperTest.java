@@ -329,6 +329,71 @@ class OperationMapperTest {
     }
 
     /**
+     * An annotation from a peer declares its property, or the ontology leaves OWL 2 DL.
+     *
+     * <p>Every other writer in this plugin does this already - {@code Provenance},
+     * {@code EditorNotes} and {@code Obsoletion} each declare their annotation property behind an
+     * {@code isDeclared} guard, and {@code PizzaOntology.v1} carries a comment explaining why. The
+     * collaboration path did not, and it is the one path where the property IRI arrives from
+     * outside: whatever a web client, a third-party client or a hostile one puts in the operation.
+     *
+     * <p>"Use of undeclared annotation property" is an OWL 2 DL violation. It is also an invisible
+     * one: the OWL API's RDF parser adds the missing declaration on load, so the ontology tests
+     * clean again as soon as it is saved and reopened, and {@code robot validate-profile} never sees
+     * it. What does see it is the live ontology in front of the editor - OntoBoard's own
+     * <em>Profile</em> report - and any reasoner asked to work on the session before a save.
+     *
+     * <p>Found by adding {@code IAO:0000119} to the pizza fixture without declaring it, noticing
+     * the profile report say "outside OWL 2 DL", and then asking which of the plugin's own writers
+     * would do the same thing.
+     */
+    @Test
+    void anIncomingAnnotationDeclaresThePropertyItUses() {
+        manager.addAxiom(ontology, factory.getOWLDeclarationAxiom(cls("Person")));
+        IRI definitionSource = IRI.create("http://purl.obolibrary.org/obo/IAO_0000119");
+        assertFalse(ontology.isDeclared(factory.getOWLAnnotationProperty(definitionSource)),
+                "the property is not declared to begin with; that is the point");
+
+        Map<String, Object> data = new LinkedHashMap<String, Object>();
+        data.put("iri", "http://example.org/o#Person");
+        data.put("property", definitionSource.toString());
+        data.put("value", "https://example.org/where-this-came-from");
+        data.put("previous", "");
+        OperationMapper.Inbound inbound = OperationMapper.toChanges(
+                new OntologyOperation("op-1", "updateAnnotation", 1L, "alice", data), ontology);
+        manager.applyChanges(inbound.getChanges());
+
+        assertTrue(ontology.isDeclared(factory.getOWLAnnotationProperty(definitionSource)),
+                "an undeclared annotation property puts the ontology outside OWL 2 DL, and every "
+                        + "other writer in this plugin declares the one it uses");
+    }
+
+    /** Removing an annotation declares nothing: there is no property being introduced. */
+    @Test
+    void removingAnAnnotationDoesNotDeclareAnything() {
+        IRI note = IRI.create("http://purl.obolibrary.org/obo/IAO_0000116");
+        manager.addAxiom(ontology, factory.getOWLDeclarationAxiom(cls("Person")));
+        manager.addAxiom(ontology, factory.getOWLAnnotationAssertionAxiom(
+                factory.getOWLAnnotationProperty(note), cls("Person").getIRI(),
+                factory.getOWLLiteral("going away")));
+
+        Map<String, Object> data = new LinkedHashMap<String, Object>();
+        data.put("iri", "http://example.org/o#Person");
+        data.put("property", note.toString());
+        data.put("value", "");
+        data.put("previous", "going away");
+        OperationMapper.Inbound inbound = OperationMapper.toChanges(
+                new OntologyOperation("op-1", "updateAnnotation", 1L, "alice", data), ontology);
+
+        for (org.semanticweb.owlapi.model.OWLOntologyChange change : inbound.getChanges()) {
+            assertFalse(change.isAddAxiom()
+                            && change.getAxiom() instanceof
+                                    org.semanticweb.owlapi.model.OWLDeclarationAxiom,
+                    "a removal introduces no property, so it should declare nothing: " + change);
+        }
+    }
+
+    /**
      * The previous value is what makes the operation safe. Without it a peer applying "this
      * term's note is now X" would delete every other note on the term - and two editors each
      * leaving one is the ordinary case, not an edge case.

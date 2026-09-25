@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+﻿<?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
@@ -6,7 +6,7 @@
 
   <groupId>de.fizkarlsruhe.ise</groupId>
   <artifactId>ontoboard</artifactId>
-  <version>1.44.0</version>
+  <version>1.47.0</version>
   <packaging>bundle</packaging>
 
   <name>OntoBoard</name>
@@ -22,6 +22,14 @@
     <protege.version>5.5.0</protege.version>
     <owlapi.version>4.5.9</owlapi.version>
     <jgraphx.version>4.2.2</jgraphx.version>
+    <!--
+      The one place ROBOT's version is written. The bundle embeds this, the generated CI installs
+      it, and the generated Makefile's report runs against it - and if those three ever disagree,
+      a user's quality report in Protege and the one their CI produces come from different rules.
+      It reaches OdkScaffold through the filtered ontoboard-build.properties rather than a second
+      literal in Java.
+    -->
+    <robot.version>1.9.8</robot.version>
     <junit.version>5.10.2</junit.version>
     <github.repo>ebrahimnorouzi/ontoboard</github.repo>
   </properties>
@@ -110,7 +118,7 @@
     <dependency>
       <groupId>org.obolibrary.robot</groupId>
       <artifactId>robot-core</artifactId>
-      <version>1.9.8</version>
+      <version>${robot.version}</version>
     </dependency>
 
     <!--
@@ -157,6 +165,21 @@
     </resources>
 
     <plugins>
+      <plugin>
+        <!--
+          propertiesEncoding, because ontoboard-build.properties is filtered. Without it Maven
+          warns that a filtered .properties file will be copied with whatever encoding the other
+          resources use, which is a guess - and this one carries the ROBOT version that ends up in
+          a generated CI file.
+        -->
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-resources-plugin</artifactId>
+        <version>3.3.1</version>
+        <configuration>
+          <propertiesEncoding>UTF-8</propertiesEncoding>
+        </configuration>
+      </plugin>
+
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>

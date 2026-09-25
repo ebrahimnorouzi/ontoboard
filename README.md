@@ -158,7 +158,7 @@ unavailable and why rather than failing obscurely.
 ```bash
 cd protege-plugin
 mvn clean package          # -> target/ontoboard-<version>.jar
-mvn test                   # 1135 tests (4 need Docker and skip without it)
+mvn test                   # 1151 tests (4 need Docker and skip without it)
 ```
 
 Java 8 bytecode is emitted deliberately (`maven.compiler.release=8`) so the bundle loads on
