@@ -206,5 +206,5 @@ mature plugins is waste) or ➖ (web-application machinery with no desktop meani
   `collab/__tests__/server-boot.test.mjs` (4) now start the shipped server and speak to it over a
   socket, in both languages. What is still not covered is a *browser* and Protégé at once; Protégé
   to Protégé through the real server is covered.
-- **No plugin UI is covered by tests.** 1174 tests cover logic; every Swing surface is verified
+- **No plugin UI is covered by tests.** 1191 tests cover logic; every Swing surface is verified
   by hand.

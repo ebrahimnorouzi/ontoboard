@@ -30,7 +30,17 @@ public final class LegendPanel extends JPanel {
     private static final int SWATCH_WIDTH = 46;
     private static final int SWATCH_HEIGHT = 22;
 
+    /** The legend with no board to describe - every row except the namespaces. */
     public LegendPanel() {
+        this(java.util.Collections.<String, String>emptyMap());
+    }
+
+    /**
+     * @param prefixColours this board's namespace colours, from {@code CanvasLayout.prefixColors}.
+     *     Passed in rather than read from a static, because the colours are per board and a key
+     *     showing another board's is worse than one showing none.
+     */
+    public LegendPanel(java.util.Map<String, String> prefixColours) {
         super(new GridBagLayout());
         setBorder(BorderFactory.createEmptyBorder(4, 4, 8, 4));
 
@@ -58,6 +68,71 @@ public final class LegendPanel extends JPanel {
             at.gridx = 1;
             add(describe(entry), at);
             at.gridy++;
+        }
+
+        // The channel that was missing. Every node is outlined in a colour derived from its
+        // namespace, and until this section existed the key never said so - so a purple outline
+        // next to the purple "Individual" swatch read as "individual".
+        java.util.List<CanvasLegend.Namespace> namespaces =
+                CanvasLegend.namespaces(prefixColours);
+        if (!namespaces.isEmpty()) {
+            at.gridx = 0;
+            at.gridwidth = 2;
+            add(heading("Namespaces on this board"), at);
+            at.gridy++;
+            at.gridwidth = 1;
+            for (CanvasLegend.Namespace namespace : namespaces) {
+                at.gridx = 0;
+                add(new JLabel(new NamespaceIcon(namespace.getColour())), at);
+                at.gridx = 1;
+                JLabel label = new JLabel(namespace.getPrefix());
+                label.setToolTipText("<html><body style='width:280px'>Every term in this namespace "
+                        + "is outlined in this colour. The outline says where a term comes from; "
+                        + "the shape says what kind of thing it is.</body></html>");
+                add(label, at);
+                at.gridy++;
+            }
+        }
+    }
+
+    /**
+     * A square outlined in a namespace's colour.
+     *
+     * <p>An outline rather than a filled block, because that is what the canvas does with the
+     * colour - a filled swatch would suggest the fill carries the namespace, which is the confusion
+     * this section exists to end.
+     */
+    private static final class NamespaceIcon implements Icon {
+        private final String colour;
+
+        NamespaceIcon(String colour) {
+            this.colour = colour;
+        }
+
+        @Override
+        public void paintIcon(Component host, Graphics graphics, int x, int y) {
+            Graphics2D g = (Graphics2D) graphics.create();
+            try {
+                g.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING,
+                        java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
+                g.setColor(Color.WHITE);
+                g.fillRect(x + 12, y + 3, SWATCH_HEIGHT - 6, SWATCH_HEIGHT - 6);
+                g.setColor(decode(colour, Color.DARK_GRAY));
+                g.setStroke(new BasicStroke(2f));
+                g.drawRect(x + 12, y + 3, SWATCH_HEIGHT - 6, SWATCH_HEIGHT - 6);
+            } finally {
+                g.dispose();
+            }
+        }
+
+        @Override
+        public int getIconWidth() {
+            return SWATCH_WIDTH;
+        }
+
+        @Override
+        public int getIconHeight() {
+            return SWATCH_HEIGHT;
         }
     }
 
@@ -92,6 +167,26 @@ public final class LegendPanel extends JPanel {
         label.setToolTipText("<html><body style='width:280px'>" + entry.getMeaning()
                 + "</body></html>");
         return label;
+    }
+
+    /**
+     * A colour from the stylesheet or the sidecar, or a fallback.
+     *
+     * <p>At panel level rather than inside one icon because both icons need it. It lived in
+     * {@code SwatchIcon} until the namespace swatch was added and could not see it - a private
+     * member of a sibling nested class is reachable in Java, but writing
+     * {@code SwatchIcon.decode(...)} from the namespace icon would say the colour logic belongs to
+     * the shape swatch, and it does not.
+     */
+    private static Color decode(String hex, Color fallback) {
+        if (hex == null) {
+            return fallback;
+        }
+        try {
+            return Color.decode(hex);
+        } catch (NumberFormatException notAColour) {
+            return fallback;
+        }
     }
 
     /** A miniature of the node shape or the edge line. */
@@ -184,17 +279,6 @@ public final class LegendPanel extends JPanel {
             }
             return new BasicStroke(1.8f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER, 10f,
                     dashes, 0f);
-        }
-
-        private static Color decode(String hex, Color fallback) {
-            if (hex == null) {
-                return fallback;
-            }
-            try {
-                return Color.decode(hex);
-            } catch (NumberFormatException notAColour) {
-                return fallback;
-            }
         }
 
         @Override

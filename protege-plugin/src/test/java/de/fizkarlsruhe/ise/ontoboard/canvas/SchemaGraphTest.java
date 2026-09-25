@@ -88,14 +88,41 @@ class SchemaGraphTest {
         assertFalse(graph.isSplitEnabled(), "edge splitting is not part of this task");
     }
 
+    /**
+     * A tooltip still carries the full IRI, and now carries more.
+     *
+     * <p>This asserted equality with the IRI until 1.53.0, when the tooltip became a description -
+     * label, kind, markers, IRI - because returning the id meant an edge hovered as
+     * {@code rest|some|http://…} and a sticky note as {@code ontoboard-note-3f2a1b9c}. The
+     * requirement the old assertion existed to protect is unchanged and still checked: the short
+     * visible label must not be the only thing a user can get at. {@code CanvasTooltipsTest} covers
+     * the wording itself.
+     */
     @Test
-    void tooltipShowsTheFullIriRatherThanTheShortLabel() {
+    void tooltipCarriesTheFullIriAsWellAsTheShortLabel() {
         SchemaGraph graph = new SchemaGraph();
         graph.render(twoClassesWithSubClassEdge(), new CanvasLayout());
 
-        Object personCell = graph.getCellForId(PERSON);
-        assertEquals(PERSON, graph.getToolTipForCell(personCell),
-                "tooltip must show the full IRI even though the visible label is short");
+        String tooltip = graph.getToolTipForCell(graph.getCellForId(PERSON));
+
+        assertTrue(tooltip.contains(PERSON),
+                "tooltip must show the full IRI even though the visible label is short: " + tooltip);
+        assertTrue(tooltip.contains("Class"), tooltip);
+    }
+
+    /** An edge hovers as the axiom it stands for, not as the internal id it is keyed by. */
+    @Test
+    void anEdgeTooltipIsNotItsInternalId() {
+        SchemaGraph graph = new SchemaGraph();
+        graph.render(twoClassesWithSubClassEdge(), new CanvasLayout());
+
+        for (Object cell : graph.getChildCells(graph.getDefaultParent(), false, true)) {
+            String id = graph.getIdForCell(cell);
+            String tooltip = graph.getToolTipForCell(cell);
+            assertFalse(tooltip.equals(id),
+                    "an edge still hovers as its own id: " + tooltip);
+            assertTrue(tooltip.contains("subClassOf"), tooltip);
+        }
     }
     // ---------- markers ----------
 

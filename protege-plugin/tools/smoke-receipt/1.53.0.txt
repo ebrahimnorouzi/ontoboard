@@ -1,0 +1,86 @@
+OntoBoard 1.53.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-09-26  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 8/8  test 9/9
+  2026-09-26  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 8/8  test 9/9
+THE BOARD NOW SAYS WHAT IT KNOWS
+
+Section 3 of docs/superpowers/specs/2026-09-25-canvas-interface-plan.md. Nothing here adds data; all of
+it was already in the projection the canvas draws from and simply was not shown. That is why it came
+before the larger interface work: a board that cannot tell you what an arrow means is not worth making
+prettier.
+
+1. HOVER ANSWERS THE QUESTION A SCHEMA DIAGRAM RAISES MOST OFTEN
+
+getToolTipForCell returned the cell's id. For a node that is its IRI - true, and partial. For anything
+else it was an internal string:
+
+  an arrow        rest|some|http://â€¦/pizza#Pizza|http://â€¦#hasTopping|http://â€¦#PizzaTopping
+  a sticky note   ontoboard-note-3f2a1b9c
+
+Both read as a bug in the plugin, and both withheld the one thing the diagram cannot show: which axiom
+is this arrow. Now:
+
+  an arrow        pizza  has topping  pizza topping
+                  An object property restriction
+                  Asserted in the ontology
+
+  a note          Sticky note
+                  check the base with Bob
+                  On the diagram only - not in the ontology, and not in a release.
+
+The asserted-or-inferred line is the most consequential of the three and was previously visible only
+as a dashed line somebody had to look up in the legend. An inferred edge is not in the ontology: it is
+a conclusion, it vanishes when inferences are switched off, and it cannot be deleted. Saying so on
+hover is cheaper than explaining it afterwards.
+
+A node gives its label first and its IRI last, because those are the two audiences in that order - the
+label is what a domain expert reads, the IRI is what an engineer needs - and markers are spelled out
+in words rather than left to border weight. "This class can have no instances" is not something to
+communicate by line thickness.
+
+Two details that are easy to get wrong and are tested:
+
+  - A universal restriction must not be described as an existential. OntologyProjection puts the
+    "(only)" qualifier in the edge's label, so the phrase comes from the label rather than being
+    assembled as "... some ...". Saying "some" over an `only` axiom would describe a different
+    ontology, in a tooltip whose whole purpose is to say which axiom this is.
+  - A label containing "<" or "&" is legal in an ontology and these render as HTML, so everything is
+    escaped. Unescaped, the one node whose label needed explaining is the one whose tooltip breaks.
+
+CanvasTooltips is a separate class of pure functions rather than code inside SchemaGraph, because the
+wording is the part worth testing and SchemaGraph needs a live mxGraph to exist at all. 13 tests.
+
+2. THE LEGEND EXPLAINS THE COLOUR CHANNEL IT ACTUALLY RELIES ON
+
+The canvas outlines every node in a colour derived from its namespace. The legend never mentioned
+namespaces. So a board with two vocabularies showed purple-outlined boxes beside a key whose only
+purple swatch was "Individual", and the reasonable reading - purple means individual - was wrong.
+
+A key that omits the channel carrying the most information is worse than no key, because it invites a
+confident misreading rather than a question.
+
+There is now a "Namespaces on this board" section, built from the live prefixColors map and sorted so
+the same board produces the same key twice running. The swatch is an outlined square, not a filled
+one, because an outline is what the canvas does with the colour - a filled block would suggest the
+fill carries the namespace, which is the confusion the section exists to end.
+
+WHY THE NAMESPACE ROWS ARE NOT LEGEND ENTRIES
+
+Worth recording, because the obvious implementation is wrong in an instructive way.
+
+CanvasLegendTest.legendColoursMatchTheStylesheet walks every CanvasLegend.Entry and requires its style
+to exist in SchemaStyles and to carry the colours the entry claims. That test is what keeps the rest of
+the legend honest. A namespace colour has no stylesheet entry at all: PrefixColours assigns it per
+board and it is applied as an inline strokeColor override.
+
+So adding namespace rows to entries() would have meant weakening that assertion to accommodate rows it
+cannot check - trading a guarantee about eleven rows for a convenience about two. They are a separate
+type with a separate accessor instead, and a test asserts they stay out of entries() so a later
+refactor cannot quietly merge them.
+
+NUMBERS
+
+1191 tests, 0 failures, 1 skipped. 17 new: 13 for the tooltips and 4 for the namespace rows.
+45 JavaScript tests pass.

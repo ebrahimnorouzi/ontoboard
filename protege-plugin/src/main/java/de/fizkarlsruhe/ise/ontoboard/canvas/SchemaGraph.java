@@ -39,6 +39,15 @@ public class SchemaGraph extends mxGraph {
         try {
             removeCells(mxGraphModel.getChildren(getModel(), getDefaultParent()), true);
             cellsById.clear();
+            tooltipsById.clear();
+
+            // Node labels, so an edge's tooltip can name its two ends the way they are drawn
+            // rather than by IRI. Built before the edges are inserted because an edge tooltip
+            // needs both endpoints and the insertion order puts frames first.
+            Map<String, String> labels = new HashMap<String, String>();
+            for (CanvasNode node : projection.getNodes()) {
+                labels.put(node.getId(), node.getLabel());
+            }
 
             // Frames first, so they sit behind the nodes they group. mxGraph paints in insertion
             // order and a frame drawn afterwards would cover everything inside it.
@@ -53,6 +62,7 @@ public class SchemaGraph extends mxGraph {
                         SchemaStyles.FRAME + ";strokeColor="
                                 + (frame.stroke == null ? "#4A90D9" : frame.stroke));
                 cellsById.put(frame.id, cell);
+                tooltipsById.put(frame.id, CanvasTooltips.forFrame(frame.label));
             }
 
             double nextX = 40;
@@ -68,6 +78,7 @@ public class SchemaGraph extends mxGraph {
                 Object cell = insertVertex(getDefaultParent(), node.getId(), node.getLabel(),
                         x, y, w, h, styleFor(node, colours));
                 cellsById.put(node.getId(), cell);
+                tooltipsById.put(node.getId(), CanvasTooltips.forNode(node));
             }
 
             for (CanvasEdge edge : projection.getEdges()) {
@@ -79,6 +90,7 @@ public class SchemaGraph extends mxGraph {
                 Object cell = insertEdge(getDefaultParent(), edge.getId(), edge.getLabel(),
                         source, target, styleFor(edge));
                 cellsById.put(edge.getId(), cell);
+                tooltipsById.put(edge.getId(), CanvasTooltips.forEdge(edge, labels));
             }
             // Sticky notes last, so they are never hidden behind a node - the whole point of one
             // is that somebody reads it.
@@ -92,6 +104,7 @@ public class SchemaGraph extends mxGraph {
                         SchemaStyles.STICKY_NOTE + ";fillColor="
                                 + (note.color == null ? "#FFF3B0" : note.color));
                 cellsById.put(note.id, cell);
+                tooltipsById.put(note.id, CanvasTooltips.forNote(note.text));
             }
         } finally {
             getModel().endUpdate();
@@ -114,6 +127,10 @@ public class SchemaGraph extends mxGraph {
     public static final String NOTE_ID_PREFIX = "ontoboard-note-";
     public static final String FRAME_ID_PREFIX = "ontoboard-frame-";
 
+    /** Cell id to the tooltip {@link #render} worked out for it. Cleared and rebuilt with the
+     * cells, so it can never describe a cell that is no longer there. */
+    private final Map<String, String> tooltipsById = new HashMap<String, String>();
+
     public Object getCellForId(String id) {
         return id == null ? null : cellsById.get(id);
     }
@@ -123,15 +140,25 @@ public class SchemaGraph extends mxGraph {
     }
 
     /**
-     * Shows the full entity IRI on hover. Cell ids are the IRI (see {@link #render}, which
-     * passes {@code node.getId()} / {@code edge.getId()} as the vertex/edge id), while the
-     * visible label ({@link #convertValueToString}) is deliberately kept short. Falls back
-     * to the default behaviour for anything without an id, e.g. {@code null}.
+     * What the cell is, in words, from the tooltip {@link #render} built for it.
+     *
+     * <p>This used to return the cell's id. For a node that is its IRI, which is true but partial;
+     * for everything else it was an internal string, so hovering an arrow gave
+     * {@code rest|some|http://…#Pizza|http://…#hasTopping|http://…#PizzaTopping} and hovering a
+     * sticky note gave {@code ontoboard-note-3f2a1b9c}. See {@link CanvasTooltips} for what they say
+     * now.
+     *
+     * <p>Falls back to the id, which keeps a cell inserted by something other than {@code render}
+     * from having no tooltip at all, and then to mxGraph's own behaviour for a cell with no id.
      */
     @Override
     public String getToolTipForCell(Object cell) {
         String id = getIdForCell(cell);
-        return id != null ? id : super.getToolTipForCell(cell);
+        if (id == null) {
+            return super.getToolTipForCell(cell);
+        }
+        String tooltip = tooltipsById.get(id);
+        return tooltip != null ? tooltip : id;
     }
 
     /**

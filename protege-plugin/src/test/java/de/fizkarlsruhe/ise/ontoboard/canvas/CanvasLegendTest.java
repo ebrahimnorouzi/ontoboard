@@ -149,4 +149,71 @@ class CanvasLegendTest {
             }
         }
     }
+
+    // ================================================== the namespace section
+
+    /**
+     * The legend explains the colour channel the canvas actually relies on.
+     *
+     * <p>Every node is outlined in a colour derived from its namespace, and the key said nothing
+     * about it - so a board with two vocabularies showed purple-outlined boxes beside a legend whose
+     * only purple swatch was "Individual", and the obvious reading was wrong. A key that omits the
+     * channel carrying the most information is worse than no key, because it invites a confident
+     * misreading.
+     */
+    @Test
+    void theNamespacesOnABoardAreExplainedWithTheColoursThatBoardGaveThem() {
+        java.util.Map<String, String> assigned = new java.util.HashMap<String, String>();
+        assigned.put("pizza", "#8E44AD");
+        assigned.put("bfo", "#E67E22");
+
+        List<CanvasLegend.Namespace> rows = CanvasLegend.namespaces(assigned);
+
+        assertEquals(2, rows.size());
+        // Sorted, so the same board produces the same key twice running - a map's iteration order
+        // would not.
+        assertEquals("bfo", rows.get(0).getPrefix());
+        assertEquals("#E67E22", rows.get(0).getColour());
+        assertEquals("pizza", rows.get(1).getPrefix());
+        assertEquals("#8E44AD", rows.get(1).getColour());
+    }
+
+    /** A board with no assigned colours gets no section rather than an empty heading. */
+    @Test
+    void aBoardWithNoNamespaceColoursHasNoNamespaceRows() {
+        assertTrue(CanvasLegend.namespaces(null).isEmpty());
+        assertTrue(CanvasLegend.namespaces(
+                java.util.Collections.<String, String>emptyMap()).isEmpty());
+    }
+
+    /** A half-written sidecar entry is skipped rather than drawn as a blank swatch. */
+    @Test
+    void incompleteNamespaceEntriesAreSkipped() {
+        java.util.Map<String, String> assigned = new java.util.HashMap<String, String>();
+        assigned.put("", "#8E44AD");
+        assigned.put("pizza", null);
+        assigned.put("bfo", "#E67E22");
+
+        List<CanvasLegend.Namespace> rows = CanvasLegend.namespaces(assigned);
+
+        assertEquals(1, rows.size(), rows.toString());
+        assertEquals("bfo", rows.get(0).getPrefix());
+    }
+
+    /**
+     * Namespaces stay out of {@code entries()}, deliberately.
+     *
+     * <p>{@link #legendColoursMatchTheStylesheet} requires every entry to name a style that exists in
+     * the stylesheet and to carry that style's colours. A namespace colour is assigned per board and
+     * applied as an inline stroke override, so it has no stylesheet entry to match - putting one in
+     * that list would mean weakening the test that keeps every other row honest.
+     */
+    @Test
+    void theNamespaceRowsAreNotStylesheetEntries() {
+        for (CanvasLegend.Entry entry : CanvasLegend.entries()) {
+            assertFalse(entry.getLabel().toLowerCase(java.util.Locale.ROOT).contains("namespace"),
+                    "a namespace row has been added to entries(), where it cannot satisfy "
+                            + "legendColoursMatchTheStylesheet: " + entry.getLabel());
+        }
+    }
 }

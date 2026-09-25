@@ -344,10 +344,17 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         }
     }
 
-    /** Shows the key to the diagram, built from the same styles the canvas draws with. */
+    /**
+     * Shows the key to the diagram, built from the same styles the canvas draws with.
+     *
+     * <p>Given this board's namespace colours, not just the stylesheet. The canvas outlines every
+     * node in a colour derived from its namespace and the key used to say nothing about it, so a
+     * board with two vocabularies showed purple outlines beside a legend whose only purple swatch
+     * was "Individual" - and the obvious reading was wrong.
+     */
     private void showLegend() {
-        JOptionPane.showMessageDialog(this, new LegendPanel(), "What the diagram means",
-                JOptionPane.PLAIN_MESSAGE);
+        JOptionPane.showMessageDialog(this, new LegendPanel(layout.prefixColors),
+                "What the diagram means", JOptionPane.PLAIN_MESSAGE);
     }
 
     /**
