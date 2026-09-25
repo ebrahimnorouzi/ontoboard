@@ -176,7 +176,7 @@ public final class CollabMessages {
             Iterator<String> names = payload.fieldNames();
             while (names.hasNext()) {
                 String name = names.next();
-                data.put(name, scalar(payload.get(name)));
+                data.put(name, value(payload.get(name), 0));
             }
         }
         try {
@@ -210,10 +210,55 @@ public final class CollabMessages {
         return peers;
     }
 
-    /** Keeps payloads to JSON scalars; nested structures are stringified rather than lost. */
-    private static Object scalar(JsonNode node) {
+    /**
+     * How deep a payload may nest before the rest is taken as text.
+     *
+     * <p>A bound rather than trust. Nothing this plugin sends nests more than twice, and the depth
+     * of an inbound payload is chosen by whatever is on the other end of the socket - so a
+     * recursive reader without a limit is a stack overflow that a peer can cause.
+     */
+    private static final int MAX_DEPTH = 16;
+
+    /**
+     * One JSON value as a plain Java value, objects and arrays included.
+     *
+     * <p>This used to stringify anything that was not a scalar, with a comment saying nested
+     * structures were "stringified rather than lost". They were lost. An {@code updateClass}
+     * carries its new label as {@code data.updates.label} - a nested object - and the code that
+     * applies it asks {@code updates instanceof Map} before reading the label. A String is not a
+     * Map, so the operation arrived, produced no changes, and returned quietly: <b>a term renamed
+     * or labelled on one peer never reached another one</b>, which is about the commonest edit
+     * there is.
+     *
+     * <p>Nothing caught it because the outbound path uses {@code MAPPER.valueToTree}, which
+     * preserves the nesting perfectly, and every test that built an operation built it in process
+     * from a real Map. The shape only collapsed on the way back in, so a test had to cross the
+     * socket to see it.
+     */
+    private static Object value(JsonNode node, int depth) {
         if (node == null || node.isNull()) {
             return null;
+        }
+        if (depth >= MAX_DEPTH) {
+            // Deeper than anything this protocol defines. Kept as text so the operation is still
+            // delivered and the oddity is visible, rather than dropping the whole payload.
+            return node.isValueNode() ? node.asText() : node.toString();
+        }
+        if (node.isObject()) {
+            Map<String, Object> nested = new LinkedHashMap<String, Object>();
+            Iterator<String> names = node.fieldNames();
+            while (names.hasNext()) {
+                String name = names.next();
+                nested.put(name, value(node.get(name), depth + 1));
+            }
+            return nested;
+        }
+        if (node.isArray()) {
+            List<Object> items = new ArrayList<Object>();
+            for (JsonNode child : node) {
+                items.add(value(child, depth + 1));
+            }
+            return items;
         }
         if (node.isNumber()) {
             return node.isIntegralNumber() ? (Object) node.asLong() : (Object) node.asDouble();
@@ -221,7 +266,7 @@ public final class CollabMessages {
         if (node.isBoolean()) {
             return node.asBoolean();
         }
-        return node.isValueNode() ? node.asText() : node.toString();
+        return node.asText();
     }
 
     private static String text(JsonNode node, String field) {

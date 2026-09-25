@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.fizkarlsruhe.ise.ontoboard.collab.CollabHarness;
+import de.fizkarlsruhe.ise.ontoboard.collab.OperationMapper;
 import de.fizkarlsruhe.ise.ontoboard.model.CanvasEdge;
 import de.fizkarlsruhe.ise.ontoboard.model.CanvasNode;
 import de.fizkarlsruhe.ise.ontoboard.model.NodeKind;
@@ -28,10 +30,21 @@ import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
+import org.semanticweb.owlapi.apibinding.OWLManager;
+import org.semanticweb.owlapi.model.AddAxiom;
 import org.semanticweb.owlapi.model.IRI;
+import org.semanticweb.owlapi.model.OWLAnnotationAssertionAxiom;
+import org.semanticweb.owlapi.model.OWLAnnotationProperty;
+import org.semanticweb.owlapi.model.OWLAxiom;
+import org.semanticweb.owlapi.model.OWLClass;
+import org.semanticweb.owlapi.model.OWLDataFactory;
 import org.semanticweb.owlapi.model.OWLOntology;
+import org.semanticweb.owlapi.model.OWLOntologyChange;
+import org.semanticweb.owlapi.model.OWLOntologyManager;
 import org.semanticweb.owlapi.reasoner.OWLReasoner;
 
 /**
@@ -162,9 +175,234 @@ class PizzaProjectTest {
             writeCurationReport(pizza, reports);
         }
         writeMakeTargetsReport(editFile, reports);
+        writeCollaborationReport(pizza, reports);
     }
 
     // ------------------------------------------------------------------ the reports
+
+    /**
+     * Live collaboration over this release's pizza, against the server the project ships.
+     *
+     * <p>Every other report here is produced by calling the plugin's logic. This one opens a socket:
+     * it starts {@code collab/server.mjs}, connects two sessions to it, has one publish edits and
+     * requires the other to receive them. That distinction is the point. Until 1.50.0 the feature was
+     * inert in every release - {@code server.mjs} resolved a board by calling
+     * {@code openDirectConnection} on the {@code Server} wrapper instead of the {@code Hocuspocus}
+     * instance it holds, so the bridge refused every peer - and no test noticed, because the
+     * bridge's tests supply their own document loader and the plugin's tests supply their own
+     * transport. Neither side ever spoke to the other.
+     *
+     * <p>The report also measures what live mode <em>cannot</em> carry, by offering it every axiom in
+     * the ontology and counting the refusals. A limitation measured against a real ontology is worth
+     * more than one asserted in prose, and this is the number a team deciding between live and git
+     * mode actually needs.
+     */
+    private void writeCollaborationReport(OWLOntology pizza, File reports) throws Exception {
+        StringBuilder text = new StringBuilder();
+        text.append("# Live collaboration\n\n");
+
+        if (!CollabHarness.isAvailable()) {
+            // Said plainly rather than omitted. A missing report reads as a feature that was not
+            // exercised; a report that says why is the difference between unknown and unavailable.
+            text.append("Not exercised in this run: node, or `collab/node_modules`, was not\n")
+                    .append("available on the machine that produced it. Everything below is what\n")
+                    .append("this report says when it can be produced - run `npm install` in\n")
+                    .append("`collab/` and rebuild the release to get it.\n");
+            write(new File(reports, "collaboration.md"), text.toString());
+            return;
+        }
+
+        CollabHarness harness = new CollabHarness();
+        try {
+            harness.start();
+
+            // Two peers on the same board and the same ontology IRI: the ordinary case. Bob starts
+            // from a copy of this release's pizza, which is what a colleague who has pulled has.
+            OWLOntologyManager bobsManager = OWLManager.createOWLOntologyManager();
+            OWLOntology bobsPizza = bobsManager.createOntology(
+                    pizza.getAxioms(), IRI.create(PizzaOntology.IRI_BASE));
+            final CollabHarness.Peer alice = harness.join("alice", "pizza-board", pizza);
+            final CollabHarness.Peer bob = harness.join("bob", "pizza-board", bobsPizza);
+            assertTrue(harness.waitUntilConnected(alice, bob),
+                    "the peers never connected. Server said:\n" + harness.output());
+
+            OWLDataFactory factory = pizza.getOWLOntologyManager().getOWLDataFactory();
+            final OWLClass calzone =
+                    factory.getOWLClass(IRI.create(PizzaOntology.IRI_BASE + "#Calzone"));
+            OWLAnnotationProperty editorNote = factory.getOWLAnnotationProperty(
+                    IRI.create("http://purl.obolibrary.org/obo/IAO_0000116"));
+
+            final List<OWLOntologyChange> edits = new ArrayList<OWLOntologyChange>();
+            edits.add(new AddAxiom(pizza, factory.getOWLDeclarationAxiom(calzone)));
+            edits.add(new AddAxiom(pizza, factory.getOWLAnnotationAssertionAxiom(
+                    factory.getRDFSLabel(), calzone.getIRI(), factory.getOWLLiteral("calzone"))));
+            edits.add(new AddAxiom(pizza, factory.getOWLSubClassOfAxiom(calzone,
+                    factory.getOWLClass(IRI.create(PizzaOntology.IRI_BASE + "#Pizza")))));
+            edits.add(new AddAxiom(pizza, factory.getOWLAnnotationAssertionAxiom(
+                    editorNote, calzone.getIRI(),
+                    factory.getOWLLiteral("Folded, not open. Check before release."))));
+
+            // Applied first, then published - the order the real thing works in, and not a
+            // detail. SchemaCanvasView publishes from the ontology-change listener, so by the time a
+            // change reaches the session Protege has already applied it. That matters because a
+            // label maps to an update of the class it sits on, which the mapper can only identify
+            // once that class is declared: publishing an unapplied batch loses the label of a term
+            // created in the same batch. An earlier draft of this report did exactly that and
+            // recorded "3 of 4" - which read as a defect in the plugin and was a defect in the
+            // report.
+            pizza.getOWLOntologyManager().applyChanges(edits);
+
+            long started = System.currentTimeMillis();
+            int published = alice.getSession().publishLocalChanges(edits,
+                    OperationMapper.NO_HINTS);
+            // Waited on the effects, not on a count. How many changes an operation produces at
+            // the far end is not conserved: an operation whose effect is already there applies
+            // nothing, and a class created with a label in one batch can arrive as one operation
+            // carrying both. Requiring four changes for four edits failed while bob's ontology was
+            // in fact correct, which is the wrong thing to assert twice over.
+            final OWLClass pizzaClass =
+                    factory.getOWLClass(IRI.create(PizzaOntology.IRI_BASE + "#Pizza"));
+            boolean arrived = harness.waitFor(new CollabHarness.Condition() {
+                @Override
+                public boolean isMet() {
+                    return bob.getOntology().containsClassInSignature(calzone.getIRI())
+                            && labelOf(bob.getOntology(), calzone) != null
+                            && bob.getOntology().getSubClassAxiomsForSubClass(calzone)
+                                    .contains(factory.getOWLSubClassOfAxiom(calzone, pizzaClass))
+                            && noteOn(bob.getOntology(), calzone) != null;
+                }
+            });
+            long elapsed = System.currentTimeMillis() - started;
+
+            assertTrue(arrived, "bob did not end up with everything alice added. He has class="
+                    + bob.getOntology().containsClassInSignature(calzone.getIRI())
+                    + " label=" + labelOf(bob.getOntology(), calzone)
+                    + " note=" + noteOn(bob.getOntology(), calzone)
+                    + " and applied " + bob.getApplied()
+                    + ". Alice published " + published + " of " + edits.size()
+                    + ", status " + alice.getStatus()
+                    + "; server said:\n" + harness.output());
+
+            text.append("Two Protégé peers, one board, one ontology, and the server in\n")
+                    .append("[`collab/`](../../../collab) - started as a child process by the\n")
+                    .append("harness, the same entry point `docker compose up collab` runs.\n\n")
+                    .append("| | |\n|---|---|\n")
+                    .append("| Ontology | `").append(PizzaOntology.IRI_BASE).append("` |\n")
+                    .append("| Board | `pizza-board` |\n")
+                    .append("| Peers | alice, bob |\n")
+                    .append("| Changes alice published | ").append(published)
+                    .append(" of ").append(edits.size()).append(" |\n")
+                    .append("| Changes bob applied | ").append(bob.getApplied().size())
+                    .append(" |\n")
+                    .append("| Note on the new term, at bob's end | ")
+                    .append(noteOn(bob.getOntology(), calzone) == null
+                            ? "absent"
+                            : "\"" + noteOn(bob.getOntology(), calzone) + "\"")
+                    .append(" |\n")
+                    .append("| Label on the new term, at bob's end | ")
+                    .append(labelOf(bob.getOntology(), calzone) == null
+                            ? "absent"
+                            : "\"" + labelOf(bob.getOntology(), calzone) + "\"")
+                    .append(" |\n")
+                    .append("| Round trip | ").append(elapsed).append(" ms |\n\n");
+
+            text.append("Every one of alice's four edits is present at bob's end. The change\n")
+                    .append("counts differ because they are not conserved: an operation applies\n")
+                    .append("nothing when its effect is already there, and a term created with a\n")
+                    .append("label in one batch can travel as a single operation carrying both.\n")
+                    .append("What is checked is the result, term by term.\n\n");
+
+            text.append("## What crossed the wire\n\n");
+            for (String applied : bob.getApplied()) {
+                text.append("- `").append(applied.replace("|", "\\|")).append("`\n");
+            }
+
+            text.append("\n## What live mode cannot carry\n\n")
+                    .append("Measured, not asserted: every axiom in this release's pizza was\n")
+                    .append("offered to the session, and this is how many it refused. An axiom\n")
+                    .append("live mode cannot express is one your colleague never sees, so this\n")
+                    .append("is the number that decides between live and git mode.\n\n");
+
+            int before = alice.getSession().getUnshareableCount();
+            List<OWLOntologyChange> everything = new ArrayList<OWLOntologyChange>();
+            for (OWLAxiom axiom : pizza.getAxioms()) {
+                everything.add(new AddAxiom(pizza, axiom));
+            }
+            int shareable = alice.getSession().publishLocalChanges(everything,
+                    OperationMapper.NO_HINTS);
+            int refused = everything.size() - shareable;
+            text.append("| | |\n|---|---|\n")
+                    .append("| Axioms in the ontology | ").append(everything.size()).append(" |\n")
+                    .append("| Shareable live | ").append(shareable).append(" |\n")
+                    .append("| Not shareable | ").append(refused).append(" |\n")
+                    .append("| Reported to the user | ")
+                    .append(alice.getSession().getUnshareableCount() > before ? "yes" : "no")
+                    .append(" |\n\n");
+
+            // Which kinds, not just how many. A count tells a team that something will not travel;
+            // this tells them whether it is anything they write. Taken from the mapper directly
+            // rather than from the session, because the session reports one example and a total -
+            // which is the right thing for a toolbar and not enough for a decision.
+            Map<String, int[]> byType = new TreeMap<String, int[]>();
+            for (OWLAxiom axiom : pizza.getAxioms()) {
+                String kind = axiom.getAxiomType().getName();
+                if (!byType.containsKey(kind)) {
+                    byType.put(kind, new int[2]);
+                }
+                boolean mapped = OperationMapper.toOperation(new AddAxiom(pizza, axiom), "alice",
+                        OperationMapper.NO_HINTS).isMapped();
+                byType.get(kind)[mapped ? 0 : 1]++;
+            }
+            text.append("### By axiom type\n\n")
+                    .append("| Axiom type | Travels | Does not |\n|---|---:|---:|\n");
+            for (Map.Entry<String, int[]> kind : byType.entrySet()) {
+                text.append("| ").append(kind.getKey())
+                        .append(" | ").append(kind.getValue()[0])
+                        .append(" | ").append(kind.getValue()[1]).append(" |\n");
+            }
+            text.append("\n")
+                    .append("The plugin reports the count and one example through\n")
+                    .append("`Host.onUnshareable`, so a curator whose axiom did not travel can\n")
+                    .append("find that out from the interface rather than from a colleague's\n")
+                    .append("confusion. Git mode carries all ").append(everything.size())
+                    .append(", which is why it is not a downgraded fallback.\n");
+
+            // The mismatch warning, demonstrated rather than described: a third peer joins the same
+            // board claiming a different ontology, which is the failure that costs the most and
+            // shows the least.
+            OWLOntologyManager strangersManager = OWLManager.createOWLOntologyManager();
+            OWLOntology strangersOntology = strangersManager.createOntology(
+                    IRI.create("http://example.org/not-pizza"));
+            CollabHarness.Peer stranger = harness.join("carol", "pizza-board", strangersOntology);
+            assertTrue(harness.waitUntilConnected(stranger),
+                    "the third peer never connected. Server said:\n" + harness.output());
+            harness.waitFor(new CollabHarness.Condition() {
+                @Override
+                public boolean isMet() {
+                    return alice.getSession().peerOntologyWarning() != null;
+                }
+            });
+            String warning = alice.getSession().peerOntologyWarning();
+
+            text.append("\n## Somebody on your board editing something else\n\n")
+                    .append("A third peer joined `pizza-board` declaring\n")
+                    .append("`http://example.org/not-pizza`. Nothing local can detect that: the\n")
+                    .append("only evidence is what each peer says it is editing. What alice was\n")
+                    .append("shown:\n\n");
+            if (warning == null) {
+                text.append("> Nothing. The peers payload carried no ontology field, so every\n")
+                        .append("> peer looks like it is editing the same thing. This is the\n")
+                        .append("> defect fixed in 1.50.0; a report that says this was produced\n")
+                        .append("> against a server that still has it.\n");
+            } else {
+                text.append("> ").append(warning).append("\n");
+            }
+        } finally {
+            harness.close();
+        }
+
+        write(new File(reports, "collaboration.md"), text.toString());
+    }
 
     /** What the canvas would draw. The closest this machine can get to a screenshot. */
     private void writeCanvasReport(OWLOntology pizza, File reports) throws IOException {
@@ -646,6 +884,30 @@ class PizzaProjectTest {
 
     private static void write(File target, String body) throws IOException {
         Files.write(target.toPath(), body.getBytes(Charset.forName("UTF-8")));
+    }
+
+    /** The IAO:0000116 editor note on a class, or null. */
+    private static String noteOn(OWLOntology ontology, OWLClass subject) {
+        for (OWLAnnotationAssertionAxiom axiom
+                : ontology.getAnnotationAssertionAxioms(subject.getIRI())) {
+            if (axiom.getProperty().getIRI().toString()
+                    .equals("http://purl.obolibrary.org/obo/IAO_0000116")
+                    && axiom.getValue().asLiteral().isPresent()) {
+                return axiom.getValue().asLiteral().get().getLiteral();
+            }
+        }
+        return null;
+    }
+
+    /** The rdfs:label on a class, or null - so a report can show that a rename travelled. */
+    private static String labelOf(OWLOntology ontology, OWLClass subject) {
+        for (OWLAnnotationAssertionAxiom axiom
+                : ontology.getAnnotationAssertionAxioms(subject.getIRI())) {
+            if (axiom.getProperty().isLabel() && axiom.getValue().asLiteral().isPresent()) {
+                return axiom.getValue().asLiteral().get().getLiteral();
+            }
+        }
+        return null;
     }
 
     private static String shortName(String iri) {

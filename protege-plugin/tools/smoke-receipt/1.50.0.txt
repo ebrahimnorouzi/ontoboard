@@ -1,0 +1,123 @@
+OntoBoard 1.50.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-09-25  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 8/8  test 9/9
+  2026-09-25  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 8/8  test 9/9
+
+LIVE COLLABORATION DID NOT WORK, IN ANY RELEASE, UNTIL THIS ONE
+
+The feature shipped in 1.9.0. Since then: 130 Java tests over the collaboration client, 41 JavaScript
+tests over the server, a documented setup guide, a feature-parity table with a tick in it, and a
+limitations section whose only reservation was that collaboration was "verified in pieces, not end to
+end".
+
+No Protege peer could join a board. Not on a bad day, not for some ontologies - ever, for anybody.
+
+  collab/server.mjs
+    const connection = await server.openDirectConnection(board);
+
+`openDirectConnection` is a method of the `Hocuspocus` class. `Server` is a thin wrapper that holds
+one as `this.hocuspocus` and does not re-export it. So `getDoc` threw "server.openDirectConnection is
+not a function" for every board, the bridge caught it, answered `could not open board`, and closed the
+socket. The plugin reported a connection failure and retried forever.
+
+HOW 171 TESTS MISSED IT
+
+The bridge's tests pass their own `getDoc`. The plugin's tests pass their own transport. Each suite
+is thorough about its own side and structurally incapable of seeing the join, because the join is the
+one thing both of them replace with a double. `server.mjs` was never loaded by a test at all.
+
+  A test that injects a dependency cannot check the wiring.
+
+That sentence is the actual deliverable of this version. The three defects are consequences.
+
+TWO MORE, FOUND THE SAME WAY
+
+Once peers could connect, two further defects were immediately visible and had been unreachable
+before, because nothing had ever got as far as exchanging an operation.
+
+2. Renaming or labelling a term never reached anybody.
+
+   A label does not travel as an annotation. The web client models it as a field on the entity, so the
+   plugin sends `updateClass` carrying `data.updates.label` - the only payload in the protocol with a
+   nested object in it. `CollabMessages` flattened every payload field through a helper whose comment
+   read "nested structures are stringified rather than lost". They were lost: `updates` arrived as the
+   String `{"label":"calzone"}`, the code applying it asks `updates instanceof Map` first, and a
+   String is not a Map. The operation was delivered, produced no changes, and returned quietly.
+
+   Outbound was always correct - Jackson's valueToTree preserves nesting exactly - and every test
+   built its operations in process from a real Map. The shape only collapsed coming back in, so
+   nothing short of crossing the socket could see it. Naming a term is about the commonest thing
+   anybody does to an ontology.
+
+3. The "somebody else on your board is editing a different ontology" warning could never fire.
+
+   The plugin sends its ontology IRI in `hello` and reads it back off each peer; `BoardId` turns a
+   disagreement into a sentence naming who to talk to. The bridge stored the field on the connection
+   and `livePeers` left it out of the payload it broadcast, so every peer's ontology arrived empty.
+
+   This is the failure that costs the most and shows the least: two people whose board id collides -
+   a shared default, or the same override typed twice - apply each other's axioms to unrelated files
+   with nothing said. BoardIdTest covers the wording in isolation and passed throughout; the bridge's
+   tests never mentioned the field.
+
+WHAT NOW PINS THEM
+
+  CollabLiveTest                              6 tests, Java
+  collab/__tests__/server-boot.test.mjs       4 tests, JavaScript
+
+Both start the shipped server as a child process - the same entry point `docker compose up collab`
+runs, on ports the OS says are free so a developer's own server is never mistaken for the test's - and
+speak to it over a real socket. Between them they require: a peer can join; an axiom crosses; a label
+crosses; a rename replaces the old label rather than leaving both; an editorial note crosses; a peer
+never receives its own edits; two peers on different ontologies are warned and two on the same one are
+not; and an unauthenticated peer is refused rather than admitted as nobody.
+
+Every one was confirmed to fail against the unfixed code before being kept. Three of the four
+JavaScript tests fail on the old server.mjs; the rename test fails on the old reader.
+
+MEASURED, NOT ASSERTED: WHAT LIVE MODE CANNOT CARRY
+
+Every axiom in pizza v5 was offered to a live session. 96 of 141 travel.
+
+  travels        SubClassOf, class and individual declarations, rdfs:label including renames,
+                 ClassAssertion, and every annotation - editor notes, definitions, provenance
+  does not       EquivalentClasses, DisjointClasses, object and data property domain and range,
+                 property chains, owl:hasKey, property declarations, every ObjectPropertyAssertion,
+                 and deleting an individual
+
+The shared vocabulary has eighteen operation types, fixed by the web client, and an axiom with no
+operation cannot cross. The plugin says so in the toolbar rather than hiding it.
+
+The consequence is worth stating plainly, because a tick in a parity table does not: live mode is for
+drawing a hierarchy, naming terms and leaving notes - most of what two people do at a whiteboard. It
+is not a way to build a release, because most of the logical content is in the second list.
+
+PIZZA v12
+
+reports/v5/collaboration.md is the first pizza report produced by opening a socket rather than by
+calling logic. It records a 108 ms round trip, all four of alice's edits present at bob's end, the
+per-axiom-type table above, and the mismatch warning naming the peer that caused it.
+
+COLLABORATION.md is new in that project: how to run the server, mint tokens and connect two Protege
+windows, what to expect from each step - and the git side, which is what most OBO projects should
+actually use. Branch and pull request flow, who runs the reasoner and why not to commit the reasoned
+artefact to fix CI, reviewing with `robot diff` rather than `git diff`, merge conflicts, the sidecar
+layout file, and why the id ranges file is what stops two people minting one identifier for two
+concepts.
+
+reports/v5/terms.tsv also changed, for an unrelated reason that shows 1.48.0 reaching a user:
+
+  -  'has base' some 'pizza base'tsv'has topping' some 'pizza topping'
+  +  'has base' some 'pizza base'|'has topping' some 'pizza topping'
+
+DOCUMENTATION CORRECTED RATHER THAN EXTENDED
+
+docs/testing-collaboration-locally.md walked through a feature that could not work, and said so in a
+table of expectations. It now opens by saying what was broken and for how long, because somebody who
+tried this and got a refusal deserves to know it was not them. Its "Not built yet" list was also
+stale - editorial notes, provenance and release all ship now - and it no longer names one developer's
+Desktop folder as the fixture.
+
+1167 tests, 0 failures, 1 skipped. 14 need Docker and 6 need node; all ran. 45 JavaScript tests pass.

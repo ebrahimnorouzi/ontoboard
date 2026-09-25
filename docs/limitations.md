@@ -95,6 +95,47 @@ The plugin is early. These exist in the web application but not yet here:
   versions render an axiom slightly differently — an explicit `^^xsd:string` on a plain literal, and
   a space before one closing parenthesis — and the suite normalises exactly those two renderings and
   nothing else.
+- **Live collaboration did not work at all before 1.50.0, and its tests all passed.** Worth reading
+  as a method failure rather than three bugs, because the method is reusable and the bugs are not.
+
+  The plugin's collaboration tests drive the client against a fake transport. The server's tests
+  drive the bridge against a document loader they supply themselves. Both suites are thorough - 130
+  Java tests and 41 JavaScript ones - and between them they establish that each side is
+  self-consistent. Neither can say anything about the join, and the join was where all three defects
+  were:
+
+  1. `server.mjs` called `openDirectConnection` on the `Server` wrapper rather than on the
+     `Hocuspocus` instance it holds. Resolving a board threw, the bridge answered "could not open
+     board" and closed the socket, so **no Protégé peer could join any board in any release**.
+  2. `CollabMessages` flattened nested payload fields to strings, with a comment saying nested
+     structures were "stringified rather than lost". They were lost. A label travels as
+     `data.updates.label`, the code applying it asks `updates instanceof Map`, and a String is not a
+     Map - so **renaming or labelling a term never reached a peer**, silently. Outbound was fine,
+     which is why no round trip inside one language could show it.
+  3. `livePeers` in the bridge left the `ontology` field out of the payload it broadcast, though the
+     connection record carried it. So every peer's ontology arrived empty and
+     `CollabSession.peerOntologyWarning` - the warning that two people on a colliding board id are
+     editing unrelated ontologies - **could never fire**.
+
+  All three are now pinned by tests that cross the socket: `CollabLiveTest` starts the shipped
+  server, connects two sessions and requires edits, labels, renames, notes and the mismatch warning
+  to arrive; `collab/__tests__/server-boot.test.mjs` does the same from the JavaScript side. Each was
+  confirmed to fail against the unfixed code before being kept.
+
+  The lesson, stated so it outlives the fix: **a test that injects a dependency cannot check the
+  wiring.** Where two implementations meet, one test has to run both.
+- **Live mode cannot carry every axiom, and the number is measured.** Offering every axiom in pizza
+  v5 to a live session, 96 of 141 travel and 45 do not. `SubClassOf`, class and individual
+  declarations, `rdfs:label` including renames, `ClassAssertion` and every annotation cross.
+  `EquivalentClasses`, `DisjointClasses`, domain, range, property chains, `owl:hasKey`, property
+  declarations and every `ObjectPropertyAssertion` do not, because the shared vocabulary has
+  eighteen operation types fixed by the web client and an axiom with no operation cannot cross.
+
+  The plugin reports this rather than hiding it - the toolbar shows `N changes not shared` with the
+  reason in its tooltip. The practical consequence is worth saying plainly: live mode is for drawing
+  a hierarchy, naming terms and leaving notes. It is not a way to build a release, because most of
+  the logical content is in the second list. `reports/v5/collaboration.md` in the pizza project
+  carries the per-axiom-type table.
 - **Reason previews what the build will write, which it did not until 1.49.0.** The comparison
   above is against the options each call passes, and for `reason` that exposed something the option
   check could not: the plugin was passing ROBOT's bare defaults while the Makefile OntoBoard itself
@@ -185,7 +226,7 @@ The plugin is early. These exist in the web application but not yet here:
 
 ### Not covered by tests
 
-1161 tests cover projection, axiom construction, layout persistence, ODK scaffolding, the
+1167 tests cover projection, axiom construction, layout persistence, ODK scaffolding, the
 report's rule execution and the OSGi configuration. Fourteen of them reach outside the JVM:
 `RobotParityTest` compares the report against real ROBOT in `obolibrary/odkfull`,
 `RobotCliParityTest` compares nine more operations against the same image's `robot` command, and
@@ -295,7 +336,9 @@ existing project's generated files so a generator fix reaches projects that alre
 incoming annotation declares its property rather than pushing the ontology outside DL (1.46.0);
 nine operations compared against the real `robot` command rather than only the report, and the four
 defects that comparison found (1.48.0); a Reason preview that passes the same options as the
-generated build, so it shows what a release will contain (1.49.0); a generated ODK
+generated build, so it shows what a release will contain (1.49.0); live collaboration verified over a
+real socket for the first time, and the three defects that had made it inert in every release
+(1.50.0); a generated ODK
 build that honours its own catalog, rejects equivalences nobody asserted, and gates a release on
 the same checks CI runs (1.28.0).
 

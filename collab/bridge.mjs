@@ -133,7 +133,18 @@ export function authenticate(token, secret) {
   }
 }
 
-/** Drops peers that have gone quiet, so a crashed client's cursor does not linger. */
+/**
+ * Drops peers that have gone quiet, so a crashed client's cursor does not linger.
+ *
+ * `ontology` is part of the payload, not decoration. The plugin sends it in `hello` and reads it
+ * back off every peer to answer the one question it cannot answer locally: is everybody on this
+ * board editing the same file as me? Two peers whose board id collides - a shared default, or the
+ * same override typed twice - otherwise apply each other's axioms to unrelated ontologies with
+ * nothing said. `CollabSession.peerOntologyWarning` exists for exactly that, and until this field
+ * was included it could never fire, because every peer's ontology arrived empty. The connection
+ * record has carried it all along; this function simply left it out, and no test on either side
+ * mentioned it.
+ */
 export function livePeers(peers, now = Date.now(), ttl = PRESENCE_TTL_MS) {
   const alive = [];
   for (const [, peer] of peers) {
@@ -144,6 +155,7 @@ export function livePeers(peers, now = Date.now(), ttl = PRESENCE_TTL_MS) {
         x: peer.x,
         y: peer.y,
         selection: peer.selection,
+        ontology: peer.ontology || "",
       });
     }
   }
