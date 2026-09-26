@@ -11,6 +11,8 @@ import de.fizkarlsruhe.ise.ontoboard.axiom.RelationDialog;
 import de.fizkarlsruhe.ise.ontoboard.canvas.CanvasExport;
 import de.fizkarlsruhe.ise.ontoboard.canvas.CanvasLayouts;
 import de.fizkarlsruhe.ise.ontoboard.canvas.CanvasMembership;
+import de.fizkarlsruhe.ise.ontoboard.canvas.CanvasSearch;
+import de.fizkarlsruhe.ise.ontoboard.canvas.CanvasZoom;
 import de.fizkarlsruhe.ise.ontoboard.canvas.CollaborativeGraphComponent;
 import de.fizkarlsruhe.ise.ontoboard.canvas.LegendPanel;
 import de.fizkarlsruhe.ise.ontoboard.canvas.PrefixColours;
@@ -145,6 +147,25 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
      */
     private boolean showInferences;
     private javax.swing.JToggleButton inferencesButton;
+
+    /**
+     * The Find box, and what it last found.
+     *
+     * <p>The projection is kept because search asks a question only the drawn board can answer -
+     * "which of these is on screen" - and rebuilding it per keystroke would re-walk the ontology on
+     * every letter typed. {@code ontologyTerms} is the wider index, built on the first search that
+     * finds nothing on the board and dropped on the next refresh, because the answer to "is this term
+     * in the ontology at all" changes whenever the ontology does.
+     */
+    private javax.swing.JTextField searchField;
+    private javax.swing.JLabel searchCount;
+    private Projection rendered;
+    private List<CanvasNode> searchMatches = Collections.emptyList();
+    private int searchCursor;
+    private List<CanvasNode> ontologyTerms;
+
+    /** The zoom readout in the status bar. A button, because clicking it returns to 100%. */
+    private JButton zoomReadout;
     /**
      * The live session, or null when working through git. Created on demand from the
      * Collaborate dialog rather than at startup, because most sessions are single-user and
@@ -177,6 +198,8 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         centre.add(new StartPanel(this::runNewProjectWizard, this::openExistingProject,
                 this::addSelectedEntityToCanvas), "start");
         add(centre, BorderLayout.CENTER);
+        // Before the toolbar, because the status bar owns collabStatus and the toolbar used to.
+        add(buildStatusBar(), BorderLayout.SOUTH);
 
         mxGraphOutline outline = new mxGraphOutline(graphComponent);
         outline.setPreferredSize(new Dimension(180, 140));
@@ -191,6 +214,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         installCursorSharing();
         installSelection();
         installWheelZoom();
+        installZoomReadout();
         installKeyboardShortcuts();
 
         loadLayoutForActiveOntology();
@@ -754,6 +778,244 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         }
     }
 
+    // ------------------------------------------------------------------ find and zoom
+
+    /**
+     * Runs the current query and reports what it found.
+     *
+     * <p>Centring while typing is the behaviour worth having - you see the term arrive rather than
+     * pressing Enter and hoping - but not on the first character, where the best match for "m" is
+     * arbitrary and the canvas lurches to it. From two characters on, the view follows the query.
+     *
+     * @param centreTheBest whether to move the view, which stepping and re-running after an add do
+     *     themselves
+     */
+    private void runSearch(boolean centreTheBest) {
+        String query = searchField == null ? "" : searchField.getText();
+        searchMatches = CanvasSearch.matches(query, termsOnTheBoard());
+        searchCursor = 0;
+
+        if (query.trim().isEmpty()) {
+            say(searchCount, " ", null);
+            return;
+        }
+        if (!searchMatches.isEmpty()) {
+            say(searchCount, searchMatches.size() == 1 ? "1 match"
+                    : searchMatches.size() + " matches", null);
+            if (centreTheBest && query.trim().length() >= 2) {
+                goToCurrentMatch();
+            }
+            return;
+        }
+        reportNothingFoundOnTheBoard(query);
+    }
+
+    /**
+     * What to say when the board has no match, which is two different situations.
+     *
+     * <p>"No match" alone is the unhelpful answer, because the two reasons it can be true lead to
+     * opposite next actions: the term does not exist and needs creating, or it exists and simply has
+     * not been added to the board. Distinguishing them is the whole reason this looks past the board
+     * at all.
+     */
+    private void reportNothingFoundOnTheBoard(String query) {
+        List<CanvasNode> inTheOntology = CanvasSearch.matches(query, termsInTheOntology(), 1);
+        if (inTheOntology.isEmpty()) {
+            say(searchCount, "no match", "Nothing in this ontology matches that either.");
+            setStatus("No term matching \"" + query.trim() + "\" - not on the board, and not in "
+                    + "this ontology.");
+            return;
+        }
+        String name = CanvasSearch.nameOf(inTheOntology.get(0));
+        say(searchCount, "not on board",
+                name + " is in the ontology. Ctrl+Enter puts it on the board.");
+        setStatus(name + " is in this ontology but not on the board - Ctrl+Enter adds it.");
+    }
+
+    /** Enter and Shift+Enter: the next match, wrapping. */
+    private void stepThroughMatches(int delta) {
+        if (searchMatches.isEmpty()) {
+            // Enter on a query that matched nothing on the board does the obvious thing instead of
+            // nothing at all: if the term exists, put it there.
+            addBestMatchFromTheOntology();
+            return;
+        }
+        searchCursor = (searchCursor + delta + searchMatches.size()) % searchMatches.size();
+        goToCurrentMatch();
+    }
+
+    /**
+     * Centres the current match, selects it, and names it.
+     *
+     * <p>Selecting rather than only scrolling is what makes this more than a camera move: the
+     * selection goes out through {@link SelectionBridge} to Prot&eacute;g&eacute;'s own selection, so
+     * finding a term on the board also brings up its annotations and its axioms in the panels beside
+     * it - and out to collaborators, who see what their colleague is looking at.
+     */
+    private void goToCurrentMatch() {
+        if (searchMatches.isEmpty()) {
+            return;
+        }
+        CanvasNode match = searchMatches.get(searchCursor);
+        Object cell = graph.getCellForId(match.getId());
+        if (cell == null) {
+            // The board was re-rendered between the search and the jump - an edit elsewhere in
+            // Protege, or a collaborator removing the term.
+            setStatus(CanvasSearch.nameOf(match) + " is no longer on the board.");
+            runSearch(false);
+            return;
+        }
+        graph.setSelectionCell(cell);
+        graphComponent.scrollCellToVisible(cell, true);
+        String position = searchMatches.size() == 1
+                ? "" : "(" + (searchCursor + 1) + " of " + searchMatches.size() + ") ";
+        setStatus(position + CanvasSearch.nameOf(match) + " - " + match.getId());
+    }
+
+    /**
+     * Ctrl+Enter: puts the best matching term in the ontology onto the board.
+     *
+     * <p>Placed at the centre of what the user is currently looking at, not at the origin. A node
+     * that arrives off-screen after an explicit request to add it is indistinguishable from nothing
+     * happening, which is the bug the drop path was fixed for and would be a new one here.
+     */
+    private void addBestMatchFromTheOntology() {
+        String query = searchField == null ? "" : searchField.getText();
+        if (query.trim().isEmpty()) {
+            return;
+        }
+        List<CanvasNode> found = CanvasSearch.matches(query, termsInTheOntology(), 1);
+        if (found.isEmpty()) {
+            setStatus("No term in this ontology matches \"" + query.trim() + "\".");
+            return;
+        }
+        CanvasNode term = found.get(0);
+        if (!membership.add(term.getId())) {
+            // Already there - so this is a search that should have matched, and the useful response
+            // is to go to it rather than to report a no-op.
+            runSearch(true);
+            return;
+        }
+
+        Point where = centreOfTheVisibleCanvas();
+        CanvasLayout.NodeLayout position = new CanvasLayout.NodeLayout();
+        position.x = where.x;
+        position.y = where.y;
+        position.w = 160;
+        position.h = 60;
+        layout.nodes.put(term.getId(), position);
+
+        refresh();
+        saveLayoutTo(layoutFile);
+        setStatus("Added " + CanvasSearch.nameOf(term) + " to the board.");
+        // Re-run so the count, the selection and the view all describe the board as it now is.
+        runSearch(true);
+    }
+
+    /** The middle of the visible canvas, in graph coordinates. */
+    private Point centreOfTheVisibleCanvas() {
+        java.awt.Rectangle visible = graphComponent.getViewport().getViewRect();
+        if (visible.width <= 0 || visible.height <= 0) {
+            return new Point(40, 40);
+        }
+        // Half a default node up and left, so the node is centred rather than starting at the centre.
+        Point centre = graphPointFromControl(visible.x + visible.width / 2,
+                visible.y + visible.height / 2);
+        return new Point(Math.max(0, centre.x - 80), Math.max(0, centre.y - 30));
+    }
+
+    /** Escape in the Find box: clear it and give the keyboard back to the canvas. */
+    private void clearSearch() {
+        if (searchField != null) {
+            searchField.setText("");
+        }
+        searchMatches = Collections.emptyList();
+        searchCursor = 0;
+        say(searchCount, " ", null);
+        graphComponent.requestFocusInWindow();
+    }
+
+    /** The terms drawn on the board, which is what Find searches first. */
+    private List<CanvasNode> termsOnTheBoard() {
+        return rendered == null ? Collections.<CanvasNode>emptyList() : rendered.getNodes();
+    }
+
+    /**
+     * Every term in the ontology, built on demand and kept until the next refresh.
+     *
+     * <p>Only reached when the board has no match, so the common case - searching for something that
+     * is on screen - never walks the ontology. {@link #refresh} drops it, and refresh runs on every
+     * ontology change, so this cannot answer with a term that has since been deleted.
+     */
+    private List<CanvasNode> termsInTheOntology() {
+        if (ontologyTerms == null) {
+            ontologyTerms = OntologyProjection.everyTermWorthShowing(
+                    getOWLModelManager().getActiveOntology());
+        }
+        return ontologyTerms;
+    }
+
+    /** Text and tooltip together, because a label whose text is cut off needs the tooltip. */
+    private static void say(javax.swing.JLabel label, String text, String tooltip) {
+        if (label != null) {
+            label.setText(text);
+            label.setToolTipText(tooltip);
+        }
+    }
+
+    /**
+     * Zooms so the whole board is visible.
+     *
+     * <p>The one thing to get right here is a unit: {@code mxGraphView.getGraphBounds()} reports the
+     * board in <em>scaled</em> pixels, so dividing by the current scale is what makes Fit mean the
+     * same thing from 40% as from 100%. Without it the arithmetic is right at 100% and wrong
+     * everywhere else, which is a bug that survives every manual test that starts from 100%.
+     */
+    private void fitToWindow() {
+        com.mxgraph.util.mxRectangle bounds = graph.getView().getGraphBounds();
+        java.awt.Rectangle window = graphComponent.getViewport().getViewRect();
+        double scale = graph.getView().getScale();
+        double zoom = scale <= 0 ? 1 : scale;
+        if (bounds == null || bounds.getWidth() <= 0 || bounds.getHeight() <= 0) {
+            setStatus("Nothing on the board to fit.");
+            return;
+        }
+
+        double fitted = CanvasZoom.scaleToFit(bounds.getWidth() / zoom, bounds.getHeight() / zoom,
+                window.getWidth(), window.getHeight());
+        graphComponent.zoomTo(fitted, false);
+
+        // Then bring the content itself into view: fitting the scale without scrolling leaves a board
+        // that starts at x=2000 exactly as invisible as it was, only smaller.
+        double ratio = fitted / zoom;
+        graphComponent.getGraphControl().scrollRectToVisible(new java.awt.Rectangle(
+                (int) (bounds.getX() * ratio), (int) (bounds.getY() * ratio),
+                (int) (bounds.getWidth() * ratio), (int) (bounds.getHeight() * ratio)));
+        updateZoomReadout();
+        setStatus("Fitted the board to the window at " + CanvasZoom.readout(fitted) + ".");
+    }
+
+    /**
+     * Keeps the readout honest however the zoom changed.
+     *
+     * <p>Bound to the view rather than to the wheel handler and the two buttons, so a zoom from
+     * anywhere - the outline panel, a future keyboard shortcut, mxGraph itself - updates it. A readout
+     * that is right only when you zoom the way its author expected is worse than none.
+     */
+    private void installZoomReadout() {
+        mxIEventListener onScale = (sender, event) -> updateZoomReadout();
+        graph.getView().addListener(mxEvent.SCALE, onScale);
+        graph.getView().addListener(mxEvent.SCALE_AND_TRANSLATE, onScale);
+        updateZoomReadout();
+    }
+
+    /** Puts the current scale in the status bar. */
+    private void updateZoomReadout() {
+        if (zoomReadout != null) {
+            zoomReadout.setText(CanvasZoom.readout(graph.getView().getScale()));
+        }
+    }
+
     // ------------------------------------------------------------------ interaction
 
     /**
@@ -830,6 +1092,27 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         // Escape clears the selection. Documented in the testing guide and simply absent, so the
         // only way out of a rubber-band selection was to click empty canvas and hope not to hit a
         // node - with Delete one keystroke away from removing whatever was still selected.
+        // Ctrl+F from the canvas, because the point of a find box is not having to reach for the
+        // mouse. Both masks rather than Toolkit.getMenuShortcutKeyMask(), which is deprecated on the
+        // newer of the two Java versions this plugin is built for.
+        for (int mask : new int[] { java.awt.event.InputEvent.CTRL_DOWN_MASK,
+                java.awt.event.InputEvent.META_DOWN_MASK }) {
+            keys.put(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_F, mask),
+                    "ontoboard.find");
+        }
+        graphComponent.getActionMap().put("ontoboard.find",
+                new javax.swing.AbstractAction() {
+                    private static final long serialVersionUID = 1L;
+
+                    @Override
+                    public void actionPerformed(java.awt.event.ActionEvent event) {
+                        if (searchField != null) {
+                            searchField.requestFocusInWindow();
+                            searchField.selectAll();
+                        }
+                    }
+                });
+
         keys.put(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_ESCAPE, 0),
                 "ontoboard.clearSelection");
         graphComponent.getActionMap().put("ontoboard.clearSelection",
@@ -1176,9 +1459,6 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
 
         collaborateButton = new JButton("Collaborate...");
         collaborateButton.addActionListener(a -> toggleCollaboration());
-        collabStatus = new javax.swing.JLabel(" ");
-        collabStatus.setFont(collabStatus.getFont().deriveFont(
-                java.awt.Font.PLAIN, collabStatus.getFont().getSize() - 1f));
 
         addSelectedButton = new JButton("Add selected");
         addSelectedButton.addActionListener(a -> addSelectedEntityToCanvas());
@@ -1205,19 +1485,161 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         addAll.addActionListener(a -> addEverythingToCanvas());
 
         bar.add(addSelectedButton);
+        bar.add(addAll);
+        bar.addSeparator();
+        bar.add(buildFindBox());
         bar.addSeparator();
         bar.add(algorithms);
         bar.add(arrange);
         bar.addSeparator();
-        bar.add(addAll);
         bar.add(inferencesButton);
         bar.add(legend);
         bar.addSeparator();
         bar.add(export);
         bar.addSeparator();
         bar.add(collaborateButton);
-        bar.add(collabStatus);
         return bar;
+    }
+
+    /**
+     * Find a term on the board.
+     *
+     * <p>The gap this closes is the largest one in the interface, and it is a gap rather than a bug:
+     * on a board with a hundred terms - what <em>Add all</em> produces on the pizza ontology, and
+     * small for the ontologies this plugin is for - there was no way to locate {@code Margherita}
+     * except to drag the canvas until it appeared, or to leave the canvas for the class hierarchy,
+     * find it there, and come back. People did the second, which made the canvas a thing to look at
+     * rather than to work in.
+     *
+     * <p>Four keys, because a search box that only searches is half of one. <b>Enter</b> steps to the
+     * next match and <b>Shift+Enter</b> back, so a term whose name is a prefix of four others is two
+     * keystrokes away rather than a longer query. <b>Ctrl+Enter</b> adds the best match that is in the
+     * ontology but not yet on the board - the case where the honest answer to a search is "it exists,
+     * you just have not drawn it", and where sending somebody back to the class hierarchy to drag it
+     * across is exactly the round trip this box exists to remove. <b>Escape</b> clears the box and
+     * returns the keyboard to the canvas.
+     *
+     * <p>Matching is {@link CanvasSearch}, tested separately, because the ranking is the part that
+     * can be quietly wrong: with a plain substring match, typing {@code marg} on the pizza ontology
+     * centres whichever of {@code Margherita} and {@code VegetarianMargheritaBase} the ontology
+     * happens to list first.
+     */
+    private JPanel buildFindBox() {
+        JPanel box = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 4, 0));
+        box.setOpaque(false);
+
+        javax.swing.JLabel caption = new javax.swing.JLabel("Find");
+        searchField = new javax.swing.JTextField(13);
+        searchField.setToolTipText("<html><b>Find a term on the board</b> by label or IRI."
+                + "<br>Enter: next match &nbsp; Shift+Enter: previous"
+                + "<br>Ctrl+Enter: add a match that is in the ontology but not on the board"
+                + "<br>Escape: clear &nbsp; Ctrl+F: come back here</html>");
+        caption.setLabelFor(searchField);
+
+        searchCount = new javax.swing.JLabel(" ");
+        searchCount.setFont(searchCount.getFont().deriveFont(
+                java.awt.Font.PLAIN, searchCount.getFont().getSize() - 1f));
+        // Fixed width so the toolbar does not reflow on every keystroke, which reads as the whole
+        // row twitching while you type.
+        searchCount.setPreferredSize(new Dimension(92, searchField.getPreferredSize().height));
+
+        searchField.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
+            @Override
+            public void insertUpdate(javax.swing.event.DocumentEvent event) {
+                runSearch(true);
+            }
+
+            @Override
+            public void removeUpdate(javax.swing.event.DocumentEvent event) {
+                runSearch(true);
+            }
+
+            @Override
+            public void changedUpdate(javax.swing.event.DocumentEvent event) {
+                runSearch(true);
+            }
+        });
+
+        bindInField("ontoboard.find.next", javax.swing.KeyStroke.getKeyStroke(
+                java.awt.event.KeyEvent.VK_ENTER, 0), () -> stepThroughMatches(1));
+        bindInField("ontoboard.find.previous", javax.swing.KeyStroke.getKeyStroke(
+                java.awt.event.KeyEvent.VK_ENTER,
+                java.awt.event.InputEvent.SHIFT_DOWN_MASK), () -> stepThroughMatches(-1));
+        bindInField("ontoboard.find.add", javax.swing.KeyStroke.getKeyStroke(
+                java.awt.event.KeyEvent.VK_ENTER,
+                java.awt.event.InputEvent.CTRL_DOWN_MASK), this::addBestMatchFromTheOntology);
+        bindInField("ontoboard.find.addMeta", javax.swing.KeyStroke.getKeyStroke(
+                java.awt.event.KeyEvent.VK_ENTER,
+                java.awt.event.InputEvent.META_DOWN_MASK), this::addBestMatchFromTheOntology);
+        bindInField("ontoboard.find.clear", javax.swing.KeyStroke.getKeyStroke(
+                java.awt.event.KeyEvent.VK_ESCAPE, 0), this::clearSearch);
+
+        box.add(caption);
+        box.add(searchField);
+        box.add(searchCount);
+        return box;
+    }
+
+    /** One keystroke inside the Find box, without five anonymous actions in the builder. */
+    private void bindInField(String name, javax.swing.KeyStroke key, final Runnable action) {
+        searchField.getInputMap(javax.swing.JComponent.WHEN_FOCUSED).put(key, name);
+        searchField.getActionMap().put(name, new javax.swing.AbstractAction() {
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            public void actionPerformed(java.awt.event.ActionEvent event) {
+                action.run();
+            }
+        });
+    }
+
+    /**
+     * A status bar along the bottom, with the zoom controls in it.
+     *
+     * <p>The status text used to live in the toolbar, which put a line of prose that grows and
+     * shrinks - "3 changes not shared", "Disconnected - you switched ontology" - in the middle of a
+     * row of buttons, pushing them sideways as it changed and squeezing them out of the panel
+     * entirely on a narrow one. A status line belongs under the thing it describes.
+     *
+     * <p>Zoom sits here rather than in the toolbar for the same reason every drawing tool puts it
+     * here: it is a property of the view, not an action on the ontology, and the bottom-right corner
+     * is where people look for it.
+     */
+    private JPanel buildStatusBar() {
+        collabStatus = new javax.swing.JLabel(" ");
+        collabStatus.setFont(collabStatus.getFont().deriveFont(
+                java.awt.Font.PLAIN, collabStatus.getFont().getSize() - 1f));
+
+        JButton fit = new JButton("Fit");
+        fit.setToolTipText("Zoom so the whole board is visible");
+        fit.addActionListener(a -> fitToWindow());
+
+        zoomReadout = new JButton(CanvasZoom.readout(1.0));
+        zoomReadout.setToolTipText("How far the board is zoomed. Click for 100%.");
+        zoomReadout.addActionListener(a -> {
+            graphComponent.zoomActual();
+            updateZoomReadout();
+        });
+        // Wide enough for "400%", so the button does not resize as the number changes. Before this
+        // there was no readout at all: three turns of the wheel past the last node leaves a blank
+        // grid, and nothing on screen said whether the board was empty, the view was somewhere else,
+        // or the plugin had stopped working.
+        zoomReadout.setPreferredSize(new Dimension(64, fit.getPreferredSize().height));
+
+        JPanel zoomControls = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 4, 0));
+        zoomControls.setOpaque(false);
+        zoomControls.add(fit);
+        zoomControls.add(zoomReadout);
+
+        JPanel statusBar = new JPanel(new BorderLayout(8, 0));
+        Color rule = javax.swing.UIManager.getColor("controlShadow");
+        statusBar.setBorder(javax.swing.BorderFactory.createCompoundBorder(
+                javax.swing.BorderFactory.createMatteBorder(1, 0, 0, 0,
+                        rule == null ? Color.GRAY : rule),
+                javax.swing.BorderFactory.createEmptyBorder(2, 8, 2, 4)));
+        statusBar.add(collabStatus, BorderLayout.CENTER);
+        statusBar.add(zoomControls, BorderLayout.EAST);
+        return statusBar;
     }
 
     /**
@@ -1537,6 +1959,9 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                 .project(getOWLModelManager().getActiveOntology(), membership.asSet());
         projection = withInferences(projection);
         graph.render(projection, layout);
+        // What search matches against, and what it can no longer assume about the ontology.
+        rendered = projection;
+        ontologyTerms = null;
         autoArrangeIfUnpositioned();
         showAppropriateCard();
 

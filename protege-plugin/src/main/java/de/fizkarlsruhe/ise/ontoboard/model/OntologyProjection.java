@@ -54,16 +54,61 @@ public final class OntologyProjection {
      */
     public static Set<String> everythingWorthShowing(OWLOntology ontology) {
         Set<String> iris = new java.util.LinkedHashSet<String>();
-        if (ontology == null) {
-            return iris;
-        }
-        for (org.semanticweb.owlapi.model.OWLEntity entity : ontology.getSignature()) {
-            if (entity.isOWLClass() || entity.isOWLNamedIndividual()
-                    || entity.isOWLObjectProperty() || entity.isOWLDataProperty()) {
-                iris.add(entity.getIRI().toString());
-            }
+        for (CanvasNode term : everyTermWorthShowing(ontology)) {
+            iris.add(term.getId());
         }
         return iris;
+    }
+
+    /**
+     * The same four kinds, as nodes with their labels, for searching.
+     *
+     * <p>The canvas search box needs to answer a question the board alone cannot: the user typed
+     * "margherita", nothing on the board matches, and the two possible reasons - the term does not
+     * exist, or it exists and has not been added - lead to opposite next actions. Answering it needs
+     * every term's <em>label</em>, not just its IRI, because a label is what people type.
+     *
+     * <p>This is deliberately the same walk {@link #everythingWorthShowing} does, and that method now
+     * delegates to it, so "what counts as a term worth showing" is decided once. It had already
+     * drifted once - the list was classes and individuals only while {@link #project} drew four
+     * kinds - and a second copy of the rule in a search index is a second chance to drift, in a place
+     * where the symptom would be a term that cannot be found and no error anywhere.
+     *
+     * <p>No edges are built, which is what makes it cheap enough to hold in memory for a large
+     * ontology: the search box never draws anything, it only reports and centres.
+     */
+    public static List<CanvasNode> everyTermWorthShowing(OWLOntology ontology) {
+        List<CanvasNode> terms = new ArrayList<>();
+        if (ontology == null) {
+            return terms;
+        }
+        for (org.semanticweb.owlapi.model.OWLEntity entity : ontology.getSignature()) {
+            NodeKind kind = kindOf(entity);
+            if (kind != null) {
+                terms.add(new CanvasNode(iri(entity.getIRI()), kind,
+                        DisplayLabels.forEntity(ontology, entity)));
+            }
+        }
+        return terms;
+    }
+
+    /** Which of the four drawable kinds an entity is, or null for one the canvas does not draw. */
+    private static NodeKind kindOf(org.semanticweb.owlapi.model.OWLEntity entity) {
+        if (entity.isOWLClass()) {
+            return NodeKind.CLASS;
+        }
+        if (entity.isOWLNamedIndividual()) {
+            return NodeKind.INDIVIDUAL;
+        }
+        if (entity.isOWLObjectProperty()) {
+            return NodeKind.OBJECT_PROPERTY;
+        }
+        if (entity.isOWLDataProperty()) {
+            return NodeKind.DATA_PROPERTY;
+        }
+        // Datatypes and annotation properties. Datatypes are on the board only where a data property
+        // edge puts them, and an annotation property is not a thing this canvas draws at all.
+        return null;
     }
 
     public static Projection project(OWLOntology ontology, Set<String> onCanvasIris) {

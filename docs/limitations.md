@@ -249,8 +249,8 @@ The plugin is early. These exist in the web application but not yet here:
   alone - a frame slotted into a grid encloses nothing, which destroys the only thing it is for.
 
   What remains, and is named in [the canvas plan](superpowers/specs/2026-09-25-canvas-interface-plan.md):
-  no undo for anything the board owns, four coordinate-conversion bugs that put created things where
-  the user did not click, no search, and tooltips that show internal ids.
+  no undo for anything the board owns. The internal-id tooltips were replaced in 1.53.0, the last of
+  the coordinate conversions unified into one function in 1.54.0, and search arrived in 1.58.0.
 
 - **A term's editorial note is readable and writable on the canvas since 1.56.0, and its text is
   not in the tooltip yet.** The canvas drew a term carrying a note with a heavier border and offered
@@ -262,6 +262,35 @@ The plugin is early. These exist in the web application but not yet here:
   draws, and `CanvasNode` carries a boolean - whether there is a note - rather than the note itself.
   Threading the text through is a small model change and it is not done, so the plan's C3 is half
   complete: the note is maintainable, and still not readable without opening a dialog.
+
+- **A term on the board could not be found by name until 1.58.0, and the zoom had no readout and
+  no way home.** Two absences rather than two bugs, and the larger one is the first. On a board with a
+  hundred terms - what *Add all* produces on the pizza ontology, and small for the ontologies this
+  plugin is for - locating `Margherita` meant dragging the canvas until it appeared, or leaving the
+  canvas for the class hierarchy, finding it there, and coming back. People did the second, which made
+  the canvas a thing to look at rather than to work in.
+
+  The Find box matches label and IRI as you type, ranked so an exact name beats a longer one that
+  contains it, centres the best match and selects it - and the selection goes out through
+  `SelectionBridge` to Protégé's own selection, so finding a term also brings up its annotations in
+  the panels beside the canvas. Enter steps through matches, and Ctrl+Enter adds a match that is in
+  the ontology but not yet on the board, which is the case where "no match" was the least useful true
+  answer available.
+
+  The second absence was smaller and easier to hit: three turns of the wheel past the last node leaves
+  a blank grey grid, and nothing on screen distinguished *zoomed out into empty space* from *the board
+  is empty* or *the plugin has stopped working*. There is now a percentage in the status bar that
+  returns to 100% when clicked, and a *Fit* that scales the board into the window.
+
+  The status line moved out of the toolbar into a status bar along the bottom while doing this. It had
+  been a line of prose that grows and shrinks - "3 changes not shared", "Disconnected - you switched
+  ontology" - sitting in a row of buttons, pushing them sideways as it changed and squeezing them off
+  a narrow panel.
+
+  Not covered: the ranking and the fit arithmetic are unit-tested (`CanvasSearchTest`,
+  `CanvasZoomTest`, 21 tests), and the wiring between them and Swing is not. The in-host self-test
+  constructs the toolbar, the Find box and the status bar on both Protégés; it does not type into
+  them.
 
 - **The OntoBoard tab opens and its views construct inside both Protégés, checked automatically
   since 1.57.0.** This closes the last clause of F1 in

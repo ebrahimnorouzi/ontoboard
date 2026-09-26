@@ -1,0 +1,144 @@
+OntoBoard 1.58.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-09-26  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 8/8  test 10/10
+  2026-09-26  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 8/8  test 10/10
+
+
+FIRST: 1.57.0's COMMIT DOES NOT COMPILE
+
+This release begins with a defect in the last one, found by building it.
+
+  SelfTestAction.java:[391,27] method describe(java.lang.Throwable) is already defined
+
+Two copies of a private helper, so javac refuses the file. a04b55a cannot be built from a clean
+checkout. It was committed after a passing build because a source edit landed between the build and the
+commit - the exact thing the rule written down at 1.52.0 and again at 1.54.0 forbids, broken a third
+time.
+
+What it did not do is ship anything wrong, and the evidence for that is worth recording because the
+first explanation I reached for was wrong. The shipped jar was still installed, so its bytecode was
+read:
+
+  javap -p -c ontoboard-1.57.0.jar de.fizkarlsruhe.ise.ontoboard.menu.SelfTestAction
+    private static java.lang.String describe(java.lang.Throwable);
+       13: invokevirtual #222   // Method java/lang/Class.getName:()Ljava/lang/String;
+
+One describe, calling getName. Before 1.57.0 the file had one describe calling getSimpleName; the
+commit has both. So the built tree was neither: the jar was compiled from a file in which the original
+had been replaced, and the original reappeared afterwards. I had assumed the opposite - that the
+duplicate was mine and added late - and the bytecode says the surviving one at build time was mine.
+
+Resolved by keeping what the hosts actually ran: one describe, fully qualified. That keeps the source
+equal to the artefact that passed both hosts, rather than quietly changing the output of three other
+call sites to something no release has shipped.
+
+The number in the 1.57.0 receipt - "1207 tests" - was therefore measured on a tree that is not in git.
+It is not reproducible and should not be compared against the count below.
+
+
+FIND A TERM, AND KNOW WHERE YOU ARE
+
+C1 and B4 of docs/superpowers/specs/2026-09-25-canvas-interface-plan.md. Both are absences rather than
+bugs, which is why no test and no audit finding could have reported them.
+
+1. THE BOARD COULD NOT BE SEARCHED
+
+On a board with a hundred terms - what "Add all" produces on the pizza ontology, and small for the
+ontologies this plugin is for - there were two ways to locate Margherita: drag the canvas until it
+appeared, or leave the canvas for Protege's class hierarchy, find it there, and come back. People did
+the second, which makes the canvas a thing to look at rather than to work in.
+
+Find matches label and IRI as you type. Three decisions in it are judgements, not mechanics:
+
+  - Ranked, not filtered. Centring "the match" means choosing one, and on the pizza ontology a plain
+    substring search answers "marg" with Margherita or VegetarianMargheritaBase depending on which the
+    ontology lists first. The ladder is: label exactly, short name exactly, label from its start, short
+    name from its start, then anywhere, then the whole IRI. Ties break on the displayed name, so the
+    second-best match does not move when an unrelated axiom is added.
+  - Separators ignored, last. Labels say "American Hot" where the identifier says AmericanHot, so a
+    search that respects separators finds a term when it has a label and fails when it does not - and
+    an ontology under construction is full of terms that have no label yet. It ranks below every exact
+    test, so it can only add matches, never reorder them.
+  - It selects, not just scrolls. The selection leaves through SelectionBridge to Protege's own
+    selection, so finding a term on the board also brings up its annotations and axioms in the panels
+    beside it, and shows collaborators what their colleague is looking at.
+
+The addition the plan did not ask for: when nothing on the board matches, "no match" is the least
+useful true answer available, because the two reasons it can be true lead to opposite next actions -
+the term does not exist, or it exists and has not been drawn. So a miss looks at the whole ontology and
+says which. Ctrl+Enter then puts it on the board, placed at the centre of the current view rather than
+at the origin, because a node that arrives off-screen after an explicit request to add it is
+indistinguishable from nothing happening. That is the round trip to the class hierarchy this item
+exists to remove.
+
+The ontology-wide index is built on the first miss and dropped on the next refresh, so the common case
+- searching for something on screen - never walks the ontology, and the index cannot answer with a term
+that has since been deleted.
+
+One duplication was removed rather than added: OntologyProjection.everythingWorthShowing and the new
+everyTermWorthShowing are the same walk over the same four kinds, so the first now delegates to the
+second. That rule had already drifted once - "Add all" offered classes and individuals while the canvas
+drew four kinds - and a second copy inside a search index is a second chance to drift, in a place whose
+symptom would be a term that cannot be found and no error anywhere.
+
+2. THERE WAS NO WAY TO TELL WHERE THE VIEW WAS
+
+Three turns of the wheel past the last node leaves a blank grey grid. Nothing on screen distinguished
+"zoomed out into empty space" from "the board is empty" or "the plugin has stopped working", and there
+was no readout, no Fit and no 100%, so the way back was to guess how many turns and in which direction.
+
+There is now a percentage in the status bar, which returns to 100% when clicked, and a Fit. Two things
+in it are deliberate:
+
+  - The readout is bound to the graph view's scale event, not to the wheel handler and the buttons. A
+    readout that is right only when you zoom the way its author expected is worse than none.
+  - Fit never magnifies. Four nodes in a large window stay at 1:1. Fit means "show everything", and
+    everything is already shown; jumping to 300% is a zoom level nobody asked for and then has to undo.
+
+The arithmetic is in CanvasZoom with nine tests, for one reason: mxGraphView.getGraphBounds() reports
+the board in *scaled* pixels. A fit computed from it without dividing by the current scale is exactly
+right at 100% and wrong at every other zoom level - which is invisible to anyone who tests Fit from
+100%, and reads as "Fit doesn't quite fit".
+
+3. THE STATUS LINE LEFT THE TOOLBAR
+
+It had been a line of prose that grows and shrinks - "3 changes not shared", "Disconnected - you
+switched ontology" - sitting in the middle of a row of buttons, pushing them sideways as it changed and
+squeezing them off a narrow panel. It is now a status bar along the bottom, with the zoom controls in
+its right-hand corner where every drawing tool puts them. The toolbar is controls only.
+
+AND THE SMOKE SCRIPT STOPPED CONTRADICTING ITSELF
+
+It printed, underneath the self-test line reporting that the tab had opened:
+
+  (the tab did not report opening - not a failure here; see the header)
+
+That came from looking for "Saved tab state for 'OntoBoard' tab", which Protege logs at shutdown, and
+the script kills the process - so the line could never appear whatever the tab did. Of two
+contradictory lines about the same tab in the same output, the pessimistic one is the one people
+believe. Removed, along with the header paragraph that explained why the tab could not be asserted on,
+which stopped being true in 1.57.0.
+
+WHAT THIS DOES NOT COVER
+
+The ranking and the fit arithmetic are unit-tested; the wiring between them and Swing is not. The
+in-host self-test constructs the toolbar, the Find box and the status bar on both Protege versions -
+which is where a missing OSGi import or a bad classfile version shows up - but it does not type into
+them, and nothing here looks at a pixel.
+
+Still open in the canvas plan: A5 (no undo for board-owned state), C2 (expand discards its result),
+C3's second half (a note's text is not in the tooltip), C4 (no drag-to-connect), C5 (imported terms
+cannot be drawn), and D1-D4 on presence.
+
+NUMBERS
+
+1228 tests exist, 1227 ran, 1 skipped, 0 failures. 21 are new: 12 in CanvasSearchTest, 9 in
+CanvasZoomTest.
+
+The total was checked two ways rather than by adding a delta to the previous receipt, whose tree is not
+in git: the surefire reports sum to 1228, and @Test occurrences across src/test/java number 1228. The
+skip is BundleConfigurationTest's jar-dependent case, which has nothing to inspect during the test
+phase because target/*.jar is emptied before each build; the jar is built afterwards and is what both
+hosts loaded.

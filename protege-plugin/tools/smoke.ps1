@@ -14,10 +14,9 @@
         - no OSGi resolution failure, no classfile-version failure
 
     What it does NOT prove
-        - that the OntoBoard tab renders, or that any menu item works. Protege restores the last
-          workspace, so the tab may or may not open, and a killed process never logs its shutdown.
-          Asserting on the tab here would be asserting on the previous session's layout. Driving
-          the actions is Phase 2's self-test bundle.
+        - that anything painted correctly. With -SelfTest the plugin opens its own tab and
+          constructs its views, and this script quotes that line - but nothing here looks at a
+          pixel, so "the canvas draws the right diagram" still rests on somebody looking at it.
 
     Usage
         pwsh -File tools/smoke.ps1 -Install "$HOME\Documents\Protege-5.6.9" -Version 1.24.0
@@ -286,9 +285,10 @@ Write-Host "PASSED  OntoBoard $Version resolved and started  ($Install, -Xmx$Hea
 foreach ($line in [regex]::Matches($slice, '.*OntoBoard self-(check|test).*')) {
     Write-Host "  $($line.Value.Trim() -replace '^.*?OntoBoard self-', 'OntoBoard self-')"
 }
-if ($slice -match "Saved tab state for 'OntoBoard' tab") {
-    Write-Host '        the OntoBoard tab was open in the restored workspace'
-} else {
-    Write-Host '        (the tab did not report opening - not a failure here; see the header)'
-}
+# The tab used to be reported from "Saved tab state for 'OntoBoard' tab", which Protege logs at
+# shutdown - and this script kills the process, so that line could never appear whatever the tab did.
+# It printed "(the tab did not report opening)" underneath a self-test line that had just reported
+# opening it, which is worse than printing nothing: of two contradictory lines about the same tab in
+# the same output, the pessimistic one is the one people believe. The self-test's own line above is
+# the evidence now.
 exit 0

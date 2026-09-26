@@ -109,6 +109,13 @@ and "deleted from the ontology" are a world apart and the current UI distinguish
 **B4 — Where am I.** A zoom readout, `Fit to window`, and `Escape` to clear the selection — the
 last is documented and does not exist.
 
+> **Done.** Escape in 1.54.0; the readout and *Fit* in 1.58.0. The readout is a button in the new
+> status bar and returns to 100% when clicked. It is bound to the graph view's scale event rather than
+> to the wheel handler, so a zoom from anywhere updates it. `CanvasZoom` holds the fit arithmetic, with
+> nine tests; the one thing to get right is that `mxGraphView.getGraphBounds()` reports *scaled*
+> pixels, so a fit that does not divide by the current scale is correct at 100% and wrong at every
+> other zoom level.
+
 ---
 
 ## 4. Then: the whiteboard parts
@@ -116,6 +123,21 @@ last is documented and does not exist.
 **C1 — Find a term.** A search field that matches on label and IRI as you type, centres the match
 and selects it. On a hundred-term board there is currently no way to find Margherita except
 dragging the canvas around or leaving for the class hierarchy.
+
+> **Done in 1.58.0**, with one addition the plan did not ask for and the implementation argued for.
+> Matching is ranked, not filtered, because centring "the match" requires deciding which one: on the
+> pizza ontology a plain substring search answers `marg` with `Margherita` or
+> `VegetarianMargheritaBase` depending on which the ontology happens to list first. Twelve tests in
+> `CanvasSearchTest` pin the order.
+>
+> The addition: when nothing on the board matches, the box looks at the whole ontology and says which
+> of the two reasons applies - the term does not exist, or it exists and has not been drawn - because
+> those lead to opposite next actions and "no match" withholds the difference. Ctrl+Enter then puts it
+> on the board, at the centre of the current view, which is the round trip to the class hierarchy that
+> this item exists to remove.
+>
+> Not done here: no highlight of the other matches, and no results list. The count and Enter-to-step
+> stand in for both.
 
 **C2 — Expand and collapse, properly.** Expansion exists and discards its own result: new nodes
 stack in a row at the origin, the count is thrown away, nothing is saved, and there is no collapse.

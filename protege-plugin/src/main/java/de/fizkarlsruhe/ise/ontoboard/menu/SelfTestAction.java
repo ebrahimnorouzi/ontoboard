@@ -176,13 +176,6 @@ public class SelfTestAction extends OntoBoardAction {
         }
     }
 
-    /** An exception in one line, with its type, since a message alone is often empty. */
-    private static String describe(Throwable failure) {
-        String message = failure.getMessage();
-        return failure.getClass().getName()
-                + (message == null || message.trim().isEmpty() ? "" : ": " + message);
-    }
-
     public OperationResult selfTest() {
         return run((OWLOntology) null);
     }
@@ -388,9 +381,17 @@ public class SelfTestAction extends OntoBoardAction {
     }
 
 
+    /**
+     * An exception in one line, with its type, since a message alone is often empty.
+     *
+     * <p>The fully qualified name rather than the simple one, which is what 1.57.0 shipped: the
+     * failures this reports are loader failures, and {@code NoClassDefFoundError} on its own does not
+     * say which classpath it came from while
+     * {@code java.lang.NoClassDefFoundError: org/protege/editor/core/…} does.
+     */
     private static String describe(Throwable failure) {
         String message = failure.getMessage();
-        return failure.getClass().getSimpleName()
+        return failure.getClass().getName()
                 + (message == null || message.trim().isEmpty() ? "" : ": " + message);
     }
 }
