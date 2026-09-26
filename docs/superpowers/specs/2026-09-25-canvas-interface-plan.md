@@ -84,6 +84,18 @@ each board mutation fixes it; the class is a plain DTO, so copies are cheap.
 
 ---
 
+> **A5 done in 1.62.0.** Ctrl+Z on the canvas, over everything the sidecar holds. Snapshots of the whole
+> board rather than an inverse per action: the state is one small DTO, so copying is cheaper than the
+> bookkeeping and it cannot drift - a new board action gets undo the moment it records. Twenty-five
+> steps, per session, and never the ontology; the status line says that last part every time, because a
+> partial undo that looked total would be worse than none.
+>
+> One detail the plan could not have anticipated: a drag had to be coalesced into a single step, since
+> mxGraph fires `CELLS_MOVED` continuously and one step per event would have filled the whole history
+> with positions a pixel apart.
+
+---
+
 ## 3. Then: say what you already know
 
 The canvas holds more information than it shows. Nothing here needs new data.

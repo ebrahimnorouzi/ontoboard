@@ -26,6 +26,7 @@ import de.fizkarlsruhe.ise.ontoboard.collab.CollabSession;
 import de.fizkarlsruhe.ise.ontoboard.collab.CollabSettings;
 import de.fizkarlsruhe.ise.ontoboard.collab.CollabSettingsStore;
 import de.fizkarlsruhe.ise.ontoboard.collab.OperationMapper;
+import de.fizkarlsruhe.ise.ontoboard.layout.BoardHistory;
 import de.fizkarlsruhe.ise.ontoboard.layout.CanvasLayout;
 import de.fizkarlsruhe.ise.ontoboard.layout.CanvasLayoutStore;
 import de.fizkarlsruhe.ise.ontoboard.model.CanvasEdge;
@@ -178,6 +179,15 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
      */
     private final java.util.Map<String, List<String>> expansions =
             new java.util.LinkedHashMap<String, List<String>>();
+
+    /**
+     * Undo for the board, which had none.
+     *
+     * <p>Not persisted, and cleared when the ontology changes. An undo stack from another ontology
+     * would offer to restore a board of identifiers this one does not declare, which the sidecar loader
+     * would then prune to nothing - so "put it back" would empty the board.
+     */
+    private final BoardHistory history = new BoardHistory();
     /**
      * The live session, or null when working through git. Created on demand from the
      * Collaborate dialog rather than at startup, because most sessions are single-user and
@@ -227,6 +237,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         installCursorSharing();
         installSelection();
         installDragToConnect();
+        installUndo();
         installWheelZoom();
         installZoomReadout();
         installKeyboardShortcuts();
@@ -241,6 +252,14 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         positionSaveTimer = new Timer(800, event -> saveLayoutTo(layoutFile));
         positionSaveTimer.setRepeats(false);
         cellsMovedListener = (sender, event) -> {
+            // One undo step per burst of movement, not per event. mxGraph fires CELLS_MOVED
+            // repeatedly while a drag is in progress, and the save timer is already the thing that
+            // knows a burst is under way: if it is not running, this is the first move of a new one.
+            // Without the guard, dragging one node across the board would fill the whole history with
+            // steps a pixel apart and push everything else out of it.
+            if (positionSaveTimer != null && !positionSaveTimer.isRunning()) {
+                rememberBoard("moving things on the board");
+            }
             capturePositions();
             positionSaveTimer.restart();
         };
@@ -335,6 +354,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             return;
         }
         String iri = selected.getIRI().toString();
+        rememberBoard("adding " + getOWLModelManager().getRendering(selected));
         if (membership.add(iri)) {
             refresh();
         }
@@ -581,6 +601,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         if (text == null || text.trim().isEmpty()) {
             return;
         }
+        rememberBoard("adding a sticky note");
         CanvasLayout.NoteLayout note = new CanvasLayout.NoteLayout();
         note.id = SchemaGraph.NOTE_ID_PREFIX + nextAnnotationSuffix();
         note.text = text.trim();
@@ -601,6 +622,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         if (label == null || label.trim().isEmpty()) {
             return;
         }
+        rememberBoard("adding a frame");
         CanvasLayout.FrameLayout frame = new CanvasLayout.FrameLayout();
         frame.id = SchemaGraph.FRAME_ID_PREFIX + nextAnnotationSuffix();
         frame.label = label.trim();
@@ -725,6 +747,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             if (id.equals(note.id)) {
                 String text = JOptionPane.showInputDialog(this, "Note", note.text);
                 if (text != null && !text.trim().isEmpty()) {
+                    rememberBoard("editing a sticky note");
                     note.text = text.trim();
                     refresh();
                     saveLayoutTo(layoutFile);
@@ -736,6 +759,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             if (id.equals(frame.id)) {
                 String label = JOptionPane.showInputDialog(this, "Frame name", frame.label);
                 if (label != null && !label.trim().isEmpty()) {
+                    rememberBoard("renaming a frame");
                     frame.label = label.trim();
                     refresh();
                     saveLayoutTo(layoutFile);
@@ -750,9 +774,11 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
      *
      * <p>No confirmation, unlike deleting a term: nothing in the ontology changes, the sidecar is
      * in git, and a prompt for every sticky note would be the kind of friction that stops people
-     * using them.
+     * using them. Since 1.62.0 Ctrl+Z on the canvas brings it back, which is the answer a prompt was
+     * standing in for.
      */
     private void deleteAnnotation(String id) {
+        rememberBoard("deleting a note or frame");
         boolean removed = false;
         for (java.util.Iterator<CanvasLayout.NoteLayout> notes = layout.notes.iterator();
                 notes.hasNext();) {
@@ -790,6 +816,106 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             collabStatus.setText(text);
             collabStatus.setToolTipText(text);
         }
+    }
+
+
+    // ------------------------------------------------------------------ undo for the board
+
+    /**
+     * Remembers the board before an action changes it.
+     *
+     * <p>Every board-owned mutation calls this first. What counts as board-owned is what the sidecar
+     * holds: which terms are shown, where they are, and the sticky notes and frames. Axioms are not,
+     * and Ctrl+Z here never touches them - Prot&eacute;g&eacute;'s own undo owns that half, and mixing
+     * the two would make one keystroke mean "move that node back" or "retract that axiom" depending on
+     * what happened to be last.
+     *
+     * @param action phrased to complete "Undid: ..." - for instance "adding 7 terms"
+     */
+    private void rememberBoard(String action) {
+        history.record(action, layout);
+    }
+
+    /**
+     * Ctrl+Z and Ctrl+Shift+Z, on the board only.
+     *
+     * <p>Bound on the graph component rather than globally, so it cannot fight Prot&eacute;g&eacute;'s
+     * undo while the focus is in a class hierarchy or an annotation field. Inside the canvas it is the
+     * board's undo, which is the state the canvas is responsible for and the only state that had none.
+     */
+    private void installUndo() {
+        javax.swing.InputMap keys = graphComponent.getInputMap(
+                javax.swing.JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
+        for (int mask : new int[] { java.awt.event.InputEvent.CTRL_DOWN_MASK,
+                java.awt.event.InputEvent.META_DOWN_MASK }) {
+            keys.put(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_Z, mask),
+                    "ontoboard.undoBoard");
+            keys.put(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_Z,
+                    mask | java.awt.event.InputEvent.SHIFT_DOWN_MASK), "ontoboard.redoBoard");
+            // Ctrl+Y as well, which is what a Windows user reaches for first.
+            keys.put(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_Y, mask),
+                    "ontoboard.redoBoard");
+        }
+        graphComponent.getActionMap().put("ontoboard.undoBoard",
+                new javax.swing.AbstractAction() {
+                    private static final long serialVersionUID = 1L;
+
+                    @Override
+                    public void actionPerformed(java.awt.event.ActionEvent event) {
+                        undoBoardChange();
+                    }
+                });
+        graphComponent.getActionMap().put("ontoboard.redoBoard",
+                new javax.swing.AbstractAction() {
+                    private static final long serialVersionUID = 1L;
+
+                    @Override
+                    public void actionPerformed(java.awt.event.ActionEvent event) {
+                        redoBoardChange();
+                    }
+                });
+    }
+
+    /** Steps the board back one action, and says what it did and what it did not. */
+    private void undoBoardChange() {
+        BoardHistory.Step step = history.undo(layout);
+        if (step == null) {
+            setStatus("Nothing on the board to undo. Axioms are undone with Protege's own Edit > "
+                    + "Undo.");
+            return;
+        }
+        restoreBoard(step.getBoard());
+        // The second sentence is the one that matters. A user who has removed a term from the board
+        // and deleted a class will otherwise read one keystroke as having reversed both.
+        setStatus("Undid: " + step.getAction() + ". The ontology is unchanged - use Protege's "
+                + "Edit > Undo for axioms.");
+    }
+
+    /** Puts back what the last undo took away. */
+    private void redoBoardChange() {
+        BoardHistory.Step step = history.redo(layout);
+        if (step == null) {
+            setStatus("Nothing to redo on the board.");
+            return;
+        }
+        restoreBoard(step.getBoard());
+        setStatus("Redid: " + step.getAction() + ". The ontology is unchanged.");
+    }
+
+    /**
+     * Puts a remembered board back on screen and in the sidecar.
+     *
+     * <p>{@code copyFrom} rather than assigning the field, because {@code CanvasMembership} and the
+     * position capture hold this exact instance. Replacing it would leave membership editing a board
+     * nobody draws, which looks like an undo that works and is then undone by the next action.
+     */
+    private void restoreBoard(CanvasLayout remembered) {
+        layout.copyFrom(remembered);
+        // An expansion's record refers to terms that may have just left the board, and a collapse
+        // offered after an undo would remove terms the user has not expanded.
+        expansions.clear();
+        refresh();
+        saveLayoutTo(layoutFile);
     }
 
     // ------------------------------------------------------------------ draw an edge, get an axiom
@@ -947,6 +1073,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
      * draw them in the wrong place first and move them a frame later.
      */
     private void expandNeighbours(String iri) {
+        rememberBoard("expanding " + nameOnTheBoard(iri));
         List<String> added = membership.expandOneHop(getOWLModelManager().getActiveOntology(), iri);
         if (added.isEmpty()) {
             setStatus(nameOnTheBoard(iri) + " has no neighbours that are not already on the board.");
@@ -976,6 +1103,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
      * {@code Remove from canvas} follows.
      */
     private void collapseExpansion(String iri) {
+        rememberBoard("collapsing " + nameOnTheBoard(iri));
         List<String> added = expansions.remove(iri);
         if (added == null || added.isEmpty()) {
             setStatus("Nothing to collapse on " + nameOnTheBoard(iri) + ".");
@@ -1181,6 +1309,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             return;
         }
 
+        rememberBoard("adding " + CanvasSearch.nameOf(term));
         Point where = centreOfTheVisibleCanvas();
         CanvasLayout.NodeLayout position = new CanvasLayout.NodeLayout();
         position.x = where.x;
@@ -1508,6 +1637,10 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         if (selected == null || selected.length == 0) {
             return new Removal(0, 0, 0);
         }
+        // Recorded after the empty check, so pressing Delete on nothing does not push a step that
+        // undoes nothing and hides the one before it.
+        rememberBoard(selected.length == 1 ? "removing a term from the board"
+                : "removing " + selected.length + " things from the board");
         int terms = 0;
         int annotations = 0;
         int skipped = 0;
@@ -1562,6 +1695,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                 return;
             }
         }
+        rememberBoard("adding every term");
         int added = 0;
         for (String iri : candidates) {
             if (membership.add(iri)) {
@@ -1952,6 +2086,10 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         if (algorithm == null) {
             return;
         }
+        // The action undo exists for. Arrange replaces every position at once, so a misdirected click
+        // discarded an arrangement somebody had spent an afternoon on, and the only way back was to do
+        // it again by hand.
+        rememberBoard("arranging the board");
         CanvasLayouts.apply(graph, algorithm);
         capturePositions();
         saveLayoutTo(layoutFile);
@@ -2184,6 +2322,11 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
 
         stopCollaborationIfTheOntologyChanged();
         loadLayoutForActiveOntology();
+        // The history described the previous ontology's board. Restoring it here would put back
+        // identifiers this ontology does not declare, which the sidecar loader prunes to nothing - so
+        // "undo" would empty the board rather than restore it.
+        history.clear();
+        expansions.clear();
         refresh();
     }
 
@@ -3034,6 +3177,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         if (!(payload instanceof List)) {
             return false;
         }
+        rememberBoard("dropping terms on the board");
         int added = 0;
         int column = 0;
         int row = 0;

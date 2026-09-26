@@ -249,8 +249,9 @@ The plugin is early. These exist in the web application but not yet here:
   alone - a frame slotted into a grid encloses nothing, which destroys the only thing it is for.
 
   What remains, and is named in [the canvas plan](superpowers/specs/2026-09-25-canvas-interface-plan.md):
-  no undo for anything the board owns. The internal-id tooltips were replaced in 1.53.0, the last of
-  the coordinate conversions unified into one function in 1.54.0, and search arrived in 1.58.0.
+  nothing. The internal-id tooltips were replaced in 1.53.0, the last of the coordinate conversions
+  unified into one function in 1.54.0, search arrived in 1.58.0, and undo for board-owned state in
+  1.62.0 - which closes the last item of that plan's first two sections.
 
 - **A term's editorial note is readable and writable on the canvas since 1.56.0, and readable on
   hover since 1.59.0.** The canvas drew a term carrying a note with a heavier border and offered no way
@@ -267,6 +268,29 @@ The plugin is early. These exist in the web application but not yet here:
   On hover: the first note, wrapped and cut at 220 characters, and a count of the rest. An editorial
   note is prose rather than a phrase, so it is the one tooltip here that wraps. Three paragraphs from
   three editors is not a tooltip; the Notes dialog shows them all with authors and dates.
+
+- **Nothing the board owned could be undone until 1.62.0.** Protégé's undo covers the ontology and
+  nothing else, which left out everything this canvas is for: an arrangement of forty classes, which
+  terms are on the board, a sticky note's text, a frame's size. A misdirected *Arrange* replaced a layout
+  somebody had spent an afternoon on with no way back but to do it again by hand; *Add all* on a large
+  ontology was the same in reverse, one click with no way out but removing terms one at a time.
+
+  Ctrl+Z on the canvas now steps the board back, Ctrl+Shift+Z or Ctrl+Y forward, over arranging, adding,
+  removing, moving, expanding, collapsing, and every sticky note and frame. Snapshots rather than
+  commands: a board's whole state is one small DTO, so copying it costs less than an inverse operation
+  per action and cannot drift - a new board action gets undo the moment it records, and there is no
+  second implementation of "the opposite of expanding" to get wrong. Twenty-five steps, bounded because
+  each entry is a whole board.
+
+  Two things it deliberately does not do. It does not touch the ontology: restoring a term to the board
+  does not restore an axiom retracted in between, and the status line says so every time, because a
+  partial undo that looked total would be worse than none. And it is not persisted - reopening a project
+  starts with an empty history, since a stack from a previous session would offer to restore a board of
+  identifiers the ontology may no longer declare.
+
+  Also worth knowing: a drag produces one undo step, not one per event. mxGraph fires `CELLS_MOVED`
+  continuously while a drag is in progress, and the existing 800 ms save timer is what already knows a
+  burst is under way.
 
 - **An imported term could not be put on the board until 1.61.0, and the attempt left no trace.**
   Dragging `bfo:continuant` across did nothing visible: `OntologyProjection.project` looked only at the

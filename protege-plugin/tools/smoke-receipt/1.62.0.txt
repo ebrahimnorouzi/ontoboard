@@ -1,0 +1,96 @@
+OntoBoard 1.62.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-09-26  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 8/8  test 10/10
+  2026-09-26  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 8/8  test 10/10
+
+
+UNDO FOR THE BOARD
+
+A5 of docs/superpowers/specs/2026-09-25-canvas-interface-plan.md - the last open item in that plan's
+first two sections, which are now complete.
+
+WHAT WAS MISSING
+
+Protege's undo covers the ontology. Everything this canvas is for sits outside it: an arrangement of
+forty classes, which terms are on the board, a sticky note's text, a frame's size. Two consequences were
+routine rather than hypothetical:
+
+  - Arrange replaces every position at once. A misdirected click discarded a layout somebody had spent
+    an afternoon on, and the only way back was to do it again by hand.
+  - Add all on a large ontology is the same in reverse: one click, and the only way out was to remove
+    terms one at a time.
+
+Ctrl+Z on the canvas now steps the board back, Ctrl+Shift+Z or Ctrl+Y forward, over arranging, adding
+(from the toolbar, a drop, or the Find box), removing, moving, expanding, collapsing, and every sticky
+note and frame.
+
+SNAPSHOTS, NOT COMMANDS
+
+A board's whole state is one small DTO - a list of identifiers, a map of rectangles, two lists of
+annotations - so copying it costs less than the bookkeeping of an inverse operation per action, and it
+cannot drift. A new board action gets undo the moment it records, and there is no second implementation
+of "the opposite of expanding" to be wrong about. The cost is that undo is coarse: it restores the whole
+board rather than one node, which for board state is what a user means anyway.
+
+Twenty-five steps, bounded because each entry is a whole board and a long session would otherwise hold
+hundreds of copies of a large layout.
+
+THREE DETAILS THAT WOULD HAVE BEEN BUGS
+
+  - A drag is one step, not one per event. mxGraph fires CELLS_MOVED continuously while a drag is in
+    progress; the existing 800 ms save timer already knows a burst is under way, so a step is recorded
+    only when that timer is not running. Without the guard, dragging one node across the board would
+    fill the whole history with positions a pixel apart and push everything else out of it.
+  - Restoring copies into the live board object rather than replacing it. CanvasMembership and the
+    position capture are handed that instance and keep the reference, so assigning a new one would leave
+    membership editing a board nobody draws - an undo that looks correct until the next action puts
+    everything back. CanvasLayout.copyFrom does it in place, and a test asserts the collections are the
+    same objects afterwards.
+  - The history is cleared when the open ontology changes. A stack from another ontology would offer to
+    restore a board of identifiers this one does not declare, which the sidecar loader prunes to nothing
+    - so "undo" would empty the board rather than restore it.
+
+Also checked rather than assumed: CanvasLayouts uses setGeometry, and mxGraphLayout.setVertexLocation
+goes through the model's geometry rather than mxGraph.moveCells - so a layout does not fire CELLS_MOVED,
+and Arrange records one step rather than two.
+
+WHAT IT DELIBERATELY DOES NOT DO
+
+It does not touch the ontology. Restoring a term to the board does not bring back an axiom retracted in
+between, and every undo says so:
+
+  Undid: arranging the board. The ontology is unchanged - use Protege's Edit > Undo for axioms.
+
+That sentence is the same distinction "Remove from canvas (keeps axioms)" has always drawn, and it
+matters more here: one keystroke that sometimes reversed an axiom and sometimes did not would be worse
+than no keystroke.
+
+It is also not persisted. Reopening a project starts with an empty history, which is honest - a stack
+written to the sidecar would be promising an undo across sessions while the ontology it described may
+have changed underneath it.
+
+WHAT THIS DOES NOT COVER
+
+The history and the deep copy are unit-tested, 14 tests, including the two failure modes a snapshot
+history has: a snapshot that shares structure with the live board, and a restore that replaces the board
+object. What is not tested is the keystroke reaching them, or that one drag really produces one step -
+that rests on the timer guard being right, and on somebody trying it.
+
+Nothing in the canvas plan's sections 2 and 3 remains. Still open: D1-D4 on presence, which are
+collaboration rather than canvas.
+
+NUMBERS
+
+1298 tests, 1 skipped, 0 failures. 14 new, all in BoardHistoryTest.
+
+Counted three ways, agreeing: Maven's summary, the surefire reports, and an anchored ^\s*@Test\s*$ across
+src/test/java; 91 report files for 91 test classes. The skip is BundleConfigurationTest's jar-dependent
+case, which has nothing to inspect during the test phase because target/*.jar is emptied before each
+build; the jar is built afterwards and is what both hosts loaded.
+
+One procedural note, in case a future run of these commands looks alarming: piping mvn through
+PowerShell's Select-String with -First closes the pipe early and makes mvn exit 255 or 1 with a
+BUILD SUCCESS never printed. Two builds here appeared to fail for that reason alone. The definitive build
+above was run unpiped.

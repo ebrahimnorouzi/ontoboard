@@ -55,6 +55,7 @@ individual views in a tabbed column beside the canvas, so none of this needs a t
 | Feature | Web app | Plugin | Assessment |
 |---|---|---|---|
 | Graph canvas, drag, pan, zoom | ✅ | ✅ | JGraphX. Since 1.58.0 the zoom has a readout in the status bar, clickable for 100%, and a *Fit* |
+| Undo on the canvas | ❓ | ✅ | Since 1.62.0, for what the board owns - arranging, adding, removing, moving, notes and frames - with Ctrl+Z, 25 steps, per session. It never touches axioms, which are Protégé's own Edit > Undo, and the status line says so on every undo |
 | Draw imported terms | ❓ | ✅ | Since 1.61.0. Faded, said so on hover and in the legend, and findable by the Find box. Before that, dragging `bfo:continuant` onto the board did nothing and left no trace. The web app has no import handling to compare against |
 | Expand a term's neighbours | ✅ | ✅ | Since 1.59.0 the new terms are placed in a ring around the source, counted in the status bar, saved, and collapsible. Before that they were laid in a row at the top of the board and nothing was saved or reported |
 | Find a term on the board | ✅ | ✅ | Since 1.58.0. Matches label and IRI, ranked so an exact name beats a longer one containing it; centres and selects the match, which also selects it in Protégé. Ctrl+Enter adds a match that is in the ontology but not on the board. Before this there was no search at all |

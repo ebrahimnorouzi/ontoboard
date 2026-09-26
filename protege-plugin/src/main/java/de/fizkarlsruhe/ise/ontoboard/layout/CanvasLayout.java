@@ -25,6 +25,68 @@ public class CanvasLayout {
     public Map<String, String> prefixColors = new LinkedHashMap<>();
 
     /**
+     * A copy that shares nothing with this one.
+     *
+     * <p>For {@link BoardHistory}, which holds the board as it was before each action. Every collection
+     * and every nested object is rebuilt: the canvas mutates this DTO in place - positions are written
+     * straight into {@code nodes}, a note's text into its {@code NoteLayout} - so a copy that shared any
+     * of them would be a history whose entries all silently became the present.
+     *
+     * <p>Not {@code clone()} and not serialisation through Jackson. A hand-written copy has to be
+     * updated when a field is added, which is a small cost with a loud failure mode - a test asserting
+     * that no two copies share a reference - where a reflective copy would keep working and quietly
+     * start sharing a new field.
+     */
+    public CanvasLayout copy() {
+        CanvasLayout copy = new CanvasLayout();
+        copy.version = version;
+        copy.ontologyIri = ontologyIri;
+        copy.onCanvas = new ArrayList<>(onCanvas);
+        copy.nodes = new LinkedHashMap<>();
+        for (Map.Entry<String, NodeLayout> entry : nodes.entrySet()) {
+            copy.nodes.put(entry.getKey(), entry.getValue() == null
+                    ? null : entry.getValue().copy());
+        }
+        copy.frames = new ArrayList<>();
+        for (FrameLayout frame : frames) {
+            copy.frames.add(frame == null ? null : frame.copy());
+        }
+        copy.notes = new ArrayList<>();
+        for (NoteLayout note : notes) {
+            copy.notes.add(note == null ? null : note.copy());
+        }
+        copy.prefixColors = new LinkedHashMap<>(prefixColors);
+        return copy;
+    }
+
+    /**
+     * Becomes a copy of {@code other}, in place.
+     *
+     * <p>In place because the canvas hands this instance to {@code CanvasMembership} and to the
+     * projection, and both keep the reference. Replacing the field on the view would leave membership
+     * editing the board nobody is drawing - a bug whose symptom is that undo appears to work and the
+     * next action puts everything back.
+     */
+    public void copyFrom(CanvasLayout other) {
+        if (other == null) {
+            return;
+        }
+        CanvasLayout snapshot = other.copy();
+        version = snapshot.version;
+        ontologyIri = snapshot.ontologyIri;
+        onCanvas.clear();
+        onCanvas.addAll(snapshot.onCanvas);
+        nodes.clear();
+        nodes.putAll(snapshot.nodes);
+        frames.clear();
+        frames.addAll(snapshot.frames);
+        notes.clear();
+        notes.addAll(snapshot.notes);
+        prefixColors.clear();
+        prefixColors.putAll(snapshot.prefixColors);
+    }
+
+    /**
      * True when this layout describes {@code candidateOntologyIri}.
      *
      * <p>A sidecar sits beside the ontology <em>file</em> but names the ontology <em>IRI</em>, and
@@ -88,6 +150,13 @@ public class CanvasLayout {
             this.x = x;
             this.y = y;
         }
+
+        NodeLayout copy() {
+            NodeLayout copy = new NodeLayout(x, y);
+            copy.w = w;
+            copy.h = h;
+            return copy;
+        }
     }
 
     public static class FrameLayout {
@@ -99,6 +168,19 @@ public class CanvasLayout {
         public double h;
         public String fill = "#EEF3FA";
         public String stroke = "#4A90D9";
+
+        FrameLayout copy() {
+            FrameLayout copy = new FrameLayout();
+            copy.id = id;
+            copy.label = label;
+            copy.x = x;
+            copy.y = y;
+            copy.w = w;
+            copy.h = h;
+            copy.fill = fill;
+            copy.stroke = stroke;
+            return copy;
+        }
     }
 
     public static class NoteLayout {
@@ -110,5 +192,18 @@ public class CanvasLayout {
         public double h = 120;
         public String color = "#FFF3B0";
         public int fontSize = 12;
+
+        NoteLayout copy() {
+            NoteLayout copy = new NoteLayout();
+            copy.id = id;
+            copy.text = text;
+            copy.x = x;
+            copy.y = y;
+            copy.w = w;
+            copy.h = h;
+            copy.color = color;
+            copy.fontSize = fontSize;
+            return copy;
+        }
     }
 }
