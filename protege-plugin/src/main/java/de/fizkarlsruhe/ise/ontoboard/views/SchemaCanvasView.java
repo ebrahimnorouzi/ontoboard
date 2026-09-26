@@ -26,6 +26,7 @@ import de.fizkarlsruhe.ise.ontoboard.collab.CollabSession;
 import de.fizkarlsruhe.ise.ontoboard.collab.CollabSettings;
 import de.fizkarlsruhe.ise.ontoboard.collab.CollabSettingsStore;
 import de.fizkarlsruhe.ise.ontoboard.collab.OperationMapper;
+import de.fizkarlsruhe.ise.ontoboard.collab.PeerGeometry;
 import de.fizkarlsruhe.ise.ontoboard.layout.BoardHistory;
 import de.fizkarlsruhe.ise.ontoboard.layout.CanvasLayout;
 import de.fizkarlsruhe.ise.ontoboard.layout.CanvasLayoutStore;
@@ -202,6 +203,16 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
      * keeps the cursor alive in between.
      */
     private long lastCursorSentAt;
+
+    /**
+     * The last cursor position published, so presence can be re-announced without one.
+     *
+     * <p>Presence used to be sent only from mouse motion, so a selection made with the keyboard, from
+     * the Find box, or by clicking once and not moving never reached anybody. Re-announcing needs a
+     * position, and the last one the peer saw is a better answer than the origin - which is where the
+     * canvas is not, for anybody who has scrolled.
+     */
+    private Point lastCursorPoint;
 
     @Override
     protected void initialiseOWLView() {
@@ -392,6 +403,10 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
      * pointing at an entity the canvas no longer highlights.
      */
     private void pushSelectionToProtege(String iri) {
+        // Out to collaborators as well as to Protege. The canvas selection is the most useful thing
+        // presence can carry - "she is looking at Margherita" - and it was the one thing the presence
+        // message only ever carried by accident, when a mouse movement happened to follow.
+        announcePresence();
         if (iri == null) {
             getOWLEditorKit().getOWLWorkspace().getOWLSelectionModel().setSelectedEntity(null);
             return;
@@ -1803,8 +1818,45 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         // and one function is what stops them differing again. It also picks up the translate term,
         // which the inline version omitted - zero on a default view, not in general.
         Point inGraph = graphPointFromControl(event.getX(), event.getY());
+        lastCursorPoint = inGraph;
         collab.publishCursor(inGraph.x, inGraph.y,
                 selectionBridge == null ? null : selectionBridge.currentCanvasSelection());
+    }
+
+    /**
+     * Says where this editor is looking, without waiting for the mouse to move.
+     *
+     * <p>Two absences this closes, both of which made a live session look emptier than it was.
+     * Selecting a term published nothing until the mouse happened to move afterwards - so clicking a
+     * node and reading it, or finding it with Ctrl+F, told nobody; and a peer who joined and then read
+     * the diagram without moving the mouse was invisible, indistinguishable from nobody having joined.
+     *
+     * <p>The position is the last one the peers saw, or the selected node's centre, or the middle of
+     * the visible canvas - in that order. The origin is the one answer never given: for anybody who has
+     * scrolled, it is somewhere the canvas is not.
+     */
+    private void announcePresence() {
+        if (collab == null) {
+            return;
+        }
+        String selection = selectionBridge == null ? null : selectionBridge.currentCanvasSelection();
+        Point where = presencePoint(selection);
+        lastCursorPoint = where;
+        collab.publishCursor(where.x, where.y, selection);
+    }
+
+    /** Where to say this editor is, when the mouse has not said. */
+    private Point presencePoint(String selection) {
+        if (selection != null) {
+            // The selected node's centre beats a stale cursor: it is what the user is actually
+            // looking at, and it is where a colleague following them wants to be taken.
+            double[] box = boundsOf(selection);
+            return new Point((int) (box[0] + box[2] / 2), (int) (box[1] + box[3] / 2));
+        }
+        if (lastCursorPoint != null) {
+            return lastCursorPoint;
+        }
+        return centreOfTheVisibleCanvas();
     }
 
     /**
@@ -1850,7 +1902,12 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         public void onStatus(String status, boolean connected) {
             collabStatus.setText(status);
             collabStatus.setToolTipText(status);
-            collaborateButton.setText(connected ? "Disconnect" : "Collaborate...");
+            // The label says what the button will DO, which depends on whether a session exists - not
+            // on whether its socket happens to be up this second. Taking it from `connected` meant
+            // that during an automatic reconnect, and after a refusal, the button read
+            // "Collaborate..." while a live session object was still held: clicking it disconnected
+            // instead of opening the dialog, and the only way to find that out was to try.
+            collaborateButton.setText(collab != null ? "Disconnect" : "Collaborate...");
         }
 
         @Override
@@ -1866,6 +1923,34 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             // would be worse than the problem. The tooltip carries the detail.
             collabStatus.setText(count + " change" + (count == 1 ? "" : "s") + " not shared");
             collabStatus.setToolTipText("The most recent was " + exampleReason);
+        }
+
+        @Override
+        public void onPeerGeometry(String iri, java.util.Map<String, Object> data) {
+            // The rule is PeerGeometry's: take a colleague's position only for a term this board has
+            // no position for, and treat the origin as "no hint" rather than as a coordinate.
+            if (PeerGeometry.adoptInto(layout, iri, data)) {
+                saveLayoutTo(layoutFile);
+            }
+        }
+
+        @Override
+        public void onSessionEnded(String reason) {
+            // A refusal is final. Holding the session afterwards left the button and the state
+            // disagreeing; dropping it here is what makes the label above correct.
+            if (collab != null) {
+                collab.stop();
+                collab = null;
+            }
+            graphComponent.setPeerCursors(null);
+            graphComponent.getGraphControl().repaint();
+            collaborateButton.setText("Collaborate...");
+            setStatus(reason + " - not connected. Working through git.");
+        }
+
+        @Override
+        public void onJoined() {
+            announcePresence();
         }
     }
 

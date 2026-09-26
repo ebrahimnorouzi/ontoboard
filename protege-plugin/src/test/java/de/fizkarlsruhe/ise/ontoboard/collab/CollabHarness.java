@@ -149,6 +149,13 @@ public final class CollabHarness implements Closeable {
         private final List<String> applied = new CopyOnWriteArrayList<String>();
         private final List<String> status = new CopyOnWriteArrayList<String>();
 
+        /** Geometry peers sent for a term, so a test can assert it arrived rather than vanished. */
+        private final java.util.Map<String, java.util.Map<String, Object>> geometry =
+                new java.util.concurrent.ConcurrentHashMap<String, java.util.Map<String, Object>>();
+
+        /** One entry per time this peer's session announced itself as joined. */
+        private final List<String> joined = new CopyOnWriteArrayList<String>();
+
         Peer(String user, OWLOntology ontology, CollabSettings settings) {
             this.user = user;
             this.ontology = ontology;
@@ -180,6 +187,21 @@ public final class CollabHarness implements Closeable {
                 public void onUnshareable(int count, String exampleReason) {
                     status.add("unshareable " + count + ": " + exampleReason);
                 }
+
+                @Override
+                public void onPeerGeometry(String iri, java.util.Map<String, Object> data) {
+                    geometry.put(iri, data);
+                }
+
+                @Override
+                public void onSessionEnded(String reason) {
+                    status.add("ended: " + reason);
+                }
+
+                @Override
+                public void onJoined() {
+                    joined.add(user);
+                }
             }, new Executor() {
                 @Override
                 public void execute(Runnable command) {
@@ -208,6 +230,16 @@ public final class CollabHarness implements Closeable {
         }
 
         /** Every status line the session reported, which is where a refusal shows up. */
+        /** Geometry this peer received for a term, or null. */
+        public java.util.Map<String, Object> getGeometryFor(String iri) {
+            return geometry.get(iri);
+        }
+
+        /** How many times this peer's session announced itself as joined. */
+        public int getJoinCount() {
+            return joined.size();
+        }
+
         public List<String> getStatus() {
             return status;
         }

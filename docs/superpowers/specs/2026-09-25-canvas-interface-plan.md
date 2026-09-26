@@ -241,6 +241,20 @@ the session instead of opening the dialog. Drive the label from whether a sessio
 
 ---
 
+> **D1-D4 done in 1.63.0.** Presence now follows selection and announces on join; a peer's geometry is
+> read on arrival rather than discarded; and the Collaborate button's label follows whether a session
+> exists rather than whether its socket is up, with a refusal ending the session so the two agree.
+>
+> Two rules were needed that the plan did not anticipate, both about not fighting the local user: an
+> inbound position never replaces one this board already has, since the wire has no "moved" operation;
+> and the origin is read as "no hint", because that is what the sender writes when it has none - taking
+> it literally would stack every arrival from Protégé's own tabs at (0,0).
+>
+> Two of the four are verified against a real server, which is the only way to show a number survives
+> the wire rather than merely reaching a callback.
+
+---
+
 ## 6. Order, and why
 
 1. **Section 2** first, all of it. Losing a user's arrangement is worse than lacking a feature, and

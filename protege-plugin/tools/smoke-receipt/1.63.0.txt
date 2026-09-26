@@ -1,0 +1,118 @@
+OntoBoard 1.63.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-09-26  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 8/8  test 10/10
+  2026-09-26  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 8/8  test 10/10
+
+
+PRESENCE THAT DOES NOT MISLEAD
+
+Section 5 of docs/superpowers/specs/2026-09-25-canvas-interface-plan.md - D1 to D4 - which completes that
+plan. Four things in the "it works, but" category: nothing threw, nothing was logged, and no test could
+have reported any of them.
+
+1. PRESENCE CAME ONLY FROM THE MOUSE
+
+shareCursor was wired to mouseMoved and mouseDragged and to nothing else. Two consequences:
+
+  - Selecting a term told nobody until the mouse happened to move afterwards. Clicking a node and reading
+    it, or finding it with Ctrl+F and reading it, published nothing - so the single most useful thing
+    presence can carry, "she is looking at Margherita", was carried only by accident.
+  - Somebody who joined a board and read the diagram without moving the mouse never appeared at all. To
+    everybody else that is indistinguishable from nobody having joined, which is the worst possible
+    answer in a tool whose whole claim is that you can see your colleagues.
+
+Selection changes and joining both announce now. The position is the selected node's centre, else the
+last cursor position, else the middle of the visible canvas - in that order, and never the origin, which
+for anybody who has scrolled is somewhere the canvas is not. The selected node's centre beats a stale
+cursor deliberately: it is what the user is actually looking at, and where a colleague following them
+wants to be taken.
+
+2. GEOMETRY WAS PUBLISHED AND THEN DISCARDED
+
+Every operation carries the node's geometry. canvasHints in the view exists for no other purpose, and its
+comment says so: "so a peer draws a new node where it actually is rather than at the origin". The
+receiving side never read it - onOperation mapped the operation to axioms, applied them, and dropped the
+rest. So the sending side did the work and the receiving side threw it away, and a class created by a
+colleague landed wherever an unpositioned node goes.
+
+Adopted now, under two rules that are both about not fighting the local user:
+
+  - A position this board already has is never replaced. The wire has no "moved" operation, so an inbound
+    position is not news about a move - it is the sender's geometry at the moment they made some edit.
+    Adopting it over a local one would drag somebody's node across their own board because a colleague
+    added a label to it.
+  - The origin is read as "no hint", not as a coordinate. OperationMapper.putGeometry writes 0.0 when the
+    sender had no geometry for a term, which is every change made from Protege's own tabs rather than the
+    canvas - most of them. Taking that literally would stack every such arrival at (0,0), which is worse
+    than the row it replaced and is the same mistake the expansion code made before 1.59.0.
+
+The geometry hand-off happens before the "nothing to apply" early return, because a peer re-asserting a
+declaration produces no change while this board can still have the term and nowhere to draw it - which is
+the common case when two people put the same class on their boards independently.
+
+3. A REFUSED SESSION WAS STILL HELD
+
+A refusal and a dropped connection were both reported as onStatus(reason, false), and the toolbar took
+its button label from that flag:
+
+    collaborateButton.setText(connected ? "Disconnect" : "Collaborate...");
+
+So after a refusal the button read "Collaborate..." while a live session object was still held - clicking
+it disconnected rather than opening the dialog, and the only way to discover that was to try. During an
+ordinary reconnect it said the same thing while the session was perfectly alive, which is the same lie
+in the other direction.
+
+The label now follows whether a session exists, which is what the button will *do*; the status line
+carries the socket's state, which is what it is for. And a refusal is reported separately from a
+disconnect - onSessionEnded - because the two mean different things: one is final, the other is a session
+that still exists and is retrying. The view drops the session on a refusal, so the label and the state
+cannot disagree.
+
+TWO OF THE FOUR ARE VERIFIED OVER A REAL SOCKET
+
+CollabLiveTest spawns the real node server and runs two real peers, and two new tests there matter more
+than their unit equivalents:
+
+  - joining a board announces itself. The callback is invoked by the client's own connected path, so a
+    unit test that calls onConnected by hand proves the plumbing after the point in question.
+  - a geometry value published by one peer arrives at the other's host. A unit test shows the callback is
+    called; only the wire shows the number survives being serialised to JSON, gated by the bridge's type
+    check, and read back as 420.0.
+
+WHAT THIS DOES NOT COVER
+
+Stated plainly: the four tests added here are specifications for new behaviour, not regression pins.
+Three of the four could not fail against the old code because the callbacks they assert on did not exist,
+so "confirmed failing first" does not apply in the way it did for the defects earlier in this series. The
+live pair is the strongest evidence available: it fails if the announcement or the geometry does not reach
+a real peer.
+
+Not done either: nothing here gives a peer joining an existing board a catch-up of what is already there,
+and a disconnect during a slow connect can still leave a session the user cannot see. Both are on the
+audit's list and neither is in this plan's section 5.
+
+The canvas plan is now complete - sections 2, 3, 4 and 5.
+
+A TOOLING ODDITY, RECORDED BECAUSE IT LOOKS LIKE A HANG
+
+The 5.5.0 smoke took about thirteen minutes to produce its verdict, twice in a row (1.62.0 and 1.63.0),
+having taken one or two minutes for every release before them. The Protege run itself was not slow: the
+log shows the JVM starting at 16:18:24 and the self-test verdict at 16:18:35, eleven seconds later. The
+time went somewhere before Start-Process, and nothing in smoke.ps1 between its arguments and its launch
+is expensive - it reads run.bat, rewrites a heap flag, and takes the log's length.
+
+The cause was not identified. It did not affect either verdict, and it is recorded here so that whoever
+sees "waiting" for ten minutes next time knows it has happened before and resolved itself, rather than
+killing the run and assuming the plugin hangs on Java 8.
+
+NUMBERS
+
+1312 tests, 1 skipped, 0 failures. 14 new: 8 in PeerGeometryTest, 4 in CollabSessionTest, 2 in
+CollabLiveTest.
+
+Counted three ways, agreeing: Maven's summary, the surefire reports, and an anchored ^\s*@Test\s*$ across
+src/test/java; 92 report files for 92 test classes. The skip is BundleConfigurationTest's jar-dependent
+case, which has nothing to inspect during the test phase because target/*.jar is emptied before each
+build; the jar is built afterwards and is what both hosts loaded.

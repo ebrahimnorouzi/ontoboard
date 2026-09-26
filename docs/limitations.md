@@ -269,6 +269,37 @@ The plugin is early. These exist in the web application but not yet here:
   note is prose rather than a phrase, so it is the one tooltip here that wraps. Three paragraphs from
   three editors is not a tooltip; the Notes dialog shows them all with authors and dates.
 
+- **Presence made a live session look emptier than it was, until 1.63.0.** Four separate things, all
+  of them in the "it works, but" category that no test and no error message reports.
+
+  *Presence was published only from mouse motion.* Selecting a term told nobody until the mouse happened
+  to move afterwards - so clicking a node and reading it, or finding it with Ctrl+F, was invisible to
+  collaborators. And somebody who joined a board and read the diagram without moving the mouse never
+  appeared at all, which to everybody else was indistinguishable from nobody having joined. Selection
+  changes and joining now both announce, with the position taken from the selected node's centre, the
+  last cursor position, or the middle of the visible canvas - in that order, and never the origin, which
+  for anybody who has scrolled is somewhere the canvas is not.
+
+  *Geometry was published and then discarded.* Every operation carries the node's geometry -
+  `canvasHints` exists for no other purpose - and the receiving side never read it, so a class created by
+  a colleague landed wherever an unpositioned node goes. It is now adopted under two rules, both about
+  not fighting the local user: a position this board already has is never replaced, since the wire has no
+  "moved" operation and an inbound position is just the sender's geometry at the moment of some edit; and
+  the origin is read as "no hint" rather than as a coordinate, because that is what `putGeometry` writes
+  when the sender had none - which is every change made from Protégé's tabs rather than the canvas.
+
+  *A refused session was still held.* A refusal and a dropped connection were both reported as
+  `onStatus(reason, false)`, and the toolbar took its button label from that flag. So after a refusal the
+  button read "Collaborate..." while a live session object was still held - clicking it disconnected
+  instead of opening the dialog - and during an ordinary reconnect it said the same thing while the
+  session was perfectly alive. The label now follows whether a session exists, which is what the button
+  will *do*, and a refusal ends the session so the two agree.
+
+  Two of the four are verified over a real socket rather than against a fake: joining announces itself,
+  and a geometry value published by one peer arrives at the other's host. A unit test can only show the
+  callback is called; the wire test shows the number survives being serialised, gated by the bridge's
+  type check, and read back.
+
 - **Nothing the board owned could be undone until 1.62.0.** Protégé's undo covers the ontology and
   nothing else, which left out everything this canvas is for: an arrangement of forty classes, which
   terms are on the board, a sticky note's text, a frame's size. A misdirected *Arrange* replaced a layout

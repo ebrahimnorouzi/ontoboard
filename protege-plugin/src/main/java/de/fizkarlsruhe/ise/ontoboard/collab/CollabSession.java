@@ -61,6 +61,36 @@ public final class CollabSession implements CollabClient.Listener {
          * colleague has to be able to find that out from the UI.
          */
         void onUnshareable(int count, String exampleReason);
+
+        /**
+         * A peer's geometry for a term, so an arriving node can be drawn where they have it.
+         *
+         * <p>Every operation carries this and the receiving side used to discard it, so a class a
+         * colleague created landed wherever an unpositioned node goes - a row along the top of the
+         * board. What the host does with it is the host's rule; see {@code PeerGeometry}.
+         */
+        void onPeerGeometry(String iri, java.util.Map<String, Object> data);
+
+        /**
+         * The session is over and will not retry - a refusal rather than a dropped connection.
+         *
+         * <p>Separate from {@code onStatus(reason, false)} because the two mean different things to the
+         * UI: a disconnect is temporary and the session still exists, while a refusal is final and the
+         * host has to stop holding one. Without this, the toolbar button read "Collaborate..." while a
+         * refused session object was still alive, so clicking it disconnected instead of opening the
+         * dialog.
+         */
+        void onSessionEnded(String reason);
+
+        /**
+         * The session is live: a good moment to say where this editor is looking.
+         *
+         * <p>Presence used to be published only from mouse motion, so a peer who joined and read the
+         * diagram without moving the mouse was invisible - and to everybody else indistinguishable from
+         * nobody having joined at all. What to announce is the host's decision, because it is the only
+         * side that knows where the view is and what is selected.
+         */
+        void onJoined();
     }
 
     private final CollabSettings settings;
@@ -246,6 +276,11 @@ public final class CollabSession implements CollabClient.Listener {
         cursors.setSelf(user);
         host.onStatus("Collaborating as " + user
                 + " on " + settings.getBoard(), true);
+        // Announce a position straight away. Presence was published only from mouse motion, so
+        // somebody who joined and then read the diagram without moving the mouse was invisible to
+        // everyone else, indistinguishable from nobody having joined. What to announce is the host's
+        // decision - it is the only side that knows where the view is looking.
+        host.onJoined();
     }
 
     @Override
@@ -282,6 +317,11 @@ public final class CollabSession implements CollabClient.Listener {
             LOGGER.info("OntoBoard: ignoring {} - {}", operation, inbound.getSkippedReason());
             return;
         }
+        // Before the early return below: a term can already be in the requested state - a peer
+        // re-asserting a declaration - while this board still has nowhere to draw it.
+        if (operation.getIri() != null) {
+            host.onPeerGeometry(operation.getIri(), operation.getData());
+        }
         if (inbound.getChanges().isEmpty()) {
             // Already in the requested state. Convergence, not an error.
             return;
@@ -317,6 +357,9 @@ public final class CollabSession implements CollabClient.Listener {
         cursors.clear();
         host.onPeersChanged();
         host.onStatus(reason, false);
+        // Final, unlike a disconnect: the server rejected the token or the board, and retrying would
+        // be rejected the same way. The host is told so it can stop holding a session nobody is in.
+        host.onSessionEnded(reason);
     }
 
     @Override

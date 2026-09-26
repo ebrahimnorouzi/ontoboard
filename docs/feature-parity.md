@@ -134,6 +134,8 @@ individual views in a tabbed column beside the canvas, so none of this needs a t
 |---|---|---|---|
 | Real-time multi-user editing | ✅ | ✅ | Against a server the team runs; see [collaboration](collaboration.md). Verified over a real socket since 1.50.0 - and inert in every release before it |
 | Cursor sharing | ✅ | ✅ | Graph-space, so a cursor lands on the same entity at any zoom |
+| Presence without moving the mouse | ❓ | ✅ | Since 1.63.0. Selecting a term and joining a board both announce; before that presence came only from mouse motion, so a peer reading the diagram was invisible |
+| A peer's node lands where they have it | ❓ | ✅ | Since 1.63.0. The geometry every operation already carried is now read on arrival, for terms this board has no position for |
 | Warning when peers edit different ontologies | ➖ | ✅ | Two people whose board id collides otherwise apply each other's axioms in silence. The warning names the peer. It could never fire before 1.50.0 |
 | Semantic merge engine | ✅ | ✅* | *Reused server-side rather than reimplemented in Java — deliberate |
 | Entity locking | ✅ | ❌ | **Build.** Advisory in both |
