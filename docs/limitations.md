@@ -269,6 +269,45 @@ The plugin is early. These exist in the web application but not yet here:
   note is prose rather than a phrase, so it is the one tooltip here that wraps. Three paragraphs from
   three editors is not a tooltip; the Notes dialog shows them all with authors and dates.
 
+- **Arrange drew the class hierarchy upside down until 1.64.0, and nobody noticed for thirteen
+  releases.** `SchemaGraph` draws a subclass edge from the subclass *to* the superclass, and
+  `mxHierarchicalLayout` ranks by following edges from source to target - so with the library's default
+  orientation the leaves ranked first and `owl:Thing` ended up at the *bottom* of the board. Every
+  ontology tool there is puts the superclass above its subclasses.
+
+  It survived thirteen releases because nothing in this project had ever looked at the canvas. The tests
+  asserted that a subclass and its superclass had *different* y coordinates, which is true upside down;
+  the in-host self-test proves the views construct and inspects no pixel; and every human review happened
+  on a board of three or four terms, where a small tree the wrong way up reads as a small tree.
+
+  What found it was rendering the board to a PNG and opening it. `CanvasDesignProofTest` does that
+  headlessly through `mxCellRenderer` - the board, a 31-term board, the legend and the empty state, into
+  `target/design/`. Three of the four defects fixed in 1.64.0 were found by looking at those images and
+  none of them by reading the code.
+
+  Four other things the renders showed, all fixed in the same release:
+
+  - A 31-term tree was **4195x403** - a ten-to-one strip nobody can read. Now 4069x613, fitted to the
+    window by Arrange itself.
+  - Every edge was a **diagonal sweep**, though the stylesheet has asked for orthogonal routing since the
+    first version: `mxGraphHierarchyModel` stamps `noEdgeStyle=1` onto every edge while
+    `isDisableEdgeStyle()` is true, which is the default. Turning it off is one line, and it is the
+    single biggest readability gain in the release.
+  - A term with **no axioms was exiled** a thousand pixels to the right - `findRoots` only accepts a
+    vertex with `fanIn == 0` and `fanOut > 0`, so an isolated term became a hierarchy of its own laid out
+    beside everything else. A class nobody has related to anything yet is the normal state of a term five
+    minutes old; they are parked in a block under the diagram now.
+  - The **legend printed "Relationships" twice**, because the two inferred rows sit after the modifier
+    rows and the panel emits a heading whenever the kind changes. Pre-existing since the legend was built
+    in 1.53.0, and visible the first time anybody rendered the panel.
+
+  Two things this release corrected in the spec that produced it, rather than in the code: a suggested
+  test asserting "a note keeps its offset from a named term" cannot hold, because a layout rearranges the
+  terms; and `mxFastOrganicLayout` turns out to be deterministic *except* when two nodes occupy the same
+  point, where it separates them randomly - three runs of a board with both terms at (0,0) gave (-1,-1),
+  (139,-1) and (-1,139). Any test comparing one organic arrangement with another has to start from a
+  board where that tie cannot arise.
+
 - **Presence made a live session look emptier than it was, until 1.63.0.** Four separate things, all
   of them in the "it works, but" category that no test and no error message reports.
 

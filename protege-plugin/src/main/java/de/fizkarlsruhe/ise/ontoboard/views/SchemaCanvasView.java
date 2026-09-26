@@ -2178,8 +2178,13 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         CanvasLayouts.apply(graph, algorithm);
         capturePositions();
         saveLayoutTo(layoutFile);
+        // Fit afterwards, because even a well-shaped tree is bigger than the viewport: a corrected
+        // 31-term hierarchy is 3694px wide, so on a 1200px panel the user saw six terms of thirty-one
+        // and no evidence that Arrange had done anything at all.
+        fitToWindow();
         setStatus("Arranged the board: " + algorithm.getDisplayName()
-                + ". Notes and frames were left where they are.");
+                + " - fitted to the window at " + CanvasZoom.readout(graph.getView().getScale())
+                + ". Notes and frames kept their place among the terms.");
     }
 
     private void exportWithOptions() {

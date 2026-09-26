@@ -244,6 +244,17 @@ public final class CanvasLegend {
                 "One property is a specialisation of another - if A worksAt B then A employedBy "
                         + "B. Both properties have to be on the board for the arrow to appear.",
                 null, "#C77700", "8 4"));
+        entries.add(new Entry(Form.EDGE, SchemaStyles.INFERRED_SUBCLASS, "Inferred subclass",
+                "A subsumption the reasoner worked out that the ontology does not state "
+                        + "directly. Dotted and grey so it is never mistaken for an asserted "
+                        + "axiom - it will disappear if the axioms it followed from change.",
+                null, "#8A94A0", "1 5"));
+        entries.add(new Entry(Form.EDGE, SchemaStyles.INFERRED_TYPE, "Inferred type",
+                "The reasoner worked out that this individual belongs to this class, though "
+                        + "nothing says so directly - usually because the class is defined by "
+                        + "conditions the individual happens to meet. Grey and dotted like any "
+                        + "other conclusion.",
+                null, "#8A94A0", "1 5"));
         entries.add(new Entry(Form.MODIFIER, SchemaStyles.UNSATISFIABLE, "Cannot have instances",
                 "A reasoner has found this class unsatisfiable - two of its axioms cannot both "
                         + "hold, so nothing can ever be one. Shown only while inferences are on.",
@@ -257,17 +268,6 @@ public final class CanvasLegend {
                         + "refer to it freely, but do not edit it here: the next refresh of the "
                         + "imports can discard the change or leave a second definition behind.",
                 "#FFFFFF", "#4A90D9", null, SchemaStyles.IMPORTED_OPACITY));
-        entries.add(new Entry(Form.EDGE, SchemaStyles.INFERRED_SUBCLASS, "Inferred subclass",
-                "A subsumption the reasoner worked out that the ontology does not state "
-                        + "directly. Dotted and grey so it is never mistaken for an asserted "
-                        + "axiom - it will disappear if the axioms it followed from change.",
-                null, "#8A94A0", "1 5"));
-        entries.add(new Entry(Form.EDGE, SchemaStyles.INFERRED_TYPE, "Inferred type",
-                "The reasoner worked out that this individual belongs to this class, though "
-                        + "nothing says so directly - usually because the class is defined by "
-                        + "conditions the individual happens to meet. Grey and dotted like any "
-                        + "other conclusion.",
-                null, "#8A94A0", "1 5"));
 
         return entries;
     }

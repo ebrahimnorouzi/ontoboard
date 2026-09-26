@@ -126,6 +126,33 @@ class CanvasLegendTest {
                 "the row should say what the fade means for the reader: " + imported.getMeaning());
     }
 
+    /**
+     * Each kind of row appears once, in one run.
+     *
+     * <p>{@code LegendPanel} emits a section heading whenever the form changes as it walks this list,
+     * so a list that goes nodes, relationships, markers, relationships prints "Relationships" twice
+     * with "Markers on a thing" wedged between the asserted arrows and the inferred ones. It did
+     * exactly that from 1.53.0, when the legend was built, until 1.64.0 - invisible for eleven
+     * releases because nothing had ever rendered the panel to look at it.
+     */
+    @Test
+    void eachKindOfRowAppearsInOneRun() {
+        Set<CanvasLegend.Form> finished = new HashSet<CanvasLegend.Form>();
+        CanvasLegend.Form current = null;
+
+        for (CanvasLegend.Entry entry : CanvasLegend.entries()) {
+            if (entry.getForm() != current) {
+                assertFalse(finished.contains(entry.getForm()),
+                        entry.getForm() + " comes back after another kind, so the legend prints its "
+                                + "heading twice - offender: " + entry.getStyleName());
+                if (current != null) {
+                    finished.add(current);
+                }
+                current = entry.getForm();
+            }
+        }
+    }
+
     @Test
     void everyRowHasALabelAndAMeaning() {
         List<CanvasLegend.Entry> entries = CanvasLegend.entries();

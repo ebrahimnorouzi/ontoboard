@@ -62,7 +62,8 @@ individual views in a tabbed column beside the canvas, so none of this needs a t
 | Create entities on canvas | ✅ | ✅ | Double-click empty canvas, or drag from the entity trees |
 | Write axioms from the canvas | ✅ | ✅ | Plugin is **better** on the axiom: six OWLAx readings vs the web app's `rdfs:domain`/`range`, which silently intersects domains. Since 1.60.0 it also matches on the gesture - hover a term, drag from its handle, and a popup at the drop point offers only what those two ends can legally assert. The node menu still has both paths. Until 1.52.0 this row said "draw edges" while `setConnectable(false)` sat in `SchemaCanvasView`, which sent people hunting for a handle that was not there |
 | Delete axioms from canvas | ✅ | ✅ | With a confirmation distinct from removing from canvas |
-| Layout algorithms | ✅ | ✅ | Hierarchical, organic, circle, grid |
+| Layout algorithms | ✅ | ✅ | Hierarchical, organic, circle, grid. Since 1.64.0 the hierarchy runs the right way up - superclass above subclass - with orthogonal routing, loose terms parked under the diagram, and the result fitted to the window |
+| The canvas can be reviewed without launching Protégé | ❌ | ✅ | Since 1.64.0. `CanvasDesignProofTest` renders the board, a 31-term board, the legend and the empty state to `target/design/` headlessly. Three of the four defects that release fixed were found by looking at those images |
 | Minimap, PNG/SVG export | ✅ | ✅ | |
 | Labels from `rdfs:label`, namespace colours | 🔶 | ✅ | Plugin colours by namespace and prefers labels |
 | Selection synced with the editor | ➖ | ✅ | **New capability** — impossible in the web app |

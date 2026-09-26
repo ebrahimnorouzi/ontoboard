@@ -26,6 +26,16 @@ public class SchemaGraph extends mxGraph {
         setCellsDisconnectable(false);
         setEdgeLabelsMovable(false);
         setCellsMovable(true);
+        // Both default to false in mxGraph. With the hierarchical layout's routing turned on
+        // (CanvasLayouts) every edge carries absolute control points, so a dragged node otherwise
+        // keeps the channel the layout gave it and its wire doubles back on itself. resetEdge nulls
+        // those points and the router runs again.
+        //
+        // The trade-off, stated rather than hidden: a bend somebody added by hand is lost when
+        // either end moves. That is already true across a reload, because CanvasLayout persists node
+        // geometry and has never persisted an edge waypoint.
+        setResetEdgesOnMove(true);
+        setResetEdgesOnResize(true);
         // Label editing arrives in Task 3; enabling it now would let a user rename a
         // cell's visible text without touching the ontology, which would be a lie.
         setCellsEditable(false);
