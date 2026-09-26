@@ -263,6 +263,23 @@ The plugin is early. These exist in the web application but not yet here:
   Threading the text through is a small model change and it is not done, so the plan's C3 is half
   complete: the note is maintainable, and still not readable without opening a dialog.
 
+- **The OntoBoard tab opens and its views construct inside both Protégés, checked automatically
+  since 1.57.0.** This closes the last clause of F1 in
+  [the phase plan](superpowers/specs/2026-09-24-next-phase-plan.md) and retires the first entry on
+  that plan's own list of what was "genuinely unverified".
+
+  It was unmet for a duller reason than the smoke script gave. The script looked for
+  `Saved tab state for 'OntoBoard' tab`, which Protégé logs at *shutdown* - and the smoke kills the
+  process, so that line could never appear whatever the tab did. Measured: the tab is not mentioned
+  anywhere in a smoke run's log, because the self-test runs from the editor-kit hook and nothing in
+  that path asks for a tab. The self-test now asks for it, on the event thread, and removes it again.
+
+  Worth stating precisely: the views **construct**, on Java 8 with OWL API 4.5.9 and on Java 11 with
+  4.5.29. Nothing here looks at a pixel, so "the canvas paints" is still not asserted. Construction is
+  the half where a missing OSGi import or a bad classfile version shows up - `SchemaCanvasView` is
+  2,114 lines and was until now exercised only by tests that construct no view - and the rest still
+  rests on somebody looking at it.
+
 ### Not covered by tests
 
 1207 tests cover projection, axiom construction, layout persistence, ODK scaffolding, the

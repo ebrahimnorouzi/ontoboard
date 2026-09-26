@@ -207,5 +207,8 @@ mature plugins is waste) or ➖ (web-application machinery with no desktop meani
   `collab/__tests__/server-boot.test.mjs` (4) now start the shipped server and speak to it over a
   socket, in both languages. What is still not covered is a *browser* and Protégé at once; Protégé
   to Protégé through the real server is covered.
+- **The tab and its views are constructed by the in-host self-test since 1.57.0**, on both
+  Protégés - so "the canvas cannot be built under Felix" is no longer an open question, though
+  whether it paints correctly still is.
 - **No plugin UI is covered by tests.** 1207 tests cover logic; every Swing surface is verified
   by hand.
