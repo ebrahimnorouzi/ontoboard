@@ -58,10 +58,16 @@ listener fires, captures nothing about notes or frames, and saves an unchanged s
 `refresh()` — any edit anywhere in Protégé — redraws both from the stale stored position. A curator
 drags a note next to the class it is about and it jumps back to the corner.
 
+> **Done in 1.52.0.** The capture is a static function over a geometry lookup now, so the two tests that
+> could not be written against an inline loop in a 2,100-line view exist.
+
 **A2 — `Arrange` never saves the layout it produces.**
 The action applies a layout to the live graph but never calls `capturePositions()` /
 `saveLayoutTo()`, which the `Add all` path does do. So a hierarchical arrangement of thirty classes
 survives until the next `refresh()` and then reverts. The two paths should not differ.
+
+> **Done in 1.52.0**, and this is the item undo was later built for: saving the arrangement stopped it
+> being lost silently, and A5 is what makes it recoverable when the arrangement itself was a mistake.
 
 **A3 — Four different coordinate bugs, one missing function.**
 "New class here…" stores component pixels as graph coordinates (`:1138`), so on a zoomed board the
@@ -71,10 +77,18 @@ scrolled board lands off-screen. The double-click path alone is right, because i
 `graphComponent.getPointForEvent`. One converter, used by every entry point, tested as a pure
 function.
 
+> **Done across 1.52.0 and 1.54.0.** Three of the four in 1.52.0; the drop path in 1.54.0, which is when
+> all of them went through one `graphPointFromControl` with four tests over it. The drop case was the
+> subtle one - the graph *control* is the full-size canvas inside the viewport, so its coordinates
+> already account for scrolling and adding the scroll offset double-counted it.
+
 **A4 — `Arrange` treats notes and frames as terms.**
 `CanvasLayouts` lays out the default parent's children (`CanvasLayouts.java:96`), so a frame is
 slotted into the grid like a class and stops enclosing what it groups. Annotations should be
 excluded from term layouts; `SchemaGraph.isAnnotationId` already exists to say which they are.
+
+> **Done in 1.52.0.** Annotation geometry is snapshotted and restored around a layout, so a frame that
+> encloses a group still encloses it afterwards.
 
 **A5 — No undo for anything the board owns.**
 Selecting twelve arranged nodes and pressing Delete removes them and rewrites the sidecar in the
@@ -82,9 +96,7 @@ same call. Protégé's undo has no axiom change to reverse, so the arrangement i
 `docs/feature-parity.md:68` claims undo. A bounded deque of `CanvasLayout` snapshots pushed before
 each board mutation fixes it; the class is a plain DTO, so copies are cheap.
 
----
-
-> **A5 done in 1.62.0.** Ctrl+Z on the canvas, over everything the sidecar holds. Snapshots of the whole
+> **Done in 1.62.0.** Ctrl+Z on the canvas, over everything the sidecar holds. Snapshots of the whole
 > board rather than an inverse per action: the state is one small DTO, so copying is cheaper than the
 > bookkeeping and it cannot drift - a new board action gets undo the moment it records. Twenty-five
 > steps, per session, and never the ontology; the status line says that last part every time, because a
@@ -106,17 +118,27 @@ Manchester syntax and whether it is asserted or inferred. A node should give its
 IRI, and its editorial note if it has one. A sticky note should give its text, not
 `ontoboard-note-3f2a1b9c`.
 
+> **Done in 1.53.0**, except the note's text, which followed in 1.59.0 - `CanvasNode` carried a boolean,
+> so the projection a tooltip is built from knew only *that* a note existed.
+
 **B2 — A legend that explains the channel it actually uses.** The board colours node borders by
 namespace, and the legend never mentions namespaces — so purple next to a purple Individual swatch
 reads as "individual". It should render the live `prefixColors` map with the colours this board
 assigned, add rows for notes and frames, and be openable beside the canvas rather than as a modal
 you must close to look at what it describes.
 
+> **Done in 1.53.0.** The namespace rows are deliberately *not* part of `entries()`, so the test that
+> compares every row against the stylesheet keeps its teeth over the rows that have a registered style.
+
 **B3 — Feedback on every action.** Delete on a note does nothing and says nothing. Expand
 neighbours that finds nothing new does nothing and says nothing, so the user clicks again to check
 the menu works. Each action ends with one sentence: what changed, and whether the ontology was
 touched. That last clause matters more here than in most software, because "removed from the board"
 and "deleted from the ontology" are a world apart and the current UI distinguishes them nowhere.
+
+> **Done in 1.54.0** for Delete, and extended by every release since: expanding, collapsing, finding,
+> fitting, undoing and refusing a drawn edge all end in one sentence. The clause about the ontology is
+> now in the undo message too, for the same reason.
 
 **B4 — Where am I.** A zoom readout, `Fit to window`, and `Escape` to clear the selection — the
 last is documented and does not exist.
