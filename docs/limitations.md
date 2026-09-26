@@ -252,9 +252,20 @@ The plugin is early. These exist in the web application but not yet here:
   no undo for anything the board owns, four coordinate-conversion bugs that put created things where
   the user did not click, no search, and tooltips that show internal ids.
 
+- **A term's editorial note is readable and writable on the canvas since 1.56.0, and its text is
+  not in the tooltip yet.** The canvas drew a term carrying a note with a heavier border and offered
+  no way to learn what it said - hovering gave the IRI, right-clicking offered nothing about notes,
+  and the route was up to the main menu bar. A marker that raises a question the interface then
+  refuses to answer is worse than no marker.
+
+  What is still missing is the text on hover. Tooltips are built from the `Projection` the canvas
+  draws, and `CanvasNode` carries a boolean - whether there is a note - rather than the note itself.
+  Threading the text through is a small model change and it is not done, so the plan's C3 is half
+  complete: the note is maintainable, and still not readable without opening a dialog.
+
 ### Not covered by tests
 
-1203 tests cover projection, axiom construction, layout persistence, ODK scaffolding, the
+1207 tests cover projection, axiom construction, layout persistence, ODK scaffolding, the
 report's rule execution and the OSGi configuration. Fourteen of them reach outside the JVM:
 `RobotParityTest` compares the report against real ROBOT in `obolibrary/odkfull`,
 `RobotCliParityTest` compares nine more operations against the same image's `robot` command, and

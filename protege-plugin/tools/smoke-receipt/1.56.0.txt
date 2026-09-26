@@ -1,0 +1,73 @@
+OntoBoard 1.56.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-09-26  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 8/8  test 9/9
+  2026-09-26  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 8/8  test 9/9
+A TERM'S EDITORIAL NOTE, ON THE BOARD
+
+C3 of docs/superpowers/specs/2026-09-25-canvas-interface-plan.md, and the item in that plan with the
+clearest claim on being next: it is what a domain expert leaves behind. An ontology engineer can read an
+axiom; somebody who knows about pizza and not about OWL says "this is wrong, and here is why" - and an
+editor note is the only place in an ontology that sentence belongs.
+
+Until now the canvas drew a term carrying a note with a heavier border and offered no way to find out
+what it said. Hovering gave the IRI. Right-clicking offered nothing about notes. The route was up to the
+main menu bar, OntoBoard > Notes > Note on the selected term..., trusting that the click on the canvas
+had already selected the term meant. A marker that says "there is something here" and cannot tell you
+what is worse than no marker, because it is a question the interface refuses to answer.
+
+Right-clicking a term now offers "Editorial note..." - or "Editorial note (has one)..." when there is
+one, so the menu answers the first question before it is opened. The dialog is pre-filled with the
+existing note and clearing the box removes it.
+
+THE SAME NOTE, NOT A SECOND KIND
+
+It writes IAO:0000116 through EditorNotes, exactly what the Notes menu writes. That matters more than it
+sounds: this canvas already has sticky notes, which live in the sidecar and never reach a release, and a
+second thing called a note that behaved differently would be a trap. The menu item's tooltip says which
+is which in one line - "An IAO:0000116 editor note. Unlike a sticky note this is in the ontology and
+travels with it." - and the confirmation afterwards says the note will appear in a release.
+
+Applied through OWLModelManager rather than into the ontology directly, which buys two things. Protege's
+undo covers it, as it covers any axiom change. And the view's change listener publishes it to a live
+session - so as of 1.50.0 a note written on the canvas reaches a colleague as an updateAnnotation, which
+is the first time anything in this feature has been able to say that.
+
+TESTING A DIALOG BY NOT TESTING THE DIALOG
+
+JOptionPane needs a display, so the part that can be wrong was separated from the part that cannot be
+tested. noteEditFor(was, now) decides which of four things a box's contents mean - UNCHANGED, ADD,
+REPLACE, REMOVE - and has four tests.
+
+Each wrong answer there is quiet, which is the argument for pulling it out at all. REPLACE where ADD
+belongs writes a second annotation rather than the one asked for. Treating whitespace as text leaves an
+empty note in a release. And a whitespace-only difference is deliberately not an edit: rewriting the
+axiom for a trailing space would, in a live session, republish it to every peer and stamp fresh
+provenance on it, for something nobody typed on purpose.
+
+WHAT IS STILL MISSING, SAID PLAINLY
+
+The note text is not in the tooltip yet. Tooltips are built from the Projection the canvas draws, and
+CanvasNode carries a boolean - whether there is a note - rather than the text. Threading the text
+through is a small model change and it is not in this version; the context menu is the part that makes
+the note maintainable, so it went first. The plan's C3 asked for both and this is half of it.
+
+A TOOLING FINDING WORTH THE SPACE
+
+`mvn compile` reported BUILD SUCCESS on a version of SchemaCanvasView that referenced EditorNotes with
+no import for it. Different package, so it cannot compile; it was not recompiled. Caught by reading the
+import list by eye afterwards rather than by any build output, and it compiled honestly only after
+target/classes was emptied.
+
+That is the third time in this sequence that incremental compilation has reported success on something
+that does not compile - the others were a stale test-classes against fresh classes, which surfaced as
+"TestEngine failed to discover tests". docs/development.md already says incremental builds here are not
+to be trusted. The working rule now: empty classes and test-classes together before believing a compile,
+and never delete target itself, because the IDE's language server holds the directory open and mvn clean
+fails on it.
+
+NUMBERS
+
+1207 tests, 0 failures, 0 skipped. Surefire's total and the count of @Test occurrences in src/test/java
+agree at 1207. 45 JavaScript tests pass.

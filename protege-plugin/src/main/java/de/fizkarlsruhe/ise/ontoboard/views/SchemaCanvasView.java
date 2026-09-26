@@ -30,6 +30,7 @@ import de.fizkarlsruhe.ise.ontoboard.model.DisplayLabels;
 import de.fizkarlsruhe.ise.ontoboard.model.OntologyProjection;
 import de.fizkarlsruhe.ise.ontoboard.model.CanvasNode;
 import de.fizkarlsruhe.ise.ontoboard.model.Projection;
+import de.fizkarlsruhe.ise.ontoboard.prov.EditorNotes;
 import de.fizkarlsruhe.ise.ontoboard.prov.EditWatcher;
 import de.fizkarlsruhe.ise.ontoboard.prov.Provenance;
 import de.fizkarlsruhe.ise.ontoboard.prov.ProvenanceSettings;
@@ -572,6 +573,112 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         layout.frames.add(frame);
         refresh();
         saveLayoutTo(layoutFile);
+    }
+
+    /**
+     * Reads and writes a term's editorial note, on the canvas.
+     *
+     * <p>{@code IAO:0000116}, the same annotation the Notes menu writes - so this is not a second
+     * kind of note but the same one, reachable where the user is already pointing. A sticky note
+     * lives in the sidecar and never reaches a release; this is an axiom and does.
+     *
+     * <p>Applied through {@code OWLModelManager} rather than straight into the ontology, which buys
+     * two things: Protege's undo covers it, and the view's change listener publishes it to a live
+     * session - so a note written on the canvas reaches a colleague as an {@code updateAnnotation}.
+     *
+     * <p>Pre-filled with the existing note and empty-means-delete, because the alternative is a
+     * separate menu item for removing one and a curator who has to know which to reach for.
+     */
+    private void editEditorialNote(String iri) {
+        OWLOntology ontology = getOWLModelManager().getActiveOntology();
+        if (ontology == null) {
+            return;
+        }
+        IRI entity = IRI.create(iri);
+        List<String> existing =
+                EditorNotes.notesOn(ontology, entity, EditorNotes.Kind.EDITOR);
+        String was = existing.isEmpty() ? "" : existing.get(0);
+
+        javax.swing.JTextArea area = new javax.swing.JTextArea(was, 7, 44);
+        area.setLineWrap(true);
+        area.setWrapStyleWord(true);
+        String label = graph.getCellForId(iri) == null ? shortNameOf(iri)
+                : DisplayLabels.shortNameOf(entity);
+        int answer = JOptionPane.showConfirmDialog(this,
+                new Object[] {
+                    "An editor note on " + label + ". This goes into the ontology and travels with "
+                            + "it - clear the box to remove the note.",
+                    new javax.swing.JScrollPane(area) },
+                was.isEmpty() ? "Add an editorial note" : "Edit the editorial note",
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+        if (answer != JOptionPane.OK_OPTION) {
+            return;
+        }
+        String now = area.getText() == null ? "" : area.getText().trim();
+        List<OWLOntologyChange> changes;
+        String said;
+        switch (noteEditFor(was, now)) {
+            case UNCHANGED:
+                setStatus("The note on " + label + " is unchanged.");
+                return;
+            case REMOVE:
+                changes = EditorNotes.removeNote(ontology, entity, EditorNotes.Kind.EDITOR, was);
+                said = "Removed the editorial note from " + label + ".";
+                break;
+            case ADD:
+                changes = EditorNotes.addNote(ontology, entity, EditorNotes.Kind.EDITOR, now);
+                said = "Added an editorial note to " + label + ". It is in the ontology, so it "
+                        + "will appear in a release.";
+                break;
+            case REPLACE:
+            default:
+                changes = EditorNotes.replaceNote(ontology, entity, EditorNotes.Kind.EDITOR,
+                        was, now);
+                said = "Changed the editorial note on " + label + ".";
+                break;
+        }
+        if (changes.isEmpty()) {
+            setStatus("Nothing to change in the note on " + label + ".");
+            return;
+        }
+        getOWLModelManager().applyChanges(changes);
+        setStatus(said);
+    }
+
+    /** What editing a note box amounts to. */
+    enum NoteEdit {
+        UNCHANGED, ADD, REPLACE, REMOVE
+    }
+
+    /**
+     * Which of the four things a note box's contents mean, given what was there before.
+     *
+     * <p>Separated from the dialog because this is the part that can be wrong and the dialog is the
+     * part that cannot be tested: a JOptionPane needs a display. Getting it wrong is quiet -
+     * replacing when it should add throws away nobody's note but writes a second annotation, and
+     * treating whitespace as text leaves an empty note in a release.
+     *
+     * <p>Both sides are trimmed, so a note whose only change is trailing whitespace is unchanged.
+     * That is deliberate: an editor note is prose and an invisible edit to it is not an edit, while
+     * the alternative rewrites the axiom - and in a live session republishes it to every peer - for
+     * a space nobody typed on purpose.
+     */
+    static NoteEdit noteEditFor(String was, String now) {
+        String before = was == null ? "" : was.trim();
+        String after = now == null ? "" : now.trim();
+        if (before.equals(after)) {
+            return NoteEdit.UNCHANGED;
+        }
+        if (after.isEmpty()) {
+            return NoteEdit.REMOVE;
+        }
+        return before.isEmpty() ? NoteEdit.ADD : NoteEdit.REPLACE;
+    }
+
+    /** The bit after the last # or /, for a label when the ontology offers none. */
+    private static String shortNameOf(String iri) {
+        int cut = Math.max(iri.lastIndexOf('#'), iri.lastIndexOf('/'));
+        return cut < 0 ? iri : iri.substring(cut + 1);
     }
 
     /** Changes the text of a note or the label of a frame. */
@@ -1306,6 +1413,20 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                     JMenuItem relate = new JMenuItem("Create relation from this node...");
                     relate.addActionListener(a -> createRelationFrom(iri));
                     menu.add(relate);
+
+                    // The note a domain expert leaves is the one that belongs in the ontology, and
+                    // reading it used to mean leaving the canvas: the heavy border said a note
+                    // existed and nothing on the board would say what it was. The main menu's
+                    // Notes > Note on the selected term... writes the same IAO:0000116, so this is
+                    // the same capability where the user is already looking.
+                    JMenuItem note = new JMenuItem(
+                            EditorNotes.notesOn(getOWLModelManager().getActiveOntology(),
+                                    IRI.create(iri), EditorNotes.Kind.EDITOR).isEmpty()
+                                    ? "Editorial note..." : "Editorial note (has one)...");
+                    note.setToolTipText("An IAO:0000116 editor note. Unlike a sticky note this is "
+                            + "in the ontology and travels with it.");
+                    note.addActionListener(a -> editEditorialNote(iri));
+                    menu.add(note);
                 }
 
                 menu.show(graphComponent.getGraphControl(), event.getX(), event.getY());

@@ -346,4 +346,54 @@ class SchemaCanvasViewTest {
         // is not "nothing selected", and saying so is the difference between a hint and a shrug.
         assertFalse(new SchemaCanvasView.Removal(0, 0, 1).nothingSelected());
     }
+
+    // ================================================== editing a term's editorial note
+
+    /**
+     * What a note box's contents mean, given what was there.
+     *
+     * <p>The canvas can now read and write a term's {@code IAO:0000116} editor note in place, which
+     * is what a domain expert actually leaves behind - the heavy border used to say a note existed
+     * and nothing on the board would say what it was. The four cases are separated from the dialog
+     * because the dialog cannot be tested and this can, and because each wrong answer is quiet:
+     * replacing where it should add writes a second annotation, and treating whitespace as text
+     * leaves an empty note in a release.
+     */
+    @Test
+    void anEmptyBoxOverAnExistingNoteRemovesIt() {
+        assertEquals(SchemaCanvasView.NoteEdit.REMOVE,
+                SchemaCanvasView.noteEditFor("check with Bob", ""));
+        assertEquals(SchemaCanvasView.NoteEdit.REMOVE,
+                SchemaCanvasView.noteEditFor("check with Bob", "   "));
+    }
+
+    @Test
+    void textWhereThereWasNoneAddsANote() {
+        assertEquals(SchemaCanvasView.NoteEdit.ADD,
+                SchemaCanvasView.noteEditFor("", "check the base"));
+        assertEquals(SchemaCanvasView.NoteEdit.ADD,
+                SchemaCanvasView.noteEditFor(null, "check the base"));
+    }
+
+    @Test
+    void differentTextOverAnExistingNoteReplacesIt() {
+        assertEquals(SchemaCanvasView.NoteEdit.REPLACE,
+                SchemaCanvasView.noteEditFor("check the base", "check the base with Bob"));
+    }
+
+    /**
+     * Whitespace-only differences are not edits.
+     *
+     * <p>Rewriting the axiom for a trailing space would, in a live session, republish it to every
+     * peer and stamp fresh provenance on it - for something nobody typed on purpose.
+     */
+    @Test
+    void invisibleDifferencesAreNotEdits() {
+        assertEquals(SchemaCanvasView.NoteEdit.UNCHANGED,
+                SchemaCanvasView.noteEditFor("check the base", "check the base  "));
+        assertEquals(SchemaCanvasView.NoteEdit.UNCHANGED,
+                SchemaCanvasView.noteEditFor("  check the base", "check the base"));
+        assertEquals(SchemaCanvasView.NoteEdit.UNCHANGED, SchemaCanvasView.noteEditFor("", "   "));
+        assertEquals(SchemaCanvasView.NoteEdit.UNCHANGED, SchemaCanvasView.noteEditFor(null, null));
+    }
 }
