@@ -269,6 +269,44 @@ The plugin is early. These exist in the web application but not yet here:
   note is prose rather than a phrase, so it is the one tooltip here that wraps. Three paragraphs from
   three editors is not a tooltip; the Notes dialog shows them all with authors and dates.
 
+- **The Collaborate button was not on the screen, and the status line erased its own warnings - both
+  until 1.67.0.** The first half of Release 4 of the canvas design spec; the second half is held back
+  because the spec's own regression table calls the floating panels "the most likely breakage in the
+  whole plan".
+
+  The toolbar wanted 1261px and began clipping at 1030. The OntoBoard tab in a 1440px Protégé window
+  gives it 857, at which `Collaborate...` is laid out at x=812 - past the right edge, unpainted and
+  unclickable. `JToolBar` uses a `BoxLayout`, which lays overflowing children out *beyond* the container
+  rather than wrapping, and there is no chevron to switch on. The button was simply not there, and
+  nothing said so. It is 777px now: the layout combo is gone (201px to choose between four entries
+  nobody reopens), Legend, Export and Collaborate moved to an overflow menu, and the two widths that
+  were free to grow are pinned - the Find box reached 407px on a wide bar, and the Add button,
+  relabelled on every selection change, shifted everything to its right by up to 103px, including the
+  Find field, which slid out from under the pointer mid-type.
+
+  **One status label served two producers.** `setStatus()` writes transient board confirmations; the
+  collaboration host writes persistent session state that needs acting on. Whichever fired last won,
+  permanently - so arranging the board erased the only notice that a colleague would never see your
+  edit, and nothing brought it back. Two labels now, the session one carrying a coloured dot.
+
+  **The context menu offered an action that lied about what it acted on**: "Add selected entity to
+  canvas", offered even when you had right-clicked a node, where it reads as "add the thing I clicked"
+  and in fact acts on Protégé's tree selection. Deleted. The remaining items are grouped in the order a
+  person asks - what is under the cursor, what it can be joined to, what can be made here, and what
+  takes something away, last.
+
+  **The empty state named a widget that does not exist**: "drag one in from the palette on the left"
+  (the left column is Protégé's entity views, the first labelled Classes) and "double-click the board"
+  (the card is covering it). Both corrected, plus one line nothing anywhere said before - *taking
+  something off the board never deletes it from the ontology*.
+
+  Dark mode is answered rather than themed: the canvas stays light on purpose, because it is the surface
+  every exported PNG is composed on and a diagram whose colours depend on the author's IDE theme is not
+  reproducible; it gains a border that follows the theme, and the start screen takes its colours from
+  the look and feel. That took two attempts - `Panel.background` is the obvious token for the card and
+  the wrong one, because it makes the card exactly the colour of the thing it is raised off. Caught by
+  re-rendering it.
+
 - **Five gesture defects, all fixed in 1.66.0, and one of them broke the canvas's central invariant.**
   Release 3 of the canvas design spec. Unlike 1.64.0 and 1.65.0 these were not found by looking at a
   render - they were found by reading JGraphX against this code.

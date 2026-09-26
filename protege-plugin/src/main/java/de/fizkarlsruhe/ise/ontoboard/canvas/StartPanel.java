@@ -28,19 +28,62 @@ public final class StartPanel extends JPanel {
 
     private static final long serialVersionUID = 1L;
 
-    private static final Color INK = new Color(0x1A, 0x1D, 0x21);
-    private static final Color MUTED = new Color(0x5A, 0x64, 0x70);
-    private static final Color CARD = Color.WHITE;
-    private static final Color EDGE = new Color(0xD8, 0xDD, 0xE3);
+    /**
+     * Taken from the look and feel, with the old hexes as the fallback.
+     *
+     * <p>Prot&eacute;g&eacute; 5.6 ships a dark theme, and this is the first screen anybody sees. It
+     * hardcoded four light colours and painted itself on the canvas background, so on a dark IDE it
+     * was a bright slab with dark-on-light text - the one panel in the workbench that had not been
+     * told. The canvas itself stays light deliberately (see {@code SchemaStyles.CANVAS_BACKGROUND});
+     * this panel is not the canvas, it is the thing standing in front of it.
+     */
+    private static final Color INK = uiColour("Label.foreground", 0x1A, 0x1D, 0x21);
+    private static final Color MUTED = uiColour("Label.disabledForeground", 0x5A, 0x64, 0x70);
+    private static final Color CARD = cardColour();
+    private static final Color EDGE = uiColour("controlShadow", 0xD8, 0xDD, 0xE3);
+
+    /** A look-and-feel colour, or the given fallback when the theme does not define it. */
+    private static Color uiColour(String key, int r, int g, int b) {
+        Color themed = javax.swing.UIManager.getColor(key);
+        return themed != null ? themed : new Color(r, g, b);
+    }
+
+    /**
+     * A surface that sits <em>above</em> the panel behind it, whichever way the theme runs.
+     *
+     * <p>Swing has no "card" or "surface" token, and the obvious substitute is wrong: taking
+     * {@code Panel.background} makes the card exactly the colour of what it is supposed to be raised
+     * off, and on the default light theme it came out darker than its own surround - a card pressed
+     * into the page rather than lifted off it. So: white on a light theme, and a step lighter than
+     * the panel on a dark one.
+     */
+    private static Color cardColour() {
+        Color panel = javax.swing.UIManager.getColor("Panel.background");
+        if (panel == null) {
+            return Color.WHITE;
+        }
+        double luminance = (0.2126 * panel.getRed() + 0.7152 * panel.getGreen()
+                + 0.0722 * panel.getBlue()) / 255.0;
+        if (luminance >= 0.4) {
+            return Color.WHITE;
+        }
+        return new Color(Math.min(255, panel.getRed() + 14),
+                Math.min(255, panel.getGreen() + 14), Math.min(255, panel.getBlue() + 16));
+    }
 
     /**
      * @param onNewProject     create a new ODK project
      * @param onOpenProject    open an existing ODK repository
      * @param onAddSelected    put the entity selected in Protégé onto the canvas
      */
-    public StartPanel(Runnable onNewProject, Runnable onOpenProject, Runnable onAddSelected) {
+    public StartPanel(Runnable onNewProject, Runnable onOpenProject, Runnable onAddSelected,
+            Runnable onAddAll) {
         super(new GridBagLayout());
-        setBackground(Color.decode(SchemaStyles.CANVAS_BACKGROUND));
+        // The IDE's panel colour, not the canvas colour. This card stands in FRONT of the board -
+        // showAppropriateCard swaps the whole component out - so painting it the canvas's near-white
+        // made the first screen anybody sees a bright slab in a dark workbench, and pretended to be
+        // a board that is not there.
+        setBackground(uiColour("Panel.background", 0xF7, 0xF8, 0xFA));
 
         JPanel card = new JPanel();
         card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
@@ -65,8 +108,19 @@ public final class StartPanel extends JPanel {
                 "Put whatever is selected in the class hierarchy on the board", onAddSelected));
 
         card.add(Box.createVerticalStrut(16));
-        card.add(body("Already have an ontology open? Double-click the board to add a class,"));
-        card.add(body("or drag one in from the palette on the left."));
+        card.add(action("Add every term",
+                "Puts all the classes, properties and individuals on the board",
+                onAddAll));
+        card.add(javax.swing.Box.createVerticalStrut(14));
+        // Two corrections. This used to say "double-click the board", which cannot be done while
+        // this card is covering it, and "the palette on the left", which is not the name of
+        // anything: the left column of the OntoBoard tab is Protege's own entity views, the first
+        // labelled Classes.
+        card.add(body("Or pick a term in the Classes tab on the left and press Add selected."));
+        card.add(javax.swing.Box.createVerticalStrut(10));
+        // Said here because it is the single most consequential thing about this canvas, and
+        // nothing anywhere else says it until somebody presses Delete and reads the status bar.
+        card.add(body("Taking something off the board never deletes it from the ontology."));
 
         GridBagConstraints centre = new GridBagConstraints();
         centre.gridx = 0;

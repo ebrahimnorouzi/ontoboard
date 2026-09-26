@@ -10,6 +10,7 @@ import de.fizkarlsruhe.ise.ontoboard.axiom.EdgeAxioms;
 import de.fizkarlsruhe.ise.ontoboard.axiom.EntityFactory;
 import de.fizkarlsruhe.ise.ontoboard.axiom.RelationDialog;
 import de.fizkarlsruhe.ise.ontoboard.canvas.CanvasExport;
+import de.fizkarlsruhe.ise.ontoboard.canvas.CanvasIcons;
 import de.fizkarlsruhe.ise.ontoboard.canvas.CanvasLayouts;
 import de.fizkarlsruhe.ise.ontoboard.canvas.CanvasMembership;
 import de.fizkarlsruhe.ise.ontoboard.canvas.CanvasSearch;
@@ -170,6 +171,9 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
     /** The zoom readout in the status bar. A button, because clicking it returns to 100%. */
     private JButton zoomReadout;
 
+    /** Kept so the algorithm menu can be popped underneath it. */
+    private JButton arrangeButton;
+
     /**
      * What each expansion added, so it can be taken back.
      *
@@ -206,6 +210,17 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
     private CollabSession collab;
     private JButton collaborateButton;
     private javax.swing.JLabel collabStatus;
+
+    /**
+     * What the board just did, kept apart from what the session is doing.
+     *
+     * <p>One label served both until 1.67.0, and they are not the same kind of message. A board
+     * confirmation is transient - "Arranged the board", "Undid: adding 7 terms" - while a session
+     * notice is persistent state that needs acting on: "3 changes not shared", "Disconnected - you
+     * switched ontology". Whichever wrote last won, permanently. So arranging the board erased the
+     * only warning that a colleague would never see your edit, and nothing brought it back.
+     */
+    private javax.swing.JLabel boardStatus;
     /**
      * When the cursor was last published. Presence is sent on mouse movement, which fires far
      * faster than anyone needs to see, so it is throttled - and the client's own heartbeat
@@ -239,7 +254,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         centre = new JPanel(cards);
         centre.add(graphComponent, "canvas");
         centre.add(new StartPanel(this::runNewProjectWizard, this::openExistingProject,
-                this::addSelectedEntityToCanvas), "start");
+                this::addSelectedEntityToCanvas, this::addEverythingToCanvas), "start");
         add(centre, BorderLayout.CENTER);
         // Before the toolbar, because the status bar owns collabStatus and the toolbar used to.
         add(buildStatusBar(), BorderLayout.SOUTH);
@@ -251,6 +266,16 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         graphComponent.getViewport().setOpaque(true);
         graphComponent.getViewport().setBackground(
                 Color.decode(de.fizkarlsruhe.ise.ontoboard.canvas.SchemaStyles.CANVAS_BACKGROUND));
+        // A border, and its colour taken from the theme. The canvas stays light on purpose - it is
+        // the surface every exported PNG is composed on, and a diagram whose colours depend on the
+        // author's IDE theme is not reproducible - but on a dark look and feel a borderless white
+        // slab reads as a rendering fault rather than as a choice.
+        java.awt.Color themePanel = javax.swing.UIManager.getColor("Panel.background");
+        boolean darkTheme = themePanel != null && (0.2126 * themePanel.getRed()
+                + 0.7152 * themePanel.getGreen() + 0.0722 * themePanel.getBlue()) / 255.0 < 0.4;
+        graphComponent.setBorder(javax.swing.BorderFactory.createMatteBorder(1, 1, 1, 1,
+                darkTheme ? new java.awt.Color(0x3A, 0x40, 0x4A)
+                        : new java.awt.Color(0xD8, 0xDD, 0xE3)));
         graphComponent.setGridVisible(true);
         // Dots rather than lines, and pale enough to be texture: #D4D8DF is about 1.5:1 on the
         // canvas, present to align against and never competing with a 1.6px node stroke. The pitch
@@ -433,6 +458,24 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
      * Puts the selected entity's name on the Add button, so the button says what it will add
      * rather than leaving the user to check the tree and the board for agreement.
      */
+    /**
+     * A label cut to fit, ending in an ellipsis.
+     *
+     * <p>Package-private and pure so the rule can be tested at the boundary rather than eyeballed on
+     * one example. U+2026 is present in Tahoma, Segoe UI and the logical Dialog family, which are the
+     * three this plugin can actually end up drawing with.
+     */
+    static String elide(String label, int limit) {
+        if (label == null) {
+            return "";
+        }
+        String trimmed = label.trim();
+        if (trimmed.length() <= limit) {
+            return trimmed;
+        }
+        return trimmed.substring(0, Math.max(1, limit - 1)).trim() + "\u2026";
+    }
+
     private void describeSelectionOnButton(OWLEntity selected) {
         if (addSelectedButton == null) {
             return;
@@ -446,7 +489,10 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         }
         String label =
                 DisplayLabels.forEntity(getOWLModelManager().getActiveOntology(), selected);
-        addSelectedButton.setText("Add " + label);
+        // Elided rather than allowed to grow: the button's width is pinned in buildToolBar, so a
+        // long label would otherwise be clipped mid-word by the layout instead of ending in a
+        // character that says there is more. The tooltip carries the whole IRI either way.
+        addSelectedButton.setText("Add " + elide(label, 14));
         addSelectedButton.setToolTipText("Add " + selected.getIRI() + " to the canvas");
     }
 
@@ -882,11 +928,31 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
 
     /** Puts a line in the toolbar's status label, reusing the collaboration one. */
     private void setStatus(String text) {
+        say(boardStatus, text, text);
+    }
+
+    /**
+     * The collaboration channel: connected, retrying, refused, or how much is unshared.
+     *
+     * <p>Separate from {@link #setStatus} so that a board message cannot overwrite it. The dot is the
+     * part that reads at a glance - green connected, amber something needs attention, grey not in a
+     * session - and the words are for when it does not.
+     */
+    private void setSessionStatus(String text, java.awt.Color light) {
+        say(collabStatus, text, text);
         if (collabStatus != null) {
-            collabStatus.setText(text);
-            collabStatus.setToolTipText(text);
+            collabStatus.setIcon(new CanvasIcons.Dot(light));
         }
     }
+
+    /** Green: in a session and up to date. */
+    private static final java.awt.Color LIGHT_CONNECTED = new java.awt.Color(0x16, 0xA3, 0x4A);
+
+    /** Amber: in a session, and something the user has to know about. */
+    private static final java.awt.Color LIGHT_ATTENTION = new java.awt.Color(0xD9, 0x77, 0x06);
+
+    /** Grey: not in a session. Working through git, which is the ordinary state. */
+    private static final java.awt.Color LIGHT_OFFLINE = new java.awt.Color(0x9C, 0xA3, 0xAF);
 
 
 
@@ -2083,7 +2149,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             graphComponent.setPeerCursors(null);
             graphComponent.getGraphControl().repaint();
             collaborateButton.setText("Collaborate...");
-            collabStatus.setText("Working through git");
+            setSessionStatus("Working through git", LIGHT_OFFLINE);
             return;
         }
         OWLOntology open = getOWLModelManager().getActiveOntology();
@@ -2095,7 +2161,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         }
         if (!settings.isLive()) {
             // A deliberate choice, not a failure: the dialog says so too.
-            collabStatus.setText("Working through git");
+            setSessionStatus("Working through git", LIGHT_OFFLINE);
             JOptionPane.showMessageDialog(this, settings.explainWhyNotLive(),
                     "Working through git", JOptionPane.INFORMATION_MESSAGE);
             return;
@@ -2116,7 +2182,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                 javax.swing.SwingUtilities::invokeLater);
         graphComponent.setPeerCursors(collab.getCursors());
         collaborateButton.setText("Disconnect");
-        collabStatus.setText("Connecting...");
+        setSessionStatus("Connecting...", LIGHT_ATTENTION);
         collab.start();
     }
 
@@ -2239,8 +2305,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
 
         @Override
         public void onStatus(String status, boolean connected) {
-            collabStatus.setText(status);
-            collabStatus.setToolTipText(status);
+            setSessionStatus(status, connected ? LIGHT_CONNECTED : LIGHT_ATTENTION);
             // The label says what the button will DO, which depends on whether a session exists - not
             // on whether its socket happens to be up this second. Taking it from `connected` meant
             // that during an automatic reconnect, and after a refusal, the button read
@@ -2260,7 +2325,8 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             // A running count in the status line rather than a dialog per change: Protege can
             // produce a dozen unshareable axioms from one action, and a dozen modal dialogs
             // would be worse than the problem. The tooltip carries the detail.
-            collabStatus.setText(count + " change" + (count == 1 ? "" : "s") + " not shared");
+            setSessionStatus(count + " change" + (count == 1 ? "" : "s") + " not shared",
+                    LIGHT_ATTENTION);
             collabStatus.setToolTipText("The most recent was " + exampleReason);
         }
 
@@ -2284,7 +2350,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             graphComponent.setPeerCursors(null);
             graphComponent.getGraphControl().repaint();
             collaborateButton.setText("Collaborate...");
-            setStatus(reason + " - not connected. Working through git.");
+            setSessionStatus(reason + " - not connected.", LIGHT_ATTENTION);
         }
 
         @Override
@@ -2293,58 +2359,123 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         }
     }
 
+    /**
+     * The row of controls above the board.
+     *
+     * <p>It did not fit. Measured with the real components under Java 11 the bar wanted 1261px and
+     * began clipping at 1030; the OntoBoard tab in a 1440px Prot&eacute;g&eacute; window gives it 857,
+     * at which {@code Collaborate...} is laid out at x=812 - past the right edge, unpainted and
+     * unclickable. {@code JToolBar} uses a {@code BoxLayout}, which lays overflowing children out
+     * beyond the container rather than wrapping them, and there is no overflow or chevron to switch
+     * on. Nothing said so: the button was simply not there.
+     *
+     * <p>Three changes bring it to 777px. The layout combo goes - 201px to choose between four
+     * entries nobody reopens - and Arrange becomes a button that pops them. Legend, Export and
+     * Collaborate move into an overflow menu, because none of them is a thing you do twice a minute.
+     * And the two widths that were free to grow are pinned: the Find box, whose slack reached 407px
+     * on a wide bar, and the Add button.
+     *
+     * <p>Add selected, Add all, Find and Inferences stay visible. Inferences is a mode with a visible
+     * consequence on the diagram, and a mode you can forget you are in must not be hidden in a menu.
+     */
     private JToolBar buildToolBar() {
         JToolBar bar = new JToolBar();
         bar.setFloatable(false);
 
-        JComboBox<CanvasLayouts.Algorithm> algorithms =
-                new JComboBox<>(CanvasLayouts.Algorithm.values());
-        JButton arrange = new JButton("Arrange");
-        arrange.addActionListener(a -> arrangeWith(
-                (CanvasLayouts.Algorithm) algorithms.getSelectedItem()));
-
-        collaborateButton = new JButton("Collaborate...");
-        collaborateButton.addActionListener(a -> toggleCollaboration());
-
-        addSelectedButton = new JButton("Add selected");
+        addSelectedButton = new JButton("Add selected", new CanvasIcons.Plus());
         addSelectedButton.addActionListener(a -> addSelectedEntityToCanvas());
+        // Pinned, all three ways, because describeSelectionOnButton rewrites this label on every
+        // selection change: "Add selected" is 108px and "Add Cheesey vegetable topping" is 211, so
+        // clicking through the class tree shifted everything to its right by up to 103px - including
+        // the Find field, which slid out from under the pointer mid-type. searchCount has carried a
+        // fixed width for exactly this reason since 1.58.0.
+        Dimension addSize = new Dimension(150, addSelectedButton.getPreferredSize().height);
+        addSelectedButton.setPreferredSize(addSize);
+        addSelectedButton.setMinimumSize(addSize);
+        addSelectedButton.setMaximumSize(addSize);
         describeSelectionOnButton(getOWLEditorKit().getOWLWorkspace()
                 .getOWLSelectionModel().getSelectedEntity());
 
-        JButton export = new JButton("Export...");
-        export.addActionListener(a -> exportWithOptions());
+        JButton addAll = new JButton("Add all", new CanvasIcons.PlusStack());
+        addAll.setToolTipText("Put every class, individual and property in the ontology on "
+                + "the board");
+        addAll.addActionListener(a -> addEverythingToCanvas());
 
-        inferencesButton = new javax.swing.JToggleButton("Inferences");
+        arrangeButton = new JButton("Arrange", new CanvasIcons.Tree());
+        arrangeButton.setToolTipText("Lay the board out - superclasses above their subclasses");
+        arrangeButton.addActionListener(a -> {
+            JPopupMenu algorithms = new JPopupMenu();
+            for (final CanvasLayouts.Algorithm algorithm : CanvasLayouts.Algorithm.values()) {
+                JMenuItem item = new JMenuItem(algorithm.getDisplayName());
+                item.addActionListener(b -> arrangeWith(algorithm));
+                algorithms.add(item);
+            }
+            algorithms.show(arrangeButton, 0, arrangeButton.getHeight());
+        });
+
+        inferencesButton = new javax.swing.JToggleButton("Inferences", new CanvasIcons.Dashed());
         inferencesButton.setToolTipText("Also draw what the running reasoner concludes, dotted");
         inferencesButton.addActionListener(a -> {
             showInferences = inferencesButton.isSelected();
             refresh();
         });
 
-        JButton legend = new JButton("Legend");
-        legend.setToolTipText("What the shapes and lines mean");
-        legend.addActionListener(a -> showLegend());
-
-        JButton addAll = new JButton("Add all");
-        addAll.setToolTipText("Put every class, individual and property in the ontology on "
-                + "the board");
-        addAll.addActionListener(a -> addEverythingToCanvas());
+        collaborateButton = new JButton("Collaborate...");
+        collaborateButton.addActionListener(a -> toggleCollaboration());
 
         bar.add(addSelectedButton);
         bar.add(addAll);
         bar.addSeparator();
         bar.add(buildFindBox());
         bar.addSeparator();
-        bar.add(algorithms);
-        bar.add(arrange);
-        bar.addSeparator();
+        bar.add(arrangeButton);
         bar.add(inferencesButton);
-        bar.add(legend);
-        bar.addSeparator();
-        bar.add(export);
-        bar.addSeparator();
-        bar.add(collaborateButton);
+        bar.add(javax.swing.Box.createHorizontalGlue());
+        bar.add(buildOverflowButton());
         return bar;
+    }
+
+    /**
+     * Everything that does not need to be one click away.
+     *
+     * <p>Collaborate is in here rather than on the bar because it is pressed once a session, and
+     * because its state is already reported continuously in the status bar - which is where somebody
+     * looks to find out whether they are sharing, not at a button.
+     */
+    private JButton buildOverflowButton() {
+        final JButton more = new JButton(new CanvasIcons.Kebab());
+        more.setToolTipText("More");
+        more.addActionListener(a -> {
+            JPopupMenu menu = new JPopupMenu();
+
+            JMenuItem legend = new JMenuItem("Legend...", new CanvasIcons.Key());
+            legend.setToolTipText("What the shapes and lines mean");
+            legend.addActionListener(b -> showLegend());
+            menu.add(legend);
+
+            JMenuItem export = new JMenuItem("Export image...", new CanvasIcons.Download());
+            export.addActionListener(b -> exportWithOptions());
+            menu.add(export);
+            menu.addSeparator();
+
+            JMenuItem collaborate = new JMenuItem(collaborateButton.getText());
+            collaborate.addActionListener(b -> toggleCollaboration());
+            menu.add(collaborate);
+            menu.addSeparator();
+
+            final javax.swing.JCheckBoxMenuItem snap =
+                    new javax.swing.JCheckBoxMenuItem("Snap to grid", graph.isGridEnabled());
+            snap.setToolTipText("A 20px grid. Alt while dragging ignores it for one move.");
+            snap.addActionListener(b -> {
+                graph.setGridEnabled(snap.isSelected());
+                graphComponent.setGridVisible(snap.isSelected());
+                graphComponent.getGraphControl().repaint();
+            });
+            menu.add(snap);
+
+            menu.show(more, 0, more.getHeight());
+        });
+        return more;
     }
 
     /**
@@ -2376,6 +2507,10 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
 
         javax.swing.JLabel caption = new javax.swing.JLabel("Find");
         searchField = new javax.swing.JTextField(13);
+        // A floor and a ceiling. JToolBar's BoxLayout pours all of a wide bar's slack into the one
+        // growable child, which took the field to 407px on a 1400px bar and left it at its minimum
+        // on a narrow one.
+        searchField.setMinimumSize(new Dimension(140, searchField.getPreferredSize().height));
         searchField.setToolTipText("<html><b>Find a term on the board</b> by label or IRI."
                 + "<br>Enter: next match &nbsp; Shift+Enter: previous"
                 + "<br>Ctrl+Enter: add a match that is in the ontology but not on the board"
@@ -2423,6 +2558,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         box.add(caption);
         box.add(searchField);
         box.add(searchCount);
+        box.setMaximumSize(new Dimension(320, Short.MAX_VALUE));
         return box;
     }
 
@@ -2452,9 +2588,15 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
      * is where people look for it.
      */
     private JPanel buildStatusBar() {
-        collabStatus = new javax.swing.JLabel(" ");
+        collabStatus = new javax.swing.JLabel("Working through git", new CanvasIcons.Dot(
+                LIGHT_OFFLINE), javax.swing.SwingConstants.LEADING);
         collabStatus.setFont(collabStatus.getFont().deriveFont(
                 java.awt.Font.PLAIN, collabStatus.getFont().getSize() - 1f));
+        collabStatus.setIconTextGap(6);
+
+        boardStatus = new javax.swing.JLabel(" ");
+        boardStatus.setFont(boardStatus.getFont().deriveFont(
+                java.awt.Font.PLAIN, boardStatus.getFont().getSize() - 1f));
 
         JButton fit = new JButton("Fit");
         fit.setToolTipText("Zoom so the whole board is visible (Ctrl+1). "
@@ -2484,7 +2626,11 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                 javax.swing.BorderFactory.createMatteBorder(1, 0, 0, 0,
                         rule == null ? Color.GRAY : rule),
                 javax.swing.BorderFactory.createEmptyBorder(2, 8, 2, 4)));
-        statusBar.add(collabStatus, BorderLayout.CENTER);
+        // The session on the left at a fixed width, the board's own line in the middle taking
+        // whatever is left. Fixed, so a long session message does not push the board's line about.
+        collabStatus.setPreferredSize(new Dimension(220, collabStatus.getPreferredSize().height));
+        statusBar.add(collabStatus, BorderLayout.WEST);
+        statusBar.add(boardStatus, BorderLayout.CENTER);
         statusBar.add(zoomControls, BorderLayout.EAST);
         return statusBar;
     }
@@ -2607,18 +2753,9 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                 String iri = graph.getIdForCell(cell);
                 JPopupMenu menu = new JPopupMenu();
 
-                if (iri != null && SchemaGraph.isAnnotationId(iri)) {
-                    // A note or a frame: none of the term actions apply, and offering them would
-                    // be offering to remove axioms from something that has none.
-                    JMenuItem edit = new JMenuItem("Edit this note or frame...");
-                    edit.addActionListener(a -> editAnnotation(iri));
-                    menu.add(edit);
-                    menu.add(colourMenuFor(iri));
-                    JMenuItem delete = new JMenuItem("Delete this note or frame");
-                    delete.addActionListener(a -> deleteAnnotation(iri));
-                    menu.add(delete);
-                    menu.addSeparator();
-                }
+                boolean onAnnotation = iri != null && SchemaGraph.isAnnotationId(iri);
+                boolean onTerm = iri != null && !onAnnotation && membership.contains(iri);
+                boolean onEdge = cell != null && graph.getModel().isEdge(cell);
 
                 // Where the user actually right-clicked, in graph coordinates, worked out
                 // once while the event is still in hand.
@@ -2640,24 +2777,14 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                 final java.awt.Point where =
                         new java.awt.Point((int) graphPoint.getX(), (int) graphPoint.getY());
 
-                JMenuItem addNote = new JMenuItem("Put a sticky note here...");
-                addNote.setToolTipText("A note on the diagram. It is not in the ontology and "
-                        + "never appears in a release - see OntoBoard > Notes for one that does.");
-                addNote.addActionListener(a -> createStickyNote(where));
-                menu.add(addNote);
-
-                JMenuItem addFrame = new JMenuItem("Draw a frame here...");
-                addFrame.setToolTipText("A labelled region to group what is inside it. Also only "
-                        + "on the diagram.");
-                addFrame.addActionListener(a -> createFrame(where));
-                menu.add(addFrame);
-                menu.addSeparator();
-
-                JMenuItem addSelected = new JMenuItem("Add selected entity to canvas");
-                addSelected.addActionListener(a -> addSelectedEntityToCanvas());
-                menu.add(addSelected);
-
-                if (iri != null && membership.contains(iri)) {
+                // ---- 1. what is under the cursor -------------------------------------------
+                if (onAnnotation) {
+                    JMenuItem edit = new JMenuItem("Edit this note or frame\u2026");
+                    edit.addActionListener(a -> editAnnotation(iri));
+                    menu.add(edit);
+                    menu.add(colourMenuFor(iri));
+                }
+                if (onTerm) {
                     JMenuItem expand = new JMenuItem("Expand neighbours (1 hop)");
                     expand.setToolTipText("Put everything directly related to this term on the "
                             + "board, in a ring around it");
@@ -2678,20 +2805,79 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                         menu.add(collapse);
                     }
 
-                    JMenuItem hierarchy = new JMenuItem("Set parent or type...");
+                    // The note a domain expert leaves is the one that belongs in the ontology, and
+                    // reading it used to mean leaving the canvas: the heavy border said a note
+                    // existed and nothing on the board would say what it was. The main menu's
+                    // Notes > Note on the selected term... writes the same IAO:0000116, so this is
+                    // the same capability where the user is already looking.
+                    JMenuItem note = new JMenuItem(
+                            EditorNotes.notesOn(getOWLModelManager().getActiveOntology(),
+                                    IRI.create(iri), EditorNotes.Kind.EDITOR).isEmpty()
+                                    ? "Editorial note\u2026" : "Editorial note (has one)\u2026");
+                    note.setToolTipText("An IAO:0000116 editor note. Unlike a sticky note this is "
+                            + "in the ontology and travels with it.");
+                    note.addActionListener(a -> editEditorialNote(iri));
+                    menu.add(note);
+                }
+
+                // ---- 2. what it can be joined to -------------------------------------------
+                if (onTerm) {
+                    menu.addSeparator();
+                    JMenuItem hierarchy = new JMenuItem("Set parent or type\u2026");
                     hierarchy.setToolTipText("Assert rdfs:subClassOf, rdf:type or "
                             + "rdfs:subPropertyOf between this term and another on the board");
                     hierarchy.addActionListener(a -> createHierarchyLinkFrom(iri));
                     menu.add(hierarchy);
 
-                    JMenuItem remove = new JMenuItem("Remove from canvas (keeps axioms)");
+                    JMenuItem relate = new JMenuItem("Relate to another term\u2026");
+                    relate.setToolTipText("An object property restriction. Dragging from this "
+                            + "node's handle to another does the same thing.");
+                    relate.addActionListener(a -> createRelationFrom(iri));
+                    menu.add(relate);
+                }
+
+                // ---- 3. what can be made here ----------------------------------------------
+                if (menu.getComponentCount() > 0) {
+                    menu.addSeparator();
+                }
+                JMenuItem newClass = new JMenuItem("New class here\u2026");
+                newClass.addActionListener(a -> createEntityAt(
+                        EntityFactory.Kind.CLASS, where.x, where.y));
+                menu.add(newClass);
+
+                JMenuItem newIndividual = new JMenuItem("New individual here\u2026");
+                newIndividual.addActionListener(a -> createEntityAt(
+                        EntityFactory.Kind.INDIVIDUAL, where.x, where.y));
+                menu.add(newIndividual);
+
+                JMenuItem addNote = new JMenuItem("Sticky note here\u2026");
+                addNote.setToolTipText("A note on the diagram. It is not in the ontology and "
+                        + "never appears in a release - see OntoBoard > Notes for one that does.");
+                addNote.addActionListener(a -> createStickyNote(where));
+                menu.add(addNote);
+
+                JMenuItem addFrame = new JMenuItem("Frame here\u2026");
+                addFrame.setToolTipText("A labelled region to group what is inside it. Also only "
+                        + "on the diagram.");
+                addFrame.addActionListener(a -> createFrame(where));
+                menu.add(addFrame);
+
+                // ---- 4. what it takes away, last -------------------------------------------
+                if (onTerm || onAnnotation || onEdge) {
+                    menu.addSeparator();
+                }
+                if (onTerm) {
+                    JMenuItem remove = new JMenuItem("Remove from board");
+                    remove.setToolTipText("The axioms stay in the ontology.");
+                    remove.setAccelerator(javax.swing.KeyStroke.getKeyStroke(
+                            java.awt.event.KeyEvent.VK_DELETE, 0));
                     remove.addActionListener(a -> {
                         membership.remove(iri);
                         refresh();
                     });
                     menu.add(remove);
                 }
-                if (cell != null && graph.getModel().isEdge(cell)) {
+                if (onEdge) {
                     final String edgeId = graph.getIdForCell(cell);
                     if (isInferred(edgeId)) {
                         // An inferred edge has no axiom behind it, so there is nothing to delete.
@@ -2706,42 +2892,15 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                                 + "not assert it. Nothing to remove.");
                         menu.add(inferred);
                     } else {
-                        JMenuItem deleteAxiom = new JMenuItem("Delete axiom from ontology...");
+                        JMenuItem deleteAxiom = new JMenuItem("Delete axiom from ontology\u2026");
                         deleteAxiom.addActionListener(a -> deleteAxiomFor(edgeId));
                         menu.add(deleteAxiom);
                     }
                 }
-
-                menu.addSeparator();
-
-                JMenuItem newClass = new JMenuItem("New class here...");
-                newClass.addActionListener(a -> createEntityAt(
-                        EntityFactory.Kind.CLASS, where.x, where.y));
-                menu.add(newClass);
-
-                JMenuItem newIndividual = new JMenuItem("New individual here...");
-                newIndividual.addActionListener(a -> createEntityAt(
-                        EntityFactory.Kind.INDIVIDUAL, where.x, where.y));
-                menu.add(newIndividual);
-
-                if (iri != null && membership.contains(iri)) {
-                    JMenuItem relate = new JMenuItem("Create relation from this node...");
-                    relate.addActionListener(a -> createRelationFrom(iri));
-                    menu.add(relate);
-
-                    // The note a domain expert leaves is the one that belongs in the ontology, and
-                    // reading it used to mean leaving the canvas: the heavy border said a note
-                    // existed and nothing on the board would say what it was. The main menu's
-                    // Notes > Note on the selected term... writes the same IAO:0000116, so this is
-                    // the same capability where the user is already looking.
-                    JMenuItem note = new JMenuItem(
-                            EditorNotes.notesOn(getOWLModelManager().getActiveOntology(),
-                                    IRI.create(iri), EditorNotes.Kind.EDITOR).isEmpty()
-                                    ? "Editorial note..." : "Editorial note (has one)...");
-                    note.setToolTipText("An IAO:0000116 editor note. Unlike a sticky note this is "
-                            + "in the ontology and travels with it.");
-                    note.addActionListener(a -> editEditorialNote(iri));
-                    menu.add(note);
+                if (onAnnotation) {
+                    JMenuItem delete = new JMenuItem("Delete this note or frame");
+                    delete.addActionListener(a -> deleteAnnotation(iri));
+                    menu.add(delete);
                 }
 
                 menu.show(graphComponent.getGraphControl(), event.getX(), event.getY());
@@ -2816,7 +2975,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                 + ontologyIriOf(sessionOntology)
                 + ", and you have switched to another ontology. Collaborate... to start a session "
                 + "for this one.";
-        collabStatus.setText("Disconnected - you switched ontology");
+        setSessionStatus("Disconnected - you switched ontology", LIGHT_ATTENTION);
         collabStatus.setToolTipText(message);
         LOGGER.info("OntoBoard: {}", message);
     }

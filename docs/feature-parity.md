@@ -55,6 +55,7 @@ individual views in a tabbed column beside the canvas, so none of this needs a t
 | Feature | Web app | Plugin | Assessment |
 |---|---|---|---|
 | Graph canvas, drag, pan, zoom | ✅ | ✅ | JGraphX. Since 1.58.0 the zoom has a readout in the status bar, clickable for 100%, and a *Fit* |
+| A toolbar that fits its panel | ❓ | ✅ | Since 1.67.0. It wanted 1261px in an 857px tab, so *Collaborate* was laid out past the right edge - unpainted and unclickable. 777px now, with an overflow menu |
 | Snap and align | ❓ | ✅ | Since 1.66.0 a visible 20px dot grid. Snapping had been on since the first version at an invisible 10px step, which is sixteen candidate columns across one node |
 | Keyboard zoom and selection | ❓ | ✅ | Since 1.66.0: Ctrl+0 actual size, Ctrl+1 fit, Ctrl+2 frame the selection, Ctrl+± zoom, Ctrl+A select nodes, Ctrl+D copy notes and frames |
 | Sticky notes in colours | ✅ | ✅ | Since 1.66.0. The model, the sidecar field and the renderer had all been in place since notes existed; nothing ever wrote the colour, so every note was yellow |

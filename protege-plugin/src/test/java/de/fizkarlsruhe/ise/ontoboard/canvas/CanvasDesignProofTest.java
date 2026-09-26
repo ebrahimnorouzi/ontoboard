@@ -312,7 +312,7 @@ class CanvasDesignProofTest {
         };
 
         File png = new File(designDirectory(), "empty-state.png");
-        paintPanel(new StartPanel(nothing, nothing, nothing), png, 900, 560);
+        paintPanel(new StartPanel(nothing, nothing, nothing, nothing), png, 900, 560);
 
         assertTrue(png.isFile() && png.length() > 2048, png.getAbsolutePath()
                 + " (" + png.length() + " bytes)");

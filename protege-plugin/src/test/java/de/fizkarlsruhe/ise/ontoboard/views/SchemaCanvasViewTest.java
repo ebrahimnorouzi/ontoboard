@@ -29,6 +29,32 @@ class SchemaCanvasViewTest {
 
     private static final String PERSON = "http://example.org/tiny#Person";
 
+    /**
+     * The Add button's label is cut rather than allowed to grow.
+     *
+     * <p>Its width is pinned in the toolbar, because {@code describeSelectionOnButton} rewrites the
+     * label on every selection change: "Add selected" is 108px and "Add Cheesey vegetable topping" is
+     * 211, so clicking through the class tree shifted everything to its right by up to 103px -
+     * including the Find field, which slid out from under the pointer mid-type. Pinning the width
+     * without eliding would only move the problem: the layout would clip mid-word, with nothing on
+     * screen to say anything had been cut.
+     */
+    @Test
+    void aLongLabelIsElidedRatherThanClipped() {
+        assertEquals("", SchemaCanvasView.elide(null, 14));
+        assertEquals("", SchemaCanvasView.elide("   ", 14));
+        assertEquals("Margherita", SchemaCanvasView.elide("Margherita", 14));
+        // Exactly at the limit is not cut; one over is. "Pizza toppings" is fourteen characters,
+        // so it stays whole - which is the boundary this pair exists to pin.
+        assertEquals("Pizza toppings", SchemaCanvasView.elide("Pizza toppings", 14));
+        assertEquals("Pizza topping\u2026", SchemaCanvasView.elide("Pizza toppings!", 14));
+        assertEquals("Cheesey veget\u2026",
+                SchemaCanvasView.elide("Cheesey vegetable topping", 14));
+        // Never longer than the limit it was given, whatever it is asked.
+        assertTrue(SchemaCanvasView.elide("Cheesey vegetable topping", 14).length() <= 14);
+        assertTrue(SchemaCanvasView.elide("abcdefghij", 1).length() <= 2);
+    }
+
     private static CanvasLayout layoutWithSomethingInEveryPerOntologyCollection() {
         CanvasLayout layout = new CanvasLayout();
         layout.ontologyIri = "http://example.org/previous#";
