@@ -1,5 +1,8 @@
 package de.fizkarlsruhe.ise.ontoboard.model;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Objects;
 
 /** A node as the canvas sees it. Identity is the id alone. */
@@ -8,29 +11,43 @@ public final class CanvasNode {
     private final String id;
     private final NodeKind kind;
     private final String label;
-    private final boolean noted;
+    private final List<String> notes;
     private final boolean unsatisfiable;
 
     public CanvasNode(String id, NodeKind kind, String label) {
-        this(id, kind, label, false, false);
+        this(id, kind, label, null, false);
     }
 
-    public CanvasNode(String id, NodeKind kind, String label, boolean noted) {
-        this(id, kind, label, noted, false);
+    public CanvasNode(String id, NodeKind kind, String label, List<String> notes) {
+        this(id, kind, label, notes, false);
     }
 
-    public CanvasNode(String id, NodeKind kind, String label, boolean noted,
+    public CanvasNode(String id, NodeKind kind, String label, List<String> notes,
             boolean unsatisfiable) {
         this.id = Objects.requireNonNull(id, "id");
         this.kind = Objects.requireNonNull(kind, "kind");
         this.label = Objects.requireNonNull(label, "label");
-        this.noted = noted;
+        this.notes = withoutBlanks(notes);
         this.unsatisfiable = unsatisfiable;
+    }
+
+    /** Blank notes dropped, so {@link #hasNote} cannot be true with nothing to show. */
+    private static List<String> withoutBlanks(List<String> candidates) {
+        if (candidates == null || candidates.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<String> kept = new ArrayList<String>(candidates.size());
+        for (String candidate : candidates) {
+            if (candidate != null && !candidate.trim().isEmpty()) {
+                kept.add(candidate);
+            }
+        }
+        return Collections.unmodifiableList(kept);
     }
 
     /** The same node, marked as one the reasoner found unsatisfiable. */
     public CanvasNode asUnsatisfiable() {
-        return new CanvasNode(id, kind, label, noted, true);
+        return new CanvasNode(id, kind, label, notes, true);
     }
 
     /**
@@ -71,7 +88,27 @@ public final class CanvasNode {
      * equalling itself across an annotation edit.
      */
     public boolean hasNote() {
-        return noted;
+        return !notes.isEmpty();
+    }
+
+    /**
+     * The editorial notes on this term, in the order the ontology gave them, never null.
+     *
+     * <p>The words, not a flag. This was a boolean until 1.59.0, and the boolean was the reason the
+     * canvas could draw a term as noted and then refuse to say what the note said: tooltips are built
+     * from the projection, and the projection knew only that a note existed. Hovering gave "Has an
+     * editorial note", which raises a question and withholds its answer.
+     *
+     * <p>A list rather than one string because a term can carry several - OBO ontologies routinely do,
+     * one per editor - and collapsing them to "the note" would hide everyone's but the first.
+     *
+     * <p>Kinds are not distinguished here. {@code IAO:0000116} and {@code IAO:0000232} mean different
+     * things and the Notes dialog says which is which; on a hover the words are what is wanted, and a
+     * tooltip that spent a line on the annotation property before quoting the note would be answering
+     * a question nobody hovered to ask.
+     */
+    public List<String> getNotes() {
+        return notes;
     }
 
     @Override

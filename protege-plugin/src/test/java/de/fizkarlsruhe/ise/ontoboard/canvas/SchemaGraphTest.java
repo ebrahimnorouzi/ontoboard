@@ -134,7 +134,7 @@ class SchemaGraphTest {
     @Test
     void anUnsatisfiableClassIsDrawnInRedRatherThanItsNamespaceColour() {
         CanvasNode broken = new CanvasNode("http://example.org/o#Impossible", NodeKind.CLASS,
-                "Impossible", false, true);
+                "Impossible", null, true);
         CanvasNode ordinary = new CanvasNode("http://example.org/o#Fine", NodeKind.CLASS, "Fine");
 
         String brokenStyle = SchemaGraph.styleForTesting(broken);
@@ -147,7 +147,7 @@ class SchemaGraphTest {
     @Test
     void aNotedTermGetsTheHeavierBorderAndKeepsItsNamespaceColour() {
         CanvasNode noted = new CanvasNode("http://example.org/o#Noted", NodeKind.CLASS,
-                "Noted", true);
+                "Noted", java.util.Collections.singletonList("the parent is provisional"));
 
         String style = SchemaGraph.styleForTesting(noted);
 
@@ -159,7 +159,7 @@ class SchemaGraphTest {
     @Test
     void anUnsatisfiableTermThatAlsoHasANoteIsStillDrawnAsAnError() {
         CanvasNode both = new CanvasNode("http://example.org/o#Both", NodeKind.CLASS,
-                "Both", true, true);
+                "Both", java.util.Collections.singletonList("needs review"), true);
 
         String style = SchemaGraph.styleForTesting(both);
 

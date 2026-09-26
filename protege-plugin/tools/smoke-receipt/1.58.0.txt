@@ -134,11 +134,23 @@ cannot be drawn), and D1-D4 on presence.
 
 NUMBERS
 
-1228 tests exist, 1227 ran, 1 skipped, 0 failures. 21 are new: 12 in CanvasSearchTest, 9 in
-CanvasZoomTest.
+1227 tests, 1 skipped, 0 failures. 21 are new: 12 in CanvasSearchTest, 9 in CanvasZoomTest.
 
-The total was checked two ways rather than by adding a delta to the previous receipt, whose tree is not
-in git: the surefire reports sum to 1228, and @Test occurrences across src/test/java number 1228. The
+  CORRECTION, made while preparing 1.59.0: this receipt first said 1228, checked "two ways - the
+  surefire reports sum to 1228, and @Test occurrences number 1228". Both checks were wrong by one, in
+  opposite directions, so they agreed and the agreement looked like confirmation.
+
+    - target/surefire-reports is never cleaned, because mvn clean is unusable here. It held
+      TEST-...ContainsAxiomSemanticsTest.xml, tests="1", for a class renamed before it was ever
+      committed. Summing the directory counted a test that does not exist.
+    - grep -c "@Test" also matches @TestMethodOrder, which PizzaEndToEndTest carries once.
+
+  Maven's own summary line - 1227 - was right all along. Two checks that can each be wrong by one are
+  not independent evidence, which is the actual lesson; the count is now taken from an anchored
+  pattern (^\s*@Test\s*$) and from a reports directory with the stale file deleted, and both agree
+  with Maven.
+
+The
 skip is BundleConfigurationTest's jar-dependent case, which has nothing to inspect during the test
 phase because target/*.jar is emptied before each build; the jar is built afterwards and is what both
 hosts loaded.

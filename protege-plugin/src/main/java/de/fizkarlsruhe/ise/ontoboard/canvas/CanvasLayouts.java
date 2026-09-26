@@ -70,6 +70,64 @@ public final class CanvasLayouts {
      * which works identically for all three algorithms and needs no knowledge of what each does.
      * {@link #applyGrid} builds its own vertex list and filters instead.
      */
+    /**
+     * Where to put the neighbours of a term, as offsets from its centre.
+     *
+     * <p><em>Expand neighbours</em> added them and placed them nowhere: with no stored geometry they
+     * came out of {@code SchemaGraph.render} in a row along the top of the board, overlapping whatever
+     * was already there and nowhere near the term they belong to. On a board of any size the visible
+     * result of expanding was that the diagram got worse.
+     *
+     * <p>A ring around the source, because that is what the relationship is: these are its
+     * neighbours, and a ring says so at a glance while a row says nothing. Rings fill outward once
+     * full - capacity is the circumference divided by a node's width plus a gap, so nodes on a ring
+     * never overlap by construction rather than by choice of magic number.
+     *
+     * <p>Starts at the top and goes clockwise. Not for any deep reason, but so that expanding the same
+     * term twice puts things in the same places, which matters more than which places.
+     *
+     * @return one {@code {dx, dy}} per neighbour, relative to the centre of the source node
+     */
+    public static List<double[]> ringOffsets(int count) {
+        List<double[]> offsets = new ArrayList<double[]>();
+        if (count <= 0) {
+            return offsets;
+        }
+        int placed = 0;
+        int ring = 0;
+        while (placed < count) {
+            double radius = FIRST_RING + ring * RING_GAP;
+            int capacity = capacityOf(radius);
+            int onThisRing = Math.min(capacity, count - placed);
+            for (int i = 0; i < onThisRing; i++) {
+                // -90 degrees so the first neighbour sits above the source rather than to its right.
+                double angle = -Math.PI / 2 + 2 * Math.PI * i / onThisRing;
+                offsets.add(new double[] {
+                        radius * Math.cos(angle), radius * Math.sin(angle) });
+            }
+            placed += onThisRing;
+            ring++;
+        }
+        return offsets;
+    }
+
+    /** How many nodes fit on a ring of this radius without touching. */
+    private static int capacityOf(double radius) {
+        int capacity = (int) Math.floor(2 * Math.PI * radius / NODE_PITCH);
+        // Three is the smallest count for which "a ring" means anything; below that the arithmetic
+        // would put two nodes on top of each other on a very small radius.
+        return Math.max(3, capacity);
+    }
+
+    /** Radius of the first ring: far enough out that an edge to the centre is visible. */
+    private static final double FIRST_RING = 240;
+
+    /** How much further out each subsequent ring sits. */
+    private static final double RING_GAP = 200;
+
+    /** A default node is 160 wide; the rest is the gap that keeps two neighbours apart. */
+    private static final double NODE_PITCH = 200;
+
     public static void apply(SchemaGraph graph, Algorithm algorithm) {
         graph.getModel().beginUpdate();
         try {

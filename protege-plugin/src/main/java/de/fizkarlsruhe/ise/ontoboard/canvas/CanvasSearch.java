@@ -150,8 +150,11 @@ public final class CanvasSearch {
      * <p>Not {@code IRI.getShortForm} or a Prot&eacute;g&eacute; renderer, because this class is
      * asked about {@link CanvasNode}s, whose ids are strings the projection has already produced,
      * and because a search box that needed the OWL API could not be tested without an ontology.
+     *
+     * <p>Public because the canvas view names terms in status messages, including terms that have
+     * already left the board and so have no {@link CanvasNode} left to read a label from.
      */
-    static String localNameOf(String iri) {
+    public static String localNameOf(String iri) {
         if (iri == null) {
             return "";
         }

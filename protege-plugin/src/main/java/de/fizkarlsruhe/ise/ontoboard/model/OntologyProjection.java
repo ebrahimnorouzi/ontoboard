@@ -35,7 +35,7 @@ public final class OntologyProjection {
     /** A node that knows whether its term carries an editorial note. */
     private static CanvasNode noted(OWLOntology ontology,
             org.semanticweb.owlapi.model.IRI entity, NodeKind kind, String label) {
-        return new CanvasNode(iri(entity), kind, label, EditorNotes.hasNote(ontology, entity));
+        return new CanvasNode(iri(entity), kind, label, EditorNotes.allNotesOn(ontology, entity));
     }
 
     /**
@@ -119,7 +119,7 @@ public final class OntologyProjection {
             if (isOn(onCanvasIris, cls.getIRI())) {
                 nodes.add(new CanvasNode(iri(cls.getIRI()), NodeKind.CLASS,
                         DisplayLabels.forEntity(ontology, cls),
-                        EditorNotes.hasNote(ontology, cls.getIRI())));
+                        EditorNotes.allNotesOn(ontology, cls.getIRI())));
             }
         }
         for (OWLNamedIndividual ind : ontology.getIndividualsInSignature()) {

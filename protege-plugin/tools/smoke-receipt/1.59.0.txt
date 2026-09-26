@@ -1,0 +1,120 @@
+OntoBoard 1.59.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-09-26  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 8/8  test 10/10
+  2026-09-26  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 8/8  test 10/10
+
+
+EXPANSION THAT KEEPS ITS OWN RESULT, AND A NOTE YOU CAN READ
+
+C2 and C3 of docs/superpowers/specs/2026-09-25-canvas-interface-plan.md.
+
+1. FOUR SYMPTOMS, ONE DISCARDED RETURN VALUE
+
+"Expand neighbours" found the right terms and then made the diagram worse. The whole of it follows from
+one line:
+
+    membership.expandOneHop(getOWLModelManager().getActiveOntology(), iri);
+    refresh();
+
+expandOneHop returned a count, and the caller dropped it. So:
+
+  - the new terms had no geometry, and SchemaGraph.render lays an unpositioned node at y=40 in a row
+    along the top of the board - overlapping whatever was up there, nowhere near the term they
+    neighbour;
+  - nothing was saved, so the next refresh - which any edit anywhere in Protege triggers - moved them
+    again;
+  - nothing was said, so an expansion that found nothing looked exactly like one that worked, and the
+    reasonable conclusion was that the menu item was broken;
+  - nothing remembered what had been added, so there was no way back.
+
+It returns the identifiers now and each of the four follows from having them. Positions are written into
+the layout *before* the refresh, because render reads the layout - placing them afterwards would draw
+them in the wrong place and move them a frame later.
+
+The ring is CanvasLayouts.ringOffsets. Its one real decision: a ring's capacity is its circumference
+divided by a node's width plus a gap, and neighbours spill onto further rings once it is full. So two
+neighbours cannot overlap by construction, rather than by a magic number that happens to work for eight
+and fails at forty. Seven tests, including the property a glance cannot check on a crowded board - that
+no two offsets in a set of sixty are closer than a node is wide.
+
+Collapse is scoped deliberately narrowly. It takes back exactly what one expansion added; it is held for
+the session and not written to the sidecar; and it is not undo. It answers "I have just expanded this and
+it was too much", which is asked seconds later and never after reopening a project - and a sidecar entry
+would be advertising an undo that survives a restart, which is A5 in the plan and is still not done. The
+menu item counts what is still on the board rather than what was added, because a user may have removed
+some by hand since and an item promising to remove four when three remain reports the wrong number after
+doing the right thing.
+
+2. THE NOTE, IN WORDS
+
+A term carrying an editorial note has been drawn with a heavier border since 1.18.0 and readable and
+writable from the node menu since 1.56.0. Hovering it said:
+
+    Has an editorial note
+
+The reason it could not say more is one type: CanvasNode carried a *boolean*. Tooltips are built from
+the projection, the projection knew only that a note existed, and so a marker raised a question the
+interface then refused to answer - with the words a dialog away in the main menu bar.
+
+It carries the text now, as a list, because a term can hold one note per editor and OBO ontologies
+routinely do; collapsing them to "the note" would hide everyone's but the first. EditorNotes.hasNote
+delegates to the same reading, so the marker and the text cannot disagree - a term drawn as noted always
+has something to quote. On hover: the first note, wrapped at 64 characters and cut at 220, and a count of
+the rest. It is the one tooltip here that wraps, because an editorial note is prose where a sticky note
+is a phrase.
+
+3. A CORNER BADGE, AND WHY THE BORDER STAYS
+
+The plan asks for the note to be drawn "as a corner badge so 'has a note' and 'is unsatisfiable' stop
+competing for the same border". There is a badge now - amber, straddling the top-right corner, sized with
+the zoom and clamped at both ends so it neither vanishes at 10% nor takes over the node at 400%.
+
+The border stays, and this is a trade-off rather than an omission. CanvasExport renders through
+mxCellRenderer.createBufferedImage and createSvgDocument, which draw from the graph model and never call
+the component's paint - so nothing painted as an overlay appears in an exported PNG or SVG. That was
+checked before the badge was written, not assumed. Dropping the heavier border in favour of the badge
+would have made notes invisible in every diagram anybody publishes, so C3's third clause is *partly*
+done: the badge is the marker on screen, the border is the marker that survives an export, and the two
+channels are no longer both the border's alone.
+
+AND A CORRECTION TO 1.58.0's NUMBERS
+
+That receipt said "1228 tests exist, 1227 ran", and claimed the total was "checked two ways - the surefire
+reports sum to 1228, and @Test occurrences across src/test/java number 1228". Both checks were wrong by
+one, in opposite directions. They agreed, and the agreement looked like confirmation.
+
+  - target/surefire-reports is never cleaned, because mvn clean is unusable here - the IDE's language
+    server holds target open. It contained TEST-...ContainsAxiomSemanticsTest.xml with tests="1", left
+    behind by a class renamed before it was ever committed (git log -S finds it in no commit). Summing
+    the directory counted a test that does not exist.
+  - grep -c "@Test" also matches @TestMethodOrder, which PizzaEndToEndTest carries once.
+
+Maven's own summary was right all through. The lesson is not about either mistake: two checks that can
+each be wrong by one are not independent evidence, and I treated their agreement as proof. The count is
+now taken from an anchored pattern and from a reports directory with the stale file deleted, and both
+agree with Maven's summary. 1.58.0's true figure was 1227, and its receipt now says so and says how it
+was wrong.
+
+WHAT THIS DOES NOT COVER
+
+The ring geometry, the badge geometry, the note tooltip and the identifiers expandOneHop returns are all
+unit-tested. What is not: that the ring looks right, that the badge lands on the corner on screen, or
+that a collapse feels like the opposite of an expansion. The in-host self-test constructs the canvas on
+both Protege versions and does not click anything.
+
+Still open in the canvas plan: A5 (no undo for board-owned state), C4 (no drag-to-connect - the
+capability is in the node menu and setCellsDisconnectable is off), C5 (imported terms cannot be drawn),
+and D1-D4 on presence.
+
+NUMBERS
+
+1255 tests, 1 skipped, 0 failures. 28 new: 7 in CanvasRingTest, 7 in NoteBadgeLayerTest, 9 added to
+CanvasTooltipsTest, 3 to EditorNotesTest, 2 to CanvasMembershipTest.
+
+Counted three ways, which now agree: Maven's summary says 1255, the surefire reports sum to 1255, and an
+anchored ^\s*@Test\s*$ across src/test/java finds 1255. The reports directory holds 88 files for 88 test
+classes. The skip is BundleConfigurationTest's jar-dependent case, which has nothing to inspect during
+the test phase because target/*.jar is emptied before each build; the jar is built afterwards and is what
+both hosts loaded.

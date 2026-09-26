@@ -71,6 +71,8 @@ public final class CollaborativeGraphComponent extends mxGraphComponent {
             @Override
             public void paint(Graphics graphics) {
                 super.paint(graphics);
+                // Badges under the cursors, so a peer's ring and label are never hidden behind one.
+                NoteBadgeLayer.paint((Graphics2D) graphics, getGraph());
                 // Read here rather than in the enclosing constructor: this runs later, once the
                 // field exists.
                 PeerCursorLayer.paint((Graphics2D) graphics, getGraph(), cursors,

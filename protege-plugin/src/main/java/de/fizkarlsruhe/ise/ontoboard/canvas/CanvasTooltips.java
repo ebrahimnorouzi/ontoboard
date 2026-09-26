@@ -48,9 +48,7 @@ public final class CanvasTooltips {
             text.append("<br><b>Cannot have instances</b> - the reasoner found this class "
                     + "contradictory");
         }
-        if (node.hasNote()) {
-            text.append("<br>Has an editorial note");
-        }
+        appendNotes(text, node.getNotes());
         return text.append("<br><font size=\"-2\">").append(escape(node.getId()))
                 .append("</font></html>").toString();
     }
@@ -195,6 +193,78 @@ public final class CanvasTooltips {
      * <p>Not theoretical: a label containing {@code <} or {@code &} is legal in an ontology, and an
      * unescaped one silently truncates the tooltip at that character or renders as a broken tag.
      */
+    /**
+     * The editorial notes, quoted.
+     *
+     * <p>This line used to read "Has an editorial note" - a marker that raises a question and then
+     * refuses to answer it, with the words a dialog away in the main menu bar. The note is the reason
+     * the term is drawn with a heavier border, so it is the thing to say.
+     *
+     * <p>Wrapped and truncated, which the other tooltips here do not need. A sticky note is a phrase
+     * by nature; an editorial note is prose, and "the parent is provisional pending the review agreed
+     * in issue 412, see also the alignment discussion" in one unbroken line is a tooltip wider than
+     * the screen it is explaining.
+     *
+     * <p>Only the first is quoted when a term carries several, with a count for the rest. Three
+     * paragraphs from three editors on hover is not a tooltip, and the Notes dialog shows them all
+     * with their authors and dates.
+     */
+    private static void appendNotes(StringBuilder text, java.util.List<String> notes) {
+        if (notes == null || notes.isEmpty()) {
+            return;
+        }
+        text.append("<br><i>Note:</i> ").append(wrap(escape(truncate(notes.get(0)))));
+        if (notes.size() > 1) {
+            text.append("<br><font size=\"-2\">and ").append(notes.size() - 1)
+                    .append(notes.size() == 2 ? " more note" : " more notes")
+                    .append(" - OntoBoard &gt; Notes shows them all</font>");
+        }
+    }
+
+    /** How much of a note a tooltip carries before it stops being one. */
+    private static final int NOTE_LIMIT = 220;
+
+    /** Roughly how wide, in characters, a wrapped line runs. */
+    private static final int WRAP_AT = 64;
+
+    private static String truncate(String note) {
+        String trimmed = note.trim();
+        if (trimmed.length() <= NOTE_LIMIT) {
+            return trimmed;
+        }
+        // Cut at a space rather than mid-word, when there is one to cut at near the limit.
+        int space = trimmed.lastIndexOf(' ', NOTE_LIMIT);
+        return trimmed.substring(0, space > NOTE_LIMIT - 20 ? space : NOTE_LIMIT).trim() + "\u2026";
+    }
+
+    /**
+     * Line breaks on word boundaries.
+     *
+     * <p>Done here rather than by giving the HTML a width, because a {@code <div>} with a fixed width
+     * in a Swing tooltip sizes the whole tooltip to that width - including the one-line tooltips, which
+     * would then be mostly empty space.
+     *
+     * <p>Runs over the escaped text, so it counts an escaped entity as its several characters rather
+     * than the one it renders as. A line that comes out slightly short because the note contained an
+     * ampersand is not worth the bookkeeping to avoid.
+     */
+    static String wrap(String escaped) {
+        StringBuilder wrapped = new StringBuilder(escaped.length() + 16);
+        int sinceBreak = 0;
+        for (String word : escaped.split(" ")) {
+            if (sinceBreak > 0 && sinceBreak + 1 + word.length() > WRAP_AT) {
+                wrapped.append("<br>");
+                sinceBreak = 0;
+            } else if (sinceBreak > 0) {
+                wrapped.append(' ');
+                sinceBreak++;
+            }
+            wrapped.append(word);
+            sinceBreak += word.length();
+        }
+        return wrapped.toString();
+    }
+
     private static String escape(String value) {
         if (value == null) {
             return "";

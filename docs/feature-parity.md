@@ -55,6 +55,7 @@ individual views in a tabbed column beside the canvas, so none of this needs a t
 | Feature | Web app | Plugin | Assessment |
 |---|---|---|---|
 | Graph canvas, drag, pan, zoom | ✅ | ✅ | JGraphX. Since 1.58.0 the zoom has a readout in the status bar, clickable for 100%, and a *Fit* |
+| Expand a term's neighbours | ✅ | ✅ | Since 1.59.0 the new terms are placed in a ring around the source, counted in the status bar, saved, and collapsible. Before that they were laid in a row at the top of the board and nothing was saved or reported |
 | Find a term on the board | ✅ | ✅ | Since 1.58.0. Matches label and IRI, ranked so an exact name beats a longer one containing it; centres and selects the match, which also selects it in Protégé. Ctrl+Enter adds a match that is in the ontology but not on the board. Before this there was no search at all |
 | Create entities on canvas | ✅ | ✅ | Double-click empty canvas, or drag from the entity trees |
 | Write axioms from the canvas | ✅ | ✅ | Plugin is **better** on the axiom: six OWLAx readings vs the web app's `rdfs:domain`/`range`, which silently intersects domains. Worse on the gesture: *Create relation from this node…* in the node menu, not drag-to-connect - `setConnectable(false)` in `SchemaCanvasView`. Until 1.52.0 this row said "draw edges", which sent people hunting for a connection handle that is not there |

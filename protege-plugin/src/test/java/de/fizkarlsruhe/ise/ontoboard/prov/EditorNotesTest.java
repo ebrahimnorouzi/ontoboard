@@ -51,6 +51,54 @@ class EditorNotesTest {
         manager.applyChanges(changes);
     }
 
+    // ---------- what the canvas asks for ----------
+
+    /**
+     * Both kinds together, editor notes first, for the canvas tooltip.
+     *
+     * <p>The order is fixed rather than the ontology's, because a tooltip quotes the first note and
+     * counts the rest: if the order followed whichever annotation was asserted first, the same term
+     * would show a different note to two people whose files differ only in axiom order.
+     */
+    @Test
+    void allNotesOnReturnsBothKindsWithEditorNotesFirst() {
+        apply(EditorNotes.addNote(ontology, TERM, EditorNotes.Kind.CURATOR,
+                "Value taken from the 2019 handbook."));
+        apply(EditorNotes.addNote(ontology, TERM, EditorNotes.Kind.EDITOR,
+                "The definition needs work."));
+
+        assertEquals(Arrays.asList("The definition needs work.",
+                "Value taken from the 2019 handbook."),
+                EditorNotes.allNotesOn(ontology, TERM));
+    }
+
+    /**
+     * The marker and the text cannot disagree.
+     *
+     * <p>{@code hasNote} drives the heavier border the canvas draws; {@code allNotesOn} is what the
+     * tooltip quotes. They were two independent readings of the ontology, and a term drawn as noted
+     * with nothing to quote is the bug that combination invites. One delegates to the other now, and
+     * this is the test that says why.
+     */
+    @Test
+    void theMarkerAndTheTextAgree() {
+        assertFalse(EditorNotes.hasNote(ontology, TERM));
+        assertTrue(EditorNotes.allNotesOn(ontology, TERM).isEmpty());
+
+        apply(EditorNotes.addNote(ontology, TERM, EditorNotes.Kind.CURATOR, "Checked."));
+
+        assertTrue(EditorNotes.hasNote(ontology, TERM));
+        assertFalse(EditorNotes.allNotesOn(ontology, TERM).isEmpty());
+    }
+
+    /** A term nobody has annotated, and a null ontology, both answer with nothing. */
+    @Test
+    void allNotesOnIsEmptyRatherThanNullWhenThereIsNothingToSay() {
+        assertTrue(EditorNotes.allNotesOn(ontology,
+                IRI.create("http://example.org/o#Untouched")).isEmpty());
+        assertTrue(EditorNotes.allNotesOn(null, TERM).isEmpty());
+    }
+
     // ---------- notes accumulate ----------
 
     @Test

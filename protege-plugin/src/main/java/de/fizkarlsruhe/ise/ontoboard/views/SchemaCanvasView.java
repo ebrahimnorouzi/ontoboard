@@ -166,6 +166,17 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
 
     /** The zoom readout in the status bar. A button, because clicking it returns to 100%. */
     private JButton zoomReadout;
+
+    /**
+     * What each expansion added, so it can be taken back.
+     *
+     * <p>Held for the session and not written to the sidecar. Collapse is an answer to "I have just
+     * expanded this and it was too much", which is a question asked seconds later and never after
+     * reopening the project - and a sidecar that recorded it would be promising an undo that survives
+     * a restart, which is A5 in the canvas plan and is a different piece of work.
+     */
+    private final java.util.Map<String, List<String>> expansions =
+            new java.util.LinkedHashMap<String, List<String>>();
     /**
      * The live session, or null when working through git. Created on demand from the
      * Collaborate dialog rather than at startup, because most sessions are single-user and
@@ -776,6 +787,139 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             collabStatus.setText(text);
             collabStatus.setToolTipText(text);
         }
+    }
+
+    // ------------------------------------------------------------------ expand and collapse
+
+    /**
+     * Puts a term's neighbours on the board, around it, and says how many arrived.
+     *
+     * <p>All four of the things this now does were missing, and they were the same omission:
+     * {@code expandOneHop} returned a count that the caller threw away. So the new terms had no
+     * geometry and {@code SchemaGraph.render} laid them in a row along the top of the board - nowhere
+     * near the term they neighbour, overlapping whatever was already up there; nothing was saved, so
+     * the next refresh moved them again; nothing was said, so an expansion that found nothing looked
+     * exactly like one that worked; and nothing remembered what had been added, so there was no way
+     * back.
+     *
+     * <p>The ring is {@link CanvasLayouts#ringOffsets}. Positions are written into the layout
+     * <em>before</em> the refresh, because render reads the layout - placing them afterwards would
+     * draw them in the wrong place first and move them a frame later.
+     */
+    private void expandNeighbours(String iri) {
+        List<String> added = membership.expandOneHop(getOWLModelManager().getActiveOntology(), iri);
+        if (added.isEmpty()) {
+            setStatus(nameOnTheBoard(iri) + " has no neighbours that are not already on the board.");
+            return;
+        }
+
+        placeAround(iri, added);
+        expansions.put(iri, new ArrayList<String>(added));
+        refresh();
+        capturePositions();
+        saveLayoutTo(layoutFile);
+        setStatus("Expanded " + nameOnTheBoard(iri) + " - " + added.size()
+                + (added.size() == 1 ? " neighbour added" : " neighbours added")
+                + ". Right-click it to collapse again.");
+    }
+
+    /**
+     * Takes back exactly what one expansion added.
+     *
+     * <p>Deliberately not a general undo - that is A5 in the canvas plan and is not done. This removes
+     * the terms that this expansion put on the board, which is the promise the menu item makes, and
+     * nothing else: a term the user has since moved, annotated or drawn an axiom on is still one this
+     * expansion added, and leaving it behind would make "collapse" mean something different every time.
+     *
+     * <p>Only the board is touched. Anything written to the ontology in between - an axiom drawn
+     * between two of these neighbours - stays in the ontology, which is the same rule
+     * {@code Remove from canvas} follows.
+     */
+    private void collapseExpansion(String iri) {
+        List<String> added = expansions.remove(iri);
+        if (added == null || added.isEmpty()) {
+            setStatus("Nothing to collapse on " + nameOnTheBoard(iri) + ".");
+            return;
+        }
+        int removed = 0;
+        for (String neighbour : added) {
+            if (membership.remove(neighbour)) {
+                removed++;
+                // An expansion rooted at a term that is leaving cannot be collapsed later.
+                expansions.remove(neighbour);
+            }
+        }
+        refresh();
+        capturePositions();
+        saveLayoutTo(layoutFile);
+        setStatus("Collapsed " + nameOnTheBoard(iri) + " - " + removed
+                + (removed == 1 ? " term removed from the board" : " terms removed from the board")
+                + ". The ontology is unchanged.");
+    }
+
+    /** Of a remembered expansion, the terms that are still drawn. Never null. */
+    private List<String> stillOnTheBoard(List<String> remembered) {
+        List<String> present = new ArrayList<String>();
+        if (remembered != null) {
+            for (String iri : remembered) {
+                if (membership.contains(iri)) {
+                    present.add(iri);
+                }
+            }
+        }
+        return present;
+    }
+
+    /** Writes ring positions for newly added neighbours into the layout. */
+    private void placeAround(String iri, List<String> neighbours) {
+        double[] source = boundsOf(iri);
+        double centreX = source[0] + source[2] / 2;
+        double centreY = source[1] + source[3] / 2;
+
+        List<double[]> offsets = CanvasLayouts.ringOffsets(neighbours.size());
+        for (int i = 0; i < neighbours.size() && i < offsets.size(); i++) {
+            CanvasLayout.NodeLayout position = new CanvasLayout.NodeLayout();
+            position.w = 160;
+            position.h = 60;
+            // The offset is to the neighbour's centre, so half a node back to its corner.
+            position.x = centreX + offsets.get(i)[0] - position.w / 2;
+            position.y = centreY + offsets.get(i)[1] - position.h / 2;
+            layout.nodes.put(neighbours.get(i), position);
+        }
+    }
+
+    /** Where a term is, as {@code {x, y, w, h}}, from the live cell or the layout, or the origin. */
+    private double[] boundsOf(String iri) {
+        Object cell = graph.getCellForId(iri);
+        if (cell instanceof com.mxgraph.model.mxCell) {
+            com.mxgraph.model.mxGeometry geometry = ((com.mxgraph.model.mxCell) cell).getGeometry();
+            if (geometry != null) {
+                return new double[] { geometry.getX(), geometry.getY(),
+                        geometry.getWidth(), geometry.getHeight() };
+            }
+        }
+        CanvasLayout.NodeLayout stored = layout.nodes.get(iri);
+        if (stored != null) {
+            return new double[] { stored.x, stored.y,
+                    stored.w > 0 ? stored.w : 160, stored.h > 0 ? stored.h : 60 };
+        }
+        return new double[] { 40, 40, 160, 60 };
+    }
+
+    /**
+     * What a term is called, for a sentence in the status bar.
+     *
+     * <p>From the drawn projection, so it is the label the user is looking at. A message that named a
+     * term by an IRI the board never shows would be describing something else as far as the reader is
+     * concerned.
+     */
+    private String nameOnTheBoard(String iri) {
+        for (CanvasNode node : termsOnTheBoard()) {
+            if (node.getId().equals(iri)) {
+                return CanvasSearch.nameOf(node);
+            }
+        }
+        return CanvasSearch.localNameOf(iri);
     }
 
     // ------------------------------------------------------------------ find and zoom
@@ -1779,11 +1923,24 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
 
                 if (iri != null && membership.contains(iri)) {
                     JMenuItem expand = new JMenuItem("Expand neighbours (1 hop)");
-                    expand.addActionListener(a -> {
-                        membership.expandOneHop(getOWLModelManager().getActiveOntology(), iri);
-                        refresh();
-                    });
+                    expand.setToolTipText("Put everything directly related to this term on the "
+                            + "board, in a ring around it");
+                    expand.addActionListener(a -> expandNeighbours(iri));
                     menu.add(expand);
+
+                    // Offered only when there is something to take back, counted over what is still
+                    // on the board: the user may have removed some of those terms by hand since, and
+                    // a menu item promising to remove four when three remain is a menu item that
+                    // reports the wrong number after doing the right thing.
+                    List<String> lastExpansion = stillOnTheBoard(expansions.get(iri));
+                    if (!lastExpansion.isEmpty()) {
+                        JMenuItem collapse = new JMenuItem(
+                                "Collapse (" + lastExpansion.size() + " added)");
+                        collapse.setToolTipText("Take the terms that expansion added off the board. "
+                                + "The ontology is not touched.");
+                        collapse.addActionListener(a -> collapseExpansion(iri));
+                        menu.add(collapse);
+                    }
 
                     JMenuItem hierarchy = new JMenuItem("Set parent or type...");
                     hierarchy.setToolTipText("Assert rdfs:subClassOf, rdf:type or "

@@ -252,16 +252,38 @@ The plugin is early. These exist in the web application but not yet here:
   no undo for anything the board owns. The internal-id tooltips were replaced in 1.53.0, the last of
   the coordinate conversions unified into one function in 1.54.0, and search arrived in 1.58.0.
 
-- **A term's editorial note is readable and writable on the canvas since 1.56.0, and its text is
-  not in the tooltip yet.** The canvas drew a term carrying a note with a heavier border and offered
-  no way to learn what it said - hovering gave the IRI, right-clicking offered nothing about notes,
-  and the route was up to the main menu bar. A marker that raises a question the interface then
-  refuses to answer is worse than no marker.
+- **A term's editorial note is readable and writable on the canvas since 1.56.0, and readable on
+  hover since 1.59.0.** The canvas drew a term carrying a note with a heavier border and offered no way
+  to learn what it said - hovering gave the IRI, right-clicking offered nothing about notes, and the
+  route was up to the main menu bar. A marker that raises a question the interface then refuses to
+  answer is worse than no marker.
 
-  What is still missing is the text on hover. Tooltips are built from the `Projection` the canvas
-  draws, and `CanvasNode` carries a boolean - whether there is a note - rather than the note itself.
-  Threading the text through is a small model change and it is not done, so the plan's C3 is half
-  complete: the note is maintainable, and still not readable without opening a dialog.
+  The reason the text was missing for three releases is worth recording: `CanvasNode` carried a
+  *boolean*. Tooltips are built from the projection, the projection knew only that a note existed, and
+  so the tooltip could only say "Has an editorial note". It carries the words now, as a list - a term
+  can hold one note per editor and OBO ontologies do - and `EditorNotes.hasNote` delegates to the same
+  reading, so a term drawn as noted always has something to quote.
+
+  On hover: the first note, wrapped and cut at 220 characters, and a count of the rest. An editorial
+  note is prose rather than a phrase, so it is the one tooltip here that wraps. Three paragraphs from
+  three editors is not a tooltip; the Notes dialog shows them all with authors and dates.
+
+- **Expanding a term's neighbours made the diagram worse until 1.59.0.** *Expand neighbours* added
+  the right terms and placed them nowhere. With no stored geometry `SchemaGraph.render` laid them in a
+  row along the top of the board - overlapping whatever was up there, nowhere near the term they
+  neighbour - nothing was saved, so the next refresh moved them again; nothing was said, so an
+  expansion that found nothing looked exactly like one that worked; and nothing remembered what had
+  been added, so there was no way back.
+
+  Four symptoms, one cause: `expandOneHop` returned a count and the caller discarded it. It returns the
+  identifiers now, and each of the four follows - a ring around the source term
+  (`CanvasLayouts.ringOffsets`, filling outward once a ring is full so nodes cannot overlap by
+  construction), the positions written before the refresh rather than after, a sentence saying how many
+  arrived, and a *Collapse* item that takes back exactly what that expansion added.
+
+  Collapse is not undo. It is held for the session and not written to the sidecar, because it answers
+  "I have just expanded this and it was too much" - asked seconds later, never after reopening a
+  project. Real undo for board-owned state is A5 in the canvas plan and is still not done.
 
 - **A term on the board could not be found by name until 1.58.0, and the zoom had no readout and
   no way home.** Two absences rather than two bugs, and the larger one is the first. On a board with a

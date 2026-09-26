@@ -339,7 +339,7 @@ class OntologyProjectionTest {
     void aNoteDoesNotChangeWhichNodeANodeIs() {
         CanvasNode plain = new CanvasNode("http://example.org/o#Person", NodeKind.CLASS, "Person");
         CanvasNode marked = new CanvasNode("http://example.org/o#Person", NodeKind.CLASS,
-                "Person", true);
+                "Person", java.util.Collections.singletonList("check the definition"));
 
         assertEquals(plain, marked);
         assertEquals(plain.hashCode(), marked.hashCode());

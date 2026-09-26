@@ -40,6 +40,7 @@ public class SchemaGraph extends mxGraph {
             removeCells(mxGraphModel.getChildren(getModel(), getDefaultParent()), true);
             cellsById.clear();
             tooltipsById.clear();
+            notedIds.clear();
 
             // Node labels, so an edge's tooltip can name its two ends the way they are drawn
             // rather than by IRI. Built before the edges are inserted because an edge tooltip
@@ -79,6 +80,9 @@ public class SchemaGraph extends mxGraph {
                         x, y, w, h, styleFor(node, colours));
                 cellsById.put(node.getId(), cell);
                 tooltipsById.put(node.getId(), CanvasTooltips.forNode(node));
+                if (node.hasNote()) {
+                    notedIds.add(node.getId());
+                }
             }
 
             for (CanvasEdge edge : projection.getEdges()) {
@@ -130,6 +134,21 @@ public class SchemaGraph extends mxGraph {
     /** Cell id to the tooltip {@link #render} worked out for it. Cleared and rebuilt with the
      * cells, so it can never describe a cell that is no longer there. */
     private final Map<String, String> tooltipsById = new HashMap<String, String>();
+
+    /**
+     * Which drawn terms carry an editorial note, for {@link NoteBadgeLayer}.
+     *
+     * <p>Filled during {@code render} from the projection, like the tooltips, rather than read from the
+     * ontology at paint time. Paint runs on every scroll and hover; a lookup per node per repaint would
+     * put the OWL API on the paint path, and a badge that disagreed with the tooltip beside it would be
+     * worse than either.
+     */
+    private final java.util.Set<String> notedIds = new java.util.LinkedHashSet<String>();
+
+    /** The terms drawn with a note, in the order they were drawn. */
+    public java.util.Set<String> getNotedIds() {
+        return java.util.Collections.unmodifiableSet(notedIds);
+    }
 
     public Object getCellForId(String id) {
         return id == null ? null : cellsById.get(id);

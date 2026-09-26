@@ -155,8 +155,24 @@ public final class EditorNotes {
 
     /** Whether anything is noted on this entity, of either kind. Drives the canvas marker. */
     public static boolean hasNote(OWLOntology ontology, IRI entity) {
-        return !notesOn(ontology, entity, Kind.EDITOR).isEmpty()
-                || !notesOn(ontology, entity, Kind.CURATOR).isEmpty();
+        return !allNotesOn(ontology, entity).isEmpty();
+    }
+
+    /**
+     * Every note on an entity, of either kind, editor notes first.
+     *
+     * <p>For the canvas, which draws a marker on a noted term and now quotes the note on hover. It
+     * asks for the words rather than a flag, and it has no use for the distinction between the two
+     * annotation properties - so this is the one place that flattens them, and it does so in a fixed
+     * order rather than whichever the ontology happened to assert first.
+     *
+     * <p>{@link #hasNote} delegates here so the marker and the text cannot disagree: a term drawn as
+     * noted always has something to show, and one drawn plain never does.
+     */
+    public static List<String> allNotesOn(OWLOntology ontology, IRI entity) {
+        List<String> all = new ArrayList<String>(notesOn(ontology, entity, Kind.EDITOR));
+        all.addAll(notesOn(ontology, entity, Kind.CURATOR));
+        return all;
     }
 
     /**

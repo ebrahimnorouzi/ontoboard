@@ -144,12 +144,32 @@ stack in a row at the origin, the count is thrown away, nothing is saved, and th
 It should place new neighbours in a ring around the source, say how many arrived, save, and offer
 to collapse back to what was there before.
 
+> **Done in 1.59.0.** All four symptoms were the same cause - `expandOneHop` returned a count, so the
+> caller had nothing to place, nothing to save and nothing to collapse. It returns the identifiers now.
+> The ring is `CanvasLayouts.ringOffsets`, which fills outward once a ring is full, its capacity being
+> the circumference over a node's width plus a gap, so two neighbours cannot overlap by construction
+> rather than by a magic number that happens to work for eight.
+>
+> Collapse is scoped honestly: it takes back exactly what one expansion added, it is held for the
+> session rather than the sidecar, and it is not undo. A5 remains open.
+
 **C3 — Notes on the board, kept in the ontology.** A term with an editorial note is drawn with a
 heavier border and there is no way to read it without leaving the canvas. Add *Editorial note…* to
 the node menu, writing the same `IAO:0000116` the Notes menu writes, put the text in the tooltip,
 and draw the marker as a corner badge so "has a note" and "is unsatisfiable" stop competing for the
 same border. This is the item that matters most to domain experts: it is how they say "this is
 wrong" in a form the ontology keeps.
+
+> **Done across 1.56.0 and 1.59.0, with the last clause partly done.** The menu item and the writing in
+> 1.56.0; the text on hover and the badge in 1.59.0. The reason the text took three releases is one type:
+> `CanvasNode` carried a boolean, so the projection the tooltip is built from knew only *that* a note
+> existed. It carries the words now, as a list, since a term can hold one note per editor.
+>
+> The badge exists and the heavier border stays, which is the partly. `CanvasExport` renders through
+> `mxCellRenderer`, which draws from the graph model and never calls the component's `paint` - so an
+> overlay badge is absent from every exported PNG and SVG. Verified before the badge was written.
+> Removing the border would have made notes invisible in published diagrams, so the two markers no
+> longer *both* live on the border, but the border is still one of them.
 
 **C4 — Draw a relation and get an axiom.** `docs/feature-parity.md:59` claims the plugin can author
 edges from the canvas; connection handling is switched off, and the capability is buried in a
