@@ -71,7 +71,7 @@ public class SchemaGraph extends mxGraph {
                         frame.x, frame.y, frame.w <= 0 ? 320 : frame.w,
                         frame.h <= 0 ? 220 : frame.h,
                         SchemaStyles.FRAME + ";strokeColor="
-                                + (frame.stroke == null ? "#4A90D9" : frame.stroke));
+                                + (frame.stroke == null ? "#2D6FBF" : frame.stroke));
                 cellsById.put(frame.id, cell);
                 tooltipsById.put(frame.id, CanvasTooltips.forFrame(frame.label));
             }

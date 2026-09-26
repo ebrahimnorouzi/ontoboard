@@ -269,6 +269,45 @@ The plugin is early. These exist in the web application but not yet here:
   note is prose rather than a phrase, so it is the one tooltip here that wraps. Three paragraphs from
   three editors is not a tooltip; the Notes dialog shows them all with authors and dates.
 
+- **The stylesheet named a font that was never used, and the legend described a board that was never
+  drawn - both until 1.65.0.** Release 2 of the canvas design spec. Four of these are defects rather
+  than taste, and all four were invisible without a render.
+
+  `FONT` was the string `"Segoe UI, Helvetica Neue, Arial, sans-serif"` - a CSS fallback chain handed to
+  `java.awt.Font`, which takes one family name. `new Font("Segoe UI, Helvetica Neue, Arial,
+  sans-serif", BOLD, 13).getFamily()` returns `"Dialog"`. No board, screenshot or export had ever been
+  drawn in the typeface the code named, and because the SVG writer emits the string verbatim, the PNG
+  and the SVG of the same board were in different fonts. It resolves one installed family now.
+
+  **The namespace colour was applied to every node kind**, overwriting the kind's own stroke - so an
+  individual was drawn in the class blue where the legend promised lilac, and both property hexagons in
+  that same blue. The key was wrong for four of its six node rows. It is classes only now, which is the
+  channel's point: classes are the bulk of a schema.
+
+  **The unsatisfiable fill was registered and never drawn.** `styleFor` overrode the stroke alone, so a
+  contradictory class was a white card with a red outline while the key showed a pink one - and a red
+  outline is precisely the channel colour vision deficiency removes.
+
+  **An imported term was a grey slab with full-strength black text.** `opacity` fades the shape and not
+  the label, because `drawLabel` reads a different key; and JGraphX's drop shadow is an opaque mid-grey
+  offset copy with no blur, which composited through the 55% fill to `#DEDEDF`. The shadow is now
+  translucent and the imported label has its own secondary ink at 5.84:1 - `textOpacity` would have
+  composited to 3.87:1, under the floor for text.
+
+  Beyond the defects: is-a edges carry a hollow UML generalisation triangle and are solid, which frees
+  the dash to mean "the reasoner derived this" - previously asserted and inferred differed only by dash
+  length and one step of grey, on the one distinction this canvas must never blur. Inferred edges also
+  gained an open-circle tail, so the two are separated on two channels rather than one. The palette was
+  re-measured: nothing in it is below 4.4:1 now, where three strokes sat at 3.1 and the sticky note's
+  outline was 1.69:1 - the lowest-contrast line on the board, on the one object whose purpose is to be
+  noticed. Datatype and data-property nodes had been *exactly* the same fill and stroke, so the key drew
+  two rows with one swatch.
+
+  And the individual stopped being a rhombus. A 160x60 rhombus offers about 77px of interior where a
+  two-line ontology label needs 128, and no amount of padding fixes it - at the padding the geometry
+  demands, "Cheesey vegetable topping" wraps to three lines. It is a card with an underlined name, which
+  is UML's instance convention. The underline does not survive SVG export; the lilac fill does.
+
 - **Arrange drew the class hierarchy upside down until 1.64.0, and nobody noticed for thirteen
   releases.** `SchemaGraph` draws a subclass edge from the subclass *to* the superclass, and
   `mxHierarchicalLayout` ranks by following edges from source to target - so with the library's default

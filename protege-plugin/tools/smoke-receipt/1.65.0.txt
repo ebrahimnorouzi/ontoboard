@@ -1,0 +1,129 @@
+OntoBoard 1.65.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-09-26  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 8/8  test 10/10
+  2026-09-26  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 8/8  test 10/10
+
+
+THE STYLESHEET NAMED A FONT IT NEVER USED, AND THE KEY DESCRIBED A BOARD NOBODY DREW
+
+Release 2 of docs/superpowers/specs/2026-09-26-canvas-board-design.md. Four defects and a palette, all
+of them invisible without rendering the board and opening the image.
+
+1. A FONT THAT WAS NEVER ONCE USED
+
+    private static final String FONT = "Segoe UI, Helvetica Neue, Arial, sans-serif";
+
+That is a CSS fallback chain handed to java.awt.Font, which takes one family name:
+
+    new Font("Segoe UI, Helvetica Neue, Arial, sans-serif", BOLD, 13).getFamily()  ->  "Dialog"
+    new Font("Segoe UI", BOLD, 13).getFamily()                                     ->  "Segoe UI"
+
+So no board, screenshot, paper figure or export has ever been drawn in the typeface this code names -
+every one of them was the logical font Dialog. And because the SVG writer emits the family string
+verbatim while the PNG goes through AWT, the SVG and the PNG of the same board were in different
+typefaces. It resolves one installed family now, from a preference list, falling back to the logical
+family that always exists. Probed headless: 223 families available, Segoe UI among them, so a CI render
+resolves the same way a desktop does.
+
+2. THE NAMESPACE COLOUR WAS PAINTED OVER EVERY KIND
+
+styleFor appended ";strokeColor=" + colours.colourFor(iri) to every node, whatever it was - so the
+kind's own stroke was overwritten. board.svg drew the individual Italy in the class blue where the
+legend promises lilac, and both property hexagons in that same blue. The key was wrong for four of its
+six node rows, and had been since namespace colouring was added.
+
+Classes only now. That is the channel's point: classes are the bulk of a schema, and telling two
+vocabularies apart matters most where there are most of them.
+
+3. THE UNSATISFIABLE FILL WAS REGISTERED AND NEVER DRAWN
+
+The UNSATISFIABLE style has carried a pink fill for the legend since the marker existed, and styleFor
+only ever overrode the stroke. So the board showed a white card with a red outline while the key showed
+a pink one. A red outline on its own is also exactly the channel a colour vision deficiency removes:
+#C0392B simulates to #77771E under deuteranopia, which is deltaE 12.9 from a brown a namespace can be
+assigned. The fill is drawn now.
+
+4. AN IMPORTED TERM WAS A GREY SLAB WITH FULL-STRENGTH BLACK TEXT
+
+Two causes, both in the render and neither in the code. opacity fades the SHAPE and not the label -
+mxGraphics2DCanvas.drawLabel reads a different key - so a faded box carried bold black text as though
+nothing had been faded. And JGraphX paints a drop shadow as a hard offset copy of the same path in one
+flat colour, defaulting to opaque mid-grey: under a 55% white fill that composites to #DEDEDF, which is
+why an imported term rendered as a slab.
+
+The shadow is now translucent (alpha 0x26, offset 0,2) and the imported label has its own secondary ink
+at 5.84:1 on the composited fill. textOpacity would have been the wrong fix - at 55% the ink composites
+to #7D8083, 3.87:1, under the 4.5:1 floor for text.
+
+AND THE THINGS THAT WERE TASTE RATHER THAN DEFECT
+
+Is-a edges carry a hollow UML generalisation triangle and are solid. block + endFill=false is the only
+route to a hollow triangle - 4.2.2 ships five arrowheads and none of them is one - and the marker still
+returns its full length, so the connector stops at the triangle's base. Going solid frees the dash to
+mean "the reasoner derived this": before, asserted and inferred differed only by dash length and one
+step of grey, which is a legend lookup rather than a glance, on the one distinction this canvas must
+never blur. Inferred edges also gained an open-circle tail, so the two are separated on two independent
+channels - which matters because after deuteranopia the closest pair in the new edge set is 12.0 deltaE
+apart, survivable only because the dash is redundant with the hue.
+
+The palette was re-measured against the canvas and against each fill. Nothing is below 4.4:1 now. Three
+strokes had been at 3.1, under WCAG 1.4.11's 3:1 floor once anti-aliasing is allowed for; the inferred
+grey was 2.90:1; and the sticky note's outline was 1.69:1 - the lowest-contrast line on the board, on
+the one object whose entire purpose is to be noticed. Datatype and data-property nodes had been exactly
+the same fill AND the same stroke, so the key drew two rows with one swatch; the data property moves to
+teal, and its edge moves with it, because the edge and the node for one OWL construct should be one
+colour.
+
+The individual stopped being a rhombus. A 160x60 rhombus offers about 77px of interior where a two-line
+ontology label needs 128, and padding cannot rescue it: at the padding the geometry demands, "Cheesey
+vegetable topping" wraps to three lines and a longer topping name to four, which is taller than the box.
+It is a card with an underlined name - UML's instance-specification convention. Stated plainly: the
+underline does not survive SVG export, the lilac fill does, and the class javadoc's claim that "shape
+carries the entity kind" is amended rather than left standing.
+
+Property hexagons gained 22px of padding each side. mxGraphView.getWordWrapWidth subtracts insets and
+spacing from the cell's full width and knows nothing about the shape, so a hexagon whose corners sit at
+a quarter and three quarters of its width offered 101px against a 127.8px wrap width - any two-line
+label hung out of both slanted edges.
+
+ONE THING THE SPEC DID NOT CATCH, FOUND THE SAME WAY
+
+With the individual fixed, the rendered key still drew both property rows as plain rectangles while the
+board draws hexagons - the same fault as the rhombus, in reverse. Found by looking at legend.png after
+the change, and fixed in the same release. Every row of the key now draws the shape the canvas draws.
+
+WHAT THIS DOES NOT COVER
+
+CanvasLegendTest.legendColoursMatchTheStylesheet compares every row's fill, stroke, dash and opacity
+against the live stylesheet, so the colours cannot drift from the board. Nothing compares the SHAPES the
+key paints against the canvas - that is hand-written Swing on one side and a JGraphX style name on the
+other - which is why both shape mismatches survived until somebody rendered the panel. A test for that
+would have to rasterise both and compare, and is not written.
+
+Also unmeasured here: how any of this looks on a 150% scaled display, or under Protege 5.6's dark look
+and feel. The canvas background is a hardcoded light hex; the spec's R4.8 addresses that deliberately
+rather than by accident.
+
+NUMBERS
+
+1324 tests, 1 skipped, 0 failures. No new tests: this release changes values that
+CanvasLegendTest.legendColoursMatchTheStylesheet already guards.
+
+That the guard has teeth was verified rather than assumed, because the whole edit was applied in one go
+and so the test never failed on the way. Reverting one hex - the class stroke, back to the old #4A90D9 -
+produces:
+
+    stroke colour drifted for obClass ==> expected: <#2D6FBF> but was: <#4A90D9>
+
+and the change was then put back.
+
+Because that is a source edit after the build, and this project's rule is that there are none between a
+build and its commit, the revert was proved rather than trusted: the jar was rebuilt from the reverted
+source and every class under de/fizkarlsruhe/ compared against the jar the two hosts actually loaded.
+All identical. (The jar files themselves hash differently - zip entry timestamps - which is why the
+comparison is per class rather than per archive.)
+
+Counted three ways, agreeing: Maven's summary, the surefire reports, and an anchored ^\s*@Test\s*$ across
+src/test/java; 93 report files for 93 test classes.

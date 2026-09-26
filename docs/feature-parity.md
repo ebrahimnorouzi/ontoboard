@@ -64,7 +64,7 @@ individual views in a tabbed column beside the canvas, so none of this needs a t
 | Delete axioms from canvas | ✅ | ✅ | With a confirmation distinct from removing from canvas |
 | Layout algorithms | ✅ | ✅ | Hierarchical, organic, circle, grid. Since 1.64.0 the hierarchy runs the right way up - superclass above subclass - with orthogonal routing, loose terms parked under the diagram, and the result fitted to the window |
 | The canvas can be reviewed without launching Protégé | ❌ | ✅ | Since 1.64.0. `CanvasDesignProofTest` renders the board, a 31-term board, the legend and the empty state to `target/design/` headlessly. Three of the four defects that release fixed were found by looking at those images |
-| Minimap, PNG/SVG export | ✅ | ✅ | |
+| Minimap, PNG/SVG export | ✅ | ✅ | Since 1.65.0 an exported PNG no longer carries grey label chips - the edge-label backing was the canvas colour, which is wrong on a white page |
 | Labels from `rdfs:label`, namespace colours | 🔶 | ✅ | Plugin colours by namespace and prefers labels |
 | Selection synced with the editor | ➖ | ✅ | **New capability** — impossible in the web app |
 | Live redraw on external edits | ➖ | ✅ | Canvas is a view over Protégé's model |
