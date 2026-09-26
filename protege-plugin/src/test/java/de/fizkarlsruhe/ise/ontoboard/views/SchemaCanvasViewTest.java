@@ -9,6 +9,7 @@ import org.protege.editor.owl.model.event.EventType;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.awt.Point;
 import org.junit.jupiter.api.Test;
 import org.semanticweb.owlapi.apibinding.OWLManager;
 import org.semanticweb.owlapi.model.IRI;
@@ -253,5 +254,146 @@ class SchemaCanvasViewTest {
 
         assertEquals(77, note.x, 0.001);
         assertEquals(88, note.y, 0.001);
+    }
+
+    // ================================================== turning a screen point into a graph point
+
+    /**
+     * A point on the graph control converts without a scroll term.
+     *
+     * <p>The bug this pins: the drop path added the viewport's scroll offset on top of coordinates
+     * that already included it. The same {@code TransferHandler} is installed on the scroll pane and
+     * on the graph control inside it, and the control is the full-size canvas - so its coordinates
+     * are already scrolled. On a board scrolled down 500 pixels a class dropped in the middle of the
+     * visible area was recorded 500 units below it, off-screen, and the drop looked like it had done
+     * nothing at all.
+     *
+     * <p>Three gestures used to compute this three different ways: the double-click path called the
+     * library's converter and was right, cursor sharing divided by the zoom and was right, and the
+     * drop path added the scroll and was wrong. They now share one function, and the absence of a
+     * scroll term is the thing worth asserting - it is what came back.
+     */
+    @Test
+    void aGraphControlPointNeedsNoScrollTerm() {
+        // Scale 1, no translate: the point is itself, however far the board has been scrolled.
+        assertEquals(new Point(400, 300),
+                SchemaCanvasView.graphPointFromControl(400, 300, 1.0, 0, 0));
+    }
+
+    /** The zoom is divided out, so a click at 200% lands where it was aimed. */
+    @Test
+    void theZoomIsDividedOut() {
+        assertEquals(new Point(200, 150),
+                SchemaCanvasView.graphPointFromControl(400, 300, 2.0, 0, 0));
+        assertEquals(new Point(800, 600),
+                SchemaCanvasView.graphPointFromControl(400, 300, 0.5, 0, 0));
+    }
+
+    /** The view translate is subtracted - zero on a default view, not in general. */
+    @Test
+    void theViewTranslateIsSubtracted() {
+        assertEquals(new Point(380, 290),
+                SchemaCanvasView.graphPointFromControl(400, 300, 1.0, 20, 10));
+        // Applied after the zoom, the way mxGraphComponent.getPointForEvent does it.
+        assertEquals(new Point(180, 140),
+                SchemaCanvasView.graphPointFromControl(400, 300, 2.0, 20, 10));
+    }
+
+    /**
+     * A zero or negative scale falls back to 1 rather than dividing by zero.
+     *
+     * <p>Not hypothetical: {@code mxGraphView.getScale()} is a double that a layout or an animation
+     * can leave at zero mid-update, and an infinite coordinate puts a node nowhere recoverable.
+     */
+    @Test
+    void anImpossibleScaleDoesNotProduceAnInfiniteCoordinate() {
+        assertEquals(new Point(400, 300),
+                SchemaCanvasView.graphPointFromControl(400, 300, 0, 0, 0));
+        assertEquals(new Point(400, 300),
+                SchemaCanvasView.graphPointFromControl(400, 300, -1, 0, 0));
+    }
+
+    // ================================================== what Delete reports
+
+    /**
+     * Delete distinguishes three outcomes, because they mean different things to the user.
+     *
+     * <p>"Removed from the board" and "deleted from the ontology" look identical on a canvas - the
+     * node disappears either way - and nothing in the interface told them apart. A curator who
+     * believes they have retired a term and has only hidden it finds out at the next release; one who
+     * believes the reverse spends an afternoon hunting a class that was never gone.
+     */
+    @Test
+    void aRemovalKnowsWhatItDid() {
+        SchemaCanvasView.Removal removal = new SchemaCanvasView.Removal(3, 1, 2);
+
+        assertEquals(3, removal.getTerms());
+        assertEquals(1, removal.getAnnotations());
+        assertEquals(2, removal.getSkipped());
+        assertFalse(removal.nothingSelected());
+    }
+
+    /**
+     * An empty selection is its own outcome, not a removal of nothing.
+     *
+     * <p>Pressing Delete with nothing selected used to do nothing and say nothing, which is
+     * indistinguishable from a broken shortcut. It now says what to do instead.
+     */
+    @Test
+    void anEmptySelectionIsDistinguishableFromHavingRemovedNothing() {
+        assertTrue(new SchemaCanvasView.Removal(0, 0, 0).nothingSelected());
+        // Something was selected and none of it could be removed - an edge, which is an axiom. That
+        // is not "nothing selected", and saying so is the difference between a hint and a shrug.
+        assertFalse(new SchemaCanvasView.Removal(0, 0, 1).nothingSelected());
+    }
+
+    // ================================================== editing a term's editorial note
+
+    /**
+     * What a note box's contents mean, given what was there.
+     *
+     * <p>The canvas can now read and write a term's {@code IAO:0000116} editor note in place, which
+     * is what a domain expert actually leaves behind - the heavy border used to say a note existed
+     * and nothing on the board would say what it was. The four cases are separated from the dialog
+     * because the dialog cannot be tested and this can, and because each wrong answer is quiet:
+     * replacing where it should add writes a second annotation, and treating whitespace as text
+     * leaves an empty note in a release.
+     */
+    @Test
+    void anEmptyBoxOverAnExistingNoteRemovesIt() {
+        assertEquals(SchemaCanvasView.NoteEdit.REMOVE,
+                SchemaCanvasView.noteEditFor("check with Bob", ""));
+        assertEquals(SchemaCanvasView.NoteEdit.REMOVE,
+                SchemaCanvasView.noteEditFor("check with Bob", "   "));
+    }
+
+    @Test
+    void textWhereThereWasNoneAddsANote() {
+        assertEquals(SchemaCanvasView.NoteEdit.ADD,
+                SchemaCanvasView.noteEditFor("", "check the base"));
+        assertEquals(SchemaCanvasView.NoteEdit.ADD,
+                SchemaCanvasView.noteEditFor(null, "check the base"));
+    }
+
+    @Test
+    void differentTextOverAnExistingNoteReplacesIt() {
+        assertEquals(SchemaCanvasView.NoteEdit.REPLACE,
+                SchemaCanvasView.noteEditFor("check the base", "check the base with Bob"));
+    }
+
+    /**
+     * Whitespace-only differences are not edits.
+     *
+     * <p>Rewriting the axiom for a trailing space would, in a live session, republish it to every
+     * peer and stamp fresh provenance on it - for something nobody typed on purpose.
+     */
+    @Test
+    void invisibleDifferencesAreNotEdits() {
+        assertEquals(SchemaCanvasView.NoteEdit.UNCHANGED,
+                SchemaCanvasView.noteEditFor("check the base", "check the base  "));
+        assertEquals(SchemaCanvasView.NoteEdit.UNCHANGED,
+                SchemaCanvasView.noteEditFor("  check the base", "check the base"));
+        assertEquals(SchemaCanvasView.NoteEdit.UNCHANGED, SchemaCanvasView.noteEditFor("", "   "));
+        assertEquals(SchemaCanvasView.NoteEdit.UNCHANGED, SchemaCanvasView.noteEditFor(null, null));
     }
 }

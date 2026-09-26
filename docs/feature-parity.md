@@ -64,7 +64,8 @@ individual views in a tabbed column beside the canvas, so none of this needs a t
 | Selection synced with the editor | ➖ | ✅ | **New capability** — impossible in the web app |
 | Live redraw on external edits | ➖ | ✅ | Canvas is a view over Protégé's model |
 | Layout persistence | ✅ | ✅ | Plugin keeps it in a sidecar, so the ontology stays byte-clean |
-| Frames and sticky notes | ✅ | ✅ | Right-click the canvas; kept in the sidecar |
+| Frames and sticky notes | ✅ | ✅ | Right-click the canvas; kept in the sidecar, so they never reach a release |
+| Editorial notes on the canvas | ❌ | ✅ | **New capability.** Right-click a term for its `IAO:0000116` editor note, read and written in place. The same note the Notes menu writes - an axiom, not a diagram annotation, so it travels with the ontology and reaches a live peer |
 | Undo/redo, axioms | ✅ | ✅ | Protégé's own undo, which is stronger than the web app's 50-snapshot stack |
 | Undo/redo, the board itself | ✅ | ❌ | **Build.** Arrangement, board membership, notes and frames are not axioms, so Protégé has nothing to undo. Removing twelve arranged nodes is final. Until 1.52.0 the row above covered for this |
 
@@ -206,5 +207,8 @@ mature plugins is waste) or ➖ (web-application machinery with no desktop meani
   `collab/__tests__/server-boot.test.mjs` (4) now start the shipped server and speak to it over a
   socket, in both languages. What is still not covered is a *browser* and Protégé at once; Protégé
   to Protégé through the real server is covered.
-- **No plugin UI is covered by tests.** 1191 tests cover logic; every Swing surface is verified
+- **The tab and its views are constructed by the in-host self-test since 1.57.0**, on both
+  Protégés - so "the canvas cannot be built under Felix" is no longer an open question, though
+  whether it paints correctly still is.
+- **No plugin UI is covered by tests.** 1207 tests cover logic; every Swing surface is verified
   by hand.

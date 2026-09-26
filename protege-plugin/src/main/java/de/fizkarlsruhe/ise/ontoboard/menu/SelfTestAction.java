@@ -81,6 +81,108 @@ public class SelfTestAction extends OntoBoardAction {
      * the menu item execute the same code. A self-test with two implementations is two things to
      * keep in step, and the one nobody runs is the one that rots.
      */
+    /** The {@code WorkspaceTab} extension id in plugin.xml. */
+    private static final String TAB_ID = "OntoBoardTab";
+
+    /** The {@code label} in the same extension - what Window &gt; Tabs shows. */
+    private static final String TAB_LABEL = "OntoBoard";
+
+    /**
+     * Opens the OntoBoard tab, letting its views construct, and closes it again.
+     *
+     * <p>On the event thread, because it builds Swing components and this runs on Felix's dispatch
+     * queue - every self-test line in the log is tagged {@code [FelixDispatchQueue]}. Constructing a
+     * view off the event thread is undefined rather than merely impolite, and the failure it produces
+     * would be blamed on the canvas.
+     *
+     * <p>If the tab is already open the workspace is left exactly as it was: a user running the
+     * self-test from the menu should not have their tab closed underneath them. Otherwise it is
+     * opened and removed, which returns the workspace to how it was found.
+     */
+    private String openTheTabOnce() {
+        final java.util.concurrent.atomic.AtomicReference<String> outcome =
+                new java.util.concurrent.atomic.AtomicReference<String>("nothing ran");
+        Runnable onTheEventThread = new Runnable() {
+            @Override
+            public void run() {
+                outcome.set(attemptToOpenTheTab());
+            }
+        };
+        try {
+            if (javax.swing.SwingUtilities.isEventDispatchThread()) {
+                onTheEventThread.run();
+            } else {
+                javax.swing.SwingUtilities.invokeAndWait(onTheEventThread);
+            }
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+            return "interrupted before the event thread could open the tab";
+        } catch (java.lang.reflect.InvocationTargetException | RuntimeException | Error broke) {
+            return "could not run on the event thread: " + describe(broke);
+        }
+        return outcome.get();
+    }
+
+    private String attemptToOpenTheTab() {
+        try {
+            org.protege.editor.core.ui.workspace.TabbedWorkspace workspace =
+                    getOWLEditorKit().getOWLWorkspace();
+            if (workspace.containsTab(TAB_ID)) {
+                return "ok: already open in the restored workspace";
+            }
+            // By id or by label. Protege composes a plugin's id from the bundle and the
+            // extension, so the bare extension id from plugin.xml is not necessarily what getId()
+            // returns - the first version of this matched on the id alone, failed, and blamed the
+            // plugin for what was the lookup's mistake. The label is what the user sees in
+            // Window > Tabs, so matching it is both more robust and closer to the thing being
+            // checked.
+            org.protege.editor.core.ui.workspace.WorkspaceTabPlugin plugin = null;
+            StringBuilder offered = new StringBuilder();
+            for (org.protege.editor.core.ui.workspace.WorkspaceTabPlugin candidate
+                    : workspace.getOrderedPlugins()) {
+                String id = candidate.getId();
+                String label = candidate.getLabel();
+                if (offered.length() > 0) {
+                    offered.append("; ");
+                }
+                offered.append(id).append('=').append(label);
+                if (TAB_ID.equals(id) || TAB_LABEL.equals(label)
+                        || (id != null && id.endsWith(TAB_ID))) {
+                    plugin = candidate;
+                    break;
+                }
+            }
+            if (plugin == null) {
+                // Naming what was on offer rather than only what was missing: without it this says
+                // the tab cannot be opened and gives nobody a way to find out why.
+                return "no workspace tab is registered as " + TAB_ID + " or \"" + TAB_LABEL
+                        + "\". Protege offers: " + offered;
+            }
+            org.protege.editor.core.ui.workspace.WorkspaceTab tab =
+                    workspace.addTabForPlugin(plugin);
+            if (tab == null) {
+                return "addTabForPlugin returned null for " + TAB_ID;
+            }
+            try {
+                return "ok: opened, its views constructed, and closed again";
+            } finally {
+                workspace.removeTab(tab);
+            }
+        } catch (RuntimeException | Error broke) {
+            // Error included deliberately: a view that references a Protege type the bundle never
+            // imported fails with NoClassDefFoundError, which is exactly the class of failure this
+            // whole self-test exists to catch, and it is not a RuntimeException.
+            return "opening the tab threw " + describe(broke);
+        }
+    }
+
+    /** An exception in one line, with its type, since a message alone is often empty. */
+    private static String describe(Throwable failure) {
+        String message = failure.getMessage();
+        return failure.getClass().getName()
+                + (message == null || message.trim().isEmpty() ? "" : ": " + message);
+    }
+
     public OperationResult selfTest() {
         return run((OWLOntology) null);
     }
@@ -126,6 +228,25 @@ public class SelfTestAction extends OntoBoardAction {
                     outcome.startsWith("ok:") ? outcome.substring(3).trim() : outcome);
         }
 
+        // The tab, which is not an action and so is not in the map above. It is the last clause
+        // of F1 in the plan and the only one never met: the smoke script looks for "Saved tab state
+        // for 'OntoBoard' tab", which Protege logs at shutdown - and the smoke kills the process, so
+        // that line can never appear. Measured on this machine, the tab is not mentioned anywhere in
+        // a smoke run's log slice: it simply never opens, because the self-test runs from the editor
+        // kit hook and nothing asks for the tab.
+        //
+        // This asks for it. Opening the tab constructs SchemaCanvasView - 2,114 lines and the
+        // largest class in the plugin, covered until now only by tests that construct no view - so
+        // this is also the first check that the canvas can be built at all under Felix.
+        String tabOutcome = openTheTabOnce();
+        boolean tabOk = tabOutcome.startsWith("ok:");
+        if (!tabOk) {
+            failed++;
+            result.warn("Window > Tabs > OntoBoard failed: " + tabOutcome);
+        }
+        result.row("Window > Tabs > OntoBoard", tabOk ? "ok" : "FAILED",
+                tabOk ? tabOutcome.substring(3).trim() : tabOutcome);
+
         for (String skipped : skippedWithReasons()) {
             result.note(skipped);
         }
@@ -133,13 +254,19 @@ public class SelfTestAction extends OntoBoardAction {
                 + ", not the ontology you have open.");
         deleteTree(projectRoot.getParentFile());
 
+        // The menu items plus the tab, which is checked above and is not one of them. Counting
+        // only the map said "9 of 9" on a run that had in fact checked ten things - a summary that
+        // undercounts its own work is the kind of small lie that makes the rest of it less
+        // believable, and the receipts quote this line verbatim.
+        int checks = underTest.size() + 1;
         if (failed > 0) {
-            return result.failed(failed + " of " + underTest.size()
-                    + " menu items failed. This is a defect in the plugin, not in your "
+            return result.failed(failed + " of " + checks
+                    + " checks failed. This is a defect in the plugin, not in your "
                     + "ontology.").build();
         }
-        return result.summary(underTest.size() + " of " + underTest.size()
-                + " menu items ran. " + skippedWithReasons().size()
+        return result.summary(checks + " of " + checks
+                + " checks ran - " + underTest.size() + " menu items and the tab itself. "
+                + skippedWithReasons().size()
                 + " others are not covered here - see the notes.").build();
     }
 

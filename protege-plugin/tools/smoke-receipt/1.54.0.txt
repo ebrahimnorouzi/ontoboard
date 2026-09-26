@@ -1,0 +1,116 @@
+OntoBoard 1.54.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-09-26  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 8/8  test 9/9
+  2026-09-26  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 8/8  test 9/9
+TWO DEFECTS THE AUDIT'S VERIFIERS CONFIRMED
+
+Both were found by the collaboration-and-canvas audit and both survived adversarial verification, which
+matters here: of 122 findings only 49 reached a verifier before a session limit stopped it, and of those
+31 survived and 14 were refuted outright. These two are from the surviving set, and each was confirmed
+failing against the unfixed code before its test was kept.
+
+1. A CLASS DROPPED ON A SCROLLED BOARD LANDED OFF-SCREEN
+
+The same TransferHandler instance is installed on two components: on graphComponent, and again on
+graphComponent.getGraphControl(). A drop point is relative to whichever one received it. The graph
+control is the full-size canvas *inside* the viewport, so its coordinates already account for
+scrolling - and the conversion added the viewport's scroll offset on top. On a board scrolled down 500
+pixels, a class dropped in the middle of the visible area was recorded 500 units below it. Off-screen,
+so the drop appeared to have done nothing at all.
+
+The instructive part is where the right answer already was. Eight lines from the wrong conversion,
+shareCursor says:
+
+  // The event is on the graph control, which is the scrolled content, so only the zoom has
+  // to be undone - the mirror of PeerCursorLayer, and of toGraphPoint minus its scroll term.
+
+The correct arithmetic was written down, next to the incorrect one, in a comment that names the
+difference and does not resolve it. Three gestures had three spellings of one calculation: the
+double-click path called JGraphX's own converter and was right, cursor sharing divided by the zoom and
+was right, the drop path added the scroll and was wrong.
+
+There is now one function, graphPointFromControl, and all three go through it. Four tests, one of
+which asserts the *absence* of a scroll term - that is the thing that came back, so that is the thing
+worth pinning. Cursor sharing also picks up the view-translate term it had been omitting: zero on a
+default view, not in general.
+
+toGraphPoint is gone rather than left behind. It had exactly one caller.
+
+2. OBSOLETION DID NOT SURVIVE THE WIRE
+
+odk/Obsoletion writes owl:deprecated "true"^^xsd:boolean. Every non-label annotation travelled as its
+lexical form alone and was rebuilt with factory.getOWLLiteral(value) - xsd:string. So a peer received
+
+  owl:deprecated "true"^^xsd:string
+
+and OWL API's isDeprecatedIRIAssertion is FALSE for that. A term retired on one machine stayed live on
+the other, both files claimed to say the same thing, and nothing reported the difference.
+
+Nothing could report it, which is why it lasted. No reasoner interprets an annotation - the codebase
+says so itself in Provenance's javadoc - and the lexical form matched, so a textual diff of the values
+agreed too. The divergence is visible only by asking OWL API what the axiom means, which is what the
+new test does: it asserts isDeprecatedIRIAssertion at the receiving end rather than comparing strings.
+Against the unfixed code the literal arrives as OWLLiteralImplString and the assertion fails.
+
+The same loss hit every typed or tagged non-label annotation - skos:prefLabel "Pizza"@de arriving
+untagged, a numeric annotation arriving as text - each of which shows up in the next release diff
+between two editors who believe they are in sync.
+
+The operation now carries `datatype` and `lang`, and only when they are not the default: xsd:string is
+omitted because that is what a plain literal reports and what the receiver builds anyway, so an
+operation an older plugin or the web client already understands goes out byte-identical. Removal
+matching was tightened at the same time - without that, a removal of "true"^^xsd:boolean matches an
+xsd:string "true" on the far side and retracts the wrong axiom, which is the same confusion arriving
+from the other direction.
+
+3. DELETE SAID NOTHING, THREE WAYS
+
+removeSelectionFromCanvas returned a count and the Delete action discarded it. Three silences followed
+from that one line:
+
+  - Delete on a term removed it and said nothing.
+  - Delete on a sticky note or a frame did nothing at all and said nothing either, because
+    membership.remove returns false for an id that is not a term. Indistinguishable from a broken
+    shortcut.
+  - Delete with nothing selected also did nothing silently, which is the same shrug again.
+
+And the Escape binding the testing guide documents did not exist, so the only way out of a rubber-band
+selection was to click empty canvas and hope to miss a node - with Delete one keystroke away from
+removing whatever was still caught in it.
+
+Delete now counts three outcomes and says which happened, because they mean genuinely different things:
+a term comes off the board and stays in the ontology; a note or frame is deleted outright, since it
+exists nowhere else; an edge is left alone with a reason, because an edge is an axiom and removing one
+belongs behind the confirmation the context menu already has.
+
+The clause that matters most is the one about the ontology. "Removed from the board" and "deleted from
+the ontology" look identical on a canvas - the node disappears either way - and nothing in this
+interface told them apart. A curator who believes they have retired a term and has only hidden it finds
+out at the next release. One who believes the reverse spends an afternoon hunting a class that never
+left.
+
+A NOTE ON HOW THIS RELEASE WAS ASSEMBLED
+
+1.54.0 was built and smoked on both hosts, and then a third fix was written on top of it. That made the
+receipt describe a jar that would not ship, so it was rebuilt and re-smoked with all three in. The same
+thing happened at 1.52.0. The rule this settles on: no source edits between a build and its commit -
+because a receipt naming a build nobody will run is worse than no receipt, and Felix keys its bundle
+cache on symbolic name and version, so two jars under one number is how somebody ends up running the
+one they did not test.
+
+WHAT THE VERIFIERS CHANGED ABOUT MY OWN ACCOUNT
+
+Worth recording, because it cuts both ways. The verifiers corrected several findings' line numbers and
+narrowed two scenarios - and on the ontology-binding defect fixed in 1.51.0, all three independently
+noted the outbound half was broader than an ontology switch: the change listener is model-manager-level,
+so edits to *any* loaded ontology were published. That is what was fixed, so the correction confirms
+the shape of the fix rather than extending it. On the multilingual label defect, a verifier pointed out
+it needs no second language at all: a single "X"@en arrives untagged, which is already axiom-level
+divergence.
+
+NUMBERS
+
+1199 tests, 0 failures, 0 skipped - a fully unskipped run. 8 new: four for the coordinate conversion,
+two live ones over a real socket for the datatype and the language tag, two for what Delete reports. 45 JavaScript tests pass.

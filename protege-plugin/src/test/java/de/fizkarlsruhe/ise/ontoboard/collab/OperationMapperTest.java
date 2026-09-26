@@ -21,6 +21,8 @@ import org.semanticweb.owlapi.model.OWLClass;
 import org.semanticweb.owlapi.model.OWLDataFactory;
 import org.semanticweb.owlapi.model.OWLNamedIndividual;
 import org.semanticweb.owlapi.model.OWLObjectProperty;
+import org.semanticweb.owlapi.model.AxiomType;
+import org.semanticweb.owlapi.model.OWLAnnotation;
 import org.semanticweb.owlapi.model.OWLOntology;
 import org.semanticweb.owlapi.model.OWLOntologyChange;
 import org.semanticweb.owlapi.model.OWLOntologyManager;
@@ -962,5 +964,91 @@ class OperationMapperTest {
 
         assertEquals(after, ontology.getAxiomCount(),
                 "a redelivered operation must not duplicate axioms");
+    }
+
+    // ---------- axioms that already carry annotations ----------
+
+    /**
+     * A peer's plain axiom is not added beside an annotated local one saying the same thing.
+     *
+     * <p>{@code containsAxiom(axiom)} compares axioms <em>with</em> their annotations, and everything
+     * rebuilt from an operation is plain - the protocol has no field for an axiom annotation. So an
+     * ontology holding {@code SubClassOf(Margherita, Pizza)} with a {@code dcterms:contributor} stamp
+     * did not match the plain form, and the plain form was added next to it.
+     *
+     * <p>Measured on this OWL API before fixing it: {@code containsAxiom(plain)} false,
+     * {@code containsAxiom(plain, EXCLUDED, IGNORE_AXIOM_ANNOTATIONS)} true, and adding the plain one
+     * anyway leaves two subclass axioms for one pair.
+     *
+     * <p>The ordinary case rather than an exotic one, because this plugin stamps provenance on the
+     * axioms it writes - so the annotated form is what a curator's own file holds. And the duplicate
+     * hides where anyone would look: Protege's class hierarchy draws one parent either way. It
+     * surfaces later, in a release diff or as a quality-report row nobody can account for.
+     */
+    @Test
+    void aPeersPlainAxiomIsNotDuplicatedBesideAnAnnotatedLocalOne() {
+        OWLClass margherita = cls("Margherita");
+        OWLClass pizza = cls("Pizza");
+        OWLAnnotation stamp = factory.getOWLAnnotation(
+                factory.getOWLAnnotationProperty(
+                        IRI.create("http://purl.org/dc/terms/contributor")),
+                factory.getOWLLiteral(USER));
+        manager.addAxiom(ontology, factory.getOWLSubClassOfAxiom(margherita, pizza,
+                java.util.Collections.singleton(stamp)));
+
+        applyInbound(subClassOperation(margherita, pizza));
+
+        assertEquals(1, ontology.getAxiomCount(AxiomType.SUBCLASS_OF),
+                "the peer's plain axiom must not be added beside the annotated one already there");
+    }
+
+    /** And who wrote it is not lost: the annotated axiom is left as it is, not replaced. */
+    @Test
+    void theLocalAxiomKeepsItsProvenance() {
+        OWLClass margherita = cls("Margherita");
+        OWLClass pizza = cls("Pizza");
+        OWLAnnotation stamp = factory.getOWLAnnotation(
+                factory.getOWLAnnotationProperty(
+                        IRI.create("http://purl.org/dc/terms/contributor")),
+                factory.getOWLLiteral(USER));
+        manager.addAxiom(ontology, factory.getOWLSubClassOfAxiom(margherita, pizza,
+                java.util.Collections.singleton(stamp)));
+
+        applyInbound(subClassOperation(margherita, pizza));
+
+        boolean stampSurvives = false;
+        for (OWLAxiom axiom : ontology.getAxioms(AxiomType.SUBCLASS_OF)) {
+            if (!axiom.getAnnotations().isEmpty()) {
+                stampSurvives = true;
+            }
+        }
+        assertTrue(stampSurvives, "a peer re-asserting an axiom must not erase who wrote it");
+    }
+
+    /** An axiom the ontology does not have at all still arrives, or the guard has gone too far. */
+    @Test
+    void anAxiomTheOntologyDoesNotHaveIsStillAdded() {
+        OWLClass calzone = cls("Calzone");
+        OWLClass pizza = cls("Pizza");
+
+        applyInbound(subClassOperation(calzone, pizza));
+
+        assertEquals(1, ontology.getAxiomCount(AxiomType.SUBCLASS_OF),
+                "a subclass axiom that was not there must be added");
+    }
+
+    private OntologyOperation subClassOperation(OWLClass child, OWLClass parent) {
+        Map<String, Object> data = new LinkedHashMap<String, Object>();
+        data.put("id", "edge-1");
+        data.put("childIri", child.getIRI().toString());
+        data.put("parentIri", parent.getIRI().toString());
+        return OntologyOperation.local("addSubClassOf", "bob", data);
+    }
+
+    private void applyInbound(OntologyOperation operation) {
+        OperationMapper.Inbound inbound = OperationMapper.toChanges(operation, ontology);
+        for (OWLOntologyChange change : inbound.getChanges()) {
+            manager.applyChange(change);
+        }
     }
 }

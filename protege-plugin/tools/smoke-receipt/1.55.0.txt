@@ -1,0 +1,77 @@
+OntoBoard 1.55.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-09-26  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 8/8  test 9/9
+  2026-09-26  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 8/8  test 9/9
+A PEER RE-ASSERTING AN AXIOM DUPLICATED IT
+
+One line, and the mechanism is worth more than the fix.
+
+    if (!ontology.containsAxiom(axiom)) {
+
+`containsAxiom(axiom)` compares axioms *with* their annotations. Everything rebuilt from a peer's
+operation is plain - the shared vocabulary has no field for an axiom annotation, by design. So an
+ontology already holding
+
+    SubClassOf(Margherita, Pizza)  with  dcterms:contributor "alice"
+
+did not match the plain SubClassOf(Margherita, Pizza) arriving from a colleague, and the plain form was
+added beside it. Two subclass axioms for one pair, one stamped and one not.
+
+MEASURED, NOT ASSUMED
+
+The semantics were the whole question, so they were probed rather than recalled. On this OWL API:
+
+    containsAxiom(plain)                            false
+    containsAxiom(plain, EXCLUDED, IGNORE)          true
+    containsAxiom(plain, EXCLUDED, CONSIDER)        false
+    annotated.equals(plain)                         false
+    subclass axiom count after adding plain         2
+
+The probe was a throwaway test, run once, read, and deleted. Worth noting that the first thing it
+disproved was my own draft: I had written the fix around a guess about which overload ignores
+annotations, and the guess was right only by luck of ordering - CONSIDER and the single-argument form
+agree, IGNORE is the odd one out, and nothing in the method name says so.
+
+WHY THIS IS THE ORDINARY CASE, NOT AN EDGE CASE
+
+This plugin stamps provenance on the axioms it writes - Provenance and EditorNotes both do - so the
+annotated form is what a curator's own file holds. Two people editing the same hierarchy therefore
+accumulated one duplicate per shared axiom, from the first edit onward.
+
+And the duplicate hides precisely where anyone would look for it. Protege's class hierarchy draws one
+parent whether there are one or two subclass axioms asserting it; the canvas draws one edge. It surfaces
+somewhere else entirely and much later - in a release diff, or as a quality-report row about a duplicate
+axiom that nobody can account for, on an ontology whose editors never knowingly wrote one.
+
+WHAT WAS CHECKED AND LEFT ALONE
+
+The removal half of the same question is fine, and it is worth saying why rather than leaving it to be
+re-audited. Every removal in this mapper operates on an axiom it *found* in the ontology -
+`subClassOfAxiomWithWebId` iterates getAxioms(SUBCLASS_OF), the annotation paths iterate
+getAnnotationAssertionAxioms - so the instance handed to RemoveAxiom carries whatever annotations it
+has and matches itself. Only the add path constructed an axiom from scratch, which is why only the add
+path could fail to recognise one.
+
+Imports.EXCLUDED is kept, matching what the single-argument form meant. An axiom an import already
+asserts should still be asserted in the edit file when a peer asserts it, because the edit file is what
+gets released.
+
+THREE TESTS
+
+  - a peer's plain axiom is not added beside an annotated local one  (2 instead of 1 before the fix)
+  - the local axiom keeps its provenance: a peer re-asserting it does not erase who wrote it
+  - an axiom the ontology genuinely lacks is still added, or the guard has gone too far
+
+The third exists because a guard that suppresses too much is the obvious way to get the first two green
+while breaking the feature.
+
+NUMBERS
+
+1203 tests, 0 failures, 0 skipped. OperationMapperTest goes from 52 to 55. Surefire's total and the
+count of @Test occurrences in src/test/java agree at 1203, which is the check worth doing: an earlier
+reading of this same build said 1149 with one failure, because the suite was still running and a report
+file was half-written. A number read from a run in progress is not a number.
+
+45 JavaScript tests pass.

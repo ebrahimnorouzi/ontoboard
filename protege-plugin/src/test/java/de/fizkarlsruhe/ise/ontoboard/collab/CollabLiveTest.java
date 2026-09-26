@@ -462,6 +462,106 @@ class CollabLiveTest {
                 "bob must never have been sent the import module's class: " + b.getApplied());
     }
 
+
+    /**
+     * A typed literal keeps its datatype, so obsoletion survives the wire.
+     *
+     * <p>The sharpest case of a general defect. Every non-label annotation used to travel as its
+     * lexical form alone and be rebuilt as {@code xsd:string}, and {@code Obsoletion} writes
+     * {@code owl:deprecated "true"^^xsd:boolean}. So a peer ended up with
+     * {@code owl:deprecated "true"^^xsd:string}, for which OWL API's
+     * {@code isDeprecatedIRIAssertion} is <em>false</em>: a term retired on one machine stayed live
+     * on the other, both files claimed to say the same thing, and nothing anywhere reported it.
+     *
+     * <p>Nothing could report it. No reasoner interprets an annotation, and the lexical form matched
+     * - so even a diff of the text agreed. It is visible only by asking OWL API what the axiom
+     * means, which is what this does.
+     */
+    @Test
+    void aTypedLiteralKeepsItsDatatypeSoObsoletionCrosses() throws Exception {
+        assumeTrue(CollabHarness.isAvailable(), "node or collab/node_modules is not available");
+        harness.start();
+
+        Scratch alice = new Scratch("http://example.org/live/obsolete");
+        Scratch bob = new Scratch("http://example.org/live/obsolete");
+        CollabHarness.Peer a = harness.join("alice", "obsolete-board", alice.ontology);
+        final CollabHarness.Peer b = harness.join("bob", "obsolete-board", bob.ontology);
+        assertTrue(harness.waitUntilConnected(a, b), connectionFailure(a, b));
+
+        final OWLClass retired = alice.factory.getOWLClass(IRI.create(alice.iri + "#OldTopping"));
+        List<OWLOntologyChange> changes = new ArrayList<OWLOntologyChange>();
+        changes.add(new AddAxiom(alice.ontology,
+                alice.factory.getOWLDeclarationAxiom(retired)));
+        // Exactly what odk/Obsoletion writes.
+        changes.add(new AddAxiom(alice.ontology, alice.factory.getOWLAnnotationAssertionAxiom(
+                alice.factory.getOWLAnnotationProperty(
+                        org.semanticweb.owlapi.vocab.OWLRDFVocabulary.OWL_DEPRECATED.getIRI()),
+                retired.getIRI(), alice.factory.getOWLLiteral(true))));
+        alice.manager.applyChanges(changes);
+        a.getSession().publishLocalChanges(changes, OperationMapper.NO_HINTS);
+
+        harness.waitFor(new CollabHarness.Condition() {
+            @Override
+            public boolean isMet() {
+                return !b.getOntology().getAnnotationAssertionAxioms(retired.getIRI()).isEmpty();
+            }
+        });
+
+        boolean deprecatedAtBobsEnd = false;
+        String whatArrived = "nothing";
+        for (OWLAnnotationAssertionAxiom axiom
+                : b.getOntology().getAnnotationAssertionAxioms(retired.getIRI())) {
+            whatArrived = String.valueOf(axiom.getValue());
+            if (axiom.isDeprecatedIRIAssertion()) {
+                deprecatedAtBobsEnd = true;
+            }
+        }
+        assertTrue(deprecatedAtBobsEnd,
+                "bob must see the term as deprecated, not merely annotated with the text \"true\". "
+                        + "What arrived: " + whatArrived);
+    }
+
+    /** A language-tagged non-label annotation keeps its tag. */
+    @Test
+    void aLanguageTaggedDefinitionKeepsItsTag() throws Exception {
+        assumeTrue(CollabHarness.isAvailable(), "node or collab/node_modules is not available");
+        harness.start();
+
+        Scratch alice = new Scratch("http://example.org/live/tagged");
+        Scratch bob = new Scratch("http://example.org/live/tagged");
+        CollabHarness.Peer a = harness.join("alice", "tagged-board", alice.ontology);
+        final CollabHarness.Peer b = harness.join("bob", "tagged-board", bob.ontology);
+        assertTrue(harness.waitUntilConnected(a, b), connectionFailure(a, b));
+
+        final OWLClass pizza = alice.factory.getOWLClass(IRI.create(alice.iri + "#Pizza"));
+        final OWLAnnotationProperty definition = alice.factory.getOWLAnnotationProperty(
+                IRI.create("http://purl.obolibrary.org/obo/IAO_0000115"));
+        List<OWLOntologyChange> changes = new ArrayList<OWLOntologyChange>();
+        changes.add(new AddAxiom(alice.ontology, alice.factory.getOWLDeclarationAxiom(pizza)));
+        changes.add(new AddAxiom(alice.ontology, alice.factory.getOWLAnnotationAssertionAxiom(
+                definition, pizza.getIRI(),
+                alice.factory.getOWLLiteral("Ein Gericht aus Italien.", "de"))));
+        alice.manager.applyChanges(changes);
+        a.getSession().publishLocalChanges(changes, OperationMapper.NO_HINTS);
+
+        harness.waitFor(new CollabHarness.Condition() {
+            @Override
+            public boolean isMet() {
+                return !b.getOntology().getAnnotationAssertionAxioms(pizza.getIRI()).isEmpty();
+            }
+        });
+
+        String tag = "";
+        for (OWLAnnotationAssertionAxiom axiom
+                : b.getOntology().getAnnotationAssertionAxioms(pizza.getIRI())) {
+            if (axiom.getValue().asLiteral().isPresent()) {
+                tag = axiom.getValue().asLiteral().get().getLang();
+            }
+        }
+        assertEquals("de", tag,
+                "the definition must arrive tagged @de, not as an untagged xsd:string");
+    }
+
     // ===================================================================== plumbing
 
     private String connectionFailure(CollabHarness.Peer... peers) {
