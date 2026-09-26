@@ -269,10 +269,55 @@ The plugin is early. These exist in the web application but not yet here:
   note is prose rather than a phrase, so it is the one tooltip here that wraps. Three paragraphs from
   three editors is not a tooltip; the Notes dialog shows them all with authors and dates.
 
+- **The gesture a board user spends most was behind a modifier, and nothing on screen said so - until
+  1.68.0.** The second half of Release 4 of the canvas design spec, split off from 1.67.0 because the
+  spec's own regression table calls the floating panels "the most likely breakage in the whole plan".
+
+  **A plain left-drag panned the view.** That was defensible when it was written - there was no outline,
+  no *Fit*, no zoom keys - and it stopped being defensible some releases ago. Selecting several terms at
+  once is the thing a person does most on a board, and it was reachable only by holding Ctrl or Shift,
+  documented in a doc comment. The drag selects a region now; space, the middle button and the right
+  button pan, which is what every canvas application uses. Space also changes the cursor, because without
+  that the only feedback is that dragging does something different - which is how a deliberate inversion
+  reads as a fault.
+
+  Three things hold that inversion up. A `ShortcutsPanel` of sixteen rows, on **?** over the board and in
+  the overflow menu, with tests that the two inverted gestures are present and that no key is listed
+  twice - a stale keystroke list is worse than none, because it sends a person looking for a fault in the
+  plugin rather than in their own memory. A one-time status line on first use, in `Preferences`, not the
+  sidecar. And an explicit null-cell test in the rubberband handler: `mxRubberband.mousePressed` in 4.2.2
+  never asks what is under the cursor - `isRubberbandTrigger` is literally `return true` - so a plain
+  drag selected regions *on top of nodes* too, and only worked at all because `mxGraphHandler` happens to
+  be registered first and consume the event. Registration order is a thing to depend on deliberately or
+  not at all.
+
+  **The zoom controls and the overview moved onto the board.** The outline had been pinned EAST at a
+  fixed 180px, present even while the start card was showing - a blank grey rectangle beside a "nothing
+  here yet" message - and on a board big enough to need an overview it fails at the one job it has, since
+  a 3694x613 strip scaled into a 140px box paints as a grey smear. Both float now, bottom-right, and the
+  overview collapses to its header; which state it is in lives in `Preferences` rather than the JSON
+  sidecar, because collapsing a panel must not dirty a file somebody commits to a repository.
+
+  This is where the spec expected breakage, and the mechanism is worth recording: Delete, Escape, Ctrl+Z,
+  Ctrl+F, Ctrl+A and the five zoom keys are all bound on the graph component's
+  `WHEN_ANCESTOR_OF_FOCUSED_COMPONENT` input map, so the moment focus moves to a *sibling* of that
+  component every one of them stops firing - silently, with nothing on screen to say why. A floating
+  button is exactly such a sibling. Every one is built through a single `floatingButton` helper that sets
+  `focusable` and `requestFocusEnabled` false and hands focus back to the board after the action runs.
+
+  **Dragging a frame left its contents behind.** `SchemaGraph` inserts frames, terms, edges and notes all
+  under the default parent, so a frame is a sibling of what it visually encloses and `moveCells` moved
+  only the rectangle: drag the "Toppings" frame and it arrived somewhere else, empty. Real parenting was
+  rejected rather than overlooked - child geometry is relative to the parent, and `captureInto` reads
+  `getX()` as an absolute board coordinate straight into the sidecar, so every saved board would have
+  shifted by the frame origin the first time it was loaded. The frame moves its passengers by the same
+  delta instead, chosen by centre point so a node overlapping the edge counts as inside. Resizing moves
+  nothing, and the dialog that names a frame now says both halves of that.
+
 - **The Collaborate button was not on the screen, and the status line erased its own warnings - both
-  until 1.67.0.** The first half of Release 4 of the canvas design spec; the second half is held back
-  because the spec's own regression table calls the floating panels "the most likely breakage in the
-  whole plan".
+  until 1.67.0.** The first half of Release 4 of the canvas design spec; the second half landed in
+  1.68.0, held back one release because the spec's own regression table calls the floating panels "the
+  most likely breakage in the whole plan".
 
   The toolbar wanted 1261px and began clipping at 1030. The OntoBoard tab in a 1440px Protégé window
   gives it 857, at which `Collaborate...` is laid out at x=812 - past the right edge, unpainted and

@@ -1,0 +1,129 @@
+OntoBoard 1.68.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-09-27  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 8/8  test 10/10
+  2026-09-27  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 8/8  test 10/10
+
+
+THE GESTURE A BOARD USER SPENDS MOST WAS BEHIND A MODIFIER
+
+The second half of Release 4 of docs/superpowers/specs/2026-09-26-canvas-board-design.md - R4.4, R4.6
+and R4.9 - held back from 1.67.0 because the spec's own regression table calls the floating panels "the
+most likely breakage in the whole plan". That risk is the subject of item 2 below.
+
+1. A PLAIN DRAG PANNED THE VIEW, AND A DOC COMMENT WAS THE ONLY PLACE THAT SAID SO
+
+The old behaviour was defensible when it was written. Its comment says why: "out of the box there is no
+way to move the diagram with the mouse at all - the canvas felt stuck", and at the time there was no
+outline, no Fit, no zoom keys and no drag-to-connect. All of those exist now, and selecting several
+terms at once - the thing a person does most on a board - was reachable only by holding Ctrl or Shift,
+documented nowhere a user would look.
+
+Inverted. A plain drag selects a region; space, the middle button and the right button pan. A drag that
+starts on a cell still moves the cell, or nothing could ever be repositioned. Space also swaps the
+cursor to MOVE, because without that the only feedback is that dragging does something different, which
+is how a deliberate inversion reads as a fault.
+
+Three things hold the inversion up.
+
+  - ShortcutsPanel, sixteen rows, on ? over the board and in the overflow menu. Every row was checked
+    against the line that implements it, not against intent - including the two that only exist because
+    a library default was left alone (Alt-drag off the grid is mxGraphHandler.isGridEnabledEvent). Six
+    tests, of which the load-bearing ones are that the two inverted gestures are present and described,
+    and that no key is listed twice: a stale keystroke list is worse than none, because it sends a
+    person looking for a fault in the plugin rather than in their own memory.
+  - A one-time status line on first use, in Preferences.
+  - An explicit null-cell test in the rubberband handler. This one is not belt-and-braces.
+    mxRubberband.mousePressed in 4.2.2 checks isConsumed, isEnabled, isRubberbandTrigger and
+    isPopupTrigger and never asks what is under the cursor - isRubberbandTrigger is literally "return
+    true". Without the test, a plain drag would start a selection rectangle on top of a node as well,
+    and it would appear to work only because mxGraphHandler is registered first by the mxGraphComponent
+    constructor and consumes the event on a cell hit. Registration order is a thing to depend on
+    deliberately or not at all.
+
+2. THE ZOOM CONTROLS AND THE OVERVIEW MOVED ONTO THE BOARD - WHICH IS WHERE THE RISK WAS
+
+The outline had been pinned EAST at a fixed 180px, present even while the start card was showing, where
+it is a blank grey rectangle beside a "nothing here yet" message; and on a board big enough to need an
+overview it fails at the one job it has, because a 3694x613 strip scaled into a 140px box paints as a
+grey smear. Both float bottom-right now over a JLayeredPane, and the overview collapses to its header.
+Which state it is in lives in Preferences, not the JSON sidecar: collapsing a panel must not dirty a
+file somebody commits to a repository.
+
+The mechanism the spec flagged, recorded here because it is silent: Delete, Escape, Ctrl+Z, Ctrl+F,
+Ctrl+A and the five zoom keys are all bound on the graph component's WHEN_ANCESTOR_OF_FOCUSED_COMPONENT
+input map, so the moment focus moves to a *sibling* of that component every one of them stops firing,
+with nothing on screen to say why. A floating button is exactly such a sibling. Every one is built
+through a single floatingButton() helper that sets focusable and requestFocusEnabled false and hands
+focus back to the board when the action returns; the readout and the collapse caret go through it too.
+
+doLayout() is overridden rather than hung off a ComponentListener, so the first layout places the
+panels instead of painting them in the top-left corner and then moving them.
+
+3. DRAGGING A FRAME LEFT ITS CONTENTS BEHIND
+
+SchemaGraph inserts frames, terms, edges and notes all under the default parent, so a frame is a
+sibling of what it visually encloses and moveCells moved only the rectangle: drag the "Toppings" frame
+and it arrived somewhere else, empty.
+
+Real parenting was rejected rather than overlooked. Child geometry in mxGraph is relative to the
+parent, and captureInto reads getX() as an absolute board coordinate straight into the sidecar - so
+every saved board would have shifted by the frame origin the first time it was loaded. constrainChildren
+and extendParents, both on by default, would also have started resizing frames behind the user.
+
+So the frame moves its passengers by the same delta, working out which cells were in its *old* box by
+subtracting that delta, because MOVE_CELLS fires once at the end with the geometry already final.
+Containment is by centre point: a node overlapping the frame edge by a few pixels is one the user
+considers inside. Resizing deliberately moves nothing - a frame is a reading aid, and a resize that
+dragged terms around would make it a container - and the dialog that names a frame now says both
+halves of that.
+
+TWO CORRECTIONS WHILE IMPLEMENTING THIS
+
+The spec has the minimap's default-open rule evaluated in showAppropriateCard(). It is evaluated once in
+initialiseOWLView instead, after loadLayoutForActiveOntology has rebuilt membership, because the rule is
+a default for a Preferences key: the first setMinimapOpen call writes the key, so on every later
+evaluation the default is dead code. Putting it in showAppropriateCard would have looked like a rule
+that keeps applying.
+
+And the first-run hint, which the spec does not mention, collided with the defect 1.67.0 had just
+fixed. It writes the board status channel - correctly, so a collaboration warning cannot be clobbered -
+but it runs after loadLayoutForActiveOntology, which writes "the saved arrangement could not be read" to
+that same label. That sentence names a file the user has to go and look at, and it is the last message
+in this plugin a hint about the mouse may be allowed to bury. The hint yields now, and does not mark
+itself seen when it does: a hint worth showing once is worth showing next session instead. Extracted as
+firstRunHintFits(boolean, String) so there is something to test, and the case worth pinning is the
+empty-looking one - boardStatus is initialised to a single space, so a plain isEmpty() would have
+treated a blank line as "already saying something" and the hint would never have appeared at all.
+
+WHAT THIS DOES NOT COVER
+
+Nothing here looks at a pixel. What the two runs prove is that the JLayeredPane, the floating clusters,
+the shortcut dialog and the frame listener all construct inside both Protege versions, which is where a
+null layout or a missing icon class would show up. Whether the floating panels sit where they should,
+and whether the keyboard still reaches the board after clicking one, are things to look at - the focus
+discipline above is reasoned from the input map, not observed.
+
+The design proof cannot see any of this. CanvasDesignProofTest renders from the graph model through
+mxCellRenderer, so component overlays are invisible to it by construction, and it already says so.
+
+Unchanged and still true from 1.67.0: the dark look and feel has not been run.
+
+NUMBERS
+
+1340 tests, 0 skipped, 0 failures. 7 new: six for the shortcut list, one for the hint's precedence.
+
+Counted three ways, agreeing: Maven's summary, the 94 surefire reports for 94 test classes, and an
+anchored ^\s*@Test\s*$ across src/test/java.
+
+One note on the skip count, because it moved between runs of the same code. BundleConfigurationTest's
+manifest test assumes a jar in target/, and a package build that deletes target/*.jar first therefore
+skips it in the run that produces the jar. Re-run against the finished artefact it passes 16/16, and the
+build this receipt describes shows 0 skipped because the jar was already there.
+
+The jar that both hosts loaded was verified to be this source rather than assumed: javap on
+SchemaCanvasView inside C:\Users\eno\Documents\Protege-5.5.0\plugins\ontoboard-1.68.0.jar lists
+firstRunHintFits, holdSpace, showShortcuts, buildBoardLayers, buildZoomCluster, buildMinimap,
+setMinimapOpen and installFrameDragging. That check exists because 1.57.0 shipped a jar whose source no
+longer compiled, from a source edit made after the build.

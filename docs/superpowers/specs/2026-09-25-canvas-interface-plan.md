@@ -149,6 +149,12 @@ last is documented and does not exist.
 > nine tests; the one thing to get right is that `mxGraphView.getGraphBounds()` reports *scaled*
 > pixels, so a fit that does not divide by the current scale is correct at 100% and wrong at every
 > other zoom level.
+>
+> **Moved in 1.68.0.** The readout, *Fit* and two zoom buttons now float over the bottom-right of the
+> board, with the overview above them, and the status bar keeps only its two message channels. The
+> status bar was the right place for a readout while it was the only place; it is the wrong place once
+> the thing has neighbours, and a second copy of the readout there would have meant two buttons
+> claiming to be it with only the last-built one wired to the scale event.
 
 ---
 

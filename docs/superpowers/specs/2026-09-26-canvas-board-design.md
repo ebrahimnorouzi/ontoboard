@@ -9,8 +9,15 @@ The evidence it reasons from is produced by CanvasDesignProofTest, which renders
 board, the legend and the empty state to target/design/ without launching Protege. Re-run it with:
   mvn -o test -Dtest=CanvasDesignProofTest
 
-Release 1 shipped in 1.64.0. Its section is kept as written rather than edited afterwards, including
-the two places where implementing it corrected it - see the 1.64.0 receipt for both.
+Release 1 shipped in 1.64.0, Release 2 in 1.65.0, Release 3 in 1.66.0, and Release 4 across 1.67.0
+(R4.1-R4.3, R4.5, R4.7, R4.8) and 1.68.0 (R4.4, R4.6, R4.9) - split because this spec's own regression
+table calls the floating panels the most likely breakage in the whole plan, and a release that is
+layout and labels should not carry that risk with them.
+
+Every section is kept as written rather than edited afterwards, including the places where implementing
+one corrected it. Those corrections are in the receipts: 1.64.0 has two, 1.65.0 the shadow colour,
+1.67.0 the card background and the elision boundary, 1.68.0 the minimap default's evaluation point and
+a status-line collision the spec did not anticipate.
 -->
 
 Everything checks out. The repo is untouched (all probes ran in the scratchpad against compiled classes). Here is the spec.

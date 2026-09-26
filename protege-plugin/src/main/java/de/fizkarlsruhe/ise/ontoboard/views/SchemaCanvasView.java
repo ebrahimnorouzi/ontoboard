@@ -174,6 +174,15 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
     /** Kept so the algorithm menu can be popped underneath it. */
     private JButton arrangeButton;
 
+    /** The zoom controls, floating over the bottom-right of the board. */
+    private JPanel zoomCluster;
+
+    /** The overview, floating above the zoom controls. */
+    private JPanel minimapPanel;
+
+    /** The outline inside it, kept so the open/closed state can be restored. */
+    private mxGraphOutline minimapOutline;
+
     /**
      * What each expansion added, so it can be taken back.
      *
@@ -250,18 +259,24 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         graphComponent.setPanning(true);
         graphComponent.getPanningHandler().setEnabled(true);
         // Card deck so an empty board shows guidance instead of a blank grid.
+        zoomCluster = buildZoomCluster();
+        minimapPanel = buildMinimap();
+
         cards = new CardLayout();
         centre = new JPanel(cards);
-        centre.add(graphComponent, "canvas");
+        centre.add(buildBoardLayers(), "canvas");
         centre.add(new StartPanel(this::runNewProjectWizard, this::openExistingProject,
                 this::addSelectedEntityToCanvas, this::addEverythingToCanvas), "start");
         add(centre, BorderLayout.CENTER);
         // Before the toolbar, because the status bar owns collabStatus and the toolbar used to.
         add(buildStatusBar(), BorderLayout.SOUTH);
 
-        mxGraphOutline outline = new mxGraphOutline(graphComponent);
-        outline.setPreferredSize(new Dimension(180, 140));
-        add(outline, BorderLayout.EAST);
+        // The outline used to be pinned EAST at a fixed 180px, present even while the start card
+        // was showing - where it is a blank grey rectangle beside a "nothing here yet" message. It
+        // floats over the board now, above the zoom cluster, and collapses.
+        graphComponent.setPageBackgroundColor(
+                java.awt.Color.decode(de.fizkarlsruhe.ise.ontoboard.canvas.SchemaStyles
+                        .CANVAS_BACKGROUND));
         add(buildToolBar(), BorderLayout.NORTH);
         graphComponent.getViewport().setOpaque(true);
         graphComponent.getViewport().setBackground(
@@ -305,6 +320,27 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         selectionBridge = new SelectionBridge(graph, this::pushSelectionToProtege);
         selectionBridge.install();
 
+        // Once, ever, per user. The pan gesture inverted in 1.68.0 - a plain drag selects a region
+        // now and panning moved to space, the middle button and the right - and an inversion nobody
+        // is told about is indistinguishable from a fault. It goes to the board channel, so it
+        // cannot overwrite a collaboration warning.
+        //
+        // It can still collide with a board message, and one in particular: loadLayoutForActiveOntology
+        // above says "the saved arrangement could not be read" on the same label, and that sentence is
+        // the last one this hint may be allowed to bury. So it yields, and does not mark itself seen -
+        // a hint that is worth showing once is worth showing next time instead.
+        java.util.prefs.Preferences prefs =
+                java.util.prefs.Preferences.userNodeForPackage(SchemaCanvasView.class);
+        if (firstRunHintFits(prefs.getBoolean("ontoboard.hintsSeen", false),
+                boardStatus == null ? null : boardStatus.getText())) {
+            setStatus("Drag to select, space-drag to pan, wheel to zoom, double-click for a new "
+                    + "class. Press ? on the board for every shortcut.");
+            prefs.putBoolean("ontoboard.hintsSeen", true);
+        }
+        // And the overview starts open only on a board big enough to need one.
+        setMinimapOpen(prefs.getBoolean("ontoboard.minimap.open", membership.size() >= 25),
+                minimapPanel);
+
         positionSaveTimer = new Timer(800, event -> saveLayoutTo(layoutFile));
         positionSaveTimer.setRepeats(false);
         cellsMovedListener = (sender, event) -> {
@@ -322,6 +358,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             positionSaveTimer.restart();
         };
         graph.addListener(mxEvent.CELLS_MOVED, cellsMovedListener);
+        installFrameDragging();
 
         // Without this an in-place edit is lost at the next refresh, which any edit anywhere in
         // Protege triggers: mxGraph writes the new text into the cell, and render rebuilds every
@@ -731,9 +768,10 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
     /** A labelled region grouping what is inside it. Also diagram-only. */
     private void createFrame(java.awt.Point at) {
         String label = JOptionPane.showInputDialog(this,
-                "What is this group called?\n\nA frame is a region on the diagram. If it is "
-                        + "really a module, make it one - an import, or IAO:0000113 in branch - "
-                        + "rather than a rectangle.",
+                "What is this group called?\n\nA frame is a region on the diagram. Dragging it "
+                        + "takes whatever is inside it along; resizing it does not. If it is really "
+                        + "a module, make it one - an import, or IAO:0000113 in branch - rather "
+                        + "than a rectangle.",
                 "Frame", JOptionPane.PLAIN_MESSAGE);
         if (label == null || label.trim().isEmpty()) {
             return;
@@ -1161,6 +1199,244 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             menu.add(item);
         }
         return menu;
+    }
+
+    /**
+     * Dragging a frame takes whatever is inside it along.
+     *
+     * <p>The one behaviour that makes a frame a frame rather than a rectangle. {@code SchemaGraph}
+     * inserts frames, terms, edges and notes all under the default parent, so a frame is a
+     * <em>sibling</em> of the nodes it visually encloses and {@code moveCells} moves only the frame:
+     * drag the "Toppings" frame and it arrives somewhere else, still empty.
+     *
+     * <p>Real parenting is the wrong fix and was rejected deliberately. Making nodes children of the
+     * frame cell makes their geometry relative to it, and {@code captureInto} reads {@code getX()}
+     * as an absolute board coordinate straight into the sidecar - so every saved board would shift
+     * by the frame origin the first time it was loaded. {@code constrainChildren} and
+     * {@code extendParents}, both on by default, would also start resizing frames behind the user.
+     *
+     * <p>So: after a move, work out which cells were inside the frame's <em>old</em> box and move
+     * those by the same delta. {@code moveCells} fires this once at the end, after the geometry is
+     * already final, which is why the old box is reconstructed by subtracting the delta rather than
+     * read.
+     *
+     * <p>Containment is by centre point, not by whole bounds: a node overlapping the frame edge by a
+     * few pixels is one the user considers inside. Resizing a frame deliberately does not move
+     * anything - a frame is a reading aid, and a resize that dragged terms around would make it a
+     * container.
+     */
+    private void installFrameDragging() {
+        graph.addListener(mxEvent.MOVE_CELLS, (sender, event) -> {
+            if (movingProgrammatically) {
+                return;
+            }
+            Object[] moved = (Object[]) event.getProperty("cells");
+            Object dxValue = event.getProperty("dx");
+            Object dyValue = event.getProperty("dy");
+            if (moved == null || !(dxValue instanceof Number) || !(dyValue instanceof Number)) {
+                return;
+            }
+            double dx = ((Number) dxValue).doubleValue();
+            double dy = ((Number) dyValue).doubleValue();
+            if (dx == 0 && dy == 0) {
+                return;
+            }
+
+            java.util.Set<Object> alreadyMoving = new java.util.HashSet<Object>(
+                    java.util.Arrays.asList(moved));
+            List<Object> passengers = new ArrayList<Object>();
+            for (Object cell : moved) {
+                String id = graph.getIdForCell(cell);
+                if (id == null || !id.startsWith(SchemaGraph.FRAME_ID_PREFIX)) {
+                    continue;
+                }
+                com.mxgraph.model.mxGeometry frame = graph.getModel().getGeometry(cell);
+                if (frame == null) {
+                    continue;
+                }
+                java.awt.geom.Rectangle2D.Double before = new java.awt.geom.Rectangle2D.Double(
+                        frame.getX() - dx, frame.getY() - dy, frame.getWidth(), frame.getHeight());
+                for (Object other : graph.getChildVertices(graph.getDefaultParent())) {
+                    if (other == cell || alreadyMoving.contains(other)) {
+                        continue;
+                    }
+                    com.mxgraph.model.mxGeometry box = graph.getModel().getGeometry(other);
+                    if (box == null) {
+                        continue;
+                    }
+                    if (before.contains(box.getX() + box.getWidth() / 2,
+                            box.getY() + box.getHeight() / 2)) {
+                        passengers.add(other);
+                        alreadyMoving.add(other);
+                    }
+                }
+            }
+            if (passengers.isEmpty()) {
+                return;
+            }
+
+            movingProgrammatically = true;
+            try {
+                graph.moveCells(passengers.toArray(), dx, dy);
+            } finally {
+                movingProgrammatically = false;
+            }
+            capturePositions();
+            positionSaveTimer.restart();
+        });
+    }
+
+    // ------------------------------------------------------------------ what floats over the board
+
+    /**
+     * The board, with the zoom cluster and the overview floating on top of it.
+     *
+     * <p>The canvas used to be framed on all four sides by fixed chrome - toolbar above, a 180px
+     * outline panel pinned right, status bar below - and the outline was a permanent tax. It was
+     * there while the start card was showing, where it is a blank grey rectangle beside a "nothing
+     * here yet" message; and on a board large enough to need an overview it fails at the one job
+     * it has, because a 3694x613 strip scaled into a 140px box paints as a grey smear.
+     *
+     * <p>Hand-laid rather than given a layout manager, and {@code doLayout} is overridden rather than
+     * hung off a {@code ComponentListener}, so the first layout is placed correctly instead of
+     * appearing in the top-left corner and then moving.
+     */
+    private javax.swing.JLayeredPane buildBoardLayers() {
+        javax.swing.JLayeredPane layers = new javax.swing.JLayeredPane() {
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            public void doLayout() {
+                graphComponent.setBounds(0, 0, getWidth(), getHeight());
+                int margin = 12;
+                Dimension zoom = zoomCluster.getPreferredSize();
+                Dimension map = minimapPanel.getPreferredSize();
+                int right = getWidth() - margin;
+                int bottom = getHeight() - margin;
+                zoomCluster.setBounds(right - zoom.width, bottom - zoom.height,
+                        zoom.width, zoom.height);
+                minimapPanel.setBounds(right - map.width, bottom - zoom.height - 8 - map.height,
+                        map.width, map.height);
+            }
+
+            @Override
+            public Dimension getPreferredSize() {
+                return graphComponent.getPreferredSize();
+            }
+        };
+        layers.add(graphComponent, javax.swing.JLayeredPane.DEFAULT_LAYER);
+        layers.add(minimapPanel, javax.swing.JLayeredPane.PALETTE_LAYER);
+        layers.add(zoomCluster, javax.swing.JLayeredPane.PALETTE_LAYER);
+        return layers;
+    }
+
+    /**
+     * A button that floats over the board and never takes the keyboard.
+     *
+     * <p>This is the single most likely way to break this canvas. Delete, Escape, Ctrl+Z, Ctrl+F,
+     * Ctrl+A and the five zoom keys are all bound on {@code graphComponent}'s
+     * {@code WHEN_ANCESTOR_OF_FOCUSED_COMPONENT} input map - so the moment focus moves to a sibling
+     * of the graph component, every one of them stops firing: silently, with no error, and nothing
+     * on screen to say why. A floating button is exactly such a sibling.
+     *
+     * <p>Hence both flags and the explicit hand-back at the end of every action.
+     */
+    private JButton floatingButton(javax.swing.Icon icon, String text, String tooltip,
+            final Runnable action) {
+        JButton button = icon == null ? new JButton(text) : new JButton(icon);
+        button.setToolTipText(tooltip);
+        button.setFocusable(false);
+        button.setRequestFocusEnabled(false);
+        button.setMargin(new java.awt.Insets(2, 6, 2, 6));
+        if (action != null) {
+            button.addActionListener(a -> {
+                action.run();
+                graphComponent.requestFocusInWindow();
+            });
+        }
+        return button;
+    }
+
+    /** Zoom out, the readout, zoom in, fit, and the key to everything else. */
+    private JPanel buildZoomCluster() {
+        JPanel cluster = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.CENTER, 2, 3));
+        cluster.setOpaque(true);
+        cluster.setBackground(java.awt.Color.WHITE);
+        cluster.setBorder(javax.swing.BorderFactory.createLineBorder(
+                new java.awt.Color(0xD8, 0xDD, 0xE3)));
+
+        // U+2212, the minus sign, which is present in Tahoma, Segoe UI and the logical Dialog
+        // family - the three this plugin can end up drawing with.
+        cluster.add(floatingButton(null, "−", "Zoom out (Ctrl+-)", () -> zoomAt(false, null)));
+
+        zoomReadout = new JButton(CanvasZoom.readout(1.0));
+        zoomReadout.setToolTipText("How far the board is zoomed. Click, or Ctrl+0, for 100%.");
+        zoomReadout.setFocusable(false);
+        zoomReadout.setRequestFocusEnabled(false);
+        zoomReadout.addActionListener(a -> {
+            graphComponent.zoomActual();
+            updateZoomReadout();
+            graphComponent.requestFocusInWindow();
+        });
+        // Wide enough for "400%", so the cluster does not resize as the number changes.
+        zoomReadout.setPreferredSize(new Dimension(64, zoomReadout.getPreferredSize().height));
+        cluster.add(zoomReadout);
+
+        cluster.add(floatingButton(null, "+", "Zoom in (Ctrl++)", () -> zoomAt(true, null)));
+        cluster.add(floatingButton(null, "Fit", "Zoom so the whole board is visible (Ctrl+1). "
+                + "Ctrl+2 frames the selection.", this::fitToWindow));
+        cluster.add(floatingButton(null, "?", "Every keyboard shortcut and mouse gesture",
+                this::showShortcuts));
+        return cluster;
+    }
+
+    /** The overview, with a header that collapses it. */
+    private JPanel buildMinimap() {
+        minimapOutline = new mxGraphOutline(graphComponent);
+        // The constructor sets antialiasing off, which at a 4% scale is the difference between
+        // shapes and grit.
+        minimapOutline.setAntiAlias(true);
+        minimapOutline.setPreferredSize(new Dimension(200, 140));
+
+        final JPanel panel = new JPanel(new BorderLayout());
+        panel.setOpaque(true);
+        panel.setBackground(java.awt.Color.WHITE);
+        panel.setBorder(javax.swing.BorderFactory.createLineBorder(
+                new java.awt.Color(0xD8, 0xDD, 0xE3)));
+        panel.setPreferredSize(new Dimension(200, 168));
+
+        JPanel header = new JPanel(new BorderLayout());
+        header.setOpaque(false);
+        header.setBorder(javax.swing.BorderFactory.createEmptyBorder(2, 8, 2, 2));
+        javax.swing.JLabel title = new javax.swing.JLabel("Overview");
+        title.setForeground(new java.awt.Color(0x5A, 0x64, 0x70));
+        title.setFont(title.getFont().deriveFont(java.awt.Font.PLAIN, 11f));
+        header.add(title, BorderLayout.WEST);
+        header.add(floatingButton(new CanvasIcons.Caret(), null, "Show or hide the overview",
+                () -> setMinimapOpen(!minimapOutline.isVisible(), panel)), BorderLayout.EAST);
+
+        panel.add(header, BorderLayout.NORTH);
+        panel.add(minimapOutline, BorderLayout.CENTER);
+        return panel;
+    }
+
+    /**
+     * Opens or closes the overview and remembers which.
+     *
+     * <p>In {@code Preferences} rather than the JSON sidecar, deliberately: whether a panel is open
+     * is a property of this person's screen and not of the diagram, and putting it in the sidecar
+     * would mean collapsing a panel dirties a file that is committed to somebody's repository.
+     */
+    private void setMinimapOpen(boolean open, JPanel panel) {
+        minimapOutline.setVisible(open);
+        panel.setPreferredSize(open ? new Dimension(200, 168) : new Dimension(200, 24));
+        panel.revalidate();
+        if (panel.getParent() != null) {
+            panel.getParent().doLayout();
+            panel.getParent().repaint();
+        }
+        java.util.prefs.Preferences.userNodeForPackage(SchemaCanvasView.class)
+                .putBoolean("ontoboard.minimap.open", open);
     }
 
     // ------------------------------------------------------------------ undo for the board
@@ -1824,9 +2100,15 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         new com.mxgraph.swing.handler.mxRubberband(graphComponent) {
             @Override
             public void mousePressed(java.awt.event.MouseEvent event) {
-                // Without this guard the rubberband starts on every empty-space press and the
-                // pan never happens, because both handlers see the same event.
-                if (event.isControlDown() || event.isShiftDown()) {
+                // A plain drag on empty board selects a region, since 1.68.0. The explicit
+                // null-cell test is required rather than belt-and-braces: mxRubberband.mousePressed
+                // in 4.2.2 checks isConsumed, isEnabled, isRubberbandTrigger and isPopupTrigger and
+                // never asks what is under the cursor - isRubberbandTrigger is literally "return
+                // true". It works today only because mxGraphHandler is registered first by the
+                // mxGraphComponent constructor and consumes the event on a cell hit, which is a
+                // registration order to depend on deliberately or not at all.
+                if (graphComponent.getCellAt(event.getX(), event.getY()) == null
+                        && !((CollaborativeGraphComponent) graphComponent).isSpaceHeld()) {
                     super.mousePressed(event);
                 }
             }
@@ -1950,6 +2232,17 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                     }
                 });
 
+        // Space held pans, which is the gesture every canvas application uses and the one this
+        // canvas took away from a plain drag. Bound on press and on release, with the cursor saying
+        // which mode the board is in - without that the only feedback is that dragging does
+        // something different, which is how a deliberate inversion reads as a fault.
+        keys.put(javax.swing.KeyStroke.getKeyStroke(
+                java.awt.event.KeyEvent.VK_SPACE, 0, false), "ontoboard.panOn");
+        keys.put(javax.swing.KeyStroke.getKeyStroke(
+                java.awt.event.KeyEvent.VK_SPACE, 0, true), "ontoboard.panOff");
+        graphComponent.getActionMap().put("ontoboard.panOn", holdSpace(true));
+        graphComponent.getActionMap().put("ontoboard.panOff", holdSpace(false));
+
         keys.put(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_ESCAPE, 0),
                 "ontoboard.clearSelection");
         graphComponent.getActionMap().put("ontoboard.clearSelection",
@@ -1961,6 +2254,41 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                         graph.clearSelection();
                     }
                 });
+    }
+
+    /**
+     * Whether the first-run hint may take the board's status line.
+     *
+     * <p>A pure function because the interesting case is not the hint: {@code boardStatus} starts as a
+     * single space, which is not the same as empty, and {@code loadLayoutForActiveOntology} runs first
+     * and may already have written "the saved arrangement could not be read" there. That sentence
+     * carries a file the user has to go and look at, and it must outrank a hint about the mouse.
+     *
+     * <p>Yielding is safe because the caller only marks the hint seen when it shows: a hint worth
+     * showing once is worth showing next session instead.
+     */
+    static boolean firstRunHintFits(boolean alreadySeen, String boardMessage) {
+        return !alreadySeen && (boardMessage == null || boardMessage.trim().isEmpty());
+    }
+
+    /** The space-bar action, in both directions, with the cursor to match. */
+    private javax.swing.Action holdSpace(final boolean held) {
+        return new javax.swing.AbstractAction() {
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            public void actionPerformed(java.awt.event.ActionEvent event) {
+                ((CollaborativeGraphComponent) graphComponent).setSpaceHeld(held);
+                graphComponent.getGraphControl().setCursor(java.awt.Cursor.getPredefinedCursor(
+                        held ? java.awt.Cursor.MOVE_CURSOR : java.awt.Cursor.DEFAULT_CURSOR));
+            }
+        };
+    }
+
+    /** The shortcut list, which is what makes the inverted pan gesture defensible. */
+    private void showShortcuts() {
+        JOptionPane.showMessageDialog(this, new de.fizkarlsruhe.ise.ontoboard.canvas.ShortcutsPanel(),
+                "Canvas shortcuts", JOptionPane.PLAIN_MESSAGE);
     }
 
     /**
@@ -2472,6 +2800,11 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                 graphComponent.getGraphControl().repaint();
             });
             menu.add(snap);
+            menu.addSeparator();
+
+            JMenuItem shortcuts = new JMenuItem("Keyboard shortcuts\u2026");
+            shortcuts.addActionListener(b -> showShortcuts());
+            menu.add(shortcuts);
 
             menu.show(more, 0, more.getHeight());
         });
@@ -2598,28 +2931,6 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         boardStatus.setFont(boardStatus.getFont().deriveFont(
                 java.awt.Font.PLAIN, boardStatus.getFont().getSize() - 1f));
 
-        JButton fit = new JButton("Fit");
-        fit.setToolTipText("Zoom so the whole board is visible (Ctrl+1). "
-                + "Ctrl+2 frames the selection.");
-        fit.addActionListener(a -> fitToWindow());
-
-        zoomReadout = new JButton(CanvasZoom.readout(1.0));
-        zoomReadout.setToolTipText("How far the board is zoomed. Click, or Ctrl+0, for 100%.");
-        zoomReadout.addActionListener(a -> {
-            graphComponent.zoomActual();
-            updateZoomReadout();
-        });
-        // Wide enough for "400%", so the button does not resize as the number changes. Before this
-        // there was no readout at all: three turns of the wheel past the last node leaves a blank
-        // grid, and nothing on screen said whether the board was empty, the view was somewhere else,
-        // or the plugin had stopped working.
-        zoomReadout.setPreferredSize(new Dimension(64, fit.getPreferredSize().height));
-
-        JPanel zoomControls = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 4, 0));
-        zoomControls.setOpaque(false);
-        zoomControls.add(fit);
-        zoomControls.add(zoomReadout);
-
         JPanel statusBar = new JPanel(new BorderLayout(8, 0));
         Color rule = javax.swing.UIManager.getColor("controlShadow");
         statusBar.setBorder(javax.swing.BorderFactory.createCompoundBorder(
@@ -2631,7 +2942,10 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         collabStatus.setPreferredSize(new Dimension(220, collabStatus.getPreferredSize().height));
         statusBar.add(collabStatus, BorderLayout.WEST);
         statusBar.add(boardStatus, BorderLayout.CENTER);
-        statusBar.add(zoomControls, BorderLayout.EAST);
+        // The zoom controls moved onto the board itself in 1.68.0, where a drawing tool puts them
+        // and where they are next to what they act on. Keeping a second copy here would also have
+        // meant two buttons claiming to be the readout, with only whichever was built last actually
+        // wired to the scale event.
         return statusBar;
     }
 

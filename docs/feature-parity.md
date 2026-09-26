@@ -54,7 +54,9 @@ individual views in a tabbed column beside the canvas, so none of this needs a t
 
 | Feature | Web app | Plugin | Assessment |
 |---|---|---|---|
-| Graph canvas, drag, pan, zoom | ✅ | ✅ | JGraphX. Since 1.58.0 the zoom has a readout in the status bar, clickable for 100%, and a *Fit* |
+| Graph canvas, drag, pan, zoom | ✅ | ✅ | JGraphX. Since 1.68.0 the gestures are a board's: a plain drag selects a region, space, the middle button or the right one pans, and the zoom controls float over the bottom-right corner rather than sitting in the status bar |
+| The gestures are written down | ❓ | ✅ | Since 1.68.0. Sixteen rows - every key binding and every mouse gesture - on *?* over the board and in the overflow menu. It exists because 1.68.0 inverted the drag, and an inversion nobody is told about is indistinguishable from a fault; a one-time status line says so on first use |
+| A frame carries what is inside it | ❓ | ✅ | Since 1.68.0. Dragging a frame moves the terms it encloses, by centre point, which is what makes it a frame rather than a rectangle. Resizing deliberately does not - a frame is a reading aid, not a container. Frames are siblings of their contents in the model, so this is done by delta rather than by parenting, which would have shifted every saved board by the frame origin |
 | A toolbar that fits its panel | ❓ | ✅ | Since 1.67.0. It wanted 1261px in an 857px tab, so *Collaborate* was laid out past the right edge - unpainted and unclickable. 777px now, with an overflow menu |
 | Snap and align | ❓ | ✅ | Since 1.66.0 a visible 20px dot grid. Snapping had been on since the first version at an invisible 10px step, which is sixteen candidate columns across one node |
 | Keyboard zoom and selection | ❓ | ✅ | Since 1.66.0: Ctrl+0 actual size, Ctrl+1 fit, Ctrl+2 frame the selection, Ctrl+± zoom, Ctrl+A select nodes, Ctrl+D copy notes and frames |
@@ -68,7 +70,7 @@ individual views in a tabbed column beside the canvas, so none of this needs a t
 | Delete axioms from canvas | ✅ | ✅ | With a confirmation distinct from removing from canvas |
 | Layout algorithms | ✅ | ✅ | Hierarchical, organic, circle, grid. Since 1.64.0 the hierarchy runs the right way up - superclass above subclass - with orthogonal routing, loose terms parked under the diagram, and the result fitted to the window |
 | The canvas can be reviewed without launching Protégé | ❌ | ✅ | Since 1.64.0. `CanvasDesignProofTest` renders the board, a 31-term board, the legend and the empty state to `target/design/` headlessly. Three of the four defects that release fixed were found by looking at those images |
-| Minimap, PNG/SVG export | ✅ | ✅ | Since 1.65.0 an exported PNG no longer carries grey label chips - the edge-label backing was the canvas colour, which is wrong on a white page |
+| Minimap, PNG/SVG export | ✅ | ✅ | Since 1.65.0 an exported PNG no longer carries grey label chips - the edge-label backing was the canvas colour, which is wrong on a white page. Since 1.68.0 the minimap floats over the board and collapses, instead of holding 180px of fixed width open beside a start screen that has nothing to overview |
 | Labels from `rdfs:label`, namespace colours | 🔶 | ✅ | Plugin colours by namespace and prefers labels |
 | Selection synced with the editor | ➖ | ✅ | **New capability** — impossible in the web app |
 | Live redraw on external edits | ➖ | ✅ | Canvas is a view over Protégé's model |

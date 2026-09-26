@@ -55,6 +55,31 @@ class SchemaCanvasViewTest {
         assertTrue(SchemaCanvasView.elide("abcdefghij", 1).length() <= 2);
     }
 
+    /**
+     * The first-run hint yields to whatever the board is already saying.
+     *
+     * <p>1.68.0 inverted the pan gesture and put a one-time sentence in the status line to say so.
+     * That sentence runs after {@code loadLayoutForActiveOntology}, which writes "the saved
+     * arrangement could not be read" to the same label - and that is the one message in this plugin a
+     * mouse hint must never bury, because it names a file the user has to go and look at. 1.67.0 split
+     * the status bar in two precisely because one label with two producers loses messages; this is the
+     * same defect arriving through a new door.
+     *
+     * <p>The empty-looking case is the one worth pinning: {@code boardStatus} is initialised to a
+     * single space, so a plain {@code isEmpty()} would have called that "already saying something" and
+     * the hint would never have appeared at all.
+     */
+    @Test
+    void theFirstRunHintDoesNotBuryAWarning() {
+        assertTrue(SchemaCanvasView.firstRunHintFits(false, " "), "a space is an empty line");
+        assertTrue(SchemaCanvasView.firstRunHintFits(false, ""));
+        assertTrue(SchemaCanvasView.firstRunHintFits(false, null), "before the label exists");
+        assertFalse(SchemaCanvasView.firstRunHintFits(true, " "), "shown once, ever");
+        assertFalse(SchemaCanvasView.firstRunHintFits(false,
+                "The saved arrangement could not be read, so the board starts empty."),
+                "a warning about a file outranks a hint about the mouse");
+    }
+
     private static CanvasLayout layoutWithSomethingInEveryPerOntologyCollection() {
         CanvasLayout layout = new CanvasLayout();
         layout.ontologyIri = "http://example.org/previous#";
