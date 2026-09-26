@@ -30,6 +30,8 @@ import org.semanticweb.owlapi.model.OWLOntology;
 import org.semanticweb.owlapi.model.OWLOntologyChange;
 import org.semanticweb.owlapi.model.OWLSubClassOfAxiom;
 import org.semanticweb.owlapi.model.RemoveAxiom;
+import org.semanticweb.owlapi.model.parameters.AxiomAnnotations;
+import org.semanticweb.owlapi.model.parameters.Imports;
 import org.semanticweb.owlapi.vocab.OWLRDFVocabulary;
 
 /**
@@ -942,9 +944,38 @@ public final class OperationMapper {
         return changes;
     }
 
+    /**
+     * Adds an axiom unless the ontology already asserts it, ignoring axiom annotations.
+     *
+     * <p>The annotation clause is the whole point. {@code containsAxiom(axiom)} compares axioms
+     * <em>with</em> their annotations, and everything arriving from a peer is rebuilt plain - the
+     * protocol has no field for an axiom annotation. So an ontology already holding
+     * {@code SubClassOf(Margherita, Pizza)} carrying a {@code dcterms:contributor} stamp did not
+     * match the plain form, and the plain form was added beside it: two subclass axioms for one
+     * pair, one stamped and one not.
+     *
+     * <p>Measured, not assumed. On OWL API 4.5.29:
+     * <pre>
+     *   containsAxiom(plain)                              false
+     *   containsAxiom(plain, EXCLUDED, IGNORE)            true
+     *   subclass axiom count after adding plain anyway    2
+     * </pre>
+     *
+     * <p>It is the common case here rather than an exotic one, because this plugin stamps provenance
+     * on axioms it writes - {@code Provenance} and {@code EditorNotes} both do - so the annotated
+     * form is what a curator's own ontology holds. Two peers editing the same hierarchy accumulated
+     * a duplicate per shared axiom, and a duplicate is invisible in Protege's class hierarchy: it
+     * draws one parent either way. It shows up in the release diff, or as a quality-report row
+     * nobody can explain.
+     *
+     * <p>{@code Imports.EXCLUDED} is kept, which is what the single-argument form means: an axiom an
+     * import already asserts should still be asserted in the edit file when a peer asserts it, since
+     * the edit file is what gets released.
+     */
     private static void addIfAbsent(List<OWLOntologyChange> changes, OWLOntology ontology,
             OWLAxiom axiom) {
-        if (!ontology.containsAxiom(axiom)) {
+        if (!ontology.containsAxiom(axiom, Imports.EXCLUDED,
+                AxiomAnnotations.IGNORE_AXIOM_ANNOTATIONS)) {
             changes.add(new AddAxiom(ontology, axiom));
         }
     }

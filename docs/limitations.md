@@ -254,7 +254,7 @@ The plugin is early. These exist in the web application but not yet here:
 
 ### Not covered by tests
 
-1199 tests cover projection, axiom construction, layout persistence, ODK scaffolding, the
+1203 tests cover projection, axiom construction, layout persistence, ODK scaffolding, the
 report's rule execution and the OSGi configuration. Fourteen of them reach outside the JVM:
 `RobotParityTest` compares the report against real ROBOT in `obolibrary/odkfull`,
 `RobotCliParityTest` compares nine more operations against the same image's `robot` command, and
