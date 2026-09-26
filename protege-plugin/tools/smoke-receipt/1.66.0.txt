@@ -1,0 +1,136 @@
+OntoBoard 1.66.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-09-26  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 8/8  test 10/10
+  2026-09-26  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 8/8  test 10/10
+
+
+THE BOARD BEHAVES LIKE A BOARD
+
+Release 3 of docs/superpowers/specs/2026-09-26-canvas-board-design.md. Five defects, all of them in
+gestures rather than in drawing, which is why the render-and-look method that found the last two releases
+did not find these - they were found by reading the library against the code.
+
+1. A CTRL+DRAG FORGED A SECOND NODE CLAIMING TO BE THE SAME TERM
+
+The worst of the five, and it comes from two defaults nobody held. mxGraph's constructor sets
+cellsCloneable = true and mxGraphComponent's sets dragEnabled = true; SchemaGraph touched neither. So a
+Ctrl+drag from a node ran Swing's DnD copy path - mxGraphTransferHandler.createGraphTransferable ->
+graph.cloneCells -> mxCell.clone - and mxCell.clone copies value, style, geometry and the id. The dropped
+clone was a second vertex whose id WAS the original IRI:
+
+  - getIdForCell returned that IRI for it, so clicking it pushed the term to Protege's selection;
+  - Delete on it reported "1 term taken off the board" while removing the original from membership;
+  - nothing ever wrote it to layout.nodes, so it vanished at the next refresh with no trace.
+
+One node per IRI is the invariant this entire canvas rests on. setCellsCloneable(false) is the whole fix,
+because mxGraphHandler consults getCloneableCells() before it starts.
+
+2. THE WHEEL ZOOMED AT THE WRONG POINT, AND PAST THE DOCUMENTED CEILING
+
+mxGraphComponent.centerZoom defaults to true and was never set, so the board zoomed towards the middle of
+the viewport rather than the cursor: on a 3694px board the node you were pointing at slid off screen at
+every click. And mxGraphComponent.zoom is guarded only by newScale > 0.04 with no upper bound, so the
+wheel ran to 800% while CanvasZoom.MAX_SCALE documented a 400% ceiling that nothing enforced.
+
+The replacement keeps the point under the cursor under the cursor, and the arithmetic is exact rather
+than approximate: zoomTo calls scaleAndTranslate(newScale, 0, 0) whenever page view is off, and it is, so
+the view translate is permanently (0,0) and a graph point's pixel is exactly its coordinate times the
+scale. The scroll correction runs in an invokeLater because zoomTo defers its own scrollbar maintenance
+the same way, and a synchronous correction would simply be overwritten.
+
+3. A RIGHT-DRAG PAN ALWAYS ENDED IN A CONTEXT MENU
+
+isPanningEvent defers to the library for any non-left button, so a right-drag pans the canvas by design.
+But the context menu opens on mouseReleased whenever isPopupTrigger(), and on Windows the popup trigger
+IS the button-3 release. Every single pan therefore finished with an eleven-item menu opening wherever
+the user had dragged to. The press position is now remembered and a release more than getTolerance()
+away - 4px, the same threshold mxGraphComponent.isSignificant uses - is treated as the pan it was.
+
+4. THE UNDO DEBOUNCE GUARDED AGAINST SOMETHING THAT CANNOT HAPPEN
+
+Written four releases ago, in 1.62.0, with this reasoning: "mxGraph fires CELLS_MOVED repeatedly while a
+drag is in progress, so record only when the save timer is not running." That is not true of this
+library. mxGraphHandler's constructor sets livePreview = false and imagePreview = true, so a drag shows a
+ghost bitmap and graph.moveCells - and therefore CELLS_MOVED - runs exactly once, on release.
+
+What the guard actually did was swallow the undo step for any second drag started within 800ms of the
+first. Move one node, immediately move another, press Ctrl+Z: both went back, with no way to take back
+only the second. The correction is a flag set while this class moves cells itself, which is the real case
+that needed excluding - Arrange already remembers the board before it runs and must not push a second
+step.
+
+5. ALT AND SHIFT WERE DEAD OR HOSTILE
+
+Alt+drag did nothing at all: the library's default hands Alt to a forced marquee, mxGraphHandler returns
+before it looks for a cell when one is forced, and this plugin's rubberband only starts on Ctrl or Shift.
+Alt is also the library's "ignore the grid this once" modifier, which is the meaning worth keeping.
+Shift+drag threw away the existing selection, because isToggleEvent knows only Ctrl - while
+installSelection's own comment says Shift starts an additive rubberband. selectCellsForEvent is the one
+branch point for click and marquee alike, so a single override fixes both.
+
+AND THE THINGS THAT WERE MISSING RATHER THAN WRONG
+
+A visible grid. Snapping has been on since the first version and invisible: mxGraph defaults gridSize to
+10 and gridEnabled to true, so every drag was already snapped to a step nobody could see, and ten pixels
+gives sixteen candidate columns across a 160px node - which is not alignment. Twenty pixels, drawn as
+dots at #D4D8DF, about 1.5:1 on the canvas: present to align against, never competing with a node stroke.
+The drop pitch moves from 190x90 to 200x100 so a dropped cluster lands on it.
+
+Ctrl+0, Ctrl+1, Ctrl+2 - actual size, fit the board, frame the selection - plus Ctrl+plus/minus through
+the same clamped step the wheel uses, Ctrl+A for vertices only, and Ctrl+D to copy sticky notes and
+frames. Ctrl+A excludes edges deliberately: Delete on a selection containing them produces the "an arrow
+is an axiom" refusal once per edge, which reads as a half-broken shortcut rather than as the refusal it
+is.
+
+Note and frame colours. NoteLayout.color has existed, been copied, been persisted in the sidecar and been
+read by SchemaGraph.render since sticky notes were added - and nothing in the plugin has ever written it,
+so every note on every board has been the same yellow. Six colours for a note, four for a frame's
+outline. This is a cell style, so a recoloured note exports.
+
+Double-click. On a term it expands its neighbours - the ordinary board gesture for "show me what this
+connects to", and one that already remembers the board, so Ctrl+Z takes it back. On a note or a frame it
+starts an in-place edit, which setCellsEditable(true) now allows and isCellEditable narrows to exactly
+those two: a term's label is its rdfs:label, and letting a double click rewrite it would let somebody
+change what the board displays without changing the ontology, which is the one lie this projection must
+never tell. A LABEL_CHANGED listener writes the new words back to the sidecar, without which the edit is
+lost at the next refresh.
+
+The namespace palette. Its javadoc claimed the eight colours "remain distinguishable for the most common
+forms of colour blindness"; measured, three pairs collapse - #C2554D and #8A6D3B are deltaE 5.2 apart
+under deuteranopia. And the colour was keyed to assignments.size(), so removing one namespace and adding
+another handed out a duplicate, and the same vocabulary got a different colour on a different board -
+the opposite of what the persistence in that class exists for. Five colours on a lightness ladder now,
+keyed to a hash of the namespace with a forward probe so two vocabularies share a colour only once all
+five are taken. Boards already saved keep their stored hexes, because a stored assignment always wins.
+
+A FAILURE IN MY OWN TOOLING, CAUGHT BY A TEST
+
+The palette change appeared to apply - the patch script printed both edits as matched - and did not. The
+patcher writes the file once after all of a call's edits succeed, so when a third edit in the same call
+failed on a bad anchor, the two that had already matched were discarded with it. The printed output said
+otherwise.
+
+What caught it was the new PrefixColours test, which failed with "expected #4A90D9 but was #3E8E5A" -
+two colours from the palette that was supposed to have been replaced. Without that test the release would
+have shipped with the old palette, the new javadoc describing it, and a receipt claiming the change. Every
+other edit in that run was then checked individually rather than trusted.
+
+WHAT THIS DOES NOT COVER
+
+Everything here is a gesture, and no test in this project can press a mouse button. The pure arithmetic
+is tested - scaleToFill, the editable predicate, the cloning flag, the namespace keying, 12 new tests -
+and the rest rests on the in-host self-test constructing the canvas and on somebody using it. Specifically
+unverified: that the wheel now keeps the cursor fixed, that a right-drag no longer opens a menu, and that
+a second drag within 800ms is separately undoable. Those are three things to try first in a real Protege.
+
+NUMBERS
+
+1332 tests, 1 skipped, 0 failures. 8 new: 3 in CanvasZoomTest, 3 in SchemaGraphTest, 2 in
+PrefixColoursTest. One existing assertion was inverted rather than deleted - SchemaGraphTest's
+"label editing arrives in Task 3" - because Task 3 has arrived and the refusal it expressed now lives in
+a predicate that is itself tested.
+
+Counted three ways, agreeing: Maven's summary, the surefire reports, and an anchored ^\s*@Test\s*$ across
+src/test/java; 93 report files for 93 test classes.

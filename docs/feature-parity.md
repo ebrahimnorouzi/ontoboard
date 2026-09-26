@@ -55,6 +55,9 @@ individual views in a tabbed column beside the canvas, so none of this needs a t
 | Feature | Web app | Plugin | Assessment |
 |---|---|---|---|
 | Graph canvas, drag, pan, zoom | ✅ | ✅ | JGraphX. Since 1.58.0 the zoom has a readout in the status bar, clickable for 100%, and a *Fit* |
+| Snap and align | ❓ | ✅ | Since 1.66.0 a visible 20px dot grid. Snapping had been on since the first version at an invisible 10px step, which is sixteen candidate columns across one node |
+| Keyboard zoom and selection | ❓ | ✅ | Since 1.66.0: Ctrl+0 actual size, Ctrl+1 fit, Ctrl+2 frame the selection, Ctrl+± zoom, Ctrl+A select nodes, Ctrl+D copy notes and frames |
+| Sticky notes in colours | ✅ | ✅ | Since 1.66.0. The model, the sidecar field and the renderer had all been in place since notes existed; nothing ever wrote the colour, so every note was yellow |
 | Undo on the canvas | ❓ | ✅ | Since 1.62.0, for what the board owns - arranging, adding, removing, moving, notes and frames - with Ctrl+Z, 25 steps, per session. It never touches axioms, which are Protégé's own Edit > Undo, and the status line says so on every undo |
 | Draw imported terms | ❓ | ✅ | Since 1.61.0. Faded, said so on hover and in the legend, and findable by the Find box. Before that, dragging `bfo:continuant` onto the board did nothing and left no trace. The web app has no import handling to compare against |
 | Expand a term's neighbours | ✅ | ✅ | Since 1.59.0 the new terms are placed in a ring around the source, counted in the status bar, saved, and collapsible. Before that they were laid in a row at the top of the board and nothing was saved or reported |

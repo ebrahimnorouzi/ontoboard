@@ -169,7 +169,8 @@ public class CanvasLayout {
         public String fill = "#EEF3FA";
         public String stroke = "#4A90D9";
 
-        FrameLayout copy() {
+        /** A copy that shares nothing, for the history and for Ctrl+D. */
+        public FrameLayout copy() {
             FrameLayout copy = new FrameLayout();
             copy.id = id;
             copy.label = label;
@@ -193,7 +194,8 @@ public class CanvasLayout {
         public String color = "#FFF3B0";
         public int fontSize = 12;
 
-        NoteLayout copy() {
+        /** A copy that shares nothing, for the history and for Ctrl+D. */
+        public NoteLayout copy() {
             NoteLayout copy = new NoteLayout();
             copy.id = id;
             copy.text = text;

@@ -10,22 +10,38 @@ import java.util.Map;
  * so a namespace keeps its colour across restarts. Without that persistence the palette
  * would be handed out in whatever order entities happened to be projected, and the same
  * ontology would come back in different colours each session.
+ *
+ * <p>A board saved before 1.66.0 keeps the colours it stored, because a stored assignment always
+ * wins: only a namespace met for the first time takes the current palette. Rewriting old boards onto
+ * it would be a one-line migration dropping any stored value the palette no longer holds, and is
+ * deliberately not done - silently recolouring somebody's saved diagram is a worse outcome than a
+ * board carrying one old hex.
  */
 public final class PrefixColours {
 
     /**
-     * Chosen to stay legible as a 2px stroke against a white node fill, and to remain
-     * distinguishable for the most common forms of colour blindness (no red/green pair).
+     * A lightness ladder rather than a hue wheel.
+     *
+     * <p>The eight colours here before claimed to "remain distinguishable for the most common forms
+     * of colour blindness". Measured, three pairs collapse: {@code #C2554D} and {@code #8A6D3B} are
+     * deltaE 5.2 apart under deuteranopia, and {@code #B08900} and {@code #C2554D} are 2.9 apart
+     * under tritanopia - which is to say indistinguishable.
+     *
+     * <p>Eight hues cannot survive a dichromatic collapse. Five spread across a 3.9-to-9.1 contrast
+     * range give a worst pair of deltaE 18.6 across normal, deuteranopic, protanopic and tritanopic
+     * vision, because lightness is a second channel that no deficiency takes away.
+     *
+     * <p>A board with more than five namespaces reuses a colour, which is the honest trade: the
+     * legend's "Namespaces on this board" section lists every one of them by IRI and remains the
+     * authority. A colour two vocabularies share is a smaller lie than a colour two people cannot
+     * tell apart.
      */
     private static final String[] PALETTE = {
-        "#4A90D9", // blue
-        "#7B61A8", // purple
-        "#3E8E5A", // green
-        "#B08900", // amber
-        "#C2554D", // brick
-        "#2A8C8C", // teal
-        "#8A6D3B", // brown
-        "#5B6B7C", // slate
+        "#2B7FD4", // blue,   3.88:1 on the canvas
+        "#7B3FA0", // violet, 6.46:1
+        "#1E7F5C", // green,  4.65:1
+        "#B35C00", // orange, 4.44:1
+        "#3B4652", // slate,  9.05:1
     };
 
     private final Map<String, String> assignments;
@@ -42,9 +58,25 @@ public final class PrefixColours {
         if (existing != null) {
             return existing;
         }
-        // Deterministic given the current map size, and persisted immediately so the next
-        // session reproduces it rather than re-deriving from a different projection order.
-        String colour = PALETTE[assignments.size() % PALETTE.length];
+        // Derived from the namespace, not from how many namespaces have been seen. Keying on
+        // assignments.size() meant that removing one namespace and adding another handed out a
+        // duplicate, and that the same vocabulary got a different colour on a different board -
+        // the opposite of what the persistence in this class exists for.
+        int hash = 0;
+        for (int i = 0; i < namespace.length(); i++) {
+            hash = 31 * hash + namespace.charAt(i);
+        }
+        int start = Math.floorMod(hash, PALETTE.length);
+        String colour = PALETTE[start];
+        // Probe forward for one nobody on this board is using, so two namespaces share a colour
+        // only once all five are spoken for.
+        for (int k = 0; k < PALETTE.length; k++) {
+            String candidate = PALETTE[(start + k) % PALETTE.length];
+            if (!assignments.containsValue(candidate)) {
+                colour = candidate;
+                break;
+            }
+        }
         assignments.put(namespace, colour);
         return colour;
     }

@@ -269,6 +269,54 @@ The plugin is early. These exist in the web application but not yet here:
   note is prose rather than a phrase, so it is the one tooltip here that wraps. Three paragraphs from
   three editors is not a tooltip; the Notes dialog shows them all with authors and dates.
 
+- **Five gesture defects, all fixed in 1.66.0, and one of them broke the canvas's central invariant.**
+  Release 3 of the canvas design spec. Unlike 1.64.0 and 1.65.0 these were not found by looking at a
+  render - they were found by reading JGraphX against this code.
+
+  **A Ctrl+drag forged a second node claiming to be the same term.** `mxGraph` starts with
+  `cellsCloneable = true` and `mxGraphComponent` with `dragEnabled = true`, and `SchemaGraph` held
+  neither. So a Ctrl+drag ran Swing's DnD copy path, and `mxCell.clone` copies value, style, geometry
+  *and the id*: the dropped clone was a second vertex whose id was the original IRI. Clicking it pushed
+  that term to Protégé's selection; Delete on it reported one term removed while taking the original out
+  of membership; nothing wrote it anywhere, so it vanished at the next refresh. One node per IRI is what
+  this whole canvas rests on, and two unheld defaults were enough to break it.
+
+  **The wheel zoomed at the viewport centre, not the cursor** - on a 3694px board the node you were
+  pointing at slid off screen at every click - **and had no upper bound**, running to 800% while
+  `CanvasZoom.MAX_SCALE` documented 400%.
+
+  **A right-drag pan always ended in a context menu.** A right-drag pans by design, but the menu opens on
+  any `isPopupTrigger()` release, and on Windows that *is* the button-3 release.
+
+  **The undo debounce guarded against something that cannot happen.** It was written in 1.62.0 on the
+  stated grounds that "mxGraph fires `CELLS_MOVED` repeatedly while a drag is in progress". It does not:
+  `mxGraphHandler` sets `livePreview = false`, so the model is touched once, on release. What the guard
+  actually did was swallow the undo step for any second drag started within 800ms of the first.
+
+  **Alt+drag did nothing and Shift+drag discarded the selection** - Alt is claimed by a forced marquee
+  that this canvas's rubberband never reaches, and `isToggleEvent` knows only Ctrl, though
+  `installSelection`'s own comment says Shift adds to a selection.
+
+  Beyond the defects: a visible 20px grid (snapping had been on and invisible at a 10px step since the
+  first version), Ctrl+0/1/2 for actual size, fit and frame-the-selection, Ctrl+A, Ctrl+D to copy notes
+  and frames, sticky-note and frame colours - `NoteLayout.color` had been modelled, copied, persisted and
+  rendered since notes existed, and *nothing had ever written it*, so every note on every board was the
+  same yellow - and double-click, which expands a term's neighbours or retypes a note. In-place editing
+  is allowed for notes and frames only: a term's label is its `rdfs:label`, and letting a double click
+  rewrite it would change what the board says without changing the ontology.
+
+  The namespace palette was also wrong twice over. Its javadoc claimed the eight colours "remain
+  distinguishable for the most common forms of colour blindness"; three pairs collapse - `#C2554D` and
+  `#8A6D3B` are deltaE 5.2 apart under deuteranopia. And the colour was keyed to *how many* namespaces
+  had been seen, so dropping one and adding another handed out a duplicate and the same vocabulary got a
+  different colour on a different board. Five colours on a lightness ladder, keyed to the namespace.
+
+  Worth recording: the palette change appeared to apply and did not. The patch tool writes a file once
+  after all of a call's edits succeed, so a later bad anchor silently discarded two edits it had already
+  reported as matched. A new test caught it - "expected #4A90D9 but was #3E8E5A", two colours from the
+  palette that was supposed to be gone. Without it the release would have shipped the old palette under
+  the new javadoc.
+
 - **The stylesheet named a font that was never used, and the legend described a board that was never
   drawn - both until 1.65.0.** Release 2 of the canvas design spec. Four of these are defects rather
   than taste, and all four were invisible without a render.

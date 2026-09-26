@@ -67,6 +67,39 @@ class CanvasZoomTest {
         assertEquals(CanvasZoom.MIN_SCALE, CanvasZoom.clamp(-2), 1e-9);
     }
 
+    /**
+     * Framing a selection is allowed to magnify, and fitting the board is not.
+     *
+     * <p>The pair is the point: one 160x60 node in a 1200px window should fill it, because framing it
+     * is the whole reason for asking; a board that already fits should stay where it is, because
+     * drawing it four times bigger is a zoom nobody requested.
+     */
+    @Test
+    void framingASelectionMagnifiesWhereFittingTheBoardDoesNot() {
+        assertEquals(1.0, CanvasZoom.scaleToFit(160, 60, 1200, 800), 1e-9);
+
+        double filled = CanvasZoom.scaleToFill(160, 60, 1200, 800);
+
+        assertTrue(filled > 1.0, "framing one node should magnify it, got " + filled);
+        // Width is the binding dimension: (1200 - 48) / 160 = 7.2, clamped to the ceiling.
+        assertEquals(CanvasZoom.MAX_SCALE, filled, 1e-9);
+    }
+
+    @Test
+    void framingObeysTheSameLimitsAsFitting() {
+        assertEquals(CanvasZoom.MIN_SCALE, CanvasZoom.scaleToFill(1e9, 1e9, 1000, 800), 1e-9);
+        assertEquals(CanvasZoom.MIN_SCALE, CanvasZoom.scaleToFill(2000, 1000, 40, 40), 1e-9);
+        assertEquals(1.0, CanvasZoom.scaleToFill(0, 0, 1000, 800), 1e-9);
+        assertEquals(1.0, CanvasZoom.scaleToFill(Double.NaN, 100, 500, 500), 1e-9);
+    }
+
+    /** On something too big to frame, the two agree - neither may magnify what already overflows. */
+    @Test
+    void thereIsNoDifferenceWhenTheContentIsTooBig() {
+        assertEquals(CanvasZoom.scaleToFit(2000, 1000, 1048, 2000),
+                CanvasZoom.scaleToFill(2000, 1000, 1048, 2000), 1e-9);
+    }
+
     @Test
     void theReadoutIsWholePercent() {
         assertEquals("100%", CanvasZoom.readout(1.0));

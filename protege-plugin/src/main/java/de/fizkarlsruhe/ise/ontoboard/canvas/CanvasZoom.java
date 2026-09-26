@@ -83,6 +83,28 @@ public final class CanvasZoom {
     }
 
     /**
+     * As {@link #scaleToFit}, but allowed to magnify.
+     *
+     * <p>Fitting the whole board must not magnify: everything is already shown, and drawing it four
+     * times bigger is a zoom level nobody asked for. Framing a selection is the opposite case -
+     * putting one 160x60 node in the middle of a 1200px window is the entire point of the gesture,
+     * and a version that refused to magnify would leave the node exactly the size it already was.
+     */
+    public static double scaleToFill(double contentWidth, double contentHeight,
+            double viewWidth, double viewHeight) {
+        if (!positive(contentWidth) || !positive(contentHeight)
+                || !positive(viewWidth) || !positive(viewHeight)) {
+            return 1.0;
+        }
+        double usableWidth = viewWidth - 2 * FIT_MARGIN;
+        double usableHeight = viewHeight - 2 * FIT_MARGIN;
+        if (usableWidth <= 0 || usableHeight <= 0) {
+            return MIN_SCALE;
+        }
+        return clamp(Math.min(usableWidth / contentWidth, usableHeight / contentHeight));
+    }
+
+    /**
      * The scale as a percentage, for the toolbar.
      *
      * <p>Rounded to whole percent. The wheel steps by a factor, so the honest value after a few

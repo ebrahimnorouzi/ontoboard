@@ -189,6 +189,15 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
      * would then prune to nothing - so "put it back" would empty the board.
      */
     private final BoardHistory history = new BoardHistory();
+
+    /**
+     * True while this class is moving cells itself, so the move listener does not record a step.
+     *
+     * <p>Arrange already remembers the board before it runs; without this it would push a second,
+     * identical step from the CELLS_MOVED the layout produces, and one Ctrl+Z would look like it had
+     * done nothing.
+     */
+    private boolean movingProgrammatically;
     /**
      * The live session, or null when working through git. Created on demand from the
      * Collaborate dialog rather than at startup, because most sessions are single-user and
@@ -243,12 +252,23 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         graphComponent.getViewport().setBackground(
                 Color.decode(de.fizkarlsruhe.ise.ontoboard.canvas.SchemaStyles.CANVAS_BACKGROUND));
         graphComponent.setGridVisible(true);
+        // Dots rather than lines, and pale enough to be texture: #D4D8DF is about 1.5:1 on the
+        // canvas, present to align against and never competing with a 1.6px node stroke. The pitch
+        // and the snap step are SchemaGraph's setGridSize - the component owns how the grid looks,
+        // mxGraph owns what it does.
+        graphComponent.setGridStyle(com.mxgraph.swing.mxGraphComponent.GRID_STYLE_DOT);
+        graphComponent.setGridColor(java.awt.Color.decode("#D4D8DF"));
+        // Enter commits an in-place edit and Escape abandons it, which is what every other text
+        // field in Protege does. Without them the only way out of an edit is to click elsewhere.
+        graphComponent.setEnterStopsCellEditing(true);
+        graphComponent.setEscapeEnabled(true);
         installEntityDropTarget();
         installDoubleClickToCreate();
         installCursorSharing();
         installSelection();
         installDragToConnect();
         installUndo();
+        installBoardShortcuts();
         installWheelZoom();
         installZoomReadout();
         installKeyboardShortcuts();
@@ -263,18 +283,53 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         positionSaveTimer = new Timer(800, event -> saveLayoutTo(layoutFile));
         positionSaveTimer.setRepeats(false);
         cellsMovedListener = (sender, event) -> {
-            // One undo step per burst of movement, not per event. mxGraph fires CELLS_MOVED
-            // repeatedly while a drag is in progress, and the save timer is already the thing that
-            // knows a burst is under way: if it is not running, this is the first move of a new one.
-            // Without the guard, dragging one node across the board would fill the whole history with
-            // steps a pixel apart and push everything else out of it.
-            if (positionSaveTimer != null && !positionSaveTimer.isRunning()) {
+            // One step per completed drag. The guard here used to be "only if the save timer is not
+            // running", on the stated grounds that mxGraph fires CELLS_MOVED repeatedly during a
+            // drag. It does not: mxGraphHandler sets livePreview = false and imagePreview = true in
+            // 4.2.2, so a drag shows a ghost bitmap and the model is touched exactly once, on
+            // release. What that guard actually did was swallow the step for any second drag started
+            // within 800ms of the first - move one node, immediately move another, press Ctrl+Z, and
+            // both went back with no way to take back only the second.
+            if (!movingProgrammatically) {
                 rememberBoard("moving things on the board");
             }
             capturePositions();
             positionSaveTimer.restart();
         };
         graph.addListener(mxEvent.CELLS_MOVED, cellsMovedListener);
+
+        // Without this an in-place edit is lost at the next refresh, which any edit anywhere in
+        // Protege triggers: mxGraph writes the new text into the cell, and render rebuilds every
+        // cell from the layout, which still holds the old words.
+        graph.addListener(mxEvent.LABEL_CHANGED, (sender, event) -> {
+            Object cell = event.getProperty("cell");
+            String id = graph.getIdForCell(cell);
+            if (id == null || !SchemaGraph.isAnnotationId(id)) {
+                return;
+            }
+            Object value = graph.getModel().getValue(cell);
+            String text = value == null ? "" : value.toString().trim();
+            if (text.isEmpty()) {
+                // An emptied note is almost always a mis-keyed edit rather than a request to blank
+                // it, and a note with nothing in it is indistinguishable from a rendering fault.
+                refresh();
+                setStatus("A sticky note needs some words. Nothing was changed.");
+                return;
+            }
+            rememberBoard(id.startsWith(SchemaGraph.NOTE_ID_PREFIX)
+                    ? "editing a sticky note" : "renaming a frame");
+            for (CanvasLayout.NoteLayout note : layout.notes) {
+                if (id.equals(note.id)) {
+                    note.text = text;
+                }
+            }
+            for (CanvasLayout.FrameLayout frame : layout.frames) {
+                if (id.equals(frame.id)) {
+                    frame.label = text;
+                }
+            }
+            saveLayoutTo(layoutFile);
+        });
 
         selectionListener = () -> {
             OWLEntity selected = getOWLEditorKit().getOWLWorkspace()
@@ -833,6 +888,214 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         }
     }
 
+
+
+    /**
+     * One keystroke on the canvas, without an anonymous action per binding.
+     *
+     * <p>Bound on the graph component's ancestor map, like every other shortcut here, so none of
+     * them fires while the focus is in Prot&eacute;g&eacute;'s class hierarchy or an annotation
+     * field.
+     */
+    private void bindOnCanvas(String name, int keyCode, int modifiers, final Runnable action) {
+        graphComponent.getInputMap(javax.swing.JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT)
+                .put(javax.swing.KeyStroke.getKeyStroke(keyCode, modifiers), name);
+        graphComponent.getActionMap().put(name, new javax.swing.AbstractAction() {
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            public void actionPerformed(java.awt.event.ActionEvent event) {
+                action.run();
+            }
+        });
+    }
+
+    /**
+     * The zoom and selection keys every board has.
+     *
+     * <p>Ctrl+0, Ctrl+1 and Ctrl+2 are the three a person reaches for without looking: actual size,
+     * fit everything, frame what I have selected. Plus and minus go through the same clamped step the
+     * wheel uses rather than {@code zoomIn()}, which has no ceiling.
+     *
+     * <p>Ctrl+A selects vertices only, deliberately. Delete on a selection containing edges produces
+     * the "an arrow is an axiom, so use the right-click menu" message once per edge, which reads as a
+     * half-broken shortcut rather than as the refusal it is.
+     */
+    private void installBoardShortcuts() {
+        for (int mask : new int[] { java.awt.event.InputEvent.CTRL_DOWN_MASK,
+                java.awt.event.InputEvent.META_DOWN_MASK }) {
+            bindOnCanvas("ontoboard.zoomActual", java.awt.event.KeyEvent.VK_0, mask, () -> {
+                graphComponent.zoomActual();
+                updateZoomReadout();
+                setStatus("Actual size.");
+            });
+            bindOnCanvas("ontoboard.fitBoard", java.awt.event.KeyEvent.VK_1, mask,
+                    this::fitToWindow);
+            bindOnCanvas("ontoboard.fitSelection", java.awt.event.KeyEvent.VK_2, mask,
+                    this::fitToSelection);
+            bindOnCanvas("ontoboard.zoomIn", java.awt.event.KeyEvent.VK_EQUALS, mask,
+                    () -> zoomAt(true, null));
+            bindOnCanvas("ontoboard.zoomInPad", java.awt.event.KeyEvent.VK_ADD, mask,
+                    () -> zoomAt(true, null));
+            bindOnCanvas("ontoboard.zoomOut", java.awt.event.KeyEvent.VK_MINUS, mask,
+                    () -> zoomAt(false, null));
+            bindOnCanvas("ontoboard.zoomOutPad", java.awt.event.KeyEvent.VK_SUBTRACT, mask,
+                    () -> zoomAt(false, null));
+            bindOnCanvas("ontoboard.selectAll", java.awt.event.KeyEvent.VK_A, mask, () -> {
+                graph.selectCells(true, false);
+                setStatus(graph.getSelectionCount() + " selected. Delete takes them off the board; "
+                        + "the ontology is unchanged.");
+            });
+            bindOnCanvas("ontoboard.duplicate", java.awt.event.KeyEvent.VK_D, mask,
+                    this::duplicateSelectedAnnotations);
+        }
+    }
+
+    /**
+     * Ctrl+D copies the selected sticky notes and frames.
+     *
+     * <p>Notes and frames only. A node is a term and a term appears once - that is the invariant the
+     * whole canvas rests on, and the same one a Ctrl+drag quietly broke until 1.66.0 - so duplicating
+     * one is not a gesture this board offers. Saying so is better than doing nothing, because doing
+     * nothing is indistinguishable from a shortcut that is not bound.
+     */
+    private void duplicateSelectedAnnotations() {
+        Object[] selected = graph.getSelectionCells();
+        if (selected == null || selected.length == 0) {
+            setStatus("Nothing selected. Ctrl+D copies sticky notes and frames.");
+            return;
+        }
+
+        List<CanvasLayout.NoteLayout> newNotes = new ArrayList<CanvasLayout.NoteLayout>();
+        List<CanvasLayout.FrameLayout> newFrames = new ArrayList<CanvasLayout.FrameLayout>();
+        for (Object cell : selected) {
+            String id = graph.getIdForCell(cell);
+            if (id == null) {
+                continue;
+            }
+            for (CanvasLayout.NoteLayout note : layout.notes) {
+                if (id.equals(note.id)) {
+                    CanvasLayout.NoteLayout copy = note.copy();
+                    copy.id = SchemaGraph.NOTE_ID_PREFIX + nextAnnotationSuffix();
+                    copy.x += 20;
+                    copy.y += 20;
+                    newNotes.add(copy);
+                }
+            }
+            for (CanvasLayout.FrameLayout frame : layout.frames) {
+                if (id.equals(frame.id)) {
+                    CanvasLayout.FrameLayout copy = frame.copy();
+                    copy.id = SchemaGraph.FRAME_ID_PREFIX + nextAnnotationSuffix();
+                    copy.x += 20;
+                    copy.y += 20;
+                    newFrames.add(copy);
+                }
+            }
+        }
+        if (newNotes.isEmpty() && newFrames.isEmpty()) {
+            setStatus("A node is a term, and a term appears once. Ctrl+D copies sticky notes and "
+                    + "frames.");
+            return;
+        }
+
+        int copied = newNotes.size() + newFrames.size();
+        rememberBoard(copied == 1 ? "copying a note or frame" : "copying " + copied + " of them");
+        layout.notes.addAll(newNotes);
+        layout.frames.addAll(newFrames);
+        refresh();
+        saveLayoutTo(layoutFile);
+        setStatus("Copied " + copied + (copied == 1 ? " item" : " items")
+                + ", offset so you can see both. The ontology is unchanged.");
+    }
+
+    /**
+     * Recolours a sticky note or a frame.
+     *
+     * <p>{@code NoteLayout.color} has existed, been persisted in the sidecar and been read by
+     * {@code SchemaGraph.render} since sticky notes were added - and nothing in the plugin has ever
+     * written it, so every note on every board has been the same yellow. The model, the persistence
+     * and the renderer were all already there; only the menu was missing.
+     */
+    private void recolourAnnotation(String id, String hex) {
+        for (CanvasLayout.NoteLayout note : layout.notes) {
+            if (id.equals(note.id)) {
+                rememberBoard("recolouring a sticky note");
+                note.color = hex;
+                refresh();
+                saveLayoutTo(layoutFile);
+                return;
+            }
+        }
+        for (CanvasLayout.FrameLayout frame : layout.frames) {
+            if (id.equals(frame.id)) {
+                rememberBoard("recolouring a frame");
+                frame.stroke = hex;
+                refresh();
+                saveLayoutTo(layoutFile);
+                return;
+            }
+        }
+    }
+
+    /** The colours a note can be, as {name, hex}. All light enough for the note's dark ink. */
+    private static final String[][] NOTE_COLOURS = {
+        {"Yellow", "#FFF3B0"}, {"Green", "#D8F0D5"}, {"Blue", "#D6E8FB"},
+        {"Pink", "#FBD9E6"}, {"Orange", "#FFE2C4"}, {"Violet", "#E5DCF6"},
+    };
+
+    /** The colours a frame's outline can be, drawn from the palette the nodes use. */
+    private static final String[][] FRAME_COLOURS = {
+        {"Blue", "#2D6FBF"}, {"Green", "#2F7A4C"}, {"Amber", "#B35C00"}, {"Slate", "#3B4652"},
+    };
+
+    /** A small filled square, so a colour menu shows its colours. */
+    private static final class SwatchIcon implements javax.swing.Icon {
+
+        private final java.awt.Color colour;
+
+        SwatchIcon(java.awt.Color colour) {
+            this.colour = colour;
+        }
+
+        @Override
+        public int getIconWidth() {
+            return 14;
+        }
+
+        @Override
+        public int getIconHeight() {
+            return 14;
+        }
+
+        @Override
+        public void paintIcon(java.awt.Component host, java.awt.Graphics graphics, int x, int y) {
+            java.awt.Graphics2D g = (java.awt.Graphics2D) graphics.create();
+            try {
+                g.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING,
+                        java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
+                g.setColor(colour);
+                g.fillRoundRect(x, y + 1, 13, 12, 4, 4);
+                g.setColor(java.awt.Color.decode("#9AA3AF"));
+                g.drawRoundRect(x, y + 1, 13, 12, 4, 4);
+            } finally {
+                g.dispose();
+            }
+        }
+    }
+
+    /** The colour submenu for a note or a frame, or null when the id is neither. */
+    private javax.swing.JMenu colourMenuFor(final String id) {
+        boolean isNote = id.startsWith(SchemaGraph.NOTE_ID_PREFIX);
+        String[][] palette = isNote ? NOTE_COLOURS : FRAME_COLOURS;
+        javax.swing.JMenu menu = new javax.swing.JMenu(isNote ? "Note colour" : "Frame colour");
+        for (final String[] swatch : palette) {
+            JMenuItem item = new JMenuItem(swatch[0],
+                    new SwatchIcon(java.awt.Color.decode(swatch[1])));
+            item.addActionListener(a -> recolourAnnotation(id, swatch[1]));
+            menu.add(item);
+        }
+        return menu;
+    }
 
     // ------------------------------------------------------------------ undo for the board
 
@@ -1404,7 +1667,35 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
      * everywhere else, which is a bug that survives every manual test that starts from 100%.
      */
     private void fitToWindow() {
-        com.mxgraph.util.mxRectangle bounds = graph.getView().getGraphBounds();
+        fitTo(graph.getView().getGraphBounds(), false, "the board");
+    }
+
+    /**
+     * Frames whatever is selected, magnifying if it is small.
+     *
+     * <p>The one case where zooming past 1:1 is right: framing a single node in a large window is
+     * the whole point of asking for it, where fitting the board past 1:1 would be a zoom level
+     * nobody requested.
+     */
+    private void fitToSelection() {
+        Object[] selected = graph.getSelectionCells();
+        if (selected == null || selected.length == 0) {
+            setStatus("Select something first - Ctrl+2 frames whatever is selected.");
+            return;
+        }
+        fitTo(graph.getView().getBoundingBox(selected), true,
+                selected.length == 1 ? "the selection" : selected.length + " selected");
+    }
+
+    /**
+     * Zooms and scrolls so {@code bounds} fills the window.
+     *
+     * <p>The one thing to get right here is a unit: {@code mxGraphView} reports bounds in
+     * <em>scaled</em> pixels, so dividing by the current scale is what makes this mean the same
+     * thing from 40% as from 100%. Without it the arithmetic is right at 100% and wrong everywhere
+     * else, which is a bug that survives every manual test that starts from 100%.
+     */
+    private void fitTo(com.mxgraph.util.mxRectangle bounds, boolean allowMagnify, String what) {
         java.awt.Rectangle window = graphComponent.getViewport().getViewRect();
         double scale = graph.getView().getScale();
         double zoom = scale <= 0 ? 1 : scale;
@@ -1413,8 +1704,11 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             return;
         }
 
-        double fitted = CanvasZoom.scaleToFit(bounds.getWidth() / zoom, bounds.getHeight() / zoom,
-                window.getWidth(), window.getHeight());
+        double fitted = allowMagnify
+                ? CanvasZoom.scaleToFill(bounds.getWidth() / zoom, bounds.getHeight() / zoom,
+                        window.getWidth(), window.getHeight())
+                : CanvasZoom.scaleToFit(bounds.getWidth() / zoom, bounds.getHeight() / zoom,
+                        window.getWidth(), window.getHeight());
         graphComponent.zoomTo(fitted, false);
 
         // Then bring the content itself into view: fitting the scale without scrolling leaves a board
@@ -1424,7 +1718,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                 (int) (bounds.getX() * ratio), (int) (bounds.getY() * ratio),
                 (int) (bounds.getWidth() * ratio), (int) (bounds.getHeight() * ratio)));
         updateZoomReadout();
-        setStatus("Fitted the board to the window at " + CanvasZoom.readout(fitted) + ".");
+        setStatus("Fitted " + what + " to the window at " + CanvasZoom.readout(fitted) + ".");
     }
 
     /**
@@ -1486,12 +1780,57 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         graphComponent.addMouseWheelListener(new java.awt.event.MouseWheelListener() {
             @Override
             public void mouseWheelMoved(java.awt.event.MouseWheelEvent event) {
-                if (event.getWheelRotation() < 0) {
-                    graphComponent.zoomIn();
-                } else {
-                    graphComponent.zoomOut();
-                }
+                zoomAt(event.getWheelRotation() < 0, event);
                 event.consume();
+            }
+        });
+    }
+
+    /**
+     * Zooms one step, keeping the point under the cursor under the cursor.
+     *
+     * <p>Two faults this replaces. {@code mxGraphComponent.centerZoom} defaults to true and was never
+     * set, so the board zoomed towards the middle of the viewport: on a 3694px board the node you
+     * were pointing at slid off the screen at every click, which is the opposite of what pointing at
+     * it means. And {@code mxGraphComponent.zoom} is guarded only by {@code newScale > 0.04} with no
+     * upper bound, so the wheel ran to 800% while {@link CanvasZoom#MAX_SCALE} documented a ceiling
+     * of 400% that nothing enforced.
+     *
+     * <p>The arithmetic is exact rather than approximate: {@code zoomTo} calls
+     * {@code scaleAndTranslate(newScale, 0, 0)} whenever page view is off - it is, and nothing here
+     * turns it on - so the view translate is permanently (0,0) and a graph point's pixel is exactly
+     * its coordinate times the scale.
+     *
+     * @param event where the cursor is, or null to zoom about the centre of the view
+     */
+    private void zoomAt(boolean in, java.awt.event.MouseEvent event) {
+        double scale = graph.getView().getScale();
+        double target = CanvasZoom.clamp(in
+                ? scale * graphComponent.getZoomFactor()
+                : scale / graphComponent.getZoomFactor());
+        if (target == scale) {
+            return;
+        }
+        final javax.swing.JViewport port = graphComponent.getViewport();
+        final java.awt.Point inPort = event == null
+                ? new java.awt.Point(port.getWidth() / 2, port.getHeight() / 2)
+                : javax.swing.SwingUtilities.convertPoint(
+                        (java.awt.Component) event.getSource(), event.getPoint(), port);
+        final java.awt.Point origin = port.getViewPosition();
+        final double ratio = target / scale;
+
+        graphComponent.zoomTo(target, false);
+        // After the component has finished: zoomTo defers its own scrollbar maintenance to an
+        // invokeLater, so a scroll position set synchronously here would simply be overwritten.
+        javax.swing.SwingUtilities.invokeLater(new Runnable() {
+            @Override
+            public void run() {
+                java.awt.Dimension size = graphComponent.getGraphControl().getPreferredSize();
+                int x = (int) Math.round((origin.x + inPort.x) * ratio) - inPort.x;
+                int y = (int) Math.round((origin.y + inPort.y) * ratio) - inPort.y;
+                x = Math.max(0, Math.min(x, Math.max(0, size.width - port.getWidth())));
+                y = Math.max(0, Math.min(y, Math.max(0, size.height - port.getHeight())));
+                port.setViewPosition(new java.awt.Point(x, y));
             }
         });
     }
@@ -2118,11 +2457,12 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                 java.awt.Font.PLAIN, collabStatus.getFont().getSize() - 1f));
 
         JButton fit = new JButton("Fit");
-        fit.setToolTipText("Zoom so the whole board is visible");
+        fit.setToolTipText("Zoom so the whole board is visible (Ctrl+1). "
+                + "Ctrl+2 frames the selection.");
         fit.addActionListener(a -> fitToWindow());
 
         zoomReadout = new JButton(CanvasZoom.readout(1.0));
-        zoomReadout.setToolTipText("How far the board is zoomed. Click for 100%.");
+        zoomReadout.setToolTipText("How far the board is zoomed. Click, or Ctrl+0, for 100%.");
         zoomReadout.addActionListener(a -> {
             graphComponent.zoomActual();
             updateZoomReadout();
@@ -2175,7 +2515,12 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         // discarded an arrangement somebody had spent an afternoon on, and the only way back was to do
         // it again by hand.
         rememberBoard("arranging the board");
-        CanvasLayouts.apply(graph, algorithm);
+        movingProgrammatically = true;
+        try {
+            CanvasLayouts.apply(graph, algorithm);
+        } finally {
+            movingProgrammatically = false;
+        }
         capturePositions();
         saveLayoutTo(layoutFile);
         // Fit afterwards, because even a well-shaped tree is bigger than the viewport: a corrected
@@ -2235,9 +2580,27 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
 
     private void installContextMenu() {
         graphComponent.getGraphControl().addMouseListener(new MouseAdapter() {
+
+            /** Where the button went down, to tell a click from the end of a pan. */
+            private java.awt.Point pressedAt;
+
+            @Override
+            public void mousePressed(MouseEvent event) {
+                pressedAt = event.getPoint();
+            }
+
             @Override
             public void mouseReleased(MouseEvent event) {
                 if (!event.isPopupTrigger()) {
+                    return;
+                }
+                // A right-drag pans this canvas, by design - isPanningEvent defers to the library
+                // for any non-left button. But on Windows the popup trigger IS the button-3
+                // release, so the documented pan gesture ended with an eleven-item menu opening
+                // wherever the user happened to drag to, every single time. The tolerance is the
+                // same threshold mxGraphComponent.isSignificant uses to tell a click from a drag.
+                if (pressedAt != null && pressedAt.distance(event.getPoint())
+                        > graphComponent.getTolerance()) {
                     return;
                 }
                 Object cell = graphComponent.getCellAt(event.getX(), event.getY());
@@ -2250,6 +2613,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                     JMenuItem edit = new JMenuItem("Edit this note or frame...");
                     edit.addActionListener(a -> editAnnotation(iri));
                     menu.add(edit);
+                    menu.add(colourMenuFor(iri));
                     JMenuItem delete = new JMenuItem("Delete this note or frame");
                     delete.addActionListener(a -> deleteAnnotation(iri));
                     menu.add(delete);
@@ -3282,8 +3646,10 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                 continue;
             }
             CanvasLayout.NodeLayout position = new CanvasLayout.NodeLayout();
-            position.x = at.x + column * 190;
-            position.y = at.y + row * 90;
+            // 200 and 100 rather than 190 and 90, so a dropped cluster lands on the 20px grid
+            // instead of one pixel off every second column.
+            position.x = at.x + column * 200;
+            position.y = at.y + row * 100;
             position.w = 160;
             position.h = 60;
             layout.nodes.put(iri, position);
@@ -3319,8 +3685,17 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                 if (event.getClickCount() != 2 || event.isPopupTrigger()) {
                     return;
                 }
-                if (graphComponent.getCellAt(event.getX(), event.getY()) != null) {
-                    // Double-clicking a node is not a request for a new one.
+                Object cell = graphComponent.getCellAt(event.getX(), event.getY());
+                if (cell != null) {
+                    // Double-clicking a node is not a request for a new one. On a term it is the
+                    // ordinary board gesture for "show me what this connects to"; on a note or a
+                    // frame mxGraph starts an in-place edit, which isCellEditable allows for
+                    // exactly those two.
+                    String onIt = graph.getIdForCell(cell);
+                    if (onIt != null && !SchemaGraph.isAnnotationId(onIt)
+                            && membership.contains(onIt)) {
+                        expandNeighbours(onIt);
+                    }
                     return;
                 }
                 com.mxgraph.util.mxPoint at = graphComponent.getPointForEvent(event);

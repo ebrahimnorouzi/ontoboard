@@ -24,6 +24,22 @@ public class SchemaGraph extends mxGraph {
         setAllowDanglingEdges(false);
         setAllowLoops(false);
         setCellsDisconnectable(false);
+        // A node is a term, and there is exactly one node per IRI. mxGraph starts with
+        // cellsCloneable = true and mxGraphComponent with dragEnabled = true, so a Ctrl+drag ran
+        // Swing's DnD copy path: mxGraphTransferHandler -> graph.cloneCells -> mxCell.clone, which
+        // copies value, style, geometry AND the id. The dropped clone was a second vertex whose id
+        // *was* the original IRI - clicking it pushed that term to Protege's selection, and Delete
+        // on it reported one term removed while taking the original out of membership. Nothing ever
+        // wrote it to the layout, so it vanished at the next refresh. One unheld default, and the
+        // projection invariant is gone. Duplicating board furniture is Ctrl+D; duplicating an axiom
+        // is not a gesture.
+        setCellsCloneable(false);
+        // Snapping has been on since the first version and invisible with it: mxGraph defaults
+        // gridSize to 10 and gridEnabled to true, and mxGraphHandler already snaps every drag delta.
+        // Ten pixels gives sixteen candidate columns across a 160px node, which is not alignment.
+        // This is the snap step as well as the drawn pitch, so a board saved at odd coordinates
+        // moves once on its next drag; no stored geometry is rewritten until then.
+        setGridSize(20);
         setEdgeLabelsMovable(false);
         setCellsMovable(true);
         // Both default to false in mxGraph. With the hierarchical layout's routing turned on
@@ -38,7 +54,10 @@ public class SchemaGraph extends mxGraph {
         setResetEdgesOnResize(true);
         // Label editing arrives in Task 3; enabling it now would let a user rename a
         // cell's visible text without touching the ontology, which would be a lie.
-        setCellsEditable(false);
+        // Editable, but only for furniture - see isCellEditable. It was false outright, which is
+        // the safe answer to the wrong question: double-clicking a sticky note to change its words
+        // is the most ordinary gesture on a board, and the reason to refuse was never notes.
+        setCellsEditable(true);
         setDropEnabled(false);
         setSplitEnabled(false);
     }
@@ -162,6 +181,20 @@ public class SchemaGraph extends mxGraph {
 
     public Object getCellForId(String id) {
         return id == null ? null : cellsById.get(id);
+    }
+
+    /**
+     * Only board furniture can be edited in place.
+     *
+     * <p>A term node's label is its {@code rdfs:label}. Renaming it is an ontology edit with its own
+     * conversation - a dialog, provenance, a shared session to publish to - and not a side effect of
+     * a double click. An edge's label is the property it stands for, which is the same argument.
+     * Sticky notes and frames belong to the board alone, so they are exactly the cells this allows.
+     */
+    @Override
+    public boolean isCellEditable(Object cell) {
+        String id = getIdForCell(cell);
+        return id != null && isAnnotationId(id) && getModel().isVertex(cell);
     }
 
     public String getIdForCell(Object cell) {

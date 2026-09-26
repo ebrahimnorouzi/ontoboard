@@ -61,6 +61,33 @@ public final class CollaborativeGraphComponent extends mxGraphComponent {
         return getCellAt(event.getX(), event.getY()) == null;
     }
 
+    /**
+     * Alt does not force a marquee here.
+     *
+     * <p>Alt is the library's "ignore the grid this once" modifier - {@code isGridEnabledEvent} is
+     * exactly {@code !isAltDown} - and the library's own default hands the same key to a forced
+     * marquee. Both cannot be true. {@code mxGraphHandler.mousePressed} returns before it looks for
+     * a cell when a marquee is forced, and this canvas's rubberband only starts on Ctrl or Shift, so
+     * Alt+drag reached neither handler and did nothing at all.
+     */
+    @Override
+    public boolean isForceMarqueeEvent(java.awt.event.MouseEvent event) {
+        return false;
+    }
+
+    /**
+     * Shift adds to the selection, as it does on every board.
+     *
+     * <p>{@code mxGraphComponent.isToggleEvent} knows only Ctrl, so Shift+click and Shift+drag threw
+     * away whatever was already selected - while {@code installSelection}'s own comment says Shift
+     * starts an additive rubberband. {@code selectCellsForEvent} is the single branch point for both
+     * gestures, so this one override fixes both.
+     */
+    @Override
+    public boolean isToggleEvent(java.awt.event.MouseEvent event) {
+        return event != null && (event.isShiftDown() || super.isToggleEvent(event));
+    }
+
     @Override
     protected mxGraphComponent.mxGraphControl createGraphControl() {
         // An inner class of mxGraphComponent, so the enclosing instance is implicit - passing
