@@ -209,7 +209,10 @@ public class SchemaGraph extends mxGraph {
                 ? SchemaStyles.UNSATISFIABLE_STROKE : colours.colourFor(node.getId());
         return baseStyleFor(node) + ";strokeColor=" + stroke
                 + (node.hasNote() || node.isUnsatisfiable()
-                        ? ";strokeWidth=" + SchemaStyles.NOTED_STROKE_WIDTH : "");
+                        ? ";strokeWidth=" + SchemaStyles.NOTED_STROKE_WIDTH : "")
+                // Opacity for an imported term - the one channel the four above leave free, and the
+                // only one that also survives a PNG or SVG export.
+                + (node.isImported() ? ";opacity=" + SchemaStyles.IMPORTED_OPACITY : "");
     }
 
     private static String baseStyleFor(CanvasNode node) {

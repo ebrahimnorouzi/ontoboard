@@ -139,6 +139,29 @@ class CanvasTooltipsTest {
         }
     }
 
+    /**
+     * The tooltip says "imported", in words.
+     *
+     * <p>The fade is a hint and this is a rule. A curator who edits an imported term loses the change
+     * at the next refresh of the imports, or leaves a second definition behind - and a faded box alone
+     * does not tell anybody that.
+     */
+    @Test
+    void anImportedTermSaysSoAndSaysWhatItMeans() {
+        String tooltip = CanvasTooltips.forNode(
+                new CanvasNode(PIZZA, NodeKind.CLASS, "pizza").asImported());
+
+        assertTrue(tooltip.contains("Imported"), tooltip);
+        assertTrue(tooltip.contains("your file"), tooltip);
+    }
+
+    @Test
+    void aLocalTermSaysNothingAboutImports() {
+        String tooltip = CanvasTooltips.forNode(new CanvasNode(PIZZA, NodeKind.CLASS, "pizza"));
+
+        assertFalse(tooltip.contains("Imported"), tooltip);
+    }
+
     // ===================================================================== editorial notes
 
     /**

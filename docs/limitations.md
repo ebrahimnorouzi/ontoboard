@@ -268,6 +268,40 @@ The plugin is early. These exist in the web application but not yet here:
   note is prose rather than a phrase, so it is the one tooltip here that wraps. Three paragraphs from
   three editors is not a tooltip; the Notes dialog shows them all with authors and dates.
 
+- **An imported term could not be put on the board until 1.61.0, and the attempt left no trace.**
+  Dragging `bfo:continuant` across did nothing visible: `OntologyProjection.project` looked only at the
+  edit file's own signature, so no node was drawn - and `pruneStaleMembers` then deleted the sidecar
+  entry, so the board did not even remember the attempt. For an ODK project, which is what this plugin
+  scaffolds, most of the terms a curator refers to are imported, so the canvas could not draw the
+  ordinary case.
+
+  Imported terms are now drawn faded, said to be imported on hover, explained in the legend, and found
+  by the Find box - Ctrl+Enter puts one on the board. Opacity is the marker because every other channel
+  on a node already says something: shape for the kind, stroke colour for the namespace, border weight
+  for a note, and a dash would read as "inferred". It is a cell style rather than an overlay, so it
+  survives a PNG or SVG export - which matters, because the distinction is *which terms a curator must
+  not edit*, and a published diagram that draws imported terms like local ones invites the mistake.
+
+  **An OWL API defect found on the way, and worth knowing about.** In 4.5.29, calling
+  `getSignature(Imports.INCLUDED)` permanently pollutes the same ontology's cached
+  `Imports.EXCLUDED` signature:
+
+  ```
+  getSignature(EXCLUDED)  -> [edit#Mine]
+  getSignature(INCLUDED)  -> [edit#Mine, obo/BFO_0000002]
+  getSignature(EXCLUDED)  -> [edit#Mine, obo/BFO_0000002]      <- wrong
+  ```
+
+  Two callers here ask opposite questions of one ontology: the search box asks with imports, *Add all*
+  asks without. On the first version of this work, one search therefore made *Add all* offer every term
+  in every import for the rest of the session - tens of thousands of nodes on one click. The per-kind
+  queries (`getClassesInSignature(imports)` and its three siblings) are not affected, and everything
+  here now uses them. `ImportedSignatureTest` pins both the library's behaviour and the plugin's
+  immunity, so the workaround cannot be removed as superstition.
+
+  It was caught by a test asserting the *boring* half of the pair - that Add all stays local - rather
+  than by any test of the feature being built.
+
 - **An edge could not be drawn until 1.60.0, and the docs said otherwise.** `setConnectable(false)`
   sat in `SchemaCanvasView` with the comment "Task 4 turns this on with real axiom writing", while
   `docs/feature-parity.md` advertised authoring edges from the canvas. There was no connection handle to

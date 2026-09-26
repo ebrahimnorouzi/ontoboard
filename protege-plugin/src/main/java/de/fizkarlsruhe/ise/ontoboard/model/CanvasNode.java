@@ -13,6 +13,7 @@ public final class CanvasNode {
     private final String label;
     private final List<String> notes;
     private final boolean unsatisfiable;
+    private final boolean imported;
 
     public CanvasNode(String id, NodeKind kind, String label) {
         this(id, kind, label, null, false);
@@ -24,11 +25,17 @@ public final class CanvasNode {
 
     public CanvasNode(String id, NodeKind kind, String label, List<String> notes,
             boolean unsatisfiable) {
+        this(id, kind, label, notes, unsatisfiable, false);
+    }
+
+    private CanvasNode(String id, NodeKind kind, String label, List<String> notes,
+            boolean unsatisfiable, boolean imported) {
         this.id = Objects.requireNonNull(id, "id");
         this.kind = Objects.requireNonNull(kind, "kind");
         this.label = Objects.requireNonNull(label, "label");
         this.notes = withoutBlanks(notes);
         this.unsatisfiable = unsatisfiable;
+        this.imported = imported;
     }
 
     /** Blank notes dropped, so {@link #hasNote} cannot be true with nothing to show. */
@@ -47,7 +54,27 @@ public final class CanvasNode {
 
     /** The same node, marked as one the reasoner found unsatisfiable. */
     public CanvasNode asUnsatisfiable() {
-        return new CanvasNode(id, kind, label, notes, true);
+        return new CanvasNode(id, kind, label, notes, true, imported);
+    }
+
+    /** The same node, marked as defined in an imported ontology rather than in the edit file. */
+    public CanvasNode asImported() {
+        return new CanvasNode(id, kind, label, notes, unsatisfiable, true);
+    }
+
+    /**
+     * Whether this term is defined in an import rather than in the file being edited.
+     *
+     * <p>The distinction a curator must not get wrong. An imported term belongs to somebody else's
+     * ontology: asserting about it locally is normal - that is what an import is for - but editing it
+     * as though it were yours produces a change that the next {@code make all_imports} silently
+     * discards, or worse, a duplicate definition that survives into a release.
+     *
+     * <p>Like {@link #hasNote} and {@link #isUnsatisfiable}, not part of {@link #equals}: it is a fact
+     * about where the term came from at the moment of drawing, not about which node this is.
+     */
+    public boolean isImported() {
+        return imported;
     }
 
     /**

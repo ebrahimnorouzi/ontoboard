@@ -55,6 +55,21 @@ public final class SchemaStyles {
     public static final String UNSATISFIABLE = "obUnsatisfiable";
 
     /**
+     * A term defined in an imported ontology rather than in the file being edited.
+     *
+     * <p>Drawn faded. Every other channel on a node already says something - the shape says what kind
+     * of thing it is, the stroke colour says which namespace it came from, the border weight says
+     * there is a note, and a dash would read as "inferred" - so opacity is the one free channel, and
+     * it happens to say the right thing: an imported term is context rather than your work.
+     *
+     * <p>Opacity is a cell style, not an overlay, so it survives a PNG or SVG export. That matters
+     * more here than for the note badge: the distinction is which terms a curator must not edit, and
+     * a published diagram that draws imported terms exactly like local ones is a diagram that invites
+     * the mistake.
+     */
+    public static final String IMPORTED = "obImported";
+
+    /**
      * The outline of a class a reasoner says can have no instances.
      *
      * <p>Red, and it overrides the namespace colour rather than sharing the channel. That is a
@@ -70,6 +85,14 @@ public final class SchemaStyles {
      * <p>Heavy enough to notice while scanning a board, light enough not to read as selection.
      */
     public static final int NOTED_STROKE_WIDTH = 3;
+
+    /**
+     * How solid an imported term is drawn, as a percentage.
+     *
+     * <p>Faded enough to read as background at a glance, solid enough that the label is legible and
+     * the namespace colour is still recognisable - the two things the fade must not take away.
+     */
+    public static final int IMPORTED_OPACITY = 55;
 
     /** Canvas background - a hair off white so white node fills read as raised. */
     public static final String CANVAS_BACKGROUND = "#F7F8FA";
@@ -101,6 +124,14 @@ public final class SchemaStyles {
                 UNSATISFIABLE_STROKE, true, true, 13, mxConstants.FONT_BOLD);
         unsatisfiable.put(mxConstants.STYLE_STROKEWIDTH, (float) NOTED_STROKE_WIDTH);
         sheet.putCellStyle(UNSATISFIABLE, unsatisfiable);
+
+        // Registered for the same reason as NOTED: so the legend's swatch draws what the canvas
+        // draws rather than an approximation. The canvas appends the opacity as an override, because
+        // the marker applies to every kind of node.
+        Map<String, Object> imported = vertex(mxConstants.SHAPE_RECTANGLE, "#FFFFFF", "#4A90D9",
+                true, true, 13, mxConstants.FONT_BOLD);
+        imported.put(mxConstants.STYLE_OPACITY, IMPORTED_OPACITY);
+        sheet.putCellStyle(IMPORTED, imported);
 
         // Deliberately unlike every ontology shape: square corners, no shadow, left-aligned text
         // that wraps. A sticky note is not a term, and anything that let somebody mistake one for

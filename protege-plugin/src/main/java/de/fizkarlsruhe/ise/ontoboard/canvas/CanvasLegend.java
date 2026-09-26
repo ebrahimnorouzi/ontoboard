@@ -54,9 +54,15 @@ public final class CanvasLegend {
         private final String fill;
         private final String stroke;
         private final String dashPattern;
+        private final int opacity;
 
         Entry(Form form, String styleName, String label, String meaning, String fill,
                 String stroke, String dashPattern) {
+            this(form, styleName, label, meaning, fill, stroke, dashPattern, 100);
+        }
+
+        Entry(Form form, String styleName, String label, String meaning, String fill,
+                String stroke, String dashPattern, int opacity) {
             this.form = form;
             this.styleName = styleName;
             this.label = label;
@@ -64,6 +70,18 @@ public final class CanvasLegend {
             this.fill = fill;
             this.stroke = stroke;
             this.dashPattern = dashPattern;
+            this.opacity = opacity;
+        }
+
+        /**
+         * How solid the swatch is drawn, as a percentage.
+         *
+         * <p>Carried so the legend can illustrate a marker whose whole channel is opacity. Without it
+         * the imported row would draw a swatch identical to the class row above it - a key entry whose
+         * picture does not show the thing it is explaining, which is worse than no row.
+         */
+        public int getOpacity() {
+            return opacity;
         }
 
         public Form getForm() {
@@ -234,6 +252,11 @@ public final class CanvasLegend {
                 "A heavier border. Somebody has written an editor or curator note on this term - "
                         + "read them all with OntoBoard > Notes > All notes.",
                 "#FFFFFF", "#4A90D9", null));
+        entries.add(new Entry(Form.MODIFIER, SchemaStyles.IMPORTED, "Imported term",
+                "Faded. This term is defined in an ontology your file imports, not in your file - so "
+                        + "refer to it freely, but do not edit it here: the next refresh of the "
+                        + "imports can discard the change or leave a second definition behind.",
+                "#FFFFFF", "#4A90D9", null, SchemaStyles.IMPORTED_OPACITY));
         entries.add(new Entry(Form.EDGE, SchemaStyles.INFERRED_SUBCLASS, "Inferred subclass",
                 "A subsumption the reasoner worked out that the ontology does not state "
                         + "directly. Dotted and grey so it is never mistaken for an asserted "

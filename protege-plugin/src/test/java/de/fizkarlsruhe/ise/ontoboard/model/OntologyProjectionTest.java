@@ -24,6 +24,7 @@ import org.semanticweb.owlapi.model.OWLDatatypeRestriction;
 import org.semanticweb.owlapi.model.OWLFacetRestriction;
 import org.semanticweb.owlapi.model.OWLOntology;
 import org.semanticweb.owlapi.model.OWLOntologyManager;
+import org.semanticweb.owlapi.model.parameters.Imports;
 import org.semanticweb.owlapi.model.OWLSubClassOfAxiom;
 import org.semanticweb.owlapi.vocab.OWLFacet;
 
@@ -345,6 +346,138 @@ class OntologyProjectionTest {
         assertEquals(plain.hashCode(), marked.hashCode());
     }
 
+
+    // ---------- imported terms ----------
+
+    /**
+     * An ontology that imports another, both in one manager so the import resolves.
+     *
+     * <p>Built rather than loaded from a fixture because the interesting part is the import
+     * declaration, and a fixture pair on disk would put the thing under test in two files nobody reads
+     * while testing.
+     */
+    private OWLOntology editFileImporting(String importedNs, String importedClass) throws Exception {
+        OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
+        OWLDataFactory factory = manager.getOWLDataFactory();
+
+        IRI importedIri = IRI.create("http://example.org/imported");
+        OWLOntology upstream = manager.createOntology(importedIri);
+        manager.addAxiom(upstream, factory.getOWLDeclarationAxiom(
+                factory.getOWLClass(IRI.create(importedNs + importedClass))));
+
+        OWLOntology edit = manager.createOntology(IRI.create("http://example.org/edit"));
+        manager.applyChange(new org.semanticweb.owlapi.model.AddImport(edit,
+                factory.getOWLImportsDeclaration(importedIri)));
+        manager.addAxiom(edit, factory.getOWLDeclarationAxiom(
+                factory.getOWLClass(IRI.create("http://example.org/edit#Mine"))));
+        return edit;
+    }
+
+    /**
+     * The defect this pins: dragging an imported term onto the board did nothing visible.
+     *
+     * <p>{@code project} looked only at the edit file's own signature, so no node was drawn - and
+     * {@code pruneStaleMembers} then deleted the sidecar entry, so the attempt left no trace either.
+     * For an ODK project, which is what this plugin scaffolds, most terms a curator refers to are
+     * imported, so the canvas could not draw the ordinary case.
+     */
+    @Test
+    void anImportedClassOnTheBoardIsDrawn() throws Exception {
+        String importedNs = "http://purl.obolibrary.org/obo/";
+        OWLOntology edit = editFileImporting(importedNs, "BFO_0000002");
+
+        Projection projection = OntologyProjection.project(edit,
+                new HashSet<String>(Arrays.asList(importedNs + "BFO_0000002")));
+
+        assertEquals(1, projection.getNodes().size(), projection.getNodes().toString());
+        assertEquals(importedNs + "BFO_0000002", projection.getNodes().get(0).getId());
+    }
+
+    @Test
+    void anImportedTermIsMarkedImportedAndALocalOneIsNot() throws Exception {
+        String importedNs = "http://purl.obolibrary.org/obo/";
+        OWLOntology edit = editFileImporting(importedNs, "BFO_0000002");
+
+        Projection projection = OntologyProjection.project(edit, new HashSet<String>(
+                Arrays.asList(importedNs + "BFO_0000002", "http://example.org/edit#Mine")));
+
+        for (CanvasNode node : projection.getNodes()) {
+            if (node.getId().startsWith(importedNs)) {
+                assertTrue(node.isImported(), node.getId() + " came from an import");
+            } else {
+                assertFalse(node.isImported(), node.getId() + " is declared in the edit file");
+            }
+        }
+        assertEquals(2, projection.getNodes().size());
+    }
+
+    /**
+     * "Add all" stays local, which is the other half of the decision.
+     *
+     * <p>Widening the projection to imports is safe because it is gated on membership. Widening this
+     * would not be: an ODK project importing BFO, ChEBI and the relations ontology would put tens of
+     * thousands of terms on the board on one click, and that is not a diagram.
+     */
+    @Test
+    void addAllStillOffersOnlyTheEditFilesOwnTerms() throws Exception {
+        String importedNs = "http://purl.obolibrary.org/obo/";
+        OWLOntology edit = editFileImporting(importedNs, "BFO_0000002");
+
+        Set<String> offered = OntologyProjection.everythingWorthShowing(edit);
+
+        assertTrue(offered.contains("http://example.org/edit#Mine"), offered.toString());
+        assertFalse(offered.contains(importedNs + "BFO_0000002"),
+                "Add all must not pull in an import's terms: " + offered);
+    }
+
+    /** The search index does look into imports, so a term you have not drawn can still be found. */
+    @Test
+    void theSearchIndexSeesImportedTerms() throws Exception {
+        String importedNs = "http://purl.obolibrary.org/obo/";
+        OWLOntology edit = editFileImporting(importedNs, "BFO_0000002");
+
+        List<String> withImports = new ArrayList<String>();
+        for (CanvasNode term : OntologyProjection.everyTermWorthShowing(edit,
+                org.semanticweb.owlapi.model.parameters.Imports.INCLUDED)) {
+            withImports.add(term.getId());
+        }
+        List<String> localOnly = new ArrayList<String>();
+        for (CanvasNode term : OntologyProjection.everyTermWorthShowing(edit)) {
+            localOnly.add(term.getId());
+        }
+
+        assertTrue(withImports.contains(importedNs + "BFO_0000002"), withImports.toString());
+        assertFalse(localOnly.contains(importedNs + "BFO_0000002"), localOnly.toString());
+    }
+
+    /**
+     * A hierarchy edge between two imported terms is drawn.
+     *
+     * <p>The axiom lives in the import, not the edit file, so an EXCLUDED query would find the two
+     * nodes and no line between them - a diagram that draws BFO's classes as unrelated boxes, which is
+     * worse than not drawing them.
+     */
+    @Test
+    void anAxiomInsideAnImportIsDrawnBetweenTwoImportedTerms() throws Exception {
+        OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
+        OWLDataFactory factory = manager.getOWLDataFactory();
+        IRI importedIri = IRI.create("http://example.org/imported");
+        OWLOntology upstream = manager.createOntology(importedIri);
+        OWLClass parent = factory.getOWLClass(IRI.create("http://example.org/up#Parent"));
+        OWLClass child = factory.getOWLClass(IRI.create("http://example.org/up#Child"));
+        manager.addAxiom(upstream, factory.getOWLDeclarationAxiom(parent));
+        manager.addAxiom(upstream, factory.getOWLDeclarationAxiom(child));
+        manager.addAxiom(upstream, factory.getOWLSubClassOfAxiom(child, parent));
+
+        OWLOntology edit = manager.createOntology(IRI.create("http://example.org/edit"));
+        manager.applyChange(new org.semanticweb.owlapi.model.AddImport(edit,
+                factory.getOWLImportsDeclaration(importedIri)));
+
+        Projection projection = OntologyProjection.project(edit, new HashSet<String>(Arrays.asList(
+                "http://example.org/up#Parent", "http://example.org/up#Child")));
+
+        assertEquals(1, projection.getEdges().size(), projection.getEdges().toString());
+    }
 
     // ---------- what "Add all" offers ----------
 

@@ -48,6 +48,13 @@ public final class CanvasTooltips {
             text.append("<br><b>Cannot have instances</b> - the reasoner found this class "
                     + "contradictory");
         }
+        if (node.isImported()) {
+            // Said in words as well as drawn, because the fade is a hint and this is a rule: an edit
+            // to an imported term goes into the edit file, where the next refresh of the imports can
+            // discard it or leave a second definition behind.
+            text.append("<br><b>Imported</b> - defined in another ontology. Refer to it freely; "
+                    + "editing it here writes into your file, not the import.");
+        }
         appendNotes(text, node.getNotes());
         return text.append("<br><font size=\"-2\">").append(escape(node.getId()))
                 .append("</font></html>").toString();

@@ -219,6 +219,12 @@ public final class LegendPanel extends JPanel {
         private void paintNode(Graphics2D g, int x, int y) {
             Color fill = decode(entry.getFill(), Color.WHITE);
             Color stroke = decode(entry.getStroke(), Color.DARK_GRAY);
+            // A row whose only distinction is opacity has to be drawn with it, or the swatch shows
+            // the reader something other than what the canvas will.
+            if (entry.getOpacity() < 100) {
+                g.setComposite(java.awt.AlphaComposite.getInstance(
+                        java.awt.AlphaComposite.SRC_OVER, entry.getOpacity() / 100f));
+            }
             int w = SWATCH_WIDTH - 4;
             int h = SWATCH_HEIGHT - 4;
 

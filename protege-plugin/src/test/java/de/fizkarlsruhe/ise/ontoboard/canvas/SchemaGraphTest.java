@@ -144,6 +144,46 @@ class SchemaGraphTest {
         assertFalse(ordinaryStyle.contains(SchemaStyles.UNSATISFIABLE_STROKE), ordinaryStyle);
     }
 
+    /**
+     * An imported term is drawn faded, and keeps everything else it was saying.
+     *
+     * <p>Opacity is the only free channel on a node: the shape says what kind of thing it is, the
+     * stroke colour says which namespace, the border weight says there is a note, and a dash would read
+     * as "inferred". A fade that took one of those with it would trade one piece of information for
+     * another.
+     */
+    @Test
+    void anImportedTermIsDrawnFaded() {
+        CanvasNode imported = new CanvasNode("http://purl.obolibrary.org/obo/BFO_0000002",
+                NodeKind.CLASS, "continuant").asImported();
+
+        String style = SchemaGraph.styleForTesting(imported);
+
+        assertTrue(style.contains("opacity=" + SchemaStyles.IMPORTED_OPACITY), style);
+        assertFalse(style.contains("dashed"), "a dash on a node would read as inferred: " + style);
+    }
+
+    /** Imported and noted at once is an ordinary state, and both marks have to survive. */
+    @Test
+    void anImportedTermWithANoteKeepsBothMarks() {
+        CanvasNode both = new CanvasNode("http://purl.obolibrary.org/obo/BFO_0000002",
+                NodeKind.CLASS, "continuant",
+                java.util.Collections.singletonList("we use this as our root")).asImported();
+
+        String style = SchemaGraph.styleForTesting(both);
+
+        assertTrue(style.contains("opacity=" + SchemaStyles.IMPORTED_OPACITY), style);
+        assertTrue(style.contains("strokeWidth=" + SchemaStyles.NOTED_STROKE_WIDTH), style);
+    }
+
+    @Test
+    void aLocalTermIsNotFaded() {
+        String style = SchemaGraph.styleForTesting(
+                new CanvasNode("http://example.org/o#Mine", NodeKind.CLASS, "Mine"));
+
+        assertFalse(style.contains("opacity"), style);
+    }
+
     @Test
     void aNotedTermGetsTheHeavierBorderAndKeepsItsNamespaceColour() {
         CanvasNode noted = new CanvasNode("http://example.org/o#Noted", NodeKind.CLASS,

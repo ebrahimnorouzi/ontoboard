@@ -195,6 +195,17 @@ nothing: `OntologyProjection` looks only at the edit file's own signature, so no
 `pruneStaleMembers` then removes the entry. Project with `Imports.INCLUDED` and draw imported terms
 distinctly — they are the ones a curator must not edit.
 
+> **Done in 1.61.0.** Drawn faded, said to be imported on hover, and explained in the legend; the Find
+> box sees them and Ctrl+Enter draws one. Opacity is the channel because the other four are taken, and
+> being a cell style rather than an overlay it survives a PNG or SVG export - which is the point, since
+> the distinction is about what may be edited.
+>
+> `Imports.INCLUDED` turned out to be the wrong instrument. In OWL API 4.5.29,
+> `getSignature(Imports.INCLUDED)` permanently pollutes the same ontology's cached `EXCLUDED`
+> signature, so the search box's first query made *Add all* offer every imported term for the rest of
+> the session. The per-kind queries are unaffected and are what the code uses; `ImportedSignatureTest`
+> pins the library's behaviour so the workaround is not mistaken for superstition later.
+
 ---
 
 ## 5. And: presence that does not mislead

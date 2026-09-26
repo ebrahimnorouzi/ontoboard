@@ -1233,8 +1233,12 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
      */
     private List<CanvasNode> termsInTheOntology() {
         if (ontologyTerms == null) {
+            // Imports included, so "not on the board" is answered about the ontology the user is
+            // working in rather than about the edit file alone - and so Ctrl+Enter can draw an
+            // imported term, which it now can.
             ontologyTerms = OntologyProjection.everyTermWorthShowing(
-                    getOWLModelManager().getActiveOntology());
+                    getOWLModelManager().getActiveOntology(),
+                    org.semanticweb.owlapi.model.parameters.Imports.INCLUDED);
         }
         return ontologyTerms;
     }
@@ -2421,10 +2425,14 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
      * because a board that silently loses members would be worse than one that says so.
      */
     private void pruneStaleMembers(OWLOntology ontology, CanvasLayout candidate) {
-        Set<String> declared = new HashSet<String>();
-        for (OWLEntity entity : ontology.getSignature()) {
-            declared.add(entity.getIRI().toString());
-        }
+        // Imports included: an imported term on the board is not stale. Excluding them meant a
+        // board holding bfo:continuant had that entry deleted from the sidecar on the next load,
+        // which is the second half of why dragging an imported term appeared to do nothing.
+        //
+        // Through OntologyProjection rather than ontology.getSignature(INCLUDED), which in OWL API
+        // 4.5.29 corrupts the same ontology's cached EXCLUDED signature - see termIdentifiers.
+        Set<String> declared = OntologyProjection.termIdentifiers(ontology,
+                org.semanticweb.owlapi.model.parameters.Imports.INCLUDED);
         List<String> removed = candidate.pruneMissing(declared);
         if (!removed.isEmpty()) {
             LOGGER.info("OntoBoard: dropped {} canvas entr{} for entities no longer in the "
