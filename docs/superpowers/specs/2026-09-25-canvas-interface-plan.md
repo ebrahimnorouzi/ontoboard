@@ -177,6 +177,19 @@ context menu. Turn connection on with dangling edges refused, and on connect ope
 which object property, and `some` / `only` / `SubClassOf`. Cancel leaves no edge. The picker is not
 friction, it is the question the gesture asked.
 
+> **Done in 1.60.0.** The picker is a popup at the drop point rather than a modal, because the answer is
+> one click and a dialog in the middle of the screen would cover the two terms being talked about. It
+> offers the applicable hierarchy link *and* the restriction dialog, not only the restriction: which of
+> the two the user wanted is the actual ambiguity in a dragged line, and the plan's wording assumed a
+> restriction.
+>
+> Cancel leaves no edge, as asked - achieved by deleting the edge mxGraph inserts before asking
+> anything, so the board never shows a line without an axiom.
+>
+> One thing the plan could not have known: `mxConstants.CONNECT_HANDLE_ENABLED` is `false` in JGraphX
+> 4.2.2, and turning connection on without also enabling the handle makes a press inside a node start
+> an edge instead of moving the node - trading this canvas's most-used gesture for its newest.
+
 **C5 — Imported terms can be drawn.** Dragging `bfo:continuant` onto the board silently does
 nothing: `OntologyProjection` looks only at the edit file's own signature, so no node is drawn, and
 `pruneStaleMembers` then removes the entry. Project with `Imports.INCLUDED` and draw imported terms

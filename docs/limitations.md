@@ -268,6 +268,29 @@ The plugin is early. These exist in the web application but not yet here:
   note is prose rather than a phrase, so it is the one tooltip here that wraps. Three paragraphs from
   three editors is not a tooltip; the Notes dialog shows them all with authors and dates.
 
+- **An edge could not be drawn until 1.60.0, and the docs said otherwise.** `setConnectable(false)`
+  sat in `SchemaCanvasView` with the comment "Task 4 turns this on with real axiom writing", while
+  `docs/feature-parity.md` advertised authoring edges from the canvas. There was no connection handle to
+  find, so people looked for the gesture every diagram tool has, did not find it, and concluded the
+  feature was missing rather than that it was two levels into a context menu.
+
+  The gesture writes nothing by itself. mxGraph inserts an edge, that edge is deleted immediately, and a
+  popup at the drop point offers only what those two ends can legally assert - the one hierarchy link
+  that applies, a restriction when both ends are classes, or a sentence saying why neither does.
+  Dismissing it leaves the ontology and the board exactly as they were. The reason for deleting the
+  drawn edge is the property the canvas rests on: every line on the board is a projection of an axiom,
+  so a line that is only a drawing would be the one that means nothing while looking like the ones that
+  do.
+
+  One library default had to be overridden to avoid trading the most-used gesture for the newest.
+  `mxConstants.CONNECT_HANDLE_ENABLED` is `false` in JGraphX 4.2.2, and with the handle off
+  `mxConnectionHandler.isHighlighting()` returns true, which makes a press inside a node start a
+  connection instead of moving the node. Enabling the handle gives a small square on hover that starts
+  an edge, and leaves the node itself draggable.
+
+  What is not covered: the rules a drawn edge has to pass and the options a pair of ends offers are in
+  `DrawnEdge` with 13 tests. The drag itself is not tested, and cannot be from JUnit.
+
 - **Expanding a term's neighbours made the diagram worse until 1.59.0.** *Expand neighbours* added
   the right terms and placed them nowhere. With no stored geometry `SchemaGraph.render` laid them in a
   row along the top of the board - overlapping whatever was up there, nowhere near the term they

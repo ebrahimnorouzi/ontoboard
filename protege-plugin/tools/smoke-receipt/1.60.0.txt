@@ -1,0 +1,110 @@
+OntoBoard 1.60.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-09-26  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 8/8  test 10/10
+  2026-09-26  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 8/8  test 10/10
+
+
+DRAW AN EDGE, GET AN AXIOM
+
+C4 of docs/superpowers/specs/2026-09-25-canvas-interface-plan.md, and the last of the plan's four
+whiteboard items to be built.
+
+WHAT WAS THERE
+
+    graphComponent.setConnectable(false); // Task 4 turns this on with real axiom writing
+
+and, in docs/feature-parity.md, a tick against "Write axioms from the canvas". Both true in their own
+terms: the capability existed, two levels into a context menu, under "Create relation from this node...".
+But there was no connection handle anywhere on the board, so a user looking for the gesture every diagram
+tool has found nothing and concluded the feature was missing. That row has been corrected twice now - it
+said "draw edges" until 1.52.0 - which is a sign the gesture, not the wording, was the problem.
+
+THE ONE LIBRARY DEFAULT THAT WOULD HAVE BROKEN THE CANVAS
+
+Turning connection on is one line. Turning it on correctly took reading the library, and the finding is
+worth the space:
+
+  mxConstants.CONNECT_HANDLE_ENABLED = false        (JGraphX 4.2.2, read from the jar)
+
+  mxConnectionHandler.isHighlighting():
+      return connectIcon == null && !handleEnabled;
+
+With the handle disabled, isHighlighting() is true, and mxConnectionHandler.mousePressed starts a
+connection whenever its cell marker has a valid state - which is a press inside a node. So the obvious
+setConnectable(true) would have made dragging a node draw an edge instead of moving it: this canvas's
+most-used gesture traded for its newest, silently, and reported by nobody because no test can press a
+mouse button.
+
+handler.setHandleEnabled(true) is therefore load-bearing. A small square appears on hover, dragging from
+it draws an edge, and the node stays draggable. setCreateTarget(false) too: a drag ending on empty canvas
+must not invent a class, because which class, called what, minted from which range is the
+"New class here..." conversation and not something to infer from where a mouse was released.
+
+Both were read out of the bytecode before a line was written against them - javap on
+mxConnectionHandler for the gesture, and a three-line program for the constant's value, because javap
+prints the field and not its initialiser.
+
+WHAT THE GESTURE DOES
+
+The edge mxGraph inserts is deleted immediately, before anything is asked. That is not tidiness: every
+line on this board is a projection of an axiom, which is the property the whole canvas rests on, and an
+edge that is only a drawing would be the single line on screen that means nothing while looking exactly
+like the ones that mean something. It would then disappear at the next refresh - which any edit anywhere
+in Protege triggers - and the user would have watched their work vanish for no stated reason.
+
+Then a popup at the drop point, not a modal: the answer is one click, and a dialog in the middle of the
+screen would cover the two terms being discussed. It offers only what the ends can legally assert - the
+one hierarchy link that applies (rdfs:subClassOf, rdf:type or rdfs:subPropertyOf, decided rather than
+asked), a restriction when both ends are classes, or a sentence saying why neither applies. Dismissing it
+writes nothing and leaves nothing drawn, which is a complete undo of the gesture.
+
+The plan asked for a picker offering "which object property, and some / only / SubClassOf". Offering the
+hierarchy link alongside the restriction is a deliberate widening: which of the two a user meant is the
+real ambiguity in a dragged line, and on this canvas they are written by two different code paths.
+
+NO SECOND COPY OF THE AXIOM WRITING
+
+The gesture reaches the same code the menu does. createRelationFrom and createHierarchyLinkFrom each
+split in two - the target picker, and the writing - so relateWithObjectProperty and linkHierarchy are now
+called from both the menu and the canvas. The alternative was a second copy of the property picker, the
+minting of a new property through TermMinter, the EL profile warning asked at the gesture, and the
+provenance stamp on the source term only. Four things that are subtle once and would have been wrong in
+the copy.
+
+THE RULES LEFT THE VIEW
+
+Four ifs inside a 2,300-line view decided whether a drawn edge was usable: not the same term, neither end
+a sticky note or frame, both ends on the board, both ends in the ontology. None of them could be tested
+there, and the gesture that reaches them cannot be driven from JUnit either - which is the argument for
+putting the rules where a test can reach them rather than an argument for leaving them untested.
+
+They are in DrawnEdge now, with 13 tests. Two are worth naming:
+
+  - an edge to a sticky note is refused, because notes and frames live in the layout sidecar and not in
+    the ontology, so no axiom could ever stand behind that arrow - and on screen a note looks like just
+    another box, which makes it the easiest wrong drag to make;
+  - a class still drawn on the board but no longer declared offers no restriction. Not hypothetical in a
+    shared session: a collaborator retracts a declaration while the term is on somebody else's board.
+    The check is against the ontology rather than the entity's Java type, which is what makes that case
+    come out right.
+
+WHAT THIS DOES NOT COVER
+
+The rules and the options are tested; the drag is not, and cannot be from JUnit. The in-host self-test
+constructs the canvas with connection enabled on both Protege versions - so the handler is wired and the
+component builds - and presses nothing. Whether the handle is easy to find, and whether the popup appears
+where the mouse was let go, rest on somebody looking at it.
+
+Still open in the canvas plan: A5 (no undo for board-owned state), C5 (imported terms cannot be drawn),
+and D1-D4 on presence. C4 was the last of section 4 apart from C5.
+
+NUMBERS
+
+1268 tests, 1 skipped, 0 failures. 13 new, all in DrawnEdgeTest.
+
+Counted three ways, agreeing: Maven's summary, the surefire reports, and an anchored ^\s*@Test\s*$ across
+src/test/java. The skip is BundleConfigurationTest's jar-dependent case, which has nothing to inspect
+during the test phase because target/*.jar is emptied before each build; the jar is built afterwards and
+is what both hosts loaded.

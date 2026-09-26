@@ -4,6 +4,7 @@ import com.mxgraph.swing.mxGraphOutline;
 import com.mxgraph.util.mxEvent;
 import com.mxgraph.util.mxEventSource.mxIEventListener;
 import de.fizkarlsruhe.ise.ontoboard.axiom.AxiomRemoval;
+import de.fizkarlsruhe.ise.ontoboard.axiom.DrawnEdge;
 import de.fizkarlsruhe.ise.ontoboard.axiom.HierarchyAxioms;
 import de.fizkarlsruhe.ise.ontoboard.axiom.EdgeAxioms;
 import de.fizkarlsruhe.ise.ontoboard.axiom.EntityFactory;
@@ -198,7 +199,8 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
 
         graph = new SchemaGraph();
         graphComponent = new CollaborativeGraphComponent(graph);
-        graphComponent.setConnectable(false); // Task 4 turns this on with real axiom writing
+        // Turned on in installDragToConnect below, which also fixes the library default that would
+        // have made a press on a node start a connection rather than move it.
         graphComponent.setToolTips(true);
         graphComponent.setPanning(true);
         graphComponent.getPanningHandler().setEnabled(true);
@@ -224,6 +226,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         installDoubleClickToCreate();
         installCursorSharing();
         installSelection();
+        installDragToConnect();
         installWheelZoom();
         installZoomReadout();
         installKeyboardShortcuts();
@@ -787,6 +790,143 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             collabStatus.setText(text);
             collabStatus.setToolTipText(text);
         }
+    }
+
+    // ------------------------------------------------------------------ draw an edge, get an axiom
+
+    /**
+     * Lets an edge be drawn on the board, and turns the gesture into the question it asked.
+     *
+     * <p>`docs/feature-parity.md` claimed the plugin could author edges from the canvas while
+     * {@code setConnectable(false)} sat in this file, so there was no connection handle to find and the
+     * capability was two levels into a context menu. People looked for the handle - it is the gesture
+     * every diagram tool has - and concluded the feature was missing.
+     *
+     * <p>One line here is load-bearing and its default is wrong for this canvas.
+     * {@code mxConstants.CONNECT_HANDLE_ENABLED} is {@code false} in JGraphX 4.2.2 - checked, not
+     * assumed - and with the handle disabled {@code mxConnectionHandler.isHighlighting()} returns true,
+     * which makes a press anywhere in a node's hotspot start a connection instead of moving the node.
+     * That would have traded the canvas's most-used gesture for its newest one. With the handle enabled
+     * a small square appears on hover, dragging from it draws an edge, and dragging the node itself
+     * still moves it.
+     *
+     * <p>{@code setCreateTarget(false)} because a drag ending on empty canvas must not invent a term.
+     * Which class to create, called what, minted from which range, is the {@code New class here...}
+     * conversation, not something to infer from where a mouse was let go.
+     */
+    private void installDragToConnect() {
+        graphComponent.setConnectable(true);
+        com.mxgraph.swing.handler.mxConnectionHandler handler =
+                graphComponent.getConnectionHandler();
+        handler.setHandleEnabled(true);
+        handler.setCreateTarget(false);
+        handler.addListener(mxEvent.CONNECT, (sender, event) -> {
+            Object drawn = event.getProperty("cell");
+            Object mouse = event.getProperty("event");
+            Point where = mouse instanceof MouseEvent
+                    ? new Point(((MouseEvent) mouse).getX(), ((MouseEvent) mouse).getY()) : null;
+            // Off the handler's own event dispatch: it is still inside the model update that
+            // inserted this edge, and the first thing we do is take that edge back out.
+            javax.swing.SwingUtilities.invokeLater(() -> edgeWasDrawn(drawn, where));
+        });
+    }
+
+    /**
+     * Asks what a freshly drawn edge means, and removes it either way.
+     *
+     * <p>The edge mxGraph just inserted is deleted before anything else. Every line on this board is a
+     * projection of an axiom - that is the property the whole canvas rests on - and an edge that is
+     * only a drawing would be the one line on screen that means nothing, indistinguishable from the
+     * ones that do. If an axiom is written, the refresh that follows draws the edge again from the
+     * ontology; if the user cancels, there is nothing left behind.
+     */
+    private void edgeWasDrawn(Object drawn, Point where) {
+        if (drawn == null) {
+            return;
+        }
+        String sourceIri = graph.getIdForCell(graph.getModel().getTerminal(drawn, true));
+        String targetIri = graph.getIdForCell(graph.getModel().getTerminal(drawn, false));
+        graph.getModel().remove(drawn);
+
+        // The rules live in DrawnEdge, where they can be tested. They were four ifs in this method
+        // and every one of them exists to stop the same thing - a line on the board with no axiom
+        // behind it - which makes them worth stating in one place.
+        DrawnEdge.Verdict verdict =
+                DrawnEdge.verdictFor(sourceIri, targetIri, membership.asSet());
+        if (verdict != DrawnEdge.Verdict.OFFER) {
+            if (verdict.getMessage() != null) {
+                setStatus(verdict.getMessage());
+            }
+            return;
+        }
+        offerAxiomsFor(sourceIri, targetIri, where);
+    }
+
+    /**
+     * The picker: what the two ends could mean, at the point the edge was dropped.
+     *
+     * <p>A popup at the cursor rather than a modal, because the answer is one click and a dialog in the
+     * middle of the screen for a one-click answer covers the two terms being talked about. The options
+     * are built from what the ends are, so the menu cannot offer something that would only produce an
+     * error - {@link HierarchyAxioms#applicableTo} decides which single hierarchy link is legal, and a
+     * restriction is offered only between two classes.
+     *
+     * <p>Nothing has been written to the ontology at this point and nothing is drawn, so dismissing the
+     * menu is a complete undo. The status line says so, because a vanished edge and a rejected edge
+     * look identical.
+     */
+    private void offerAxiomsFor(String sourceIri, String targetIri, Point where) {
+        OWLOntology ontology = getOWLModelManager().getActiveOntology();
+        OWLEntity source = entityOnCanvas(ontology, sourceIri);
+        OWLEntity target = entityOnCanvas(ontology, targetIri);
+        if (source == null || target == null) {
+            setStatus("One of those terms is not in this ontology, so nothing can be asserted "
+                    + "between them.");
+            return;
+        }
+
+        JPopupMenu menu = new JPopupMenu();
+        String sourceName = nameOnTheBoard(sourceIri);
+        String targetName = nameOnTheBoard(targetIri);
+        javax.swing.JLabel heading = new javax.swing.JLabel(
+                "  " + sourceName + "  \u2192  " + targetName + "  ");
+        heading.setFont(heading.getFont().deriveFont(java.awt.Font.BOLD,
+                heading.getFont().getSize() - 1f));
+        menu.add(heading);
+        menu.addSeparator();
+
+        List<DrawnEdge.Option> options = DrawnEdge.optionsFor(ontology, source, target);
+        if (options.isEmpty()) {
+            // Nothing legal between these two ends. Saying why is the useful answer, and
+            // HierarchyAxioms already words it - for instance an individual dragged to a property.
+            setStatus(HierarchyAxioms.whyNot(source, target));
+            return;
+        }
+        for (DrawnEdge.Option option : options) {
+            if (option == DrawnEdge.Option.HIERARCHY) {
+                HierarchyAxioms.Kind kind = HierarchyAxioms.applicableTo(source, target).get(0);
+                JMenuItem hierarchy = new JMenuItem(kind.getDisplayName());
+                hierarchy.setToolTipText(kind.getExplanation());
+                hierarchy.addActionListener(a -> linkHierarchy(source, target));
+                menu.add(hierarchy);
+            } else {
+                JMenuItem relation = new JMenuItem("Related by an object property...");
+                relation.setToolTipText("Choose the property and how strong the reading is - some, "
+                        + "only, exactly one, and the rest");
+                relation.addActionListener(a -> relateWithObjectProperty(sourceIri, targetIri));
+                menu.add(relation);
+            }
+        }
+
+        menu.addSeparator();
+        JMenuItem cancel = new JMenuItem("Cancel - write nothing");
+        cancel.addActionListener(a -> setStatus("No axiom written, and the edge was not kept."));
+        menu.add(cancel);
+
+        setStatus("Drew " + sourceName + " \u2192 " + targetName
+                + " - choose what it asserts, or dismiss to write nothing.");
+        Point at = where != null ? where : new Point(40, 40);
+        menu.show(graphComponent.getGraphControl(), at.x, at.y);
     }
 
     // ------------------------------------------------------------------ expand and collapse
@@ -2566,10 +2706,40 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         if (chosen == null) {
             return;
         }
-        String targetIri = ((Target) chosen).iri;
+        relateWithObjectProperty(sourceIri, ((Target) chosen).iri);
+    }
+
+    /**
+     * Writes one object property restriction between two terms already chosen.
+     *
+     * <p>Split out of {@link #createRelationFrom} so that drawing an edge on the canvas and picking a
+     * target from a list end at the same code. The alternative was a second copy of the property
+     * picker, the minting of a new property, the EL profile warning and the provenance stamp - four
+     * things that are subtle once and would be wrong in the copy.
+     */
+    private void relateWithObjectProperty(String sourceIri, String targetIri) {
+        OWLOntology ontology = getOWLModelManager().getActiveOntology();
+        OWLDataFactory factory = getOWLModelManager().getOWLDataFactory();
+
+        // A restriction is asserted about a class and points at a class. Reached from the canvas
+        // gesture this can be untrue - somebody drags from an individual - so it is checked here
+        // rather than only by the target list that the menu path filters.
+        if (!ontology.containsClassInSignature(IRI.create(sourceIri))
+                || !ontology.containsClassInSignature(IRI.create(targetIri))) {
+            JOptionPane.showMessageDialog(this,
+                    "An object property restriction goes from a class to a class.\n\n"
+                            + "For an individual, use its type; for a property, its parent "
+                            + "property - both are on the node menu.",
+                    "Not two classes", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        String sourceLabel = DisplayLabels.forEntity(ontology,
+                factory.getOWLClass(IRI.create(sourceIri)));
+        String targetLabel = DisplayLabels.forEntity(ontology,
+                factory.getOWLClass(IRI.create(targetIri)));
 
         RelationDialog.Choice choice =
-                RelationDialog.ask(this, ontology, sourceLabel, ((Target) chosen).label);
+                RelationDialog.ask(this, ontology, sourceLabel, targetLabel);
         if (choice == null) {
             return;
         }
@@ -2692,9 +2862,23 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         if (chosen == null) {
             return;
         }
-        OWLEntity target = entityOnCanvas(ontology, ((Target) chosen).iri);
+        linkHierarchy(source, entityOnCanvas(ontology, ((Target) chosen).iri));
+    }
 
-        // Re-read for the chosen target: the list can hold more than one kind of term, and the
+    /**
+     * Asserts the one hierarchy link that is legal between these two terms.
+     *
+     * <p>Split out of {@link #createHierarchyLinkFrom} so the canvas gesture and the target list write
+     * the same axiom, stamp the same term and refuse the same pairs.
+     */
+    private void linkHierarchy(OWLEntity source, OWLEntity target) {
+        OWLOntology ontology = getOWLModelManager().getActiveOntology();
+        OWLDataFactory factory = getOWLModelManager().getOWLDataFactory();
+        if (source == null || target == null) {
+            return;
+        }
+
+        // Re-read for the chosen target: a list can hold more than one kind of term, and the
         // kind used for the prompt came from the first of them.
         List<HierarchyAxioms.Kind> applicable = HierarchyAxioms.applicableTo(source, target);
         if (applicable.isEmpty()) {
