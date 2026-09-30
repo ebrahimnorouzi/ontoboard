@@ -54,9 +54,15 @@ public final class CanvasLegend {
         private final String fill;
         private final String stroke;
         private final String dashPattern;
+        private final int opacity;
 
         Entry(Form form, String styleName, String label, String meaning, String fill,
                 String stroke, String dashPattern) {
+            this(form, styleName, label, meaning, fill, stroke, dashPattern, 100);
+        }
+
+        Entry(Form form, String styleName, String label, String meaning, String fill,
+                String stroke, String dashPattern, int opacity) {
             this.form = form;
             this.styleName = styleName;
             this.label = label;
@@ -64,6 +70,18 @@ public final class CanvasLegend {
             this.fill = fill;
             this.stroke = stroke;
             this.dashPattern = dashPattern;
+            this.opacity = opacity;
+        }
+
+        /**
+         * How solid the swatch is drawn, as a percentage.
+         *
+         * <p>Carried so the legend can illustrate a marker whose whole channel is opacity. Without it
+         * the imported row would draw a swatch identical to the class row above it - a key entry whose
+         * picture does not show the thing it is explaining, which is worse than no row.
+         */
+        public int getOpacity() {
+            return opacity;
         }
 
         public Form getForm() {
@@ -183,49 +201,64 @@ public final class CanvasLegend {
 
         entries.add(new Entry(Form.NODE, SchemaStyles.CLASS, "Class",
                 "An owl:Class. Bold, because it is what a schema is mostly made of.",
-                "#FFFFFF", "#4A90D9", null));
+                "#FFFFFF", "#2D6FBF", null));
         entries.add(new Entry(Form.NODE, SchemaStyles.INDIVIDUAL, "Individual",
-                "An owl:NamedIndividual - a particular thing rather than a kind of thing.",
-                "#F4F0FA", "#7B61A8", null));
+                "An owl:NamedIndividual - a particular thing rather than a kind of thing. Drawn "
+                        + "as a card with an underlined name, which is UML's convention for an "
+                        + "instance: a rhombus cannot hold an ontology label without spilling it.",
+                "#F3EEFB", "#6B4FA0", null));
         entries.add(new Entry(Form.NODE, SchemaStyles.DATATYPE, "Datatype",
                 "A datatype such as xsd:string, at the far end of a data property.",
-                "#EEF7F1", "#3E8E5A", null));
+                "#EAF5EF", "#2F7A4C", null));
         entries.add(new Entry(Form.NODE, SchemaStyles.LITERAL, "Literal",
                 "A literal value such as a number or a piece of text, at the end of a data "
                         + "property. Not drawn yet - the plugin has no literal nodes.",
-                "#FFF9E6", "#B08900", null));
+                "#FFF6DB", "#8A6A00", null));
 
         entries.add(new Entry(Form.NODE, SchemaStyles.OBJECT_PROPERTY_NODE, "Object property",
                 "An owl:ObjectProperty as a node rather than an arrow label. Properties are only "
                         + "nodes when you add them, because a diagram that boxed every property "
                         + "would be unreadable - but a property hierarchy needs them.",
-                "#FFF4E5", "#C77700", null));
+                "#FFEFDC", "#B35C00", null));
         entries.add(new Entry(Form.NODE, SchemaStyles.DATA_PROPERTY_NODE, "Data property",
                 "An owl:DatatypeProperty as a node, for the same reason as an object property "
                         + "node.",
-                "#EEF7F1", "#3E8E5A", null));
+                "#E6F2F4", "#0E6E78", null));
 
         entries.add(new Entry(Form.EDGE, SchemaStyles.SUBCLASS, "rdfs:subClassOf",
-                "The child is a kind of the parent. Dashed and heavier, so the hierarchy stays "
-                        + "readable when property edges crowd it.",
-                null, "#556677", "8 4"));
+                "The child is a kind of the parent. A hollow triangle points at the parent - "
+                        + "UML's generalisation head, which is what an ontology reader already "
+                        + "expects for is-a. Solid, because a dash now means the reasoner derived "
+                        + "it rather than the ontology stating it.",
+                null, "#3B4756", null));
         entries.add(new Entry(Form.EDGE, SchemaStyles.OBJECT_PROPERTY, "Object property",
                 "A restriction on an object property - by default SubClassOf(A "
                         + "ObjectSomeValuesFrom(R B)), read as 'every A relates to some B'. The "
                         + "arrow's label names the property and its reading.",
-                null, "#4A90D9", null));
+                null, "#2D6FBF", null));
         entries.add(new Entry(Form.EDGE, SchemaStyles.DATA_PROPERTY, "Data property",
                 "A restriction on a data property, pointing at a datatype.",
-                null, "#3E8E5A", null));
+                null, "#0E6E78", null));
         entries.add(new Entry(Form.EDGE, SchemaStyles.TYPE, "rdf:type",
                 "The individual is an instance of the class. Finely dashed, because it says "
                         + "something about one thing rather than about a kind.",
-                null, "#7B61A8", "2 4"));
+                null, "#6B4FA0", "2 4"));
 
         entries.add(new Entry(Form.EDGE, SchemaStyles.SUB_PROPERTY, "rdfs:subPropertyOf",
                 "One property is a specialisation of another - if A worksAt B then A employedBy "
                         + "B. Both properties have to be on the board for the arrow to appear.",
-                null, "#C77700", "8 4"));
+                null, "#B35C00", null));
+        entries.add(new Entry(Form.EDGE, SchemaStyles.INFERRED_SUBCLASS, "Inferred subclass",
+                "A subsumption the reasoner worked out that the ontology does not state "
+                        + "directly. Dotted and grey so it is never mistaken for an asserted "
+                        + "axiom - it will disappear if the axioms it followed from change.",
+                null, "#707B89", "1 5"));
+        entries.add(new Entry(Form.EDGE, SchemaStyles.INFERRED_TYPE, "Inferred type",
+                "The reasoner worked out that this individual belongs to this class, though "
+                        + "nothing says so directly - usually because the class is defined by "
+                        + "conditions the individual happens to meet. Grey and dotted like any "
+                        + "other conclusion.",
+                null, "#707B89", "1 5"));
         entries.add(new Entry(Form.MODIFIER, SchemaStyles.UNSATISFIABLE, "Cannot have instances",
                 "A reasoner has found this class unsatisfiable - two of its axioms cannot both "
                         + "hold, so nothing can ever be one. Shown only while inferences are on.",
@@ -233,18 +266,12 @@ public final class CanvasLegend {
         entries.add(new Entry(Form.MODIFIER, SchemaStyles.NOTED, "Has an editorial note",
                 "A heavier border. Somebody has written an editor or curator note on this term - "
                         + "read them all with OntoBoard > Notes > All notes.",
-                "#FFFFFF", "#4A90D9", null));
-        entries.add(new Entry(Form.EDGE, SchemaStyles.INFERRED_SUBCLASS, "Inferred subclass",
-                "A subsumption the reasoner worked out that the ontology does not state "
-                        + "directly. Dotted and grey so it is never mistaken for an asserted "
-                        + "axiom - it will disappear if the axioms it followed from change.",
-                null, "#8A94A0", "1 5"));
-        entries.add(new Entry(Form.EDGE, SchemaStyles.INFERRED_TYPE, "Inferred type",
-                "The reasoner worked out that this individual belongs to this class, though "
-                        + "nothing says so directly - usually because the class is defined by "
-                        + "conditions the individual happens to meet. Grey and dotted like any "
-                        + "other conclusion.",
-                null, "#8A94A0", "1 5"));
+                "#FFFFFF", "#2D6FBF", null));
+        entries.add(new Entry(Form.MODIFIER, SchemaStyles.IMPORTED, "Imported term",
+                "Faded. This term is defined in an ontology your file imports, not in your file - so "
+                        + "refer to it freely, but do not edit it here: the next refresh of the "
+                        + "imports can discard the change or leave a second definition behind.",
+                "#FFFFFF", "#2D6FBF", null, SchemaStyles.IMPORTED_OPACITY));
 
         return entries;
     }

@@ -219,18 +219,28 @@ public final class LegendPanel extends JPanel {
         private void paintNode(Graphics2D g, int x, int y) {
             Color fill = decode(entry.getFill(), Color.WHITE);
             Color stroke = decode(entry.getStroke(), Color.DARK_GRAY);
+            // A row whose only distinction is opacity has to be drawn with it, or the swatch shows
+            // the reader something other than what the canvas will.
+            if (entry.getOpacity() < 100) {
+                g.setComposite(java.awt.AlphaComposite.getInstance(
+                        java.awt.AlphaComposite.SRC_OVER, entry.getOpacity() / 100f));
+            }
             int w = SWATCH_WIDTH - 4;
             int h = SWATCH_HEIGHT - 4;
 
             g.setStroke(new BasicStroke(1.6f));
-            if (SchemaStyles.INDIVIDUAL.equals(entry.getStyleName())) {
-                // A rhombus, as the canvas draws individuals.
-                int[] xs = {x + w / 2, x + w, x + w / 2, x};
-                int[] ys = {y, y + h / 2, y + h, y + h / 2};
+            if (SchemaStyles.OBJECT_PROPERTY_NODE.equals(entry.getStyleName())
+                    || SchemaStyles.DATA_PROPERTY_NODE.equals(entry.getStyleName())) {
+                // A hexagon, as the canvas draws a property node. Drawn as a rectangle here until
+                // 1.65.0, which is the same fault the individual's rhombus had in reverse: a key
+                // that shows a shape the board does not draw has to be unlearned the first time
+                // somebody compares the two.
+                int[] xs = {x + w / 4, x + 3 * w / 4, x + w, x + 3 * w / 4, x + w / 4, x};
+                int[] ys = {y, y, y + h / 2, y + h, y + h, y + h / 2};
                 g.setColor(fill);
-                g.fillPolygon(xs, ys, 4);
+                g.fillPolygon(xs, ys, 6);
                 g.setColor(stroke);
-                g.drawPolygon(xs, ys, 4);
+                g.drawPolygon(xs, ys, 6);
                 return;
             }
             if (SchemaStyles.DATATYPE.equals(entry.getStyleName())) {
@@ -240,7 +250,10 @@ public final class LegendPanel extends JPanel {
                 g.drawOval(x, y, w, h);
                 return;
             }
-            boolean rounded = SchemaStyles.CLASS.equals(entry.getStyleName());
+            // Both are rounded cards on the canvas now: the individual stopped being a rhombus
+            // when it turned out a rhombus cannot hold an ontology label.
+            boolean rounded = SchemaStyles.CLASS.equals(entry.getStyleName())
+                    || SchemaStyles.INDIVIDUAL.equals(entry.getStyleName());
             int arc = rounded ? 8 : 0;
             g.setColor(fill);
             g.fillRoundRect(x, y, w, h, arc, arc);
@@ -258,10 +271,20 @@ public final class LegendPanel extends JPanel {
             g.drawLine(x, middle, end, middle);
 
             // A solid arrowhead regardless of the line's dash, since a dashed head reads as noise.
+            // Wider than it was, because a hollow triangle needs room to read as one at swatch size.
             g.setStroke(new BasicStroke(1f));
-            int[] xs = {end + 8, end, end};
-            int[] ys = {middle, middle - 4, middle + 4};
-            g.fillPolygon(xs, ys, 3);
+            int[] xs = {end + 9, end, end};
+            int[] ys = {middle, middle - 5, middle + 5};
+            // Hollow for the three is-a relations, filled for the rest - the same distinction the
+            // canvas draws. A key that fills a head the board leaves open is a key that has to be
+            // unlearned the first time somebody compares it with the diagram.
+            if (SchemaStyles.SUBCLASS.equals(entry.getStyleName())
+                    || SchemaStyles.SUB_PROPERTY.equals(entry.getStyleName())
+                    || SchemaStyles.INFERRED_SUBCLASS.equals(entry.getStyleName())) {
+                g.drawPolygon(xs, ys, 3);
+            } else {
+                g.fillPolygon(xs, ys, 3);
+            }
         }
 
         private static BasicStroke strokeFor(String dashPattern) {

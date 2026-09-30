@@ -1,0 +1,125 @@
+OntoBoard 1.64.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-09-26  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 8/8  test 10/10
+  2026-09-26  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 8/8  test 10/10
+
+
+THE CLASS HIERARCHY HAS BEEN DRAWN UPSIDE DOWN SINCE THE FIRST VERSION
+
+Release 1 of docs/superpowers/specs/2026-09-26-canvas-board-design.md.
+
+WHAT WAS WRONG, AND WHY NOBODY SAW IT
+
+SchemaGraph draws a subclass edge from the subclass TO the superclass. mxHierarchicalLayout ranks by
+following edges source to target. So with the library's default orientation the leaves ranked first and
+owl:Thing came out at the BOTTOM of the board - the opposite of every ontology tool there is.
+
+It survived thirteen releases of work on this canvas. Not because it was subtle: a 31-term tree rendered
+as a 4195x403 strip with the root at the bottom, which is unmistakable the moment you see it. Because
+nothing in this project had ever seen it:
+
+  - the layout tests assert that a subclass and its superclass have DIFFERENT y coordinates, which is
+    equally true upside down;
+  - the in-host self-test proves the views construct, and every receipt since 1.57.0 has said in so many
+    words that it inspects no pixel;
+  - every human review happened on a board of three or four terms, where a small tree the wrong way up
+    still reads as a small tree.
+
+THE INSTRUMENT, WHICH IS THE REAL DELIVERABLE HERE
+
+mxCellRenderer draws from the graph model and never touches a component - the reason an overlay like the
+note badge is missing from an export - so the whole diagram can be rendered headlessly at any scale from
+the same stylesheet the canvas installs. CanvasDesignProofTest does that, and also paints the legend and
+the empty state, which are lightweight Swing components and can be painted without a display.
+
+  mvn -o test -Dtest=CanvasDesignProofTest      ->  target/design/{board,board-large}.png, board.svg,
+                                                    legend.png, empty-state.png
+
+Three of the four defects fixed below were found by opening those images. None was found by reading the
+code. What it asserts is deliberately weak - that an image was produced, that it is not one flat colour -
+because a test cannot tell handsome from ugly; what it changes is that the difference is now visible
+without a twenty-minute round trip through two Protege installs.
+
+Two fidelity gaps are documented in the test rather than faked: there is no grid, and no component
+overlay. It renders on #F7F8FA, the real canvas colour, rather than the white an export uses - reviewing
+a pale fill against the wrong backdrop is how a pale fill gets approved.
+
+THE FOUR DEFECTS
+
+1. Upside down. mxHierarchicalLayout(graph, SwingConstants.SOUTH), plus spacing: intraCell 24,
+   interRank 120, interHierarchy 120, parallelEdge 20. The 31-term tree goes from 4195x403 to 4069x613,
+   and Arrange now fits the result to the window and says at what zoom - even corrected, a 31-term tree
+   is wider than any panel, and before this the user saw six terms of thirty-one with no evidence that
+   anything had happened.
+
+2. Every edge was a diagonal sweep, though SchemaStyles has asked for orthogonal routing since the first
+   version. mxGraphHierarchyModel.createInternalCells stamps noEdgeStyle=1 onto every edge while
+   isDisableEdgeStyle() is true, which is the default, so the router never ran. setDisableEdgeStyle(false)
+   is one line and is the largest readability gain in the release. SchemaGraph now also sets
+   setResetEdgesOnMove/Resize, or a dragged node keeps the channel the layout gave it and its wire doubles
+   back; the cost, stated in the code, is that a hand-added bend is lost when an endpoint moves, which was
+   already true across a reload.
+
+3. A term with no axioms was exiled. findRoots only accepts a vertex with fanIn == 0 and fanOut > 0, so an
+   isolated term is not a root and is not reachable from one: it became a one-node hierarchy laid out to
+   the right of everything else. On the representative board the diagram ended at x=824 and four loose
+   terms sat between x=1465 and x=2288 with nothing in between. They go in a block under the diagram now,
+   because a class nobody has related to anything yet is the normal state of a term five minutes old.
+
+4. The legend printed "Relationships" twice. LegendPanel emits a section heading whenever the form changes
+   as it walks entries(), and the two inferred rows sat after the modifier rows - so the key read Things,
+   Relationships, Markers on a thing, Relationships. Present since the legend was built in 1.53.0 and
+   invisible for eleven releases because nobody had rendered the panel. The rows are reordered and a test
+   now asserts each kind appears in one run.
+
+Also: CIRCLE builds its own ring rather than calling mxCircleLayout.execute, which sized a 31-term ring at
+3353x3249 (setRadius is a floor, not a setting - 120, 300 and the default all gave the same) and laid out
+notes and frames too, leaving holes in the circle where they were restored from. ORGANIC moves from
+mxOrganicLayout to mxFastOrganicLayout: measured on 300 nodes, 41334x9819 starting at x=7835 becomes
+8230x3510 at the origin, in half the time. GRID derives its column count instead of always using four -
+120 terms in four columns is a 3000px strip, which is defect 1 rotated ninety degrees.
+
+TWO PLACES WHERE IMPLEMENTING THE SPEC CORRECTED IT
+
+The spec is committed as written, and these are recorded here rather than edited into it.
+
+It asked for the annotation test to be rewritten to assert "the note's offset from a named term is
+unchanged before and after". That cannot hold: a layout rearranges the terms, so no term-relative offset
+survives one. What is true, and is what the tests now assert, is that annotations move as one rigid piece
+with the board, are never resized, and never influence where the terms go - the last of which the previous
+test could not see at all, since it only checked that the note itself had not moved.
+
+And that last test was flaky for a reason that has nothing to do with annotations. mxFastOrganicLayout is
+deterministic - three runs of the same board give identical geometry - EXCEPT when two nodes occupy the
+same point, where it breaks the tie with a random displacement: three runs of a board with both terms at
+(0,0) gave (-1,-1), (139,-1) and (-1,139). The fixture stacked its two terms deliberately, for other
+tests. Measured with a probe rather than guessed at, and the fixture now starts them apart.
+
+A third correction, to myself: annotations are now excluded from the library layouts through
+isVertexIgnored, and the first version of that comment claimed it fixed the drift the test had caught. It
+does not. mxFastOrganicLayout already ignores a vertex with no connections, which every note and frame is,
+so today the override changes nothing - it is there so the property is guaranteed by this code rather than
+by a library's incidental behaviour. The comment says that now.
+
+WHAT THIS DOES NOT COVER
+
+The arithmetic is unit-tested - the loose block's width and the grid's column count are package-private
+pure functions with tests at 1, 6, 31, 40 and 120 terms - and the rest is verified by looking at a render.
+Nothing here proves the canvas paints correctly inside Protege; the self-test still only constructs it.
+
+Releases 2 to 4 of the spec are not in this release: the stylesheet and the legend's honesty, direct
+manipulation, and the screen furniture. The spec names an unsatisfiable fill that is never drawn, a
+faded imported term whose label stays full-strength black, and an opaque drop shadow showing through it -
+all still true today.
+
+NUMBERS
+
+1324 tests, 1 skipped, 0 failures. 12 new: 5 in CanvasDesignProofTest, 6 in CanvasLayoutsTest, 1 in
+CanvasLegendTest.
+
+Counted three ways, agreeing: Maven's summary, the surefire reports, and an anchored ^\s*@Test\s*$ across
+src/test/java; 93 report files for 93 test classes. The skip is BundleConfigurationTest's jar-dependent
+case, which has nothing to inspect during the test phase because target/*.jar is emptied before each
+build; the jar is built afterwards and is what both hosts loaded.

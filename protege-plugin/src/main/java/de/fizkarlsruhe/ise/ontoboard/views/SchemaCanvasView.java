@@ -4,13 +4,17 @@ import com.mxgraph.swing.mxGraphOutline;
 import com.mxgraph.util.mxEvent;
 import com.mxgraph.util.mxEventSource.mxIEventListener;
 import de.fizkarlsruhe.ise.ontoboard.axiom.AxiomRemoval;
+import de.fizkarlsruhe.ise.ontoboard.axiom.DrawnEdge;
 import de.fizkarlsruhe.ise.ontoboard.axiom.HierarchyAxioms;
 import de.fizkarlsruhe.ise.ontoboard.axiom.EdgeAxioms;
 import de.fizkarlsruhe.ise.ontoboard.axiom.EntityFactory;
 import de.fizkarlsruhe.ise.ontoboard.axiom.RelationDialog;
 import de.fizkarlsruhe.ise.ontoboard.canvas.CanvasExport;
+import de.fizkarlsruhe.ise.ontoboard.canvas.CanvasIcons;
 import de.fizkarlsruhe.ise.ontoboard.canvas.CanvasLayouts;
 import de.fizkarlsruhe.ise.ontoboard.canvas.CanvasMembership;
+import de.fizkarlsruhe.ise.ontoboard.canvas.CanvasSearch;
+import de.fizkarlsruhe.ise.ontoboard.canvas.CanvasZoom;
 import de.fizkarlsruhe.ise.ontoboard.canvas.CollaborativeGraphComponent;
 import de.fizkarlsruhe.ise.ontoboard.canvas.LegendPanel;
 import de.fizkarlsruhe.ise.ontoboard.canvas.PrefixColours;
@@ -23,6 +27,8 @@ import de.fizkarlsruhe.ise.ontoboard.collab.CollabSession;
 import de.fizkarlsruhe.ise.ontoboard.collab.CollabSettings;
 import de.fizkarlsruhe.ise.ontoboard.collab.CollabSettingsStore;
 import de.fizkarlsruhe.ise.ontoboard.collab.OperationMapper;
+import de.fizkarlsruhe.ise.ontoboard.collab.PeerGeometry;
+import de.fizkarlsruhe.ise.ontoboard.layout.BoardHistory;
 import de.fizkarlsruhe.ise.ontoboard.layout.CanvasLayout;
 import de.fizkarlsruhe.ise.ontoboard.layout.CanvasLayoutStore;
 import de.fizkarlsruhe.ise.ontoboard.model.CanvasEdge;
@@ -145,6 +151,66 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
      */
     private boolean showInferences;
     private javax.swing.JToggleButton inferencesButton;
+
+    /**
+     * The Find box, and what it last found.
+     *
+     * <p>The projection is kept because search asks a question only the drawn board can answer -
+     * "which of these is on screen" - and rebuilding it per keystroke would re-walk the ontology on
+     * every letter typed. {@code ontologyTerms} is the wider index, built on the first search that
+     * finds nothing on the board and dropped on the next refresh, because the answer to "is this term
+     * in the ontology at all" changes whenever the ontology does.
+     */
+    private javax.swing.JTextField searchField;
+    private javax.swing.JLabel searchCount;
+    private Projection rendered;
+    private List<CanvasNode> searchMatches = Collections.emptyList();
+    private int searchCursor;
+    private List<CanvasNode> ontologyTerms;
+
+    /** The zoom readout in the status bar. A button, because clicking it returns to 100%. */
+    private JButton zoomReadout;
+
+    /** Kept so the algorithm menu can be popped underneath it. */
+    private JButton arrangeButton;
+
+    /** The zoom controls, floating over the bottom-right of the board. */
+    private JPanel zoomCluster;
+
+    /** The overview, floating above the zoom controls. */
+    private JPanel minimapPanel;
+
+    /** The outline inside it, kept so the open/closed state can be restored. */
+    private mxGraphOutline minimapOutline;
+
+    /**
+     * What each expansion added, so it can be taken back.
+     *
+     * <p>Held for the session and not written to the sidecar. Collapse is an answer to "I have just
+     * expanded this and it was too much", which is a question asked seconds later and never after
+     * reopening the project - and a sidecar that recorded it would be promising an undo that survives
+     * a restart, which is A5 in the canvas plan and is a different piece of work.
+     */
+    private final java.util.Map<String, List<String>> expansions =
+            new java.util.LinkedHashMap<String, List<String>>();
+
+    /**
+     * Undo for the board, which had none.
+     *
+     * <p>Not persisted, and cleared when the ontology changes. An undo stack from another ontology
+     * would offer to restore a board of identifiers this one does not declare, which the sidecar loader
+     * would then prune to nothing - so "put it back" would empty the board.
+     */
+    private final BoardHistory history = new BoardHistory();
+
+    /**
+     * True while this class is moving cells itself, so the move listener does not record a step.
+     *
+     * <p>Arrange already remembers the board before it runs; without this it would push a second,
+     * identical step from the CELLS_MOVED the layout produces, and one Ctrl+Z would look like it had
+     * done nothing.
+     */
+    private boolean movingProgrammatically;
     /**
      * The live session, or null when working through git. Created on demand from the
      * Collaborate dialog rather than at startup, because most sessions are single-user and
@@ -153,6 +219,17 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
     private CollabSession collab;
     private JButton collaborateButton;
     private javax.swing.JLabel collabStatus;
+
+    /**
+     * What the board just did, kept apart from what the session is doing.
+     *
+     * <p>One label served both until 1.67.0, and they are not the same kind of message. A board
+     * confirmation is transient - "Arranged the board", "Undid: adding 7 terms" - while a session
+     * notice is persistent state that needs acting on: "3 changes not shared", "Disconnected - you
+     * switched ontology". Whichever wrote last won, permanently. So arranging the board erased the
+     * only warning that a colleague would never see your edit, and nothing brought it back.
+     */
+    private javax.swing.JLabel boardStatus;
     /**
      * When the cursor was last published. Presence is sent on mouse movement, which fires far
      * faster than anyone needs to see, so it is throttled - and the client's own heartbeat
@@ -160,37 +237,80 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
      */
     private long lastCursorSentAt;
 
+    /**
+     * The last cursor position published, so presence can be re-announced without one.
+     *
+     * <p>Presence used to be sent only from mouse motion, so a selection made with the keyboard, from
+     * the Find box, or by clicking once and not moving never reached anybody. Re-announcing needs a
+     * position, and the last one the peer saw is a better answer than the origin - which is where the
+     * canvas is not, for anybody who has scrolled.
+     */
+    private Point lastCursorPoint;
+
     @Override
     protected void initialiseOWLView() {
         setLayout(new BorderLayout());
 
         graph = new SchemaGraph();
         graphComponent = new CollaborativeGraphComponent(graph);
-        graphComponent.setConnectable(false); // Task 4 turns this on with real axiom writing
+        // Turned on in installDragToConnect below, which also fixes the library default that would
+        // have made a press on a node start a connection rather than move it.
         graphComponent.setToolTips(true);
         graphComponent.setPanning(true);
         graphComponent.getPanningHandler().setEnabled(true);
         // Card deck so an empty board shows guidance instead of a blank grid.
+        zoomCluster = buildZoomCluster();
+        minimapPanel = buildMinimap();
+
         cards = new CardLayout();
         centre = new JPanel(cards);
-        centre.add(graphComponent, "canvas");
+        centre.add(buildBoardLayers(), "canvas");
         centre.add(new StartPanel(this::runNewProjectWizard, this::openExistingProject,
-                this::addSelectedEntityToCanvas), "start");
+                this::addSelectedEntityToCanvas, this::addEverythingToCanvas), "start");
         add(centre, BorderLayout.CENTER);
+        // Before the toolbar, because the status bar owns collabStatus and the toolbar used to.
+        add(buildStatusBar(), BorderLayout.SOUTH);
 
-        mxGraphOutline outline = new mxGraphOutline(graphComponent);
-        outline.setPreferredSize(new Dimension(180, 140));
-        add(outline, BorderLayout.EAST);
+        // The outline used to be pinned EAST at a fixed 180px, present even while the start card
+        // was showing - where it is a blank grey rectangle beside a "nothing here yet" message. It
+        // floats over the board now, above the zoom cluster, and collapses.
+        graphComponent.setPageBackgroundColor(
+                java.awt.Color.decode(de.fizkarlsruhe.ise.ontoboard.canvas.SchemaStyles
+                        .CANVAS_BACKGROUND));
         add(buildToolBar(), BorderLayout.NORTH);
         graphComponent.getViewport().setOpaque(true);
         graphComponent.getViewport().setBackground(
                 Color.decode(de.fizkarlsruhe.ise.ontoboard.canvas.SchemaStyles.CANVAS_BACKGROUND));
+        // A border, and its colour taken from the theme. The canvas stays light on purpose - it is
+        // the surface every exported PNG is composed on, and a diagram whose colours depend on the
+        // author's IDE theme is not reproducible - but on a dark look and feel a borderless white
+        // slab reads as a rendering fault rather than as a choice.
+        java.awt.Color themePanel = javax.swing.UIManager.getColor("Panel.background");
+        boolean darkTheme = themePanel != null && (0.2126 * themePanel.getRed()
+                + 0.7152 * themePanel.getGreen() + 0.0722 * themePanel.getBlue()) / 255.0 < 0.4;
+        graphComponent.setBorder(javax.swing.BorderFactory.createMatteBorder(1, 1, 1, 1,
+                darkTheme ? new java.awt.Color(0x3A, 0x40, 0x4A)
+                        : new java.awt.Color(0xD8, 0xDD, 0xE3)));
         graphComponent.setGridVisible(true);
+        // Dots rather than lines, and pale enough to be texture: #D4D8DF is about 1.5:1 on the
+        // canvas, present to align against and never competing with a 1.6px node stroke. The pitch
+        // and the snap step are SchemaGraph's setGridSize - the component owns how the grid looks,
+        // mxGraph owns what it does.
+        graphComponent.setGridStyle(com.mxgraph.swing.mxGraphComponent.GRID_STYLE_DOT);
+        graphComponent.setGridColor(java.awt.Color.decode("#D4D8DF"));
+        // Enter commits an in-place edit and Escape abandons it, which is what every other text
+        // field in Protege does. Without them the only way out of an edit is to click elsewhere.
+        graphComponent.setEnterStopsCellEditing(true);
+        graphComponent.setEscapeEnabled(true);
         installEntityDropTarget();
         installDoubleClickToCreate();
         installCursorSharing();
         installSelection();
+        installDragToConnect();
+        installUndo();
+        installBoardShortcuts();
         installWheelZoom();
+        installZoomReadout();
         installKeyboardShortcuts();
 
         loadLayoutForActiveOntology();
@@ -200,13 +320,78 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         selectionBridge = new SelectionBridge(graph, this::pushSelectionToProtege);
         selectionBridge.install();
 
+        // Once, ever, per user. The pan gesture inverted in 1.68.0 - a plain drag selects a region
+        // now and panning moved to space, the middle button and the right - and an inversion nobody
+        // is told about is indistinguishable from a fault. It goes to the board channel, so it
+        // cannot overwrite a collaboration warning.
+        //
+        // It can still collide with a board message, and one in particular: loadLayoutForActiveOntology
+        // above says "the saved arrangement could not be read" on the same label, and that sentence is
+        // the last one this hint may be allowed to bury. So it yields, and does not mark itself seen -
+        // a hint that is worth showing once is worth showing next time instead.
+        java.util.prefs.Preferences prefs =
+                java.util.prefs.Preferences.userNodeForPackage(SchemaCanvasView.class);
+        if (firstRunHintFits(prefs.getBoolean("ontoboard.hintsSeen", false),
+                boardStatus == null ? null : boardStatus.getText())) {
+            setStatus("Drag to select, space-drag to pan, wheel to zoom, double-click for a new "
+                    + "class. Press ? on the board for every shortcut.");
+            prefs.putBoolean("ontoboard.hintsSeen", true);
+        }
+        // And the overview starts open only on a board big enough to need one.
+        setMinimapOpen(prefs.getBoolean("ontoboard.minimap.open", membership.size() >= 25),
+                minimapPanel);
+
         positionSaveTimer = new Timer(800, event -> saveLayoutTo(layoutFile));
         positionSaveTimer.setRepeats(false);
         cellsMovedListener = (sender, event) -> {
+            // One step per completed drag. The guard here used to be "only if the save timer is not
+            // running", on the stated grounds that mxGraph fires CELLS_MOVED repeatedly during a
+            // drag. It does not: mxGraphHandler sets livePreview = false and imagePreview = true in
+            // 4.2.2, so a drag shows a ghost bitmap and the model is touched exactly once, on
+            // release. What that guard actually did was swallow the step for any second drag started
+            // within 800ms of the first - move one node, immediately move another, press Ctrl+Z, and
+            // both went back with no way to take back only the second.
+            if (!movingProgrammatically) {
+                rememberBoard("moving things on the board");
+            }
             capturePositions();
             positionSaveTimer.restart();
         };
         graph.addListener(mxEvent.CELLS_MOVED, cellsMovedListener);
+        installFrameDragging();
+
+        // Without this an in-place edit is lost at the next refresh, which any edit anywhere in
+        // Protege triggers: mxGraph writes the new text into the cell, and render rebuilds every
+        // cell from the layout, which still holds the old words.
+        graph.addListener(mxEvent.LABEL_CHANGED, (sender, event) -> {
+            Object cell = event.getProperty("cell");
+            String id = graph.getIdForCell(cell);
+            if (id == null || !SchemaGraph.isAnnotationId(id)) {
+                return;
+            }
+            Object value = graph.getModel().getValue(cell);
+            String text = value == null ? "" : value.toString().trim();
+            if (text.isEmpty()) {
+                // An emptied note is almost always a mis-keyed edit rather than a request to blank
+                // it, and a note with nothing in it is indistinguishable from a rendering fault.
+                refresh();
+                setStatus("A sticky note needs some words. Nothing was changed.");
+                return;
+            }
+            rememberBoard(id.startsWith(SchemaGraph.NOTE_ID_PREFIX)
+                    ? "editing a sticky note" : "renaming a frame");
+            for (CanvasLayout.NoteLayout note : layout.notes) {
+                if (id.equals(note.id)) {
+                    note.text = text;
+                }
+            }
+            for (CanvasLayout.FrameLayout frame : layout.frames) {
+                if (id.equals(frame.id)) {
+                    frame.label = text;
+                }
+            }
+            saveLayoutTo(layoutFile);
+        });
 
         selectionListener = () -> {
             OWLEntity selected = getOWLEditorKit().getOWLWorkspace()
@@ -297,6 +482,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             return;
         }
         String iri = selected.getIRI().toString();
+        rememberBoard("adding " + getOWLModelManager().getRendering(selected));
         if (membership.add(iri)) {
             refresh();
         }
@@ -309,6 +495,24 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
      * Puts the selected entity's name on the Add button, so the button says what it will add
      * rather than leaving the user to check the tree and the board for agreement.
      */
+    /**
+     * A label cut to fit, ending in an ellipsis.
+     *
+     * <p>Package-private and pure so the rule can be tested at the boundary rather than eyeballed on
+     * one example. U+2026 is present in Tahoma, Segoe UI and the logical Dialog family, which are the
+     * three this plugin can actually end up drawing with.
+     */
+    static String elide(String label, int limit) {
+        if (label == null) {
+            return "";
+        }
+        String trimmed = label.trim();
+        if (trimmed.length() <= limit) {
+            return trimmed;
+        }
+        return trimmed.substring(0, Math.max(1, limit - 1)).trim() + "\u2026";
+    }
+
     private void describeSelectionOnButton(OWLEntity selected) {
         if (addSelectedButton == null) {
             return;
@@ -322,7 +526,10 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         }
         String label =
                 DisplayLabels.forEntity(getOWLModelManager().getActiveOntology(), selected);
-        addSelectedButton.setText("Add " + label);
+        // Elided rather than allowed to grow: the button's width is pinned in buildToolBar, so a
+        // long label would otherwise be clipped mid-word by the layout instead of ending in a
+        // character that says there is more. The tooltip carries the whole IRI either way.
+        addSelectedButton.setText("Add " + elide(label, 14));
         addSelectedButton.setToolTipText("Add " + selected.getIRI() + " to the canvas");
     }
 
@@ -334,6 +541,10 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
      * pointing at an entity the canvas no longer highlights.
      */
     private void pushSelectionToProtege(String iri) {
+        // Out to collaborators as well as to Protege. The canvas selection is the most useful thing
+        // presence can carry - "she is looking at Margherita" - and it was the one thing the presence
+        // message only ever carried by accident, when a mouse movement happened to follow.
+        announcePresence();
         if (iri == null) {
             getOWLEditorKit().getOWLWorkspace().getOWLSelectionModel().setSelectedEntity(null);
             return;
@@ -543,6 +754,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         if (text == null || text.trim().isEmpty()) {
             return;
         }
+        rememberBoard("adding a sticky note");
         CanvasLayout.NoteLayout note = new CanvasLayout.NoteLayout();
         note.id = SchemaGraph.NOTE_ID_PREFIX + nextAnnotationSuffix();
         note.text = text.trim();
@@ -556,13 +768,15 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
     /** A labelled region grouping what is inside it. Also diagram-only. */
     private void createFrame(java.awt.Point at) {
         String label = JOptionPane.showInputDialog(this,
-                "What is this group called?\n\nA frame is a region on the diagram. If it is "
-                        + "really a module, make it one - an import, or IAO:0000113 in branch - "
-                        + "rather than a rectangle.",
+                "What is this group called?\n\nA frame is a region on the diagram. Dragging it "
+                        + "takes whatever is inside it along; resizing it does not. If it is really "
+                        + "a module, make it one - an import, or IAO:0000113 in branch - rather "
+                        + "than a rectangle.",
                 "Frame", JOptionPane.PLAIN_MESSAGE);
         if (label == null || label.trim().isEmpty()) {
             return;
         }
+        rememberBoard("adding a frame");
         CanvasLayout.FrameLayout frame = new CanvasLayout.FrameLayout();
         frame.id = SchemaGraph.FRAME_ID_PREFIX + nextAnnotationSuffix();
         frame.label = label.trim();
@@ -687,6 +901,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             if (id.equals(note.id)) {
                 String text = JOptionPane.showInputDialog(this, "Note", note.text);
                 if (text != null && !text.trim().isEmpty()) {
+                    rememberBoard("editing a sticky note");
                     note.text = text.trim();
                     refresh();
                     saveLayoutTo(layoutFile);
@@ -698,6 +913,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             if (id.equals(frame.id)) {
                 String label = JOptionPane.showInputDialog(this, "Frame name", frame.label);
                 if (label != null && !label.trim().isEmpty()) {
+                    rememberBoard("renaming a frame");
                     frame.label = label.trim();
                     refresh();
                     saveLayoutTo(layoutFile);
@@ -712,9 +928,11 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
      *
      * <p>No confirmation, unlike deleting a term: nothing in the ontology changes, the sidecar is
      * in git, and a prompt for every sticky note would be the kind of friction that stops people
-     * using them.
+     * using them. Since 1.62.0 Ctrl+Z on the canvas brings it back, which is the answer a prompt was
+     * standing in for.
      */
     private void deleteAnnotation(String id) {
+        rememberBoard("deleting a note or frame");
         boolean removed = false;
         for (java.util.Iterator<CanvasLayout.NoteLayout> notes = layout.notes.iterator();
                 notes.hasNext();) {
@@ -748,9 +966,1121 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
 
     /** Puts a line in the toolbar's status label, reusing the collaboration one. */
     private void setStatus(String text) {
+        say(boardStatus, text, text);
+    }
+
+    /**
+     * The collaboration channel: connected, retrying, refused, or how much is unshared.
+     *
+     * <p>Separate from {@link #setStatus} so that a board message cannot overwrite it. The dot is the
+     * part that reads at a glance - green connected, amber something needs attention, grey not in a
+     * session - and the words are for when it does not.
+     */
+    private void setSessionStatus(String text, java.awt.Color light) {
+        say(collabStatus, text, text);
         if (collabStatus != null) {
-            collabStatus.setText(text);
-            collabStatus.setToolTipText(text);
+            collabStatus.setIcon(new CanvasIcons.Dot(light));
+        }
+    }
+
+    /** Green: in a session and up to date. */
+    private static final java.awt.Color LIGHT_CONNECTED = new java.awt.Color(0x16, 0xA3, 0x4A);
+
+    /** Amber: in a session, and something the user has to know about. */
+    private static final java.awt.Color LIGHT_ATTENTION = new java.awt.Color(0xD9, 0x77, 0x06);
+
+    /** Grey: not in a session. Working through git, which is the ordinary state. */
+    private static final java.awt.Color LIGHT_OFFLINE = new java.awt.Color(0x9C, 0xA3, 0xAF);
+
+
+
+    /**
+     * One keystroke on the canvas, without an anonymous action per binding.
+     *
+     * <p>Bound on the graph component's ancestor map, like every other shortcut here, so none of
+     * them fires while the focus is in Prot&eacute;g&eacute;'s class hierarchy or an annotation
+     * field.
+     */
+    private void bindOnCanvas(String name, int keyCode, int modifiers, final Runnable action) {
+        graphComponent.getInputMap(javax.swing.JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT)
+                .put(javax.swing.KeyStroke.getKeyStroke(keyCode, modifiers), name);
+        graphComponent.getActionMap().put(name, new javax.swing.AbstractAction() {
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            public void actionPerformed(java.awt.event.ActionEvent event) {
+                action.run();
+            }
+        });
+    }
+
+    /**
+     * The zoom and selection keys every board has.
+     *
+     * <p>Ctrl+0, Ctrl+1 and Ctrl+2 are the three a person reaches for without looking: actual size,
+     * fit everything, frame what I have selected. Plus and minus go through the same clamped step the
+     * wheel uses rather than {@code zoomIn()}, which has no ceiling.
+     *
+     * <p>Ctrl+A selects vertices only, deliberately. Delete on a selection containing edges produces
+     * the "an arrow is an axiom, so use the right-click menu" message once per edge, which reads as a
+     * half-broken shortcut rather than as the refusal it is.
+     */
+    private void installBoardShortcuts() {
+        for (int mask : new int[] { java.awt.event.InputEvent.CTRL_DOWN_MASK,
+                java.awt.event.InputEvent.META_DOWN_MASK }) {
+            bindOnCanvas("ontoboard.zoomActual", java.awt.event.KeyEvent.VK_0, mask, () -> {
+                graphComponent.zoomActual();
+                updateZoomReadout();
+                setStatus("Actual size.");
+            });
+            bindOnCanvas("ontoboard.fitBoard", java.awt.event.KeyEvent.VK_1, mask,
+                    this::fitToWindow);
+            bindOnCanvas("ontoboard.fitSelection", java.awt.event.KeyEvent.VK_2, mask,
+                    this::fitToSelection);
+            bindOnCanvas("ontoboard.zoomIn", java.awt.event.KeyEvent.VK_EQUALS, mask,
+                    () -> zoomAt(true, null));
+            bindOnCanvas("ontoboard.zoomInPad", java.awt.event.KeyEvent.VK_ADD, mask,
+                    () -> zoomAt(true, null));
+            bindOnCanvas("ontoboard.zoomOut", java.awt.event.KeyEvent.VK_MINUS, mask,
+                    () -> zoomAt(false, null));
+            bindOnCanvas("ontoboard.zoomOutPad", java.awt.event.KeyEvent.VK_SUBTRACT, mask,
+                    () -> zoomAt(false, null));
+            bindOnCanvas("ontoboard.selectAll", java.awt.event.KeyEvent.VK_A, mask, () -> {
+                graph.selectCells(true, false);
+                setStatus(graph.getSelectionCount() + " selected. Delete takes them off the board; "
+                        + "the ontology is unchanged.");
+            });
+            bindOnCanvas("ontoboard.duplicate", java.awt.event.KeyEvent.VK_D, mask,
+                    this::duplicateSelectedAnnotations);
+        }
+    }
+
+    /**
+     * Ctrl+D copies the selected sticky notes and frames.
+     *
+     * <p>Notes and frames only. A node is a term and a term appears once - that is the invariant the
+     * whole canvas rests on, and the same one a Ctrl+drag quietly broke until 1.66.0 - so duplicating
+     * one is not a gesture this board offers. Saying so is better than doing nothing, because doing
+     * nothing is indistinguishable from a shortcut that is not bound.
+     */
+    private void duplicateSelectedAnnotations() {
+        Object[] selected = graph.getSelectionCells();
+        if (selected == null || selected.length == 0) {
+            setStatus("Nothing selected. Ctrl+D copies sticky notes and frames.");
+            return;
+        }
+
+        List<CanvasLayout.NoteLayout> newNotes = new ArrayList<CanvasLayout.NoteLayout>();
+        List<CanvasLayout.FrameLayout> newFrames = new ArrayList<CanvasLayout.FrameLayout>();
+        for (Object cell : selected) {
+            String id = graph.getIdForCell(cell);
+            if (id == null) {
+                continue;
+            }
+            for (CanvasLayout.NoteLayout note : layout.notes) {
+                if (id.equals(note.id)) {
+                    CanvasLayout.NoteLayout copy = note.copy();
+                    copy.id = SchemaGraph.NOTE_ID_PREFIX + nextAnnotationSuffix();
+                    copy.x += 20;
+                    copy.y += 20;
+                    newNotes.add(copy);
+                }
+            }
+            for (CanvasLayout.FrameLayout frame : layout.frames) {
+                if (id.equals(frame.id)) {
+                    CanvasLayout.FrameLayout copy = frame.copy();
+                    copy.id = SchemaGraph.FRAME_ID_PREFIX + nextAnnotationSuffix();
+                    copy.x += 20;
+                    copy.y += 20;
+                    newFrames.add(copy);
+                }
+            }
+        }
+        if (newNotes.isEmpty() && newFrames.isEmpty()) {
+            setStatus("A node is a term, and a term appears once. Ctrl+D copies sticky notes and "
+                    + "frames.");
+            return;
+        }
+
+        int copied = newNotes.size() + newFrames.size();
+        rememberBoard(copied == 1 ? "copying a note or frame" : "copying " + copied + " of them");
+        layout.notes.addAll(newNotes);
+        layout.frames.addAll(newFrames);
+        refresh();
+        saveLayoutTo(layoutFile);
+        setStatus("Copied " + copied + (copied == 1 ? " item" : " items")
+                + ", offset so you can see both. The ontology is unchanged.");
+    }
+
+    /**
+     * Recolours a sticky note or a frame.
+     *
+     * <p>{@code NoteLayout.color} has existed, been persisted in the sidecar and been read by
+     * {@code SchemaGraph.render} since sticky notes were added - and nothing in the plugin has ever
+     * written it, so every note on every board has been the same yellow. The model, the persistence
+     * and the renderer were all already there; only the menu was missing.
+     */
+    private void recolourAnnotation(String id, String hex) {
+        for (CanvasLayout.NoteLayout note : layout.notes) {
+            if (id.equals(note.id)) {
+                rememberBoard("recolouring a sticky note");
+                note.color = hex;
+                refresh();
+                saveLayoutTo(layoutFile);
+                return;
+            }
+        }
+        for (CanvasLayout.FrameLayout frame : layout.frames) {
+            if (id.equals(frame.id)) {
+                rememberBoard("recolouring a frame");
+                frame.stroke = hex;
+                refresh();
+                saveLayoutTo(layoutFile);
+                return;
+            }
+        }
+    }
+
+    /** The colours a note can be, as {name, hex}. All light enough for the note's dark ink. */
+    private static final String[][] NOTE_COLOURS = {
+        {"Yellow", "#FFF3B0"}, {"Green", "#D8F0D5"}, {"Blue", "#D6E8FB"},
+        {"Pink", "#FBD9E6"}, {"Orange", "#FFE2C4"}, {"Violet", "#E5DCF6"},
+    };
+
+    /** The colours a frame's outline can be, drawn from the palette the nodes use. */
+    private static final String[][] FRAME_COLOURS = {
+        {"Blue", "#2D6FBF"}, {"Green", "#2F7A4C"}, {"Amber", "#B35C00"}, {"Slate", "#3B4652"},
+    };
+
+    /** A small filled square, so a colour menu shows its colours. */
+    private static final class SwatchIcon implements javax.swing.Icon {
+
+        private final java.awt.Color colour;
+
+        SwatchIcon(java.awt.Color colour) {
+            this.colour = colour;
+        }
+
+        @Override
+        public int getIconWidth() {
+            return 14;
+        }
+
+        @Override
+        public int getIconHeight() {
+            return 14;
+        }
+
+        @Override
+        public void paintIcon(java.awt.Component host, java.awt.Graphics graphics, int x, int y) {
+            java.awt.Graphics2D g = (java.awt.Graphics2D) graphics.create();
+            try {
+                g.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING,
+                        java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
+                g.setColor(colour);
+                g.fillRoundRect(x, y + 1, 13, 12, 4, 4);
+                g.setColor(java.awt.Color.decode("#9AA3AF"));
+                g.drawRoundRect(x, y + 1, 13, 12, 4, 4);
+            } finally {
+                g.dispose();
+            }
+        }
+    }
+
+    /** The colour submenu for a note or a frame, or null when the id is neither. */
+    private javax.swing.JMenu colourMenuFor(final String id) {
+        boolean isNote = id.startsWith(SchemaGraph.NOTE_ID_PREFIX);
+        String[][] palette = isNote ? NOTE_COLOURS : FRAME_COLOURS;
+        javax.swing.JMenu menu = new javax.swing.JMenu(isNote ? "Note colour" : "Frame colour");
+        for (final String[] swatch : palette) {
+            JMenuItem item = new JMenuItem(swatch[0],
+                    new SwatchIcon(java.awt.Color.decode(swatch[1])));
+            item.addActionListener(a -> recolourAnnotation(id, swatch[1]));
+            menu.add(item);
+        }
+        return menu;
+    }
+
+    /**
+     * Dragging a frame takes whatever is inside it along.
+     *
+     * <p>The one behaviour that makes a frame a frame rather than a rectangle. {@code SchemaGraph}
+     * inserts frames, terms, edges and notes all under the default parent, so a frame is a
+     * <em>sibling</em> of the nodes it visually encloses and {@code moveCells} moves only the frame:
+     * drag the "Toppings" frame and it arrives somewhere else, still empty.
+     *
+     * <p>Real parenting is the wrong fix and was rejected deliberately. Making nodes children of the
+     * frame cell makes their geometry relative to it, and {@code captureInto} reads {@code getX()}
+     * as an absolute board coordinate straight into the sidecar - so every saved board would shift
+     * by the frame origin the first time it was loaded. {@code constrainChildren} and
+     * {@code extendParents}, both on by default, would also start resizing frames behind the user.
+     *
+     * <p>So: after a move, work out which cells were inside the frame's <em>old</em> box and move
+     * those by the same delta. {@code moveCells} fires this once at the end, after the geometry is
+     * already final, which is why the old box is reconstructed by subtracting the delta rather than
+     * read.
+     *
+     * <p>Containment is by centre point, not by whole bounds: a node overlapping the frame edge by a
+     * few pixels is one the user considers inside. Resizing a frame deliberately does not move
+     * anything - a frame is a reading aid, and a resize that dragged terms around would make it a
+     * container.
+     */
+    private void installFrameDragging() {
+        graph.addListener(mxEvent.MOVE_CELLS, (sender, event) -> {
+            if (movingProgrammatically) {
+                return;
+            }
+            Object[] moved = (Object[]) event.getProperty("cells");
+            Object dxValue = event.getProperty("dx");
+            Object dyValue = event.getProperty("dy");
+            if (moved == null || !(dxValue instanceof Number) || !(dyValue instanceof Number)) {
+                return;
+            }
+            double dx = ((Number) dxValue).doubleValue();
+            double dy = ((Number) dyValue).doubleValue();
+            if (dx == 0 && dy == 0) {
+                return;
+            }
+
+            java.util.Set<Object> alreadyMoving = new java.util.HashSet<Object>(
+                    java.util.Arrays.asList(moved));
+            List<Object> passengers = new ArrayList<Object>();
+            for (Object cell : moved) {
+                String id = graph.getIdForCell(cell);
+                if (id == null || !id.startsWith(SchemaGraph.FRAME_ID_PREFIX)) {
+                    continue;
+                }
+                com.mxgraph.model.mxGeometry frame = graph.getModel().getGeometry(cell);
+                if (frame == null) {
+                    continue;
+                }
+                java.awt.geom.Rectangle2D.Double before = new java.awt.geom.Rectangle2D.Double(
+                        frame.getX() - dx, frame.getY() - dy, frame.getWidth(), frame.getHeight());
+                for (Object other : graph.getChildVertices(graph.getDefaultParent())) {
+                    if (other == cell || alreadyMoving.contains(other)) {
+                        continue;
+                    }
+                    com.mxgraph.model.mxGeometry box = graph.getModel().getGeometry(other);
+                    if (box == null) {
+                        continue;
+                    }
+                    if (before.contains(box.getX() + box.getWidth() / 2,
+                            box.getY() + box.getHeight() / 2)) {
+                        passengers.add(other);
+                        alreadyMoving.add(other);
+                    }
+                }
+            }
+            if (passengers.isEmpty()) {
+                return;
+            }
+
+            movingProgrammatically = true;
+            try {
+                graph.moveCells(passengers.toArray(), dx, dy);
+            } finally {
+                movingProgrammatically = false;
+            }
+            capturePositions();
+            positionSaveTimer.restart();
+        });
+    }
+
+    // ------------------------------------------------------------------ what floats over the board
+
+    /**
+     * The board, with the zoom cluster and the overview floating on top of it.
+     *
+     * <p>The canvas used to be framed on all four sides by fixed chrome - toolbar above, a 180px
+     * outline panel pinned right, status bar below - and the outline was a permanent tax. It was
+     * there while the start card was showing, where it is a blank grey rectangle beside a "nothing
+     * here yet" message; and on a board large enough to need an overview it fails at the one job
+     * it has, because a 3694x613 strip scaled into a 140px box paints as a grey smear.
+     *
+     * <p>Hand-laid rather than given a layout manager, and {@code doLayout} is overridden rather than
+     * hung off a {@code ComponentListener}, so the first layout is placed correctly instead of
+     * appearing in the top-left corner and then moving.
+     */
+    private javax.swing.JLayeredPane buildBoardLayers() {
+        javax.swing.JLayeredPane layers = new javax.swing.JLayeredPane() {
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            public void doLayout() {
+                graphComponent.setBounds(0, 0, getWidth(), getHeight());
+                int margin = 12;
+                Dimension zoom = zoomCluster.getPreferredSize();
+                Dimension map = minimapPanel.getPreferredSize();
+                int right = getWidth() - margin;
+                int bottom = getHeight() - margin;
+                zoomCluster.setBounds(right - zoom.width, bottom - zoom.height,
+                        zoom.width, zoom.height);
+                minimapPanel.setBounds(right - map.width, bottom - zoom.height - 8 - map.height,
+                        map.width, map.height);
+            }
+
+            @Override
+            public Dimension getPreferredSize() {
+                return graphComponent.getPreferredSize();
+            }
+        };
+        layers.add(graphComponent, javax.swing.JLayeredPane.DEFAULT_LAYER);
+        layers.add(minimapPanel, javax.swing.JLayeredPane.PALETTE_LAYER);
+        layers.add(zoomCluster, javax.swing.JLayeredPane.PALETTE_LAYER);
+        return layers;
+    }
+
+    /**
+     * A button that floats over the board and never takes the keyboard.
+     *
+     * <p>This is the single most likely way to break this canvas. Delete, Escape, Ctrl+Z, Ctrl+F,
+     * Ctrl+A and the five zoom keys are all bound on {@code graphComponent}'s
+     * {@code WHEN_ANCESTOR_OF_FOCUSED_COMPONENT} input map - so the moment focus moves to a sibling
+     * of the graph component, every one of them stops firing: silently, with no error, and nothing
+     * on screen to say why. A floating button is exactly such a sibling.
+     *
+     * <p>Hence both flags and the explicit hand-back at the end of every action.
+     */
+    private JButton floatingButton(javax.swing.Icon icon, String text, String tooltip,
+            final Runnable action) {
+        JButton button = icon == null ? new JButton(text) : new JButton(icon);
+        button.setToolTipText(tooltip);
+        button.setFocusable(false);
+        button.setRequestFocusEnabled(false);
+        button.setMargin(new java.awt.Insets(2, 6, 2, 6));
+        if (action != null) {
+            button.addActionListener(a -> {
+                action.run();
+                graphComponent.requestFocusInWindow();
+            });
+        }
+        return button;
+    }
+
+    /** Zoom out, the readout, zoom in, fit, and the key to everything else. */
+    private JPanel buildZoomCluster() {
+        JPanel cluster = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.CENTER, 2, 3));
+        cluster.setOpaque(true);
+        cluster.setBackground(java.awt.Color.WHITE);
+        cluster.setBorder(javax.swing.BorderFactory.createLineBorder(
+                new java.awt.Color(0xD8, 0xDD, 0xE3)));
+
+        // U+2212, the minus sign, which is present in Tahoma, Segoe UI and the logical Dialog
+        // family - the three this plugin can end up drawing with.
+        cluster.add(floatingButton(null, "−", "Zoom out (Ctrl+-)", () -> zoomAt(false, null)));
+
+        zoomReadout = new JButton(CanvasZoom.readout(1.0));
+        zoomReadout.setToolTipText("How far the board is zoomed. Click, or Ctrl+0, for 100%.");
+        zoomReadout.setFocusable(false);
+        zoomReadout.setRequestFocusEnabled(false);
+        zoomReadout.addActionListener(a -> {
+            graphComponent.zoomActual();
+            updateZoomReadout();
+            graphComponent.requestFocusInWindow();
+        });
+        // Wide enough for "400%", so the cluster does not resize as the number changes.
+        zoomReadout.setPreferredSize(new Dimension(64, zoomReadout.getPreferredSize().height));
+        cluster.add(zoomReadout);
+
+        cluster.add(floatingButton(null, "+", "Zoom in (Ctrl++)", () -> zoomAt(true, null)));
+        cluster.add(floatingButton(null, "Fit", "Zoom so the whole board is visible (Ctrl+1). "
+                + "Ctrl+2 frames the selection.", this::fitToWindow));
+        cluster.add(floatingButton(null, "?", "Every keyboard shortcut and mouse gesture",
+                this::showShortcuts));
+        return cluster;
+    }
+
+    /** The overview, with a header that collapses it. */
+    private JPanel buildMinimap() {
+        minimapOutline = new mxGraphOutline(graphComponent);
+        // The constructor sets antialiasing off, which at a 4% scale is the difference between
+        // shapes and grit.
+        minimapOutline.setAntiAlias(true);
+        minimapOutline.setPreferredSize(new Dimension(200, 140));
+
+        final JPanel panel = new JPanel(new BorderLayout());
+        panel.setOpaque(true);
+        panel.setBackground(java.awt.Color.WHITE);
+        panel.setBorder(javax.swing.BorderFactory.createLineBorder(
+                new java.awt.Color(0xD8, 0xDD, 0xE3)));
+        panel.setPreferredSize(new Dimension(200, 168));
+
+        JPanel header = new JPanel(new BorderLayout());
+        header.setOpaque(false);
+        header.setBorder(javax.swing.BorderFactory.createEmptyBorder(2, 8, 2, 2));
+        javax.swing.JLabel title = new javax.swing.JLabel("Overview");
+        title.setForeground(new java.awt.Color(0x5A, 0x64, 0x70));
+        title.setFont(title.getFont().deriveFont(java.awt.Font.PLAIN, 11f));
+        header.add(title, BorderLayout.WEST);
+        header.add(floatingButton(new CanvasIcons.Caret(), null, "Show or hide the overview",
+                () -> setMinimapOpen(!minimapOutline.isVisible(), panel)), BorderLayout.EAST);
+
+        panel.add(header, BorderLayout.NORTH);
+        panel.add(minimapOutline, BorderLayout.CENTER);
+        return panel;
+    }
+
+    /**
+     * Opens or closes the overview and remembers which.
+     *
+     * <p>In {@code Preferences} rather than the JSON sidecar, deliberately: whether a panel is open
+     * is a property of this person's screen and not of the diagram, and putting it in the sidecar
+     * would mean collapsing a panel dirties a file that is committed to somebody's repository.
+     */
+    private void setMinimapOpen(boolean open, JPanel panel) {
+        minimapOutline.setVisible(open);
+        panel.setPreferredSize(open ? new Dimension(200, 168) : new Dimension(200, 24));
+        panel.revalidate();
+        if (panel.getParent() != null) {
+            panel.getParent().doLayout();
+            panel.getParent().repaint();
+        }
+        java.util.prefs.Preferences.userNodeForPackage(SchemaCanvasView.class)
+                .putBoolean("ontoboard.minimap.open", open);
+    }
+
+    // ------------------------------------------------------------------ undo for the board
+
+    /**
+     * Remembers the board before an action changes it.
+     *
+     * <p>Every board-owned mutation calls this first. What counts as board-owned is what the sidecar
+     * holds: which terms are shown, where they are, and the sticky notes and frames. Axioms are not,
+     * and Ctrl+Z here never touches them - Prot&eacute;g&eacute;'s own undo owns that half, and mixing
+     * the two would make one keystroke mean "move that node back" or "retract that axiom" depending on
+     * what happened to be last.
+     *
+     * @param action phrased to complete "Undid: ..." - for instance "adding 7 terms"
+     */
+    private void rememberBoard(String action) {
+        history.record(action, layout);
+    }
+
+    /**
+     * Ctrl+Z and Ctrl+Shift+Z, on the board only.
+     *
+     * <p>Bound on the graph component rather than globally, so it cannot fight Prot&eacute;g&eacute;'s
+     * undo while the focus is in a class hierarchy or an annotation field. Inside the canvas it is the
+     * board's undo, which is the state the canvas is responsible for and the only state that had none.
+     */
+    private void installUndo() {
+        javax.swing.InputMap keys = graphComponent.getInputMap(
+                javax.swing.JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
+        for (int mask : new int[] { java.awt.event.InputEvent.CTRL_DOWN_MASK,
+                java.awt.event.InputEvent.META_DOWN_MASK }) {
+            keys.put(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_Z, mask),
+                    "ontoboard.undoBoard");
+            keys.put(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_Z,
+                    mask | java.awt.event.InputEvent.SHIFT_DOWN_MASK), "ontoboard.redoBoard");
+            // Ctrl+Y as well, which is what a Windows user reaches for first.
+            keys.put(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_Y, mask),
+                    "ontoboard.redoBoard");
+        }
+        graphComponent.getActionMap().put("ontoboard.undoBoard",
+                new javax.swing.AbstractAction() {
+                    private static final long serialVersionUID = 1L;
+
+                    @Override
+                    public void actionPerformed(java.awt.event.ActionEvent event) {
+                        undoBoardChange();
+                    }
+                });
+        graphComponent.getActionMap().put("ontoboard.redoBoard",
+                new javax.swing.AbstractAction() {
+                    private static final long serialVersionUID = 1L;
+
+                    @Override
+                    public void actionPerformed(java.awt.event.ActionEvent event) {
+                        redoBoardChange();
+                    }
+                });
+    }
+
+    /** Steps the board back one action, and says what it did and what it did not. */
+    private void undoBoardChange() {
+        BoardHistory.Step step = history.undo(layout);
+        if (step == null) {
+            setStatus("Nothing on the board to undo. Axioms are undone with Protege's own Edit > "
+                    + "Undo.");
+            return;
+        }
+        restoreBoard(step.getBoard());
+        // The second sentence is the one that matters. A user who has removed a term from the board
+        // and deleted a class will otherwise read one keystroke as having reversed both.
+        setStatus("Undid: " + step.getAction() + ". The ontology is unchanged - use Protege's "
+                + "Edit > Undo for axioms.");
+    }
+
+    /** Puts back what the last undo took away. */
+    private void redoBoardChange() {
+        BoardHistory.Step step = history.redo(layout);
+        if (step == null) {
+            setStatus("Nothing to redo on the board.");
+            return;
+        }
+        restoreBoard(step.getBoard());
+        setStatus("Redid: " + step.getAction() + ". The ontology is unchanged.");
+    }
+
+    /**
+     * Puts a remembered board back on screen and in the sidecar.
+     *
+     * <p>{@code copyFrom} rather than assigning the field, because {@code CanvasMembership} and the
+     * position capture hold this exact instance. Replacing it would leave membership editing a board
+     * nobody draws, which looks like an undo that works and is then undone by the next action.
+     */
+    private void restoreBoard(CanvasLayout remembered) {
+        layout.copyFrom(remembered);
+        // An expansion's record refers to terms that may have just left the board, and a collapse
+        // offered after an undo would remove terms the user has not expanded.
+        expansions.clear();
+        refresh();
+        saveLayoutTo(layoutFile);
+    }
+
+    // ------------------------------------------------------------------ draw an edge, get an axiom
+
+    /**
+     * Lets an edge be drawn on the board, and turns the gesture into the question it asked.
+     *
+     * <p>`docs/feature-parity.md` claimed the plugin could author edges from the canvas while
+     * {@code setConnectable(false)} sat in this file, so there was no connection handle to find and the
+     * capability was two levels into a context menu. People looked for the handle - it is the gesture
+     * every diagram tool has - and concluded the feature was missing.
+     *
+     * <p>One line here is load-bearing and its default is wrong for this canvas.
+     * {@code mxConstants.CONNECT_HANDLE_ENABLED} is {@code false} in JGraphX 4.2.2 - checked, not
+     * assumed - and with the handle disabled {@code mxConnectionHandler.isHighlighting()} returns true,
+     * which makes a press anywhere in a node's hotspot start a connection instead of moving the node.
+     * That would have traded the canvas's most-used gesture for its newest one. With the handle enabled
+     * a small square appears on hover, dragging from it draws an edge, and dragging the node itself
+     * still moves it.
+     *
+     * <p>{@code setCreateTarget(false)} because a drag ending on empty canvas must not invent a term.
+     * Which class to create, called what, minted from which range, is the {@code New class here...}
+     * conversation, not something to infer from where a mouse was let go.
+     */
+    private void installDragToConnect() {
+        graphComponent.setConnectable(true);
+        com.mxgraph.swing.handler.mxConnectionHandler handler =
+                graphComponent.getConnectionHandler();
+        handler.setHandleEnabled(true);
+        handler.setCreateTarget(false);
+        handler.addListener(mxEvent.CONNECT, (sender, event) -> {
+            Object drawn = event.getProperty("cell");
+            Object mouse = event.getProperty("event");
+            Point where = mouse instanceof MouseEvent
+                    ? new Point(((MouseEvent) mouse).getX(), ((MouseEvent) mouse).getY()) : null;
+            // Off the handler's own event dispatch: it is still inside the model update that
+            // inserted this edge, and the first thing we do is take that edge back out.
+            javax.swing.SwingUtilities.invokeLater(() -> edgeWasDrawn(drawn, where));
+        });
+    }
+
+    /**
+     * Asks what a freshly drawn edge means, and removes it either way.
+     *
+     * <p>The edge mxGraph just inserted is deleted before anything else. Every line on this board is a
+     * projection of an axiom - that is the property the whole canvas rests on - and an edge that is
+     * only a drawing would be the one line on screen that means nothing, indistinguishable from the
+     * ones that do. If an axiom is written, the refresh that follows draws the edge again from the
+     * ontology; if the user cancels, there is nothing left behind.
+     */
+    private void edgeWasDrawn(Object drawn, Point where) {
+        if (drawn == null) {
+            return;
+        }
+        String sourceIri = graph.getIdForCell(graph.getModel().getTerminal(drawn, true));
+        String targetIri = graph.getIdForCell(graph.getModel().getTerminal(drawn, false));
+        graph.getModel().remove(drawn);
+
+        // The rules live in DrawnEdge, where they can be tested. They were four ifs in this method
+        // and every one of them exists to stop the same thing - a line on the board with no axiom
+        // behind it - which makes them worth stating in one place.
+        DrawnEdge.Verdict verdict =
+                DrawnEdge.verdictFor(sourceIri, targetIri, membership.asSet());
+        if (verdict != DrawnEdge.Verdict.OFFER) {
+            if (verdict.getMessage() != null) {
+                setStatus(verdict.getMessage());
+            }
+            return;
+        }
+        offerAxiomsFor(sourceIri, targetIri, where);
+    }
+
+    /**
+     * The picker: what the two ends could mean, at the point the edge was dropped.
+     *
+     * <p>A popup at the cursor rather than a modal, because the answer is one click and a dialog in the
+     * middle of the screen for a one-click answer covers the two terms being talked about. The options
+     * are built from what the ends are, so the menu cannot offer something that would only produce an
+     * error - {@link HierarchyAxioms#applicableTo} decides which single hierarchy link is legal, and a
+     * restriction is offered only between two classes.
+     *
+     * <p>Nothing has been written to the ontology at this point and nothing is drawn, so dismissing the
+     * menu is a complete undo. The status line says so, because a vanished edge and a rejected edge
+     * look identical.
+     */
+    private void offerAxiomsFor(String sourceIri, String targetIri, Point where) {
+        OWLOntology ontology = getOWLModelManager().getActiveOntology();
+        OWLEntity source = entityOnCanvas(ontology, sourceIri);
+        OWLEntity target = entityOnCanvas(ontology, targetIri);
+        if (source == null || target == null) {
+            setStatus("One of those terms is not in this ontology, so nothing can be asserted "
+                    + "between them.");
+            return;
+        }
+
+        JPopupMenu menu = new JPopupMenu();
+        String sourceName = nameOnTheBoard(sourceIri);
+        String targetName = nameOnTheBoard(targetIri);
+        javax.swing.JLabel heading = new javax.swing.JLabel(
+                "  " + sourceName + "  \u2192  " + targetName + "  ");
+        heading.setFont(heading.getFont().deriveFont(java.awt.Font.BOLD,
+                heading.getFont().getSize() - 1f));
+        menu.add(heading);
+        menu.addSeparator();
+
+        List<DrawnEdge.Option> options = DrawnEdge.optionsFor(ontology, source, target);
+        if (options.isEmpty()) {
+            // Nothing legal between these two ends. Saying why is the useful answer, and
+            // HierarchyAxioms already words it - for instance an individual dragged to a property.
+            setStatus(HierarchyAxioms.whyNot(source, target));
+            return;
+        }
+        for (DrawnEdge.Option option : options) {
+            if (option == DrawnEdge.Option.HIERARCHY) {
+                HierarchyAxioms.Kind kind = HierarchyAxioms.applicableTo(source, target).get(0);
+                JMenuItem hierarchy = new JMenuItem(kind.getDisplayName());
+                hierarchy.setToolTipText(kind.getExplanation());
+                hierarchy.addActionListener(a -> linkHierarchy(source, target));
+                menu.add(hierarchy);
+            } else {
+                JMenuItem relation = new JMenuItem("Related by an object property...");
+                relation.setToolTipText("Choose the property and how strong the reading is - some, "
+                        + "only, exactly one, and the rest");
+                relation.addActionListener(a -> relateWithObjectProperty(sourceIri, targetIri));
+                menu.add(relation);
+            }
+        }
+
+        menu.addSeparator();
+        JMenuItem cancel = new JMenuItem("Cancel - write nothing");
+        cancel.addActionListener(a -> setStatus("No axiom written, and the edge was not kept."));
+        menu.add(cancel);
+
+        setStatus("Drew " + sourceName + " \u2192 " + targetName
+                + " - choose what it asserts, or dismiss to write nothing.");
+        Point at = where != null ? where : new Point(40, 40);
+        menu.show(graphComponent.getGraphControl(), at.x, at.y);
+    }
+
+    // ------------------------------------------------------------------ expand and collapse
+
+    /**
+     * Puts a term's neighbours on the board, around it, and says how many arrived.
+     *
+     * <p>All four of the things this now does were missing, and they were the same omission:
+     * {@code expandOneHop} returned a count that the caller threw away. So the new terms had no
+     * geometry and {@code SchemaGraph.render} laid them in a row along the top of the board - nowhere
+     * near the term they neighbour, overlapping whatever was already up there; nothing was saved, so
+     * the next refresh moved them again; nothing was said, so an expansion that found nothing looked
+     * exactly like one that worked; and nothing remembered what had been added, so there was no way
+     * back.
+     *
+     * <p>The ring is {@link CanvasLayouts#ringOffsets}. Positions are written into the layout
+     * <em>before</em> the refresh, because render reads the layout - placing them afterwards would
+     * draw them in the wrong place first and move them a frame later.
+     */
+    private void expandNeighbours(String iri) {
+        rememberBoard("expanding " + nameOnTheBoard(iri));
+        List<String> added = membership.expandOneHop(getOWLModelManager().getActiveOntology(), iri);
+        if (added.isEmpty()) {
+            setStatus(nameOnTheBoard(iri) + " has no neighbours that are not already on the board.");
+            return;
+        }
+
+        placeAround(iri, added);
+        expansions.put(iri, new ArrayList<String>(added));
+        refresh();
+        capturePositions();
+        saveLayoutTo(layoutFile);
+        setStatus("Expanded " + nameOnTheBoard(iri) + " - " + added.size()
+                + (added.size() == 1 ? " neighbour added" : " neighbours added")
+                + ". Right-click it to collapse again.");
+    }
+
+    /**
+     * Takes back exactly what one expansion added.
+     *
+     * <p>Deliberately not a general undo - that is A5 in the canvas plan and is not done. This removes
+     * the terms that this expansion put on the board, which is the promise the menu item makes, and
+     * nothing else: a term the user has since moved, annotated or drawn an axiom on is still one this
+     * expansion added, and leaving it behind would make "collapse" mean something different every time.
+     *
+     * <p>Only the board is touched. Anything written to the ontology in between - an axiom drawn
+     * between two of these neighbours - stays in the ontology, which is the same rule
+     * {@code Remove from canvas} follows.
+     */
+    private void collapseExpansion(String iri) {
+        rememberBoard("collapsing " + nameOnTheBoard(iri));
+        List<String> added = expansions.remove(iri);
+        if (added == null || added.isEmpty()) {
+            setStatus("Nothing to collapse on " + nameOnTheBoard(iri) + ".");
+            return;
+        }
+        int removed = 0;
+        for (String neighbour : added) {
+            if (membership.remove(neighbour)) {
+                removed++;
+                // An expansion rooted at a term that is leaving cannot be collapsed later.
+                expansions.remove(neighbour);
+            }
+        }
+        refresh();
+        capturePositions();
+        saveLayoutTo(layoutFile);
+        setStatus("Collapsed " + nameOnTheBoard(iri) + " - " + removed
+                + (removed == 1 ? " term removed from the board" : " terms removed from the board")
+                + ". The ontology is unchanged.");
+    }
+
+    /** Of a remembered expansion, the terms that are still drawn. Never null. */
+    private List<String> stillOnTheBoard(List<String> remembered) {
+        List<String> present = new ArrayList<String>();
+        if (remembered != null) {
+            for (String iri : remembered) {
+                if (membership.contains(iri)) {
+                    present.add(iri);
+                }
+            }
+        }
+        return present;
+    }
+
+    /** Writes ring positions for newly added neighbours into the layout. */
+    private void placeAround(String iri, List<String> neighbours) {
+        double[] source = boundsOf(iri);
+        double centreX = source[0] + source[2] / 2;
+        double centreY = source[1] + source[3] / 2;
+
+        List<double[]> offsets = CanvasLayouts.ringOffsets(neighbours.size());
+        for (int i = 0; i < neighbours.size() && i < offsets.size(); i++) {
+            CanvasLayout.NodeLayout position = new CanvasLayout.NodeLayout();
+            position.w = 160;
+            position.h = 60;
+            // The offset is to the neighbour's centre, so half a node back to its corner.
+            position.x = centreX + offsets.get(i)[0] - position.w / 2;
+            position.y = centreY + offsets.get(i)[1] - position.h / 2;
+            layout.nodes.put(neighbours.get(i), position);
+        }
+    }
+
+    /** Where a term is, as {@code {x, y, w, h}}, from the live cell or the layout, or the origin. */
+    private double[] boundsOf(String iri) {
+        Object cell = graph.getCellForId(iri);
+        if (cell instanceof com.mxgraph.model.mxCell) {
+            com.mxgraph.model.mxGeometry geometry = ((com.mxgraph.model.mxCell) cell).getGeometry();
+            if (geometry != null) {
+                return new double[] { geometry.getX(), geometry.getY(),
+                        geometry.getWidth(), geometry.getHeight() };
+            }
+        }
+        CanvasLayout.NodeLayout stored = layout.nodes.get(iri);
+        if (stored != null) {
+            return new double[] { stored.x, stored.y,
+                    stored.w > 0 ? stored.w : 160, stored.h > 0 ? stored.h : 60 };
+        }
+        return new double[] { 40, 40, 160, 60 };
+    }
+
+    /**
+     * What a term is called, for a sentence in the status bar.
+     *
+     * <p>From the drawn projection, so it is the label the user is looking at. A message that named a
+     * term by an IRI the board never shows would be describing something else as far as the reader is
+     * concerned.
+     */
+    private String nameOnTheBoard(String iri) {
+        for (CanvasNode node : termsOnTheBoard()) {
+            if (node.getId().equals(iri)) {
+                return CanvasSearch.nameOf(node);
+            }
+        }
+        return CanvasSearch.localNameOf(iri);
+    }
+
+    // ------------------------------------------------------------------ find and zoom
+
+    /**
+     * Runs the current query and reports what it found.
+     *
+     * <p>Centring while typing is the behaviour worth having - you see the term arrive rather than
+     * pressing Enter and hoping - but not on the first character, where the best match for "m" is
+     * arbitrary and the canvas lurches to it. From two characters on, the view follows the query.
+     *
+     * @param centreTheBest whether to move the view, which stepping and re-running after an add do
+     *     themselves
+     */
+    private void runSearch(boolean centreTheBest) {
+        String query = searchField == null ? "" : searchField.getText();
+        searchMatches = CanvasSearch.matches(query, termsOnTheBoard());
+        searchCursor = 0;
+
+        if (query.trim().isEmpty()) {
+            say(searchCount, " ", null);
+            return;
+        }
+        if (!searchMatches.isEmpty()) {
+            say(searchCount, searchMatches.size() == 1 ? "1 match"
+                    : searchMatches.size() + " matches", null);
+            if (centreTheBest && query.trim().length() >= 2) {
+                goToCurrentMatch();
+            }
+            return;
+        }
+        reportNothingFoundOnTheBoard(query);
+    }
+
+    /**
+     * What to say when the board has no match, which is two different situations.
+     *
+     * <p>"No match" alone is the unhelpful answer, because the two reasons it can be true lead to
+     * opposite next actions: the term does not exist and needs creating, or it exists and simply has
+     * not been added to the board. Distinguishing them is the whole reason this looks past the board
+     * at all.
+     */
+    private void reportNothingFoundOnTheBoard(String query) {
+        List<CanvasNode> inTheOntology = CanvasSearch.matches(query, termsInTheOntology(), 1);
+        if (inTheOntology.isEmpty()) {
+            say(searchCount, "no match", "Nothing in this ontology matches that either.");
+            setStatus("No term matching \"" + query.trim() + "\" - not on the board, and not in "
+                    + "this ontology.");
+            return;
+        }
+        String name = CanvasSearch.nameOf(inTheOntology.get(0));
+        say(searchCount, "not on board",
+                name + " is in the ontology. Ctrl+Enter puts it on the board.");
+        setStatus(name + " is in this ontology but not on the board - Ctrl+Enter adds it.");
+    }
+
+    /** Enter and Shift+Enter: the next match, wrapping. */
+    private void stepThroughMatches(int delta) {
+        if (searchMatches.isEmpty()) {
+            // Enter on a query that matched nothing on the board does the obvious thing instead of
+            // nothing at all: if the term exists, put it there.
+            addBestMatchFromTheOntology();
+            return;
+        }
+        searchCursor = (searchCursor + delta + searchMatches.size()) % searchMatches.size();
+        goToCurrentMatch();
+    }
+
+    /**
+     * Centres the current match, selects it, and names it.
+     *
+     * <p>Selecting rather than only scrolling is what makes this more than a camera move: the
+     * selection goes out through {@link SelectionBridge} to Prot&eacute;g&eacute;'s own selection, so
+     * finding a term on the board also brings up its annotations and its axioms in the panels beside
+     * it - and out to collaborators, who see what their colleague is looking at.
+     */
+    private void goToCurrentMatch() {
+        if (searchMatches.isEmpty()) {
+            return;
+        }
+        CanvasNode match = searchMatches.get(searchCursor);
+        Object cell = graph.getCellForId(match.getId());
+        if (cell == null) {
+            // The board was re-rendered between the search and the jump - an edit elsewhere in
+            // Protege, or a collaborator removing the term.
+            setStatus(CanvasSearch.nameOf(match) + " is no longer on the board.");
+            runSearch(false);
+            return;
+        }
+        graph.setSelectionCell(cell);
+        graphComponent.scrollCellToVisible(cell, true);
+        String position = searchMatches.size() == 1
+                ? "" : "(" + (searchCursor + 1) + " of " + searchMatches.size() + ") ";
+        setStatus(position + CanvasSearch.nameOf(match) + " - " + match.getId());
+    }
+
+    /**
+     * Ctrl+Enter: puts the best matching term in the ontology onto the board.
+     *
+     * <p>Placed at the centre of what the user is currently looking at, not at the origin. A node
+     * that arrives off-screen after an explicit request to add it is indistinguishable from nothing
+     * happening, which is the bug the drop path was fixed for and would be a new one here.
+     */
+    private void addBestMatchFromTheOntology() {
+        String query = searchField == null ? "" : searchField.getText();
+        if (query.trim().isEmpty()) {
+            return;
+        }
+        List<CanvasNode> found = CanvasSearch.matches(query, termsInTheOntology(), 1);
+        if (found.isEmpty()) {
+            setStatus("No term in this ontology matches \"" + query.trim() + "\".");
+            return;
+        }
+        CanvasNode term = found.get(0);
+        if (!membership.add(term.getId())) {
+            // Already there - so this is a search that should have matched, and the useful response
+            // is to go to it rather than to report a no-op.
+            runSearch(true);
+            return;
+        }
+
+        rememberBoard("adding " + CanvasSearch.nameOf(term));
+        Point where = centreOfTheVisibleCanvas();
+        CanvasLayout.NodeLayout position = new CanvasLayout.NodeLayout();
+        position.x = where.x;
+        position.y = where.y;
+        position.w = 160;
+        position.h = 60;
+        layout.nodes.put(term.getId(), position);
+
+        refresh();
+        saveLayoutTo(layoutFile);
+        setStatus("Added " + CanvasSearch.nameOf(term) + " to the board.");
+        // Re-run so the count, the selection and the view all describe the board as it now is.
+        runSearch(true);
+    }
+
+    /** The middle of the visible canvas, in graph coordinates. */
+    private Point centreOfTheVisibleCanvas() {
+        java.awt.Rectangle visible = graphComponent.getViewport().getViewRect();
+        if (visible.width <= 0 || visible.height <= 0) {
+            return new Point(40, 40);
+        }
+        // Half a default node up and left, so the node is centred rather than starting at the centre.
+        Point centre = graphPointFromControl(visible.x + visible.width / 2,
+                visible.y + visible.height / 2);
+        return new Point(Math.max(0, centre.x - 80), Math.max(0, centre.y - 30));
+    }
+
+    /** Escape in the Find box: clear it and give the keyboard back to the canvas. */
+    private void clearSearch() {
+        if (searchField != null) {
+            searchField.setText("");
+        }
+        searchMatches = Collections.emptyList();
+        searchCursor = 0;
+        say(searchCount, " ", null);
+        graphComponent.requestFocusInWindow();
+    }
+
+    /** The terms drawn on the board, which is what Find searches first. */
+    private List<CanvasNode> termsOnTheBoard() {
+        return rendered == null ? Collections.<CanvasNode>emptyList() : rendered.getNodes();
+    }
+
+    /**
+     * Every term in the ontology, built on demand and kept until the next refresh.
+     *
+     * <p>Only reached when the board has no match, so the common case - searching for something that
+     * is on screen - never walks the ontology. {@link #refresh} drops it, and refresh runs on every
+     * ontology change, so this cannot answer with a term that has since been deleted.
+     */
+    private List<CanvasNode> termsInTheOntology() {
+        if (ontologyTerms == null) {
+            // Imports included, so "not on the board" is answered about the ontology the user is
+            // working in rather than about the edit file alone - and so Ctrl+Enter can draw an
+            // imported term, which it now can.
+            ontologyTerms = OntologyProjection.everyTermWorthShowing(
+                    getOWLModelManager().getActiveOntology(),
+                    org.semanticweb.owlapi.model.parameters.Imports.INCLUDED);
+        }
+        return ontologyTerms;
+    }
+
+    /** Text and tooltip together, because a label whose text is cut off needs the tooltip. */
+    private static void say(javax.swing.JLabel label, String text, String tooltip) {
+        if (label != null) {
+            label.setText(text);
+            label.setToolTipText(tooltip);
+        }
+    }
+
+    /**
+     * Zooms so the whole board is visible.
+     *
+     * <p>The one thing to get right here is a unit: {@code mxGraphView.getGraphBounds()} reports the
+     * board in <em>scaled</em> pixels, so dividing by the current scale is what makes Fit mean the
+     * same thing from 40% as from 100%. Without it the arithmetic is right at 100% and wrong
+     * everywhere else, which is a bug that survives every manual test that starts from 100%.
+     */
+    private void fitToWindow() {
+        fitTo(graph.getView().getGraphBounds(), false, "the board");
+    }
+
+    /**
+     * Frames whatever is selected, magnifying if it is small.
+     *
+     * <p>The one case where zooming past 1:1 is right: framing a single node in a large window is
+     * the whole point of asking for it, where fitting the board past 1:1 would be a zoom level
+     * nobody requested.
+     */
+    private void fitToSelection() {
+        Object[] selected = graph.getSelectionCells();
+        if (selected == null || selected.length == 0) {
+            setStatus("Select something first - Ctrl+2 frames whatever is selected.");
+            return;
+        }
+        fitTo(graph.getView().getBoundingBox(selected), true,
+                selected.length == 1 ? "the selection" : selected.length + " selected");
+    }
+
+    /**
+     * Zooms and scrolls so {@code bounds} fills the window.
+     *
+     * <p>The one thing to get right here is a unit: {@code mxGraphView} reports bounds in
+     * <em>scaled</em> pixels, so dividing by the current scale is what makes this mean the same
+     * thing from 40% as from 100%. Without it the arithmetic is right at 100% and wrong everywhere
+     * else, which is a bug that survives every manual test that starts from 100%.
+     */
+    private void fitTo(com.mxgraph.util.mxRectangle bounds, boolean allowMagnify, String what) {
+        java.awt.Rectangle window = graphComponent.getViewport().getViewRect();
+        double scale = graph.getView().getScale();
+        double zoom = scale <= 0 ? 1 : scale;
+        if (bounds == null || bounds.getWidth() <= 0 || bounds.getHeight() <= 0) {
+            setStatus("Nothing on the board to fit.");
+            return;
+        }
+
+        double fitted = allowMagnify
+                ? CanvasZoom.scaleToFill(bounds.getWidth() / zoom, bounds.getHeight() / zoom,
+                        window.getWidth(), window.getHeight())
+                : CanvasZoom.scaleToFit(bounds.getWidth() / zoom, bounds.getHeight() / zoom,
+                        window.getWidth(), window.getHeight());
+        graphComponent.zoomTo(fitted, false);
+
+        // Then bring the content itself into view: fitting the scale without scrolling leaves a board
+        // that starts at x=2000 exactly as invisible as it was, only smaller.
+        double ratio = fitted / zoom;
+        graphComponent.getGraphControl().scrollRectToVisible(new java.awt.Rectangle(
+                (int) (bounds.getX() * ratio), (int) (bounds.getY() * ratio),
+                (int) (bounds.getWidth() * ratio), (int) (bounds.getHeight() * ratio)));
+        updateZoomReadout();
+        setStatus("Fitted " + what + " to the window at " + CanvasZoom.readout(fitted) + ".");
+    }
+
+    /**
+     * Keeps the readout honest however the zoom changed.
+     *
+     * <p>Bound to the view rather than to the wheel handler and the two buttons, so a zoom from
+     * anywhere - the outline panel, a future keyboard shortcut, mxGraph itself - updates it. A readout
+     * that is right only when you zoom the way its author expected is worse than none.
+     */
+    private void installZoomReadout() {
+        mxIEventListener onScale = (sender, event) -> updateZoomReadout();
+        graph.getView().addListener(mxEvent.SCALE, onScale);
+        graph.getView().addListener(mxEvent.SCALE_AND_TRANSLATE, onScale);
+        updateZoomReadout();
+    }
+
+    /** Puts the current scale in the status bar. */
+    private void updateZoomReadout() {
+        if (zoomReadout != null) {
+            zoomReadout.setText(CanvasZoom.readout(graph.getView().getScale()));
         }
     }
 
@@ -770,9 +2100,15 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         new com.mxgraph.swing.handler.mxRubberband(graphComponent) {
             @Override
             public void mousePressed(java.awt.event.MouseEvent event) {
-                // Without this guard the rubberband starts on every empty-space press and the
-                // pan never happens, because both handlers see the same event.
-                if (event.isControlDown() || event.isShiftDown()) {
+                // A plain drag on empty board selects a region, since 1.68.0. The explicit
+                // null-cell test is required rather than belt-and-braces: mxRubberband.mousePressed
+                // in 4.2.2 checks isConsumed, isEnabled, isRubberbandTrigger and isPopupTrigger and
+                // never asks what is under the cursor - isRubberbandTrigger is literally "return
+                // true". It works today only because mxGraphHandler is registered first by the
+                // mxGraphComponent constructor and consumes the event on a cell hit, which is a
+                // registration order to depend on deliberately or not at all.
+                if (graphComponent.getCellAt(event.getX(), event.getY()) == null
+                        && !((CollaborativeGraphComponent) graphComponent).isSpaceHeld()) {
                     super.mousePressed(event);
                 }
             }
@@ -792,12 +2128,57 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         graphComponent.addMouseWheelListener(new java.awt.event.MouseWheelListener() {
             @Override
             public void mouseWheelMoved(java.awt.event.MouseWheelEvent event) {
-                if (event.getWheelRotation() < 0) {
-                    graphComponent.zoomIn();
-                } else {
-                    graphComponent.zoomOut();
-                }
+                zoomAt(event.getWheelRotation() < 0, event);
                 event.consume();
+            }
+        });
+    }
+
+    /**
+     * Zooms one step, keeping the point under the cursor under the cursor.
+     *
+     * <p>Two faults this replaces. {@code mxGraphComponent.centerZoom} defaults to true and was never
+     * set, so the board zoomed towards the middle of the viewport: on a 3694px board the node you
+     * were pointing at slid off the screen at every click, which is the opposite of what pointing at
+     * it means. And {@code mxGraphComponent.zoom} is guarded only by {@code newScale > 0.04} with no
+     * upper bound, so the wheel ran to 800% while {@link CanvasZoom#MAX_SCALE} documented a ceiling
+     * of 400% that nothing enforced.
+     *
+     * <p>The arithmetic is exact rather than approximate: {@code zoomTo} calls
+     * {@code scaleAndTranslate(newScale, 0, 0)} whenever page view is off - it is, and nothing here
+     * turns it on - so the view translate is permanently (0,0) and a graph point's pixel is exactly
+     * its coordinate times the scale.
+     *
+     * @param event where the cursor is, or null to zoom about the centre of the view
+     */
+    private void zoomAt(boolean in, java.awt.event.MouseEvent event) {
+        double scale = graph.getView().getScale();
+        double target = CanvasZoom.clamp(in
+                ? scale * graphComponent.getZoomFactor()
+                : scale / graphComponent.getZoomFactor());
+        if (target == scale) {
+            return;
+        }
+        final javax.swing.JViewport port = graphComponent.getViewport();
+        final java.awt.Point inPort = event == null
+                ? new java.awt.Point(port.getWidth() / 2, port.getHeight() / 2)
+                : javax.swing.SwingUtilities.convertPoint(
+                        (java.awt.Component) event.getSource(), event.getPoint(), port);
+        final java.awt.Point origin = port.getViewPosition();
+        final double ratio = target / scale;
+
+        graphComponent.zoomTo(target, false);
+        // After the component has finished: zoomTo defers its own scrollbar maintenance to an
+        // invokeLater, so a scroll position set synchronously here would simply be overwritten.
+        javax.swing.SwingUtilities.invokeLater(new Runnable() {
+            @Override
+            public void run() {
+                java.awt.Dimension size = graphComponent.getGraphControl().getPreferredSize();
+                int x = (int) Math.round((origin.x + inPort.x) * ratio) - inPort.x;
+                int y = (int) Math.round((origin.y + inPort.y) * ratio) - inPort.y;
+                x = Math.max(0, Math.min(x, Math.max(0, size.width - port.getWidth())));
+                y = Math.max(0, Math.min(y, Math.max(0, size.height - port.getHeight())));
+                port.setViewPosition(new java.awt.Point(x, y));
             }
         });
     }
@@ -830,6 +2211,38 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         // Escape clears the selection. Documented in the testing guide and simply absent, so the
         // only way out of a rubber-band selection was to click empty canvas and hope not to hit a
         // node - with Delete one keystroke away from removing whatever was still selected.
+        // Ctrl+F from the canvas, because the point of a find box is not having to reach for the
+        // mouse. Both masks rather than Toolkit.getMenuShortcutKeyMask(), which is deprecated on the
+        // newer of the two Java versions this plugin is built for.
+        for (int mask : new int[] { java.awt.event.InputEvent.CTRL_DOWN_MASK,
+                java.awt.event.InputEvent.META_DOWN_MASK }) {
+            keys.put(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_F, mask),
+                    "ontoboard.find");
+        }
+        graphComponent.getActionMap().put("ontoboard.find",
+                new javax.swing.AbstractAction() {
+                    private static final long serialVersionUID = 1L;
+
+                    @Override
+                    public void actionPerformed(java.awt.event.ActionEvent event) {
+                        if (searchField != null) {
+                            searchField.requestFocusInWindow();
+                            searchField.selectAll();
+                        }
+                    }
+                });
+
+        // Space held pans, which is the gesture every canvas application uses and the one this
+        // canvas took away from a plain drag. Bound on press and on release, with the cursor saying
+        // which mode the board is in - without that the only feedback is that dragging does
+        // something different, which is how a deliberate inversion reads as a fault.
+        keys.put(javax.swing.KeyStroke.getKeyStroke(
+                java.awt.event.KeyEvent.VK_SPACE, 0, false), "ontoboard.panOn");
+        keys.put(javax.swing.KeyStroke.getKeyStroke(
+                java.awt.event.KeyEvent.VK_SPACE, 0, true), "ontoboard.panOff");
+        graphComponent.getActionMap().put("ontoboard.panOn", holdSpace(true));
+        graphComponent.getActionMap().put("ontoboard.panOff", holdSpace(false));
+
         keys.put(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_ESCAPE, 0),
                 "ontoboard.clearSelection");
         graphComponent.getActionMap().put("ontoboard.clearSelection",
@@ -841,6 +2254,41 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                         graph.clearSelection();
                     }
                 });
+    }
+
+    /**
+     * Whether the first-run hint may take the board's status line.
+     *
+     * <p>A pure function because the interesting case is not the hint: {@code boardStatus} starts as a
+     * single space, which is not the same as empty, and {@code loadLayoutForActiveOntology} runs first
+     * and may already have written "the saved arrangement could not be read" there. That sentence
+     * carries a file the user has to go and look at, and it must outrank a hint about the mouse.
+     *
+     * <p>Yielding is safe because the caller only marks the hint seen when it shows: a hint worth
+     * showing once is worth showing next session instead.
+     */
+    static boolean firstRunHintFits(boolean alreadySeen, String boardMessage) {
+        return !alreadySeen && (boardMessage == null || boardMessage.trim().isEmpty());
+    }
+
+    /** The space-bar action, in both directions, with the cursor to match. */
+    private javax.swing.Action holdSpace(final boolean held) {
+        return new javax.swing.AbstractAction() {
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            public void actionPerformed(java.awt.event.ActionEvent event) {
+                ((CollaborativeGraphComponent) graphComponent).setSpaceHeld(held);
+                graphComponent.getGraphControl().setCursor(java.awt.Cursor.getPredefinedCursor(
+                        held ? java.awt.Cursor.MOVE_CURSOR : java.awt.Cursor.DEFAULT_CURSOR));
+            }
+        };
+    }
+
+    /** The shortcut list, which is what makes the inverted pan gesture defensible. */
+    private void showShortcuts() {
+        JOptionPane.showMessageDialog(this, new de.fizkarlsruhe.ise.ontoboard.canvas.ShortcutsPanel(),
+                "Canvas shortcuts", JOptionPane.PLAIN_MESSAGE);
     }
 
     /**
@@ -937,6 +2385,10 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         if (selected == null || selected.length == 0) {
             return new Removal(0, 0, 0);
         }
+        // Recorded after the empty check, so pressing Delete on nothing does not push a step that
+        // undoes nothing and hides the one before it.
+        rememberBoard(selected.length == 1 ? "removing a term from the board"
+                : "removing " + selected.length + " things from the board");
         int terms = 0;
         int annotations = 0;
         int skipped = 0;
@@ -991,6 +2443,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                 return;
             }
         }
+        rememberBoard("adding every term");
         int added = 0;
         for (String iri : candidates) {
             if (membership.add(iri)) {
@@ -1024,7 +2477,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             graphComponent.setPeerCursors(null);
             graphComponent.getGraphControl().repaint();
             collaborateButton.setText("Collaborate...");
-            collabStatus.setText("Working through git");
+            setSessionStatus("Working through git", LIGHT_OFFLINE);
             return;
         }
         OWLOntology open = getOWLModelManager().getActiveOntology();
@@ -1036,7 +2489,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         }
         if (!settings.isLive()) {
             // A deliberate choice, not a failure: the dialog says so too.
-            collabStatus.setText("Working through git");
+            setSessionStatus("Working through git", LIGHT_OFFLINE);
             JOptionPane.showMessageDialog(this, settings.explainWhyNotLive(),
                     "Working through git", JOptionPane.INFORMATION_MESSAGE);
             return;
@@ -1057,7 +2510,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                 javax.swing.SwingUtilities::invokeLater);
         graphComponent.setPeerCursors(collab.getCursors());
         collaborateButton.setText("Disconnect");
-        collabStatus.setText("Connecting...");
+        setSessionStatus("Connecting...", LIGHT_ATTENTION);
         collab.start();
     }
 
@@ -1098,8 +2551,45 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         // and one function is what stops them differing again. It also picks up the translate term,
         // which the inline version omitted - zero on a default view, not in general.
         Point inGraph = graphPointFromControl(event.getX(), event.getY());
+        lastCursorPoint = inGraph;
         collab.publishCursor(inGraph.x, inGraph.y,
                 selectionBridge == null ? null : selectionBridge.currentCanvasSelection());
+    }
+
+    /**
+     * Says where this editor is looking, without waiting for the mouse to move.
+     *
+     * <p>Two absences this closes, both of which made a live session look emptier than it was.
+     * Selecting a term published nothing until the mouse happened to move afterwards - so clicking a
+     * node and reading it, or finding it with Ctrl+F, told nobody; and a peer who joined and then read
+     * the diagram without moving the mouse was invisible, indistinguishable from nobody having joined.
+     *
+     * <p>The position is the last one the peers saw, or the selected node's centre, or the middle of
+     * the visible canvas - in that order. The origin is the one answer never given: for anybody who has
+     * scrolled, it is somewhere the canvas is not.
+     */
+    private void announcePresence() {
+        if (collab == null) {
+            return;
+        }
+        String selection = selectionBridge == null ? null : selectionBridge.currentCanvasSelection();
+        Point where = presencePoint(selection);
+        lastCursorPoint = where;
+        collab.publishCursor(where.x, where.y, selection);
+    }
+
+    /** Where to say this editor is, when the mouse has not said. */
+    private Point presencePoint(String selection) {
+        if (selection != null) {
+            // The selected node's centre beats a stale cursor: it is what the user is actually
+            // looking at, and it is where a colleague following them wants to be taken.
+            double[] box = boundsOf(selection);
+            return new Point((int) (box[0] + box[2] / 2), (int) (box[1] + box[3] / 2));
+        }
+        if (lastCursorPoint != null) {
+            return lastCursorPoint;
+        }
+        return centreOfTheVisibleCanvas();
     }
 
     /**
@@ -1143,9 +2633,13 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
 
         @Override
         public void onStatus(String status, boolean connected) {
-            collabStatus.setText(status);
-            collabStatus.setToolTipText(status);
-            collaborateButton.setText(connected ? "Disconnect" : "Collaborate...");
+            setSessionStatus(status, connected ? LIGHT_CONNECTED : LIGHT_ATTENTION);
+            // The label says what the button will DO, which depends on whether a session exists - not
+            // on whether its socket happens to be up this second. Taking it from `connected` meant
+            // that during an automatic reconnect, and after a refusal, the button read
+            // "Collaborate..." while a live session object was still held: clicking it disconnected
+            // instead of opening the dialog, and the only way to find that out was to try.
+            collaborateButton.setText(collab != null ? "Disconnect" : "Collaborate...");
         }
 
         @Override
@@ -1159,65 +2653,300 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             // A running count in the status line rather than a dialog per change: Protege can
             // produce a dozen unshareable axioms from one action, and a dozen modal dialogs
             // would be worse than the problem. The tooltip carries the detail.
-            collabStatus.setText(count + " change" + (count == 1 ? "" : "s") + " not shared");
+            setSessionStatus(count + " change" + (count == 1 ? "" : "s") + " not shared",
+                    LIGHT_ATTENTION);
             collabStatus.setToolTipText("The most recent was " + exampleReason);
+        }
+
+        @Override
+        public void onPeerGeometry(String iri, java.util.Map<String, Object> data) {
+            // The rule is PeerGeometry's: take a colleague's position only for a term this board has
+            // no position for, and treat the origin as "no hint" rather than as a coordinate.
+            if (PeerGeometry.adoptInto(layout, iri, data)) {
+                saveLayoutTo(layoutFile);
+            }
+        }
+
+        @Override
+        public void onSessionEnded(String reason) {
+            // A refusal is final. Holding the session afterwards left the button and the state
+            // disagreeing; dropping it here is what makes the label above correct.
+            if (collab != null) {
+                collab.stop();
+                collab = null;
+            }
+            graphComponent.setPeerCursors(null);
+            graphComponent.getGraphControl().repaint();
+            collaborateButton.setText("Collaborate...");
+            setSessionStatus(reason + " - not connected.", LIGHT_ATTENTION);
+        }
+
+        @Override
+        public void onJoined() {
+            announcePresence();
         }
     }
 
+    /**
+     * The row of controls above the board.
+     *
+     * <p>It did not fit. Measured with the real components under Java 11 the bar wanted 1261px and
+     * began clipping at 1030; the OntoBoard tab in a 1440px Prot&eacute;g&eacute; window gives it 857,
+     * at which {@code Collaborate...} is laid out at x=812 - past the right edge, unpainted and
+     * unclickable. {@code JToolBar} uses a {@code BoxLayout}, which lays overflowing children out
+     * beyond the container rather than wrapping them, and there is no overflow or chevron to switch
+     * on. Nothing said so: the button was simply not there.
+     *
+     * <p>Three changes bring it to 777px. The layout combo goes - 201px to choose between four
+     * entries nobody reopens - and Arrange becomes a button that pops them. Legend, Export and
+     * Collaborate move into an overflow menu, because none of them is a thing you do twice a minute.
+     * And the two widths that were free to grow are pinned: the Find box, whose slack reached 407px
+     * on a wide bar, and the Add button.
+     *
+     * <p>Add selected, Add all, Find and Inferences stay visible. Inferences is a mode with a visible
+     * consequence on the diagram, and a mode you can forget you are in must not be hidden in a menu.
+     */
     private JToolBar buildToolBar() {
         JToolBar bar = new JToolBar();
         bar.setFloatable(false);
 
-        JComboBox<CanvasLayouts.Algorithm> algorithms =
-                new JComboBox<>(CanvasLayouts.Algorithm.values());
-        JButton arrange = new JButton("Arrange");
-        arrange.addActionListener(a -> arrangeWith(
-                (CanvasLayouts.Algorithm) algorithms.getSelectedItem()));
-
-        collaborateButton = new JButton("Collaborate...");
-        collaborateButton.addActionListener(a -> toggleCollaboration());
-        collabStatus = new javax.swing.JLabel(" ");
-        collabStatus.setFont(collabStatus.getFont().deriveFont(
-                java.awt.Font.PLAIN, collabStatus.getFont().getSize() - 1f));
-
-        addSelectedButton = new JButton("Add selected");
+        addSelectedButton = new JButton("Add selected", new CanvasIcons.Plus());
         addSelectedButton.addActionListener(a -> addSelectedEntityToCanvas());
+        // Pinned, all three ways, because describeSelectionOnButton rewrites this label on every
+        // selection change: "Add selected" is 108px and "Add Cheesey vegetable topping" is 211, so
+        // clicking through the class tree shifted everything to its right by up to 103px - including
+        // the Find field, which slid out from under the pointer mid-type. searchCount has carried a
+        // fixed width for exactly this reason since 1.58.0.
+        Dimension addSize = new Dimension(150, addSelectedButton.getPreferredSize().height);
+        addSelectedButton.setPreferredSize(addSize);
+        addSelectedButton.setMinimumSize(addSize);
+        addSelectedButton.setMaximumSize(addSize);
         describeSelectionOnButton(getOWLEditorKit().getOWLWorkspace()
                 .getOWLSelectionModel().getSelectedEntity());
 
-        JButton export = new JButton("Export...");
-        export.addActionListener(a -> exportWithOptions());
+        JButton addAll = new JButton("Add all", new CanvasIcons.PlusStack());
+        addAll.setToolTipText("Put every class, individual and property in the ontology on "
+                + "the board");
+        addAll.addActionListener(a -> addEverythingToCanvas());
 
-        inferencesButton = new javax.swing.JToggleButton("Inferences");
+        arrangeButton = new JButton("Arrange", new CanvasIcons.Tree());
+        arrangeButton.setToolTipText("Lay the board out - superclasses above their subclasses");
+        arrangeButton.addActionListener(a -> {
+            JPopupMenu algorithms = new JPopupMenu();
+            for (final CanvasLayouts.Algorithm algorithm : CanvasLayouts.Algorithm.values()) {
+                JMenuItem item = new JMenuItem(algorithm.getDisplayName());
+                item.addActionListener(b -> arrangeWith(algorithm));
+                algorithms.add(item);
+            }
+            algorithms.show(arrangeButton, 0, arrangeButton.getHeight());
+        });
+
+        inferencesButton = new javax.swing.JToggleButton("Inferences", new CanvasIcons.Dashed());
         inferencesButton.setToolTipText("Also draw what the running reasoner concludes, dotted");
         inferencesButton.addActionListener(a -> {
             showInferences = inferencesButton.isSelected();
             refresh();
         });
 
-        JButton legend = new JButton("Legend");
-        legend.setToolTipText("What the shapes and lines mean");
-        legend.addActionListener(a -> showLegend());
-
-        JButton addAll = new JButton("Add all");
-        addAll.setToolTipText("Put every class, individual and property in the ontology on "
-                + "the board");
-        addAll.addActionListener(a -> addEverythingToCanvas());
+        collaborateButton = new JButton("Collaborate...");
+        collaborateButton.addActionListener(a -> toggleCollaboration());
 
         bar.add(addSelectedButton);
-        bar.addSeparator();
-        bar.add(algorithms);
-        bar.add(arrange);
-        bar.addSeparator();
         bar.add(addAll);
+        bar.addSeparator();
+        bar.add(buildFindBox());
+        bar.addSeparator();
+        bar.add(arrangeButton);
         bar.add(inferencesButton);
-        bar.add(legend);
-        bar.addSeparator();
-        bar.add(export);
-        bar.addSeparator();
-        bar.add(collaborateButton);
-        bar.add(collabStatus);
+        bar.add(javax.swing.Box.createHorizontalGlue());
+        bar.add(buildOverflowButton());
         return bar;
+    }
+
+    /**
+     * Everything that does not need to be one click away.
+     *
+     * <p>Collaborate is in here rather than on the bar because it is pressed once a session, and
+     * because its state is already reported continuously in the status bar - which is where somebody
+     * looks to find out whether they are sharing, not at a button.
+     */
+    private JButton buildOverflowButton() {
+        final JButton more = new JButton(new CanvasIcons.Kebab());
+        more.setToolTipText("More");
+        more.addActionListener(a -> {
+            JPopupMenu menu = new JPopupMenu();
+
+            JMenuItem legend = new JMenuItem("Legend...", new CanvasIcons.Key());
+            legend.setToolTipText("What the shapes and lines mean");
+            legend.addActionListener(b -> showLegend());
+            menu.add(legend);
+
+            JMenuItem export = new JMenuItem("Export image...", new CanvasIcons.Download());
+            export.addActionListener(b -> exportWithOptions());
+            menu.add(export);
+            menu.addSeparator();
+
+            JMenuItem collaborate = new JMenuItem(collaborateButton.getText());
+            collaborate.addActionListener(b -> toggleCollaboration());
+            menu.add(collaborate);
+            menu.addSeparator();
+
+            final javax.swing.JCheckBoxMenuItem snap =
+                    new javax.swing.JCheckBoxMenuItem("Snap to grid", graph.isGridEnabled());
+            snap.setToolTipText("A 20px grid. Alt while dragging ignores it for one move.");
+            snap.addActionListener(b -> {
+                graph.setGridEnabled(snap.isSelected());
+                graphComponent.setGridVisible(snap.isSelected());
+                graphComponent.getGraphControl().repaint();
+            });
+            menu.add(snap);
+            menu.addSeparator();
+
+            JMenuItem shortcuts = new JMenuItem("Keyboard shortcuts\u2026");
+            shortcuts.addActionListener(b -> showShortcuts());
+            menu.add(shortcuts);
+
+            menu.show(more, 0, more.getHeight());
+        });
+        return more;
+    }
+
+    /**
+     * Find a term on the board.
+     *
+     * <p>The gap this closes is the largest one in the interface, and it is a gap rather than a bug:
+     * on a board with a hundred terms - what <em>Add all</em> produces on the pizza ontology, and
+     * small for the ontologies this plugin is for - there was no way to locate {@code Margherita}
+     * except to drag the canvas until it appeared, or to leave the canvas for the class hierarchy,
+     * find it there, and come back. People did the second, which made the canvas a thing to look at
+     * rather than to work in.
+     *
+     * <p>Four keys, because a search box that only searches is half of one. <b>Enter</b> steps to the
+     * next match and <b>Shift+Enter</b> back, so a term whose name is a prefix of four others is two
+     * keystrokes away rather than a longer query. <b>Ctrl+Enter</b> adds the best match that is in the
+     * ontology but not yet on the board - the case where the honest answer to a search is "it exists,
+     * you just have not drawn it", and where sending somebody back to the class hierarchy to drag it
+     * across is exactly the round trip this box exists to remove. <b>Escape</b> clears the box and
+     * returns the keyboard to the canvas.
+     *
+     * <p>Matching is {@link CanvasSearch}, tested separately, because the ranking is the part that
+     * can be quietly wrong: with a plain substring match, typing {@code marg} on the pizza ontology
+     * centres whichever of {@code Margherita} and {@code VegetarianMargheritaBase} the ontology
+     * happens to list first.
+     */
+    private JPanel buildFindBox() {
+        JPanel box = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 4, 0));
+        box.setOpaque(false);
+
+        javax.swing.JLabel caption = new javax.swing.JLabel("Find");
+        searchField = new javax.swing.JTextField(13);
+        // A floor and a ceiling. JToolBar's BoxLayout pours all of a wide bar's slack into the one
+        // growable child, which took the field to 407px on a 1400px bar and left it at its minimum
+        // on a narrow one.
+        searchField.setMinimumSize(new Dimension(140, searchField.getPreferredSize().height));
+        searchField.setToolTipText("<html><b>Find a term on the board</b> by label or IRI."
+                + "<br>Enter: next match &nbsp; Shift+Enter: previous"
+                + "<br>Ctrl+Enter: add a match that is in the ontology but not on the board"
+                + "<br>Escape: clear &nbsp; Ctrl+F: come back here</html>");
+        caption.setLabelFor(searchField);
+
+        searchCount = new javax.swing.JLabel(" ");
+        searchCount.setFont(searchCount.getFont().deriveFont(
+                java.awt.Font.PLAIN, searchCount.getFont().getSize() - 1f));
+        // Fixed width so the toolbar does not reflow on every keystroke, which reads as the whole
+        // row twitching while you type.
+        searchCount.setPreferredSize(new Dimension(92, searchField.getPreferredSize().height));
+
+        searchField.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
+            @Override
+            public void insertUpdate(javax.swing.event.DocumentEvent event) {
+                runSearch(true);
+            }
+
+            @Override
+            public void removeUpdate(javax.swing.event.DocumentEvent event) {
+                runSearch(true);
+            }
+
+            @Override
+            public void changedUpdate(javax.swing.event.DocumentEvent event) {
+                runSearch(true);
+            }
+        });
+
+        bindInField("ontoboard.find.next", javax.swing.KeyStroke.getKeyStroke(
+                java.awt.event.KeyEvent.VK_ENTER, 0), () -> stepThroughMatches(1));
+        bindInField("ontoboard.find.previous", javax.swing.KeyStroke.getKeyStroke(
+                java.awt.event.KeyEvent.VK_ENTER,
+                java.awt.event.InputEvent.SHIFT_DOWN_MASK), () -> stepThroughMatches(-1));
+        bindInField("ontoboard.find.add", javax.swing.KeyStroke.getKeyStroke(
+                java.awt.event.KeyEvent.VK_ENTER,
+                java.awt.event.InputEvent.CTRL_DOWN_MASK), this::addBestMatchFromTheOntology);
+        bindInField("ontoboard.find.addMeta", javax.swing.KeyStroke.getKeyStroke(
+                java.awt.event.KeyEvent.VK_ENTER,
+                java.awt.event.InputEvent.META_DOWN_MASK), this::addBestMatchFromTheOntology);
+        bindInField("ontoboard.find.clear", javax.swing.KeyStroke.getKeyStroke(
+                java.awt.event.KeyEvent.VK_ESCAPE, 0), this::clearSearch);
+
+        box.add(caption);
+        box.add(searchField);
+        box.add(searchCount);
+        box.setMaximumSize(new Dimension(320, Short.MAX_VALUE));
+        return box;
+    }
+
+    /** One keystroke inside the Find box, without five anonymous actions in the builder. */
+    private void bindInField(String name, javax.swing.KeyStroke key, final Runnable action) {
+        searchField.getInputMap(javax.swing.JComponent.WHEN_FOCUSED).put(key, name);
+        searchField.getActionMap().put(name, new javax.swing.AbstractAction() {
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            public void actionPerformed(java.awt.event.ActionEvent event) {
+                action.run();
+            }
+        });
+    }
+
+    /**
+     * A status bar along the bottom, with the zoom controls in it.
+     *
+     * <p>The status text used to live in the toolbar, which put a line of prose that grows and
+     * shrinks - "3 changes not shared", "Disconnected - you switched ontology" - in the middle of a
+     * row of buttons, pushing them sideways as it changed and squeezing them out of the panel
+     * entirely on a narrow one. A status line belongs under the thing it describes.
+     *
+     * <p>Zoom sits here rather than in the toolbar for the same reason every drawing tool puts it
+     * here: it is a property of the view, not an action on the ontology, and the bottom-right corner
+     * is where people look for it.
+     */
+    private JPanel buildStatusBar() {
+        collabStatus = new javax.swing.JLabel("Working through git", new CanvasIcons.Dot(
+                LIGHT_OFFLINE), javax.swing.SwingConstants.LEADING);
+        collabStatus.setFont(collabStatus.getFont().deriveFont(
+                java.awt.Font.PLAIN, collabStatus.getFont().getSize() - 1f));
+        collabStatus.setIconTextGap(6);
+
+        boardStatus = new javax.swing.JLabel(" ");
+        boardStatus.setFont(boardStatus.getFont().deriveFont(
+                java.awt.Font.PLAIN, boardStatus.getFont().getSize() - 1f));
+
+        JPanel statusBar = new JPanel(new BorderLayout(8, 0));
+        Color rule = javax.swing.UIManager.getColor("controlShadow");
+        statusBar.setBorder(javax.swing.BorderFactory.createCompoundBorder(
+                javax.swing.BorderFactory.createMatteBorder(1, 0, 0, 0,
+                        rule == null ? Color.GRAY : rule),
+                javax.swing.BorderFactory.createEmptyBorder(2, 8, 2, 4)));
+        // The session on the left at a fixed width, the board's own line in the middle taking
+        // whatever is left. Fixed, so a long session message does not push the board's line about.
+        collabStatus.setPreferredSize(new Dimension(220, collabStatus.getPreferredSize().height));
+        statusBar.add(collabStatus, BorderLayout.WEST);
+        statusBar.add(boardStatus, BorderLayout.CENTER);
+        // The zoom controls moved onto the board itself in 1.68.0, where a drawing tool puts them
+        // and where they are next to what they act on. Keeping a second copy here would also have
+        // meant two buttons claiming to be the readout, with only whichever was built last actually
+        // wired to the scale event.
+        return statusBar;
     }
 
     /**
@@ -1242,11 +2971,25 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         if (algorithm == null) {
             return;
         }
-        CanvasLayouts.apply(graph, algorithm);
+        // The action undo exists for. Arrange replaces every position at once, so a misdirected click
+        // discarded an arrangement somebody had spent an afternoon on, and the only way back was to do
+        // it again by hand.
+        rememberBoard("arranging the board");
+        movingProgrammatically = true;
+        try {
+            CanvasLayouts.apply(graph, algorithm);
+        } finally {
+            movingProgrammatically = false;
+        }
         capturePositions();
         saveLayoutTo(layoutFile);
+        // Fit afterwards, because even a well-shaped tree is bigger than the viewport: a corrected
+        // 31-term hierarchy is 3694px wide, so on a 1200px panel the user saw six terms of thirty-one
+        // and no evidence that Arrange had done anything at all.
+        fitToWindow();
         setStatus("Arranged the board: " + algorithm.getDisplayName()
-                + ". Notes and frames were left where they are.");
+                + " - fitted to the window at " + CanvasZoom.readout(graph.getView().getScale())
+                + ". Notes and frames kept their place among the terms.");
     }
 
     private void exportWithOptions() {
@@ -1297,26 +3040,36 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
 
     private void installContextMenu() {
         graphComponent.getGraphControl().addMouseListener(new MouseAdapter() {
+
+            /** Where the button went down, to tell a click from the end of a pan. */
+            private java.awt.Point pressedAt;
+
+            @Override
+            public void mousePressed(MouseEvent event) {
+                pressedAt = event.getPoint();
+            }
+
             @Override
             public void mouseReleased(MouseEvent event) {
                 if (!event.isPopupTrigger()) {
+                    return;
+                }
+                // A right-drag pans this canvas, by design - isPanningEvent defers to the library
+                // for any non-left button. But on Windows the popup trigger IS the button-3
+                // release, so the documented pan gesture ended with an eleven-item menu opening
+                // wherever the user happened to drag to, every single time. The tolerance is the
+                // same threshold mxGraphComponent.isSignificant uses to tell a click from a drag.
+                if (pressedAt != null && pressedAt.distance(event.getPoint())
+                        > graphComponent.getTolerance()) {
                     return;
                 }
                 Object cell = graphComponent.getCellAt(event.getX(), event.getY());
                 String iri = graph.getIdForCell(cell);
                 JPopupMenu menu = new JPopupMenu();
 
-                if (iri != null && SchemaGraph.isAnnotationId(iri)) {
-                    // A note or a frame: none of the term actions apply, and offering them would
-                    // be offering to remove axioms from something that has none.
-                    JMenuItem edit = new JMenuItem("Edit this note or frame...");
-                    edit.addActionListener(a -> editAnnotation(iri));
-                    menu.add(edit);
-                    JMenuItem delete = new JMenuItem("Delete this note or frame");
-                    delete.addActionListener(a -> deleteAnnotation(iri));
-                    menu.add(delete);
-                    menu.addSeparator();
-                }
+                boolean onAnnotation = iri != null && SchemaGraph.isAnnotationId(iri);
+                boolean onTerm = iri != null && !onAnnotation && membership.contains(iri);
+                boolean onEdge = cell != null && graph.getModel().isEdge(cell);
 
                 // Where the user actually right-clicked, in graph coordinates, worked out
                 // once while the event is still in hand.
@@ -1338,45 +3091,107 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                 final java.awt.Point where =
                         new java.awt.Point((int) graphPoint.getX(), (int) graphPoint.getY());
 
-                JMenuItem addNote = new JMenuItem("Put a sticky note here...");
-                addNote.setToolTipText("A note on the diagram. It is not in the ontology and "
-                        + "never appears in a release - see OntoBoard > Notes for one that does.");
-                addNote.addActionListener(a -> createStickyNote(where));
-                menu.add(addNote);
-
-                JMenuItem addFrame = new JMenuItem("Draw a frame here...");
-                addFrame.setToolTipText("A labelled region to group what is inside it. Also only "
-                        + "on the diagram.");
-                addFrame.addActionListener(a -> createFrame(where));
-                menu.add(addFrame);
-                menu.addSeparator();
-
-                JMenuItem addSelected = new JMenuItem("Add selected entity to canvas");
-                addSelected.addActionListener(a -> addSelectedEntityToCanvas());
-                menu.add(addSelected);
-
-                if (iri != null && membership.contains(iri)) {
+                // ---- 1. what is under the cursor -------------------------------------------
+                if (onAnnotation) {
+                    JMenuItem edit = new JMenuItem("Edit this note or frame\u2026");
+                    edit.addActionListener(a -> editAnnotation(iri));
+                    menu.add(edit);
+                    menu.add(colourMenuFor(iri));
+                }
+                if (onTerm) {
                     JMenuItem expand = new JMenuItem("Expand neighbours (1 hop)");
-                    expand.addActionListener(a -> {
-                        membership.expandOneHop(getOWLModelManager().getActiveOntology(), iri);
-                        refresh();
-                    });
+                    expand.setToolTipText("Put everything directly related to this term on the "
+                            + "board, in a ring around it");
+                    expand.addActionListener(a -> expandNeighbours(iri));
                     menu.add(expand);
 
-                    JMenuItem hierarchy = new JMenuItem("Set parent or type...");
+                    // Offered only when there is something to take back, counted over what is still
+                    // on the board: the user may have removed some of those terms by hand since, and
+                    // a menu item promising to remove four when three remain is a menu item that
+                    // reports the wrong number after doing the right thing.
+                    List<String> lastExpansion = stillOnTheBoard(expansions.get(iri));
+                    if (!lastExpansion.isEmpty()) {
+                        JMenuItem collapse = new JMenuItem(
+                                "Collapse (" + lastExpansion.size() + " added)");
+                        collapse.setToolTipText("Take the terms that expansion added off the board. "
+                                + "The ontology is not touched.");
+                        collapse.addActionListener(a -> collapseExpansion(iri));
+                        menu.add(collapse);
+                    }
+
+                    // The note a domain expert leaves is the one that belongs in the ontology, and
+                    // reading it used to mean leaving the canvas: the heavy border said a note
+                    // existed and nothing on the board would say what it was. The main menu's
+                    // Notes > Note on the selected term... writes the same IAO:0000116, so this is
+                    // the same capability where the user is already looking.
+                    JMenuItem note = new JMenuItem(
+                            EditorNotes.notesOn(getOWLModelManager().getActiveOntology(),
+                                    IRI.create(iri), EditorNotes.Kind.EDITOR).isEmpty()
+                                    ? "Editorial note\u2026" : "Editorial note (has one)\u2026");
+                    note.setToolTipText("An IAO:0000116 editor note. Unlike a sticky note this is "
+                            + "in the ontology and travels with it.");
+                    note.addActionListener(a -> editEditorialNote(iri));
+                    menu.add(note);
+                }
+
+                // ---- 2. what it can be joined to -------------------------------------------
+                if (onTerm) {
+                    menu.addSeparator();
+                    JMenuItem hierarchy = new JMenuItem("Set parent or type\u2026");
                     hierarchy.setToolTipText("Assert rdfs:subClassOf, rdf:type or "
                             + "rdfs:subPropertyOf between this term and another on the board");
                     hierarchy.addActionListener(a -> createHierarchyLinkFrom(iri));
                     menu.add(hierarchy);
 
-                    JMenuItem remove = new JMenuItem("Remove from canvas (keeps axioms)");
+                    JMenuItem relate = new JMenuItem("Relate to another term\u2026");
+                    relate.setToolTipText("An object property restriction. Dragging from this "
+                            + "node's handle to another does the same thing.");
+                    relate.addActionListener(a -> createRelationFrom(iri));
+                    menu.add(relate);
+                }
+
+                // ---- 3. what can be made here ----------------------------------------------
+                if (menu.getComponentCount() > 0) {
+                    menu.addSeparator();
+                }
+                JMenuItem newClass = new JMenuItem("New class here\u2026");
+                newClass.addActionListener(a -> createEntityAt(
+                        EntityFactory.Kind.CLASS, where.x, where.y));
+                menu.add(newClass);
+
+                JMenuItem newIndividual = new JMenuItem("New individual here\u2026");
+                newIndividual.addActionListener(a -> createEntityAt(
+                        EntityFactory.Kind.INDIVIDUAL, where.x, where.y));
+                menu.add(newIndividual);
+
+                JMenuItem addNote = new JMenuItem("Sticky note here\u2026");
+                addNote.setToolTipText("A note on the diagram. It is not in the ontology and "
+                        + "never appears in a release - see OntoBoard > Notes for one that does.");
+                addNote.addActionListener(a -> createStickyNote(where));
+                menu.add(addNote);
+
+                JMenuItem addFrame = new JMenuItem("Frame here\u2026");
+                addFrame.setToolTipText("A labelled region to group what is inside it. Also only "
+                        + "on the diagram.");
+                addFrame.addActionListener(a -> createFrame(where));
+                menu.add(addFrame);
+
+                // ---- 4. what it takes away, last -------------------------------------------
+                if (onTerm || onAnnotation || onEdge) {
+                    menu.addSeparator();
+                }
+                if (onTerm) {
+                    JMenuItem remove = new JMenuItem("Remove from board");
+                    remove.setToolTipText("The axioms stay in the ontology.");
+                    remove.setAccelerator(javax.swing.KeyStroke.getKeyStroke(
+                            java.awt.event.KeyEvent.VK_DELETE, 0));
                     remove.addActionListener(a -> {
                         membership.remove(iri);
                         refresh();
                     });
                     menu.add(remove);
                 }
-                if (cell != null && graph.getModel().isEdge(cell)) {
+                if (onEdge) {
                     final String edgeId = graph.getIdForCell(cell);
                     if (isInferred(edgeId)) {
                         // An inferred edge has no axiom behind it, so there is nothing to delete.
@@ -1391,42 +3206,15 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                                 + "not assert it. Nothing to remove.");
                         menu.add(inferred);
                     } else {
-                        JMenuItem deleteAxiom = new JMenuItem("Delete axiom from ontology...");
+                        JMenuItem deleteAxiom = new JMenuItem("Delete axiom from ontology\u2026");
                         deleteAxiom.addActionListener(a -> deleteAxiomFor(edgeId));
                         menu.add(deleteAxiom);
                     }
                 }
-
-                menu.addSeparator();
-
-                JMenuItem newClass = new JMenuItem("New class here...");
-                newClass.addActionListener(a -> createEntityAt(
-                        EntityFactory.Kind.CLASS, where.x, where.y));
-                menu.add(newClass);
-
-                JMenuItem newIndividual = new JMenuItem("New individual here...");
-                newIndividual.addActionListener(a -> createEntityAt(
-                        EntityFactory.Kind.INDIVIDUAL, where.x, where.y));
-                menu.add(newIndividual);
-
-                if (iri != null && membership.contains(iri)) {
-                    JMenuItem relate = new JMenuItem("Create relation from this node...");
-                    relate.addActionListener(a -> createRelationFrom(iri));
-                    menu.add(relate);
-
-                    // The note a domain expert leaves is the one that belongs in the ontology, and
-                    // reading it used to mean leaving the canvas: the heavy border said a note
-                    // existed and nothing on the board would say what it was. The main menu's
-                    // Notes > Note on the selected term... writes the same IAO:0000116, so this is
-                    // the same capability where the user is already looking.
-                    JMenuItem note = new JMenuItem(
-                            EditorNotes.notesOn(getOWLModelManager().getActiveOntology(),
-                                    IRI.create(iri), EditorNotes.Kind.EDITOR).isEmpty()
-                                    ? "Editorial note..." : "Editorial note (has one)...");
-                    note.setToolTipText("An IAO:0000116 editor note. Unlike a sticky note this is "
-                            + "in the ontology and travels with it.");
-                    note.addActionListener(a -> editEditorialNote(iri));
-                    menu.add(note);
+                if (onAnnotation) {
+                    JMenuItem delete = new JMenuItem("Delete this note or frame");
+                    delete.addActionListener(a -> deleteAnnotation(iri));
+                    menu.add(delete);
                 }
 
                 menu.show(graphComponent.getGraphControl(), event.getX(), event.getY());
@@ -1461,6 +3249,11 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
 
         stopCollaborationIfTheOntologyChanged();
         loadLayoutForActiveOntology();
+        // The history described the previous ontology's board. Restoring it here would put back
+        // identifiers this ontology does not declare, which the sidecar loader prunes to nothing - so
+        // "undo" would empty the board rather than restore it.
+        history.clear();
+        expansions.clear();
         refresh();
     }
 
@@ -1496,7 +3289,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                 + ontologyIriOf(sessionOntology)
                 + ", and you have switched to another ontology. Collaborate... to start a session "
                 + "for this one.";
-        collabStatus.setText("Disconnected - you switched ontology");
+        setSessionStatus("Disconnected - you switched ontology", LIGHT_ATTENTION);
         collabStatus.setToolTipText(message);
         LOGGER.info("OntoBoard: {}", message);
     }
@@ -1537,6 +3330,9 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                 .project(getOWLModelManager().getActiveOntology(), membership.asSet());
         projection = withInferences(projection);
         graph.render(projection, layout);
+        // What search matches against, and what it can no longer assume about the ontology.
+        rendered = projection;
+        ontologyTerms = null;
         autoArrangeIfUnpositioned();
         showAppropriateCard();
 
@@ -1699,10 +3495,14 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
      * because a board that silently loses members would be worse than one that says so.
      */
     private void pruneStaleMembers(OWLOntology ontology, CanvasLayout candidate) {
-        Set<String> declared = new HashSet<String>();
-        for (OWLEntity entity : ontology.getSignature()) {
-            declared.add(entity.getIRI().toString());
-        }
+        // Imports included: an imported term on the board is not stale. Excluding them meant a
+        // board holding bfo:continuant had that entry deleted from the sidecar on the next load,
+        // which is the second half of why dragging an imported term appeared to do nothing.
+        //
+        // Through OntologyProjection rather than ontology.getSignature(INCLUDED), which in OWL API
+        // 4.5.29 corrupts the same ontology's cached EXCLUDED signature - see termIdentifiers.
+        Set<String> declared = OntologyProjection.termIdentifiers(ontology,
+                org.semanticweb.owlapi.model.parameters.Imports.INCLUDED);
         List<String> removed = candidate.pruneMissing(declared);
         if (!removed.isEmpty()) {
             LOGGER.info("OntoBoard: dropped {} canvas entr{} for entities no longer in the "
@@ -1984,10 +3784,40 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         if (chosen == null) {
             return;
         }
-        String targetIri = ((Target) chosen).iri;
+        relateWithObjectProperty(sourceIri, ((Target) chosen).iri);
+    }
+
+    /**
+     * Writes one object property restriction between two terms already chosen.
+     *
+     * <p>Split out of {@link #createRelationFrom} so that drawing an edge on the canvas and picking a
+     * target from a list end at the same code. The alternative was a second copy of the property
+     * picker, the minting of a new property, the EL profile warning and the provenance stamp - four
+     * things that are subtle once and would be wrong in the copy.
+     */
+    private void relateWithObjectProperty(String sourceIri, String targetIri) {
+        OWLOntology ontology = getOWLModelManager().getActiveOntology();
+        OWLDataFactory factory = getOWLModelManager().getOWLDataFactory();
+
+        // A restriction is asserted about a class and points at a class. Reached from the canvas
+        // gesture this can be untrue - somebody drags from an individual - so it is checked here
+        // rather than only by the target list that the menu path filters.
+        if (!ontology.containsClassInSignature(IRI.create(sourceIri))
+                || !ontology.containsClassInSignature(IRI.create(targetIri))) {
+            JOptionPane.showMessageDialog(this,
+                    "An object property restriction goes from a class to a class.\n\n"
+                            + "For an individual, use its type; for a property, its parent "
+                            + "property - both are on the node menu.",
+                    "Not two classes", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        String sourceLabel = DisplayLabels.forEntity(ontology,
+                factory.getOWLClass(IRI.create(sourceIri)));
+        String targetLabel = DisplayLabels.forEntity(ontology,
+                factory.getOWLClass(IRI.create(targetIri)));
 
         RelationDialog.Choice choice =
-                RelationDialog.ask(this, ontology, sourceLabel, ((Target) chosen).label);
+                RelationDialog.ask(this, ontology, sourceLabel, targetLabel);
         if (choice == null) {
             return;
         }
@@ -2110,9 +3940,23 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         if (chosen == null) {
             return;
         }
-        OWLEntity target = entityOnCanvas(ontology, ((Target) chosen).iri);
+        linkHierarchy(source, entityOnCanvas(ontology, ((Target) chosen).iri));
+    }
 
-        // Re-read for the chosen target: the list can hold more than one kind of term, and the
+    /**
+     * Asserts the one hierarchy link that is legal between these two terms.
+     *
+     * <p>Split out of {@link #createHierarchyLinkFrom} so the canvas gesture and the target list write
+     * the same axiom, stamp the same term and refuse the same pairs.
+     */
+    private void linkHierarchy(OWLEntity source, OWLEntity target) {
+        OWLOntology ontology = getOWLModelManager().getActiveOntology();
+        OWLDataFactory factory = getOWLModelManager().getOWLDataFactory();
+        if (source == null || target == null) {
+            return;
+        }
+
+        // Re-read for the chosen target: a list can hold more than one kind of term, and the
         // kind used for the prompt came from the first of them.
         List<HierarchyAxioms.Kind> applicable = HierarchyAxioms.applicableTo(source, target);
         if (applicable.isEmpty()) {
@@ -2260,6 +4104,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         if (!(payload instanceof List)) {
             return false;
         }
+        rememberBoard("dropping terms on the board");
         int added = 0;
         int column = 0;
         int row = 0;
@@ -2274,8 +4119,10 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                 continue;
             }
             CanvasLayout.NodeLayout position = new CanvasLayout.NodeLayout();
-            position.x = at.x + column * 190;
-            position.y = at.y + row * 90;
+            // 200 and 100 rather than 190 and 90, so a dropped cluster lands on the 20px grid
+            // instead of one pixel off every second column.
+            position.x = at.x + column * 200;
+            position.y = at.y + row * 100;
             position.w = 160;
             position.h = 60;
             layout.nodes.put(iri, position);
@@ -2311,8 +4158,17 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                 if (event.getClickCount() != 2 || event.isPopupTrigger()) {
                     return;
                 }
-                if (graphComponent.getCellAt(event.getX(), event.getY()) != null) {
-                    // Double-clicking a node is not a request for a new one.
+                Object cell = graphComponent.getCellAt(event.getX(), event.getY());
+                if (cell != null) {
+                    // Double-clicking a node is not a request for a new one. On a term it is the
+                    // ordinary board gesture for "show me what this connects to"; on a note or a
+                    // frame mxGraph starts an in-place edit, which isCellEditable allows for
+                    // exactly those two.
+                    String onIt = graph.getIdForCell(cell);
+                    if (onIt != null && !SchemaGraph.isAnnotationId(onIt)
+                            && membership.contains(onIt)) {
+                        expandNeighbours(onIt);
+                    }
                     return;
                 }
                 com.mxgraph.util.mxPoint at = graphComponent.getPointForEvent(event);
@@ -2457,53 +4313,11 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
     /**
      * Opens an existing ODK repository.
      *
-     * <p>Users think in terms of "my ontology repo", not "the file at
-     * src/ontology/foo-edit.owl", and picking the generated release file by mistake means
-     * their edits get overwritten by the next build. So this takes a folder and works out
-     * what to open, refusing rather than guessing when it cannot tell.
+     * <p>The work moved to {@link de.fizkarlsruhe.ise.ontoboard.odk.ProjectOpener} in 1.69.0 so
+     * that OntoBoard &gt; Project could offer it too. While it lived here it was reachable only
+     * from the start card, which is to say only while the board was empty.
      */
     private void openExistingProject() {
-        JFileChooser chooser = new JFileChooser();
-        chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
-        chooser.setDialogTitle("Select an ODK project folder");
-        if (chooser.showOpenDialog(this) != JFileChooser.APPROVE_OPTION) {
-            return;
-        }
-        OdkProjectLoader.Detected project;
-        try {
-            project = OdkProjectLoader.detect(chooser.getSelectedFile());
-        } catch (RuntimeException notAProject) {
-            JOptionPane.showMessageDialog(this, notAProject.getMessage(),
-                    "Not an ODK project", JOptionPane.WARNING_MESSAGE);
-            return;
-        }
-        try {
-            // handleLoadFrom, not loadOntologyFromOntologyDocument. The latter loads the
-            // ontology into the OWLOntologyManager and stops there: Protege's
-            // OWLModelManager never hears about it, so it does not become the active
-            // ontology, does not appear in the ontology list, and the class hierarchy
-            // carries on showing whatever was open before. The dialog said "Project
-            // opened" and nothing appeared, which is exactly what was reported.
-            // handleLoadFrom is the call Protege's own File > Open makes.
-            if (!getOWLEditorKit().handleLoadFrom(project.getEditFile().toURI())) {
-                JOptionPane.showMessageDialog(this,
-                        "Protege declined to open "
-                                + project.getEditFile().getName()
-                                + ". It may already be open in another window.",
-                        "Not opened", JOptionPane.WARNING_MESSAGE);
-                return;
-            }
-            JOptionPane.showMessageDialog(this,
-                    "Opened " + project.getTitle() + "\n\n"
-                            + project.getEditFile().getAbsolutePath()
-                            + "\n\nAdd entities from the class hierarchy, or double-click "
-                            + "the board to create one.",
-                    "Project opened", JOptionPane.INFORMATION_MESSAGE);
-        } catch (Exception couldNotLoad) {
-            JOptionPane.showMessageDialog(this,
-                    "Found " + project.getEditFile().getName()
-                            + " but Protege could not load it:\n" + couldNotLoad.getMessage(),
-                    "Could not open", JOptionPane.ERROR_MESSAGE);
-        }
+        de.fizkarlsruhe.ise.ontoboard.odk.ProjectOpener.open(this, getOWLEditorKit());
     }
 }

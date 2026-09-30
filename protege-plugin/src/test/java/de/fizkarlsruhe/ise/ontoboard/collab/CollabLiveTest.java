@@ -98,6 +98,83 @@ class CollabLiveTest {
      * therefore does not lose one edit, it ends the session - which is only visible against the real
      * gate, never against a fake that accepts whatever it is given.
      */
+    /**
+     * Joining announces itself, over the real socket.
+     *
+     * <p>Presence was published only from mouse motion, so somebody who joined a board and read the
+     * diagram without moving the mouse was invisible to everybody else - and their colleagues could not
+     * tell them apart from nobody having joined. The plugin now announces on connect, and the only way
+     * to show the announcement is wired all the way through is against a real connection: the callback
+     * is invoked by the client's own connected path, not by anything a test constructs.
+     */
+    @Test
+    void joiningABoardAnnouncesItself() throws Exception {
+        assumeTrue(CollabHarness.isAvailable(), "node or collab/node_modules is not available");
+        harness.start();
+
+        Scratch alice = new Scratch("http://example.org/live/pizza");
+        final CollabHarness.Peer a = harness.join("alice", "board-presence", alice.ontology);
+        assertTrue(harness.waitUntilConnected(a), connectionFailure(a));
+
+        harness.waitFor(new CollabHarness.Condition() {
+            @Override
+            public boolean isMet() {
+                return a.getJoinCount() >= 1;
+            }
+        });
+        assertTrue(a.getJoinCount() >= 1,
+                "a connected session must announce itself; status was " + a.getStatus());
+    }
+
+    /**
+     * Geometry a peer publishes reaches the other peer's host rather than being discarded.
+     *
+     * <p>The sending side has always collected it - {@code canvasHints} exists for no other purpose -
+     * and the receiving side threw it away, so a class created by a colleague landed wherever an
+     * unpositioned node goes. Tested over the wire because the value has to survive being serialised
+     * to JSON, gated by the bridge's type check, and read back: a unit test proves the callback is
+     * called, not that the number arrives.
+     */
+    @Test
+    void geometryPublishedByOnePeerReachesTheOther() throws Exception {
+        assumeTrue(CollabHarness.isAvailable(), "node or collab/node_modules is not available");
+        harness.start();
+
+        Scratch alice = new Scratch("http://example.org/live/pizza");
+        Scratch bob = new Scratch("http://example.org/live/pizza");
+        CollabHarness.Peer a = harness.join("alice", "board-geometry", alice.ontology);
+        final CollabHarness.Peer b = harness.join("bob", "board-geometry", bob.ontology);
+        assertTrue(harness.waitUntilConnected(a, b), connectionFailure(a, b));
+
+        final OWLClass calzone = alice.factory.getOWLClass(IRI.create(alice.iri + "#Calzone"));
+        final String iri = calzone.getIRI().toString();
+        // A hint for this one term, as the canvas supplies for a node it is drawing.
+        OperationMapper.CanvasHints hints = new OperationMapper.CanvasHints() {
+            @Override
+            public OperationMapper.NodeHint hintFor(String forIri) {
+                return iri.equals(forIri)
+                        ? new OperationMapper.NodeHint(420, 260, 200, 80, "#4A90D9") : null;
+            }
+        };
+
+        assertEquals(1, a.getSession().publishLocalChanges(
+                Collections.singletonList((OWLOntologyChange) new AddAxiom(alice.ontology,
+                        alice.factory.getOWLDeclarationAxiom(calzone))), hints),
+                "alice's declaration must be shareable: " + a.getSession().describe());
+
+        harness.waitFor(new CollabHarness.Condition() {
+            @Override
+            public boolean isMet() {
+                return b.getGeometryFor(iri) != null;
+            }
+        });
+        java.util.Map<String, Object> received = b.getGeometryFor(iri);
+        assertNotNull(received, "bob's host never saw alice's geometry; server said:\n"
+                + harness.output());
+        assertEquals(420.0, ((Number) received.get("x")).doubleValue(), 1e-6, received.toString());
+        assertEquals(260.0, ((Number) received.get("y")).doubleValue(), 1e-6, received.toString());
+    }
+
     @Test
     void anEditorialNoteArrivesAtTheOtherPeer() throws Exception {
         assumeTrue(CollabHarness.isAvailable(), "node or collab/node_modules is not available");

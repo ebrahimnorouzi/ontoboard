@@ -29,6 +29,57 @@ class SchemaCanvasViewTest {
 
     private static final String PERSON = "http://example.org/tiny#Person";
 
+    /**
+     * The Add button's label is cut rather than allowed to grow.
+     *
+     * <p>Its width is pinned in the toolbar, because {@code describeSelectionOnButton} rewrites the
+     * label on every selection change: "Add selected" is 108px and "Add Cheesey vegetable topping" is
+     * 211, so clicking through the class tree shifted everything to its right by up to 103px -
+     * including the Find field, which slid out from under the pointer mid-type. Pinning the width
+     * without eliding would only move the problem: the layout would clip mid-word, with nothing on
+     * screen to say anything had been cut.
+     */
+    @Test
+    void aLongLabelIsElidedRatherThanClipped() {
+        assertEquals("", SchemaCanvasView.elide(null, 14));
+        assertEquals("", SchemaCanvasView.elide("   ", 14));
+        assertEquals("Margherita", SchemaCanvasView.elide("Margherita", 14));
+        // Exactly at the limit is not cut; one over is. "Pizza toppings" is fourteen characters,
+        // so it stays whole - which is the boundary this pair exists to pin.
+        assertEquals("Pizza toppings", SchemaCanvasView.elide("Pizza toppings", 14));
+        assertEquals("Pizza topping\u2026", SchemaCanvasView.elide("Pizza toppings!", 14));
+        assertEquals("Cheesey veget\u2026",
+                SchemaCanvasView.elide("Cheesey vegetable topping", 14));
+        // Never longer than the limit it was given, whatever it is asked.
+        assertTrue(SchemaCanvasView.elide("Cheesey vegetable topping", 14).length() <= 14);
+        assertTrue(SchemaCanvasView.elide("abcdefghij", 1).length() <= 2);
+    }
+
+    /**
+     * The first-run hint yields to whatever the board is already saying.
+     *
+     * <p>1.68.0 inverted the pan gesture and put a one-time sentence in the status line to say so.
+     * That sentence runs after {@code loadLayoutForActiveOntology}, which writes "the saved
+     * arrangement could not be read" to the same label - and that is the one message in this plugin a
+     * mouse hint must never bury, because it names a file the user has to go and look at. 1.67.0 split
+     * the status bar in two precisely because one label with two producers loses messages; this is the
+     * same defect arriving through a new door.
+     *
+     * <p>The empty-looking case is the one worth pinning: {@code boardStatus} is initialised to a
+     * single space, so a plain {@code isEmpty()} would have called that "already saying something" and
+     * the hint would never have appeared at all.
+     */
+    @Test
+    void theFirstRunHintDoesNotBuryAWarning() {
+        assertTrue(SchemaCanvasView.firstRunHintFits(false, " "), "a space is an empty line");
+        assertTrue(SchemaCanvasView.firstRunHintFits(false, ""));
+        assertTrue(SchemaCanvasView.firstRunHintFits(false, null), "before the label exists");
+        assertFalse(SchemaCanvasView.firstRunHintFits(true, " "), "shown once, ever");
+        assertFalse(SchemaCanvasView.firstRunHintFits(false,
+                "The saved arrangement could not be read, so the board starts empty."),
+                "a warning about a file outranks a hint about the mouse");
+    }
+
     private static CanvasLayout layoutWithSomethingInEveryPerOntologyCollection() {
         CanvasLayout layout = new CanvasLayout();
         layout.ontologyIri = "http://example.org/previous#";

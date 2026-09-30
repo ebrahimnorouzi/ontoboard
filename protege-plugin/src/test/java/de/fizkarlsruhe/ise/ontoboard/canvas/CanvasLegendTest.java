@@ -89,10 +89,69 @@ class CanvasLegendTest {
             assertEquals(style.get(com.mxgraph.util.mxConstants.STYLE_DASH_PATTERN),
                     entry.getDashPattern(),
                     "dash pattern drifted for " + entry.getStyleName());
+            // Opacity too, since 1.61.0: the imported row's entire distinction is its opacity, so a
+            // row that carried the wrong value would illustrate the wrong thing while every other
+            // assertion here passed.
+            Object registered = style.get(com.mxgraph.util.mxConstants.STYLE_OPACITY);
+            assertEquals(registered == null ? 100 : ((Number) registered).intValue(),
+                    entry.getOpacity(),
+                    "opacity drifted for " + entry.getStyleName());
         }
     }
 
     // ---------- the rows are usable ----------
+
+    /**
+     * The imported row exists and says what it is for.
+     *
+     * <p>Which terms must not be edited is the most consequential thing this legend says. Somebody who
+     * edits an imported term loses the change at the next refresh of the imports, or leaves a second
+     * definition behind that survives into a release - and neither shows up as an error.
+     */
+    @Test
+    void theKeyExplainsWhichTermsAreImported() {
+        CanvasLegend.Entry imported = null;
+        for (CanvasLegend.Entry entry : CanvasLegend.entries()) {
+            if (SchemaStyles.IMPORTED.equals(entry.getStyleName())) {
+                imported = entry;
+            }
+        }
+
+        assertNotNull(imported, "no row explains the faded terms the canvas draws");
+        assertEquals(CanvasLegend.Form.MODIFIER, imported.getForm(),
+                "imported is a marker over a kind, not a kind of its own");
+        assertTrue(imported.getOpacity() < 100, "the row has to be drawn faded to show the fade");
+        assertTrue(imported.getMeaning().contains("do not edit")
+                        || imported.getMeaning().contains("not edit"),
+                "the row should say what the fade means for the reader: " + imported.getMeaning());
+    }
+
+    /**
+     * Each kind of row appears once, in one run.
+     *
+     * <p>{@code LegendPanel} emits a section heading whenever the form changes as it walks this list,
+     * so a list that goes nodes, relationships, markers, relationships prints "Relationships" twice
+     * with "Markers on a thing" wedged between the asserted arrows and the inferred ones. It did
+     * exactly that from 1.53.0, when the legend was built, until 1.64.0 - invisible for eleven
+     * releases because nothing had ever rendered the panel to look at it.
+     */
+    @Test
+    void eachKindOfRowAppearsInOneRun() {
+        Set<CanvasLegend.Form> finished = new HashSet<CanvasLegend.Form>();
+        CanvasLegend.Form current = null;
+
+        for (CanvasLegend.Entry entry : CanvasLegend.entries()) {
+            if (entry.getForm() != current) {
+                assertFalse(finished.contains(entry.getForm()),
+                        entry.getForm() + " comes back after another kind, so the legend prints its "
+                                + "heading twice - offender: " + entry.getStyleName());
+                if (current != null) {
+                    finished.add(current);
+                }
+                current = entry.getForm();
+            }
+        }
+    }
 
     @Test
     void everyRowHasALabelAndAMeaning() {

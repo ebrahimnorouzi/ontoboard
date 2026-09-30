@@ -1,8 +1,10 @@
 package de.fizkarlsruhe.ise.ontoboard.canvas;
 
 import de.fizkarlsruhe.ise.ontoboard.layout.CanvasLayout;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 import org.semanticweb.owlapi.model.AxiomType;
 import org.semanticweb.owlapi.model.OWLClassAssertionAxiom;
@@ -52,8 +54,21 @@ public class CanvasMembership {
         return layout.onCanvas.size();
     }
 
-    /** Adds every entity directly related to {@code iri}. Returns how many were newly added. */
-    public int expandOneHop(OWLOntology ontology, String iri) {
+    /**
+     * Adds every entity directly related to {@code iri}, and says which ones were new.
+     *
+     * <p>Returned as identifiers rather than a count, which is what this returned until 1.59.0. The
+     * count was enough to report and not enough to do anything with, so the caller discarded it: the
+     * new terms went unplaced - a row along the top of the board, nowhere near what they neighbour -
+     * nothing was saved, nothing was said, and there was no way to undo an expansion because nothing
+     * remembered what it had added. All four of those are the same missing return value.
+     *
+     * <p>In discovery order, so a ring drawn from this list puts the class hierarchy before the
+     * property restrictions rather than in whatever order a hash set produced.
+     *
+     * @return the identifiers newly put on the board, empty when every neighbour was already there
+     */
+    public List<String> expandOneHop(OWLOntology ontology, String iri) {
         Set<String> neighbours = new LinkedHashSet<>();
 
         for (OWLSubClassOfAxiom axiom : ontology.getAxioms(AxiomType.SUBCLASS_OF)) {
@@ -93,10 +108,10 @@ public class CanvasMembership {
         }
 
         neighbours.remove(iri);
-        int added = 0;
+        List<String> added = new ArrayList<String>();
         for (String neighbour : neighbours) {
             if (add(neighbour)) {
-                added++;
+                added.add(neighbour);
             }
         }
         return added;

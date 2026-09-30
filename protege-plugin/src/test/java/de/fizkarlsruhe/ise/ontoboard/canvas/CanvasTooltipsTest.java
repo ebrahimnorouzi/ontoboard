@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import de.fizkarlsruhe.ise.ontoboard.model.CanvasEdge;
 import de.fizkarlsruhe.ise.ontoboard.model.CanvasNode;
 import de.fizkarlsruhe.ise.ontoboard.model.NodeKind;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -138,7 +139,147 @@ class CanvasTooltipsTest {
         }
     }
 
+    /**
+     * The tooltip says "imported", in words.
+     *
+     * <p>The fade is a hint and this is a rule. A curator who edits an imported term loses the change
+     * at the next refresh of the imports, or leaves a second definition behind - and a faded box alone
+     * does not tell anybody that.
+     */
+    @Test
+    void anImportedTermSaysSoAndSaysWhatItMeans() {
+        String tooltip = CanvasTooltips.forNode(
+                new CanvasNode(PIZZA, NodeKind.CLASS, "pizza").asImported());
+
+        assertTrue(tooltip.contains("Imported"), tooltip);
+        assertTrue(tooltip.contains("your file"), tooltip);
+    }
+
+    @Test
+    void aLocalTermSaysNothingAboutImports() {
+        String tooltip = CanvasTooltips.forNode(new CanvasNode(PIZZA, NodeKind.CLASS, "pizza"));
+
+        assertFalse(tooltip.contains("Imported"), tooltip);
+    }
+
+    // ===================================================================== editorial notes
+
+    /**
+     * The words, not the fact that there are words.
+     *
+     * <p>This line used to read "Has an editorial note". The canvas drew the term with a heavier
+     * border, the tooltip confirmed a note existed, and the only way to learn what it said was a
+     * dialog in the main menu bar - a marker that raises a question and then refuses to answer it.
+     */
+    @Test
+    void aNotedTermQuotesItsNote() {
+        String tooltip = CanvasTooltips.forNode(new CanvasNode(PIZZA, NodeKind.CLASS, "pizza",
+                Collections.singletonList("the parent is provisional")));
+
+        assertTrue(tooltip.contains("the parent is provisional"), tooltip);
+        assertFalse(tooltip.contains("Has an editorial note"), tooltip);
+    }
+
+    /** No note, no line about notes. */
+    @Test
+    void aTermWithoutANoteSaysNothingAboutNotes() {
+        String tooltip = CanvasTooltips.forNode(new CanvasNode(PIZZA, NodeKind.CLASS, "pizza"));
+
+        assertFalse(tooltip.contains("Note"), tooltip);
+    }
+
+    /** A note of only whitespace is not a note, and must not produce an empty quoted line. */
+    @Test
+    void aBlankNoteIsNotQuoted() {
+        String tooltip = CanvasTooltips.forNode(new CanvasNode(PIZZA, NodeKind.CLASS, "pizza",
+                Arrays.asList("   ", "")));
+
+        assertFalse(tooltip.contains("Note"), tooltip);
+    }
+
+    /**
+     * Several notes: the first, and a count for the rest.
+     *
+     * <p>A term can carry one note per editor, and OBO ontologies do. Quoting all of them turns a
+     * tooltip into a document; quoting one and saying nothing about the others hides that a colleague
+     * disagreed in writing.
+     */
+    @Test
+    void severalNotesShowTheFirstAndCountTheRest() {
+        String tooltip = CanvasTooltips.forNode(new CanvasNode(PIZZA, NodeKind.CLASS, "pizza",
+                Arrays.asList("first note", "second note", "third note")));
+
+        assertTrue(tooltip.contains("first note"), tooltip);
+        assertTrue(tooltip.contains("2 more notes"), tooltip);
+        assertFalse(tooltip.contains("third note"), tooltip);
+    }
+
+    /** Two notes is "1 more note", not "1 more notes". */
+    @Test
+    void theCountOfFurtherNotesReadsAsEnglish() {
+        String tooltip = CanvasTooltips.forNode(new CanvasNode(PIZZA, NodeKind.CLASS, "pizza",
+                Arrays.asList("first", "second")));
+
+        assertTrue(tooltip.contains("1 more note"), tooltip);
+        assertFalse(tooltip.contains("1 more notes"), tooltip);
+    }
+
+    /** A long note is cut, and the cut is marked. */
+    @Test
+    void aLongNoteIsTruncatedRatherThanRunningOffTheScreen() {
+        StringBuilder essay = new StringBuilder();
+        for (int i = 0; i < 80; i++) {
+            essay.append("word ");
+        }
+
+        String tooltip = CanvasTooltips.forNode(new CanvasNode(PIZZA, NodeKind.CLASS, "pizza",
+                Collections.singletonList(essay.toString())));
+
+        assertTrue(tooltip.contains("\u2026"), "a truncated note should say it was truncated");
+        assertTrue(tooltip.length() < 700, "tooltip was " + tooltip.length() + " characters");
+    }
+
+    /** Prose is broken into lines, because an editorial note is prose. */
+    @Test
+    void aNoteOfSeveralSentencesIsWrappedOntoLines() {
+        String tooltip = CanvasTooltips.forNode(new CanvasNode(PIZZA, NodeKind.CLASS, "pizza",
+                Collections.singletonList("the parent is provisional pending the review agreed in "
+                        + "issue 412, and the alignment needs checking against the upper ontology")));
+
+        // Inside the note itself, not merely the breaks the tooltip already had around it.
+        String quoted = tooltip.substring(tooltip.indexOf("Note:</i> ") + "Note:</i> ".length(),
+                tooltip.indexOf("<br><font"));
+        assertTrue(quoted.contains("<br>"), "the note came out on one line: " + quoted);
+    }
+
+    /** No line comes out long enough to make the tooltip wider than the diagram. */
+    @Test
+    void noWrappedLineIsLongerThanItsLimit() {
+        String wrapped = CanvasTooltips.wrap("one two three four five six seven eight nine ten "
+                + "eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen");
+
+        for (String line : wrapped.split("<br>")) {
+            assertTrue(line.length() <= 64, "line of " + line.length() + ": " + line);
+        }
+    }
+
+    /**
+     * A note containing HTML is shown, not rendered.
+     *
+     * <p>Notes come out of the ontology, and an ontology is a file somebody else may have written. A
+     * tooltip is rendered HTML, so a note reading {@code <b>} has to arrive as those five characters.
+     */
+    @Test
+    void aNoteThatLooksLikeHtmlIsEscaped() {
+        String tooltip = CanvasTooltips.forNode(new CanvasNode(PIZZA, NodeKind.CLASS, "pizza",
+                Collections.singletonList("see <b>section 4</b> & appendix")));
+
+        assertTrue(tooltip.contains("&lt;b&gt;"), tooltip);
+        assertTrue(tooltip.contains("&amp;"), tooltip);
+    }
+
     // ===================================================================== notes and frames
+
 
     /** A note shows its text, and says it is not in the ontology. */
     @Test

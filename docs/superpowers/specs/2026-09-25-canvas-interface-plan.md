@@ -58,10 +58,16 @@ listener fires, captures nothing about notes or frames, and saves an unchanged s
 `refresh()` — any edit anywhere in Protégé — redraws both from the stale stored position. A curator
 drags a note next to the class it is about and it jumps back to the corner.
 
+> **Done in 1.52.0.** The capture is a static function over a geometry lookup now, so the two tests that
+> could not be written against an inline loop in a 2,100-line view exist.
+
 **A2 — `Arrange` never saves the layout it produces.**
 The action applies a layout to the live graph but never calls `capturePositions()` /
 `saveLayoutTo()`, which the `Add all` path does do. So a hierarchical arrangement of thirty classes
 survives until the next `refresh()` and then reverts. The two paths should not differ.
+
+> **Done in 1.52.0**, and this is the item undo was later built for: saving the arrangement stopped it
+> being lost silently, and A5 is what makes it recoverable when the arrangement itself was a mistake.
 
 **A3 — Four different coordinate bugs, one missing function.**
 "New class here…" stores component pixels as graph coordinates (`:1138`), so on a zoomed board the
@@ -71,16 +77,34 @@ scrolled board lands off-screen. The double-click path alone is right, because i
 `graphComponent.getPointForEvent`. One converter, used by every entry point, tested as a pure
 function.
 
+> **Done across 1.52.0 and 1.54.0.** Three of the four in 1.52.0; the drop path in 1.54.0, which is when
+> all of them went through one `graphPointFromControl` with four tests over it. The drop case was the
+> subtle one - the graph *control* is the full-size canvas inside the viewport, so its coordinates
+> already account for scrolling and adding the scroll offset double-counted it.
+
 **A4 — `Arrange` treats notes and frames as terms.**
 `CanvasLayouts` lays out the default parent's children (`CanvasLayouts.java:96`), so a frame is
 slotted into the grid like a class and stops enclosing what it groups. Annotations should be
 excluded from term layouts; `SchemaGraph.isAnnotationId` already exists to say which they are.
+
+> **Done in 1.52.0.** Annotation geometry is snapshotted and restored around a layout, so a frame that
+> encloses a group still encloses it afterwards.
 
 **A5 — No undo for anything the board owns.**
 Selecting twelve arranged nodes and pressing Delete removes them and rewrites the sidecar in the
 same call. Protégé's undo has no axiom change to reverse, so the arrangement is gone.
 `docs/feature-parity.md:68` claims undo. A bounded deque of `CanvasLayout` snapshots pushed before
 each board mutation fixes it; the class is a plain DTO, so copies are cheap.
+
+> **Done in 1.62.0.** Ctrl+Z on the canvas, over everything the sidecar holds. Snapshots of the whole
+> board rather than an inverse per action: the state is one small DTO, so copying is cheaper than the
+> bookkeeping and it cannot drift - a new board action gets undo the moment it records. Twenty-five
+> steps, per session, and never the ontology; the status line says that last part every time, because a
+> partial undo that looked total would be worse than none.
+>
+> One detail the plan could not have anticipated: a drag had to be coalesced into a single step, since
+> mxGraph fires `CELLS_MOVED` continuously and one step per event would have filled the whole history
+> with positions a pixel apart.
 
 ---
 
@@ -94,11 +118,17 @@ Manchester syntax and whether it is asserted or inferred. A node should give its
 IRI, and its editorial note if it has one. A sticky note should give its text, not
 `ontoboard-note-3f2a1b9c`.
 
+> **Done in 1.53.0**, except the note's text, which followed in 1.59.0 - `CanvasNode` carried a boolean,
+> so the projection a tooltip is built from knew only *that* a note existed.
+
 **B2 — A legend that explains the channel it actually uses.** The board colours node borders by
 namespace, and the legend never mentions namespaces — so purple next to a purple Individual swatch
 reads as "individual". It should render the live `prefixColors` map with the colours this board
 assigned, add rows for notes and frames, and be openable beside the canvas rather than as a modal
 you must close to look at what it describes.
+
+> **Done in 1.53.0.** The namespace rows are deliberately *not* part of `entries()`, so the test that
+> compares every row against the stylesheet keeps its teeth over the rows that have a registered style.
 
 **B3 — Feedback on every action.** Delete on a note does nothing and says nothing. Expand
 neighbours that finds nothing new does nothing and says nothing, so the user clicks again to check
@@ -106,8 +136,25 @@ the menu works. Each action ends with one sentence: what changed, and whether th
 touched. That last clause matters more here than in most software, because "removed from the board"
 and "deleted from the ontology" are a world apart and the current UI distinguishes them nowhere.
 
+> **Done in 1.54.0** for Delete, and extended by every release since: expanding, collapsing, finding,
+> fitting, undoing and refusing a drawn edge all end in one sentence. The clause about the ontology is
+> now in the undo message too, for the same reason.
+
 **B4 — Where am I.** A zoom readout, `Fit to window`, and `Escape` to clear the selection — the
 last is documented and does not exist.
+
+> **Done.** Escape in 1.54.0; the readout and *Fit* in 1.58.0. The readout is a button in the new
+> status bar and returns to 100% when clicked. It is bound to the graph view's scale event rather than
+> to the wheel handler, so a zoom from anywhere updates it. `CanvasZoom` holds the fit arithmetic, with
+> nine tests; the one thing to get right is that `mxGraphView.getGraphBounds()` reports *scaled*
+> pixels, so a fit that does not divide by the current scale is correct at 100% and wrong at every
+> other zoom level.
+>
+> **Moved in 1.68.0.** The readout, *Fit* and two zoom buttons now float over the bottom-right of the
+> board, with the overview above them, and the status bar keeps only its two message channels. The
+> status bar was the right place for a readout while it was the only place; it is the wrong place once
+> the thing has neighbours, and a second copy of the readout there would have meant two buttons
+> claiming to be it with only the last-built one wired to the scale event.
 
 ---
 
@@ -117,10 +164,34 @@ last is documented and does not exist.
 and selects it. On a hundred-term board there is currently no way to find Margherita except
 dragging the canvas around or leaving for the class hierarchy.
 
+> **Done in 1.58.0**, with one addition the plan did not ask for and the implementation argued for.
+> Matching is ranked, not filtered, because centring "the match" requires deciding which one: on the
+> pizza ontology a plain substring search answers `marg` with `Margherita` or
+> `VegetarianMargheritaBase` depending on which the ontology happens to list first. Twelve tests in
+> `CanvasSearchTest` pin the order.
+>
+> The addition: when nothing on the board matches, the box looks at the whole ontology and says which
+> of the two reasons applies - the term does not exist, or it exists and has not been drawn - because
+> those lead to opposite next actions and "no match" withholds the difference. Ctrl+Enter then puts it
+> on the board, at the centre of the current view, which is the round trip to the class hierarchy that
+> this item exists to remove.
+>
+> Not done here: no highlight of the other matches, and no results list. The count and Enter-to-step
+> stand in for both.
+
 **C2 — Expand and collapse, properly.** Expansion exists and discards its own result: new nodes
 stack in a row at the origin, the count is thrown away, nothing is saved, and there is no collapse.
 It should place new neighbours in a ring around the source, say how many arrived, save, and offer
 to collapse back to what was there before.
+
+> **Done in 1.59.0.** All four symptoms were the same cause - `expandOneHop` returned a count, so the
+> caller had nothing to place, nothing to save and nothing to collapse. It returns the identifiers now.
+> The ring is `CanvasLayouts.ringOffsets`, which fills outward once a ring is full, its capacity being
+> the circumference over a node's width plus a gap, so two neighbours cannot overlap by construction
+> rather than by a magic number that happens to work for eight.
+>
+> Collapse is scoped honestly: it takes back exactly what one expansion added, it is held for the
+> session rather than the sidecar, and it is not undo. A5 remains open.
 
 **C3 — Notes on the board, kept in the ontology.** A term with an editorial note is drawn with a
 heavier border and there is no way to read it without leaving the canvas. Add *Editorial note…* to
@@ -129,16 +200,51 @@ and draw the marker as a corner badge so "has a note" and "is unsatisfiable" sto
 same border. This is the item that matters most to domain experts: it is how they say "this is
 wrong" in a form the ontology keeps.
 
+> **Done across 1.56.0 and 1.59.0, with the last clause partly done.** The menu item and the writing in
+> 1.56.0; the text on hover and the badge in 1.59.0. The reason the text took three releases is one type:
+> `CanvasNode` carried a boolean, so the projection the tooltip is built from knew only *that* a note
+> existed. It carries the words now, as a list, since a term can hold one note per editor.
+>
+> The badge exists and the heavier border stays, which is the partly. `CanvasExport` renders through
+> `mxCellRenderer`, which draws from the graph model and never calls the component's `paint` - so an
+> overlay badge is absent from every exported PNG and SVG. Verified before the badge was written.
+> Removing the border would have made notes invisible in published diagrams, so the two markers no
+> longer *both* live on the border, but the border is still one of them.
+
 **C4 — Draw a relation and get an axiom.** `docs/feature-parity.md:59` claims the plugin can author
 edges from the canvas; connection handling is switched off, and the capability is buried in a
 context menu. Turn connection on with dangling edges refused, and on connect open a small picker:
 which object property, and `some` / `only` / `SubClassOf`. Cancel leaves no edge. The picker is not
 friction, it is the question the gesture asked.
 
+> **Done in 1.60.0.** The picker is a popup at the drop point rather than a modal, because the answer is
+> one click and a dialog in the middle of the screen would cover the two terms being talked about. It
+> offers the applicable hierarchy link *and* the restriction dialog, not only the restriction: which of
+> the two the user wanted is the actual ambiguity in a dragged line, and the plan's wording assumed a
+> restriction.
+>
+> Cancel leaves no edge, as asked - achieved by deleting the edge mxGraph inserts before asking
+> anything, so the board never shows a line without an axiom.
+>
+> One thing the plan could not have known: `mxConstants.CONNECT_HANDLE_ENABLED` is `false` in JGraphX
+> 4.2.2, and turning connection on without also enabling the handle makes a press inside a node start
+> an edge instead of moving the node - trading this canvas's most-used gesture for its newest.
+
 **C5 — Imported terms can be drawn.** Dragging `bfo:continuant` onto the board silently does
 nothing: `OntologyProjection` looks only at the edit file's own signature, so no node is drawn, and
 `pruneStaleMembers` then removes the entry. Project with `Imports.INCLUDED` and draw imported terms
 distinctly — they are the ones a curator must not edit.
+
+> **Done in 1.61.0.** Drawn faded, said to be imported on hover, and explained in the legend; the Find
+> box sees them and Ctrl+Enter draws one. Opacity is the channel because the other four are taken, and
+> being a cell style rather than an overlay it survives a PNG or SVG export - which is the point, since
+> the distinction is about what may be edited.
+>
+> `Imports.INCLUDED` turned out to be the wrong instrument. In OWL API 4.5.29,
+> `getSignature(Imports.INCLUDED)` permanently pollutes the same ontology's cached `EXCLUDED`
+> signature, so the search box's first query made *Add all* offer every imported term for the rest of
+> the session. The per-kind queries are unaffected and are what the code uses; `ImportedSignatureTest`
+> pins the library's behaviour so the workaround is not mistaken for superstition later.
 
 ---
 
@@ -160,6 +266,20 @@ is better, because a term that arrives where its author put it is the whole poin
 
 **D4** After a refused token the button reads "Collaborate…" and the first click silently abandons
 the session instead of opening the dialog. Drive the label from whether a session exists.
+
+---
+
+> **D1-D4 done in 1.63.0.** Presence now follows selection and announces on join; a peer's geometry is
+> read on arrival rather than discarded; and the Collaborate button's label follows whether a session
+> exists rather than whether its socket is up, with a refusal ending the session so the two agree.
+>
+> Two rules were needed that the plan did not anticipate, both about not fighting the local user: an
+> inbound position never replaces one this board already has, since the wire has no "moved" operation;
+> and the origin is read as "no hint", because that is what the sender writes when it has none - taking
+> it literally would stack every arrival from Protégé's own tabs at (0,0).
+>
+> Two of the four are verified against a real server, which is the only way to show a number survives
+> the wire rather than merely reaching a callback.
 
 ---
 

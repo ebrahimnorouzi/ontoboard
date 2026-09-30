@@ -1,0 +1,98 @@
+OntoBoard 1.61.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-09-26  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 8/8  test 10/10
+  2026-09-26  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 8/8  test 10/10
+
+
+IMPORTED TERMS CAN BE DRAWN, AND AN OWL API DEFECT FOUND ON THE WAY
+
+C5 of docs/superpowers/specs/2026-09-25-canvas-interface-plan.md, which completes section 4 of that plan.
+
+1. THE FEATURE
+
+Dragging bfo:continuant onto the board did nothing visible. OntologyProjection.project looked only at the
+edit file's own signature, so no node was drawn - and pruneStaleMembers then deleted the sidecar entry, so
+the board did not remember the attempt either. Two halves of one absence, and between them they left no
+trace to report: nothing threw, nothing was logged, and the term simply did not appear.
+
+This is not an edge case for the ontologies this plugin is for. An ODK project - which the plugin
+scaffolds - refers to BFO, ChEBI, the OBO relations ontology and whatever else its imports bring, and most
+of the terms a curator points at are imported. So the canvas could not draw the ordinary case.
+
+Imported terms are now drawn faded, said to be imported on hover, explained in the legend, and found by
+the Find box, where Ctrl+Enter puts one on the board. Two decisions in that:
+
+  - Opacity is the marker because the other four channels are taken and each says something else: the
+    shape says what kind of thing it is, the stroke colour says which namespace it came from, the border
+    weight says there is a note, and a dash would read as "inferred". Opacity was free, and it happens to
+    say the right thing - an imported term is context rather than your work.
+  - It is a cell style, not an overlay like the note badge, so it survives a PNG or SVG export. That
+    matters more here than for a note: the distinction is which terms a curator must not edit, and a
+    published diagram drawing imported terms exactly like local ones invites the mistake it exists to
+    prevent.
+
+Widening project() to Imports.INCLUDED is safe because every loop in it is gated on membership - nothing
+appears unless somebody asked for it. Axioms are included too, so the hierarchy between two imported terms
+is drawn rather than leaving BFO's classes as unrelated boxes. What deliberately did NOT widen is
+"Add all", which stays on the edit file: an ODK project's imports on one click is not a diagram.
+
+2. THE DEFECT, WHICH IS THE MORE USEFUL HALF OF THIS RELEASE
+
+Measured in OWL API 4.5.29, on one ontology, in this order:
+
+    getSignature(Imports.EXCLUDED)  ->  [edit#Mine]
+    getSignature(Imports.INCLUDED)  ->  [edit#Mine, obo/BFO_0000002]
+    getSignature(Imports.EXCLUDED)  ->  [edit#Mine, obo/BFO_0000002]      <- wrong
+
+Asking with imports permanently changes the answer the same ontology gives without them. The per-kind
+queries - getClassesInSignature(imports) and its three siblings - are not affected.
+
+The consequence in this plugin was specific and bad. Two callers ask opposite questions of one ontology:
+the search box asks with imports, because "that term is not on the board" is only useful if it is true of
+the ontology somebody is working in; "Add all" asks without, for the reason above. So on the first version
+of this work, one search made "Add all" offer every term in every import for the rest of the session -
+tens of thousands of nodes, on the one gesture in the tool that is already guarded by a "that is a lot of
+nodes" dialog.
+
+How it was found is worth recording. Not by a test of the feature - those all passed - but by the test
+asserting the boring half of the pair, that Add all stays local. That test was written in the order that
+provokes the bug by accident: it asked for the imports first. The lesson is not about OWL API. It is that
+a new capability is the wrong place to look for its own side effects, and that a test written to pin what
+should NOT change is worth as much as the ones pinning what should.
+
+Everything now goes through OntologyProjection.termIdentifiers, which uses the four per-kind queries.
+ImportedSignatureTest pins both halves: that the library still behaves this way - so a future reader does
+not delete the four queries as superstition - and that Add all, and the imported/local marking, survive a
+search.
+
+3. AND THE LEGEND HAD TO LEARN A NEW CHANNEL
+
+A legend row whose whole distinction is opacity would have drawn a swatch identical to the Class row above
+it: a key entry whose picture does not show the thing it explains. CanvasLegend.Entry carries an opacity
+now, LegendPanel honours it, and the parity test that compares every row against the stylesheet compares
+opacity too - so the row cannot drift from what the canvas draws.
+
+WHAT THIS DOES NOT COVER
+
+That the fade is legible on somebody's monitor, or that the legend's swatch reads as faded rather than as
+badly drawn. The in-host self-test constructs the canvas and the legend on both Protege versions and looks
+at no pixel.
+
+Also not done, and worth stating plainly: nothing here *prevents* editing an imported term. The fade, the
+tooltip and the legend say not to; the node menu will still write an axiom or a note about one, into the
+edit file. Refusing or warning at each of those actions is a separate piece of work.
+
+Still open in the canvas plan: A5 (no undo for board-owned state) and D1-D4 on presence. Section 4 is
+complete.
+
+NUMBERS
+
+1284 tests, 1 skipped, 0 failures. 16 new: 5 in ImportedSignatureTest, 5 in OntologyProjectionTest, 3 in
+SchemaGraphTest, 2 in CanvasTooltipsTest, 1 in CanvasLegendTest.
+
+Counted three ways, agreeing: Maven's summary, the surefire reports, and an anchored ^\s*@Test\s*$ across
+src/test/java; 90 report files for 90 test classes. The skip is BundleConfigurationTest's jar-dependent
+case, which has nothing to inspect during the test phase because target/*.jar is emptied before each
+build; the jar is built afterwards and is what both hosts loaded.

@@ -57,6 +57,101 @@ class MakeRunTest {
 
     // ---------- the command ----------
 
+    /**
+     * An ODK repository is told to use ODK's own runner, not to install make.
+     *
+     * <p>The field report this comes from: the maintainer opened MWO, asked for a build, and was
+     * told "it needs make and robot installed - not Docker". Both halves are wrong for a real ODK
+     * repository. Its recipes call owltools and wget and a robot that loads plugin jars from
+     * /tools/robot-plugins inside obolibrary/odkfull, so installing make and robot buys a build
+     * that fails further in; and the fixture Makefile this project already keeps documents the
+     * real instruction in its own help target - "sh run.sh make ... command".
+     */
+    @Test
+    void anOdkRepositoryIsPointedAtItsOwnRunner() {
+        String advice = MakeRun.toolingAdvice(true, true, true, false);
+
+        assertTrue(advice.contains("run.sh make"), advice);
+        assertTrue(advice.contains("odkfull"), "say where the build actually runs: " + advice);
+        assertFalse(advice.contains("install"), "nothing needs installing when Docker is there: "
+                + advice);
+    }
+
+    /** And when Docker is missing too, that is the thing to fix first. */
+    @Test
+    void anOdkRepositoryWithoutDockerIsToldToGetDocker() {
+        String advice = MakeRun.toolingAdvice(true, false, true, true);
+
+        assertTrue(advice.contains("Docker was not found"), advice);
+        assertTrue(advice.contains("docker.com"), "an instruction needs somewhere to go: "
+                + advice);
+    }
+
+    /**
+     * Our own scaffold's Makefile is the case where installing make is genuinely the answer -
+     * and on Windows it is only half of it.
+     *
+     * <p>The generated recipes use rm -f, mkdir -p, cp, cat and date +%Y-%m-%d. cmd.exe has none
+     * of them, so make has to find an sh.exe to hand the recipes to. A message that says only
+     * "install make" sends a Windows user to a second failure that looks nothing like the first.
+     */
+    @Test
+    void windowsIsToldAboutTheShellAsWellAsMake() {
+        String withoutShell = MakeRun.toolingAdvice(false, false, false, true);
+
+        assertTrue(withoutShell.contains("POSIX shell"), withoutShell);
+        assertTrue(withoutShell.contains("Git for Windows"), "name the thing that provides one: "
+                + withoutShell);
+
+        String withShell = MakeRun.toolingAdvice(false, false, true, true);
+
+        assertTrue(withShell.contains("make alone"),
+                "an sh already on the PATH is worth saying: " + withShell);
+        assertFalse(withShell.contains("Git for Windows"),
+                "do not ask for what is already there: " + withShell);
+    }
+
+    /** Elsewhere the package manager is the whole answer. */
+    @Test
+    void unixIsToldItsPackageManager() {
+        String advice = MakeRun.toolingAdvice(false, false, true, false);
+
+        assertTrue(advice.contains("apt install make") || advice.contains("brew install make"),
+                advice);
+        assertFalse(advice.contains("cmd.exe"), "not a Windows problem here: " + advice);
+    }
+
+    /**
+     * ODK's runner is found at the repository root, two levels above the ontology.
+     *
+     * <p>{@link MakeRun#workingDirectory} lands in src/ontology, because that is where the edit
+     * file and the Makefile are. run.sh is not there - it is at the top of the repository, and
+     * looking for it beside the Makefile finds nothing in every real project.
+     */
+    @Test
+    void theOdkRunnerIsLookedForAtTheRepositoryRoot(@TempDir File root) throws Exception {
+        File ontology = new File(new File(root, "src"), "ontology");
+        assertTrue(ontology.mkdirs());
+
+        assertNull(MakeRun.odkRunner(ontology), "nothing there yet");
+
+        File runner = new File(root, "run.sh");
+        Files.write(runner.toPath(), "#!/bin/sh".getBytes("UTF-8"));
+
+        assertEquals(runner, MakeRun.odkRunner(ontology));
+    }
+
+    /** ODK ships run.bat beside run.sh, and a Windows checkout may have only that one. */
+    @Test
+    void theWindowsRunnerCountsToo(@TempDir File root) throws Exception {
+        File ontology = new File(new File(root, "src"), "ontology");
+        assertTrue(ontology.mkdirs());
+        File batch = new File(root, "run.bat");
+        Files.write(batch.toPath(), "@echo off".getBytes("UTF-8"));
+
+        assertEquals(batch, MakeRun.odkRunner(ontology));
+    }
+
     @Test
     void theCommandIsPlainMake() {
         assertEquals(Arrays.asList("make", "reason"), MakeRun.command("reason"));
@@ -87,9 +182,19 @@ class MakeRunTest {
 
     // ---------- a setup problem is not a broken project ----------
 
-    /** "make: not found" inside a transcript reads as the project being broken. It is not. */
+    /**
+     * "make: not found" inside a transcript reads as the project being broken. It is not.
+     *
+     * <p>This test used to assert the words "not Docker", on the reasoning that the generated
+     * Makefile calls robot directly and users assume ODK means Docker. That reasoning was sound
+     * for a project this plugin scaffolded and wrong for every other kind, which is what a user
+     * is most likely to have open - see {@link #anOdkRepositoryIsPointedAtItsOwnRunner}. What is
+     * still true, and is what this test is actually for, is that a missing tool must be reported
+     * as a machine that is not set up rather than as a project that is broken. The fixture here
+     * has no run.sh, so it takes the scaffolded-project branch.
+     */
     @Test
-    void makeMissingIsReportedAsSetupAndSaysDockerIsNotNeeded(@TempDir File directory)
+    void makeMissingIsReportedAsSetupRatherThanAsABrokenProject(@TempDir File directory)
             throws Exception {
         File ontology = projectWithMakefile(directory);
 
@@ -97,9 +202,11 @@ class MakeRunTest {
 
         assertNotNull(why);
         assertTrue(why.contains("not on the PATH"), why);
-        assertTrue(why.contains("not Docker"),
-                "the generated Makefile calls robot directly, and users assume ODK means Docker: "
-                        + why);
+        assertTrue(why.contains("install make"),
+                "a setup problem has to come with the way out of it: " + why);
+        assertFalse(why.contains("Makefile may have changed")
+                        || why.contains("no rule for"),
+                "nothing here says the project is at fault: " + why);
     }
 
     @Test

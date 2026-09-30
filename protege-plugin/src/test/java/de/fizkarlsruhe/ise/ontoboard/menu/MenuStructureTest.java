@@ -75,6 +75,77 @@ class MenuStructureTest {
         return menus;
     }
 
+    /**
+     * Every action class that exists is reachable from the menu.
+     *
+     * <p>The defect this catches was reported from the field in 1.69.0: "Open existing ODK
+     * project is not available in the OntoBoard menu". It was not missing - it was written,
+     * careful, and commented, and it was wired to exactly one button on the canvas start card.
+     * The start card only shows while the board is empty, so the action a user goes looking for
+     * after opening something was reachable only before they had opened anything.
+     *
+     * <p>The sibling tests here all start from plugin.xml and ask whether each entry leads
+     * somewhere. This one runs the other way - from the code to the menu - because that is the
+     * direction the failure travels: nothing in plugin.xml is wrong when an action is simply not
+     * in it, and every existing test passes.
+     *
+     * <p>Reads the source tree rather than the classpath deliberately. Scanning loaded classes
+     * would need Protege's own jars to resolve {@code ProtegeOWLAction}, which the unit suite
+     * does not have; the declaration is a fact about the file either way.
+     */
+    @Test
+    void everyActionClassIsInTheMenu() throws Exception {
+        File sources = new File("src/main/java/de/fizkarlsruhe/ise/ontoboard");
+        assertTrue(sources.isDirectory(),
+                "expected to run from the module root; no " + sources.getPath());
+
+        Set<String> registered = new HashSet<String>();
+        for (Element extension : menuExtensions()) {
+            String declared = valueOf(extension, "class");
+            if (declared != null && !declared.trim().isEmpty()) {
+                registered.add(declared.trim());
+            }
+        }
+
+        List<String> unreachable = new ArrayList<String>();
+        for (File source : actionSources(sources)) {
+            String name = source.getName().substring(0, source.getName().length() - 5);
+            String text = new String(java.nio.file.Files.readAllBytes(source.toPath()), "UTF-8");
+            if (!text.contains("extends ProtegeOWLAction") && !text.contains("extends OntoBoardAction")) {
+                continue;
+            }
+            if (text.contains("abstract class")) {
+                continue;
+            }
+            String qualified = "de.fizkarlsruhe.ise.ontoboard."
+                    + source.getParentFile().getName() + "." + name;
+            if (!registered.contains(qualified)) {
+                unreachable.add(qualified);
+            }
+        }
+
+        assertTrue(unreachable.isEmpty(),
+                "these actions exist and no menu entry names them, so nothing can invoke them: "
+                        + new TreeSet<String>(unreachable));
+    }
+
+    /** Every *Action.java under the plugin's own packages. */
+    private static List<File> actionSources(File directory) {
+        List<File> found = new ArrayList<File>();
+        File[] children = directory.listFiles();
+        if (children == null) {
+            return found;
+        }
+        for (File child : children) {
+            if (child.isDirectory()) {
+                found.addAll(actionSources(child));
+            } else if (child.getName().endsWith("Action.java")) {
+                found.add(child);
+            }
+        }
+        return found;
+    }
+
     /** The single child element's {@code value}, or null. */
     private static String valueOf(Element extension, String tag) {
         NodeList found = extension.getElementsByTagName(tag);

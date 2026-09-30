@@ -81,9 +81,13 @@ class SchemaGraphTest {
         assertFalse(graph.isAllowDanglingEdges(), "an edge with one end is not an axiom");
         assertFalse(graph.isCellsDisconnectable(),
                 "detaching an edge endpoint would silently orphan an axiom");
-        assertFalse(graph.isCellsEditable(),
-                "label editing arrives in Task 3; enabling it now would let a user rename "
-                        + "a cell without touching the ontology");
+        // Editable since 1.66.0, and the refusal this used to express now lives in the predicate
+        // rather than in the flag - see onlyNotesAndFramesCanBeEditedInPlace. The concern was never
+        // sticky notes: it was that renaming a TERM in place would change what the board says
+        // without changing the ontology.
+        assertTrue(graph.isCellsEditable(), "a sticky note is retyped by double-clicking it");
+        assertFalse(graph.isCellsCloneable(),
+                "mxCell.clone copies the id, so a Ctrl+drag would forge a second node for one IRI");
         assertFalse(graph.isDropEnabled(), "drag-and-drop cell splitting is not part of this task");
         assertFalse(graph.isSplitEnabled(), "edge splitting is not part of this task");
     }
@@ -134,7 +138,7 @@ class SchemaGraphTest {
     @Test
     void anUnsatisfiableClassIsDrawnInRedRatherThanItsNamespaceColour() {
         CanvasNode broken = new CanvasNode("http://example.org/o#Impossible", NodeKind.CLASS,
-                "Impossible", false, true);
+                "Impossible", null, true);
         CanvasNode ordinary = new CanvasNode("http://example.org/o#Fine", NodeKind.CLASS, "Fine");
 
         String brokenStyle = SchemaGraph.styleForTesting(broken);
@@ -144,10 +148,115 @@ class SchemaGraphTest {
         assertFalse(ordinaryStyle.contains(SchemaStyles.UNSATISFIABLE_STROKE), ordinaryStyle);
     }
 
+    /**
+     * An imported term is drawn faded, and keeps everything else it was saying.
+     *
+     * <p>Opacity is the only free channel on a node: the shape says what kind of thing it is, the
+     * stroke colour says which namespace, the border weight says there is a note, and a dash would read
+     * as "inferred". A fade that took one of those with it would trade one piece of information for
+     * another.
+     */
+    @Test
+    void anImportedTermIsDrawnFaded() {
+        CanvasNode imported = new CanvasNode("http://purl.obolibrary.org/obo/BFO_0000002",
+                NodeKind.CLASS, "continuant").asImported();
+
+        String style = SchemaGraph.styleForTesting(imported);
+
+        assertTrue(style.contains("opacity=" + SchemaStyles.IMPORTED_OPACITY), style);
+        assertFalse(style.contains("dashed"), "a dash on a node would read as inferred: " + style);
+    }
+
+    /** Imported and noted at once is an ordinary state, and both marks have to survive. */
+    @Test
+    void anImportedTermWithANoteKeepsBothMarks() {
+        CanvasNode both = new CanvasNode("http://purl.obolibrary.org/obo/BFO_0000002",
+                NodeKind.CLASS, "continuant",
+                java.util.Collections.singletonList("we use this as our root")).asImported();
+
+        String style = SchemaGraph.styleForTesting(both);
+
+        assertTrue(style.contains("opacity=" + SchemaStyles.IMPORTED_OPACITY), style);
+        assertTrue(style.contains("strokeWidth=" + SchemaStyles.NOTED_STROKE_WIDTH), style);
+    }
+
+    @Test
+    void aLocalTermIsNotFaded() {
+        String style = SchemaGraph.styleForTesting(
+                new CanvasNode("http://example.org/o#Mine", NodeKind.CLASS, "Mine"));
+
+        assertFalse(style.contains("opacity"), style);
+    }
+
+    /**
+     * Only board furniture can be renamed by double-clicking it.
+     *
+     * <p>The predicate is the whole of the safety here. {@code setCellsEditable} was false outright,
+     * which refused the ordinary gesture of retyping a sticky note in order to prevent a much worse
+     * one: a term's label is its {@code rdfs:label}, so letting a double click rewrite it would let
+     * somebody change what the board displays without changing the ontology - the canvas showing one
+     * thing and the file saying another, which is the single lie this projection must never tell.
+     */
+    @Test
+    void onlyNotesAndFramesCanBeEditedInPlace() {
+        SchemaGraph graph = new SchemaGraph();
+        CanvasLayout layout = new CanvasLayout();
+        String term = "http://example.org/o#Pizza";
+        layout.nodes.put(term, new CanvasLayout.NodeLayout(0, 0));
+
+        CanvasLayout.NoteLayout note = new CanvasLayout.NoteLayout();
+        note.id = SchemaGraph.NOTE_ID_PREFIX + "1";
+        note.text = "check this";
+        layout.notes.add(note);
+
+        CanvasLayout.FrameLayout frame = new CanvasLayout.FrameLayout();
+        frame.id = SchemaGraph.FRAME_ID_PREFIX + "1";
+        frame.label = "Toppings";
+        frame.w = 200;
+        frame.h = 120;
+        layout.frames.add(frame);
+
+        graph.render(new Projection(
+                java.util.Collections.singletonList(
+                        new CanvasNode(term, NodeKind.CLASS, "Pizza")),
+                java.util.Collections.<CanvasEdge>emptyList()), layout);
+
+        assertTrue(graph.isCellEditable(graph.getCellForId(note.id)), "a sticky note");
+        assertTrue(graph.isCellEditable(graph.getCellForId(frame.id)), "a frame");
+        assertFalse(graph.isCellEditable(graph.getCellForId(term)),
+                "a term's label is its rdfs:label and is not editable by double click");
+        assertFalse(graph.isCellEditable(null), "null");
+    }
+
+    /** An edge is an axiom too, and its label is the property it stands for. */
+    @Test
+    void anEdgeCannotBeEditedInPlace() {
+        SchemaGraph graph = new SchemaGraph();
+        CanvasLayout layout = new CanvasLayout();
+        String a = "http://example.org/o#A";
+        String b = "http://example.org/o#B";
+        layout.nodes.put(a, new CanvasLayout.NodeLayout(0, 0));
+        layout.nodes.put(b, new CanvasLayout.NodeLayout(0, 200));
+        graph.render(new Projection(
+                java.util.Arrays.asList(new CanvasNode(a, NodeKind.CLASS, "A"),
+                        new CanvasNode(b, NodeKind.CLASS, "B")),
+                java.util.Collections.singletonList(
+                        new CanvasEdge("sub|1", a, b, "", CanvasEdge.Kind.SUBCLASS))), layout);
+
+        assertFalse(graph.isCellEditable(graph.getCellForId("sub|1")));
+    }
+
+    /** A Ctrl+drag must not be able to forge a second cell claiming to be the same term. */
+    @Test
+    void cellsCannotBeCloned() {
+        assertFalse(new SchemaGraph().isCellsCloneable(),
+                "mxCell.clone copies the id, so a clone would be a second node with one IRI");
+    }
+
     @Test
     void aNotedTermGetsTheHeavierBorderAndKeepsItsNamespaceColour() {
         CanvasNode noted = new CanvasNode("http://example.org/o#Noted", NodeKind.CLASS,
-                "Noted", true);
+                "Noted", java.util.Collections.singletonList("the parent is provisional"));
 
         String style = SchemaGraph.styleForTesting(noted);
 
@@ -159,7 +268,7 @@ class SchemaGraphTest {
     @Test
     void anUnsatisfiableTermThatAlsoHasANoteIsStillDrawnAsAnError() {
         CanvasNode both = new CanvasNode("http://example.org/o#Both", NodeKind.CLASS,
-                "Both", true, true);
+                "Both", java.util.Collections.singletonList("needs review"), true);
 
         String style = SchemaGraph.styleForTesting(both);
 

@@ -2,6 +2,7 @@ package de.fizkarlsruhe.ise.ontoboard.collab;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -63,6 +64,29 @@ class CollabSessionTest {
      * <p>Without the re-fire this whole test class would be theatre.
      */
     private class EchoingHost implements CollabSession.Host {
+
+        /** Geometry a peer sent, so a test can assert it arrived rather than being discarded. */
+        final java.util.Map<String, java.util.Map<String, Object>> geometry =
+                new java.util.LinkedHashMap<String, java.util.Map<String, Object>>();
+
+        /** Reasons a session was declared over, and how often it was announced as joined. */
+        final List<String> ended = new java.util.ArrayList<String>();
+        int joins;
+
+        @Override
+        public void onPeerGeometry(String iri, java.util.Map<String, Object> data) {
+            geometry.put(iri, data);
+        }
+
+        @Override
+        public void onSessionEnded(String reason) {
+            ended.add(reason);
+        }
+
+        @Override
+        public void onJoined() {
+            joins++;
+        }
         private CollabSession session;
         final List<String> statuses = new ArrayList<String>();
         final List<String> unshareable = new ArrayList<String>();
@@ -186,6 +210,78 @@ class CollabSessionTest {
             data.put(String.valueOf(keysAndValues[i]), keysAndValues[i + 1]);
         }
         return OntologyOperation.local(type, "bob", data);
+    }
+
+    // ---------- presence, geometry and the end of a session ----------
+
+    /**
+     * A peer's geometry reaches the host instead of being dropped.
+     *
+     * <p>Every operation this plugin publishes carries the node's geometry, and the receiving side
+     * discarded it - so a class a colleague created landed wherever an unpositioned node goes, in a row
+     * along the top of the board. The sender did the work and the receiver ignored it.
+     */
+    @Test
+    void aPeersGeometryIsHandedToTheHost() {
+        EchoingHost host = new EchoingHost();
+        CollabSession session = sessionWith(host);
+
+        session.onOperation(operation("addClass", "iri", NS + "Person", "x", 420.0, "y", 260.0));
+
+        Map<String, Object> received = host.geometry.get(NS + "Person");
+        assertNotNull(received, host.geometry.toString());
+        assertEquals(420.0, ((Number) received.get("x")).doubleValue(), 1e-9);
+    }
+
+    /**
+     * Even when the change itself is already applied.
+     *
+     * <p>A peer re-asserting a declaration produces no ontology change - convergence, not an error -
+     * and the method returns early. But this board can perfectly well have the term and no position for
+     * it, which is the common case when two people put the same class on their boards independently.
+     */
+    @Test
+    void geometryArrivesEvenWhenThereIsNothingToApply() {
+        EchoingHost host = new EchoingHost();
+        CollabSession session = sessionWith(host);
+        manager.addAxiom(ontology, factory.getOWLDeclarationAxiom(cls("Person")));
+
+        session.onOperation(operation("addClass", "iri", NS + "Person", "x", 100.0, "y", 100.0));
+
+        assertNotNull(host.geometry.get(NS + "Person"), "nothing to apply is not nothing to learn");
+    }
+
+    /**
+     * A refusal ends the session; a disconnect does not.
+     *
+     * <p>They were both reported the same way, as {@code onStatus(reason, false)}, and the toolbar took
+     * its button label from that flag. So after a refusal the button read "Collaborate..." while a live
+     * session object was still held, and clicking it disconnected instead of opening the dialog - and
+     * during an ordinary reconnect it said the same thing while the session was perfectly alive.
+     */
+    @Test
+    void aRefusalEndsTheSessionAndADisconnectDoesNot() {
+        EchoingHost host = new EchoingHost();
+        CollabSession session = sessionWith(host);
+
+        session.onDisconnected("network", 1, 2000);
+        assertTrue(host.ended.isEmpty(), "a retrying session has not ended: " + host.ended);
+
+        session.onRefused("The server rejected the token");
+
+        assertEquals(1, host.ended.size());
+        assertTrue(host.ended.get(0).contains("token"), host.ended.toString());
+    }
+
+    /** Joining tells the host, so presence can be announced without waiting for the mouse. */
+    @Test
+    void joiningIsAnnouncedOnce() {
+        EchoingHost host = new EchoingHost();
+        CollabSession session = sessionWith(host);
+
+        session.onConnected("alice");
+
+        assertEquals(1, host.joins);
     }
 
     // ---------- the loop guard ----------

@@ -249,19 +249,432 @@ The plugin is early. These exist in the web application but not yet here:
   alone - a frame slotted into a grid encloses nothing, which destroys the only thing it is for.
 
   What remains, and is named in [the canvas plan](superpowers/specs/2026-09-25-canvas-interface-plan.md):
-  no undo for anything the board owns, four coordinate-conversion bugs that put created things where
-  the user did not click, no search, and tooltips that show internal ids.
+  nothing. The internal-id tooltips were replaced in 1.53.0, the last of the coordinate conversions
+  unified into one function in 1.54.0, search arrived in 1.58.0, and undo for board-owned state in
+  1.62.0 - which closes the last item of that plan's first two sections.
 
-- **A term's editorial note is readable and writable on the canvas since 1.56.0, and its text is
-  not in the tooltip yet.** The canvas drew a term carrying a note with a heavier border and offered
-  no way to learn what it said - hovering gave the IRI, right-clicking offered nothing about notes,
-  and the route was up to the main menu bar. A marker that raises a question the interface then
-  refuses to answer is worse than no marker.
+- **A term's editorial note is readable and writable on the canvas since 1.56.0, and readable on
+  hover since 1.59.0.** The canvas drew a term carrying a note with a heavier border and offered no way
+  to learn what it said - hovering gave the IRI, right-clicking offered nothing about notes, and the
+  route was up to the main menu bar. A marker that raises a question the interface then refuses to
+  answer is worse than no marker.
 
-  What is still missing is the text on hover. Tooltips are built from the `Projection` the canvas
-  draws, and `CanvasNode` carries a boolean - whether there is a note - rather than the note itself.
-  Threading the text through is a small model change and it is not done, so the plan's C3 is half
-  complete: the note is maintainable, and still not readable without opening a dialog.
+  The reason the text was missing for three releases is worth recording: `CanvasNode` carried a
+  *boolean*. Tooltips are built from the projection, the projection knew only that a note existed, and
+  so the tooltip could only say "Has an editorial note". It carries the words now, as a list - a term
+  can hold one note per editor and OBO ontologies do - and `EditorNotes.hasNote` delegates to the same
+  reading, so a term drawn as noted always has something to quote.
+
+  On hover: the first note, wrapped and cut at 220 characters, and a count of the rest. An editorial
+  note is prose rather than a phrase, so it is the one tooltip here that wraps. Three paragraphs from
+  three editors is not a tooltip; the Notes dialog shows them all with authors and dates.
+
+- **Three things reported from using it, all fixed in 1.69.0 - and each one was present rather than
+  missing.** Found by opening MWO and trying to do ordinary work, which no test in this repository
+  could have done.
+
+  **The new-project form threw away everything it had just asked for.** `OdkProjectConfig.validate`
+  has eight rules and two of them - *base IRI must end in the ontology ID*, *an SPDX identifier such
+  as `CC0-1.0` is not a licence IRI* - reject values that look right. The dialog closed on the way to
+  the warning, so a wrong last field cost the other five. It re-prompts now, reusing the components
+  it already built, and the message is a banner inside the form rather than a modal over it. Safe
+  because `OdkScaffold.create` validates before its first `mkdirs`, so a rejected attempt has written
+  nothing; a failure from the *writing* half still stops, because part of the tree may exist.
+
+  **"Open existing ODK project" was reachable only while the board was empty.** Forty-three careful
+  lines, wired to one button on the start card - which shows only when nothing is on the board. So
+  the action a person looks for after opening something was reachable only before they had opened
+  anything, and `OntoBoard > Project` listed *New ODK project...* and *Open from GitHub...* with
+  nothing between them. Now `odk/ProjectOpener` with `odk/OpenProjectAction` over it, at SlotA-B.
+
+  The interesting part is the test. `MenuStructureTest` asks of every entry in `plugin.xml` whether
+  it leads somewhere, and every one of those tests passed throughout - nothing in `plugin.xml` was
+  wrong, the entry was absent from it. The new test runs code-to-menu instead: every non-abstract
+  `*Action` class must be named by some entry. Removing the new entry fails it by name.
+
+  **"make is not on the PATH" gave the wrong instruction.** It said the build "needs make and robot
+  installed - not Docker", which is right for a scaffolded project and wrong for a real ODK
+  repository, which is what the report came from. ODK builds run inside `obolibrary/odkfull`: this
+  repo already keeps MWO's Makefile as a fixture and it prints `sh run.sh make ... command` in its own
+  help target and loads ROBOT plugin jars from `/tools/robot-plugins` inside the image. Installing
+  make and robot buys a build that fails further in. `MakeRun` looks for `run.sh`/`run.bat` two levels
+  up now and says one of four things, including - on Windows, for our own Makefile - that make needs a
+  POSIX shell too, since the recipes use `rm -f`, `mkdir -p`, `cp`, `cat` and `date +%Y-%m-%d` and
+  cmd.exe has none of them. That second requirement had never been mentioned anywhere.
+
+  **Still open, and it is the larger half.** A project this plugin scaffolds could build with nothing
+  installed at all: its Makefile shells out to nine programs and all seven of its ROBOT invocations
+  already have in-process wrappers here, so the set difference is one operation. That is the next
+  release. For MWO it cannot be done - 767 lines of `ifeq`, `foreach`, `define`, recursive make and a
+  `SHELL` override, shelling out to wget, curl, rsync, gh, owltools and an `odk.py` this bundle cannot
+  contain - and the honest answer there is ODK's own Docker wrapper, which is now what the message
+  says.
+
+- **The gesture a board user spends most was behind a modifier, and nothing on screen said so - until
+  1.68.0.** The second half of Release 4 of the canvas design spec, split off from 1.67.0 because the
+  spec's own regression table calls the floating panels "the most likely breakage in the whole plan".
+
+  **A plain left-drag panned the view.** That was defensible when it was written - there was no outline,
+  no *Fit*, no zoom keys - and it stopped being defensible some releases ago. Selecting several terms at
+  once is the thing a person does most on a board, and it was reachable only by holding Ctrl or Shift,
+  documented in a doc comment. The drag selects a region now; space, the middle button and the right
+  button pan, which is what every canvas application uses. Space also changes the cursor, because without
+  that the only feedback is that dragging does something different - which is how a deliberate inversion
+  reads as a fault.
+
+  Three things hold that inversion up. A `ShortcutsPanel` of sixteen rows, on **?** over the board and in
+  the overflow menu, with tests that the two inverted gestures are present and that no key is listed
+  twice - a stale keystroke list is worse than none, because it sends a person looking for a fault in the
+  plugin rather than in their own memory. A one-time status line on first use, in `Preferences`, not the
+  sidecar. And an explicit null-cell test in the rubberband handler: `mxRubberband.mousePressed` in 4.2.2
+  never asks what is under the cursor - `isRubberbandTrigger` is literally `return true` - so a plain
+  drag selected regions *on top of nodes* too, and only worked at all because `mxGraphHandler` happens to
+  be registered first and consume the event. Registration order is a thing to depend on deliberately or
+  not at all.
+
+  **The zoom controls and the overview moved onto the board.** The outline had been pinned EAST at a
+  fixed 180px, present even while the start card was showing - a blank grey rectangle beside a "nothing
+  here yet" message - and on a board big enough to need an overview it fails at the one job it has, since
+  a 3694x613 strip scaled into a 140px box paints as a grey smear. Both float now, bottom-right, and the
+  overview collapses to its header; which state it is in lives in `Preferences` rather than the JSON
+  sidecar, because collapsing a panel must not dirty a file somebody commits to a repository.
+
+  This is where the spec expected breakage, and the mechanism is worth recording: Delete, Escape, Ctrl+Z,
+  Ctrl+F, Ctrl+A and the five zoom keys are all bound on the graph component's
+  `WHEN_ANCESTOR_OF_FOCUSED_COMPONENT` input map, so the moment focus moves to a *sibling* of that
+  component every one of them stops firing - silently, with nothing on screen to say why. A floating
+  button is exactly such a sibling. Every one is built through a single `floatingButton` helper that sets
+  `focusable` and `requestFocusEnabled` false and hands focus back to the board after the action runs.
+
+  **Dragging a frame left its contents behind.** `SchemaGraph` inserts frames, terms, edges and notes all
+  under the default parent, so a frame is a sibling of what it visually encloses and `moveCells` moved
+  only the rectangle: drag the "Toppings" frame and it arrived somewhere else, empty. Real parenting was
+  rejected rather than overlooked - child geometry is relative to the parent, and `captureInto` reads
+  `getX()` as an absolute board coordinate straight into the sidecar, so every saved board would have
+  shifted by the frame origin the first time it was loaded. The frame moves its passengers by the same
+  delta instead, chosen by centre point so a node overlapping the edge counts as inside. Resizing moves
+  nothing, and the dialog that names a frame now says both halves of that.
+
+- **The Collaborate button was not on the screen, and the status line erased its own warnings - both
+  until 1.67.0.** The first half of Release 4 of the canvas design spec; the second half landed in
+  1.68.0, held back one release because the spec's own regression table calls the floating panels "the
+  most likely breakage in the whole plan".
+
+  The toolbar wanted 1261px and began clipping at 1030. The OntoBoard tab in a 1440px Protégé window
+  gives it 857, at which `Collaborate...` is laid out at x=812 - past the right edge, unpainted and
+  unclickable. `JToolBar` uses a `BoxLayout`, which lays overflowing children out *beyond* the container
+  rather than wrapping, and there is no chevron to switch on. The button was simply not there, and
+  nothing said so. It is 777px now: the layout combo is gone (201px to choose between four entries
+  nobody reopens), Legend, Export and Collaborate moved to an overflow menu, and the two widths that
+  were free to grow are pinned - the Find box reached 407px on a wide bar, and the Add button,
+  relabelled on every selection change, shifted everything to its right by up to 103px, including the
+  Find field, which slid out from under the pointer mid-type.
+
+  **One status label served two producers.** `setStatus()` writes transient board confirmations; the
+  collaboration host writes persistent session state that needs acting on. Whichever fired last won,
+  permanently - so arranging the board erased the only notice that a colleague would never see your
+  edit, and nothing brought it back. Two labels now, the session one carrying a coloured dot.
+
+  **The context menu offered an action that lied about what it acted on**: "Add selected entity to
+  canvas", offered even when you had right-clicked a node, where it reads as "add the thing I clicked"
+  and in fact acts on Protégé's tree selection. Deleted. The remaining items are grouped in the order a
+  person asks - what is under the cursor, what it can be joined to, what can be made here, and what
+  takes something away, last.
+
+  **The empty state named a widget that does not exist**: "drag one in from the palette on the left"
+  (the left column is Protégé's entity views, the first labelled Classes) and "double-click the board"
+  (the card is covering it). Both corrected, plus one line nothing anywhere said before - *taking
+  something off the board never deletes it from the ontology*.
+
+  Dark mode is answered rather than themed: the canvas stays light on purpose, because it is the surface
+  every exported PNG is composed on and a diagram whose colours depend on the author's IDE theme is not
+  reproducible; it gains a border that follows the theme, and the start screen takes its colours from
+  the look and feel. That took two attempts - `Panel.background` is the obvious token for the card and
+  the wrong one, because it makes the card exactly the colour of the thing it is raised off. Caught by
+  re-rendering it.
+
+- **Five gesture defects, all fixed in 1.66.0, and one of them broke the canvas's central invariant.**
+  Release 3 of the canvas design spec. Unlike 1.64.0 and 1.65.0 these were not found by looking at a
+  render - they were found by reading JGraphX against this code.
+
+  **A Ctrl+drag forged a second node claiming to be the same term.** `mxGraph` starts with
+  `cellsCloneable = true` and `mxGraphComponent` with `dragEnabled = true`, and `SchemaGraph` held
+  neither. So a Ctrl+drag ran Swing's DnD copy path, and `mxCell.clone` copies value, style, geometry
+  *and the id*: the dropped clone was a second vertex whose id was the original IRI. Clicking it pushed
+  that term to Protégé's selection; Delete on it reported one term removed while taking the original out
+  of membership; nothing wrote it anywhere, so it vanished at the next refresh. One node per IRI is what
+  this whole canvas rests on, and two unheld defaults were enough to break it.
+
+  **The wheel zoomed at the viewport centre, not the cursor** - on a 3694px board the node you were
+  pointing at slid off screen at every click - **and had no upper bound**, running to 800% while
+  `CanvasZoom.MAX_SCALE` documented 400%.
+
+  **A right-drag pan always ended in a context menu.** A right-drag pans by design, but the menu opens on
+  any `isPopupTrigger()` release, and on Windows that *is* the button-3 release.
+
+  **The undo debounce guarded against something that cannot happen.** It was written in 1.62.0 on the
+  stated grounds that "mxGraph fires `CELLS_MOVED` repeatedly while a drag is in progress". It does not:
+  `mxGraphHandler` sets `livePreview = false`, so the model is touched once, on release. What the guard
+  actually did was swallow the undo step for any second drag started within 800ms of the first.
+
+  **Alt+drag did nothing and Shift+drag discarded the selection** - Alt is claimed by a forced marquee
+  that this canvas's rubberband never reaches, and `isToggleEvent` knows only Ctrl, though
+  `installSelection`'s own comment says Shift adds to a selection.
+
+  Beyond the defects: a visible 20px grid (snapping had been on and invisible at a 10px step since the
+  first version), Ctrl+0/1/2 for actual size, fit and frame-the-selection, Ctrl+A, Ctrl+D to copy notes
+  and frames, sticky-note and frame colours - `NoteLayout.color` had been modelled, copied, persisted and
+  rendered since notes existed, and *nothing had ever written it*, so every note on every board was the
+  same yellow - and double-click, which expands a term's neighbours or retypes a note. In-place editing
+  is allowed for notes and frames only: a term's label is its `rdfs:label`, and letting a double click
+  rewrite it would change what the board says without changing the ontology.
+
+  The namespace palette was also wrong twice over. Its javadoc claimed the eight colours "remain
+  distinguishable for the most common forms of colour blindness"; three pairs collapse - `#C2554D` and
+  `#8A6D3B` are deltaE 5.2 apart under deuteranopia. And the colour was keyed to *how many* namespaces
+  had been seen, so dropping one and adding another handed out a duplicate and the same vocabulary got a
+  different colour on a different board. Five colours on a lightness ladder, keyed to the namespace.
+
+  Worth recording: the palette change appeared to apply and did not. The patch tool writes a file once
+  after all of a call's edits succeed, so a later bad anchor silently discarded two edits it had already
+  reported as matched. A new test caught it - "expected #4A90D9 but was #3E8E5A", two colours from the
+  palette that was supposed to be gone. Without it the release would have shipped the old palette under
+  the new javadoc.
+
+- **The stylesheet named a font that was never used, and the legend described a board that was never
+  drawn - both until 1.65.0.** Release 2 of the canvas design spec. Four of these are defects rather
+  than taste, and all four were invisible without a render.
+
+  `FONT` was the string `"Segoe UI, Helvetica Neue, Arial, sans-serif"` - a CSS fallback chain handed to
+  `java.awt.Font`, which takes one family name. `new Font("Segoe UI, Helvetica Neue, Arial,
+  sans-serif", BOLD, 13).getFamily()` returns `"Dialog"`. No board, screenshot or export had ever been
+  drawn in the typeface the code named, and because the SVG writer emits the string verbatim, the PNG
+  and the SVG of the same board were in different fonts. It resolves one installed family now.
+
+  **The namespace colour was applied to every node kind**, overwriting the kind's own stroke - so an
+  individual was drawn in the class blue where the legend promised lilac, and both property hexagons in
+  that same blue. The key was wrong for four of its six node rows. It is classes only now, which is the
+  channel's point: classes are the bulk of a schema.
+
+  **The unsatisfiable fill was registered and never drawn.** `styleFor` overrode the stroke alone, so a
+  contradictory class was a white card with a red outline while the key showed a pink one - and a red
+  outline is precisely the channel colour vision deficiency removes.
+
+  **An imported term was a grey slab with full-strength black text.** `opacity` fades the shape and not
+  the label, because `drawLabel` reads a different key; and JGraphX's drop shadow is an opaque mid-grey
+  offset copy with no blur, which composited through the 55% fill to `#DEDEDF`. The shadow is now
+  translucent and the imported label has its own secondary ink at 5.84:1 - `textOpacity` would have
+  composited to 3.87:1, under the floor for text.
+
+  Beyond the defects: is-a edges carry a hollow UML generalisation triangle and are solid, which frees
+  the dash to mean "the reasoner derived this" - previously asserted and inferred differed only by dash
+  length and one step of grey, on the one distinction this canvas must never blur. Inferred edges also
+  gained an open-circle tail, so the two are separated on two channels rather than one. The palette was
+  re-measured: nothing in it is below 4.4:1 now, where three strokes sat at 3.1 and the sticky note's
+  outline was 1.69:1 - the lowest-contrast line on the board, on the one object whose purpose is to be
+  noticed. Datatype and data-property nodes had been *exactly* the same fill and stroke, so the key drew
+  two rows with one swatch.
+
+  And the individual stopped being a rhombus. A 160x60 rhombus offers about 77px of interior where a
+  two-line ontology label needs 128, and no amount of padding fixes it - at the padding the geometry
+  demands, "Cheesey vegetable topping" wraps to three lines. It is a card with an underlined name, which
+  is UML's instance convention. The underline does not survive SVG export; the lilac fill does.
+
+- **Arrange drew the class hierarchy upside down until 1.64.0, and nobody noticed for thirteen
+  releases.** `SchemaGraph` draws a subclass edge from the subclass *to* the superclass, and
+  `mxHierarchicalLayout` ranks by following edges from source to target - so with the library's default
+  orientation the leaves ranked first and `owl:Thing` ended up at the *bottom* of the board. Every
+  ontology tool there is puts the superclass above its subclasses.
+
+  It survived thirteen releases because nothing in this project had ever looked at the canvas. The tests
+  asserted that a subclass and its superclass had *different* y coordinates, which is true upside down;
+  the in-host self-test proves the views construct and inspects no pixel; and every human review happened
+  on a board of three or four terms, where a small tree the wrong way up reads as a small tree.
+
+  What found it was rendering the board to a PNG and opening it. `CanvasDesignProofTest` does that
+  headlessly through `mxCellRenderer` - the board, a 31-term board, the legend and the empty state, into
+  `target/design/`. Three of the four defects fixed in 1.64.0 were found by looking at those images and
+  none of them by reading the code.
+
+  Four other things the renders showed, all fixed in the same release:
+
+  - A 31-term tree was **4195x403** - a ten-to-one strip nobody can read. Now 4069x613, fitted to the
+    window by Arrange itself.
+  - Every edge was a **diagonal sweep**, though the stylesheet has asked for orthogonal routing since the
+    first version: `mxGraphHierarchyModel` stamps `noEdgeStyle=1` onto every edge while
+    `isDisableEdgeStyle()` is true, which is the default. Turning it off is one line, and it is the
+    single biggest readability gain in the release.
+  - A term with **no axioms was exiled** a thousand pixels to the right - `findRoots` only accepts a
+    vertex with `fanIn == 0` and `fanOut > 0`, so an isolated term became a hierarchy of its own laid out
+    beside everything else. A class nobody has related to anything yet is the normal state of a term five
+    minutes old; they are parked in a block under the diagram now.
+  - The **legend printed "Relationships" twice**, because the two inferred rows sit after the modifier
+    rows and the panel emits a heading whenever the kind changes. Pre-existing since the legend was built
+    in 1.53.0, and visible the first time anybody rendered the panel.
+
+  Two things this release corrected in the spec that produced it, rather than in the code: a suggested
+  test asserting "a note keeps its offset from a named term" cannot hold, because a layout rearranges the
+  terms; and `mxFastOrganicLayout` turns out to be deterministic *except* when two nodes occupy the same
+  point, where it separates them randomly - three runs of a board with both terms at (0,0) gave (-1,-1),
+  (139,-1) and (-1,139). Any test comparing one organic arrangement with another has to start from a
+  board where that tie cannot arise.
+
+- **Presence made a live session look emptier than it was, until 1.63.0.** Four separate things, all
+  of them in the "it works, but" category that no test and no error message reports.
+
+  *Presence was published only from mouse motion.* Selecting a term told nobody until the mouse happened
+  to move afterwards - so clicking a node and reading it, or finding it with Ctrl+F, was invisible to
+  collaborators. And somebody who joined a board and read the diagram without moving the mouse never
+  appeared at all, which to everybody else was indistinguishable from nobody having joined. Selection
+  changes and joining now both announce, with the position taken from the selected node's centre, the
+  last cursor position, or the middle of the visible canvas - in that order, and never the origin, which
+  for anybody who has scrolled is somewhere the canvas is not.
+
+  *Geometry was published and then discarded.* Every operation carries the node's geometry -
+  `canvasHints` exists for no other purpose - and the receiving side never read it, so a class created by
+  a colleague landed wherever an unpositioned node goes. It is now adopted under two rules, both about
+  not fighting the local user: a position this board already has is never replaced, since the wire has no
+  "moved" operation and an inbound position is just the sender's geometry at the moment of some edit; and
+  the origin is read as "no hint" rather than as a coordinate, because that is what `putGeometry` writes
+  when the sender had none - which is every change made from Protégé's tabs rather than the canvas.
+
+  *A refused session was still held.* A refusal and a dropped connection were both reported as
+  `onStatus(reason, false)`, and the toolbar took its button label from that flag. So after a refusal the
+  button read "Collaborate..." while a live session object was still held - clicking it disconnected
+  instead of opening the dialog - and during an ordinary reconnect it said the same thing while the
+  session was perfectly alive. The label now follows whether a session exists, which is what the button
+  will *do*, and a refusal ends the session so the two agree.
+
+  Two of the four are verified over a real socket rather than against a fake: joining announces itself,
+  and a geometry value published by one peer arrives at the other's host. A unit test can only show the
+  callback is called; the wire test shows the number survives being serialised, gated by the bridge's
+  type check, and read back.
+
+- **Nothing the board owned could be undone until 1.62.0.** Protégé's undo covers the ontology and
+  nothing else, which left out everything this canvas is for: an arrangement of forty classes, which
+  terms are on the board, a sticky note's text, a frame's size. A misdirected *Arrange* replaced a layout
+  somebody had spent an afternoon on with no way back but to do it again by hand; *Add all* on a large
+  ontology was the same in reverse, one click with no way out but removing terms one at a time.
+
+  Ctrl+Z on the canvas now steps the board back, Ctrl+Shift+Z or Ctrl+Y forward, over arranging, adding,
+  removing, moving, expanding, collapsing, and every sticky note and frame. Snapshots rather than
+  commands: a board's whole state is one small DTO, so copying it costs less than an inverse operation
+  per action and cannot drift - a new board action gets undo the moment it records, and there is no
+  second implementation of "the opposite of expanding" to get wrong. Twenty-five steps, bounded because
+  each entry is a whole board.
+
+  Two things it deliberately does not do. It does not touch the ontology: restoring a term to the board
+  does not restore an axiom retracted in between, and the status line says so every time, because a
+  partial undo that looked total would be worse than none. And it is not persisted - reopening a project
+  starts with an empty history, since a stack from a previous session would offer to restore a board of
+  identifiers the ontology may no longer declare.
+
+  Also worth knowing: a drag produces one undo step, not one per event. mxGraph fires `CELLS_MOVED`
+  continuously while a drag is in progress, and the existing 800 ms save timer is what already knows a
+  burst is under way.
+
+- **An imported term could not be put on the board until 1.61.0, and the attempt left no trace.**
+  Dragging `bfo:continuant` across did nothing visible: `OntologyProjection.project` looked only at the
+  edit file's own signature, so no node was drawn - and `pruneStaleMembers` then deleted the sidecar
+  entry, so the board did not even remember the attempt. For an ODK project, which is what this plugin
+  scaffolds, most of the terms a curator refers to are imported, so the canvas could not draw the
+  ordinary case.
+
+  Imported terms are now drawn faded, said to be imported on hover, explained in the legend, and found
+  by the Find box - Ctrl+Enter puts one on the board. Opacity is the marker because every other channel
+  on a node already says something: shape for the kind, stroke colour for the namespace, border weight
+  for a note, and a dash would read as "inferred". It is a cell style rather than an overlay, so it
+  survives a PNG or SVG export - which matters, because the distinction is *which terms a curator must
+  not edit*, and a published diagram that draws imported terms like local ones invites the mistake.
+
+  **An OWL API defect found on the way, and worth knowing about.** In 4.5.29, calling
+  `getSignature(Imports.INCLUDED)` permanently pollutes the same ontology's cached
+  `Imports.EXCLUDED` signature:
+
+  ```
+  getSignature(EXCLUDED)  -> [edit#Mine]
+  getSignature(INCLUDED)  -> [edit#Mine, obo/BFO_0000002]
+  getSignature(EXCLUDED)  -> [edit#Mine, obo/BFO_0000002]      <- wrong
+  ```
+
+  Two callers here ask opposite questions of one ontology: the search box asks with imports, *Add all*
+  asks without. On the first version of this work, one search therefore made *Add all* offer every term
+  in every import for the rest of the session - tens of thousands of nodes on one click. The per-kind
+  queries (`getClassesInSignature(imports)` and its three siblings) are not affected, and everything
+  here now uses them. `ImportedSignatureTest` pins both the library's behaviour and the plugin's
+  immunity, so the workaround cannot be removed as superstition.
+
+  It was caught by a test asserting the *boring* half of the pair - that Add all stays local - rather
+  than by any test of the feature being built.
+
+- **An edge could not be drawn until 1.60.0, and the docs said otherwise.** `setConnectable(false)`
+  sat in `SchemaCanvasView` with the comment "Task 4 turns this on with real axiom writing", while
+  `docs/feature-parity.md` advertised authoring edges from the canvas. There was no connection handle to
+  find, so people looked for the gesture every diagram tool has, did not find it, and concluded the
+  feature was missing rather than that it was two levels into a context menu.
+
+  The gesture writes nothing by itself. mxGraph inserts an edge, that edge is deleted immediately, and a
+  popup at the drop point offers only what those two ends can legally assert - the one hierarchy link
+  that applies, a restriction when both ends are classes, or a sentence saying why neither does.
+  Dismissing it leaves the ontology and the board exactly as they were. The reason for deleting the
+  drawn edge is the property the canvas rests on: every line on the board is a projection of an axiom,
+  so a line that is only a drawing would be the one that means nothing while looking like the ones that
+  do.
+
+  One library default had to be overridden to avoid trading the most-used gesture for the newest.
+  `mxConstants.CONNECT_HANDLE_ENABLED` is `false` in JGraphX 4.2.2, and with the handle off
+  `mxConnectionHandler.isHighlighting()` returns true, which makes a press inside a node start a
+  connection instead of moving the node. Enabling the handle gives a small square on hover that starts
+  an edge, and leaves the node itself draggable.
+
+  What is not covered: the rules a drawn edge has to pass and the options a pair of ends offers are in
+  `DrawnEdge` with 13 tests. The drag itself is not tested, and cannot be from JUnit.
+
+- **Expanding a term's neighbours made the diagram worse until 1.59.0.** *Expand neighbours* added
+  the right terms and placed them nowhere. With no stored geometry `SchemaGraph.render` laid them in a
+  row along the top of the board - overlapping whatever was up there, nowhere near the term they
+  neighbour - nothing was saved, so the next refresh moved them again; nothing was said, so an
+  expansion that found nothing looked exactly like one that worked; and nothing remembered what had
+  been added, so there was no way back.
+
+  Four symptoms, one cause: `expandOneHop` returned a count and the caller discarded it. It returns the
+  identifiers now, and each of the four follows - a ring around the source term
+  (`CanvasLayouts.ringOffsets`, filling outward once a ring is full so nodes cannot overlap by
+  construction), the positions written before the refresh rather than after, a sentence saying how many
+  arrived, and a *Collapse* item that takes back exactly what that expansion added.
+
+  Collapse is not undo. It is held for the session and not written to the sidecar, because it answers
+  "I have just expanded this and it was too much" - asked seconds later, never after reopening a
+  project. Real undo for board-owned state is A5 in the canvas plan and is still not done.
+
+- **A term on the board could not be found by name until 1.58.0, and the zoom had no readout and
+  no way home.** Two absences rather than two bugs, and the larger one is the first. On a board with a
+  hundred terms - what *Add all* produces on the pizza ontology, and small for the ontologies this
+  plugin is for - locating `Margherita` meant dragging the canvas until it appeared, or leaving the
+  canvas for the class hierarchy, finding it there, and coming back. People did the second, which made
+  the canvas a thing to look at rather than to work in.
+
+  The Find box matches label and IRI as you type, ranked so an exact name beats a longer one that
+  contains it, centres the best match and selects it - and the selection goes out through
+  `SelectionBridge` to Protégé's own selection, so finding a term also brings up its annotations in
+  the panels beside the canvas. Enter steps through matches, and Ctrl+Enter adds a match that is in
+  the ontology but not yet on the board, which is the case where "no match" was the least useful true
+  answer available.
+
+  The second absence was smaller and easier to hit: three turns of the wheel past the last node leaves
+  a blank grey grid, and nothing on screen distinguished *zoomed out into empty space* from *the board
+  is empty* or *the plugin has stopped working*. There is now a percentage in the status bar that
+  returns to 100% when clicked, and a *Fit* that scales the board into the window.
+
+  The status line moved out of the toolbar into a status bar along the bottom while doing this. It had
+  been a line of prose that grows and shrinks - "3 changes not shared", "Disconnected - you switched
+  ontology" - sitting in a row of buttons, pushing them sideways as it changed and squeezing them off
+  a narrow panel.
+
+  Not covered: the ranking and the fit arithmetic are unit-tested (`CanvasSearchTest`,
+  `CanvasZoomTest`, 21 tests), and the wiring between them and Swing is not. The in-host self-test
+  constructs the toolbar, the Find box and the status bar on both Protégés; it does not type into
+  them.
 
 - **The OntoBoard tab opens and its views construct inside both Protégés, checked automatically
   since 1.57.0.** This closes the last clause of F1 in

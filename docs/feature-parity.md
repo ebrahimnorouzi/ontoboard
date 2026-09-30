@@ -54,12 +54,23 @@ individual views in a tabbed column beside the canvas, so none of this needs a t
 
 | Feature | Web app | Plugin | Assessment |
 |---|---|---|---|
-| Graph canvas, drag, pan, zoom | ✅ | ✅ | JGraphX |
+| Graph canvas, drag, pan, zoom | ✅ | ✅ | JGraphX. Since 1.68.0 the gestures are a board's: a plain drag selects a region, space, the middle button or the right one pans, and the zoom controls float over the bottom-right corner rather than sitting in the status bar |
+| The gestures are written down | ❓ | ✅ | Since 1.68.0. Sixteen rows - every key binding and every mouse gesture - on *?* over the board and in the overflow menu. It exists because 1.68.0 inverted the drag, and an inversion nobody is told about is indistinguishable from a fault; a one-time status line says so on first use |
+| A frame carries what is inside it | ❓ | ✅ | Since 1.68.0. Dragging a frame moves the terms it encloses, by centre point, which is what makes it a frame rather than a rectangle. Resizing deliberately does not - a frame is a reading aid, not a container. Frames are siblings of their contents in the model, so this is done by delta rather than by parenting, which would have shifted every saved board by the frame origin |
+| A toolbar that fits its panel | ❓ | ✅ | Since 1.67.0. It wanted 1261px in an 857px tab, so *Collaborate* was laid out past the right edge - unpainted and unclickable. 777px now, with an overflow menu |
+| Snap and align | ❓ | ✅ | Since 1.66.0 a visible 20px dot grid. Snapping had been on since the first version at an invisible 10px step, which is sixteen candidate columns across one node |
+| Keyboard zoom and selection | ❓ | ✅ | Since 1.66.0: Ctrl+0 actual size, Ctrl+1 fit, Ctrl+2 frame the selection, Ctrl+± zoom, Ctrl+A select nodes, Ctrl+D copy notes and frames |
+| Sticky notes in colours | ✅ | ✅ | Since 1.66.0. The model, the sidecar field and the renderer had all been in place since notes existed; nothing ever wrote the colour, so every note was yellow |
+| Undo on the canvas | ❓ | ✅ | Since 1.62.0, for what the board owns - arranging, adding, removing, moving, notes and frames - with Ctrl+Z, 25 steps, per session. It never touches axioms, which are Protégé's own Edit > Undo, and the status line says so on every undo |
+| Draw imported terms | ❓ | ✅ | Since 1.61.0. Faded, said so on hover and in the legend, and findable by the Find box. Before that, dragging `bfo:continuant` onto the board did nothing and left no trace. The web app has no import handling to compare against |
+| Expand a term's neighbours | ✅ | ✅ | Since 1.59.0 the new terms are placed in a ring around the source, counted in the status bar, saved, and collapsible. Before that they were laid in a row at the top of the board and nothing was saved or reported |
+| Find a term on the board | ✅ | ✅ | Since 1.58.0. Matches label and IRI, ranked so an exact name beats a longer one containing it; centres and selects the match, which also selects it in Protégé. Ctrl+Enter adds a match that is in the ontology but not on the board. Before this there was no search at all |
 | Create entities on canvas | ✅ | ✅ | Double-click empty canvas, or drag from the entity trees |
-| Write axioms from the canvas | ✅ | ✅ | Plugin is **better** on the axiom: six OWLAx readings vs the web app's `rdfs:domain`/`range`, which silently intersects domains. Worse on the gesture: *Create relation from this node…* in the node menu, not drag-to-connect - `setConnectable(false)` in `SchemaCanvasView`. Until 1.52.0 this row said "draw edges", which sent people hunting for a connection handle that is not there |
+| Write axioms from the canvas | ✅ | ✅ | Plugin is **better** on the axiom: six OWLAx readings vs the web app's `rdfs:domain`/`range`, which silently intersects domains. Since 1.60.0 it also matches on the gesture - hover a term, drag from its handle, and a popup at the drop point offers only what those two ends can legally assert. The node menu still has both paths. Until 1.52.0 this row said "draw edges" while `setConnectable(false)` sat in `SchemaCanvasView`, which sent people hunting for a handle that was not there |
 | Delete axioms from canvas | ✅ | ✅ | With a confirmation distinct from removing from canvas |
-| Layout algorithms | ✅ | ✅ | Hierarchical, organic, circle, grid |
-| Minimap, PNG/SVG export | ✅ | ✅ | |
+| Layout algorithms | ✅ | ✅ | Hierarchical, organic, circle, grid. Since 1.64.0 the hierarchy runs the right way up - superclass above subclass - with orthogonal routing, loose terms parked under the diagram, and the result fitted to the window |
+| The canvas can be reviewed without launching Protégé | ❌ | ✅ | Since 1.64.0. `CanvasDesignProofTest` renders the board, a 31-term board, the legend and the empty state to `target/design/` headlessly. Three of the four defects that release fixed were found by looking at those images |
+| Minimap, PNG/SVG export | ✅ | ✅ | Since 1.65.0 an exported PNG no longer carries grey label chips - the edge-label backing was the canvas colour, which is wrong on a white page. Since 1.68.0 the minimap floats over the board and collapses, instead of holding 180px of fixed width open beside a start screen that has nothing to overview |
 | Labels from `rdfs:label`, namespace colours | 🔶 | ✅ | Plugin colours by namespace and prefers labels |
 | Selection synced with the editor | ➖ | ✅ | **New capability** — impossible in the web app |
 | Live redraw on external edits | ➖ | ✅ | Canvas is a view over Protégé's model |
@@ -88,7 +99,9 @@ individual views in a tabbed column beside the canvas, so none of this needs a t
 
 | Feature | Web app | Plugin | Assessment |
 |---|---|---|---|
-| ODK project scaffolding | ✅ | ✅ | Same file tree, no Docker needed |
+| ODK project scaffolding | ✅ | ✅ | Same file tree, no Docker needed. Since 1.69.0 the form re-prompts with everything you typed still in it when a value is rejected - eight validation rules, two of which reject values that look right, and the dialog used to close on the way to the warning |
+| Open a project you already have | ❓ | ✅ | Since 1.69.0 it is in *OntoBoard › Project*, between *New* and *Open from GitHub*. It was written before that and reachable only from the empty-board start card, so the action you look for after opening something could only be reached before you had opened anything |
+| Say what the build actually needs | ❓ | ✅ | Since 1.69.0. A real ODK repository is pointed at its own `sh run.sh make` inside `obolibrary/odkfull`, not told to install make and robot - which cannot supply the owltools, wget and ROBOT plugins its recipes use. On Windows a scaffolded project is told it needs a POSIX shell as well as make, which nothing said before |
 | Open an existing ODK repo | ✅ | ✅ | Detects the repo, refuses to guess between edit files |
 | `odk.yaml` editing | ✅ | ❌ | **Build.** Small |
 | Makefile target execution | ✅ | ✅ | *Project → Build…*; the transcript is shown afterwards, not streamed live |
@@ -130,6 +143,8 @@ individual views in a tabbed column beside the canvas, so none of this needs a t
 |---|---|---|---|
 | Real-time multi-user editing | ✅ | ✅ | Against a server the team runs; see [collaboration](collaboration.md). Verified over a real socket since 1.50.0 - and inert in every release before it |
 | Cursor sharing | ✅ | ✅ | Graph-space, so a cursor lands on the same entity at any zoom |
+| Presence without moving the mouse | ❓ | ✅ | Since 1.63.0. Selecting a term and joining a board both announce; before that presence came only from mouse motion, so a peer reading the diagram was invisible |
+| A peer's node lands where they have it | ❓ | ✅ | Since 1.63.0. The geometry every operation already carried is now read on arrival, for terms this board has no position for |
 | Warning when peers edit different ontologies | ➖ | ✅ | Two people whose board id collides otherwise apply each other's axioms in silence. The warning names the peer. It could never fire before 1.50.0 |
 | Semantic merge engine | ✅ | ✅* | *Reused server-side rather than reimplemented in Java — deliberate |
 | Entity locking | ✅ | ❌ | **Build.** Advisory in both |

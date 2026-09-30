@@ -1,0 +1,114 @@
+OntoBoard 1.67.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-09-26  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 8/8  test 10/10
+  2026-09-26  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 8/8  test 10/10
+
+
+THE TOOLBAR DID NOT FIT, AND THE STATUS LINE ERASED ITS OWN WARNINGS
+
+The first half of Release 4 of docs/superpowers/specs/2026-09-26-canvas-board-design.md. The spec has it
+as one release; it is split here, and the reason is in the spec's own regression table: the floating
+zoom cluster and minimap are "the most likely breakage in the whole plan", because Delete, Escape,
+Ctrl+Z and Ctrl+F are all bound on the graph component's ancestor input map and one focusable button
+floating over it silently kills all four. That risk, the shortcuts panel and the pan-gesture inversion go
+together in 1.68.0. This release is layout, labels and menus - nothing that can steal focus.
+
+1. THE COLLABORATE BUTTON WAS NOT ON THE SCREEN
+
+Measured with the real components under Java 11: the toolbar wanted 1261px and began clipping at 1030.
+The OntoBoard tab in a 1440px Protege window gives it 857, at which "Collaborate..." is laid out at
+x=812, width 86 - past the right edge, unpainted and unclickable. JToolBar uses a BoxLayout, which lays
+overflowing children out beyond the container rather than wrapping them, and there is no chevron or
+overflow to switch on. Nothing reported this. The button was simply not there, and had not been for as
+long as the bar has held nine controls.
+
+Three changes bring the preferred width to 777px:
+
+  - The layout combo goes - 201px to choose between four entries nobody reopens - and Arrange becomes a
+    button that pops them.
+  - Legend, Export and Collaborate move into an overflow menu, along with a Snap to grid toggle. Add
+    selected, Add all, Find and Inferences stay out: Inferences is a mode with a visible consequence on
+    the diagram, and a mode you can forget you are in must not be hidden.
+  - The two widths that were free to grow are pinned. The Find box had no ceiling, so BoxLayout poured
+    all of a wide bar's slack into it and it reached 407px; and the Add button is relabelled on every
+    selection change, from "Add selected" at 108px to "Add Cheesey vegetable topping" at 211 - so
+    clicking through the class tree shifted everything to its right by up to 103px, including the Find
+    field, which slid out from under the pointer mid-type. Its label is elided now, and the elision rule
+    is a tested pure function rather than an inline substring.
+
+2. ONE STATUS LABEL, TWO PRODUCERS, AND THE WRONG ONE WON
+
+setStatus() writes transient board confirmations - "Arranged the board", "Undid: adding 7 terms". The
+collaboration host writes persistent session state that needs acting on - "3 changes not shared",
+"Disconnected - you switched ontology". Both wrote the same label, so whichever fired last won, and it
+won permanently: arranging the board erased the only notice that a colleague would never see your edit,
+and nothing ever brought it back.
+
+Two labels now. The session sits left at a fixed 220px with a coloured dot - green connected, amber
+something needs attention, grey working through git - and the board's own line takes the middle. Every
+writer was repointed: seven call sites, each to exactly one channel.
+
+3. THE CONTEXT MENU OFFERED AN ACTION THAT LIED ABOUT WHAT IT ACTED ON
+
+Eleven items in three arbitrary groups: the two creation actions pinned above everything while "New class
+here" sat five items below, the two axiom-writing items five apart, the two destructive ones neither
+adjacent nor last. And "Add selected entity to canvas" was offered even when you had right-clicked a
+node, where it reads as "add the thing I clicked" and in fact acts on Protege's tree selection, which may
+be something else entirely. That item is deleted.
+
+Four groups now, in the order a person asks: what is under the cursor, what it can be joined to, what can
+be made here, and - last, after a separator - what takes something away. Delete carries its accelerator so
+the key is taught rather than discovered. Nine items on a term, four on empty canvas.
+
+4. THE EMPTY STATE NAMED A WIDGET THAT DOES NOT EXIST
+
+"Double-click the board to add a class, or drag one in from the palette on the left." There is no board to
+double-click - the card is covering it - and there is no palette: the left column of the OntoBoard tab is
+Protege's own entity views, the first labelled Classes. Both corrected, a fourth action added ("Add every
+term", which already guards at 300), and one line that nothing anywhere said before:
+
+    Taking something off the board never deletes it from the ontology.
+
+That is the single most consequential fact about this canvas, and until now the only place it appeared was
+in the status bar after somebody had already pressed Delete.
+
+5. DARK MODE, ANSWERED RATHER THAN THEMED
+
+Protege 5.6 ships a dark look and feel. Nothing inside the canvas breaks - every fill is a near-white tint
+with ink at 14.8:1 or better. What broke was everything around it: the board was a bright borderless slab
+in a dark workbench, and StartPanel - the first screen anybody sees - hardcoded four light colours and
+painted itself the canvas colour.
+
+The canvas stays light on purpose, and the comment says why: it is the surface every exported PNG is
+composed on, and a diagram whose colours depend on the author's IDE theme is not reproducible. It gains a
+border whose colour follows the theme. StartPanel now takes its colours from the look and feel.
+
+One thing that took two attempts, caught by re-rendering. Taking the card's background from
+Panel.background - the obvious token - makes the card exactly the colour of the thing it is supposed to be
+raised off, and on the default light theme it came out darker than its own surround: a card pressed into
+the page rather than lifted off it. Swing has no "surface" token, so the rule is explicit - white on a
+light theme, a step lighter than the panel on a dark one.
+
+WHAT THIS DOES NOT COVER
+
+The toolbar measurements quoted above come from the design review, not from this run; what this run proves
+is that the rebuilt toolbar, the two-label status bar and the restructured menu all construct inside both
+Protege versions, which is where a missing icon class or a null label would show up. Whether the bar now
+fits a 857px tab is a thing to look at.
+
+Also unverified: the dark theme itself. The luminance test and the two colour rules are written and
+compile; nobody has run this plugin under a dark look and feel. The design proof renders the empty state
+against the default theme only.
+
+NUMBERS
+
+1333 tests, 1 skipped, 0 failures. 1 new, for the eliding rule - a pure function extracted precisely so
+there would be something to test in a release that is otherwise Swing layout.
+
+One correction to my own test while writing it: it asserted that "Pizza toppings" elides at a limit of 14.
+It is fourteen characters, so it does not - the boundary is inclusive. The test now pins both sides of it.
+
+Counted three ways, agreeing: Maven's summary, the surefire reports, and an anchored ^\s*@Test\s*$ across
+src/test/java; 93 report files for 93 test classes.

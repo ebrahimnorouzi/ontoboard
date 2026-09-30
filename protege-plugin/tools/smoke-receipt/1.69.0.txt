@@ -1,0 +1,123 @@
+OntoBoard 1.69.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-09-30  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 8/8  test 10/10
+  2026-09-30  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 8/8  test 10/10
+
+
+THREE THINGS REPORTED FROM USING IT
+
+Not found by a test or an audit. Reported by the maintainer after opening MWO and trying to do
+ordinary work, which is the only oracle that has ever found this particular class of defect - each
+one is a thing that is *there* and cannot be reached, or is reached and then thrown away.
+
+1. THE NEW PROJECT FORM THREW AWAY EVERYTHING IT HAD JUST ASKED FOR
+
+Six fields, and one modal. OdkProjectConfig.validate has eight rules; two of them - "base IRI must end
+in the ontology ID" and "an SPDX identifier such as CC0-1.0 is not a licence IRI" - are ones a careful
+person trips on a first attempt, because both values look right. The dialog closed on the way to the
+warning, so the price of getting the last field wrong was retyping the other five. Then, quite
+reasonably, getting a different one wrong.
+
+The form re-prompts now. The components were already built before the dialog was shown, so reusing
+them across attempts preserves every value; the loop is four lines. The message moved inside the form
+as a banner rather than a modal on top of it, so the rejected values are visible while the sentence
+explaining the rejection is being read.
+
+Safe because OdkScaffold.create validates before it creates anything - config.validate() is its first
+statement, ahead of the first mkdirs - so a rejected attempt has written nothing and there is nothing
+to undo before the next one. A failure from the writing half is different, because part of the tree
+may exist, so that one still stops with the message it always had.
+
+The banner escapes what it quotes. Every one of these messages ends with the offending value -
+Got: '...' - and a JLabel whose text begins with <html> renders the rest as markup, so an ontology ID
+of <b> would have been shown as nothing at all: the message would name no value while claiming to.
+
+2. "OPEN EXISTING ODK PROJECT" WAS WRITTEN, CAREFUL, AND REACHABLE ONLY WHILE THE BOARD WAS EMPTY
+
+Not missing - forty-three lines of it, with a comment explaining why it calls handleLoadFrom rather
+than loadOntologyFromOntologyDocument, and why it takes a folder rather than a file. It was wired to
+one button on the canvas start card. The start card shows only while the board has nothing on it, so
+the action a person goes looking for after opening something was reachable only before they had
+opened anything, and OntoBoard > Project offered "New ODK project..." and "Open from GitHub..." with
+nothing between them.
+
+Extracted to odk/ProjectOpener, static and parameterised, exactly as ProjectWizard already was and for
+the same stated reason. odk/OpenProjectAction is nine lines over it, and the menu entry takes SlotA-B
+so it sits between the two it belongs between; Open from GitHub moves to SlotA-C.
+
+The test that matters here is not the one for the new item. MenuStructureTest asks, for every entry in
+plugin.xml, whether it leads somewhere - and every one of those tests passed throughout, because
+nothing in plugin.xml was wrong. What was wrong was absent from it. So the new test runs the other
+way, from the code to the menu: every non-abstract *Action class under src/main must be named by some
+menu entry. It reads the source tree rather than the classpath because resolving ProtegeOWLAction
+needs Protege's own jars, which the unit suite does not have.
+
+Confirmed to have teeth rather than assumed: removing the new entry from plugin.xml fails it with
+"these actions exist and no menu entry names them: [de.fizkarlsruhe.ise.ontoboard.odk.OpenProjectAction]".
+It examines 28 action classes.
+
+3. "make IS NOT ON THE PATH" WAS THE RIGHT DIAGNOSIS AND THE WRONG INSTRUCTION
+
+The message said: "The generated Makefile calls robot directly, so it needs make and robot installed -
+not Docker." That is correct for a project this plugin scaffolded. The report came from MWO, which is
+a real ODK repository, and for those it is wrong in both halves.
+
+ODK builds run inside obolibrary/odkfull. This project already keeps MWO's Makefile as a fixture, and
+it says so itself - src/test/resources/fixture-mwo-Makefile:702 prints
+
+    Usage: [IMAGE=(odklite|odkfull)] [ODK_DEBUG=yes] sh run.sh make [...] command
+
+in its own help target, and at :145 and :158 it loads ROBOT plugin jars from /tools/robot-plugins
+inside the image. Installing make and robot cannot supply owltools, wget, or a robot that has those
+plugins, so a user who followed the advice would have bought a build that failed further in, having
+installed two things they did not need. OdkScaffold.java:224-225 already knew this in a comment -
+"That is ODK's own instruction and it names a 150-line Docker wrapper around obolibrary/odkfull" - but
+MakeRun never looked for run.sh.
+
+whyNotRunnable now looks two directories up from src/ontology for run.sh or run.bat, and says one of
+four things: use ODK's own runner; use it once Docker is installed, with the link; install make with
+this platform's package manager; or, on Windows, install make AND a POSIX shell, because the generated
+recipes use rm -f, mkdir -p, cp, cat and date +%Y-%m-%d and cmd.exe has none of them - a second
+requirement nothing in the plugin has ever mentioned. Six tests, over a pure function, one per branch.
+
+One test was rewritten rather than added. makeMissingIsReportedAsSaysDockerIsNotNeeded asserted the
+literal words "not Docker", which is the claim this release retracts. What it was really for - that a
+missing tool is reported as a machine that is not set up rather than a project that is broken -
+survives under a name that says that instead.
+
+WHAT THIS DOES NOT DO, AND IT IS THE LARGER HALF
+
+The question behind report 3 was "how do I make these work by default for users who have neither robot
+nor ODK installed", and this release only makes the plugin honest about the answer. Two routes were
+costed; the in-process one was chosen and is the next release, not this one.
+
+  - For a project this plugin scaffolds, nothing needs to be installed at all. Its Makefile shells out
+    to exactly nine programs - make, sh, robot, date, echo, rm, cat, mkdir, cp - and all seven of its
+    ROBOT invocations already have in-process wrappers in this bundle: RobotTransform for reason and
+    merge, QualityReport for report, SparqlQuery for verify, ProfileCheck for validate-profile, Release
+    for annotate. The set difference is one operation (convert -f ofn), needed only to hand a file to a
+    checker that in-process reads the object model instead. So all eight generated targets can run with
+    no external binary. That is the next release.
+
+  - For MWO it cannot be done and should not be attempted. Its Makefile is 767 lines of ifeq, foreach,
+    define/endef, recursive make and a SHELL override, and it shells out to wget, curl, rsync, gh,
+    owltools and an odk.py that this bundle cannot contain. The right answer there is ODK's own Docker
+    wrapper, which is now what the message says.
+
+NUMBERS
+
+1350 tests, 0 failures, 15 skipped. 10 new: six for the toolchain advice and the runner lookup, three
+for the rejection banner, one for action reachability.
+
+The 15 skips are environmental and larger than usual, which is worth recording because no release
+before this one has had to. Fourteen of them - OdkBuildTest 2, RobotCliParityTest 9, RobotParityTest 3
+- are gated on a reachable Docker daemon, and on this machine today the CLI answers (29.5.2) while the
+engine does not. They ran on 2026-09-27. The fifteenth is BundleConfigurationTest's manifest test,
+which assumes a jar in target/ and skips in the run that produces one. This is exactly the silent-skip
+hazard the September audit recorded: the suite reports success either way, and the only reason it is
+in this receipt is that somebody looked.
+
+Counted three ways, agreeing: Maven's summary, the surefire reports, and an anchored ^\s*@Test\s*$
+across src/test/java.

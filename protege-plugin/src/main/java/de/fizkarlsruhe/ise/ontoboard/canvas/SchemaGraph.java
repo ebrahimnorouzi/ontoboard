@@ -24,11 +24,40 @@ public class SchemaGraph extends mxGraph {
         setAllowDanglingEdges(false);
         setAllowLoops(false);
         setCellsDisconnectable(false);
+        // A node is a term, and there is exactly one node per IRI. mxGraph starts with
+        // cellsCloneable = true and mxGraphComponent with dragEnabled = true, so a Ctrl+drag ran
+        // Swing's DnD copy path: mxGraphTransferHandler -> graph.cloneCells -> mxCell.clone, which
+        // copies value, style, geometry AND the id. The dropped clone was a second vertex whose id
+        // *was* the original IRI - clicking it pushed that term to Protege's selection, and Delete
+        // on it reported one term removed while taking the original out of membership. Nothing ever
+        // wrote it to the layout, so it vanished at the next refresh. One unheld default, and the
+        // projection invariant is gone. Duplicating board furniture is Ctrl+D; duplicating an axiom
+        // is not a gesture.
+        setCellsCloneable(false);
+        // Snapping has been on since the first version and invisible with it: mxGraph defaults
+        // gridSize to 10 and gridEnabled to true, and mxGraphHandler already snaps every drag delta.
+        // Ten pixels gives sixteen candidate columns across a 160px node, which is not alignment.
+        // This is the snap step as well as the drawn pitch, so a board saved at odd coordinates
+        // moves once on its next drag; no stored geometry is rewritten until then.
+        setGridSize(20);
         setEdgeLabelsMovable(false);
         setCellsMovable(true);
+        // Both default to false in mxGraph. With the hierarchical layout's routing turned on
+        // (CanvasLayouts) every edge carries absolute control points, so a dragged node otherwise
+        // keeps the channel the layout gave it and its wire doubles back on itself. resetEdge nulls
+        // those points and the router runs again.
+        //
+        // The trade-off, stated rather than hidden: a bend somebody added by hand is lost when
+        // either end moves. That is already true across a reload, because CanvasLayout persists node
+        // geometry and has never persisted an edge waypoint.
+        setResetEdgesOnMove(true);
+        setResetEdgesOnResize(true);
         // Label editing arrives in Task 3; enabling it now would let a user rename a
         // cell's visible text without touching the ontology, which would be a lie.
-        setCellsEditable(false);
+        // Editable, but only for furniture - see isCellEditable. It was false outright, which is
+        // the safe answer to the wrong question: double-clicking a sticky note to change its words
+        // is the most ordinary gesture on a board, and the reason to refuse was never notes.
+        setCellsEditable(true);
         setDropEnabled(false);
         setSplitEnabled(false);
     }
@@ -40,6 +69,7 @@ public class SchemaGraph extends mxGraph {
             removeCells(mxGraphModel.getChildren(getModel(), getDefaultParent()), true);
             cellsById.clear();
             tooltipsById.clear();
+            notedIds.clear();
 
             // Node labels, so an edge's tooltip can name its two ends the way they are drawn
             // rather than by IRI. Built before the edges are inserted because an edge tooltip
@@ -60,7 +90,7 @@ public class SchemaGraph extends mxGraph {
                         frame.x, frame.y, frame.w <= 0 ? 320 : frame.w,
                         frame.h <= 0 ? 220 : frame.h,
                         SchemaStyles.FRAME + ";strokeColor="
-                                + (frame.stroke == null ? "#4A90D9" : frame.stroke));
+                                + (frame.stroke == null ? "#2D6FBF" : frame.stroke));
                 cellsById.put(frame.id, cell);
                 tooltipsById.put(frame.id, CanvasTooltips.forFrame(frame.label));
             }
@@ -79,6 +109,9 @@ public class SchemaGraph extends mxGraph {
                         x, y, w, h, styleFor(node, colours));
                 cellsById.put(node.getId(), cell);
                 tooltipsById.put(node.getId(), CanvasTooltips.forNode(node));
+                if (node.hasNote()) {
+                    notedIds.add(node.getId());
+                }
             }
 
             for (CanvasEdge edge : projection.getEdges()) {
@@ -131,8 +164,37 @@ public class SchemaGraph extends mxGraph {
      * cells, so it can never describe a cell that is no longer there. */
     private final Map<String, String> tooltipsById = new HashMap<String, String>();
 
+    /**
+     * Which drawn terms carry an editorial note, for {@link NoteBadgeLayer}.
+     *
+     * <p>Filled during {@code render} from the projection, like the tooltips, rather than read from the
+     * ontology at paint time. Paint runs on every scroll and hover; a lookup per node per repaint would
+     * put the OWL API on the paint path, and a badge that disagreed with the tooltip beside it would be
+     * worse than either.
+     */
+    private final java.util.Set<String> notedIds = new java.util.LinkedHashSet<String>();
+
+    /** The terms drawn with a note, in the order they were drawn. */
+    public java.util.Set<String> getNotedIds() {
+        return java.util.Collections.unmodifiableSet(notedIds);
+    }
+
     public Object getCellForId(String id) {
         return id == null ? null : cellsById.get(id);
+    }
+
+    /**
+     * Only board furniture can be edited in place.
+     *
+     * <p>A term node's label is its {@code rdfs:label}. Renaming it is an ontology edit with its own
+     * conversation - a dialog, provenance, a shared session to publish to - and not a side effect of
+     * a double click. An edge's label is the property it stands for, which is the same argument.
+     * Sticky notes and frames belong to the board alone, so they are exactly the cells this allows.
+     */
+    @Override
+    public boolean isCellEditable(Object cell) {
+        String id = getIdForCell(cell);
+        return id != null && isAnnotationId(id) && getModel().isVertex(cell);
     }
 
     public String getIdForCell(Object cell) {
@@ -190,7 +252,10 @@ public class SchemaGraph extends mxGraph {
                 ? SchemaStyles.UNSATISFIABLE_STROKE : colours.colourFor(node.getId());
         return baseStyleFor(node) + ";strokeColor=" + stroke
                 + (node.hasNote() || node.isUnsatisfiable()
-                        ? ";strokeWidth=" + SchemaStyles.NOTED_STROKE_WIDTH : "");
+                        ? ";strokeWidth=" + SchemaStyles.NOTED_STROKE_WIDTH : "")
+                // Opacity for an imported term - the one channel the four above leave free, and the
+                // only one that also survives a PNG or SVG export.
+                + (node.isImported() ? ";opacity=" + SchemaStyles.IMPORTED_OPACITY : "");
     }
 
     private static String baseStyleFor(CanvasNode node) {
