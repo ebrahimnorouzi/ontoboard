@@ -269,6 +269,47 @@ The plugin is early. These exist in the web application but not yet here:
   note is prose rather than a phrase, so it is the one tooltip here that wraps. Three paragraphs from
   three editors is not a tooltip; the Notes dialog shows them all with authors and dates.
 
+- **Three things reported from using it, all fixed in 1.69.0 - and each one was present rather than
+  missing.** Found by opening MWO and trying to do ordinary work, which no test in this repository
+  could have done.
+
+  **The new-project form threw away everything it had just asked for.** `OdkProjectConfig.validate`
+  has eight rules and two of them - *base IRI must end in the ontology ID*, *an SPDX identifier such
+  as `CC0-1.0` is not a licence IRI* - reject values that look right. The dialog closed on the way to
+  the warning, so a wrong last field cost the other five. It re-prompts now, reusing the components
+  it already built, and the message is a banner inside the form rather than a modal over it. Safe
+  because `OdkScaffold.create` validates before its first `mkdirs`, so a rejected attempt has written
+  nothing; a failure from the *writing* half still stops, because part of the tree may exist.
+
+  **"Open existing ODK project" was reachable only while the board was empty.** Forty-three careful
+  lines, wired to one button on the start card - which shows only when nothing is on the board. So
+  the action a person looks for after opening something was reachable only before they had opened
+  anything, and `OntoBoard > Project` listed *New ODK project...* and *Open from GitHub...* with
+  nothing between them. Now `odk/ProjectOpener` with `odk/OpenProjectAction` over it, at SlotA-B.
+
+  The interesting part is the test. `MenuStructureTest` asks of every entry in `plugin.xml` whether
+  it leads somewhere, and every one of those tests passed throughout - nothing in `plugin.xml` was
+  wrong, the entry was absent from it. The new test runs code-to-menu instead: every non-abstract
+  `*Action` class must be named by some entry. Removing the new entry fails it by name.
+
+  **"make is not on the PATH" gave the wrong instruction.** It said the build "needs make and robot
+  installed - not Docker", which is right for a scaffolded project and wrong for a real ODK
+  repository, which is what the report came from. ODK builds run inside `obolibrary/odkfull`: this
+  repo already keeps MWO's Makefile as a fixture and it prints `sh run.sh make ... command` in its own
+  help target and loads ROBOT plugin jars from `/tools/robot-plugins` inside the image. Installing
+  make and robot buys a build that fails further in. `MakeRun` looks for `run.sh`/`run.bat` two levels
+  up now and says one of four things, including - on Windows, for our own Makefile - that make needs a
+  POSIX shell too, since the recipes use `rm -f`, `mkdir -p`, `cp`, `cat` and `date +%Y-%m-%d` and
+  cmd.exe has none of them. That second requirement had never been mentioned anywhere.
+
+  **Still open, and it is the larger half.** A project this plugin scaffolds could build with nothing
+  installed at all: its Makefile shells out to nine programs and all seven of its ROBOT invocations
+  already have in-process wrappers here, so the set difference is one operation. That is the next
+  release. For MWO it cannot be done - 767 lines of `ifeq`, `foreach`, `define`, recursive make and a
+  `SHELL` override, shelling out to wget, curl, rsync, gh, owltools and an `odk.py` this bundle cannot
+  contain - and the honest answer there is ODK's own Docker wrapper, which is now what the message
+  says.
+
 - **The gesture a board user spends most was behind a modifier, and nothing on screen said so - until
   1.68.0.** The second half of Release 4 of the canvas design spec, split off from 1.67.0 because the
   spec's own regression table calls the floating panels "the most likely breakage in the whole plan".

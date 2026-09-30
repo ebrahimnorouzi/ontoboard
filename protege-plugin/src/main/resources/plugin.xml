@@ -70,6 +70,15 @@
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
+  <extension id="menu.OntoBoard.project.open"
+             point="org.protege.editor.core.application.EditorKitMenuAction">
+    <name value="Open existing ODK project..."/>
+    <toolTip value="Open an ODK repository you already have, at the file you are meant to edit"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.odk.OpenProjectAction"/>
+    <path value="ontoboard.menu.OntoBoard.project/SlotA-B"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
+
   <extension id="menu.OntoBoard.project.idranges"
              point="org.protege.editor.core.application.EditorKitMenuAction">
     <name value="ID ranges..."/>
@@ -84,7 +93,7 @@
     <name value="Open from GitHub..."/>
     <toolTip value="Clone an ontology repository with git and open the file you are meant to edit"/>
     <class value="de.fizkarlsruhe.ise.ontoboard.menu.OpenFromGitHubAction"/>
-    <path value="ontoboard.menu.OntoBoard.project/SlotA-B"/>
+    <path value="ontoboard.menu.OntoBoard.project/SlotA-C"/>
     <editorKitId value="OWLEditorKit"/>
   </extension>
 

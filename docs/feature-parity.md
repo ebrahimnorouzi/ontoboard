@@ -99,7 +99,9 @@ individual views in a tabbed column beside the canvas, so none of this needs a t
 
 | Feature | Web app | Plugin | Assessment |
 |---|---|---|---|
-| ODK project scaffolding | ✅ | ✅ | Same file tree, no Docker needed |
+| ODK project scaffolding | ✅ | ✅ | Same file tree, no Docker needed. Since 1.69.0 the form re-prompts with everything you typed still in it when a value is rejected - eight validation rules, two of which reject values that look right, and the dialog used to close on the way to the warning |
+| Open a project you already have | ❓ | ✅ | Since 1.69.0 it is in *OntoBoard › Project*, between *New* and *Open from GitHub*. It was written before that and reachable only from the empty-board start card, so the action you look for after opening something could only be reached before you had opened anything |
+| Say what the build actually needs | ❓ | ✅ | Since 1.69.0. A real ODK repository is pointed at its own `sh run.sh make` inside `obolibrary/odkfull`, not told to install make and robot - which cannot supply the owltools, wget and ROBOT plugins its recipes use. On Windows a scaffolded project is told it needs a POSIX shell as well as make, which nothing said before |
 | Open an existing ODK repo | ✅ | ✅ | Detects the repo, refuses to guess between edit files |
 | `odk.yaml` editing | ✅ | ❌ | **Build.** Small |
 | Makefile target execution | ✅ | ✅ | *Project → Build…*; the transcript is shown afterwards, not streamed live |

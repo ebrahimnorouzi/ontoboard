@@ -73,11 +73,94 @@ public final class MakeRun {
                     + "way may keep its build somewhere else.";
         }
         if (!ProcessRunner.isAvailable(runner, "make", "--version")) {
-            return "make is not on the PATH. The generated Makefile calls robot directly, so it "
-                    + "needs make and robot installed - not Docker. Install them and restart "
-                    + "Protege, or run the target in a terminal.";
+            return toolingAdvice(odkRunner(directory) != null,
+                    ProcessRunner.isAvailable(runner, "docker", "--version"),
+                    ProcessRunner.isAvailable(runner, "sh", "--version"),
+                    isWindows());
         }
         return null;
+    }
+
+    /** True on Windows, where "install make" is not by itself a complete instruction. */
+    static boolean isWindows() {
+        String os = System.getProperty("os.name");
+        return os != null && os.toLowerCase(Locale.ROOT).contains("win");
+    }
+
+    /**
+     * ODK's own Docker wrapper for this project, or null.
+     *
+     * <p>A real ODK repository is driven through {@code run.sh}, not through {@code make}. Its own
+     * Makefile says so - the one this project keeps as a fixture prints
+     * {@code Usage: ... sh run.sh make ... command} in its help target - and the wrapper is 150
+     * lines that mount the repository into {@code obolibrary/odkfull} and run the target there.
+     *
+     * <p>It sits at the repository root, two levels above {@code src/ontology}, which is where
+     * {@link #workingDirectory} lands. Checked for both names because ODK ships {@code run.bat}
+     * alongside {@code run.sh} for Windows.
+     */
+    static File odkRunner(File ontologyDirectory) {
+        if (ontologyDirectory == null) {
+            return null;
+        }
+        File src = ontologyDirectory.getParentFile();
+        File root = src == null ? null : src.getParentFile();
+        if (root == null) {
+            return null;
+        }
+        File shell = new File(root, "run.sh");
+        if (shell.isFile()) {
+            return shell;
+        }
+        File batch = new File(root, "run.bat");
+        return batch.isFile() ? batch : null;
+    }
+
+    /**
+     * What to do about a missing {@code make}, which depends entirely on whose Makefile it is.
+     *
+     * <p>The message this replaces said one thing in every case: "it needs make and robot
+     * installed - not Docker". For a project this plugin scaffolded that is right. For a real ODK
+     * repository - which is what somebody is most likely to have open, and what
+     * {@link MakeTargets} was specifically built to read - it is the wrong instruction in both
+     * halves. ODK builds run inside {@code obolibrary/odkfull}: the recipes call
+     * {@code owltools}, {@code wget}, {@code curl} and a {@code robot} that loads plugin jars
+     * from {@code /tools/robot-plugins} inside the image. Installing make and robot cannot supply
+     * any of that, so following the old advice ends with a build that fails further in.
+     *
+     * <p>And on Windows, "install make" is incomplete even for our own Makefile: the recipes use
+     * {@code rm -f}, {@code mkdir -p}, {@code cp}, {@code cat} and {@code date +%Y-%m-%d}, none of
+     * which cmd.exe provides. Make needs to find an {@code sh.exe} to hand them to.
+     *
+     * <p>Pure so the four cases can be tested; the caller does the probing.
+     */
+    static String toolingAdvice(boolean odkRepository, boolean hasDocker, boolean hasShell,
+            boolean windows) {
+        if (odkRepository) {
+            String how = "This is an ODK repository, and ODK builds run inside the "
+                    + "obolibrary/odkfull Docker image rather than against tools on your PATH - "
+                    + "its recipes use owltools, wget and ROBOT plugins that live in the image. "
+                    + "Run the target from a terminal at the repository root with "
+                    + "'sh run.sh make <target>' (run.bat on Windows).";
+            return hasDocker ? how
+                    : how + " Docker was not found either, so install Docker Desktop first: "
+                            + "https://www.docker.com/products/docker-desktop/";
+        }
+        String base = "make is not on the PATH, so this project's build cannot be started from "
+                + "here.";
+        if (!windows) {
+            return base + " Install GNU make with your package manager - 'brew install make' on "
+                    + "macOS, 'apt install make' on Debian or Ubuntu - and restart Protege so it "
+                    + "picks up the new PATH.";
+        }
+        String windowsAdvice = base + " On Windows the shortest route is Chocolatey "
+                + "('choco install make') or Scoop ('scoop install make'), and make also needs a "
+                + "POSIX shell to run the recipes with: this Makefile uses rm -f, mkdir -p, cp "
+                + "and date, which cmd.exe does not have.";
+        return hasShell ? windowsAdvice + " You already have an sh on the PATH, so make alone "
+                + "should be enough."
+                : windowsAdvice + " Installing Git for Windows provides one. Restart Protege "
+                        + "afterwards so it picks up the new PATH.";
     }
 
     /**

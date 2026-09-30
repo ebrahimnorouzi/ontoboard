@@ -77,36 +77,88 @@ public final class ProjectWizard {
                 + "convention.</i></html>");
         hint.setBorder(BorderFactory.createEmptyBorder(8, 0, 0, 0));
 
+        // Where a rejected value is explained, in the dialog rather than on top of it. Hidden
+        // until there is something to say, so a first attempt looks no different from before.
+        JLabel problem = new JLabel();
+        problem.setBorder(BorderFactory.createEmptyBorder(0, 0, 8, 0));
+        problem.setVisible(false);
+
         JPanel panel = new JPanel(new BorderLayout());
+        panel.add(problem, BorderLayout.NORTH);
         panel.add(fields, BorderLayout.CENTER);
         panel.add(hint, BorderLayout.SOUTH);
-        panel.setPreferredSize(new Dimension(560, 230));
+        panel.setPreferredSize(new Dimension(560, 260));
 
-        if (JOptionPane.showConfirmDialog(parent, panel, "New ODK project",
-                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE)
-                != JOptionPane.OK_OPTION) {
+        // Until it is accepted or abandoned. Every field this form collects is rejectable -
+        // OdkProjectConfig.validate has eight rules, and two of them ("base IRI must end in the
+        // ontology ID", "an SPDX identifier is not a licence IRI") are ones a careful person
+        // trips on their first attempt. The form used to close on the way to the warning, so the
+        // price of a typo in the last field was retyping the other five. The components are built
+        // once above and reused here, so everything typed survives a rejection.
+        //
+        // Safe because OdkScaffold.create validates before it creates anything - config.validate()
+        // is its first statement, ahead of the first mkdirs - so a rejected attempt has written
+        // nothing and there is nothing to undo before the next one. A failure from the writing
+        // half is different, because part of the tree may exist, so that one still stops.
+        while (true) {
+            if (JOptionPane.showConfirmDialog(parent, panel, "New ODK project",
+                    JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE)
+                    != JOptionPane.OK_OPTION) {
+                return;
+            }
+
+            OdkProjectConfig config = new OdkProjectConfig(id.getText(), title.getText(),
+                    description.getText(), iri.getText(), license.getText(),
+                    folder.getText().trim().isEmpty() ? null : new File(folder.getText().trim()));
+
+            List<File> written;
+            try {
+                written = OdkScaffold.create(config);
+            } catch (IllegalArgumentException invalid) {
+                problem.setText(problemHtml(invalid.getMessage()));
+                problem.setVisible(true);
+                continue;
+            } catch (RuntimeException failure) {
+                JOptionPane.showMessageDialog(parent,
+                        "Could not write the project: " + failure.getMessage(),
+                        "Failed", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            openGenerated(parent, modelManager, config, written.size());
             return;
         }
+    }
 
-        OdkProjectConfig config = new OdkProjectConfig(id.getText(), title.getText(),
-                description.getText(), iri.getText(), license.getText(),
-                folder.getText().trim().isEmpty() ? null : new File(folder.getText().trim()));
-
-        List<File> written;
-        try {
-            written = OdkScaffold.create(config);
-        } catch (IllegalArgumentException invalid) {
-            JOptionPane.showMessageDialog(parent, invalid.getMessage(),
-                    "Cannot create the project", JOptionPane.WARNING_MESSAGE);
-            return;
-        } catch (RuntimeException failure) {
-            JOptionPane.showMessageDialog(parent,
-                    "Could not write the project: " + failure.getMessage(),
-                    "Failed", JOptionPane.ERROR_MESSAGE);
-            return;
+    /**
+     * A rejection message, as a banner the form itself can carry.
+     *
+     * <p>Wrapped at the dialog's width, because these are sentences rather than labels - the
+     * base-IRI rule runs to sixty words and spends them explaining what a relative IRI does to a
+     * colleague's copy, which is the part worth reading. An unwrapped {@code JLabel} lays that out
+     * as a single line and widens the dialog past the edge of the screen.
+     *
+     * <p>Escaped, because every one of these messages quotes the user's own input back at them:
+     * {@code Got: '<b>'}. Swing's HTML renderer would read that as markup and show an empty
+     * string, hiding the very value that was rejected.
+     */
+    static String problemHtml(String message) {
+        String text = message == null || message.trim().isEmpty()
+                ? "Something about these values was rejected." : message;
+        StringBuilder escaped = new StringBuilder(text.length() + 16);
+        for (int i = 0; i < text.length(); i++) {
+            char c = text.charAt(i);
+            if (c == '&') {
+                escaped.append("&amp;");
+            } else if (c == '<') {
+                escaped.append("&lt;");
+            } else if (c == '>') {
+                escaped.append("&gt;");
+            } else {
+                escaped.append(c);
+            }
         }
-
-        openGenerated(parent, modelManager, config, written.size());
+        return "<html><body style='width:520px'><b>Not created.</b> " + escaped + "</body></html>";
     }
 
     /**

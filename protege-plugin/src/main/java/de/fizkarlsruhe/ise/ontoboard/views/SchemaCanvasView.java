@@ -4313,53 +4313,11 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
     /**
      * Opens an existing ODK repository.
      *
-     * <p>Users think in terms of "my ontology repo", not "the file at
-     * src/ontology/foo-edit.owl", and picking the generated release file by mistake means
-     * their edits get overwritten by the next build. So this takes a folder and works out
-     * what to open, refusing rather than guessing when it cannot tell.
+     * <p>The work moved to {@link de.fizkarlsruhe.ise.ontoboard.odk.ProjectOpener} in 1.69.0 so
+     * that OntoBoard &gt; Project could offer it too. While it lived here it was reachable only
+     * from the start card, which is to say only while the board was empty.
      */
     private void openExistingProject() {
-        JFileChooser chooser = new JFileChooser();
-        chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
-        chooser.setDialogTitle("Select an ODK project folder");
-        if (chooser.showOpenDialog(this) != JFileChooser.APPROVE_OPTION) {
-            return;
-        }
-        OdkProjectLoader.Detected project;
-        try {
-            project = OdkProjectLoader.detect(chooser.getSelectedFile());
-        } catch (RuntimeException notAProject) {
-            JOptionPane.showMessageDialog(this, notAProject.getMessage(),
-                    "Not an ODK project", JOptionPane.WARNING_MESSAGE);
-            return;
-        }
-        try {
-            // handleLoadFrom, not loadOntologyFromOntologyDocument. The latter loads the
-            // ontology into the OWLOntologyManager and stops there: Protege's
-            // OWLModelManager never hears about it, so it does not become the active
-            // ontology, does not appear in the ontology list, and the class hierarchy
-            // carries on showing whatever was open before. The dialog said "Project
-            // opened" and nothing appeared, which is exactly what was reported.
-            // handleLoadFrom is the call Protege's own File > Open makes.
-            if (!getOWLEditorKit().handleLoadFrom(project.getEditFile().toURI())) {
-                JOptionPane.showMessageDialog(this,
-                        "Protege declined to open "
-                                + project.getEditFile().getName()
-                                + ". It may already be open in another window.",
-                        "Not opened", JOptionPane.WARNING_MESSAGE);
-                return;
-            }
-            JOptionPane.showMessageDialog(this,
-                    "Opened " + project.getTitle() + "\n\n"
-                            + project.getEditFile().getAbsolutePath()
-                            + "\n\nAdd entities from the class hierarchy, or double-click "
-                            + "the board to create one.",
-                    "Project opened", JOptionPane.INFORMATION_MESSAGE);
-        } catch (Exception couldNotLoad) {
-            JOptionPane.showMessageDialog(this,
-                    "Found " + project.getEditFile().getName()
-                            + " but Protege could not load it:\n" + couldNotLoad.getMessage(),
-                    "Could not open", JOptionPane.ERROR_MESSAGE);
-        }
+        de.fizkarlsruhe.ise.ontoboard.odk.ProjectOpener.open(this, getOWLEditorKit());
     }
 }
