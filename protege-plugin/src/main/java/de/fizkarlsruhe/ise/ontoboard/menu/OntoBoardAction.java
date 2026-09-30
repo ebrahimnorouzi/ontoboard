@@ -93,7 +93,15 @@ public abstract class OntoBoardAction extends ProtegeOWLAction {
         final OWLOntology target = ontology;
         try {
             if (!configure()) {
-                // Cancelled at the parameter dialog. Nothing ran, so there is nothing to report.
+                // Cancelled at the parameter dialog, or refused by the action's own precondition
+                // with a dialog of its own. Nothing ran, so there is nothing to report here.
+                //
+                // Logged because this is the one exit that is silent by design, and "I clicked
+                // OK and the menu came back with no warning" was reported from the field against
+                // an action whose every visible path ends in a dialog. If it happens again, the
+                // log says which action returned here and the guess stops being a guess.
+                LOGGER.info("OntoBoard: {} was not started - configure() declined",
+                        operationName());
                 return;
             }
         } catch (RuntimeException failure) {

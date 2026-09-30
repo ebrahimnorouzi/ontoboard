@@ -1,0 +1,106 @@
+OntoBoard 1.70.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-10-01  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 8/8  test 10/10
+  2026-10-01  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 8/8  test 10/10
+
+
+THE BUILD RUNS NOW, AND THE PROOF IS A BUILD
+
+1.69.0 replaced a wrong instruction with a longer one. The report back was fair: "there is a huge one
+line instruction but it's not working properly - make sure the commands are working, test them before".
+So this release was written the other way round. The command was run against the reporter's own MWO
+repository first, and the code was written to issue the command that had already worked.
+
+Verified before shipping, on C:\Users\eno\ontology-projects\mwo, through MakeRun's own code path:
+
+  make odkversion    exit 0 in 11s   ODK Makefile v1.6, ODK Image v1.6.1, ROBOT 1.9.10, Konclude, Jena
+  make sparql_test   exit 0 in 13s   robot convert -> remove -> merge -> verify; 4 SPARQL checks PASS
+  make config_check  exit 0 in  1s
+
+1. THE run.sh LOOKUP WAS LOOKING IN THE WRONG PLACE, WHICH DISABLED ALL OF 1.69.0's NEW ADVICE
+
+1.69.0 taught MakeRun to recognise an ODK repository by finding run.sh. It looked two levels above
+src/ontology, at the repository root, on my assumption. ODK puts run.sh *beside the Makefile*, in
+src/ontology. Checked now against all three real ODK repositories on the reporting machine - MWO,
+go-ontology and environmental-exposure-ontology - and all three keep run.sh and run.bat in src/ontology.
+
+So odkRunner returned null for every real project, the ODK branch never executed, and those users got
+the Chocolatey-install-make advice: exactly the wrong instruction 1.69.0 existed to stop giving. The
+feature was inert from the moment it shipped.
+
+No test caught it because the fixture this project keeps, src/test/resources/fixture-mwo-Makefile, is a
+bare file with no directory around it - there was no src/ontology for a runner to sit in, so the test I
+wrote asserted my assumption and passed. The tests build the real shape now, and the repository root is
+still honoured as a second choice because nothing in ODK forbids it.
+
+2. AN ODK BUILD RUNS IN DOCKER, STARTED BY THE PLUGIN
+
+MakeRun.routeFor picks one of three: ODK_IN_DOCKER, MAKE_ON_PATH, NOT_RUNNABLE. BuildAction takes the
+route and composes the command.
+
+The command is composed here rather than delegated to the project's own run.sh, for three reasons, each
+established by trying it:
+
+  - Their run.sh and run.bat both pass -ti. -t allocates a pseudo-terminal and a plugin has none, so
+    Docker refuses with "the input device is not a TTY". Their wrapper cannot be used unmodified, and
+    must not be edited: it is their file and it is committed.
+  - run.sh needs sh, and run.bat needs a shell to expand %cd%. Neither sh nor make is on the Windows
+    PATH that Protege inherits - measured, both absent - while docker is, because Docker Desktop puts
+    it there.
+  - A composed command can be printed into the transcript and pasted into a terminal. It is, now, on
+    the first line: "Command: docker run --rm -v C:/Users/eno/ontology-projects/mwo:/work ...". A build
+    that fails is diagnosed by re-running it, and until now nothing said what it was.
+
+The image is read from the project's own runner rather than assumed. go-ontology pins
+obolibrary/odkfull:v1.5.4 and its comment says the version must be coordinated with its pipeline; MWO's
+run.bat names the image untagged. Building somebody's ontology against a different ODK than their CI
+uses is how a release stops being reproducible.
+
+An ODK project is Docker or nothing, deliberately. Falling back to a host make when Docker is missing
+would be the same defect in a new coat: make parses the Makefile happily and then dies partway through
+a recipe that wanted owltools, wget, or a robot carrying plugin jars from inside the image - a
+half-written build and a transcript that blames the project. Refusing produces one instruction instead,
+and the instruction is "start Docker", which is one action.
+
+Docker availability is probed with `docker info`, not `docker --version`. On this machine the CLI
+answered 29.5.2 while the daemon was down and every real command failed at
+npipe:////./pipe/dockerDesktopLinuxEngine. Installed and running are different questions, and the
+advice distinguishes them: "start Docker Desktop" when it is there, the download link when it is not.
+Telling somebody to install what they already have is how a message stops being believed.
+
+3. THE SILENT BUILD: NOT REPRODUCED, MADE SELF-REPORTING
+
+The other report - "after OK it shows nothing and brings back the menu without warning", against
+C:\Users\eno\ontology-projects\mwo - was not reproduced. Every path was traced and each ends in a
+dialog: whyNotRunnable shows one, an empty target list shows one, ParameterDialog loops rather than
+returning null on OK, BackgroundRun delivers its callback exactly once and converts a thrown exception
+into a failed result. Running MakeRun against that exact project produces the advice dialog, not
+silence.
+
+What is true is that the most likely cause is now gone, because on that project the build runs instead
+of refusing. The one exit that is silent by design - configure() returning false - now logs which
+action took it, so a recurrence names itself in protege.log rather than being guessed at again. That is
+weaker than a fix and is recorded as such.
+
+NUMBERS
+
+1357 tests, 0 failures, 1 skipped. 6 new for the Docker route, and 3 rewritten.
+
+Three of the rewritten tests are worth naming, because each had encoded something that turned out to be
+false. Two pinned 1.69.0's wording - "run.sh make", "Docker was not found" - which this release
+retracts, since the plugin now runs the build rather than describing how. The third asserted that run.sh
+lives at the repository root; it asserted my assumption, which is what let defect 1 ship.
+
+The skip is BundleConfigurationTest's manifest test, which assumes a jar in target/ and therefore skips
+in the run that produces one. It passes 16/16 against the finished artefact.
+
+Worth recording: the `mvn -o test` run before the version bump reported **1357 tests, 0 failures, 0
+skipped** - the first fully-executed suite in this line of work. The 14 Docker-gated parity tests that
+skipped silently in 1.69.0 all ran, because the daemon was started for this work. The September audit's
+finding stands unchanged: they skip without failing, so the suite reports success either way, and the
+only reason anyone knows which state it was in is that somebody looked.
+
+Counted three ways, agreeing: Maven's summary, the 95 surefire reports for 95 test classes, and an
+anchored ^\s*@Test\s*$ across src/test/java.
