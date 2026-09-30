@@ -39,6 +39,19 @@ public final class MakeRun {
     private MakeRun() {
     }
 
+    /** The default ODK image, used when a project's runner does not name one. */
+    public static final String DEFAULT_IMAGE = "obolibrary/odkfull";
+
+    /** How a given project's build can actually be started on this machine. */
+    public enum Route {
+        /** {@code make} is on the PATH and the Makefile is one it can run. */
+        MAKE_ON_PATH,
+        /** An ODK project: the build runs inside the ODK image, through Docker. */
+        ODK_IN_DOCKER,
+        /** Neither is available; {@link #whyNotRunnable} says what to install. */
+        NOT_RUNNABLE
+    }
+
     /** The command for a target, run from the directory the Makefile is in. */
     public static List<String> command(String target) {
         if (target == null || target.trim().isEmpty()) {
@@ -47,6 +60,150 @@ public final class MakeRun {
         // No -j: ODK recipes are not written to be parallel-safe, and interleaved output from a
         // parallel build is unreadable, which defeats the point of keeping the transcript.
         return Arrays.asList("make", target.trim());
+    }
+
+    /**
+     * How this project's build can be started here, in order of preference.
+     *
+     * <p>Docker is preferred for an ODK project even when {@code make} is present, because an ODK
+     * Makefile does not only need make: its recipes reach for owltools, wget, and a robot carrying
+     * plugin jars from {@code /tools/robot-plugins} inside the image. A host make would parse the
+     * Makefile and then fail in the middle of a recipe, which is a worse outcome than not starting.
+     */
+    public static Route routeFor(File editFile, ProcessRunner.Runner runner) {
+        File directory = workingDirectory(editFile);
+        if (directory == null || !new File(directory, "Makefile").isFile()) {
+            return Route.NOT_RUNNABLE;
+        }
+        if (odkRunner(directory) != null) {
+            // An ODK project is Docker or nothing, deliberately. Falling back to a host make
+            // here would be the old defect wearing a new coat: make parses the Makefile happily
+            // and then dies partway through a recipe that wanted owltools, wget, or a robot
+            // carrying plugin jars from inside the image - leaving a half-written build and a
+            // transcript that blames the project. Refusing produces an instruction instead, and
+            // the instruction is now "start Docker", which is one action.
+            return dockerUsable(runner) ? Route.ODK_IN_DOCKER : Route.NOT_RUNNABLE;
+        }
+        if (ProcessRunner.isAvailable(runner, "make", "--version")) {
+            return Route.MAKE_ON_PATH;
+        }
+        return Route.NOT_RUNNABLE;
+    }
+
+    /**
+     * Whether Docker can actually run something, which is not the same as being installed.
+     *
+     * <p>{@code docker --version} answers from the CLI alone and says nothing about the engine. On
+     * the machine this was written for, the CLI reported 29.5.2 while the daemon was down and
+     * every command failed with "failed to connect to the docker API at
+     * npipe:////./pipe/dockerDesktopLinuxEngine". {@code docker info} is the one that needs the
+     * daemon, so it is the one asked.
+     */
+    static boolean dockerUsable(ProcessRunner.Runner runner) {
+        return ProcessRunner.isAvailable(runner, "docker", "info");
+    }
+
+    /**
+     * The command that runs one ODK target inside the ODK image.
+     *
+     * <p>Composed here rather than by calling the project's own {@code run.sh}, for three reasons,
+     * each verified against real projects on the machine that reported the bug.
+     *
+     * <ul>
+     *   <li>Their {@code run.sh} and {@code run.bat} both pass {@code -ti}. {@code -t} allocates a
+     *       pseudo-terminal and a plugin has none, so Docker refuses with "the input device is not
+     *       a TTY". The wrapper cannot be used unmodified from here, and must not be edited: it is
+     *       the user's file and it is committed to their repository.
+     *   <li>{@code run.sh} needs {@code sh}, and {@code run.bat} needs a shell to expand
+     *       {@code %cd%}. Neither {@code sh} nor {@code make} is on the Windows PATH that Protege
+     *       inherits - checked on that machine - while {@code docker} is, because Docker Desktop
+     *       puts it there.
+     *   <li>A composed command can be printed into the transcript and pasted into a terminal,
+     *       which is most of what makes a failed build diagnosable.
+     * </ul>
+     *
+     * <p>The mount mirrors the project's own wrapper: repository root at {@code /work}, working
+     * directory {@code /work/src/ontology}. Heap settings match {@code run.bat}. {@code --rm}
+     * because a container per build would otherwise accumulate silently.
+     */
+    public static List<String> dockerCommand(File ontologyDirectory, String image, String target) {
+        if (target == null || target.trim().isEmpty()) {
+            throw new IllegalArgumentException("no target to make");
+        }
+        if (ontologyDirectory == null) {
+            throw new IllegalArgumentException("no project directory to mount");
+        }
+        File src = ontologyDirectory.getParentFile();
+        File root = src == null ? null : src.getParentFile();
+        if (root == null) {
+            throw new IllegalArgumentException(
+                    "expected <project>/src/ontology, got " + ontologyDirectory.getAbsolutePath());
+        }
+        List<String> command = new ArrayList<String>();
+        command.add("docker");
+        command.add("run");
+        command.add("--rm");
+        command.add("-v");
+        // Forward slashes: Docker Desktop accepts them on Windows, and they keep a backslash from
+        // being read as an escape inside the colon-separated bind specification.
+        command.add(root.getAbsolutePath().replace(BACKSLASH, '/') + ":/work");
+        command.add("-w");
+        command.add("/work/src/ontology");
+        command.add("-e");
+        command.add("ROBOT_JAVA_ARGS=-Xmx8G");
+        command.add("-e");
+        command.add("JAVA_OPTS=-Xmx8G");
+        command.add(image == null || image.trim().isEmpty() ? DEFAULT_IMAGE : image.trim());
+        command.add("make");
+        command.add(target.trim());
+        return command;
+    }
+
+    /** The path separator Windows uses and a Docker bind specification cannot carry. */
+    private static final char BACKSLASH = '\\';
+
+    /**
+     * The ODK image a project pins, read from its own runner.
+     *
+     * <p>Worth reading rather than assuming: go-ontology pins {@code obolibrary/odkfull:v1.5.4}
+     * and says in a comment that the version must be coordinated with its pipeline, while MWO's
+     * {@code run.bat} names {@code obolibrary/odkfull} with no tag at all. Building somebody's
+     * ontology against a different ODK than their CI uses is how a release stops being
+     * reproducible.
+     *
+     * <p>A tagged mention beats an untagged one wherever both appear, because {@code run.sh}
+     * composes its reference from {@code $ODK_IMAGE:$ODK_TAG} and may name the bare image in a
+     * comment first.
+     */
+    static String imageFrom(String runnerScript) {
+        if (runnerScript == null) {
+            return DEFAULT_IMAGE;
+        }
+        java.util.regex.Matcher mentions = java.util.regex.Pattern
+                .compile("obolibrary/(?:odkfull|odklite)(?::[A-Za-z0-9._-]+)?")
+                .matcher(runnerScript);
+        String found = null;
+        while (mentions.find()) {
+            String candidate = mentions.group();
+            if (found == null || (candidate.indexOf(':') >= 0 && found.indexOf(':') < 0)) {
+                found = candidate;
+            }
+        }
+        return found == null ? DEFAULT_IMAGE : found;
+    }
+
+    /** The image this project pins, read from its runner, or the default. */
+    public static String imageFor(File ontologyDirectory) {
+        File runner = odkRunner(ontologyDirectory);
+        if (runner == null) {
+            return DEFAULT_IMAGE;
+        }
+        try {
+            return imageFrom(new String(
+                    java.nio.file.Files.readAllBytes(runner.toPath()), "UTF-8"));
+        } catch (IOException unreadable) {
+            return DEFAULT_IMAGE;
+        }
     }
 
     /** Where the build runs: the directory holding the Makefile, beside the edit file. */
@@ -72,13 +229,13 @@ public final class MakeRun {
                     + ". OntoBoard > Project > New ODK project writes one; a project made another "
                     + "way may keep its build somewhere else.";
         }
-        if (!ProcessRunner.isAvailable(runner, "make", "--version")) {
-            return toolingAdvice(odkRunner(directory) != null,
-                    ProcessRunner.isAvailable(runner, "docker", "--version"),
-                    ProcessRunner.isAvailable(runner, "sh", "--version"),
-                    isWindows());
+        if (routeFor(editFile, runner) != Route.NOT_RUNNABLE) {
+            return null;
         }
-        return null;
+        return toolingAdvice(odkRunner(directory) != null,
+                ProcessRunner.isAvailable(runner, "docker", "--version"),
+                ProcessRunner.isAvailable(runner, "sh", "--version"),
+                isWindows());
     }
 
     /** True on Windows, where "install make" is not by itself a complete instruction. */
@@ -91,28 +248,46 @@ public final class MakeRun {
      * ODK's own Docker wrapper for this project, or null.
      *
      * <p>A real ODK repository is driven through {@code run.sh}, not through {@code make}. Its own
-     * Makefile says so - the one this project keeps as a fixture prints
-     * {@code Usage: ... sh run.sh make ... command} in its help target - and the wrapper is 150
-     * lines that mount the repository into {@code obolibrary/odkfull} and run the target there.
+     * Makefile says so, printing {@code Usage: ... sh run.sh make ... command} in its help target,
+     * and the wrapper is a few lines that mount the repository into {@code obolibrary/odkfull} and
+     * run the argument there.
      *
-     * <p>It sits at the repository root, two levels above {@code src/ontology}, which is where
-     * {@link #workingDirectory} lands. Checked for both names because ODK ships {@code run.bat}
-     * alongside {@code run.sh} for Windows.
+     * <p><b>It sits beside the Makefile, in {@code src/ontology}.</b> 1.69.0 looked two levels up
+     * at the repository root, which is where it is not, so this returned null for every real ODK
+     * project and the advice that depends on it never appeared - the exact failure that release
+     * was written to fix. Checked against the two ODK repositories on the machine that reported
+     * it: go-ontology and environmental-exposure-ontology both keep {@code run.sh} and
+     * {@code run.bat} in {@code src/ontology}, next to the Makefile.
+     *
+     * <p>The repository root is still checked, second, because nothing in ODK forbids it and a
+     * project that has moved the wrapper is better served than refused. Both names are checked
+     * because ODK ships {@code run.bat} beside {@code run.sh} for Windows.
+     *
+     * <p>No test caught the original mistake because the fixture this project keeps -
+     * {@code src/test/resources/fixture-mwo-Makefile} - is a bare file with no directory around
+     * it, so there was no {@code src/ontology} for a runner to sit in. The tests below build the
+     * real shape instead.
      */
     static File odkRunner(File ontologyDirectory) {
         if (ontologyDirectory == null) {
             return null;
         }
+        File beside = runnerIn(ontologyDirectory);
+        if (beside != null) {
+            return beside;
+        }
         File src = ontologyDirectory.getParentFile();
         File root = src == null ? null : src.getParentFile();
-        if (root == null) {
-            return null;
-        }
-        File shell = new File(root, "run.sh");
+        return root == null ? null : runnerIn(root);
+    }
+
+    /** {@code run.sh}, or {@code run.bat}, in one directory. */
+    private static File runnerIn(File directory) {
+        File shell = new File(directory, "run.sh");
         if (shell.isFile()) {
             return shell;
         }
-        File batch = new File(root, "run.bat");
+        File batch = new File(directory, "run.bat");
         return batch.isFile() ? batch : null;
     }
 
@@ -137,13 +312,17 @@ public final class MakeRun {
     static String toolingAdvice(boolean odkRepository, boolean hasDocker, boolean hasShell,
             boolean windows) {
         if (odkRepository) {
-            String how = "This is an ODK repository, and ODK builds run inside the "
-                    + "obolibrary/odkfull Docker image rather than against tools on your PATH - "
-                    + "its recipes use owltools, wget and ROBOT plugins that live in the image. "
-                    + "Run the target from a terminal at the repository root with "
-                    + "'sh run.sh make <target>' (run.bat on Windows).";
-            return hasDocker ? how
-                    : how + " Docker was not found either, so install Docker Desktop first: "
+            // Reached only when Docker cannot run something - routeFor would have taken the
+            // ODK_IN_DOCKER branch otherwise - so this is always an instruction about Docker.
+            String what = "This is an ODK repository. Its build runs inside the "
+                    + "obolibrary/odkfull Docker image, because its recipes use owltools, wget "
+                    + "and ROBOT plugins that exist only in that image - installing make and "
+                    + "robot would not be enough. OntoBoard will run the build for you once "
+                    + "Docker can be reached. ";
+            return hasDocker
+                    ? what + "Docker is installed but not responding: start Docker Desktop and "
+                            + "wait for it to say it is running, then try again."
+                    : what + "Install Docker Desktop and start it: "
                             + "https://www.docker.com/products/docker-desktop/";
         }
         String base = "make is not on the PATH, so this project's build cannot be started from "

@@ -269,6 +269,43 @@ The plugin is early. These exist in the web application but not yet here:
   note is prose rather than a phrase, so it is the one tooltip here that wraps. Three paragraphs from
   three editors is not a tooltip; the Notes dialog shows them all with authors and dates.
 
+- **The ODK build runs now, in 1.70.0 - and the advice 1.69.0 added had never once appeared.**
+
+  **The `run.sh` lookup was looking in the wrong place.** 1.69.0 taught `MakeRun` to recognise an ODK
+  repository by finding `run.sh`, and looked two levels above `src/ontology`, at the repository root,
+  on an assumption. ODK puts `run.sh` *beside the Makefile*. All three real ODK repositories on the
+  reporting machine - MWO, go-ontology, environmental-exposure-ontology - keep `run.sh` and `run.bat`
+  in `src/ontology`. So the lookup returned null for every real project, the ODK branch never ran, and
+  those users got the install-make advice: the exact instruction 1.69.0 existed to stop giving. The
+  feature was inert from the moment it shipped, and the test I wrote asserted the same wrong
+  assumption, because the fixture is a bare Makefile with no directory around it.
+
+  **An ODK build now runs in Docker, started by the plugin.** Verified before shipping against the
+  reporter's own MWO: `make odkversion` exit 0 in 11s, `make sparql_test` exit 0 in 13s with four
+  ROBOT SPARQL checks passing, `make config_check` exit 0 in 1s - through `MakeRun`'s own code path,
+  not by hand.
+
+  The command is composed rather than delegated to the project's own `run.sh`, and each reason was
+  established by trying it: their `run.sh` and `run.bat` both pass `-ti`, and `-t` allocates a
+  pseudo-terminal a plugin does not have, so Docker refuses with "the input device is not a TTY";
+  `run.sh` needs `sh` and `run.bat` needs a shell, and neither `sh` nor `make` is on the Windows PATH
+  Protégé inherits, while `docker` is; and a composed command can be printed into the transcript and
+  pasted into a terminal, which it now is, on the first line.
+
+  The image is read from the project's own runner, because go-ontology pins `odkfull:v1.5.4` while
+  MWO's is untagged, and building an ontology against a different ODK than its CI uses is how a
+  release stops being reproducible. An ODK project is Docker or nothing: falling back to a host `make`
+  would parse the Makefile and then die partway through a recipe wanting owltools or a ROBOT plugin
+  from inside the image, which is worse than not starting. Availability is probed with `docker info`
+  rather than `docker --version`, because on this machine the CLI answered while the daemon was down -
+  installed and running are different questions, and the advice now distinguishes them.
+
+  **Still open: the silent build.** "After OK it shows nothing and brings back the menu without
+  warning" was not reproduced - every path traced ends in a dialog, and running `MakeRun` against that
+  exact project produces one. The likeliest cause is gone, because that project now builds instead of
+  refusing, and the one exit that is silent by design logs which action took it. That is weaker than a
+  fix and is recorded as one.
+
 - **Three things reported from using it, all fixed in 1.69.0 - and each one was present rather than
   missing.** Found by opening MWO and trying to do ordinary work, which no test in this repository
   could have done.

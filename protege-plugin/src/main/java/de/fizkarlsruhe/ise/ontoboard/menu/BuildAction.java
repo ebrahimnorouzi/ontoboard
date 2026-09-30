@@ -39,6 +39,12 @@ public class BuildAction extends OntoBoardAction {
 
     private volatile String target = "";
 
+    /** Decided in {@link #configure()} so the run does not probe the machine a second time. */
+    private volatile MakeRun.Route route = MakeRun.Route.NOT_RUNNABLE;
+
+    /** The ODK image this project pins, when the build goes through Docker. */
+    private volatile String image = MakeRun.DEFAULT_IMAGE;
+
     @Override
     protected String operationName() {
         return "Build";
@@ -47,6 +53,8 @@ public class BuildAction extends OntoBoardAction {
     @Override
     protected boolean configure() {
         File editFile = fileOf(getOWLModelManager().getActiveOntology());
+        route = MakeRun.routeFor(editFile, ProcessRunner.real());
+        image = MakeRun.imageFor(MakeRun.workingDirectory(editFile));
         String why = MakeRun.whyNotRunnable(editFile, ProcessRunner.real());
         if (why != null) {
             javax.swing.JOptionPane.showMessageDialog(getOWLWorkspace(), why,
@@ -67,13 +75,20 @@ public class BuildAction extends OntoBoardAction {
                         .choices(targets.toArray(new String[0]))
                         .defaultValue(targets.get(0))
                         .required()
-                        .help("Read from this project's own Makefile, most useful first. "
-                                + "'all' and 'reason' regenerate the published file, 'report' "
-                                + "runs the quality checks, 'prepare_release' produces a dated "
-                                + "release. The build runs with make and robot on your PATH - "
-                                + "this does not use Docker - and it writes files that Protege "
-                                + "will not notice changing, so reopen the ontology afterwards "
-                                + "if the target rewrote it.")
+                        .help(route == MakeRun.Route.ODK_IN_DOCKER
+                                ? "Read from this project's own Makefile, most useful first. "
+                                        + "This is an ODK project, so the build runs inside "
+                                        + image + " through Docker - the same image its CI uses. "
+                                        + "The first run of a target may take a while. It writes "
+                                        + "files Protege will not notice changing, so reopen the "
+                                        + "ontology afterwards if the target rewrote it."
+                                : "Read from this project's own Makefile, most useful first. "
+                                        + "'all' and 'reason' regenerate the published file, "
+                                        + "'report' runs the quality checks, 'prepare_release' "
+                                        + "produces a dated release. The build runs with make and "
+                                        + "robot on your PATH. It writes files Protege will not "
+                                        + "notice changing, so reopen the ontology afterwards if "
+                                        + "the target rewrote it.")
                         .build());
 
         Map<String, String> chosen = ParameterDialog.show(getOWLWorkspace(), "Build",
@@ -95,13 +110,20 @@ public class BuildAction extends OntoBoardAction {
         result.note("Target: " + target);
         result.note("Directory: " + directory.getAbsolutePath());
 
+        List<String> command = route == MakeRun.Route.ODK_IN_DOCKER
+                ? MakeRun.dockerCommand(directory, image, target)
+                : MakeRun.command(target);
+        // In the transcript, before anything runs. A build that fails is diagnosed by running the
+        // same command in a terminal, and until now the user had no way to know what it was.
+        result.note("Command: " + join(command));
+
         ProcessRunner.Outcome outcome;
         long started = System.currentTimeMillis();
         try {
-            outcome = ProcessRunner.real().run(directory, MakeRun.command(target),
-                    MakeRun.TIMEOUT_MINUTES, null);
+            outcome = ProcessRunner.real().run(directory, command, MakeRun.TIMEOUT_MINUTES, null);
         } catch (IOException cannotRun) {
-            return result.failed("Could not start make: " + cannotRun.getMessage()).build();
+            return result.failed("Could not start the build: " + cannotRun.getMessage()
+                    + " (command: " + join(command) + ")").build();
         }
         long seconds = (System.currentTimeMillis() - started) / 1000;
 
@@ -129,6 +151,18 @@ public class BuildAction extends OntoBoardAction {
             result.warn(reload);
         }
         return result.summary("make " + target + " succeeded in " + seconds + "s.").build();
+    }
+
+    /** A command as one line, quoting only the arguments that need it. */
+    private static String join(List<String> command) {
+        StringBuilder line = new StringBuilder();
+        for (String part : command) {
+            if (line.length() > 0) {
+                line.append(' ');
+            }
+            line.append(part.indexOf(' ') >= 0 ? "\"" + part + "\"" : part);
+        }
+        return line.toString();
     }
 
     /** The ontology's own file, or null when it has never been saved. */
