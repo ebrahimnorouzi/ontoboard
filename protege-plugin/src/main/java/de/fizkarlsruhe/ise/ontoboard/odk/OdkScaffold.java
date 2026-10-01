@@ -100,6 +100,9 @@ public final class OdkScaffold {
         java.util.Map<String, String> files = new java.util.LinkedHashMap<String, String>();
         files.put("src/ontology/Makefile", generatedMakefile(config));
         files.put(".github/workflows/qc.yml", workflow(config, robotVersion));
+        // Regenerable, unlike the pages it publishes: this file is machinery, nobody edits it,
+        // and an action version that has moved on should be picked up by Update project files.
+        files.put(".github/workflows/docs.yml", docsWorkflow());
         files.put(".gitattributes", gitattributes());
         files.put(".gitignore", gitignore(config));
         files.put("README.md", readme(config));
@@ -194,7 +197,143 @@ public final class OdkScaffold {
             mkdirs(target.getParentFile());
             written.add(write(target, file.getValue()));
         }
+
+        // The documentation site, seeded and never regenerated. mkdocs.yaml carries a nav the
+        // author curates and the pages are theirs to write; re-rendering either would throw away
+        // the only part of this that is worth anything. The workflow that publishes them is
+        // regenerable, above, because nobody edits that.
+        //
+        // ODK scaffolds this and OntoBoard did not, so a project created here had no
+        // documentation site at all while one created by ODK published to GitHub Pages on the
+        // first push. Same files, same layout, same action - checked against a real ODK
+        // repository rather than written from the documentation.
+        for (java.util.Map.Entry<String, String> page : documentationFiles(config).entrySet()) {
+            File target = new File(root, page.getKey().replace('/', File.separatorChar));
+            mkdirs(target.getParentFile());
+            written.add(write(target, page.getValue()));
+        }
         return written;
+    }
+
+    /**
+     * The documentation site, as ODK lays one out.
+     *
+     * <p>{@code mkdocs.yaml} at the repository root, pages under {@code docs/}, published by a
+     * GitHub Actions workflow. Modelled on a real ODK repository rather than on prose: the theme,
+     * the config file name - {@code .yaml}, not {@code .yml}, which the action is told explicitly
+     * because it defaults to the other spelling - and the nav shape all come from one.
+     *
+     * <p>Seeded, not regenerated. See the comment at the call site.
+     */
+    static java.util.Map<String, String> documentationFiles(OdkProjectConfig c) {
+        java.util.Map<String, String> files = new java.util.LinkedHashMap<String, String>();
+        files.put("mkdocs.yaml", mkdocs(c));
+        files.put("docs/index.md", docsIndex(c));
+        files.put("docs/editing.md", docsEditing(c));
+        files.put("docs/release.md", docsRelease(c));
+        return files;
+    }
+
+    private static String mkdocs(OdkProjectConfig c) {
+        return "site_name: " + c.getTitle() + "\n"
+                + "theme: readthedocs\n"
+                + "\n"
+                + "# Add a page by putting it in docs/ and naming it here. Anything not listed\n"
+                + "# is still published, but is reachable only by its URL.\n"
+                + "nav:\n"
+                + "  - Home: index.md\n"
+                + "  - Editing: editing.md\n"
+                + "  - Releases: release.md\n";
+    }
+
+    private static String docsIndex(OdkProjectConfig c) {
+        String id = c.getOntologyId();
+        return "# " + c.getTitle() + "\n\n"
+                + (c.getDescription().isEmpty() ? "" : c.getDescription() + "\n\n")
+                + "This site is published from the `docs/` folder of this repository by\n"
+                + "GitHub Actions, every time `main` changes.\n\n"
+                + "## Getting the ontology\n\n"
+                + "| What | Where |\n"
+                + "|---|---|\n"
+                + "| Browse | `" + c.getBaseIri() + "` |\n"
+                + "| Edit file | `src/ontology/" + id + "-edit.owl` |\n"
+                + "| Released file | `" + id + ".owl` |\n\n"
+                + "Edit the **edit file**, never the released one: the released file is produced\n"
+                + "by the build and is overwritten by it.\n\n"
+                + "## Turning this site on\n\n"
+                + "GitHub does not publish Pages until it is asked. Once, in the repository's\n"
+                + "**Settings > Pages**, set the source to **Deploy from a branch** and choose\n"
+                + "the `gh-pages` branch - the workflow creates that branch the first time it\n"
+                + "runs. The site then appears at `https://<owner>.github.io/<repository>/`.\n";
+    }
+
+    private static String docsEditing(OdkProjectConfig c) {
+        String id = c.getOntologyId();
+        return "# Editing " + c.getTitle() + "\n\n"
+                + "## With Protege and OntoBoard\n\n"
+                + "1. Open `src/ontology/" + id + "-edit.owl`.\n"
+                + "2. Work on the OntoBoard tab, or in Protege's own views.\n"
+                + "3. Run **OntoBoard > Project > Build...** and choose `test` before you\n"
+                + "   commit. It runs the same checks the repository's CI runs.\n\n"
+                + "## Identifiers\n\n"
+                + "New terms are minted from the range allocated to you in\n"
+                + "`src/ontology/" + id + "-idranges.owl`. Give each editor their own range -\n"
+                + "**OntoBoard > Project > ID ranges...** - so two people never mint the same\n"
+                + "identifier for different things.\n\n"
+                + "## What the checks mean\n\n"
+                + "| Target | What it does |\n"
+                + "|---|---|\n"
+                + "| `reason` | Runs the reasoner and writes its conclusions into `" + id
+                + ".owl` |\n"
+                + "| `report` | ROBOT's quality report, failing on anything at ERROR |\n"
+                + "| `sparql_test` | The checks in `src/sparql/` |\n"
+                + "| `validate_profile` | That the ontology is still OWL 2 DL |\n"
+                + "| `test` | All four |\n";
+    }
+
+    private static String docsRelease(OdkProjectConfig c) {
+        String id = c.getOntologyId();
+        return "# Releasing " + c.getTitle() + "\n\n"
+                + "A release is a dated, frozen copy that other ontologies can import and that\n"
+                + "will not change under them.\n\n"
+                + "1. Make sure `test` passes.\n"
+                + "2. **OntoBoard > Project > Release...**, which stamps a version IRI of the\n"
+                + "   form `" + c.getBaseIri().replace(".owl", "")
+                + "/releases/YYYY-MM-DD/" + id + ".owl`\n"
+                + "   and writes both the dated copy and the published `" + id + ".owl`.\n"
+                + "3. Commit both, tag the commit, and push.\n\n"
+                + "A version IRI cannot be taken back once somebody has imported it, so the\n"
+                + "release step refuses to overwrite a release that already exists.\n";
+    }
+
+    /**
+     * The workflow that publishes {@code docs/} to GitHub Pages.
+     *
+     * <p>{@code CONFIG_FILE} is set explicitly because the config here is {@code mkdocs.yaml} and
+     * the action looks for {@code mkdocs.yml} by default - a one-letter difference that produces
+     * a build failing with "config file not found" on a repository that looks correct.
+     */
+    private static String docsWorkflow() {
+        return "name: Docs\n\n"
+                + "on:\n"
+                + "  workflow_dispatch:\n"
+                + "  push:\n"
+                + "    branches:\n"
+                + "      - main\n\n"
+                + "permissions:\n"
+                + "  contents: write\n\n"
+                + "jobs:\n"
+                + "  build:\n"
+                + "    name: Deploy docs\n"
+                + "    runs-on: ubuntu-latest\n"
+                + "    steps:\n"
+                + "      - name: Checkout main\n"
+                + "        uses: actions/checkout@v4\n\n"
+                + "      - name: Deploy docs\n"
+                + "        uses: mhausenblas/mkdocs-deploy-gh-pages@master\n"
+                + "        env:\n"
+                + "          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}\n"
+                + "          CONFIG_FILE: mkdocs.yaml\n";
     }
 
     private static String editOwl(OdkProjectConfig c) {
@@ -216,6 +355,21 @@ public final class OdkScaffold {
                                 + "\"/>\n")
                 + "        <owl:versionInfo>0.1.0</owl:versionInfo>\n"
                 + "    </owl:Ontology>\n"
+                // Declared, because OWL 2 DL requires every annotation property that is used to
+                // be declared, and the three above are used in the header immediately. Without
+                // these, `make validate_profile` reports "Use of undeclared annotation property"
+                // three times on a project that has just been created and contains no terms yet -
+                // so `make test` fails, and the generated CI goes red on the first push. Found by
+                // running the scaffold's own build against its own output.
+                //
+                // The same shape as the licence rule in OdkProjectConfig.validate: a scaffold
+                // whose first act is to fail its own quality gate teaches the user to ignore it.
+                + "    <owl:AnnotationProperty rdf:about=\"http://purl.org/dc/terms/title\"/>\n"
+                + "    <owl:AnnotationProperty rdf:about=\"http://purl.org/dc/terms/"
+                + "description\"/>\n"
+                + (c.getLicense().isEmpty() ? ""
+                        : "    <owl:AnnotationProperty rdf:about=\"http://purl.org/dc/terms/"
+                                + "license\"/>\n")
                 + "</rdf:RDF>\n";
     }
 

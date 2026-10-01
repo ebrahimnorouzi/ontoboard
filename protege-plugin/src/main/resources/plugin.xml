@@ -79,6 +79,15 @@
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
+  <extension id="menu.OntoBoard.requirements"
+             point="org.protege.editor.core.application.EditorKitMenuAction">
+    <name value="Check requirements..."/>
+    <toolTip value="What this machine can do, what is missing, and what to install"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.odk.RequirementsAction"/>
+    <path value="ontoboard.menu.OntoBoard.project/SlotC-C"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
+
   <extension id="menu.OntoBoard.project.idranges"
              point="org.protege.editor.core.application.EditorKitMenuAction">
     <name value="ID ranges..."/>

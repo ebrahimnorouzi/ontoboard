@@ -269,6 +269,42 @@ The plugin is early. These exist in the web application but not yet here:
   note is prose rather than a phrase, so it is the one tooltip here that wraps. Three paragraphs from
   three editors is not a tooltip; the Notes dialog shows them all with authors and dates.
 
+- **Docker is no longer required for anything OntoBoard can do itself - 1.71.0.** The goal was "completely
+  independent of docker". This reaches it everywhere except one cell, and that cell is ODK's: native ODK
+  environments are GNU/Linux and macOS only, and ODK's own README says Docker is mandatory on Windows.
+  The tools in the image - owltools, Konclude, rdftab, relation-graph - are not ours to reimplement.
+
+  **A scaffolded project builds with nothing installed.** `InProcessTargets` runs seven of the eight
+  generated targets inside Protégé against the embedded robot-core. Only for Makefiles the plugin wrote:
+  the check is byte equality through `OdkRegenerator`, so a real ODK Makefile *and* an edited generated
+  one are both refused - running generated steps against a changed Makefile would execute something the
+  project does not describe. `prepare_release` is deliberately absent and points at *Project ▸ Release*,
+  which has more guards. Every target that reasons works on a copy, and the test asserts the open
+  ontology's axiom count is unchanged afterwards.
+
+  **A native ODK environment, and podman.** Five routes now, preferring the ones that need nothing:
+  in-process, native ODK, container, host make, refuse. The native route sources the script `odk install`
+  leaves behind - `.` not `source`, since dash is `/bin/sh` on Debian and has no `source`. Podman is
+  accepted wherever Docker is, because its CLI is Docker's.
+
+  **Check requirements** (*OntoBoard ▸ Project*) lists what you can do and what is installed, with the
+  remedy for each. Docker is probed with `docker info` rather than `--version`, because the CLI answers
+  while the daemon is down - which is exactly the state this machine was in.
+
+  **The scaffold now publishes documentation.** It wrote no site at all before: no `mkdocs.yaml`, no
+  `docs/`, no Pages workflow, while an ODK-created project published on its first push. Same layout now,
+  copied from a real ODK repository. `CONFIG_FILE` is set explicitly because ODK's config is
+  `mkdocs.yaml` and the action defaults to `mkdocs.yml`.
+
+  **A new project used to fail its own `test` target.** The edit file used three `dcterms` annotation
+  properties and declared none; OWL 2 DL requires declarations, so `validate_profile` found three
+  violations in a project containing no terms, and the generated CI went red on the first push. Found by
+  running the scaffold's own build against its own output.
+
+  **Not verified:** the native-ODK route has never been executed - it is built to the documented layout
+  with unit tests, but this is Windows, where ODK does not support it. Podman likewise. Both are marked
+  unverified in the receipt.
+
 - **The ODK build runs now, in 1.70.0 - and the advice 1.69.0 added had never once appeared.**
 
   **The `run.sh` lookup was looking in the wrong place.** 1.69.0 taught `MakeRun` to recognise an ODK

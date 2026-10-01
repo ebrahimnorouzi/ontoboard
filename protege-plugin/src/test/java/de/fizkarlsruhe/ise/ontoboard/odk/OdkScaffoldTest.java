@@ -59,7 +59,17 @@ class OdkScaffoldTest {
             assertFalse(new File(new File(root, "src"), advertisesNothing).exists(),
                     "src/" + advertisesNothing + " was created empty and never used");
         }
-        assertFalse(new File(root, "docs").exists(), "docs/ was created empty and never used");
+        // docs/ used to be in the list above: created empty, advertising a documentation site
+        // that did not exist. Since 1.71.0 it holds one - mkdocs.yaml at the root, pages here,
+        // and a workflow that publishes them to GitHub Pages, the way ODK lays it out. So the
+        // rule it has to satisfy is the same rule as before, just the other way up: not absent,
+        // but not empty either.
+        File docs = new File(root, "docs");
+        assertTrue(docs.isDirectory(), "docs/ holds the published documentation");
+        assertTrue(docs.list() != null && docs.list().length > 0,
+                "an empty docs/ advertises a site and does not survive a clone");
+        assertTrue(new File(root, "mkdocs.yaml").isFile(),
+                "the pages need a config naming them, or mkdocs publishes nothing");
         // src/sparql does get a file, so it is created.
         assertTrue(new File(new File(root, "src"), "sparql").isDirectory());
         assertTrue(new File(root, "README.md").isFile());
