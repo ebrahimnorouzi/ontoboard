@@ -86,10 +86,10 @@ class MakeRunTest {
      * starting - the user gets a half-written build instead of an instruction.
      */
     @Test
-    void anOdkProjectPrefersDockerEvenWhenMakeIsThere(@TempDir File root) throws Exception {
+    void anOdkProjectPrefersAContainerEvenWhenMakeIsThere(@TempDir File root) throws Exception {
         File edit = odkProject(root);
 
-        assertEquals(MakeRun.Route.ODK_IN_DOCKER,
+        assertEquals(MakeRun.Route.ODK_IN_CONTAINER,
                 MakeRun.routeFor(edit, runnerWith("docker", "make")));
         assertNull(MakeRun.whyNotRunnable(edit, runnerWith("docker", "make")),
                 "nothing to complain about when it can run");

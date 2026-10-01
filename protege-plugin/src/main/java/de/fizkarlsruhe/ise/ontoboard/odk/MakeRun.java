@@ -42,13 +42,22 @@ public final class MakeRun {
     /** The default ODK image, used when a project's runner does not name one. */
     public static final String DEFAULT_IMAGE = "obolibrary/odkfull";
 
-    /** How a given project's build can actually be started on this machine. */
+    /**
+     * How a given project's build can actually be started on this machine.
+     *
+     * <p>In preference order, and the order is the point: the routes that need nothing installed
+     * come first, and a container is the last resort rather than the assumption.
+     */
     public enum Route {
-        /** {@code make} is on the PATH and the Makefile is one it can run. */
+        /** A project OntoBoard scaffolded: every target runs inside Protege, needing nothing. */
+        IN_PROCESS,
+        /** An ODK project, with a native ODK environment configured: no container. */
+        ODK_NATIVE,
+        /** An ODK project, through Docker or Podman, in the project's own ODK image. */
+        ODK_IN_CONTAINER,
+        /** Some other Makefile, and {@code make} is on the PATH. */
         MAKE_ON_PATH,
-        /** An ODK project: the build runs inside the ODK image, through Docker. */
-        ODK_IN_DOCKER,
-        /** Neither is available; {@link #whyNotRunnable} says what to install. */
+        /** None of the above; {@link #whyNotRunnable} says what to do. */
         NOT_RUNNABLE
     }
 
@@ -75,14 +84,25 @@ public final class MakeRun {
         if (directory == null || !new File(directory, "Makefile").isFile()) {
             return Route.NOT_RUNNABLE;
         }
+        // First: can we simply do it ourselves? A project this plugin scaffolded needs no
+        // tools at all, on any platform, because every ROBOT call in its generated Makefile has
+        // an in-process implementation here. InProcessTargets refuses anything it did not write.
+        if (InProcessTargets.whyNotEligible(editFile) == null) {
+            return Route.IN_PROCESS;
+        }
         if (odkRunner(directory) != null) {
-            // An ODK project is Docker or nothing, deliberately. Falling back to a host make
-            // here would be the old defect wearing a new coat: make parses the Makefile happily
-            // and then dies partway through a recipe that wanted owltools, wget, or a robot
-            // carrying plugin jars from inside the image - leaving a half-written build and a
-            // transcript that blames the project. Refusing produces an instruction instead, and
-            // the instruction is now "start Docker", which is one action.
-            return dockerUsable(runner) ? Route.ODK_IN_DOCKER : Route.NOT_RUNNABLE;
+            // An ODK project is never run with a bare host make. That would be the old defect
+            // wearing a new coat: make parses the Makefile happily and then dies partway through
+            // a recipe that wanted owltools, wget, or a robot carrying plugin jars from inside
+            // the image - leaving a half-written build and a transcript that blames the project.
+            //
+            // A native ODK environment is different, and is preferred over a container: `odk
+            // install` provisions the same tools on the host, so make is then running with
+            // everything the recipes expect. ODK supports that on Linux and macOS only.
+            if (Toolchain.nativeEnvironment() != null) {
+                return Route.ODK_NATIVE;
+            }
+            return containerRuntime(runner) == null ? Route.NOT_RUNNABLE : Route.ODK_IN_CONTAINER;
         }
         if (ProcessRunner.isAvailable(runner, "make", "--version")) {
             return Route.MAKE_ON_PATH;
@@ -101,6 +121,24 @@ public final class MakeRun {
      */
     static boolean dockerUsable(ProcessRunner.Runner runner) {
         return ProcessRunner.isAvailable(runner, "docker", "info");
+    }
+
+    /**
+     * Which container runtime can actually run something, or null.
+     *
+     * <p>Podman is accepted because its command line is Docker's: the same {@code run --rm -v
+     * host:container -w dir image command} works unchanged, so supporting it costs a name rather
+     * than a code path. It matters because Docker Desktop carries a licence condition that some
+     * institutions will not accept, and "independent of Docker" usually means independent of
+     * that rather than of containers.
+     *
+     * <p>Docker first only because it is the one ODK's own documentation names.
+     */
+    public static String containerRuntime(ProcessRunner.Runner runner) {
+        if (dockerUsable(runner)) {
+            return "docker";
+        }
+        return ProcessRunner.isAvailable(runner, "podman", "info") ? "podman" : null;
     }
 
     /**
@@ -127,6 +165,12 @@ public final class MakeRun {
      * because a container per build would otherwise accumulate silently.
      */
     public static List<String> dockerCommand(File ontologyDirectory, String image, String target) {
+        return containerCommand("docker", ontologyDirectory, image, target);
+    }
+
+    /** The same, naming the runtime - {@code docker} or {@code podman}. */
+    public static List<String> containerCommand(String runtime, File ontologyDirectory,
+            String image, String target) {
         if (target == null || target.trim().isEmpty()) {
             throw new IllegalArgumentException("no target to make");
         }
@@ -140,7 +184,7 @@ public final class MakeRun {
                     "expected <project>/src/ontology, got " + ontologyDirectory.getAbsolutePath());
         }
         List<String> command = new ArrayList<String>();
-        command.add("docker");
+        command.add(runtime == null || runtime.trim().isEmpty() ? "docker" : runtime.trim());
         command.add("run");
         command.add("--rm");
         command.add("-v");

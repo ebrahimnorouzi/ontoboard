@@ -1,0 +1,141 @@
+OntoBoard 1.71.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-10-01  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 8/8  test 10/10
+  2026-10-01  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 8/8  test 10/10
+
+
+INDEPENDENT OF DOCKER, AS FAR AS ODK ITSELF ALLOWS
+
+The ask was "I want ontoboard to be completely independent of docker". This release gets there for
+everything except one cell, and the exception is ODK's own: a native ODK environment is supported on
+GNU/Linux and macOS only, and ODK's README says Docker is mandatory on Windows. The plugin can be
+honest about that cell; it cannot remove it, because the tools in the image - owltools, Konclude,
+rdftab, relation-graph - are not ours to reimplement.
+
+Where it stands after this release:
+
+                                            Linux / macOS     Windows
+  Everything OntoBoard does itself          no container      no container
+  Build a project OntoBoard scaffolded      no container      no container     <- new
+  Build an existing ODK repository          no container      container        <- new on the left
+
+1. A SCAFFOLDED PROJECT BUILDS WITH NOTHING INSTALLED
+
+odk/InProcessTargets runs seven of the generated Makefile's eight targets inside Protege, against the
+embedded robot-core: all, test, reason, report, sparql_test, validate_profile, clean. No make, no robot
+binary, no shell, no container, on any platform.
+
+prepare_release is deliberately absent and says so. Project > Release already does that work and
+additionally refuses to overwrite a release that exists; a second implementation behind a target name
+would be the same operation with fewer guards.
+
+Only for Makefiles this plugin wrote, and the check is byte equality through OdkRegenerator. A real ODK
+Makefile is refused, and so is a generated one that has been edited - running the generated steps
+against a changed Makefile would execute something the project does not describe, silently differing
+from its CI. There is a test for each refusal.
+
+The safety property is asserted rather than asserted-about: every target that reasons or stamps works
+on a copy, and the end-to-end test checks the open ontology's axiom count is identical afterwards.
+Verified by scaffolding a project and running the targets: report wrote report.tsv, sparql_test passed
+check_labels.rq, validate_profile reported OWL 2 DL, reason wrote demo.owl, all did both, clean removed
+both.
+
+2. A NATIVE ODK ENVIRONMENT, AND PODMAN
+
+routeFor now returns one of five, in preference order, and the order is the point: IN_PROCESS,
+ODK_NATIVE, ODK_IN_CONTAINER, MAKE_ON_PATH, NOT_RUNNABLE. The routes that need nothing come first and a
+container is the last resort rather than the assumption.
+
+ODK_NATIVE runs `sh -c '. <activate> && make <target>'` against the directory `odk install` produced.
+`.` rather than `source`, because the script is POSIX and source is a bashism that dash - /bin/sh on
+Debian and Ubuntu - does not have. The path is single-quoted, and a quote inside it is escaped; both
+are tested, because an environment under "Program Files" is the normal case on one of the two platforms
+this plugin supports.
+
+Podman is accepted wherever Docker is, because its command line is Docker's: supporting it costs a
+binary name rather than a code path. It matters because Docker Desktop's licence is what institutions
+object to, and "independent of Docker" usually means independent of that rather than of containers.
+
+3. CHECK REQUIREMENTS
+
+Asked for directly: "there should be one option to check the requirements and ticked if it's working
+properly and ask users to install or do/get required information". OntoBoard > Project > Check
+requirements.
+
+Two lists, because they answer different questions. What you can do - which is what the user came to
+find out, and never depends on a single tool. What is installed - which is what they need in order to
+change the first. Each row carries a state and, when there is something to do, the thing to do: a
+package-manager line, a download link, or "start Docker Desktop".
+
+Docker is probed with `docker info`, not `docker --version`, because the CLI answers without the
+daemon: on the machine this was written for it reported 29.5.2 while every real command failed at
+npipe:////./pipe/dockerDesktopLinuxEngine. Installed and running are different questions and get
+different answers.
+
+The probe measured 2.5 seconds, so it runs off the event thread. A requirements screen that freezes the
+application while deciding whether the application works would be an unfortunate first impression.
+
+4. THE SCAFFOLD NOW PUBLISHES DOCUMENTATION
+
+Asked: does OntoBoard support ODK's documentation, like MWO's GitHub Pages site? It did not. The
+scaffold wrote .github/workflows/qc.yml and nothing else - no mkdocs.yaml, no docs/, no publishing
+workflow - so a project created here had no site while an ODK-created one published on its first push.
+
+It writes the same layout now, taken from a real ODK repository rather than from prose: mkdocs.yaml at
+the root with a readthedocs theme and a nav, three seeded pages under docs/ (home, editing, releases),
+and .github/workflows/docs.yml using mhausenblas/mkdocs-deploy-gh-pages. 12 files became 17.
+
+CONFIG_FILE is set explicitly, because ODK's config is mkdocs.yaml and the action defaults to
+mkdocs.yml - a one-letter difference that fails the deployment with "config file not found" on a
+repository that looks entirely correct.
+
+Seeded, not regenerated: mkdocs.yaml carries a nav the author curates and the pages are theirs to
+write. The workflow that publishes them is regenerable, because nobody edits that. A test pins the
+split in both directions.
+
+The generated YAML was parsed and the nav checked against the files on disk before this shipped.
+
+5. A NEW PROJECT USED TO FAIL ITS OWN TEST TARGET
+
+Found by running the scaffold's own build against its own output, which is the only way it could have
+been found. The edit file used dcterms:title, dcterms:description and dcterms:license in its header and
+declared none of them. OWL 2 DL requires every annotation property that is used to be declared, so
+validate_profile reported three violations on a project that had just been created and contained no
+terms - which means `make test` failed and the generated CI went red on the first push.
+
+The same shape as the licence rule in OdkProjectConfig.validate, and the same consequence: a scaffold
+whose first act is to fail its own quality gate teaches the user to ignore the gate. The three
+properties are declared now, and a test scaffolds a project and asserts `test` passes.
+
+NUMBERS
+
+1375 tests, 0 failures, 1 skipped. 22 new, across InProcessTargetsTest - the in-process build, the
+toolchain report, the native-environment command, and the documentation site.
+
+Two existing tests were corrected rather than deleted. OdkScaffoldTest asserted that docs/ must not
+exist, which was right when it was created empty and advertised a site that was not there; it now
+asserts the opposite rule for the same reason - present, and not empty. MakeRunTest's route assertions
+moved from ODK_IN_DOCKER to ODK_IN_CONTAINER.
+
+The skip is BundleConfigurationTest's manifest test, which assumes a jar in target/ and skips in the
+run that produces one. The `mvn -o test` run before the version bump reported 0 skipped.
+
+Counted three ways, agreeing: Maven's summary, the 96 surefire reports for 96 test classes, and an
+anchored ^\s*@Test\s*$ across src/test/java.
+
+WHAT IS NOT VERIFIED
+
+The native ODK environment route has never been run. It is built to the layout ODK Core documents, with
+unit tests for detection, quoting and command construction - but this is a Windows machine, where ODK
+does not support native environments, so nobody has executed `. activate && make` through it. It should
+be exercised on Linux or macOS before anyone is told it works.
+
+Podman is in the same position: the code path is Docker's with a different binary name, and no podman
+exists on this machine to try it against.
+
+One hazard worth recording for whoever builds here next. `mvn -o compile` reported BUILD SUCCESS while
+BuildAction still referenced an enum constant that had been deleted - incremental compilation kept the
+stale class, and only emptying target/classes exposed it. A green compile is not evidence that the
+source compiles unless the output directory was empty first.
