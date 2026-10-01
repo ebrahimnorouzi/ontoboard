@@ -1,0 +1,120 @@
+OntoBoard 1.72.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-10-01  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 8/8  test 10/10
+  2026-10-01  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 8/8  test 10/10
+
+
+A BLOCKER ON A REAL PROJECT, THE DESTRUCTION IT WAS HIDING, AND IDENTIFIERS ON THE BOARD
+
+1. "UPDATE PROJECT FILES" COULD NOT READ AN ODK EDIT FILE
+
+Reported from the field: "mwo-edit.owl records no xml:base and no owl:Ontology rdf:about, so the
+project's base IRI cannot be recovered."
+
+It records neither because it is not RDF/XML. It is OWL Functional Syntax, opening with Prefix(...)
+declarations and then
+
+    Ontology(<http://purls.helmholtz-metadaten.de/mwo/mwo.owl>
+
+with the IRI in plain view on line 11. OdkProjectSettings.baseIriIn knew two spellings, xml:base and
+owl:Ontology rdf:about, and both are RDF/XML. ODK's own release recipe ends in `convert -f ofn`, and
+Protege writes the same when asked for functional syntax, so this is the normal shape of an ODK edit
+file rather than an unusual one - which means the reader failed on essentially every real ODK project
+and succeeded only on the ones this plugin had scaffolded itself.
+
+A third pattern is recognised now. Verified against both: MWO yields
+http://purls.helmholtz-metadaten.de/mwo/mwo.owl, and an RDF/XML scaffold still yields its xml:base,
+which still wins where both could match because it is the authored value. An anonymous Ontology() is
+still refused, and the message now says to give the ontology an IRI.
+
+2. FIXING THAT UNCOVERED SOMETHING MUCH WORSE
+
+With the read working, Update project files on MWO no longer fails. It plans - and the plan was to
+rewrite six files, including src/ontology/Makefile.
+
+MWO's Makefile is ODK's own: 767 lines carrying every import rule, every release artefact and every
+quality target the project has. OntoBoard's generated Makefile is eight targets. Replacing one with the
+other is not an update, it is deletion, and it would have taken qc.yml, README.md and .gitignore with
+it.
+
+Until this release that could not happen, because baseIriIn failed first. The user was protected by a
+bug. Removing the bug removed the protection, so the protection is now deliberate: OdkRegenerator
+refuses any project it did not scaffold, before reading anything.
+
+Two signals, either conclusive, both checked against real repositories rather than reasoned about:
+src/ontology/run.sh, which only ODK puts there; and ODK_VERSION_MAKEFILE in the Makefile, which MWO's
+carries fifteen markers' worth of and a scaffolded one carries none of. The refusal names the command
+that does work - `sh run.sh update_repo` - because ODK regenerates these files itself, which is exactly
+what the ODK walkthrough slides say.
+
+Verified end to end: MWO is refused with that message; a scaffolded project plans with 0 changes.
+
+This is the second time in three releases that making something work has exposed a destructive path
+that was unreachable only by accident. It is worth saying plainly: a feature that fails early is not
+the same as a feature that is safe, and the difference is invisible until the failure is fixed.
+
+3. A NODE SHOWS ITS IDENTIFIER AS WELL AS ITS LABEL
+
+Asked for as "obo:BFO_0000023 (role)". A label alone is the one thing an editor cannot cite - labels get
+edited, identifiers do not, and a reviewer asking which term a box is wants the identifier. Protege's
+own entity list shows both.
+
+Prefixes come from the ontology itself first, over a short built-in table for the handful every OBO
+project uses and some serialisations omit. Read from MWO: 19 prefixes, giving obo:BFO_0000001 entity,
+obo:BFO_0000002 continuant, obo:BFO_0000023 role.
+
+Three decisions worth recording. The longest matching namespace wins, because an ontology declaring
+both obo: and a narrower bfo: would otherwise name the same term two ways in one diagram depending on
+hash order. A match whose remainder contains / or # is rejected, because
+obo:uberon/releases/2024-01-01/uberon.owl is not a CURIE anybody wants to read. And the identifier is a
+field of its own rather than folded into the label, because Find matches and ranks on the label - an
+exact name beating a longer one containing it - and prefixing every label with an identifier would
+break that ranking for every term.
+
+Two lines rather than the one line the request showed. A node box is about 160px and
+"obo:BFO_0000023 (role)" is not: on one line every identified term would either widen the diagram or
+elide down to the part that is identical across all of them. The identifier goes first because it is
+the fixed-width part, so a column of nodes lines up. One line only, when the label would repeat the
+identifier's local name - which is what an ontology with no rdfs:label produces.
+
+4. THE NATIVE ODK ROUTE IS NO LONGER UNVERIFIED
+
+1.71.0 shipped it untested, because ODK does not support native environments on Windows. It has now
+been exercised in WSL Ubuntu 22.04, and it works:
+
+  pip install --user odk-core          odk and odk-helper
+  odk install ~/odkenv                 21s, no Docker
+  OntoBoard-scaffolded project         make test -> exit 0, all four checks
+  real `odk seed` repository           make all_assets -> exit 0, produced nto.owl, .obo, -base, -full
+  occurrences of "docker" in the log   zero
+
+Three things that are not in ODK's documentation and cost an hour between them. `lightrdf` is missing
+from odk-core's dependencies, so odk-helper dies with ModuleNotFoundError. `odk install` skips tools
+already present - hence --force - so it installed no ROBOT here and supplied only the ROBOT plugins.
+And the activation script does not add pip's bin directory, so odk-helper is not found: a real ODK
+Makefile calls it for every release artefact, and the build dies at the first one.
+
+That last one was a defect in Toolchain.nativeCommand, which sourced the activation script and nothing
+else. It prepends $HOME/.local/bin now, with the reproduction recorded in the comment and a test.
+
+NUMBERS
+
+1389 tests, 0 failures, 1 skipped. 14 new: six for the identifier, six for the regeneration guard and
+the functional-syntax header, one for the native PATH, one for the longest-prefix rule.
+
+The skip is BundleConfigurationTest's manifest test, which assumes a jar in target/ and skips in the
+run that produces one. The `mvn -o test` run before the version bump reported 0 skipped.
+
+Counted three ways, agreeing: Maven's summary, the 97 surefire reports for 97 test classes, and an
+anchored ^\s*@Test\s*$ across src/test/java.
+
+STILL OPEN FROM THE SAME REQUEST
+
+Four canvas items remain and are the next release: drag-to-pan (which reverses 1.68.0 and needs
+marquee selection given a home), alignment guides while dragging, properties drawn as edges from the
+axioms rather than as standalone nodes, and saying which axiom an inferred edge came from. After those:
+the imports terms editor, and the choice between date-based and semantic-version releases - MWO's
+scheme reads VERSION and PRIOR_VERSION from the command line and uses .../mwo/3.0.2 with no /releases/
+segment, so the choice changes the IRI's shape and not only its text.

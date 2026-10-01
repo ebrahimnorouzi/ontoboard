@@ -329,6 +329,12 @@ class InProcessTargetsTest {
         assertTrue(command.get(2).startsWith(". '"), command.get(2));
         assertTrue(command.get(2).contains("my env"), command.get(2));
         assertTrue(command.get(2).endsWith("&& make test"), command.get(2));
+        // odk-helper comes from `pip install --user odk-core` and lives in the pip bin
+        // directory, which the activation script does not add. A real ODK Makefile calls
+        // it for every release artefact (check_rdfxml_%), so without this a native build
+        // dies at the first one with "odk-helper: No such file or directory" - reproduced
+        // on Ubuntu 22.04 while verifying the route.
+        assertTrue(command.get(2).contains("$HOME/.local/bin"), command.get(2));
         assertFalse(command.get(2).startsWith("source"), "dash has no source: " + command.get(2));
     }
 

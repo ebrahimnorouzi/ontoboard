@@ -15,6 +15,16 @@ public final class CanvasNode {
     private final boolean unsatisfiable;
     private final boolean imported;
 
+    /**
+     * The prefixed identifier, such as {@code obo:BFO_0000023}, or null.
+     *
+     * <p>Separate from {@link #label} rather than folded into it, because the two are read by
+     * different things. The label is what Find matches and ranks on - an exact name beating a
+     * longer one that contains it - and prepending an identifier to it would break that ranking
+     * for every term. The canvas joins them only when it draws.
+     */
+    private final String curie;
+
     public CanvasNode(String id, NodeKind kind, String label) {
         this(id, kind, label, null, false);
     }
@@ -30,12 +40,28 @@ public final class CanvasNode {
 
     private CanvasNode(String id, NodeKind kind, String label, List<String> notes,
             boolean unsatisfiable, boolean imported) {
+        this(id, kind, label, notes, unsatisfiable, imported, null);
+    }
+
+    private CanvasNode(String id, NodeKind kind, String label, List<String> notes,
+            boolean unsatisfiable, boolean imported, String curie) {
         this.id = Objects.requireNonNull(id, "id");
         this.kind = Objects.requireNonNull(kind, "kind");
         this.label = Objects.requireNonNull(label, "label");
         this.notes = withoutBlanks(notes);
         this.unsatisfiable = unsatisfiable;
         this.imported = imported;
+        this.curie = curie;
+    }
+
+    /** The prefixed identifier, or null when no prefix matched the term's IRI. */
+    public String getCurie() {
+        return curie;
+    }
+
+    /** The same node, carrying a prefixed identifier to show beside its label. */
+    public CanvasNode withCurie(String prefixed) {
+        return new CanvasNode(id, kind, label, notes, unsatisfiable, imported, prefixed);
     }
 
     /** Blank notes dropped, so {@link #hasNote} cannot be true with nothing to show. */
@@ -54,7 +80,7 @@ public final class CanvasNode {
 
     /** The same node, marked as one the reasoner found unsatisfiable. */
     public CanvasNode asUnsatisfiable() {
-        return new CanvasNode(id, kind, label, notes, true, imported);
+        return new CanvasNode(id, kind, label, notes, true, imported, curie);
     }
 
     /** The same node, marked as defined in an imported ontology rather than in the edit file. */

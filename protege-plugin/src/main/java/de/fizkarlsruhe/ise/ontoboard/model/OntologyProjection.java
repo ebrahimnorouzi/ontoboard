@@ -33,10 +33,17 @@ public final class OntologyProjection {
     private OntologyProjection() {
     }
 
-    /** A node that knows whether its term carries an editorial note. */
+    /**
+     * A node that knows whether its term carries an editorial note, and what it is called.
+     *
+     * <p>The identifier comes along because a label alone is the one thing an editor cannot
+     * cite: labels are edited, identifiers are not, and a reviewer asking "which term is that?"
+     * wants {@code obo:BFO_0000023}, not "role". Protege's own entity list shows both.
+     */
     private static CanvasNode noted(OWLOntology ontology,
             org.semanticweb.owlapi.model.IRI entity, NodeKind kind, String label) {
-        return new CanvasNode(iri(entity), kind, label, EditorNotes.allNotesOn(ontology, entity));
+        return new CanvasNode(iri(entity), kind, label, EditorNotes.allNotesOn(ontology, entity))
+                .withCurie(Curies.curieFor(ontology, entity));
     }
 
     /**

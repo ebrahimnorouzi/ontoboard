@@ -39,6 +39,23 @@ public final class OdkProjectSettings {
     private static final Pattern ONTOLOGY_ABOUT =
             Pattern.compile("<owl:Ontology\\s+rdf:about\\s*=\\s*\"([^\"]+)\"");
 
+    /**
+     * {@code Ontology(<...>} - OWL functional syntax, which is what ODK itself writes.
+     *
+     * <p>Missing until 1.72.0, and its absence stopped Update project files on every real ODK
+     * repository. ODK's own release recipe ends in {@code convert -f ofn}, and an editor who
+     * saves from Protege in OWL Functional Syntax gets the same: a file whose first lines are
+     * {@code Prefix(...)} declarations and then {@code Ontology(<iri>}, with no {@code xml:base}
+     * and no {@code rdf:about} anywhere in it. Reported against MWO, whose edit file begins
+     * exactly that way.
+     *
+     * <p>The IRI is optional in the grammar - {@code Ontology(} alone is a legal anonymous
+     * ontology - so the group is only matched when an IRI is actually there, and an anonymous
+     * one still falls through to the error below, which is the honest answer for it.
+     */
+    private static final Pattern FUNCTIONAL_ONTOLOGY =
+            Pattern.compile("(?m)^\\s*Ontology\\s*\\(\\s*<([^>]+)>");
+
     private OdkProjectSettings() {
     }
 
@@ -194,9 +211,15 @@ public final class OdkProjectSettings {
         if (about.find()) {
             return about.group(1);
         }
-        throw new UnreadableProjectException(editFile.getName() + " records no xml:base and no "
-                + "owl:Ontology rdf:about, so the project's base IRI cannot be recovered. The "
-                + "YAML's uribase is not enough: it drops the last segment.");
+        Matcher functional = FUNCTIONAL_ONTOLOGY.matcher(owl);
+        if (functional.find()) {
+            return functional.group(1);
+        }
+        throw new UnreadableProjectException(editFile.getName() + " declares no ontology IRI that "
+                + "can be read back: no xml:base, no owl:Ontology rdf:about, and no "
+                + "Ontology(<...>) header. The project's base IRI cannot be recovered from it, "
+                + "and the YAML's uribase is not enough because it drops the last segment. If "
+                + "the ontology is anonymous, give it an IRI in the ontology header and save.");
     }
 
     private static String textOf(File file) {

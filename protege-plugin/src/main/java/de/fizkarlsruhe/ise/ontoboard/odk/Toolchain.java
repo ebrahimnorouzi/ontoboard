@@ -373,6 +373,16 @@ public final class Toolchain {
      * to itself - so the shell does both in one invocation. {@code .} rather than {@code source}
      * because the script is POSIX and {@code source} is a bashism that {@code dash}, which is
      * {@code /bin/sh} on Debian and Ubuntu, does not have.
+     *
+     * <p><b>{@code ~/.local/bin} is prepended as well, and that is not a guess.</b> A real ODK
+     * Makefile calls {@code odk-helper} - {@code check_rdfxml_%} does, for every release artefact
+     * - and {@code odk-helper} is installed by {@code pip install --user odk-core}, which puts it
+     * in the user's pip bin directory. The activation script prepends only the environment's own
+     * {@code bin}, so a build started from a non-login shell fails at the first artefact with
+     * "odk-helper: No such file or directory". Reproduced on Ubuntu 22.04 while verifying this
+     * route, and fixed by exactly this line.
+     *
+     * <p>Harmless when the directory does not exist: a non-existent PATH entry is skipped.
      */
     public static List<String> nativeCommand(File activationScript, String target) {
         if (activationScript == null) {
@@ -382,8 +392,9 @@ public final class Toolchain {
             throw new IllegalArgumentException("no target to make");
         }
         return Arrays.asList("sh", "-c",
-                ". " + quote(activationScript.getAbsolutePath()) + " && make "
-                        + target.trim());
+                ". " + quote(activationScript.getAbsolutePath())
+                        + " && PATH=\"$HOME/.local/bin:$PATH\" && export PATH"
+                        + " && make " + target.trim());
     }
 
     /** Single-quoted for {@code sh}, with embedded quotes closed and reopened. */
