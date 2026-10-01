@@ -252,8 +252,32 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
      */
     private Point lastCursorPoint;
 
+    /**
+     * Builds the view, and says whether it managed to.
+     *
+     * <p>The report is the point. Protege's {@code View.createContent} catches whatever
+     * {@code initialise()} throws and replaces the view with "An error occurred whilst creating
+     * the view", so from outside this method a canvas that died looks exactly like one that
+     * worked - which is how 1.73.0 shipped with the canvas crashing on every open and a smoke
+     * receipt recording PASS 10/10. {@link ViewHealth} is read by the self-test straight after it
+     * opens the tab, so the failure is now reported by the thing that failed rather than inferred
+     * from the absence of a complaint.
+     *
+     * <p>The throwable is re-thrown unchanged: Protege's handling of it is correct, and a view
+     * that swallowed its own construction failure would be a worse lie than the one this fixes.
+     */
     @Override
     protected void initialiseOWLView() {
+        try {
+            buildView();
+        } catch (RuntimeException | Error broke) {
+            ViewHealth.failed(getClass().getSimpleName(), broke);
+            throw broke;
+        }
+        ViewHealth.constructed(getClass().getSimpleName());
+    }
+
+    private void buildView() {
         setLayout(new BorderLayout());
 
         graph = new SchemaGraph();
@@ -3389,8 +3413,11 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
      * directly without a live {@code OWLEditorKit}.
      */
     static void resetLayoutForOntology(OWLOntology ontology, CanvasLayout layout) {
-        layout.ontologyIri = ontology.getOntologyID().getOntologyIRI()
-                .transform(Object::toString).or("");
+        // Null when Protege has nothing open. An empty board for no ontology is the honest
+        // result; until 1.74.0 this threw and took the whole view with it.
+        layout.ontologyIri = ontology == null
+                ? ""
+                : ontology.getOntologyID().getOntologyIRI().transform(Object::toString).or("");
         layout.onCanvas.clear();
         layout.nodes.clear();
         layout.frames.clear();
@@ -3491,10 +3518,38 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         }
     }
 
+    /**
+     * The file the active ontology was loaded from, or null when there is not one.
+     *
+     * <p>Null is the ordinary answer for an ontology held in memory, a URL, or a Protege session
+     * with nothing open yet - and every caller already treats null as "no sidecar", so none of
+     * the three is exceptional.
+     *
+     * <p>Guarded as of 1.74.0, because it was not. With no active ontology this threw a
+     * NullPointerException out of {@code initialiseOWLView}, and Protege replaced the whole
+     * Schema Canvas with "An error occurred whilst creating the view" - the tab's one view, lost,
+     * for the lifetime of the session. It had been that way since the view was written and no
+     * release caught it, because the host self-test opened the tab without ever building what is
+     * inside it. The first run that did build it found this.
+     */
     private File activeOntologyFile() {
         OWLOntology ontology = getOWLModelManager().getActiveOntology();
-        URI documentUri = getOWLModelManager().getOWLOntologyManager()
-                .getOntologyDocumentIRI(ontology).toURI();
+        if (ontology == null) {
+            return null;
+        }
+        org.semanticweb.owlapi.model.IRI documentIri;
+        try {
+            documentIri = getOWLModelManager().getOWLOntologyManager()
+                    .getOntologyDocumentIRI(ontology);
+        } catch (RuntimeException notTracked) {
+            // getOntologyDocumentIRI throws UnknownOWLOntologyException for an ontology this
+            // manager does not hold, which happens while Protege is switching between them.
+            return null;
+        }
+        if (documentIri == null) {
+            return null;
+        }
+        URI documentUri = documentIri.toURI();
         return "file".equalsIgnoreCase(documentUri.getScheme()) ? new File(documentUri) : null;
     }
 
@@ -3595,6 +3650,9 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
     }
 
     private static String ontologyIriOf(OWLOntology ontology) {
+        if (ontology == null) {
+            return null;
+        }
         com.google.common.base.Optional<IRI> iri = ontology.getOntologyID().getOntologyIRI();
         return iri.isPresent() ? iri.get().toString() : null;
     }

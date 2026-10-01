@@ -538,4 +538,33 @@ class OntologyProjectionTest {
     void nothingToOfferIsNotAnAnswer() {
         assertTrue(OntologyProjection.everythingWorthShowing(null).isEmpty());
     }
+
+    /**
+     * Projecting nothing is empty, not a crash.
+     *
+     * <p>Protege has no active ontology while it is switching between them and before the first
+     * one loads, and the canvas renders on construction. Until 1.74.0 that threw a
+     * NullPointerException out of the view's constructor, and Protege replaced the Schema Canvas
+     * with "An error occurred whilst creating the view" for the rest of the session.
+     */
+    @Test
+    void noOntologyProjectsToAnEmptyBoard() {
+        Projection projection = OntologyProjection.project(null,
+                java.util.Collections.singleton("http://example.org/o#Thing"));
+
+        assertTrue(projection.getNodes().isEmpty());
+        assertTrue(projection.getEdges().isEmpty());
+    }
+
+    /** And neither does a missing membership set, which is the other half of the same call. */
+    @Test
+    void noMembershipProjectsToAnEmptyBoard() throws Exception {
+        OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
+        OWLOntology ontology = manager.createOntology(IRI.create("http://example.org/o"));
+
+        Projection projection = OntologyProjection.project(ontology, null);
+
+        assertTrue(projection.getNodes().isEmpty());
+        assertTrue(projection.getEdges().isEmpty());
+    }
 }

@@ -158,13 +158,46 @@ public class SelfTestAction extends OntoBoardAction {
                 return "no workspace tab is registered as " + TAB_ID + " or \"" + TAB_LABEL
                         + "\". Protege offers: " + offered;
             }
+            // Cleared immediately before the tab is opened, so what comes back describes this
+            // run rather than anything the session did earlier.
+            de.fizkarlsruhe.ise.ontoboard.views.ViewHealth.forget();
             org.protege.editor.core.ui.workspace.WorkspaceTab tab =
                     workspace.addTabForPlugin(plugin);
             if (tab == null) {
                 return "addTabForPlugin returned null for " + TAB_ID;
             }
             try {
-                return "ok: opened, its views constructed, and closed again";
+                // Selecting it is what normally builds the views: Protege creates a view's
+                // content from a hierarchy event, when the view is first shown. Measured in a
+                // smoke run, adding the tab and removing it again builds nothing at all - so for
+                // every release up to 1.73.0 this check proved the tab was registered and
+                // nothing whatever about the canvas, while reporting "its views constructed".
+                workspace.setSelectedTab(tab);
+                int forced = 0;
+                if (de.fizkarlsruhe.ise.ontoboard.views.ViewHealth.built().isEmpty()) {
+                    // Nothing was shown - a headless or unrealised frame. Ask the views directly
+                    // for the work the hierarchy event would have triggered, rather than report a
+                    // pass on a canvas nobody built.
+                    forced = buildViewsIn(tab);
+                }
+
+                // Asking the view, not inferring from silence. Protege's View.createContent
+                // catches whatever initialise() throws and puts an error label in the view's
+                // place, so a canvas that crashes on every open looks from out here exactly like
+                // one that works. ViewHealth is the view reporting on itself.
+                String failure = de.fizkarlsruhe.ise.ontoboard.views.ViewHealth.whatFailed();
+                if (failure != null) {
+                    return "the tab opened but a view did not build: " + failure;
+                }
+                java.util.Set<String> built =
+                        de.fizkarlsruhe.ise.ontoboard.views.ViewHealth.built();
+                if (built.isEmpty()) {
+                    return "the tab opened, but no OntoBoard view reported itself built"
+                            + (forced == 0
+                                    ? " and none could be found in it to build"
+                                    : " after building " + forced + " of them by hand");
+                }
+                return "ok: opened, " + built + " built without throwing, and closed again";
             } finally {
                 workspace.removeTab(tab);
             }
@@ -174,6 +207,33 @@ public class SelfTestAction extends OntoBoardAction {
             // whole self-test exists to catch, and it is not a RuntimeException.
             return "opening the tab threw " + describe(broke);
         }
+    }
+
+    /**
+     * Builds every view in this container, the way being shown would.
+     *
+     * <p>{@code View.createUI} is what Protege's own hierarchy listener calls, so this is the
+     * same work and not a back door. It is needed because a smoke run adds the tab and removes
+     * it without the frame ever realising it, and a check that only proves the tab is registered
+     * is the check that let a crashing canvas ship.
+     *
+     * <p>Throwables are not caught here on purpose. {@code createUI} already catches what
+     * {@code initialise()} throws, which is exactly the problem; anything that escapes it is a
+     * failure of Protege's own plumbing and belongs in the caller's report.
+     *
+     * @return how many views were asked
+     */
+    private static int buildViewsIn(java.awt.Container container) {
+        int asked = 0;
+        for (java.awt.Component child : container.getComponents()) {
+            if (child instanceof org.protege.editor.core.ui.view.View) {
+                ((org.protege.editor.core.ui.view.View) child).createUI();
+                asked++;
+            } else if (child instanceof java.awt.Container) {
+                asked += buildViewsIn((java.awt.Container) child);
+            }
+        }
+        return asked;
     }
 
     public OperationResult selfTest() {

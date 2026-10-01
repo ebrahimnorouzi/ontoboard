@@ -45,7 +45,24 @@ public class GuideGraphHandler extends mxGraphHandler {
      */
     private static final int OFF_SCREEN_MARGIN = 40;
 
-    private List<AlignmentGuides.Guide> guides = Collections.emptyList();
+    /**
+     * The guides to draw, or null before this class's own initialisers have run.
+     *
+     * <p>Null is a real state here and not a defensive habit, so every read goes through
+     * {@link #getGuides()}. {@code mxGraphHandler}'s constructor calls {@code setVisible(false)}
+     * - line 277 in 4.2.2 - and that dispatches to the override below while this subclass's
+     * fields are still unassigned, because a field initialiser runs only after {@code super(...)}
+     * returns. Writing {@code = Collections.emptyList()} here therefore fixes nothing: the call
+     * arrives before the initialiser would.
+     *
+     * <p>Shipped as a crash in 1.73.0. It took the whole Schema Canvas view with it - Protege
+     * catches the throwable from {@code initialise()} and replaces the view with "An error
+     * occurred whilst creating the view" - and the class next door already carried the warning
+     * that produced it: {@code CollaborativeGraphComponent} documents that
+     * {@code createGraphControl()} runs inside the superclass constructor and must not read this
+     * class's fields. The same is true of every method the superclass constructor can reach.
+     */
+    private List<AlignmentGuides.Guide> guides;
 
     public GuideGraphHandler(mxGraphComponent graphComponent) {
         super(graphComponent);
@@ -53,7 +70,7 @@ public class GuideGraphHandler extends mxGraphHandler {
 
     /** The guides to draw right now, which is almost always none. */
     public List<AlignmentGuides.Guide> getGuides() {
-        return guides;
+        return guides == null ? Collections.<AlignmentGuides.Guide>emptyList() : guides;
     }
 
     @Override
@@ -113,10 +130,12 @@ public class GuideGraphHandler extends mxGraphHandler {
      * alignment matters most.
      */
     private void show(List<AlignmentGuides.Guide> next) {
-        if (sameLines(guides, next)) {
+        // getGuides() rather than the field: this runs during the superclass constructor, before
+        // the field exists. See the field's own comment.
+        if (sameLines(getGuides(), next)) {
             return;
         }
-        Rectangle before = GuideLayer.areaOf(guides);
+        Rectangle before = GuideLayer.areaOf(getGuides());
         guides = next;
         Rectangle after = GuideLayer.areaOf(next);
         Rectangle dirty = before == null ? after : (after == null ? before : before.union(after));

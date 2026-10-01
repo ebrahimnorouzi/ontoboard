@@ -269,6 +269,55 @@ The plugin is early. These exist in the web application but not yet here:
   note is prose rather than a phrase, so it is the one tooltip here that wraps. Three paragraphs from
   three editors is not a tooltip; the Notes dialog shows them all with authors and dates.
 
+- **The canvas crashed in 1.73.0, and the reason it shipped matters more than the crash - fixed
+  in 1.74.0.** Reported within the hour of the release: *"i tried to open mwo, ontoboard gives
+  this error in the canvas - An error occurred whilst creating the view. NullPointerException:
+  null"*.
+
+  The fault itself is a textbook one. `mxGraphHandler`'s constructor calls `setVisible(false)` at
+  line 277; that dispatches to the override 1.73.0 added for alignment guides; and a subclass
+  field initialiser has not run at that point, because it runs only after `super(...)` returns.
+  The override read a null list, threw, and took the component's constructor, the view's
+  `initialise()` and the whole Schema Canvas with it. The class next door already carried the
+  warning — `CollaborativeGraphComponent` documents that `createGraphControl()` runs inside the
+  superclass constructor and must not read this class's fields — and the lesson that was missed
+  is that it applies to *every* method the superclass constructor can reach, not only to the one
+  the comment names.
+
+  **1,423 unit tests passed and both hosts smoked PASS while this was happening.** That is the
+  part worth keeping. Two independent holes let it through.
+
+  *The suite never built the component.* Ninety-nine test classes covering graphs, projections,
+  layouts, gestures and guide geometry, and not one of them constructed a
+  `CollaborativeGraphComponent` — everything was covered except the object a user actually gets.
+  One line of test closes it, headless, and against the broken code it fails.
+
+  *The host self-test's claim was a sentence, not a check.* It opened the OntoBoard tab and
+  returned "opened, its views constructed, and closed again" having verified nothing beyond the
+  tab existing. Protege's `View.createContent` catches whatever `initialise()` throws and puts an
+  error label in the view's place, so from outside a dead canvas and a working one are identical.
+  Worse: when the check was made real it reported that *no view had been built at all* — adding
+  and removing a tab builds nothing, because Protege creates view content lazily when a view is
+  shown. So the smoke run had never built the canvas in any release, while the comment beside the
+  code claimed it was "the first check that the canvas can be built at all under Felix".
+
+  `ViewHealth` fixes both: the view writes its own outcome to a register before Protege can
+  swallow anything, and the self-test selects the tab and, failing that, calls `View.createUI`
+  itself — the same method Protege's hierarchy listener calls. The receipt line now names what
+  was built rather than asserting it.
+
+- **Opening the canvas with no ontology open crashed it, in every release until 1.74.0.** Found
+  by the first self-test run that actually built the view, which is the point of the previous
+  entry. `activeOntologyFile` dereferenced a null ontology and `resetLayoutForOntology`
+  dereferenced it again; either costs the whole view for the session, with nothing to click to
+  bring it back. Protege has no active ontology before the first one loads and while it is
+  switching between them, so this was reachable by starting Protege and opening the tab.
+
+  Nothing open is a state the canvas has to survive, not an error. Guarded at the four places
+  that decide it rather than at each call site — `activeOntologyFile` and `ontologyIriOf` return
+  null, `resetLayoutForOntology` stamps an empty IRI, and `OntologyProjection.project` returns an
+  empty projection — because the callers all already treat "no file" as "no sidecar".
+
 - **An inferred edge can now be asked why it is there - 1.73.0.** The canvas has drawn the
   reasoner's conclusions since 1.20.0 and could never say where one came from. A conclusion you
   cannot trace is one you have to take on faith, which is the wrong relationship to have with a
@@ -899,8 +948,30 @@ clicking the item.
 *Transform* defaults to applying its changes and would push them through the live session's model
 manager. *Rename IRIs*, *Import terms*, *Obsolete*, *Release*, *Build*, *Git*, *Open from GitHub*
 and *New ODK project* write files, run `make`, or reach the network. *Compare releases* needs a
-project with dated releases, which a freshly scaffolded one has none of. The canvas, note-editing
-and collaboration items are Swing surfaces and nothing here opens a window.
+project with dated releases, which a freshly scaffolded one has none of. The note-editing and
+collaboration items are Swing surfaces and nothing here opens a window.
+
+**The canvas is the exception, as of 1.74.0, and the story of how is worth the paragraph.** The
+tab check was added in 1.44.0 with a comment saying it was "the first check that the canvas can
+be built at all under Felix". It was not. It added the tab, removed it, and returned "opened, its
+views constructed" without asking anything — and Protege builds a view's content lazily, when the
+view is shown, so adding and removing a tab builds *nothing*. Two things were wrong at once: the
+check verified nothing, and there was nothing to verify because the work never happened. Both were
+invisible, because Protege's `View.createContent` catches whatever `initialise()` throws and puts
+an error label in the view's place, so a canvas that crashed on every open produced exactly the
+same PASS as one that worked. 1.73.0 shipped with the canvas crashing on every open and a receipt
+recording PASS 10/10.
+
+It is real now. `ViewHealth` is a register the views write to themselves before Protege can
+swallow anything; the self-test clears it, opens the tab, selects it, and — if nothing reports in
+— calls `View.createUI` on each view directly, the same method Protege's own hierarchy listener
+calls. The receipt names what was built. The first run that did this found a second crash, older
+than 1.73.0 and present in every release the view has existed in: with no ontology open, the view
+threw on construction and was lost for the session.
+
+This is still not a check that the canvas *draws* anything. Nothing here looks at a pixel. It is a
+check that the largest class in the plugin can be constructed inside Felix, which is the failure
+class that had been shipping.
 
 Those could now be covered — the scratch project makes it possible — but each needs its own
 fixture: a release history, a git remote, an upstream to import from. Inventing those badly would

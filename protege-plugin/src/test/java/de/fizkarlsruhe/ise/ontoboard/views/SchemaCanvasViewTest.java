@@ -447,4 +447,30 @@ class SchemaCanvasViewTest {
         assertEquals(SchemaCanvasView.NoteEdit.UNCHANGED, SchemaCanvasView.noteEditFor("", "   "));
         assertEquals(SchemaCanvasView.NoteEdit.UNCHANGED, SchemaCanvasView.noteEditFor(null, null));
     }
+
+    // ---------- no ontology open is a state, not an error ----------
+
+    /**
+     * An empty layout can be stamped for no ontology at all.
+     *
+     * <p>Protege has no active ontology while it is switching between them and before the first
+     * one loads, and the canvas builds itself on construction. Until 1.74.0 this threw a
+     * NullPointerException out of {@code initialiseOWLView}, and Protege answered by replacing
+     * the Schema Canvas with "An error occurred whilst creating the view" for the rest of the
+     * session - the tab's only view, gone, with nothing to click to bring it back.
+     *
+     * <p>It had been that way since the view was written. No release found it, because the host
+     * self-test opened the tab without ever building what is inside it; the first run that
+     * actually built the view found it immediately.
+     */
+    @Test
+    void anEmptyLayoutCanBeStampedWithNoOntologyAtAll() {
+        CanvasLayout layout = new CanvasLayout();
+        layout.onCanvas.add("http://example.org/o#Left");
+
+        SchemaCanvasView.resetLayoutForOntology(null, layout);
+
+        assertEquals("", layout.ontologyIri, "no ontology means no IRI, not a crash");
+        assertTrue(layout.onCanvas.isEmpty(), "and the board is cleared as it would be otherwise");
+    }
 }
