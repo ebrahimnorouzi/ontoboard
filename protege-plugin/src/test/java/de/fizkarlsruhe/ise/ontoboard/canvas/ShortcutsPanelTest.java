@@ -1,5 +1,6 @@
 package de.fizkarlsruhe.ise.ontoboard.canvas;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -14,39 +15,57 @@ import org.junit.jupiter.api.Test;
  * when the canvas appears not to work, so a stale row is worse than a missing one - it sends a person
  * looking for a fault in the plugin rather than in their own memory.
  *
- * <p>What can be checked here is narrow but real: that the two inverted gestures are present and
- * described, that no key is listed twice with different meanings, and that nothing describes itself in
- * one word. Whether each row matches the code that implements it cannot be asserted from here, and is
+ * <p>What can be checked here is narrow but real: that both halves of the gesture mode are present
+ * and described, that no key is listed twice with different meanings, and that nothing describes
+ * itself in one word. Whether each row matches the code that implements it cannot be asserted from here, and is
  * not pretended.
  */
 class ShortcutsPanelTest {
 
     /**
-     * The pan inversion is documented.
+     * Both halves of the gesture mode are documented, and so is the switch between them.
      *
-     * <p>1.68.0 took the plain drag away from panning and gave it to region selection. That is the
-     * reverse of what this canvas did for its whole life before, and of what {@code mxGraph} does out
-     * of the box. If this row ever disappears while the behaviour stays, the canvas has a gesture
-     * nobody can discover.
+     * <p>What a plain drag does has been decided in both directions: it panned until 1.68.0,
+     * selected until 1.73.0, and pans again. A canvas whose primary gesture can change has to say
+     * somewhere what it is currently doing and how to get the other one, or the change is
+     * indistinguishable from a fault. This list is that somewhere.
+     *
+     * <p>Checked against {@link CanvasGesture#DEFAULT} rather than against the word "pan", so
+     * that flipping the default without rewriting this row fails here rather than in the field.
      */
     @Test
-    void theTwoInvertedGesturesAreExplained() {
+    void bothHalvesOfTheGestureModeAreExplained() {
         String drag = null;
-        String pan = null;
+        String marquee = null;
+        String space = null;
+        String mode = null;
         for (String[] row : ShortcutsPanel.rows()) {
             if ("Drag".equals(row[0])) {
                 drag = row[1];
             }
+            if ("Shift-drag".equals(row[0])) {
+                marquee = row[1];
+            }
             if ("Space-drag".equals(row[0])) {
-                pan = row[1];
+                space = row[1];
+            }
+            if (row[0].contains("H") && row[0].contains("V")) {
+                mode = row[1];
             }
         }
-        assertTrue(drag != null && drag.toLowerCase().contains("select"),
-                "a plain drag selects a region now, and the list has to say so: " + drag);
-        assertTrue(pan != null && pan.toLowerCase().contains("pan"),
-                "panning moved to space, the middle button and the right: " + pan);
-        assertTrue(pan.contains("middle") || pan.contains("right"),
-                "the other two pan triggers belong in the same row: " + pan);
+        assertEquals(CanvasGesture.Mode.PAN, CanvasGesture.DEFAULT,
+                "this row describes the default, so the two have to be changed together");
+        assertTrue(drag != null && drag.toLowerCase().contains("move the board"),
+                "a plain drag moves the board, and the list has to say so: " + drag);
+        assertTrue(marquee != null && marquee.toLowerCase().contains("select"),
+                "the other gesture is a modifier away, and that is the half people lose: "
+                        + marquee);
+        assertTrue(space != null && space.toLowerCase().contains("pan"),
+                "space pans in both modes: " + space);
+        assertTrue(space.contains("middle") || space.contains("right"),
+                "the other two pan triggers belong in the same row: " + space);
+        assertTrue(mode != null && mode.toLowerCase().contains("drag"),
+                "the keys that switch the mode have to say what the mode changes: " + mode);
     }
 
     /** No key means two different things, which is the easiest way for this list to go wrong. */

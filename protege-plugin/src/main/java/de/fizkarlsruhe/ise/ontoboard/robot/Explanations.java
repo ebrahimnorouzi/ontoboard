@@ -170,6 +170,64 @@ public final class Explanations {
         return run(ontology, factory, DEFAULT_PER_CLASS);
     }
 
+    /**
+     * Why the ontology entails one axiom the user has pointed at.
+     *
+     * <p>The other half of {@link #run}. That one starts from what is broken and works out which
+     * axioms broke it; this one starts from a conclusion the user can see - a dotted edge on the
+     * canvas - and names the axioms that force it. Both are justifications; they differ only in
+     * who chooses the entailment.
+     *
+     * <p><b>The reasoner must be the one that drew the edge.</b> Explaining with a different one
+     * is not a smaller answer, it is a wrong one: ELK cannot see an entailment that follows from
+     * a cardinality restriction, so asking it why HermiT concluded something returns nothing, and
+     * nothing reads as "there is no reason" rather than "I asked the wrong reasoner". The caller
+     * passes the factory behind the running reasoner for exactly this reason.
+     *
+     * <p>{@code ExplainOperation.explain} is safe to call from a bundle - checked with javap, not
+     * assumed. Of the methods on that class only {@code renderExplanationAsMarkdown} constructs
+     * {@code ProtegeExplanationOrderer}, which is the one this class has always avoided; the
+     * explanation generators themselves reach no further than owlexplanation's own packages.
+     *
+     * <p>An empty list is a real answer and a different one from a failure: the entailment holds
+     * but no justification was found within the limit. The caller must not render it as "no
+     * reason".
+     *
+     * @param entailment the axiom to explain, which need not be in the ontology - the whole point
+     *     is that it is not
+     * @param max how many distinct justifications to look for
+     * @throws RobotException when the generator cannot run here at all
+     */
+    public static List<Justification> forEntailment(OWLOntology ontology,
+            OWLReasonerFactory factory, OWLAxiom entailment, int max) {
+        if (ontology == null || factory == null || entailment == null) {
+            throw new IllegalArgumentException(
+                    "an ontology, a reasoner factory and an entailment are all required");
+        }
+        try {
+            return describe(ExplainOperation.explain(entailment, ontology, factory,
+                    max < 1 ? 1 : max), ontology);
+        } catch (RuntimeException | LinkageError cannotExplain) {
+            throw new RobotException("The explanation could not be computed: "
+                    + describe(cannotExplain), cannotExplain);
+        }
+    }
+
+    /**
+     * One axiom in Manchester syntax, named the way the rest of a result names things.
+     *
+     * <p>Exposed because a caller with no justifications still has to say what it was asking
+     * about, and rendering the entailment a second way would make the question and the answer
+     * look like they concerned different classes.
+     */
+    public static String render(OWLOntology ontology,
+            org.semanticweb.owlapi.model.OWLObject object) {
+        if (ontology == null || object == null) {
+            return "";
+        }
+        return tidy(renderer(ontology).render(object));
+    }
+
     // ===================================================================================== rendering
 
     /**

@@ -54,8 +54,9 @@ individual views in a tabbed column beside the canvas, so none of this needs a t
 
 | Feature | Web app | Plugin | Assessment |
 |---|---|---|---|
-| Graph canvas, drag, pan, zoom | ✅ | ✅ | JGraphX. Since 1.68.0 the gestures are a board's: a plain drag selects a region, space, the middle button or the right one pans, and the zoom controls float over the bottom-right corner rather than sitting in the status bar |
-| The gestures are written down | ❓ | ✅ | Since 1.68.0. Sixteen rows - every key binding and every mouse gesture - on *?* over the board and in the overflow menu. It exists because 1.68.0 inverted the drag, and an inversion nobody is told about is indistinguishable from a fault; a one-time status line says so on first use |
+| Graph canvas, drag, pan, zoom | ✅ | ✅ | JGraphX. Since 1.73.0 a plain drag moves the board again and selecting a region is a modifier or a mode away - two buttons on the toolbar, **H** and **V**, remembered per user. Space, the middle button and the right one pan in both modes. The zoom controls float over the bottom-right corner rather than sitting in the status bar |
+| Alignment guides while dragging | ❓ | ✅ | Since 1.73.0. Up to two lines - the nearest vertical and the nearest horizontal - through the stationary edge a dragged node has lined up with, covering left/centre/right, top/middle/bottom and edge-to-edge. With the grid on, a guide means exact: the step is 20 and the tolerance 4 |
+| The gestures are written down | ❓ | ✅ | Since 1.68.0, and rewritten in 1.73.0 when the drag changed back. Every key binding and every mouse gesture, on *?* over the board and in the overflow menu, with a test that both halves of the gesture mode are listed. A one-time status line says what a drag does on first use |
 | A frame carries what is inside it | ❓ | ✅ | Since 1.68.0. Dragging a frame moves the terms it encloses, by centre point, which is what makes it a frame rather than a rectangle. Resizing deliberately does not - a frame is a reading aid, not a container. Frames are siblings of their contents in the model, so this is done by delta rather than by parenting, which would have shifted every saved board by the frame origin |
 | A toolbar that fits its panel | ❓ | ✅ | Since 1.67.0. It wanted 1261px in an 857px tab, so *Collaborate* was laid out past the right edge - unpainted and unclickable. 777px now, with an overflow menu |
 | Snap and align | ❓ | ✅ | Since 1.66.0 a visible 20px dot grid. Snapping had been on since the first version at an invisible 10px step, which is sixteen candidate columns across one node |
@@ -133,6 +134,7 @@ individual views in a tabbed column beside the canvas, so none of this needs a t
 | Rebuildable import modules | ➖ | ✅ | *Import terms…* now writes `imports/<name>_terms.txt` beside the module, and *Project → Refresh imports…* reports whether every import can be rebuilt from the repository's own lists, then rebuilds them — ODK's `all_imports`/`refresh-imports` |
 | Bulk IRI rename | ➖ | ✅ | *ROBOT → Rename IRIs…* moves whole IRIs or a whole namespace, previewed before it applies and undoable in one step. Protégé renames one entity at a time |
 | Materialize inferred relations | ➖ | ✅ | *ROBOT → Transform… → Materialize relations*. Where Reason asserts inferred subclass axioms, this asserts inferred existential relations, so a consumer that cannot reason still sees them |
+| Why is this inferred? | ➖ | ✅ | Since 1.73.0. Right-click a dotted edge on the canvas for the axioms that force it - a real justification, computed with the reasoner Protégé is running, not a walk up the hierarchy. Protégé's own explanation workbench answers the same question for an entailment you have already found and selected; this answers it for the edge in front of you |
 | Axiom-level release diff | ➖ | ✅ | *Project → Compare releases…*, opt-in alongside the term-level table. ROBOT's own `diff`, with labels on, because the two answer different questions |
 | SPARQL over the open ontology | ✅ | ✅ | *ROBOT → SPARQL…* runs a query you write, or the project's own `src/sparql/*.rq` checks with the pass/fail convention `make sparql_test` uses. SELECT and ASK only |
 | SPARQL results as TSV | ➖ | ✅ | The same dialog writes results to a file — what ODK's `custom_reports` target produces — and one TSV per failing check, as `robot verify --output-dir` does |
@@ -189,6 +191,7 @@ Ranked by value per unit of effort, not by how the list happens to be ordered ab
 | Provenance, editorial notes, discussion links, obsoletion | 1.19.0 |
 | Frames and sticky notes | 1.19.0 |
 | Properties and inferred individual types on the canvas | 1.20.0 |
+| Why an inferred edge is there, alignment guides, and a drag that moves the board again | 1.73.0 |
 
 Most of that shipped under an unchanged version number, which is how this table came to
 describe a plugin several releases behind the one being downloaded.
