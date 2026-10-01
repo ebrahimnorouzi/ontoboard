@@ -10,6 +10,7 @@ import de.fizkarlsruhe.ise.ontoboard.axiom.EdgeAxioms;
 import de.fizkarlsruhe.ise.ontoboard.axiom.EntityFactory;
 import de.fizkarlsruhe.ise.ontoboard.axiom.RelationDialog;
 import de.fizkarlsruhe.ise.ontoboard.canvas.CanvasExport;
+import de.fizkarlsruhe.ise.ontoboard.canvas.CanvasGesture;
 import de.fizkarlsruhe.ise.ontoboard.canvas.CanvasIcons;
 import de.fizkarlsruhe.ise.ontoboard.canvas.CanvasLayouts;
 import de.fizkarlsruhe.ise.ontoboard.canvas.CanvasMembership;
@@ -152,6 +153,10 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
     private boolean showInferences;
     private javax.swing.JToggleButton inferencesButton;
 
+    /** The two halves of the gesture mode, in a button group so exactly one is on. */
+    private javax.swing.JToggleButton panButton;
+    private javax.swing.JToggleButton selectButton;
+
     /**
      * The Find box, and what it last found.
      *
@@ -247,8 +252,32 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
      */
     private Point lastCursorPoint;
 
+    /**
+     * Builds the view, and says whether it managed to.
+     *
+     * <p>The report is the point. Protege's {@code View.createContent} catches whatever
+     * {@code initialise()} throws and replaces the view with "An error occurred whilst creating
+     * the view", so from outside this method a canvas that died looks exactly like one that
+     * worked - which is how 1.73.0 shipped with the canvas crashing on every open and a smoke
+     * receipt recording PASS 10/10. {@link ViewHealth} is read by the self-test straight after it
+     * opens the tab, so the failure is now reported by the thing that failed rather than inferred
+     * from the absence of a complaint.
+     *
+     * <p>The throwable is re-thrown unchanged: Protege's handling of it is correct, and a view
+     * that swallowed its own construction failure would be a worse lie than the one this fixes.
+     */
     @Override
     protected void initialiseOWLView() {
+        try {
+            buildView();
+        } catch (RuntimeException | Error broke) {
+            ViewHealth.failed(getClass().getSimpleName(), broke);
+            throw broke;
+        }
+        ViewHealth.constructed(getClass().getSimpleName());
+    }
+
+    private void buildView() {
         setLayout(new BorderLayout());
 
         graph = new SchemaGraph();
@@ -312,6 +341,10 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         installWheelZoom();
         installZoomReadout();
         installKeyboardShortcuts();
+        // After the toolbar, which owns the two buttons this sets.
+        applyGestureMode(CanvasGesture.byName(java.util.prefs.Preferences
+                .userNodeForPackage(SchemaCanvasView.class)
+                .get(CanvasGesture.PREFERENCE_KEY, null)), false);
 
         loadLayoutForActiveOntology();
         installContextMenu();
@@ -320,10 +353,11 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         selectionBridge = new SelectionBridge(graph, this::pushSelectionToProtege);
         selectionBridge.install();
 
-        // Once, ever, per user. The pan gesture inverted in 1.68.0 - a plain drag selects a region
-        // now and panning moved to space, the middle button and the right - and an inversion nobody
-        // is told about is indistinguishable from a fault. It goes to the board channel, so it
-        // cannot overwrite a collaboration warning.
+        // Once, ever, per user. The pan gesture has now been decided in both directions - it
+        // panned until 1.68.0, selected until 1.73.0, and pans again because that is the one
+        // people reached for - so it is a mode with a button, and this sentence names the default
+        // and the modifier that reaches the other one. It goes to the board channel, so it cannot
+        // overwrite a collaboration warning.
         //
         // It can still collide with a board message, and one in particular: loadLayoutForActiveOntology
         // above says "the saved arrangement could not be read" on the same label, and that sentence is
@@ -333,8 +367,8 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                 java.util.prefs.Preferences.userNodeForPackage(SchemaCanvasView.class);
         if (firstRunHintFits(prefs.getBoolean("ontoboard.hintsSeen", false),
                 boardStatus == null ? null : boardStatus.getText())) {
-            setStatus("Drag to select, space-drag to pan, wheel to zoom, double-click for a new "
-                    + "class. Press ? on the board for every shortcut.");
+            setStatus("Drag to move the board, Shift-drag to select a region, wheel to zoom, "
+                    + "double-click for a new class. Press ? on the board for every shortcut.");
             prefs.putBoolean("ontoboard.hintsSeen", true);
         }
         // And the overview starts open only on a board big enough to need one.
@@ -2087,28 +2121,33 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
     // ------------------------------------------------------------------ interaction
 
     /**
-     * Rubberband selection with a modifier held, and multiple selection generally.
+     * Rubberband selection, and multiple selection generally.
      *
-     * <p>A plain left-drag pans (see {@code CollaborativeGraphComponent.isPanningEvent}), so the
-     * rubberband is bound to Ctrl or Shift rather than fighting it for the same gesture. Ctrl-click
-     * to add one node at a time works without any code here - mxGraph does it - but only once the
-     * graph allows more than one cell to be selected at a time, which is what
-     * {@code setMultigraph} does not do and {@code mxGraphSelectionModel} needs told.
+     * <p>Whether a press starts a marquee is {@link CanvasGesture}'s decision, shared with
+     * {@code CollaborativeGraphComponent.isPanningEvent} so that the two cannot both claim the
+     * same drag - or both decline it, which would make the gesture do nothing at all. Ctrl-click
+     * to add one node at a time needs no code here; mxGraph does it, but only once the graph
+     * allows more than one cell to be selected, which {@code mxGraphSelectionModel} has to be
+     * told.
+     *
+     * <p>Three explicit tests rather than belt-and-braces. {@code mxRubberband.mousePressed} in
+     * 4.2.2 checks isConsumed, isEnabled, isRubberbandTrigger and isPopupTrigger and never asks
+     * what is under the cursor or which button was pressed - {@code isRubberbandTrigger} is
+     * literally {@code return true}. It behaved only because the handlers registered before it
+     * consume the event first, and depending on registration order is a thing to do deliberately
+     * or not at all.
      */
     private void installSelection() {
         graph.getSelectionModel().setSingleSelection(false);
         new com.mxgraph.swing.handler.mxRubberband(graphComponent) {
             @Override
             public void mousePressed(java.awt.event.MouseEvent event) {
-                // A plain drag on empty board selects a region, since 1.68.0. The explicit
-                // null-cell test is required rather than belt-and-braces: mxRubberband.mousePressed
-                // in 4.2.2 checks isConsumed, isEnabled, isRubberbandTrigger and isPopupTrigger and
-                // never asks what is under the cursor - isRubberbandTrigger is literally "return
-                // true". It works today only because mxGraphHandler is registered first by the
-                // mxGraphComponent constructor and consumes the event on a cell hit, which is a
-                // registration order to depend on deliberately or not at all.
-                if (graphComponent.getCellAt(event.getX(), event.getY()) == null
-                        && !((CollaborativeGraphComponent) graphComponent).isSpaceHeld()) {
+                CollaborativeGraphComponent board = (CollaborativeGraphComponent) graphComponent;
+                if (javax.swing.SwingUtilities.isLeftMouseButton(event)
+                        && CanvasGesture.leftDragSelects(board.getGestureMode(),
+                                board.isSpaceHeld(),
+                                event.isShiftDown() || event.isControlDown(),
+                                graphComponent.getCellAt(event.getX(), event.getY()) != null)) {
                     super.mousePressed(event);
                 }
             }
@@ -2243,6 +2282,13 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         graphComponent.getActionMap().put("ontoboard.panOn", holdSpace(true));
         graphComponent.getActionMap().put("ontoboard.panOff", holdSpace(false));
 
+        // H and V, the keys every canvas application uses for the hand and the pointer. Without a
+        // modifier, so Ctrl+V still pastes wherever Protege pastes.
+        bindOnCanvas("ontoboard.gesture.pan", java.awt.event.KeyEvent.VK_H, 0,
+                () -> applyGestureMode(CanvasGesture.Mode.PAN, true));
+        bindOnCanvas("ontoboard.gesture.select", java.awt.event.KeyEvent.VK_V, 0,
+                () -> applyGestureMode(CanvasGesture.Mode.SELECT, true));
+
         keys.put(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_ESCAPE, 0),
                 "ontoboard.clearSelection");
         graphComponent.getActionMap().put("ontoboard.clearSelection",
@@ -2272,6 +2318,32 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
     }
 
     /** The space-bar action, in both directions, with the cursor to match. */
+    /**
+     * Switches what a plain drag does, remembers it, and says so.
+     *
+     * <p>Remembered per user rather than per board: it is a preference about how somebody works,
+     * not a property of a diagram, and resetting it on every ontology would make it useless.
+     *
+     * @param announce whether to put the new meaning on the status line. False when restoring the
+     *     stored choice at startup, where it would push aside whatever the board had to say about
+     *     the ontology just loaded.
+     */
+    private void applyGestureMode(CanvasGesture.Mode mode, boolean announce) {
+        CanvasGesture.Mode chosen = mode == null ? CanvasGesture.DEFAULT : mode;
+        ((CollaborativeGraphComponent) graphComponent).setGestureMode(chosen);
+        if (panButton != null) {
+            panButton.setSelected(chosen == CanvasGesture.Mode.PAN);
+        }
+        if (selectButton != null) {
+            selectButton.setSelected(chosen == CanvasGesture.Mode.SELECT);
+        }
+        java.util.prefs.Preferences.userNodeForPackage(SchemaCanvasView.class)
+                .put(CanvasGesture.PREFERENCE_KEY, chosen.name());
+        if (announce) {
+            setStatus(chosen.getHelp());
+        }
+    }
+
     private javax.swing.Action holdSpace(final boolean held) {
         return new javax.swing.AbstractAction() {
             private static final long serialVersionUID = 1L;
@@ -2741,6 +2813,21 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             algorithms.show(arrangeButton, 0, arrangeButton.getHeight());
         });
 
+        // What a plain drag does, shown rather than remembered. A mode with no visible state is
+        // the thing that makes a canvas feel broken: you drag, something unexpected happens, and
+        // nothing on screen would have told you why.
+        panButton = new javax.swing.JToggleButton(new CanvasIcons.Hand());
+        panButton.setToolTipText("<html><b>Pan (H)</b><br>"
+                + CanvasGesture.Mode.PAN.getHelp() + "</html>");
+        panButton.addActionListener(a -> applyGestureMode(CanvasGesture.Mode.PAN, true));
+        selectButton = new javax.swing.JToggleButton(new CanvasIcons.Marquee());
+        selectButton.setToolTipText("<html><b>Select (V)</b><br>"
+                + CanvasGesture.Mode.SELECT.getHelp() + "</html>");
+        selectButton.addActionListener(a -> applyGestureMode(CanvasGesture.Mode.SELECT, true));
+        javax.swing.ButtonGroup gestures = new javax.swing.ButtonGroup();
+        gestures.add(panButton);
+        gestures.add(selectButton);
+
         inferencesButton = new javax.swing.JToggleButton("Inferences", new CanvasIcons.Dashed());
         inferencesButton.setToolTipText("Also draw what the running reasoner concludes, dotted");
         inferencesButton.addActionListener(a -> {
@@ -2753,6 +2840,9 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
 
         bar.add(addSelectedButton);
         bar.add(addAll);
+        bar.addSeparator();
+        bar.add(panButton);
+        bar.add(selectButton);
         bar.addSeparator();
         bar.add(buildFindBox());
         bar.addSeparator();
@@ -3134,6 +3224,22 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                     menu.add(note);
                 }
 
+                if (onEdge) {
+                    // The question an unexpected dotted edge provokes, answered where it is
+                    // provoked. Without it the canvas could draw a conclusion and never say
+                    // where it came from, which is the wrong relationship to have with a
+                    // reasoner: the useful question is almost never "is this right", it is
+                    // "which of my axioms did I not mean".
+                    final String inferredEdgeId = graph.getIdForCell(cell);
+                    if (isInferred(inferredEdgeId)) {
+                        JMenuItem why = new JMenuItem("Why is this inferred?…");
+                        why.setToolTipText("The axioms that force this conclusion. The reasoner "
+                                + "is asked, so it can take a while on a large ontology.");
+                        why.addActionListener(a -> explainInferredEdge(inferredEdgeId));
+                        menu.add(why);
+                    }
+                }
+
                 // ---- 2. what it can be joined to -------------------------------------------
                 if (onTerm) {
                     menu.addSeparator();
@@ -3203,7 +3309,9 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                         JMenuItem inferred = new JMenuItem("Inferred - no axiom to delete");
                         inferred.setEnabled(false);
                         inferred.setToolTipText("The reasoner worked this out; the ontology does "
-                                + "not assert it. Nothing to remove.");
+                                + "not assert it. Nothing to remove - but \"Why is this "
+                                + "inferred?\" above names the axioms that do force it, and "
+                                + "those can be deleted.");
                         menu.add(inferred);
                     } else {
                         JMenuItem deleteAxiom = new JMenuItem("Delete axiom from ontology\u2026");
@@ -3305,8 +3413,11 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
      * directly without a live {@code OWLEditorKit}.
      */
     static void resetLayoutForOntology(OWLOntology ontology, CanvasLayout layout) {
-        layout.ontologyIri = ontology.getOntologyID().getOntologyIRI()
-                .transform(Object::toString).or("");
+        // Null when Protege has nothing open. An empty board for no ontology is the honest
+        // result; until 1.74.0 this threw and took the whole view with it.
+        layout.ontologyIri = ontology == null
+                ? ""
+                : ontology.getOntologyID().getOntologyIRI().transform(Object::toString).or("");
         layout.onCanvas.clear();
         layout.nodes.clear();
         layout.frames.clear();
@@ -3407,10 +3518,38 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         }
     }
 
+    /**
+     * The file the active ontology was loaded from, or null when there is not one.
+     *
+     * <p>Null is the ordinary answer for an ontology held in memory, a URL, or a Protege session
+     * with nothing open yet - and every caller already treats null as "no sidecar", so none of
+     * the three is exceptional.
+     *
+     * <p>Guarded as of 1.74.0, because it was not. With no active ontology this threw a
+     * NullPointerException out of {@code initialiseOWLView}, and Protege replaced the whole
+     * Schema Canvas with "An error occurred whilst creating the view" - the tab's one view, lost,
+     * for the lifetime of the session. It had been that way since the view was written and no
+     * release caught it, because the host self-test opened the tab without ever building what is
+     * inside it. The first run that did build it found this.
+     */
     private File activeOntologyFile() {
         OWLOntology ontology = getOWLModelManager().getActiveOntology();
-        URI documentUri = getOWLModelManager().getOWLOntologyManager()
-                .getOntologyDocumentIRI(ontology).toURI();
+        if (ontology == null) {
+            return null;
+        }
+        org.semanticweb.owlapi.model.IRI documentIri;
+        try {
+            documentIri = getOWLModelManager().getOWLOntologyManager()
+                    .getOntologyDocumentIRI(ontology);
+        } catch (RuntimeException notTracked) {
+            // getOntologyDocumentIRI throws UnknownOWLOntologyException for an ontology this
+            // manager does not hold, which happens while Protege is switching between them.
+            return null;
+        }
+        if (documentIri == null) {
+            return null;
+        }
+        URI documentUri = documentIri.toURI();
         return "file".equalsIgnoreCase(documentUri.getScheme()) ? new File(documentUri) : null;
     }
 
@@ -3511,6 +3650,9 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
     }
 
     private static String ontologyIriOf(OWLOntology ontology) {
+        if (ontology == null) {
+            return null;
+        }
         com.google.common.base.Optional<IRI> iri = ontology.getOntologyID().getOntologyIRI();
         return iri.isPresent() ? iri.get().toString() : null;
     }
@@ -3982,6 +4124,114 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         getOWLModelManager().applyChanges(changes);
     }
 
+
+    /** The name this operation reports itself under, in the dialog and in a saved report. */
+    private static final String EXPLAIN_EDGE = "Why is this inferred?";
+
+    /**
+     * Shows the axioms that force an inferred edge.
+     *
+     * <p>Off the event thread without exception. A justification is found by taking axioms away
+     * and asking the reasoner whether the conclusion survives, so the cost is many
+     * classifications rather than one; doing that on the EDT would freeze Protege with no window
+     * repainting and nothing on screen to say why.
+     *
+     * <p>Both preconditions are checked before the dialog appears, because a minute spent
+     * reaching an empty table is worse than an immediate refusal that says what to do.
+     */
+    private void explainInferredEdge(final String edgeId) {
+        String unavailable = de.fizkarlsruhe.ise.ontoboard.reason.EdgeExplanation
+                .whyUnavailable(getOWLModelManager().getReasoner());
+        if (unavailable != null) {
+            JOptionPane.showMessageDialog(this, unavailable, "Cannot explain this edge",
+                    JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        final org.semanticweb.owlapi.reasoner.OWLReasonerFactory factory = runningReasonerFactory();
+        if (factory == null) {
+            JOptionPane.showMessageDialog(this,
+                    "Protege did not hand over a factory for the running reasoner, so this edge "
+                            + "cannot be explained with the reasoner that drew it. Stopping and "
+                            + "starting the reasoner from Protege's Reasoner menu usually "
+                            + "restores it.",
+                    "Cannot explain this edge", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        final OWLOntology ontology = getOWLModelManager().getActiveOntology();
+        final String reasonerName = reasonerName();
+        de.fizkarlsruhe.ise.ontoboard.menu.BackgroundRun.execute(this, EXPLAIN_EDGE,
+                () -> explanationOf(ontology, factory, edgeId, reasonerName),
+                result -> de.fizkarlsruhe.ise.ontoboard.menu.ResultDialog.show(this, result));
+    }
+
+    /**
+     * The explanation as a result the standard dialog can show and save.
+     *
+     * <p>Static and free of Swing, so it runs on the worker thread; everything it needs was read
+     * on the EDT before the work started.
+     */
+    private static de.fizkarlsruhe.ise.ontoboard.menu.OperationResult explanationOf(
+            OWLOntology ontology, org.semanticweb.owlapi.reasoner.OWLReasonerFactory factory,
+            String edgeId, String reasonerName) {
+        de.fizkarlsruhe.ise.ontoboard.menu.OperationResult.Builder result =
+                de.fizkarlsruhe.ise.ontoboard.menu.OperationResult.of(EXPLAIN_EDGE)
+                        .columns("Justification", "Axiom");
+        try {
+            de.fizkarlsruhe.ise.ontoboard.reason.EdgeExplanation.Why why =
+                    de.fizkarlsruhe.ise.ontoboard.reason.EdgeExplanation
+                            .explain(ontology, factory, edgeId);
+            result.note("Inferred: " + why.getEntailment());
+            result.note("Reasoner: " + reasonerName);
+            if (why.isEmpty()) {
+                // Not a clean success. An empty table under a green heading would read as "there
+                // is no reason", and there is always a reason - the generator did not find it.
+                return result.summary("No justification found for this edge.")
+                        .warn(why.getSummary()).build();
+            }
+            boolean several = why.getJustifications().size() > 1;
+            int number = 1;
+            for (java.util.List<String> justification : why.getJustifications()) {
+                for (String axiom : justification) {
+                    result.row(several ? "Justification " + number : "Forces this edge", axiom);
+                }
+                number++;
+            }
+            return result.summary(why.getSummary()).build();
+        } catch (RuntimeException | LinkageError failed) {
+            String message = failed.getMessage();
+            return de.fizkarlsruhe.ise.ontoboard.menu.OperationResult.failed(EXPLAIN_EDGE,
+                    message == null || message.trim().isEmpty()
+                            ? failed.getClass().getName() : message);
+        }
+    }
+
+    /**
+     * The factory behind the reasoner Protege is running, or null when there is not one.
+     *
+     * <p>Protege's own factory, not one this plugin picks. Explaining with a different reasoner
+     * is not a smaller answer but a wrong one: ELK cannot see an entailment that follows from a
+     * cardinality restriction, so asking it why HermiT concluded something comes back empty, and
+     * empty reads as "there is no reason".
+     */
+    private org.semanticweb.owlapi.reasoner.OWLReasonerFactory runningReasonerFactory() {
+        try {
+            org.protege.editor.owl.model.inference.ProtegeOWLReasonerInfo info =
+                    getOWLModelManager().getOWLReasonerManager().getCurrentReasonerFactory();
+            return info == null ? null : info.getReasonerFactory();
+        } catch (RuntimeException | LinkageError unavailable) {
+            return null;
+        }
+    }
+
+    /** What to record in the report, so a saved explanation says what produced it. */
+    private String reasonerName() {
+        try {
+            String name = getOWLModelManager().getOWLReasonerManager().getCurrentReasonerName();
+            return name == null || name.trim().isEmpty() ? "unknown" : name;
+        } catch (RuntimeException | LinkageError unavailable) {
+            return "unknown";
+        }
+    }
 
     /** Whether this edge is the reasoner's conclusion rather than an axiom in the ontology. */
     private static boolean isInferred(String edgeId) {

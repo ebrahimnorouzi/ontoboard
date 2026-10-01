@@ -1,0 +1,176 @@
+OntoBoard 1.73.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-10-01  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 8/8  test 10/10
+  2026-10-01  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 8/8  test 10/10
+
+
+THE CANVAS RELEASE: WHY AN INFERENCE IS THERE, WHAT A NODE LINES UP WITH, AND A DRAG THAT
+MOVES THE BOARD AGAIN
+
+Three of the eight items from the same request. The fourth canvas item - properties drawn as
+edges from the axioms rather than as standalone nodes - is a projection change and is next.
+
+1. "WHY IS THIS INFERRED?"
+
+The canvas has drawn the reasoner's conclusions since 1.20.0 and could never say where one came
+from. A conclusion you cannot trace is one you have to take on faith, which is the wrong
+relationship to have with a reasoner. The useful question about an unexpected inference is almost
+never "is the reasoner right" - it is "which of my axioms did I not mean", and only a
+justification answers that.
+
+Right-click a dotted edge. It runs off the event thread behind an abandonable dialog and reports
+through the same result dialog every other operation uses, so it can be saved.
+
+It is a justification and not a walk up the hierarchy, and the difference is not academic.
+InferredEdges draws to the nearest ancestor ON THE BOARD, so "Dog is a kind of Animal" can be true
+with no axiom mentioning both. Run against a worked example:
+
+    ASKED:   Dog SubClassOf Animal
+    SUMMARY: 2 independent justifications. The inference survives until every one of them is
+             broken, so removing a single axiom will not remove the edge.
+      justification 1:
+          Dog SubClassOf owns some Thing
+          owns Domain Animal
+      justification 2:
+          Dog SubClassOf mammal
+          mammal SubClassOf Animal
+
+Justification 1 is a property domain. No hierarchy walk would ever have found it, and it is
+exactly the shape of the real case - an inferred parent nobody wanted, resting on a domain axiom
+written years earlier for a different purpose.
+
+Three decisions worth recording.
+
+It explains with the reasoner PROTEGE IS RUNNING, taken from OWLReasonerManager rather than picked
+by the plugin. ELK cannot see an entailment that follows from a cardinality restriction, so
+explaining HermiT's conclusion with ELK comes back empty - and empty reads as "there is no reason"
+rather than "you asked the wrong reasoner".
+
+Two independent justifications are reported as two, with a sentence saying what that means. The
+alternative is a user deleting the one axiom they were shown and watching the edge stay.
+
+An empty result is reported as a gap in the explanation, not as an absence of reason. The edge is
+on the board because a reasoner concluded it, so a justification exists; coming back empty says
+the generator did not find one, and the two causes a user can act on are named.
+
+Both preconditions are checked before the dialog appears - inferences stay on the board once
+drawn, so somebody can switch the reasoner off in Protege and still be looking at dotted edges,
+and a minute spent reaching an empty table is worse than an immediate refusal that says what to
+do.
+
+ExplainOperation.explain is safe to call from inside this bundle, checked with javap rather than
+assumed: of the methods on that class only renderExplanationAsMarkdown constructs
+uk.ac.manchester.cs.owl.explanation.ProtegeExplanationOrderer, which is the one Explanations has
+always avoided and says why. owlexplanation 2.0.0 was already embedded, transitively through
+protege-editor-owl, so this added no dependency.
+
+There is a test that the open ontology holds exactly the axioms it started with. The technique is
+subtractive - axioms are taken away and the reasoner asked whether the conclusion survives - and
+the obvious implementation of it would mutate the ontology it was handed, which here is the one
+open in Protege.
+
+2. A DRAG MOVES THE BOARD AGAIN
+
+Reported as "click-drag should move the canvas". That reverses 1.68.0, so it is worth writing the
+whole story down rather than inverting a third time.
+
+Until 1.68.0 a plain drag panned and a marquee needed Ctrl or Shift, documented in a doc comment
+and nowhere a user would look. 1.68.0 inverted it, on the reasoning that selecting several terms
+at once is the thing a person does most on a board. In use it is not: a board is bigger than the
+window far more often than a selection spans several terms, so the gesture people reached for
+first was the one that had just been taken away.
+
+So neither is behind a doc comment now. It is a mode: two buttons on the toolbar, H and V, the
+choice remembered per user in Preferences, panning the default. Whichever mode you are in the
+other gesture is on Shift or Ctrl, and space pans in both - that mirror is the only arrangement
+that does not have to be memorised.
+
+The decision is nine lines in CanvasGesture, shared by the two call sites that need it: the
+component's isPanningEvent and the view's rubberband. They must be exact complements and the
+failure is silent either way - if both claim a drag the board pans while a selection rectangle is
+drawn across it, and if neither does the canvas reads as frozen. A test walks all sixteen
+combinations of mode, space, modifier and cell and asserts that exactly one claims each. Neither
+call site is testable; the function between them is.
+
+The rubberband also gained an explicit left-button test. mxRubberband.mousePressed in 4.2.2 never
+asks which button was pressed - isRubberbandTrigger is literally "return true" - so a right-drag
+reached it too, and only failed to draw a marquee because the panning handler had consumed the
+event first. That is registration order again, and it is a thing to depend on deliberately or not
+at all.
+
+One cost, recorded because it is not free. The cursor says which mode the board is in, and
+mxGraphHandler.mouseMoved consumes the mouse-moved event whenever a handler supplies a cursor, so
+empty board now consumes where it did not. That already happens over every node, which is where
+anything downstream would care, so the change lands on the part of the canvas where nothing is
+listening. Checked: the cursor-sharing listener that publishes the pointer to peers does not test
+isConsumed.
+
+3. ALIGNMENT GUIDES
+
+A grid is a texture, and the question it does not answer is the one that matters: not "is this on
+a grid point" but "is this edge the same as that edge". Without an answer the only way to align
+two terms is to compare by eye, so diagrams drift by a few pixels everywhere.
+
+Up to two lines - the nearest vertical and the nearest horizontal - drawn through the stationary
+node's edge and extended past both ends. Not more: a dense board matches a dozen edges at once and
+drawing them all turns the diagram into a cage. Left, centre and right on one axis, top, middle
+and bottom on the other, plus edge-to-edge touching. Centres are tried first, so a tie does not
+depend on the order the board happened to be iterated in - and nearest still wins outright, or a
+centre three pixels off would beat a left edge exactly on.
+
+With the grid on, a guide means exact. The step is 20 and the tolerance is 4, so two snapped nodes
+are either on the same line or at least 20 apart, and inside the tolerance can only mean zero. The
+tolerance earns its keep under Alt-drag, this canvas's "ignore the grid this once", where it reads
+as "you are nearly there".
+
+Two deliberate omissions. It does not snap - the grid already does, and a second magnet pulling
+against the first is how a node lands where neither wanted it. And it draws nothing into an
+exported PNG or SVG, because CanvasExport renders from the graph model and never calls the
+component's paint; for a mark that exists only during a drag that is correct rather than a
+trade-off.
+
+The arithmetic is worth recording because getting it wrong would be invisible. previewBounds is
+positioned from bbox - the bounding box INCLUDING label overhang and stroke width - while the
+rectangles it is compared against are cell states. The two differ by a pixel or two, which is most
+of a four-pixel tolerance. getPreviewLocation builds its result as the snapped cell bounds plus
+(bbox - cellBounds), read out of the bytecode, so subtracting that offset back off recovers the
+cell rectangle exactly.
+
+Repainting is two thin strips rather than the control. A guide spans the nodes it joins, which on
+a tall board is most of the viewport, and this runs on every mouse event of a drag.
+
+Only visible nodes are candidates. That bounds the cost on a board of several hundred terms, and
+it stops a guide whose other end is off screen - a line that says "aligned with something" and
+leaves the user scrolling about to find what.
+
+NUMBERS
+
+1423 tests, 0 failures, 1 skipped. 34 new: eleven for the explanation, fifteen for the guide
+geometry, eight for the gesture decision.
+
+The skip is BundleConfigurationTest's manifest test, which assumes a jar in target/ and skips in
+the run that produces one. The `mvn -o test` run before the version bump reported 0 skipped.
+
+Counted three ways, agreeing: Maven's summary, the sum over 100 surefire reports for 100 test
+classes, and an anchored ^\s*@Test\s*$ across src/test/java.
+
+A test was changed rather than added, and it is worth naming: ShortcutsPanelTest asserted that the
+Drag row contains the word "select". That encoded 1.68.0's behaviour, which this release reverses,
+so it now asserts that both halves of the mode are listed and ties itself to CanvasGesture.DEFAULT
+rather than to the word "pan" - flipping the default without rewriting the row fails there instead
+of in the field.
+
+WHAT THIS DOES NOT PROVE
+
+The smoke run starts the plugin, opens the tab and constructs its views on both hosts. Nothing in
+it looks at a pixel, so "the guides are drawn where the geometry says" rests on the geometry having
+fifteen tests and on the line being anchored to a real node's edge rather than to the preview.
+
+STILL OPEN FROM THE SAME REQUEST
+
+Properties drawn as edges from the axioms rather than as standalone nodes. Then the imports terms
+editor, and the choice between date-based and semantic-version releases - MWO's scheme reads
+VERSION and PRIOR_VERSION from the command line and uses .../mwo/3.0.2 with no /releases/ segment,
+so the choice changes the IRI's shape and not only its text.

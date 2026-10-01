@@ -1,0 +1,130 @@
+OntoBoard 1.74.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-10-01  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 8/8  test 10/10
+  2026-10-01  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 8/8  test 10/10
+
+
+THE CANVAS CRASHED IN 1.73.0, AND THE REASON IT SHIPPED IS WORSE THAN THE CRASH
+
+Reported within the hour: "i tried to open mwo, ontoboard gives this error in the canvas - An error
+occurred whilst creating the view. NullPointerException: null".
+
+1. THE CRASH
+
+    java.lang.NullPointerException
+        at ...canvas.GuideGraphHandler.sameLines(GuideGraphHandler.java:184)
+        at ...canvas.GuideGraphHandler.show(GuideGraphHandler.java:116)
+        at ...canvas.GuideGraphHandler.setVisible(GuideGraphHandler.java:69)
+        at com.mxgraph.swing.handler.mxGraphHandler.<init>(mxGraphHandler.java:277)
+        at ...canvas.GuideGraphHandler.<init>(GuideGraphHandler.java:51)
+        at ...canvas.CollaborativeGraphComponent.createGraphHandler(...:97)
+        at com.mxgraph.swing.mxGraphComponent.createHandlers(mxGraphComponent.java:829)
+        at ...views.SchemaCanvasView.initialiseOWLView(SchemaCanvasView.java:260)
+
+A textbook Java construction-order fault. mxGraphHandler's constructor calls setVisible(false) at
+line 277; that dispatches to the subclass override added in 1.73.0; and a subclass field
+initialiser has not run at that point, because it runs only after super(...) returns. So the
+override read a null list and threw, and the component's constructor took the whole view with it.
+
+The field is left null now and every read goes through getGuides(), which normalises. Writing
+`= Collections.emptyList()` on the field would not have fixed it: the call arrives before the
+initialiser would.
+
+What makes this one worth a long note rather than a line: the class next door already carried the
+warning. CollaborativeGraphComponent's own doc comment says createGraphControl() "runs inside the
+superclass constructor, before this class's own fields are assigned, so it must not read them". I
+read that, applied it to createGraphHandler not reading fields, and missed that every method the
+superclass constructor can reach has the same property.
+
+2. WHY NEITHER THE SUITE NOR THE SMOKE CAUGHT IT
+
+1,423 unit tests passed. Both hosts smoked PASS, check 8/8 and self-test 10/10. The 1.73.0 receipt
+records that. The canvas was crashing on every single open.
+
+Two independent holes, both now closed.
+
+THE SUITE NEVER BUILT THE COMPONENT. Ninety-nine test classes covering graphs, projections,
+layouts, gestures and guide geometry, and not one of them constructed a CollaborativeGraphComponent.
+Everything was tested except the object the user actually gets. GuideGraphHandlerTest does it in one
+line, headless; run against the broken code it fails 1 and errors 3 of its 4 tests.
+
+THE SELF-TEST'S CLAIM WAS A SENTENCE, NOT A CHECK. It opened the OntoBoard tab and returned
+"ok: opened, its views constructed, and closed again" having verified nothing beyond the tab
+existing. Protege's View.createContent catches whatever initialise() throws and puts "An error
+occurred whilst creating the view" in the view's place, so from outside, a canvas that died looked
+exactly like one that worked.
+
+And it was worse than that. When the check was made real, it reported:
+
+    the tab opened, but no OntoBoard view reported itself built: Protege creates view content
+    lazily when a view is shown, so this run proves the tab is registered and nothing about the
+    canvas
+
+Adding and removing a tab builds nothing. So the smoke run had never built SchemaCanvasView at all,
+in any release - while the code comment beside it claimed "this is also the first check that the
+canvas can be built at all under Felix". That claim was wrong the day it was written.
+
+Both halves are fixed. ViewHealth is a register the views write to themselves, before Protege gets
+the chance to swallow anything, and the self-test reads it immediately after opening the tab. If
+nothing reports in, the self-test now selects the tab and, failing that, calls View.createUI on each
+view directly - the same method Protege's own hierarchy listener calls. The receipt line above now
+names what was built:
+
+    Window > Tabs > OntoBoard | ok | opened, [SchemaCanvasView] built without throwing
+
+3. THE FIRST RUN THAT REALLY BUILT THE VIEW FOUND A SECOND CRASH
+
+Older than 1.73.0, present in every release that has had this view, and never once caught:
+
+    SchemaCanvasView threw NullPointerException at ...SchemaCanvasView.activeOntologyFile:3521
+    SchemaCanvasView threw NullPointerException at ...SchemaCanvasView.resetLayoutForOntology:3416
+
+With no active ontology - which Protege has before the first one loads and while it is switching
+between them - activeOntologyFile dereferenced a null ontology, and resetLayoutForOntology
+dereferenced it again. Either one costs the whole view for the rest of the session: Protege replaces
+the Schema Canvas with the error label and there is nothing to click to bring it back.
+
+Nothing open is a state the canvas has to survive, not an error. Three guards, at the three places
+that decide it rather than at each call site: activeOntologyFile returns null (which every caller
+already treats as "no sidecar"), ontologyIriOf returns null, resetLayoutForOntology stamps an empty
+IRI, and OntologyProjection.project returns an empty projection. All four have tests.
+
+4. VERIFIED AGAINST THE PROJECT THAT FAILED
+
+C:\Users\eno\ontology-projects\mwo, built headlessly through the same path the view uses:
+
+    ontology  : http://purls.helmholtz-metadaten.de/mwo/mwo.owl
+    axioms    : 582   classes=139
+    sidecar   : mwo-edit.owl.ontoboard.json  exists=true
+    on board  : 172 terms
+    projected : 171 nodes, 88 edges
+    rendered  : ok
+    component : GuideGraphHandler, gesture=PAN
+    no onto   : 0 nodes, no throw
+
+171 nodes from 172 saved members is the ordinary stale-entry case, which pruneStaleMembers reports.
+
+NUMBERS
+
+1437 tests, 0 failures, 0 skipped. 14 new: four that construct the canvas component, seven for the
+view-health register, two for projecting with nothing open, one for stamping a layout with no
+ontology.
+
+Counted three ways, agreeing: Maven's summary, the sum over 102 surefire reports for 102 test
+classes, and an anchored ^\s*@Test\s*$ across src/test/java.
+
+A CORRECTION TO THE LAST TWO RECEIPTS
+
+1.72.0 and 1.73.0 both state that BundleConfigurationTest's manifest test "assumes a jar in target/
+and skips in the run that produces one". That is backwards, and this release's runs show it: the
+test is guarded by assumeTrue(jar != null), so it SKIPS when target/ holds no jar and RUNS when one
+is there. A plain `mvn test` after a clean therefore skips it; a `mvn test` after packaging runs it.
+The numbers in those receipts were right; the sentence explaining them was not.
+
+STILL OPEN FROM THE SAME REQUEST
+
+Properties drawn as edges from the axioms rather than as standalone nodes - started, and set down
+when this came in. Then the imports terms editor, and the choice between date-based and
+semantic-version releases.

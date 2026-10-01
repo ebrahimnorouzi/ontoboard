@@ -269,6 +269,85 @@ The plugin is early. These exist in the web application but not yet here:
   note is prose rather than a phrase, so it is the one tooltip here that wraps. Three paragraphs from
   three editors is not a tooltip; the Notes dialog shows them all with authors and dates.
 
+- **The canvas crashed in 1.73.0, and the reason it shipped matters more than the crash - fixed
+  in 1.74.0.** Reported within the hour of the release: *"i tried to open mwo, ontoboard gives
+  this error in the canvas - An error occurred whilst creating the view. NullPointerException:
+  null"*.
+
+  The fault itself is a textbook one. `mxGraphHandler`'s constructor calls `setVisible(false)` at
+  line 277; that dispatches to the override 1.73.0 added for alignment guides; and a subclass
+  field initialiser has not run at that point, because it runs only after `super(...)` returns.
+  The override read a null list, threw, and took the component's constructor, the view's
+  `initialise()` and the whole Schema Canvas with it. The class next door already carried the
+  warning — `CollaborativeGraphComponent` documents that `createGraphControl()` runs inside the
+  superclass constructor and must not read this class's fields — and the lesson that was missed
+  is that it applies to *every* method the superclass constructor can reach, not only to the one
+  the comment names.
+
+  **1,423 unit tests passed and both hosts smoked PASS while this was happening.** That is the
+  part worth keeping. Two independent holes let it through.
+
+  *The suite never built the component.* Ninety-nine test classes covering graphs, projections,
+  layouts, gestures and guide geometry, and not one of them constructed a
+  `CollaborativeGraphComponent` — everything was covered except the object a user actually gets.
+  One line of test closes it, headless, and against the broken code it fails.
+
+  *The host self-test's claim was a sentence, not a check.* It opened the OntoBoard tab and
+  returned "opened, its views constructed, and closed again" having verified nothing beyond the
+  tab existing. Protege's `View.createContent` catches whatever `initialise()` throws and puts an
+  error label in the view's place, so from outside a dead canvas and a working one are identical.
+  Worse: when the check was made real it reported that *no view had been built at all* — adding
+  and removing a tab builds nothing, because Protege creates view content lazily when a view is
+  shown. So the smoke run had never built the canvas in any release, while the comment beside the
+  code claimed it was "the first check that the canvas can be built at all under Felix".
+
+  `ViewHealth` fixes both: the view writes its own outcome to a register before Protege can
+  swallow anything, and the self-test selects the tab and, failing that, calls `View.createUI`
+  itself — the same method Protege's hierarchy listener calls. The receipt line now names what
+  was built rather than asserting it.
+
+- **Opening the canvas with no ontology open crashed it, in every release until 1.74.0.** Found
+  by the first self-test run that actually built the view, which is the point of the previous
+  entry. `activeOntologyFile` dereferenced a null ontology and `resetLayoutForOntology`
+  dereferenced it again; either costs the whole view for the session, with nothing to click to
+  bring it back. Protege has no active ontology before the first one loads and while it is
+  switching between them, so this was reachable by starting Protege and opening the tab.
+
+  Nothing open is a state the canvas has to survive, not an error. Guarded at the four places
+  that decide it rather than at each call site — `activeOntologyFile` and `ontologyIriOf` return
+  null, `resetLayoutForOntology` stamps an empty IRI, and `OntologyProjection.project` returns an
+  empty projection — because the callers all already treat "no file" as "no sidecar".
+
+- **An inferred edge can now be asked why it is there - 1.73.0.** The canvas has drawn the
+  reasoner's conclusions since 1.20.0 and could never say where one came from. A conclusion you
+  cannot trace is one you have to take on faith, which is the wrong relationship to have with a
+  reasoner: the useful question about an unexpected inference is almost never "is the reasoner
+  right", it is "which of my axioms did I not mean".
+
+  Right-click a dotted edge, *Why is this inferred?* It is a real justification - a minimal set of
+  axioms that forces the conclusion - not a walk up the hierarchy. The difference is not academic:
+  `InferredEdges` draws to the nearest ancestor *on the board*, so "Dog is a kind of Animal" can be
+  true with no axiom mentioning both, and the answer on a worked example is two justifications, one
+  of them `Dog SubClassOf owns some Thing` with `owns Domain Animal` - a property domain, which no
+  hierarchy walk would ever have found.
+
+  Three things it is careful about. It explains with the reasoner **Protégé is running**, taken from
+  `OWLReasonerManager`: ELK cannot see an entailment that follows from a cardinality restriction, so
+  explaining HermiT's conclusion with ELK comes back empty, and empty reads as "there is no reason".
+  It reports two independent justifications as two and says what that means - deleting the one axiom
+  you found will not remove the edge while the other stands - because the alternative is a user
+  deleting an axiom and watching the edge stay. And an empty result is reported as a gap in the
+  explanation rather than as an absence of reason, since the edge is on the board precisely because
+  a reasoner concluded it.
+
+  It runs off the event thread behind an abandonable dialog, because a justification is found by
+  taking axioms away and asking the reasoner whether the conclusion survives - the cost is many
+  classifications, not one. `ExplainOperation.explain` is safe to call from inside the bundle:
+  checked with `javap`, only `renderExplanationAsMarkdown` constructs Protégé's
+  `ProtegeExplanationOrderer`, and that is the method this plugin has always avoided. There is also a
+  test that the open ontology has exactly the axioms it started with, because the technique is
+  subtractive and the obvious implementation of it would mutate what it was handed.
+
 - **Docker is no longer required for anything OntoBoard can do itself - 1.71.0.** The goal was "completely
   independent of docker". This reaches it everywhere except one cell, and that cell is ODK's: native ODK
   environments are GNU/Linux and macOS only, and ODK's own README says Docker is mandatory on Windows.
@@ -383,27 +462,74 @@ The plugin is early. These exist in the web application but not yet here:
   contain - and the honest answer there is ODK's own Docker wrapper, which is now what the message
   says.
 
-- **The gesture a board user spends most was behind a modifier, and nothing on screen said so - until
-  1.68.0.** The second half of Release 4 of the canvas design spec, split off from 1.67.0 because the
-  spec's own regression table calls the floating panels "the most likely breakage in the whole plan".
+- **What a plain drag does has now been decided in both directions, and is a mode as of 1.73.0.**
+  Worth reading as one story rather than two releases, because the second reverses the first.
 
-  **A plain left-drag panned the view.** That was defensible when it was written - there was no outline,
-  no *Fit*, no zoom keys - and it stopped being defensible some releases ago. Selecting several terms at
-  once is the thing a person does most on a board, and it was reachable only by holding Ctrl or Shift,
-  documented in a doc comment. The drag selects a region now; space, the middle button and the right
-  button pan, which is what every canvas application uses. Space also changes the cursor, because without
-  that the only feedback is that dragging does something different - which is how a deliberate inversion
-  reads as a fault.
+  Until 1.68.0 a plain left-drag panned the view, and selecting several terms at once needed Ctrl
+  or Shift, documented in a doc comment and nowhere a user would look. 1.68.0 inverted it - a drag
+  drew a selection, panning moved to space, the middle button and the right - on the reasoning that
+  selecting several terms is the thing a person does most on a board.
 
-  Three things hold that inversion up. A `ShortcutsPanel` of sixteen rows, on **?** over the board and in
-  the overflow menu, with tests that the two inverted gestures are present and that no key is listed
+  In use it is not. A board is bigger than the window far more often than a selection spans several
+  terms, so the gesture people reached for first was the one that had just been taken away, and the
+  report back was "click-drag should move the canvas". So neither gesture is behind a doc comment
+  now: it is a mode, with two buttons on the toolbar, **H** and **V** to switch, and the choice
+  remembered per user in `Preferences`. Panning is the default. Whichever mode you are in, the other
+  gesture is on Shift or Ctrl, and space pans in both - that mirror is the only arrangement that
+  does not have to be memorised.
+
+  The decision itself is nine lines in `CanvasGesture`, shared by the two call sites that need it:
+  the component's `isPanningEvent` and the view's rubberband. They have to be exact complements, and
+  the failure is silent either way - if both claim a drag the board pans while a selection rectangle
+  is drawn across it, and if neither does the canvas reads as frozen. A test walks all sixteen
+  combinations of mode, space, modifier and cell and asserts exactly one claims each. Neither call
+  site can be tested; the function between them can.
+
+  One cost, recorded because it is not free: the cursor now says which mode the board is in, and
+  `mxGraphHandler.mouseMoved` consumes the mouse-moved event whenever a handler supplies a cursor.
+  Empty board therefore consumes where it did not. That already happens over every node - which is
+  where anything downstream would care - so the change lands on the part of the canvas where nothing
+  is listening.
+
+  What 1.68.0 got right stands. A `ShortcutsPanel`, on **?** over the board and in
+  the overflow menu, with tests that both halves of the gesture are present and that no key is listed
   twice - a stale keystroke list is worse than none, because it sends a person looking for a fault in the
   plugin rather than in their own memory. A one-time status line on first use, in `Preferences`, not the
-  sidecar. And an explicit null-cell test in the rubberband handler: `mxRubberband.mousePressed` in 4.2.2
-  never asks what is under the cursor - `isRubberbandTrigger` is literally `return true` - so a plain
-  drag selected regions *on top of nodes* too, and only worked at all because `mxGraphHandler` happens to
-  be registered first and consume the event. Registration order is a thing to depend on deliberately or
-  not at all.
+  sidecar. And explicit tests in the rubberband handler: `mxRubberband.mousePressed` in 4.2.2
+  never asks what is under the cursor or which button was pressed - `isRubberbandTrigger` is literally
+  `return true` - so a plain drag selected regions *on top of nodes* too, and only worked at all because
+  `mxGraphHandler` happens to be registered first and consume the event. Registration order is a thing to
+  depend on deliberately or not at all.
+
+- **A node being dragged now says what it lines up with - 1.73.0.** A grid is a texture, and the
+  question it does not answer is the one that matters: not "is this on a grid point" but "is this
+  edge the same as that edge". Without an answer the only way to align two terms was to compare by
+  eye, so diagrams drifted by a few pixels everywhere and looked careless in a paper.
+
+  Up to two lines, the nearest vertical and the nearest horizontal, drawn through the stationary
+  node's edge and extended past both. Not more: a dense board matches a dozen edges at once and
+  drawing them all turns the diagram into a cage. Left, centre and right on one axis, top, middle
+  and bottom on the other, plus edge-to-edge touching, with centres tried first so a tie does not
+  depend on the order the board happened to be iterated in.
+
+  **With the grid on, a guide means exact.** The grid step is 20 and the tolerance is 4, so two
+  snapped nodes are either on the same line or at least 20 apart - inside the tolerance can only
+  mean zero. The tolerance earns its keep under Alt-drag, which is this canvas's "ignore the grid
+  this once", and there it reads as "you are nearly there".
+
+  Two things it deliberately does not do. It does not snap: the grid already does that, and a
+  second magnet pulling against the first is how a node ends up where neither wanted it. And it
+  draws nothing into an exported PNG or SVG - `CanvasExport` renders from the graph model and never
+  calls the component's paint, which for a mark that exists only during a drag is correct rather
+  than a trade-off.
+
+  The geometry is `AlignmentGuides`, over plain rectangles, with fifteen tests. The part that could
+  be quietly wrong is not that a line appears - that is obvious the first time anyone drags a node -
+  but that it appears for the right reason and in the right place. The arithmetic that gets it there
+  is worth recording: `previewBounds` is positioned from `bbox`, the bounding box *including* label
+  overhang and stroke width, while the rectangles it is compared against are cell states. The two
+  differ by a pixel or two, which is most of a four-pixel tolerance, so the offset
+  `getPreviewLocation` adds is subtracted back off.
 
   **The zoom controls and the overview moved onto the board.** The outline had been pinned EAST at a
   fixed 180px, present even while the start card was showing - a blank grey rectangle beside a "nothing
@@ -822,8 +948,30 @@ clicking the item.
 *Transform* defaults to applying its changes and would push them through the live session's model
 manager. *Rename IRIs*, *Import terms*, *Obsolete*, *Release*, *Build*, *Git*, *Open from GitHub*
 and *New ODK project* write files, run `make`, or reach the network. *Compare releases* needs a
-project with dated releases, which a freshly scaffolded one has none of. The canvas, note-editing
-and collaboration items are Swing surfaces and nothing here opens a window.
+project with dated releases, which a freshly scaffolded one has none of. The note-editing and
+collaboration items are Swing surfaces and nothing here opens a window.
+
+**The canvas is the exception, as of 1.74.0, and the story of how is worth the paragraph.** The
+tab check was added in 1.44.0 with a comment saying it was "the first check that the canvas can
+be built at all under Felix". It was not. It added the tab, removed it, and returned "opened, its
+views constructed" without asking anything — and Protege builds a view's content lazily, when the
+view is shown, so adding and removing a tab builds *nothing*. Two things were wrong at once: the
+check verified nothing, and there was nothing to verify because the work never happened. Both were
+invisible, because Protege's `View.createContent` catches whatever `initialise()` throws and puts
+an error label in the view's place, so a canvas that crashed on every open produced exactly the
+same PASS as one that worked. 1.73.0 shipped with the canvas crashing on every open and a receipt
+recording PASS 10/10.
+
+It is real now. `ViewHealth` is a register the views write to themselves before Protege can
+swallow anything; the self-test clears it, opens the tab, selects it, and — if nothing reports in
+— calls `View.createUI` on each view directly, the same method Protege's own hierarchy listener
+calls. The receipt names what was built. The first run that did this found a second crash, older
+than 1.73.0 and present in every release the view has existed in: with no ontology open, the view
+threw on construction and was lost for the session.
+
+This is still not a check that the canvas *draws* anything. Nothing here looks at a pixel. It is a
+check that the largest class in the plugin can be constructed inside Felix, which is the failure
+class that had been shipping.
 
 Those could now be covered — the scratch project makes it possible — but each needs its own
 fixture: a release history, a git remote, an upstream to import from. Inventing those badly would

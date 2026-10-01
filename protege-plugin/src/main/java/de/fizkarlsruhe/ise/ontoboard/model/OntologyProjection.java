@@ -185,6 +185,15 @@ public final class OntologyProjection {
         List<CanvasNode> nodes = new ArrayList<>();
         List<CanvasEdge> edges = new ArrayList<>();
 
+        // Nothing open is a state the canvas has to survive, not an error. Protege can have no
+        // active ontology - while it is switching between them, and before the first one is
+        // loaded - and the view renders on construction. Until 1.74.0 this threw a
+        // NullPointerException there, and Protege answered it by replacing the Schema Canvas
+        // with "An error occurred whilst creating the view" for the rest of the session.
+        if (ontology == null || onCanvasIris == null) {
+            return new Projection(nodes, edges);
+        }
+
         // Imports included since 1.61.0. Dragging bfo:continuant onto the board used to do nothing
         // visible at all: this method looked only at the edit file's own signature, so no node was
         // drawn, and pruneStaleMembers then quietly removed the entry from the sidecar. For an ODK

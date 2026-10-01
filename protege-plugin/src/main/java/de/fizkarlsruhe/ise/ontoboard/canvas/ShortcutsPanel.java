@@ -14,11 +14,14 @@ import javax.swing.UIManager;
 /**
  * What this canvas responds to, written down.
  *
- * <p>Sixteen interactions exist and, until 1.68.0, none of them was advertised anywhere except the
- * Find field's tooltip - which you can only read once you have already found the Find field. Two of
- * them are deliberate inversions of what {@code mxGraph} does out of the box, and an inversion nobody
- * is told about is indistinguishable from a bug: a plain drag now draws a selection where it used to
- * pan, and panning moved to space, the middle button and the right button.
+ * <p>Until 1.68.0 none of these interactions was advertised anywhere except the Find field's
+ * tooltip - which you can only read once you have already found the Find field.
+ *
+ * <p>What a plain drag does has now been settled in both directions: it panned until 1.68.0,
+ * selected until 1.73.0, and pans again, because that is the gesture people reached for. So it is
+ * a mode with a button on the toolbar and a key, and both halves are listed here. A canvas whose
+ * primary gesture can change has to say somewhere what it is currently doing, or the change is
+ * indistinguishable from a bug.
  *
  * <p>Every row here was checked against the line that implements it rather than against intent. A
  * shortcut list that is wrong is worse than none, because it is the thing somebody believes when the
@@ -34,8 +37,10 @@ public final class ShortcutsPanel extends JPanel {
         {"Enter", "Go to the next match; Shift+Enter for the previous"},
         {"Ctrl+Enter", "Add a match that is in the ontology but not yet on the board"},
         {"Double-click", "On empty board: a new class. On a term: expand its neighbours."},
-        {"Drag", "On empty board: select a region. From a node's handle: draw an axiom."},
-        {"Space-drag", "Pan the board. The middle and right buttons pan too."},
+        {"Drag", "On empty board: move the board. From a node's handle: draw an axiom."},
+        {"Shift-drag", "Select a region instead. Ctrl-drag does the same."},
+        {"Space-drag", "Pan the board whichever mode it is in. The middle and right buttons too."},
+        {"H / V", "Hand or pointer: whether a plain drag pans or selects. The toolbar shows it."},
         {"Wheel", "Zoom, at the pointer"},
         {"Ctrl+0", "Actual size"},
         {"Ctrl+1", "Fit the whole board"},

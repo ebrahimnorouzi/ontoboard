@@ -46,22 +46,29 @@ public final class CollaborativeGraphComponent extends mxGraphComponent {
         return spaceHeld;
     }
 
+    /** What a plain left-drag on empty board does. The view sets it; see {@link CanvasGesture}. */
+    private transient CanvasGesture.Mode gesture = CanvasGesture.DEFAULT;
+
+    /** Changes what a plain left-drag does. Repainting the cursor is the caller's business. */
+    public void setGestureMode(CanvasGesture.Mode mode) {
+        this.gesture = mode == null ? CanvasGesture.DEFAULT : mode;
+    }
+
+    public CanvasGesture.Mode getGestureMode() {
+        return gesture;
+    }
+
     /**
-     * Space, the middle button or the right button pan. A plain left-drag selects.
+     * Whether this press should pan. The decision itself lives in {@link CanvasGesture}.
      *
-     * <p>This is the reverse of what it was, and the reversal is deliberate. The original comment
-     * read "out of the box there is no way to move the diagram with the mouse at all - the canvas
-     * felt stuck", and that was true when it was written: there was no outline panel, no fit, no
-     * zoom keys and no drag-to-connect. It is not true now, and a plain drag is the one gesture a
-     * board user spends most - selecting several things at once - while this canvas had it behind
-     * Ctrl or Shift and said so only in a doc comment.
+     * <p>Shared with the rubberband in the view rather than restated, because the two must be
+     * exact complements: a combination both claimed would pan and marquee at once, and one
+     * neither claimed would make the drag do nothing at all. A test covers every combination of
+     * the four inputs; neither call site can be tested.
      *
-     * <p>Held to two rules. A drag that starts on a cell still moves the cell, or nothing could ever
-     * be repositioned. And the three pan triggers are the three every canvas application uses, so
-     * the muscle memory this asks for is one people already have.
-     *
-     * <p>The keystroke list in {@code ShortcutsPanel} exists because of this method. An inversion
-     * nobody is told about is indistinguishable from a bug.
+     * <p>The middle and right buttons always pan, which is mxGraph's own convention and the one
+     * every canvas application shares. Since 1.66.0 the context menu no longer opens at the end
+     * of a right-drag.
      */
     @Override
     public boolean isPanningEvent(java.awt.event.MouseEvent event) {
@@ -72,11 +79,30 @@ public final class CollaborativeGraphComponent extends mxGraphComponent {
             return true;
         }
         if (javax.swing.SwingUtilities.isLeftMouseButton(event)) {
-            return spaceHeld && getCellAt(event.getX(), event.getY()) == null;
+            return CanvasGesture.leftDragPans(gesture, spaceHeld,
+                    event.isShiftDown() || event.isControlDown(),
+                    getCellAt(event.getX(), event.getY()) != null);
         }
-        // The right button keeps panning, which is mxGraph's own convention. Since 1.66.0 the
-        // context menu no longer opens at the end of one.
         return super.isPanningEvent(event);
+    }
+
+    /**
+     * The drag handler, with alignment guides.
+     *
+     * <p>Called from the superclass constructor, so it must not read this class's fields - the
+     * same constraint {@link #createGraphControl()} documents.
+     */
+    @Override
+    protected com.mxgraph.swing.handler.mxGraphHandler createGraphHandler() {
+        return new GuideGraphHandler(this);
+    }
+
+    /** The guides the drag handler currently wants drawn, or none. */
+    private java.util.List<AlignmentGuides.Guide> activeGuides() {
+        com.mxgraph.swing.handler.mxGraphHandler handler = getGraphHandler();
+        return handler instanceof GuideGraphHandler
+                ? ((GuideGraphHandler) handler).getGuides()
+                : java.util.Collections.<AlignmentGuides.Guide>emptyList();
     }
 
     /**
@@ -122,6 +148,10 @@ public final class CollaborativeGraphComponent extends mxGraphComponent {
                 // field exists.
                 PeerCursorLayer.paint((Graphics2D) graphics, getGraph(), cursors,
                         System.currentTimeMillis());
+                // Last, so a guide is never hidden behind a node, a badge or a cursor. It is
+                // chrome for the duration of a drag and has to be readable over whatever it
+                // crosses.
+                GuideLayer.paint((Graphics2D) graphics, activeGuides());
             }
         };
     }

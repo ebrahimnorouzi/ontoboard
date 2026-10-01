@@ -158,6 +158,63 @@ public final class CanvasIcons {
         }
     }
 
+    /**
+     * Pan: an open hand, which is what every canvas application draws for this.
+     *
+     * <p>Outline rather than filled, to sit beside Tree and Dashed at the same weight. A filled
+     * glyph next to two hairline ones reads as the selected one even when it is not.
+     */
+    public static final class Hand extends Square {
+
+        @Override
+        public void paintIcon(Component host, Graphics graphics, int x, int y) {
+            Graphics2D g = prepare(graphics);
+            try {
+                g.setColor(MUTED);
+                g.setStroke(new BasicStroke(1.3f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                // Palm.
+                g.drawRoundRect(x + 4, y + 7, 9, 7, 4, 4);
+                // Three fingers, the middle one longest, as a hand is drawn.
+                g.drawLine(x + 6, y + 7, x + 6, y + 4);
+                g.drawLine(x + 9, y + 7, x + 9, y + 2);
+                g.drawLine(x + 12, y + 7, x + 12, y + 4);
+                // Thumb.
+                g.drawLine(x + 4, y + 9, x + 2, y + 11);
+            } finally {
+                g.dispose();
+            }
+        }
+    }
+
+    /** Select: a dashed marquee with a pointer in it, so it is not confused with Dashed. */
+    public static final class Marquee extends Square {
+
+        @Override
+        public void paintIcon(Component host, Graphics graphics, int x, int y) {
+            Graphics2D g = prepare(graphics);
+            try {
+                g.setColor(MUTED);
+                g.setStroke(new BasicStroke(1f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER,
+                        10f, new float[] {2f, 2f}, 0f));
+                g.drawRect(x + 1, y + 1, 11, 11);
+                // The pointer, solid, breaking out of the marquee's corner.
+                g.setStroke(new BasicStroke(1f));
+                java.awt.Polygon arrow = new java.awt.Polygon();
+                arrow.addPoint(x + 8, y + 6);
+                arrow.addPoint(x + 15, y + 11);
+                arrow.addPoint(x + 11, y + 11);
+                arrow.addPoint(x + 12, y + 15);
+                arrow.addPoint(x + 10, y + 15);
+                arrow.addPoint(x + 9, y + 12);
+                arrow.addPoint(x + 7, y + 14);
+                g.setColor(INK);
+                g.fillPolygon(arrow);
+            } finally {
+                g.dispose();
+            }
+        }
+    }
+
     /** Legend: three swatches. */
     public static final class Key extends Square {
 
