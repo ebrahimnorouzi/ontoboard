@@ -105,7 +105,9 @@ public class SchemaGraph extends mxGraph {
                 if (stored == null) {
                     nextX += DEFAULT_W + 40;
                 }
-                Object cell = insertVertex(getDefaultParent(), node.getId(), node.getLabel(),
+                Object cell = insertVertex(getDefaultParent(), node.getId(),
+                        de.fizkarlsruhe.ise.ontoboard.model.Curies.displayLabel(
+                                node.getCurie(), node.getLabel()),
                         x, y, w, h, styleFor(node, colours));
                 cellsById.put(node.getId(), cell);
                 tooltipsById.put(node.getId(), CanvasTooltips.forNode(node));
