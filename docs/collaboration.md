@@ -41,12 +41,19 @@ works.
 
 ### 1. Run the server
 
-The collaboration service is in [`collab/`](../collab/) and is already part of the compose file:
+The collaboration service is in [`collab/`](../collab/). It is a small Node server and needs
+nothing but Node to run:
 
 ```bash
+cd collab
+npm install
 export SECRET_KEY="$(openssl rand -hex 32)"     # do this once, keep it
-docker compose up -d collab
+BRIDGE_PORT=1235 node server.mjs
 ```
+
+One person runs it - on a laptop for a working session, or on a host the team can reach - and
+everyone points their plugin at it. It is the only part of OntoBoard that is not inside
+Protégé.
 
 It opens **two** ports, and the difference matters:
 

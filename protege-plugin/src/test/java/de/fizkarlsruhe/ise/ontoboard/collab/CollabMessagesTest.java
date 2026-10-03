@@ -194,31 +194,29 @@ class CollabMessagesTest {
     // ---------- the type vocabulary ----------
 
     /**
-     * Reads the other two files, rather than restating what they ought to contain.
+     * Reads the bridge's own list, rather than restating what it ought to contain.
      *
-     * <p>The vocabulary lives in three places and all three have to agree: an operation whose
-     * type the bridge does not know is refused outright, and one the web client does not know is
-     * ignored in silence - which is far harder to notice than a rejection, because the edit
-     * simply never appears on the peer.
+     * <p>Both sides have to agree: the bridge refuses an operation whose type it does not know,
+     * so a vocabulary that has drifted shows up as a peer whose edits stop arriving, with
+     * nothing logged on the sending side.
      *
      * <p>This asserted a hardcoded count and a hardcoded list, so it could only ever catch a
-     * change to the Java side - the one file it did not need to guard. Comparing the three sets
-     * is the only version of this test that does what its name says.
+     * change to the Java side - the one file it did not need to guard. Comparing the sets is the
+     * only version of this test that does what its name says.
+     *
+     * <p>It used to compare three vocabularies. The third was the web application's
+     * {@code frontend/src/collab/useOperationSync.ts}, which left with the web application; it
+     * is in the history at the tag {@code web-app-final}. The bridge is the half that still
+     * exists and the half the plugin actually talks to.
      */
     @Test
-    void theTypeVocabularyMatchesTheBridgeAndWebClient() throws Exception {
+    void theTypeVocabularyMatchesTheBridge() throws Exception {
         Set<String> bridge = typesDeclaredIn(new File("../collab/bridge.mjs"),
                 "OPERATION_TYPES = new Set([", "]);");
-        Set<String> webClient = typesDeclaredIn(
-                new File("../frontend/src/collab/useOperationSync.ts"),
-                "export type OntologyOpType =", ";");
 
         assertEquals(bridge, OntologyOperation.TYPES,
                 "the bridge and the plugin disagree; an operation the bridge does not know is "
-                        + "refused outright");
-        assertEquals(webClient, OntologyOperation.TYPES,
-                "the web client and the plugin disagree; an operation the web client does not "
-                        + "know is ignored in silence, which is harder to notice than a refusal");
+                        + "refused outright, and the peer never sees the edit");
     }
 
     /**
@@ -254,7 +252,7 @@ class CollabMessagesTest {
     void constructingAnUnknownTypeFailsLoudlyWithAnActionableMessage() {
         IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class,
                 () -> new OntologyOperation("i", "addWidget", 0L, "u", null));
-        assertTrue(thrown.getMessage().contains("useOperationSync.ts"),
+        assertTrue(thrown.getMessage().contains("bridge.mjs"),
                 "the message must say where else the vocabulary lives: " + thrown.getMessage());
     }
 

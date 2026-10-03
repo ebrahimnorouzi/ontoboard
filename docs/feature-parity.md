@@ -1,7 +1,12 @@
 # Feature Parity: Web Application vs Protégé Plugin
 
-What the web application does, what the plugin does today, and — for each gap — whether it is
-worth building, already solved by something else, or not applicable to a desktop plugin.
+What the plugin does, measured against the OntoBoard web application it grew out of.
+
+> **The web application is no longer in this repository.** It was removed when the repo became
+> plugin-only; it lives in the history at the tag `web-app-final`. This page is kept because it
+> is the most complete feature inventory of the plugin that exists, and because the comparison
+> is how most of the plugin's scope was decided. Read the left-hand column as a historical
+> yardstick, not as something you can install.
 
 Written to answer three questions honestly: *what am I missing, can it be done, and should
 it be?*

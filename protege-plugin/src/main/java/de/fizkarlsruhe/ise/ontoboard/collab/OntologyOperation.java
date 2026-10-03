@@ -9,18 +9,23 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * One ontology mutation, in the shape the web client already uses.
+ * One ontology mutation, in the shape the collaboration bridge carries.
  *
- * <p>The field names and the type vocabulary are copied from
- * {@code frontend/src/collab/useOperationSync.ts}. That is not a stylistic choice: an
- * operation whose {@code type} or {@code data} shape the web client does not recognise is a
- * <em>silent no-op</em> there, not an error. Nothing logs, nothing throws, the other user
- * simply never sees the edit. That is far harder to notice than a crash, so the vocabulary is
- * pinned here and asserted by test.
+ * <p>The field names and the type vocabulary have to match {@code collab/bridge.mjs} exactly.
+ * That is not a stylistic choice: the bridge refuses an operation whose {@code type} it does
+ * not know, so a vocabulary that has drifted shows up as a peer whose edits stop arriving. The
+ * list is pinned here and compared against the bridge's own by test.
+ *
+ * <p>Both were originally copied from the OntoBoard web application's
+ * {@code frontend/src/collab/useOperationSync.ts}, and the comments here used to name that file
+ * as the source of truth. The web application is no longer part of this repository - it is in
+ * the history at the tag {@code web-app-final} - so the bridge is now the only other place the
+ * vocabulary lives. The shape is unchanged, because an older web client may still be running
+ * against the same bridge.
  */
 public final class OntologyOperation {
 
-    /** The 18 types in useOperationSync.ts. Keep in step with it and with bridge.mjs. */
+    /** The 18 types the bridge knows. Keep in step with {@code collab/bridge.mjs}. */
     public static final Set<String> TYPES = Collections.unmodifiableSet(
             new HashSet<String>(Arrays.asList(
                     "addClass", "updateClass", "removeClass",
@@ -48,8 +53,8 @@ public final class OntologyOperation {
         }
         if (!TYPES.contains(type)) {
             throw new IllegalArgumentException("unknown operation type '" + type
-                    + "'. The web client would ignore it silently; add it to "
-                    + "useOperationSync.ts, bridge.mjs and OntologyOperation.TYPES together.");
+                    + "'. The bridge would refuse it, so the peer would never see the edit; add "
+                    + "it to collab/bridge.mjs and OntologyOperation.TYPES together.");
         }
         this.id = id;
         this.type = type;
@@ -82,7 +87,7 @@ public final class OntologyOperation {
         return userId;
     }
 
-    /** Live view of the payload; shape is per-type and defined by useOperationSync.ts. */
+    /** Live view of the payload; the shape is per-type and carried by collab/bridge.mjs. */
     public Map<String, Object> getData() {
         return data;
     }

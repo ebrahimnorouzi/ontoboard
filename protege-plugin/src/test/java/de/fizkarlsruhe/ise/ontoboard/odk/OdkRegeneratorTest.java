@@ -351,7 +351,7 @@ class OdkRegeneratorTest {
         String why = OdkRegenerator.whyNotOurs(root);
 
         assertNotNull(why, "an ODK repository must never be regenerated from here");
-        assertTrue(why.contains("run.sh update_repo"),
+        assertTrue(why.contains("run.sh make update_repo"),
                 "a refusal has to name the command that does work: " + why);
 
         RuntimeException refused = assertThrows(RuntimeException.class,

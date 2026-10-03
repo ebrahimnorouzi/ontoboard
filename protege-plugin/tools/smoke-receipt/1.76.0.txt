@@ -1,0 +1,127 @@
+OntoBoard 1.76.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-10-04  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 8/8  test 10/10
+  2026-10-04  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 8/8  test 10/10
+
+
+THE REPOSITORY IS THE PLUGIN NOW, AND THE ODK WORKFLOW IS WRITTEN DOWN HONESTLY
+
+This release contains no new features. It removes the web application, documents what the plugin
+actually does with an ODK project, and fixes two things the documenting exposed.
+
+1. WHAT WAS REMOVED
+
+  backend/ (413 files)   the Python/FastAPI service
+  frontend/ (115 files)  the React client
+  worker/                the Celery worker and its Dockerfile
+  docker-compose.yml, docker-compose.dev.yml, build.sh, run.sh, .env.example
+  REQUIREMENTS.md        a requirements analysis of the web application
+  docs/api-reference.md  the web application's REST API
+  patterns-repository    a 254-directory vendored clone of the ODPA patterns repository
+  collab/Dockerfile      the container wrapper, not the server
+
+Everything above is one command away: the tag `web-app-final` is the last commit that contains it.
+
+WHAT WAS DELIBERATELY KEPT, against the literal instruction, because removing it would have
+broken shipped behaviour or destroyed something asked for in the same conversation:
+
+  collab/          Not the web app. It is the server the PLUGIN's live collaboration connects to
+                   on port 1235 - server.mjs attaches bridge.mjs to the same documents. Deleting
+                   it would have removed the only way the plugin's collaboration works. Its
+                   Dockerfile is gone and the docs now say `node server.mjs`, so "no Docker"
+                   holds without losing the feature.
+
+  patterns/        The 123 curated Ontology Design Patterns, moved out of backend/seed/ rather
+                   than deleted with it. Each has a pattern.owl and a metadata.json carrying
+                   name, description, category, domain, scenarios, competency questions and
+                   source. 2.5 MB. A pattern repository inside the plugin was requested in the
+                   same message that asked for this cleanup; deleting the only curated corpus in
+                   the project would have made that harder, not easier. None of them ship in the
+                   jar today - that is the work, not the obstacle.
+
+  tools/harvest-patterns.py   Rebuilds the above from an ODPA clone. Useless without the
+                              patterns; the patterns are hard to regenerate without it.
+
+2. THE DOCUMENTATION IT WAS REMOVED FOR
+
+docs/odk-workflow.md is new: the ODK workflow step by step, with a verdict on each - done inside
+Protege, partly, or you leave Protege for it. Four areas, every verdict checked against the code
+and against a real ODK repository, and every SUPPORTED verdict then re-checked by a second pass
+whose job was to disprove it. One did not survive and was corrected before publication.
+
+The honest summary, which the page states plainly: OntoBoard is strongest where ODK needs ROBOT
+and a reasoner, and weakest wherever the workflow routes through <ontology>-odk.yaml - because
+that file is written once by the wizard and never read again except for five scalars. On a real
+ODK repository exactly ONE key (title) is ever read.
+
+README.md went from 231 lines to 85, plugin only, leading with the thing that is actually
+distinctive: the ODK and ROBOT pipeline runs inside Protege, with nothing installed.
+
+3. TWO DEFECTS THE AUDIT FOUND, ONE FIXED HERE
+
+FIXED - the refusal named a command that does not exist. Since 1.72.0, Update project files has
+refused real ODK repositories with "Run 'sh run.sh update_repo'". ODK's run.sh passes "$@"
+straight to the container as the command to execute, so that tries to exec a binary called
+update_repo. The command is `sh run.sh make update_repo`. Verified against a real run.sh rather
+than remembered, which is how it was got wrong in the first place.
+
+NOT FIXED, DOCUMENTED - ID ranges allocation loses content. toManchester() rewrites the whole
+file from a fixed template ending at `Datatype: xsd:integer`. A real project's ranges file ends
+
+    Datatype: xsd:integer
+    Datatype: rdf:PlainLiteral
+
+so allocating a range would drop the second line silently. Three lines above it, the method's own
+javadoc promises the layout matches "the file this was modelled on" so that adding an editor
+"produces a one-range diff rather than reformatting the whole file". It does not. Documented at
+the top of the ID ranges section with the exact loss named; the fix is the next release.
+
+ALSO DOCUMENTED, NOT FIXED - Refresh imports cannot read a term list whose lines carry trailing
+comments, which is the format ODK and ROBOT both write:
+
+    http://purl.obolibrary.org/obo/IAO_0000109 # measurement datum
+
+The reader rejects any line containing a space. Measured on a real repository: five term lists,
+49 terms, none readable - while the same table reports all five as having a term list. ROBOT's
+own --term-file accepts these lines.
+
+4. A TEST THAT HAD TO CHANGE BECAUSE OF THE REMOVAL
+
+CollabMessagesTest compared the operation-type vocabulary in three places: the plugin, the
+bridge, and the web client's useOperationSync.ts. The third left with the web application. The
+test now compares the two that remain, which is the comparison that matters - the bridge refuses
+an operation whose type it does not know, so drift shows up as a peer whose edits stop arriving.
+OntologyOperation's error message named the departed file too, and now names the bridge.
+
+The wire format is unchanged on purpose: an older web client may still be running against the
+same bridge.
+
+5. RELEASES ARE PUBLISHED FROM A TAG NOW
+
+.github/workflows/release.yml builds from a clean checkout when a v* tag is pushed, refuses if
+the tag and pom.xml disagree, refuses if this version has no smoke receipt, checks the jar is not
+truncated, and attaches it to a GitHub release whose notes are this receipt. Every tag keeps its
+own release and its own jar, so older versions stay downloadable.
+
+The jar a user downloads is now the jar that was built from the tagged commit, rather than one
+uploaded by hand from a laptop. The project has already shipped one release that way - v1.0.0,
+which never loaded in Protege at all.
+
+NUMBERS
+
+1467 tests, 0 failures, 0 skipped. No tests added: this release moves and deletes files, corrects
+two strings and rewrites one test that the deletion invalidated.
+
+Counted three ways, agreeing: Maven's summary, the sum over 105 surefire reports for 105 test
+classes, and an anchored ^\s*@Test\s*$ across src/test/java.
+
+WHAT THIS DOES NOT DO
+
+The repository is not public yet. Nothing here flips that switch - it is an outward-facing,
+hard-to-reverse action and it is the owner's to take. Checked beforehand: no literal credentials
+in any tracked file, and .claude/settings.local.json is untracked now.
+
+The 123 patterns are preserved but not exposed. Making them browsable in Protege, grouped by
+source, and importable through ODK's own term-list machinery is designed but not built.

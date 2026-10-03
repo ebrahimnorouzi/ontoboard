@@ -1,0 +1,84 @@
+# Publishes a downloadable release when a version tag is pushed.
+#
+# Why a tag rather than a button: the jar a user downloads has to be the jar that was tested, and
+# the only way to guarantee that is to build it from the tagged commit in a clean checkout. A jar
+# uploaded by hand from a laptop is a jar nobody can reproduce - and this project has already
+# shipped one release (v1.0.0) that never loaded in Protege at all.
+#
+# To publish a version:
+#
+#     git tag -a v1.75.0 -m "OntoBoard 1.75.0"
+#     git push origin v1.75.0
+#
+# Every tag keeps its own release and its own jar, so older versions stay downloadable. The
+# release page lists them all, newest first, and /releases/latest always resolves to the newest.
+name: release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '11'
+          distribution: 'temurin'
+          cache: maven
+
+      # The tag and the pom must agree, or the release page offers a jar whose version is not the
+      # one on the tin - and the plugin reports its own version from the bundle manifest, so the
+      # two would disagree in the one place a user looks to check which build they are running.
+      - name: The tag must match the version in pom.xml
+        id: version
+        working-directory: protege-plugin
+        run: |
+          pom=$(grep -m1 '^  <version>' pom.xml | sed 's/.*<version>\(.*\)<\/version>.*/\1/')
+          tag="${GITHUB_REF_NAME#v}"
+          if [ "$pom" != "$tag" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME says $tag, pom.xml says $pom."
+            exit 1
+          fi
+          echo "version=$pom" >> "$GITHUB_OUTPUT"
+          echo "Releasing $pom"
+
+      # The same gate the ordinary build applies. A release is the one moment it matters most:
+      # versions 1.20.0 to 1.24.0 shipped without ever being loaded in a Protege.
+      - name: Require a host smoke receipt for this version
+        working-directory: protege-plugin
+        run: |
+          receipt="tools/smoke-receipt/${{ steps.version.outputs.version }}.txt"
+          if [ ! -f "$receipt" ]; then
+            echo "::error::No host smoke receipt at protege-plugin/$receipt."
+            exit 1
+          fi
+
+      - name: Test
+        working-directory: protege-plugin
+        run: mvn -B clean test
+
+      - name: Package
+        working-directory: protege-plugin
+        run: mvn -B -DskipTests package
+
+      - name: Check the jar is not truncated
+        working-directory: protege-plugin
+        run: unzip -t target/ontoboard-*.jar > /dev/null && echo "valid archive"
+
+      # The receipt is the release note. It records what was verified in a real Protege, on which
+      # hosts, and - as importantly - what was not.
+      - name: Publish
+        uses: softprops/action-gh-release@v2
+        with:
+          name: OntoBoard ${{ steps.version.outputs.version }}
+          body_path: protege-plugin/tools/smoke-receipt/${{ steps.version.outputs.version }}.txt
+          files: protege-plugin/target/ontoboard-${{ steps.version.outputs.version }}.jar
+          fail_on_unmatched_files: true

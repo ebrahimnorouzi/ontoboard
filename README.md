@@ -1,231 +1,85 @@
 # OntoBoard
 
-Collaborative, visual ontology engineering — as a **Protégé Desktop plugin** and as a
-**web application**.
+**Run your whole ODK and ROBOT pipeline inside Protégé.** No terminal, no `make`, no Docker.
 
-**Developed by [Ebrahim Norouzi](https://ebrahimnorouzi.github.io/)** at
-[ISE / FIZ Karlsruhe](https://www.fiz-karlsruhe.de/en/forschung/information-service-engineering) ·
-[ebrahim.norouzi@fiz-karlsruhe.de](mailto:ebrahim.norouzi@fiz-karlsruhe.de)
+A Protégé Desktop plugin for people who maintain OBO-style ontologies: scaffold an ODK project,
+build it, run ROBOT's report, explain what the reasoner concluded, refresh your imports and cut a
+release — all from the editor you already have open, against the ontology already in front of you.
 
----
-
-## Two clients, one purpose
-
-Ontology engineering pulls in two directions. Domain experts want to sketch, discuss and
-work together; maintainers want reasoners, quality reports and a reproducible release
-pipeline. No single host does both well, so OntoBoard ships as two clients.
-
-| | Protégé plugin | Web application |
-|---|---|---|
-| Runs in | Protégé Desktop | Browser + Docker |
-| Best at | OWL depth, reasoning, ODK/ROBOT pipeline | Real-time collaboration, discussion |
-| Multi-user | yes — live via your own server, or git | yes — CRDT, cursors, comments, tasks |
-| Needs a server | no | yes |
-| Status | early, actively developed | complete |
-
-They are not alternatives to choose between: the plugin runs inside the editor ontologists
-already use, and the web application is where a team works together.
+[![Download](https://img.shields.io/badge/download-latest%20release-blue)](https://github.com/ebrahimnorouzi/ontoboard/releases/latest)
 
 ---
 
-## Protégé plugin
+## Why
 
-### Requirements
+The ODK is excellent and it lives in a container. The usual day looks like this: edit in Protégé,
+switch to a terminal, `sh run.sh make test`, read a log, switch back, find the term, fix it, run it
+again. Every loop crosses a tool boundary, and on Windows it crosses Docker as well.
 
-- **Protégé Desktop 5.6.x or 5.5.0.** Both are tested against each release and both now run
-  the full shipped ROBOT surface — see [Host support](#host-support).
-- Java 8 or newer (Protégé bundles its own JRE).
+OntoBoard embeds **ROBOT itself** — not a wrapper around a binary, the library — so the same
+operations run in-process, on the ontology Protégé has open, and report into a dialog you can read
+and save. A project OntoBoard scaffolded runs seven of its eight generated build targets with
+**nothing installed at all**: no make, no robot, no shell, no container, on any platform.
 
-The jar is ~64 MB because ROBOT and its dependencies are embedded so the pipeline runs
-in-process, with no Docker and no subprocess.
+Where a container genuinely is needed, OntoBoard uses the one your project declares — or Podman,
+or a native `odk install` environment. *OntoBoard → Project → Check requirements* tells you what
+you can do right now and what to install for the rest.
 
-### Install
+## Install
 
-1. Download `ontoboard-<version>.jar` from the releases page.
-2. **Delete any older `ontoboard-*.jar` from Protégé's `plugins/` folder first.** The bundle
-   is `singleton:=true`, so two versions side by side prevent it resolving and the tab
-   silently never appears.
-3. Copy the jar into `plugins/`.
-4. Restart Protégé and open **Window → Tabs → OntoBoard**.
+1. Download `ontoboard-<version>.jar` from the [latest release](https://github.com/ebrahimnorouzi/ontoboard/releases/latest).
+2. **Delete any older `ontoboard-*.jar` from Protégé's `plugins/` folder.** Two copies will not
+   resolve.
+3. Drop the jar into `plugins/` and restart Protégé.
+4. Open the board with *Window → Tabs → OntoBoard*.
 
-See [INSTALL.md](protege-plugin/INSTALL.md) for details and troubleshooting.
+Protégé Desktop **5.6.x or 5.5.0**, both smoke-tested in the real host on every release. Java 8+
+(Protégé bundles its own). The jar is large because ROBOT and its dependencies are inside it.
 
-### What it does today
+## What it does
 
-**Start a project** — *Tools → New ODK Project…* asks for an ontology ID, title, base IRI
-and license, writes a complete ODK repository (edit and release files, ODK YAML, the
-generated/custom Makefile pair, catalog, ID ranges, ROBOT report profile, SPARQL checks, a
-GitHub Actions workflow, README), then opens the edit file so you start editing immediately.
-No Docker needed to create it; running its `make` targets needs `make` and ROBOT on PATH.
+**Project** — scaffold a new ODK project from a wizard, or open an existing one. Check what
+tooling you have. Edit ID ranges. Audit and refresh imports. Clone a project from GitHub.
 
-**Work in one place** — the tab puts Protégé's own entity views in a tabbed column on the
-left — Classes, Object properties, Data properties, Annotation properties, Datatypes,
-Individuals — with the canvas beside them. Select something in a tree and click *Add selected* on
-the canvas toolbar; the button names what it will add, so there is no guessing.
+**Build and release** — run the project's build targets, in-process where possible, in its own
+container or a native ODK environment where not. Compare two releases axiom by axiom. Stamp
+provenance. Obsolete a term properly.
 
-**Draw the schema** — an opt-in canvas that starts empty and grows as you add entities,
-because Protégé routinely opens ontologies with 100,000+ classes and rendering all of them
-would hang. Double-click empty canvas to create a class there, drag existing terms in from
-Protégé's own trees, or press *Add all* for a whole small ontology — classes, individuals,
-object properties and data properties alike. Expand a node's neighbours one hop at a time,
-and arrange with hierarchical, organic, circle or grid layouts. Nodes are labelled from
-`rdfs:label` and coloured by namespace, so imported vocabulary is distinguishable at a
-glance.
+**ROBOT, embedded** — report, measure, profile, explain, SPARQL, transform, export terms, template,
+rename IRIs, extract import modules. Nine of these are driven end to end in the real Protégé host
+on every release, and nine have been compared against the real `robot` command to make sure the
+answers match.
 
-**See what the reasoner concluded** — press *Inferences* with a reasoner running and the
-board also draws what it worked out: subsumptions the ontology does not state, and the
-classes an individual turns out to belong to. Grey and dotted, never mistaken for an
-asserted axiom, and unsatisfiable classes go red.
+**A canvas that reads your axioms** — classes, individuals and the relations between them, drawn
+from the axioms you actually wrote: restrictions inside `EquivalentClasses` and conjunctions, not
+only the three shapes most tools read. Switch on the reasoner's conclusions, then right-click a
+dotted edge and ask **why** — it answers with the axioms that force it.
 
-**Edit real axioms** — drawing a relation asks which property and *how the arrow should be
-read*, offering the six OWLAx candidate forms (existential, scoped/global domain and range,
-functionality) with a plain-language explanation of each. Every change goes through
-Protégé's `OWLModelManager`, so it appears instantly in the class hierarchy and undoes with
-Protégé's own undo.
+**Notes and provenance** — editorial notes that travel with the ontology, discussion links to your
+tracker, and authorship stamped on what you change.
 
-**Keep the ontology clean** — canvas layout lives in a sidecar file
-(`<ontology>.ontoboard.json`) beside the ontology, never inside it, so ROBOT `report`,
-`diff` and release artifacts are unaffected. Removing a node from the canvas never deletes
-axioms; deleting an axiom is a separate, confirmed action.
-
-**Work together** — either live or through git, and both are first-class. Live needs a server
-your team runs: point each person's plugin at it and you share the board, seeing each other's
-edits and cursors in the same session as any browser users. No server, or you would rather not
-run one? Leave the fields empty and collaborate through git — commit and push as usual. Setup,
-and what the live vocabulary can and cannot carry, are in
-[docs/collaboration.md](docs/collaboration.md).
-
-**Run ROBOT and ODK without leaving Protégé** — the *OntoBoard* menu carries twenty
-commands against the ontology you have open:
-
-| Group | Commands |
-|---|---|
-| Project | New ODK project, Open from GitHub, ID ranges, Build, Imports, Release, Compare releases |
-| ROBOT | Measure, Quality report, Explain, SPARQL, Profile, Transform (relax/reason/reduce/repair/merge/materialize), Rename IRIs, Import terms, Template, Export terms |
-| Terms | Obsolete the selected term |
-| Notes | Note on the selected term, All notes, Discussion link |
-| Other | Git, Provenance, Collaboration |
-
-*Template* turns a spreadsheet into axioms and reports every bad row at once rather than
-stopping at the first. *Import terms* extracts a module from another ontology and wires up
-the import, catalog entry and all, recording which upstream release it came from. *Compare
-releases* says what changed term by term — added, obsoleted, redefined, moved — and writes
-the release notes from it. *Obsolete* retires a term the OBO way so everything that
-referenced it still resolves.
-
-### Not built yet
-
-The ontology design pattern library, SPARQL query panel, Widoco documentation, pull-request
-support in the git tooling, and threaded comments (a term can be *linked* to its issue, but
-the discussion lives there, not in the ontology). Full list, with the host constraints that
-matter more, in [docs/limitations.md](docs/limitations.md).
-
-### Host support
-
-ROBOT runs in-process against the ontology Protégé has open. Which ROBOT operations are
-available depends on the host's OWL API, because OWL API moved its RDF layer from Sesame to
-RDF4J at 4.5.25 and `robot-core` targets the newer form:
-
-| Protégé | OWL API | Every shipped ROBOT operation, including `report` |
-|---|---|---|
-| **5.6.x** | 4.5.29 | yes — verified in-host, 1.25.0 |
-| 5.5.0 | 4.5.9 | yes — verified in-host, 1.25.0 |
-
-This table said "everything except `report`" for both hosts until 1.25.0, and that was true:
-ROBOT located its report queries by asking its classloader for a *directory* and accepting only
-`file:` and `jar:` URLs, and a bundle resource is neither, so the quality report had never
-worked inside the plugin. It does now — the queries are read as streams and run over a Jena
-model built without Rio.
-
-The host column is no longer the interesting axis. What limits ROBOT inside this plugin is OSGi,
-not the OWL API version: neither Protégé's OWL API bundle exports the RDF4J packages
-`robot-core` needs for its Rio paths, so those fail identically on 5.6.9 and 5.5.0. See
-[limitations](docs/limitations.md#known-constraints) for which operations that still rules out.
-
-Two things check that rather than one claim in a README. `RobotCliParityTest` and
-`RobotParityTest` run nine operations twice — once through the plugin, once as the `robot`
-command inside `obolibrary/odkfull`, which is the image a project's CI uses — and require the
-same answer: reason, measure, export, extract, diff, verify, explain, template and the report.
-And the plugin runs a self-check at startup whose verdict `tools/smoke.ps1` asserts against both
-installs ([receipt](protege-plugin/tools/smoke-receipt/1.25.0.txt)).
-
-Before 1.48.0 only the report was compared this way, and the rest rested on not throwing.
-Comparing them found five defects that a passing test suite had not - including a Reason preview
-that showed inferences the generated build would have dropped, because the plugin passed ROBOT's
-defaults where the Makefile passes two overrides. See
-[limitations](docs/limitations.md#known-constraints), which also records the one place the plugin
-and `robot validate-profile` deliberately disagree.
-
-One jar serves both — OWL API is imported from the host rather than embedded, so the
-available surface simply follows the host. On 5.5.0 the plugin explains which operations are
-unavailable and why rather than failing obscurely.
-
-### Building
-
-```bash
-cd protege-plugin
-mvn clean package          # -> target/ontoboard-<version>.jar
-mvn test                   # 1207 tests (14 need Docker, 8 need node, and skip without them)
-```
-
-Java 8 bytecode is emitted deliberately (`maven.compiler.release=8`) so the bundle loads on
-Protégé's bundled JRE. See [docs/development.md](docs/development.md) for the OSGi
-constraints — several are load-bearing and guarded by tests.
-
----
-
-## Web application
-
-The original OntoBoard: a browser-based environment with real-time collaboration built on an
-ontology-aware operation CRDT, plus the full ODK/ROBOT pipeline behind a REST API.
-
-```bash
-./run.sh          # build and start everything
-```
-
-Then open [http://localhost:3000](http://localhost:3000) and log in with `admin` / `admin`.
-Requires Docker and Docker Compose.
-
-It provides multi-user editing with cursor sharing and semantic merge, threaded comments
-with @mentions, a Kanban task board, sharing and invite links, the ODP pattern library, the
-CSV → ROBOT template wizard, SPARQL, quality reports and Widoco documentation.
-
-Architecture and API details: [docs/architecture.md](docs/architecture.md),
-[docs/api-reference.md](docs/api-reference.md).
-
----
+**Collaboration** — live shared sessions with cursors, or git: status, stage, commit, pull, push,
+branch, without leaving the editor.
 
 ## Documentation
 
 - [Getting started](docs/getting-started.md)
-- [Architecture](docs/architecture.md)
 - [Features](docs/features.md)
-- [Development](docs/development.md)
-- [Collaboration](docs/collaboration.md) — live and git modes, server setup
-- [Testing collaboration locally](docs/testing-collaboration-locally.md)
-- [Feature parity](docs/feature-parity.md) — plugin vs web application, gap by gap
-- [Limitations and roadmap](docs/limitations.md)
-- [API reference](docs/api-reference.md) — web application
-- Design specs and implementation plans: [docs/superpowers/](docs/superpowers/)
+- [Working with ODK](docs/odk-workflow.md) — the ODK workflow step by step, and exactly which
+  steps OntoBoard does for you
+- [Collaboration](docs/collaboration.md)
+- [Limitations and roadmap](docs/limitations.md) — an honest inventory of what it does not do
+- [Architecture](docs/architecture.md) · [Development](docs/development.md)
 
-## Related work
+## Status
 
-[CoModIDE](https://comodide.com/) brought graphical, pattern-driven ontology modelling into
-Protégé, and [OWLAx](https://arxiv.org/abs/1808.10105) established the candidate-axiom
-vocabulary this plugin's relation editor uses. OntoBoard's plugin is aimed at a different
-gap: bringing the ODK/ROBOT release pipeline into Protégé without a Docker prerequisite.
-
-Note that canvas layout is stored in a sidecar file rather than as OPLa-SD annotations, so
-diagrams are **not** interchangeable with CoModIDE — a deliberate trade to keep the ontology
-byte-clean.
-
-## License
-
-[Apache License 2.0](LICENSE). Third-party components and their licenses are listed in
-[NOTICE](NOTICE).
+Early and actively developed, but held to a standard: every release is smoke-tested in both
+Protégé versions, the plugin self-checks on startup, and each release ships a receipt in
+[`protege-plugin/tools/smoke-receipt/`](protege-plugin/tools/smoke-receipt/) recording what was
+verified and what was not.
 
 ---
 
-OntoBoard is a research prototype developed at the
-[Information Service Engineering](https://www.fiz-karlsruhe.de/en/forschung/information-service-engineering)
-group of [FIZ Karlsruhe](https://www.fiz-karlsruhe.de).
+Developed by [Ebrahim Norouzi](https://ebrahimnorouzi.github.io/) at
+[ISE / FIZ Karlsruhe](https://www.fiz-karlsruhe.de/en/forschung/information-service-engineering).
+Licensed under [Apache 2.0](LICENSE).
