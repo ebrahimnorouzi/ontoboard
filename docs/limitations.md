@@ -269,6 +269,62 @@ The plugin is early. These exist in the web application but not yet here:
   note is prose rather than a phrase, so it is the one tooltip here that wraps. Three paragraphs from
   three editors is not a tooltip; the Notes dialog shows them all with authors and dates.
 
+- **The property arrows were not missing, they were unread - 1.75.0.** Asked for as "object/data
+  properties drawn as edges from axioms (not standalone nodes)", which reads as "stop drawing the
+  boxes". Measuring the project it was reported against says the boxes are the symptom.
+
+  Of that ontology's 74 `SubClassOf` axioms, **none** has a restriction as its superclass, while
+  32 of its 34 `EquivalentClasses` axioms contain one — 51 authored property relationships in
+  all. The projection read exactly three shapes, `SubClassOf(A, R some B)`, `SubClassOf(A, R only
+  B)` and the data equivalent, and the ontology writes none of them. Every relationship its author
+  had written was invisible, and the board showed 27 property boxes with nothing attached to them.
+  Removing the boxes would have deleted the evidence and left the diagram emptier.
+
+  So the reading came first. Measured on the same saved board: **8 property arrows before, 31
+  after**, and ten duplicate cells down to none. A recursive walk over the superclass expression
+  now reads restrictions inside `ObjectIntersectionOf` to any depth and inside `EquivalentClasses`,
+  plus min/max/exact cardinality, `ObjectHasValue`, and `SubClassOf(ObjectSomeValuesFrom(R B) A)` —
+  a scoped domain, drawn the way the user drew it. Union and complement are deliberately not
+  walked: a disjunct does not hold, so an arrow for one would assert something nobody wrote, and a
+  negation is not something an arrow can say at all.
+
+  **It also closed a round trip the canvas could not complete.** `EdgeAxioms` offers six readings
+  when a user draws an arrow and the projection could read back three — so choosing *scoped domain*
+  or *functionality* put the axiom in the ontology and made the arrow vanish at the next refresh.
+  That is the worst shape a bug can have: the edit succeeded and the evidence of it disappeared.
+
+  **Deleting one of the new arrows is refused, by name.** They come from axioms that carry more
+  than one relation. Inside a conjunction, the axiom carries the other conjuncts; inside an
+  equivalence, it *is* the class's definition, and removing it would turn a defined class into a
+  primitive one. Both refuse before computing anything, say what would be lost, and point at
+  Protégé. The refusal subclasses `UnknownEdgeException` so the three existing catch sites still
+  catch it, but its message does not claim confusion — the axiom is understood perfectly well and
+  it is the deletion that is unsafe. Third release running in which a destructive path appears, and
+  the first in which it ships already closed.
+
+  Three smaller things, all measured rather than assumed: one cell per id, because an import
+  closure restates axioms across modules and the renderer was inserting a cell per list entry while
+  indexing only the last — the surplus cells were drawn, hit-tested and exported, and the forgotten
+  ones could not be selected or deleted. Arrows carry the property's `rdfs:label`, where before the
+  one part of the diagram that names a relation was the one part written in numbers. And every
+  existing edge id is byte-identical, because they travel between peers in a live session, with
+  everything new behind a `pe|` prefix where an older peer meets a clean refusal.
+
+  Still to come: the boxes. 27 of that board's 172 members are properties, each with a saved
+  position, so suppressing them can silently empty part of a diagram somebody has arranged — much
+  safer once the arrows exist than before.
+
+- **A false green, and a convention that has stopped working — 1.75.0.** Partway through that
+  release `mvn -o -q compile` reported exit 0 on code that does not compile. The cause is new: the
+  editor's Java language server compiles continuously into `target/classes`, so it had rewritten
+  the class files after `rm -rf target/classes` and before Maven looked, and Maven reported
+  *"Nothing to compile - all classes are up to date."* The failure surfaced only as
+  `java.lang.Error: Unresolved compilation problems` thrown out of a test — the language server's
+  own output running in place of javac's.
+
+  Emptying `target/classes` is no longer sufficient. Builds now touch every source first and the
+  log is checked for `Compiling N source files` rather than for exit 0.
+
 - **The canvas crashed in 1.73.0, and the reason it shipped matters more than the crash - fixed
   in 1.74.0.** Reported within the hour of the release: *"i tried to open mwo, ontoboard gives
   this error in the canvas - An error occurred whilst creating the view. NullPointerException:

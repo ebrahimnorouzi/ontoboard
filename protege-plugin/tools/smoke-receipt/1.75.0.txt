@@ -1,0 +1,143 @@
+OntoBoard 1.75.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-10-03  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 8/8  test 10/10
+  2026-10-03  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 8/8  test 10/10
+
+
+THE PROPERTY ARROWS WERE NOT MISSING, THEY WERE UNREAD
+
+Canvas item 3 was asked for as "object/data properties drawn as edges from axioms (not standalone
+nodes)", and the obvious reading is "stop drawing the boxes". Measuring the project it was reported
+against says the boxes are the symptom.
+
+    mwo-edit.owl, 582 axioms, counted directly:
+      74  SubClassOf axioms
+       0  of them with a restriction as the superclass
+      34  EquivalentClasses axioms
+      32  of them containing an ObjectSomeValuesFrom
+      51  object-property restriction occurrences in total
+       0  cardinality restrictions
+
+The projection read exactly three shapes: SubClassOf(A, R some B), SubClassOf(A, R only B) and
+SubClassOf(A, Q some D). MWO writes none of them. Every one of its 51 authored property
+relationships was invisible, and the board showed 27 property boxes with nothing attached - which
+is what "standalone nodes" looks like from the outside. Taking the boxes away would have removed
+the evidence and left the diagram emptier.
+
+So this release reads the axioms. Measured on the same saved board, before and after:
+
+                        before   after
+    property arrows        8       31
+    duplicate cells       10        0
+
+29 arrows that MWO's author wrote and could not see. All of them come from the edit file alone -
+the imports closure is not even loaded in that measurement.
+
+WHAT IS READ NOW
+
+A recursive walk over the superclass expression, plus EquivalentClasses as a second source of
+subjects:
+
+  - a restriction inside ObjectIntersectionOf, to any depth - "an A is a B, and R-related to a C"
+  - a restriction inside EquivalentClasses, which is how an OBO-style ontology defines a class
+  - ObjectMinCardinality, ObjectMaxCardinality, ObjectExactCardinality, labelled "(max 1)"
+  - ObjectHasValue, pointing at the individual it names
+  - SubClassOf(ObjectSomeValuesFrom(R B) A) - a scoped domain, drawn the way the user drew it
+
+Union and complement are deliberately not walked. A disjunct does not hold, and an arrow for one
+would assert something nobody wrote; a negation is not something an arrow can say at all. Drawing
+neither is the honest answer and there is a test for each.
+
+The opt-in rule is unchanged and tested against every new shape: an arrow may reveal a relation
+between two terms the user chose, and may never drag a third onto the diagram.
+
+A ROUND TRIP THE CANVAS COULD NOT COMPLETE
+
+EdgeAxioms offers six readings when a user draws an arrow. The projection could read back three.
+Choose "scoped domain" or "functionality" and the axiom went into the ontology while the arrow
+vanished at the next refresh - the worst shape a bug can have, because the edit succeeded and the
+evidence of it disappeared. Both are read now; the remaining two are global domain and range,
+which are still drawn only when a property has both.
+
+DELETING ONE OF THE NEW ARROWS IS REFUSED, BY NAME
+
+The new arrows come from axioms that carry more than one relation, and the origin is recorded in
+the edge id precisely so that deletion can refuse.
+
+  - inside a conjunction: the axiom carries the other conjuncts, so removing it would take away
+    relations the user can see nothing wrong with
+  - inside an equivalence: the axiom is the class's definition, and removing it would turn a
+    defined class into a primitive one - a change to what the ontology means, not to one arrow
+
+Both refuse before computing anything, name what would be lost, and say to edit the axiom in
+Protege instead. The refusal is a subclass of UnknownEdgeException so that the three existing
+catch sites - the canvas and two paths in the collaboration mapper - still catch it, but its
+message does not say "cannot work out which axiom this is", because the axiom is understood
+perfectly well and it is the deletion that is unsafe.
+
+This is the third release running in which a destructive path appears, and the first in which it
+ships already closed rather than closed afterwards. These arrows could not be drawn at all before
+now, so the refusal arrives with them.
+
+THREE SMALLER THINGS, ALL MEASURED
+
+One cell per id. An import closure restates axioms across modules; on the real board ten ids
+arrived two to four times, and SchemaGraph.render inserts a cell per list entry while indexing
+only the last - so the surplus cells were drawn, hit-tested and exported, and the ones the index
+had forgotten could not be selected or deleted. Deduplicated in the projection, where CanvasEdge
+equality is already the id alone. Ten duplicates to zero.
+
+Arrows carry the property's label. Every node has shown its rdfs:label since the canvas was
+written and the arrows between them showed the IRI fragment, so on an OBO or ODK ontology the one
+part of the diagram that names a relation was the one part written in numbers.
+
+Existing ids are byte-identical. rest|some|, rest|only|, data|, dr|, sub|, type| and subprop| mean
+exactly what they meant - they travel between peers in a live session - and everything new is
+behind a pe| prefix, where an older peer meets a clean refusal rather than a misreading.
+
+A FALSE GREEN, AND A CONVENTION THAT HAS STOPPED WORKING
+
+Partway through this release `mvn -o -q compile` reported exit 0 on code that does not compile.
+The cause is new and the old defence no longer covers it: the editor's Java language server
+compiles continuously into target/classes, so it had rewritten the class files after `rm -rf
+target/classes` and before Maven looked, and Maven said
+
+    [INFO] Nothing to compile - all classes are up to date.
+
+The failure surfaced only as `java.lang.Error: Unresolved compilation problems` thrown out of a
+test - the language server's own output, running in place of javac's.
+
+Emptying target/classes is therefore no longer sufficient. Every build in this release used
+
+    find src/main/java src/test/java -name '*.java' -exec touch {} + && mvn -o <goal>
+
+and checked for "Compiling N source files" in the log rather than for exit 0.
+
+NUMBERS
+
+1467 tests, 0 failures, 0 skipped. 30 new: fourteen for the axiom shapes, nine for the removal
+refusals, seven for the id format.
+
+Counted three ways, agreeing: Maven's summary, the sum over 105 surefire reports for 105 test
+classes, and an anchored ^\s*@Test\s*$ across src/test/java.
+
+WHAT THIS DELIBERATELY DOES NOT DO
+
+The property boxes are still drawn. That is the second half of this item and it is next, and it
+is worth saying why it is not here: 27 of the 172 members of the board this was reported against
+are properties, each with a saved position, and suppressing them is a change that can silently
+empty part of a diagram somebody has arranged. It is much safer to do after the arrows exist than
+before, and the plan is that a property keeps a box only where a sub-property edge needs one -
+membership and geometry untouched, so a box returns to its saved position if its hierarchy
+partner comes back.
+
+An arrow from an equivalence is not yet drawn differently from one from a subclass axiom, though
+it says more - the condition is sufficient as well as necessary. A separate edge kind means a
+colour, a style and a legend row, and the legend has a completeness guard that must change in the
+same commit. The tooltip names the construct in the meantime.
+
+Two arrows still appear between the same pair when an ontology states both a restriction and a
+domain/range pair for one property, as the pizza fixture does. They are different axioms with
+different ids, so the deduplication does not and should not merge them.

@@ -202,7 +202,7 @@ class OntologyProjectionTest {
      * Order-independent regression test for the same bug as
      * {@link #facetRestrictedDataRangeDoesNotSuppressOtherSubClassEdges()}, but immune to Set
      * iteration order: it calls the package-private
-     * {@link OntologyProjection#collectSubClassEdges(java.util.Collection, Set, List, List)}
+     * {@code OntologyProjection.collectSubClassEdges(OWLOntology, Collection, Set, List, List)}
      * overload directly with a hand-built {@link LinkedHashSet}, whose iteration order is
      * insertion order by contract. The facet-restricted axiom is inserted FIRST, so if the
      * unsupported-data-range branch ever regresses back to {@code return} instead of
@@ -210,7 +210,8 @@ class OntologyProjectionTest {
      * fixture exists, and no matter what future edits are made to any ontology file.
      */
     @Test
-    void facetRestrictedDataRangeDoesNotSuppressOtherSubClassEdgesRegardlessOfAxiomOrder() {
+    void facetRestrictedDataRangeDoesNotSuppressOtherSubClassEdgesRegardlessOfAxiomOrder()
+            throws Exception {
         OWLDataFactory factory = OWLManager.getOWLDataFactory();
 
         OWLClass employee = factory.getOWLClass(IRI.create(NS2 + "OrderProbeEmployee"));
@@ -237,7 +238,9 @@ class OntologyProjectionTest {
         List<CanvasNode> nodes = new ArrayList<>();
         List<CanvasEdge> edges = new ArrayList<>();
 
-        OntologyProjection.collectSubClassEdges(axioms, on, nodes, edges);
+        OWLOntology host = OWLManager.createOWLOntologyManager()
+                .createOntology(IRI.create("http://example.org/order-probe"));
+        OntologyProjection.collectSubClassEdges(host, axioms, on, nodes, edges);
 
         boolean hasLeftToRight = edges.stream().anyMatch(e -> e.getKind() == CanvasEdge.Kind.SUBCLASS
                 && e.getSourceId().equals(left.getIRI().toString())

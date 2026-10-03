@@ -233,11 +233,18 @@ public final class OntologyProjection {
         }
 
         collectSubClassEdges(ontology, onCanvasIris, nodes, edges);
+        collectEquivalenceEdges(ontology, onCanvasIris, nodes, edges);
         collectSubPropertyEdges(ontology, onCanvasIris, edges);
         collectLegacyDomainRangeEdges(ontology, onCanvasIris, edges);
         collectTypeEdges(ontology, onCanvasIris, edges);
 
-        return new Projection(nodes, edges);
+        // One cell per id. An import closure restates axioms across modules - on a real ODK
+        // project's board ten ids arrive two to four times - and SchemaGraph.render inserts an
+        // mxCell per list entry while keeping only the last in its id index. The extra cells are
+        // drawn, hit-tested and exported, and the ones the index has forgotten cannot be
+        // selected or deleted. CanvasEdge equality is the id alone, so a set is the whole fix.
+        return new Projection(nodes,
+                new ArrayList<CanvasEdge>(new java.util.LinkedHashSet<CanvasEdge>(edges)));
     }
 
     /**
@@ -288,15 +295,228 @@ public final class OntologyProjection {
             List<CanvasNode> nodes, List<CanvasEdge> edges) {
         // Included, so the hierarchy between two imported terms is drawn. Both ends still have to
         // be on the board, so this cannot pull in an import's whole class tree.
-        collectSubClassEdges(ontology.getAxioms(AxiomType.SUBCLASS_OF, Imports.INCLUDED),
-                on, nodes, edges);
+        collectSubClassEdges(ontology,
+                ontology.getAxioms(AxiomType.SUBCLASS_OF, Imports.INCLUDED), on, nodes, edges);
     }
 
     /**
-     * SubClassOf(A B) and SubClassOf(A ObjectSomeValuesFrom(R B)) / ObjectAllValuesFrom. Also
-     * SubClassOf(A DataSomeValuesFrom(R D)) for a plain datatype D, which additionally
-     * projects a DATATYPE node for D (never gated on canvas membership: a datatype is a leaf
-     * pulled in by showing the class, not a first-class canvas citizen).
+     * Restrictions written in a class's definition rather than in a SubClassOf axiom.
+     *
+     * <p>This is where most real ontologies keep them, and the canvas could not see any of it.
+     * Measured on the project this was reported against: of its 74 SubClassOf axioms, <b>none</b>
+     * has a restriction as its superclass, while 32 of its 34 EquivalentClasses axioms contain
+     * one - 51 authored relationships in all, every one of them invisible. The board showed its
+     * property boxes floating with nothing attached, which is precisely the complaint that
+     * produced this work, and the boxes were not the cause.
+     *
+     * <p>An equivalence says more than a subclass axiom - the condition is sufficient as well as
+     * necessary - and the arrow drawn here does not yet say so. That is deliberate for one
+     * release: a separate edge kind means a new colour, a legend row and a style, and the legend
+     * has a completeness guard that must be changed in the same commit. The tooltip names the
+     * construct in the meantime.
+     */
+    private static void collectEquivalenceEdges(OWLOntology ontology, Set<String> on,
+            List<CanvasNode> nodes, List<CanvasEdge> edges) {
+        for (org.semanticweb.owlapi.model.OWLEquivalentClassesAxiom axiom
+                : ontology.getAxioms(AxiomType.EQUIVALENT_CLASSES, Imports.INCLUDED)) {
+            for (OWLClassExpression named : axiom.getClassExpressions()) {
+                if (named.isAnonymous()) {
+                    continue;
+                }
+                IRI subject = named.asOWLClass().getIRI();
+                if (!isOn(on, subject)) {
+                    continue;
+                }
+                for (OWLClassExpression other : axiom.getClassExpressions()) {
+                    if (other.isAnonymous()) {
+                        walk(ontology, on, subject, other, PropertyEdgeId.Origin.EQUIVALENCE,
+                                nodes, edges);
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * One class expression, as far as it carries relations between two terms on the board.
+     *
+     * <p>Recursive because a conjunction is how an ontology says "all of these at once", and the
+     * relations are the operands. Nothing else recurses: a union is a disjunction and drawing its
+     * operands as if they all held would be a false statement about the ontology, and a
+     * complement is a negation, which an arrow cannot express at all. Both are left undrawn
+     * rather than approximated.
+     *
+     * <p>The filler must already be on the board. That is this canvas's opt-in rule and it is not
+     * relaxed here: an arrow may reveal a relation between two terms the user chose, never drag a
+     * third onto the diagram.
+     */
+    private static void walk(OWLOntology ontology, Set<String> on, IRI subject,
+            OWLClassExpression expression, PropertyEdgeId.Origin origin,
+            List<CanvasNode> nodes, List<CanvasEdge> edges) {
+        if (expression instanceof org.semanticweb.owlapi.model.OWLObjectIntersectionOf) {
+            for (OWLClassExpression operand
+                    : ((org.semanticweb.owlapi.model.OWLObjectIntersectionOf) expression)
+                            .getOperands()) {
+                // A conjunct of a SubClassOf is no longer the whole superclass, so it stops being
+                // retractable - see PropertyEdgeId.Origin. Inside an equivalence it was never
+                // retractable, so the origin stays as it is.
+                walk(ontology, on, subject, operand,
+                        origin == PropertyEdgeId.Origin.SUBCLASS
+                                ? PropertyEdgeId.Origin.CONJUNCT
+                                : origin,
+                        nodes, edges);
+            }
+            return;
+        }
+        if (expression instanceof org.semanticweb.owlapi.model.OWLQuantifiedObjectRestriction) {
+            // One branch for some, only, min, max and exactly: OWLObjectCardinalityRestriction
+            // extends OWLQuantifiedObjectRestriction, so all five answer getProperty and
+            // getFiller. Checked with javap rather than assumed.
+            org.semanticweb.owlapi.model.OWLQuantifiedObjectRestriction restriction =
+                    (org.semanticweb.owlapi.model.OWLQuantifiedObjectRestriction) expression;
+            objectEdge(ontology, on, subject, origin, restriction.getProperty(),
+                    restriction.getFiller(), qualifierOf(expression), edges);
+            return;
+        }
+        if (expression instanceof org.semanticweb.owlapi.model.OWLObjectHasValue) {
+            org.semanticweb.owlapi.model.OWLObjectHasValue has =
+                    (org.semanticweb.owlapi.model.OWLObjectHasValue) expression;
+            if (has.getProperty().isAnonymous() || has.getFiller().isAnonymous()) {
+                return;
+            }
+            addObjectEdge(ontology, on, subject, origin, "value",
+                    has.getProperty().asOWLObjectProperty().getIRI(),
+                    has.getFiller().asOWLNamedIndividual().getIRI(), edges);
+            return;
+        }
+        if (expression instanceof OWLDataSomeValuesFrom) {
+            OWLDataSomeValuesFrom data = (OWLDataSomeValuesFrom) expression;
+            if (data.getProperty().isAnonymous() || !data.getFiller().isDatatype()) {
+                // Not a plain datatype range - a facet-restricted DatatypeRestriction, or an
+                // anonymous property. An unsupported shape skips itself and nothing else.
+                return;
+            }
+            dataEdge(ontology, subject, origin, data.getProperty().asOWLDataProperty().getIRI(),
+                    data.getFiller().asOWLDatatype().getIRI(), nodes, edges);
+        }
+    }
+
+    /** {@code some}, {@code only}, {@code min2}, {@code max1}, {@code exactly3}. */
+    private static String qualifierOf(OWLClassExpression expression) {
+        if (expression instanceof OWLObjectSomeValuesFrom) {
+            return "some";
+        }
+        if (expression instanceof OWLObjectAllValuesFrom) {
+            return "only";
+        }
+        if (expression instanceof org.semanticweb.owlapi.model.OWLObjectCardinalityRestriction) {
+            org.semanticweb.owlapi.model.OWLObjectCardinalityRestriction cardinality =
+                    (org.semanticweb.owlapi.model.OWLObjectCardinalityRestriction) expression;
+            String shape = expression instanceof org.semanticweb.owlapi.model.OWLObjectMinCardinality
+                    ? "min"
+                    : expression instanceof org.semanticweb.owlapi.model.OWLObjectMaxCardinality
+                            ? "max" : "exactly";
+            return shape + cardinality.getCardinality();
+        }
+        return "some";
+    }
+
+    /** A restriction whose filler is a named class. */
+    private static void objectEdge(OWLOntology ontology, Set<String> on, IRI subject,
+            PropertyEdgeId.Origin origin,
+            org.semanticweb.owlapi.model.OWLObjectPropertyExpression property,
+            OWLClassExpression filler, String qualifier, List<CanvasEdge> edges) {
+        if (property.isAnonymous() || filler.isAnonymous()) {
+            return;
+        }
+        addObjectEdge(ontology, on, subject, origin, qualifier,
+                property.asOWLObjectProperty().getIRI(), filler.asOWLClass().getIRI(), edges);
+    }
+
+    /**
+     * The one place a property arrow is built, so its id and its label are decided once.
+     *
+     * <p>The id of the two shapes that existed before this is byte-identical to what it was:
+     * {@code rest|some|...} and {@code rest|only|...} travel between peers in a live session and
+     * are parsed by {@code AxiomRemoval}, and an id that changed shape would reach an older build
+     * as an unrecognised edge. Everything new is behind {@code pe|}, where an older peer meets a
+     * clean refusal instead of a misreading.
+     */
+    private static void addObjectEdge(OWLOntology ontology, Set<String> on, IRI subject,
+            PropertyEdgeId.Origin origin, String qualifier, IRI property, IRI filler,
+            List<CanvasEdge> edges) {
+        if (!isOn(on, filler)) {
+            return;
+        }
+        boolean legacy = origin == PropertyEdgeId.Origin.SUBCLASS
+                && ("some".equals(qualifier) || "only".equals(qualifier));
+        String id = legacy
+                ? "rest|" + qualifier + "|" + subject + "|" + property + "|" + filler
+                : PropertyEdgeId.of(origin, qualifier, iri(subject), iri(property), iri(filler));
+        edges.add(new CanvasEdge(id, iri(subject), iri(filler),
+                arrowLabel(ontology, property, qualifier), CanvasEdge.Kind.OBJECT_PROPERTY));
+    }
+
+    /** A data restriction, which also puts its datatype on the board as a leaf. */
+    private static void dataEdge(OWLOntology ontology, IRI subject,
+            PropertyEdgeId.Origin origin, IRI property, IRI datatype, List<CanvasNode> nodes,
+            List<CanvasEdge> edges) {
+        // Never gated on membership: a datatype is a leaf pulled in by showing the class, not a
+        // first-class canvas citizen.
+        CanvasNode datatypeNode =
+                new CanvasNode(iri(datatype), NodeKind.DATATYPE, localName(datatype));
+        if (!nodes.contains(datatypeNode)) {
+            nodes.add(datatypeNode);
+        }
+        String id = origin == PropertyEdgeId.Origin.SUBCLASS
+                ? "data|" + subject + "|" + property + "|" + datatype
+                : PropertyEdgeId.of(origin, "dsome", iri(subject), iri(property), iri(datatype));
+        edges.add(new CanvasEdge(id, iri(subject), iri(datatype),
+                arrowLabel(ontology, property, "some"), CanvasEdge.Kind.DATA_PROPERTY));
+    }
+
+    /**
+     * What an arrow is called.
+     *
+     * <p>The property's label, not its IRI fragment. Every node on the board has shown its label
+     * since the canvas was written, and the arrows between them showed {@code RO_0002202} - so on
+     * an OBO or ODK ontology, which is what this plugin is for, the one part of the diagram that
+     * names a relation was the one part written in numbers.
+     *
+     * <p>The qualifier is appended only when it is not the plain existential, because a diagram
+     * where every arrow carries "(some)" says nothing it did not already say.
+     */
+    private static String arrowLabel(OWLOntology ontology, IRI property, String qualifier) {
+        String name = DisplayLabels.forEntity(ontology,
+                ontology.getOWLOntologyManager().getOWLDataFactory()
+                        .getOWLObjectProperty(property));
+        if ("some".equals(qualifier)) {
+            return name;
+        }
+        if (qualifier.startsWith("min") || qualifier.startsWith("max")
+                || qualifier.startsWith("exactly")) {
+            String shape = qualifier.replaceAll("[0-9]+$", "");
+            String count = qualifier.substring(shape.length());
+            return name + " (" + shape + " " + count + ")";
+        }
+        return name + " (" + qualifier + ")";
+    }
+
+    /**
+     * SubClassOf, in all the shapes it is written in.
+     *
+     * <p>{@code SubClassOf(A B)} is the hierarchy. Anything anonymous on the superclass side
+     * goes to {@link #walk}, which handles a restriction standing alone, a conjunction of them,
+     * the five object qualifiers and a data restriction. The superclass side used to be read
+     * three ways - some, only, and a data some - and anything else was dropped without trace.
+     *
+     * <p>An anonymous SUBclass side is read too, in one shape:
+     * {@code SubClassOf(ObjectSomeValuesFrom(R B) A)}. That is a scoped domain, and it is one of
+     * the six axioms this plugin offers to write when a user draws an arrow - so until now the
+     * canvas could write an axiom it could not then draw, and the arrow vanished at the next
+     * refresh with the axiom silently in the file. Two of the other five are fixed by the
+     * cardinality branch in {@link #walk}; the remaining two are global domain and range, which
+     * {@link #collectLegacyDomainRangeEdges} still draws only as a pair.
      *
      * <p>Package-private (rather than the private the rest of this class uses) so tests can
      * pass an explicit, ordered {@link Collection} of axioms and pin an exact iteration order.
@@ -305,65 +525,54 @@ public final class OntologyProjection {
      * owlapi-impl's internal hash map - not something a test should depend on to reproduce a
      * specific code path.
      */
-    static void collectSubClassEdges(Collection<OWLSubClassOfAxiom> axioms, Set<String> on,
-            List<CanvasNode> nodes, List<CanvasEdge> edges) {
+    static void collectSubClassEdges(OWLOntology ontology, Collection<OWLSubClassOfAxiom> axioms,
+            Set<String> on, List<CanvasNode> nodes, List<CanvasEdge> edges) {
         for (OWLSubClassOfAxiom axiom : axioms) {
-            if (axiom.getSubClass().isAnonymous()) {
+            OWLClassExpression sub = axiom.getSubClass();
+            OWLClassExpression sup = axiom.getSuperClass();
+
+            if (sub.isAnonymous()) {
+                if (!sup.isAnonymous()) {
+                    scopedDomain(ontology, on, sub, sup.asOWLClass().getIRI(), edges);
+                }
                 continue;
             }
-            IRI subIri = axiom.getSubClass().asOWLClass().getIRI();
+            IRI subIri = sub.asOWLClass().getIRI();
             if (!isOn(on, subIri)) {
                 continue;
             }
-            OWLClassExpression sup = axiom.getSuperClass();
-
             if (!sup.isAnonymous()) {
                 IRI supIri = sup.asOWLClass().getIRI();
                 if (isOn(on, supIri)) {
                     edges.add(new CanvasEdge("sub|" + subIri + "|" + supIri,
                             iri(subIri), iri(supIri), "", CanvasEdge.Kind.SUBCLASS));
                 }
-            } else if (sup instanceof OWLObjectSomeValuesFrom) {
-                OWLObjectSomeValuesFrom some = (OWLObjectSomeValuesFrom) sup;
-                addRestrictionEdge(on, edges, subIri, some.getProperty(), some.getFiller(), "some");
-            } else if (sup instanceof OWLObjectAllValuesFrom) {
-                OWLObjectAllValuesFrom all = (OWLObjectAllValuesFrom) sup;
-                addRestrictionEdge(on, edges, subIri, all.getProperty(), all.getFiller(), "only");
-            } else if (sup instanceof OWLDataSomeValuesFrom) {
-                OWLDataSomeValuesFrom data = (OWLDataSomeValuesFrom) sup;
-                if (data.getProperty().isAnonymous() || !data.getFiller().isDatatype()) {
-                    // Not a plain datatype range (e.g. a facet-restricted DatatypeRestriction,
-                    // or an anonymous property) - unsupported shape, skip only this axiom.
-                    continue;
-                }
-                IRI propIri = data.getProperty().asOWLDataProperty().getIRI();
-                IRI dtIri = data.getFiller().asOWLDatatype().getIRI();
-                CanvasNode datatypeNode = new CanvasNode(iri(dtIri), NodeKind.DATATYPE, localName(dtIri));
-                if (!nodes.contains(datatypeNode)) {
-                    nodes.add(datatypeNode);
-                }
-                edges.add(new CanvasEdge("data|" + subIri + "|" + propIri + "|" + dtIri,
-                        iri(subIri), iri(dtIri), localName(propIri), CanvasEdge.Kind.DATA_PROPERTY));
+                continue;
             }
+            walk(ontology, on, subIri, sup, PropertyEdgeId.Origin.SUBCLASS, nodes, edges);
         }
     }
 
-    private static void addRestrictionEdge(Set<String> on, List<CanvasEdge> edges, IRI subIri,
-            org.semanticweb.owlapi.model.OWLObjectPropertyExpression property,
-            OWLClassExpression filler, String qualifier) {
-        if (property.isAnonymous() || filler.isAnonymous()) {
+    /**
+     * {@code SubClassOf(ObjectSomeValuesFrom(R B) A)} - "anything with an R to a B is an A".
+     *
+     * <p>Drawn as {@code A --R--> B}, which is the arrow the user drew to produce it. The axiom
+     * reads in the other direction, and that is why this is a branch of its own rather than part
+     * of the walk: the subject of the arrow is the superclass here, not the subclass.
+     */
+    private static void scopedDomain(OWLOntology ontology, Set<String> on,
+            OWLClassExpression anonymousSubclass, IRI superClass, List<CanvasEdge> edges) {
+        if (!isOn(on, superClass)
+                || !(anonymousSubclass instanceof OWLObjectSomeValuesFrom)) {
             return;
         }
-        IRI propIri = property.asOWLObjectProperty().getIRI();
-        IRI fillerIri = filler.asOWLClass().getIRI();
-        if (!isOn(on, fillerIri)) {
+        OWLObjectSomeValuesFrom some = (OWLObjectSomeValuesFrom) anonymousSubclass;
+        if (some.getProperty().isAnonymous() || some.getFiller().isAnonymous()) {
             return;
         }
-        String label = "some".equals(qualifier)
-                ? localName(propIri)
-                : localName(propIri) + " (only)";
-        edges.add(new CanvasEdge("rest|" + qualifier + "|" + subIri + "|" + propIri + "|" + fillerIri,
-                iri(subIri), iri(fillerIri), label, CanvasEdge.Kind.OBJECT_PROPERTY));
+        addObjectEdge(ontology, on, superClass, PropertyEdgeId.Origin.SCOPED_DOMAIN, "some",
+                some.getProperty().asOWLObjectProperty().getIRI(),
+                some.getFiller().asOWLClass().getIRI(), edges);
     }
 
     /**
@@ -393,7 +602,8 @@ public final class OntologyProjection {
                     }
                     edges.add(new CanvasEdge(
                             "dr|" + domainIri + "|" + property.getIRI() + "|" + rangeIri,
-                            iri(domainIri), iri(rangeIri), localName(property.getIRI()),
+                            iri(domainIri), iri(rangeIri),
+                            arrowLabel(ontology, property.getIRI(), "some"),
                             CanvasEdge.Kind.OBJECT_PROPERTY));
                 }
             }

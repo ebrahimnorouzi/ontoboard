@@ -5,7 +5,9 @@ import java.util.Collections;
 import java.util.List;
 import org.semanticweb.owlapi.model.IRI;
 import org.semanticweb.owlapi.model.OWLAxiom;
+import org.semanticweb.owlapi.model.OWLClass;
 import org.semanticweb.owlapi.model.OWLDataFactory;
+import org.semanticweb.owlapi.model.OWLObjectProperty;
 import org.semanticweb.owlapi.model.OWLObjectPropertyDomainAxiom;
 import org.semanticweb.owlapi.model.OWLObjectPropertyRangeAxiom;
 import org.semanticweb.owlapi.model.OWLOntology;
@@ -31,6 +33,31 @@ public final class AxiomRemoval {
         UnknownEdgeException(String edgeId, String why) {
             super("Cannot work out which axiom edge '" + edgeId + "' represents: " + why
                     + ". Refusing to delete anything.");
+        }
+
+        UnknownEdgeException(String fullMessage) {
+            super(fullMessage);
+        }
+    }
+
+    /**
+     * Thrown when the axiom behind an edge is known exactly, and removing it would take more
+     * with it than the one arrow.
+     *
+     * <p>A separate type with its own wording, because "cannot work out which axiom this is" is
+     * the opposite of what has happened and would send a user looking for a defect. A
+     * restriction inside a conjunction or inside a class's definition is understood perfectly
+     * well; it is the deletion that is unsafe, and the message says what to do instead.
+     *
+     * <p>A subclass of {@link UnknownEdgeException} on purpose: three call sites already catch
+     * that - the canvas, and two paths in the collaboration mapper - and a refusal that escaped
+     * one of them would reach the event thread as an uncaught exception.
+     */
+    public static final class RefusedException extends UnknownEdgeException {
+        private static final long serialVersionUID = 1L;
+
+        RefusedException(String why) {
+            super(why);
         }
     }
 
@@ -126,7 +153,85 @@ public final class AxiomRemoval {
             require(parts, 4, edgeId);
             return domainAndRange(ontology, parts[1], parts[2], parts[3]);
         }
+        if (de.fizkarlsruhe.ise.ontoboard.model.PropertyEdgeId.is(edgeId)) {
+            return propertyEdge(ontology, edgeId);
+        }
         throw new UnknownEdgeException(edgeId, "unrecognised kind '" + parts[0] + "'");
+    }
+
+    /**
+     * A property arrow from a restriction, retracted only where that is exactly one axiom.
+     *
+     * <p>Two of the four origins are refused, and the refusal is the point of recording the
+     * origin in the id at all. A restriction inside an {@code ObjectIntersectionOf} shares its
+     * axiom with the other conjuncts, and a restriction inside an {@code EquivalentClasses}
+     * shares it with the whole definition of the class - so in both cases the one axiom that
+     * could be removed carries far more than the arrow the user right-clicked. Removing it
+     * would delete relations they can see nothing wrong with, or silently turn a defined class
+     * into a primitive one, which changes what the ontology means.
+     *
+     * <p>This is the same lesson as the ODK regeneration guard: a destructive path is not safe
+     * because nobody has walked down it yet. These arrows could not be drawn at all before this
+     * release, so the refusal arrives with them rather than after someone's definition is gone.
+     */
+    private static List<OWLOntologyChange> propertyEdge(OWLOntology ontology, String edgeId) {
+        de.fizkarlsruhe.ise.ontoboard.model.PropertyEdgeId.Parsed parsed =
+                de.fizkarlsruhe.ise.ontoboard.model.PropertyEdgeId.parse(edgeId);
+        if (parsed == null) {
+            throw new UnknownEdgeException(edgeId, "malformed property edge id");
+        }
+        if (!parsed.getOrigin().isRetractable()) {
+            throw new RefusedException(parsed.getOrigin().getRefusal());
+        }
+
+        OWLDataFactory f = ontology.getOWLOntologyManager().getOWLDataFactory();
+        OWLObjectProperty property =
+                f.getOWLObjectProperty(IRI.create(parsed.getProperty()));
+        OWLClass subject = f.getOWLClass(IRI.create(parsed.getSubject()));
+        OWLClass filler = f.getOWLClass(IRI.create(parsed.getFiller()));
+
+        if (parsed.getOrigin()
+                == de.fizkarlsruhe.ise.ontoboard.model.PropertyEdgeId.Origin.SCOPED_DOMAIN) {
+            // SubClassOf(ObjectSomeValuesFrom(R B) A) - the axiom reads the other way round from
+            // the arrow, which is why the origin has to be carried rather than inferred.
+            return one(ontology, f.getOWLSubClassOfAxiom(
+                    f.getOWLObjectSomeValuesFrom(property, filler), subject));
+        }
+
+        org.semanticweb.owlapi.model.OWLClassExpression restriction =
+                restrictionOf(f, parsed, property, filler);
+        if (restriction == null) {
+            throw new UnknownEdgeException(edgeId,
+                    "unrecognised qualifier '" + parsed.getQualifier() + "'");
+        }
+        return one(ontology, f.getOWLSubClassOfAxiom(subject, restriction));
+    }
+
+    /** The class expression a qualifier stands for, or null when the qualifier is not one. */
+    private static org.semanticweb.owlapi.model.OWLClassExpression restrictionOf(OWLDataFactory f,
+            de.fizkarlsruhe.ise.ontoboard.model.PropertyEdgeId.Parsed parsed,
+            OWLObjectProperty property, OWLClass filler) {
+        String shape = parsed.getShape();
+        int cardinality = parsed.getCardinality();
+        if ("some".equals(shape)) {
+            return f.getOWLObjectSomeValuesFrom(property, filler);
+        }
+        if ("only".equals(shape)) {
+            return f.getOWLObjectAllValuesFrom(property, filler);
+        }
+        if (cardinality < 0) {
+            return null;
+        }
+        if ("min".equals(shape)) {
+            return f.getOWLObjectMinCardinality(cardinality, property, filler);
+        }
+        if ("max".equals(shape)) {
+            return f.getOWLObjectMaxCardinality(cardinality, property, filler);
+        }
+        if ("exactly".equals(shape)) {
+            return f.getOWLObjectExactCardinality(cardinality, property, filler);
+        }
+        return null;
     }
 
     /**
