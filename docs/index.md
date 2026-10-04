@@ -1,7 +1,7 @@
 # OntoBoard Documentation
 
 A Protégé Desktop plugin for running the ODK and ROBOT pipeline inside the editor. See the
-[README](../README.md) for what it is and how to install it.
+[README](https://github.com/ebrahimnorouzi/ontoboard/blob/main/README.md) for what it is and how to install it.
 
 ## Start here
 
@@ -28,11 +28,11 @@ A Protégé Desktop plugin for running the ODK and ROBOT pipeline inside the edi
 
 ## Design record
 
-[superpowers/](superpowers/) holds the specs and implementation plans, including the platform
+[superpowers/](https://github.com/ebrahimnorouzi/ontoboard/tree/main/docs/superpowers/) holds the specs and implementation plans, including the platform
 evaluation that chose Protégé over a Miro app, and decisions that were later reversed.
 
 Each release also ships a receipt under
-[`protege-plugin/tools/smoke-receipt/`](../protege-plugin/tools/smoke-receipt/) recording what was
+[`protege-plugin/tools/smoke-receipt/`](https://github.com/ebrahimnorouzi/ontoboard/tree/main/protege-plugin/tools/smoke-receipt/) recording what was
 verified in a real Protégé, on which hosts, and what was not.
 
 ---

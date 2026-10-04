@@ -1,0 +1,64 @@
+# Builds docs/ with mkdocs and publishes it to GitHub Pages.
+#
+# Pages is configured with build_type: workflow, so this is the only thing that publishes the
+# site - there is no branch being served behind our backs.
+#
+# --strict is deliberate. mkdocs treats a link to a file that is not in the site as a warning and
+# builds anyway, which is how a documentation site ends up full of 404s that nobody notices
+# because the build was green. Nine links in docs/ pointed outside docs_dir before this workflow
+# existed; they are absolute URLs now, and --strict is what stops the tenth.
+name: pages
+
+on:
+  push:
+    branches: [main]
+    # Only when something that affects the site changes. The test suite takes minutes and has no
+    # bearing on whether the documentation builds.
+    paths:
+      - 'docs/**'
+      - 'mkdocs.yml'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deployment at a time, and let a newer commit win rather than queueing behind an older one.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install mkdocs
+        run: pip install mkdocs mkdocs-material
+
+      - name: Build
+        run: mkdocs build --strict
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

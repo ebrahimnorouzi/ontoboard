@@ -42,3 +42,5 @@ mwo301.ttl
 test_upload.ttl
 *.tmp
 paper/*
+# mkdocs build output
+site/

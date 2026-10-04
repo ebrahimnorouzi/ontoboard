@@ -41,7 +41,7 @@ works.
 
 ### 1. Run the server
 
-The collaboration service is in [`collab/`](../collab/). It is a small Node server and needs
+The collaboration service is in [`collab/`](https://github.com/ebrahimnorouzi/ontoboard/tree/main/collab/). It is a small Node server and needs
 nothing but Node to run:
 
 ```bash
@@ -62,7 +62,7 @@ It opens **two** ports, and the difference matters:
 | 1234 | Yjs / Hocuspocus (binary CRDT) | the web application |
 | **1235** | **JSON over WebSocket** | **the Protégé plugin** |
 
-Both serve the *same* documents — [`server.mjs`](../collab/server.mjs) attaches the bridge to
+Both serve the *same* documents — [`server.mjs`](https://github.com/ebrahimnorouzi/ontoboard/blob/main/collab/server.mjs) attaches the bridge to
 Hocuspocus through `openDirectConnection`, so a Protégé user and a browser user are in one
 session rather than two that happen to look alike. Point the plugin at **1235**. Pointing it at
 1234 fails in a confusing way, because a Yjs endpoint accepts the connection and then never
@@ -260,14 +260,14 @@ The plugin is a second client of the same session, not a separate system. The pi
 
 | Piece | Where |
 |---|---|
-| Wire format | [`CollabMessages`](../protege-plugin/src/main/java/de/fizkarlsruhe/ise/ontoboard/collab/CollabMessages.java) ↔ [`bridge.mjs`](../collab/bridge.mjs) |
+| Wire format | [`CollabMessages`](https://github.com/ebrahimnorouzi/ontoboard/blob/main/protege-plugin/src/main/java/de/fizkarlsruhe/ise/ontoboard/collab/CollabMessages.java) ↔ [`bridge.mjs`](https://github.com/ebrahimnorouzi/ontoboard/blob/main/collab/bridge.mjs) |
 | Socket and reconnection | `CollabClient` |
 | Loop guard, apply and publish | `CollabSession` |
 | OWL ↔ operations | `OperationMapper` |
 | Cursor rules | `PeerCursors`; painting in `PeerCursorLayer` |
 
 The interop contract is asserted by
-[`bridge-interop.test.mjs`](../collab/__tests__/bridge-interop.test.mjs), which reads and writes
+[`bridge-interop.test.mjs`](https://github.com/ebrahimnorouzi/ontoboard/blob/main/collab/__tests__/bridge-interop.test.mjs), which reads and writes
 the shared array exactly as `useOperationSync.ts` does. That file exists because the two ends
 once disagreed about whether operations were stored as JSON strings or objects, and every unit
 test on both sides passed while no operation could cross in either direction. If you change the

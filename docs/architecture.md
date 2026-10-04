@@ -2,7 +2,7 @@
 
 > **Scope: the web application.** The Protégé plugin is a separate client with a
 > different feature set — see "What it does today" in the
-> [README](../README.md), [feature parity](feature-parity.md) and
+> [README](https://github.com/ebrahimnorouzi/ontoboard/blob/main/README.md), [feature parity](feature-parity.md) and
 > [limitations](limitations.md).
 
 
@@ -724,4 +724,6 @@ The backend exposes 100+ endpoints across 37 router modules, organized by domain
 | `/api/export` | 2 | Ontology export, ZIP download |
 | `/api/help` | 4 | Help topics, import steps |
 
-See [API Reference](api-reference.md) for the complete endpoint listing.
+The complete endpoint listing lived in `docs/api-reference.md`, which was removed with the
+web application. It is in the history at the tag
+[`web-app-final`](https://github.com/ebrahimnorouzi/ontoboard/tree/web-app-final).

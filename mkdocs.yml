@@ -1,0 +1,87 @@
+# The documentation site, published to GitHub Pages by .github/workflows/pages.yml.
+#
+# Material rather than the readthedocs theme the plugin scaffolds into generated projects. That
+# is a deliberate difference, not an inconsistency: a generated ODK project's site is modelled on
+# what real ODK repositories use, so it fits in beside them. This site is the project's own front
+# door and only costs one pip package to make legible.
+#
+# Build it locally with:
+#   pip install mkdocs mkdocs-material
+#   mkdocs serve
+
+site_name: OntoBoard
+site_description: Run your whole ODK and ROBOT pipeline inside Protégé.
+site_url: https://ebrahimnorouzi.github.io/ontoboard/
+repo_url: https://github.com/ebrahimnorouzi/ontoboard
+repo_name: ebrahimnorouzi/ontoboard
+edit_uri: edit/main/docs/
+
+docs_dir: docs
+
+theme:
+  name: material
+  features:
+    - navigation.instant
+    - navigation.top
+    - navigation.sections
+    - content.code.copy
+    - search.highlight
+    - toc.follow
+  palette:
+    # The toggle matters here: several pages are long reference tables, and a dark default would
+    # be the wrong choice for a document people read beside an editor.
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - def_list
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+
+plugins:
+  - search
+
+nav:
+  - Home: index.md
+  - Using it:
+      - Getting started: getting-started.md
+      - Features: features.md
+      - Working with ODK: odk-workflow.md
+      - Collaboration: collaboration.md
+      - Testing collaboration locally: testing-collaboration-locally.md
+  - Honest accounting:
+      - Limitations and roadmap: limitations.md
+      - Feature parity: feature-parity.md
+  - Going deeper:
+      - Development: development.md
+      - Architecture: architecture.md
+  - Design record:
+      - Plugin design: superpowers/specs/2026-08-14-ontoboard-protege-plugin-design.md
+      - Provenance and release: superpowers/specs/2026-08-26-provenance-and-release-requirements.md
+      - Collaborative evolution: superpowers/specs/2026-08-30-collaborative-evolution-requirements.md
+      - Next phase: superpowers/specs/2026-09-24-next-phase-plan.md
+      - Canvas interface: superpowers/specs/2026-09-25-canvas-interface-plan.md
+      - Canvas board design: superpowers/specs/2026-09-26-canvas-board-design.md
+      - 'Plan: foundation and canvas': superpowers/plans/2026-08-14-protege-plugin-01-foundation-and-canvas.md
+      - 'Plan: canvas interaction': superpowers/plans/2026-08-24-protege-plugin-02-canvas-interaction.md
+      - 'Plan: collaboration': superpowers/plans/2026-08-25-protege-plugin-04-collaboration.md
+      - 'Plan: retirement': superpowers/plans/2026-08-20-protege-plugin-06-retirement.md

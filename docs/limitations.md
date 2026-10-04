@@ -1092,6 +1092,6 @@ Those middle releases all shipped under one unchanged version number, which is w
 above names versions at all — see the note in [development](development.md) about what that
 cost.
 
-Specs and plans live in [superpowers/](superpowers/), including the reasoning behind
+Specs and plans live in [superpowers/](https://github.com/ebrahimnorouzi/ontoboard/tree/main/docs/superpowers/), including the reasoning behind
 decisions that were reversed — the plugin was briefly intended to replace the web
 application, and does not.

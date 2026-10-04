@@ -63,6 +63,9 @@ branch, without leaving the editor.
 
 ## Documentation
 
+**[ebrahimnorouzi.github.io/ontoboard](https://ebrahimnorouzi.github.io/ontoboard/)** — the full
+documentation site. The same pages are readable here in [`docs/`](docs/):
+
 - [Getting started](docs/getting-started.md)
 - [Features](docs/features.md)
 - [Working with ODK](docs/odk-workflow.md) — the ODK workflow step by step, and exactly which
