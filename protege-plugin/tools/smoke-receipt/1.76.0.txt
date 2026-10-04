@@ -5,6 +5,16 @@ Produced by tools/smoke.ps1 -SelfTest.
   2026-10-04  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 8/8  test 10/10
   2026-10-04  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 8/8  test 10/10
 
+And then, for the first time in this project, the artefact itself:
+
+  2026-10-04  the jar DOWNLOADED FROM THE RELEASE PAGE, md5 646ea21c02419930dde7f248958e0e68,
+              installed into Protege 5.6.9 and smoked  PASS  check 8/8  test 10/10
+
+That is not the same jar as the one above. A jar is not byte-reproducible - the CI build is a
+different machine and writes different timestamps into the archive - so "I smoked a jar built
+from this commit" and "I smoked the jar a user will download" are two claims, and only the
+second one is about what anybody actually receives. v1.0.0 was published without either.
+
 
 THE REPOSITORY IS THE PLUGIN NOW, AND THE ODK WORKFLOW IS WRITTEN DOWN HONESTLY
 
