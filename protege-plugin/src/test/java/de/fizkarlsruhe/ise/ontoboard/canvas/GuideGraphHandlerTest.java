@@ -6,6 +6,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.mxgraph.swing.handler.mxGraphHandler;
+import org.junit.jupiter.api.Assumptions;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -24,11 +26,32 @@ import org.junit.jupiter.api.Test;
  * sentence was a claim rather than a check. One line of test here closes the first half of that;
  * {@code ViewHealth} closes the second.
  *
- * <p>Swing objects are merely constructed, never realised, so this runs headless. If that ever
- * stops being true the right answer is a headless guard, not deleting the test - this is the only
- * thing in the suite that builds the component at all.
+ * <p><b>These need a display, and the first version of this file claimed they did not.</b> The
+ * comment here read "Swing objects are merely constructed, never realised, so this runs
+ * headless". That was wrong: {@code mxGraphComponent}'s constructor reaches far enough into AWT
+ * to throw {@code HeadlessException}, which passed unnoticed on a developer machine and failed
+ * the first CI run that tried to publish a release. Written the same way the bug it guards was
+ * written - from what seemed obvious rather than from a run.
+ *
+ * <p>So they are skipped where there is no display. That is a real loss: CI is exactly where a
+ * regression by someone else would be caught. It is acceptable only because the host smoke
+ * covers the same ground from the other side - {@code ViewHealth} makes the self-test report
+ * whether {@code SchemaCanvasView} built, and building it constructs this component - so the
+ * question "can the canvas be constructed" is answered on every release by a real Protege on
+ * two hosts, and answered here whenever a developer runs the suite.
  */
 class GuideGraphHandlerTest {
+
+    /**
+     * No display, no component. Skipped rather than failed: the absence of a screen is not a
+     * defect in the plugin, and a red suite on a headless machine would train people to ignore it.
+     */
+    @BeforeEach
+    void requireADisplay() {
+        Assumptions.assumeFalse(java.awt.GraphicsEnvironment.isHeadless(),
+                "constructing an mxGraphComponent needs a display; the host smoke covers this "
+                        + "case on a real Protege instead");
+    }
 
     /** The whole bug, in one line. */
     @Test

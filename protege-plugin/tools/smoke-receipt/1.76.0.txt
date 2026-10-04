@@ -109,9 +109,33 @@ The jar a user downloads is now the jar that was built from the tagged commit, r
 uploaded by hand from a laptop. The project has already shipped one release that way - v1.0.0,
 which never loaded in Protege at all.
 
+6. THE FIRST RELEASE BUILD FAILED, WHICH IS THE WORKFLOW WORKING
+
+Tagging v1.76.0 ran the new workflow and it refused to publish: four tests in
+GuideGraphHandlerTest threw java.awt.HeadlessException on GitHub's runner.
+
+They construct an mxGraphComponent, and that class's constructor reaches far enough into AWT to
+need a display. The file's own comment, written in 1.74.0, claimed the opposite - "Swing objects
+are merely constructed, never realised, so this runs headless" - which was asserted from what
+seemed obvious rather than from a run, and was true only on a machine with a screen. The same
+mistake as the bug those tests exist to guard.
+
+They skip where there is no display now, verified both ways: 4 run and pass locally, 4 skip and
+the build stays green under -Djava.awt.headless=true. That is a real loss, because CI is where
+somebody else's regression would be caught, and it is acceptable only because the host smoke
+covers the same ground from the other side - ViewHealth makes the self-test report whether
+SchemaCanvasView built, and building it constructs that component. So the question is answered
+on every release by a real Protege on two hosts.
+
+No main source changed, so the host verification above still describes this jar.
+
+Worth recording separately: `gh run watch --exit-status` returned 0 for a run that failed, and
+that was believed before it was checked. The run's own conclusion is the thing to read.
+
 NUMBERS
 
-1467 tests, 0 failures, 0 skipped. No tests added: this release moves and deletes files, corrects
+1467 tests, 0 failures. 0 skipped where a display exists; 4 skipped headless, plus the ones that
+need Docker. No tests added: this release moves and deletes files, corrects
 two strings and rewrites one test that the deletion invalidated.
 
 Counted three ways, agreeing: Maven's summary, the sum over 105 surefire reports for 105 test
