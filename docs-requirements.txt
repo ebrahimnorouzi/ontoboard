@@ -1,0 +1,12 @@
+# The documentation toolchain, pinned.
+#
+# Pinned rather than floating because the site is built by CI and read by strangers: an
+# unpinned theme means a Material major release can change the site's layout on a commit that
+# touched one sentence, and the first anybody knows is that the page looks different.
+#
+# These are the versions the site was last built and checked with locally.
+#
+#   pip install -r docs-requirements.txt
+#   mkdocs serve
+mkdocs==1.6.1
+mkdocs-material==9.5.49

@@ -17,6 +17,7 @@ on:
     paths:
       - 'docs/**'
       - 'mkdocs.yml'
+      - 'docs-requirements.txt'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
 
@@ -40,9 +41,14 @@ jobs:
         with:
           python-version: '3.12'
           cache: pip
+          # Needs a requirements file to key the cache on, and the repository had none after the
+          # web application's two were removed. Pinning the toolchain is the better answer than
+          # dropping the cache: an unpinned theme can change the site's layout on a commit that
+          # touched one sentence.
+          cache-dependency-path: docs-requirements.txt
 
       - name: Install mkdocs
-        run: pip install mkdocs mkdocs-material
+        run: pip install -r docs-requirements.txt
 
       - name: Build
         run: mkdocs build --strict
