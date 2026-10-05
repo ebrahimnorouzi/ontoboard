@@ -157,6 +157,50 @@ public final class PropertyEdgeId {
     private PropertyEdgeId() {
     }
 
+    /**
+     * The property an edge stands for, whatever shape its id has, or null.
+     *
+     * <p>Covers every edge the canvas draws, not only the {@code pe|} ones, because the caller
+     * has an id and no idea which generation wrote it. Hierarchy edges ({@code sub|},
+     * {@code type|}) and the inferred ones answer null: they are not about a property.
+     *
+     * <p>This exists because since 1.75.0 a property on the board is usually an <em>arrow</em>
+     * rather than a box - that was the point of the change - and clicking an arrow left
+     * Prot&eacute;g&eacute;'s entity panel showing whatever had been selected before. Asking "which
+     * term is this?" of the most common way a property now appears got no answer.
+     */
+    public static String propertyIn(String edgeId) {
+        if (edgeId == null) {
+            return null;
+        }
+        String[] parts = edgeId.split("\\|", -1);
+        if (parts.length == 0) {
+            return null;
+        }
+        // pe|origin|qualifier|subject|property|filler
+        if (PREFIX.equals(parts[0])) {
+            Parsed parsed = parse(edgeId);
+            return parsed == null ? null : parsed.getProperty();
+        }
+        // rest|qualifier|subject|property|filler
+        if ("rest".equals(parts[0]) && parts.length == 5) {
+            return emptyToNull(parts[3]);
+        }
+        // data|subject|property|datatype  and  dr|domain|property|range
+        if (("data".equals(parts[0]) || "dr".equals(parts[0])) && parts.length == 4) {
+            return emptyToNull(parts[2]);
+        }
+        // subprop|sub|super - the edge is about the sub-property, which is the one it starts at
+        if ("subprop".equals(parts[0]) && parts.length == 3) {
+            return emptyToNull(parts[1]);
+        }
+        return null;
+    }
+
+    private static String emptyToNull(String value) {
+        return value == null || value.isEmpty() ? null : value;
+    }
+
     /** The id for one property arrow. */
     public static String of(Origin origin, String qualifier, String subject, String property,
             String filler) {

@@ -37,6 +37,7 @@ import de.fizkarlsruhe.ise.ontoboard.model.DisplayLabels;
 import de.fizkarlsruhe.ise.ontoboard.model.OntologyProjection;
 import de.fizkarlsruhe.ise.ontoboard.model.CanvasNode;
 import de.fizkarlsruhe.ise.ontoboard.model.Projection;
+import de.fizkarlsruhe.ise.ontoboard.model.PropertyEdgeId;
 import de.fizkarlsruhe.ise.ontoboard.prov.EditorNotes;
 import de.fizkarlsruhe.ise.ontoboard.prov.EditWatcher;
 import de.fizkarlsruhe.ise.ontoboard.prov.Provenance;
@@ -574,20 +575,95 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
      * through to {@code setSelectedEntity} clears Protege's selection so it does not keep
      * pointing at an entity the canvas no longer highlights.
      */
-    private void pushSelectionToProtege(String iri) {
+    private void pushSelectionToProtege(String id) {
         // Out to collaborators as well as to Protege. The canvas selection is the most useful thing
         // presence can carry - "she is looking at Margherita" - and it was the one thing the presence
         // message only ever carried by accident, when a mouse movement happened to follow.
         announcePresence();
-        if (iri == null) {
+        if (id == null) {
             getOWLEditorKit().getOWLWorkspace().getOWLSelectionModel().setSelectedEntity(null);
             return;
         }
-        OWLOntology ontology = getOWLModelManager().getActiveOntology();
-        for (OWLEntity entity : ontology.getEntitiesInSignature(IRI.create(iri))) {
+        OWLEntity entity = entityToSelect(getOWLModelManager().getActiveOntology(), id);
+        if (entity != null) {
             getOWLEditorKit().getOWLWorkspace().getOWLSelectionModel().setSelectedEntity(entity);
-            return;
         }
+    }
+
+    /**
+     * The entity Prot&eacute;g&eacute;'s panels should show for whatever was clicked, or null.
+     *
+     * <p>Two things were wrong here and both were invisible, because failing to select an entity
+     * looks exactly like not having clicked.
+     *
+     * <p><b>Imports were excluded.</b> {@code getEntitiesInSignature(IRI)} searches one ontology,
+     * so clicking any term that came from an import selected nothing - and on the projects this
+     * plugin is for, most of what is on a board is imported. The entity panels were right there
+     * in the tab, showing whatever had been selected before.
+     *
+     * <p><b>An arrow is a property.</b> Since 1.75.0 a property is usually drawn as an edge
+     * rather than a box - that was the point of the change - so the commonest way a property
+     * appears on the board answered nothing at all when clicked. The edge id carries which
+     * property it stands for; {@link PropertyEdgeId#propertyIn} reads it, for every id shape the
+     * canvas has ever written.
+     *
+     * <p>Punning makes the answer ambiguous: one IRI can be a class and an individual at once,
+     * and OWL API returns both in no particular order. The order below is fixed so that the
+     * same click always selects the same thing, rather than whichever the hash happened to
+     * yield.
+     */
+    static OWLEntity entityToSelect(OWLOntology ontology, String id) {
+        if (ontology == null || id == null || id.isEmpty()) {
+            return null;
+        }
+        OWLEntity direct = entityWithIri(ontology, id);
+        if (direct != null) {
+            return direct;
+        }
+        String property = PropertyEdgeId.propertyIn(id);
+        return property == null ? null : entityWithIri(ontology, property);
+    }
+
+    /** The entity with this IRI anywhere in the imports closure, preferring a stable kind. */
+    private static OWLEntity entityWithIri(OWLOntology ontology, String iri) {
+        java.util.Set<OWLEntity> found;
+        try {
+            found = ontology.getEntitiesInSignature(IRI.create(iri),
+                    org.semanticweb.owlapi.model.parameters.Imports.INCLUDED);
+        } catch (RuntimeException notAnIri) {
+            // An edge id is not an IRI. Asking is cheaper than guessing its shape first.
+            return null;
+        }
+        OWLEntity best = null;
+        int bestRank = Integer.MAX_VALUE;
+        for (OWLEntity candidate : found) {
+            int rank = rankOf(candidate);
+            if (rank < bestRank) {
+                bestRank = rank;
+                best = candidate;
+            }
+        }
+        return best;
+    }
+
+    /** Which kind wins when one IRI names several, lowest first. */
+    private static int rankOf(OWLEntity entity) {
+        if (entity.isOWLClass()) {
+            return 0;
+        }
+        if (entity.isOWLObjectProperty()) {
+            return 1;
+        }
+        if (entity.isOWLDataProperty()) {
+            return 2;
+        }
+        if (entity.isOWLNamedIndividual()) {
+            return 3;
+        }
+        if (entity.isOWLDatatype()) {
+            return 4;
+        }
+        return 5;
     }
 
     /**
@@ -3089,11 +3165,19 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         JComboBox<String> resolution = new JComboBox<String>(new String[] {
             "Screen size (1x)", "Double (2x)", "Triple (3x) - for print"});
 
+        // On by default. A diagram whose dashed arrows and outline colours are unexplained is
+        // one the reader has to be told about separately, and the picture usually outlives the
+        // conversation - so the key travels with it unless somebody says otherwise.
+        javax.swing.JCheckBox withKey = new javax.swing.JCheckBox(
+                "Include the key (shapes, lines and namespace colours)", true);
+
         javax.swing.JPanel form = new javax.swing.JPanel(new java.awt.GridLayout(0, 2, 6, 6));
         form.add(new javax.swing.JLabel("Format"));
         form.add(format);
         form.add(new javax.swing.JLabel("Resolution"));
         form.add(resolution);
+        form.add(new javax.swing.JLabel(""));
+        form.add(withKey);
         // SVG is resolution-independent, so a scale for it would mean nothing.
         format.addActionListener(a -> resolution.setEnabled(format.getSelectedIndex() == 0));
 
@@ -3103,29 +3187,68 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             return;
         }
         boolean png = format.getSelectedIndex() == 0;
-        exportTo(png ? "png" : "svg", 1.0 + resolution.getSelectedIndex());
+        exportTo(png ? "png" : "svg", 1.0 + resolution.getSelectedIndex(), withKey.isSelected());
     }
 
     private void exportTo(String extension) {
-        exportTo(extension, 1.0);
+        exportTo(extension, 1.0, true);
     }
 
     private void exportTo(String extension, double scale) {
+        exportTo(extension, scale, true);
+    }
+
+    private void exportTo(String extension, double scale, boolean withKey) {
         JFileChooser chooser = new JFileChooser();
         chooser.setSelectedFile(new File("schema-diagram." + extension));
         if (chooser.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) {
             return;
         }
+        // The same two lists the Legend dialog is built from, so the picture and the dialog
+        // cannot disagree about what the board's colours mean.
+        java.util.List<de.fizkarlsruhe.ise.ontoboard.canvas.CanvasLegend.Entry> entries =
+                withKey ? de.fizkarlsruhe.ise.ontoboard.canvas.CanvasLegend.entries() : null;
+        java.util.List<de.fizkarlsruhe.ise.ontoboard.canvas.CanvasLegend.Namespace> namespaces =
+                withKey ? de.fizkarlsruhe.ise.ontoboard.canvas.CanvasLegend.namespaces(
+                        layout == null ? null : layout.prefixColors,
+                        prefixesByNamespace()) : null;
         try {
             if ("png".equals(extension)) {
-                CanvasExport.writePng(graph, chooser.getSelectedFile(), scale);
+                CanvasExport.writePng(graph, chooser.getSelectedFile(), scale, entries,
+                        namespaces);
             } else {
-                CanvasExport.writeSvg(graph, chooser.getSelectedFile());
+                CanvasExport.writeSvg(graph, chooser.getSelectedFile(), entries, namespaces);
             }
         } catch (IOException e) {
             JOptionPane.showMessageDialog(this, "Export failed: " + e.getMessage(),
                     "OntoBoard", JOptionPane.ERROR_MESSAGE);
         }
+    }
+
+    /**
+     * Namespace IRI to the prefix the ontology declares for it, for the exported key.
+     *
+     * <p>Inverted from {@code Curies}, which already reads an ontology's own prefix map for the
+     * identifiers shown on nodes - so the key and the node labels name a namespace the same way
+     * rather than two ways in one picture.
+     */
+    private java.util.Map<String, String> prefixesByNamespace() {
+        java.util.Map<String, String> byNamespace = new java.util.HashMap<String, String>();
+        try {
+            for (java.util.Map.Entry<String, String> declared
+                    : de.fizkarlsruhe.ise.ontoboard.model.Curies
+                            .prefixesOf(getOWLModelManager().getActiveOntology()).entrySet()) {
+                // Longest namespace wins, as it does for the identifiers on nodes: an ontology
+                // declaring both obo: and a narrower bfo: must not label one namespace twice.
+                String existing = byNamespace.get(declared.getValue());
+                if (existing == null || declared.getKey().length() < existing.length()) {
+                    byNamespace.put(declared.getValue(), declared.getKey());
+                }
+            }
+        } catch (RuntimeException noPrefixes) {
+            return byNamespace;
+        }
+        return byNamespace;
     }
 
     private void installContextMenu() {

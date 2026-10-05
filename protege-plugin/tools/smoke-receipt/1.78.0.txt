@@ -1,0 +1,115 @@
+OntoBoard 1.78.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-10-05  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 8/8  test 10/10
+  2026-10-05  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 8/8  test 10/10
+
+
+THE BOARD WAS SHOWING IDENTIFIERS AND CALLING THEM LABELS
+
+Three requests, one of which turned out to be a defect rather than a feature.
+
+1. LABELS: FIVE OUT OF SIX WERE MISSING
+
+Asked for as "i want that labels to be shown in the canvas". They were supposed to be already.
+
+DisplayLabels asked EntitySearcher for annotations in ONE ontology. An imported term's rdfs:label
+is not in that ontology - it is in the import. So on exactly the projects this plugin is built
+for, where most of what a curator puts on a board comes from BFO, IAO, RO or OBI, the canvas drew
+opaque identifiers.
+
+Measured on a real ODK project with its catalog wired and its five-ontology closure loaded:
+
+                                                   before   after
+    entities carrying an rdfs:label somewhere        656      656
+      drawn with their label                         113      656
+      drawn as a bare identifier                     543        0
+
+BFO_0000004 was on the board, and its label is "independent continuant".
+
+The class comment had said all along that "an IRI fragment is a poor label: real ontologies use
+opaque identifiers such as MWO_0000042, which tells a reader nothing" - and then showed exactly
+that to five readers out of six. A comment describing the intention is not evidence about the
+behaviour.
+
+The edit file still wins over its imports: an ontology that re-labels an imported term has done
+so deliberately, and showing the upstream wording instead would overrule the author in their own
+file. That is what Protege's own rendering does.
+
+Arrows gained the same thing for free, because they already called DisplayLabels. The same board:
+
+    adapting process --RO_0000057--> BFO_0000004
+    adapting process --has participant--> independent continuant
+
+Cost: 22 ms per full refresh of a 172-term board over a 4,989-axiom closure, measured. OWL API
+indexes annotation lookups by subject, so this scales with annotations-per-entity rather than
+with the size of the ontology.
+
+2. CLICKING A PROPERTY NOW FILLS PROTEGE'S ENTITY PANELS
+
+Two faults, both of which looked like nothing happening - which is why neither reads as a bug
+until somebody says "classes work and properties do not".
+
+getEntitiesInSignature(IRI) searches one ontology, so clicking any imported term selected
+nothing. The tab has had Object properties, Data properties, Individuals and the rest in it all
+along, showing whatever had been selected before.
+
+And an arrow is a property. Since 1.75.0 that is how a property is usually drawn - it was the
+point of the change - so the commonest appearance of a property on the board answered no
+question at all when clicked. PropertyEdgeId.propertyIn reads the property out of an edge id, in
+every shape the canvas has ever written: pe|, rest|, data|, dr| and subprop|. A hierarchy edge
+answers null, because it is not about a property.
+
+Punning resolves deterministically now - class, then object property, then data property, then
+individual - rather than by whichever the hash yielded, so the same click always opens the same
+thing.
+
+3. AN EXPORTED IMAGE CARRIES ITS KEY
+
+The legend and the namespace colours stayed inside Protege with the person who made the picture.
+mxCellRenderer renders the graph model, and neither is in the graph model - the same reason note
+badges and alignment guides do not export, which for those is correct because they are transient.
+A key is not transient. It is the part that makes the rest mean something.
+
+LegendLayout computes the key as geometry; LegendRender draws that geometry into a raster for PNG
+and as elements for SVG. Two renderers, one layout - laying it out twice is how a PNG and an SVG
+of the same board come to disagree, and the disagreement is invisible until they are side by side
+in a paper. SVG gets elements rather than an embedded bitmap, because half the reason to pick SVG
+is that it does not blur when enlarged.
+
+Looked at, not only asserted. The first render of the real board showed two things no test had
+asked about: the explanations ran off the side of the panel, and the namespace rows read
+"http://purl.obolibrary.org/obo/" five times - accurate, and three times the width of the thing
+being labelled. Both fixed: text is cut to fit with an ellipsis, and a namespace is named by the
+prefix where the ontology declares that exact one. On the real board that gives "obo:" and "owl:"
+as prefixes, with three namespaces the file does not declare a prefix for still shown as IRIs -
+which is the honest answer rather than a guess.
+
+Section headings are emitted by grouping on form rather than by watching for the form to change
+while walking the list. The on-screen legend did the latter and printed "Relationships" twice,
+because the two inferred rows sit after the modifier rows.
+
+NUMBERS
+
+1508 tests, 0 failures, 1 skipped. 26 new: seven for imported labels, ten for what a click
+selects, nine for the exported key.
+
+The skip is BundleConfigurationTest's manifest test, which skips after a clean when target/ holds
+no jar.
+
+Counted three ways, agreeing: Maven's summary, the sum over the surefire reports, and an anchored
+^\s*@Test\s*$ across src/test/java.
+
+WHAT WAS LOOKED AT RATHER THAN ASSERTED
+
+The exported key was rendered from the real board and inspected as an image, twice - once to find
+the overflow and the IRI rows, once to confirm they were fixed. No test can tell you that a key
+looks like a key.
+
+STILL OPEN FROM THE SAME REQUEST
+
+"See what else from OntoGraph can be implemented here" - a survey, not yet done.
+
+And from before: the <ontology>-odk.yaml editor, running project scripts from inside Protege, and
+exposing the 123 bundled design patterns.

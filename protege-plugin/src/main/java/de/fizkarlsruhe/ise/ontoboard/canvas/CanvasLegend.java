@@ -172,6 +172,21 @@ public final class CanvasLegend {
      * order would not.
      */
     public static List<Namespace> namespaces(Map<String, String> prefixColours) {
+        return namespaces(prefixColours, null);
+    }
+
+    /**
+     * The same, naming each namespace by its prefix where the ontology declares one.
+     *
+     * <p>The board colours by namespace and keys the colours by the namespace IRI, so the key
+     * read "http://purl.obolibrary.org/obo/" five times down the side of an exported diagram -
+     * accurate, and three times the width of the thing it is labelling. An ontology that
+     * declares {@code obo:} has already said what to call that namespace.
+     *
+     * @param prefixByNamespace namespace IRI to prefix, or null to use the IRIs
+     */
+    public static List<Namespace> namespaces(Map<String, String> prefixColours,
+            Map<String, String> prefixByNamespace) {
         List<Namespace> rows = new ArrayList<Namespace>();
         if (prefixColours == null) {
             return rows;
@@ -180,7 +195,12 @@ public final class CanvasLegend {
                 : new TreeMap<String, String>(prefixColours).entrySet()) {
             if (assigned.getKey() != null && assigned.getValue() != null
                     && !assigned.getKey().trim().isEmpty()) {
-                rows.add(new Namespace(assigned.getKey(), assigned.getValue()));
+                String prefix = prefixByNamespace == null
+                        ? null : prefixByNamespace.get(assigned.getKey());
+                rows.add(new Namespace(
+                        prefix == null || prefix.trim().isEmpty()
+                                ? assigned.getKey() : prefix + ":",
+                        assigned.getValue()));
             }
         }
         return rows;
