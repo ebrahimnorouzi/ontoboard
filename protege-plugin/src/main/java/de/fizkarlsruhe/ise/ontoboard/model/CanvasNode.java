@@ -25,6 +25,15 @@ public final class CanvasNode {
      */
     private final String curie;
 
+    /**
+     * Superclasses, equivalents and disjoints, for the hover.
+     *
+     * <p>Not final, and assigned only by {@link #withSummary}. Every other field is part of the
+     * node's identity or its drawing; this one is reference material attached afterwards, and
+     * threading it through six constructors to make it final would cost more than it is worth.
+     */
+    private TermSummary summary;
+
     public CanvasNode(String id, NodeKind kind, String label) {
         this(id, kind, label, null, false);
     }
@@ -59,6 +68,23 @@ public final class CanvasNode {
         return curie;
     }
 
+    /**
+     * What the ontology says about this term, for the hover. Never null.
+     *
+     * <p>Carried on the node for the same reason the notes are: the tooltip is built once per
+     * render from the projection, and the projection is the only place with an ontology to ask.
+     */
+    public TermSummary getSummary() {
+        return summary == null ? TermSummary.empty() : summary;
+    }
+
+    /** The same node, knowing what the ontology says about it. */
+    public CanvasNode withSummary(TermSummary about) {
+        CanvasNode copy = new CanvasNode(id, kind, label, notes, unsatisfiable, imported, curie);
+        copy.summary = about;
+        return copy;
+    }
+
     /** The same node, carrying a prefixed identifier to show beside its label. */
     public CanvasNode withCurie(String prefixed) {
         return new CanvasNode(id, kind, label, notes, unsatisfiable, imported, prefixed);
@@ -80,12 +106,29 @@ public final class CanvasNode {
 
     /** The same node, marked as one the reasoner found unsatisfiable. */
     public CanvasNode asUnsatisfiable() {
-        return new CanvasNode(id, kind, label, notes, true, imported, curie);
+        return carrying(new CanvasNode(id, kind, label, notes, true, imported, curie));
     }
 
-    /** The same node, marked as defined in an imported ontology rather than in the edit file. */
+    /**
+     * The same node, marked as defined in an imported ontology rather than in the edit file.
+     *
+     * <p>This dropped the identifier from 1.72.0 until 1.79.0, by calling the constructor that
+     * has no {@code curie} parameter. The effect was invisible in the obvious test and total in
+     * practice: a node shows its identifier only if it has one, every imported term goes through
+     * here, and on a real ODK project most of the board is imported - so the feature that put
+     * {@code obo:BFO_0000023} above "role" worked for local terms and silently not for the rest.
+     *
+     * <p>Every copying method goes through {@link #carrying} now, so a field added later is
+     * carried by all of them or by none, rather than by whichever the author remembered.
+     */
     public CanvasNode asImported() {
-        return new CanvasNode(id, kind, label, notes, unsatisfiable, true);
+        return carrying(new CanvasNode(id, kind, label, notes, unsatisfiable, true, curie));
+    }
+
+    /** Copies across the fields that are attached after construction. */
+    private CanvasNode carrying(CanvasNode copy) {
+        copy.summary = summary;
+        return copy;
     }
 
     /**

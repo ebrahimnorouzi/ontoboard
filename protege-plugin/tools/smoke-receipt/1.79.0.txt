@@ -1,0 +1,97 @@
+OntoBoard 1.79.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-10-05  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 8/8  test 10/10
+  2026-10-05  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 8/8  test 10/10
+
+
+THE TWO THINGS WORTH TAKING FROM ONTOGRAF, AND A THIRD DEFECT FOUND ON THE WAY
+
+The OntoGraf survey in 1.78.0 ranked four things by payback. These are the first two. The third
+was not on any list: it was found by touching the code the first one touches.
+
+1. THE HOVER SAYS WHAT THE ONTOLOGY SAYS ABOUT A TERM
+
+OntoGraf's tooltip offers switchable sections - its NodeOWLClassTooltipType enum is TITLE, URI,
+SUPERCLASSES, EQUIVALENT_CLASSES, DISJOINT_CLASSES, ANNOTATIONS. OntoBoard's said what a term is
+called, what kind it is, whether it is imported and what notes it carries: everything except what
+the ontology says about it.
+
+Three rows now, worded for the domain experts who read this board as well as the ontologists:
+
+    Kind of:         the named superclasses
+    Same as:         the named equivalent classes
+    Cannot also be:  the named disjoint classes
+
+Disjointness earns its place most. The canvas draws none, anywhere - a term can be declared
+disjoint with six others and the board gives no hint of it - so this is the only surface in the
+whole plugin on which that fact appears.
+
+Named classes only, and that is a decision rather than a shortcut. An anonymous superclass or
+equivalent is a restriction, and since 1.75.0 those are drawn, as the arrows leaving the node.
+Repeating them in the hover would say twice what the diagram already says once, and would put a
+Manchester renderer on the refresh path to do it. What was left out is counted rather than
+hidden.
+
+Measured cost on the real board: 19 ms per full refresh of 172 terms over a 4,989-axiom closure,
+against 22 ms before - inside the noise. OWL API indexes these lookups by subject.
+
+2. EXPORT AS GRAPHVIZ DOT
+
+OntoGraf has ExportAsDotAction. PNG and SVG hand somebody a picture; DOT hands them the graph, so
+a house style, a LaTeX pipeline or a different layout engine can render it. For a paper that is
+often the only acceptable answer, because the figure has to match the rest of the document and an
+exported bitmap never will.
+
+Verified by running the real thing rather than by asserting about it: the whole MWO board
+exported to DOT, 26,128 characters, and `dot -Tsvg` accepted it and produced a 137 KB drawing.
+Eleven tests cover what would stop it parsing - balanced braces, escaped quotes and backslashes,
+every node kind having a shape and every edge kind a style.
+
+Identifiers are sequential (n0, n1) with the IRI carried as a tooltip attribute. A DOT identifier
+may not contain most of what an IRI contains, and quoting around that produces a file half the
+tooling rejects.
+
+3. IMPORTED TERMS HAD NEVER SHOWN THEIR IDENTIFIER
+
+Found while adding the hover sections, because both travel on CanvasNode.
+
+CanvasNode.asImported() rebuilt the node through the constructor that has no curie parameter, so
+the identifier was dropped. Every imported term goes through that method. 1.72.0 added
+"obo:BFO_0000023 above role" and it has worked for local terms and silently not for the rest ever
+since - which on a real ODK project is most of the board.
+
+Invisible in the obvious test, because a node shows an identifier only if it has one, and a node
+with none looks exactly like a node whose namespace has no declared prefix. Visible immediately
+in the DOT export of the real board:
+
+    n0 [label="obo:BFO_0000004\\nindependent continuant", shape=box, ...]
+
+Every copying method goes through one private helper now, so a field added later is carried by
+all of them or by none - rather than by whichever the author remembered.
+
+NUMBERS
+
+1529 tests, 0 failures, 1 skipped. 21 new: eleven for the DOT export, ten for the hover sections
+including one that pins the imported-identifier regression.
+
+The skip is BundleConfigurationTest's manifest test, which skips after a clean when target/ holds
+no jar.
+
+A BUG IN MY OWN TOOLING, RECORDED BECAUSE IT NEARLY SHIPPED
+
+The first version of TermSummary walked this ontology and then "the imports closure minus
+itself", skipping by object identity. getImportsClosure() does not return the same object, so the
+skip never fired and every local axiom was counted twice. The test caught it - 2 where 1 was
+expected - and the fix is one pass over the closure, which already includes the ontology, with
+anonymous expressions counted as a set rather than as occurrences so that an axiom restated
+across import modules counts once.
+
+STILL OPEN
+
+From the OntoGraf survey: pinned tooltips, and a graph of the imports.
+
+The four larger gaps - the <ontology>-odk.yaml editor, running project scripts, the pattern
+repository and the release-scheme choice - were mapped against the real code while this was
+built. Their designs are in hand; none is implemented yet.

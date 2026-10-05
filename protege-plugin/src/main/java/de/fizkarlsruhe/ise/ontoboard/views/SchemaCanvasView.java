@@ -154,6 +154,9 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
     private boolean showInferences;
     private javax.swing.JToggleButton inferencesButton;
 
+    /** What the board last drew, for an export that works from the model. */
+    private Projection lastProjection;
+
     /** The two halves of the gesture mode, in a button group so exactly one is on. */
     private javax.swing.JToggleButton panButton;
     private javax.swing.JToggleButton selectButton;
@@ -3161,7 +3164,8 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
     private void exportWithOptions() {
         JComboBox<String> format = new JComboBox<String>(new String[] {
             "PNG - a picture, for slides and papers",
-            "SVG - vector, scales without blurring"});
+            "SVG - vector, scales without blurring",
+            "DOT - the graph itself, to render with GraphViz"});
         JComboBox<String> resolution = new JComboBox<String>(new String[] {
             "Screen size (1x)", "Double (2x)", "Triple (3x) - for print"});
 
@@ -3178,16 +3182,21 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         form.add(resolution);
         form.add(new javax.swing.JLabel(""));
         form.add(withKey);
-        // SVG is resolution-independent, so a scale for it would mean nothing.
-        format.addActionListener(a -> resolution.setEnabled(format.getSelectedIndex() == 0));
+        // Only a raster has a resolution, and only a drawn picture can carry a key: DOT is
+        // handed to another layout engine, which will draw its own.
+        format.addActionListener(a -> {
+            resolution.setEnabled(format.getSelectedIndex() == 0);
+            withKey.setEnabled(format.getSelectedIndex() != 2);
+        });
 
         if (JOptionPane.showConfirmDialog(this, form, "Export diagram",
                 JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE)
                 != JOptionPane.OK_OPTION) {
             return;
         }
-        boolean png = format.getSelectedIndex() == 0;
-        exportTo(png ? "png" : "svg", 1.0 + resolution.getSelectedIndex(), withKey.isSelected());
+        String extension = format.getSelectedIndex() == 0 ? "png"
+                : format.getSelectedIndex() == 1 ? "svg" : "dot";
+        exportTo(extension, 1.0 + resolution.getSelectedIndex(), withKey.isSelected());
     }
 
     private void exportTo(String extension) {
@@ -3213,7 +3222,13 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                         layout == null ? null : layout.prefixColors,
                         prefixesByNamespace()) : null;
         try {
-            if ("png".equals(extension)) {
+            if ("dot".equals(extension)) {
+                java.nio.file.Files.write(chooser.getSelectedFile().toPath(),
+                        de.fizkarlsruhe.ise.ontoboard.canvas.DotExport
+                                .of(lastProjection, ontologyIriOf(
+                                        getOWLModelManager().getActiveOntology()))
+                                .getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            } else if ("png".equals(extension)) {
                 CanvasExport.writePng(graph, chooser.getSelectedFile(), scale, entries,
                         namespaces);
             } else {
@@ -3563,6 +3578,9 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         Projection projection = OntologyProjection
                 .project(getOWLModelManager().getActiveOntology(), membership.asSet());
         projection = withInferences(projection);
+        // Kept because the DOT export needs the model rather than the rendered picture, and
+        // recomputing it at export time could disagree with what is on screen.
+        lastProjection = projection;
         graph.render(projection, layout);
         // What search matches against, and what it can no longer assume about the ontology.
         rendered = projection;

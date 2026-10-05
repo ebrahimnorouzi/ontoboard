@@ -55,6 +55,7 @@ public final class CanvasTooltips {
             text.append("<br><b>Imported</b> - defined in another ontology. Refer to it freely; "
                     + "editing it here writes into your file, not the import.");
         }
+        appendSummary(text, node.getSummary());
         appendNotes(text, node.getNotes());
         return text.append("<br><font size=\"-2\">").append(escape(node.getId()))
                 .append("</font></html>").toString();
@@ -87,6 +88,34 @@ public final class CanvasTooltips {
                         + "when inferences are switched off"
                 : "Asserted in the ontology");
         return text.append("</html>").toString();
+    }
+
+    /**
+     * What the ontology says about the term: its parents, its equivalents, what it excludes.
+     *
+     * <p>Taken from OntoGraf, whose tooltip offers these as switchable sections. The hover used
+     * to say what a term is called and nothing about what it means.
+     *
+     * <p>Disjointness earns its place most: the canvas draws none, anywhere, so this is the only
+     * surface on which a term's disjointness appears at all. "Cannot also be" rather than
+     * "disjoint with", because the hover is read by domain experts as often as by ontologists.
+     */
+    private static void appendSummary(StringBuilder text,
+            de.fizkarlsruhe.ise.ontoboard.model.TermSummary summary) {
+        if (summary == null || summary.isEmpty()) {
+            return;
+        }
+        appendRow(text, "Kind of", summary.getSuperClasses());
+        appendRow(text, "Same as", summary.getEquivalents());
+        appendRow(text, "Cannot also be", summary.getDisjoints());
+    }
+
+    private static void appendRow(StringBuilder text, String heading, java.util.List<String> values) {
+        if (values == null || values.isEmpty()) {
+            return;
+        }
+        text.append("<br><b>").append(heading).append(":</b> ")
+                .append(escape(de.fizkarlsruhe.ise.ontoboard.model.TermSummary.joined(values)));
     }
 
     /** A sticky note: its text, and a reminder that it is not in the ontology. */

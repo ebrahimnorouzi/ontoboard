@@ -205,9 +205,13 @@ public final class OntologyProjection {
         Set<String> local = localSignature(ontology);
         for (OWLClass cls : ontology.getClassesInSignature(Imports.INCLUDED)) {
             if (isOn(onCanvasIris, cls.getIRI())) {
+                // The summary is for classes only: superclasses, equivalents and disjoints
+                // are class notions, and an individual's types are already drawn as edges.
                 nodes.add(marked(local, new CanvasNode(iri(cls.getIRI()), NodeKind.CLASS,
                         DisplayLabels.forEntity(ontology, cls),
-                        EditorNotes.allNotesOn(ontology, cls.getIRI()))));
+                        EditorNotes.allNotesOn(ontology, cls.getIRI()))
+                        .withCurie(Curies.curieFor(ontology, cls.getIRI()))
+                        .withSummary(TermSummary.of(ontology, cls))));
             }
         }
         for (OWLNamedIndividual ind : ontology.getIndividualsInSignature(Imports.INCLUDED)) {
