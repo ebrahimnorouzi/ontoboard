@@ -137,20 +137,15 @@ one — which ODK will overwrite the next time you run `update_repo`.
 
 *Project → ID ranges…* tabulates who holds which block, and allocates a new block to an editor.
 
-**One caution, and it is a real one.** Allocation does not insert a range — it **rewrites the
-whole file from a fixed template**, so anything the template does not model is lost. Measured on a
-real ODK repository: its ranges file ends
+**One thing to know.** Allocation does not insert a range — it rewrites the file from a
+template, so indentation is normalised. Up to 1.76.0 that also *lost* anything the template did
+not model: measured on a real repository, allocating a range would silently drop the
+`Datatype: rdf:PlainLiteral` declared after the template's closing `Datatype: xsd:integer`.
 
-```
-Datatype: xsd:integer
-Datatype: rdf:PlainLiteral
-```
-
-and the template stops at the first of those, so allocating a range would drop the second without
-saying so. Hand-written formatting is normalised the same way. The code's own comment claims this
-"produces a one-range diff rather than reformatting the whole file"; it does not.
-
-Until that is fixed: **read the diff before you commit an allocation**, or add the range by hand.
+Since 1.77.0 such declarations are carried through, and anything that still would not survive
+stops the write: OntoBoard names the lines that would go and leaves the file untouched, rather
+than subtracting from it. Formatting is still normalised, so the diff is a little larger than one
+range.
 
 ### `profile.txt` ✅ (by location, not by configuration)
 
@@ -197,21 +192,19 @@ but if an import resolves differently from how `robot` resolves it, that is the 
 | Copy the import schema into `<ontology>.Makefile` | ❌ | By hand |
 | Set `module_type: custom`, `update_repo`, `clean`, `make` | 🔶 | Only via the YAML in a text editor, then *Build…* |
 
-### A known defect, as of 1.75.0
+### Term lists with comments — fixed in 1.77.0
 
-*Refresh imports…* reports which imports have a term list, then **cannot rebuild any of them if
-those lists carry trailing comments.** The line format ODK and ROBOT both use —
+Up to 1.76.0, *Refresh imports…* reported which imports had a term list and then **could not
+rebuild any of them** if those lists carried trailing comments — which is the format ODK and
+ROBOT both write:
 
 ```
 http://purl.obolibrary.org/obo/IAO_0000109 # measurement datum
 ```
 
-— is rejected, because the reader treats any line containing a space as not-an-IRI. Measured on a
-real repository: five import term lists, 49 terms between them, **none** readable. ROBOT's own
-`--term-file` accepts these lines. This is a bug, not a design decision, and it is next on the
-list.
-
-Until it is fixed, run the import rebuild through ODK itself, or strip the comments.
+Measured on a real repository at the time: five lists, 49 terms, **none** readable. They all read
+now, and a line that genuinely is not a term is still reported as malformed rather than skipped
+in silence.
 
 ---
 

@@ -140,9 +140,28 @@ public class IdRangesAction extends OntoBoardAction {
         return describe(ranges, rangesFile);
     }
 
+    /** The lost lines, quoted, for a refusal a user can act on. */
+    private static String join(List<String> lines) {
+        StringBuilder joined = new StringBuilder();
+        for (String line : lines) {
+            if (joined.length() > 0) {
+                joined.append("; ");
+            }
+            joined.append('"').append(line).append('"');
+        }
+        return joined.toString();
+    }
+
     /** Adds a block and writes the file back. */
     private OperationResult allocate(IdRanges ranges, File rangesFile) {
         OperationResult.Builder result = OperationResult.of(operationName());
+        String original;
+        try {
+            original = new String(Files.readAllBytes(rangesFile.toPath()), "UTF-8");
+        } catch (IOException cannotRead) {
+            return result.failed("Could not re-read " + rangesFile.getAbsolutePath()
+                    + " to check that nothing would be lost: " + cannotRead.getMessage()).build();
+        }
         if (editor.isEmpty()) {
             return result.failed("A block has to belong to somebody. Give the name the editor "
                     + "mints under.").build();
@@ -164,8 +183,22 @@ public class IdRangesAction extends OntoBoardAction {
         } catch (IllegalArgumentException overlaps) {
             return result.failed(overlaps.getMessage()).build();
         }
+        // Nothing is overwritten until the replacement is shown to contain everything the
+        // original did. IdRanges renders from a fixed template, so a declaration it has no field
+        // for would simply not be in the output - and allocating a range is not an operation
+        // anybody expects to delete a line from their file. Measured on a real project before
+        // this existed: one lost declaration, silently.
+        String replacement = updated.toManchester();
+        List<String> lost = IdRanges.whatWouldBeLost(original, replacement);
+        if (!lost.isEmpty()) {
+            return result.failed("Allocating this range would drop " + lost.size()
+                    + (lost.size() == 1 ? " line" : " lines") + " from "
+                    + rangesFile.getName() + " that OntoBoard cannot reproduce: "
+                    + join(lost) + ". Nothing has been written. Add the range by hand, or "
+                    + "remove the line if it is no longer needed.").build();
+        }
         try {
-            Files.write(rangesFile.toPath(), updated.toManchester().getBytes("UTF-8"));
+            Files.write(rangesFile.toPath(), replacement.getBytes("UTF-8"));
         } catch (IOException cannotWrite) {
             return result.failed("Could not write " + rangesFile.getAbsolutePath() + ": "
                     + cannotWrite.getMessage()).build();

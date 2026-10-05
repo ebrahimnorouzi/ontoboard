@@ -1,0 +1,115 @@
+OntoBoard 1.77.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-10-05  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 8/8  test 10/10
+  2026-10-05  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 8/8  test 10/10
+
+
+THE TWO DEFECTS THE ODK AUDIT FOUND, FIXED
+
+Both were found by auditing the plugin against a real ODK repository in order to write
+docs/odk-workflow.md, both were verified on that repository before being written down, and both
+were shipped as documented gaps in 1.76.0 because the documentation was the deliverable. This
+release closes them.
+
+1. A TERM LIST WITH COMMENTS WAS UNREADABLE, WHICH MEANT ALL OF THEM
+
+ODK and ROBOT write import term lists with the label beside each IRI, because a bare column of
+IAO_0000109 is unreviewable in a pull request:
+
+    http://purl.obolibrary.org/obo/IAO_0000109 # measurement datum
+
+OntoBoard rejected every line of that shape. The test for "is this an IRI" included "contains no
+space" and was applied to the whole line.
+
+Measured on the project it was found on, before and after:
+
+                            before   after
+    foaf_terms.txt             0        0     (genuinely empty)
+    iao_terms.txt              0       13
+    nfdicore_terms.txt         0        0     (genuinely empty)
+    obi_terms.txt              0        8
+    pmdco_terms.txt            0       28
+    TOTAL READABLE             0       49     malformed: 0
+
+Zero. Every term in the project was invisible to Refresh imports, and the Imports table went on
+reporting all five lists as present - so refusing to rebuild a module looked like nothing
+happening rather than like a refusal. ROBOT's own --term-file accepts these lines, which is the
+whole point: the file is written for ROBOT and was being read by something stricter than ROBOT.
+
+The IRI is now the first whitespace-delimited token. That is not a shortcut around the comment
+character and the distinction matters: an IRI may legitimately contain # as a fragment separator,
+so splitting on the first # would silently turn http://example.org/o#Thing into
+http://example.org/o - a different term, extracted without complaint. Whitespace cannot appear in
+an IRI, so splitting on it cannot truncate one.
+
+malformedIn still reports a line that is genuinely not a term, which is the half that had to not
+regress: loosening a reader is only safe while it can still say "this line is wrong".
+
+2. ALLOCATING AN ID RANGE DELETED A LINE FROM THE FILE
+
+toManchester is a canonical renderer - it emits a fixed template - so anything the template has
+no field for disappears the moment a range is allocated. Round-tripping a real project's ranges
+file through parse and render, and diffing:
+
+    original lines: 61
+    rendered lines: 54
+    lines present in the original and absent from the render:
+        Datatype: rdf:PlainLiteral
+
+One line, declared after the template's closing Datatype: xsd:integer, dropped silently - three
+lines below a javadoc promising that adding an editor "produces a one-range diff rather than
+reformatting the whole file". Nobody reads a ranges file after allocating a block, so the loss
+would have been found by a failing build weeks later, if at all.
+
+Two defences, because the second is the one that covers what was not measured:
+
+  - parse now keeps top-level declarations the template cannot express, withRangeFor carries them
+    through, and toManchester emits them after its own closing datatype. The measured case
+    round-trips losslessly.
+
+  - IdRanges.whatWouldBeLost compares the original against the replacement line by line, ignoring
+    indentation, and IdRangesAction refuses to write when anything would go - naming the lines
+    and leaving the file alone. A ranges file is hand-editable and there is no list of everything
+    somebody might reasonably put in one, so the guard is not "the case we found" but "anything
+    we did not".
+
+Indentation is excluded from the comparison deliberately. The renderer's layout differs from
+ODK's by a few spaces inside the annotation blocks, and reporting that as data loss would make
+the check noise - and a noisy safety check is one somebody turns off.
+
+The javadoc that was not true has been rewritten to say what the method does: close to a
+one-range diff, normalising indentation, with the declarations carried and a backstop behind
+them.
+
+NUMBERS
+
+1482 tests, 0 failures, 1 skipped. 15 new: seven for the term list format, eight for the ranges
+preservation and its guard.
+
+The skip is BundleConfigurationTest's manifest test, which is guarded by assumeTrue(jar != null)
+and so skips after a clean when target/ holds no jar - the direction two earlier receipts stated
+backwards and 1.74.0 corrected.
+
+Counted three ways, agreeing: Maven's summary, the sum over the surefire reports, and an anchored
+^\s*@Test\s*$ across src/test/java.
+
+DOCUMENTATION UPDATED IN THE SAME CHANGE
+
+docs/odk-workflow.md described both defects as current. Both sections now describe the behaviour
+this release has, and the import step moves from "cannot rebuild" to "rebuilds from term lists".
+A documentation page that keeps a fixed defect is the same kind of lie as one that hides a real
+one.
+
+STILL OPEN
+
+The yaml editor, which is the hinge the rest of the ODK gaps turn on: <ontology>-odk.yaml is
+written once by the wizard and afterwards only five scalars are ever read, one of them on a real
+ODK repository.
+
+Three canvas requests arrived while this was being built and are next: labels shown on hover and
+inside the node the way OntoGraph does it, including for properties; clicking a property putting
+it in Protege's entity panel as clicking a class does; and exported images carrying the legend
+and the prefix key, which today they do not - CanvasExport renders from the graph model and never
+sees either.

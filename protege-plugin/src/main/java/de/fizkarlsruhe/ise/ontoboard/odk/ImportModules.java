@@ -207,8 +207,9 @@ public final class ImportModules {
     public static List<IRI> readTerms(File termsFile) throws IOException {
         List<IRI> terms = new ArrayList<IRI>();
         for (String line : linesOf(termsFile)) {
-            if (looksLikeIri(line)) {
-                terms.add(IRI.create(line));
+            String term = termOn(line);
+            if (term != null) {
+                terms.add(IRI.create(term));
             }
         }
         return terms;
@@ -218,11 +219,47 @@ public final class ImportModules {
     public static List<String> malformedIn(File termsFile) throws IOException {
         List<String> malformed = new ArrayList<String>();
         for (String line : linesOf(termsFile)) {
-            if (!looksLikeIri(line)) {
+            if (termOn(line) == null) {
                 malformed.add(line);
             }
         }
         return malformed;
+    }
+
+    /**
+     * The term IRI a line carries, or null when it carries none.
+     *
+     * <p><b>A trailing comment is part of the format, not a malformation.</b> ODK and ROBOT both
+     * write term lists that annotate each IRI with the label it stood for, because a bare column
+     * of {@code IAO_0000109} is unreviewable in a pull request:
+     *
+     * <pre>
+     *   http://purl.obolibrary.org/obo/IAO_0000109 # measurement datum
+     * </pre>
+     *
+     * <p>Until 1.77.0 this was rejected, because the test for "is this an IRI" included "contains
+     * no space" and was applied to the whole line. The effect on a real ODK project was total:
+     * five import term lists, 49 terms between them, <em>none</em> readable - while the Imports
+     * table went on reporting all five as having a term list, so the refusal to rebuild looked
+     * like nothing happening rather than like a refusal. ROBOT's own {@code --term-file} accepts
+     * these lines, which is the point: the file is written for ROBOT and was being read by
+     * something stricter than ROBOT.
+     *
+     * <p>The IRI is the first whitespace-delimited token. That is not a shortcut around the
+     * comment character: an IRI may legitimately contain {@code #} as a fragment separator, so
+     * splitting on the first {@code #} would truncate {@code http://example.org/o#Thing} to
+     * {@code http://example.org/o}. Splitting on whitespace cannot, because an IRI contains none.
+     */
+    static String termOn(String line) {
+        if (line == null) {
+            return null;
+        }
+        String trimmed = line.trim();
+        if (trimmed.isEmpty() || trimmed.startsWith("#")) {
+            return null;
+        }
+        String candidate = trimmed.split("\\s+")[0];
+        return looksLikeIri(candidate) ? candidate : null;
     }
 
     /**
@@ -269,9 +306,12 @@ public final class ImportModules {
      * legitimately use another scheme, and rejecting one on a guess would be worse than accepting a
      * line that then extracts nothing - which the extraction itself reports.
      */
-    private static boolean looksLikeIri(String line) {
-        int colon = line.indexOf(':');
-        return colon > 0 && !line.contains(" ") && colon < line.length() - 1;
+    private static boolean looksLikeIri(String candidate) {
+        // No space test here any more: the caller has already taken a single whitespace-delimited
+        // token, so a space is impossible - and testing the whole line for one is exactly what
+        // made every commented term list unreadable. See termOn.
+        int colon = candidate.indexOf(':');
+        return colon > 0 && colon < candidate.length() - 1;
     }
 
     private static List<String> sortedUnique(List<IRI> terms) {

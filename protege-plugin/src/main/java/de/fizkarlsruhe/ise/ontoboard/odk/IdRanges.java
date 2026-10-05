@@ -119,13 +119,78 @@ public final class IdRanges {
     private final int idDigits;
     private final List<Range> ranges;
 
+    /**
+     * Top-level declarations this class does not model, kept so that writing cannot lose them.
+     *
+     * <p>{@link #toManchester()} is a canonical renderer: it emits a fixed template, so anything
+     * in the file it has no field for disappears the first time a range is allocated. Measured
+     * on a real ODK project, round-tripping its ranges file lost exactly one line -
+     * {@code Datatype: rdf:PlainLiteral}, declared after the template's final
+     * {@code Datatype: xsd:integer} - while the method's own comment promised "a one-range diff
+     * rather than reformatting the whole file".
+     *
+     * <p>One line, and silent. Nothing in the dialog said a declaration had gone, and nobody
+     * reads a ranges file afterwards to check. That is the shape of defect this project keeps
+     * finding: not a crash, a quiet subtraction from somebody's file.
+     */
+    private final List<String> otherDeclarations;
+
     private IdRanges(String ontologyIri, String policyName, String idPrefix, int idDigits,
             List<Range> ranges) {
+        this(ontologyIri, policyName, idPrefix, idDigits, ranges,
+                Collections.<String>emptyList());
+    }
+
+    private IdRanges(String ontologyIri, String policyName, String idPrefix, int idDigits,
+            List<Range> ranges, List<String> otherDeclarations) {
         this.ontologyIri = ontologyIri == null ? "" : ontologyIri;
         this.policyName = policyName == null ? "" : policyName;
         this.idPrefix = idPrefix == null ? "" : idPrefix;
         this.idDigits = idDigits;
         this.ranges = Collections.unmodifiableList(new ArrayList<Range>(ranges));
+        this.otherDeclarations = Collections.unmodifiableList(
+                new ArrayList<String>(otherDeclarations));
+    }
+
+    /**
+     * Declarations carried through from the file this was parsed from.
+     *
+     * <p>Empty for a policy built by {@link #create}, which has no file behind it.
+     */
+    public List<String> getOtherDeclarations() {
+        return otherDeclarations;
+    }
+
+    /**
+     * Which non-blank lines of {@code original} would not survive being rewritten as
+     * {@code rendered}, compared without indentation.
+     *
+     * <p>The backstop behind {@link #otherDeclarations}. That field fixes the case that was
+     * measured; this catches the one that was not, because a ranges file is hand-editable and
+     * there is no list of everything somebody might reasonably put in one. A caller that is
+     * about to overwrite a file checks this first and refuses rather than subtracting silently.
+     *
+     * <p>Indentation is ignored deliberately: the renderer's own layout differs from ODK's by a
+     * few spaces, and reporting that as data loss would make the check noise and get it turned
+     * off. What it is looking for is a line that is simply gone.
+     */
+    public static List<String> whatWouldBeLost(String original, String rendered) {
+        List<String> lost = new ArrayList<String>();
+        if (original == null || rendered == null) {
+            return lost;
+        }
+        java.util.Set<String> kept = new java.util.HashSet<String>();
+        for (String line : rendered.split("\r?\n")) {
+            kept.add(line.trim());
+        }
+        java.util.Set<String> reported = new java.util.HashSet<String>();
+        for (String line : original.split("\r?\n")) {
+            String trimmed = line.trim();
+            if (!trimmed.isEmpty() && !kept.contains(trimmed) && reported.add(trimmed)) {
+                lost.add(trimmed);
+            }
+        }
+        return lost;
     }
 
     /**
@@ -222,7 +287,33 @@ public final class IdRanges {
             ranges.add(new Range(number, who.find() ? who.group(1) : "",
                     Long.parseLong(bounds.group(1)), Long.parseLong(bounds.group(2))));
         }
-        return new IdRanges(ontologyIri, policyName, idPrefix, idDigits, ranges);
+        return new IdRanges(ontologyIri, policyName, idPrefix, idDigits, ranges,
+                declarationsNotModelled(lines));
+    }
+
+    /**
+     * Top-level declarations the template does not emit, in the order the file gives them.
+     *
+     * <p>Everything the renderer writes itself is excluded: the ranges, the four annotation
+     * properties, and the closing {@code Datatype: xsd:integer}. What is left is whatever this
+     * project added by hand - on the file this was measured against, a single
+     * {@code Datatype: rdf:PlainLiteral}.
+     */
+    private static List<String> declarationsNotModelled(String[] lines) {
+        List<String> extra = new ArrayList<String>();
+        for (String line : lines) {
+            String trimmed = line.trim();
+            if (!trimmed.startsWith("Datatype:")) {
+                continue;
+            }
+            String subject = trimmed.substring("Datatype:".length()).trim();
+            if (subject.startsWith("idrange:") || "xsd:integer".equals(subject)
+                    || subject.isEmpty() || extra.contains(trimmed)) {
+                continue;
+            }
+            extra.add(trimmed);
+        }
+        return extra;
     }
 
     public String getOntologyIri() {
@@ -334,7 +425,8 @@ public final class IdRanges {
         }
         List<Range> combined = new ArrayList<Range>(ranges);
         combined.add(added);
-        return new IdRanges(ontologyIri, policyName, idPrefix, idDigits, combined);
+        return new IdRanges(ontologyIri, policyName, idPrefix, idDigits, combined,
+                otherDeclarations);
     }
 
     /** The next unused block, sized like the ones already there, for a new editor. */
@@ -372,9 +464,18 @@ public final class IdRanges {
     /**
      * Writes the file back in ODK's own shape.
      *
-     * <p>Deliberately the same layout as the file this was modelled on, down to the prefix block
-     * and the blank line between ranges, so that adding an editor to a real project produces a
-     * one-range diff rather than reformatting the whole file.
+     * <p>The same layout as the file this was modelled on, down to the prefix block and the
+     * blank line between ranges, so that adding an editor to a real project produces close to a
+     * one-range diff.
+     *
+     * <p><b>Close to, not exactly, and the difference used to cost data.</b> This is a canonical
+     * renderer, not an editor: it emits a fixed template, so indentation is normalised and
+     * anything the template has no field for is gone. Measured on a real ODK project, that was
+     * one line - a {@code Datatype: rdf:PlainLiteral} declared after the template's final
+     * {@code Datatype: xsd:integer} - dropped silently, by a method whose own comment said it
+     * would not reformat the file. {@link #getOtherDeclarations()} carries those through now,
+     * and {@link #whatWouldBeLost(String, String)} is the backstop for whatever was not
+     * measured: the caller compares before overwriting and refuses rather than subtracting.
      */
     public String toManchester() {
         StringBuilder out = new StringBuilder();
@@ -412,6 +513,11 @@ public final class IdRanges {
                     .append(range.getUpper()).append("]\n\n");
         }
         out.append("Datatype: xsd:integer\n");
+        // Anything the template has no field for, carried through from the file this was parsed
+        // from. Without this, allocating a range deletes it - see otherDeclarations.
+        for (String declaration : otherDeclarations) {
+            out.append(declaration).append("\n");
+        }
         return out.toString();
     }
 
