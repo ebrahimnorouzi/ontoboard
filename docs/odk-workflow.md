@@ -106,9 +106,24 @@ shell in a Linux container reading a script whose first line ends `\r` reports *
 required file not found"*, which reads as a missing interpreter. Every script in the project this
 was built against has CRLF endings, usually from git's `core.autocrlf`.
 
-**Limits.** A script gets 15 minutes rather than a build's 45, and there is still no way to
-cancel a running one - the timeout is what ends a runaway. Arguments cannot be passed yet: a
-script that needs them is better reached as a make target.
+**Arguments, since 1.85.0.** The chooser has an argument line, split the way a shell splits
+words - `"my file.owl"` is one argument, not two. An unclosed quote is refused rather than
+guessed at, because the command you approve has to be the command that runs. The confirmation
+lists each argument in brackets, which is what tells you your quoting did what you meant.
+
+Nothing is handed to a shell: the arguments become separate elements of the process command, so
+a semicolon or a backtick in one is passed to the script as that character and cannot start a
+second command. The single exception is the native-ODK route, which really does compose a shell
+line, and every argument is quoted there.
+
+**Stopping one, since 1.85.0.** The progress dialog's *Stop* button kills a running script
+outright - and a running build, and a running git command. Before this it dismissed the dialog
+and left the work going, so stopping a forty-minute ODK build freed the window and nothing else.
+An in-process ROBOT operation still cannot be interrupted; the dialog distinguishes the two.
+
+**Limits.** A script gets 15 minutes rather than a build's 45 - a backstop for a runaway nobody
+is watching, since the button needs somebody in front of it. Arguments are not remembered
+between runs.
 
 Also runnable, and worth knowing about:
 
@@ -324,5 +339,5 @@ order it is worth doing:
    now; nothing in Protégé writes one.
 3. **Acting on what the YAML says** — the file is read and written faithfully, but only five
    scalars drive anything, so most keys are still just text OntoBoard preserves.
-4. **Passing arguments to a script, and cancelling a running one** — a script runs bare today,
-   and only the 15-minute timeout stops it.
+4. **A second pattern collection** — the library ships 123 ODPs and there is no way to add your
+   own or point at another repository.

@@ -1,0 +1,109 @@
+OntoBoard 1.85.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-10-05  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 9/9  test 10/10
+  2026-10-05  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 9/9  test 10/10
+
+
+THE STOP BUTTON NOW STOPS THINGS
+
+The progress dialog has had a button since the beginning and it abandoned the result rather
+than the work. Pressing it on a forty-minute ODK build dismissed the dialog and left the
+container running to completion - the dialog said so in its own tooltip, which made it honest
+rather than acceptable. It is the one case where "cannot be cancelled" cost machine time rather
+than patience.
+
+It now kills the child process. A build, a project script and a git command all stop.
+
+NOT BY INTERRUPTING THE THREAD
+
+The obvious implementation was nearly free and would have been wrong. ProcessRunner already
+destroys its process on InterruptedException, and SwingWorker.cancel(true) interrupts the
+worker - so wiring the button to cancel(true) is a two-line change that appears to work.
+
+It would also interrupt the in-process ROBOT operations, which have no cancellation hook. They
+would either ignore the flag or fail somewhere unrelated with an interrupt nobody raised on
+purpose, and the second is the kind of fault that gets diagnosed as a bug in ROBOT.
+
+So instead there is a ProcessRunner.Cancellation: a handle on the running child, set on the
+worker thread exactly the way BackgroundRun.abandoned() already sets its flag, and the button
+destroys that process and nothing else. Same idiom, same layering - the handle lives in
+ProcessRunner, so the dependency runs menu to proc, the direction it already ran.
+
+TWO THINGS THE DESIGN HAD TO GET RIGHT
+
+Cancelling before the process exists. There are seconds between pressing "run" and a container
+actually starting, and a press in that window would otherwise cancel nothing while the dialog
+went away. The Cancellation is created on the EDT before the worker starts, and when the
+process finally registers itself it is killed immediately if the flag is already set. There is
+a test for exactly this.
+
+Cancelling after it finishes. A dead process left registered would be destroyed by a later
+press - harmless in itself, but the NEXT operation on that thread would report itself cancelled
+when it was not. Every exit from run() releases the handle.
+
+A KILLED PROCESS MUST NOT LOOK LIKE A FAILED ONE
+
+It exits nonzero and prints whatever it had reached, which is indistinguishable from a build
+that broke. Telling somebody their build failed when they stopped it themselves is a small lie
+that costs them a diagnosis, so Outcome carries wasCancelled() and all three callers check it
+before the exit code: the build says what may be half-written, the script says the project may
+have been changed, git says a partial clone may be left behind.
+
+Tested against real child processes rather than a stub runner, because the thing being tested
+is whether a real process dies. A stub would only prove the flag is passed around.
+
+
+ARGUMENTS FOR A PROJECT SCRIPT
+
+The chooser has an argument line. It is split the way a shell splits words, and that is the
+whole content of the feature: a field that says "arguments" and then splits on spaces is wrong
+the first time somebody passes a path, because every interesting path on this platform contains
+a space. C:\Users\someone\My Documents\x.owl becomes three arguments and the script is blamed
+for the nonsense it was handed.
+
+Deliberately not full POSIX in one place. Inside double quotes a backslash escapes only " and
+\, because a Windows path is mostly backslashes and treating each as an escape would turn
+"C:\Users\new\temp" into a string with a newline and a tab in it.
+
+An unclosed quote is refused, not closed on the user's behalf. The command shown before running
+is the basis on which it is approved, and guessing where a quote ends would run something they
+did not write under an approval they gave to something else.
+
+NOTHING REACHES A SHELL
+
+The arguments become separate elements of the ProcessBuilder command list, so a semicolon, an
+ampersand or a backtick is passed through as that character and cannot start a second command.
+A test asserts it: "a;rm -rf /" parses to three ordinary arguments.
+
+The native-ODK route is the single exception, because it genuinely composes a shell line to
+source the activation script. Every argument is quoted there with the helper that already
+existed for the script path.
+
+The confirmation lists each argument in brackets with a count. Quoting is where a typed
+argument line goes wrong, and the count is the fact that says whether it did.
+
+NUMBERS
+
+1648 tests, 0 failures, 0 skipped. 19 new - 14 for argument splitting, 5 for cancellation -
+counted three ways and agreeing.
+
+36/36 classes named in plugin.xml load on both hosts.
+
+DOCUMENTATION
+
+docs/odk-workflow.md said "there is still no way to cancel a running one" and "Arguments cannot
+be passed yet". Both corrected. The roadmap item that asked for these two is replaced by the
+next real gap rather than deleted, so the list stays the same length and stays honest.
+
+The comment in ScriptRun explaining why a script gets fifteen minutes rather than forty-five
+said the timeout was the only thing that could end a runaway. It is now the backstop, and says
+so - the button needs somebody sitting in front of it.
+
+STILL OPEN
+
+The collaboration surface, which is being audited separately and has at least one known
+problem: docs/collaboration.md still routes the reader through the deleted web application for
+a token. Adding your own pattern to the library, and a second collection. Editing a list or a
+nested block in the ODK YAML.

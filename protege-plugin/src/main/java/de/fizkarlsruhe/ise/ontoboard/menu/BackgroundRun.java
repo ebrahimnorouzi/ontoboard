@@ -40,12 +40,21 @@ import javax.swing.SwingWorker;
  * event loop; the worker's {@code done()} hands the result back on the EDT. Nothing blocks
  * anything, and {@code invokeAndWait} from a worker is safe because the EDT is always pumping.
  *
- * <p><b>Abandoning stops waiting; it cannot always stop working.</b> ROBOT operations are not
- * interruptible - there is no cancellation hook in {@code ReportOperation} - so the button returns
- * Protege to the user while the thread finishes in the background. What it <em>can</em> do is stop
- * the work from taking effect: {@link #abandoned()} lets an operation check, before it writes
- * anything, whether the user has walked away. An operation that applied changes to the ontology
- * after the user cancelled would be worse than one that could not be cancelled at all.
+ * <p><b>Abandoning stops waiting, and since 1.85.0 it also stops an external command.</b> The two
+ * halves are different and the dialog says which is which.
+ *
+ * <p>An in-process ROBOT operation is not interruptible - there is no cancellation hook in
+ * {@code ReportOperation} - so for those the button returns Protege to the user while the thread
+ * finishes in the background. What it can still do is stop the work taking effect:
+ * {@link #abandoned()} lets an operation check, before it writes anything, whether the user has
+ * walked away. An operation that applied changes to the ontology after the user cancelled would
+ * be worse than one that could not be cancelled at all.
+ *
+ * <p>An <em>external</em> command - a build, a project script, a git command - is a child process,
+ * and that is now killed outright through
+ * {@link de.fizkarlsruhe.ise.ontoboard.proc.ProcessRunner.Cancellation}. Before this, pressing the
+ * button on a forty-minute ODK build dismissed the dialog and left the container running to
+ * completion: the one case where "cannot be cancelled" cost machine time rather than patience.
  */
 public final class BackgroundRun {
 
@@ -94,15 +103,23 @@ public final class BackgroundRun {
         // Guarantees onFinished runs once. Both the abandon button and done() race to deliver.
         final AtomicBoolean delivered = new AtomicBoolean(false);
 
+        // Created here, on the EDT, so the button can hold it before the worker has started. A
+        // press in the gap between "run the build" and the container actually launching would
+        // otherwise cancel nothing.
+        final de.fizkarlsruhe.ise.ontoboard.proc.ProcessRunner.Cancellation cancellation =
+                new de.fizkarlsruhe.ise.ontoboard.proc.ProcessRunner.Cancellation();
+
         final SwingWorker<OperationResult, Void> worker =
                 new SwingWorker<OperationResult, Void>() {
             @Override
             protected OperationResult doInBackground() throws Exception {
                 ABANDONED.set(abandoned);
+                de.fizkarlsruhe.ise.ontoboard.proc.ProcessRunner.cancelWith(cancellation);
                 try {
                     return work.call();
                 } finally {
                     ABANDONED.remove();
+                    de.fizkarlsruhe.ise.ontoboard.proc.ProcessRunner.stopCancelling();
                 }
             }
 
@@ -120,6 +137,10 @@ public final class BackgroundRun {
 
         abandonButton(dialog).addActionListener(a -> {
             abandoned.set(true);
+            // Kills the external command if there is one. An in-process ROBOT operation keeps
+            // going - it has no cancellation hook - but a build, a script or a git command stops
+            // here rather than holding a container for the rest of its run.
+            cancellation.cancel();
             dialog.dispose();
             if (delivered.compareAndSet(false, true)) {
                 onFinished.accept(cancelled(what, started));
@@ -169,10 +190,11 @@ public final class BackgroundRun {
 
     private static OperationResult cancelled(String what, long started) {
         return OperationResult.of(what)
-                .failed("Stopped waiting after " + ((System.currentTimeMillis() - started) / 1000)
-                        + "s.")
-                .note("ROBOT operations cannot be interrupted, so the work may still be finishing "
-                        + "in the background. Nothing it produces will be applied or shown.")
+                .failed("Stopped after " + ((System.currentTimeMillis() - started) / 1000) + "s.")
+                .note("An external command - a build, a script, a git command - was killed. An "
+                        + "in-process ROBOT operation cannot be interrupted and may still be "
+                        + "finishing in the background, but nothing it produces will be applied "
+                        + "or shown.")
                 .build();
     }
 
@@ -205,9 +227,10 @@ public final class BackgroundRun {
         progress.setIndeterminate(true);
         content.add(progress, BorderLayout.CENTER);
 
-        JButton abandon = new JButton("Stop waiting");
-        abandon.setToolTipText("Give up on the result. ROBOT cannot be interrupted, so the work "
-                + "may keep running - but nothing it produces will be applied.");
+        JButton abandon = new JButton("Stop");
+        abandon.setToolTipText("<html>Kills an external command - a build, a script, a git "
+                + "command - outright.<br>An in-process ROBOT operation cannot be interrupted "
+                + "and may keep running,<br>but nothing it produces will be applied.</html>");
         JPanel buttons = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 0, 0));
         buttons.add(abandon);
         content.add(buttons, BorderLayout.SOUTH);

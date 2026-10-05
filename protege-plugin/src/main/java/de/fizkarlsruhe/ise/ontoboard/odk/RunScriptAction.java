@@ -61,10 +61,11 @@ public class RunScriptAction extends ProtegeOWLAction {
             return;
         }
 
-        ProjectScripts.Script chosen = ask(scripts);
-        if (chosen == null) {
+        Choice choice = ask(scripts);
+        if (choice == null) {
             return;
         }
+        ProjectScripts.Script chosen = choice.script;
 
         String runtime = MakeRun.containerRuntime(ProcessRunner.real());
         // --version, the same probe Toolchain uses for make and sh. An interpreter that answers
@@ -73,14 +74,15 @@ public class RunScriptAction extends ProtegeOWLAction {
                 && ProcessRunner.isAvailable(ProcessRunner.real(), chosen.getInterpreter(),
                         "--version");
         final ScriptRun.Plan plan = ScriptRun.planFor(chosen, ontologyDirectory, runtime,
-                Toolchain.activationScript(Toolchain.nativeEnvironment()), onPath);
+                Toolchain.activationScript(Toolchain.nativeEnvironment()), onPath,
+                choice.arguments);
 
         if (plan.getRoute() == ScriptRun.Route.NOT_RUNNABLE) {
             JOptionPane.showMessageDialog(getOWLWorkspace(), plan.getAdvice(),
                     "Cannot run " + chosen.getName(), JOptionPane.WARNING_MESSAGE);
             return;
         }
-        if (!confirmed(chosen, plan)) {
+        if (!confirmed(chosen, plan, choice.arguments)) {
             return;
         }
 
@@ -100,8 +102,26 @@ public class RunScriptAction extends ProtegeOWLAction {
                 });
     }
 
-    /** The chooser, listing each script with what would run it. */
-    private ProjectScripts.Script ask(List<ProjectScripts.Script> scripts) {
+    /** What the chooser produced: a script and the arguments typed for it. */
+    private static final class Choice {
+        private final ProjectScripts.Script script;
+        private final List<String> arguments;
+
+        Choice(ProjectScripts.Script script, List<String> arguments) {
+            this.script = script;
+            this.arguments = arguments;
+        }
+    }
+
+    /**
+     * The chooser: which script, and what to pass it.
+     *
+     * <p>The argument line is parsed the way a shell splits words, and a line that cannot be
+     * split - an unclosed quote - re-opens the dialog rather than being guessed at. The command
+     * shown in the next step is the basis on which it is approved, so it has to be the command
+     * the user actually wrote.
+     */
+    private Choice ask(List<ProjectScripts.Script> scripts) {
         String[] labels = new String[scripts.size()];
         for (int at = 0; at < scripts.size(); at++) {
             ProjectScripts.Script script = scripts.get(at);
@@ -110,22 +130,46 @@ public class RunScriptAction extends ProtegeOWLAction {
                             : "   - OntoBoard cannot tell what runs this");
         }
         JComboBox<String> choices = new JComboBox<String>(labels);
-        if (JOptionPane.showConfirmDialog(getOWLWorkspace(), choices, "Run a project script",
-                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE)
-                != JOptionPane.OK_OPTION) {
-            return null;
+        javax.swing.JTextField arguments = new javax.swing.JTextField(28);
+        arguments.setToolTipText("Passed to the script as arguments. Quote anything with a "
+                + "space in it.");
+
+        javax.swing.JPanel form = new javax.swing.JPanel(new java.awt.GridLayout(0, 1, 0, 4));
+        form.add(new javax.swing.JLabel("Script"));
+        form.add(choices);
+        form.add(new javax.swing.JLabel("Arguments (optional)"));
+        form.add(arguments);
+
+        while (true) {
+            if (JOptionPane.showConfirmDialog(getOWLWorkspace(), form, "Run a project script",
+                    JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE)
+                    != JOptionPane.OK_OPTION) {
+                return null;
+            }
+            try {
+                return new Choice(scripts.get(Math.max(0, choices.getSelectedIndex())),
+                        ScriptArguments.parse(arguments.getText()));
+            } catch (ScriptArguments.Malformed cannotSplit) {
+                JOptionPane.showMessageDialog(getOWLWorkspace(), cannotSplit.getMessage(),
+                        "Check the arguments", JOptionPane.WARNING_MESSAGE);
+            }
         }
-        return scripts.get(Math.max(0, choices.getSelectedIndex()));
     }
 
     /** Shows the exact command, and any warning, and waits for a yes. */
-    private boolean confirmed(ProjectScripts.Script script, ScriptRun.Plan plan) {
+    private boolean confirmed(ProjectScripts.Script script, ScriptRun.Plan plan,
+            List<String> arguments) {
         StringBuilder message = new StringBuilder("<html><b>")
                 .append(script.getName()).append("</b> will run ")
                 .append(describe(plan.getRoute())).append(".<br><br>")
                 .append("<font face=\"monospaced\">")
                 .append(plan.asCommandLine().replace("&", "&amp;").replace("<", "&lt;"))
                 .append("</font>");
+        if (!arguments.isEmpty()) {
+            // Spelled out, because quoting is where a typed argument line goes wrong and the
+            // count is the fact that says whether it did.
+            message.append("<br><br>").append(escape(ScriptArguments.describe(arguments)));
+        }
         String warning = ScriptRun.warningFor(script, plan.getRoute());
         if (warning != null) {
             message.append("<br><br><b>Before you do:</b> ").append(warning);
@@ -135,6 +179,12 @@ public class RunScriptAction extends ProtegeOWLAction {
         return JOptionPane.showConfirmDialog(getOWLWorkspace(), message.toString(),
                 "Run " + script.getName() + "?", JOptionPane.OK_CANCEL_OPTION,
                 JOptionPane.WARNING_MESSAGE) == JOptionPane.OK_OPTION;
+    }
+
+    /** For putting data into the HTML of a dialog. */
+    private static String escape(String text) {
+        return text == null ? ""
+                : text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
     }
 
     private static String describe(ScriptRun.Route route) {
@@ -159,6 +209,10 @@ public class RunScriptAction extends ProtegeOWLAction {
                     plan.getCommand(), ScriptRun.TIMEOUT_MINUTES, null);
             for (String line : outcome.getOutput()) {
                 result.note(line);
+            }
+            if (outcome.wasCancelled()) {
+                return result.failed("You stopped it. The script may have changed the project "
+                        + "before it was killed.").build();
             }
             if (outcome.timedOut()) {
                 return result.failed("The script did not finish within "

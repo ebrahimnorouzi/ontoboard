@@ -417,6 +417,13 @@ public final class MakeRun {
         if (outcome.isSuccess()) {
             return null;
         }
+        if (outcome.wasCancelled()) {
+            // Before the exit code is read. A killed process exits nonzero and prints whatever it
+            // had reached, which looks exactly like a build that broke.
+            return "You stopped the build. Whatever it had already written to disk is still "
+                    + "there, so the next run may start from a half-finished state - "
+                    + "'make clean' if that matters.";
+        }
         if (outcome.timedOut()) {
             return "The build was still running after " + TIMEOUT_MINUTES + " minutes and was "
                     + "stopped. A release on a large ontology can genuinely take that long - run "

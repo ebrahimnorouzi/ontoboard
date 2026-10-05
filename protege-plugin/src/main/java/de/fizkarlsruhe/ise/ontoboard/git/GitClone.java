@@ -307,6 +307,9 @@ public final class GitClone {
                 for (String line : outcome.getOutput()) {
                     text.append(line).append('\n');
                 }
+                if (outcome.wasCancelled()) {
+                    text.append("You stopped it. A partly-cloned directory may be left behind.\n");
+                }
                 if (outcome.timedOut()) {
                     text.append("git did not finish within ").append(TIMEOUT_MINUTES)
                             .append(" minutes and was stopped. If the repository is private, git ")

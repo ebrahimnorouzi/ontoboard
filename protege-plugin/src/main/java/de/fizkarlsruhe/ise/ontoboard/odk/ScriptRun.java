@@ -24,11 +24,14 @@ public final class ScriptRun {
      * Shorter than a build's 45 minutes.
      *
      * <p>A build is a known quantity that legitimately takes an hour. A script is arbitrary code
-     * somebody has just chosen to run, and until the process can actually be cancelled - it
-     * cannot be today, see {@link de.fizkarlsruhe.ise.ontoboard.menu.BackgroundRun} - the
-     * timeout is the only thing that ends a runaway. Fifteen minutes is long enough for every
-     * script in the project this was measured against and short enough not to hold a thread for
-     * an afternoon.
+     * somebody has just chosen to run, so it gets a shorter leash on principle rather than on
+     * evidence - fifteen minutes is longer than every script in the project this was measured
+     * against needs, and short enough that a runaway nobody is watching does not hold a thread
+     * for an afternoon.
+     *
+     * <p>Since 1.85.0 the Stop button kills a running script outright, so the timeout is the
+     * backstop rather than the only way out. It still matters: the button needs somebody sitting
+     * in front of it.
      */
     public static final long TIMEOUT_MINUTES = 15;
 
@@ -111,6 +114,23 @@ public final class ScriptRun {
      */
     public static Plan planFor(ProjectScripts.Script script, File ontologyDirectory,
             String runtime, File activationScript, boolean interpreterOnPath) {
+        return planFor(script, ontologyDirectory, runtime, activationScript, interpreterOnPath,
+                java.util.Collections.<String>emptyList());
+    }
+
+    /**
+     * The same, with arguments for the script.
+     *
+     * <p>They are appended as separate elements of the command list, never joined into a string
+     * for a shell to split again - so a path with a space in it arrives as one argument and a
+     * semicolon in one cannot start a second command. The native route is the exception, because
+     * it genuinely composes a shell line, and every argument is quoted there.
+     */
+    public static Plan planFor(ProjectScripts.Script script, File ontologyDirectory,
+            String runtime, File activationScript, boolean interpreterOnPath,
+            List<String> arguments) {
+        List<String> extra = arguments == null
+                ? java.util.Collections.<String>emptyList() : arguments;
         if (script == null || !script.isRunnable()) {
             return new Plan(Route.NOT_RUNNABLE, null,
                     script == null ? "No script was chosen." : script.getWhyNotRunnable());
@@ -118,24 +138,31 @@ public final class ScriptRun {
         String inContainer = ProjectScripts.containerPathOf(script.getFile(), ontologyDirectory);
 
         if (runtime != null && !runtime.trim().isEmpty() && inContainer != null) {
+            List<String> inside = new ArrayList<String>(
+                    Arrays.asList(script.getInterpreter(), inContainer));
+            inside.addAll(extra);
             return new Plan(Route.IN_CONTAINER,
                     MakeRun.containerCommandFor(runtime, ontologyDirectory,
-                            MakeRun.imageFor(ontologyDirectory),
-                            Arrays.asList(script.getInterpreter(), inContainer)),
+                            MakeRun.imageFor(ontologyDirectory), inside),
                     null);
         }
 
         if (activationScript != null) {
+            StringBuilder line = new StringBuilder(script.getInterpreter()).append(' ')
+                    .append(Toolchain.quote(script.getFile().getAbsolutePath()));
+            for (String argument : extra) {
+                // Quoted, because this one route really does hand a string to a shell.
+                line.append(' ').append(Toolchain.quote(argument));
+            }
             return new Plan(Route.NATIVE,
-                    Toolchain.nativeCommandFor(activationScript, script.getInterpreter() + " "
-                            + Toolchain.quote(script.getFile().getAbsolutePath())),
-                    null);
+                    Toolchain.nativeCommandFor(activationScript, line.toString()), null);
         }
 
         if (interpreterOnPath) {
-            return new Plan(Route.HOST,
-                    Arrays.asList(script.getInterpreter(), script.getFile().getAbsolutePath()),
-                    null);
+            List<String> here = new ArrayList<String>(Arrays.asList(
+                    script.getInterpreter(), script.getFile().getAbsolutePath()));
+            here.addAll(extra);
+            return new Plan(Route.HOST, here, null);
         }
 
         return new Plan(Route.NOT_RUNNABLE, null,

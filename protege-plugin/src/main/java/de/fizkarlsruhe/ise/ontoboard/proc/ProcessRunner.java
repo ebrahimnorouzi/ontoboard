@@ -35,13 +35,31 @@ public final class ProcessRunner {
         private final int exitCode;
         private final List<String> output;
         private final boolean timedOut;
+        private final boolean cancelled;
 
         public Outcome(int exitCode, List<String> output, boolean timedOut) {
+            this(exitCode, output, timedOut, false);
+        }
+
+        public Outcome(int exitCode, List<String> output, boolean timedOut, boolean cancelled) {
             this.exitCode = exitCode;
             this.output = Collections.unmodifiableList(
                     new ArrayList<String>(output == null ? Collections.<String>emptyList()
                             : output));
             this.timedOut = timedOut;
+            this.cancelled = cancelled;
+        }
+
+        /**
+         * True when the user stopped it rather than it failing or running out of time.
+         *
+         * <p>Worth distinguishing from a nonzero exit. A killed process exits nonzero and prints
+         * whatever it had got to, which reads exactly like a build that broke - and telling
+         * somebody their build failed when they stopped it themselves is a small lie that costs
+         * them a diagnosis.
+         */
+        public boolean wasCancelled() {
+            return cancelled;
         }
 
         public int getExitCode() {
@@ -75,9 +93,94 @@ public final class ProcessRunner {
 
         @Override
         public String toString() {
-            return "exit " + exitCode + (timedOut ? " (timed out)" : "") + ", "
-                    + output.size() + " lines";
+            return "exit " + exitCode + (timedOut ? " (timed out)" : "")
+                    + (cancelled ? " (cancelled)" : "") + ", " + output.size() + " lines";
         }
+    }
+
+    /**
+     * A handle on whatever external command is running, so somebody can stop it.
+     *
+     * <p>Until this existed there was no way to stop a running child at all: the progress
+     * dialog's button abandoned the <em>result</em> and left {@code make} or a project script
+     * running to completion, holding a container and a CPU for however long it had left. The
+     * dialog said so, which made it honest rather than acceptable.
+     *
+     * <p>It is deliberately not an interrupt. Interrupting the worker thread would also land on
+     * the in-process ROBOT operations, which have no cancellation hook and would either ignore
+     * it or fail somewhere unrelated with an interrupt nobody raised on purpose. This kills a
+     * child process and touches nothing else.
+     */
+    public static final class Cancellation {
+        private final java.util.concurrent.atomic.AtomicReference<Process> current =
+                new java.util.concurrent.atomic.AtomicReference<Process>();
+        private final java.util.concurrent.atomic.AtomicBoolean cancelled =
+                new java.util.concurrent.atomic.AtomicBoolean(false);
+
+        /**
+         * Kills the running command, now or as soon as one starts.
+         *
+         * <p>The second half matters: a user who presses the button during the second or two
+         * between "run the build" and the container actually starting would otherwise cancel
+         * nothing, and the build would run on with the dialog gone.
+         */
+        public void cancel() {
+            cancelled.set(true);
+            destroy(current.get());
+        }
+
+        public boolean isCancelled() {
+            return cancelled.get();
+        }
+
+        /** Called by the runner when a process starts. */
+        void took(Process process) {
+            current.set(process);
+            if (cancelled.get()) {
+                destroy(process);
+            }
+        }
+
+        /** Called by the runner when the process is gone. */
+        void finished() {
+            current.set(null);
+        }
+
+        private static void destroy(Process process) {
+            if (process != null) {
+                // Forcibly: destroy() is a polite signal that a make running a container happily
+                // ignores, and the point of the button is that the thing stops.
+                process.destroyForcibly();
+            }
+        }
+    }
+
+    /**
+     * Set for the duration of a background operation, so the command it launches can be stopped.
+     *
+     * <p>A thread-local for the same reason {@code BackgroundRun.abandoned()} is one: the work is
+     * a {@code Callable} handed in by an action, and threading a handle through every operation
+     * to reach the three that launch a process would be worse than asking.
+     */
+    private static final ThreadLocal<Cancellation> CANCELLATION = new ThreadLocal<Cancellation>();
+
+    /** Makes {@code cancellation} apply to commands launched from this thread. */
+    public static void cancelWith(Cancellation cancellation) {
+        if (cancellation == null) {
+            CANCELLATION.remove();
+        } else {
+            CANCELLATION.set(cancellation);
+        }
+    }
+
+    /** Stops this thread's commands being cancellable. Always paired with {@link #cancelWith}. */
+    public static void stopCancelling() {
+        CANCELLATION.remove();
+    }
+
+    /** This thread's cancellation handle, or null when nothing is watching. */
+    static Cancellation cancellationHere() {
+        return CANCELLATION.get();
     }
 
     /** Told about each line as it arrives, so a long build is not a frozen dialog. */
@@ -111,6 +214,12 @@ public final class ProcessRunner {
                 quieten(builder.environment());
 
                 Process process = builder.start();
+                final Cancellation cancellation = cancellationHere();
+                if (cancellation != null) {
+                    // Before anything else: if the user already pressed the button while the
+                    // process was starting, this kills it rather than letting it run on.
+                    cancellation.took(process);
+                }
                 try {
                     // The command reads nothing from us, and an open pipe is one more thing for it
                     // to wait on.
@@ -153,16 +262,20 @@ public final class ProcessRunner {
                 } catch (InterruptedException interrupted) {
                     Thread.currentThread().interrupt();
                     process.destroyForcibly();
-                    return new Outcome(-1, snapshot(collected), false);
+                    return done(cancellation, new Outcome(-1, snapshot(collected), false, true));
                 }
                 if (!finished) {
                     // destroyForcibly closes the pipe, which unblocks the reader at end of stream.
                     process.destroyForcibly();
                     join(drain);
-                    return new Outcome(-1, snapshot(collected), true);
+                    return done(cancellation, new Outcome(-1, snapshot(collected), true));
                 }
                 join(drain);
-                return new Outcome(process.exitValue(), snapshot(collected), false);
+                // A cancelled process exits nonzero like a failed one, so the flag rather than
+                // the exit code is what distinguishes "you stopped it" from "it broke".
+                boolean stopped = cancellation != null && cancellation.isCancelled();
+                return done(cancellation,
+                        new Outcome(process.exitValue(), snapshot(collected), false, stopped));
             }
         };
     }
@@ -185,6 +298,20 @@ public final class ProcessRunner {
         environment.put("GIT_PAGER", "cat");
         environment.put("TERM", "dumb");
         environment.put("NO_COLOR", "1");
+    }
+
+    /**
+     * Lets go of the finished process and returns the outcome unchanged.
+     *
+     * <p>Every exit from {@code run} goes through here. Leaving a dead process registered would
+     * mean a later press of the button calling {@code destroyForcibly} on it - harmless in
+     * itself, but it would report the <em>next</em> operation as cancelled when it was not.
+     */
+    private static Outcome done(Cancellation cancellation, Outcome outcome) {
+        if (cancellation != null) {
+            cancellation.finished();
+        }
+        return outcome;
     }
 
     private static List<String> snapshot(List<String> collected) {
