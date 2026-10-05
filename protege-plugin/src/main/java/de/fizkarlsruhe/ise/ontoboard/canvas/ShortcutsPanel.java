@@ -49,6 +49,7 @@ public final class ShortcutsPanel extends JPanel {
         {"Ctrl+D", "Duplicate a sticky note or a frame"},
         {"Ctrl+Z", "Undo the board. Ctrl+Shift+Z redoes it."},
         {"Delete", "Take the selection off the board. The axioms stay."},
+        {"P", "Keep the selected term's details on screen; Shift+P clears them"},
         {"Escape", "Clear the selection"},
         {"Alt-drag", "Place a node off the grid"},
     };

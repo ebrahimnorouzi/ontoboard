@@ -58,6 +58,13 @@ public final class CollaborativeGraphComponent extends mxGraphComponent {
         return gesture;
     }
 
+    /** Which tooltips are kept open. Never null, so the view can pin without checking. */
+    private final transient PinnedTooltips pins = new PinnedTooltips();
+
+    public PinnedTooltips getPins() {
+        return pins;
+    }
+
     /**
      * Whether this press should pan. The decision itself lives in {@link CanvasGesture}.
      *
@@ -98,6 +105,20 @@ public final class CollaborativeGraphComponent extends mxGraphComponent {
     }
 
     /** The guides the drag handler currently wants drawn, or none. */
+    /**
+     * Draws the pinned cards, if the graph can say what they should contain.
+     *
+     * <p>Only a {@link SchemaGraph} holds the tooltips, and the component is constructed against
+     * a plain {@code mxGraph} in tests, so this asks rather than assumes.
+     */
+    private void paintPins(Graphics2D graphics) {
+        if (pins.isEmpty() || !(getGraph() instanceof SchemaGraph)) {
+            return;
+        }
+        PinnedTooltipLayer.paint(graphics, getGraph(),
+                pins.cards(((SchemaGraph) getGraph()).tooltips()), getViewport().getViewRect());
+    }
+
     private java.util.List<AlignmentGuides.Guide> activeGuides() {
         com.mxgraph.swing.handler.mxGraphHandler handler = getGraphHandler();
         return handler instanceof GuideGraphHandler
@@ -148,6 +169,9 @@ public final class CollaborativeGraphComponent extends mxGraphComponent {
                 // field exists.
                 PeerCursorLayer.paint((Graphics2D) graphics, getGraph(), cursors,
                         System.currentTimeMillis());
+                // Above the badges and cursors: a pinned card is something the reader opened and
+                // is reading, so nothing on the board should cover it.
+                paintPins((Graphics2D) graphics);
                 // Last, so a guide is never hidden behind a node, a badge or a cursor. It is
                 // chrome for the duration of a drag and has to be readable over whatever it
                 // crosses.

@@ -1,0 +1,102 @@
+OntoBoard 1.83.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-10-05  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 9/9  test 10/10
+  2026-10-05  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 9/9  test 10/10
+
+
+THE ONTOGRAF SURVEY IS FINISHED
+
+docs/compared-with-ontograf.md was written by reading ontograf-2.0.3.jar - its plugin.xml, its
+classes, its enums - and listed five things OntoGraf had that OntoBoard did not. Four were
+judged worth building. This release is the last two:
+
+    1. tooltip sections: superclasses, equivalents, disjoints    1.74.0
+    2. export as GraphViz DOT                                    1.79.0
+    3. pinned tooltips                                           1.83.0
+    4. an imports graph                                          1.83.0
+
+The fifth, save-and-reopen a named graph, is covered differently and deliberately: OntoBoard
+persists the board to a sidecar automatically, so nobody loses work by forgetting to save.
+
+PINNED TOOLTIPS
+
+Select a term and press P; Shift+P clears them. OntoGraf's PinTooltipsAction keeps a tooltip
+open after the pointer leaves, and the reason to want it is comparing - a hover tooltip vanishes
+on exit, so holding "what is A a subclass of" next to "what is B disjoint from" was a matter of
+memory.
+
+On the selection rather than on what is under the pointer. That is the decision that makes the
+feature do its job: selecting two terms and pressing P puts both cards up at once, which is the
+whole point, and it means the feature is reachable from the keyboard.
+
+Four at a time. Without a limit a stray keypress spree covers the board, and the way out is not
+obvious - every card is sitting on top of the thing you would click to unpin it. Past four the
+oldest closes, never the newest: the card just asked for is the one wanted, and dropping it
+would read as a broken key.
+
+A card is dropped when its cell leaves the board. Otherwise it stays where that term used to be
+and keeps describing it - everything on it true, none of it about anything present.
+
+The text comes from the same string the hover tooltip shows, converted from HTML rather than
+written again. Every sentence in CanvasTooltips was argued over once; a second copy would drift,
+the pinned card would keep saying something the tooltip had stopped saying, and only somebody
+comparing the two would ever find out.
+
+Like every other overlay here, a pinned card does not appear in an exported PNG or SVG -
+CanvasExport renders from the graph model and never calls the component's paint. That is right
+rather than a limitation: a pinned card is something opened while reading, not part of the
+diagram being published.
+
+THE IMPORTS GRAPH, AND AN HONEST MEASUREMENT OF IT
+
+Project > Imports graph... draws the owl:imports closure, root filled, unresolved dashed and
+red, with a Copy as DOT button. It is the only place in the plugin that will say a module is
+imported by more than one other - the table lists direct imports one row each, so a shared
+mirror is invisible in it.
+
+Then it was pointed at the real project, and the result is worth recording rather than
+burying:
+
+    nodes 5   edges 4   unresolved 0   shared 0   depth never exceeds 1
+
+MWO's imports are flat. The graph is a star, and for that project the table already said
+everything the picture does. The feature earns its place on a project whose modules import a
+shared mirror - the structure module_type: mirror produces - and the documentation now says so
+in those words instead of implying every project benefits.
+
+An unresolved import is drawn as a node rather than left out. Omitting it would draw the project
+as importing less than it declares, which is the opposite of what somebody opening an imports
+graph wants to know. A cycle terminates: OWL permits one, and the project that has grown an
+accidental cycle is exactly the one whose owner would open this.
+
+A PROBE THAT MEASURED THE PROBE
+
+First run reported all four of MWO's imports unresolved, which would have been a defect in the
+model. It was not: the probe used AutoIRIMapper, which scans files for the IRI they declare for
+themselves, and an ODK module is reached by the IRI the catalog maps - a different thing. With
+the catalog parsed and mapped, all four resolve. Recording it because the wrong conclusion was
+one line away, and it was the conclusion that would have sent me editing working code.
+
+NUMBERS
+
+1629 tests, 0 failures, 0 skipped. 24 new - 13 for pinning, 11 for the imports graph - counted
+three ways and agreeing.
+
+36/36 classes named in plugin.xml load on both hosts, up from 35.
+
+DOCUMENTATION
+
+compared-with-ontograf.md's heading was "What OntoGraf does that OntoBoard does not", which four
+releases have made false. It is past tense now, each item says which release built it, and the
+original reasoning is kept rather than replaced by a tick - the argument for building something
+is worth more than the fact that it was built. The recommendation section, which was a list of
+four things to do, now records that all four are done and carries the flat-imports measurement.
+
+STILL OPEN
+
+The choice between date-based and semantic-version releases - a question for the user, not a
+piece of work. Passing arguments to a project script, and cancelling a running one. Editing a
+list or a nested block in the ODK YAML. Adding your own pattern to the library, and a second
+pattern collection.

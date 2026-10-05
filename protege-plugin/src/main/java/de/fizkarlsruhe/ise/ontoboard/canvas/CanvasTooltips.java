@@ -307,4 +307,34 @@ public final class CanvasTooltips {
         }
         return value.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
     }
+
+    /**
+     * The same tooltip as plain lines, for somewhere that cannot render HTML.
+     *
+     * <p>A pinned card is painted into a {@code Graphics2D} rather than handed to Swing, so it
+     * needs the text rather than the markup. Converting is better than writing the wording twice:
+     * every sentence above was argued over once, and a second copy would drift from this one
+     * silently - the pinned card would keep saying something the hover tooltip had stopped
+     * saying, and only the person comparing them would ever find out.
+     *
+     * @return one entry per line, never null, with empty lines dropped
+     */
+    public static java.util.List<String> toLines(String html) {
+        java.util.List<String> lines = new java.util.ArrayList<String>();
+        if (html == null) {
+            return lines;
+        }
+        for (String piece : html.split("(?i)<br\\s*/?>")) {
+            String text = piece.replaceAll("<[^>]*>", "")
+                    .replace("&lt;", "<")
+                    .replace("&gt;", ">")
+                    // Ampersand last: undoing it first would turn "&amp;lt;" into "<".
+                    .replace("&amp;", "&")
+                    .trim();
+            if (!text.isEmpty()) {
+                lines.add(text);
+            }
+        }
+        return lines;
+    }
 }

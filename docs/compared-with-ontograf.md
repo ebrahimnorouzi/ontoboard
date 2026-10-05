@@ -9,9 +9,13 @@ talks itself into believing it already does something.
 
 ---
 
-## What OntoGraf does that OntoBoard does not
+## What OntoGraf did that OntoBoard did not
 
-### 1. Configurable tooltips · *worth doing*
+This section was the original survey, written when none of it was built. Four of the five are
+now in the plugin and the headings say which release; the reasoning is kept as written, because
+the argument for building something is worth more than a tick.
+
+### 1. Configurable tooltips · *built in 1.74.0*
 
 OntoGraf's hover text is a set of switchable sections, chosen in a dialog
 (`TooltipConfigurationDialog`), separately for classes and individuals. For a class
@@ -19,8 +23,8 @@ OntoGraf's hover text is a set of switchable sections, chosen in a dialog
 
 > `TITLE` · `URI` · `SUPERCLASSES` · `EQUIVALENT_CLASSES` · `DISJOINT_CLASSES` · `ANNOTATIONS`
 
-OntoBoard's node tooltip is fixed: label, kind, whether the term is imported, its editorial
-notes and its IRI. **The three it does not have are the axiomatic ones** — superclasses,
+OntoBoard's node tooltip was fixed: label, kind, whether the term is imported, its editorial
+notes and its IRI. **The three it lacked were the axiomatic ones** — superclasses,
 equivalent classes, disjoint classes. Those are the sections that answer "what is this term,
 in OWL" without leaving the board, and on a canvas that deliberately draws only some axioms they
 matter more here than they do in OntoGraf.
@@ -28,13 +32,19 @@ matter more here than they do in OntoGraf.
 Disjointness is the strongest case: OntoBoard draws no disjointness at all, anywhere, so a
 tooltip is currently the only place it could appear.
 
-### 2. Pinned tooltips · *worth doing, cheap*
+### 2. Pinned tooltips · *built in 1.83.0*
 
 `PinTooltipsAction` keeps a tooltip open after the pointer leaves, so you can read one term's
-details while looking at another. OntoBoard's vanish on exit, which makes comparing two terms a
-matter of memory.
+details while looking at another. OntoBoard's vanished on exit, which made comparing two terms
+a matter of memory.
 
-### 3. A graph of the imports · *worth doing*
+Now: select a term and press <kbd>P</kbd>, Shift+P to clear. It works on the selection rather
+than on what is under the pointer, so selecting two terms and pressing P puts both side by
+side — which is the reason to want the feature. Four at a time, the oldest closing to make
+room, and a card is dropped when its term leaves the board rather than left floating where
+that term used to be.
+
+### 3. A graph of the imports · *built in 1.83.0*
 
 `OntoGrafImportView` and `ImportsGraphModel` draw the `owl:imports` structure as a graph.
 OntoBoard has the same information in a table (*Project → Imports…*) and it is a better table
@@ -44,7 +54,7 @@ read: five modules importing a mirror that imports upstream is one picture and t
 
 Cheap, too: the nodes are ontologies, not terms, so there are never many.
 
-### 4. Export as GraphViz DOT · *worth doing, cheap*
+### 4. Export as GraphViz DOT · *built in 1.79.0*
 
 `ExportAsDotAction`. OntoBoard exports PNG and SVG. DOT is different in kind: it hands the graph
 to someone else's layout engine, which is what people with a LaTeX pipeline or a house style
@@ -80,15 +90,22 @@ several of these are the reason the canvas exists.
 
 ## Recommendation
 
-In the order the effort pays back:
+**All four are now built.** In the order they shipped:
 
-1. **Superclasses, equivalents and disjoints in the node tooltip.** The information is one OWL
-   API call away and disjointness has nowhere else to appear.
-2. **Export as DOT.** A serialiser over a projection that already exists.
-3. **Pinned tooltips.** Small, and it makes comparing two terms possible.
-4. **An imports graph.** More work than the three above and less often needed, but it is the one
-   genuinely different *view* OntoGraf has.
+1. **Superclasses, equivalents and disjoints in the node tooltip** (1.74.0). Disjointness had
+   nowhere else to appear and still has nowhere else on the board.
+2. **Export as DOT** (1.79.0). A serialiser over the projection the canvas already holds.
+3. **Pinned tooltips** (1.83.0). Select a term and press <kbd>P</kbd>; Shift+P clears them. Up
+   to four at once — enough to compare, few enough to still see the diagram.
+4. **An imports graph** (1.83.0). *Project → Imports graph…*, with a Copy as DOT button.
 
-Deliberately not recommended: copying OntoGraf's layout engine or its navigation model. Its
+One honest note on the fourth. Measured on the real ODK project this plugin is built against,
+the imports graph is a star: the edit file and four modules, nothing nested, nothing shared. For
+that project the table already said everything the picture does. The graph earns its place on a
+project whose modules import a shared mirror, which is the structure ODK's `module_type: mirror`
+produces — and it is the only thing in OntoBoard that will tell you a module is shared, because
+the table lists direct imports one row each.
+
+Deliberately not implemented: OntoGraf's layout engine and its navigation model. Its
 expand-and-collapse-by-arc-type browsing suits exploring an unfamiliar ontology; OntoBoard's
 canvas is for composing a diagram you intend to keep, and the two want different interactions.

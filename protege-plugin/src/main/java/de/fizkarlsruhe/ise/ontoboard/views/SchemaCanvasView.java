@@ -2368,6 +2368,13 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         bindOnCanvas("ontoboard.gesture.select", java.awt.event.KeyEvent.VK_V, 0,
                 () -> applyGestureMode(CanvasGesture.Mode.SELECT, true));
 
+        // P pins the selection's tooltip open, Shift+P clears them all. A hover tooltip vanishes
+        // when the pointer leaves, so comparing two terms - what each is a subclass of, what each
+        // is disjoint from - is otherwise a matter of memory.
+        bindOnCanvas("ontoboard.pin", java.awt.event.KeyEvent.VK_P, 0, this::pinSelection);
+        bindOnCanvas("ontoboard.unpinAll", java.awt.event.KeyEvent.VK_P,
+                java.awt.event.InputEvent.SHIFT_DOWN_MASK, this::unpinAll);
+
         keys.put(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_ESCAPE, 0),
                 "ontoboard.clearSelection");
         graphComponent.getActionMap().put("ontoboard.clearSelection",
@@ -2421,6 +2428,48 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         if (announce) {
             setStatus(chosen.getHelp());
         }
+    }
+
+    /**
+     * Pins the selected cells' tooltips open, or unpins ones already pinned.
+     *
+     * <p>Works on the selection rather than on what is under the pointer, so it can be reached
+     * from the keyboard and so selecting two terms and pressing P puts both side by side - which
+     * is the whole reason OntoGraf has the feature.
+     */
+    private void pinSelection() {
+        Object[] selected = graph.getSelectionCells();
+        if (selected == null || selected.length == 0) {
+            setStatus("Select a term, then press P to keep its details on screen.");
+            return;
+        }
+        de.fizkarlsruhe.ise.ontoboard.canvas.PinnedTooltips pins =
+                ((CollaborativeGraphComponent) graphComponent).getPins();
+        int opened = 0;
+        for (Object cell : selected) {
+            if (cell instanceof com.mxgraph.model.mxCell
+                    && pins.toggle(((com.mxgraph.model.mxCell) cell).getId())) {
+                opened++;
+            }
+        }
+        graphComponent.getGraphControl().repaint();
+        setStatus(opened > 0
+                ? "Pinned. " + pins.size() + " of " + de.fizkarlsruhe.ise.ontoboard.canvas
+                        .PinnedTooltips.MOST_PINNED + " open - Shift+P clears them."
+                : "Unpinned. " + pins.size() + " still open.");
+    }
+
+    /** Closes every pinned card. */
+    private void unpinAll() {
+        de.fizkarlsruhe.ise.ontoboard.canvas.PinnedTooltips pins =
+                ((CollaborativeGraphComponent) graphComponent).getPins();
+        if (pins.isEmpty()) {
+            setStatus("Nothing is pinned. Select a term and press P.");
+            return;
+        }
+        pins.clear();
+        graphComponent.getGraphControl().repaint();
+        setStatus("Cleared the pinned details.");
     }
 
     private javax.swing.Action holdSpace(final boolean held) {
@@ -3582,6 +3631,10 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         // recomputing it at export time could disagree with what is on screen.
         lastProjection = projection;
         graph.render(projection, layout);
+        // A pin on a cell the rebuild dropped would be a card floating where that term used to
+        // be, saying something true about something no longer on the board.
+        ((CollaborativeGraphComponent) graphComponent).getPins()
+                .keepOnly(graph.tooltips().keySet());
         // What search matches against, and what it can no longer assume about the ontology.
         rendered = projection;
         ontologyTerms = null;

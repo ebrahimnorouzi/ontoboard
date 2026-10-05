@@ -220,6 +220,14 @@ yours to commit or ignore.
 Read by *Project → Imports…*, which shows what each import maps to and why an unresolved one
 failed. Written by *ROBOT → Import terms…*, which adds a `<uri>` entry for each module it saves.
 
+**Since 1.83.0, *Project → Imports graph…* draws the same structure as a picture** — the whole
+closure rather than the direct imports, with unresolved ones dashed and red, and a *Copy as DOT*
+button for your own layout engine. It is the only place that will tell you a module is imported
+by more than one other, which is the structure `module_type: mirror` produces and which a list
+of direct imports cannot show. Worth saying plainly: on a project whose imports are flat it adds
+nothing the table does not already say — measured on a real ODK repository, the graph is a star
+of five nodes.
+
 **Resolution itself is Protégé's, not OntoBoard's.** The plugin installs no catalog-backed IRI
 mapper; imports resolve because Protégé's own loader handles the catalog. In practice this works —
 but if an import resolves differently from how `robot` resolves it, that is the reason.

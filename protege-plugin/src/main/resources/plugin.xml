@@ -169,6 +169,15 @@
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
+  <extension id="menu.OntoBoard.project.importsGraph"
+             point="org.protege.editor.core.application.EditorKitMenuAction">
+    <name value="Imports graph..."/>
+    <path value="ontoboard.menu.OntoBoard.project/SlotA-RJ"/>
+    <toolTip value="The owl:imports structure as a picture, including which modules are shared"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.menu.ImportsGraphAction"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
+
   <extension id="menu.OntoBoard.project.compare"
              point="org.protege.editor.core.application.EditorKitMenuAction">
     <name value="Compare releases..."/>

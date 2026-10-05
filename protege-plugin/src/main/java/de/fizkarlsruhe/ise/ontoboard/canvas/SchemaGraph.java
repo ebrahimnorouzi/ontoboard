@@ -215,6 +215,16 @@ public class SchemaGraph extends mxGraph {
      * <p>Falls back to the id, which keeps a cell inserted by something other than {@code render}
      * from having no tooltip at all, and then to mxGraph's own behaviour for a cell with no id.
      */
+    /**
+     * Every tooltip, by cell id, for something that needs the text without a pointer.
+     *
+     * <p>A pinned card is built from the same string a hover would show, so the two cannot
+     * disagree about what a term is.
+     */
+    public Map<String, String> tooltips() {
+        return java.util.Collections.unmodifiableMap(tooltipsById);
+    }
+
     @Override
     public String getToolTipForCell(Object cell) {
         String id = getIdForCell(cell);
