@@ -64,7 +64,6 @@ nav:
   - Home: index.md
   - Using it:
       - Getting started: getting-started.md
-      - Features: features.md
       - Working with ODK: odk-workflow.md
       - Collaboration: collaboration.md
       - Testing collaboration locally: testing-collaboration-locally.md

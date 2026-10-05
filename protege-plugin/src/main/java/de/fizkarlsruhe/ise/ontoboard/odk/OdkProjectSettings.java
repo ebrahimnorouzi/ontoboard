@@ -145,7 +145,8 @@ public final class OdkProjectSettings {
     }
 
     /** The project's {@code <id>-odk.yaml}, whatever the id turns out to be. */
-    private static File yamlIn(File ontologyDir) {
+    /** Package-visible so the configuration editor finds the same file this reader does. */
+    static File yamlIn(File ontologyDir) {
         File[] candidates = ontologyDir.listFiles();
         if (candidates != null) {
             java.util.List<File> found = new java.util.ArrayList<File>();

@@ -79,6 +79,15 @@
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
+  <extension id="menu.OntoBoard.project.config"
+             point="org.protege.editor.core.application.EditorKitMenuAction">
+    <name value="Project configuration..."/>
+    <toolTip value="Show and edit this project's &lt;id&gt;-odk.yaml"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.odk.ProjectConfigAction"/>
+    <path value="ontoboard.menu.OntoBoard.project/SlotC-D"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
+
   <extension id="menu.OntoBoard.requirements"
              point="org.protege.editor.core.application.EditorKitMenuAction">
     <name value="Check requirements..."/>

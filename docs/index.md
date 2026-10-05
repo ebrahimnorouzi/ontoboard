@@ -6,7 +6,6 @@ A Protégé Desktop plugin for running the ODK and ROBOT pipeline inside the edi
 ## Start here
 
 - [Getting started](getting-started.md) — install and first session
-- [Features](features.md) — what the plugin does, feature by feature
 - [Working with ODK](odk-workflow.md) — the ODK workflow step by step, and exactly which steps
   OntoBoard does for you. Start here if you already maintain an ODK repository
 - [Collaboration](collaboration.md) — live sessions, and how to run the server

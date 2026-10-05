@@ -100,9 +100,28 @@ So if your script is reachable as a make target, OntoBoard can run it. A bare
 
 ### `<ontology>-odk.yaml` 🔶
 
-**The biggest gap in OntoBoard's ODK support, and the one to know about.** The file is written
-once, by the wizard, and never again. Nothing in Protégé displays it, nothing edits it, and no
-menu item names it as a target.
+**Shown and editable since 1.80.0** — *Project → Project configuration…* lists every top-level
+key with its value and its line number, and lets you change the scalar ones.
+
+Lists and nested blocks (`release_artefacts`, `import_group`, `robot_report`) are shown but not
+editable there, deliberately: the editor replaces exactly the characters a value occupies, and a
+structure's span covers everything inside it, so an in-place edit would delete the contents. The
+same goes for a `|` block of text.
+
+Edits are **spliced, not re-serialised**. Loading a real config and writing it back rewrites 28
+of its 41 lines — normalising a flow sequence, a nested indent, CRLF to LF and a missing final
+newline — so a one-word change would land in a pull request as a whole-file diff. Measured on a
+real project, changing `title` through this editor changes **one line**, and every comment
+survives.
+
+The file is re-read and compared immediately before saving: if it changed underneath — a text
+editor, a `git pull`, a `make update_repo` — the save is refused rather than discarding that
+change. The write goes through a temporary file in the same directory and an atomic move, so a
+crash cannot leave a truncated config that breaks every ODK target at once.
+
+**Reading and writing are not the same as honouring.** Five scalars drive the generated-project
+regenerator; the rest — `import_group`, `release_artefacts`, `robot_report`, `uribase` — are
+shown and saved but not yet acted on by anything in the plugin.
 
 Five scalars are ever read — `id`, `title`, `description`, `license`, `robot_version` — and only
 by *Update project files…*, which refuses to run on a real ODK repository at all. *Open existing

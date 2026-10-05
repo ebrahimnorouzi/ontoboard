@@ -1,0 +1,119 @@
+OntoBoard 1.80.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-10-05  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 8/8  test 10/10
+  2026-10-05  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 8/8  test 10/10
+
+
+THE PROJECT CONFIGURATION IS VISIBLE AND EDITABLE
+
+The largest gap in OntoBoard's ODK support, and the hinge the rest turn on. <id>-odk.yaml was
+written once by the wizard and never shown again; five scalars were read by a regex, and on a
+real ODK repository even those were unreachable because the regenerator refuses such a project
+before reading anything. Of the thirteen keys a real project declares, exactly one - title - was
+ever read, and the documentation had to tell people to leave Protege and open a text editor.
+
+OntoBoard > Project > Project configuration... now lists every top-level key with its value and
+its line, and lets scalars be edited.
+
+SPLICED, NOT RE-SERIALISED
+
+The design was chosen by measurement, not taste. Loading the real mwo-odk.yaml and dumping it
+back rewrites 28 of its 41 lines - 13 even with the indentation options tuned - normalising a
+flow sequence, a three-space nested indent, CRLF to LF, and the final newline the file does not
+have. A one-word change would arrive in a pull request as a whole-file diff: the quiet
+subtraction this project has now fixed three times.
+
+So the parser is used only to locate a value, and those characters are replaced in the original
+text. Measured on that file:
+
+    13 top-level keys read, 9 editable, 4 structures shown read-only
+    editing "title":  CRLF preserved, absent final newline preserved,
+                      all comments preserved, LINES CHANGED: 1
+
+WHAT IT REFUSES, AND WHY THAT IS THE FEATURE
+
+A list, a nested block and a | or > block of text are shown but not editable. A structure's span
+covers everything inside it, so replacing it in place would delete the contents - release
+artefacts, the whole import_group, the robot_report settings. A file with a duplicate top-level
+key is refused outright: YAML accepts one silently and keeps both, so an edit would patch
+whichever copy the walk reached while ODK reads the other.
+
+A value is quoted when writing it bare would change what it means - true, no, null, ~, anything
+with a #, a colon-space or an edge space - and a value that was already quoted stays quoted. A
+test round-trips each of those through the parser and asserts it reads back identical.
+
+TWO GUARDS ON THE DISK
+
+The file is re-read and compared immediately before writing. If it changed underneath - a text
+editor, a git pull, a make update_repo - the save is refused and names that, because the
+replacement was spliced from offsets into the old text and writing it would discard the change
+wholesale rather than merge with it.
+
+The write goes through a temporary file in the same directory and an atomic move. A crash or a
+full disk during a plain write leaves a truncated configuration, which breaks every ODK target at
+once. The same directory matters: an atomic move across filesystems is not atomic, and the system
+temporary directory is usually on a different one.
+
+TWO THINGS THE RESEARCH GOT WRONG, CAUGHT BY MEASURING
+
+The design for this was mapped by reading the real code and the real file, and two of its
+findings were false. Recording both, because trusting either would have shipped a defect.
+
+"snakeyaml is not available" - it is, and has been in every release. robot-core declares it at
+compile scope and snakeyaml-1.31.jar is an entry in the shipped bundle. The code comment
+justifying the old regex, "a parser for six keys is not worth a 104th jar", described a
+trade-off that did not exist.
+
+"Mark.getIndex() is a codepoint index" - it is a char index, in the copy this build resolves.
+Measured on a file of 39 chars and 38 codepoints containing an emoji: the raw index selects
+"mwo" correctly, and converting through offsetByCodePoints selects "wo" and a newline. The first
+version of this class did convert, and so introduced exactly the off-by-one corruption the
+conversion was written to prevent. A test with an emoji in it is what caught it.
+
+A THIRD THING THE COMPILER SAID
+
+snakeyaml arrives twice: as robot-core's dependency, and bundled inside protege-editor-owl - an
+older copy, which wins on the classpath. ScalarNode.getScalarStyle() and
+LoaderOptions.setProcessComments do not exist there. So this uses the legacy getStyle() and no
+LoaderOptions at all, and the fact that it compiles is the proof of compatibility: the build
+resolves Protege's copy, so anything that compiles works against either. The same
+two-copies-one-package trap that Explanations documents for ProtegeExplanationOrderer.
+
+DOCUMENTATION REMOVED RATHER THAN CORRECTED
+
+docs/features.md was 1,250 lines documenting the web application, and said so in its own second
+line - but index.md and the README both linked it as "what the plugin does, feature by feature",
+a description this session introduced. In a plugin-only repository a manual for software that is
+no longer here is worse than no manual, so it is gone; it remains in the history at the tag
+web-app-final. What genuinely describes the plugin - odk-workflow.md, limitations.md,
+feature-parity.md, compared-with-ontograf.md - stays.
+
+NUMBERS
+
+1547 tests, 0 failures, 1 skipped. 18 new: thirteen for reading and splicing, five for the two
+disk guards.
+
+The skip is BundleConfigurationTest's manifest test, which skips after a clean when target/ holds
+no jar.
+
+A menu slot collision was caught by MenuStructureTest rather than by a user finding two items on
+top of each other.
+
+WHAT THIS DOES NOT DO
+
+Reading and writing are not the same as honouring. Five scalars drive the generated-project
+regenerator; import_group, release_artefacts, robot_report and uribase are shown and saved and
+still acted on by nothing. Making the plugin obey its own configuration is the next piece, and
+it is larger than this one.
+
+There is no way to add a key that is not already in the file, and no raw-text editing. Both were
+left out on purpose: a free-text pane would reintroduce whole-file rewriting through the back
+door, which is the problem this release exists to avoid.
+
+STILL OPEN
+
+Running project scripts from src/scripts, exposing the 123 bundled design patterns, and the
+choice between date-based and semantic-version releases. All three were mapped against the real
+code at the same time as this one; none is implemented.
