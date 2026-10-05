@@ -385,16 +385,31 @@ public final class Toolchain {
      * <p>Harmless when the directory does not exist: a non-existent PATH entry is skipped.
      */
     public static List<String> nativeCommand(File activationScript, String target) {
+        if (target == null || target.trim().isEmpty()) {
+            throw new IllegalArgumentException("no target to make");
+        }
+        return nativeCommandFor(activationScript, "make " + target.trim());
+    }
+
+    /**
+     * The same activated shell, running an arbitrary command rather than a make target.
+     *
+     * <p>Extracted so that running one of the project's own scripts gets the same environment a
+     * build does - the activation script sourced, and pip's bin directory on PATH - rather than
+     * a second composition that drifts from this one. The caller is responsible for quoting
+     * what it passes; {@link #quote} is here for that.
+     */
+    public static List<String> nativeCommandFor(File activationScript, String command) {
         if (activationScript == null) {
             throw new IllegalArgumentException("no activation script");
         }
-        if (target == null || target.trim().isEmpty()) {
-            throw new IllegalArgumentException("no target to make");
+        if (command == null || command.trim().isEmpty()) {
+            throw new IllegalArgumentException("no command to run");
         }
         return Arrays.asList("sh", "-c",
                 ". " + quote(activationScript.getAbsolutePath())
                         + " && PATH=\"$HOME/.local/bin:$PATH\" && export PATH"
-                        + " && make " + target.trim());
+                        + " && " + command.trim());
     }
 
     /** Single-quoted for {@code sh}, with embedded quotes closed and reopened. */

@@ -75,24 +75,50 @@ installed, on any platform including Windows? **Use the wizard.**
 | `src/ontology/` | 🔶 | Edit file, catalog and Makefiles are read and used; see section 3. `imports/` is listed and audited but cannot currently be *rebuilt* from term lists — see the defect in section 4 |
 | `src/sparql/` | 🔶 | Scaffolded with one check, and *ROBOT → SPARQL…* runs the project's committed queries. The scaffold writes one query, not ODK's full set |
 | `src/metadata/` | ❌ | Not scaffolded and not read. Needed for an OBO Foundry submission; create it by hand |
-| `src/scripts/` | ❌ | Not scaffolded, and **OntoBoard cannot run a project's own scripts** |
+| `src/scripts/` | 🔶 | Not scaffolded, but the scripts a project already has are listed and can be run; see below |
 
 ### Running your own scripts
 
-You asked for this specifically, so it deserves a straight answer: **you cannot run an arbitrary
-project script from inside Protégé today.** What you *can* run is narrower and worth knowing
-exactly:
+**Since 1.81.0** - *Project → Run a project script…* lists what is in `src/scripts/` and runs
+the one you pick.
 
-- **Make targets** — *Project → Build…* lists the targets from `src/ontology/Makefile`, following
-  its `include` lines into `<id>.Makefile`, so your custom targets appear in the chooser. Picking
-  one runs it, by the best route available: in-process against the embedded ROBOT for a project
-  OntoBoard scaffolded, otherwise in the project's own container or a native ODK environment.
-- **ROBOT operations** — the whole *ROBOT* menu, in-process, on the ontology you have open.
-- **SPARQL** — your committed `src/sparql/*.rq`, with the same pass/fail convention
+The directory is `src/scripts` unless the Makefile declares `SCRIPTSDIR`, which is read rather
+than assumed - a project that moved the directory would otherwise be told it has no scripts.
+
+**Where it runs.** The container first, then a native ODK environment, then this machine. That
+order is not a fallback chain with the best option last: measured on a real ODK project, all
+three of its scripts need something that exists only inside `obolibrary/odkfull` -
+`run-command.sh` calls `/usr/bin/time`, `update_repo.sh` calls `/tools/odk.py`, and
+`validate_id_ranges.sc` is an Ammonite script needing `amm`. Offering to run those on your
+laptop would be offering a failure. The mount, working directory and heap settings are the same
+ones a build gets, because they come from the same code.
+
+**What runs it** comes from the script's `#!` line, or from its extension when it has none
+(`.sh`, `.bash`, `.py`, `.pl`, `.rb`, `.sc`). A script with neither is listed but not offered -
+guessing at an interpreter would produce a confident wrong answer.
+
+**You see the command before it runs.** This is the one place in OntoBoard that runs code
+somebody else wrote and OntoBoard has not inspected, so the exact argv, the route and any
+warning are on screen, and nothing starts until you agree to that particular command.
+
+**Windows line endings are called out,** because the failure they cause names the wrong thing: a
+shell in a Linux container reading a script whose first line ends `\r` reports *"cannot execute:
+required file not found"*, which reads as a missing interpreter. Every script in the project this
+was built against has CRLF endings, usually from git's `core.autocrlf`.
+
+**Limits.** A script gets 15 minutes rather than a build's 45, and there is still no way to
+cancel a running one - the timeout is what ends a runaway. Arguments cannot be passed yet: a
+script that needs them is better reached as a make target.
+
+Also runnable, and worth knowing about:
+
+- **Make targets** - *Project → Build…* lists the targets from `src/ontology/Makefile`,
+  following its `include` lines into `<id>.Makefile`, so your custom targets appear in the
+  chooser. Note that a real ODK Makefile sets `SHELL = $(SCRIPTSDIR)/run-command.sh`, so every
+  recipe line of the build already runs through a script in this directory.
+- **ROBOT operations** - the whole *ROBOT* menu, in-process, on the ontology you have open.
+- **SPARQL** - your committed `src/sparql/*.rq`, with the same pass/fail convention
   `make sparql_test` uses.
-
-So if your script is reachable as a make target, OntoBoard can run it. A bare
-`src/scripts/my-thing.sh` is not, and running one is a gap rather than a decision.
 
 ---
 
@@ -139,8 +165,9 @@ Two consequences worth stating plainly. On a real ODK repository such as MWO, ex
 keys OntoBoard's *own* scaffold writes are read by nothing, including `uribase`, which is
 decorative: the base IRI is recovered from the edit file, because `uribase` is lossy.
 
-**To configure the file, open it in a text editor.** Making it visible and editable inside
-Protégé is the next piece of work on this part of the plugin.
+**So for a list or a nested block, still open the file in a text editor** — and for anything
+OntoBoard does not act on, remember that changing it here only changes the file. What ODK does
+with it next is ODK's business, by way of `update_repo`.
 
 ### `Makefile` and `<ontology>.Makefile` 🔶
 
@@ -203,7 +230,7 @@ but if an import resolves differently from how `robot` resolves it, that is the 
 
 | ODK step | | OntoBoard |
 |---|---|---|
-| Declare it under `import_group` in the YAML | ❌ | No editor for the YAML; `import_group` is not read |
+| Declare it under `import_group` in the YAML | 🔶 | *Project configuration…* shows the block but will not edit a nested one, and nothing reads `import_group` |
 | Check the Makefile | 🔶 | *Build…* lists targets; nothing shows the import rules |
 | Add term IRIs to `<import>_terms.txt` | ❌ | **No viewer and no editor for term files** |
 | `sh run.sh make refresh-imports` | 🔶 | *Project → Refresh imports…* audits, and rebuilds from term lists |
@@ -233,11 +260,16 @@ OntoBoard is strongest where ODK needs ROBOT and a reasoner: building, reporting
 extracting modules, comparing releases, minting identifiers. It is weakest wherever the ODK
 workflow routes through `<ontology>-odk.yaml`, because that file is effectively write-once.
 
-The three things that would close most of the remaining distance, in the order they are worth
-doing:
+Since 1.80.0 the YAML is shown and its scalars are editable, and since 1.81.0 the project's own
+scripts are listed and runnable — the two gaps that used to head this list. What is left, in the
+order it is worth doing:
 
-1. **A YAML editor** — show the file, validate it, write it back. It is the hinge every other gap
-   on this page turns on.
-2. **A term-list editor** — view and edit `<import>_terms.txt`, then refresh. Plus the comment bug
-   above.
-3. **Running project scripts** — so `src/scripts/` is reachable without a terminal.
+1. **Editing a list or a nested block in the YAML** — `import_group`, `release_artefacts` and
+   `robot_report` are shown but not editable, which is where most of section 4 still routes
+   through a text editor.
+2. **A term-list editor** — view and edit `<import>_terms.txt`, then refresh. They read correctly
+   now; nothing in Protégé writes one.
+3. **Acting on what the YAML says** — the file is read and written faithfully, but only five
+   scalars drive anything, so most keys are still just text OntoBoard preserves.
+4. **Passing arguments to a script, and cancelling a running one** — a script runs bare today,
+   and only the 15-minute timeout stops it.

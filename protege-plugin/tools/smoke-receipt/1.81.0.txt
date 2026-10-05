@@ -1,0 +1,128 @@
+OntoBoard 1.81.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-10-05  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 8/8  test 10/10
+  2026-10-05  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 8/8  test 10/10
+
+
+A PROJECT'S OWN SCRIPTS CAN BE RUN FROM INSIDE PROTEGE
+
+Asked for directly: "it should be possible that users have scripts and it should be run
+everything inside the protege". Nothing in the plugin read, listed or ran src/scripts, and the
+documentation said so in as many words - "you cannot run an arbitrary project script from inside
+Protege today".
+
+OntoBoard > Project > Run a project script... now lists what is there and runs the one you pick.
+
+THEY ARE NOT A PERIPHERAL DIRECTORY
+
+Worth saying because the feature looks like a convenience and is not. A real ODK Makefile sets
+
+    SHELL = $(SCRIPTSDIR)/run-command.sh
+
+so every recipe line of a 767-line build already executes through a script in this directory.
+Running one by hand is the same kind of act as running a target, which is why the route, the
+mount and the heap settings come from the same code that builds a target rather than from a
+second composition that would drift from it.
+
+THE CONTAINER IS THE NORMAL ROUTE, NOT THE FALLBACK
+
+Decided by measurement. All three scripts in the real project this was built against need
+something that exists only inside obolibrary/odkfull:
+
+    run-command.sh         calls /usr/bin/time
+    update_repo.sh         calls /tools/odk.py
+    validate_id_ranges.sc  is an Ammonite script, needing amm
+
+Zero of three would run on the machine they are checked out on. So the order is container, then
+a native ODK environment, then this machine - and "run it here" is last because offering it
+first would be offering a failure. What runs a script comes from its #! line, or from its
+extension when it has none; a script with neither is listed but not offered, because guessing an
+interpreter produces a confident wrong answer.
+
+THE COMMAND IS SHOWN BEFORE IT RUNS
+
+This is the only place in OntoBoard that runs code somebody else wrote and OntoBoard has not
+inspected. The confirmation names the route, prints the exact argv, carries any warning, and
+says plainly that the script runs with your permissions and can change the project. Nothing
+starts until you agree to that particular command. The plugin already shows the command for a
+build as a courtesy; here it is the point.
+
+THE LINE-ENDING WARNING EXISTS BECAUSE THE FAILURE LIES
+
+All three scripts in that project have CRLF endings. A shell in a Linux container reading a
+script whose first line ends \r reports
+
+    cannot execute: required file not found
+
+which reads as a missing interpreter and sends people looking for the wrong thing. So it is
+detected and named before the run, with git's core.autocrlf identified as the usual cause - and
+only for the container and native routes, since a Windows host runs such a script perfectly
+well.
+
+TWO BUGS THE REAL PROJECT FOUND THAT THE FIXTURES DID NOT
+
+The tests passed, 18 of them, before this was ever pointed at mwo. Pointing it there produced:
+
+    docker run ... obolibrary/odkfull sh /work/src/ontology/../scripts/run-command.sh
+
+The .. is cosmetic - mwo declares SCRIPTSDIR = ../scripts - but it appears in the one dialog
+whose whole purpose is that a human can read the command and check it, and a path with .. in the
+middle is harder to check. Looking at why it was there found the real defect underneath:
+containerPathOf compared getAbsolutePath() strings, which do not resolve .., with a bare
+startsWith and no separator. Two paths the container cannot see were therefore accepted and
+mapped to plausible /work/... paths:
+
+    <root>/../elsewhere/x.sh   begins with the root's text, climbs out of it
+    <root>-backup/x.sh         begins with the root's text, different directory
+
+Both now resolve before the comparison, and the separator is required. The method's own comment
+had promised exactly this - "returning null rather than guessing ... because a path the
+container cannot see would fail inside it with a message about the file rather than about the
+mount" - and the code did the opposite. Three tests pin it.
+
+A DECISION THAT READ A PREFERENCE
+
+planFor looked the native ODK environment up itself, through java.util.prefs. A test for "there
+is no route, refuse and advise" would then pass or fail depending on whether the machine running
+it happened to have that preference set. It is a parameter now, like the container runtime and
+the interpreter already were, and the action resolves it. Everything the decision depends on is
+an argument, which is the only reason it can be tested without launching anything - and for a
+class whose job is to run arbitrary code, not launching anything during the tests is not a small
+point.
+
+LIMITS, STATED
+
+A script gets 15 minutes against a build's 45. A build is a known quantity that legitimately
+takes an hour; a script is arbitrary code somebody has just chosen to run, and there is still no
+way to cancel a running child process, so the timeout is the only thing that ends a runaway.
+
+Arguments cannot be passed. A script that needs them is better reached as a make target, and
+adding an argument field to a dialog that also promises "this is the exact command" would make
+that promise harder to keep.
+
+NUMBERS
+
+1568 tests, 0 failures, 1 skipped. 21 new, counted three ways and agreeing: the Maven summary,
+the sum over the surefire reports, and an anchored grep for @Test.
+
+34/34 classes named in plugin.xml load on both hosts, up from 33 - the new action among them.
+
+The skip is BundleConfigurationTest's manifest test, which skips after a clean when target/
+holds no jar.
+
+DOCUMENTATION CORRECTED, NOT ONLY EXTENDED
+
+docs/odk-workflow.md said "you cannot run an arbitrary project script from inside Protege
+today", and three other claims on that page had gone stale when 1.80.0 shipped the YAML editor:
+"Making it visible and editable inside Protege is the next piece of work", a table row reading
+"No editor for the YAML", and a roadmap whose first two items were both already done. All four
+fixed. A page that overstates what a tool does is the failure this project keeps guarding
+against; a page that understates it by a release is the same failure facing the other way.
+
+STILL OPEN
+
+The 123 bundled design patterns, still exposed nowhere in the plugin. The choice between
+date-based and semantic-version releases. Pinned tooltips and an imports graph from the OntoGraf
+survey. Passing arguments to a script, and cancelling one.

@@ -79,6 +79,15 @@
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
+  <extension id="menu.OntoBoard.project.scripts"
+             point="org.protege.editor.core.application.EditorKitMenuAction">
+    <name value="Run a project script..."/>
+    <toolTip value="Run one of the scripts in the project's src/scripts directory"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.odk.RunScriptAction"/>
+    <path value="ontoboard.menu.OntoBoard.project/SlotC-E"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
+
   <extension id="menu.OntoBoard.project.config"
              point="org.protege.editor.core.application.EditorKitMenuAction">
     <name value="Project configuration..."/>

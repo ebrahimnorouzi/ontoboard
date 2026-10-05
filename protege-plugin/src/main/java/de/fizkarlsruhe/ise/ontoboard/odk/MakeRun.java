@@ -174,6 +174,27 @@ public final class MakeRun {
         if (target == null || target.trim().isEmpty()) {
             throw new IllegalArgumentException("no target to make");
         }
+        return containerCommandFor(runtime, ontologyDirectory, image,
+                java.util.Arrays.asList("make", target.trim()));
+    }
+
+    /**
+     * The container invocation for an arbitrary command, not only for {@code make}.
+     *
+     * <p>Extracted so that running one of the project's own scripts uses the same mount, the
+     * same working directory and the same heap settings as a build does, rather than a second
+     * composition that drifts from this one. The project's scripts are not peripheral: a real
+     * ODK Makefile sets {@code SHELL = $(SCRIPTSDIR)/run-command.sh}, so every recipe line in
+     * the build already runs through one.
+     *
+     * @param inContainer the command and its arguments, as the container will see them - paths
+     *     must be the container's, so {@code /work/src/scripts/x.sh} rather than a host path
+     */
+    public static List<String> containerCommandFor(String runtime, File ontologyDirectory,
+            String image, List<String> inContainer) {
+        if (inContainer == null || inContainer.isEmpty()) {
+            throw new IllegalArgumentException("no command to run in the container");
+        }
         if (ontologyDirectory == null) {
             throw new IllegalArgumentException("no project directory to mount");
         }
@@ -198,8 +219,7 @@ public final class MakeRun {
         command.add("-e");
         command.add("JAVA_OPTS=-Xmx8G");
         command.add(image == null || image.trim().isEmpty() ? DEFAULT_IMAGE : image.trim());
-        command.add("make");
-        command.add(target.trim());
+        command.addAll(inContainer);
         return command;
     }
 
