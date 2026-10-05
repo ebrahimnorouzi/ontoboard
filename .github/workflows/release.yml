@@ -5,6 +5,12 @@
 # uploaded by hand from a laptop is a jar nobody can reproduce - and this project has already
 # shipped one release (v1.0.0) that never loaded in Protege at all.
 #
+# That release was unpublished in 1.84.0, after being measured rather than assumed: its jar fails
+# OSGi resolution on Protege 5.6.9 for a missing ch.qos.logback.core.joran.sanity, and fails to
+# install at all on 5.5.0. The tag stays - it is the first plugin commit - but nobody should be
+# able to download a plugin that cannot start. The smoke receipt gate below exists so that this
+# cannot happen again.
+#
 # To publish a version:
 #
 #     git tag -a v1.75.0 -m "OntoBoard 1.75.0"
@@ -50,6 +56,21 @@ jobs:
           echo "version=$pom" >> "$GITHUB_OUTPUT"
           echo "Releasing $pom"
 
+      # The release title carries the date as well as the version, because the two audiences ask
+      # different questions. A semantic version answers "is this newer than what I have"; a date
+      # answers "how old is this", which is the question an ODK user asks first - ODK's own
+      # artefacts are dated, and so are the OBO releases a project publishes.
+      #
+      # The tag stays semantic. Renaming 80-odd existing tags to dates would break every download
+      # link already written down, and the jar filename carries the version either way.
+      #
+      # Taken from the tagged commit, not from the clock: re-running this workflow on an old tag
+      # must produce the title that release already has, and `date` would quietly give it today's.
+      - name: The date this version was tagged
+        id: when
+        run: |
+          echo "date=$(git log -1 --format=%cd --date=short)" >> "$GITHUB_OUTPUT"
+
       # The same gate the ordinary build applies. A release is the one moment it matters most:
       # versions 1.20.0 to 1.24.0 shipped without ever being loaded in a Protege.
       - name: Require a host smoke receipt for this version
@@ -78,7 +99,7 @@ jobs:
       - name: Publish
         uses: softprops/action-gh-release@v2
         with:
-          name: OntoBoard ${{ steps.version.outputs.version }}
+          name: OntoBoard ${{ steps.version.outputs.version }} (${{ steps.when.outputs.date }})
           body_path: protege-plugin/tools/smoke-receipt/${{ steps.version.outputs.version }}.txt
           files: protege-plugin/target/ontoboard-${{ steps.version.outputs.version }}.jar
           fail_on_unmatched_files: true

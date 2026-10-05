@@ -1,0 +1,76 @@
+OntoBoard 1.84.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-10-05  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 9/9  test 10/10
+  2026-10-05  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 9/9  test 10/10
+
+No code changed in this release. It exists to settle two questions about how OntoBoard is
+published, and to prove the first of them works by being published under it.
+
+
+SEMANTIC TAGS, DATED RELEASES
+
+Chosen rather than assumed, because the two audiences ask different questions. A semantic
+version answers "is this newer than what I have". A date answers "how old is this", which is the
+first thing an ODK user asks - ODK's own artefacts are dated, and so are the OBO releases a
+project publishes.
+
+So the tag stays v1.84.0 and the release is titled "OntoBoard 1.84.0 (2026-10-05)".
+
+Tags are not becoming dates. Renaming the existing ones would break every download link already
+written down, and the jar filename carries the version either way.
+
+The date is read from the tagged commit, not from the clock. Re-running the release workflow on
+an old tag has to produce the title that release already has, and `date` would quietly give it
+today's.
+
+
+A RELEASE NOBODY COULD USE HAS BEEN UNPUBLISHED
+
+v1.0.0 - the first Protege plugin release, from 2026-08-24 - is gone from the releases page. Its
+tag stays, because it is the first plugin commit and the harm was entirely in the download.
+
+This was nearly got wrong twice, in opposite directions, and both are worth recording.
+
+First I described it as "a stale release from the web-app era" and recommended deleting it on
+that basis. That was false. Reading it shows a genuine plugin release: "First release of
+OntoBoard as a Protege plugin, replacing the previous web application. Single-user, no server,
+no Docker", shipping a 64 MB plugin jar with install instructions that still apply. Deleting it
+on my description would have destroyed the record of the plugin's first release for a reason
+that was not true, with the user's agreement obtained under that false description.
+
+So I stopped and said I would not delete it. That was also wrong, and the reason was sitting in
+a comment in our own release workflow: "this project has already shipped one release (v1.0.0)
+that never loaded in Protege at all."
+
+Measured rather than believed. The jar was downloaded from the release and smoked on both hosts:
+
+  Protege 5.6.9  FAILED  BundleException: Unable to resolve ontoboard - missing requirement
+                         osgi.wiring.package=ch.qos.logback.core.joran.sanity
+  Protege 5.5.0  FAILED  Bundle plugins\ontoboard-1.0.0.jar failed to install
+
+It does not start anywhere. A download that cannot work is worse than no download, so it is
+unpublished - for the true reason rather than the one first given, and the true reason is the
+stronger of the two.
+
+Both hosts were restored to 1.84.0 afterwards, and the smoke above is that jar.
+
+The gate that stops this recurring is already in the release workflow: it refuses to publish a
+version with no host smoke receipt in tools/smoke-receipt/. v1.0.0 predates it. Nothing since
+1.25.0 has shipped without one.
+
+
+NUMBERS
+
+1629 tests, 0 failures, 0 skipped - unchanged, because no code changed.
+
+36/36 classes named in plugin.xml load on both hosts.
+
+
+STILL OPEN
+
+Four items, none blocking: the collaboration backlog (Collaborate is buried in the overflow menu
+and there is no host mode), adding your own pattern to the library and a second collection,
+arguments for a project script and cancelling a running one, and editing a list or a nested
+block in the ODK YAML.

@@ -17,6 +17,20 @@ mvn clean package     # -> target/ontoboard-<version>.jar
 tests compiled against stale classes — on one occasion hiding a source file that did not
 compile at all. If a result matters, delete `target/` first.
 
+### Versions are semantic, releases are dated
+
+The tag is a semantic version — `v1.84.0` — and the release it publishes is titled
+`OntoBoard 1.84.0 (2026-10-05)`. Both, because the two audiences ask different questions: a
+version answers *is this newer than what I have*, and a date answers *how old is this*, which is
+the first thing an ODK user asks, since ODK's own artefacts and the OBO releases a project
+publishes are all dated.
+
+The date comes from the tagged commit rather than from the clock, so re-running the release
+workflow on an old tag reproduces the title that release already has.
+
+Tags stay semantic rather than becoming dates. Renaming the existing ones would break every
+download link already written down, and the jar filename carries the version either way.
+
 ### Bump the version in the same commit as the change
 
 The version lives in exactly one place, `protege-plugin/pom.xml`; bnd derives
