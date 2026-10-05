@@ -71,6 +71,7 @@ nav:
   - Honest accounting:
       - Limitations and roadmap: limitations.md
       - Feature parity: feature-parity.md
+      - Compared with OntoGraf: compared-with-ontograf.md
   - Going deeper:
       - Development: development.md
       - Architecture: architecture.md

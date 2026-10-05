@@ -19,6 +19,9 @@ A Protégé Desktop plugin for running the ODK and ROBOT pipeline inside the edi
   reasoning behind each gap and the defects found along the way
 - [Feature parity](feature-parity.md) — the feature inventory, measured against the OntoBoard
   web application the plugin grew out of
+- [Compared with OntoGraf](compared-with-ontograf.md) — what Protégé's own visualisation does
+  that this canvas does not, read out of its jar rather than from memory, and what is worth
+  taking from it
 
 ## Going deeper
 
