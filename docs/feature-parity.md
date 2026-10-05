@@ -30,8 +30,8 @@ OntoBoard versions would duplicate mature tools and is the wrong use of effort.
 links, notifications, an admin page — these are not ontology features, they are what a
 multi-tenant web service needs. A desktop plugin has no use for them.
 
-What genuinely remains is the ODK pattern library, the SPARQL panel, Widoco documentation,
-pull requests, and threaded comments. The ODK/ROBOT pipeline surface, provenance, quality
+What genuinely remains is the SPARQL panel, Widoco documentation, pull requests, and
+threaded comments. The ODK/ROBOT pipeline surface, provenance, quality
 reporting, git tooling and live collaboration all ship — this document said otherwise for
 several releases, because the plugin grew faster than the table did.
 
@@ -128,7 +128,7 @@ individual views in a tabbed column beside the canvas, so none of this needs a t
 
 | Feature | Web app | Plugin | Assessment |
 |---|---|---|---|
-| ODP pattern library | ✅ 13 patterns | ❌ | **Build.** Distinctive and valuable; `patterns-repository/` is already in the repo |
+| ODP pattern library | ✅ 13 patterns | ✅ **123 patterns** | Shipped 1.82.0. Browsed by publisher or category, and imported through the ODK term-extraction path |
 | CSV → ROBOT template wizard | ✅ | ✅ | *ROBOT → Template…*, TSV or CSV, every bad row reported at once. robot-core 1.9.8 reads no XLSX templates at all, so this is not a gap against ROBOT |
 | SPARQL query panel | ✅ | 🧩 | `sparql-query-plugin`, bundled |
 | GitHub import | ✅ | ✅ | *Project → Open from GitHub…* clones and opens the edit file |
@@ -209,10 +209,9 @@ describe a plugin several releases behind the one being downloaded.
 |---|---|---|
 | 1 | **Pull requests** | The rest of the git surface ships; opening and reviewing a PR still means leaving Protégé |
 | 2 | **SPARQL** | The scaffold writes `src/sparql/check_labels.rq` and the generated build now runs it — the plugin still cannot |
-| 3 | **ODP pattern library** | Distinctive, and `patterns-repository/` is already here |
-| 4 | **Quality** — OOPS!, OQuaRE | Rounds out the report view |
-| 5 | **Widoco, export formats, prefix editing** | Useful, not blocking |
-| 6 | **Entity locking, threaded comments** | After live collaboration has been used in anger |
+| 3 | **Quality** — OOPS!, OQuaRE | Rounds out the report view |
+| 4 | **Widoco, export formats, prefix editing** | Useful, not blocking |
+| 5 | **Entity locking, threaded comments** | After live collaboration has been used in anger |
 | 7 | **Collaboration vocabulary** | Measured on pizza v5: 45 of 141 axioms cannot travel - every `EquivalentClasses`, `DisjointClasses`, domain, range, property chain and `ObjectPropertyAssertion`, and property declarations. See `reports/v5/collaboration.md` in the pizza project for the table |
 
 **Deliberately not building:** anything marked 🧩 (Protégé already provides it — duplicating

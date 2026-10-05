@@ -6,7 +6,7 @@
 
   <groupId>de.fizkarlsruhe.ise</groupId>
   <artifactId>ontoboard</artifactId>
-  <version>1.81.0</version>
+  <version>1.82.0</version>
   <packaging>bundle</packaging>
 
   <name>OntoBoard</name>
@@ -161,6 +161,25 @@
         <!-- filtering resolves ${project.artifactId} inside plugin.xml and view configs -->
         <directory>src/main/resources</directory>
         <filtering>true</filtering>
+      </resource>
+      <resource>
+        <!--
+          The bundled design patterns, from the repository root rather than copied into
+          src/main/resources: one copy of the data, and the index generator reads the same
+          directory the build packages.
+
+          Filtering is off and must stay off. These are data files full of IRIs, and Maven's
+          filter rewrites ${...} - an OWL file is not a template, and a silent substitution
+          inside an IRI would be exactly the quiet corruption this project keeps guarding
+          against. 2.5 MB over 123 patterns.
+        -->
+        <directory>${project.basedir}/../patterns</directory>
+        <targetPath>patterns</targetPath>
+        <filtering>false</filtering>
+        <includes>
+          <include>index.tsv</include>
+          <include>*/pattern.owl</include>
+        </includes>
       </resource>
     </resources>
 

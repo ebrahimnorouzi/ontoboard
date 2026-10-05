@@ -89,11 +89,29 @@ public class ImportTermsAction extends OntoBoardAction {
         return "Import terms";
     }
 
+    /**
+     * Fills the source and terms in before the dialog opens.
+     *
+     * <p>So that the pattern library can hand a chosen pattern to this action instead of
+     * carrying its own copy of what follows. Those five steps - extract, write the module, write
+     * the term list, add the import, add the catalog entry - have four separate guards in them
+     * that exist because each one was once got wrong, and a second implementation would start
+     * without any of them. The dialog still opens: the user picks BOT or STAR and what to do
+     * with the module, exactly as if they had typed the source themselves.
+     */
+    void seedWith(String source, String terms) {
+        this.seededSource = source == null ? "" : source;
+        this.seededTerms = terms == null ? "" : terms;
+    }
+
+    private volatile String seededSource = "";
+    private volatile String seededTerms = "";
+
     @Override
     protected boolean configure() {
         Map<String, String> values = new LinkedHashMap<String, String>();
-        values.put(OPTION_SOURCE, "");
-        values.put(OPTION_TERMS, "");
+        values.put(OPTION_SOURCE, seededSource);
+        values.put(OPTION_TERMS, seededTerms);
         values.put(OPTION_TERM_FILE, "");
         values.put(OPTION_METHOD, TermExtract.DEFAULT_METHOD.getLabel());
         values.put(OPTION_OUTCOME, Outcome.SAVE_AND_IMPORT.label);

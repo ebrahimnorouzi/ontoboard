@@ -55,6 +55,10 @@ from the axioms you actually wrote: restrictions inside `EquivalentClasses` and 
 only the three shapes most tools read. Switch on the reasoner's conclusions, then right-click a
 dotted edge and ask **why** — it answers with the axioms that force it.
 
+**123 design patterns, built in** — browse the ontology design patterns shipped with the
+plugin, grouped by who published them, and import the terms you want through ROBOT's module
+extraction rather than by copying a file in.
+
 **Notes and provenance** — editorial notes that travel with the ontology, discussion links to your
 tracker, and authorship stamped on what you change.
 
@@ -71,7 +75,7 @@ documentation site. The same pages are readable here in [`docs/`](docs/):
   steps OntoBoard does for you
 - [Collaboration](docs/collaboration.md)
 - [Limitations and roadmap](docs/limitations.md) — an honest inventory of what it does not do
-- [Architecture](docs/architecture.md) · [Development](docs/development.md)
+- [Development](docs/development.md)
 
 ## Status
 

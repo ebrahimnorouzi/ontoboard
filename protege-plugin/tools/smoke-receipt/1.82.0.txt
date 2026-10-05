@@ -1,0 +1,167 @@
+OntoBoard 1.82.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-10-05  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 9/9  test 10/10
+  2026-10-05  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 9/9  test 10/10
+
+
+THE PATTERN LIBRARY
+
+Asked for: "I want to have a pattern repository to import ODPs to the ontology, and have these
+patterns, separated by the source, and uses ODK to import terms from the pattern." The 123
+patterns were already in the repository, in a directory the plugin never opened and the jar
+never carried.
+
+ROBOT > Pattern library... now browses them and imports terms from one.
+
+SEPARATED BY PUBLISHER, BECAUSE THE COLLECTION IS ONE BUCKET
+
+The obvious reading of "separated by the source" is the metadata's own source field, and that
+field says ontologydesignpatterns.org for all 123 - every one came from a single harvest of the
+ODP portal. Grouping by it would be truthful and useless.
+
+The portal is a catalogue of submissions. The IRI each pattern declares for itself names who
+actually published it, and there are thirteen:
+
+    81  ontologydesignpatterns.org        3  delicias.dia.fi.upm.es
+     9  ecareathome-ontology.mpi...        2  irit.fr
+     6  semantic.cs.put.poznan.pl          2  descartes-core.org
+     5  w3id.org                           2  daselab.org
+     4  purl.org                           1  semanticweb.org
+     4  mklab.iti.gr                       1  kastle-labl.org
+     3  unknown
+
+So the model carries both: collection, where OntoBoard got it, and publisher, who wrote it. The
+browser groups by publisher, and the three unknowns sort last rather than between two real ones.
+
+IMPORTING A PATTERN IS IMPORTING TERMS
+
+Choosing a pattern hands it to ROBOT > Import terms..., which already extracts the module,
+writes the term list, saves the module, adds the import and adds the catalog entry. Those five
+steps carry four guards, each written after the corresponding mistake - a shared module filename
+silently overwriting an earlier import, a stale module left in Protege's manager, a missing
+catalog entry that resolves for its author and nobody else. A second implementation would start
+with none of them, so there is not one: ImportTermsAction gained a seedWith, and the library
+fills it in.
+
+This also decides what arrives. 101 of the 123 patterns declare owl:imports - 76 to the ODP
+annotation schema, four to DUL, many to sibling patterns. Copying a pattern file into a project
+would drag an upper ontology in behind it; extracting a module takes the terms chosen and the
+axioms that give them meaning, and the details pane says so for any pattern that imports
+anything.
+
+THE SHIPPED METADATA IS WRONG ABOUT THE THING A CHOOSER DISPLAYS
+
+Every pattern ships a class_count and a property_count. Measured against the files:
+
+    41 of 123 class_count wrong     affordance says 2, has 8
+                                    eventprocessing says 8, has 17
+                                    vesselspecies says 0, has 5
+    17 of 123 property_count wrong  eventprocessing says 22, has 36
+                                    smarthome-timeinterval says 1, has 4
+
+A chooser that states a pattern's size is making a claim, and a third of those claims would
+have been false. So the index carries no counts at all and they are computed from the OWL file
+when a pattern is opened. A test asserts affordance shows eight and not two.
+
+TEN OF THE 123 ARE ANOTHER ONE UNDER A SECOND NAME
+
+Found two ways, because neither finds all of them. Five pairs have an identical signature - the
+same file twice. Four more declare the same ontology IRI while differing slightly. Together:
+
+    agentrole = agent-role                partof = part-of
+    collection-entity = collection        spatial-object = place
+    collectionentity = collection         timeinterval = time-interval
+    contentops = actuation-actuator-effect   topic = simpletopic
+    reportingnewsevent = newsreportingevent
+    food-recipe-ingredient-substitution-ontology-design-pattern = ...-odp
+
+The library lists 123 entries and holds 113 patterns. Each duplicate names its original, because
+importing both would import the same terms twice. A file: IRI is never treated as evidence:
+three patterns carry an absolute path from the machine the harvest ran on, and grouping on that
+would relate them for no better reason than having been harvested together.
+
+TWO PATTERNS THAT WOULD HAVE FAILED ONLY IN THE SHIPPED JAR
+
+The nastiest finding here. Both airline patterns declare
+
+    owl:imports file:/schemas/cpannotationschema.owl
+
+Read from a file, that resolves to a file: IRI, fails to fetch, and the silent missing-import
+setting swallows it. Read from a stream with no document IRI - which is the only way the plugin
+ever reads them - it becomes urn:absolute:/schemas/cpannotationschema.owl, no factory handles
+that scheme, and the exception thrown is not a missing import, so nothing silences it. Those two
+patterns would not have opened.
+
+It was invisible to every test that read the directory, and it only showed up when the tests
+were pointed at the packaged resources. Fixed by giving the stream a file: document IRI, so an
+unresolvable import fails the way the strategy expects. A test names both patterns and the
+reason.
+
+A WRONG ANSWER ABOUT THE MOUNT, FOUND THE SAME WAY
+
+Not in this feature, but found while measuring it and fixed in 1.81.0: containerPathOf compared
+unresolved absolute paths with a bare startsWith, so <root>/../elsewhere/x.sh and
+<root>-backup/x.sh were both mapped into /work. Recorded here because it is the same lesson - the
+code was correct against its fixtures and wrong against a real project.
+
+AN INDEX, BECAUSE A JAR CANNOT BE LISTED
+
+The library needs to know what it holds, and ClassLoader.getResource on a directory gives a
+bundle: URL under Felix that cannot be enumerated - the trap ReportQueries already documents for
+ROBOT's own report queries. So patterns/index.tsv lists them, generated by the same class that
+reads it, and a test rebuilds it from the directories and fails if it has gone stale. A pattern
+added without reindexing breaks the build instead of going missing in silence.
+
+Seventeen descriptions began with "Diagram (this article has no graphical representation)" or
+"Diagram | Intent: |" - section headings the harvest swept off the wiki page. Those are stripped.
+For eight of them the heading was the entire field, so after cleaning there is nothing; two are
+rescued by their competency questions and six show no description at all, which is the honest
+answer.
+
+THE SELF-CHECK NOW OPENS A PATTERN
+
+Eight checks became nine. The new one lists the library and parses one pattern, inside Felix,
+in the real Protege. Unit tests read target/classes through Maven's loader and prove the files
+are correct while proving nothing about whether the bundle can reach them; if the resources were
+left out of the jar the only symptom would be a menu item opening an empty window. Both hosts
+report "123 patterns indexed, and actingfor parsed to 2 classes, 2 properties".
+
+NUMBERS
+
+1605 tests, 0 failures, 0 skipped. 37 new, counted three ways and agreeing.
+
+35/35 classes named in plugin.xml load on both hosts, up from 34.
+
+The jar grew 340 KB for 123 ontologies and an index - 2.5 MB of XML compresses well.
+
+A 729-LINE MANUAL FOR SOFTWARE THAT IS NOT HERE
+
+docs/architecture.md documented the deleted web application - five Docker services, a database
+schema, an authentication flow, an API surface, and "13 bundled ODPA patterns" reached through
+/api/patterns. It said "Scope: the web application" in its own second line, exactly as
+features.md did before it was removed for the same reason, and the docs site still linked it
+under "Going deeper". It is gone; it remains in the history at the tag web-app-final. Writing
+the pattern documentation is what surfaced it, because the new page would have contradicted it.
+
+Three further claims were corrected rather than added to: feature-parity.md listed the pattern
+library as the third thing to build and as "13 patterns", and said what remains "is the ODK
+pattern library, the SPARQL panel, ...".
+
+WHAT THIS DOES NOT DO
+
+The collection is fixed at build time. There is no way to add your own pattern, and no way to
+point at another repository - the materialdigital patterns mentioned alongside the request are
+not here. The model has a collection field so a second one can be added without rework, but
+nothing populates it yet.
+
+Nothing reads a pattern's competency questions back into the ontology, and the library does not
+know what you have already imported, so it will not tell you that you imported this one last
+week.
+
+STILL OPEN
+
+The choice between date-based and semantic-version releases. Pinned tooltips and an imports
+graph from the OntoGraf survey. Passing arguments to a script, and cancelling one. Editing a
+list or a nested block in the ODK YAML.

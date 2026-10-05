@@ -26,7 +26,6 @@ A Protégé Desktop plugin for running the ODK and ROBOT pipeline inside the edi
 
 - [Development](development.md) — building, testing, and the OSGi constraints that are
   load-bearing
-- [Architecture](architecture.md) — how the pieces fit together
 
 ## Design record
 

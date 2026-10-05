@@ -22,7 +22,7 @@ class SelfCheckTest {
     void everyCheckPassesOnTheClasspath() {
         SelfCheck.Result result = SelfCheck.run();
 
-        assertEquals(8, result.getChecks().size(), "expected eight checks: " + result.getChecks());
+        assertEquals(9, result.getChecks().size(), "expected nine checks: " + result.getChecks());
         assertTrue(result.isPassed(), "the self-check must pass where the resources are reachable, "
                 + "otherwise it cannot distinguish a bundle problem from its own bug: "
                 + result.getChecks());
@@ -112,7 +112,7 @@ class SelfCheckTest {
     void theSummaryIsTheLineTheSmokeScriptMatches() {
         SelfCheck.Result result = SelfCheck.run();
 
-        assertEquals("OntoBoard self-check: PASS 8/8", result.summary());
+        assertEquals("OntoBoard self-check: PASS 9/9", result.summary());
         assertTrue(result.summary().startsWith("OntoBoard self-check: "),
                 "tools/smoke.ps1 matches this prefix");
     }

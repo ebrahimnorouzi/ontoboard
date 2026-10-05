@@ -73,7 +73,6 @@ nav:
       - Compared with OntoGraf: compared-with-ontograf.md
   - Going deeper:
       - Development: development.md
-      - Architecture: architecture.md
   - Design record:
       - Plugin design: superpowers/specs/2026-08-14-ontoboard-protege-plugin-design.md
       - Provenance and release: superpowers/specs/2026-08-26-provenance-and-release-requirements.md

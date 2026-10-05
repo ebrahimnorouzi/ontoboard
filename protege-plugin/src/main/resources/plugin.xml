@@ -277,6 +277,15 @@
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
+  <extension id="menu.OntoBoard.robot.patterns"
+             point="org.protege.editor.core.application.EditorKitMenuAction">
+    <name value="Pattern library..."/>
+    <toolTip value="Browse 123 bundled ontology design patterns and import terms from one"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.menu.PatternLibraryAction"/>
+    <path value="ontoboard.menu.OntoBoard.robot/SlotB-BP"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
+
   <extension id="menu.OntoBoard.obsolete"
              point="org.protege.editor.core.application.EditorKitMenuAction">
     <name value="Obsolete the selected term..."/>

@@ -236,8 +236,48 @@ public final class SelfCheck {
         }
 
         checks.add(menuClassesResolve());
+        checks.add(patternLibraryReadable());
 
         return new Result(checks);
+    }
+
+    /**
+     * The bundled design patterns can be listed and one of them opened, here, under Felix.
+     *
+     * <p>The same class of problem this file exists for. The library is 123 OWL files and an
+     * index inside the jar, reached with {@code getResourceAsStream} - and a classpath directory
+     * cannot be listed under Felix at all, which is why there is an index. Unit tests read
+     * {@code target/classes} through Maven's loader, so they prove the files are correct and
+     * prove nothing about whether the bundle can reach them. If the resources were left out of
+     * the jar, or the OSGi bundle did not carry them, the only symptom would be a menu item that
+     * opens an empty window.
+     *
+     * <p>One pattern is actually parsed rather than only found. Two of the 123 declare an
+     * absolute {@code owl:imports} that throws an exception the missing-import setting does not
+     * silence unless the stream is given a document IRI, and that failure appears only when the
+     * file is read as a stream - which is only ever in the packaged plugin.
+     */
+    private static Check patternLibraryReadable() {
+        String name = "pattern library readable";
+        try {
+            java.util.List<de.fizkarlsruhe.ise.ontoboard.pattern.DesignPattern> all =
+                    de.fizkarlsruhe.ise.ontoboard.pattern.PatternLibrary.all();
+            if (all.isEmpty()) {
+                return new Check(name, false, "the index resource is not in this bundle - the "
+                        + "library would open empty");
+            }
+            de.fizkarlsruhe.ise.ontoboard.pattern.DesignPattern first = all.get(0);
+            de.fizkarlsruhe.ise.ontoboard.pattern.PatternLibrary.Contents contents =
+                    de.fizkarlsruhe.ise.ontoboard.pattern.PatternLibrary.contentsOf(first);
+            if (contents.getTerms().isEmpty()) {
+                return new Check(name, false,
+                        first.getId() + " opened but declares nothing, which cannot be right");
+            }
+            return new Check(name, true, all.size() + " patterns indexed, and " + first.getId()
+                    + " parsed to " + contents.describe());
+        } catch (Exception | LinkageError cannotRead) {
+            return new Check(name, false, describe(cannotRead));
+        }
     }
 
     /**

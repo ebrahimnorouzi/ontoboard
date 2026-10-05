@@ -234,9 +234,54 @@ but if an import resolves differently from how `robot` resolves it, that is the 
 | Check the Makefile | 🔶 | *Build…* lists targets; nothing shows the import rules |
 | Add term IRIs to `<import>_terms.txt` | ❌ | **No viewer and no editor for term files** |
 | `sh run.sh make refresh-imports` | 🔶 | *Project → Refresh imports…* audits, and rebuilds from term lists |
-| Copy the import URI into the edit file and catalog | ✅ | *ROBOT → Import terms…* writes both |
+| Copy the import URI into the edit file and catalog | ✅ | *ROBOT → Import terms…* writes both, and *Pattern library…* feeds it |
 | Copy the import schema into `<ontology>.Makefile` | ❌ | By hand |
 | Set `module_type: custom`, `update_repo`, `clean`, `make` | 🔶 | Only via the YAML in a text editor, then *Build…* |
+
+### The pattern library — new in 1.82.0
+
+*ROBOT → Pattern library…* browses 123 ontology design patterns shipped inside the plugin and
+imports terms from one. They were in the repository before and reachable from nothing.
+
+**Separated by publisher, not by collection.** All 123 came from one harvest of the ODP portal,
+so grouping them by where OntoBoard got them would put everything in a single bucket. The portal
+is a catalogue of submissions, and the patterns in it were published by thirteen different
+places — `ontologydesignpatterns.org` has 81, the eCareAtHome smart-home set has 9, Poznań has
+6, and three have no publisher at all because their only recorded IRI is an absolute path from
+the machine the harvest ran on. That is the division the browser groups by; category and a
+search box are the other two ways in.
+
+**Importing a pattern is importing terms.** Choosing one hands it to *ROBOT → Import terms…*,
+which is the ODK path: it extracts a module, writes `<import>_terms.txt`, saves the module,
+adds the import statement and adds the catalog entry. Nothing here re-implements those five
+steps.
+
+That is also why what arrives is smaller than the pattern file. **101 of the 123 patterns
+declare `owl:imports`** — 76 of them to the ODP annotation schema, four to DUL, and many to
+sibling patterns. Copying a pattern file into a project would drag an upper ontology in behind
+it. Extracting a module takes the terms you chose and the axioms that give them meaning, and
+the details pane says so for any pattern that imports anything.
+
+The pattern file is copied to `src/ontology/mirror/<id>.owl` first, because ROBOT needs a file
+to read and a resource inside the plugin jar has no file path. `mirror/` is where ODK keeps the
+upstream copies a build extracts from, so the next `refresh-imports` finds it.
+
+**The counts shown are read from the file, never from the metadata beside it.** That metadata
+states a class count for every pattern and is wrong for 41 of the 123 — `affordance` claims two
+classes and has eight, `eventprocessing` claims eight and has seventeen, `vesselspecies` claims
+zero and has five — and a property count wrong for 17 more. A chooser that states a pattern's
+size is making a claim, so the claim is computed when the pattern is opened.
+
+**Ten of the 123 are another one under a second name** and say which: `agentrole` is
+`agent-role`, `partof` is `part-of`, `collection`, `collectionentity` and `collection-entity`
+are one pattern with three directories. Importing two of them would import the same terms twice.
+So the library lists 123 entries and holds 113 patterns, which is worth knowing before counting
+anything.
+
+**Limits.** The collection is fixed at build time — there is no way to add your own pattern or
+point at another repository yet. Nothing reads a pattern's competency questions back into the
+ontology. And the library knows nothing about what you have already imported, so it will not
+warn you that you imported this pattern last week.
 
 ### Term lists with comments — fixed in 1.77.0
 
