@@ -1,45 +1,62 @@
 /**
  * Hocuspocus collaboration server — awareness only (cursors, locking, save broadcast).
  *
- * Each board gets its own Yjs document, identified by the board_id.
- * Auth tokens are validated against the same SECRET_KEY used by the backend.
+ * Each board gets its own Yjs document, identified by the board_id. Documents are NOT persisted:
+ * they hold awareness state and the operation log for a live session, and nothing else. The
+ * ontology itself lives in each editor's own files, which is where the plugin saves it.
  *
- * NOTE: Yjs documents are NOT persisted to disk — they are ephemeral.
- * Ontology data is stored via the backend REST API, not Yjs.
- * Only awareness state (cursors, who's editing what) flows through here.
+ * Two ports, one document. Hocuspocus on COLLAB_PORT speaks the Yjs protocol for browser
+ * clients; the JSON bridge on BRIDGE_PORT speaks to the Protege plugin, which has no Yjs
+ * implementation. The bridge attaches to the SAME Y.Doc through `openDirectConnection`, so both
+ * kinds of client are in one session.
+ *
+ * Because they share the document, they must demand the same credential — see onAuthenticate.
  */
 
 import { Server } from "@hocuspocus/server";
-import jwt from "jsonwebtoken";
-import { startBridge } from "./bridge.mjs";
+import { startBridge, hocuspocusAuth } from "./bridge.mjs";
 
 const PORT = parseInt(process.env.COLLAB_PORT || "1234", 10);
-const SECRET_KEY = process.env.SECRET_KEY || "change-me-in-production";
 const BRIDGE_PORT = parseInt(process.env.BRIDGE_PORT || "1235", 10);
+
+/**
+ * No default. A collaboration server whose signing key is a string published in its own
+ * repository is one anybody can mint a token for, and the previous default —
+ * "change-me-in-production" — was exactly that, applied silently whenever the variable was
+ * unset. Nothing printed a warning, so a server started without it looked identical to one
+ * started correctly.
+ */
+const SECRET_KEY = process.env.SECRET_KEY;
+if (!SECRET_KEY) {
+  console.error(
+    "[collab] SECRET_KEY is not set. It signs and verifies every token, so the server will " +
+      "not start without one.\n" +
+      "         Pick a long random string, give it to whoever mints tokens, and start again:\n" +
+      "           SECRET_KEY=<your secret> node server.mjs",
+  );
+  process.exit(2);
+}
 
 const server = new Server({
   port: PORT,
 
-  async onAuthenticate({ token, documentName }) {
-    if (!token) {
-      return { user: { name: "anonymous", role: "viewer" } };
-    }
-
-    try {
-      const payload = jwt.verify(token, SECRET_KEY);
-      console.log(`[collab] Authenticated '${payload.sub}' for '${documentName}'`);
-      return {
-        user: {
-          name: payload.sub,
-          role: payload.role || "user",
-          id: payload.user_id,
-        },
-      };
-    } catch (err) {
-      console.warn(`[collab] Invalid token for '${documentName}':`, err.message);
-      return { user: { name: "anonymous", role: "viewer" } };
-    }
-  },
+  /**
+   * Rejects anything without a valid token, by throwing.
+   *
+   * Returning a value from onAuthenticate authenticates the connection — that is the Hocuspocus
+   * contract, and the only way to refuse one is to throw. This used to `return` an "anonymous"
+   * "viewer" both when no token was supplied and when verification failed, so every connection
+   * was accepted. The role was never enforced anywhere, so "viewer" bought nothing.
+   *
+   * That mattered because of `openDirectConnection` below: the JSON bridge, which does check its
+   * token, attaches to the same Y.Doc. So an unauthenticated socket on this port joined the
+   * document the authenticated Protege peers were editing, and the bridge's check could be
+   * stepped around by connecting to the other port instead.
+   *
+   * The decision lives next to the bridge's own in bridge.mjs, so the two cannot drift apart
+   * again, and is unit-tested there without booting a server.
+   */
+  onAuthenticate: hocuspocusAuth(SECRET_KEY, (message) => console.warn(message)),
 
   // No state persistence — awareness is ephemeral
   async onLoadDocument({ documentName }) {

@@ -1,7 +1,8 @@
 # Development Guide
 
-Two codebases: the Protégé plugin (`protege-plugin/`, Java) and the web application
-(`backend/`, `frontend/`, `worker/`, `collab/`).
+Two pieces: the Protégé plugin (`protege-plugin/`, Java) and the collaboration service
+(`collab/`, Node). The plugin is the product; the service is optional and only needed for live
+collaboration.
 
 ---
 
@@ -9,7 +10,7 @@ Two codebases: the Protégé plugin (`protege-plugin/`, Java) and the web applic
 
 ```bash
 cd protege-plugin
-mvn clean test        # 1207 tests (14 need Docker, 8 need node, and skip without them)
+mvn clean test        # 1648 tests (some need Docker or node, and skip without them)
 mvn clean package     # -> target/ontoboard-<version>.jar
 ```
 
@@ -187,31 +188,44 @@ is what makes Protégé's undo and its other tabs stay correct for free.
 
 ---
 
-## Web application
+## The collaboration service
+
+The one part of OntoBoard that is not inside Protégé. It lives in `collab/` and is a small
+Node server:
 
 ```bash
-./run.sh              # build if needed, then start
-./run.sh dev          # source mounted for hot reload
-./run.sh test         # backend tests
-./run.sh logs
-./run.sh down
+cd collab
+npm install
+npm test                                   # 55 tests
+SECRET_KEY=dev-secret node server.mjs      # it refuses to start without one
 ```
 
-Five services: frontend (React, :3000), backend (FastAPI + ROBOT + Java, :8000), collab
-(Hocuspocus/Yjs, :1234), worker (Redis consumer), Redis (:6379).
+It opens two ports onto **one** `Y.Doc`: Hocuspocus on `COLLAB_PORT` (1234) speaks the binary
+Yjs protocol, and the JSON bridge on `BRIDGE_PORT` (1235) speaks to the plugin, which has no
+Yjs implementation. The bridge attaches through `openDirectConnection`, so both kinds of client
+are in one session.
 
-Frontend tests: `cd frontend && npm test`.
+**Because they share the document, both ports must demand the same credential.** Until 1.86.0
+the Hocuspocus handler returned an "anonymous" "viewer" for a missing or invalid token, and
+Hocuspocus authenticates whenever that handler returns rather than throws — so it accepted
+every connection, and the bridge's own check could be stepped around by using the other port.
+The two decisions now share `hocuspocusAuth`, next to `authenticate` in `bridge.mjs`.
+
+It carries **awareness and an operation log only**. No ontology is stored: each editor's copy
+lives in their own files, and the log is how edits reach the other people in the session. It
+needs no database and no volume.
 
 ### Collaboration internals
 
-`collab/server.mjs` carries **awareness and the operation log only** — ontology state is
-persisted through the backend REST API, not Yjs. Anything added to the collaboration path
-must respect that split.
+The vocabulary is the eighteen types in `OPERATION_TYPES` (`bridge.mjs`) and
+`OntologyOperation.TYPES` (Java). Both are gates, not descriptions — an operation whose type is
+in neither is refused — so a new type has to be added to both or the edit silently never
+arrives.
 
-`frontend/src/collab/` holds the operation protocol (`useOperationSync.ts`), the semantic
-merge engine (`mergeEngine.ts`) and the conflict UI. The plugin's collaboration
-client speaks a JSON bridge onto the same `Y.Doc` rather than reimplementing the merge
-engine in Java, so the merge rules keep a single implementation.
+The plugin speaks JSON onto the same `Y.Doc` rather than reimplementing a merge engine in Java.
+`bridge-interop.test.mjs` asserts the storage format from the Yjs side, because the two ends
+once disagreed about whether operations were JSON strings or objects while every unit test on
+both sides passed.
 
 ---
 

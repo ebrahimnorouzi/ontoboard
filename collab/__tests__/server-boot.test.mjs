@@ -14,8 +14,8 @@
  * working.
  *
  * The lesson is narrow and worth keeping: a test that injects the dependency cannot check the
- * wiring. This one runs the real entry point, the way `docker compose up collab` does, and speaks
- * to it over a socket.
+ * wiring. This one runs the real entry point, the way `node server.mjs` does, and speaks to it
+ * over a socket.
  */
 import { afterEach, describe, expect, it } from "vitest";
 import { spawn } from "node:child_process";
@@ -204,6 +204,40 @@ describe("server.mjs", () => {
       bobPeer.ontology,
       "without this the plugin cannot warn that two peers are on different ontologies",
     ).toBe("http://example.org/entirely-different");
+  });
+
+  it("will not start without a SECRET_KEY, instead of signing with a published one", async () => {
+    // It used to default to "change-me-in-production", a string in this repository, applied
+    // silently whenever the variable was unset - so a server started without it looked exactly
+    // like one started correctly, and anybody could mint a token for it.
+    const collabPort = await freePort();
+    const bridgePort = await freePort();
+    const withoutSecret = { ...process.env };
+    delete withoutSecret.SECRET_KEY;
+
+    const child = spawn(process.execPath, ["server.mjs"], {
+      cwd: COLLAB_DIR,
+      env: { ...withoutSecret, COLLAB_PORT: String(collabPort), BRIDGE_PORT: String(bridgePort) },
+    });
+    running.push(child);
+
+    let output = "";
+    child.stdout.on("data", (chunk) => (output += String(chunk)));
+    child.stderr.on("data", (chunk) => (output += String(chunk)));
+
+    const code = await new Promise((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error(`it kept running:\n${output}`)), 20_000);
+      child.on("exit", (exitCode) => {
+        clearTimeout(timer);
+        resolve(exitCode);
+      });
+    });
+
+    expect(code, `expected a refusal to start. It said:\n${output}`).toBe(2);
+    expect(output).toContain("SECRET_KEY is not set");
+    // The message has to say what to do, or it is just a stop.
+    expect(output).toContain("SECRET_KEY=");
+    expect(output).not.toContain("change-me-in-production");
   });
 
   it("refuses an unauthenticated peer rather than letting it edit as nobody", async () => {

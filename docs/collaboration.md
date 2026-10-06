@@ -59,7 +59,7 @@ It opens **two** ports, and the difference matters:
 
 | Port | Speaks | Used by |
 |---|---|---|
-| 1234 | Yjs / Hocuspocus (binary CRDT) | the web application |
+| 1234 | Yjs / Hocuspocus (binary CRDT) | a browser client, if you write one |
 | **1235** | **JSON over WebSocket** | **the Protégé plugin** |
 
 Both serve the *same* documents — [`server.mjs`](https://github.com/ebrahimnorouzi/ontoboard/blob/main/collab/server.mjs) attaches the bridge to
@@ -71,74 +71,76 @@ explain it. So the plugin refuses a `ws://…:1234` address outright and says wh
 instead. That refusal was documented here from the start and only became real in 1.51.0; before
 that, an address on 1234 was accepted and hung.
 
-Without Docker:
+The service holds cursors and an operation log. It stores no ontology, so it needs no
+database, no volume and nothing else running beside it.
+
+### 2. Keep the secret
+
+`SECRET_KEY` signs every token and verifies every connection. One service reads it — the one
+you just started — so there is nothing to keep in step, but whoever mints tokens must use the
+same string.
+
+**Since 1.86.0 the server refuses to start without one.** It used to fall back to
+`change-me-in-production`, a string published in this repository, silently: a server started
+without the variable looked exactly like one started correctly, and anybody who had read the
+source could mint a token for it.
+
+If a token is signed with a different secret the plugin reports `invalid token: invalid
+signature`, which is accurate and still sends people looking in the wrong place. It almost
+always means the token was minted against a different value than the running server has.
+
+### 3. Mint a token
+
+There is no login service. A token is a JWT signed with your `SECRET_KEY`, and its `sub` claim
+is the name that appears beside the person's cursor — so mint one per person:
 
 ```bash
 cd collab
-npm install
-SECRET_KEY=your-secret COLLAB_PORT=1234 BRIDGE_PORT=1235 node server.mjs
+node -e "console.log(require('jsonwebtoken').sign({sub:'alice'}, process.env.SECRET_KEY, {expiresIn:'12h'}))"
 ```
 
-The service holds cursors and an operation log. It stores no ontology, so it needs no database
-and no volume of its own.
+Send each person their own. Two people sharing a token appear as two cursors with one name.
 
-### 2. Use one secret everywhere
-
-`SECRET_KEY` signs the tokens, and the backend and the collaboration service **must** be given
-the same value. If they differ, logging in works, the plugin connects, and then the bridge
-rejects the token — because it was signed with a key the bridge does not have.
-
-The plugin reports that as `invalid token: invalid signature`, which is accurate and still
-sends people looking in the wrong place. Check the two environments agree before anything else:
-
-```bash
-docker compose exec backend printenv SECRET_KEY
-docker compose exec collab  printenv SECRET_KEY
-```
-
-Both default to `change-me-in-production`, so a setup that never set it will appear to work.
-Set it.
-
-### 3. Get a token
-
-Tokens come from the web application's login endpoint. There is no separate plugin credential.
-
-```bash
-curl -s -X POST http://your-server:8000/auth/login \
-  -H 'Content-Type: application/json' \
-  -d '{"username":"alice","password":"..."}'
-```
-
-```json
-{ "access_token": "eyJhbGciOiJIUzI1NiIs..." }
-```
-
-**Tokens expire after 8 hours** by default (`ACCESS_TOKEN_EXPIRE_MINUTES`). A Protégé session
-left open overnight will be refused the next morning, and the plugin will say so rather than
-retry: it stops and shows `invalid token: jwt expired`. Get a new one and reconnect. Raise
-`ACCESS_TOKEN_EXPIRE_MINUTES` on the backend if that is a nuisance for your team.
+**Choose the expiry deliberately.** `expiresIn` is yours to set; there is no server-side
+default any more. A Protégé session left open past it is refused the next morning, and the
+plugin stops rather than retrying — retrying a rejected token would only loop against your
+server. It shows `invalid token: jwt expired`; mint a new one and reconnect.
 
 ### 4. Configure each person's plugin
 
-**OntoBoard tab → Collaborate…**
+Settings live at **OntoBoard → Collaboration…** in Protégé's menu bar. Connecting is
+separate: open the OntoBoard tab and choose **Collaborate** from the **⋮** menu at the right of
+the board's toolbar. It is in that menu rather than on the bar because the bar did not fit —
+measured at 1261px wanted against 857 available, at which the button was laid out past the
+right edge and never painted at all.
 
 | Field | Value |
 |---|---|
 | Server address | `ws://your-server:1235` (or `wss://` behind TLS) |
 | Board id | any string, the same for everyone — for example the ontology's short name |
-| Access token | the `access_token` from step 3 |
-| Your name | shown beside your cursor |
+| Access token | the token you minted in step 3 |
 | Your colour | your cursor and selection colour |
+
+There is no "your name" field. The name comes from the token's `sub` claim, because the bridge
+stamps every operation with the authenticated user rather than trusting what a client says it
+is called — a box that could not change anything would be a box that lied.
 
 The board id is not created anywhere in advance; the first person to use one makes it exist.
 Everyone typing the same string is in the same session.
 
 **About the token checkbox.** Unticked — the default — the token lives only in memory for that
-Protégé session. Ticked, it is written to Protégé's preferences as plain text: the Windows
-registry under `HKEY_CURRENT_USER\SOFTWARE\JavaSoft\Prefs`, or a file under `~/.java` on macOS
-and Linux. That is readable by anything running as you. The dialog says the same thing, and the
-default is off deliberately. Unticking it later erases what was stored, rather than leaving it
-behind.
+Protégé session. Ticked, it is written to Protégé's preferences **as plain text**, readable by
+anything running as you:
+
+| | |
+|---|---|
+| Windows | the registry, under `HKEY_CURRENT_USER\SOFTWARE\JavaSoft\Prefs` |
+| macOS | a plist under `~/Library/Preferences` |
+| Linux | a file under `~/.java/.userPrefs` |
+
+The dialog names the location for the machine it is running on, which is the difference between
+consenting to store a credential and clicking past a checkbox. Unticking it later erases what
+was stored rather than leaving it behind.
 
 ### 5. Check it worked
 
@@ -151,16 +153,20 @@ appear around it on their board.
 ## What travels, and what does not
 
 Live mode shares an *operation log*, not the ontology file. Each edit becomes an operation, and
-the vocabulary is the seventeen types the web application understands. OWL is much larger than
-that, so some edits cannot be expressed.
+the vocabulary is the eighteen types in `OntologyOperation.TYPES`. OWL is much larger than that,
+so some edits cannot be expressed.
 
-**Travels:** classes and individuals created or deleted; subclass axioms; existential and
-universal restrictions (the arrows the canvas draws); type assertions; `rdfs:label` changes;
-canvas positions and colours for new nodes.
+**Travels:** classes created, renamed or deleted; individuals created and renamed; properties
+created and deleted; subclass axioms; existential and universal restrictions (the arrows the
+canvas draws); `rdfs:label` changes; annotations — editorial notes, definitions, provenance — as
+`updateAnnotation`; literals; and the board's own sticky notes and frames.
 
-**Does not travel:** equivalence and disjointness, property characteristics, property chains,
-`owl:hasKey`, negative property assertions, global domain and range, datatype definitions, SWRL
-rules, imports, and ontology-level annotations.
+**Does not travel:** deleting an individual — there is no `removeIndividual` in the vocabulary,
+so the local delete happens and the peer keeps the individual. Nor do equivalence and
+disjointness, property characteristics, property chains, `owl:hasKey`, negative property
+assertions, global domain and range, datatype definitions, SWRL rules, imports, or
+ontology-level annotations. **Moving a node** does not travel either: positions are sent for a
+node when it is created, and a later drag is local.
 
 The plugin does not hide this. Anything it cannot share is counted, and the toolbar shows
 `N changes not shared` with the most recent reason in its tooltip — for example *"an
@@ -168,9 +174,9 @@ EquivalentClasses axiom, which the shared session has no way to express"*. If yo
 axioms outside that list, **use git for those** and treat live mode as being for the shape of the
 ontology rather than its full logic.
 
-This is a limitation of the shared vocabulary, not of the plugin. Widening it means adding
-operation types to `frontend/src/collab/useOperationSync.ts`, `collab/bridge.mjs` and
-`OntologyOperation.TYPES` together — all three, or the new type is silently ignored at one end.
+This is a limitation of the shared vocabulary, not of the plugin. Widening it means adding the
+type to `collab/bridge.mjs` and `OntologyOperation.TYPES` together — both, or the new type is
+refused at one end and the edit never arrives.
 
 ---
 
@@ -239,13 +245,16 @@ Work down this list; it is ordered by how often each one is the answer.
 
 1. **Is the port 1235?** Not 1234. The plugin refuses 1234 outright (since 1.51.0), but a proxy in front might
    not.
-2. **Do the two `SECRET_KEY` values match?** See step 2 above. This is the most common cause of
-   a token that looks valid and is not.
-3. **Has the token expired?** Eight hours by default. The message says `jwt expired`.
+2. **Was the token signed with the running server's `SECRET_KEY`?** This is the most common
+   cause of a token that looks valid and is not. The message is `invalid token: invalid
+   signature`.
+3. **Has the token expired?** Whatever `expiresIn` you chose when you minted it. The message
+   says `jwt expired`.
 4. **Is everyone using the same board id?** It is free-form text, so a typo makes a second,
    empty board rather than an error.
-5. **Is the service actually up?** `docker compose logs collab` prints a line per join:
-   `[bridge] alice joined 'my-board'`. No line means the connection never got that far.
+5. **Is the service actually up?** The terminal running `node server.mjs` prints a line per
+   join: `[bridge] alice joined 'my-board'`. No line means the connection never got that far.
+   A refused one prints `[collab] Refused a connection` with the reason.
 6. **What does Protégé say?** `~/.Protege/logs/protege.log`, searching for `ontoboard`.
 
 The plugin is built to fail with a reason rather than a spinner: every state — connecting,
@@ -268,9 +277,17 @@ The plugin is a second client of the same session, not a separate system. The pi
 
 The interop contract is asserted by
 [`bridge-interop.test.mjs`](https://github.com/ebrahimnorouzi/ontoboard/blob/main/collab/__tests__/bridge-interop.test.mjs), which reads and writes
-the shared array exactly as `useOperationSync.ts` does. That file exists because the two ends
-once disagreed about whether operations were stored as JSON strings or objects, and every unit
-test on both sides passed while no operation could cross in either direction. If you change the
+the shared array the way a Yjs client does. That file exists because the two ends once
+disagreed about whether operations were stored as JSON strings or objects, and every unit test
+on both sides passed while no operation could cross in either direction. If you change the
 storage format, change it there too.
+
+**Both ports must demand the same credential.** They share one `Y.Doc` — the bridge attaches to
+Hocuspocus through `openDirectConnection` — so a port that admits anonymous clients is a way
+around the port that does not. Until 1.86.0 the Hocuspocus handler returned an "anonymous"
+"viewer" for a missing *or invalid* token, and Hocuspocus authenticates a connection whenever
+that handler returns rather than throws, so it accepted everyone. The two decisions now share
+one function, `hocuspocusAuth` beside `authenticate` in `bridge.mjs`, so they cannot drift
+apart again.
 
 See also [feature parity](feature-parity.md) and [limitations](limitations.md).

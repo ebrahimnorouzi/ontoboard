@@ -1,17 +1,14 @@
 /**
  * JSON WebSocket bridge onto the same Yjs documents Hocuspocus serves.
  *
- * Web clients speak Yjs. The Protégé plugin is Java, where no mature Yjs client exists, so
- * rather than port a CRDT or embed a JNI binding into an OSGi plugin, non-JS clients speak
- * plain JSON here and this module mirrors it into the shared Y.Doc.
+ * A Yjs client speaks a binary CRDT protocol. The Protégé plugin is Java, where no mature Yjs
+ * client exists, so rather than port a CRDT or embed a JNI binding into an OSGi plugin, non-JS
+ * clients speak plain JSON here and this module mirrors it into the shared Y.Doc - the same
+ * document Hocuspocus serves, so a plugin peer and any Yjs peer are in one session.
  *
- * That keeps two things true that matter more than the convenience:
- *   - web clients are unchanged, and
- *   - the semantic merge rules keep a single implementation in mergeEngine.ts rather than
- *     being reimplemented in Java, where they would drift.
- *
- * As with server.mjs, this carries awareness and the operation log only. Ontology state is
- * persisted through the backend REST API, never through Yjs.
+ * This carries awareness and the operation log only. No ontology is stored anywhere in this
+ * service: each editor's copy lives in their own files, and the log is how an edit reaches the
+ * other people in the session.
  *
  * Protocol — one envelope in both directions:
  *
@@ -22,15 +19,15 @@
  *   <- { t: "peers",    peers: [ { user, colour, x, y, selection, ontology } ] }
  *   <- { t: "error",    message: "..." }
  *
- * `op.type` must be one of the 18 in frontend/src/collab/useOperationSync.ts. A type the web
- * client cannot interpret is a silent no-op on the other side, which is far harder to
- * diagnose than a rejection, so unknown types are refused here.
+ * `op.type` must be one of the 18 in OPERATION_TYPES below, which the plugin mirrors in
+ * OntologyOperation.TYPES. A type the other end cannot interpret is a silent no-op there,
+ * which is far harder to diagnose than a rejection, so unknown types are refused here.
  */
 
 import { WebSocketServer } from "ws";
 import jwt from "jsonwebtoken";
 
-/** Mirrors OntologyOpType in frontend/src/collab/useOperationSync.ts. Keep in step. */
+/** Mirrors OntologyOperation.TYPES in the plugin. Keep the two in step. */
 export const OPERATION_TYPES = new Set([
   "addClass", "updateClass", "removeClass",
   "addProperty", "removeProperty", "addSubClassOf",
@@ -134,6 +131,36 @@ export function authenticate(token, secret) {
 }
 
 /**
+ * The same decision, shaped the way Hocuspocus wants it.
+ *
+ * Hocuspocus authenticates a connection when `onAuthenticate` RETURNS, and refuses it only when
+ * the function THROWS. The server's handler used to return an "anonymous" "viewer" both when no
+ * token was supplied and when verification failed, so it accepted every connection; the role was
+ * never enforced anywhere, so "viewer" bought nothing.
+ *
+ * It is here, beside `authenticate`, because the two must agree. They share a document: the
+ * bridge attaches to the same Y.Doc that Hocuspocus serves, so a port that admits anonymous
+ * clients is a way around the port that does not, and the comment above explaining why the
+ * bridge refuses anonymous peers was describing a guard the other half gave away.
+ *
+ * @param {string} secret
+ * @param {(message: string) => void} [log] told about each refusal
+ * @returns {(context: {token?: string, documentName?: string}) => Promise<object>}
+ */
+export function hocuspocusAuth(secret, log) {
+  return async ({ token, documentName }) => {
+    const auth = authenticate(token, secret);
+    if (!auth.ok) {
+      if (log) {
+        log(`[collab] Refused a connection to '${documentName}': ${auth.reason}`);
+      }
+      throw new Error(auth.reason);
+    }
+    return { user: { name: auth.user, role: auth.role } };
+  };
+}
+
+/**
  * Drops peers that have gone quiet, so a crashed client's cursor does not linger.
  *
  * `ontology` is part of the payload, not decoration. The plugin sends it in `hello` and reads it
@@ -208,7 +235,7 @@ export function decodeOperation(content) {
  *
  * @param {object} options
  * @param {number} options.port
- * @param {string} options.secret            JWT secret, shared with the backend
+ * @param {string} options.secret            JWT secret; the same one that signed the tokens
  * @param {(board: string) => Promise<object>} options.getDoc  resolves a board id to its
  *        Y.Doc. May be async: Hocuspocus loads documents asynchronously, and the bridge must
  *        attach to the same document instance web clients use, not a parallel copy.

@@ -43,9 +43,12 @@ public class CollaborationAction extends OntoBoardAction {
         }
         OperationResult.Builder result = OperationResult.of(operationName());
         if (chosen.isLive()) {
+            // Names where the control actually is. "Press Collaborate" described a toolbar
+            // button that moved into the overflow menu when the bar stopped fitting, so the
+            // instruction sent people looking for something not on screen.
             result.summary("Ready to collaborate on board '" + chosen.getBoard() + "' at "
-                    + chosen.getBridgeUrl() + ". Open the OntoBoard tab and press Collaborate to "
-                    + "connect.");
+                    + chosen.getBridgeUrl() + ". Open the OntoBoard tab, then choose "
+                    + "Collaborate from the ⋮ menu at the right of the toolbar.");
             result.note("Your name comes from the access token, not from this dialog.");
             // Said here rather than at connect time because this is where somebody is looking at
             // the board id and can still change it.

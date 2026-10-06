@@ -78,8 +78,12 @@ public final class CollabSettings {
         if (token.isEmpty()) {
             append(missing, "access token");
         }
+        // The menu path is the whole value of this sentence, so it has to be the real one.
+        // It read "Tools > Collaboration Settings" until 1.86.0 and there has never been such
+        // an item: plugin.xml puts it at OntoBoard > Collaboration..., and a user following the
+        // message found nothing and had no second place to look.
         return "Working in git mode - live sync and cursors are off because no "
-                + missing + " is configured. Set one up in Tools > Collaboration Settings, "
+                + missing + " is configured. Set one up in OntoBoard > Collaboration..., "
                 + "or keep using commit and push to share your work.";
     }
 

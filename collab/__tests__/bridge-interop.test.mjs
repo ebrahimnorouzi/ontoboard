@@ -10,7 +10,7 @@
  *
  * So these tests read and write the array exactly the way the web client does - see
  * readAsWebClient and pushAsWebClient, which are transcriptions of
- * frontend/src/collab/useOperationSync.ts, not paraphrases. A change to the storage convention
+ * the Yjs storage convention itself, not paraphrases. A change to the storage convention
  * on either side now fails here instead of surfacing as silence in a running system.
  */
 import { afterEach, describe, expect, it } from "vitest";
@@ -54,13 +54,13 @@ afterEach(async () => {
 
 // ---------- the web client's own storage convention, transcribed ----------
 
-/** frontend/src/collab/useOperationSync.ts:288 - `yOps.push([JSON.stringify(op)])`. */
+/** How a Yjs client appends: `yOps.push([JSON.stringify(op)])`. */
 function pushAsWebClient(doc, op) {
   doc.getArray("ops").push([JSON.stringify(op)]);
 }
 
 /**
- * frontend/src/collab/useOperationSync.ts:160-168. The `typeof raw !== "string"` line is the
+ * How a Yjs client reads them back. The `typeof raw !== "string"` line is the
  * one that made bridge-written objects invisible, so it is reproduced rather than relaxed.
  */
 function readAsWebClient(doc) {

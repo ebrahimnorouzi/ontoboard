@@ -1,0 +1,159 @@
+OntoBoard 1.86.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-10-06  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 9/9  test 10/10
+  2026-10-06  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 9/9  test 10/10
+
+
+THE COLLABORATION SERVER ACCEPTED EVERYONE
+
+The serious finding of this release, and it was in a file nobody had changed since the web
+application was deleted.
+
+collab/server.mjs ran two ports onto ONE Y.Doc: Hocuspocus on 1234 for Yjs clients and the JSON
+bridge on 1235 for the plugin, attached through openDirectConnection. Its own comment says why:
+"a Protege user and a browser user are in one session rather than two that happen to look
+alike."
+
+The bridge checked its token and refused anonymous peers. The Hocuspocus handler did this:
+
+    if (!token) return { user: { name: "anonymous", role: "viewer" } };
+    try { ... } catch { return { user: { name: "anonymous", role: "viewer" } }; }
+
+Hocuspocus authenticates a connection when onAuthenticate RETURNS. Throwing is the only way to
+refuse one. So both the no-token path and the INVALID-token path admitted the connection, and
+"viewer" was never enforced anywhere - it was a string in an object.
+
+Since the two ports share the document, the bridge's check could simply be stepped around by
+connecting to the other port. Anyone who could reach 1234 was a read-write peer on the document
+the authenticated Protege users were editing.
+
+bridge.mjs had even written the asymmetry down, in the doc comment on its own verifier: "Unlike
+the Hocuspocus path this does NOT fall back to anonymous." The author saw it and treated it as
+acceptable for that path, which it had stopped being the moment the two shared a document.
+
+Fixed by giving both ports the same function. authenticate() and hocuspocusAuth() now sit
+together in bridge.mjs, and the second is the first with a throw on it, so they cannot drift
+apart again.
+
+AND IT SIGNED WITH A SECRET PUBLISHED IN THIS REPOSITORY
+
+    const SECRET_KEY = process.env.SECRET_KEY || "change-me-in-production";
+
+Applied silently. A server started without the variable looked exactly like one started
+correctly, and anybody who had read this repository could mint a token for it. The server now
+refuses to start without SECRET_KEY and prints the command to set it.
+
+A TEST THAT PASSED ON THE HALF THAT HAD THE GUARD
+
+server-boot.test.mjs already asserted "refuses an unauthenticated peer rather than letting it
+edit as nobody", and it passed before this release - because it speaks to the bridge. Nothing
+covered the other port. That is the shape of the whole defect: a guard tested on the side that
+had it.
+
+Ten new tests. Nine on the Hocuspocus decision directly - no token, empty token, wrong secret,
+expired token, valid token, the role default, that refusals are logged and successes are not,
+and that it agrees with the bridge - and one that the server exits rather than starting with no
+secret. 55 tests in collab/, up from 45.
+
+
+THE DOCUMENTATION SENT USERS TO A SERVICE THAT WAS DELETED
+
+docs/collaboration.md still ran the reader through the web application at every step. Following
+it, live mode was unreachable:
+
+  step 2   docker compose exec backend printenv SECRET_KEY   - no compose file, no backend
+  step 3   curl POST http://your-server:8000/auth/login      - no such endpoint
+  step 3   raise ACCESS_TOKEN_EXPIRE_MINUTES on the backend  - no such service
+  item 5   docker compose logs collab                        - no compose file
+
+The token is genuinely required, so step 3 was a wall. The working procedure existed the whole
+time in the sibling page docs/testing-collaboration-locally.md, which collaboration.md never
+linked to.
+
+Rewritten: one service, one secret, and a token minted with the jsonwebtoken that is already a
+dependency.
+
+SIX FURTHER CLAIMS ON THAT PAGE, MEASURED AND WRONG
+
+Each checked against the code rather than taken from a list.
+
+  "the seventeen types"          OntologyOperation.TYPES holds eighteen
+  "individuals created or
+   deleted" travels              there is no removeIndividual in the vocabulary, so a deleted
+                                 individual stays on the peer's copy
+  annotations omitted            updateAnnotation travels - notes, definitions, provenance
+  moving a node travels          positions are sent when a node is created; a later drag is local
+  "Your name" field              the dialog deliberately has none; the name is the token's sub
+  token stored under ~/.java
+   "on macOS and Linux"          macOS is a plist under ~/Library/Preferences, and the page
+                                 claimed "the dialog says the same thing" - which it does not
+  widen the vocabulary in
+   three files                   two; the third was frontend/src/collab/useOperationSync.ts
+
+The port table attributed 1234 to "the web application", and a "Without Docker:" heading
+introduced an alternative to Docker instructions that were not on the page.
+
+TWO MESSAGES THAT NAMED PLACES THAT DO NOT EXIST
+
+Every "why you are not live" message said "Set one up in Tools > Collaboration Settings". There
+has never been such an item - plugin.xml registers it as Collaboration... under the OntoBoard
+menu - so a user who followed the sentence found nothing and had no second place to look. It
+had been wrong since the sentence was written.
+
+The settings dialog's success message said "Open the OntoBoard tab and press Collaborate",
+describing a toolbar button that moved into the overflow menu when the bar stopped fitting.
+
+Both corrected, and MenuPathsInMessagesTest now holds them there: it reads every menu path
+named in a string literal in the source and checks a plugin.xml entry starts that way. Nothing
+resolves such a string, so it cannot fail to compile and no test touched it. Verified by
+putting the old sentence back and watching it fail, rather than by assuming it would.
+
+It scans string literals rather than whole files, because the first version matched the comment
+explaining the old wording and reported the fix as the bug.
+
+STALE COMMENTS IN CODE, WHICH MISLEAD THE NEXT MAINTAINER
+
+Both collab headers said ontology data is persisted through a backend REST API. bridge.mjs
+named frontend/src/collab/useOperationSync.ts three times as the source of truth for the wire
+format and the operation vocabulary. docs/development.md opened with "Two codebases... the web
+application (backend/, frontend/, worker/, collab/)", documented ./run.sh and five services,
+and gave the plugin's test count as 1207.
+
+All corrected. The development guide's collaboration section now describes what is actually
+there, including why both ports must demand the same credential.
+
+A FINDING I DID NOT ACT ON, HAVING CHECKED IT
+
+The audit reported that the 220px collaboration status label clips the messages it carries. It
+does not, in practice: every message sent to it is short - "Working through git",
+"Connecting...", "N changes not shared", "Disconnected - you switched ontology" - and the full
+text is set as the tooltip on the same call. The long git-mode explanation goes to a dialog, not
+to that label. Recorded because the finding was plausible and reading the call sites is what
+settled it.
+
+NUMBERS
+
+1650 Java tests, 0 failures, 0 skipped. 2 new, counted three ways.
+55 collab tests, up from 45.
+
+36/36 classes named in plugin.xml load on both hosts.
+
+HOW THIS WAS FOUND
+
+A five-lens audit of the collaboration surface - docs against reality, the server standalone,
+the Java client, the UI, and security - with each finding handed to a separate agent told to
+refute it. 49 were raised. The ones acted on here were then re-checked by hand against the
+files, which is how the 220px claim was dropped and how the Hocuspocus hole turned out to be
+worse than reported: the finder called it an unauthenticated write path, and the thing that
+makes it serious - that it shares a document with the port that does check - is three lines
+further down the same file.
+
+STILL OPEN
+
+Several UI findings whose verification did not finish, none security-related: whether a dead
+session and a retrying one are distinguishable at a glance, whether a peer joining is
+announced, and what happens to queued edits when a user disconnects during an outage. Adding
+your own pattern to the library, and a second collection. Editing a list or a nested block in
+the ODK YAML.
