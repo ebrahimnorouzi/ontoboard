@@ -345,10 +345,10 @@ but if an import resolves differently from how `robot` resolves it, that is the 
 | Copy the import schema into `<ontology>.Makefile` | ❌ | By hand |
 | Set `module_type: custom`, `update_repo`, `clean`, `make` | 🔶 | Only via the YAML in a text editor, then *Build…* |
 
-### The pattern library — new in 1.82.0, four collections since 1.87.0
+### The pattern library — new in 1.82.0, four collections since 1.87.0, yours since 1.92.0
 
-*ROBOT → Pattern library…* browses **159** ontology design patterns shipped inside the plugin and
-imports terms from one.
+*ROBOT → Pattern library…* browses **159** ontology design patterns shipped inside the plugin,
+any you have added yourself, and imports terms from one.
 
 | Collection | Patterns | Documented at |
 |---|---|---|
@@ -381,6 +381,12 @@ catalogue of submissions published by thirteen different places — `ontologydes
 has 81, the eCareAtHome smart-home set has 9, Poznań has 6, and three have no publisher at all
 because their only recorded IRI is an absolute path from the machine the harvest ran on. Both
 groupings are offered, with category and a search box as the other ways in.
+
+> **Corrected in 1.92.0.** Two of those ways in were not actually offered. *By collection* and
+> *Suggested for this ontology* were both written in 1.87.0, both tested, both described here —
+> and neither was in the dialog's dropdown, which still listed the three orderings that existed
+> before them. The recommender below could not be selected by anybody for five releases. A test
+> now reads the orderings off `PatternOrder` and fails if one of them is not offered.
 
 ### Suggestions for the ontology you have open — new in 1.87.0
 
@@ -437,11 +443,48 @@ are one pattern with three directories. Importing two of them would import the s
 So the library lists 123 entries and holds 113 patterns, which is worth knowing before counting
 anything.
 
-**Limits.** The collections are fixed at build time — there is no way to add your own pattern or
-point at a fourth repository from inside Protégé. The library knows nothing about what you have
-already imported, so it will not warn you that you imported this pattern last week; and note
-that a suggestion scoring 1.00 means your ontology already contains all of that pattern, which
-is a statement that you have applied it rather than advice to adopt it.
+#### Patterns of your own — new in 1.92.0
+
+**A pattern of your own is a file in a folder.** No index, no metadata file, no registration, no
+rebuild. Drop `.owl`, `.ttl`, `.rdf`, `.owx`, `.omn` or `.ofn` files into
+
+```
+~/.ontoboard/patterns/<collection>/
+```
+
+and they are in the library the next time you open it, searchable, groupable, suggestible and
+importable exactly like the 159 that ship. **A sub-folder is a collection**, so your group's
+patterns sit together under its name beside `odp`, `mwo`, `pmdco` and `nfdi`.
+
+*Your patterns…* in the dialog does both halves of this: it copies a file in for you, and it
+shows and changes the folder. **Point the folder inside an ODK project** — `src/patterns`, say —
+and the patterns travel with the repository, so everybody who clones it has them.
+
+**Nothing is asked for that the file already says.** Measured across the 159 shipped patterns,
+112 carry `coversRequirements`, 66 `hasIntent`, 65 `rdfs:comment` and 38 `rdfs:label` on the
+ontology itself, so the name, the description, the competency questions and the publisher are
+read out of the file rather than typed into a dialog. A file that documents nothing falls back to
+its own filename and the host of its IRI.
+
+**Why this needs no index when the shipped library does.** A jar cannot be listed — under Felix a
+classpath directory answers a `bundle:` URL that enumerates nothing, which is why
+`patterns/index.tsv` exists at all. A directory on disk can be listed. The asymmetry is in the
+container, not in the patterns.
+
+**Nothing is skipped in silence.** A file that will not parse is named, with the parser's reason,
+behind a *problems* button in the dialog — and so is the count of files left unread when a folder
+holds more than 200, which is as many as this reads because each one has to be parsed. A library
+quietly holding fewer patterns than the folder does cannot be trusted about the ones it holds.
+
+**Your own ids never shadow a shipped pattern's.** A file called `componency.ttl` becomes
+`componency-2`, because three things key on the id — lookup, the parse cache, and the filename the
+import copies the pattern out as.
+
+**Limits.** The library knows nothing about what you have already imported, so it will not warn
+you that you imported this pattern last week; and note that a suggestion scoring 1.00 means your
+ontology already contains all of that pattern, which is a statement that you have applied it
+rather than advice to adopt it. A contributed pattern gets no category or domain, because nothing
+can infer one — it is grouped by its folder and its publisher instead.
 
 ### Editing a term list — new in 1.90.0
 
@@ -515,5 +558,7 @@ order it is worth doing:
 2. **Acting on more of what the YAML says** — `robot_java_args` and two `robot_report` keys
    drive something since 1.91.0; `import_group`, `release_artefacts`, `export_formats` and
    `primary_release` are still text OntoBoard preserves and does not obey.
-3. **Adding your own pattern** — the library ships four collections and there is no way to
-   contribute a fifth, or a single pattern, without rebuilding the plugin.
+3. **Knowing what you already imported** — the pattern library will happily suggest a pattern
+   whose terms are already in an import you wrote last week, and a score of 1.00 means exactly
+   that without saying so. Your own patterns can be contributed without a rebuild since 1.92.0,
+   which was the item that used to sit here.

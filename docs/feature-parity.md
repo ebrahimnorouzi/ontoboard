@@ -128,7 +128,7 @@ individual views in a tabbed column beside the canvas, so none of this needs a t
 
 | Feature | Web app | Plugin | Assessment |
 |---|---|---|---|
-| ODP pattern library | ✅ 13 patterns | ✅ **159 patterns** | Shipped 1.82.0; MWO, PMDco and NFDI MatWerk patterns added 1.87.0, with suggestions ranked against the open ontology |
+| ODP pattern library | ✅ 13 patterns | ✅ **159 patterns, plus your own** | Shipped 1.82.0; MWO, PMDco and NFDI MatWerk patterns added 1.87.0; 1.92.0 made the ranking against the open ontology reachable, which it had not been, and made the library extensible by dropping a file in a folder |
 | CSV → ROBOT template wizard | ✅ | ✅ | *ROBOT → Template…*, TSV or CSV, every bad row reported at once. robot-core 1.9.8 reads no XLSX templates at all, so this is not a gap against ROBOT |
 | SPARQL query panel | ✅ | 🧩 | `sparql-query-plugin`, bundled |
 | GitHub import | ✅ | ✅ | *Project → Open from GitHub…* clones and opens the edit file |

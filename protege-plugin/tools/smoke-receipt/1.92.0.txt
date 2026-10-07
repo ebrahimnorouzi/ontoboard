@@ -1,0 +1,125 @@
+OntoBoard 1.92.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-10-08  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 9/9  test 10/10
+  2026-10-08  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 9/9  test 10/10
+
+
+A PATTERN OF YOUR OWN IS A FILE IN A FOLDER
+
+The last thing the library could not do. 159 patterns across four collections shipped inside the
+jar, and contributing a 160th - or a fifth collection of a group's own patterns - meant editing
+this repository, regenerating index.tsv and building a 66 MB bundle.
+
+Now: drop an .owl or .ttl file into ~/.ontoboard/patterns/<collection>/ and it is in the library
+next time the dialog opens. Searchable, groupable, suggestible and importable exactly like the
+ones that ship. A sub-folder is a collection, so making a fifth is making a folder. Point the
+folder at src/patterns inside an ODK project and the patterns travel with the repository.
+
+No index, and that is not an inconsistency with the shipped library. A jar cannot be listed -
+under Felix a classpath directory answers a bundle: URL that enumerates nothing, which is the
+only reason patterns/index.tsv exists. A directory on disk can be listed. The asymmetry is in the
+container, not in the patterns.
+
+Nothing is asked for that the file already says. Measured over the 159 shipped patterns: 112
+carry coversRequirements, 66 hasIntent, 65 rdfs:comment, 38 rdfs:label, 6 dc:title, 4
+dc:publisher. So the name, the description, the competency questions and the publisher are read
+out of the file, and a file that documents nothing falls back to its own filename and the host of
+its IRI. dc:creator, which 34 of them carry, is deliberately not read: it names a person, and the
+grouping answers "whose modelling am I adopting".
+
+TWO ORDERINGS NOBODY COULD SELECT
+
+Found while building the above. The dialog's dropdown listed three orderings. Two more existed:
+
+  PatternOrder.BY_COLLECTION - written in 1.87.0 to answer "show me the MWO patterns" once there
+  was more than one collection.
+
+  "Suggested for this ontology" - the whole recommender. 347 lines, two signals each chosen by
+  measuring against a real BFO project rather than by reasoning, a paragraph of documentation
+  calling it "the browser's first ordering", and its own field in this class whose comment says
+  "The orderings offered, with the suggestions first".
+
+Neither was in the combo box, which still held the literal array written before either existed.
+The recommender shipped in 1.87.0 and could not be reached by any user for five releases. The
+documentation said both groupings were offered. Eleven tests covered the recommender's scoring
+and none asked whether anybody could ask for it.
+
+Nothing caught it because the two halves have no reason to be read together: one class knows how
+to sort, another knows what to show. PatternLibraryOrderingsTest now reads the BY_* constants off
+PatternOrder by reflection and fails if one of them is not offered - and fails if something is
+offered that nothing sorts by, which would silently fall back to a name sort.
+
+Also fixed while there: "Suggested" is offered first but selected only when an ontology with
+something in it is open, because with none it can only report that nothing matches.
+
+READING A PATTERN HELD THE FILE OPEN
+
+A defect the new tests found, and the measurement that found it was worth the detour.
+
+Nineteen of the new tests passed every assertion and then failed, all with "Failed to delete temp
+directory". manager.loadOntologyFromOntologyDocument(File) leaves a handle on the file. On Windows
+that means the file cannot be deleted or renamed, and in some editors cannot be saved over, once
+the library has looked at it. Invisible for ten releases because every pattern was a read-only
+resource inside the jar; a defect the moment a pattern was a file somebody owns and edits.
+
+Reading through a stream this code closes fixed sixteen of the nineteen. The remaining three were
+exactly the files that fail to parse, so the leak was on the failure path. Four probes settled it:
+
+  manager.loadOntologyFromOntologyDocument(File)      not deletable
+  StreamDocumentSource + the file's own IRI           not deletable
+  StringDocumentSource + the file's own IRI           not deletable
+  StreamDocumentSource + a synthetic file: IRI        deletable
+
+So the source is not the lever - the document IRI is. A StreamDocumentSource is single-use here
+(after the first parser it reports "InputStream not available"), and when every parser fails the
+OWL API opens the document IRI itself and never closes it. Both loaders now pass a synthetic
+file: IRI, which is still a file: IRI because that is what makes an unresolvable owl:imports fail
+the way MissingImportHandlingStrategy.SILENT expects - the lesson two airline patterns taught in
+1.87.0.
+
+Worth recording that this makes the generated index more reproducible, not less: PatternIndexTest
+regenerates patterns/index.tsv and compares, and it passes byte for byte, because the real
+absolute path never belonged in it. The cost is that a contributed pattern importing a sibling
+file will not resolve it. That is worth less than a file the user cannot delete until Protege
+exits.
+
+NOTHING IS SKIPPED IN SILENCE
+
+A file that will not parse is named with the parser's reason, behind a problems button in the
+dialog. So is the count of files left unread when a folder holds more than 200 - each one has to
+be parsed, and a folder pointed at a whole ontology repository would otherwise hang the dialog
+for minutes while looking complete. Hidden entries are skipped, so pointing this at src/patterns
+of a git repository does not walk into .git.
+
+A contributed id can never shadow a shipped one: componency.ttl becomes componency-2, because
+three things key on the id - lookup, the parse cache, and the filename the import copies the
+pattern out as. And a contributed .ttl is copied out as .ttl, not as .owl, because handing ROBOT
+Turtle in a file named .owl is handing it a name that lies.
+
+A NEW PARAMETER KIND
+
+Parameter.Kind.DIRECTORY. The dialog could ask for a file but not for a folder, and a file
+chooser left on its default selection mode hands back a file inside the folder - the user picks
+the right place and the wrong value.
+
+NUMBERS
+
+1733 tests, 0 failures, 0 skipped. 31 new, counted three ways and agreeing after a stale
+surefire report from a deleted scratch test was cleared.
+
+37/37 classes named in plugin.xml load on both hosts. The self-check still reads the library:
+159 patterns indexed, actingfor parsed to 2 classes and 2 properties. Quality report end to end:
+6 findings, 2 of them errors.
+
+STILL OPEN
+
+The library knows nothing about what you have already imported, so it will suggest a pattern
+whose terms are in an import from last week - and a score of 1.00 means precisely that without
+saying so. A contributed pattern gets no category or domain, because nothing can infer one.
+import_group, release_artefacts, export_formats and primary_release are still text OntoBoard
+preserves and does not obey, and inserting an element into one of those lists still means a text
+editor. Three low-severity collaboration findings: node moves do not travel and the UI does not
+say so, nothing in the product tells you how to obtain a server, and "N changes not shared" is
+erased by the next reconnect.

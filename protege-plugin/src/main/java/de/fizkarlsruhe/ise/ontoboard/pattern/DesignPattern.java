@@ -22,10 +22,19 @@ public final class DesignPattern {
     private final String description;
     private final String competencyQuestions;
     private final java.util.List<String> termIris;
+    private final java.io.File file;
 
     DesignPattern(String id, String name, String collection, String publisher, String category,
             String domain, String sameAs, String description, String competencyQuestions,
             String terms) {
+        this(id, name, collection, publisher, category, domain, sameAs, description,
+                competencyQuestions, terms, null);
+    }
+
+    DesignPattern(String id, String name, String collection, String publisher, String category,
+            String domain, String sameAs, String description, String competencyQuestions,
+            String terms, java.io.File file) {
+        this.file = file;
         this.id = id;
         this.name = name;
         this.collection = collection;
@@ -123,9 +132,30 @@ public final class DesignPattern {
         return competencyQuestions;
     }
 
-    /** The classpath resource holding the pattern's OWL file. */
+    /**
+     * The classpath resource holding the pattern's OWL file, meaningful only when it ships.
+     *
+     * <p>{@link PatternLibrary#openStream} is the one place that chooses between this and
+     * {@link #getFile}, so nothing else has to know where a pattern came from.
+     */
     public String getResourcePath() {
         return PatternLibrary.DIRECTORY + id + "/pattern.owl";
+    }
+
+    /**
+     * The file this pattern was read from, or null when it ships inside the plugin.
+     *
+     * <p>The whole difference between the two kinds. A shipped pattern is a resource in a jar
+     * that cannot be listed, which is why {@link PatternIndex} exists; a contributed one is a
+     * file in a directory that can be, which is why {@link ContributedPatterns} needs no index.
+     */
+    public java.io.File getFile() {
+        return file;
+    }
+
+    /** True when the user put this pattern there rather than the build. */
+    public boolean isContributed() {
+        return file != null;
     }
 
     @Override

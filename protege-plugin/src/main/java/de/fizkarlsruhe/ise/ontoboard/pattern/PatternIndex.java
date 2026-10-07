@@ -303,18 +303,69 @@ public final class PatternIndex {
                 : new LinkedHashMap<String, Object>();
     }
 
-    private static OWLOntology load(File owl) throws IOException {
+    /**
+     * Loads a pattern from a file, imports left unresolved.
+     *
+     * <p>Package-visible because {@link ContributedPatterns} reads a user's own files the
+     * same way. A second loader with a different missing-import setting would make a
+     * contributed pattern behave unlike a shipped one for no reason anybody chose.
+     */
+    static OWLOntology load(File owl) throws IOException {
         OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
         // Not over the network. 101 of the 123 declare owl:imports - 76 of them to the ODP
         // annotation schema alone - and chasing those would make indexing depend on thirteen
         // websites still being up.
         manager.setOntologyLoaderConfiguration(manager.getOntologyLoaderConfiguration()
                 .setMissingImportHandlingStrategy(MissingImportHandlingStrategy.SILENT));
+        // Through a stream this code closes, under a document IRI that is not the file's own.
+        // Both halves are needed, and the second is the surprising one.
+        //
+        // manager.loadOntologyFromOntologyDocument(File) leaves a handle on the file. On Windows
+        // that means the file cannot be deleted or renamed, and in some editors cannot be saved
+        // over, once the library has looked at it - which was invisible while every pattern was a
+        // read-only resource in the jar and became a defect the moment a pattern was a file
+        // somebody owns. Found by ContributedPatternsTest: nineteen tests passed every assertion
+        // and then failed because JUnit could not remove its own temporary directory.
+        //
+        // Closing our own stream is not enough. Measured: a StreamDocumentSource is single-use -
+        // after the first parser reads it, it reports "InputStream not available" - so the OWL API
+        // falls back to opening the document IRI itself, and on the path where every parser fails
+        // it never closes that. A StringDocumentSource leaks identically, so the source is not the
+        // lever; the IRI is. With a synthetic file: IRI the file is never opened by anything but
+        // this method, and it stays deletable.
+        //
+        // Still a file: IRI, because that is what makes an unresolvable owl:imports fail the way
+        // MissingImportHandlingStrategy.SILENT expects - see PatternLibrary.baseFor, which found
+        // this out on two airline patterns. Nothing in the generated index depends on the real
+        // path: terms exclude file: IRIs by design, a declared ontology IRI does not come from the
+        // document, and CI already regenerates the index under a different absolute path and gets
+        // the same bytes.
+        InputStream stream = Files.newInputStream(owl.toPath());
         try {
-            return manager.loadOntologyFromOntologyDocument(owl);
+            return manager.loadOntologyFromOntologyDocument(
+                    new org.semanticweb.owlapi.io.StreamDocumentSource(stream,
+                            documentIriFor(owl)));
         } catch (Exception broken) {
-            throw new IOException("cannot read " + owl + ": " + broken.getMessage(), broken);
+            throw new IOException("cannot read " + owl.getName() + ": " + broken.getMessage(),
+                    broken);
+        } finally {
+            try {
+                stream.close();
+            } catch (IOException ignored) {
+                // Already read, or already broken; neither changes what to report.
+            }
         }
+    }
+
+    /**
+     * A {@code file:} IRI standing in for the pattern's own path.
+     *
+     * <p>Under a fixed directory that does not exist, so it is the same whichever machine and
+     * whichever checkout the file is read from. The filename is kept, because it is what a parse
+     * error quotes back at the user and {@code /ontoboard/pattern/x} is no help.
+     */
+    static IRI documentIriFor(File owl) {
+        return IRI.create("file:/ontoboard/pattern/" + owl.getName());
     }
 
     /**
@@ -356,8 +407,12 @@ public final class PatternIndex {
      *
      * <p>Builtins are left out here as well, so the stored list is the one the recommender
      * actually scores against rather than a list it has to filter on every call.
+     *
+     * <p>Package-visible because {@link ContributedPatterns} derives a user's pattern's
+     * terms by this same rule. Evidence has to mean the same thing for both kinds, or a
+     * contributed pattern would rank against a different measure than the one beside it.
      */
-    private static String termsOf(OWLOntology ontology) {
+    static String termsOf(OWLOntology ontology) {
         Set<String> iris = new TreeSet<String>();
         for (OWLEntity entity : ontology.getSignature(Imports.EXCLUDED)) {
             if (!(entity.isOWLClass() || entity.isOWLObjectProperty()

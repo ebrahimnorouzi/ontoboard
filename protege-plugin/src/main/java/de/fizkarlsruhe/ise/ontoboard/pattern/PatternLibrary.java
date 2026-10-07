@@ -126,12 +126,23 @@ public final class PatternLibrary {
      * widen.
      */
     public static List<DesignPattern> matching(String query) {
+        return matching(all(), query);
+    }
+
+    /**
+     * The same filter over a list given to it, rather than over the shipped library.
+     *
+     * <p>What the browser uses, because the list it shows is the shipped patterns plus whatever
+     * the user contributed, and searching has to reach both. {@link #all()} deliberately still
+     * means only what is in the jar: it is cached for the session and a folder on disk is not.
+     */
+    public static List<DesignPattern> matching(List<DesignPattern> patterns, String query) {
         if (query == null || query.trim().isEmpty()) {
-            return all();
+            return Collections.unmodifiableList(new ArrayList<DesignPattern>(patterns));
         }
         String[] words = query.trim().toLowerCase(Locale.ROOT).split("\\s+");
         List<DesignPattern> hits = new ArrayList<DesignPattern>();
-        for (DesignPattern pattern : all()) {
+        for (DesignPattern pattern : patterns) {
             String haystack = (pattern.getId() + " " + pattern.getName() + " "
                     + pattern.getDescription() + " " + pattern.getCategory() + " "
                     + pattern.getDomain()).toLowerCase(Locale.ROOT);
@@ -209,9 +220,12 @@ public final class PatternLibrary {
      * shipped that way - nothing about the code looks slow, and the cost only appears when
      * something asks about every pattern at once rather than the one a user clicked.
      *
-     * <p>Safe to hold for the session: these files are inside the jar and cannot change under
-     * it. What is kept is the summary - lists of entities and import IRIs - not the ontologies,
-     * so the 123 {@code OWLOntology} objects and their managers are still collected.
+     * <p>Safe to hold for the session, by two different arguments. A shipped pattern is inside
+     * the jar and cannot change under it. A contributed one is a file the user may well be
+     * editing, so {@link #cacheKey} folds its size and timestamp into the key and an edit is
+     * read again. What is kept either way is the summary - lists of entities and import IRIs -
+     * not the ontologies, so the {@code OWLOntology} objects and their managers are still
+     * collected.
      */
     private static final java.util.Map<String, Contents> PARSED =
             new java.util.concurrent.ConcurrentHashMap<String, Contents>();
@@ -226,13 +240,30 @@ public final class PatternLibrary {
      * @throws IOException if the pattern is not in the bundle or will not parse
      */
     public static Contents contentsOf(DesignPattern pattern) throws IOException {
-        Contents already = PARSED.get(pattern.getId());
+        String key = cacheKey(pattern);
+        Contents already = PARSED.get(key);
         if (already != null) {
             return already;
         }
         Contents read = parse(pattern);
-        PARSED.put(pattern.getId(), read);
+        PARSED.put(key, read);
         return read;
+    }
+
+    /**
+     * What makes a parse reusable: the id, and for a contributed pattern its file's state.
+     *
+     * <p>A shipped pattern cannot change under the session. A contributed one is a file the user
+     * is quite likely editing - that is the point of being able to contribute it - so its size
+     * and timestamp are part of the key. Editing a pattern and looking at it again shows what it
+     * now says, and nothing is re-parsed that did not change.
+     */
+    private static String cacheKey(DesignPattern pattern) {
+        if (!pattern.isContributed()) {
+            return pattern.getId();
+        }
+        File file = pattern.getFile();
+        return pattern.getId() + "@" + file.length() + "@" + file.lastModified();
     }
 
     private static Contents parse(DesignPattern pattern) throws IOException {
@@ -270,13 +301,32 @@ public final class PatternLibrary {
         return list;
     }
 
-    /** Loads the pattern, without chasing its imports over the network. */
-    public static OWLOntology load(DesignPattern pattern) throws IOException {
+    /**
+     * The pattern's bytes, from the jar or from the user's folder.
+     *
+     * <p>The one place that knows a pattern can come from either. Everything else - parsing,
+     * copying out, the recommender, the browser - works the same for both kinds because of it.
+     *
+     * @throws IOException if it is not where the pattern says it is
+     */
+    static InputStream openStream(DesignPattern pattern) throws IOException {
+        if (pattern.isContributed()) {
+            if (!pattern.getFile().isFile()) {
+                throw new IOException("No longer there: " + pattern.getFile().getAbsolutePath());
+            }
+            return Files.newInputStream(pattern.getFile().toPath());
+        }
         InputStream stream = PatternLibrary.class.getClassLoader()
                 .getResourceAsStream(pattern.getResourcePath());
         if (stream == null) {
             throw new IOException("Not in this build: " + pattern.getResourcePath());
         }
+        return stream;
+    }
+
+    /** Loads the pattern, without chasing its imports over the network. */
+    public static OWLOntology load(DesignPattern pattern) throws IOException {
+        InputStream stream = openStream(pattern);
         try {
             OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
             // SILENT, and the import list is reported separately instead. 101 of the 123 declare
@@ -312,6 +362,15 @@ public final class PatternLibrary {
      * expects it to.
      */
     static IRI baseFor(DesignPattern pattern) {
+        if (pattern.isContributed()) {
+            // Not the file's own URI, which would be the obvious choice and would let a sibling
+            // import resolve. Measured: when every parser fails, the OWL API opens the document
+            // IRI and never closes it, so a user's own pattern that does not parse becomes a file
+            // they cannot delete until Protege exits - see PatternIndex.load. A sibling import
+            // resolving is worth less than that.
+            return IRI.create("file:/" + DIRECTORY + "yours/" + pattern.getId()
+                    + extensionOf(pattern));
+        }
         return IRI.create("file:/" + DIRECTORY + pattern.getId() + "/pattern.owl");
     }
 
@@ -327,12 +386,8 @@ public final class PatternLibrary {
         if (!directory.isDirectory() && !directory.mkdirs()) {
             throw new IOException("Cannot create " + directory.getAbsolutePath());
         }
-        File target = new File(directory, pattern.getId() + ".owl");
-        InputStream stream = PatternLibrary.class.getClassLoader()
-                .getResourceAsStream(pattern.getResourcePath());
-        if (stream == null) {
-            throw new IOException("Not in this build: " + pattern.getResourcePath());
-        }
+        File target = new File(directory, pattern.getId() + extensionOf(pattern));
+        InputStream stream = openStream(pattern);
         try {
             OutputStream out = Files.newOutputStream(target.toPath());
             try {
@@ -348,5 +403,22 @@ public final class PatternLibrary {
             stream.close();
         }
         return target;
+    }
+
+    /**
+     * The extension the copy keeps, which for a contributed pattern is its own.
+     *
+     * <p>Every shipped pattern is RDF/XML, so {@code .owl} was always right for them. A
+     * contributed one may well be Turtle - this library ships a {@code .ttl} beside every
+     * pattern, so a user who copies one out to edit is holding Turtle - and writing Turtle into
+     * a file called {@code .owl} would hand ROBOT a file whose name lies about its syntax.
+     */
+    static String extensionOf(DesignPattern pattern) {
+        if (!pattern.isContributed()) {
+            return ".owl";
+        }
+        String name = pattern.getFile().getName();
+        int dot = name.lastIndexOf('.');
+        return dot > 0 ? name.substring(dot).toLowerCase(Locale.ROOT) : ".owl";
     }
 }

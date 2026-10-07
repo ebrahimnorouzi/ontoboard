@@ -21,7 +21,12 @@ The plugin is early. These exist in the web application but not yet here:
   notes (`IAO:0000116`/`IAO:0000232`) carry an author and date. But the argument itself
   lives in the tracker: there is no reply thread inside the ontology, deliberately, because
   an unbounded mutable conversation would appear in every release and every diff.
-- **Ontology design pattern library** — the bundled ODPA patterns are not exposed.
+- ~~**Ontology design pattern library**~~ — **done in 1.82.0, and 1.92.0.** *ROBOT → Pattern
+  library…* browses 159 patterns across four collections, ranks them against the ontology you
+  have open, and hands the one you pick to *Import terms…*. Since 1.92.0 the library is not
+  only what the jar holds: a file dropped into `~/.ontoboard/patterns/<collection>/` is in it,
+  with no index, no metadata file and no rebuild. This entry said the bundled patterns were
+  "not exposed", which stopped being true ten releases before it was corrected.
 - ~~**SPARQL query panel**~~ — **done in 1.33.0.** *ROBOT → SPARQL…* runs a query you write, or
   the project's own checks in `src/sparql` with the same pass/fail convention `make sparql_test`
   uses. `SELECT` and `ASK` only: a curator exploring a query should not be one typo away from an
@@ -1058,7 +1063,8 @@ report for nine versions.
 Ordered by what is being worked on:
 
 1. **Pull requests** — the rest of the git surface ships; opening and reviewing a PR does not.
-2. **Pattern library and Widoco.**
+2. **Widoco** — generated documentation. The pattern library that used to share this line
+   shipped in 1.82.0 and became extensible in 1.92.0.
 3. **Entity locking** — once live collaboration has been used in anger.
 4. **Collaboration vocabulary** — the nine axiom kinds the live protocol cannot carry.
 

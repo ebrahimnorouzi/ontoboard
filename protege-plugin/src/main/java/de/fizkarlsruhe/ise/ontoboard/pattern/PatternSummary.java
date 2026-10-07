@@ -50,6 +50,16 @@ public final class PatternSummary {
                     + "name. Importing both would import the same terms twice."));
         }
 
+        // Where a contributed pattern came from, said out loud. Everything else here is a
+        // published pattern somebody can look up; this one is a file on this machine, and a
+        // chooser that showed the two identically would be claiming a provenance it has not got.
+        // The path is also the only way to find the file again when it does not say what you
+        // expected.
+        if (pattern.isContributed()) {
+            html.append(note("Your own, read from <br><code>"
+                    + escape(pattern.getFile().getAbsolutePath()) + "</code>"));
+        }
+
         if (!pattern.getDescription().isEmpty()) {
             html.append("<p>").append(escape(pattern.getDescription())).append("</p>");
         }

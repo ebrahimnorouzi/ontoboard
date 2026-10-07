@@ -1,5 +1,6 @@
 package de.fizkarlsruhe.ise.ontoboard.menu;
 
+import de.fizkarlsruhe.ise.ontoboard.pattern.ContributedPatterns;
 import de.fizkarlsruhe.ise.ontoboard.pattern.DesignPattern;
 import de.fizkarlsruhe.ise.ontoboard.pattern.PatternLibrary;
 import de.fizkarlsruhe.ise.ontoboard.pattern.PatternOrder;
@@ -36,7 +37,14 @@ import org.protege.editor.owl.ui.action.ProtegeOWLAction;
 import org.semanticweb.owlapi.model.IRI;
 
 /**
- * OntoBoard &gt; ROBOT &gt; Pattern library... - the 123 design patterns shipped in the plugin.
+ * OntoBoard &gt; ROBOT &gt; Pattern library... - the 159 design patterns shipped in the plugin,
+ * and any of the user's own.
+ *
+ * <p><b>Your own patterns, from a folder, with no rebuild.</b> The library used to be exactly
+ * what the jar held, so contributing a 160th pattern meant editing this repository and building
+ * a 66 MB bundle. {@link ContributedPatterns} reads a folder every time this dialog opens, and
+ * everything downstream - search, the orderings, the suggestions, the import - treats a file
+ * from that folder and a pattern from the jar the same way.
  *
  * <p>Asked for: "I want to have a pattern repository to import ODPs to the ontology, and have
  * these patterns, separated by the source, and uses ODK to import terms from the pattern." The
@@ -71,6 +79,26 @@ public class PatternLibraryAction extends ProtegeOWLAction {
      */
     static final String SUGGESTED = "Suggested for this ontology";
 
+    /**
+     * Every ordering the chooser offers, in the order it offers them.
+     *
+     * <p>A constant with a test behind it, because the list was wrong and nothing noticed.
+     * {@code SUGGESTED} shipped in 1.87.0 - a recommender, its scoring measured and argued, a
+     * paragraph of documentation calling it "the browser's first ordering" - and was never put
+     * in the combo box, so no user could ever select it. {@code BY_COLLECTION} shipped the same
+     * release, to answer "show me the MWO patterns", and was never offered either. Both were
+     * implemented, tested, documented and unreachable.
+     *
+     * <p>{@link de.fizkarlsruhe.ise.ontoboard.pattern.PatternOrderTest} now fails if an ordering
+     * {@code PatternOrder} knows how to sort by is missing from here, which is the only way this
+     * class of mistake gets caught: the code that implements an option and the code that offers
+     * it have no reason to be read together.
+     */
+    static final String[] ORDERINGS = {
+        SUGGESTED, PatternOrder.BY_PUBLISHER, PatternOrder.BY_COLLECTION,
+        PatternOrder.BY_CATEGORY, PatternOrder.BY_NAME,
+    };
+
     /** Why each suggested pattern was suggested, by id. Empty in the other orderings. */
     private java.util.Map<String, String> reasons = new java.util.HashMap<String, String>();
 
@@ -84,8 +112,7 @@ public class PatternLibraryAction extends ProtegeOWLAction {
 
     @Override
     public void actionPerformed(ActionEvent event) {
-        List<DesignPattern> all = PatternLibrary.all();
-        if (all.isEmpty()) {
+        if (PatternLibrary.all().isEmpty()) {
             JOptionPane.showMessageDialog(getOWLWorkspace(),
                     "The pattern library did not load. It is packaged inside the plugin, so this "
                             + "means the jar is incomplete rather than that anything is missing "
@@ -93,10 +120,22 @@ public class PatternLibraryAction extends ProtegeOWLAction {
                     "No patterns", JOptionPane.WARNING_MESSAGE);
             return;
         }
-        show(all);
+        show();
     }
 
-    private void show(List<DesignPattern> all) {
+    /** Everything on offer: what ships, plus whatever the user contributed. */
+    private List<DesignPattern> everything = new ArrayList<DesignPattern>();
+
+    /** What the user's folder turned out to hold, including why anything in it is missing. */
+    private ContributedPatterns.Scan contributed = null;
+
+    /** Where the user's patterns are read from, changeable from the dialog. */
+    private File contributedRoot = null;
+
+    private JLabel counts;
+    private JButton problems;
+
+    private void show() {
         dialog = new JDialog(javax.swing.SwingUtilities.getWindowAncestor(getOWLWorkspace()),
                 "Pattern library", JDialog.ModalityType.APPLICATION_MODAL);
 
@@ -137,8 +176,7 @@ public class PatternLibraryAction extends ProtegeOWLAction {
             }
         });
 
-        grouping = new JComboBox<String>(new String[] {PatternOrder.BY_PUBLISHER, PatternOrder.BY_CATEGORY,
-            PatternOrder.BY_NAME});
+        grouping = new JComboBox<String>(ORDERINGS);
         grouping.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent event) {
@@ -185,11 +223,35 @@ public class PatternLibraryAction extends ProtegeOWLAction {
                 dialog.dispose();
             }
         });
+        JButton addYourOwn = new JButton("Your patterns...");
+        addYourOwn.setToolTipText("Add an OWL or Turtle file of your own to the library, "
+                + "or change the folder they are read from");
+        addYourOwn.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent event) {
+                contribute();
+            }
+        });
+
+        counts = new JLabel();
+        problems = new JButton();
+        problems.setVisible(false);
+        problems.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent event) {
+                showProblems();
+            }
+        });
+
         JPanel buttons = new JPanel();
         buttons.setLayout(new BoxLayout(buttons, BoxLayout.LINE_AXIS));
         buttons.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
-        buttons.add(new JLabel(all.size() + " patterns"));
+        buttons.add(counts);
+        buttons.add(javax.swing.Box.createHorizontalStrut(6));
+        buttons.add(problems);
         buttons.add(javax.swing.Box.createHorizontalGlue());
+        buttons.add(addYourOwn);
+        buttons.add(javax.swing.Box.createHorizontalStrut(6));
         buttons.add(importButton);
         buttons.add(javax.swing.Box.createHorizontalStrut(6));
         buttons.add(close);
@@ -199,11 +261,120 @@ public class PatternLibraryAction extends ProtegeOWLAction {
         content.add(split, BorderLayout.CENTER);
         content.add(buttons, BorderLayout.SOUTH);
         dialog.setContentPane(content);
+
+        // Which ordering starts selected, rather than simply the first one. "Suggested" is
+        // offered first because it is the most useful way in, but with no ontology open - or one
+        // with nothing in it yet - it can only say that nothing matches, which is a poor thing
+        // for a browser to open on.
+        grouping.setSelectedItem(canSuggest() ? SUGGESTED : PatternOrder.BY_PUBLISHER);
+
+        rescan();
         dialog.pack();
         dialog.setLocationRelativeTo(getOWLWorkspace());
-
-        refill();
         dialog.setVisible(true);
+    }
+
+    /** Whether there is an ontology with enough in it for a suggestion to mean anything. */
+    private boolean canSuggest() {
+        org.semanticweb.owlapi.model.OWLOntology ontology = getOWLModelManager() == null ? null
+                : getOWLModelManager().getActiveOntology();
+        return ontology != null && !ontology.getSignature(
+                org.semanticweb.owlapi.model.parameters.Imports.INCLUDED).isEmpty();
+    }
+
+    /**
+     * Reads the user's folder again and rebuilds the list.
+     *
+     * <p>Every time the dialog opens, not once per session. A contributed pattern is a file
+     * somebody is editing, and a library that showed yesterday's version of it would be worse
+     * than one that could not show it at all.
+     */
+    private void rescan() {
+        contributedRoot = ContributedPatterns.root();
+        contributed = ContributedPatterns.scan(contributedRoot);
+        everything = new ArrayList<DesignPattern>(PatternLibrary.all());
+        everything.addAll(contributed.getPatterns());
+
+        int yours = contributed.getPatterns().size();
+        counts.setText(PatternLibrary.all().size() + " patterns"
+                + (yours == 0 ? "" : " + " + yours + " of your own"));
+        int wrong = contributed.getProblems().size();
+        problems.setText(wrong == 1 ? "1 problem..." : wrong + " problems...");
+        problems.setVisible(wrong > 0);
+        refill();
+    }
+
+    /** Says which of the user's files could not be read, and why. */
+    private void showProblems() {
+        StringBuilder text = new StringBuilder();
+        text.append("<html><body style='font-family:sans-serif;width:460px'><p>Read from ")
+                .append(escape(contributedRoot.getAbsolutePath())).append(":</p><ul>");
+        for (String problem : contributed.getProblems()) {
+            text.append("<li>").append(escape(problem)).append("</li>");
+        }
+        text.append("</ul></body></html>");
+        JOptionPane.showMessageDialog(dialog, new JLabel(text.toString()),
+                "Files that are not in the library", JOptionPane.WARNING_MESSAGE);
+    }
+
+    /**
+     * Adds a file of the user's own to the library, or moves the folder they are read from.
+     *
+     * <p>Both in one dialog because they are the same question asked at different times: the
+     * first time, "where do mine live and here is one"; later, "put this one there too". A
+     * separate preferences page for a single path would be a worse answer, and a folder nobody
+     * can see the path of is a folder nobody can put a file in by hand.
+     */
+    private void contribute() {
+        java.util.Map<String, String> chosen = ParameterDialog.show(dialog, "Your patterns",
+                "A pattern of your own is a file in a folder - no index, no metadata, no "
+                        + "rebuild. Drop OWL or Turtle files into this folder and they appear in "
+                        + "the library next time you open it. A sub-folder becomes a collection "
+                        + "of its own, so your group's patterns can sit together under its name.",
+                java.util.Arrays.asList(
+                        Parameter.of("folder", "Folder", Parameter.Kind.DIRECTORY)
+                                .defaultValue(contributedRoot.getAbsolutePath())
+                                .help("Where your own patterns are read from. Point it inside an "
+                                        + "ODK project - src/patterns, say - and they travel with "
+                                        + "the repository, so everybody who clones it gets them.")
+                                .build(),
+                        Parameter.of("file", "Pattern to add", Parameter.Kind.FILE)
+                                .defaultValue("")
+                                .help("An .owl, .ttl, .rdf, .owx, .omn or .ofn file, copied into "
+                                        + "the folder. Leave this empty to change the folder "
+                                        + "without adding anything. The file's own dcterms:title, "
+                                        + "hasIntent and coversRequirements annotations become "
+                                        + "its name, description and competency questions, so "
+                                        + "there is nothing to type in.")
+                                .build(),
+                        Parameter.of("collection", "Collection",
+                                Parameter.Kind.TEXT)
+                                .defaultValue(ContributedPatterns.DEFAULT_COLLECTION)
+                                .help("The sub-folder to put it in, which is the name it is "
+                                        + "grouped under in 'By collection'. Your group's name, "
+                                        + "or the project's.")
+                                .build()));
+        if (chosen == null) {
+            return;
+        }
+        String folder = chosen.get("folder");
+        if (folder != null && !folder.trim().isEmpty()) {
+            ContributedPatterns.setRoot(new File(folder.trim()));
+        }
+        String file = chosen.get("file");
+        if (file != null && !file.trim().isEmpty()) {
+            try {
+                File added = ContributedPatterns.add(ContributedPatterns.root(),
+                        chosen.get("collection"), new File(file.trim()));
+                JOptionPane.showMessageDialog(dialog,
+                        "Copied to " + added.getAbsolutePath() + ".",
+                        "Added to your patterns", JOptionPane.INFORMATION_MESSAGE);
+            } catch (IOException cannotAdd) {
+                JOptionPane.showMessageDialog(dialog, cannotAdd.getMessage(),
+                        "Could not add it", JOptionPane.WARNING_MESSAGE);
+            }
+        }
+        rescan();
     }
 
     /** Rebuilds the list for the current search and grouping. */
@@ -211,7 +382,7 @@ public class PatternLibraryAction extends ProtegeOWLAction {
         DefaultListModel<DesignPattern> model =
                 (DefaultListModel<DesignPattern>) patterns.getModel();
         model.clear();
-        List<DesignPattern> matching = PatternLibrary.matching(search.getText());
+        List<DesignPattern> matching = PatternLibrary.matching(everything, search.getText());
         String ordering = String.valueOf(grouping.getSelectedItem());
         for (DesignPattern pattern : SUGGESTED.equals(ordering)
                 ? suggested(matching) : PatternOrder.sorted(matching, ordering)) {
@@ -362,10 +533,15 @@ public class PatternLibraryAction extends ProtegeOWLAction {
             super.getListCellRendererComponent(list, value, index, selected, focused);
             if (value instanceof DesignPattern) {
                 DesignPattern pattern = (DesignPattern) value;
+                // A contributed pattern says its collection rather than its category, because
+                // nothing assigns it one - "uncategorised" on every row of your own folder is
+                // noise, and which folder you put it in is what you actually chose.
+                String second = pattern.isContributed()
+                        ? escape(pattern.getCollection()) + " &middot; yours"
+                        : escape(pattern.getCategory());
                 setText("<html>" + escape(pattern.getName())
                         + "<br><font size='-2' color='#777777'>"
-                        + escape(pattern.getPublisher()) + " &middot; "
-                        + escape(pattern.getCategory())
+                        + escape(pattern.getPublisher()) + " &middot; " + second
                         + (pattern.isDuplicate()
                                 ? " &middot; same as " + escape(pattern.getSameAs()) : "")
                         + "</font></html>");

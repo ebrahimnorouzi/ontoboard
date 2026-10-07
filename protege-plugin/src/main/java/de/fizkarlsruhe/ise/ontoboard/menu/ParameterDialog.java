@@ -178,12 +178,23 @@ public final class ParameterDialog {
                 check.setSelected("true".equalsIgnoreCase(parameter.getDefaultValue()));
                 return check;
             }
+            case DIRECTORY:
             case FILE: {
+                final boolean folders = parameter.getKind() == Parameter.Kind.DIRECTORY;
                 JPanel row = new JPanel(new BorderLayout(4, 0));
                 JTextField path = new JTextField(parameter.getDefaultValue(), 22);
                 JButton browse = new JButton("Browse...");
                 browse.addActionListener(a -> {
                     JFileChooser chooser = new JFileChooser();
+                    if (folders) {
+                        chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+                        // The folder shown when it opens, so "Browse" starts where the value
+                        // points rather than in the user's home directory every time.
+                        File starting = new File(path.getText().trim());
+                        if (starting.isDirectory()) {
+                            chooser.setCurrentDirectory(starting);
+                        }
+                    }
                     if (chooser.showOpenDialog(parent) == JFileChooser.APPROVE_OPTION) {
                         File chosen = chooser.getSelectedFile();
                         path.setText(chosen.getAbsolutePath());

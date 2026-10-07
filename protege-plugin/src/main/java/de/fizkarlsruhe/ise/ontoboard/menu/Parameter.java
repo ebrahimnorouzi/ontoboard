@@ -41,7 +41,15 @@ public final class Parameter {
         /** A whole number, validated. */
         NUMBER,
         /** A file to read or write, with a chooser. */
-        FILE
+        FILE,
+        /**
+         * A directory, with a chooser that will only pick one.
+         *
+         * <p>Added when the pattern library needed to ask where a user's own patterns live. The
+         * file chooser cannot stand in: left on its default selection mode it hands back a file
+         * inside the folder, so the user picks the right place and the wrong value.
+         */
+        DIRECTORY
     }
 
     private final String key;
