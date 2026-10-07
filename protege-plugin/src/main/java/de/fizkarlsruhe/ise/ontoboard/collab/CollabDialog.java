@@ -117,24 +117,31 @@ public final class CollabDialog {
         at.gridy++;
         form.add(gitModeNotice(), at);
 
-        int answer = JOptionPane.showConfirmDialog(parent, form, "Collaboration",
-                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
-        if (answer != JOptionPane.OK_OPTION) {
-            return null;
-        }
+        // A loop over the same components, not a recursive call to show(). Re-entering show()
+        // built a fresh dialog from the *stored* settings, so a typo in the address threw away
+        // everything typed in the same sitting - including a token pasted from elsewhere, which
+        // is the one field nobody can retype from memory. Re-showing these components keeps
+        // what is in them, so a correction is a correction rather than starting again.
+        while (true) {
+            int answer = JOptionPane.showConfirmDialog(parent, form, "Collaboration",
+                    JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+            if (answer != JOptionPane.OK_OPTION) {
+                return null;
+            }
 
-        CollabSettings chosen = new CollabSettings(server.getText().trim(),
-                board.getText().trim(), new String(token.getPassword()).trim(),
-                displayName, String.valueOf(colour.getSelectedItem()));
-        try {
-            chosen.validate();
-        } catch (IllegalArgumentException wrong) {
-            JOptionPane.showMessageDialog(parent, wrong.getMessage(),
-                    "That address will not work", JOptionPane.WARNING_MESSAGE);
-            return show(parent, ontologyIri);
+            CollabSettings chosen = new CollabSettings(server.getText().trim(),
+                    board.getText().trim(), new String(token.getPassword()).trim(),
+                    displayName, String.valueOf(colour.getSelectedItem()));
+            try {
+                chosen.validate();
+            } catch (IllegalArgumentException wrong) {
+                JOptionPane.showMessageDialog(parent, wrong.getMessage(),
+                        "That address will not work", JOptionPane.WARNING_MESSAGE);
+                continue;
+            }
+            CollabSettingsStore.save(chosen, remember.isSelected());
+            return chosen;
         }
-        CollabSettingsStore.save(chosen, remember.isSelected());
-        return chosen;
     }
 
     private static void addRow(JPanel form, GridBagConstraints at, String label,

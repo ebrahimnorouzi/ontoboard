@@ -1,0 +1,131 @@
+OntoBoard 1.88.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-10-07  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 9/9  test 10/10
+  2026-10-07  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 9/9  test 10/10
+
+
+THE ONE PLACE THE SOFTWARE PROMISED SOMETHING ABOUT YOUR DATA AND DID NOT DELIVER
+
+Five findings from the 1.86.0 audit, all in the same family: things that failed quietly. The
+first is the one that mattered.
+
+RECONNECTION NEVER CAUGHT YOU UP
+
+The bridge's hello handler attached an observer over event.changes.added - FUTURE additions - and
+sent a welcome carrying the user and the peer list. The ops array holds the whole session log and
+nothing ever sent it.
+
+So the direction that worked was outbound only. The plugin queues its own edits while
+disconnected and flushes them on reconnect, which is real and documented. Coming back the other
+way there was nothing: a peer that dropped off received only what happened after it returned, and
+a peer joining a session in progress received nothing at all - its board missing every axiom
+agreed before it arrived, with nothing on screen to say so.
+
+Two places said otherwise. CollabClient's javadoc: "Redelivery is normal after a reconnect - the
+shared log is replayed". The docs table: "Works offline | queues and catches up". The client's
+deduplication ledger had been written for a replay that never came - the guard was correct and
+guarding nothing.
+
+The bridge now sends the log on join, after the welcome.
+
+Uncapped, deliberately. The document is ephemeral - it holds one session's operations and dies
+with the server - so a cap would reintroduce exactly the quiet loss being fixed, for the oldest
+edits instead of all of them. A session long enough for the replay to be slow is a visible
+performance symptom, which is a better failure than silently missing axioms.
+
+Sent after the observer is attached, so an operation pushed during the replay is duplicated
+rather than dropped. The client deduplicates by operation id and SEEN_LIMIT is 2000, so a repeat
+costs nothing; a gap would be unrecoverable. A reconnecting peer gets its own earlier operations
+back too, which is the point - filtering them would mean a peer that reconnected could never
+recover its own work.
+
+A FLUSH INTO A DYING SOCKET DESTROYED THE QUEUE
+
+    flush = new ArrayList<>(pending);
+    pending.clear();                      // under the lock
+    ...
+    for (op : flush) send(operation(op)); // outside it, and send() swallowed failures
+
+Up to PENDING_LIMIT - 200 - edits, gone. The queue was already clear, each failure was logged at
+debug, and the next reconnect had nothing left to send. Those are precisely the edits made while
+offline, which is the only reason the queue exists.
+
+send() now reports whether the frame left, and anything unsent goes back on the front of the
+queue in order - the tail of a broken flush is not sent, because order is part of the merge and
+sending it would reorder the user's edits.
+
+The comment justifying the old behaviour was wrong about its own reasoning: "the operation is
+already in `seen`, so nothing here needs to escalate". `seen` deduplicates operations arriving
+FROM the bridge. It has no bearing on redelivering one that failed to leave.
+
+AN UNREADABLE EDIT LOOKED LIKE A FEATURE
+
+A frame shaped like an operation whose payload would not decode returned Kind.UNKNOWN, the same
+value as "a message type this version does not understand" - which the client ignores at debug
+level, correctly, because otherwise a newer server adding a frame type breaks every older plugin.
+
+The two needed opposite treatment and shared a branch. There is now a MALFORMED_OPERATION kind:
+an unknown type stays silent, a lost edit reaches the toolbar with a count. One is a glitch,
+forty means the two ends disagree about the wire format.
+
+A REJECTED ADDRESS THREW AWAY YOUR TOKEN
+
+The settings dialog answered a validation failure with `return show(parent, ontologyIri)` - a
+fresh dialog built from the STORED settings. A typo in the server address discarded everything
+typed in that sitting, including a token pasted from elsewhere, which is the one field nobody can
+retype from memory. It is a loop over the same components now, so a correction is a correction.
+
+AND THE HINT I MISSED IN 1.86.0
+
+The Access token field still read "From the web application". That release fixed the same class
+of bug in three other places - the git-mode message, the settings success message, and the docs -
+and missed the one field live mode cannot start without. It now describes a JWT signed with the
+server's SECRET_KEY.
+
+
+A TEST THAT PASSED ON STALE CLASSES
+
+Worth recording because it nearly hid a real defect. Adding an abstract method to
+CollabClient.Listener must break its implementers; `mvn -q test-compile` reported success. The
+IDE's language server had already written classes into target/test-classes, so Maven saw nothing
+to do - the exact trap docs/development.md warns about under "Always clean". Deleting
+target/test-classes produced the expected error.
+
+A TEST THAT CAUGHT ITS OWN BUG
+
+The MALFORMED_OPERATION test failed on first run. The cause was not the test: an earlier edit to
+CollabClient had aborted before writing, so the enum constant existed and the switch had no case
+for it - it fell to `default`, grouped with UNKNOWN, and stayed silent. The test was written for
+exactly that failure and found it.
+
+A TEST THAT PASSED INTERMITTENTLY
+
+The queue test asserted replacement.received.size() >= 5 immediately after the queue drained.
+getPendingCount() reaching zero says the client finished writing; the bridge receiving is a
+separate hop. It failed once and passed on the next run, which is how it was noticed. It waits
+for the condition now, and three consecutive runs are clean - a test that passes most of the time
+is worse than no test.
+
+NUMBERS
+
+1667 Java tests, 0 failures, 0 skipped. 5 new, counted three ways.
+59 collab tests, up from 55: four for the catch-up, including that the welcome precedes it and
+that an empty session replays nothing.
+
+Three existing CollabMessages tests changed verdict rather than being deleted, because the
+contract they pinned is the one that was wrong. A fourth was added to hold the other half: an
+unrecognised message type is still UNKNOWN, so the distinction cannot quietly collapse back.
+
+36/36 classes named in plugin.xml load on both hosts. 159 patterns indexed.
+
+STILL OPEN
+
+From the same audit, three low-severity findings: node moves do not travel and the UI does not
+say so, nothing in the product tells you how to obtain a server, and "N changes not shared" is
+erased by the next reconnect. The 220px status label finding was checked and refuted - every
+message sent to it is short and the full text is its tooltip.
+
+Then: editing a list or a nested block in the ODK YAML, a term-list editor, acting on what the
+YAML says, and contributing a pattern without rebuilding the plugin.

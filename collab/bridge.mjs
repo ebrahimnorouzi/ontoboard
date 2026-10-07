@@ -351,8 +351,41 @@ export function startBridge({ port, secret, getDoc }) {
           user,
           peers: livePeers(presenceFor(board)),
         }));
+
+        // Everything already in the log, after the welcome.
+        //
+        // This is what "an outage does not lose your edits" was only half of. The plugin queues
+        // its OWN edits while disconnected and sends them on reconnect, so that direction
+        // survived; the other direction did not exist. A peer that dropped off and came back
+        // received only what happened after it returned, and a peer joining a session in
+        // progress received nothing at all - the board it drew was missing every axiom agreed
+        // before it arrived, with nothing on screen to say so.
+        //
+        // The Java client's own javadoc claimed this already worked: "Redelivery is normal after
+        // a reconnect - the shared log is replayed". Its dedupe ledger was written for a replay
+        // that never came.
+        //
+        // Uncapped, deliberately. The document is ephemeral - it holds one session's operations
+        // and dies with the server - and a cap would reintroduce exactly the quiet loss this
+        // fixes, just for the oldest edits instead of all of them. A session long enough for the
+        // replay to be slow is a visible performance symptom, which is a better failure than
+        // silently missing axioms.
+        //
+        // Sent after the observer is attached, so an operation pushed during the replay is
+        // duplicated rather than dropped. The client deduplicates by operation id, so a repeat
+        // costs nothing and a gap would be unrecoverable.
+        let replayed = 0;
+        for (const content of ops.toArray()) {
+          const op = decodeOperation(content);
+          if (op && socket.readyState === socket.OPEN) {
+            socket.send(JSON.stringify({ t: "op", op }));
+            replayed++;
+          }
+        }
+
         broadcastPeers(board);
-        console.log(`[bridge] ${user} joined '${board}'`);
+        console.log(`[bridge] ${user} joined '${board}'`
+            + (replayed > 0 ? `, caught up on ${replayed} operation(s)` : ""));
         return;
       }
 

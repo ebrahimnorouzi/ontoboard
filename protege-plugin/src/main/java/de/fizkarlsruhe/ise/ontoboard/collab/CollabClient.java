@@ -94,6 +94,17 @@ public final class CollabClient implements CollabTransport {
          * spinner.
          */
         void onDisconnected(String reason, int attempt, long retryInMillis);
+
+        /**
+         * An operation arrived that could not be decoded, and has been dropped.
+         *
+         * <p>Abstract rather than a default no-op on purpose. A default would let an implementer
+         * inherit silence, which is the behaviour being fixed: this used to share a branch with
+         * unrecognised message types and was logged at debug, so a board quietly missing
+         * somebody's change gave its owner nothing to notice. Two files disagreeing with no
+         * explanation is the worst thing this feature can do.
+         */
+        void onUndecodableOperation();
     }
 
     private final CollabSettings settings;
@@ -289,8 +300,14 @@ public final class CollabClient implements CollabTransport {
      * True when this operation has been seen before.
      *
      * <p>Exposed so the view can double-check an operation it is about to apply. Redelivery is
-     * normal after a reconnect - the shared log is replayed - and applying the same change twice
-     * would show as a duplicated axiom or a spurious entry in Protege's undo stack.
+     * normal: since 1.88.0 the bridge sends the whole session log to a peer that joins or
+     * rejoins, so a reconnecting client is handed back its own earlier edits along with the ones
+     * it missed. Applying the same change twice would show as a duplicated axiom or a spurious
+     * entry in Protege's undo stack.
+     *
+     * <p>This ledger pre-dated the replay it was written for. Until the bridge actually sent the
+     * log, the sentence above described something that did not happen - the guard was correct
+     * and guarding nothing.
      */
     public boolean hasSeen(String operationId) {
         synchronized (lock) {
@@ -364,8 +381,24 @@ public final class CollabClient implements CollabTransport {
                     }
                 });
                 // After the welcome, not before: the bridge closes a socket that speaks first.
-                for (OntologyOperation queued : flush) {
-                    send(CollabMessages.operation(queued));
+                //
+                // Anything that will not go out goes back on the queue. The list was emptied
+                // under the lock above and the sends happen outside it, so a socket dying
+                // mid-flush used to destroy up to PENDING_LIMIT edits: the queue was already
+                // clear, every failure was logged at debug, and the next reconnect had nothing
+                // left to send. Those are precisely the edits made while offline, which is the
+                // one thing the queue exists for.
+                List<OntologyOperation> stillPending = new ArrayList<OntologyOperation>();
+                for (int at = 0; at < flush.size(); at++) {
+                    if (!send(CollabMessages.operation(flush.get(at)))) {
+                        // This one and everything after it. Order is part of the merge, so
+                        // sending the tail of a broken flush would reorder the user's edits.
+                        stillPending.addAll(flush.subList(at, flush.size()));
+                        break;
+                    }
+                }
+                if (!stillPending.isEmpty()) {
+                    requeue(stillPending);
                 }
                 String presence;
                 synchronized (lock) {
@@ -399,6 +432,15 @@ public final class CollabClient implements CollabTransport {
                 refuse(incoming.getMessage() == null
                         ? "the server refused the connection without saying why"
                         : incoming.getMessage());
+                return;
+            case MALFORMED_OPERATION:
+                // Somebody's edit, arriving unreadable. Nothing can be applied, so the only
+                // useful thing left is to say so: a peer whose copy is quietly missing a change
+                // has no way to discover it, and "the two files disagree and nobody knows why"
+                // is the worst outcome this feature has.
+                LOGGER.warn("OntoBoard: an operation arrived that could not be decoded and has "
+                        + "been dropped");
+                dispatch(() -> listener.onUndecodableOperation());
                 return;
             case UNKNOWN:
             default:
@@ -460,21 +502,35 @@ public final class CollabClient implements CollabTransport {
         send(frame);
     }
 
-    private void send(String frame) {
+    /**
+     * Writes a frame, reporting whether it actually got out.
+     *
+     * <p>It used to return void and swallow the failure, on the grounds that "the operation is
+     * already in {@code seen}, so nothing here needs to escalate". That reasoning was wrong
+     * about which ledger {@code seen} is: it deduplicates operations arriving <em>from</em> the
+     * bridge and has no bearing on redelivering one that failed to leave. A frame dropped here
+     * was gone.
+     *
+     * @return false if the socket was absent, or closed under the write
+     */
+    private boolean send(String frame) {
         WebSocketClient current;
         synchronized (lock) {
             current = socket;
         }
         if (current == null) {
-            return;
+            return false;
         }
         try {
             current.send(frame);
+            return true;
         } catch (RuntimeException notOpen) {
-            // The socket closed between the check and the send. onClose schedules the retry, and
-            // the operation is already in `seen`, so nothing here needs to escalate.
+            // The socket closed between the check and the send. onClose schedules the retry;
+            // whether this particular frame is worth recovering is the caller's business,
+            // because only the caller knows whether it was an edit or a cursor position.
             LOGGER.debug("OntoBoard: collaboration frame not sent; the socket had closed",
                     notOpen);
+            return false;
         }
     }
 
@@ -501,6 +557,30 @@ public final class CollabClient implements CollabTransport {
         }
         if (stopping != null) {
             stopping.shutdown();
+        }
+    }
+
+    /**
+     * Puts operations back at the front of the queue after a failed flush.
+     *
+     * <p>At the front, and in their original order, because the queue is replayed in order and
+     * the merge depends on it: appending them would send a user's older edits after their newer
+     * ones.
+     *
+     * <p>Anything newer that was published during the flush stays behind them, which is the
+     * right way round. If the two together exceed {@link #PENDING_LIMIT} the oldest go, the same
+     * rule {@code publish} uses, and they are counted as dropped so the toolbar can say so
+     * rather than the loss being silent.
+     */
+    private void requeue(List<OntologyOperation> unsent) {
+        synchronized (lock) {
+            for (int at = unsent.size() - 1; at >= 0; at--) {
+                pending.addFirst(unsent.get(at));
+            }
+            while (pending.size() > PENDING_LIMIT) {
+                pending.removeFirst();
+                droppedWhileOffline++;
+            }
         }
     }
 

@@ -567,3 +567,78 @@ describe("presence", () => {
     expect(error.message).toContain("numeric");
   });
 });
+
+// ---------- catching up on join ----------
+
+describe("a peer that joins a session already in progress", () => {
+  it("receives the operations agreed before it arrived", async () => {
+    const doc = new Y.Doc();
+    const port = await bridgeOn(doc);
+
+    const alice = await client(port).open();
+    await alice.hello("b1", "alice");
+    alice.send({ t: "op", op: operation("addClass", "alice", { iri: "http://x#Dog" }) });
+    alice.send({ t: "op", op: operation("addClass", "alice", { iri: "http://x#Cat" }) });
+    await waitFor(() => (readAsWebClient(doc).length === 2 ? true : null),
+        "both operations to reach the document");
+
+    // Bob arrives afterwards. Before this existed he received nothing: his board was missing
+    // every axiom agreed before he joined, with nothing on screen to say so.
+    const bob = await client(port).open();
+    await bob.hello("b1", "bob");
+
+    const caughtUp = await waitFor(
+        () => {
+          const ops = bob.received.filter((m) => m.t === "op");
+          return ops.length === 2 ? ops : null;
+        },
+        "bob to be caught up on the two earlier operations");
+
+    expect(caughtUp.map((m) => m.op.data.iri)).toEqual(["http://x#Dog", "http://x#Cat"]);
+    expect(caughtUp[0].op.userId).toBe("alice");
+  });
+
+  it("is caught up after the welcome, so the client is connected before anything arrives", async () => {
+    const doc = new Y.Doc();
+    const port = await bridgeOn(doc);
+    const alice = await client(port).open();
+    await alice.hello("b1", "alice");
+    alice.send({ t: "op", op: operation("addClass", "alice", { iri: "http://x#Dog" }) });
+    await waitFor(() => (readAsWebClient(doc).length === 1 ? true : null), "the operation");
+
+    const bob = await client(port).open();
+    await bob.hello("b1", "bob");
+    await bob.waitFor((m) => m.t === "op", "the replayed operation");
+
+    const kinds = bob.received.map((m) => m.t);
+    expect(kinds.indexOf("welcome")).toBeLessThan(kinds.indexOf("op"));
+  });
+
+  it("gets its own earlier operations back, which the client deduplicates by id", async () => {
+    // A reconnecting peer is indistinguishable from a new one, so its own edits come back. The
+    // Java client keeps an id ledger across reconnects for exactly this; filtering here instead
+    // would mean a peer that reconnected could never recover its own lost work.
+    const doc = new Y.Doc();
+    const port = await bridgeOn(doc);
+    const alice = await client(port).open();
+    await alice.hello("b1", "alice");
+    alice.send({ t: "op", op: operation("addClass", "alice", { iri: "http://x#Dog" }) });
+    await waitFor(() => (readAsWebClient(doc).length === 1 ? true : null), "the operation");
+
+    const again = await client(port).open();
+    await again.hello("b1", "alice");
+
+    const replayed = await again.waitFor((m) => m.t === "op", "alice's own operation, replayed");
+    expect(replayed.op.data.iri).toBe("http://x#Dog");
+  });
+
+  it("receives nothing extra when the session has no history", async () => {
+    const doc = new Y.Doc();
+    const port = await bridgeOn(doc);
+    const alice = await client(port).open();
+    await alice.hello("b1", "alice");
+
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(alice.received.filter((m) => m.t === "op")).toEqual([]);
+  });
+});

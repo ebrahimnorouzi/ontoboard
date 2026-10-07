@@ -126,20 +126,39 @@ class CollabMessagesTest {
      */
     @Test
     void malformedInputIsDroppedRatherThanThrown() {
-        for (String bad : new String[] {"", "not json", "[]", "null", "{}", "{\"t\":42}",
-            "{\"t\":\"op\"}", "{\"t\":\"op\",\"op\":\"nope\"}"}) {
+        // Nothing that even announced itself as an operation.
+        for (String bad : new String[] {"", "not json", "[]", "null", "{}", "{\"t\":42}"}) {
             CollabMessages.Incoming in = CollabMessages.decode(bad, 0L);
             assertNotNull(in, "decode must never return null for: " + bad);
             assertEquals(CollabMessages.Kind.UNKNOWN, in.getKind(), "for input: " + bad);
         }
     }
 
-    /** An operation type the web client would ignore is dropped here instead. */
+    /**
+     * A frame that announced an operation and carried no readable one is reported.
+     *
+     * <p>These used to decode to {@code UNKNOWN}, which the client ignores at debug level, so an
+     * edit arriving unreadable was indistinguishable from a newer server sending a message type
+     * this plugin does not know. The second must be ignored or every older plugin breaks when
+     * the server gains a feature; the first is somebody's change going missing, and a board
+     * quietly short of a change gives its owner nothing to notice.
+     */
+    @Test
+    void anOperationFrameWithoutAReadableOperationIsReported() {
+        for (String bad : new String[] {"{\"t\":\"op\"}", "{\"t\":\"op\",\"op\":\"nope\"}"}) {
+            CollabMessages.Incoming in = CollabMessages.decode(bad, 0L);
+            assertNotNull(in, "decode must never return null for: " + bad);
+            assertEquals(CollabMessages.Kind.MALFORMED_OPERATION, in.getKind(),
+                    "for input: " + bad);
+        }
+    }
+
+    /** An operation type this vocabulary has no entry for is dropped, and said out loud. */
     @Test
     void anUnknownOperationTypeIsDroppedNotGuessedAt() {
         CollabMessages.Incoming in = CollabMessages.decode(
                 "{\"t\":\"op\",\"op\":{\"id\":\"o1\",\"type\":\"addWidget\",\"data\":{}}}", 0L);
-        assertEquals(CollabMessages.Kind.UNKNOWN, in.getKind());
+        assertEquals(CollabMessages.Kind.MALFORMED_OPERATION, in.getKind());
     }
 
     /** Dedup is by id; an operation without one would echo between clients forever. */
@@ -147,7 +166,20 @@ class CollabMessagesTest {
     void anOperationWithoutAnIdIsDropped() {
         CollabMessages.Incoming in = CollabMessages.decode(
                 "{\"t\":\"op\",\"op\":{\"type\":\"addClass\",\"data\":{}}}", 0L);
-        assertEquals(CollabMessages.Kind.UNKNOWN, in.getKind());
+        assertEquals(CollabMessages.Kind.MALFORMED_OPERATION, in.getKind());
+    }
+
+    /**
+     * An unrecognised message type stays {@code UNKNOWN}, which is the other half of the rule.
+     *
+     * <p>Pinned so the distinction cannot quietly collapse back into one branch: this one is
+     * ignored deliberately, so a newer server adding a frame type does not break an older
+     * plugin.
+     */
+    @Test
+    void anUnrecognisedMessageTypeIsStillUnknown() {
+        assertEquals(CollabMessages.Kind.UNKNOWN,
+                CollabMessages.decode("{\"t\":\"somethingNewerServersSend\"}", 0L).getKind());
     }
 
     @Test

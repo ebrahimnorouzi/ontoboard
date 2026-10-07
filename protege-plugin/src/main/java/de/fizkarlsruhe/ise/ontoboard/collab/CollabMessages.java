@@ -33,6 +33,16 @@ public final class CollabMessages {
         OPERATION,
         PEERS,
         ERROR,
+        /**
+         * An operation arrived and could not be read.
+         *
+         * <p>Separate from {@link #UNKNOWN} because the two deserve opposite treatment and used
+         * to share a branch. An unrecognised message type is a newer server talking to an older
+         * plugin, and ignoring it is what keeps the plugin working. An operation frame whose
+         * payload will not decode is somebody's edit that this plugin is about to lose, and
+         * saying so is the only way anyone finds out.
+         */
+        MALFORMED_OPERATION,
         /** Understood JSON that is not a message we handle — ignore, do not fail. */
         UNKNOWN
     }
@@ -158,8 +168,9 @@ public final class CollabMessages {
         if ("op".equals(type)) {
             OntologyOperation operation = operation(root.get("op"));
             if (operation == null) {
-                // A malformed or unknown-type operation is dropped rather than guessed at.
-                return new Incoming(Kind.UNKNOWN, null, null, null, null);
+                // Dropped rather than guessed at - but reported, because this is an edit going
+                // missing and not a message type we happen not to know.
+                return new Incoming(Kind.MALFORMED_OPERATION, null, null, null, null);
             }
             return new Incoming(Kind.OPERATION, null, null, operation, null);
         }

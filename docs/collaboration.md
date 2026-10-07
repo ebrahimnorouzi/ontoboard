@@ -7,7 +7,7 @@ Two ways to work together. Pick by whether your team wants to run a server.
 | Needs a server | yes, one you run | no |
 | See edits as they happen | yes | no |
 | See other people's cursors | yes | no |
-| Works offline | queues and catches up | yes |
+| Works offline | queues your edits, and catches up on theirs | yes |
 | Setup | one service, one shared secret, a token each | none |
 
 **OntoBoard hosts nothing.** There is no ontoboard.org to sign in to, no account we hold, and
@@ -202,10 +202,27 @@ outage, with the delay doubling up to thirty seconds, and does *not* reconnect w
 gave a reason — retrying a rejected token would just be a loop against your server. The toolbar
 says which of the two happened.
 
-**An outage does not lose your edits.** Up to 200 operations are held while disconnected and
-sent when the connection returns, keeping their original timestamps so the merge engine still
-orders them correctly. Beyond 200 the oldest are dropped, and the count is reported rather than
-hidden.
+**An outage does not lose your edits, in either direction — since 1.88.0.** Up to 200 of your own
+operations are held while disconnected and sent when the connection returns, keeping their
+original timestamps so the merge engine still orders them correctly. Beyond 200 the oldest are
+dropped, and the count is reported rather than hidden.
+
+Coming back the other way, **the bridge sends you the whole session log when you join or
+rejoin**, so you also receive what happened while you were away. Before 1.88.0 only the first
+half was true: your edits queued, and the other direction did not exist — a peer that dropped off
+received only what happened after it returned, and a peer joining a session in progress received
+nothing at all, with nothing on screen to say its board was incomplete.
+
+The log is sent uncapped. The document is ephemeral — it holds one session's operations and dies
+with the server — so a cap would reintroduce the same quiet loss for the oldest edits. Duplicates
+are expected and harmless: you are sent your own earlier operations too, and the plugin
+deduplicates by operation id across reconnects.
+
+**If an incoming change cannot be read, you are told.** A frame that arrives shaped like an
+operation but will not decode is dropped — there is nothing to apply — and the toolbar says so,
+with a count. It used to share a branch with "a message type this version does not understand",
+which is deliberately ignored for forward compatibility, and was logged where nobody would see
+it. The two now differ: an unknown type stays silent, a lost edit does not.
 
 **Deleting a class deletes more than the class.** A remote `removeClass` retracts the
 declaration and every axiom mentioning it, which is what Protégé's own delete does. Leaving

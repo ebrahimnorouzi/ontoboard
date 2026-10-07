@@ -370,6 +370,29 @@ public final class CollabSession implements CollabClient.Listener {
                 + Math.max(1, retryInMillis / 1000) + "s", false);
     }
 
+    /**
+     * Somebody's edit arrived unreadable and was dropped.
+     *
+     * <p>Counted as well as announced. A single malformed frame is worth a line on the status
+     * bar; a stream of them means the two ends disagree about the wire format, and a count is
+     * what distinguishes the two - one is a glitch, forty is a bug in somebody's build.
+     */
+    @Override
+    public void onUndecodableOperation() {
+        undecodable++;
+        // false, so the indicator goes amber. The socket is up - the frame arrived, after all -
+        // but the parameter drives the light, and a copy that is quietly missing somebody's
+        // change is exactly the state the amber light is for. Reporting this on a green light
+        // would be reporting it where nobody looks.
+        host.onStatus(undecodable == 1
+                ? "An incoming change could not be read and was dropped - your copy may be "
+                        + "missing it"
+                : undecodable + " incoming changes could not be read and were dropped",
+                false);
+    }
+
+    private int undecodable;
+
     /** For a diagnostics panel: everything the session knows about itself. */
     public Map<String, String> describe() {
         Map<String, String> description = new LinkedHashMap<String, String>();

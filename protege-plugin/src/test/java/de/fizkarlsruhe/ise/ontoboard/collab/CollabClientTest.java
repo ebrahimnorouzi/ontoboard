@@ -75,7 +75,18 @@ class CollabClientTest {
         volatile boolean echoToSender;
 
         FakeBridge() {
-            super(new InetSocketAddress("127.0.0.1", 0));
+            this(0);
+        }
+
+        /**
+         * On a chosen port, so a test can stand a second bridge where the first one was.
+         *
+         * <p>Needed to exercise a reconnect for real: the client retries the address it was
+         * given, so proving a dropped queue comes back means putting a working server at that
+         * same address.
+         */
+        FakeBridge(int port) {
+            super(new InetSocketAddress("127.0.0.1", port));
             setReuseAddr(true);
         }
 
@@ -182,6 +193,13 @@ class CollabClientTest {
         final List<List<PeerPresence>> peerLists = new CopyOnWriteArrayList<List<PeerPresence>>();
         final List<String> refusals = new CopyOnWriteArrayList<String>();
         final List<String> disconnections = new CopyOnWriteArrayList<String>();
+        final java.util.concurrent.atomic.AtomicInteger undecodable =
+                new java.util.concurrent.atomic.AtomicInteger();
+
+        @Override
+        public void onUndecodableOperation() {
+            undecodable.incrementAndGet();
+        }
 
         @Override
         public void onConnected(String user) {
@@ -253,6 +271,14 @@ class CollabClientTest {
 
     private FakeBridge listening() throws Exception {
         bridge = new FakeBridge();
+        bridge.start();
+        bridge.awaitPort();
+        return bridge;
+    }
+
+    /** A second bridge on a port the first one has released. */
+    private FakeBridge listeningOn(int port) throws Exception {
+        bridge = new FakeBridge(port);
         bridge.start();
         bridge.awaitPort();
         return bridge;
@@ -563,6 +589,93 @@ class CollabClientTest {
                 "an unknown message must not drop the connection - a newer server would break "
                         + "every older plugin");
         assertTrue(recorder.refusals.isEmpty());
+    }
+
+    /**
+     * An unreadable operation is reported, where an unknown message type is not.
+     *
+     * <p>They shared a branch and were both logged at debug. The two deserve opposite
+     * treatment: an unrecognised type is a newer server talking to an older plugin, and
+     * ignoring it is what keeps the plugin working, while an operation frame that will not
+     * decode is somebody's edit this plugin is about to lose. A board quietly missing a change
+     * gives its owner nothing to notice.
+     */
+    @Test
+    void anOperationThatWillNotDecodeIsReportedRatherThanLoggedAtDebug() throws Exception {
+        FakeBridge server = listening();
+        started(server, TOKEN);
+        waitUntil("the welcome", () -> !recorder.connectedAs.isEmpty());
+
+        for (WebSocket socket : server.getConnections()) {
+            // Shaped like an operation, and unreadable: no id, no type.
+            socket.send("{\"t\":\"op\",\"op\":{\"nonsense\":true}}");
+        }
+
+        waitUntil("the dropped operation to be reported",
+                () -> recorder.undecodable.get() == 1);
+        assertTrue(client.isConnected(), "one bad frame must not drop the session");
+        assertTrue(recorder.operations.isEmpty(), "nothing was applied");
+    }
+
+    /** An unknown message type still reports nothing, which is the other half of the rule. */
+    @Test
+    void anUnknownMessageTypeIsStillSilent() throws Exception {
+        FakeBridge server = listening();
+        started(server, TOKEN);
+        waitUntil("the welcome", () -> !recorder.connectedAs.isEmpty());
+
+        for (WebSocket socket : server.getConnections()) {
+            socket.send("{\"t\":\"somethingNewerServersSend\",\"payload\":1}");
+        }
+
+        Thread.sleep(150);
+        assertEquals(0, recorder.undecodable.get(),
+                "a message type we do not know is not a lost edit");
+    }
+
+    /**
+     * Queued edits survive a flush into a socket that is already gone.
+     *
+     * <p>The queue was emptied under the lock and the sends happened outside it, so a socket
+     * dying mid-flush destroyed up to PENDING_LIMIT operations: the queue was already clear,
+     * every failure was logged at debug, and the next reconnect had nothing left to send. Those
+     * are exactly the edits made while offline, which is the only reason the queue exists.
+     */
+    @Test
+    void aFlushIntoADeadSocketKeepsTheQueue() throws Exception {
+        FakeBridge server = listening();
+        started(server, TOKEN);
+        waitUntil("the welcome", () -> !recorder.connectedAs.isEmpty());
+
+        // Offline, so publishing queues rather than sends.
+        int port = server.getPort();
+        server.stop();
+        waitUntil("the drop to be noticed", () -> !client.isConnected());
+        for (int at = 0; at < 5; at++) {
+            client.publish(OntologyOperation.local("addClass", "alice",
+                    java.util.Collections.<String, Object>singletonMap(
+                            "iri", "http://example.org/C" + at)));
+        }
+
+        assertEquals(5, client.getPendingCount(), "five edits made while offline");
+
+        // The flush, into a bridge standing where the old one was. Before the fix the queue was
+        // emptied under the lock and the sends happened outside it, so anything that failed to
+        // go out was unrecoverable; now what is unsent comes back in order for the next attempt.
+        FakeBridge replacement = listeningOn(port);
+        waitUntil("the reconnect", () -> client.isConnected());
+        waitUntil("the queue to drain into a live socket", () -> client.getPendingCount() == 0);
+        assertEquals(0, client.getDroppedWhileOfflineCount(),
+                "nothing was dropped - the queue stayed well under PENDING_LIMIT");
+        // Waited for, not asserted. getPendingCount() reaching zero says the client finished
+        // writing; the bridge receiving is a separate hop, so asserting it immediately is a race
+        // that passes most of the time - which is worse than no test at all. Caught by this
+        // very test failing once and passing on the next run.
+        waitUntil("all five queued edits to reach the bridge",
+                () -> replacement.received.size() >= 6);
+        assertTrue(replacement.received.get(0).contains("\"hello\""),
+                "the first frame is the handshake, then the five edits: "
+                        + replacement.received);
     }
 
     // ---------- presence heartbeat ----------
