@@ -34,7 +34,7 @@ ODK's seven steps, and what each one is inside Protégé:
 | 3 | `curl -O seed-via-docker.sh`, `chmod +x` | ❌ | OntoBoard never downloads or runs ODK's seeder |
 | 4 | `docker pull obolibrary/odkfull` | ➖ | Not needed for the wizard. OntoBoard never pulls — but `docker run` fetches a missing image itself, so the first build of a real ODK repo is slow rather than broken |
 | 5 | `./seed-via-docker.sh <ontology>` | 🔶 | The wizard writes 17 files and opens the edit file — **a different repository**, see below |
-| 6 | Configure `<id>-odk.yaml` | 🔶 | *Project → Project configuration…* since 1.80.0. Every key visible, scalars editable, lists and blocks read-only — [measured table below](#step-6-the-odk-yaml-key-by-key) |
+| 6 | Configure `<id>-odk.yaml` | ✅ | *Project → Project configuration…* since 1.80.0. Every key visible, and since 1.89.0 every scalar editable at any depth — [measured table below](#step-6-the-odk-yaml-key-by-key) |
 | 7 | `git init`, create the remote, push | 🔶 | Commit, pull, push, branch, checkout and clone work; `git init` and creating the remote do not |
 
 ### What the wizard produces
@@ -89,18 +89,33 @@ editable in place and 4 are shown read-only:
 | `primary_release` | ✅ | Which artefact most users interact with, e.g. `full` → `<id>.owl` |
 | `remove_owl_nothing` | ✅ | |
 | `robot_java_args` | ✅ | RAM ROBOT may consume, e.g. `-Xmx8G` |
-| `release_artefacts` | 🔶 | A **list** — shown, not editable |
-| `export_formats` | 🔶 | A **list** — `owl`, `ttl`. Shown, not editable |
-| `import_group` | 🔶 | A **block** — the ontologies you import (RO, PATO, OMO…), with `product`, `mirror_from` and `module_type`. Shown, not editable |
-| `robot_report` | 🔶 | A **block** — `report_on`, `use_labels`, `fail_on`, `custom_profile`. Shown, not editable |
+| `release_artefacts` | ✅ | Each item, e.g. `release_artefacts[0]` |
+| `export_formats` | ✅ | Each item — `owl`, `ttl` |
+| `import_group` | ✅ | Every scalar inside it: `import_group.products[2].mirror_from`, `import_group.products[0].module_type`, each `annotation_properties` entry |
+| `robot_report` | ✅ | `robot_report.use_labels`, `.fail_on`, `.custom_profile`, `.report_on[0]` |
 
-So of the twelve settings the ODK tutorial walks you through, six are editable in Protégé and six
-— the two lists and the two blocks — need a text editor.
+**Since 1.89.0 every scalar in the file is editable, at any depth.** Measured on that same file:
+47 values, 36 of them editable, against 13 values and 9 editable before. So all twelve settings
+the ODK tutorial walks you through can be changed in Protégé.
 
-**Why the structures are refused rather than half-supported.** The editor replaces exactly the
-characters a value occupies in the file. A list's or a block's span covers everything inside it,
-so an in-place edit would delete the contents — the whole `import_group`, every release artefact.
-Refusing is the feature; silently dropping your imports would not be.
+The dialog shows the nesting indented and addresses each value by path, which matters because
+`module_type` appears under all four of MWO's imported products and `id` under each as well —
+keying an edit by its leaf name would write one product's value into another's.
+
+**Why this was ever shallow, and what is still refused.** It looked like a limit of the
+technique and was not. Editing splices a value's own characters out of the original text, and a
+scalar's span is exactly its own characters wherever it sits — so a scalar two blocks down is no
+more dangerous to replace than a top-level one. The walk simply never went past the top level.
+
+What is still refused is a **structure**, whose span covers everything inside it: replacing
+`import_group` in place would delete every product under it. So `import_group` and
+`robot_report` are shown read-only while their scalars are editable, which is the honest split.
+
+**Adding or removing a list entry is not here.** Changing `export_formats[1]` from `ttl` to
+something else is a splice; adding a third format inserts a line, which is a different
+operation. A key containing a `.` or a `[` is shown and not offered, because `a.b` would then
+mean two things and an edit could land on a key other than the one clicked — no ODK
+configuration has one.
 
 **Why it splices rather than rewrites.** Loading that file with a YAML library and writing it
 back rewrites 28 of its 41 lines — normalising a flow sequence, a nested indent, CRLF to LF and a
@@ -237,7 +252,7 @@ Two consequences worth stating plainly. On a real ODK repository such as MWO, ex
 keys OntoBoard's *own* scaffold writes are read by nothing, including `uribase`, which is
 decorative: the base IRI is recovered from the edit file, because `uribase` is lossy.
 
-**So for a list or a nested block, still open the file in a text editor** — and for anything
+**To add or remove a list entry, still open the file in a text editor** — and for anything
 OntoBoard does not act on, remember that changing it here only changes the file. What ODK does
 with it next is ODK's business, by way of `update_repo`.
 
@@ -310,7 +325,7 @@ but if an import resolves differently from how `robot` resolves it, that is the 
 
 | ODK step | | OntoBoard |
 |---|---|---|
-| Declare it under `import_group` in the YAML | 🔶 | *Project configuration…* shows the block but will not edit a nested one, and nothing reads `import_group` |
+| Declare it under `import_group` in the YAML | 🔶 | *Project configuration…* edits every scalar in the block since 1.89.0, but cannot add a new product, and nothing reads `import_group` |
 | Check the Makefile | 🔶 | *Build…* lists targets; nothing shows the import rules |
 | Add term IRIs to `<import>_terms.txt` | ❌ | **No viewer and no editor for term files** |
 | `sh run.sh make refresh-imports` | 🔶 | *Project → Refresh imports…* audits, and rebuilds from term lists |
@@ -442,9 +457,9 @@ Since 1.80.0 the YAML is shown and its scalars are editable, and since 1.81.0 th
 scripts are listed and runnable — the two gaps that used to head this list. What is left, in the
 order it is worth doing:
 
-1. **Editing a list or a nested block in the YAML** — `import_group`, `release_artefacts` and
-   `robot_report` are shown but not editable, which is where most of section 4 still routes
-   through a text editor.
+1. **Adding or removing a list entry in the YAML** — since 1.89.0 every scalar is editable at
+   any depth, including inside `import_group` and `robot_report`; inserting a new product or a
+   release artefact still means a text editor.
 2. **A term-list editor** — view and edit `<import>_terms.txt`, then refresh. They read correctly
    now; nothing in Protégé writes one.
 3. **Acting on what the YAML says** — the file is read and written faithfully, but only five

@@ -76,22 +76,42 @@ public final class OdkYaml {
         }
     }
 
-    /** One top-level key, as it appears in the file. */
+    /** One value in the file, at any depth. */
     public static final class Entry {
         private final String key;
+        private final String path;
+        private final int depth;
         private final String value;
         private final int line;
         private final Editable editable;
 
-        Entry(String key, String value, int line, Editable editable) {
+        Entry(String key, String path, int depth, String value, int line, Editable editable) {
             this.key = key;
+            this.path = path;
+            this.depth = depth;
             this.value = value;
             this.line = line;
             this.editable = editable;
         }
 
+        /** The leaf name, for display: {@code fail_on}, not {@code robot_report.fail_on}. */
         public String getKey() {
             return key;
+        }
+
+        /**
+         * How to address this value: {@code robot_report.fail_on}, {@code export_formats[1]}.
+         *
+         * <p>A top-level key is its own path, so anything written against the old
+         * key-only API keeps working.
+         */
+        public String getPath() {
+            return path;
+        }
+
+        /** 0 for a top-level key, 1 for something one block in. For indenting a list. */
+        public int getDepth() {
+            return depth;
         }
 
         /** The scalar's text, or a short description for a structure. */
@@ -132,25 +152,81 @@ public final class OdkYaml {
      * @throws UnreadableException when the file is not a YAML mapping, or declares a key twice
      */
     public static List<Entry> entriesIn(String text) {
-        MappingNode root = rootOf(text);
         List<Entry> entries = new ArrayList<Entry>();
-        Set<String> seen = new LinkedHashSet<String>();
-        for (NodeTuple tuple : root.getValue()) {
-            if (!(tuple.getKeyNode() instanceof ScalarNode)) {
-                continue;
-            }
-            String key = ((ScalarNode) tuple.getKeyNode()).getValue();
-            if (!seen.add(key)) {
-                throw new UnreadableException("This file declares '" + key + "' more than once. "
-                        + "OntoBoard will not edit a file with a duplicate key, because an edit "
-                        + "could change the copy the build does not use. Remove the duplicate in "
-                        + "a text editor first.");
-            }
-            Node value = tuple.getValueNode();
-            entries.add(new Entry(key, describe(value), value.getStartMark().getLine() + 1,
-                    editabilityOf(value)));
-        }
+        collect(rootOf(text), "", 0, entries);
         return Collections.unmodifiableList(entries);
+    }
+
+    /**
+     * Walks the whole document, not just the top level.
+     *
+     * <p>The reason this was ever shallow is worth stating, because it looked like a limit of
+     * the technique and was not. Editing splices a value's own span out of the original text,
+     * and a scalar's span is exactly its own characters wherever it sits - so a scalar two
+     * blocks down is no more dangerous to replace than a top-level one. What cannot be spliced
+     * is a <em>structure</em>, whose span covers everything inside it; that is still refused.
+     *
+     * <p>Before this, nine of {@code mwo-odk.yaml}'s thirteen top-level keys were editable and
+     * the four structures were dead ends - which is where most of the custom-import workflow
+     * left Prot&eacute;g&eacute;, because {@code import_group} and {@code robot_report} are
+     * blocks. Their scalars are now reachable: {@code robot_report.fail_on},
+     * {@code import_group.module_type}, {@code export_formats[1]}.
+     *
+     * <p>List items are scalars too, so an existing entry can be changed. Adding or removing one
+     * is not here: that inserts or deletes a line rather than replacing a span, and is a
+     * different piece of work.
+     */
+    private static void collect(Node node, String prefix, int depth, List<Entry> into) {
+        if (node instanceof MappingNode) {
+            Set<String> seen = new LinkedHashSet<String>();
+            for (NodeTuple tuple : ((MappingNode) node).getValue()) {
+                if (!(tuple.getKeyNode() instanceof ScalarNode)) {
+                    continue;
+                }
+                String key = ((ScalarNode) tuple.getKeyNode()).getValue();
+                if (!seen.add(key)) {
+                    // Checked per mapping, not once for the file: two `products` inside
+                    // import_group are as ambiguous as two at the top, and an edit would patch
+                    // whichever copy the walk reached while ODK reads the other.
+                    throw new UnreadableException("This file declares '"
+                            + (prefix.isEmpty() ? key : prefix + "." + key) + "' more than once. "
+                            + "OntoBoard will not edit a file with a duplicate key, because an "
+                            + "edit could change the copy the build does not use. Remove the "
+                            + "duplicate in a text editor first.");
+                }
+                Node value = tuple.getValueNode();
+                String path = prefix.isEmpty() ? key : prefix + "." + key;
+                into.add(new Entry(key, addressable(key) ? path : "", depth, describe(value),
+                        value.getStartMark().getLine() + 1, editabilityOf(value)));
+                if (addressable(key)) {
+                    collect(value, path, depth + 1, into);
+                }
+            }
+            return;
+        }
+        if (node instanceof SequenceNode) {
+            List<Node> items = ((SequenceNode) node).getValue();
+            for (int at = 0; at < items.size(); at++) {
+                Node item = items.get(at);
+                String path = prefix + "[" + at + "]";
+                into.add(new Entry("[" + at + "]", path, depth, describe(item),
+                        item.getStartMark().getLine() + 1, editabilityOf(item)));
+                collect(item, path, depth + 1, into);
+            }
+        }
+    }
+
+    /**
+     * Whether a key can be put in a path unambiguously.
+     *
+     * <p>A key containing {@code .} or {@code [} would make {@code a.b} mean two things. No ODK
+     * configuration has one, and a value that cannot be addressed without ambiguity is shown
+     * with an empty path and refused for editing rather than guessed at - the alternative is an
+     * edit landing on a different key than the one clicked.
+     */
+    private static boolean addressable(String key) {
+        return key != null && key.indexOf('.') < 0 && key.indexOf('[') < 0
+                && key.indexOf(']') < 0;
     }
 
     /**
@@ -158,17 +234,15 @@ public final class OdkYaml {
      *
      * @throws UnreadableException when the key is absent or its value may not be replaced
      */
-    public static String withValue(String text, String key, String newValue) {
-        MappingNode root = rootOf(text);
-        for (NodeTuple tuple : root.getValue()) {
-            if (!(tuple.getKeyNode() instanceof ScalarNode)
-                    || !key.equals(((ScalarNode) tuple.getKeyNode()).getValue())) {
-                continue;
-            }
-            Node value = tuple.getValueNode();
+    public static String withValue(String text, String path, String newValue) {
+        Node value = resolve(rootOf(text), path);
+        if (value == null) {
+            throw new UnreadableException("This file has no '" + path + "'.");
+        }
+        {
             Editable editable = editabilityOf(value);
             if (!editable.isEditable()) {
-                throw new UnreadableException("'" + key + "' is " + editable.getReason() + ".");
+                throw new UnreadableException("'" + path + "' is " + editable.getReason() + ".");
             }
             int from = clamp(text, value.getStartMark().getIndex());
             int to = clamp(text, value.getEndMark().getIndex());
@@ -190,7 +264,81 @@ public final class OdkYaml {
             }
             return text.substring(0, from) + replacement + text.substring(to);
         }
-        throw new UnreadableException("This file has no top-level '" + key + "' key.");
+    }
+
+    /**
+     * The node a path names, or null.
+     *
+     * <p>Accepts {@code id}, {@code robot_report.fail_on} and {@code export_formats[1]}, and
+     * mixtures of the two. A top-level key is a one-step path, so every caller written against
+     * the key-only version keeps working unchanged.
+     */
+    private static Node resolve(Node from, String path) {
+        if (path == null || path.trim().isEmpty()) {
+            return null;
+        }
+        Node at = from;
+        for (String step : path.trim().split("\\.")) {
+            String name = step;
+            // A step may carry indices: products[0], or even [0][1].
+            int bracket = name.indexOf('[');
+            String indices = bracket < 0 ? "" : name.substring(bracket);
+            if (bracket >= 0) {
+                name = name.substring(0, bracket);
+            }
+            if (!name.isEmpty()) {
+                at = childOf(at, name);
+                if (at == null) {
+                    return null;
+                }
+            }
+            for (String index : indexesIn(indices)) {
+                if (!(at instanceof SequenceNode)) {
+                    return null;
+                }
+                List<Node> items = ((SequenceNode) at).getValue();
+                int which;
+                try {
+                    which = Integer.parseInt(index);
+                } catch (NumberFormatException notANumber) {
+                    return null;
+                }
+                if (which < 0 || which >= items.size()) {
+                    return null;
+                }
+                at = items.get(which);
+            }
+        }
+        return at;
+    }
+
+    private static Node childOf(Node node, String key) {
+        if (!(node instanceof MappingNode)) {
+            return null;
+        }
+        for (NodeTuple tuple : ((MappingNode) node).getValue()) {
+            if (tuple.getKeyNode() instanceof ScalarNode
+                    && key.equals(((ScalarNode) tuple.getKeyNode()).getValue())) {
+                return tuple.getValueNode();
+            }
+        }
+        return null;
+    }
+
+    /** The numbers in a run of {@code [0][2]}, in order. */
+    private static List<String> indexesIn(String brackets) {
+        List<String> found = new ArrayList<String>();
+        int at = 0;
+        while (at < brackets.length()) {
+            int open = brackets.indexOf('[', at);
+            int close = open < 0 ? -1 : brackets.indexOf(']', open);
+            if (open < 0 || close < 0) {
+                break;
+            }
+            found.add(brackets.substring(open + 1, close));
+            at = close + 1;
+        }
+        return found;
     }
 
     /**

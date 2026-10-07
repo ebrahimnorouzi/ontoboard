@@ -226,4 +226,163 @@ class OdkYamlTest {
         }
         return differing;
     }
+
+    // ---------- inside the structures ----------
+
+    /** A real ODK import_group, shaped the way MWO's is. */
+    private static final String NESTED = String.join("\n",
+            "id: mwo",
+            "release_artefacts:",
+            "  - base",
+            "  - full",
+            "export_formats:",
+            "  - owl",
+            "  - ttl",
+            "import_group:",
+            "  annotation_properties:",
+            "    - rdfs:label",
+            "    - IAO:0000115",
+            "  products:",
+            "    - id: iao",
+            "      module_type: custom",
+            "    - id: nfdicore",
+            "      mirror_from: https://example.org/nfdicore.owl",
+            "      module_type: mirror",
+            "robot_report:",
+            "  use_labels: TRUE",
+            "  fail_on: ERROR",
+            "  report_on:",
+            "    - edit",
+            "") + "\n";
+
+    private static OdkYaml.Entry at(String path) {
+        for (OdkYaml.Entry entry : OdkYaml.entriesIn(NESTED)) {
+            if (path.equals(entry.getPath())) {
+                return entry;
+            }
+        }
+        throw new AssertionError(path + " is not among " + OdkYaml.entriesIn(NESTED));
+    }
+
+    /**
+     * Scalars inside a block and a list are reachable, and the structures still are not.
+     *
+     * <p>The reason the walk was ever shallow looked like a limit of the technique and was not:
+     * editing splices a value's own span out of the text, and a scalar's span is its own
+     * characters wherever it sits. A structure's span covers its contents, which is the thing
+     * that cannot be replaced.
+     */
+    @Test
+    void everyScalarIsReachableAtAnyDepth() {
+        assertTrue(at("robot_report.fail_on").getEditable().isEditable());
+        assertTrue(at("robot_report.use_labels").getEditable().isEditable());
+        assertTrue(at("import_group.products[1].mirror_from").getEditable().isEditable());
+        assertTrue(at("import_group.annotation_properties[0]").getEditable().isEditable());
+        assertTrue(at("export_formats[1]").getEditable().isEditable());
+
+        assertEquals(OdkYaml.Editable.MAPPING, at("import_group").getEditable());
+        assertEquals(OdkYaml.Editable.SEQUENCE, at("robot_report.report_on").getEditable());
+        assertEquals(OdkYaml.Editable.SEQUENCE, at("import_group.products").getEditable());
+    }
+
+    /** Editing a nested scalar changes one line, like a top-level one. */
+    @Test
+    void anestedEditChangesOneLine() {
+        for (String path : new String[] {"robot_report.fail_on", "export_formats[0]",
+            "import_group.products[1].module_type", "import_group.annotation_properties[1]"}) {
+            String after = OdkYaml.withValue(NESTED, path, "CHANGED");
+            assertEquals(1, differingLines(NESTED, after), "editing " + path);
+            assertTrue(after.contains("CHANGED"), path);
+        }
+    }
+
+    /**
+     * The path addresses the right one of several identically named keys.
+     *
+     * <p>The trap this design had to avoid. {@code module_type} appears under every product and
+     * {@code id} under each as well, so keying an edit by its leaf name would write one
+     * product's value into another's.
+     */
+    @Test
+    void aRepeatedLeafNameIsStillAddressedExactly() {
+        String after = OdkYaml.withValue(NESTED, "import_group.products[0].module_type", "slme");
+
+        assertTrue(after.contains("    - id: iao\n      module_type: slme"), after);
+        assertTrue(after.contains("      module_type: mirror"),
+                "the other product is untouched: " + after);
+    }
+
+    /** Depth is reported, so the dialog can show the nesting rather than four identical rows. */
+    @Test
+    void depthIsReported() {
+        assertEquals(0, at("id").getDepth());
+        assertEquals(1, at("robot_report.fail_on").getDepth());
+        assertEquals(1, at("import_group.products").getDepth());
+        assertEquals(2, at("import_group.products[0]").getDepth());
+        assertEquals(3, at("import_group.products[0].id").getDepth());
+    }
+
+    /** A top-level key is a one-step path, so the old key-only calls keep working. */
+    @Test
+    void aTopLevelKeyIsItsOwnPath() {
+        assertEquals("id", at("id").getPath());
+        assertEquals("mwo", at("id").getValue());
+        assertTrue(OdkYaml.withValue(NESTED, "id", "other").contains("id: other"));
+    }
+
+    /** A path naming nothing is refused, and says the path rather than a parse error. */
+    @Test
+    void aPathThatNamesNothingIsRefused() {
+        for (String nowhere : new String[] {"nope", "robot_report.nope", "export_formats[9]",
+            "id.deeper", "import_group.products[99].id", "export_formats[x]", ""}) {
+            OdkYaml.UnreadableException refused = assertThrows(OdkYaml.UnreadableException.class,
+                    () -> OdkYaml.withValue(NESTED, nowhere, "x"), "for " + nowhere);
+            assertTrue(refused.getMessage().contains("no"), refused.getMessage());
+        }
+    }
+
+    /** A structure is refused by path with the same reason it is refused at the top level. */
+    @Test
+    void aNestedStructureIsStillRefused() {
+        assertTrue(assertThrows(OdkYaml.UnreadableException.class,
+                () -> OdkYaml.withValue(NESTED, "robot_report.report_on", "x"))
+                .getMessage().contains("list"));
+        assertTrue(assertThrows(OdkYaml.UnreadableException.class,
+                () -> OdkYaml.withValue(NESTED, "import_group", "x"))
+                .getMessage().contains("nested block"));
+    }
+
+    /**
+     * A duplicate inside a block is refused, not only one at the top level.
+     *
+     * <p>Two {@code products} inside {@code import_group} are as ambiguous as two at the top:
+     * an edit would patch whichever the walk reached while ODK reads the other.
+     */
+    @Test
+    void aDuplicateInsideABlockIsRefused() {
+        String twice = String.join("\n", "id: x", "robot_report:", "  fail_on: ERROR",
+                "  fail_on: WARN", "") + "\n";
+
+        assertTrue(assertThrows(OdkYaml.UnreadableException.class,
+                () -> OdkYaml.entriesIn(twice)).getMessage().contains("robot_report.fail_on"));
+    }
+
+    /**
+     * A key that cannot be addressed unambiguously is shown and not offered.
+     *
+     * <p>A key containing a dot would make {@code a.b} mean two things. No ODK configuration has
+     * one; guessing would mean an edit landing on a different key than the one clicked.
+     */
+    @Test
+    void aKeyContainingAPathCharacterHasNoPath() {
+        String awkward = String.join("\n", "id: x", "a.b: value", "") + "\n";
+
+        for (OdkYaml.Entry entry : OdkYaml.entriesIn(awkward)) {
+            if ("a.b".equals(entry.getKey())) {
+                assertEquals("", entry.getPath(), "an ambiguous key gets no path");
+                return;
+            }
+        }
+        throw new AssertionError("the awkward key was not listed at all");
+    }
 }

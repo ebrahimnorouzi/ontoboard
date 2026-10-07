@@ -116,7 +116,10 @@ public class ProjectConfigAction extends ProtegeOWLAction {
             }
             String now = String.valueOf(model.getValueAt(row, 1));
             if (!now.equals(entry.getValue())) {
-                changed.put(entry.getKey(), now);
+                // By path, not by key. Two products both have an `id`, and `module_type`
+                // appears four times - keying the edit by the leaf name would write one
+                // product's value into another's.
+                changed.put(entry.getPath(), now);
             }
         }
         if (changed.isEmpty()) {
@@ -196,9 +199,16 @@ public class ProjectConfigAction extends ProtegeOWLAction {
     private static DefaultTableModel modelFor(final List<OdkYaml.Entry> entries) {
         List<Object[]> rows = new ArrayList<Object[]>();
         for (OdkYaml.Entry entry : entries) {
-            rows.add(new Object[] {entry.getKey(), entry.getValue(),
+            // Indented by depth, so the nesting is visible: a bare `id` column would show four
+            // identical rows for the four imported products.
+            StringBuilder shown = new StringBuilder();
+            for (int space = 0; space < entry.getDepth() * 4; space++) {
+                shown.append(' ');
+            }
+            shown.append(entry.getKey());
+            rows.add(new Object[] {shown.toString(), entry.getValue(),
                     entry.getEditable().isEditable() ? "line " + entry.getLine()
-                            : "read-only"});
+                            : entry.getEditable().name().toLowerCase(java.util.Locale.ROOT)});
         }
         return new DefaultTableModel(rows.toArray(new Object[0][]),
                 new Object[] {"Key", "Value", ""}) {
@@ -206,7 +216,11 @@ public class ProjectConfigAction extends ProtegeOWLAction {
 
             @Override
             public boolean isCellEditable(int row, int column) {
-                return column == 1 && entries.get(row).getEditable().isEditable();
+                // A value with no path cannot be addressed unambiguously - a key containing a
+                // dot or a bracket - so it is shown and not offered for editing, rather than
+                // risking an edit landing on a different key than the one clicked.
+                return column == 1 && entries.get(row).getEditable().isEditable()
+                        && !entries.get(row).getPath().isEmpty();
             }
         };
     }

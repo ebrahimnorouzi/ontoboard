@@ -1,0 +1,96 @@
+OntoBoard 1.89.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-10-07  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 9/9  test 10/10
+  2026-10-07  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 9/9  test 10/10
+
+
+EVERY SCALAR IN THE ODK YAML IS NOW EDITABLE, AT ANY DEPTH
+
+The gap this closes was the first item on the page's own roadmap: import_group,
+release_artefacts and robot_report were shown read-only, which is where most of the
+custom-import workflow still left Protege. Measured on mwo-odk.yaml:
+
+    before   13 values listed,  9 editable
+    after    47 values listed, 36 editable
+
+All twelve settings the ODK tutorial walks a user through can now be changed in Protege.
+import_group.products[2].mirror_from, import_group.products[0].module_type,
+robot_report.fail_on, robot_report.report_on[0], export_formats[1] - each one changes exactly
+one line, verified against the real file.
+
+IT WAS NOT A LIMIT OF THE TECHNIQUE
+
+Worth recording, because this looked like hard work and was not. Editing splices a value's own
+characters out of the original text. A scalar's span is exactly its own characters wherever it
+sits, so a scalar two blocks down is no more dangerous to replace than a top-level one - the
+walk simply never went past the top level, and withValue only scanned root tuples. The splice
+that has been correct since 1.80.0 needed no change at all.
+
+What genuinely cannot be spliced is a STRUCTURE, whose span covers everything inside it:
+replacing import_group in place would delete every product under it. Those stay read-only while
+their scalars are editable, which is the honest split rather than the convenient one.
+
+THE TRAP THE DESIGN HAD TO AVOID
+
+module_type appears under all four of MWO's imported products, and id under each as well. An
+edit keyed by its leaf name would write one product's value into another's - silently, and into
+a file nobody re-reads by hand. So every value carries a path, the dialog edits by path, and a
+test asserts that changing import_group.products[0].module_type leaves products[1] alone.
+
+A key containing a . or a [ would make a.b mean two things. No ODK configuration has one; such a
+key is listed with no path and not offered for editing, because the alternative is an edit
+landing on a key other than the one clicked.
+
+Duplicate detection moved inside each mapping. Two `fail_on` inside robot_report are as
+ambiguous as two at the top level, and the refusal now names the full path.
+
+STILL NOT HERE
+
+Adding or removing a list entry. Changing export_formats[1] is a splice; adding a third format
+inserts a line, which is a different operation and a separate piece of work. The documentation
+says so rather than implying the YAML is now fully editable.
+
+Reading and writing is still not the same as honouring: only five scalars drive anything in
+OntoBoard. That remains on the roadmap and the page says so.
+
+
+THE STALE-CLASS TRAP, THREE TIMES IN TWO RELEASES
+
+Recorded because it nearly shipped a defect and nearly hid two.
+
+`mvn -q compile` reported success on a file containing an invalid escape sequence. The IDE's
+language server had written a class carrying "Unresolved compilation problem" into
+target/classes, so Maven saw nothing to do; the error only surfaced when the class was actually
+run. In 1.88.0 the same thing reported a successful test-compile after an abstract method was
+added to a public interface, which must break its implementers.
+
+docs/development.md already says "Always clean" and explains why. The lesson it records is
+exactly this, and it took three repeats in two releases for me to stop trusting a quiet
+"COMPILED".
+
+NUMBERS
+
+1676 tests, 0 failures, 0 skipped. 9 new, counted three ways and agreeing.
+
+All 13 pre-existing OdkYaml tests pass unchanged, which is the evidence that the generalisation
+is backwards compatible: a top-level key is a one-step path, so every caller written against the
+key-only API keeps working.
+
+36/36 classes named in plugin.xml load on both hosts.
+
+DOCUMENTATION CORRECTED IN THE OTHER DIRECTION
+
+The key-by-key table added two releases ago - "six editable, six need a text editor" - is now
+wrong the other way, and so was the step-6 verdict, the section-4 import row and the roadmap
+item. All four updated. A page that understates what a tool does is the same failure as one that
+overstates it, facing the other way; this one has now been wrong in both directions within three
+releases, which is an argument for the measured tables rather than prose.
+
+STILL OPEN
+
+A term-list editor. Acting on what the YAML says. Contributing a pattern without rebuilding the
+plugin. Three low-severity collaboration findings: node moves do not travel and the UI does not
+say so, nothing in the product tells you how to obtain a server, and "N changes not shared" is
+erased by the next reconnect.
