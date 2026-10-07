@@ -1,0 +1,104 @@
+OntoBoard 1.90.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-10-07  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 9/9  test 10/10
+  2026-10-07  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 9/9  test 10/10
+
+
+A TERM LIST CAN BE EDITED WITHOUT LOSING WHAT IS WRITTEN IN IT
+
+Project > Term lists... shows each import's <import>_terms.txt - every term, every comment, and
+the label the open ontology gives it - and adds or removes a line. The second roadmap item on
+the ODK page, and the file that makes refresh-imports mean anything: the module is an artefact,
+the term list is the source.
+
+THE MEASUREMENT THAT DECIDED THE DESIGN
+
+OntoBoard has been able to write a term list from scratch since 1.38.0. The obvious
+implementation was readTerms -> edit the list -> writeTerms, and it took one measurement to
+reject it. On a real iao_terms.txt - 18 lines, 13 terms:
+
+    terms read      13
+    lines before    18
+    lines after     16
+    annotated lines no longer present   15
+
+Every trailing "# label" comment, both of the file's own header lines, and the order re-sorted.
+writeTerms produces a file from a template, which is right for a module just extracted and
+wrong for one somebody maintains.
+
+And there is nothing unusual about that file. Across the same project's five populated lists:
+
+    event      1 term,   1 trailing comment,  4 comment lines
+    iao       13 terms, 13 trailing comments, 2 comment lines
+    obi        8 terms,  8 trailing comments, 1 comment line
+    pmdco     28 terms, 28 trailing comments
+    foaf       0 terms,                       4 comment lines
+
+All 50 terms annotated, 11 standalone comment lines. So edits are spliced through a new
+TermFile, line by line, the way OdkYaml splices the configuration. Measured on the same file:
+adding a term keeps all 20 lines and adds exactly one; removing one loses only the line asked
+for.
+
+That is the fourth time this project has had to choose splicing over rewriting - the ID ranges
+losing a Datatype declaration, the ODK YAML rewriting 28 of 41 lines, these files being
+unreadable at all before 1.77.0, and now this.
+
+WHAT IT GIVES YOU THAT A TEXT EDITOR DOES NOT
+
+Each OBO number shown with its label, resolved over the imports CLOSURE. That word is the whole
+trick: a term list names terms from other ontologies - that is what an import is - so the only
+place they are declared is inside an import, and getEntitiesInSignature defaults to
+Imports.EXCLUDED, which would have found none of them and left every row reading as a bare
+number. The same trap is recorded in this project's notes from an earlier release; this is the
+first time it was avoided rather than hit.
+
+A line that was meant to be a term and is not is named, not skipped. Skipping means the module
+is quietly missing it, and the person who typed it is the only one who can say what it should
+have been.
+
+A term added from the Protege selection carries its label as a trailing comment - but only if
+the file already annotates every term. A file whose convention is a label on every line should
+not acquire a bare entry, and a file with none should not acquire the project's first. The new
+entry goes after the last term rather than at the end of the file, because a list commonly
+closes with a comment and an entry under one would read as though that comment introduced it.
+
+The same two disk guards as the configuration editor: re-read and compare before writing, then a
+temporary file and an atomic move.
+
+MY OWN GUARD CAUGHT MY OWN MESSAGE
+
+MenuPathsInMessagesTest, added in 1.86.0, failed on this release's new code: the dialog's text
+said "ROBOT > Import terms..." and the test could only see "ROBOT > Import", because the
+sentence was split across two concatenated string literals and the test scans one literal at a
+time.
+
+A false alarm - but on a claim it genuinely could not verify. The fix was to keep the menu path
+inside a single literal, which is a better message anyway. The alternative was to teach the test
+to tolerate a partial match, and that would have weakened a guard that is working: it is the
+only thing standing between a renamed menu item and a dialog that sends people nowhere. Left
+strict, deliberately.
+
+NUMBERS
+
+1690 tests, 0 failures, 0 skipped. 14 new, counted three ways and agreeing.
+
+37/37 classes named in plugin.xml load on both hosts, up from 36.
+
+One test failure in writing them was mine, not the code's: the fixture used
+String.join("\n", ..., "") and then appended another newline, so the file genuinely had a
+trailing blank line and TermFile correctly reported seven lines where the test expected six.
+
+NOT HERE
+
+Reordering a list, editing a term in place - remove and add - and editing the comments
+themselves.
+
+STILL OPEN
+
+Acting on what the YAML says: the file is read and written faithfully but only five scalars
+drive anything. Contributing a pattern, or a fifth collection, without rebuilding the plugin.
+Three low-severity collaboration findings: node moves do not travel and the UI does not say so,
+nothing in the product tells you how to obtain a server, and "N changes not shared" is erased by
+the next reconnect.

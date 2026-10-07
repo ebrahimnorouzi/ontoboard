@@ -169,6 +169,15 @@
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
+  <extension id="menu.OntoBoard.project.termLists"
+             point="org.protege.editor.core.application.EditorKitMenuAction">
+    <name value="Term lists..."/>
+    <path value="ontoboard.menu.OntoBoard.project/SlotA-RH"/>
+    <toolTip value="View and edit the &lt;import&gt;_terms.txt files an import is rebuilt from"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.odk.TermListAction"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
+
   <extension id="menu.OntoBoard.project.importsGraph"
              point="org.protege.editor.core.application.EditorKitMenuAction">
     <name value="Imports graph..."/>

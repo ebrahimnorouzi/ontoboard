@@ -327,7 +327,7 @@ but if an import resolves differently from how `robot` resolves it, that is the 
 |---|---|---|
 | Declare it under `import_group` in the YAML | 🔶 | *Project configuration…* edits every scalar in the block since 1.89.0, but cannot add a new product, and nothing reads `import_group` |
 | Check the Makefile | 🔶 | *Build…* lists targets; nothing shows the import rules |
-| Add term IRIs to `<import>_terms.txt` | ❌ | **No viewer and no editor for term files** |
+| Add term IRIs to `<import>_terms.txt` | ✅ | *Project → Term lists…* since 1.90.0 — see below |
 | `sh run.sh make refresh-imports` | 🔶 | *Project → Refresh imports…* audits, and rebuilds from term lists |
 | Copy the import URI into the edit file and catalog | ✅ | *ROBOT → Import terms…* writes both, and *Pattern library…* feeds it |
 | Copy the import schema into `<ontology>.Makefile` | ❌ | By hand |
@@ -431,6 +431,45 @@ already imported, so it will not warn you that you imported this pattern last we
 that a suggestion scoring 1.00 means your ontology already contains all of that pattern, which
 is a statement that you have applied it rather than advice to adopt it.
 
+### Editing a term list — new in 1.90.0
+
+*Project → Term lists…* shows each import's `<import>_terms.txt`, with every term, every
+comment, and the label your ontology gives it. Add the term selected in Protégé, remove a line,
+save. The module itself does not change — run *Refresh imports…* to rebuild it from the list,
+which is the ODK order.
+
+**Comments survive, because the file is spliced rather than rewritten.** This is not a detail.
+OntoBoard has been able to write a term list from scratch since 1.38.0, which is right for a
+module it just extracted and wrong for one somebody maintains. Measured on a real
+`iao_terms.txt` — 18 lines, 13 terms — reading the terms and writing them back leaves **15 of
+those lines gone**: every trailing `# label` comment, both of the file's own headers, and the
+order re-sorted. Across that project all 50 terms in its five populated lists carry a trailing
+comment and there are 11 standalone comment lines, so there was nothing unusual about the file
+that got mangled.
+
+Adding a term keeps all 20 lines of that file and adds exactly one; removing one takes only the
+line asked for. Both measured.
+
+**What this gives you that a text editor does not:**
+
+- each OBO number shown with the label your ontology gives it, resolved over the imports
+  closure — a term list names terms from *other* ontologies, so the only place they are declared
+  is inside an import;
+- a line that was meant to be a term and is not, named rather than skipped — skipping means the
+  module is quietly missing it;
+- a term added from the Protégé selection, with its label written as the trailing comment **if
+  the file already annotates every term**. A file whose convention is a label on every line
+  should not acquire a bare entry, and a file with none should not acquire the project's first;
+- a new entry placed after the last term rather than at the end of the file, since a list
+  commonly closes with a comment and an entry under one would read as though that comment
+  introduced it;
+- the same two disk guards the configuration editor has: the file is re-read and compared before
+  writing, so a change made underneath is not discarded, and the write goes through a temporary
+  file and an atomic move.
+
+**Not here:** reordering, editing a term in place (remove and add), and editing the comments
+themselves.
+
 ### Term lists with comments — fixed in 1.77.0
 
 Up to 1.76.0, *Refresh imports…* reported which imports had a term list and then **could not
@@ -460,9 +499,7 @@ order it is worth doing:
 1. **Adding or removing a list entry in the YAML** — since 1.89.0 every scalar is editable at
    any depth, including inside `import_group` and `robot_report`; inserting a new product or a
    release artefact still means a text editor.
-2. **A term-list editor** — view and edit `<import>_terms.txt`, then refresh. They read correctly
-   now; nothing in Protégé writes one.
-3. **Acting on what the YAML says** — the file is read and written faithfully, but only five
+2. **Acting on what the YAML says** — the file is read and written faithfully, but only five
    scalars drive anything, so most keys are still just text OntoBoard preserves.
 4. **Adding your own pattern** — the library ships four collections and there is no way to
    contribute a fifth, or a single pattern, without rebuilding the plugin.
