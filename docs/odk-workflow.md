@@ -25,15 +25,17 @@ git executable — if *Git…* misbehaves on a machine with no git, that is why.
 ODK's own route is `seed-via-docker.sh`. OntoBoard has its own, and **the two produce different
 repositories** — this is the single most important thing on this page.
 
-| ODK step | | OntoBoard |
-|---|---|---|
-| Go to the parent directory | ✅ | *Project → New ODK project…*, **Create in folder → Choose…** |
-| Start Docker | ➖ | Not needed. The scaffold is written directly, with nothing installed |
-| `curl -O seed-via-docker.sh`, `chmod +x` | ❌ | OntoBoard never downloads or runs ODK's seeder |
-| `docker pull obolibrary/odkfull` | ➖ | Not needed for OntoBoard's own scaffold |
-| `./seed-via-docker.sh <ontology>` | 🔶 | The wizard writes 17 files and opens the edit file |
-| Configure `<id>-odk.yaml` | ❌ | **No viewer and no editor.** Use a text editor |
-| `git init`, create the remote, push | 🔶 | Commit/pull/push/branch work; `git init` and creating the remote do not |
+ODK's seven steps, and what each one is inside Protégé:
+
+| # | ODK step | | OntoBoard |
+|---|---|---|---|
+| 1 | Go to the parent directory | ✅ | *Project → New ODK project…*, **Create in folder → Choose…** |
+| 2 | Start Docker | ➖ | Not needed for the wizard. Needed later, to **build** a real ODK repo |
+| 3 | `curl -O seed-via-docker.sh`, `chmod +x` | ❌ | OntoBoard never downloads or runs ODK's seeder |
+| 4 | `docker pull obolibrary/odkfull` | ➖ | Not needed for the wizard. OntoBoard never pulls — but `docker run` fetches a missing image itself, so the first build of a real ODK repo is slow rather than broken |
+| 5 | `./seed-via-docker.sh <ontology>` | 🔶 | The wizard writes 17 files and opens the edit file — **a different repository**, see below |
+| 6 | Configure `<id>-odk.yaml` | 🔶 | *Project → Project configuration…* since 1.80.0. Every key visible, scalars editable, lists and blocks read-only — [measured table below](#step-6-the-odk-yaml-key-by-key) |
+| 7 | `git init`, create the remote, push | 🔶 | Commit, pull, push, branch, checkout and clone work; `git init` and creating the remote do not |
 
 ### What the wizard produces
 
@@ -65,6 +67,61 @@ So choose deliberately. Want the full ODK pipeline, imports machinery and OBO re
 **Seed with ODK, then open the result in OntoBoard** — everything in sections 3 and 4 below still
 applies, and the build runs in ODK's own container. Want a small project that builds with nothing
 installed, on any platform including Windows? **Use the wizard.**
+
+---
+
+### Step 6: the ODK YAML, key by key
+
+The one step with a hard requirement attached: *the YAML should be completely visible and
+editable inside Protégé*. **Visible: yes, every key. Editable: the scalars, not the structures.**
+
+Measured against [`mwo-odk.yaml`](https://github.com/ISE-FIZKarlsruhe/mwo/blob/main/src/ontology/mwo-odk.yaml) — 13 top-level keys, of which 9 are
+editable in place and 4 are shown read-only:
+
+| Key | | What it controls |
+|---|---|---|
+| `id` | ✅ | How files are named and which default term IDs are assumed. Lowercase |
+| `title` | ✅ | Seeds the README and other generated defaults |
+| `github_org` | ✅ | Basic repository config |
+| `repo` | ✅ | Basic repository config |
+| `git_main_branch` | ✅ | |
+| `uribase` | ✅ | Base IRI. Read but **not used** — OntoBoard recovers the base from the edit file, because `uribase` is lossy |
+| `primary_release` | ✅ | Which artefact most users interact with, e.g. `full` → `<id>.owl` |
+| `remove_owl_nothing` | ✅ | |
+| `robot_java_args` | ✅ | RAM ROBOT may consume, e.g. `-Xmx8G` |
+| `release_artefacts` | 🔶 | A **list** — shown, not editable |
+| `export_formats` | 🔶 | A **list** — `owl`, `ttl`. Shown, not editable |
+| `import_group` | 🔶 | A **block** — the ontologies you import (RO, PATO, OMO…), with `product`, `mirror_from` and `module_type`. Shown, not editable |
+| `robot_report` | 🔶 | A **block** — `report_on`, `use_labels`, `fail_on`, `custom_profile`. Shown, not editable |
+
+So of the twelve settings the ODK tutorial walks you through, six are editable in Protégé and six
+— the two lists and the two blocks — need a text editor.
+
+**Why the structures are refused rather than half-supported.** The editor replaces exactly the
+characters a value occupies in the file. A list's or a block's span covers everything inside it,
+so an in-place edit would delete the contents — the whole `import_group`, every release artefact.
+Refusing is the feature; silently dropping your imports would not be.
+
+**Why it splices rather than rewrites.** Loading that file with a YAML library and writing it
+back rewrites 28 of its 41 lines — normalising a flow sequence, a nested indent, CRLF to LF and a
+missing final newline — so changing one word would arrive in a pull request as a whole-file diff.
+Measured: editing `title` through this editor changes **one line**, and every comment survives.
+
+**Two guards on the disk.** The file is re-read and compared immediately before saving, so if it
+changed underneath — a text editor, a `git pull`, a `make update_repo` — the save is refused
+rather than discarding that change. The write goes through a temporary file in the same directory
+and an atomic move, so a crash cannot leave a truncated config that breaks every ODK target at
+once.
+
+**A file with a duplicate top-level key is refused outright.** YAML accepts one silently and
+keeps both, so an edit would patch whichever copy the parser reached while ODK reads the other.
+
+The full schema is ODK's: [incatools.github.io/ontology-development-kit/project-schema](https://incatools.github.io/ontology-development-kit/project-schema/).
+
+**Reading and writing is not the same as honouring.** Only `id`, `title`, `description`,
+`license` and `robot_version` drive anything in OntoBoard, and only *Update project files…*,
+which refuses a real ODK repository. Everything else is text OntoBoard preserves faithfully and
+does not act on — what ODK does with it next is ODK's business, by way of `update_repo`.
 
 ---
 
