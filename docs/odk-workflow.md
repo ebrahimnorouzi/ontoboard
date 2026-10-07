@@ -261,18 +261,70 @@ but if an import resolves differently from how `robot` resolves it, that is the 
 | Copy the import schema into `<ontology>.Makefile` | ❌ | By hand |
 | Set `module_type: custom`, `update_repo`, `clean`, `make` | 🔶 | Only via the YAML in a text editor, then *Build…* |
 
-### The pattern library — new in 1.82.0
+### The pattern library — new in 1.82.0, four collections since 1.87.0
 
-*ROBOT → Pattern library…* browses 123 ontology design patterns shipped inside the plugin and
-imports terms from one. They were in the repository before and reachable from nothing.
+*ROBOT → Pattern library…* browses **159** ontology design patterns shipped inside the plugin and
+imports terms from one.
 
-**Separated by publisher, not by collection.** All 123 came from one harvest of the ODP portal,
-so grouping them by where OntoBoard got them would put everything in a single bucket. The portal
-is a catalogue of submissions, and the patterns in it were published by thirteen different
-places — `ontologydesignpatterns.org` has 81, the eCareAtHome smart-home set has 9, Poznań has
-6, and three have no publisher at all because their only recorded IRI is an absolute path from
-the machine the harvest ran on. That is the division the browser groups by; category and a
-search box are the other two ways in.
+| Collection | Patterns | Documented at |
+|---|---|---|
+| `odp` | 123 | the [ODP portal](https://ontologydesignpatterns.org/), harvested earlier |
+| `nfdi` | 15 | [NFDI MatWerk](https://nfdi.fiz-karlsruhe.de/matwerk/patterns/) |
+| `pmdco` | 13 | [PMDco](https://materialdigital.github.io/core-ontology/docs/patterns.html) |
+| `mwo` | 8 | [MWO](https://ise-fizkarlsruhe.github.io/mwo/docs/patterns/) |
+
+The 36 BFO-family patterns were added in 1.87.0 because the ODP collection and the OBO world
+share no vocabulary at all — measured, **zero** of the 123 ODP patterns share a single IRI with a
+real BFO-based project. For somebody working in MWO or PMDco the original library was 123
+patterns about other people's upper ontology.
+
+**Every pattern is an OWL file, and a Turtle file beside it.** Those three pages document their
+patterns as prose and diagrams, so each one here was built by extracting its terms from the
+ontology it belongs to — which makes it importable like any other, rather than something to read
+and copy by hand. `pattern.owl` is what the plugin loads; `pattern.ttl` is the same content for
+a human and for a diff.
+
+**Not a logical module.** ROBOT's STAR and BOT extraction are right for an import and wrong for
+a pattern: measured on these sources, a PMDco pattern documented with eight terms came out with
+119 classes and 1,508 axioms, because a BFO-based ontology connects everything to the
+upper-ontology spine and a logical module must follow it. All 36 came to 13 MB. So each pattern
+is the *induced* sub-ontology instead — its own terms, every axiom that mentions only those
+terms, their labels and definitions, and one level of parent above each so you can see where it
+sits without importing BFO. 6 to 26 classes each, 1.5 MB in total.
+
+**Separated by publisher as well as collection.** Within the ODP collection the portal is a
+catalogue of submissions published by thirteen different places — `ontologydesignpatterns.org`
+has 81, the eCareAtHome smart-home set has 9, Poznań has 6, and three have no publisher at all
+because their only recorded IRI is an absolute path from the machine the harvest ran on. Both
+groupings are offered, with category and a search box as the other ways in.
+
+### Suggestions for the ontology you have open — new in 1.87.0
+
+159 patterns is too many to browse when you want one, so the browser's first ordering is
+**Suggested for this ontology**: the patterns whose vocabulary your ontology already speaks,
+best first, each with the reason.
+
+The reason is the point. A ranked list with no evidence is a magic box, and somebody deciding
+whether to adopt a stranger's pattern needs something checkable — *"3 of its 4 terms are already
+in your ontology: Agent, Role, hasRole"* is, and `0.75` is not. Where your ontology has a label
+for a matched term, its own label is used, because `BFO_0000004` tells nobody anything and
+"independent continuant" does.
+
+**Two signals, both chosen by measuring rather than reasoning.** A pattern counts as relevant
+when your ontology uses the same IRIs, or has terms going by the same names; an exact IRI counts
+for double, since sharing a name is good evidence and not the same thing. Scored by how much of
+the *pattern* you already have, not by how many terms matched — ranking by match count put a
+195-term pattern first on the strength of twenty-five generic words like "object" and "entity".
+
+Two things the measurements overturned:
+
+- **The builtin vocabulary is not evidence.** The first version looked like it worked: 43 of 123
+  patterns "shared an IRI" with a real project. Every one of those matches was `owl:Thing`, which
+  42 patterns declare. A signal that fires on everything ranks nothing.
+- **It cannot read the pattern files.** Parsing all of them to answer one question took 24
+  seconds, measured — a dialog that looks like it has hung. Each pattern's terms are stored in
+  the index instead, which is generated from the files and checked against them by a test, so
+  the stored list cannot quietly disagree. 24 seconds became 0.3.
 
 **Importing a pattern is importing terms.** Choosing one hands it to *ROBOT → Import terms…*,
 which is the ODK path: it extracts a module, writes `<import>_terms.txt`, saves the module,
@@ -301,10 +353,11 @@ are one pattern with three directories. Importing two of them would import the s
 So the library lists 123 entries and holds 113 patterns, which is worth knowing before counting
 anything.
 
-**Limits.** The collection is fixed at build time — there is no way to add your own pattern or
-point at another repository yet. Nothing reads a pattern's competency questions back into the
-ontology. And the library knows nothing about what you have already imported, so it will not
-warn you that you imported this pattern last week.
+**Limits.** The collections are fixed at build time — there is no way to add your own pattern or
+point at a fourth repository from inside Protégé. The library knows nothing about what you have
+already imported, so it will not warn you that you imported this pattern last week; and note
+that a suggestion scoring 1.00 means your ontology already contains all of that pattern, which
+is a statement that you have applied it rather than advice to adopt it.
 
 ### Term lists with comments — fixed in 1.77.0
 
@@ -339,5 +392,5 @@ order it is worth doing:
    now; nothing in Protégé writes one.
 3. **Acting on what the YAML says** — the file is read and written faithfully, but only five
    scalars drive anything, so most keys are still just text OntoBoard preserves.
-4. **A second pattern collection** — the library ships 123 ODPs and there is no way to add your
-   own or point at another repository.
+4. **Adding your own pattern** — the library ships four collections and there is no way to
+   contribute a fifth, or a single pattern, without rebuilding the plugin.

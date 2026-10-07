@@ -1,0 +1,83 @@
+@prefix : <http://www.ontologydesignpatterns.org/cp/owl/fsdas/gearspecies.owl#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@base <http://www.ontologydesignpatterns.org/cp/owl/fsdas/gearspecies.owl> .
+
+<http://www.ontologydesignpatterns.org/cp/owl/fsdas/gearspecies.owl> rdf:type owl:Ontology ;
+                                                                      owl:imports <http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresources.owl> ,
+                                                                                  <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl> ;
+                                                                      <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> "what type of fishing gear can catch what aquatic species?" ;
+                                                                      <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences> """The pattern outlines the relations between aquatic species and types of fishing gear that are suitable for catching exemplars thereof. While we do not make this distinction from the species' viewpoint, we do distinguish what species are gear types targeted to and what can be also incidentally caught. Since the original model does not hint at any other possible use for the three object properties presented herein, restriction superclasses for domains and ranges have been refactored as domain and range axioms for said properties. 
+Note that this pattern can also be composed with:
+1) gearvessel.owl for answering what species can be caught using what vessel types, or which vessels are typically used in water areas: cf. vesselspecies.owl and vesselwaterareas.ow.
+2) aquaticresources.owl for answering what water areas are typical for what gear types: cf. gearwaterarea.owl.
+This must be inferred compositionally, and requires either  more sophisticated logical pattern, like 'property chain', available in OWL2 (but not in OWL1), or a complex reasoning pattern, like 'DL classifier+SPARQL', or 'DL classifier+SWRL rule firing'.""" ;
+                                                                      <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> "to represent types of fishing gear with respect to the aquatic species they either are targeted to catch or can accidentally catch" ;
+                                                                      <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios> "give me the gears which incidentally catch species \"dolphins\"" ,
+                                                                                                                                                       "give me the species caught using \"bottom gillnets\"" ;
+                                                                      owl:versionInfo "1.2" ,
+                                                                                      "Created by Alessandro Adamou"^^xsd:string .
+
+#################################################################
+#    Object Properties
+#################################################################
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/gearspecies.owl#catchesSpecies
+:catchesSpecies rdf:type owl:ObjectProperty ;
+                owl:inverseOf :isCaughtBy ;
+                rdfs:domain :GearType ;
+                rdfs:range <http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresources.owl#AquaticSpecies> .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/gearspecies.owl#incidentallyCatchesSpecies
+:incidentallyCatchesSpecies rdf:type owl:ObjectProperty ;
+                            rdfs:subPropertyOf :catchesSpecies ;
+                            rdfs:domain :GearType ;
+                            rdfs:range <http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresources.owl#AquaticSpecies> .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/gearspecies.owl#isCaughtBy
+:isCaughtBy rdf:type owl:ObjectProperty ;
+            rdfs:domain <http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresources.owl#AquaticSpecies> ;
+            rdfs:range :GearType .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/gearspecies.owl#isCaughtByGearType
+:isCaughtByGearType rdf:type owl:ObjectProperty ;
+                    rdfs:subPropertyOf :isCaughtBy ;
+                    rdfs:domain <http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresources.owl#AquaticSpecies> ;
+                    rdfs:range :GearType .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/gearspecies.owl#targetsSpecies
+:targetsSpecies rdf:type owl:ObjectProperty ;
+                rdfs:subPropertyOf :catchesSpecies ;
+                rdfs:domain :GearType ;
+                rdfs:range <http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresources.owl#AquaticSpecies> .
+
+
+#################################################################
+#    Classes
+#################################################################
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresources.owl#AquaticSpecies
+<http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresources.owl#AquaticSpecies> owl:disjointWith :GearType .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/gearspecies.owl#GearType
+:GearType rdf:type owl:Class ;
+          rdfs:subClassOf owl:Thing ,
+                          [ rdf:type owl:Restriction ;
+                            owl:onProperty :incidentallyCatchesSpecies ;
+                            owl:someValuesFrom <http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresources.owl#AquaticSpecies>
+                          ] ,
+                          [ rdf:type owl:Restriction ;
+                            owl:onProperty :targetsSpecies ;
+                            owl:someValuesFrom <http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresources.owl#AquaticSpecies>
+                          ] .
+
+
+###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

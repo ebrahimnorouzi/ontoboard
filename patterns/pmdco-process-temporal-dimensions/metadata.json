@@ -1,0 +1,15 @@
+{
+  "id": "pmdco-process-temporal-dimensions",
+  "name": "Temporal dimensions of a process",
+  "description": "Specifies the temporal extent and the temporal boundaries of a process on the time axis. The annealing example gives the process an occupied temporal interval with explicit first and last instants, and names the participants (furnace, ingot).",
+  "category": "temporal",
+  "domain": "general",
+  "competency_questions": "Over which temporal interval did this process occur? When did it start and when did it end? Which objects participated in it?",
+  "pattern_iri": "https://ontoboard.org/patterns/pmdco-process-temporal-dimensions.owl",
+  "source": "https://materialdigital.github.io/core-ontology/docs/patterns.html",
+  "collection": "pmdco",
+  "publisher": "materialdigital.github.io",
+  "extracted_from": "pmdco",
+  "class_count": 10,
+  "property_count": 5
+}

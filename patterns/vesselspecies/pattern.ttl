@@ -1,0 +1,75 @@
+@prefix : <http://www.ontologydesignpatterns.org/cp/owl/fsdas/vesselspecies.owl#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@base <http://www.ontologydesignpatterns.org/cp/owl/fsdas/vesselspecies.owl> .
+
+<http://www.ontologydesignpatterns.org/cp/owl/fsdas/vesselspecies.owl> rdf:type owl:Ontology ;
+                                                                        owl:imports <http://www.ontologydesignpatterns.org/cp/owl/fsdas/gearspecies.owl> ,
+                                                                                    <http://www.ontologydesignpatterns.org/cp/owl/fsdas/gearvessel.owl> ,
+                                                                                    <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl> ;
+                                                                        <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> "what vessel types can catch what species? (provided that species are caught by geartypes are used by vessel types)" ;
+                                                                        <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasComponent> "<http://www.ontologydesignpatterns.org/cp/owl/fsdas/gearspecies.owl>" ;
+                                                                        <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences> "This pattern should be used in scenarios where a VesselType can be deemed suitable for catching some AquaticSpecies for reasons other than mounting some fishing gear of a suitable GearType. It is strictly related to the gearspecies pattern, in that it uses the catchesSpecies and isCaught property pair to define this behaviour. For the sake of reuse, no domain is declared for catchesSpecies, appropriate restrictions having beed applied instead." ;
+                                                                        <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> "to provide a direct relation between aquatic species and vessels that are able to catch them, regardless of the fishing gear used." ;
+                                                                        <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#relatedCPs> "http://www.ontologydesignpatterns.org/cp/owl/fsdas/gearspecies.owl" ;
+                                                                        <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios> "give me the species caught using 'gillneters'" ;
+                                                                        rdfs:comment """This pattern composes gearvessel.owl and gearspecies.owl.
+This must be inferred compositionally, and requires either  more sophisticated logical pattern, like 'property chain', available in OWL2 (but not in OWL1), or a complex reasoning pattern, like 'DL classifier+SPARQL', or 'DL classifier+SWRL rule firing'.""" ;
+                                                                        owl:versionInfo "1.1"^^xsd:string ,
+                                                                                        "Created by Alessandro Adamou"^^xsd:string .
+
+#################################################################
+#    Object Properties
+#################################################################
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/vesselspecies.owl#catchesSpecies
+:catchesSpecies rdf:type owl:ObjectProperty ;
+                owl:inverseOf :isCaughtBy ;
+                rdfs:domain owl:Thing ;
+                rdfs:range <http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresources.owl#AquaticSpecies> ;
+                rdfs:comment """Actually a composed property: this needs either a property chain, a SPARQL query, or a SWRL rule to gather a value. E.g. in SPARQL:
+
+CONSTRUCT {?x :catchesSpecies ?y . ?y isCaughtBy ?x}
+WHERE {
+?x gearvessel:usesGearType ?z .
+?z gearspecies:catchesSpecies ?y
+}""" ;
+                rdfs:label "catches species"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/vesselspecies.owl#isCaughtBy
+:isCaughtBy rdf:type owl:ObjectProperty ;
+            rdfs:domain <http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresources.owl#AquaticSpecies> ;
+            rdfs:range owl:Thing ;
+            rdfs:comment """Actually a composed property: this needs either a property chain, a SPARQL query, or a SWRL rule to gather a value. E.g. in SPARQL:
+
+CONSTRUCT {?x :catchesSpecies ?y . ?y isCaughtBy ?x}
+WHERE {
+?x gearvessel:usesGearType ?z .
+?z gearspecies:catchesSpecies ?y
+}""" ;
+            rdfs:label "is caught by"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/vesselspecies.owl#isCaughtByVesselType
+:isCaughtByVesselType rdf:type owl:ObjectProperty ;
+                      rdfs:subPropertyOf :isCaughtBy ;
+                      rdfs:domain <http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresources.owl#AquaticSpecies> ;
+                      rdfs:range <http://www.ontologydesignpatterns.org/cp/owl/fsdas/gearvessel.owl#VesselType> ;
+                      rdfs:label "is caught by vessel type"@en .
+
+
+#################################################################
+#    Classes
+#################################################################
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/gearspecies.owl#GearType
+<http://www.ontologydesignpatterns.org/cp/owl/fsdas/gearspecies.owl#GearType> owl:equivalentClass <http://www.ontologydesignpatterns.org/cp/owl/fsdas/gearvessel.owl#GearType> .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/gearvessel.owl#GearType
+
+###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

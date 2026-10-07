@@ -1,0 +1,197 @@
+@prefix : <http://www.ontologydesignpatterns.org/cp/owl/timeindexedparticipation.owl#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@base <http://www.ontologydesignpatterns.org/cp/owl/timeindexedparticipation.owl> .
+
+<http://www.ontologydesignpatterns.org/cp/owl/timeindexedparticipation.owl> rdf:type owl:Ontology ;
+                                                                             owl:imports <http://www.ontologydesignpatterns.org/cp/owl/participation.owl> ,
+                                                                                         <http://www.ontologydesignpatterns.org/cp/owl/timeindexedsituation.owl> ;
+                                                                             <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> "When something participated in some event?,At what time an event had some participant?" ;
+                                                                             <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasAuthor> "Aldo Gangemi" ;
+                                                                             <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasComponent> "Participation,Region" ;
+                                                                             <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences> """We can represent participation relations with time. This enables participations at different times as well as partial participations in events.
+However, this pattern focuses on participation of one entity in one event. If complex events need to be represented (with subevents, more participants and times, etc.), a partonomic structure must be introduced, e.g. by creating a new pattern that composes TimeIndexedParticipation with PartOf.""" ;
+                                                                             <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> "To represent participants in events at some time,To represent participants in parts of events." ;
+                                                                             <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasUnitTest> """SELECT ?e ?o ?t
+WHERE {
+?x :includesEvent ?e .
+?x :includesObject ?o .
+?x :atTime ?t }""" ;
+                                                                             <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#isSpecializationOf> "TimeIndexedSituation" ;
+                                                                             <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#relatedCPs> "Participation,Time indexed person role" ;
+                                                                             <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios> "This morning I've prepared my coffee and had my fingers burnt,The football match lasted only ten minutes for Totti" ;
+                                                                             rdfs:comment "A time-indexed pattern for participation" ;
+                                                                             owl:versionInfo """1.0
+- Revised and annotated for ODP publishing
+0.2
+- Revised with specialization from timeindexedsituation.owl
+0.1
+- Created by Aldo Gangemi"""^^xsd:string ,
+                                                                                             "1.1 added rdfs:isDefinedBy for all named entities"^^xsd:string .
+
+#################################################################
+#    Annotation properties
+#################################################################
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements
+<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasAuthor
+<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasAuthor> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasComponent
+<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasComponent> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences
+<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent
+<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasUnitTest
+<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasUnitTest> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#isSpecializationOf
+<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#isSpecializationOf> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#relatedCPs
+<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#relatedCPs> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios
+<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.w3.org/2000/01/rdf-schema#comment
+rdfs:comment rdf:type owl:AnnotationProperty .
+
+
+###  http://www.w3.org/2000/01/rdf-schema#isDefinedBy
+rdfs:isDefinedBy rdf:type owl:AnnotationProperty .
+
+
+###  http://www.w3.org/2000/01/rdf-schema#label
+rdfs:label rdf:type owl:AnnotationProperty .
+
+
+###  http://www.w3.org/2002/07/owl#versionInfo
+owl:versionInfo rdf:type owl:AnnotationProperty .
+
+
+#################################################################
+#    Object Properties
+#################################################################
+
+###  http://www.ontologydesignpatterns.org/cp/owl/timeindexedparticipation.owl#includesEvent
+:includesEvent rdf:type owl:ObjectProperty ;
+               rdfs:subPropertyOf <http://www.ontologydesignpatterns.org/cp/owl/timeindexedsituation.owl#forEntity> ;
+               owl:inverseOf :isEventIncludedIn ;
+               rdfs:domain :TimeIndexedParticipation ;
+               rdfs:range <http://www.ontologydesignpatterns.org/cp/owl/participation.owl#Event> ;
+               rdfs:comment "A relation between situations and events, e.g. 'this morning I've prepared my coffee and had my fingers burnt' (i.e.: the preparation of my coffee this morning included a burning of my fingers)."^^xsd:string ;
+               rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/timeindexedparticipation.owl> ;
+               rdfs:label "include l'evento"@it ,
+                          "includes event"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/timeindexedparticipation.owl#includesObject
+:includesObject rdf:type owl:ObjectProperty ;
+                rdfs:subPropertyOf <http://www.ontologydesignpatterns.org/cp/owl/timeindexedsituation.owl#forEntity> ;
+                owl:inverseOf :isObjectIncludedIn ;
+                rdfs:domain :TimeIndexedParticipation ;
+                rdfs:range <http://www.ontologydesignpatterns.org/cp/owl/participation.owl#Object> ;
+                rdfs:comment "A relation between situations and objects, e.g. 'this morning I've prepared my coffee and had my fingers burnt' (i.e.: the preparation of my coffee this morning included me)."^^xsd:string ;
+                rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/timeindexedparticipation.owl> ;
+                rdfs:label "include l'oggetto"@it ,
+                           "includes object"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/timeindexedparticipation.owl#isEventIncludedIn
+:isEventIncludedIn rdf:type owl:ObjectProperty ;
+                   rdfs:subPropertyOf <http://www.ontologydesignpatterns.org/cp/owl/timeindexedsituation.owl#hasTimeIndexedSetting> ;
+                   rdfs:domain <http://www.ontologydesignpatterns.org/cp/owl/participation.owl#Event> ;
+                   rdfs:range <http://www.ontologydesignpatterns.org/cp/owl/situation.owl#Situation> ;
+                   rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/timeindexedparticipation.owl> ;
+                   rdfs:label "is event included in"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/timeindexedparticipation.owl#isObjectIncludedIn
+:isObjectIncludedIn rdf:type owl:ObjectProperty ;
+                    rdfs:subPropertyOf <http://www.ontologydesignpatterns.org/cp/owl/timeindexedsituation.owl#hasTimeIndexedSetting> ;
+                    rdfs:domain <http://www.ontologydesignpatterns.org/cp/owl/participation.owl#Object> ;
+                    rdfs:range <http://www.ontologydesignpatterns.org/cp/owl/situation.owl#Situation> ;
+                    rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/timeindexedparticipation.owl> ;
+                    rdfs:label "is object included in"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/timeindexedsituation.owl#atTime
+<http://www.ontologydesignpatterns.org/cp/owl/timeindexedsituation.owl#atTime> rdf:type owl:ObjectProperty .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/timeindexedsituation.owl#forEntity
+<http://www.ontologydesignpatterns.org/cp/owl/timeindexedsituation.owl#forEntity> rdf:type owl:ObjectProperty .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/timeindexedsituation.owl#hasTimeIndexedSetting
+<http://www.ontologydesignpatterns.org/cp/owl/timeindexedsituation.owl#hasTimeIndexedSetting> rdf:type owl:ObjectProperty .
+
+
+#################################################################
+#    Classes
+#################################################################
+
+###  http://www.ontologydesignpatterns.org/cp/owl/participation.owl#Event
+<http://www.ontologydesignpatterns.org/cp/owl/participation.owl#Event> rdf:type owl:Class .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/participation.owl#Object
+<http://www.ontologydesignpatterns.org/cp/owl/participation.owl#Object> rdf:type owl:Class .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/situation.owl#Situation
+<http://www.ontologydesignpatterns.org/cp/owl/situation.owl#Situation> rdf:type owl:Class .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/timeindexedparticipation.owl#TimeIndexedParticipation
+:TimeIndexedParticipation rdf:type owl:Class ;
+                          rdfs:subClassOf <http://www.ontologydesignpatterns.org/cp/owl/timeindexedsituation.owl#TimeIndexedSituation> ,
+                                          [ rdf:type owl:Restriction ;
+                                            owl:onProperty :includesEvent ;
+                                            owl:minCardinality "1"^^xsd:nonNegativeInteger
+                                          ] ,
+                                          [ rdf:type owl:Restriction ;
+                                            owl:onProperty :includesObject ;
+                                            owl:minCardinality "1"^^xsd:nonNegativeInteger
+                                          ] ,
+                                          [ rdf:type owl:Restriction ;
+                                            owl:onProperty <http://www.ontologydesignpatterns.org/cp/owl/timeindexedsituation.owl#atTime> ;
+                                            owl:minCardinality "1"^^xsd:nonNegativeInteger
+                                          ] ,
+                                          [ rdf:type owl:Restriction ;
+                                            owl:onProperty <http://www.ontologydesignpatterns.org/cp/owl/timeindexedsituation.owl#forEntity> ;
+                                            owl:minCardinality "3"^^xsd:nonNegativeInteger
+                                          ] ;
+                          rdfs:comment "A Situation that represents participation of Object(s) in Event(s) at some Time." ;
+                          rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/timeindexedparticipation.owl> ;
+                          rdfs:label "Time indexed participation"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/timeindexedsituation.owl#TimeIndexedSituation
+<http://www.ontologydesignpatterns.org/cp/owl/timeindexedsituation.owl#TimeIndexedSituation> rdf:type owl:Class .
+
+
+###  http://www.w3.org/2002/07/owl#Thing
+owl:Thing rdf:type owl:Class .
+
+
+###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

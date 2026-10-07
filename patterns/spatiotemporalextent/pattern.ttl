@@ -1,0 +1,81 @@
+@prefix : <http://w3id.org/daselab/onto/spatiotemporalextent#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@base <http://w3id.org/daselab/onto/spatiotemporalextent> .
+
+<http://w3id.org/daselab/onto/spatiotemporalextent> rdf:type owl:Ontology ;
+                                                     owl:imports <http://w3id.org/daselab/onto/trajectory> ,
+                                                                 <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl> ;
+                                                     <http://purl.org/dc/elements/1.1/creator> "Adila Krisnadhi, Pascal Hitzler" ;
+                                                     <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> """Where is Poland located in 1700?, 
+List all places and time in which the 1990 World Chess Championship Match take place.,
+Where and when did the oceanographic cruise A01132 go?""" ;
+                                                     <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasComponent> <http://ontologydesignpatterns.org/wiki/Submissions:Trajectory> ,
+                                                                                                                                         <http://w3id.org/daselab/onto/trajectory> ,
+                                                                                                                                         "Trajectory" ;
+                                                     <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> "This pattern models a spatiotemporal extent, i.e., a combination of spatial and temporal extent as a set of generalized trajectories which cannot have temporal overlap. This pattern reuses semantic trajectory pattern as component." ;
+                                                     <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#relatedCPs> "Trajectory" ;
+                                                     <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios> """The World Chess Championship Match 1990 was held in two parts: New York (October 8 to November 7) and Lyons - France (November 26 to December 30).
+
+The Renaissance occured in different places at different times.
+
+A hurricane moves through the spacetime.""" .
+
+#################################################################
+#    Annotation properties
+#################################################################
+
+###  http://purl.org/dc/elements/1.1/creator
+<http://purl.org/dc/elements/1.1/creator> rdf:type owl:AnnotationProperty .
+
+
+#################################################################
+#    Object Properties
+#################################################################
+
+###  http://w3id.org/daselab/onto/spatiotemporalextent#hasSpatioTemporalExtent
+:hasSpatioTemporalExtent rdf:type owl:ObjectProperty ;
+                         rdfs:range :SpatioTemporalExtent ;
+                         rdfs:comment "Property relating anything (thus the domain is trivially owl:Thing and the range is unscoped) to a SpatioTemporalExtent." ;
+                         rdfs:label "hasSpatioTemporalExtent" .
+
+
+###  http://w3id.org/daselab/onto/spatiotemporalextent#hasTrajectory
+:hasTrajectory rdf:type owl:ObjectProperty ;
+               rdfs:comment "Set to be equivalent to trj:hasTrajectory from the Trajectory pattern, this property relates anything (including SpatioTemporalExtent) to Trajectory." ;
+               rdfs:label "hasTrajectory" .
+
+
+#################################################################
+#    Classes
+#################################################################
+
+###  http://w3id.org/daselab/onto/spatiotemporalextent#SpatioTemporalExtent
+:SpatioTemporalExtent rdf:type owl:Class ;
+                      rdfs:subClassOf [ rdf:type owl:Restriction ;
+                                        owl:onProperty :hasTrajectory ;
+                                        owl:someValuesFrom :Trajectory
+                                      ] ,
+                                      [ rdf:type owl:Restriction ;
+                                        owl:onProperty :hasTrajectory ;
+                                        owl:allValuesFrom :Trajectory
+                                      ] ;
+                      rdfs:comment "The class that represents the notion of spatiotemporal extent. A spatiotemporal extent is realized as a collection of generalized trajectories that have no temporal overlap." ;
+                      rdfs:label "SpatioTemporalExtent" .
+
+
+###  http://w3id.org/daselab/onto/spatiotemporalextent#Trajectory
+:Trajectory rdf:type owl:Class ;
+            owl:equivalentClass <http://w3id.org/daselab/onto/trajectory#Trajectory> ;
+            rdfs:comment "The hook to the Trajectory pattern, which acts as a component of the Spatiotemporal Extent pattern." ;
+            rdfs:label "Trajectory" .
+
+
+###  http://w3id.org/daselab/onto/trajectory#Trajectory
+<http://w3id.org/daselab/onto/trajectory#Trajectory> rdf:type owl:Class .
+
+
+###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

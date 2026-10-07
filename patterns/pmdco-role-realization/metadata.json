@@ -1,0 +1,15 @@
+{
+  "id": "pmdco-role-realization",
+  "name": "Realization of a role",
+  "description": "Represents characteristics of objects brought into existence by a specific situation, for example a role that is realized in a process. The example is an assay taking a material that bears the evaluant role as specified input and producing measurement data as output, where the assay measures a specific material characteristic.",
+  "category": "conceptual",
+  "domain": "general",
+  "competency_questions": "Which role does this object bear, and in which process is that role realized? Which entity is the evaluant of an assay? Which characteristic does the assay measure, which datum does it output, and what is that datum about? Which planned objective does the process achieve?",
+  "pattern_iri": "https://ontoboard.org/patterns/pmdco-role-realization.owl",
+  "source": "https://materialdigital.github.io/core-ontology/docs/patterns.html",
+  "collection": "pmdco",
+  "publisher": "materialdigital.github.io",
+  "extracted_from": "pmdco",
+  "class_count": 17,
+  "property_count": 10
+}

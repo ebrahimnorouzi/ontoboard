@@ -1,0 +1,214 @@
+@prefix : <https://ontoboard.org/patterns/pmdco-participant-object-states.owl#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@base <https://ontoboard.org/patterns/pmdco-participant-object-states.owl> .
+
+<https://ontoboard.org/patterns/pmdco-participant-object-states.owl> rdf:type owl:Ontology .
+
+#################################################################
+#    Annotation properties
+#################################################################
+
+###  http://purl.obolibrary.org/obo/IAO_0000112
+<http://purl.obolibrary.org/obo/IAO_0000112> rdf:type owl:AnnotationProperty .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000115
+<http://purl.obolibrary.org/obo/IAO_0000115> rdf:type owl:AnnotationProperty .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000116
+<http://purl.obolibrary.org/obo/IAO_0000116> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.w3.org/2004/02/skos/core#definition
+<http://www.w3.org/2004/02/skos/core#definition> rdf:type owl:AnnotationProperty .
+
+
+#################################################################
+#    Object Properties
+#################################################################
+
+###  http://purl.obolibrary.org/obo/BFO_0000063
+<http://purl.obolibrary.org/obo/BFO_0000063> rdf:type owl:ObjectProperty ,
+                                                      owl:TransitiveProperty ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "x precedes y if and only if the time point at which x ends is before or equivalent to the time point at which y starts. Formally: x precedes y iff ω(x) <= α(y), where α is a function that maps a process to a start point, and ω is a function that maps a process to an end point."@en ;
+                                             rdfs:label "precedes"@en ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "(Elucidation) precedes is a relation between occurrents o, o' such that if t is the temporal extent of o & t' is the temporal extent of o' then either the last instant of o is before the first instant of o' or the last instant of o is the first instant of o' & neither o nor o' are temporal instants"@en .
+
+
+###  http://purl.obolibrary.org/obo/BFO_0000108
+<http://purl.obolibrary.org/obo/BFO_0000108> rdf:type owl:ObjectProperty ;
+                                             rdfs:range <http://purl.obolibrary.org/obo/BFO_0000008> ;
+                                             rdfs:label "exists at"@en ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "(Elucidation) exists at is a relation between a particular and some temporal region at which the particular exists"@en .
+
+
+###  http://purl.obolibrary.org/obo/RO_0000086
+<http://purl.obolibrary.org/obo/RO_0000086> rdf:type owl:ObjectProperty ;
+                                            rdfs:range <http://purl.obolibrary.org/obo/BFO_0000019> ;
+                                            <http://purl.obolibrary.org/obo/IAO_0000112> "this apple has quality this red color"@en ;
+                                            <http://purl.obolibrary.org/obo/IAO_0000115> "a relation between an independent continuant (the bearer) and a quality, in which the quality specifically depends on the bearer for its existence"@en ;
+                                            <http://purl.obolibrary.org/obo/IAO_0000116> "A bearer can have many qualities, and its qualities can exist for different periods of time, but none of its qualities can exist when the bearer does not exist."@en ;
+                                            rdfs:label "has quality"@en .
+
+
+###  https://w3id.org/pmd/co/PMD_0000069
+<https://w3id.org/pmd/co/PMD_0000069> rdf:type owl:ObjectProperty ;
+                                      owl:inverseOf <https://w3id.org/pmd/co/PMD_0000070> ;
+                                      rdf:type owl:InverseFunctionalProperty ;
+                                      rdfs:range <https://w3id.org/pmd/co/PMD_0000068> ;
+                                      rdfs:label "has state"@en ;
+                                      <http://www.w3.org/2004/02/skos/core#definition> "relates an anchor continuant to a temporally qualified continuant that represents a specific temporal phase of its existence."@en .
+
+
+###  https://w3id.org/pmd/co/PMD_0000070
+<https://w3id.org/pmd/co/PMD_0000070> rdf:type owl:ObjectProperty ,
+                                               owl:FunctionalProperty ;
+                                      rdfs:label "is state of"@en ;
+                                      <http://www.w3.org/2004/02/skos/core#definition> "relates a temporally qualified continuant to the unique anchor continuant that it is a temporal phase of"@en .
+
+
+#################################################################
+#    Classes
+#################################################################
+
+###  http://purl.obolibrary.org/obo/BFO_0000003
+<http://purl.obolibrary.org/obo/BFO_0000003> rdf:type owl:Class ;
+                                             rdfs:label "occurrent"@en ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "(Elucidation) An occurrent is an entity that unfolds itself in time or it is the start or end of such an entity or it is a temporal or spatiotemporal region"@en .
+
+
+###  http://purl.obolibrary.org/obo/BFO_0000004
+<http://purl.obolibrary.org/obo/BFO_0000004> rdf:type owl:Class ;
+                                             rdfs:label "independent continuant"@en ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "b is an independent continuant =Def b is a continuant & there is no c such that b specifically depends on c or b generically depends on c"@en .
+
+
+###  http://purl.obolibrary.org/obo/BFO_0000008
+<http://purl.obolibrary.org/obo/BFO_0000008> rdf:type owl:Class ;
+                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000003> ;
+                                             rdfs:label "temporal region"@en ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "(Elucidation) A temporal region is an occurrent over which processes can unfold"@en .
+
+
+###  http://purl.obolibrary.org/obo/BFO_0000019
+<http://purl.obolibrary.org/obo/BFO_0000019> rdf:type owl:Class ;
+                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000020> ;
+                                             rdfs:label "quality"@en ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "(Elucidation) A quality is a specifically dependent continuant that, in contrast to roles and dispositions, does not require any further process in order to be realized"@en .
+
+
+###  http://purl.obolibrary.org/obo/BFO_0000020
+<http://purl.obolibrary.org/obo/BFO_0000020> rdf:type owl:Class ;
+                                             rdfs:label "specifically dependent continuant"@en ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "b is a specifically dependent continuant =Def b is a continuant & there is some independent continuant c which is not a spatial region & which is such that b specifically depends on c"@en .
+
+
+###  http://purl.obolibrary.org/obo/BFO_0000030
+<http://purl.obolibrary.org/obo/BFO_0000030> rdf:type owl:Class ;
+                                             rdfs:label "object"@en ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "(Elucidation) An object is a material entity which manifests causal unity & is of a type instances of which are maximal relative to the sort of causal unity manifested"@en .
+
+
+###  https://w3id.org/pmd/co/PMD_0000000
+<https://w3id.org/pmd/co/PMD_0000000> rdf:type owl:Class ;
+                                      rdfs:comment "Instances of Portions Of Matter whose shape is relevant for their dispostion to participate in a manufacturing process may be (subclasses of) objects that bear a 'blank role' in the context of the manufacturing process."@en ,
+                                                   """Material is defined in terms of the three main perspectives that material specifications rely on: the structure of the material (\"intensive quality\"), the performance of the material (\"behavoiral material property\") and the processing the material must have undergone (\"output of some process\").
+
+When defining specific materials/material taxonomies, these three aspects shall be taken into account in the aristotelian (\"per genus et differentiam\") as differentiation."""@en ,
+                                                   "The sum of portions of matter of the same type form a portion of matter of that type."@en ;
+                                      rdfs:label "Material"@de ,
+                                                 "material"@en ;
+                                      <http://www.w3.org/2004/02/skos/core#definition> "A material is a portion of matter that may participate in some manufacturing process and whose shape is not relevant for its participation in the manufacturing process."@en .
+
+
+###  https://w3id.org/pmd/co/PMD_0000001
+<https://w3id.org/pmd/co/PMD_0000001> rdf:type owl:Class ;
+                                      rdfs:comment """It is also representing a distinct physical or conceptual part of a material or substance.
+
+The open energy ontology OEO defines portion of matter as a subclass of object aggregate, which implies countability. Our portion is not (precisely) countable and thus bearer of intensive properties."""@en ,
+                                                   """Lome explanation for portion of matter: \"What is a molecule cluster at the cellular level? Contrary to the molecular level, at the cellular level of granularity the boundary of each molecule is outside of the level of granular focus. What forms a discontinuous cluster of countable individual molecules and thus bona fide objects at the molecular level, is a continuous and non-countable molecular substance at coarser levels of
+granularity. At these coarser levels, the individual molecules cannot be differentiated and demarcated anymore and the cluster as a whole possesses only fiat inner boundaries.\""""@en ;
+                                      rdfs:label "portion of matter"@en ;
+                                      <http://www.w3.org/2004/02/skos/core#definition> "A material entity that is not demarcated by any physical discontinuities. At some finer level of granularity it is an object aggregate, at some coarser level of granularity it is a fiat object part,but at this level of granularity it is neither."@en .
+
+
+###  https://w3id.org/pmd/co/PMD_0000068
+<https://w3id.org/pmd/co/PMD_0000068> rdf:type owl:Class ;
+                                      rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000004> ,
+                                                      [ rdf:type owl:Restriction ;
+                                                        owl:onProperty <http://purl.obolibrary.org/obo/BFO_0000108> ;
+                                                        owl:someValuesFrom <http://purl.obolibrary.org/obo/BFO_0000008>
+                                                      ] ;
+                                      <http://purl.obolibrary.org/obo/IAO_0000116> "For any temporally qualified continuant x@t, there exists a continuant y such that x@t has_state y, meaning that y is the anchor continuant of which x@t is a temporal phase existing at temporal regions t. The relation has_state is functional and signifies that all such temporally qualified continuants are uniquely associated with their basic anchor continuant."@en ;
+                                      rdfs:label "temporally qualified continuant"@en ;
+                                      <http://www.w3.org/2004/02/skos/core#definition> "A temporally qualified continuant is a continuant that, by reference to a determinate temporal region, is such as to possess its properties only for so long as that period obtains, being otherwise in its essentiality unchanged."@en .
+
+
+###  https://w3id.org/pmd/co/PMD_0000597
+<https://w3id.org/pmd/co/PMD_0000597> rdf:type owl:Class ;
+                                      rdfs:subClassOf <https://w3id.org/pmd/co/PMD_0023043> ;
+                                      rdfs:label "mass density"@en ;
+                                      <http://www.w3.org/2004/02/skos/core#definition> "fundamental property of matter representing the mass of a portion of matter per unit volume"@en .
+
+
+###  https://w3id.org/pmd/co/PMD_0000857
+<https://w3id.org/pmd/co/PMD_0000857> rdf:type owl:Class ;
+                                      rdfs:subClassOf <https://w3id.org/pmd/co/PMD_0000001> ;
+                                      rdfs:comment "The focus of interest when looking at an object through the microstructure perspective is often its morphology."@en ;
+                                      rdfs:label "microstructure"@en ;
+                                      <http://www.w3.org/2004/02/skos/core#definition> "A microstructure is a portion of matter that represents the small-scale structure of a material, including grains, phases, and defects, visible under a microscope."@en .
+
+
+###  https://w3id.org/pmd/co/PMD_0020132
+<https://w3id.org/pmd/co/PMD_0020132> rdf:type owl:Class ;
+                                      rdfs:label "spatial extend"@en ;
+                                      <http://www.w3.org/2004/02/skos/core#definition> "Dimension quality is a quality of a material entity that pertains to its measurable spatial extent, such as length, area, or volume"@en .
+
+
+###  https://w3id.org/pmd/co/PMD_0020133
+<https://w3id.org/pmd/co/PMD_0020133> rdf:type owl:Class ;
+                                      rdfs:subClassOf <https://w3id.org/pmd/co/PMD_0023000> ;
+                                      rdfs:label "Masse"@de ,
+                                                 "mass"@en ;
+                                      <http://www.w3.org/2004/02/skos/core#definition> "Mass is fundamental extensive quality."@en .
+
+
+###  https://w3id.org/pmd/co/PMD_0020170
+<https://w3id.org/pmd/co/PMD_0020170> rdf:type owl:Class ;
+                                      rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000030> ;
+                                      rdfs:comment "The ingot may be hot rolled after casting..."@en ;
+                                      rdfs:label "Bramme"@de ,
+                                                 "ingot"@en ;
+                                      <http://www.w3.org/2004/02/skos/core#definition> "An ingot is an object that has a thick section and may bear a semi finished product role and that is the specified output of a casting process. At the same time it is a material."@en .
+
+
+###  https://w3id.org/pmd/co/PMD_0023000
+<https://w3id.org/pmd/co/PMD_0023000> rdf:type owl:Class ;
+                                      <http://purl.obolibrary.org/obo/IAO_0000116> "TODO: system requires further precision"@en ;
+                                      rdfs:label "fundamental quality of system"@en ;
+                                      <http://www.w3.org/2004/02/skos/core#definition> "a quality that is quality of every system made of demarcated materail entites"@en .
+
+
+###  https://w3id.org/pmd/co/PMD_0023043
+<https://w3id.org/pmd/co/PMD_0023043> rdf:type owl:Class ;
+                                      rdfs:label "fundamental quality of matter"@en ;
+                                      <http://www.w3.org/2004/02/skos/core#definition> "a quality that is quality of every portion of matter"@en .
+
+
+###  https://w3id.org/pmd/co/PMD_0040001
+<https://w3id.org/pmd/co/PMD_0040001> rdf:type owl:Class ;
+                                      rdfs:subClassOf <https://w3id.org/pmd/co/PMD_0020132> ;
+                                      <http://purl.obolibrary.org/obo/IAO_0000116> "Necessary and sufficient conditions for 'length' have not yet been formalized. The term is defined as a specific subtype of 'DimensionQuality'. Distinguishing criteria are domain-specific and depend on measurement conventions or source terminology not yet expressed as OWL restrictions. The definition is adapted from: http://purl.obolibrary.org/obo/PATO_0000122."@en ;
+                                      rdfs:comment "Length is a size that describes the spatial extent of its bearer in one dimension."@en ;
+                                      rdfs:label "Länge"@de ,
+                                                 "length"@en ;
+                                      <http://www.w3.org/2004/02/skos/core#definition> "Die Länge ist eine eindimensionale Größe."@de ,
+                                                                                       "Length is a one dimensional size."@en .
+
+
+###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

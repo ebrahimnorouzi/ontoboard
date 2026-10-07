@@ -1,0 +1,15 @@
+{
+  "id": "mwo-process-agent-role",
+  "name": "Pattern 1: Process-Agent-Role",
+  "description": "Shows how roles are assigned to agents participating in processes while staying aligned with BFO: bfo:Process is an Occurrent, nfdicore:Agent is an Independent Continuant that participates in the process, and bfo:Role is a Specifically Dependent Continuant borne by the agent. The object properties has_participant, realizes and bearer_of tie the three together.",
+  "category": "structural",
+  "domain": "research-data",
+  "competency_questions": "",
+  "pattern_iri": "https://ontoboard.org/patterns/mwo-process-agent-role.owl",
+  "source": "https://ise-fizkarlsruhe.github.io/mwo/docs/patterns/",
+  "collection": "mwo",
+  "publisher": "ise-fizkarlsruhe.github.io",
+  "extracted_from": "nfdi",
+  "class_count": 10,
+  "property_count": 6
+}

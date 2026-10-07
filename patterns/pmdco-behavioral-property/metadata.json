@@ -1,0 +1,15 @@
+{
+  "id": "pmdco-behavioral-property",
+  "name": "Behavioral property",
+  "description": "Behavioral material properties manifest only in specific circumstances: yield strength is the material's behavior under mechanical stress, realized in a mechanical process. The property is a specifically dependent continuant borne by the material and given a value by a scalar value specification.",
+  "category": "behavioral",
+  "domain": "materials",
+  "competency_questions": "Which properties of a material show themselves only under particular circumstances? In which process is a behavioral property realized? What value and unit specify a behavioral property such as yield strength or melting point?",
+  "pattern_iri": "https://ontoboard.org/patterns/pmdco-behavioral-property.owl",
+  "source": "https://materialdigital.github.io/core-ontology/docs/patterns.html",
+  "collection": "pmdco",
+  "publisher": "materialdigital.github.io",
+  "extracted_from": "pmdco",
+  "class_count": 15,
+  "property_count": 6
+}

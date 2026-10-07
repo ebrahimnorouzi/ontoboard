@@ -1,0 +1,285 @@
+@prefix : <http://www.ontologydesignpatterns.org/cp/owl/controlflow.owl#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@base <http://www.ontologydesignpatterns.org/cp/owl/controlflow.owl> .
+
+<http://www.ontologydesignpatterns.org/cp/owl/controlflow.owl> rdf:type owl:Ontology ;
+                                                                owl:imports <http://www.ontologydesignpatterns.org/cp/owl/sequence.owl> ,
+                                                                            <http://www.ontologydesignpatterns.org/cp/owl/taskexecution.owl> ;
+                                                                <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#extractedFrom> "http://www.loa-cnr.it/ontologies/PlansLite.owl"^^xsd:string ;
+                                                                <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasAuthor> "Aldo Gangemi" ;
+                                                                <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> "To represent control flows: activation, branching, decisions, concurrency, etc."^^xsd:string ;
+                                                                owl:versionInfo "1.0"^^xsd:string ,
+                                                                                "1.1 added rdfs:isDefinedBy for all named entities"^^xsd:string ,
+                                                                                "Created by Aldo Gangemi" .
+
+#################################################################
+#    Annotation properties
+#################################################################
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#extractedFrom
+<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#extractedFrom> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasAuthor
+<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasAuthor> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent
+<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.w3.org/2000/01/rdf-schema#comment
+rdfs:comment rdf:type owl:AnnotationProperty .
+
+
+###  http://www.w3.org/2000/01/rdf-schema#isDefinedBy
+rdfs:isDefinedBy rdf:type owl:AnnotationProperty .
+
+
+###  http://www.w3.org/2000/01/rdf-schema#label
+rdfs:label rdf:type owl:AnnotationProperty .
+
+
+###  http://www.w3.org/2002/07/owl#versionInfo
+owl:versionInfo rdf:type owl:AnnotationProperty .
+
+
+#################################################################
+#    Object Properties
+#################################################################
+
+###  http://www.ontologydesignpatterns.org/cp/owl/sequence.owl#directlyFollows
+<http://www.ontologydesignpatterns.org/cp/owl/sequence.owl#directlyFollows> rdf:type owl:ObjectProperty .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/sequence.owl#directlyPrecedes
+<http://www.ontologydesignpatterns.org/cp/owl/sequence.owl#directlyPrecedes> rdf:type owl:ObjectProperty .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/sequence.owl#follows
+<http://www.ontologydesignpatterns.org/cp/owl/sequence.owl#follows> rdf:type owl:ObjectProperty .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/sequence.owl#precedes
+<http://www.ontologydesignpatterns.org/cp/owl/sequence.owl#precedes> rdf:type owl:ObjectProperty .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/taskexecution.owl#executesTask
+<http://www.ontologydesignpatterns.org/cp/owl/taskexecution.owl#executesTask> rdf:type owl:ObjectProperty .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/taskexecution.owl#isExecutedIn
+<http://www.ontologydesignpatterns.org/cp/owl/taskexecution.owl#isExecutedIn> rdf:type owl:ObjectProperty .
+
+
+#################################################################
+#    Classes
+#################################################################
+
+###  http://www.ontologydesignpatterns.org/cp/owl/controlflow.owl#AbstractMergingTask
+:AbstractMergingTask rdf:type owl:Class ;
+                     rdfs:subClassOf :MergingTask ,
+                                     [ rdf:type owl:Restriction ;
+                                       owl:onProperty <http://www.ontologydesignpatterns.org/cp/owl/sequence.owl#follows> ;
+                                       owl:someValuesFrom :CaseTask
+                                     ] ;
+                     rdfs:comment """An abstract merging task is a merging aimed at 'formally' joining the tasks that are direct successor to a case task.
+Differently from synchronization tasks, which are expected to be executed, abstract mergings only provide abstract boundaries to a task structure, because in a case task, only one action task is supposed to be executed."""^^xsd:string ;
+                     rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/controlflow.owl> ;
+                     rdfs:label "Abstract merging task"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/controlflow.owl#ActionTask
+:ActionTask rdf:type owl:Class ;
+            rdfs:subClassOf <http://www.ontologydesignpatterns.org/cp/owl/taskrole.owl#Task> ;
+            owl:disjointWith :ControlTask ;
+            rdfs:comment "An action task is an elementary task that sequences non-planning activities, like: moving, exercising forces, gathering information, etc. Planning activites are mental events involving some rational event."^^xsd:string ;
+            rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/controlflow.owl> ;
+            rdfs:label "Action task"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/controlflow.owl#ActivationTask
+:ActivationTask rdf:type owl:Class ;
+                rdfs:subClassOf :ControlTask ,
+                                [ rdf:type owl:Restriction ;
+                                  owl:onProperty <http://www.ontologydesignpatterns.org/cp/owl/sequence.owl#directlyPrecedes> ;
+                                  owl:someValuesFrom <http://www.ontologydesignpatterns.org/cp/owl/taskrole.owl#Task>
+                                ] ;
+                owl:disjointWith :BranchingTask ,
+                                 :DeliberationTask ,
+                                 :LoopTask ,
+                                 :SynchroTask ;
+                rdfs:comment "A control task aimed at starting an activity. It is specialized either by a beginning task or a reactivation task."^^xsd:string ;
+                rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/controlflow.owl> ;
+                rdfs:label "Activation task"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/controlflow.owl#BooleanCaseTask
+:BooleanCaseTask rdf:type owl:Class ;
+                 rdfs:subClassOf :CaseTask ,
+                                 [ rdf:type owl:Restriction ;
+                                   owl:onProperty <http://www.ontologydesignpatterns.org/cp/owl/sequence.owl#directlyPrecedes> ;
+                                   owl:cardinality "2"^^xsd:nonNegativeInteger
+                                 ] ;
+                 rdfs:comment "E.g. a yes-or-no case task, requiring exactly two deliberation tasks." ;
+                 rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/controlflow.owl> ;
+                 rdfs:label "Boolean case task"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/controlflow.owl#BranchingTask
+:BranchingTask rdf:type owl:Class ;
+               rdfs:subClassOf :ControlTask ,
+                               [ rdf:type owl:Restriction ;
+                                 owl:onProperty <http://www.ontologydesignpatterns.org/cp/owl/sequence.owl#directlyPrecedes> ;
+                                 owl:minCardinality "2"^^xsd:nonNegativeInteger
+                               ] ;
+               owl:disjointWith :DeliberationTask ,
+                                :EndingTask ,
+                                :LoopTask ,
+                                :SynchroTask ;
+               rdfs:comment "A task that articulates the plan into an ordered set of tasks."^^xsd:string ;
+               rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/controlflow.owl> ;
+               rdfs:label "Branching task"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/controlflow.owl#CaseTask
+:CaseTask rdf:type owl:Class ;
+          rdfs:subClassOf :BranchingTask ,
+                          [ rdf:type owl:Restriction ;
+                            owl:onProperty <http://www.ontologydesignpatterns.org/cp/owl/sequence.owl#directlyPrecedes> ;
+                            owl:someValuesFrom :DeliberationTask
+                          ] ,
+                          [ rdf:type owl:Restriction ;
+                            owl:onProperty <http://www.ontologydesignpatterns.org/cp/owl/sequence.owl#directlyPrecedes> ;
+                            owl:allValuesFrom :DeliberationTask
+                          ] ;
+          owl:disjointWith :ConcurrencyTask ;
+          rdfs:comment "A case task is a control task branched to a set of tasks that are not executable concurrently. In order to choose which task has to be undertaken, preliminary deliberation tasks should be executed, possibly based on information-gathering and decision rationales."^^xsd:string ;
+          rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/controlflow.owl> ;
+          rdfs:label "Case task"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/controlflow.owl#ConcurrencyTask
+:ConcurrencyTask rdf:type owl:Class ;
+                 rdfs:subClassOf :BranchingTask ,
+                                 [ rdf:type owl:Restriction ;
+                                   owl:onProperty <http://www.ontologydesignpatterns.org/cp/owl/sequence.owl#precedes> ;
+                                   owl:someValuesFrom :SynchroTask
+                                 ] ;
+                 rdfs:comment "A concurrent task is a task branched to a set of tasks executable concurrently -the sequenced perdurants can overlap-, which means that no deliberation task is performed in order to choose among them. A concurrent task has at least one successor synchronization task, which is aimed at waiting for the execution of all -except the optional ones- tasks direct successor to the concurrent -or any order, see below- one.The axioms cannot be expressed fully in OWL-DL (no value mapping available)."^^xsd:string ;
+                 rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/controlflow.owl> ;
+                 rdfs:label "Concurrency task"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/controlflow.owl#ControlTask
+:ControlTask rdf:type owl:Class ;
+             rdfs:subClassOf <http://www.ontologydesignpatterns.org/cp/owl/taskrole.owl#Task> ;
+             rdfs:comment "A control task is a task executed during a planning activity, e.g. an activity aimed at (cognitively or via simulation) anticipating other activities. Therefore, control tasks have usually at least one direct successor task (the controlled one), with the exception of ending tasks.The reification of control constructs allows to represent procedural knowledge into the same ontology including controlled action. Besides conceptual transparency and independency from a particular grounding system, a further advantage is enabling the representation of coordination tasks. For example, a manager that coordinates the execution of several related activities can be represented as a role with a responsibility (duty+right) towards some complex task."^^xsd:string ;
+             rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/controlflow.owl> ;
+             rdfs:label "Control task"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/controlflow.owl#DecisionActivity
+:DecisionActivity rdf:type owl:Class ;
+                  rdfs:subClassOf <http://www.ontologydesignpatterns.org/cp/owl/taskexecution.owl#Action> ,
+                                  [ rdf:type owl:Restriction ;
+                                    owl:onProperty <http://www.ontologydesignpatterns.org/cp/owl/taskexecution.owl#executesTask> ;
+                                    owl:someValuesFrom :CaseTask
+                                  ] ;
+                  rdfs:comment "An activity related to planning. It is supposed to execute a 'case task', and can contain an information gathering activity."^^xsd:string ;
+                  rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/controlflow.owl> ;
+                  rdfs:label "Decision activity"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/controlflow.owl#DeliberationState
+:DeliberationState rdf:type owl:Class ;
+                   rdfs:subClassOf <http://www.ontologydesignpatterns.org/cp/owl/taskexecution.owl#Action> ,
+                                   [ rdf:type owl:Restriction ;
+                                     owl:onProperty <http://www.ontologydesignpatterns.org/cp/owl/sequence.owl#follows> ;
+                                     owl:someValuesFrom :DecisionActivity
+                                   ] ,
+                                   [ rdf:type owl:Restriction ;
+                                     owl:onProperty <http://www.ontologydesignpatterns.org/cp/owl/taskexecution.owl#executesTask> ;
+                                     owl:someValuesFrom :DeliberationTask
+                                   ] ;
+                   rdfs:comment "A state related to planning. It finalizes the execution of a 'deliberation task', and is preceded by a decision activity."^^xsd:string ;
+                   rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/controlflow.owl> ;
+                   rdfs:label "Decision state"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/controlflow.owl#DeliberationTask
+:DeliberationTask rdf:type owl:Class ;
+                  rdfs:subClassOf :ControlTask ,
+                                  [ rdf:type owl:Restriction ;
+                                    owl:onProperty <http://www.ontologydesignpatterns.org/cp/owl/sequence.owl#directlyFollows> ;
+                                    owl:someValuesFrom :CaseTask
+                                  ] ,
+                                  [ rdf:type owl:Restriction ;
+                                    owl:onProperty <http://www.ontologydesignpatterns.org/cp/owl/taskexecution.owl#isExecutedIn> ;
+                                    owl:allValuesFrom :DeliberationState
+                                  ] ;
+                  owl:disjointWith :EndingTask ,
+                                   :LoopTask ,
+                                   :SynchroTask ;
+                  rdfs:comment "A deliberation task is a control task that is executed in a deliberation state (a decision taken during a case task execution, e.g. a yes or a no, or a known value, etc.)."^^xsd:string ;
+                  rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/controlflow.owl> ;
+                  rdfs:label "Deliberation task"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/controlflow.owl#EndingTask
+:EndingTask rdf:type owl:Class ;
+            rdfs:subClassOf :ControlTask ;
+            owl:disjointWith :LoopTask ,
+                             :SynchroTask ;
+            rdfs:comment "An ending task is a control task that has no successor tasks defined in the plan."^^xsd:string ;
+            rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/controlflow.owl> ;
+            rdfs:label "Ending task"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/controlflow.owl#LoopTask
+:LoopTask rdf:type owl:Class ;
+          rdfs:subClassOf :ControlTask ;
+          owl:disjointWith :SynchroTask ;
+          rdfs:comment """A loop task is a control task that has as successor an action -or complex- task that sequences at least two distinct activities sharing a minimal common set of properties -they have a MinimalCommonType. Notice that MinimalCommonType cannot be formalised as a first-order predicate, and then neither in OWL-DL. It can be considered a trivial guideline: when sequencing looped actions, choose a definite action class from the ground ontology.
+Some relations typically hold for loop tasks. Exit condition can be used to state what deliberation task causes to exit the cycle; iteration interval can be used to state how much time should be taken by each iteration of the looped activity; iteration cardinality can be used to state how many times the action should be repeated."""^^xsd:string ;
+          rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/controlflow.owl> ;
+          rdfs:label "Loop task"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/controlflow.owl#MergingTask
+:MergingTask rdf:type owl:Class ;
+             rdfs:subClassOf :ControlTask ;
+             rdfs:comment "A task that joins a set of tasks after a branching."^^xsd:string ;
+             rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/controlflow.owl> ;
+             rdfs:label "Merging task"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/controlflow.owl#SynchroTask
+:SynchroTask rdf:type owl:Class ;
+             rdfs:subClassOf :MergingTask ,
+                             [ rdf:type owl:Restriction ;
+                               owl:onProperty <http://www.ontologydesignpatterns.org/cp/owl/sequence.owl#follows> ;
+                               owl:someValuesFrom :ConcurrencyTask
+                             ] ;
+             rdfs:comment "A synchronization task is a merging aimed at waiting for the execution of all (except the optional ones) tasks that are direct successor to a concurrent or any order task."^^xsd:string ;
+             rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/controlflow.owl> ;
+             rdfs:label "Synchro task"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/taskexecution.owl#Action
+<http://www.ontologydesignpatterns.org/cp/owl/taskexecution.owl#Action> rdf:type owl:Class .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/taskrole.owl#Task
+<http://www.ontologydesignpatterns.org/cp/owl/taskrole.owl#Task> rdf:type owl:Class .
+
+
+###  http://www.w3.org/2002/07/owl#Thing
+owl:Thing rdf:type owl:Class .
+
+
+###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

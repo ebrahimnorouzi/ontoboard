@@ -1,0 +1,115 @@
+@prefix : <http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresources.owl#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@base <http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresources.owl> .
+
+<http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresources.owl> rdf:type owl:Ontology ;
+                                                                           owl:imports <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl> ;
+                                                                           <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> "What species are present in this aquatic resource/stock? In what water area this aquatic resource/stock lives in?" ;
+                                                                           <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences> "Relations between aquatic resources and either aquatic species or water areas can be represented. In order to infer what species typically live in what water areas however, an application needs to add a SWRL rule, or a SPARQL query that unifies the hasSpecies and hasWaterArea relations." ;
+                                                                           <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> "To represent aquatic resources or stocks as composed of aquatic organisms from one or more species, and living in a water area." ;
+                                                                           <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios> "give me the Species for water area 24" ,
+                                                                                                                                                            "give me the Water areas for species Gadus morhua" ;
+                                                                           owl:versionInfo """1.1
+changed hasWaterArea to canOccurIn"""^^xsd:string ,
+                                                                                           "Created by Aldo Gangemi" .
+
+#################################################################
+#    Annotation properties
+#################################################################
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements
+<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences
+<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent
+<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios
+<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios> rdf:type owl:AnnotationProperty .
+
+
+#################################################################
+#    Object Properties
+#################################################################
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresources.owl#canOccurIn
+:canOccurIn rdf:type owl:ObjectProperty ;
+            owl:inverseOf :isAreaOfOccurrenceOf ;
+            rdfs:domain owl:Thing ;
+            rdfs:range :WaterArea ;
+            rdfs:label "has water area"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresources.owl#hasSpecies
+:hasSpecies rdf:type owl:ObjectProperty ;
+            owl:inverseOf :isSpeciesPresentIn ;
+            rdfs:domain :AquaticResource ;
+            rdfs:range :AquaticSpecies ;
+            rdfs:comment "has species"@en ;
+            rdfs:label "has species"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresources.owl#isAreaOfOccurrenceOf
+:isAreaOfOccurrenceOf rdf:type owl:ObjectProperty ;
+                      rdfs:domain :WaterArea ;
+                      rdfs:range owl:Thing ;
+                      rdfs:label "is water area of"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresources.owl#isSpeciesPresentIn
+:isSpeciesPresentIn rdf:type owl:ObjectProperty ;
+                    rdfs:domain :AquaticSpecies ;
+                    rdfs:range :AquaticResource ;
+                    rdfs:label "is species present in"@en .
+
+
+#################################################################
+#    Classes
+#################################################################
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresources.owl#AquaticResource
+:AquaticResource rdf:type owl:Class ;
+                 rdfs:subClassOf [ rdf:type owl:Restriction ;
+                                   owl:onProperty :canOccurIn ;
+                                   owl:someValuesFrom :WaterArea
+                                 ] ,
+                                 [ rdf:type owl:Restriction ;
+                                   owl:onProperty :hasSpecies ;
+                                   owl:someValuesFrom :AquaticSpecies
+                                 ] ;
+                 owl:disjointWith :AquaticSpecies ,
+                                  :WaterArea ;
+                 rdfs:comment """A fishery resource (a collection of actual aquatic organisms) that can include aquatic organisms from different AquaticSpecies, and is localized in some WaterArea.
+It can be mapped to fi:AqResRef""" ;
+                 rdfs:label "Aquatic resource"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresources.owl#AquaticSpecies
+:AquaticSpecies rdf:type owl:Class ;
+                owl:disjointWith :WaterArea ;
+                rdfs:comment """Aquatic species are conceptual entities that are characterized together with resources and water areas. 
+Mappable to fi:Species, fi:SpeciesRef, fi:SpeciesFeature, etc.
+It has related axioms from FIGIS Schema that are included in the classes linked to the fi:Species class, such as fi:SpeciesRef (holding association with fi:AqResRef, which holds association with fi:WaterAreaRef).""" ;
+                rdfs:label "Aquatic species"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresources.owl#WaterArea
+:WaterArea rdf:type owl:Class ;
+           rdfs:comment "A physical water area. Mappable to fi:WaterAreaRef" ;
+           rdfs:label "Water area"@en .
+
+
+###  http://www.w3.org/2002/07/owl#Thing
+owl:Thing rdf:type owl:Class .
+
+
+###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

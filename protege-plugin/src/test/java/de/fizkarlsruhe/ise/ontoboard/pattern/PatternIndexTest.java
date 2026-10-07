@@ -95,6 +95,45 @@ class PatternIndexTest {
         assertEquals(onDisk.size(), indexed.size());
     }
 
+    /**
+     * Nothing in the index is a path on the machine that generated it.
+     *
+     * <p>This is how the shipped index stopped being reproducible. {@code airline/pattern.owl}
+     * declares no usable ontology IRI, so its {@code hasAircraft} resolved against the file's
+     * own location and the index came out containing
+     * {@code file:/C:/Users/.../patterns/airline/pattern.owl#hasAircraft}. The same checkout on
+     * another machine generates a different index, so {@link #theShippedIndexMatchesTheDirectories}
+     * would have failed on CI and passed here - the worst way round.
+     *
+     * <p>The same file is malformed, so the OWL API also contributed
+     * {@code http://org.semanticweb.owlapi/error#Error1} and five siblings.
+     */
+    @Test
+    void theIndexIsTheSameOnAnyMachine() throws Exception {
+        String shipped = new String(Files.readAllBytes(
+                new File(patternsDirectory(), "index.tsv").toPath()), StandardCharsets.UTF_8);
+
+        List<String> leaked = new ArrayList<String>();
+        for (String line : shipped.split("\n")) {
+            if (line.startsWith("#")) {
+                continue;
+            }
+            for (String cell : line.split("\t")) {
+                for (String term : cell.split(" ")) {
+                    if (PatternIndex.isLocalOrBroken(term)) {
+                        leaked.add(term);
+                    }
+                }
+            }
+        }
+        assertEquals("[]", leaked.toString(),
+                "the index records something only true on one machine");
+        assertTrue(PatternIndex.isLocalOrBroken("file:/C:/Users/someone/x.owl#Thing"));
+        assertTrue(PatternIndex.isLocalOrBroken(
+                "http://org.semanticweb.owlapi/error#Error1"));
+        assertFalse(PatternIndex.isLocalOrBroken("http://purl.obolibrary.org/obo/BFO_0000015"));
+    }
+
     // ---------- the format ----------
 
     /** A row round-trips, including an empty trailing cell. */
@@ -102,7 +141,8 @@ class PatternIndexTest {
     void aRowParsesIntoItsColumns() throws Exception {
         String index = "# a comment\n\n"
                 + "componency\tComponency Pattern\todp\tontologydesignpatterns.org\t"
-                + "structural\tgeneral\t\tTo represent parts.\tWhat are the components?\n";
+                + "structural\tgeneral\t\tTo represent parts.\tWhat are the components?"
+                + "\thttp://x.org/Whole http://x.org/hasPart\n";
 
         List<DesignPattern> read = PatternIndex.read(new StringReader(index));
 
@@ -118,6 +158,8 @@ class PatternIndexTest {
         assertFalse(one.isDuplicate());
         assertEquals("To represent parts.", one.getDescription());
         assertEquals("What are the components?", one.getCompetencyQuestions());
+        assertEquals(java.util.Arrays.asList("http://x.org/Whole", "http://x.org/hasPart"),
+                one.getTermIris());
     }
 
     /** A short row is skipped rather than throwing or producing a half-built pattern. */

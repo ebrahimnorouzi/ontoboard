@@ -1,0 +1,66 @@
+@prefix : <http://www.ontologydesignpatterns.org/cp/owl/fsdas/vesselwaterarea.owl#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@base <http://www.ontologydesignpatterns.org/cp/owl/fsdas/vesselwaterarea.owl> .
+
+<http://www.ontologydesignpatterns.org/cp/owl/fsdas/vesselwaterarea.owl> rdf:type owl:Ontology ;
+                                                                          owl:imports <http://www.ontologydesignpatterns.org/cp/owl/fsdas/gearvessel.owl> ,
+                                                                                      <http://www.ontologydesignpatterns.org/cp/owl/fsdas/gearwaterarea.owl> ,
+                                                                                      <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl> ;
+                                                                          <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> "which vessel types can be used in which water areas? (provided that water areas have species that are caught by geartypes that are used by vessel types)" ;
+                                                                          <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasComponent> "<http://www.ontologydesignpatterns.org/cp/owl/fsdas/gearvessel.owl>" ;
+                                                                          <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences> "The pattern can be used to represent a water area setting and the vessels that can be used there, no matter whether these constraints are legal or logistic. The hasWaterArea object property is used as in the gearwaterarea pattern. Usage of this property as applied to VesselTypes is related to, but not strictly dependent on the hasWaterArea property as applied to GearTypes." ;
+                                                                          <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> "to represent a direct relation between vessel types and water areas regardless of what type of fishing gear is fitted" ;
+                                                                          <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios> "in which water areas are 'gillneters' used?" ;
+                                                                          rdfs:comment """This pattern composes gearvessel.owl and gearwaterarea.owl.
+This must be inferred compositionally, and requires either  more sophisticated logical pattern, like 'property chain', available in OWL2 (but not in OWL1), or a complex reasoning pattern, like 'DL classifier+SPARQL', or 'DL classifier+SWRL rule firing'.""" ;
+                                                                          owl:versionInfo "1.2" ,
+                                                                                          "Created by Alessandro Adamou"^^xsd:string .
+
+#################################################################
+#    Object Properties
+#################################################################
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/vesselwaterarea.owl#canBeCrossedByVesselType
+:canBeCrossedByVesselType rdf:type owl:ObjectProperty ;
+                          owl:inverseOf :canCrossWaterArea ;
+                          rdfs:domain <http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresources.owl#WaterArea> ;
+                          rdfs:range <http://www.ontologydesignpatterns.org/cp/owl/fsdas/gearvessel.owl#VesselType> ;
+                          rdfs:comment """Actually a composed property: this needs either a property chain, a SPARQL query, or a SWRL rule to gather a value. E.g. in SPARQL:
+
+CONSTRUCT {?x :canCrossWaterArea ?y . ?y canBeCrossedByVesselType ?x}
+WHERE {
+?x gearvessel:usesGearType ?z .
+?z gearwaterarea:isUsedInWaterArea ?y
+}""" ;
+                          rdfs:label "can be crossed by vessel type"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/vesselwaterarea.owl#canCrossWaterArea
+:canCrossWaterArea rdf:type owl:ObjectProperty ;
+                   rdfs:domain <http://www.ontologydesignpatterns.org/cp/owl/fsdas/gearvessel.owl#VesselType> ;
+                   rdfs:range <http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresources.owl#WaterArea> ;
+                   rdfs:comment """Actually a composed property: this needs either a property chain, a SPARQL query, or a SWRL rule to gather a value. E.g. in SPARQL:
+
+CONSTRUCT {?x :canCrossWaterArea ?y . ?y canBeCrossedByVesselType ?x}
+WHERE {
+?x gearvessel:usesGearType ?z .
+?z gearwaterarea:isUsedInWaterArea ?y
+}""" ;
+                   rdfs:label "can cross water area"@en .
+
+
+#################################################################
+#    Classes
+#################################################################
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/gearspecies.owl#GearType
+<http://www.ontologydesignpatterns.org/cp/owl/fsdas/gearspecies.owl#GearType> owl:equivalentClass <http://www.ontologydesignpatterns.org/cp/owl/fsdas/gearvessel.owl#GearType> .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/gearvessel.owl#GearType
+
+###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

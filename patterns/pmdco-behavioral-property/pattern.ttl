@@ -1,0 +1,214 @@
+@prefix : <https://ontoboard.org/patterns/pmdco-behavioral-property.owl#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@base <https://ontoboard.org/patterns/pmdco-behavioral-property.owl> .
+
+<https://ontoboard.org/patterns/pmdco-behavioral-property.owl> rdf:type owl:Ontology .
+
+#################################################################
+#    Annotation properties
+#################################################################
+
+###  http://purl.obolibrary.org/obo/IAO_0000112
+<http://purl.obolibrary.org/obo/IAO_0000112> rdf:type owl:AnnotationProperty .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000115
+<http://purl.obolibrary.org/obo/IAO_0000115> rdf:type owl:AnnotationProperty .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000116
+<http://purl.obolibrary.org/obo/IAO_0000116> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.w3.org/2004/02/skos/core#definition
+<http://www.w3.org/2004/02/skos/core#definition> rdf:type owl:AnnotationProperty .
+
+
+#################################################################
+#    Object Properties
+#################################################################
+
+###  http://purl.obolibrary.org/obo/BFO_0000054
+<http://purl.obolibrary.org/obo/BFO_0000054> rdf:type owl:ObjectProperty ;
+                                             rdfs:range <http://purl.obolibrary.org/obo/BFO_0000015> ;
+                                             rdfs:label "has realization"@en ,
+                                                        "realized in"@en ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "b has realization c =Def c realizes b"@en .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000039
+<http://purl.obolibrary.org/obo/IAO_0000039> rdf:type owl:ObjectProperty ,
+                                                      owl:FunctionalProperty ;
+                                             rdfs:label "has measurement unit label"@en .
+
+
+###  http://purl.obolibrary.org/obo/RO_0000052
+<http://purl.obolibrary.org/obo/RO_0000052> rdf:type owl:ObjectProperty ;
+                                            owl:inverseOf <http://purl.obolibrary.org/obo/RO_0000053> ;
+                                            rdf:type owl:FunctionalProperty ;
+                                            <http://purl.obolibrary.org/obo/IAO_0000112> "this fragility is a characteristic of this vase"@en ,
+                                                                                         "this red color is a characteristic of this apple"@en ;
+                                            <http://purl.obolibrary.org/obo/IAO_0000115> "a relation between a specifically dependent continuant (the characteristic) and any other entity (the bearer), in which the characteristic depends on the bearer for its existence."@en ;
+                                            rdfs:comment "Note that this relation was previously called \"inheres in\", but was changed to be called \"characteristic of\" because BFO2 uses \"inheres in\" in a more restricted fashion. This relation differs from BFO2:inheres_in in two respects: (1) it does not impose a range constraint, and thus it allows qualities of processes, as well as of information entities, whereas BFO2 restricts inheres_in to only apply to independent continuants (2) it is declared functional, i.e. something can only be a characteristic of one thing." ;
+                                            rdfs:label "characteristic of"@en .
+
+
+###  http://purl.obolibrary.org/obo/RO_0000053
+<http://purl.obolibrary.org/obo/RO_0000053> rdf:type owl:ObjectProperty ,
+                                                     owl:InverseFunctionalProperty ;
+                                            rdfs:range <http://purl.obolibrary.org/obo/BFO_0000020> ;
+                                            <http://purl.obolibrary.org/obo/IAO_0000112> "this apple is bearer of this red color"@en ,
+                                                                                         "this vase is bearer of this fragility"@en ;
+                                            <http://purl.obolibrary.org/obo/IAO_0000115> "Inverse of characteristic_of"@en ;
+                                            <http://purl.obolibrary.org/obo/IAO_0000116> "A bearer can have many dependents, and its dependents can exist for different periods of time, but none of its dependents can exist when the bearer does not exist."@en ;
+                                            rdfs:label "has characteristic"@en .
+
+
+###  https://w3id.org/pmd/co/PMD_0000077
+<https://w3id.org/pmd/co/PMD_0000077> rdf:type owl:ObjectProperty ;
+                                      rdfs:label "specified by value"@en ;
+                                      <http://www.w3.org/2004/02/skos/core#definition> "A relation between an entity and a value specification which is about this entity."@en .
+
+
+#################################################################
+#    Data properties
+#################################################################
+
+###  http://purl.obolibrary.org/obo/OBI_0001937
+<http://purl.obolibrary.org/obo/OBI_0001937> rdf:type owl:DatatypeProperty ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "A relation between a value specification and a number that quantifies it."@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000116> "A range of 'real' might be better than 'float'. For now we follow 'has measurement value' until we can consider technical issues with SPARQL queries and reasoning." ;
+                                             rdfs:label "has specified numeric value" .
+
+
+#################################################################
+#    Classes
+#################################################################
+
+###  http://purl.obolibrary.org/obo/BFO_0000002
+<http://purl.obolibrary.org/obo/BFO_0000002> rdf:type owl:Class ;
+                                             rdfs:label "continuant"@en ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "(Elucidation) A continuant is an entity that persists, endures, or continues to exist through time while maintaining its identity"@en .
+
+
+###  http://purl.obolibrary.org/obo/BFO_0000003
+<http://purl.obolibrary.org/obo/BFO_0000003> rdf:type owl:Class ;
+                                             rdfs:label "occurrent"@en ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "(Elucidation) An occurrent is an entity that unfolds itself in time or it is the start or end of such an entity or it is a temporal or spatiotemporal region"@en .
+
+
+###  http://purl.obolibrary.org/obo/BFO_0000015
+<http://purl.obolibrary.org/obo/BFO_0000015> rdf:type owl:Class ;
+                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000003> ;
+                                             rdfs:label "process"@en ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "(Elucidation) p is a process means p is an occurrent that has some temporal proper part and for some time t, p has some material entity as participant"@en .
+
+
+###  http://purl.obolibrary.org/obo/BFO_0000020
+<http://purl.obolibrary.org/obo/BFO_0000020> rdf:type owl:Class ;
+                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000002> ;
+                                             rdfs:label "specifically dependent continuant"@en ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "b is a specifically dependent continuant =Def b is a continuant & there is some independent continuant c which is not a spatial region & which is such that b specifically depends on c"@en .
+
+
+###  http://purl.obolibrary.org/obo/OBI_0001931
+<http://purl.obolibrary.org/obo/OBI_0001931> rdf:type owl:Class ;
+                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/OBI_0001933> ,
+                                                             [ rdf:type owl:Restriction ;
+                                                               owl:onProperty <http://purl.obolibrary.org/obo/OBI_0001937> ;
+                                                               owl:minCardinality "1"^^xsd:nonNegativeInteger
+                                                             ] ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "A value specification that consists of two parts: a numeral and a unit label"@en ;
+                                             rdfs:label "scalar value specification" .
+
+
+###  http://purl.obolibrary.org/obo/OBI_0001933
+<http://purl.obolibrary.org/obo/OBI_0001933> rdf:type owl:Class ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000112> "The value of 'positive' in a classification scheme of \"positive or negative\"; the value of '20g' on the quantitative scale of mass." ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "An information content entity that specifies a value within a classification scheme or on a quantitative scale."@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000116> "This term is currently a descendant of 'information content entity', which requires that it 'is about' something. A value specification of '20g' for a measurement data item of the mass of a particular mouse 'is about' the mass of that mouse. However there are cases where a value specification is not clearly about any particular. In the future we may change 'value specification' to remove the 'is about' requirement." ;
+                                             rdfs:label "value specification" .
+
+
+###  https://w3id.org/pmd/co/PMD_0000005
+<https://w3id.org/pmd/co/PMD_0000005> rdf:type owl:Class ;
+                                      rdfs:subClassOf <https://w3id.org/pmd/co/PMD_0020353> ,
+                                                      <https://w3id.org/pmd/co/PMD_0023004> ;
+                                      rdfs:comment """A property is a material trait in terms of the kind and magnitude of response to a specific imposed stimulus. Generally, definitions of properties are made independent of material shape and size.
+(Callister, W.D., Rethwisch, D.G., Materials Science and Engineering, Wiley, 2014)
+
+Technical materials are complex aggregates. Many properties that are determined for those aggregates are intrinsically associated with the methodologies employed in the measurement process. This is in contrast to typical 'physical' properties, which like e.g. mass that can be determined to high accuracy independently of the measurement process. 
+As a consequence, material properties in the ontology are differeciated according to their measurement method, e.g. Brinell hardness and Vickers hardness are different types of indentation hardness rather than different measures/quantification (GDC) of the materials property 'indentation hardness'.
+ The 'unit idenifieres' of such properties (e.g. \"HV1\", \"HV10\", \"HBW\") are strictly speaking not units but rather references to the measurement methodology used to determine a numeric value that quantifies the property.
+
+Extensive properties that depend on the object being tested rather than on the portion of matter are (extensive) object- or system-properties."""@en ;
+                                      rdfs:label "Materialeigenschaft"@de ,
+                                                 "material performance property"@en ;
+                                      <http://www.w3.org/2004/02/skos/core#definition> "a disposition of a portion of matter that is realized in a compatible process and whose realization is grounded in the portions intensive qualities"@en .
+
+
+###  https://w3id.org/pmd/co/PMD_0000522
+<https://w3id.org/pmd/co/PMD_0000522> rdf:type owl:Class ;
+                                      rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000015> ;
+                                      rdfs:label "mechanical process"@en ,
+                                                 "mechanischer Prozess"@de ;
+                                      <http://www.w3.org/2004/02/skos/core#definition> "is a process in which forces, moments, or imposed displacements to objects or object aggregates occur and/or the equivalent (stresses, strains) to materials or portions of matter"@en ,
+                                                                                       "ist ein Prozess, bei dem Kräfte, Momente oder auferlegte Verschiebungen auf Objekte oder Objektaggregate und/oder das Äquivalent (Spannungen, Dehnungen) auf Materialien oder Teile der Materie auftreten"@de .
+
+
+###  https://w3id.org/pmd/co/PMD_0000639
+<https://w3id.org/pmd/co/PMD_0000639> rdf:type owl:Class ;
+                                      rdfs:label "ferrous metal"@en ;
+                                      <http://www.w3.org/2004/02/skos/core#definition> "metal that has iron as primary constituent"@en .
+
+
+###  https://w3id.org/pmd/co/PMD_0000851
+<https://w3id.org/pmd/co/PMD_0000851> rdf:type owl:Class ;
+                                      rdfs:subClassOf <https://w3id.org/pmd/co/PMD_0020164> ;
+                                      rdfs:label "Schmelzpunkt"@de ,
+                                                 "melting point"@en ;
+                                      <http://www.w3.org/2004/02/skos/core#definition> "Der Schmelzpunkt ist eine Zustandsgrenze einer Materie, die durch den Übergang vom festen in den flüssigen Zustand (oder umgekehrt) entsteht."@de ,
+                                                                                       "The melting point is a state of matter boundary realized by transition form the solid state to the liquid state (or vice versa)."@en .
+
+
+###  https://w3id.org/pmd/co/PMD_0020096
+<https://w3id.org/pmd/co/PMD_0020096> rdf:type owl:Class ;
+                                      rdfs:subClassOf <https://w3id.org/pmd/co/PMD_0000639> ;
+                                      rdfs:label "steel"@en ;
+                                      <http://www.w3.org/2004/02/skos/core#definition> "ferrous metal that consists of iron and carbon and possibly other alloying elements (and possibly impurities)"@en .
+
+
+###  https://w3id.org/pmd/co/PMD_0020164
+<https://w3id.org/pmd/co/PMD_0020164> rdf:type owl:Class ;
+                                      rdfs:label "Zustandsgrenze der Materie"@de ,
+                                                 "state of matter boundary"@en ;
+                                      <http://www.w3.org/2004/02/skos/core#definition> "A state of matter boundary is a phase boundary that is realized by the transition from one aggregate state to another aggregate state."@en ,
+                                                                                       "Eine Zustandsgrenze ist eine Phasengrenze, die durch den Übergang von einem Aggregatzustand in einen anderen Aggregatzustand realisiert wird."@de .
+
+
+###  https://w3id.org/pmd/co/PMD_0020353
+<https://w3id.org/pmd/co/PMD_0020353> rdf:type owl:Class ;
+                                      <http://purl.obolibrary.org/obo/IAO_0000116> "Do not use this class directly. It will be deprecated in future releases." ;
+                                      rdfs:label "unclassified property"@en ;
+                                      <http://www.w3.org/2004/02/skos/core#definition> "a collection of to-be classifed SDCs"@en .
+
+
+###  https://w3id.org/pmd/co/PMD_0023004
+<https://w3id.org/pmd/co/PMD_0023004> rdf:type owl:Class ;
+                                      rdfs:label "a portions property"@en ;
+                                      <http://www.w3.org/2004/02/skos/core#definition> "a 'property by bearer' that indicates that its bearer is a portion of matter"@en .
+
+
+###  https://w3id.org/pmd/co/PMD_0080171
+<https://w3id.org/pmd/co/PMD_0080171> rdf:type owl:Class ;
+                                      rdfs:comment "The amount of plastic strain typically gives more information about the yield stress. E.g. Rp02 has 0.2% plastic strain."@en ;
+                                      rdfs:label "Fließgrenze"@de ,
+                                                 "yield stress"@en ;
+                                      <http://www.w3.org/2004/02/skos/core#definition> "is the stress at which the material has a non-zero plastic strain."@en .
+
+
+###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

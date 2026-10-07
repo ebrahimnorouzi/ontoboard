@@ -1,0 +1,15 @@
+{
+  "id": "nfdi-software-product",
+  "name": "software",
+  "description": "Software (nfdi:NFDI_0000121) is described by a composition of distinct value-node classes: title, repository, licence, version number, programming language and operating system, each reached through obo:IAO_0000235. Links to the discipline and the method it implements use obo:RO_0000056 and nfdi:NFDI_0000226.",
+  "category": "information",
+  "domain": "research-data",
+  "competency_questions": "Which software does NFDI-MatWerk provide, and under which licence?; Where is the source-code repository of a given software, and what is its version?; Which software supports a given workflow or academic discipline?; Who develops and maintains a given software?",
+  "pattern_iri": "https://ontoboard.org/patterns/nfdi-software-product.owl",
+  "source": "https://nfdi.fiz-karlsruhe.de/matwerk/patterns/",
+  "collection": "nfdi",
+  "publisher": "nfdi.fiz-karlsruhe.de",
+  "extracted_from": "nfdi",
+  "class_count": 17,
+  "property_count": 3
+}

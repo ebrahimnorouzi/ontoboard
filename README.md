@@ -55,9 +55,10 @@ from the axioms you actually wrote: restrictions inside `EquivalentClasses` and 
 only the three shapes most tools read. Switch on the reasoner's conclusions, then right-click a
 dotted edge and ask **why** — it answers with the axioms that force it.
 
-**123 design patterns, built in** — browse the ontology design patterns shipped with the
-plugin, grouped by who published them, and import the terms you want through ROBOT's module
-extraction rather than by copying a file in.
+**159 design patterns, built in** — 123 from the ODP portal plus 36 extracted from MWO, PMDco
+and NFDI MatWerk, each as OWL and Turtle. Browse by collection or publisher, or let the plugin
+suggest the ones whose vocabulary your open ontology already speaks — with the reason, not just
+a ranking — and import the terms you want through ROBOT's module extraction.
 
 **Notes and provenance** — editorial notes that travel with the ontology, discussion links to your
 tracker, and authorship stamped on what you change.

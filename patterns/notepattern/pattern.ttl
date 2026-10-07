@@ -1,0 +1,1106 @@
+@prefix : <https://purl.org/andreapoltronieri/notepattern/> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@base <https://purl.org/andreapoltronieri/notepattern/> .
+
+<https://purl.org/andreapoltronieri/notepattern/> rdf:type owl:Ontology ;
+                                                   owl:imports <https://purl.org/andreapoltronieri/musicalobject> ,
+                                                               <https://purl.org/andreapoltronieri/scorepart> ;
+                                                   <http://purl.org/dc/elements/1.1/creator> "Andrea Poltronieri (University of Bologna)"^^xsd:string ;
+                                                   <http://purl.org/dc/elements/1.1/description> "The Note Pattern models a music note both in relation to a music score and in relation to the musical object produced by playing such note."@en ;
+                                                   <http://purl.org/dc/elements/1.1/language> <http://publications.europa.eu/resource/authority/language/ENG> ;
+                                                   <http://purl.org/dc/elements/1.1/title> "Note Pattern"@en ;
+                                                   <http://purl.org/dc/terms/license> <https://creativecommons.org/licenses/by-sa/4.0/> ;
+                                                   <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> "what is the name of a note?, what part of the score does a note belong to?, what are the dynamic indications referring to a note in the score?, what is the fundamental frequency of a note?, what are the different frequencies that make up the spectrum of a note?, what is the duration in seconds of a note, in a given performance?, how is the envelope of a note shaped?"@en ;
+                                                   <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasComponent> <http://purl.org/net/nary-relation> ,
+                                                                                                                                       <http://www.ontologydesignpatterns.org/cp/owl/informationrealization.owl> ;
+                                                   <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> "The Music Note ODP models a symbolic note and its symbolic attributes."@en ;
+                                                   <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasUnitTest> """SELECT ?note ?accidental
+WHERE {?note rdf:type ?type.
+  ?type rdfs:subClassOf* np:SymbolicNote
+  OPTIONAL {?note np:hasAccidental ?accidental}}"""^^xsd:string ,
+                                                                                                                                      """SELECT ?note ?durationSec
+WHERE {?note np:hasRealisation ?musicalObj .  
+  ?musicalObj mop:hasDuration ?duration . 
+  ?duration mop:hasDurationInSeconds ?durationSec}"""^^xsd:string ,
+                                                                                                                                      """SELECT ?note ?foundamFreq
+WHERE {?note np:hasRealisation ?musicalObj .  
+  ?musicalObj mop:hasFrequency ?foundamFreq . 
+  ?foundamFreq a mop:FundamentalFrequency.}"""^^xsd:string ,
+                                                                                                                                      """SELECT ?note ?freq
+WHERE {?note np:hasRealisation ?musicalObj .  
+  ?musicalObj mop:hasFrequency ?freq.}"""^^xsd:string ,
+                                                                                                                                      """SELECT ?note ?literalDynamic ?midiVelocity
+WHERE {?note np:hasNoteDynamic ?noteDynamic. 
+  ?noteDynamic np:hasMidiVelocity ?midiVelocity 
+  OPTIONAL {?noteDynamic np:hasLiteralDynamic ?literalDynamic}}"""^^xsd:string ,
+                                                                                                                                      """SELECT ?note ?sustain ?decay ?release ?attack
+WHERE {?note np:hasRealisation ?musicalObj .  
+  ?musicalObj mop:hasEnvelope ?envelope . 
+  ?envelope mop:hasSustain ?sustain;
+ mop:hasDecay ?decay;
+ mop:hasRelease ?release;
+ mop:hasAttack ?attack.}"""^^xsd:string ,
+                                                                                                                                      """SELECT DISTINCT ?note ?part
+WHERE {{?note np:belongsToVoice ?voice. 
+   ?voice spp:isVoiceOf ?part} 
+  UNION {?note np:belongsToSection ?section. 
+    ?section spp:isSectionOf ?part}}"""^^xsd:string ;
+                                                   <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#reengineeredFrom> <https://purl.org/andreapoltronieri/HaMSEontology> ;
+                                                   <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#relatedCPs> <https://purl.org/andreapoltronieri/musicalobject> ,
+                                                                                                                                     <https://purl.org/andreapoltronieri/scorepart> ;
+                                                   rdfs:comment "The Note Pattern models a music note both in relation to a music score and in relation to the musical object produced by playing such note."@en ;
+                                                   rdfs:label "Note Pattern"@en ;
+                                                   owl:versionInfo "Version 1.0"@en .
+
+#################################################################
+#    Annotation properties
+#################################################################
+
+###  http://ontologydesignpatterns.org/opla/reusesPatternAsTemplate
+<http://ontologydesignpatterns.org/opla/reusesPatternAsTemplate> rdf:type owl:AnnotationProperty .
+
+
+###  http://purl.org/dc/elements/1.1/creator
+<http://purl.org/dc/elements/1.1/creator> rdf:type owl:AnnotationProperty .
+
+
+###  http://purl.org/dc/elements/1.1/description
+<http://purl.org/dc/elements/1.1/description> rdf:type owl:AnnotationProperty .
+
+
+###  http://purl.org/dc/elements/1.1/issued
+<http://purl.org/dc/elements/1.1/issued> rdf:type owl:AnnotationProperty .
+
+
+###  http://purl.org/dc/elements/1.1/language
+<http://purl.org/dc/elements/1.1/language> rdf:type owl:AnnotationProperty .
+
+
+###  http://purl.org/dc/elements/1.1/title
+<http://purl.org/dc/elements/1.1/title> rdf:type owl:AnnotationProperty .
+
+
+###  http://purl.org/dc/terms/license
+<http://purl.org/dc/terms/license> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements
+<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> rdf:type owl:AnnotationProperty ;
+                                                                                          rdfs:comment "This annotation property is used for exemplifying possible requirements the content pattern provides a solution for. Requirements are expressed as natural language competency questions." .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#extractedFrom
+<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#extractedFrom> rdf:type owl:AnnotationProperty ;
+                                                                                     rdfs:comment "This annotation property should be assigned with a URI, which points to the possible reference ontology which the annotated pattern was extracted from (i.e. the reference ontology that the ontology elements have been deeply or partially cloned by). The range is not explicit in the definition of the annotation property because it would turn the ontology to OWL Full. E.g. The participation pattern is extracted from the Dolce Ultra Lite ontology, hence the value for this annotation property is http://www.ontologydesignpatterns.org/ont/dul/DUL.owl" .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasComponent
+<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasComponent> rdf:type owl:AnnotationProperty ;
+                                                                                    rdfs:comment "This annotation property is useful for content ontology design patterns. Its value is a URI, which refers to another content ontology design pattern which is a component of the annotated one." .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences
+<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences> rdf:type owl:AnnotationProperty ;
+                                                                                       rdfs:comment "This annotation property is used for briefly describing the benefits and/or possible trade-offs when using the CP." .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent
+<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> rdf:type owl:AnnotationProperty ;
+                                                                                 rdfs:comment "This annotation property is used in order to describe the intent of the content pattern." .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasUnitTest
+<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasUnitTest> rdf:type owl:AnnotationProperty ;
+                                                                                   rdfs:comment "This property can be used to annotate a unit test (e.g. in the form of a SPARQL query) to be launched to evaluate an ontology against a requirement-based task." .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#isCloneOf
+<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#isCloneOf> rdf:type owl:AnnotationProperty ;
+                                                                                 rdfs:comment "This annotation property is used for referring a cloned ontology entity to its cloning source." .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#isSpecializationOf
+<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#isSpecializationOf> rdf:type owl:AnnotationProperty ;
+                                                                                          rdfs:comment "This annotation property is useful for content ontology design patterns and its elements. Its value is a URI, which refers either to a content ontology design pattern that is specialized by the annotated one, or to an ontology element that is specialized by the annotated one." .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#reengineeredFrom
+<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#reengineeredFrom> rdf:type owl:AnnotationProperty ;
+                                                                                        rdfs:comment "This annotation property should be assigned with a URI, which points to the concept schema, page, or anything else from which the annotated pattern was reengineered. If the source does not have any URI e.g., a printed book, this property value should provide information as precise as possible in order to identify the source. This property is alternative to the extractedFrom property because it is used when the pattern come from a concept schema which is not an owl ontology. For example content ontology design patterns, which are reengineered from data model patterns, rdf schemas, etc. should be annotatd with this property. E.g. The basicpersonalfoaf pattern is extracted from the rdf FOAF specification, hence the value for this annotation property is http://xmlns.com/foaf/spec/20071002.rdf" .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#relatedCPs
+<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#relatedCPs> rdf:type owl:AnnotationProperty ;
+                                                                                  rdfs:comment "This annotation property can be used to indicate other CPs (if any) that specialize, generalize, inlcude, or are components of the CP. Furthermore, this field may indicate other CPs that are typically used in conjunction with the described one. Important similarities and differences with other patterns can be also described here." .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios
+<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios> rdf:type owl:AnnotationProperty ;
+                                                                                 rdfs:comment "This annotation property is used for describing examples of instantiation of the Content OP. For example, for the part-of Content OP (which represents part-whole relations) a possible scenario is the sentence: \"the brain is part of the human body\". Scenarios are expressed as natural language sentences." .
+
+
+#################################################################
+#    Object Properties
+#################################################################
+
+###  https://purl.org/andreapoltronieri/notepattern/belongsToFragment
+:belongsToFragment rdf:type owl:ObjectProperty ;
+                   owl:inverseOf :groupsNoteEvent ;
+                   rdf:type owl:FunctionalProperty ;
+                   rdfs:domain :SymbolicNote ;
+                   rdfs:range <https://purl.org/andreapoltronieri/scorepart/HomogeneousFragment> ;
+                   rdfs:label "belongs to fragment"@en .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/belongsToSection
+:belongsToSection rdf:type owl:ObjectProperty ;
+                  owl:inverseOf :containsNoteEvent ;
+                  rdf:type owl:FunctionalProperty ;
+                  rdfs:domain :SymbolicNote ;
+                  rdfs:range <https://purl.org/andreapoltronieri/scorepart/Section> ;
+                  rdfs:label "belongs to section"@en .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/belongsToVoice
+:belongsToVoice rdf:type owl:ObjectProperty ;
+                owl:inverseOf :containsNoteEvent ;
+                rdf:type owl:FunctionalProperty ;
+                rdfs:domain :SymbolicNote ;
+                rdfs:range <https://purl.org/andreapoltronieri/scorepart/Voice> ;
+                rdfs:label "belongs to voice"@en .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/containsNoteEvent
+:containsNoteEvent rdf:type owl:ObjectProperty ;
+                   rdfs:domain <https://purl.org/andreapoltronieri/scorepart/Section> ,
+                               <https://purl.org/andreapoltronieri/scorepart/Voice> ;
+                   rdfs:range :SymbolicNote ;
+                   rdfs:label "contains note event"@en .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/groupsNoteEvent
+:groupsNoteEvent rdf:type owl:ObjectProperty ;
+                 rdfs:domain <https://purl.org/andreapoltronieri/scorepart/HomogeneousFragment> ;
+                 rdfs:range :SymbolicNote ;
+                 rdfs:label "groups note event"@en .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/hasAccidental
+:hasAccidental rdf:type owl:ObjectProperty ;
+               owl:inverseOf :isAccidentalOf ;
+               rdf:type owl:FunctionalProperty ;
+               rdfs:domain :SymbolicNote ;
+               rdfs:range :Accidental ;
+               rdfs:label "has accidental" .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/hasDurationAbstraction
+:hasDurationAbstraction rdf:type owl:ObjectProperty ;
+                        owl:inverseOf :isRealisedAsDuration ;
+                        rdfs:domain <https://purl.org/andreapoltronieri/musicalobject/MusicalObjectDuration> ;
+                        rdfs:range :NoteDuration ;
+                        rdfs:label "is approximation of duration"@en .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/hasDynamicAbstraction
+:hasDynamicAbstraction rdf:type owl:ObjectProperty ;
+                       owl:inverseOf :isRealisedAsIntensity ;
+                       rdfs:domain <https://purl.org/andreapoltronieri/musicalobject/SoundIntensity> ;
+                       rdfs:range :NoteDynamic ;
+                       rdfs:label "is approximation of intensity"@en .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/hasFrequencyAbstraction
+:hasFrequencyAbstraction rdf:type owl:ObjectProperty ;
+                         owl:inverseOf :isRealisedAsFrequency ;
+                         rdfs:domain <https://purl.org/andreapoltronieri/musicalobject/Frequency> ;
+                         rdfs:range :NotePitch ;
+                         rdfs:label "is abstraction of frequency"@en .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/hasNoteDuration
+:hasNoteDuration rdf:type owl:ObjectProperty ;
+                 owl:inverseOf :isDurationOfNote ;
+                 rdf:type owl:FunctionalProperty ;
+                 rdfs:domain :SymbolicNote ;
+                 rdfs:range :NoteDuration ;
+                 rdfs:comment "Connects a symbolic note to its symbolic quantised duration."@en ;
+                 rdfs:label "has note duration"@en .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/hasNoteDynamic
+:hasNoteDynamic rdf:type owl:ObjectProperty ;
+                owl:inverseOf :isDynamicOf ;
+                rdf:type owl:FunctionalProperty ;
+                rdfs:domain :SymbolicNote ;
+                rdfs:range :NoteDynamic ;
+                rdfs:comment "Connects a symbolic note to its symbolic dynamic."@en ;
+                rdfs:label "has note dynamic"@en .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/hasNotePitch
+:hasNotePitch rdf:type owl:ObjectProperty ;
+              owl:inverseOf :isPitchOf ;
+              rdf:type owl:FunctionalProperty ;
+              rdfs:domain :SymbolicNote ;
+              rdfs:range :NotePitch ;
+              rdfs:comment "Connects a symbolic note to its symbolic pitch."@en ;
+              rdfs:label "has note pitch"@en .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/hasPosition
+:hasPosition rdf:type owl:ObjectProperty ;
+             owl:inverseOf :isPositionOf ;
+             rdf:type owl:FunctionalProperty ;
+             rdfs:domain :SymbolicNote ;
+             rdfs:range :Position ;
+             rdfs:label "has position"@en .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/hasRealisation
+:hasRealisation rdf:type owl:ObjectProperty ;
+                owl:inverseOf :isRealisationOf ;
+                rdfs:domain :SymbolicNote ;
+                rdfs:range <https://purl.org/andreapoltronieri/musicalobject/MusicalObject> ;
+                rdfs:comment "Connects a symbolic note to its corresponding musical object, which is the realisation o f such symbolic note in a particular performance."@en ;
+                rdfs:label "has realisation"@en .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/isAccidentalOf
+:isAccidentalOf rdf:type owl:ObjectProperty ;
+                rdfs:domain :Accidental ;
+                rdfs:range :SymbolicNote ;
+                rdfs:label "is accidental of" .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/isDurationOfNote
+:isDurationOfNote rdf:type owl:ObjectProperty ;
+                  rdfs:domain :NoteDuration ;
+                  rdfs:range :SymbolicNote ;
+                  rdfs:comment "Inverse of hasNoteDuration. Connects a duration class to the symbolic note that have this specific duration."@en ;
+                  rdfs:label "is duration of note"@en .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/isDynamicOf
+:isDynamicOf rdf:type owl:ObjectProperty ;
+             rdfs:domain :NoteDynamic ;
+             rdfs:range :SymbolicNote ;
+             rdfs:comment "Inverse of hasNoteDynamic. Connects a duration class to the symbolic note that have this specific dynamic."@en ;
+             rdfs:label "is dynamic of"@en .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/isPitchOf
+:isPitchOf rdf:type owl:ObjectProperty ;
+           rdfs:domain :NotePitch ;
+           rdfs:range :SymbolicNote ;
+           rdfs:comment "Inverse of hasNotePitch. Connects a duration class to the symbolic note that have this specific pitch."@en ;
+           rdfs:label "is pitch of"@en .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/isPositionOf
+:isPositionOf rdf:type owl:ObjectProperty ;
+              rdfs:domain :Position ;
+              rdfs:range :SymbolicNote ;
+              rdfs:label "is position of"@en .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/isRealisationOf
+:isRealisationOf rdf:type owl:ObjectProperty ;
+                 rdfs:domain <https://purl.org/andreapoltronieri/musicalobject/MusicalObject> ;
+                 rdfs:range :SymbolicNote ;
+                 rdfs:comment "Inverse of hasRealisation. Connects a musical object to the music symbolic music note of the same composition."@en ;
+                 rdfs:label "is realisation of"@en .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/isRealisedAsDuration
+:isRealisedAsDuration rdf:type owl:ObjectProperty ;
+                      rdfs:domain :NoteDuration ;
+                      rdfs:range <https://purl.org/andreapoltronieri/musicalobject/MusicalObjectDuration> ;
+                      rdfs:label "is realised as duration"@en .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/isRealisedAsFrequency
+:isRealisedAsFrequency rdf:type owl:ObjectProperty ;
+                       rdfs:domain :NotePitch ;
+                       rdfs:range <https://purl.org/andreapoltronieri/musicalobject/Frequency> ;
+                       rdfs:label "is realised as frequency"@en .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/isRealisedAsIntensity
+:isRealisedAsIntensity rdf:type owl:ObjectProperty ;
+                       rdfs:domain :NoteDynamic ;
+                       rdfs:range <https://purl.org/andreapoltronieri/musicalobject/SoundIntensity> ;
+                       rdfs:label "is realised as intensity"@en .
+
+
+#################################################################
+#    Data properties
+#################################################################
+
+###  https://purl.org/andreapoltronieri/notepattern#hasPositionInMeasure
+<https://purl.org/andreapoltronieri/notepattern#hasPositionInMeasure> rdf:type owl:DatatypeProperty ,
+                                                                               owl:FunctionalProperty ;
+                                                                      rdfs:domain :Position ;
+                                                                      rdfs:range xsd:float ;
+                                                                      rdfs:label "has position in measure"@en .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/hasLiteralDynamic
+:hasLiteralDynamic rdf:type owl:DatatypeProperty ;
+                   rdfs:domain :NoteDynamic ;
+                   rdfs:range xsd:string ;
+                   rdfs:comment "The dynamic expressed in a music score by means of adjectives (e.g. piano)."@en ;
+                   rdfs:label "has literal dynamic"@en .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/hasMeasure
+:hasMeasure rdf:type owl:DatatypeProperty ,
+                     owl:FunctionalProperty ;
+            rdfs:domain :Position ;
+            rdfs:range xsd:int ;
+            rdfs:comment "The measure (expressed in bars) to which a note belongs in a music score."@en ;
+            rdfs:label "has measure"@en .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/hasMidiPitch
+:hasMidiPitch rdf:type owl:DatatypeProperty ,
+                       owl:FunctionalProperty ;
+              rdfs:domain :NotePitch ;
+              rdfs:range xsd:int ;
+              rdfs:comment "The pitch of a note expressed by means of its MIDI number."@en ;
+              rdfs:label "has midi pitch"@en .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/hasMidiVelocity
+:hasMidiVelocity rdf:type owl:DatatypeProperty ,
+                          owl:FunctionalProperty ;
+                 rdfs:domain :NoteDynamic ;
+                 rdfs:range xsd:int ;
+                 rdfs:comment "The dynamics of the note expressed symbolically by means of the MIDI command \"velocity\"."@en ;
+                 rdfs:label "has midi velocity"@en .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/isDefinedByOctave
+:isDefinedByOctave rdf:type owl:DatatypeProperty ,
+                            owl:FunctionalProperty ;
+                   rdfs:domain :NotePitch ;
+                   rdfs:range xsd:int ;
+                   rdfs:comment "The octave on which the note is defined."@en ;
+                   rdfs:label "is defined by octave"@en .
+
+
+#################################################################
+#    Classes
+#################################################################
+
+###  https://purl.org/andreapoltronieri/musicalobject/Frequency
+<https://purl.org/andreapoltronieri/musicalobject/Frequency> rdf:type owl:Class .
+
+
+###  https://purl.org/andreapoltronieri/musicalobject/MusicalObject
+<https://purl.org/andreapoltronieri/musicalobject/MusicalObject> rdf:type owl:Class ;
+                                                                 rdfs:subClassOf [ rdf:type owl:Restriction ;
+                                                                                   owl:onProperty :isRealisationOf ;
+                                                                                   owl:allValuesFrom :SymbolicNote
+                                                                                 ] .
+
+
+###  https://purl.org/andreapoltronieri/musicalobject/MusicalObjectDuration
+<https://purl.org/andreapoltronieri/musicalobject/MusicalObjectDuration> rdf:type owl:Class ;
+                                                                         rdfs:subClassOf [ rdf:type owl:Restriction ;
+                                                                                           owl:onProperty :hasDurationAbstraction ;
+                                                                                           owl:someValuesFrom :NoteDuration
+                                                                                         ] ;
+                                                                         owl:disjointWith :NoteDuration .
+
+
+###  https://purl.org/andreapoltronieri/musicalobject/SoundIntensity
+<https://purl.org/andreapoltronieri/musicalobject/SoundIntensity> rdf:type owl:Class .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/A
+:A rdf:type owl:Class ;
+   rdfs:subClassOf :SymbolicNote ;
+   owl:disjointWith :B ,
+                    :C ,
+                    :D ,
+                    :E ,
+                    :F ,
+                    :G ;
+   rdfs:label "A"@en .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/Accidental
+:Accidental rdf:type owl:Class ;
+            rdfs:comment "The accidental of a note (e.g. sharp)."@en ;
+            rdfs:label "Accidental"@en .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/Adoubleflat
+:Adoubleflat rdf:type owl:Class ;
+             owl:equivalentClass [ owl:intersectionOf ( :A
+                                                        [ rdf:type owl:Restriction ;
+                                                          owl:onProperty :hasAccidental ;
+                                                          owl:allValuesFrom :DoubleFlat
+                                                        ]
+                                                      ) ;
+                                   rdf:type owl:Class
+                                 ] ;
+             rdfs:subClassOf :SymbolicNote .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/Adoublesharp
+:Adoublesharp rdf:type owl:Class ;
+              owl:equivalentClass [ owl:intersectionOf ( :A
+                                                         [ rdf:type owl:Restriction ;
+                                                           owl:onProperty :hasAccidental ;
+                                                           owl:allValuesFrom :DoubleSharp
+                                                         ]
+                                                       ) ;
+                                    rdf:type owl:Class
+                                  ] ;
+              rdfs:subClassOf :SymbolicNote .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/Aflat
+:Aflat rdf:type owl:Class ;
+       owl:equivalentClass [ owl:intersectionOf ( :A
+                                                  [ rdf:type owl:Restriction ;
+                                                    owl:onProperty :hasAccidental ;
+                                                    owl:allValuesFrom :Flat
+                                                  ]
+                                                ) ;
+                             rdf:type owl:Class
+                           ] ;
+       rdfs:subClassOf :SymbolicNote .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/Anatural
+:Anatural rdf:type owl:Class ;
+          owl:equivalentClass [ owl:intersectionOf ( :A
+                                                     [ rdf:type owl:Restriction ;
+                                                       owl:onProperty :hasAccidental ;
+                                                       owl:allValuesFrom :Natural
+                                                     ]
+                                                   ) ;
+                                rdf:type owl:Class
+                              ] ;
+          rdfs:subClassOf :SymbolicNote .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/Asharp
+:Asharp rdf:type owl:Class ;
+        owl:equivalentClass [ owl:intersectionOf ( :A
+                                                   [ rdf:type owl:Restriction ;
+                                                     owl:onProperty :hasAccidental ;
+                                                     owl:allValuesFrom :Sharp
+                                                   ]
+                                                 ) ;
+                              rdf:type owl:Class
+                            ] ;
+        rdfs:subClassOf :SymbolicNote .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/B
+:B rdf:type owl:Class ;
+   rdfs:subClassOf :SymbolicNote ;
+   owl:disjointWith :C ,
+                    :D ,
+                    :E ,
+                    :F ,
+                    :G ;
+   rdfs:label "B"@en .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/Bdoubleflat
+:Bdoubleflat rdf:type owl:Class ;
+             owl:equivalentClass [ owl:intersectionOf ( :B
+                                                        [ rdf:type owl:Restriction ;
+                                                          owl:onProperty :hasAccidental ;
+                                                          owl:allValuesFrom :DoubleFlat
+                                                        ]
+                                                      ) ;
+                                   rdf:type owl:Class
+                                 ] ;
+             rdfs:subClassOf :SymbolicNote .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/Bdoublesharp
+:Bdoublesharp rdf:type owl:Class ;
+              owl:equivalentClass [ owl:intersectionOf ( :B
+                                                         [ rdf:type owl:Restriction ;
+                                                           owl:onProperty :hasAccidental ;
+                                                           owl:allValuesFrom :DoubleSharp
+                                                         ]
+                                                       ) ;
+                                    rdf:type owl:Class
+                                  ] ;
+              rdfs:subClassOf :SymbolicNote .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/Bflat
+:Bflat rdf:type owl:Class ;
+       owl:equivalentClass [ owl:intersectionOf ( :B
+                                                  [ rdf:type owl:Restriction ;
+                                                    owl:onProperty :hasAccidental ;
+                                                    owl:allValuesFrom :Flat
+                                                  ]
+                                                ) ;
+                             rdf:type owl:Class
+                           ] ;
+       rdfs:subClassOf :SymbolicNote .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/Bnatural
+:Bnatural rdf:type owl:Class ;
+          owl:equivalentClass [ owl:intersectionOf ( :B
+                                                     [ rdf:type owl:Restriction ;
+                                                       owl:onProperty :hasAccidental ;
+                                                       owl:allValuesFrom :Natural
+                                                     ]
+                                                   ) ;
+                                rdf:type owl:Class
+                              ] ;
+          rdfs:subClassOf :SymbolicNote .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/Bsharp
+:Bsharp rdf:type owl:Class ;
+        owl:equivalentClass [ owl:intersectionOf ( :B
+                                                   [ rdf:type owl:Restriction ;
+                                                     owl:onProperty :hasAccidental ;
+                                                     owl:allValuesFrom :Sharp
+                                                   ]
+                                                 ) ;
+                              rdf:type owl:Class
+                            ] ;
+        rdfs:subClassOf :SymbolicNote .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/C
+:C rdf:type owl:Class ;
+   rdfs:subClassOf :SymbolicNote ;
+   owl:disjointWith :D ,
+                    :E ,
+                    :F ,
+                    :G ;
+   rdfs:label "C"@en .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/Cdoubleflat
+:Cdoubleflat rdf:type owl:Class ;
+             owl:equivalentClass [ owl:intersectionOf ( :C
+                                                        [ rdf:type owl:Restriction ;
+                                                          owl:onProperty :hasAccidental ;
+                                                          owl:allValuesFrom :DoubleFlat
+                                                        ]
+                                                      ) ;
+                                   rdf:type owl:Class
+                                 ] ;
+             rdfs:subClassOf :SymbolicNote .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/Cdoublesharp
+:Cdoublesharp rdf:type owl:Class ;
+              owl:equivalentClass [ owl:intersectionOf ( :C
+                                                         [ rdf:type owl:Restriction ;
+                                                           owl:onProperty :hasAccidental ;
+                                                           owl:allValuesFrom :DoubleSharp
+                                                         ]
+                                                       ) ;
+                                    rdf:type owl:Class
+                                  ] ;
+              rdfs:subClassOf :SymbolicNote .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/Cflat
+:Cflat rdf:type owl:Class ;
+       owl:equivalentClass [ owl:intersectionOf ( :C
+                                                  [ rdf:type owl:Restriction ;
+                                                    owl:onProperty :hasAccidental ;
+                                                    owl:allValuesFrom :Flat
+                                                  ]
+                                                ) ;
+                             rdf:type owl:Class
+                           ] ;
+       rdfs:subClassOf :SymbolicNote .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/Cnatural
+:Cnatural rdf:type owl:Class ;
+          owl:equivalentClass [ owl:intersectionOf ( :C
+                                                     [ rdf:type owl:Restriction ;
+                                                       owl:onProperty :hasAccidental ;
+                                                       owl:allValuesFrom :Natural
+                                                     ]
+                                                   ) ;
+                                rdf:type owl:Class
+                              ] ;
+          rdfs:subClassOf :SymbolicNote .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/Csharp
+:Csharp rdf:type owl:Class ;
+        owl:equivalentClass [ owl:intersectionOf ( :C
+                                                   [ rdf:type owl:Restriction ;
+                                                     owl:onProperty :hasAccidental ;
+                                                     owl:allValuesFrom :Sharp
+                                                   ]
+                                                 ) ;
+                              rdf:type owl:Class
+                            ] ;
+        rdfs:subClassOf :SymbolicNote .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/D
+:D rdf:type owl:Class ;
+   rdfs:subClassOf :SymbolicNote ;
+   owl:disjointWith :E ,
+                    :F ,
+                    :G ;
+   rdfs:label "D"@en .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/Ddoubleflat
+:Ddoubleflat rdf:type owl:Class ;
+             owl:equivalentClass [ owl:intersectionOf ( :D
+                                                        [ rdf:type owl:Restriction ;
+                                                          owl:onProperty :hasAccidental ;
+                                                          owl:allValuesFrom :DoubleFlat
+                                                        ]
+                                                      ) ;
+                                   rdf:type owl:Class
+                                 ] ;
+             rdfs:subClassOf :SymbolicNote .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/Ddoublesharp
+:Ddoublesharp rdf:type owl:Class ;
+              owl:equivalentClass [ owl:intersectionOf ( :D
+                                                         [ rdf:type owl:Restriction ;
+                                                           owl:onProperty :hasAccidental ;
+                                                           owl:allValuesFrom :DoubleSharp
+                                                         ]
+                                                       ) ;
+                                    rdf:type owl:Class
+                                  ] ;
+              rdfs:subClassOf :SymbolicNote .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/Dflat
+:Dflat rdf:type owl:Class ;
+       owl:equivalentClass [ owl:intersectionOf ( :D
+                                                  [ rdf:type owl:Restriction ;
+                                                    owl:onProperty :hasAccidental ;
+                                                    owl:allValuesFrom :Flat
+                                                  ]
+                                                ) ;
+                             rdf:type owl:Class
+                           ] ;
+       rdfs:subClassOf :SymbolicNote .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/Dnatural
+:Dnatural rdf:type owl:Class ;
+          owl:equivalentClass [ owl:intersectionOf ( :D
+                                                     [ rdf:type owl:Restriction ;
+                                                       owl:onProperty :hasAccidental ;
+                                                       owl:allValuesFrom :Natural
+                                                     ]
+                                                   ) ;
+                                rdf:type owl:Class
+                              ] ;
+          rdfs:subClassOf :SymbolicNote .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/DoubleFlat
+:DoubleFlat rdf:type owl:Class ;
+            rdfs:subClassOf :Accidental ;
+            rdfs:label "Double Flat"@en .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/DoubleSharp
+:DoubleSharp rdf:type owl:Class ;
+             rdfs:subClassOf :Accidental ;
+             rdfs:label "Double Sharp"@en .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/Dsharp
+:Dsharp rdf:type owl:Class ;
+        owl:equivalentClass [ owl:intersectionOf ( :D
+                                                   [ rdf:type owl:Restriction ;
+                                                     owl:onProperty :hasAccidental ;
+                                                     owl:allValuesFrom :Sharp
+                                                   ]
+                                                 ) ;
+                              rdf:type owl:Class
+                            ] ;
+        rdfs:subClassOf :SymbolicNote .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/E
+:E rdf:type owl:Class ;
+   rdfs:subClassOf :SymbolicNote ;
+   owl:disjointWith :F ,
+                    :G ;
+   rdfs:label "E"@en .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/Edoubleflat
+:Edoubleflat rdf:type owl:Class ;
+             owl:equivalentClass [ owl:intersectionOf ( :E
+                                                        [ rdf:type owl:Restriction ;
+                                                          owl:onProperty :hasAccidental ;
+                                                          owl:allValuesFrom :DoubleFlat
+                                                        ]
+                                                      ) ;
+                                   rdf:type owl:Class
+                                 ] ;
+             rdfs:subClassOf :SymbolicNote .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/Edoublesharp
+:Edoublesharp rdf:type owl:Class ;
+              owl:equivalentClass [ owl:intersectionOf ( :E
+                                                         [ rdf:type owl:Restriction ;
+                                                           owl:onProperty :hasAccidental ;
+                                                           owl:allValuesFrom :DoubleSharp
+                                                         ]
+                                                       ) ;
+                                    rdf:type owl:Class
+                                  ] ;
+              rdfs:subClassOf :SymbolicNote .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/Eflat
+:Eflat rdf:type owl:Class ;
+       owl:equivalentClass [ owl:intersectionOf ( :E
+                                                  [ rdf:type owl:Restriction ;
+                                                    owl:onProperty :hasAccidental ;
+                                                    owl:allValuesFrom :Flat
+                                                  ]
+                                                ) ;
+                             rdf:type owl:Class
+                           ] ;
+       rdfs:subClassOf :SymbolicNote .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/Enatural
+:Enatural rdf:type owl:Class ;
+          owl:equivalentClass [ owl:intersectionOf ( :E
+                                                     [ rdf:type owl:Restriction ;
+                                                       owl:onProperty :hasAccidental ;
+                                                       owl:allValuesFrom :Natural
+                                                     ]
+                                                   ) ;
+                                rdf:type owl:Class
+                              ] ;
+          rdfs:subClassOf :SymbolicNote .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/Esharp
+:Esharp rdf:type owl:Class ;
+        owl:equivalentClass [ owl:intersectionOf ( :E
+                                                   [ rdf:type owl:Restriction ;
+                                                     owl:onProperty :hasAccidental ;
+                                                     owl:allValuesFrom :Sharp
+                                                   ]
+                                                 ) ;
+                              rdf:type owl:Class
+                            ] ;
+        rdfs:subClassOf :SymbolicNote .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/F
+:F rdf:type owl:Class ;
+   rdfs:subClassOf :SymbolicNote ;
+   owl:disjointWith :G ;
+   rdfs:label "F"@en .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/Fdoubleflat
+:Fdoubleflat rdf:type owl:Class ;
+             owl:equivalentClass [ owl:intersectionOf ( :F
+                                                        [ rdf:type owl:Restriction ;
+                                                          owl:onProperty :hasAccidental ;
+                                                          owl:allValuesFrom :DoubleFlat
+                                                        ]
+                                                      ) ;
+                                   rdf:type owl:Class
+                                 ] ;
+             rdfs:subClassOf :SymbolicNote .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/Fdoublesharp
+:Fdoublesharp rdf:type owl:Class ;
+              owl:equivalentClass [ owl:intersectionOf ( :F
+                                                         [ rdf:type owl:Restriction ;
+                                                           owl:onProperty :hasAccidental ;
+                                                           owl:allValuesFrom :DoubleSharp
+                                                         ]
+                                                       ) ;
+                                    rdf:type owl:Class
+                                  ] ;
+              rdfs:subClassOf :SymbolicNote .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/Fflat
+:Fflat rdf:type owl:Class ;
+       owl:equivalentClass [ owl:intersectionOf ( :F
+                                                  [ rdf:type owl:Restriction ;
+                                                    owl:onProperty :hasAccidental ;
+                                                    owl:allValuesFrom :Flat
+                                                  ]
+                                                ) ;
+                             rdf:type owl:Class
+                           ] ;
+       rdfs:subClassOf :SymbolicNote .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/Flat
+:Flat rdf:type owl:Class ;
+      rdfs:subClassOf :Accidental ;
+      rdfs:label "Flat"@en .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/Fnatural
+:Fnatural rdf:type owl:Class ;
+          owl:equivalentClass [ owl:intersectionOf ( :F
+                                                     [ rdf:type owl:Restriction ;
+                                                       owl:onProperty :hasAccidental ;
+                                                       owl:allValuesFrom :Natural
+                                                     ]
+                                                   ) ;
+                                rdf:type owl:Class
+                              ] ;
+          rdfs:subClassOf :SymbolicNote .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/Fsharp
+:Fsharp rdf:type owl:Class ;
+        owl:equivalentClass [ owl:intersectionOf ( :F
+                                                   [ rdf:type owl:Restriction ;
+                                                     owl:onProperty :hasAccidental ;
+                                                     owl:allValuesFrom :Sharp
+                                                   ]
+                                                 ) ;
+                              rdf:type owl:Class
+                            ] ;
+        rdfs:subClassOf :SymbolicNote .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/G
+:G rdf:type owl:Class ;
+   rdfs:subClassOf :SymbolicNote ;
+   rdfs:label "G"@en .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/Gantural
+:Gantural rdf:type owl:Class ;
+          owl:equivalentClass [ owl:intersectionOf ( :G
+                                                     [ rdf:type owl:Restriction ;
+                                                       owl:onProperty :hasAccidental ;
+                                                       owl:allValuesFrom :Natural
+                                                     ]
+                                                   ) ;
+                                rdf:type owl:Class
+                              ] ;
+          rdfs:subClassOf :SymbolicNote .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/Gdoubleflat
+:Gdoubleflat rdf:type owl:Class ;
+             owl:equivalentClass [ owl:intersectionOf ( :G
+                                                        [ rdf:type owl:Restriction ;
+                                                          owl:onProperty :hasAccidental ;
+                                                          owl:allValuesFrom :DoubleFlat
+                                                        ]
+                                                      ) ;
+                                   rdf:type owl:Class
+                                 ] ;
+             rdfs:subClassOf :SymbolicNote .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/Gdoublesharp
+:Gdoublesharp rdf:type owl:Class ;
+              owl:equivalentClass [ owl:intersectionOf ( :G
+                                                         [ rdf:type owl:Restriction ;
+                                                           owl:onProperty :hasAccidental ;
+                                                           owl:allValuesFrom :DoubleSharp
+                                                         ]
+                                                       ) ;
+                                    rdf:type owl:Class
+                                  ] ;
+              rdfs:subClassOf :SymbolicNote .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/Gflat
+:Gflat rdf:type owl:Class ;
+       owl:equivalentClass [ owl:intersectionOf ( :G
+                                                  [ rdf:type owl:Restriction ;
+                                                    owl:onProperty :hasAccidental ;
+                                                    owl:allValuesFrom :Flat
+                                                  ]
+                                                ) ;
+                             rdf:type owl:Class
+                           ] ;
+       rdfs:subClassOf :SymbolicNote .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/Gsharp
+:Gsharp rdf:type owl:Class ;
+        owl:equivalentClass [ owl:intersectionOf ( :G
+                                                   [ rdf:type owl:Restriction ;
+                                                     owl:onProperty :hasAccidental ;
+                                                     owl:allValuesFrom :Sharp
+                                                   ]
+                                                 ) ;
+                              rdf:type owl:Class
+                            ] ;
+        rdfs:subClassOf :SymbolicNote ;
+        rdfs:label "G#"@en .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/Natural
+:Natural rdf:type owl:Class ;
+         rdfs:subClassOf :Accidental ;
+         rdfs:label "Natural"@en .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/NoteDuration
+:NoteDuration rdf:type owl:Class ;
+              rdfs:subClassOf [ rdf:type owl:Restriction ;
+                                owl:onProperty :isRealisedAsDuration ;
+                                owl:someValuesFrom <https://purl.org/andreapoltronieri/musicalobject/MusicalObjectDuration>
+                              ] ,
+                              [ rdf:type owl:Restriction ;
+                                owl:onProperty :isDurationOfNote ;
+                                owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+                                owl:onClass :SymbolicNote
+                              ] ;
+              rdfs:comment "The quantised duration of a symbolic music note."@en ;
+              rdfs:label "Note Duration"@en .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/NoteDynamic
+:NoteDynamic rdf:type owl:Class ;
+             rdfs:subClassOf [ rdf:type owl:Restriction ;
+                               owl:onProperty :isRealisedAsIntensity ;
+                               owl:someValuesFrom <https://purl.org/andreapoltronieri/musicalobject/SoundIntensity>
+                             ] ,
+                             [ rdf:type owl:Restriction ;
+                               owl:onProperty :isDynamicOf ;
+                               owl:allValuesFrom :SymbolicNote
+                             ] ,
+                             [ rdf:type owl:Restriction ;
+                               owl:onProperty :hasLiteralDynamic ;
+                               owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+                               owl:onDataRange xsd:string
+                             ] ,
+                             [ rdf:type owl:Restriction ;
+                               owl:onProperty :hasMidiVelocity ;
+                               owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+                               owl:onDataRange xsd:int
+                             ] ;
+             rdfs:comment "The dynamic of a symbolic note."@en ;
+             rdfs:label "Note Dynamic"@en .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/NotePitch
+:NotePitch rdf:type owl:Class ;
+           rdfs:subClassOf [ rdf:type owl:Restriction ;
+                             owl:onProperty :isRealisedAsFrequency ;
+                             owl:someValuesFrom <https://purl.org/andreapoltronieri/musicalobject/Frequency>
+                           ] ,
+                           [ rdf:type owl:Restriction ;
+                             owl:onProperty :isPitchOf ;
+                             owl:allValuesFrom :SymbolicNote
+                           ] ;
+           rdfs:comment "The pitch of a symbolic note."@en ;
+           rdfs:label "Note Pitch"@en .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/Position
+:Position rdf:type owl:Class ;
+          rdfs:subClassOf [ rdf:type owl:Restriction ;
+                            owl:onProperty :isPositionOf ;
+                            owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+                            owl:onClass :SymbolicNote
+                          ] ,
+                          [ rdf:type owl:Restriction ;
+                            owl:onProperty :hasMeasure ;
+                            owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+                            owl:onDataRange xsd:int
+                          ] ;
+          rdfs:comment "The position of a symbolic note"@en ;
+          rdfs:label "Position"@en .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/Sharp
+:Sharp rdf:type owl:Class ;
+       rdfs:subClassOf :Accidental ;
+       rdfs:label "Sharp"@en .
+
+
+###  https://purl.org/andreapoltronieri/notepattern/SymbolicNote
+:SymbolicNote rdf:type owl:Class ;
+              rdfs:subClassOf [ rdf:type owl:Restriction ;
+                                owl:onProperty :hasRealisation ;
+                                owl:someValuesFrom <https://purl.org/andreapoltronieri/musicalobject/MusicalObject>
+                              ] ,
+                              [ rdf:type owl:Restriction ;
+                                owl:onProperty :belongsToFragment ;
+                                owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+                                owl:onClass <https://purl.org/andreapoltronieri/scorepart/HomogeneousFragment>
+                              ] ,
+                              [ rdf:type owl:Restriction ;
+                                owl:onProperty :belongsToFragment ;
+                                owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+                                owl:onClass <https://purl.org/andreapoltronieri/scorepart/Section>
+                              ] ,
+                              [ rdf:type owl:Restriction ;
+                                owl:onProperty :belongsToFragment ;
+                                owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+                                owl:onClass <https://purl.org/andreapoltronieri/scorepart/Voice>
+                              ] ,
+                              [ rdf:type owl:Restriction ;
+                                owl:onProperty :hasNoteDuration ;
+                                owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+                                owl:onClass :NoteDuration
+                              ] ,
+                              [ rdf:type owl:Restriction ;
+                                owl:onProperty :hasNoteDynamic ;
+                                owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+                                owl:onClass :NoteDynamic
+                              ] ,
+                              [ rdf:type owl:Restriction ;
+                                owl:onProperty :hasNotePitch ;
+                                owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+                                owl:onClass :NotePitch
+                              ] ,
+                              [ rdf:type owl:Restriction ;
+                                owl:onProperty :hasPosition ;
+                                owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+                                owl:onClass :Position
+                              ] ;
+              rdfs:comment "A music note from the western temperament system."@en ;
+              rdfs:label "Note Event"@en ;
+              rdfs:seeAlso <http://purl.org/ontology/mto/Note> .
+
+
+###  https://purl.org/andreapoltronieri/scorepart/Section
+<https://purl.org/andreapoltronieri/scorepart/Section> rdf:type owl:Class .
+
+
+#################################################################
+#    Annotations
+#################################################################
+
+<https://purl.org/andreapoltronieri/scorepart/hasMetric> rdfs:seeAlso <http://purl.org/ontology/mto/TimeSignature> .
+
+
+###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

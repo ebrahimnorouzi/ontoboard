@@ -1,0 +1,110 @@
+@prefix : <http://www.ontologydesignpatterns.org/cp/owl/collectionentity.owl#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@base <http://www.ontologydesignpatterns.org/cp/owl/collectionentity.owl> .
+
+<http://www.ontologydesignpatterns.org/cp/owl/collectionentity.owl> rdf:type owl:Ontology ;
+                                                                     owl:imports <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl> ;
+                                                                     <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> "What things are contained in this collection (community, collective)? What collections this thing is member of?" ;
+                                                                     <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#extractedFrom> "http://www.ontologydesignpatterns.org/ont/dul/DUL.owl" ;
+                                                                     <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasAuthor> "Aldo Gangemi" ;
+                                                                     <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences> "Collections and their members can be associated. Time-indexed membership cannot be represented though (you need a situation-based pattern)." ;
+                                                                     <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> "To represent domain (not set theory) membership." ;
+                                                                     <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#relatedCPs> "TimeIndexedMembership" ;
+                                                                     <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios> "My saxophone collection includes a Mark VI tenor, a Balanced Action alto, and a Conn Transitional bari." ;
+                                                                     rdfs:comment """The collection entity pattern. 
+It is extracted from DOLCE-UltraLite by partial clone of elements.""" ;
+                                                                     rdfs:label "collection entity" ,
+                                                                                "membership" ;
+                                                                     owl:versionInfo "1.1 added rdfs:isDefinedBy for all named entities"^^xsd:string ,
+                                                                                     "Created by Aldo Gangemi and Valentina Presutti"^^xsd:string .
+
+#################################################################
+#    Annotation properties
+#################################################################
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements
+<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#extractedFrom
+<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#extractedFrom> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasAuthor
+<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasAuthor> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences
+<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent
+<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#relatedCPs
+<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#relatedCPs> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios
+<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.w3.org/2000/01/rdf-schema#comment
+rdfs:comment rdf:type owl:AnnotationProperty .
+
+
+###  http://www.w3.org/2000/01/rdf-schema#isDefinedBy
+rdfs:isDefinedBy rdf:type owl:AnnotationProperty .
+
+
+###  http://www.w3.org/2000/01/rdf-schema#label
+rdfs:label rdf:type owl:AnnotationProperty .
+
+
+###  http://www.w3.org/2002/07/owl#versionInfo
+owl:versionInfo rdf:type owl:AnnotationProperty .
+
+
+#################################################################
+#    Object Properties
+#################################################################
+
+###  http://www.ontologydesignpatterns.org/cp/owl/collectionentity.owl#hasMember
+:hasMember rdf:type owl:ObjectProperty ;
+           owl:inverseOf :isMemberOf ;
+           rdfs:domain :Collection ;
+           rdfs:range owl:Thing ;
+           rdfs:comment "A relation between collections and entities, e.g. 'my collection of saxophones includes an old Adolphe Sax original alto' (i.e. my collection has member an Adolphe Sax alto)." ;
+           rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/collectionentity.owl> ;
+           rdfs:label "has member"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/collectionentity.owl#isMemberOf
+:isMemberOf rdf:type owl:ObjectProperty ;
+            rdfs:domain owl:Thing ;
+            rdfs:range :Collection ;
+            rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/collectionentity.owl> ;
+            rdfs:label "is member of"@en .
+
+
+#################################################################
+#    Classes
+#################################################################
+
+###  http://www.ontologydesignpatterns.org/cp/owl/collectionentity.owl#Collection
+:Collection rdf:type owl:Class ;
+            rdfs:comment "Any container for entities that share one or more common properties. E.g. \"stone objects\", \"the nurses\", \"the Louvre Aegyptian collection\". A collection is not a logical class: a collection is a first-order entity, while a class is a second-order one." ;
+            rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/collectionentity.owl> ;
+            rdfs:label "Collection"@en .
+
+
+###  http://www.w3.org/2002/07/owl#Thing
+owl:Thing rdf:type owl:Class .
+
+
+###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

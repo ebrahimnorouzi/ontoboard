@@ -1,0 +1,15 @@
+{
+  "id": "nfdi-sparql-endpoint-dataset",
+  "name": "sparql_endpoints",
+  "description": "A queryable endpoint (nfdi:NFDI_0001095) is modelled as a part of the dataset it serves, linked with obo:BFO_0000051 (has part), rather than as a property of the dataset. This keeps the endpoint addressable and separately describable.",
+  "category": "information",
+  "domain": "research-data",
+  "competency_questions": "Which SPARQL endpoints can the MatWerk Knowledge Graph be federated with?; What is the endpoint URL of a given knowledge graph, and under which licence is it offered?; Who created and maintains a given endpoint's dataset?",
+  "pattern_iri": "https://ontoboard.org/patterns/nfdi-sparql-endpoint-dataset.owl",
+  "source": "https://nfdi.fiz-karlsruhe.de/matwerk/patterns/",
+  "collection": "nfdi",
+  "publisher": "nfdi.fiz-karlsruhe.de",
+  "extracted_from": "nfdi",
+  "class_count": 3,
+  "property_count": 2
+}

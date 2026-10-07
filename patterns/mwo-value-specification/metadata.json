@@ -1,0 +1,15 @@
+{
+  "id": "mwo-value-specification",
+  "name": "Pattern 6: Value Specification",
+  "description": "Represents the data values attached to Information Content Entities: any value from the other patterns is linked to its ICE with the nfdicore:hasValue data property. For measurement data the measured value is given with hasValue while the corresponding unit is linked to an instance of iao:MeasurementUnitLabel.",
+  "category": "information",
+  "domain": "general",
+  "competency_questions": "",
+  "pattern_iri": "https://ontoboard.org/patterns/mwo-value-specification.owl",
+  "source": "https://ise-fizkarlsruhe.github.io/mwo/docs/patterns/",
+  "collection": "mwo",
+  "publisher": "ise-fizkarlsruhe.github.io",
+  "extracted_from": "mwo",
+  "class_count": 7,
+  "property_count": 9
+}

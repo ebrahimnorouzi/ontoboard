@@ -1,0 +1,15 @@
+{
+  "id": "pmdco-manufacturing-input-output",
+  "name": "A manufacturing process with its input and outputs",
+  "description": "Describes the primary inputs and outputs of a process. The cutting/cropping example consumes a strand and produces several slabs; the process follows a plan specification, and strand and slabs are modelled as temporal states of the same material via temporally qualified continuants.",
+  "category": "behavioral",
+  "domain": "manufacturing",
+  "competency_questions": "What does this manufacturing process consume and what does it produce? Which plan specification does it follow? Are the input and the outputs states of the same underlying material? What length does each output have, and at which time?",
+  "pattern_iri": "https://ontoboard.org/patterns/pmdco-manufacturing-input-output.owl",
+  "source": "https://materialdigital.github.io/core-ontology/docs/patterns.html",
+  "collection": "pmdco",
+  "publisher": "materialdigital.github.io",
+  "extracted_from": "pmdco",
+  "class_count": 13,
+  "property_count": 9
+}

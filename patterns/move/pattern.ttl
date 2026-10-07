@@ -1,0 +1,191 @@
+@prefix : <http://www.ontologydesignpatterns.org/cp/owl/move.owl#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@base <http://www.ontologydesignpatterns.org/cp/owl/move.owl> .
+
+<http://www.ontologydesignpatterns.org/cp/owl/move.owl> rdf:type owl:Ontology ;
+                                                         owl:imports <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl> ;
+                                                         <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#extractedFrom> "http://cidoc.ics.forth.gr/cidoc_v4.2.owl" ;
+                                                         <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#reengineeredFrom> "http://cidoc.ics.forth.gr/cidoc_v4.2.owl" ;
+                                                         rdfs:comment "The move content ontology design pattern. This CP represents the action of moving a physical object from a place to another. The move CP is extracted from the CIDOC ontology." ;
+                                                         owl:versionInfo "1.1 added rdfs:isDefinedBy for all named entities"^^xsd:string ,
+                                                                         "Created by Aldo Gangemi and Valentina Presutti"^^xsd:string .
+
+#################################################################
+#    Annotation properties
+#################################################################
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#extractedFrom
+<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#extractedFrom> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#reengineeredFrom
+<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#reengineeredFrom> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.w3.org/2000/01/rdf-schema#comment
+rdfs:comment rdf:type owl:AnnotationProperty .
+
+
+###  http://www.w3.org/2000/01/rdf-schema#isDefinedBy
+rdfs:isDefinedBy rdf:type owl:AnnotationProperty .
+
+
+###  http://www.w3.org/2000/01/rdf-schema#label
+rdfs:label rdf:type owl:AnnotationProperty .
+
+
+###  http://www.w3.org/2002/07/owl#versionInfo
+owl:versionInfo rdf:type owl:AnnotationProperty .
+
+
+#################################################################
+#    Object Properties
+#################################################################
+
+###  http://www.ontologydesignpatterns.org/cp/owl/move.owl#consistsOf
+:consistsOf rdf:type owl:ObjectProperty ;
+            owl:inverseOf :formsPartOf ;
+            rdfs:domain :Move ;
+            rdfs:range :Move ;
+            rdfs:comment """This property describes the decomposition of an instance of Move into discrete, subsidiary move.
+
+The sub-moves into which the move is decomposed form a logical whole, although the entire picture may not be completely known,  and the sub-moves are constitutive of the general move."""@en ;
+            rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/move.owl> ;
+            rdfs:label "consists of"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/move.owl#formsPartOf
+:formsPartOf rdf:type owl:ObjectProperty ;
+             rdfs:domain :Move ;
+             rdfs:range :Move ;
+             rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/move.owl> ;
+             rdfs:label "forms part of"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/move.owl#moved
+:moved rdf:type owl:ObjectProperty ;
+       owl:inverseOf :movedBy ;
+       rdfs:domain :Move ;
+       rdfs:range :PhysicalObject ;
+       rdfs:comment """This property identifies the Physical Object that is moved during a move event. 
+
+The property implies the object's passive participation. For example, Monet's painting \"Impression sunrise\" was moved for the first Impressionist exhibition in 1874. 
+In reality, a move must concern at least one object."""@en ;
+       rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/move.owl> ;
+       rdfs:label "moved"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/move.owl#movedBy
+:movedBy rdf:type owl:ObjectProperty ;
+         rdfs:domain :PhysicalObject ;
+         rdfs:range :Move ;
+         rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/move.owl> ;
+         rdfs:label "moved by"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/move.owl#movedFrom
+:movedFrom rdf:type owl:ObjectProperty ;
+           rdfs:subPropertyOf :tookPlaceAt ;
+           owl:inverseOf :wasOriginOf ;
+           rdfs:domain :Move ;
+           rdfs:range :Place ;
+           rdfs:comment """This property identifies the starting Place of an Move.
+
+A move will be linked to an origin, such as the move of an artefact from storage to display. A move may be linked to many origins. In this case the move describes the picking up of a set of objects. The area of the move includes the origin, route and destination."""@en ;
+           rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/move.owl> ;
+           rdfs:label "moved from"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/move.owl#movedTo
+:movedTo rdf:type owl:ObjectProperty ;
+         rdfs:subPropertyOf :tookPlaceAt ;
+         owl:inverseOf :wasDestinationOf ;
+         rdfs:domain :Move ;
+         rdfs:range :Place ;
+         rdfs:comment """This property identifies the destination of a Move. 
+
+A move will be linked to a destination, such as the move of an artefact from storage to display. A move may be linked to many terminal instances of E53 Places. In this case the move describes a distribution of a set of objects. The area of the move includes the origin, route and destination."""@en ;
+         rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/move.owl> ;
+         rdfs:label "moved to"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/move.owl#tookPlaceAt
+:tookPlaceAt rdf:type owl:ObjectProperty ;
+             owl:inverseOf :witnessed ;
+             rdfs:domain :Move ;
+             rdfs:range :Place ;
+             rdfs:comment """This property describes the spatial location of an instance of a Move. 
+
+The related Place should be seen as an approximation of the geographical area within which the phenomena that characterise the move in question occurred.  took place at (witnessed) does not convey any meaning other than spatial positioning (generally on the surface of the earth)."""@en ;
+             rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/move.owl> ;
+             rdfs:label "took place at"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/move.owl#wasDestinationOf
+:wasDestinationOf rdf:type owl:ObjectProperty ;
+                  rdfs:subPropertyOf :witnessed ;
+                  rdfs:domain :Place ;
+                  rdfs:range :Move ;
+                  rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/move.owl> ;
+                  rdfs:label "was destination of"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/move.owl#wasOriginOf
+:wasOriginOf rdf:type owl:ObjectProperty ;
+             rdfs:subPropertyOf :witnessed ;
+             rdfs:domain :Place ;
+             rdfs:range :Move ;
+             rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/move.owl> ;
+             rdfs:label "was origin of"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/move.owl#witnessed
+:witnessed rdf:type owl:ObjectProperty ;
+           rdfs:domain :Place ;
+           rdfs:range :Move ;
+           rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/move.owl> ;
+           rdfs:label "witnessed"@en .
+
+
+#################################################################
+#    Classes
+#################################################################
+
+###  http://www.ontologydesignpatterns.org/cp/owl/move.owl#Move
+:Move rdf:type owl:Class ;
+      owl:disjointWith :PhysicalObject ,
+                       :Place ;
+      rdfs:comment """This class comprises changes of the physical location of the instances of Physical Object. 
+
+Note, that the class Move inherits the property 'took place at' (witnessed): Place. This property should be used to describe the trajectory or a larger area within which a move takes place, whereas the properties moved to (was destination of), moved from (was origin of) describe the start and end points only. Moves may also be documented to consistsOf other moves (via consistsOf (formsPartOf)), in order to describe intermediate stages on a trajectory. In that case, start and end points of the partial moves should match appropriately between each other and with the overall event. {@en}"""^^xsd:string ;
+      rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/move.owl> ;
+      rdfs:label "Move"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/move.owl#PhysicalObject
+:PhysicalObject rdf:type owl:Class ;
+                owl:disjointWith :Place ;
+                rdfs:comment """This class comprises items of a material nature that are units for documentation and have physical boundaries that separate them completely in an objective way from other objects. 
+
+The class also includes all aggregates of objects made for functional purposes of whatever kind, independent of physical coherence, such as a set of chessmen. Typically, instances of E19 Physical Object can be moved (if not too heavy).
+
+In some contexts, such objects, except for aggregates, are also called \"bona fide objects\" (Smith and Varzi, 2000, pp.401-420), i.e. naturally defined objects. 
+
+The decision as to what is documented as a complete item, rather than by its parts or components, may be a purely administrative decision or may be a result of the order in which the item was acquired."""@en ;
+                rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/move.owl> ;
+                rdfs:label "Physical object"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/move.owl#Place
+:Place rdf:type owl:Class ;
+       rdfs:comment """This class comprises extents in space, in particular on the surface of the earth, in the pure sense of physics: independent from temporal phenomena and matter. The instances of E53 Place are usually determined by reference to the position of \"immobile\" objects such as buildings, cities, mountains, rivers, or dedicated geodetic marks. A Place can be determined by combining a frame of reference and a location with respect to this frame. It may be identified by one or more instances of E44 Place Appellation.  It is sometimes argued that instances of E53 Place are best identified by global coordinates or absolute reference systems. However, relative references are often more relevant in the context of cultural documentation and tend to be more precise. In particular, we are often interested in position in relation to large, mobile objects, such as ships. For example, the Place at which Nelson died is known with reference to a large mobile object, H.M.S Victory. A resolution of this Place in terms of absolute coordinates would require knowledge of the movements of the vessel and the precise time of death, either of which may be revised, and the result would lack historical and cultural relevance.
+Any object can serve as a frame of reference for E53 Place determination. The model foresees the notion of a \"section\" of an E19 Physical Object as a valid E53 Place determination. {@en}"""^^xsd:string ;
+       rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/move.owl> ;
+       rdfs:label "Place"@en .
+
+
+###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

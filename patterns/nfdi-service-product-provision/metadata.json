@@ -1,0 +1,15 @@
+{
+  "id": "nfdi-service-product-provision",
+  "name": "service",
+  "description": "A service product (nfdi:NFDI_0000232) is the output of a service process via obo:RO_0002353, and the provider is attached by the service product role rather than by a direct provider link. A separate service specification individual holds what the service promises.",
+  "category": "behavioral",
+  "domain": "research-data",
+  "competency_questions": "Which services does NFDI-MatWerk offer, and who provides them?; Which service supports a given infrastructure use case?; How is a given service accessed, and by whom is it maintained?",
+  "pattern_iri": "https://ontoboard.org/patterns/nfdi-service-product-provision.owl",
+  "source": "https://nfdi.fiz-karlsruhe.de/matwerk/patterns/",
+  "collection": "nfdi",
+  "publisher": "nfdi.fiz-karlsruhe.de",
+  "extracted_from": "nfdi",
+  "class_count": 6,
+  "property_count": 3
+}

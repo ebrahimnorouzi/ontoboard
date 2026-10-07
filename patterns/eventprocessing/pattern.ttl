@@ -1,0 +1,506 @@
+@prefix : <http://www.ontologydesignpatterns.org/cp/owl/eventprocessing.owl#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@base <http://www.ontologydesignpatterns.org/cp/owl/eventprocessing.owl> .
+
+<http://www.ontologydesignpatterns.org/cp/owl/eventprocessing.owl> rdf:type owl:Ontology ;
+                                                                    owl:imports <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl> ;
+                                                                    <http://purl.org/dc/elements/1.1/creator> "Eva Blomqvist and Mikko Rinne"^^xsd:string ;
+                                                                    <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> "By what sensor was this event object recorded?"^^xsd:string ,
+                                                                                                                                                              "What actual event does this event object document?"^^xsd:string ,
+                                                                                                                                                              "What are the parts of this composite event object?"^^xsd:string ,
+                                                                                                                                                              "What event objects are this complex event object and abstraction of?"^^xsd:string ,
+                                                                                                                                                              "What is the header/body of this event object?"^^xsd:string ,
+                                                                                                                                                              "What is the timestamp of this event object?"^^xsd:string ;
+                                                                    <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> "To model event objects (in the context of complex event processing), their attributes, and their relations actual events, and sensor readings producing the events. Different types of event objects, such as complex, composite, and simple events are modelled, preoperties for expressing relations between event objects, such as constituency and componency are expressed, and attributes of event objects, such as timestamps and other data values. This pattern is aligned both to the SSN (Semantic Sensor Network) ontology, and the Event-F model, which in turn both use DUL as an upper layer."^^xsd:string ;
+                                                                    <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#isSpecializationOf> "The pattern extends both the SSN ontology and the Event-F model, which in turn are based on DUL."^^xsd:string ;
+                                                                    owl:versionInfo "Created with TopBraid Composer"^^xsd:string .
+
+#################################################################
+#    Annotation properties
+#################################################################
+
+###  http://purl.org/dc/elements/1.1/creator
+<http://purl.org/dc/elements/1.1/creator> rdf:type owl:AnnotationProperty .
+
+
+#################################################################
+#    Object Properties
+#################################################################
+
+###  http://www.loa-cnr.it/ontologies/DUL.owl#hasComponent
+<http://www.loa-cnr.it/ontologies/DUL.owl#hasComponent> rdf:type owl:ObjectProperty .
+
+
+###  http://www.loa-cnr.it/ontologies/DUL.owl#hasConstituent
+<http://www.loa-cnr.it/ontologies/DUL.owl#hasConstituent> rdf:type owl:ObjectProperty .
+
+
+###  http://www.loa-cnr.it/ontologies/DUL.owl#hasPart
+<http://www.loa-cnr.it/ontologies/DUL.owl#hasPart> rdf:type owl:ObjectProperty .
+
+
+###  http://www.loa-cnr.it/ontologies/DUL.owl#hasRegion
+<http://www.loa-cnr.it/ontologies/DUL.owl#hasRegion> rdf:type owl:ObjectProperty .
+
+
+###  http://www.loa-cnr.it/ontologies/DUL.owl#isAbout
+<http://www.loa-cnr.it/ontologies/DUL.owl#isAbout> rdf:type owl:ObjectProperty .
+
+
+###  http://www.loa-cnr.it/ontologies/DUL.owl#isComponentOf
+<http://www.loa-cnr.it/ontologies/DUL.owl#isComponentOf> rdf:type owl:ObjectProperty .
+
+
+###  http://www.loa-cnr.it/ontologies/DUL.owl#isConstituentOf
+<http://www.loa-cnr.it/ontologies/DUL.owl#isConstituentOf> rdf:type owl:ObjectProperty .
+
+
+###  http://www.loa-cnr.it/ontologies/DUL.owl#isEventIncludedIn
+<http://www.loa-cnr.it/ontologies/DUL.owl#isEventIncludedIn> rdf:type owl:ObjectProperty .
+
+
+###  http://www.loa-cnr.it/ontologies/DUL.owl#isPartOf
+<http://www.loa-cnr.it/ontologies/DUL.owl#isPartOf> rdf:type owl:ObjectProperty .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/eventprocessing.owl#hasDirectSubEventObject
+:hasDirectSubEventObject rdf:type owl:ObjectProperty ;
+                         rdfs:subPropertyOf :hasSubEventObject ;
+                         owl:inverseOf :isDirectSubEventObjectOf ;
+                         rdfs:domain :ComplexEventObject ;
+                         rdfs:range :EventObject ;
+                         owl:propertyChainAxiom ( :hasEventObjectHeader
+                                                  :refersToEventObjectConstituent
+                                                ) ;
+                         rdfs:comment "A relation that connects a complex event with the low-level events it is a higher-level representation of. This is a non-transitive relation that can be used to create a hierarchy of levels of sub-events, that represents the reasoning/triggering or abstraction process that led up to the creation or detection of a complex event. The transitive superproperty hasSubEventObject allows for direclty querying for the transitive closure of sub-events, regardless of the hierarchy, even if only this non-transitive sub-property is used in the data."^^xsd:string ;
+                         rdfs:label "has direct sub-event object"^^xsd:string .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/eventprocessing.owl#hasEventDuration
+:hasEventDuration rdf:type owl:ObjectProperty ;
+                  rdfs:subPropertyOf :hasEventObjectAttributeValue ;
+                  rdfs:range <http://www.loa-cnr.it/ontologies/DUL.owl#TimeInterval> ;
+                  rdfs:comment "Property for represting a time interval of an event object, rather than a time point. Alternative is to define several time points, using the subproperties of the datatype property hasEventObjectTime."^^xsd:string ;
+                  rdfs:label "has event duration"^^xsd:string .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/eventprocessing.owl#hasEventLocation
+:hasEventLocation rdf:type owl:ObjectProperty ;
+                  rdfs:subPropertyOf :hasEventObjectAttributeValue ;
+                  rdfs:range <http://www.loa-cnr.it/ontologies/DUL.owl#SpaceRegion> ;
+                  rdfs:label "has event location"^^xsd:string .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/eventprocessing.owl#hasEventObjectAttributeValue
+:hasEventObjectAttributeValue rdf:type owl:ObjectProperty ;
+                              rdfs:subPropertyOf <http://www.loa-cnr.it/ontologies/DUL.owl#hasRegion> ;
+                              rdfs:domain [ rdf:type owl:Class ;
+                                            owl:unionOf ( :EventObject
+                                                          :EventObjectPart
+                                                        )
+                                          ] ;
+                              rdfs:label "has event object attribute value"^^xsd:string .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/eventprocessing.owl#hasEventObjectBody
+:hasEventObjectBody rdf:type owl:ObjectProperty ;
+                    rdfs:subPropertyOf <http://www.loa-cnr.it/ontologies/DUL.owl#hasComponent> ;
+                    owl:inverseOf :isEventObjectBodyOf ;
+                    rdfs:domain :EventObject ;
+                    rdfs:range :EventObjectBody ;
+                    rdfs:comment "Some event processing systems need to distinguish between an event object header and its body, where the event object header is the part of the event object with known content (e.g. known vocabulary) that can be directly processed by the event processing system. This property relates an event object to its body part."^^xsd:string ;
+                    rdfs:label "has event object body"^^xsd:string .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/eventprocessing.owl#hasEventObjectComponent
+:hasEventObjectComponent rdf:type owl:ObjectProperty ;
+                         rdfs:subPropertyOf <http://www.loa-cnr.it/ontologies/DUL.owl#hasComponent> ,
+                                            :hasEventObjectPart ;
+                         owl:inverseOf :isEventObjectComponentOf ;
+                         rdfs:domain :CompositeEventObject ;
+                         rdfs:range :EventObject ;
+                         owl:propertyChainAxiom ( :hasEventObjectHeader
+                                                  :refersToEventObjectComponent
+                                                ) ;
+                         rdfs:comment "This non-transitive property expresses the direct relation between an event object and its direct parts, i.e. its components. Using this property a hierarchy of components can be expressed for an event object. The components of the event object do not exist on their own, but exist to \"make up\" the whole of the encapsulating event, likewise the encapsulating event is not complete without its parts. Please note the difference between this stronger relation, compared to the \"hasSubEvent\"-property which merely relates event objects to each other, e.g. expressing the triggering of abstractions, but without implying that the events are parts of each other."^^xsd:string ;
+                         rdfs:label "has event object component"^^xsd:string .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/eventprocessing.owl#hasEventObjectHeader
+:hasEventObjectHeader rdf:type owl:ObjectProperty ;
+                      rdfs:subPropertyOf <http://www.loa-cnr.it/ontologies/DUL.owl#hasComponent> ;
+                      owl:inverseOf :isEventObjectHeaderOf ;
+                      rdfs:domain :EventObject ;
+                      rdfs:range :EventObjectHeader ;
+                      rdfs:comment "Some event processing systems need to distinguish between an event object header and its body, where the event object header is the part of the event object with known content (e.g. known vocabulary) that can be directly processed by the event processing system. This property relates an event object to its header part."^^xsd:string ;
+                      rdfs:label "has event object header"^^xsd:string .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/eventprocessing.owl#hasEventObjectPart
+:hasEventObjectPart rdf:type owl:ObjectProperty ;
+                    rdfs:subPropertyOf <http://www.loa-cnr.it/ontologies/DUL.owl#hasPart> ;
+                    owl:inverseOf :isEventObjectPartOf ;
+                    rdf:type owl:TransitiveProperty ;
+                    rdfs:domain :CompositeEventObject ;
+                    rdfs:range :EventObject ;
+                    rdfs:comment "This transitive property represents a partonomy relation between event objects. An event object can consist of several \"partial events\" that together make up the complete event object. The parts of the event object do not exist on their own, but exist to \"make up\" the whole of the encapsulating event, likewise the encapsulating event is not complete without its parts. Please note the difference between this stronger relation, compared to the \"hasSubEvent\"-property which merely relates event objects to each other, e.g. expressing the triggering of abstractions, but without implying that the events are parts of each other."^^xsd:string ;
+                    rdfs:label "has event object part"^^xsd:string .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/eventprocessing.owl#hasSensorReadingValue
+:hasSensorReadingValue rdf:type owl:ObjectProperty ;
+                       rdfs:subPropertyOf :hasEventObjectAttributeValue ;
+                       rdfs:comment "Property for expresseing the alignemet to the SSN ontology, equivalent to ssn:hasValue."^^xsd:string ;
+                       rdfs:label "has sensor reading value"^^xsd:string .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/eventprocessing.owl#hasSubEventObject
+:hasSubEventObject rdf:type owl:ObjectProperty ;
+                   rdfs:subPropertyOf <http://www.loa-cnr.it/ontologies/DUL.owl#hasConstituent> ;
+                   owl:inverseOf :isSubEventObjectOf ;
+                   rdf:type owl:TransitiveProperty ;
+                   rdfs:domain :ComplexEventObject ;
+                   rdfs:range :EventObject ;
+                   rdfs:comment "A relation that connects a complex event with the low-level events it is a higher-level representation of. An event object may reference another event, on a lower level of abstraction or granularity, upon which is it is based or from which it was derived or triggered, making that other event a \"sub event\" of this aggregated or more abstract event object. Note that for modelling instance data, normally, the non-transitive sub-property \"hasDirectSubEventObject\" should be used, based on which the presence of this transitive relation can be inferred."^^xsd:string ;
+                   rdfs:label "has sub-event object"^^xsd:string .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/eventprocessing.owl#informationAboutEvent
+:informationAboutEvent rdf:type owl:ObjectProperty ;
+                       rdfs:subPropertyOf <http://www.loa-cnr.it/ontologies/DUL.owl#isAbout> ;
+                       rdfs:domain :EventObject ;
+                       rdfs:range <http://www.loa-cnr.it/ontologies/DUL.owl#Event> ;
+                       rdfs:label "expresses information about an event"^^xsd:string .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/eventprocessing.owl#isDirectSubEventObjectOf
+:isDirectSubEventObjectOf rdf:type owl:ObjectProperty ;
+                          rdfs:subPropertyOf :isSubEventObjectOf ;
+                          rdfs:domain :EventObject ;
+                          rdfs:range :ComplexEventObject ;
+                          rdfs:label "is direct sub event object of"^^xsd:string .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/eventprocessing.owl#isEventObjectBodyOf
+:isEventObjectBodyOf rdf:type owl:ObjectProperty ;
+                     rdfs:subPropertyOf <http://www.loa-cnr.it/ontologies/DUL.owl#isComponentOf> ;
+                     rdfs:label "is event object body of"^^xsd:string .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/eventprocessing.owl#isEventObjectComponentOf
+:isEventObjectComponentOf rdf:type owl:ObjectProperty ;
+                          rdfs:subPropertyOf <http://www.loa-cnr.it/ontologies/DUL.owl#isComponentOf> ,
+                                             :isEventObjectPartOf ;
+                          rdfs:domain :EventObject ;
+                          rdfs:range :CompositeEventObject ;
+                          rdfs:label "is event object component of"^^xsd:string .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/eventprocessing.owl#isEventObjectHeaderOf
+:isEventObjectHeaderOf rdf:type owl:ObjectProperty ;
+                       rdfs:subPropertyOf <http://www.loa-cnr.it/ontologies/DUL.owl#isComponentOf> ;
+                       rdfs:label "is event object header of"^^xsd:string .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/eventprocessing.owl#isEventObjectPartOf
+:isEventObjectPartOf rdf:type owl:ObjectProperty ;
+                     rdfs:subPropertyOf <http://www.loa-cnr.it/ontologies/DUL.owl#isPartOf> ;
+                     rdf:type owl:TransitiveProperty ;
+                     rdfs:domain :EventObject ;
+                     rdfs:range :CompositeEventObject ;
+                     rdfs:label "is event object part of"^^xsd:string .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/eventprocessing.owl#isSubEventObjectOf
+:isSubEventObjectOf rdf:type owl:ObjectProperty ;
+                    rdfs:subPropertyOf <http://www.loa-cnr.it/ontologies/DUL.owl#isConstituentOf> ;
+                    rdf:type owl:TransitiveProperty ;
+                    rdfs:domain :EventObject ;
+                    rdfs:range :ComplexEventObject ;
+                    rdfs:label "is sub event object of"^^xsd:string .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/eventprocessing.owl#refersToEventObjectComponent
+:refersToEventObjectComponent rdf:type owl:ObjectProperty ;
+                              rdfs:domain :EventObjectHeader ;
+                              rdfs:range :EventObject ;
+                              rdfs:comment "Event objects that use a header/body structure can use this property to refer to the components (i.e. direct parts) of the event object. Through a property chain axiom, the presence of a \"hasEventObjectComponent\" relation can be inferred."^^xsd:string ;
+                              rdfs:label "refers to event object component"^^xsd:string .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/eventprocessing.owl#refersToEventObjectConstituent
+:refersToEventObjectConstituent rdf:type owl:ObjectProperty ;
+                                rdfs:domain :EventObjectHeader ;
+                                rdfs:range :EventObject ;
+                                rdfs:comment "Event objects that use a header/body structure can use this property to refer to the constituents (i.e. direct sub-events in an abstraction hierarchy) of the event object. Through a property chain axiom, the presence of a \"hasDirectSubEventObject\" relation can be inferred."^^xsd:string ;
+                                rdfs:label "refers to event object constituent"^^xsd:string .
+
+
+#################################################################
+#    Data properties
+#################################################################
+
+###  http://www.loa-cnr.it/ontologies/DUL.owl#hasDataValue
+<http://www.loa-cnr.it/ontologies/DUL.owl#hasDataValue> rdf:type owl:DatatypeProperty .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/eventprocessing.owl#hasEventObjectApplicationTime
+:hasEventObjectApplicationTime rdf:type owl:DatatypeProperty ;
+                               rdfs:subPropertyOf :hasEventObjectTime ;
+                               rdfs:comment "The timestamp assigned by the source of the data when it was transmitted, i.e. when it entered the stream."^^xsd:string ;
+                               rdfs:label "has event object application time"^^xsd:string .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/eventprocessing.owl#hasEventObjectAttributeDataValue
+:hasEventObjectAttributeDataValue rdf:type owl:DatatypeProperty ;
+                                  rdfs:subPropertyOf <http://www.loa-cnr.it/ontologies/DUL.owl#hasDataValue> ;
+                                  rdfs:domain [ rdf:type owl:Class ;
+                                                owl:unionOf ( :EventObject
+                                                              :EventObjectPart
+                                                            )
+                                              ] ;
+                                  rdfs:label "has event object attribute data value"^^xsd:string .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/eventprocessing.owl#hasEventObjectExpirationTime
+:hasEventObjectExpirationTime rdf:type owl:DatatypeProperty ;
+                              rdfs:subPropertyOf :hasEventObjectTime ;
+                              rdfs:comment "Time limit on the validity of this event object."^^xsd:string ;
+                              rdfs:label "has event object expiration time"^^xsd:string .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/eventprocessing.owl#hasEventObjectSamplingTime
+:hasEventObjectSamplingTime rdf:type owl:DatatypeProperty ;
+                            rdfs:subPropertyOf :hasEventObjectTime ;
+                            rdfs:comment "The time the event was detected and recorded as data, e.g. when it was recorded by a sensor in terms of the sensor's internal clock."^^xsd:string ;
+                            rdfs:label "has event object sampling time"^^xsd:string .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/eventprocessing.owl#hasEventObjectSystemTime
+:hasEventObjectSystemTime rdf:type owl:DatatypeProperty ;
+                          rdfs:subPropertyOf :hasEventObjectTime ;
+                          rdfs:comment "The timestamp of the event according to the event processing system (in terms of its internal clock time), i.e. when the event object was received byt the event processing system through the stream."^^xsd:string ;
+                          rdfs:label "has event object system time"^^xsd:string .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/eventprocessing.owl#hasEventObjectTime
+:hasEventObjectTime rdf:type owl:DatatypeProperty ;
+                    rdfs:subPropertyOf :hasEventObjectAttributeDataValue ;
+                    rdfs:domain [ rdf:type owl:Class ;
+                                  owl:unionOf ( :EventObject
+                                                :EventObjectPart
+                                              )
+                                ] ;
+                    rdfs:label "has event object time"^^xsd:string .
+
+
+#################################################################
+#    Classes
+#################################################################
+
+###  http://events.semantic-multimedia.org/ontology/2009/4/15/model.owl#EventDocumentationDescription
+<http://events.semantic-multimedia.org/ontology/2009/4/15/model.owl#EventDocumentationDescription> rdf:type owl:Class .
+
+
+###  http://events.semantic-multimedia.org/ontology/2009/4/15/model.owl#EventDocumentationSituation
+<http://events.semantic-multimedia.org/ontology/2009/4/15/model.owl#EventDocumentationSituation> rdf:type owl:Class .
+
+
+###  http://events.semantic-multimedia.org/ontology/2009/4/15/model.owl#EventInterpretationDescription
+<http://events.semantic-multimedia.org/ontology/2009/4/15/model.owl#EventInterpretationDescription> rdf:type owl:Class .
+
+
+###  http://purl.oclc.org/NET/ssnx/ssn#SensorOutput
+<http://purl.oclc.org/NET/ssnx/ssn#SensorOutput> rdf:type owl:Class ;
+                                                 owl:equivalentClass :SensorOutput .
+
+
+###  http://www.loa-cnr.it/ontologies/DUL.owl#Event
+<http://www.loa-cnr.it/ontologies/DUL.owl#Event> rdf:type owl:Class .
+
+
+###  http://www.loa-cnr.it/ontologies/DUL.owl#InformationObject
+<http://www.loa-cnr.it/ontologies/DUL.owl#InformationObject> rdf:type owl:Class .
+
+
+###  http://www.loa-cnr.it/ontologies/DUL.owl#Region
+<http://www.loa-cnr.it/ontologies/DUL.owl#Region> rdf:type owl:Class .
+
+
+###  http://www.loa-cnr.it/ontologies/DUL.owl#SpaceRegion
+<http://www.loa-cnr.it/ontologies/DUL.owl#SpaceRegion> rdf:type owl:Class .
+
+
+###  http://www.loa-cnr.it/ontologies/DUL.owl#TimeInterval
+<http://www.loa-cnr.it/ontologies/DUL.owl#TimeInterval> rdf:type owl:Class .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/eventprocessing.owl#ComplexEventObject
+:ComplexEventObject rdf:type owl:Class ;
+                    owl:equivalentClass [ rdf:type owl:Class ;
+                                          owl:unionOf ( [ rdf:type owl:Restriction ;
+                                                          owl:onProperty :hasEventObjectPart ;
+                                                          owl:someValuesFrom :EventObject
+                                                        ]
+                                                        [ rdf:type owl:Restriction ;
+                                                          owl:onProperty :hasSubEventObject ;
+                                                          owl:someValuesFrom :EventObject
+                                                        ]
+                                                      )
+                                        ] ;
+                    rdfs:subClassOf :EventObject ;
+                    owl:disjointWith :SimpleEventObject ;
+                    rdfs:comment "An event that summarizes, represents, or denotes a set of other events, i.e. it is an abstraction over other events. Anything that is not a complex event is instead a simple event."^^xsd:string ;
+                    rdfs:label "Complex event object"^^xsd:string .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/eventprocessing.owl#CompositeEventObject
+:CompositeEventObject rdf:type owl:Class ;
+                      owl:equivalentClass [ rdf:type owl:Restriction ;
+                                            owl:onProperty :hasEventObjectPart ;
+                                            owl:someValuesFrom :EventObject
+                                          ] ;
+                      rdfs:subClassOf :ComplexEventObject ;
+                      rdfs:comment "An event object that is composed of a set of other event objects, i.e. its parts."^^xsd:string ;
+                      rdfs:label "composite event object"^^xsd:string .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/eventprocessing.owl#EventObject
+:EventObject rdf:type owl:Class ;
+             owl:equivalentClass [ rdf:type owl:Class ;
+                                   owl:unionOf ( :ComplexEventObject
+                                                 :SimpleEventObject
+                                               )
+                                 ] ,
+                                 [ rdf:type owl:Restriction ;
+                                   owl:onProperty :informationAboutEvent ;
+                                   owl:someValuesFrom [ rdf:type owl:Restriction ;
+                                                        owl:onProperty <http://www.loa-cnr.it/ontologies/DUL.owl#isEventIncludedIn> ;
+                                                        owl:someValuesFrom <http://events.semantic-multimedia.org/ontology/2009/4/15/model.owl#EventDocumentationSituation>
+                                                      ]
+                                 ] ;
+             rdfs:subClassOf <http://www.loa-cnr.it/ontologies/DUL.owl#InformationObject> ,
+                             [ rdf:type owl:Class ;
+                               owl:unionOf ( <http://events.semantic-multimedia.org/ontology/2009/4/15/model.owl#EventDocumentationDescription>
+                                             <http://events.semantic-multimedia.org/ontology/2009/4/15/model.owl#EventInterpretationDescription>
+                                           )
+                             ] ,
+                             [ rdf:type owl:Class ;
+                               owl:unionOf ( [ rdf:type owl:Restriction ;
+                                               owl:onProperty :hasEventDuration ;
+                                               owl:someValuesFrom <http://www.loa-cnr.it/ontologies/DUL.owl#TimeInterval>
+                                             ]
+                                             [ rdf:type owl:Restriction ;
+                                               owl:onProperty :hasEventObjectTime ;
+                                               owl:someValuesFrom rdfs:Literal
+                                             ]
+                                           )
+                             ] ,
+                             [ rdf:type owl:Class ;
+                               owl:unionOf ( [ rdf:type owl:Restriction ;
+                                               owl:onProperty :hasEventObjectAttributeValue ;
+                                               owl:someValuesFrom <http://www.loa-cnr.it/ontologies/DUL.owl#Region>
+                                             ]
+                                             [ rdf:type owl:Restriction ;
+                                               owl:onProperty :hasEventObjectHeader ;
+                                               owl:someValuesFrom :EventObjectHeader
+                                             ]
+                                             [ rdf:type owl:Restriction ;
+                                               owl:onProperty :hasEventObjectAttributeDataValue ;
+                                               owl:someValuesFrom rdfs:Literal
+                                             ]
+                                           )
+                             ] ;
+             rdfs:comment """An object that represents, encodes, or records an event, generally for the purpose of computer processing. 
+
+An event object may consist of an event object header and a body, where the header is defined as the part of the event object that can be interpreted by the event processing system, i.e. and event object needs to contain at least some information (e.g. with a known vocabulary) that can be used by the event processing system. Note that the open world assumption allows us to choose not to explicitly specify a header, despite the restriction that it exists. 
+
+An event object is either a complex event, i.e. an event object that has some relation (either through abstraction or componency) to other event objects, or a simple event. 
+
+An event object records information about an actual event, which is then by implication a documented event (i.e. participating in an event documentation situation)."""^^xsd:string ;
+             rdfs:label "Event object"^^xsd:string .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/eventprocessing.owl#EventObjectBody
+:EventObjectBody rdf:type owl:Class ;
+                 owl:equivalentClass [ rdf:type owl:Restriction ;
+                                       owl:onProperty :isEventObjectBodyOf ;
+                                       owl:someValuesFrom :EventObject
+                                     ] ;
+                 rdfs:subClassOf :EventObjectPart ;
+                 rdfs:comment "Some event processing systems need to distinguish between an event object header and its body, where the event object header is the part of the event object with known content (e.g. known vocabulary) that can be directly processed by the event processing system, and the body is the rest of the event object. The body may always be empty or missing."^^xsd:string ;
+                 rdfs:label "event object body"^^xsd:string .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/eventprocessing.owl#EventObjectHeader
+:EventObjectHeader rdf:type owl:Class ;
+                   owl:equivalentClass [ rdf:type owl:Restriction ;
+                                         owl:onProperty :isEventObjectHeaderOf ;
+                                         owl:someValuesFrom :EventObject
+                                       ] ;
+                   rdfs:subClassOf :EventObjectPart ,
+                                   [ rdf:type owl:Class ;
+                                     owl:unionOf ( [ rdf:type owl:Restriction ;
+                                                     owl:onProperty :hasEventDuration ;
+                                                     owl:someValuesFrom <http://www.loa-cnr.it/ontologies/DUL.owl#TimeInterval>
+                                                   ]
+                                                   [ rdf:type owl:Restriction ;
+                                                     owl:onProperty :hasEventObjectTime ;
+                                                     owl:someValuesFrom rdfs:Literal
+                                                   ]
+                                                 )
+                                   ] ,
+                                   [ rdf:type owl:Class ;
+                                     owl:unionOf ( [ rdf:type owl:Restriction ;
+                                                     owl:onProperty :hasEventObjectAttributeValue ;
+                                                     owl:someValuesFrom <http://www.loa-cnr.it/ontologies/DUL.owl#Region>
+                                                   ]
+                                                   [ rdf:type owl:Restriction ;
+                                                     owl:onProperty :hasEventObjectAttributeDataValue ;
+                                                     owl:someValuesFrom rdfs:Literal
+                                                   ]
+                                                 )
+                                   ] ,
+                                   [ rdf:type owl:Restriction ;
+                                     owl:onProperty rdfs:label ;
+                                     owl:someValuesFrom rdfs:Literal
+                                   ] ;
+                   rdfs:comment "Some event processing systems need to distinguish between an event object header and its body, where the event object header is the part of the event object with known content (e.g. known vocabulary) that can be directly processed by the event processing system. Although a header is considered mandatory for an event object, if not specified what the header consists of, it can be inferred by the system through the fact that it contains the \"known\" part, as opposed to the body that may contain a payload that the system cannot interpret."^^xsd:string ;
+                   rdfs:label "event object header"^^xsd:string .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/eventprocessing.owl#EventObjectPart
+:EventObjectPart rdf:type owl:Class ;
+                 owl:equivalentClass [ rdf:type owl:Class ;
+                                       owl:unionOf ( :EventObjectBody
+                                                     :EventObjectHeader
+                                                   )
+                                     ] ;
+                 rdfs:subClassOf <http://www.loa-cnr.it/ontologies/DUL.owl#InformationObject> ;
+                 rdfs:label "event object part"^^xsd:string .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/eventprocessing.owl#SensorOutput
+:SensorOutput rdf:type owl:Class ;
+              rdfs:subClassOf :EventObject ,
+                              [ rdf:type owl:Class ;
+                                owl:unionOf ( :ComplexEventObject
+                                              :SimpleEventObject
+                                            )
+                              ] ;
+              rdfs:comment "Class representing the alignement to ssn:SensorOutput, expressing the restriction that an ssn:SensorOutput is either a complex event or a simple event, depending on the sensor used."^^xsd:string ;
+              rdfs:label "sensor output"^^xsd:string .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/eventprocessing.owl#SimpleEventObject
+:SimpleEventObject rdf:type owl:Class ;
+                   rdfs:subClassOf :EventObject ;
+                   rdfs:comment "An event object that is not an abstraction of other event objects, nor is composed of other event objects."^^xsd:string ;
+                   rdfs:label "simple event object"^^xsd:string .
+
+
+###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

@@ -1,0 +1,15 @@
+{
+  "id": "nfdi-process-role-realization",
+  "name": "process",
+  "description": "A process individual links participants via obo:RO_0000057, realizes one or more roles via obo:BFO_0000055, and is bounded in time by obo:BFO_0000199 (occupies temporal region). This is the join point between the agent, role and temporal patterns.",
+  "category": "behavioral",
+  "domain": "general",
+  "competency_questions": "Which processes are recorded in the knowledge graph, and who participates in them?; Which role is realised in a given process, and over which period?",
+  "pattern_iri": "https://ontoboard.org/patterns/nfdi-process-role-realization.owl",
+  "source": "https://nfdi.fiz-karlsruhe.de/matwerk/patterns/",
+  "collection": "nfdi",
+  "publisher": "nfdi.fiz-karlsruhe.de",
+  "extracted_from": "nfdi",
+  "class_count": 11,
+  "property_count": 4
+}

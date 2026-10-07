@@ -1,0 +1,15 @@
+{
+  "id": "pmdco-participant-object-states",
+  "name": "Participant object states",
+  "description": "Describes an entity's state at different points in time while the identity of the entity remains, using temporally qualified continuants. The example tracks a microstructure quality (segregation factor) before and after annealing.",
+  "category": "temporal",
+  "domain": "materials",
+  "competency_questions": "What was the state of this object before and after the process? Which temporally qualified continuant is a state of which material entity? At which time does a given state exist, and which quality did the entity bear then?",
+  "pattern_iri": "https://ontoboard.org/patterns/pmdco-participant-object-states.owl",
+  "source": "https://materialdigital.github.io/core-ontology/docs/patterns.html",
+  "collection": "pmdco",
+  "publisher": "materialdigital.github.io",
+  "extracted_from": "pmdco",
+  "class_count": 17,
+  "property_count": 5
+}

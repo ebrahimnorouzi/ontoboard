@@ -1,0 +1,1002 @@
+@prefix : <http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@base <http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl> .
+
+<http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl> rdf:type owl:Ontology ;
+                                                                                     owl:imports <http://www.ontologydesignpatterns.org/cp/owl/observation.owl> ,
+                                                                                                 <http://www.ontologydesignpatterns.org/cp/owl/fsdas/speciesfactsheets.owl> ,
+                                                                                                 <http://www.ontologydesignpatterns.org/cp/owl/fsdas/waterareasfactsheets.owl> ;
+                                                                                     <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> "For an aquatic resource, what species, in what fishing areas, climatic zones, bottom types, depth zones, geo forms, horizontal and vertical distribution, and for what standardized abundance level, exploitation state and rate, have been observed? for what reference year? At what year the observation has been recorded?" ;
+                                                                                     <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasAuthor> "Aldo Gangemi (CNR), based on specifications by Claudio Baldassarre (UN-FAO), Caterina Caracciolo (UN-FAO), and Michael Erdmann (Ontoprise), for the NeOn project." ;
+                                                                                     <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasComponent> "http://ontologydesignpatterns.org/cp/owl/fsdas/speciesfactsheets.owl" ,
+                                                                                                                                                                         "http://ontologydesignpatterns.org/cp/owl/fsdas/waterareasfactsheets.owl" ;
+                                                                                     <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences> "We are able to query and reason on the data extracted from the FactSheets XML database, concerning the observation of aquatic resources. There are more data in that database, however." ;
+                                                                                     <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> "To represent the aquatic observation data extracted from factsheet application. An aquatic observation refers to a specific year, is about an aquatic resource, and is situated in a given habitat, in which the aquatic species from the resource live. Observations can have a reporting year that is different from the observation time." ;
+                                                                                     <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasUnitTest> """SELECT ?x
+WHERE {
+?x isObservationOf ?ar .
+?x forReferenceYear ?y1 .
+?x hasReportingYear ?y2 }""" ;
+                                                                                     <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#isSpecializationOf> "http://ontologydesignpattern.org/cp/owl/observation.owl" ;
+                                                                                     <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#relatedCPs> "http://ontologydesignpatterns.org/cp/owl/fsdas/catchrecord.owl" ;
+                                                                                     <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios> "The aquatic resource for Skipjack tuna in Northern Atlantic in 2004 (as reported in 2008) was observed with low abundance level." ;
+                                                                                     rdfs:comment "An ontology that represents the semantics of a database view about \"observations\" for an aquatic resource, aggregated once a year." ;
+                                                                                     rdfs:label "Aquatic resource observation ontology" ;
+                                                                                     owl:versionInfo """1.7
+- removed bug in restrictions involving year-based datatype properties1.6
+- added more annotations for uploading to ODP portal
+1.5
+- changed year datatype properties to xsd:int range for compatibility with data export
+1.4
+- added owl:differentFrom axioms between (clearly distinguishable) individuals from a same closed class
+- added enumerated class equivalences for closed classes
+- made by Aldo Gangemi
+1.3
+- amended labels for consistency with XML sources
+- made by Aldo Gangemi
+1.2:
+- added individuals for closed classes (nominals) of parameters
+- made by Aldo Gangemi
+1.1: 
+- broadened domain of property: ofFishingArea
+- added property: ofSpecies, and related restriction on AquaticResourceObservation
+- made by Aldo Gangemi
+1.0
+- created by Aldo Gangemi""" .
+
+#################################################################
+#    Annotation properties
+#################################################################
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements
+<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasAuthor
+<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasAuthor> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasComponent
+<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasComponent> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences
+<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent
+<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#isSpecializationOf
+<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#isSpecializationOf> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#relatedCPs
+<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#relatedCPs> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios
+<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios> rdf:type owl:AnnotationProperty .
+
+
+#################################################################
+#    Object Properties
+#################################################################
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#bottomTypeOfObservation
+:bottomTypeOfObservation rdf:type owl:ObjectProperty ;
+                         rdfs:subPropertyOf <http://www.ontologydesignpatterns.org/cp/owl/observation.owl#isParameterOf> ;
+                         owl:inverseOf :ofBottomType ;
+                         rdfs:domain :BottomType ;
+                         rdfs:range :AquaticResourceObservation ;
+                         rdfs:label "bottomTypeOfObservation" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#climaticZoneOfObservation
+:climaticZoneOfObservation rdf:type owl:ObjectProperty ;
+                           rdfs:subPropertyOf <http://www.ontologydesignpatterns.org/cp/owl/observation.owl#isParameterOf> ;
+                           owl:inverseOf :ofClimaticZone ;
+                           rdfs:domain :ClimaticZone ;
+                           rdfs:range :AquaticResourceObservation ;
+                           rdfs:label "climaticZoneOfObservation" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#depthZoneOfObservation
+:depthZoneOfObservation rdf:type owl:ObjectProperty ;
+                        rdfs:subPropertyOf <http://www.ontologydesignpatterns.org/cp/owl/observation.owl#isParameterOf> ;
+                        owl:inverseOf :ofDepthZone ;
+                        rdfs:domain :DepthZone ;
+                        rdfs:range :AquaticResourceObservation ;
+                        rdfs:label "depthZoneOfObservation" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#fishingAreaOfObservation
+:fishingAreaOfObservation rdf:type owl:ObjectProperty ;
+                          rdfs:subPropertyOf <http://www.ontologydesignpatterns.org/cp/owl/observation.owl#isParameterOf> ;
+                          owl:inverseOf :ofFishingArea ;
+                          rdfs:domain <http://www.fao.org/aims/aos/fi/water_FAO_areas.owl#FAO_fishing_area> ;
+                          rdfs:range :AquaticResourceObservation ;
+                          rdfs:label "areaOfObservation" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#geoFormOfObservation
+:geoFormOfObservation rdf:type owl:ObjectProperty ;
+                      rdfs:subPropertyOf <http://www.ontologydesignpatterns.org/cp/owl/observation.owl#isParameterOf> ;
+                      owl:inverseOf :ofGeoForm ;
+                      rdfs:domain :GeoForm ;
+                      rdfs:range :AquaticResourceObservation ;
+                      rdfs:label "geoFormOfObservation" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#horizontalDistributionOfObservation
+:horizontalDistributionOfObservation rdf:type owl:ObjectProperty ;
+                                     rdfs:subPropertyOf <http://www.ontologydesignpatterns.org/cp/owl/observation.owl#isParameterOf> ;
+                                     owl:inverseOf :ofHorizontalDistribution ;
+                                     rdfs:domain :HorizontalDistribution ;
+                                     rdfs:range :AquaticResourceObservation ;
+                                     rdfs:label "horizontalDistributionOfObservation" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#ofBottomType
+:ofBottomType rdf:type owl:ObjectProperty ;
+              rdfs:subPropertyOf <http://www.ontologydesignpatterns.org/cp/owl/observation.owl#hasParameter> ;
+              rdfs:domain :AquaticResourceObservation ;
+              rdfs:range :BottomType ;
+              rdfs:label "ofBottomType" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#ofClimaticZone
+:ofClimaticZone rdf:type owl:ObjectProperty ;
+                rdfs:subPropertyOf <http://www.ontologydesignpatterns.org/cp/owl/observation.owl#hasParameter> ;
+                rdfs:domain :AquaticResourceObservation ;
+                rdfs:range :ClimaticZone ;
+                rdfs:label "ofClimaticZone" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#ofDepthZone
+:ofDepthZone rdf:type owl:ObjectProperty ;
+             rdfs:subPropertyOf <http://www.ontologydesignpatterns.org/cp/owl/observation.owl#hasParameter> ;
+             rdfs:domain :AquaticResourceObservation ;
+             rdfs:range :DepthZone ;
+             rdfs:label "ofDepthZone" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#ofFishingArea
+:ofFishingArea rdf:type owl:ObjectProperty ;
+               rdfs:subPropertyOf <http://www.ontologydesignpatterns.org/cp/owl/observation.owl#hasParameter> ;
+               rdfs:domain :AquaticResourceObservation ;
+               rdfs:range <http://www.fao.org/aims/aos/fi/water_FAO_areas.owl#FAO_fishing_area> ;
+               rdfs:label "inFishingArea" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#ofGeoForm
+:ofGeoForm rdf:type owl:ObjectProperty ;
+           rdfs:subPropertyOf <http://www.ontologydesignpatterns.org/cp/owl/observation.owl#hasParameter> ;
+           rdfs:domain :AquaticResourceObservation ;
+           rdfs:range :GeoForm ;
+           rdfs:label "ofGeoForm" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#ofHorizontalDistribution
+:ofHorizontalDistribution rdf:type owl:ObjectProperty ;
+                          rdfs:subPropertyOf <http://www.ontologydesignpatterns.org/cp/owl/observation.owl#hasParameter> ;
+                          rdfs:domain :AquaticResourceObservation ;
+                          rdfs:range :HorizontalDistribution ;
+                          rdfs:label "ofHorizontalDistribution" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#ofSpecies
+:ofSpecies rdf:type owl:ObjectProperty ;
+           rdfs:subPropertyOf <http://www.ontologydesignpatterns.org/cp/owl/observation.owl#hasParameter> ;
+           owl:inverseOf :speciesFromObservation ;
+           rdfs:domain :AquaticResourceObservation ;
+           rdfs:range <http://www.fao.org/aims/aos/fi/species_taxonomic.owl#Species> ;
+           rdfs:label "ofSpecies" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#ofStdAbundanceLevel
+:ofStdAbundanceLevel rdf:type owl:ObjectProperty ;
+                     rdfs:subPropertyOf <http://www.ontologydesignpatterns.org/cp/owl/observation.owl#hasParameter> ;
+                     owl:inverseOf :stdAbundanceLevelOfObservation ;
+                     rdfs:domain :AquaticResourceObservation ;
+                     rdfs:range :StdAbundanceLevel ;
+                     rdfs:label "ofStdAbundanceLevel" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#ofStdExploitationRate
+:ofStdExploitationRate rdf:type owl:ObjectProperty ;
+                       rdfs:subPropertyOf <http://www.ontologydesignpatterns.org/cp/owl/observation.owl#hasParameter> ;
+                       owl:inverseOf :stdExploitationRateOfObservation ;
+                       rdfs:domain :AquaticResourceObservation ;
+                       rdfs:range :StdExploitationRate ;
+                       rdfs:label "ofStdExploitationRate" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#ofStdExploitationState
+:ofStdExploitationState rdf:type owl:ObjectProperty ;
+                        rdfs:subPropertyOf <http://www.ontologydesignpatterns.org/cp/owl/observation.owl#hasParameter> ;
+                        owl:inverseOf :stdExploitationStateOfObservation ;
+                        rdfs:domain :AquaticResourceObservation ;
+                        rdfs:range :StdExploitationState ;
+                        rdfs:label "ofStdExploitationState" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#ofVerticalDistribution
+:ofVerticalDistribution rdf:type owl:ObjectProperty ;
+                        rdfs:subPropertyOf <http://www.ontologydesignpatterns.org/cp/owl/observation.owl#hasParameter> ;
+                        owl:inverseOf :verticalDistributionOfObservation ;
+                        rdfs:domain :AquaticResourceObservation ;
+                        rdfs:range :VerticalDistribution ;
+                        rdfs:label "ofVerticalDistribution" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#speciesFromObservation
+:speciesFromObservation rdf:type owl:ObjectProperty ;
+                        rdfs:subPropertyOf <http://www.ontologydesignpatterns.org/cp/owl/observation.owl#isParameterOf> ;
+                        rdfs:domain <http://www.fao.org/aims/aos/fi/species_taxonomic.owl#Species> ;
+                        rdfs:range :AquaticResourceObservation ;
+                        rdfs:label "speciesFromObservation" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#stdAbundanceLevelOfObservation
+:stdAbundanceLevelOfObservation rdf:type owl:ObjectProperty ;
+                                rdfs:subPropertyOf <http://www.ontologydesignpatterns.org/cp/owl/observation.owl#isParameterOf> ;
+                                rdfs:domain :StdAbundanceLevel ;
+                                rdfs:range :AquaticResourceObservation ;
+                                rdfs:label "stdAbundanceLevelOfObservation" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#stdExploitationRateOfObservation
+:stdExploitationRateOfObservation rdf:type owl:ObjectProperty ;
+                                  rdfs:subPropertyOf <http://www.ontologydesignpatterns.org/cp/owl/observation.owl#isParameterOf> ;
+                                  rdfs:domain :StdExploitationRate ;
+                                  rdfs:range :AquaticResourceObservation ;
+                                  rdfs:label "stdExploitationRateOfObservation" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#stdExploitationStateOfObservation
+:stdExploitationStateOfObservation rdf:type owl:ObjectProperty ;
+                                   rdfs:subPropertyOf <http://www.ontologydesignpatterns.org/cp/owl/observation.owl#isParameterOf> ;
+                                   rdfs:domain :StdExploitationState ;
+                                   rdfs:range :AquaticResourceObservation ;
+                                   rdfs:label "stdExploitationStateOfObservation" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#verticalDistributionOfObservation
+:verticalDistributionOfObservation rdf:type owl:ObjectProperty ;
+                                   rdfs:subPropertyOf <http://www.ontologydesignpatterns.org/cp/owl/observation.owl#isParameterOf> ;
+                                   rdfs:domain :VerticalDistribution ;
+                                   rdfs:range :AquaticResourceObservation ;
+                                   rdfs:label "verticalDistributionOfObservation" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/observation.owl#hasObservation
+<http://www.ontologydesignpatterns.org/cp/owl/observation.owl#hasObservation> rdf:type owl:ObjectProperty .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/observation.owl#hasParameter
+<http://www.ontologydesignpatterns.org/cp/owl/observation.owl#hasParameter> rdf:type owl:ObjectProperty .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/observation.owl#isObservationOf
+<http://www.ontologydesignpatterns.org/cp/owl/observation.owl#isObservationOf> rdf:type owl:ObjectProperty .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/observation.owl#isParameterOf
+<http://www.ontologydesignpatterns.org/cp/owl/observation.owl#isParameterOf> rdf:type owl:ObjectProperty .
+
+
+#################################################################
+#    Data properties
+#################################################################
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#forReferenceYear
+:forReferenceYear rdf:type owl:DatatypeProperty ,
+                           owl:FunctionalProperty ;
+                  rdfs:domain :AquaticResourceObservation ;
+                  rdfs:range xsd:int ;
+                  rdfs:label "forReferenceYear" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#hasReportingYear
+:hasReportingYear rdf:type owl:DatatypeProperty ;
+                  rdfs:subPropertyOf <http://www.ontologydesignpatterns.org/cp/owl/observation.owl#inDate> ;
+                  rdf:type owl:FunctionalProperty ;
+                  rdfs:domain :AquaticResourceObservation ;
+                  rdfs:range xsd:int ;
+                  rdfs:label "hasReportingYear" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/observation.owl#inDate
+<http://www.ontologydesignpatterns.org/cp/owl/observation.owl#inDate> rdf:type owl:DatatypeProperty .
+
+
+#################################################################
+#    Classes
+#################################################################
+
+###  http://www.fao.org/aims/aos/fi/species_taxonomic.owl#Species
+<http://www.fao.org/aims/aos/fi/species_taxonomic.owl#Species> rdf:type owl:Class .
+
+
+###  http://www.fao.org/aims/aos/fi/water_FAO_areas.owl#FAO_fishing_area
+<http://www.fao.org/aims/aos/fi/water_FAO_areas.owl#FAO_fishing_area> rdf:type owl:Class .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#AquaticResource
+:AquaticResource rdf:type owl:Class ;
+                 rdfs:subClassOf [ rdf:type owl:Restriction ;
+                                   owl:onProperty <http://www.ontologydesignpatterns.org/cp/owl/observation.owl#hasObservation> ;
+                                   owl:someValuesFrom :AquaticResourceObservation
+                                 ] ;
+                 rdfs:comment "An aquatic resource." ;
+                 rdfs:label "Aquatic resource" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#AquaticResourceObservation
+:AquaticResourceObservation rdf:type owl:Class ;
+                            rdfs:subClassOf <http://www.ontologydesignpatterns.org/cp/owl/observation.owl#Observation> ,
+                                            [ rdf:type owl:Restriction ;
+                                              owl:onProperty <http://www.ontologydesignpatterns.org/cp/owl/observation.owl#isObservationOf> ;
+                                              owl:allValuesFrom :AquaticResource
+                                            ] ,
+                                            [ rdf:type owl:Restriction ;
+                                              owl:onProperty :ofBottomType ;
+                                              owl:minQualifiedCardinality "0"^^xsd:nonNegativeInteger ;
+                                              owl:onClass :BottomType
+                                            ] ,
+                                            [ rdf:type owl:Restriction ;
+                                              owl:onProperty :ofClimaticZone ;
+                                              owl:minQualifiedCardinality "0"^^xsd:nonNegativeInteger ;
+                                              owl:onClass :ClimaticZone
+                                            ] ,
+                                            [ rdf:type owl:Restriction ;
+                                              owl:onProperty :ofDepthZone ;
+                                              owl:minQualifiedCardinality "0"^^xsd:nonNegativeInteger ;
+                                              owl:onClass :DepthZone
+                                            ] ,
+                                            [ rdf:type owl:Restriction ;
+                                              owl:onProperty :ofFishingArea ;
+                                              owl:minQualifiedCardinality "0"^^xsd:nonNegativeInteger ;
+                                              owl:onClass <http://www.fao.org/aims/aos/fi/water_FAO_areas.owl#FAO_fishing_area>
+                                            ] ,
+                                            [ rdf:type owl:Restriction ;
+                                              owl:onProperty :ofGeoForm ;
+                                              owl:minQualifiedCardinality "0"^^xsd:nonNegativeInteger ;
+                                              owl:onClass :GeoForm
+                                            ] ,
+                                            [ rdf:type owl:Restriction ;
+                                              owl:onProperty :ofHorizontalDistribution ;
+                                              owl:minQualifiedCardinality "0"^^xsd:nonNegativeInteger ;
+                                              owl:onClass :HorizontalDistribution
+                                            ] ,
+                                            [ rdf:type owl:Restriction ;
+                                              owl:onProperty :ofSpecies ;
+                                              owl:minQualifiedCardinality "0"^^xsd:nonNegativeInteger ;
+                                              owl:onClass <http://www.fao.org/aims/aos/fi/species_taxonomic.owl#Species>
+                                            ] ,
+                                            [ rdf:type owl:Restriction ;
+                                              owl:onProperty :ofStdAbundanceLevel ;
+                                              owl:minQualifiedCardinality "0"^^xsd:nonNegativeInteger ;
+                                              owl:onClass :StdAbundanceLevel
+                                            ] ,
+                                            [ rdf:type owl:Restriction ;
+                                              owl:onProperty :ofStdExploitationRate ;
+                                              owl:minQualifiedCardinality "0"^^xsd:nonNegativeInteger ;
+                                              owl:onClass :StdExploitationRate
+                                            ] ,
+                                            [ rdf:type owl:Restriction ;
+                                              owl:onProperty :ofStdExploitationState ;
+                                              owl:minQualifiedCardinality "0"^^xsd:nonNegativeInteger ;
+                                              owl:onClass :StdExploitationState
+                                            ] ,
+                                            [ rdf:type owl:Restriction ;
+                                              owl:onProperty :ofVerticalDistribution ;
+                                              owl:minQualifiedCardinality "0"^^xsd:nonNegativeInteger ;
+                                              owl:onClass :VerticalDistribution
+                                            ] ,
+                                            [ rdf:type owl:Restriction ;
+                                              owl:onProperty <http://www.ontologydesignpatterns.org/cp/owl/observation.owl#isObservationOf> ;
+                                              owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+                                              owl:onClass :AquaticResource
+                                            ] ,
+                                            [ rdf:type owl:Restriction ;
+                                              owl:onProperty :forReferenceYear ;
+                                              owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+                                              owl:onDataRange xsd:int
+                                            ] ,
+                                            [ rdf:type owl:Restriction ;
+                                              owl:onProperty :hasReportingYear ;
+                                              owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+                                              owl:onDataRange xsd:int
+                                            ] ;
+                            rdfs:comment "An observation singled out of reported data, once a year, about an aquatic resource." ;
+                            rdfs:label "Aquatic resource observation" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#BottomType
+:BottomType rdf:type owl:Class ;
+            owl:equivalentClass [ rdf:type owl:Class ;
+                                  owl:oneOf ( :CoralReef
+                                              :HardBottom
+                                              :Seagrass
+                                              :SoftBottom
+                                              :UnspecifiedClimaticZone
+                                            )
+                                ] ;
+            rdfs:subClassOf <http://www.ontologydesignpatterns.org/cp/owl/observation.owl#Parameter> ;
+            rdfs:label "BottomType" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#ClimaticZone
+:ClimaticZone rdf:type owl:Class ;
+              owl:equivalentClass [ rdf:type owl:Class ;
+                                    owl:oneOf ( :Polar
+                                                :Temperate
+                                                :Tropical
+                                              )
+                                  ] ;
+              rdfs:subClassOf <http://www.ontologydesignpatterns.org/cp/owl/observation.owl#Parameter> ;
+              rdfs:label "ClimaticZone" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#DepthZone
+:DepthZone rdf:type owl:Class ;
+           owl:equivalentClass [ rdf:type owl:Class ;
+                                 owl:oneOf ( :Abyssal
+                                             :Coastal
+                                             :Shelf
+                                             :Slope
+                                             :UnspecifiedDepthZone
+                                           )
+                               ] ;
+           rdfs:subClassOf <http://www.ontologydesignpatterns.org/cp/owl/observation.owl#Parameter> ;
+           rdfs:label "DepthZone" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#GeoForm
+:GeoForm rdf:type owl:Class ;
+         owl:equivalentClass [ rdf:type owl:Class ;
+                               owl:oneOf ( :Canyons
+                                           :Estuaries
+                                           :Fjords
+                                           :Lagoons
+                                           :Seamounts
+                                           :UnspecifiedGeoforms
+                                         )
+                             ] ;
+         rdfs:subClassOf <http://www.ontologydesignpatterns.org/cp/owl/observation.owl#Parameter> ;
+         rdfs:label "GeoForm" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#HorizontalDistribution
+:HorizontalDistribution rdf:type owl:Class ;
+                        owl:equivalentClass [ rdf:type owl:Class ;
+                                              owl:oneOf ( :Estuarine
+                                                          :Littoral
+                                                          :Neritic
+                                                          :Oceanic
+                                                          :UnspecifiedHorizontalDistribution
+                                                        )
+                                            ] ;
+                        rdfs:subClassOf <http://www.ontologydesignpatterns.org/cp/owl/observation.owl#Parameter> ;
+                        rdfs:label "HorizontalDistribution" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#StdAbundanceLevel
+:StdAbundanceLevel rdf:type owl:Class ;
+                   owl:equivalentClass [ rdf:type owl:Class ;
+                                         owl:oneOf ( :DepletedStdAbundanceLevel
+                                                     :IntermediateStdAbundanceLevel
+                                                     :LowStdAbundanceLevel
+                                                     :NotProvidedStdAbundanceLevel
+                                                     :PreExploitationBiomassOrHighStdAbundanceLevel
+                                                     :UncertainOrNotAssessedStdAbundanceLevel
+                                                   )
+                                       ] ;
+                   rdfs:subClassOf <http://www.ontologydesignpatterns.org/cp/owl/observation.owl#Parameter> ;
+                   rdfs:label "StdAbundanceLevel" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#StdExploitationRate
+:StdExploitationRate rdf:type owl:Class ;
+                     owl:equivalentClass [ rdf:type owl:Class ;
+                                           owl:oneOf ( :HighFishingMortality
+                                                       :ModerateFishingMortality
+                                                       :NoOrLowFishingMortality
+                                                       :NotProvidedExploitationRate
+                                                       :UncertainOrNotAssessedExploitationRate
+                                                     )
+                                         ] ;
+                     rdfs:subClassOf <http://www.ontologydesignpatterns.org/cp/owl/observation.owl#Parameter> ;
+                     rdfs:label "StdExploitationRate" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#StdExploitationState
+:StdExploitationState rdf:type owl:Class ;
+                      owl:equivalentClass [ rdf:type owl:Class ;
+                                            owl:oneOf ( :DepletedExploitationState
+                                                        :FullyExploited
+                                                        :ModeratelyExploited
+                                                        :NoSpecificAssessment
+                                                        :NotProvidedExploitationState
+                                                        :Overexploited
+                                                        :Recovering
+                                                        :UncertainExploitationState
+                                                        :Underexploited
+                                                        :Unexploited
+                                                      )
+                                          ] ;
+                      rdfs:subClassOf <http://www.ontologydesignpatterns.org/cp/owl/observation.owl#Parameter> ;
+                      rdfs:label "StdExploitationState" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#VerticalDistribution
+:VerticalDistribution rdf:type owl:Class ;
+                      owl:equivalentClass [ rdf:type owl:Class ;
+                                            owl:oneOf ( :DemersalOrBenthic
+                                                        :Pelagic
+                                                        :UnspecifiedVerticalDistribution
+                                                      )
+                                          ] ;
+                      rdfs:subClassOf <http://www.ontologydesignpatterns.org/cp/owl/observation.owl#Parameter> ;
+                      rdfs:label "VerticalDistribution" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/observation.owl#Observation
+<http://www.ontologydesignpatterns.org/cp/owl/observation.owl#Observation> rdf:type owl:Class .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/observation.owl#Parameter
+<http://www.ontologydesignpatterns.org/cp/owl/observation.owl#Parameter> rdf:type owl:Class .
+
+
+###  http://www.w3.org/2002/07/owl#Thing
+owl:Thing rdf:type owl:Class .
+
+
+#################################################################
+#    Individuals
+#################################################################
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#Abyssal
+:Abyssal rdf:type owl:NamedIndividual ,
+                  :DepthZone ,
+                  owl:Thing ;
+         rdfs:label "Abyssal" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#Canyons
+:Canyons rdf:type owl:NamedIndividual ,
+                  :GeoForm ,
+                  owl:Thing ;
+         rdfs:label "Canyons" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#Coastal
+:Coastal rdf:type owl:NamedIndividual ,
+                  :DepthZone ,
+                  owl:Thing ;
+         rdfs:label "Coastal" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#CoralReef
+:CoralReef rdf:type owl:NamedIndividual ,
+                    :BottomType ,
+                    owl:Thing ;
+           rdfs:label "Coral Reef" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#DemersalOrBenthic
+:DemersalOrBenthic rdf:type owl:NamedIndividual ,
+                            :VerticalDistribution ,
+                            owl:Thing ;
+                   rdfs:label "Demersal/Benthic" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#DepletedExploitationState
+:DepletedExploitationState rdf:type owl:NamedIndividual ,
+                                    :StdExploitationState ,
+                                    owl:Thing ;
+                           rdfs:label "Depleted" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#DepletedStdAbundanceLevel
+:DepletedStdAbundanceLevel rdf:type owl:NamedIndividual ,
+                                    :StdAbundanceLevel ,
+                                    owl:Thing ;
+                           rdfs:label "Depleted" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#Estuaries
+:Estuaries rdf:type owl:NamedIndividual ,
+                    :GeoForm ,
+                    owl:Thing ;
+           rdfs:label "Estuaries" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#Estuarine
+:Estuarine rdf:type owl:NamedIndividual ,
+                    :HorizontalDistribution ,
+                    owl:Thing ;
+           rdfs:label "Estuarine" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#Fjords
+:Fjords rdf:type owl:NamedIndividual ,
+                 :GeoForm ,
+                 owl:Thing ;
+        rdfs:label "Fjords" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#FullyExploited
+:FullyExploited rdf:type owl:NamedIndividual ,
+                         :StdExploitationState ,
+                         owl:Thing ;
+                rdfs:label "Fully Exploited" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#HardBottom
+:HardBottom rdf:type owl:NamedIndividual ,
+                     :BottomType ,
+                     owl:Thing ;
+            rdfs:label "Hard Bottom" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#HighFishingMortality
+:HighFishingMortality rdf:type owl:NamedIndividual ,
+                               :StdExploitationRate ,
+                               owl:Thing ;
+                      rdfs:label "High Fishing Mortality" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#IntermediateStdAbundanceLevel
+:IntermediateStdAbundanceLevel rdf:type owl:NamedIndividual ,
+                                        :StdAbundanceLevel ,
+                                        owl:Thing ;
+                               rdfs:label "Intermediate Abundance" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#Lagoons
+:Lagoons rdf:type owl:NamedIndividual ,
+                  :GeoForm ,
+                  owl:Thing ;
+         rdfs:label "Lagoons" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#Littoral
+:Littoral rdf:type owl:NamedIndividual ,
+                   :HorizontalDistribution ,
+                   owl:Thing ;
+          rdfs:label "Littoral" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#LowStdAbundanceLevel
+:LowStdAbundanceLevel rdf:type owl:NamedIndividual ,
+                               :StdAbundanceLevel ,
+                               owl:Thing ;
+                      rdfs:label "Low Abundance" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#ModerateFishingMortality
+:ModerateFishingMortality rdf:type owl:NamedIndividual ,
+                                   :StdExploitationRate ,
+                                   owl:Thing ;
+                          rdfs:label "Moderate Fishing Mortality" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#ModeratelyExploited
+:ModeratelyExploited rdf:type owl:NamedIndividual ,
+                              :StdExploitationState ,
+                              owl:Thing ;
+                     rdfs:label "Moderately Exploited" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#Neritic
+:Neritic rdf:type owl:NamedIndividual ,
+                  :HorizontalDistribution ,
+                  owl:Thing ;
+         rdfs:label "Neritic" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#NoOrLowFishingMortality
+:NoOrLowFishingMortality rdf:type owl:NamedIndividual ,
+                                  :StdExploitationRate ,
+                                  owl:Thing ;
+                         rdfs:label "No Or Low Fishing Mortality" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#NoSpecificAssessment
+:NoSpecificAssessment rdf:type owl:NamedIndividual ,
+                               :StdExploitationState ,
+                               owl:Thing ;
+                      rdfs:label "No Specific Assessment" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#NotProvidedExploitationRate
+:NotProvidedExploitationRate rdf:type owl:NamedIndividual ,
+                                      :StdExploitationRate ,
+                                      owl:Thing ;
+                             rdfs:label "Not Provided" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#NotProvidedExploitationState
+:NotProvidedExploitationState rdf:type owl:NamedIndividual ,
+                                       :StdExploitationState ,
+                                       owl:Thing ;
+                              rdfs:label "Not Provided" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#NotProvidedStdAbundanceLevel
+:NotProvidedStdAbundanceLevel rdf:type owl:NamedIndividual ,
+                                       :StdAbundanceLevel ,
+                                       owl:Thing ;
+                              rdfs:label "Not Provided" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#Oceanic
+:Oceanic rdf:type owl:NamedIndividual ,
+                  :HorizontalDistribution ,
+                  owl:Thing ;
+         rdfs:label "Oceanic" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#Overexploited
+:Overexploited rdf:type owl:NamedIndividual ,
+                        :StdExploitationState ,
+                        owl:Thing ;
+               rdfs:label "Overexploited" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#Pelagic
+:Pelagic rdf:type owl:NamedIndividual ,
+                  :VerticalDistribution ,
+                  owl:Thing ;
+         rdfs:label "Pelagic" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#Polar
+:Polar rdf:type owl:NamedIndividual ,
+                :ClimaticZone ,
+                owl:Thing ;
+       rdfs:label "Polar" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#PreExploitationBiomassOrHighStdAbundanceLevel
+:PreExploitationBiomassOrHighStdAbundanceLevel rdf:type owl:NamedIndividual ,
+                                                        :StdAbundanceLevel ,
+                                                        owl:Thing ;
+                                               rdfs:label "PreExploitation Biomass Or High Abundance" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#Recovering
+:Recovering rdf:type owl:NamedIndividual ,
+                     :StdExploitationState ,
+                     owl:Thing ;
+            rdfs:label "Recovering" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#Seagrass
+:Seagrass rdf:type owl:NamedIndividual ,
+                   :BottomType ,
+                   owl:Thing ;
+          rdfs:label "Seagrass" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#Seamounts
+:Seamounts rdf:type owl:NamedIndividual ,
+                    :GeoForm ,
+                    owl:Thing ;
+           rdfs:label "Seamounts" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#Shelf
+:Shelf rdf:type owl:NamedIndividual ,
+                :DepthZone ,
+                owl:Thing ;
+       rdfs:label "Shelf" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#Slope
+:Slope rdf:type owl:NamedIndividual ,
+                :DepthZone ,
+                owl:Thing ;
+       rdfs:label "Slope" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#SoftBottom
+:SoftBottom rdf:type owl:NamedIndividual ,
+                     :BottomType ,
+                     owl:Thing ;
+            rdfs:label "SoftBottom" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#Temperate
+:Temperate rdf:type owl:NamedIndividual ,
+                    :ClimaticZone ,
+                    owl:Thing ;
+           rdfs:label "Temperate" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#Tropical
+:Tropical rdf:type owl:NamedIndividual ,
+                   :ClimaticZone ,
+                   owl:Thing ;
+          rdfs:label "Tropical" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#UncertainExploitationState
+:UncertainExploitationState rdf:type owl:NamedIndividual ,
+                                     :StdExploitationState ,
+                                     owl:Thing ;
+                            rdfs:label "Uncertain Exploitation State" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#UncertainOrNotAssessedExploitationRate
+:UncertainOrNotAssessedExploitationRate rdf:type owl:NamedIndividual ,
+                                                 :StdExploitationRate ,
+                                                 owl:Thing ;
+                                        rdfs:label "Uncertain/Not Assessed" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#UncertainOrNotAssessedStdAbundanceLevel
+:UncertainOrNotAssessedStdAbundanceLevel rdf:type owl:NamedIndividual ,
+                                                  :StdAbundanceLevel ,
+                                                  owl:Thing ;
+                                         rdfs:label "Uncertain/Not Assessed" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#Underexploited
+:Underexploited rdf:type owl:NamedIndividual ,
+                         :StdExploitationState ,
+                         owl:Thing ;
+                rdfs:label "Underexploited" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#Unexploited
+:Unexploited rdf:type owl:NamedIndividual ,
+                      :StdExploitationState ,
+                      owl:Thing ;
+             rdfs:label "Unexploited" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#UnspecifiedClimaticZone
+:UnspecifiedClimaticZone rdf:type owl:NamedIndividual ,
+                                  :BottomType ,
+                                  owl:Thing ;
+                         rdfs:label "Unspecified" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#UnspecifiedDepthZone
+:UnspecifiedDepthZone rdf:type owl:NamedIndividual ,
+                               :DepthZone ,
+                               owl:Thing ;
+                      rdfs:label "Unspecified" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#UnspecifiedGeoforms
+:UnspecifiedGeoforms rdf:type owl:NamedIndividual ,
+                              :GeoForm ,
+                              owl:Thing ;
+                     rdfs:label "Unspecified" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#UnspecifiedHorizontalDistribution
+:UnspecifiedHorizontalDistribution rdf:type owl:NamedIndividual ,
+                                            :HorizontalDistribution ,
+                                            owl:Thing ;
+                                   rdfs:label "Unspecified" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresourceobservation.owl#UnspecifiedVerticalDistribution
+:UnspecifiedVerticalDistribution rdf:type owl:NamedIndividual ,
+                                          :VerticalDistribution ,
+                                          owl:Thing ;
+                                 rdfs:label "Unspecified" .
+
+
+#################################################################
+#    General axioms
+#################################################################
+
+[ rdf:type owl:AllDisjointClasses ;
+  owl:members ( :BottomType
+                :ClimaticZone
+                :DepthZone
+                :GeoForm
+                :HorizontalDistribution
+                :StdAbundanceLevel
+                :StdExploitationRate
+                :StdExploitationState
+                :VerticalDistribution
+              )
+] .
+
+
+[ rdf:type owl:AllDifferent ;
+  owl:distinctMembers ( :Abyssal
+                        :Coastal
+                        :Shelf
+                        :Slope
+                      )
+] .
+
+
+[ rdf:type owl:AllDifferent ;
+  owl:distinctMembers ( :Canyons
+                        :Estuaries
+                        :Fjords
+                        :Lagoons
+                        :Seamounts
+                      )
+] .
+
+
+[ rdf:type owl:AllDifferent ;
+  owl:distinctMembers ( :CoralReef
+                        :HardBottom
+                        :Seagrass
+                        :SoftBottom
+                      )
+] .
+
+
+[ rdf:type owl:AllDifferent ;
+  owl:distinctMembers ( :DemersalOrBenthic
+                        :Pelagic
+                      )
+] .
+
+
+[ rdf:type owl:AllDifferent ;
+  owl:distinctMembers ( :DepletedExploitationState
+                        :FullyExploited
+                        :ModeratelyExploited
+                        :Overexploited
+                        :Recovering
+                        :Underexploited
+                        :Unexploited
+                      )
+] .
+
+
+[ rdf:type owl:AllDifferent ;
+  owl:distinctMembers ( :DepletedStdAbundanceLevel
+                        :IntermediateStdAbundanceLevel
+                        :LowStdAbundanceLevel
+                        :PreExploitationBiomassOrHighStdAbundanceLevel
+                      )
+] .
+
+
+[ rdf:type owl:AllDifferent ;
+  owl:distinctMembers ( :Estuarine
+                        :Littoral
+                        :Neritic
+                        :Oceanic
+                      )
+] .
+
+
+[ rdf:type owl:AllDifferent ;
+  owl:distinctMembers ( :HighFishingMortality
+                        :ModerateFishingMortality
+                        :NoOrLowFishingMortality
+                      )
+] .
+
+
+[ rdf:type owl:AllDifferent ;
+  owl:distinctMembers ( :Polar
+                        :Temperate
+                        :Tropical
+                      )
+] .
+
+
+###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

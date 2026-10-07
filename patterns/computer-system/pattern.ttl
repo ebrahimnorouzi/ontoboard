@@ -1,0 +1,109 @@
+@prefix : <http://mklab.iti.gr/pericles/ComputerSystem_ODP#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@base <http://mklab.iti.gr/pericles/ComputerSystem_ODP> .
+
+<http://mklab.iti.gr/pericles/ComputerSystem_ODP> rdf:type owl:Ontology ;
+                                                   owl:imports <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl> ;
+                                                   <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> """What is currently installed in a computer? A computer uses specific pieces of hardware and software.
+What software or hardware is required so that some other software or hardware can operate properly? This relationship is represented with properties requiresSoftware and requiresHardware.
+What software or hardware is compatible with other software or hardware? This is expressed via the isCompatibleWith relationship.""" ;
+                                                   <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences> "The design pattern is expected to facilitate the creation of computer system domain ontologies that can be exploited in numerous fields. A well-established, comprehensible pattern will prove to be advantageous." ;
+                                                   <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> "The pattern intends to model computer systems based on a hardware/software approach." ;
+                                                   <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios> """Some examples of instantiation of the ComputerSystem ODP are:
+  1. “The computer uses Ubuntu 16.04”
+  2. “The graphics card requires driver A”
+  3. “The software is compatible with Windows 10”
+  4. “The processor is compatible with motherboard B”""" .
+
+#################################################################
+#    Object Properties
+#################################################################
+
+###  http://mklab.iti.gr/pericles/ComputerSystem_ODP#isCompatibleWith
+:isCompatibleWith rdf:type owl:ObjectProperty ;
+                  rdfs:comment "Represents the relationship of compatibility between two components." ;
+                  rdfs:label "is compatible with" .
+
+
+###  http://mklab.iti.gr/pericles/ComputerSystem_ODP#requiresHardware
+:requiresHardware rdf:type owl:ObjectProperty ;
+                  rdfs:range :Hardware ;
+                  rdfs:comment "Indicates that an entity requires a certain piece of hardware to operate." ;
+                  rdfs:label "requires hardware" .
+
+
+###  http://mklab.iti.gr/pericles/ComputerSystem_ODP#requiresSoftware
+:requiresSoftware rdf:type owl:ObjectProperty ;
+                  rdfs:range :Software ;
+                  rdfs:comment "Indicates that an entity requires a certain piece of software to operate." ;
+                  rdfs:label "requires software" .
+
+
+###  http://mklab.iti.gr/pericles/ComputerSystem_ODP#usesDriver
+:usesDriver rdf:type owl:ObjectProperty ;
+            rdfs:subPropertyOf :usesSoftware ;
+            rdfs:range :Driver ;
+            rdfs:comment "Indicates the usage of a specific driver." ;
+            rdfs:label "uses driver" .
+
+
+###  http://mklab.iti.gr/pericles/ComputerSystem_ODP#usesHardware
+:usesHardware rdf:type owl:ObjectProperty ;
+              rdfs:range :Hardware ;
+              rdfs:comment "Indicates the usage of a specific piece of hardware." ;
+              rdfs:label "uses hardware" .
+
+
+###  http://mklab.iti.gr/pericles/ComputerSystem_ODP#usesOperatingSystem
+:usesOperatingSystem rdf:type owl:ObjectProperty ;
+                     rdfs:subPropertyOf :usesSoftware ;
+                     rdfs:range :OperatingSystem ;
+                     rdfs:comment "Indicates the usage of a certain Operating System." ;
+                     rdfs:label "uses Operating System" .
+
+
+###  http://mklab.iti.gr/pericles/ComputerSystem_ODP#usesSoftware
+:usesSoftware rdf:type owl:ObjectProperty ;
+              rdfs:range :Software ;
+              rdfs:comment "Indicates the usage of a specific piece of software." ;
+              rdfs:label "uses software" .
+
+
+#################################################################
+#    Classes
+#################################################################
+
+###  http://mklab.iti.gr/pericles/ComputerSystem_ODP#Computer
+:Computer rdf:type owl:Class ;
+          rdfs:comment "This entity represents computers of any type, size, cost and application." ;
+          rdfs:label "Computer" .
+
+
+###  http://mklab.iti.gr/pericles/ComputerSystem_ODP#Driver
+:Driver rdf:type owl:Class ;
+        rdfs:subClassOf :Software ;
+        rdfs:label "Driver" .
+
+
+###  http://mklab.iti.gr/pericles/ComputerSystem_ODP#Hardware
+:Hardware rdf:type owl:Class ;
+          rdfs:comment "A physical component or a collection of physical components used by (or within or aside) a computer." ;
+          rdfs:label "Hardware" .
+
+
+###  http://mklab.iti.gr/pericles/ComputerSystem_ODP#OperatingSystem
+:OperatingSystem rdf:type owl:Class ;
+                 rdfs:subClassOf :Software ;
+                 rdfs:label "Operating System" .
+
+
+###  http://mklab.iti.gr/pericles/ComputerSystem_ODP#Software
+:Software rdf:type owl:Class ;
+          rdfs:label "Software" .
+
+
+###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

@@ -1,0 +1,116 @@
+@prefix : <https://ontoboard.org/patterns/pmdco-scalar-value-specification.owl#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@base <https://ontoboard.org/patterns/pmdco-scalar-value-specification.owl> .
+
+<https://ontoboard.org/patterns/pmdco-scalar-value-specification.owl> rdf:type owl:Ontology .
+
+#################################################################
+#    Annotation properties
+#################################################################
+
+###  http://purl.obolibrary.org/obo/IAO_0000112
+<http://purl.obolibrary.org/obo/IAO_0000112> rdf:type owl:AnnotationProperty .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000115
+<http://purl.obolibrary.org/obo/IAO_0000115> rdf:type owl:AnnotationProperty .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000116
+<http://purl.obolibrary.org/obo/IAO_0000116> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.w3.org/2004/02/skos/core#definition
+<http://www.w3.org/2004/02/skos/core#definition> rdf:type owl:AnnotationProperty .
+
+
+#################################################################
+#    Object Properties
+#################################################################
+
+###  http://purl.obolibrary.org/obo/IAO_0000039
+<http://purl.obolibrary.org/obo/IAO_0000039> rdf:type owl:ObjectProperty ,
+                                                      owl:FunctionalProperty ;
+                                             rdfs:range <http://purl.obolibrary.org/obo/IAO_0000003> ;
+                                             rdfs:label "has measurement unit label"@en .
+
+
+###  https://w3id.org/pmd/co/PMD_0000077
+<https://w3id.org/pmd/co/PMD_0000077> rdf:type owl:ObjectProperty ;
+                                      rdfs:label "specified by value"@en ;
+                                      <http://www.w3.org/2004/02/skos/core#definition> "A relation between an entity and a value specification which is about this entity."@en .
+
+
+#################################################################
+#    Data properties
+#################################################################
+
+###  http://purl.obolibrary.org/obo/OBI_0001937
+<http://purl.obolibrary.org/obo/OBI_0001937> rdf:type owl:DatatypeProperty ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "A relation between a value specification and a number that quantifies it."@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000116> "A range of 'real' might be better than 'float'. For now we follow 'has measurement value' until we can consider technical issues with SPARQL queries and reasoning." ;
+                                             rdfs:label "has specified numeric value" .
+
+
+#################################################################
+#    Classes
+#################################################################
+
+###  http://purl.obolibrary.org/obo/BFO_0000002
+<http://purl.obolibrary.org/obo/BFO_0000002> rdf:type owl:Class ;
+                                             rdfs:label "continuant"@en ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "(Elucidation) A continuant is an entity that persists, endures, or continues to exist through time while maintaining its identity"@en .
+
+
+###  http://purl.obolibrary.org/obo/BFO_0000020
+<http://purl.obolibrary.org/obo/BFO_0000020> rdf:type owl:Class ;
+                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000002> ;
+                                             rdfs:label "specifically dependent continuant"@en ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "b is a specifically dependent continuant =Def b is a continuant & there is some independent continuant c which is not a spatial region & which is such that b specifically depends on c"@en .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000003
+<http://purl.obolibrary.org/obo/IAO_0000003> rdf:type owl:Class ;
+                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/IAO_0000009> ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000112> "Examples of measurement unit labels are liters, inches, weight per volume."@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "A measurement unit label is as a label that is part of a scalar measurement datum and denotes a unit of measure."@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000116> """2009-03-16: provenance: a term measurement unit was
+proposed for OBI (OBI_0000176) , edited by Chris Stoeckert and
+Cristian Cocos, and subsequently moved to IAO where the objective for
+which the original term was defined was satisfied with the definition
+of this, different, term."""@en ,
+                                                                                          "2009-03-16: review of this term done during during the OBI workshop winter 2009 and the current definition was considered acceptable for use in OBI. If there is a need to modify this definition please notify OBI."@en ;
+                                             rdfs:label "measurement unit label"@en .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000009
+<http://purl.obolibrary.org/obo/IAO_0000009> rdf:type owl:Class ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "A label is a symbol that is part of some other datum and is used to either partially define  the denotation of that datum or to provide a means for identifying the datum as a member of the set of data with the same label"@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000116> "http://www.golovchenko.org/cgi-bin/wnsearch?q=label#4n"@en ;
+                                             rdfs:label "datum label"@en .
+
+
+###  http://purl.obolibrary.org/obo/OBI_0001931
+<http://purl.obolibrary.org/obo/OBI_0001931> rdf:type owl:Class ;
+                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/OBI_0001933> ,
+                                                             [ rdf:type owl:Restriction ;
+                                                               owl:onProperty <http://purl.obolibrary.org/obo/OBI_0001937> ;
+                                                               owl:minCardinality "1"^^xsd:nonNegativeInteger
+                                                             ] ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "A value specification that consists of two parts: a numeral and a unit label"@en ;
+                                             rdfs:label "scalar value specification" .
+
+
+###  http://purl.obolibrary.org/obo/OBI_0001933
+<http://purl.obolibrary.org/obo/OBI_0001933> rdf:type owl:Class ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000112> "The value of 'positive' in a classification scheme of \"positive or negative\"; the value of '20g' on the quantitative scale of mass." ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "An information content entity that specifies a value within a classification scheme or on a quantitative scale."@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000116> "This term is currently a descendant of 'information content entity', which requires that it 'is about' something. A value specification of '20g' for a measurement data item of the mass of a particular mouse 'is about' the mass of that mouse. However there are cases where a value specification is not clearly about any particular. In the future we may change 'value specification' to remove the 'is about' requirement." ;
+                                             rdfs:label "value specification" .
+
+
+###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

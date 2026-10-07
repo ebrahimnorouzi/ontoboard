@@ -1,0 +1,93 @@
+@prefix : <http://delicias.dia.fi.upm.es/ontologies/PeriodicInterval.owl#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@base <http://delicias.dia.fi.upm.es/ontologies/PeriodicInterval.owl> .
+
+<http://delicias.dia.fi.upm.es/ontologies/PeriodicInterval.owl> rdf:type owl:Ontology ;
+                                                                 owl:imports <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl> ,
+                                                                             <http://www.w3.org/2006/time> ;
+                                                                 <http://purl.org/dc/elements/1.1/creator> "Mari Carmen Suárez-Figueroa" ,
+                                                                                                           "María Poveda-Villalón" ;
+                                                                 <http://purl.org/dc/elements/1.1/title> "Periodic interval content pattern"@en ;
+                                                                 <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> "What is the period of the interval 'every tuesday of 2010'? The period is a week (weekly)."@en ;
+                                                                 <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences> "This content pattern allows designers to represent non-convex intervals where the period between subintervals, that is, the gaps between subintervals, and the duration of the subintervals are constant."@en ;
+                                                                 <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> "The goal of this pattern is to represent non-convex intervals where the duration of each internal interval and the duration of the gaps between intervals are constant. These intervals are called periodic intervals within the context of this pattern."@en ;
+                                                                 <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#isSpecializationOf> "http://www.w3.org/2006/time" ;
+                                                                 <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios> "Sam teaches every monday"@en ;
+                                                                 rdfs:comment "This ontology design pattern extends the OWL-Time ontology (http://www.w3.org/TR/owl-time) defining periodic intervals."@en ;
+                                                                 rdfs:label "Periodic interval content pattern"@en .
+
+#################################################################
+#    Annotation properties
+#################################################################
+
+###  http://purl.org/dc/elements/1.1/creator
+<http://purl.org/dc/elements/1.1/creator> rdf:type owl:AnnotationProperty .
+
+
+###  http://purl.org/dc/elements/1.1/title
+<http://purl.org/dc/elements/1.1/title> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences
+<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent
+<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#isSpecializationOf
+<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#isSpecializationOf> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios
+<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios> rdf:type owl:AnnotationProperty .
+
+
+#################################################################
+#    Object Properties
+#################################################################
+
+###  http://delicias.dia.fi.upm.es/ontologies/PeriodicInterval.owl#hasIntervalDurationPerPeriod
+:hasIntervalDurationPerPeriod rdf:type owl:ObjectProperty ;
+                              rdfs:subPropertyOf <http://www.w3.org/2006/time#hasDurationDescription> ;
+                              rdfs:domain :PeriodicInterval ;
+                              rdfs:range <http://www.w3.org/2006/time#DurationDescription> ;
+                              rdfs:label "hasIntervalDurationPerPeriod"@en .
+
+
+###  http://delicias.dia.fi.upm.es/ontologies/PeriodicInterval.owl#hasPeriod
+:hasPeriod rdf:type owl:ObjectProperty ;
+           rdfs:subPropertyOf <http://www.w3.org/2006/time#hasDurationDescription> ;
+           rdfs:domain :PeriodicInterval ;
+           rdfs:range <http://www.w3.org/2006/time#DurationDescription> ;
+           rdfs:label "hasPeriod"@en .
+
+
+###  http://www.w3.org/2006/time#hasDurationDescription
+<http://www.w3.org/2006/time#hasDurationDescription> rdf:type owl:ObjectProperty .
+
+
+#################################################################
+#    Classes
+#################################################################
+
+###  http://delicias.dia.fi.upm.es/ontologies/PeriodicInterval.owl#PeriodicInterval
+:PeriodicInterval rdf:type owl:Class ;
+                  rdfs:subClassOf <http://www.w3.org/2006/time#Interval> ;
+                  rdfs:label "Periodic interval"@en .
+
+
+###  http://www.w3.org/2006/time#DurationDescription
+<http://www.w3.org/2006/time#DurationDescription> rdf:type owl:Class .
+
+
+###  http://www.w3.org/2006/time#Interval
+<http://www.w3.org/2006/time#Interval> rdf:type owl:Class .
+
+
+###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

@@ -1,0 +1,15 @@
+{
+  "id": "pmdco-fundamental-property",
+  "name": "Fundamental property",
+  "description": "Fundamental material properties are always present: density for portions of matter, mass and volume for objects. Fundamental object properties are extensive, scaling with the size of the object, and are given a value through a scalar value specification carrying a numeric value and a unit label.",
+  "category": "structural",
+  "domain": "materials",
+  "competency_questions": "Which properties does a material entity always bear regardless of circumstance? Which fundamental properties belong to the portion of matter and which to the object? What numeric value and unit specify a given fundamental property?",
+  "pattern_iri": "https://ontoboard.org/patterns/pmdco-fundamental-property.owl",
+  "source": "https://materialdigital.github.io/core-ontology/docs/patterns.html",
+  "collection": "pmdco",
+  "publisher": "materialdigital.github.io",
+  "extracted_from": "pmdco",
+  "class_count": 22,
+  "property_count": 6
+}

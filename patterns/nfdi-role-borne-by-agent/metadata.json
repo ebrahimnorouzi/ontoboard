@@ -1,0 +1,15 @@
+{
+  "id": "nfdi-role-borne-by-agent",
+  "name": "role",
+  "description": "A role (here nfdi:NFDI_0000114, contact point role) is a first-class individual that is role-of an agent via obo:RO_0000081, rather than an attribute of the agent. Its descriptive values, such as an email address, hang off it as value nodes reached by obo:IAO_0000235.",
+  "category": "conceptual",
+  "domain": "general",
+  "competency_questions": "Which role does a given person or organisation bear, and in what context?; Which contact point is responsible for a given resource?",
+  "pattern_iri": "https://ontoboard.org/patterns/nfdi-role-borne-by-agent.owl",
+  "source": "https://nfdi.fiz-karlsruhe.de/matwerk/patterns/",
+  "collection": "nfdi",
+  "publisher": "nfdi.fiz-karlsruhe.de",
+  "extracted_from": "nfdi",
+  "class_count": 6,
+  "property_count": 4
+}

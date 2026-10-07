@@ -1,0 +1,166 @@
+@prefix : <http://ecareathome-ontology.mpi.aass.oru.se/patterns/time.owl#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@base <http://ecareathome-ontology.mpi.aass.oru.se/patterns/time.owl> .
+
+<http://ecareathome-ontology.mpi.aass.oru.se/patterns/time.owl> rdf:type owl:Ontology ;
+                                                                 owl:imports <http://www.w3.org/2006/time#2016> ;
+                                                                 <http://purl.org/dc/terms/created> "2017-10-22"^^xsd:date ;
+                                                                 <http://purl.org/dc/terms/description> "This ontology pattern extends the OWL-Time ontology (https://www.w3.org/2006/time) and describes time in the form of time stamps, time intervals with specific starting and ending points, as well as temporal distance that indicates a relative time distance to a given time point, in the form of an interval. By relative time distance, we mean a distance regardless of the exact timepoints."@en ;
+                                                                 <http://purl.org/dc/terms/title> "Smart Environment Time Ontology Pattern"@en ;
+                                                                 <http://purl.org/vocab/vann/preferredNamespacePrefix> <https://w3id.org/smartenvironment/patterns/time.owl> ,
+                                                                                                                       "se-time"@en ;
+                                                                 <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> "What is the temporal distance between two specific time steps?"@en ,
+                                                                                                                                                           "What is the time interval between two specific timestamps in the form of dates?"@en ;
+                                                                 <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences> """We can quantitavely represent temporal distances through  an observation process for different purposes . These purposes include 
+definition of an event in terms of its preconditions whose occurance timestamp is within a specific temporal distance with that of the event."""@en ;
+                                                                 <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> "The ontology pattern Time represents temporal entities in the form of Instant, Interval and Temporal Distance (for example the relative temporal relations between an event and its preconditions.) in the context of smart environments."@en ;
+                                                                 <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#isSpecializationOf> <https://www.w3.org/2006/time> .
+
+#################################################################
+#    Annotation properties
+#################################################################
+
+###  http://purl.org/dc/terms/description
+<http://purl.org/dc/terms/description> rdf:type owl:AnnotationProperty .
+
+
+###  http://purl.org/dc/terms/title
+<http://purl.org/dc/terms/title> rdf:type owl:AnnotationProperty .
+
+
+###  http://purl.org/vocab/vann/preferredNamespacePrefix
+<http://purl.org/vocab/vann/preferredNamespacePrefix> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements
+<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences
+<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent
+<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#isSpecializationOf
+<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#isSpecializationOf> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.w3.org/2002/07/owl#qualifiedCardinality
+owl:qualifiedCardinality rdf:type owl:AnnotationProperty .
+
+
+###  http://www.w3.org/2004/02/skos/core#definition
+<http://www.w3.org/2004/02/skos/core#definition> rdf:type owl:AnnotationProperty .
+
+
+#################################################################
+#    Object Properties
+#################################################################
+
+###  http://www.w3.org/2006/time#before
+<http://www.w3.org/2006/time#before> rdf:type owl:ObjectProperty .
+
+
+#################################################################
+#    Classes
+#################################################################
+
+###  http://www.w3.org/2006/time#Duration
+<http://www.w3.org/2006/time#Duration> rdf:type owl:Class .
+
+
+###  http://www.w3.org/2006/time#Instant
+<http://www.w3.org/2006/time#Instant> rdf:type owl:Class .
+
+
+###  http://www.w3.org/2006/time#Interval
+<http://www.w3.org/2006/time#Interval> rdf:type owl:Class .
+
+
+###  http://www.w3.org/2006/time#TemporalEntity
+<http://www.w3.org/2006/time#TemporalEntity> rdf:type owl:Class .
+
+
+###  https://w3id.org/smartenvironment/patterns/time.owl#Instant
+<https://w3id.org/smartenvironment/patterns/time.owl#Instant> rdf:type owl:Class ;
+                                                              rdfs:subClassOf <http://www.w3.org/2006/time#Instant> ,
+                                                                              <https://w3id.org/smartenvironment/patterns/time.owl#TemporalEntity> ,
+                                                                              [ rdf:type owl:Restriction ;
+                                                                                owl:onProperty <http://www.w3.org/2006/time#inXSDDateTimeStamp> ;
+                                                                                owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+                                                                                owl:onDataRange xsd:dateTimeStamp
+                                                                              ] ;
+                                                              rdfs:comment "Describes a temporal instant specifiying a specific datetimestamp"@en ;
+                                                              rdfs:label "instant"@en ;
+                                                              <http://www.w3.org/2004/02/skos/core#definition> "Describes a temporal instant specifiying a specific datetimestamp"@en .
+
+
+###  https://w3id.org/smartenvironment/patterns/time.owl#Interval
+<https://w3id.org/smartenvironment/patterns/time.owl#Interval> rdf:type owl:Class ;
+                                                               rdfs:subClassOf <http://www.w3.org/2006/time#Interval> ,
+                                                                               <https://w3id.org/smartenvironment/patterns/time.owl#TemporalEntity> ,
+                                                                               [ rdf:type owl:Restriction ;
+                                                                                 owl:onProperty <http://www.w3.org/2006/time#hasBeginning> ;
+                                                                                 owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+                                                                                 owl:onClass <https://w3id.org/smartenvironment/patterns/time.owl#Instant>
+                                                                               ] ,
+                                                                               [ rdf:type owl:Restriction ;
+                                                                                 owl:onProperty <http://www.w3.org/2006/time#hasDuration> ;
+                                                                                 owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+                                                                                 owl:onClass <https://w3id.org/smartenvironment/patterns/time.owl#TimeDuration>
+                                                                               ] ;
+                                                               rdfs:comment "Describes a temporal entity with an extent or duration with a known starting time."@en ;
+                                                               rdfs:label "interval"@en ;
+                                                               <http://www.w3.org/2004/02/skos/core#definition> "Describes a temporal entity with an extent or duration with a known starting time."@en .
+
+
+###  https://w3id.org/smartenvironment/patterns/time.owl#TemporalDistance
+<https://w3id.org/smartenvironment/patterns/time.owl#TemporalDistance> rdf:type owl:Class ;
+                                                                       rdfs:subClassOf <https://w3id.org/smartenvironment/patterns/time.owl#TemporalEntity> ,
+                                                                                       [ rdf:type owl:Restriction ;
+                                                                                         owl:onProperty <http://www.w3.org/2006/time#before> ;
+                                                                                         owl:someValuesFrom <https://w3id.org/smartenvironment/patterns/time.owl#Instant>
+                                                                                       ] ,
+                                                                                       [ rdf:type owl:Restriction ;
+                                                                                         owl:onProperty <http://www.w3.org/2006/time#hasDuration> ;
+                                                                                         owl:qualifiedCardinality "2"^^xsd:nonNegativeInteger ;
+                                                                                         owl:onClass <https://w3id.org/smartenvironment/patterns/time.owl#TimeDuration>
+                                                                                       ] ;
+                                                                       rdfs:comment "Describes a temporal distance relatively set to a given time instant. The distance is specified using two separate temporal durations both ending with the given time instant. The object property 'before' indicates that the distance is temporaly behind the time instant as the target time."@en ;
+                                                                       rdfs:label "temporal distance"@en ;
+                                                                       <http://www.w3.org/2004/02/skos/core#definition> "Describes a temporal distance relatively set to a given time instant. The distance is specified using two separate temporal durations both ending with the given time instant. The object property 'before' indicates that the distance is temporaly behind the time instant as the target time."@en .
+
+
+###  https://w3id.org/smartenvironment/patterns/time.owl#TemporalEntity
+<https://w3id.org/smartenvironment/patterns/time.owl#TemporalEntity> rdf:type owl:Class ;
+                                                                     owl:equivalentClass [ rdf:type owl:Class ;
+                                                                                           owl:unionOf ( <https://w3id.org/smartenvironment/patterns/time.owl#Instant>
+                                                                                                         <https://w3id.org/smartenvironment/patterns/time.owl#Interval>
+                                                                                                         <https://w3id.org/smartenvironment/patterns/time.owl#TemporalDistance>
+                                                                                                       )
+                                                                                         ] ;
+                                                                     rdfs:subClassOf <http://www.w3.org/2006/time#TemporalEntity> ;
+                                                                     rdfs:comment "Describes a temporal entity that can represent a single time instant, a time interval, or a temporal distance."@en ;
+                                                                     rdfs:label "temporal entity"@en ;
+                                                                     <http://www.w3.org/2004/02/skos/core#definition> "Describes a temporal entity that can represent a single time instant, a time interval, or a temporal distance."@en .
+
+
+###  https://w3id.org/smartenvironment/patterns/time.owl#TimeDuration
+<https://w3id.org/smartenvironment/patterns/time.owl#TimeDuration> rdf:type owl:Class ;
+                                                                   rdfs:subClassOf <http://www.w3.org/2006/time#Duration> ;
+                                                                   rdfs:comment "Describes time duration in the form of a numeric value indicating its length, and a temporal unit type."@en ;
+                                                                   rdfs:label "time duration"@en ;
+                                                                   <http://www.w3.org/2004/02/skos/core#definition> "Describes time duration in the form of a numeric value indicating its length, and a temporal unit type."@en .
+
+
+[ owl:qualifiedCardinality "2"^^xsd:nonNegativeInteger
+] .
+
+###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

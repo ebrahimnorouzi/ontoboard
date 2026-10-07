@@ -1,0 +1,539 @@
+@prefix : <http://mklab.iti.gr/pericles/DigitalVideo_ODP#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@base <http://mklab.iti.gr/pericles/DigitalVideo_ODP> .
+
+<http://mklab.iti.gr/pericles/DigitalVideo_ODP> rdf:type owl:Ontology ;
+                                                 owl:imports <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl> ;
+                                                 <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> """1. What does a digital video file consist of? A digital video file usually consists of one or more streams. These streams are compressed using codecs (coder-decoder) and wrapped into a container.
+2. What types of streams exist in a video file? Video streams, audio streams and subtitle streams. A video file has at least one video stream and may also have any number and any type of other streams.
+3. What types of codecs exist? Video and audio codecs.""" ;
+                                                 <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences> "The design pattern is expected to facilitate the creation of digital video domain ontologies that will be exploited in the field of digital preservation. A well-established, comprehensible pattern will prove to be advantageous." ;
+                                                 <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> "The pattern intends to model digital video files, their components and other associated entities, such as codecs and containers." ;
+                                                 <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios> """Some examples of instantiation of the DigitalVideo ODP are:
+  1. “The digital video is wrapped by an AVI container”
+  2. “The digital video has duration 22 minutes”
+  3. “The video stream is processed by the QuickTime codec”
+  4. “The audio stream has bitrate 256 kbit/s”""" .
+
+#################################################################
+#    Object Properties
+#################################################################
+
+###  http://mklab.iti.gr/pericles/DigitalVideo_ODP#hasAnalogBroadcastStandard
+:hasAnalogBroadcastStandard rdf:type owl:ObjectProperty ;
+                            rdfs:domain :DigitalVideo ;
+                            rdfs:range :AnalogBroadcastStandard ;
+                            rdfs:comment "Associates a digital video with an analog broadcast standard." ;
+                            rdfs:label "has analog broadcast standard" .
+
+
+###  http://mklab.iti.gr/pericles/DigitalVideo_ODP#hasAspectRatio
+:hasAspectRatio rdf:type owl:ObjectProperty ;
+                rdfs:domain :VideoStream ;
+                rdfs:range :AspectRatio ;
+                rdfs:comment "Associates a video stream with an aspect ratio." ;
+                rdfs:label "has aspect ratio" .
+
+
+###  http://mklab.iti.gr/pericles/DigitalVideo_ODP#hasAudioStream
+:hasAudioStream rdf:type owl:ObjectProperty ;
+                rdfs:subPropertyOf :hasStream ;
+                rdfs:domain :DigitalVideo ;
+                rdfs:range :AudioStream ;
+                rdfs:comment "Associates a digital video with an audio stream." ;
+                rdfs:label "has audio stream" .
+
+
+###  http://mklab.iti.gr/pericles/DigitalVideo_ODP#hasBitRate
+:hasBitRate rdf:type owl:ObjectProperty ;
+            rdfs:domain [ rdf:type owl:Class ;
+                          owl:unionOf ( :AudioStream
+                                        :VideoStream
+                                      )
+                        ] ;
+            rdfs:range :BitRate ;
+            rdfs:comment "Associates an audio or video stream with a bit rate." ;
+            rdfs:label "has bitrate" .
+
+
+###  http://mklab.iti.gr/pericles/DigitalVideo_ODP#hasChromaFormat
+:hasChromaFormat rdf:type owl:ObjectProperty ;
+                 rdfs:domain :VideoStream ;
+                 rdfs:range :ChromaFormat ;
+                 rdfs:comment "Associates a video stream with a chroma format." ;
+                 rdfs:label "has chroma format" .
+
+
+###  http://mklab.iti.gr/pericles/DigitalVideo_ODP#hasCodingStandard
+:hasCodingStandard rdf:type owl:ObjectProperty ;
+                   rdfs:domain [ rdf:type owl:Class ;
+                                 owl:unionOf ( :AudioStream
+                                               :VideoStream
+                                             )
+                               ] ;
+                   rdfs:range :CodingStandard ;
+                   rdfs:comment "Associates a video or audio stream with a coding standard." ;
+                   rdfs:label "has coding standard" .
+
+
+###  http://mklab.iti.gr/pericles/DigitalVideo_ODP#hasColourSpaceType
+:hasColourSpaceType rdf:type owl:ObjectProperty ;
+                    rdfs:domain :VideoStream ;
+                    rdfs:range :ColourSpaceType ;
+                    rdfs:comment "Associates a video stream with a colour space type." ;
+                    rdfs:label "has colour space type" .
+
+
+###  http://mklab.iti.gr/pericles/DigitalVideo_ODP#hasCompressionType
+:hasCompressionType rdf:type owl:ObjectProperty ;
+                    rdfs:domain [ rdf:type owl:Class ;
+                                  owl:unionOf ( :AudioCodec
+                                                :VideoCodec
+                                              )
+                                ] ;
+                    rdfs:range :CompressionType ;
+                    rdfs:comment "Associates a video or audio codec with a compression type." ;
+                    rdfs:label "has compression type" .
+
+
+###  http://mklab.iti.gr/pericles/DigitalVideo_ODP#hasEmbeddingType
+:hasEmbeddingType rdf:type owl:ObjectProperty ;
+                  rdfs:domain :SubtitleStream ;
+                  rdfs:range :EmbeddingType ;
+                  rdfs:comment "Associates a subtitle stream with an embedding type." ;
+                  rdfs:label "has embedding type" .
+
+
+###  http://mklab.iti.gr/pericles/DigitalVideo_ODP#hasFrameRate
+:hasFrameRate rdf:type owl:ObjectProperty ;
+              rdfs:domain :VideoStream ;
+              rdfs:range :FrameRate ;
+              rdfs:comment "Associates a video stream with a frame rate." ;
+              rdfs:label "has frame rate" .
+
+
+###  http://mklab.iti.gr/pericles/DigitalVideo_ODP#hasFrameSize
+:hasFrameSize rdf:type owl:ObjectProperty ;
+              rdfs:domain :VideoStream ;
+              rdfs:range :FrameSize ;
+              rdfs:comment "Associates a video stream with a frame size." ;
+              rdfs:label "has frame size" .
+
+
+###  http://mklab.iti.gr/pericles/DigitalVideo_ODP#hasPlaybackDuration
+:hasPlaybackDuration rdf:type owl:ObjectProperty ;
+                     rdfs:domain [ rdf:type owl:Class ;
+                                   owl:unionOf ( :AudioStream
+                                                 :DigitalVideo
+                                                 :VideoStream
+                                               )
+                                 ] ;
+                     rdfs:range :PlaybackDuration ;
+                     rdfs:comment "Associates a digital video, a video stream or an audio stream with a playback duration." ;
+                     rdfs:label "has playback duration" .
+
+
+###  http://mklab.iti.gr/pericles/DigitalVideo_ODP#hasRangeType
+:hasRangeType rdf:type owl:ObjectProperty ;
+              rdfs:domain :VideoStream ;
+              rdfs:range :RangeType ;
+              rdfs:comment "Associates a video stream with a range type." ;
+              rdfs:label "has range type" .
+
+
+###  http://mklab.iti.gr/pericles/DigitalVideo_ODP#hasSampleRate
+:hasSampleRate rdf:type owl:ObjectProperty ;
+               rdfs:domain [ rdf:type owl:Class ;
+                             owl:unionOf ( :AudioStream
+                                           :VideoStream
+                                         )
+                           ] ;
+               rdfs:range :SampleRate ;
+               rdfs:comment "Associates a video stream or audio stream with a sample rate." ;
+               rdfs:label "has sample rate" .
+
+
+###  http://mklab.iti.gr/pericles/DigitalVideo_ODP#hasScanType
+:hasScanType rdf:type owl:ObjectProperty ;
+             rdfs:domain :VideoStream ;
+             rdfs:range :ScanType ;
+             rdfs:comment "Associates a video stream with a scan type." ;
+             rdfs:label "has scan type" .
+
+
+###  http://mklab.iti.gr/pericles/DigitalVideo_ODP#hasSetOfStandards
+:hasSetOfStandards rdf:type owl:ObjectProperty ;
+                   rdfs:domain :VideoStream ;
+                   rdfs:range :SetOfStandards ;
+                   rdfs:comment "Associates a video stream with a set of standards." ;
+                   rdfs:label "has set of standards" .
+
+
+###  http://mklab.iti.gr/pericles/DigitalVideo_ODP#hasStream
+:hasStream rdf:type owl:ObjectProperty ;
+           rdfs:domain :DigitalVideo ;
+           rdfs:range :Stream ;
+           rdfs:comment "Associates a digital video with a stream." ;
+           rdfs:label "has stream" .
+
+
+###  http://mklab.iti.gr/pericles/DigitalVideo_ODP#hasSubtitleStream
+:hasSubtitleStream rdf:type owl:ObjectProperty ;
+                   rdfs:subPropertyOf :hasStream ;
+                   rdfs:domain :DigitalVideo ;
+                   rdfs:range :SubtitleStream ;
+                   rdfs:comment "Associates a digital video with an subtitle stream." ;
+                   rdfs:label "has subtitle stream" .
+
+
+###  http://mklab.iti.gr/pericles/DigitalVideo_ODP#hasSubtitleTextFormat
+:hasSubtitleTextFormat rdf:type owl:ObjectProperty ;
+                       rdfs:domain :SubtitleStream ;
+                       rdfs:range :SubtitleTextFormat ;
+                       rdfs:comment "Associates a subtitle stream with a subtitle text format." ;
+                       rdfs:label "has subtitle text format" .
+
+
+###  http://mklab.iti.gr/pericles/DigitalVideo_ODP#hasVideoCodecLevel
+:hasVideoCodecLevel rdf:type owl:ObjectProperty ;
+                    rdfs:domain :VideoCodec ;
+                    rdfs:range :VideoCodecLevel ;
+                    rdfs:comment "Associates a video codec with a video codec level." ;
+                    rdfs:label "has video codec level" .
+
+
+###  http://mklab.iti.gr/pericles/DigitalVideo_ODP#hasVideoCodecProfile
+:hasVideoCodecProfile rdf:type owl:ObjectProperty ;
+                      rdfs:domain :VideoCodec ;
+                      rdfs:range :VideoCodecProfile ;
+                      rdfs:comment "Associates a video codec with a video codec profile." ;
+                      rdfs:label "has video codec profile" .
+
+
+###  http://mklab.iti.gr/pericles/DigitalVideo_ODP#hasVideoQualityMeasurement
+:hasVideoQualityMeasurement rdf:type owl:ObjectProperty ;
+                            rdfs:domain :VideoStream ;
+                            rdfs:range :VideoQualityMeasurement ;
+                            rdfs:comment "Associates a video stream with a video quality measurement." ;
+                            rdfs:label "has video quality measurement" .
+
+
+###  http://mklab.iti.gr/pericles/DigitalVideo_ODP#hasVideoQualityMetric
+:hasVideoQualityMetric rdf:type owl:ObjectProperty ;
+                       rdfs:domain :VideoStream ;
+                       rdfs:range :VideoQualityMetric ;
+                       rdfs:comment "Associates a video stream with a video quality metric." ;
+                       rdfs:label "has video quality metric" .
+
+
+###  http://mklab.iti.gr/pericles/DigitalVideo_ODP#hasVideoStream
+:hasVideoStream rdf:type owl:ObjectProperty ;
+                rdfs:subPropertyOf :hasStream ;
+                rdfs:domain :DigitalVideo ;
+                rdfs:range :VideoStream ;
+                rdfs:comment "Associates a digital video with a video stream." ;
+                rdfs:label "has video stream" .
+
+
+###  http://mklab.iti.gr/pericles/DigitalVideo_ODP#hasYUVSampleRange
+:hasYUVSampleRange rdf:type owl:ObjectProperty ;
+                   rdfs:domain :VideoStream ;
+                   rdfs:range :YUVSampleRange ;
+                   rdfs:comment "Associates a video stream with a YUV sample range." ;
+                   rdfs:label "has YUV sample range" .
+
+
+###  http://mklab.iti.gr/pericles/DigitalVideo_ODP#processedBy
+:processedBy rdf:type owl:ObjectProperty ;
+             rdfs:domain :Stream ;
+             rdfs:range :Codec ;
+             rdfs:comment "Associates a stream with a codec." ;
+             rdfs:label "processed by" .
+
+
+###  http://mklab.iti.gr/pericles/DigitalVideo_ODP#wrappedBy
+:wrappedBy rdf:type owl:ObjectProperty ;
+           rdfs:domain :DigitalVideo ;
+           rdfs:range :Container ;
+           rdfs:comment "Associates a digital video file with a container type." ;
+           rdfs:label "wrapped by" .
+
+
+#################################################################
+#    Classes
+#################################################################
+
+###  http://mklab.iti.gr/pericles/DigitalVideo_ODP#AnalogBroadcastStandard
+:AnalogBroadcastStandard rdf:type owl:Class ;
+                         rdfs:subClassOf :Descriptor ;
+                         rdfs:comment "E.g. NTSC, PAL, etc." ,
+                                      "The video color encoding system, if the video originates from analog television broadcasts." ;
+                         rdfs:label "Analog Broadcast Standard" .
+
+
+###  http://mklab.iti.gr/pericles/DigitalVideo_ODP#AspectRatio
+:AspectRatio rdf:type owl:Class ;
+             rdfs:subClassOf :Descriptor ;
+             rdfs:comment "E.g. 16:9, 4:3, etc." ,
+                          "The aspect ratio of an image describes the proportional relationship between its width and its height. It is commonly expressed as two numbers separated by a colon, as in 16:9." ;
+             rdfs:label "Aspect Ratio" .
+
+
+###  http://mklab.iti.gr/pericles/DigitalVideo_ODP#AudioCodec
+:AudioCodec rdf:type owl:Class ;
+            rdfs:subClassOf :Codec ;
+            owl:disjointWith :VideoCodec ;
+            rdfs:comment "An audio codec is a device or computer program capable of coding or decoding a digital data stream of audio." ,
+                         "E.g. MP3" ;
+            rdfs:label "Audio Codec" .
+
+
+###  http://mklab.iti.gr/pericles/DigitalVideo_ODP#AudioStream
+:AudioStream rdf:type owl:Class ;
+             owl:equivalentClass [ rdf:type owl:Restriction ;
+                                   owl:onProperty :processedBy ;
+                                   owl:someValuesFrom :AudioCodec
+                                 ] ;
+             rdfs:subClassOf :Stream ;
+             rdfs:comment "An audio stream is a stream where the carried data is audio content." ;
+             rdfs:label "Audio Stream" .
+
+
+###  http://mklab.iti.gr/pericles/DigitalVideo_ODP#BitRate
+:BitRate rdf:type owl:Class ;
+         rdfs:subClassOf :Descriptor ;
+         rdfs:comment "E.g. 2 MBits/s" ,
+                      "The bitrate is the data rate for a video or audio file. Video and audio data rates are given in bits per second." ;
+         rdfs:label "Bit Rate" .
+
+
+###  http://mklab.iti.gr/pericles/DigitalVideo_ODP#ChromaFormat
+:ChromaFormat rdf:type owl:Class ;
+              rdfs:subClassOf :Descriptor ;
+              rdfs:comment "E.g. 4:2:0" ,
+                           "The chroma subsampling type. Chroma subsampling is the practice of encoding images by implementing less resolution for chroma information than for luma information, taking advantage of the human visual system's lower acuity for color differences than for luminance." ;
+              rdfs:label "Chroma Format" .
+
+
+###  http://mklab.iti.gr/pericles/DigitalVideo_ODP#Codec
+:Codec rdf:type owl:Class ;
+       rdfs:comment "A codec is a device or computer program capable of encoding or decoding a digital data stream or signal." ;
+       rdfs:label "Codec" .
+
+
+###  http://mklab.iti.gr/pericles/DigitalVideo_ODP#CodingStandard
+:CodingStandard rdf:type owl:Class ;
+                rdfs:subClassOf :Descriptor ;
+                rdfs:comment "Also known as coding format or compression format." ,
+                             "E.g. H.264/MPEG-4 AVC" ;
+                rdfs:label "Coding Standard" .
+
+
+###  http://mklab.iti.gr/pericles/DigitalVideo_ODP#ColourSpaceType
+:ColourSpaceType rdf:type owl:Class ;
+                 rdfs:subClassOf :Descriptor ;
+                 rdfs:comment "A color space is a specific organization of colors. It allows for reproducible representations of color, in both analog and digital representations. A color space may be arbitrary, with particular colors assigned to a set of physical color swatches and corresponding assigned names or numbers." ,
+                              "E.g. YUV, RGB, etc." ;
+                 rdfs:label "Colour Space Type" .
+
+
+###  http://mklab.iti.gr/pericles/DigitalVideo_ODP#CompressionType
+:CompressionType rdf:type owl:Class ;
+                 rdfs:subClassOf :Descriptor ;
+                 rdfs:comment "E.g. lossy, lossless or uncompressed" ,
+                              "The type of video compression." ;
+                 rdfs:label "Compression Type" .
+
+
+###  http://mklab.iti.gr/pericles/DigitalVideo_ODP#Container
+:Container rdf:type owl:Class ;
+           rdfs:comment "A container or wrapper format is a metafile format whose specification describes how different elements of data and metadata coexist in a computer file." ,
+                        "E.g. Matroska (MKV), MP4, etc." ;
+           rdfs:label "Container" .
+
+
+###  http://mklab.iti.gr/pericles/DigitalVideo_ODP#Descriptor
+:Descriptor rdf:type owl:Class ;
+            rdfs:comment "Descriptors are the various elements describing a digital video, a container, a stream or a codec." ;
+            rdfs:label "Descriptor" .
+
+
+###  http://mklab.iti.gr/pericles/DigitalVideo_ODP#DigitalVideo
+:DigitalVideo rdf:type owl:Class ;
+              owl:equivalentClass [ rdf:type owl:Restriction ;
+                                    owl:onProperty :hasAudioStream ;
+                                    owl:someValuesFrom :AudioStream
+                                  ] ,
+                                  [ rdf:type owl:Restriction ;
+                                    owl:onProperty :hasSubtitleStream ;
+                                    owl:someValuesFrom :SubtitleStream
+                                  ] ,
+                                  [ rdf:type owl:Restriction ;
+                                    owl:onProperty :hasVideoStream ;
+                                    owl:someValuesFrom :VideoStream
+                                  ] ;
+              rdfs:comment "A digital video file." ;
+              rdfs:label "Digital Video" .
+
+
+###  http://mklab.iti.gr/pericles/DigitalVideo_ODP#EmbeddingType
+:EmbeddingType rdf:type owl:Class ;
+               rdfs:subClassOf :Descriptor ;
+               rdfs:comment "E.g. hard, prerendered, soft, etc." ,
+                            "The type of embedment used to attach a subtitle stream to a video." ;
+               rdfs:label "Embedding Type" .
+
+
+###  http://mklab.iti.gr/pericles/DigitalVideo_ODP#FrameRate
+:FrameRate rdf:type owl:Class ;
+           rdfs:subClassOf :Descriptor ;
+           rdfs:comment "E.g. 60 FPS" ,
+                        "Frame rate, also known as frame frequency, is the frequency (rate) at which an imaging device produces unique consecutive images called frames. The term applies equally well to film and video cameras, computer graphics, and motion capture systems. Frame rate is most often expressed in frames per second (FPS) and is also expressed in progressive scan monitors as hertz (Hz)." ;
+           rdfs:label "Frame Rate" .
+
+
+###  http://mklab.iti.gr/pericles/DigitalVideo_ODP#FrameSize
+:FrameSize rdf:type owl:Class ;
+           rdfs:subClassOf :Descriptor ;
+           rdfs:comment "E.g. 1920 x 1080" ,
+                        "The dimensions of a video's frame." ;
+           rdfs:label "Frame Size" .
+
+
+###  http://mklab.iti.gr/pericles/DigitalVideo_ODP#PlaybackDuration
+:PlaybackDuration rdf:type owl:Class ;
+                  rdfs:subClassOf :Descriptor ;
+                  rdfs:comment "E.g. 22 minutes" ,
+                               "The duration of a video, video stream or audio stream." ;
+                  rdfs:label "Playback Duration" .
+
+
+###  http://mklab.iti.gr/pericles/DigitalVideo_ODP#RangeType
+:RangeType rdf:type owl:Class ;
+           rdfs:subClassOf :Descriptor ;
+           rdfs:comment "E.g. broadcast range or full range" ,
+                        "The type of range a video is created for." ;
+           rdfs:label "Range Type" .
+
+
+###  http://mklab.iti.gr/pericles/DigitalVideo_ODP#SampleRate
+:SampleRate rdf:type owl:Class ;
+            rdfs:subClassOf :Descriptor ;
+            rdfs:comment "E.g. 74.25 MHz" ,
+                         "E.g. 96 kHz" ,
+                         "The audio sample rate is the number of samples of audio carried per second, measured in Hz or kHz (one kHz being 1 000 Hz). For example, 44 100 samples per second can be expressed as either 44 100 Hz, or 44.1 kHz." ,
+                         "The video sample rate of a digital video format determines how often the light intensity of each video line is sampled." ;
+            rdfs:label "Sample Rate" .
+
+
+###  http://mklab.iti.gr/pericles/DigitalVideo_ODP#ScanType
+:ScanType rdf:type owl:Class ;
+          rdfs:subClassOf :Descriptor ;
+          rdfs:comment "Progressive or interlaced scan." ;
+          rdfs:label "Scan Type" .
+
+
+###  http://mklab.iti.gr/pericles/DigitalVideo_ODP#SetOfStandards
+:SetOfStandards rdf:type owl:Class ;
+                rdfs:subClassOf :Descriptor ;
+                rdfs:comment "E.g. BT.601 or BT.709" ,
+                             "Sets of standards standardize the format of a video stream." ;
+                rdfs:label "Set Of Standards" .
+
+
+###  http://mklab.iti.gr/pericles/DigitalVideo_ODP#Stream
+:Stream rdf:type owl:Class ;
+        rdfs:comment "A (data) stream is a sequence of digitally encoded coherent signals (packets of data or data packets) used to transmit or receive information that is in the process of being transmitted. The term stream is used here to define raw, uncompressed content (video or audio) prior to being encoded into a wrapper or after being decoded from a wrapper." ;
+        rdfs:label "Stream" .
+
+
+###  http://mklab.iti.gr/pericles/DigitalVideo_ODP#SubtitleStream
+:SubtitleStream rdf:type owl:Class ;
+                rdfs:subClassOf :Stream ;
+                rdfs:comment "A subtitle stream is a stream where the carried data is subtitle content for a video." ;
+                rdfs:label "Subtitle Stream" .
+
+
+###  http://mklab.iti.gr/pericles/DigitalVideo_ODP#SubtitleTextFormat
+:SubtitleTextFormat rdf:type owl:Class ;
+                    rdfs:subClassOf :Descriptor ;
+                    rdfs:comment "E.g. SubRip, SubViewer, etc." ,
+                                 "The file format of subtitles." ;
+                    rdfs:label "Subtitle Text Format" .
+
+
+###  http://mklab.iti.gr/pericles/DigitalVideo_ODP#VideoCodec
+:VideoCodec rdf:type owl:Class ;
+            rdfs:subClassOf :Codec ;
+            rdfs:comment "A video codec is an electronic circuit or software that compresses or decompresses digital video, thus converting raw (uncompressed) digital video to a compressed format or vice-versa." ,
+                         "E.g. QuickTime H.264 (Apple's implementation for H.264/MPEG-4 AVC coding format)" ;
+            rdfs:label "Video Codec" .
+
+
+###  http://mklab.iti.gr/pericles/DigitalVideo_ODP#VideoCodecLevel
+:VideoCodecLevel rdf:type owl:Class ;
+                 rdfs:subClassOf :Descriptor ;
+                 owl:disjointWith :VideoCodecProfile ;
+                 rdfs:comment "A video codec level is a specified set of constraints that indicate a degree of required decoder performance for a profile." ,
+                              "E.g. 4" ;
+                 rdfs:label "Video Codec Level" .
+
+
+###  http://mklab.iti.gr/pericles/DigitalVideo_ODP#VideoCodecProfile
+:VideoCodecProfile rdf:type owl:Class ;
+                   rdfs:subClassOf :Descriptor ;
+                   rdfs:comment "E.g. baseline profile, extended profile, main profile, high profile, etc." ,
+                                "The video codec profile is a set of capabilities and constraints apllied in the encoder. It allows the decoder  to recognize the requirements to decode a specific stream." ;
+                   rdfs:label "Video Codec Profile" .
+
+
+###  http://mklab.iti.gr/pericles/DigitalVideo_ODP#VideoQualityMeasurement
+:VideoQualityMeasurement rdf:type owl:Class ;
+                         rdfs:subClassOf :Descriptor ;
+                         rdfs:comment "Measurement carried out according to the video quality metric." ;
+                         rdfs:label "Video Quality Measurement" .
+
+
+###  http://mklab.iti.gr/pericles/DigitalVideo_ODP#VideoQualityMetric
+:VideoQualityMetric rdf:type owl:Class ;
+                    rdfs:subClassOf :Descriptor ;
+                    rdfs:comment "E.g. VQM" ,
+                                 "Process or software used to measure the quality of a video." ;
+                    rdfs:label "Video Quality Metric" .
+
+
+###  http://mklab.iti.gr/pericles/DigitalVideo_ODP#VideoStream
+:VideoStream rdf:type owl:Class ;
+             owl:equivalentClass [ rdf:type owl:Restriction ;
+                                   owl:onProperty :processedBy ;
+                                   owl:someValuesFrom :VideoCodec
+                                 ] ;
+             rdfs:subClassOf :Stream ;
+             rdfs:comment "A video stream is a stream where the carried data is video content." ;
+             rdfs:label "Video Stream" .
+
+
+###  http://mklab.iti.gr/pericles/DigitalVideo_ODP#YUVSampleRange
+:YUVSampleRange rdf:type owl:Class ;
+                rdfs:subClassOf :Descriptor ;
+                rdfs:comment "E.g. 16-235" ;
+                rdfs:label "YUV Sample Range" .
+
+
+#################################################################
+#    General axioms
+#################################################################
+
+[ rdf:type owl:AllDisjointClasses ;
+  owl:members ( :AudioStream
+                :SubtitleStream
+                :VideoStream
+              )
+] .
+
+
+###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

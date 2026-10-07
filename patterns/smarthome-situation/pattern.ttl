@@ -1,0 +1,71 @@
+@prefix : <http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Situation.owl#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@base <http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Situation.owl> .
+
+<http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Situation.owl> rdf:type owl:Ontology ;
+                                                                                owl:imports <http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_FeatureOfInterest.owl> ;
+                                                                                <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> "What are the equivalent situations of the given one (which situation is proxy of another one). It is possible to find two different situations equivalent from the observation process's perspective. For instance in order to see if the fan above the oven is switched on we can either check the electriccurrent of the fan (first situation) or the luminosity of its lamp (second situation). "^^xsd:string ,
+                                                                                                                                                                          "What is the state of the feature of interest in the smart home?"^^xsd:string ,
+                                                                                                                                                                          "Which feature (property) of an object (feature of interest) is used to conceptualize a situation?"^^xsd:string ;
+                                                                                <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#isSpecializationOf> "This pattern specialize the DUL ontology. The extension is in the form of specializing the class DUL:Situation in order to represent the class SmartObjectSituation which is expressed by both a relevant feature of interest (e.g. the electric-current of TV) and its state (e.g. swicthed on)."^^xsd:string ;
+                                                                                rdfs:isDefinedBy "The OPD FeatureOfInterest  (http://ontologydesignpatterns.org/wiki/Submissions:SmartHome_FeatureOfInterest) has been used in the definition of this pattern's classes."^^xsd:string .
+
+#################################################################
+#    Object Properties
+#################################################################
+
+###  http://purl.oclc.org/NET/ssnx/ssn#isProxyFor
+<http://purl.oclc.org/NET/ssnx/ssn#isProxyFor> rdf:type owl:ObjectProperty .
+
+
+###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#expresses
+<http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#expresses> rdf:type owl:ObjectProperty .
+
+
+###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isExpressedBy
+<http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isExpressedBy> rdf:type owl:ObjectProperty .
+
+
+#################################################################
+#    Classes
+#################################################################
+
+###  http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Situation.owl#SmartObjectSituation
+:SmartObjectSituation rdf:type owl:Class ;
+                      rdfs:subClassOf <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Situation> ,
+                                      [ rdf:type owl:Restriction ;
+                                        owl:onProperty <http://purl.oclc.org/NET/ssnx/ssn#isProxyFor> ;
+                                        owl:someValuesFrom :SmartObjectSituation
+                                      ] ,
+                                      [ rdf:type owl:Restriction ;
+                                        owl:onProperty <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isExpressedBy> ;
+                                        owl:someValuesFrom <http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_FeatureOfInterest.owl#SmartHomeFeatureOfInterest>
+                                      ] ,
+                                      [ rdf:type owl:Restriction ;
+                                        owl:onProperty <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isExpressedBy> ;
+                                        owl:someValuesFrom :State
+                                      ] .
+
+
+###  http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Situation.owl#State
+:State rdf:type owl:Class ;
+       rdfs:subClassOf <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#InformationObject> ,
+                       [ rdf:type owl:Restriction ;
+                         owl:onProperty <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#expresses> ;
+                         owl:someValuesFrom :SmartObjectSituation
+                       ] .
+
+
+###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#InformationObject
+<http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#InformationObject> rdf:type owl:Class .
+
+
+###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Situation
+<http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Situation> rdf:type owl:Class .
+
+
+###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

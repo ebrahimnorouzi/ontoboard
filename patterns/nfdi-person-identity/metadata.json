@@ -1,0 +1,15 @@
+{
+  "id": "nfdi-person-identity",
+  "name": "people",
+  "description": "A person (nfdi:NFDI_0000004) carries identity and label while given name, family name and ORCID identifier are separate value-node individuals reached by obo:IAO_0000235. Involvement in a task area or project is modelled with obo:RO_0000056 (participates in) rather than a direct affiliation literal.",
+  "category": "conceptual",
+  "domain": "research-data",
+  "competency_questions": "Which researchers are involved in NFDI-MatWerk, and in which task area?; What is the ORCID iD of a given researcher, and which organisation are they affiliated with?; Which academic disciplines does a researcher work in?; Which datasets, software or publications is a given researcher a creator of?",
+  "pattern_iri": "https://ontoboard.org/patterns/nfdi-person-identity.owl",
+  "source": "https://nfdi.fiz-karlsruhe.de/matwerk/patterns/",
+  "collection": "nfdi",
+  "publisher": "nfdi.fiz-karlsruhe.de",
+  "extracted_from": "nfdi",
+  "class_count": 10,
+  "property_count": 2
+}

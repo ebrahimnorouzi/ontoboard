@@ -1,0 +1,199 @@
+@prefix : <https://ontoboard.org/patterns/mwo-resource-implementation.owl#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@base <https://ontoboard.org/patterns/mwo-resource-implementation.owl> .
+
+<https://ontoboard.org/patterns/mwo-resource-implementation.owl> rdf:type owl:Ontology .
+
+#################################################################
+#    Annotation properties
+#################################################################
+
+###  http://purl.obolibrary.org/obo/IAO_0000112
+<http://purl.obolibrary.org/obo/IAO_0000112> rdf:type owl:AnnotationProperty .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000115
+<http://purl.obolibrary.org/obo/IAO_0000115> rdf:type owl:AnnotationProperty .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000116
+<http://purl.obolibrary.org/obo/IAO_0000116> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.w3.org/2004/02/skos/core#definition
+<http://www.w3.org/2004/02/skos/core#definition> rdf:type owl:AnnotationProperty .
+
+
+#################################################################
+#    Object Properties
+#################################################################
+
+###  http://purl.obolibrary.org/obo/RO_0000057
+<http://purl.obolibrary.org/obo/RO_0000057> rdf:type owl:ObjectProperty ;
+                                            <http://purl.obolibrary.org/obo/IAO_0000112> "this blood coagulation has participant this blood clot"@en ,
+                                                                                         "this investigation has participant this investigator"@en ,
+                                                                                         "this process has participant this input material (or this output material)"@en ;
+                                            <http://purl.obolibrary.org/obo/IAO_0000115> "a relation between a process and a continuant, in which the continuant is somehow involved in the process"@en ;
+                                            <http://purl.obolibrary.org/obo/IAO_0000116> "Has_participant is a primitive instance-level relation between a process, a continuant, and a time at which the continuant participates in some way in the process. The relation obtains, for example, when this particular process of oxygen exchange across this particular alveolar membrane has_participant this particular sample of hemoglobin at this particular time."@en ;
+                                            rdfs:label "has participant"@en .
+
+
+###  http://purl.obolibrary.org/obo/RO_0002234
+<http://purl.obolibrary.org/obo/RO_0002234> rdf:type owl:ObjectProperty ;
+                                            rdfs:subPropertyOf <http://purl.obolibrary.org/obo/RO_0000057> ;
+                                            <http://purl.obolibrary.org/obo/IAO_0000115> "p has output c iff c is a participant in p, c is present at the end of p, and c is not present in the same state at the beginning of p." ;
+                                            rdfs:label "has output"@en .
+
+
+###  http://purls.helmholtz-metadaten.de/mwo/MWO_0001025
+<http://purls.helmholtz-metadaten.de/mwo/MWO_0001025> rdf:type owl:ObjectProperty ;
+                                                      owl:inverseOf <http://purls.helmholtz-metadaten.de/mwo/MWO_0001028> ;
+                                                      rdfs:comment "inverse of property \"implemented by\"" ;
+                                                      rdfs:label "implements"@en .
+
+
+###  http://purls.helmholtz-metadaten.de/mwo/MWO_0001028
+<http://purls.helmholtz-metadaten.de/mwo/MWO_0001028> rdf:type owl:ObjectProperty ;
+                                                      rdfs:comment "The property relates an entity to an agent that has adapted or developed the entity for a specific purpose and actively uses it within a particular context." ;
+                                                      rdfs:label "implemented by"@en .
+
+
+###  http://purls.helmholtz-metadaten.de/mwo/MWO_0001134
+<http://purls.helmholtz-metadaten.de/mwo/MWO_0001134> rdf:type owl:ObjectProperty ;
+                                                      rdfs:subPropertyOf <http://purls.helmholtz-metadaten.de/mwo/MWO_0001028> ;
+                                                      owl:inverseOf <http://purls.helmholtz-metadaten.de/mwo/MWO_0001135> ;
+                                                      rdfs:comment "The property relates an entity to an agent that has modified, customized, or extended it for a specific use case or research purpose." ;
+                                                      rdfs:label "developed by"@en .
+
+
+###  http://purls.helmholtz-metadaten.de/mwo/MWO_0001135
+<http://purls.helmholtz-metadaten.de/mwo/MWO_0001135> rdf:type owl:ObjectProperty ;
+                                                      rdfs:subPropertyOf <http://purls.helmholtz-metadaten.de/mwo/MWO_0001025> ;
+                                                      rdfs:comment "inverse of property \"developed by\"" ;
+                                                      rdfs:label "develops"@en .
+
+
+###  http://purls.helmholtz-metadaten.de/mwo/MWO_0001136
+<http://purls.helmholtz-metadaten.de/mwo/MWO_0001136> rdf:type owl:ObjectProperty ;
+                                                      rdfs:subPropertyOf <http://purls.helmholtz-metadaten.de/mwo/MWO_0001028> ;
+                                                      owl:inverseOf <http://purls.helmholtz-metadaten.de/mwo/MWO_0001137> ;
+                                                      rdfs:comment "The property relates an entity to agents that collaboratively contributed to its development." ;
+                                                      rdfs:label "co developed by"@en .
+
+
+###  http://purls.helmholtz-metadaten.de/mwo/MWO_0001137
+<http://purls.helmholtz-metadaten.de/mwo/MWO_0001137> rdf:type owl:ObjectProperty ;
+                                                      rdfs:subPropertyOf <http://purls.helmholtz-metadaten.de/mwo/MWO_0001025> ;
+                                                      rdfs:comment "inverse of property \"co developed by\"" ;
+                                                      rdfs:label "co develops"@en .
+
+
+###  http://purls.helmholtz-metadaten.de/mwo/MWO_0001138
+<http://purls.helmholtz-metadaten.de/mwo/MWO_0001138> rdf:type owl:ObjectProperty ;
+                                                      rdfs:subPropertyOf <http://purls.helmholtz-metadaten.de/mwo/MWO_0001028> ;
+                                                      owl:inverseOf <http://purls.helmholtz-metadaten.de/mwo/MWO_0001139> ;
+                                                      rdfs:comment "The property relates an entity to an agent responsible for its creation or primary development." ;
+                                                      rdfs:label "adapted by"@en .
+
+
+###  http://purls.helmholtz-metadaten.de/mwo/MWO_0001139
+<http://purls.helmholtz-metadaten.de/mwo/MWO_0001139> rdf:type owl:ObjectProperty ;
+                                                      rdfs:subPropertyOf <http://purls.helmholtz-metadaten.de/mwo/MWO_0001025> ;
+                                                      rdfs:comment "inverse of property \"adapted by\"" ;
+                                                      rdfs:label "adapts"@en .
+
+
+#################################################################
+#    Classes
+#################################################################
+
+###  http://purl.obolibrary.org/obo/BFO_0000017
+<http://purl.obolibrary.org/obo/BFO_0000017> rdf:type owl:Class ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000112> "the disposition of this piece of metal to conduct electricity."@en ,
+                                                                                          "the disposition of your blood to coagulate"@en ,
+                                                                                          "the function of your reproductive organs"@en ,
+                                                                                          "the role of being a doctor"@en ,
+                                                                                          "the role of this boundary to delineate where Utah and Colorado meet"@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "A specifically dependent continuant  that inheres in continuant  entities and are not exhibited in full at every time in which it inheres in an entity or group of entities. The exhibition or actualization of a realizable entity is a particular manifestation, functioning or process that occurs under certain circumstances."@en ;
+                                             rdfs:label "realizable entity"@en ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "(Elucidation) A realizable entity is a specifically dependent continuant that inheres in some independent continuant which is not a spatial region & which is of a type some instances of which are realized in processes of a correlated type"@en .
+
+
+###  http://purl.obolibrary.org/obo/BFO_0000023
+<http://purl.obolibrary.org/obo/BFO_0000023> rdf:type owl:Class ;
+                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000017> ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000112> "John’s role of husband to Mary is dependent on Mary’s role of wife to John, and both are dependent on the object aggregate comprising John and Mary as member parts joined together through the relational quality of being married."@en ,
+                                                                                          "the priest role"@en ,
+                                                                                          "the role of a boundary to demarcate two neighboring administrative territories"@en ,
+                                                                                          "the role of a building in serving as a military target"@en ,
+                                                                                          "the role of a stone in marking a property boundary"@en ,
+                                                                                          "the role of subject in a clinical trial"@en ,
+                                                                                          "the student role"@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "A realizable entity  the manifestation of which brings about some result or end that is not essential to a continuant  in virtue of the kind of thing that it is but that can be served or participated in by that kind of continuant  in some kinds of natural, social or institutional contexts."@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000116> "BFO 2 Reference: One major family of examples of non-rigid universals involves roles, and ontologies developed for corresponding administrative purposes may consist entirely of representatives of entities of this sort. Thus ‘professor’, defined as follows,b instance_of professor at t =Def. there is some c, c instance_of professor role & c inheres_in b at t.denotes a non-rigid universal and so also do ‘nurse’, ‘student’, ‘colonel’, ‘taxpayer’, and so forth. (These terms are all, in the jargon of philosophy, phase sortals.) By using role terms in definitions, we can create a BFO conformant treatment of such entities drawing on the fact that, while an instance of professor may be simultaneously an instance of trade union member, no instance of the type professor role is also (at any time) an instance of the type trade union member role (any more than any instance of the type color is at any time an instance of the type length).If an ontology of employment positions should be defined in terms of roles following the above pattern, this enables the ontology to do justice to the fact that individuals instantiate the corresponding universals –  professor, sergeant, nurse – only during certain phases in their lives."@en ;
+                                             rdfs:label "role"@en ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "(Elucidation) A role b is a realizable entity such that b exists because there is some single bearer that is in some special physical, social, or institutional set of circumstances in which this bearer does not have to be & b is not such that, if it ceases to exist, then the physical make-up of the bearer is thereby changed"@en .
+
+
+###  http://purls.helmholtz-metadaten.de/mwo/MWO_0001002
+<http://purls.helmholtz-metadaten.de/mwo/MWO_0001002> rdf:type owl:Class ;
+                                                      rdfs:subClassOf <https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000002> ;
+                                                      rdfs:label "matwerk project"@en ;
+                                                      <http://www.w3.org/2004/02/skos/core#definition> "A MatWerk project is a project within the NFDI MatWerk consortium that involves coordinated research, development, or infrastructure activities aimed at advancing materials science and engineering through data-driven methodologies and digitalization." .
+
+
+###  http://purls.helmholtz-metadaten.de/mwo/MWO_0001026
+<http://purls.helmholtz-metadaten.de/mwo/MWO_0001026> rdf:type owl:Class ;
+                                                      rdfs:subClassOf <https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000232> ;
+                                                      rdfs:label "infrastructure use case"@en ;
+                                                      <http://www.w3.org/2004/02/skos/core#definition> "An Infrastructure Use Case (IUC) is a service product that defines a specific application scenario, requirement, or implementation of research infrastructure, demonstrating its functionality, benefits, and impact in a given scientific or industrial domain." .
+
+
+###  http://purls.helmholtz-metadaten.de/mwo/MWO_0001029
+<http://purls.helmholtz-metadaten.de/mwo/MWO_0001029> rdf:type owl:Class ;
+                                                      rdfs:subClassOf <https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000002> ;
+                                                      rdfs:label "matwerk participant project"@en ;
+                                                      <http://www.w3.org/2004/02/skos/core#definition> "Participant Projects (PPs) are projects by NFDI-MatWerk partners that address specific scientific and technological challenges, providing practical examples and feedback for the development and validation of the infrastructure." .
+
+
+###  http://purls.helmholtz-metadaten.de/mwo/MWO_0001030
+<http://purls.helmholtz-metadaten.de/mwo/MWO_0001030> rdf:type owl:Class ;
+                                                      rdfs:label "developing process"@en ;
+                                                      <http://www.w3.org/2004/02/skos/core#definition> "A process that involves the creation, adaptation, or refinement of an entity, with the participation of some participants, leading to specific outcomes." .
+
+
+###  http://purls.helmholtz-metadaten.de/mwo/MWO_0001032
+<http://purls.helmholtz-metadaten.de/mwo/MWO_0001032> rdf:type owl:Class ;
+                                                      rdfs:label "co developing process"@en ;
+                                                      <http://www.w3.org/2004/02/skos/core#definition> "A developing process that involves the collaborative creation, adaptation, or refinement of an entity, requiring the active participation of at least two agents, leading to shared outcomes." .
+
+
+###  http://purls.helmholtz-metadaten.de/mwo/MWO_0001033
+<http://purls.helmholtz-metadaten.de/mwo/MWO_0001033> rdf:type owl:Class ;
+                                                      rdfs:label "adapting process"@en ;
+                                                      <http://www.w3.org/2004/02/skos/core#definition> "A process that involves modifying or adjusting an existing entity, with the participation of some participants, to improve its suitability for a specific purpose or context, leading to a refined or optimized outcome." .
+
+
+###  http://purls.helmholtz-metadaten.de/mwo/MWO_0001051
+<http://purls.helmholtz-metadaten.de/mwo/MWO_0001051> rdf:type owl:Class ;
+                                                      rdfs:label "implementing process"@en ;
+                                                      <http://www.w3.org/2004/02/skos/core#definition> "A process that applies, integrates, or refines an entity, encompassing development, co-development, and adaptation, with participant involvement to achieve a functional outcome." .
+
+
+###  https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000002
+<https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000002> rdf:type owl:Class ;
+                                                      rdfs:label "project"@en ;
+                                                      <http://www.w3.org/2004/02/skos/core#definition> "A process of a scientific or business endeavor that aims to conclude an investigation or to answer a research question."@en .
+
+
+###  https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000232
+<https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000232> rdf:type owl:Class ;
+                                                      rdfs:label "service product"@en ;
+                                                      <http://www.w3.org/2004/02/skos/core#definition> "An immaterial entity that provides value through a service offering, delivering intangible benefits or functionality designed to fulfill specific needs or requirements, often in a structured process."@en .
+
+
+###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

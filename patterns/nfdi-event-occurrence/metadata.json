@@ -1,0 +1,15 @@
+{
+  "id": "nfdi-event-occurrence",
+  "name": "event",
+  "description": "An academic event (nfdi:NFDI_0010020, conference) is an occurrent located in time with obo:BFO_0000199, with organisers and audience attached as participants via obo:RO_0000057 and headcount as an input via obo:RO_0002233. Recurrence and title are separate value nodes.",
+  "category": "behavioral",
+  "domain": "research-data",
+  "competency_questions": "Which academic events has NFDI-MatWerk organised, and when?; Which organisation or task area organised a given event, and how often does it recur?; Which publications or educational materials came out of a given event?",
+  "pattern_iri": "https://ontoboard.org/patterns/nfdi-event-occurrence.owl",
+  "source": "https://nfdi.fiz-karlsruhe.de/matwerk/patterns/",
+  "collection": "nfdi",
+  "publisher": "nfdi.fiz-karlsruhe.de",
+  "extracted_from": "nfdi",
+  "class_count": 8,
+  "property_count": 4
+}

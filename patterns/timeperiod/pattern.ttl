@@ -1,0 +1,97 @@
+@prefix : <http://www.ontologydesignpatterns.org/cp/owl/timeperiod.owl#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@base <http://www.ontologydesignpatterns.org/cp/owl/timeperiod.owl> .
+
+<http://www.ontologydesignpatterns.org/cp/owl/timeperiod.owl> rdf:type owl:Ontology ;
+                                                               owl:imports <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl> ;
+                                                               <http://purl.org/dc/elements/1.1/creator> "Aldo Gangemi" ,
+                                                                                                         "Andrea Nuzzolese" ,
+                                                                                                         "Valentina Carriero" ,
+                                                                                                         "Valentina Presutti" ;
+                                                               <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> "Which is the measurement unit of a time period?, Which is the value of a time period?" ;
+                                                               <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences> "The measurement unit and the numerical value of a time period can be modeled." ;
+                                                               <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> "To represent time periods, as n-ary relation with a measurement unit and a numerical value." ;
+                                                               rdfs:comment "A pattern for time periods."@en ;
+                                                               rdfs:label "time period" .
+
+#################################################################
+#    Annotation properties
+#################################################################
+
+###  http://purl.org/dc/elements/1.1/creator
+<http://purl.org/dc/elements/1.1/creator> rdf:type owl:AnnotationProperty .
+
+
+#################################################################
+#    Object Properties
+#################################################################
+
+###  http://www.ontologydesignpatterns.org/cp/owl/timeperiod.owl#hasTimePeriodMeasurementUnit
+:hasTimePeriodMeasurementUnit rdf:type owl:ObjectProperty ;
+                              owl:inverseOf :isTimePeriodMeasurementUnitOf ;
+                              rdf:type owl:FunctionalProperty ;
+                              rdfs:domain :TimePeriod ;
+                              rdfs:range :TimePeriodMeasurementUnit ;
+                              rdfs:comment "This property relates a time period to its measurement unit."@en ;
+                              rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/timeperiod.owl> ;
+                              rdfs:label "has time period measurement unit"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/timeperiod.owl#isTimePeriodMeasurementUnitOf
+:isTimePeriodMeasurementUnitOf rdf:type owl:ObjectProperty ;
+                               rdfs:domain :TimePeriodMeasurementUnit ;
+                               rdfs:range :TimePeriod ;
+                               rdfs:comment "This property relates the measurement unit to the time period."@en ;
+                               rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/timeperiod.owl> ;
+                               rdfs:label "is time period measurement unit of"@en .
+
+
+#################################################################
+#    Data properties
+#################################################################
+
+###  http://www.ontologydesignpatterns.org/cp/owl/timeperiod.owl#timePeriodValue
+:timePeriodValue rdf:type owl:DatatypeProperty ,
+                          owl:FunctionalProperty ;
+                 rdfs:domain :TimePeriod ;
+                 rdfs:range xsd:integer ;
+                 rdfs:comment "This property represents the value of a time period."@en ;
+                 rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/timeperiod.owl> ;
+                 rdfs:label "time period value"@en .
+
+
+#################################################################
+#    Classes
+#################################################################
+
+###  http://www.ontologydesignpatterns.org/cp/owl/timeperiod.owl#TimePeriod
+:TimePeriod rdf:type owl:Class ;
+            rdfs:subClassOf [ rdf:type owl:Restriction ;
+                              owl:onProperty :hasTimePeriodMeasurementUnit ;
+                              owl:someValuesFrom :TimePeriodMeasurementUnit
+                            ] ,
+                            [ rdf:type owl:Restriction ;
+                              owl:onProperty :timePeriodValue ;
+                              owl:someValuesFrom xsd:integer
+                            ] ;
+            rdfs:comment "A Time Period is a temporal distance, even approximated, that elapses between two events or situations."@en ;
+            rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/timeperiod.owl> ;
+            rdfs:label "Time Period"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/timeperiod.owl#TimePeriodMeasurementUnit
+:TimePeriodMeasurementUnit rdf:type owl:Class ;
+                           rdfs:subClassOf [ rdf:type owl:Restriction ;
+                                             owl:onProperty :isTimePeriodMeasurementUnitOf ;
+                                             owl:someValuesFrom :TimePeriod
+                                           ] ;
+                           rdfs:comment "The Time Period Measurement Unit is the unit for measuring a Time Period (e.g. year, month, week)."@en ;
+                           rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/timeperiod.owl> ;
+                           rdfs:label "Time Period Measurement Unit"@en .
+
+
+###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

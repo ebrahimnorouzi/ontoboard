@@ -1,0 +1,118 @@
+@prefix : <http://www.ontologydesignpatterns.org/cp/owl/fsdas/resourceabundanceobservation.owl#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@base <http://www.ontologydesignpatterns.org/cp/owl/fsdas/resourceabundanceobservation.owl> .
+
+<http://www.ontologydesignpatterns.org/cp/owl/fsdas/resourceabundanceobservation.owl> rdf:type owl:Ontology ;
+                                                                                       owl:imports <http://www.ontologydesignpatterns.org/cp/owl/observation.owl> ,
+                                                                                                   <http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresources.owl> ,
+                                                                                                   <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl> ;
+                                                                                       <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> "What resource is observed? For what year and at what abundance level?" ;
+                                                                                       <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences> "The patterns states that for each instance of the resource observation all parameters exist, this does not however mean that they are necessarily present in the knowledge base. Any dependencies between parameters have not been taken intor account, there are no formal restrictions on the combination possible. The parameters are intended to have a fixed set of values (to be defined as nominals) but this is not explicit in the pattern." ;
+                                                                                       <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> "The intent of the pattern is to be able to represent observations of aquatic resources, where the observations have been made a certain year and has certain other parameters." ;
+                                                                                       <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasUnitTest> """SELECT ?x WHERE {?x a :AquaticResourceObservation.  ?x :hasReferenceYear \"2004\"^^xsd:gYear}
+SELECT ?x WHERE {?x a :AquaticResourceObservation.  ?x :hasAbundanceLevel :LowAbundance}""" ;
+                                                                                       <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios> """Give me the resource observations for the year 2004
+Give me the resource observations where the abundance level is 'Low abundance'""" ;
+                                                                                       owl:versionInfo "1.0"^^xsd:string .
+
+#################################################################
+#    Datatypes
+#################################################################
+
+###  http://www.w3.org/2001/XMLSchema#gYear
+xsd:gYear rdf:type rdfs:Datatype .
+
+
+#################################################################
+#    Object Properties
+#################################################################
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/resourceabundanceobservation.owl#hasAbundanceLevel
+:hasAbundanceLevel rdf:type owl:ObjectProperty ;
+                   rdfs:subPropertyOf <http://www.ontologydesignpatterns.org/cp/owl/observation.owl#hasParameter> ;
+                   owl:inverseOf :isAbundanceLevelOf ;
+                   rdfs:domain :ResourceAbundanceObservation ;
+                   rdfs:range :AbundanceLevel ;
+                   rdfs:label "has abundance level"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/resourceabundanceobservation.owl#hasResource
+:hasResource rdf:type owl:ObjectProperty ;
+             rdfs:subPropertyOf <http://www.ontologydesignpatterns.org/cp/owl/observation.owl#isObservationOf> ;
+             owl:inverseOf :isResourceOf ;
+             rdfs:domain :ResourceAbundanceObservation ;
+             rdfs:range <http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresources.owl#AquaticResource> ;
+             rdfs:label "has resource"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/resourceabundanceobservation.owl#isAbundanceLevelOf
+:isAbundanceLevelOf rdf:type owl:ObjectProperty ;
+                    rdfs:subPropertyOf <http://www.ontologydesignpatterns.org/cp/owl/observation.owl#isParameterOf> ;
+                    rdfs:domain :AbundanceLevel ;
+                    rdfs:range :ResourceAbundanceObservation ;
+                    rdfs:label "is abundance level of"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/resourceabundanceobservation.owl#isResourceOf
+:isResourceOf rdf:type owl:ObjectProperty ;
+              rdfs:subPropertyOf <http://www.ontologydesignpatterns.org/cp/owl/observation.owl#hasObservation> ;
+              rdfs:domain <http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresources.owl#AquaticResource> ;
+              rdfs:range :ResourceAbundanceObservation ;
+              rdfs:label "is resource of"@en .
+
+
+#################################################################
+#    Data properties
+#################################################################
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/resourceabundanceobservation.owl#hasReferenceYear
+:hasReferenceYear rdf:type owl:DatatypeProperty ;
+                  rdfs:subPropertyOf <http://www.ontologydesignpatterns.org/cp/owl/observation.owl#inDate> ;
+                  rdfs:domain :ResourceAbundanceObservation ;
+                  rdfs:range xsd:gYear ;
+                  rdfs:label "has reference year"@en .
+
+
+#################################################################
+#    Classes
+#################################################################
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresources.owl#AquaticResource
+<http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresources.owl#AquaticResource> owl:disjointWith <http://www.ontologydesignpatterns.org/cp/owl/observation.owl#Observation> ,
+                                                                                                           <http://www.ontologydesignpatterns.org/cp/owl/observation.owl#Parameter> .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/resourceabundanceobservation.owl#AbundanceLevel
+:AbundanceLevel rdf:type owl:Class ;
+                rdfs:subClassOf <http://www.ontologydesignpatterns.org/cp/owl/observation.owl#Parameter> ;
+                rdfs:label "Abundance level"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/resourceabundanceobservation.owl#ResourceAbundanceObservation
+:ResourceAbundanceObservation rdf:type owl:Class ;
+                              rdfs:subClassOf <http://www.ontologydesignpatterns.org/cp/owl/observation.owl#Observation> ,
+                                              [ rdf:type owl:Restriction ;
+                                                owl:onProperty :hasAbundanceLevel ;
+                                                owl:someValuesFrom :AbundanceLevel
+                                              ] ,
+                                              [ rdf:type owl:Restriction ;
+                                                owl:onProperty :hasResource ;
+                                                owl:someValuesFrom <http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresources.owl#AquaticResource>
+                                              ] ,
+                                              [ rdf:type owl:Restriction ;
+                                                owl:onProperty :hasReferenceYear ;
+                                                owl:cardinality "1"^^xsd:nonNegativeInteger
+                                              ] ;
+                              rdfs:comment "An observation of a resource characterised by different parameters." ;
+                              rdfs:label "Aquatic resource observation"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/observation.owl#Observation
+
+###  http://www.ontologydesignpatterns.org/cp/owl/observation.owl#Parameter
+
+###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

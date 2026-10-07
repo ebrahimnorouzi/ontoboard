@@ -21,6 +21,14 @@ public final class PatternOrder {
     public static final String BY_PUBLISHER = "By publisher";
     public static final String BY_CATEGORY = "By category";
     public static final String BY_NAME = "By name";
+    /**
+     * Which catalogue the pattern came from.
+     *
+     * <p>Only became worth offering once there was more than one. Until 1.87.0 every pattern was
+     * harvested from the ODP portal, so grouping by collection put all 123 in one bucket; there
+     * are now four, and "show me the MWO patterns" is a question somebody has.
+     */
+    public static final String BY_COLLECTION = "By collection";
 
     private PatternOrder() {
     }
@@ -44,6 +52,15 @@ public final class PatternOrder {
         }
         if (BY_CATEGORY.equals(ordering)) {
             return keyThenName(false);
+        }
+        if (BY_COLLECTION.equals(ordering)) {
+            return new Comparator<DesignPattern>() {
+                @Override
+                public int compare(DesignPattern left, DesignPattern right) {
+                    int byKey = left.getCollection().compareToIgnoreCase(right.getCollection());
+                    return byKey != 0 ? byKey : byName().compare(left, right);
+                }
+            };
         }
         return byName();
     }

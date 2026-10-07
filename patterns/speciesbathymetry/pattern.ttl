@@ -1,0 +1,100 @@
+@prefix : <http://www.ontologydesignpatterns.org/cp/owl/fsdas/speciesbathymetry.owl#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@base <http://www.ontologydesignpatterns.org/cp/owl/fsdas/speciesbathymetry.owl> .
+
+<http://www.ontologydesignpatterns.org/cp/owl/fsdas/speciesbathymetry.owl> rdf:type owl:Ontology ;
+                                                                            owl:imports <http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresources.owl> ,
+                                                                                        <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl> ;
+                                                                            <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> "what species have what (typical) bathymetric range in what water area? where can species be typical found for a certain water area?" ;
+                                                                            <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences> """The pattern allows to represent species with a typical bathymetric range and a typical water area where the exemplars (from an AquaticResource) can be found. However, there is no direct relation between the bathymetric range and the water area; in principle, it is possible that there are no places in the water area that provide the conditions for that bathymetric range.
+In order to represent a condition on the bathymetric range to be realized in the water area, the situation pattern should be reused and specialized, as in the speciesconditions.owl pattern.""" ;
+                                                                            <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#relatedCPs> "speciesconditions.owl" ;
+                                                                            <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios> "give me the species found below 200 metres for water area '24'" ;
+                                                                            rdfs:comment "This pattern encodes a FSDAS competency question, with an indication to use some AquaticSpecies class, and some hasBathymetricRange property, with range BathymetricRange." ;
+                                                                            owl:versionInfo "1.0"^^xsd:string ,
+                                                                                            "Created by Aldo Gangemi" .
+
+#################################################################
+#    Object Properties
+#################################################################
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/speciesbathymetry.owl#hasBathymetricRange
+:hasBathymetricRange rdf:type owl:ObjectProperty ;
+                     owl:inverseOf :isBathymetricRangeOf ;
+                     rdfs:domain <http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresources.owl#AquaticSpecies> ;
+                     rdfs:range :BathymetricRange ;
+                     rdfs:comment "has bathymetric range"@en ;
+                     rdfs:label "has bathymetric range"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/speciesbathymetry.owl#isBathymetricRangeOf
+:isBathymetricRangeOf rdf:type owl:ObjectProperty ;
+                      rdfs:domain :BathymetricRange ;
+                      rdfs:range <http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresources.owl#AquaticSpecies> ;
+                      rdfs:comment "is bathymetric range of"@en ;
+                      rdfs:label "is bathymetric range of"@en .
+
+
+#################################################################
+#    Data properties
+#################################################################
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/speciesbathymetry.owl#hasRangeMax
+:hasRangeMax rdf:type owl:DatatypeProperty ;
+             rdfs:domain :BathymetricRange ;
+             rdfs:range xsd:float ;
+             rdfs:label "has range max"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/speciesbathymetry.owl#hasRangeMin
+:hasRangeMin rdf:type owl:DatatypeProperty ;
+             rdfs:domain :BathymetricRange ;
+             rdfs:range xsd:float ;
+             rdfs:label "has range min"@en .
+
+
+#################################################################
+#    Classes
+#################################################################
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresources.owl#AquaticResource
+<http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresources.owl#AquaticResource> owl:disjointWith :BathymetricRange .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresources.owl#AquaticSpecies
+<http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresources.owl#AquaticSpecies> rdfs:subClassOf [ rdf:type owl:Restriction ;
+                                                                                                           owl:onProperty :hasBathymetricRange ;
+                                                                                                           owl:someValuesFrom :BathymetricRange
+                                                                                                         ] ;
+                                                                                         owl:disjointWith :BathymetricRange ;
+                                                                                         rdfs:comment "Here also the complex type SpeciesFeature (holding association with BathymetricRange) is the schema mapping required to refer to BathymetricRange. Any mapping has to take care of that, e.g. maps(AquaticSpecies, owl:unionOf(SpeciesRef, SpeciesFeature))." .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresources.owl#WaterArea
+<http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresources.owl#WaterArea> owl:disjointWith :BathymetricRange .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/speciesbathymetry.owl#BathymetricRange
+:BathymetricRange rdf:type owl:Class ;
+                  rdfs:subClassOf [ rdf:type owl:Restriction ;
+                                    owl:onProperty :isBathymetricRangeOf ;
+                                    owl:someValuesFrom <http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresources.owl#AquaticSpecies>
+                                  ] ,
+                                  [ rdf:type owl:Restriction ;
+                                    owl:onProperty :hasRangeMax ;
+                                    owl:cardinality "1"^^xsd:nonNegativeInteger
+                                  ] ,
+                                  [ rdf:type owl:Restriction ;
+                                    owl:onProperty :hasRangeMin ;
+                                    owl:cardinality "1"^^xsd:nonNegativeInteger
+                                  ] ;
+                  rdfs:comment """This class contains the set of bathymetric ranges. Bathymetry is numeric depth information about the ranges in which an aquatic species is found.
+It can be mapped to fi:Bathymetry.""" ;
+                  rdfs:label "Bathymetric range"@en .
+
+
+###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

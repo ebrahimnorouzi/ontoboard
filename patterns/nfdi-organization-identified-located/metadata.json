@@ -1,0 +1,15 @@
+{
+  "id": "nfdi-organization-identified-located",
+  "name": "organization",
+  "description": "An organization (obo:OBI_0000245) is placed with obo:RO_0001025 (located in) against a city and country, and identified by a ROR identifier value node plus an acronym annotation. Identification and location are modelled as separate reusable individuals, not as literals on the organization.",
+  "category": "spatial",
+  "domain": "research-data",
+  "competency_questions": "Which organisations participate in NFDI-MatWerk?; What is an organisation's ROR identifier, and in which city is it located?; Which organisation is the parent of a given institute?; Which researchers, instruments and facilities belong to a given organisation?",
+  "pattern_iri": "https://ontoboard.org/patterns/nfdi-organization-identified-located.owl",
+  "source": "https://nfdi.fiz-karlsruhe.de/matwerk/patterns/",
+  "collection": "nfdi",
+  "publisher": "nfdi.fiz-karlsruhe.de",
+  "extracted_from": "nfdi",
+  "class_count": 11,
+  "property_count": 2
+}

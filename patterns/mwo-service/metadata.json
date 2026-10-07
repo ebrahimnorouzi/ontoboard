@@ -1,0 +1,15 @@
+{
+  "id": "mwo-service",
+  "name": "Pattern 2: Service",
+  "description": "Models a service process in which an organization participates and realizes a service provider role; the process generates a service product that realizes a service product role and is linked to a service specification. It applies Pattern 1 to services, giving a structured link between process, participant, roles, output and specification.",
+  "category": "behavioral",
+  "domain": "research-data",
+  "competency_questions": "",
+  "pattern_iri": "https://ontoboard.org/patterns/mwo-service.owl",
+  "source": "https://ise-fizkarlsruhe.github.io/mwo/docs/patterns/",
+  "collection": "mwo",
+  "publisher": "ise-fizkarlsruhe.github.io",
+  "extracted_from": "nfdi",
+  "class_count": 13,
+  "property_count": 6
+}

@@ -1,0 +1,15 @@
+{
+  "id": "mwo-resource-implementation",
+  "name": "Pattern 4: Resource Implementation",
+  "description": "Models the implementation relationship between a resource and the agent that produced it: a MatWerk project is a process whose participant (task area, infrastructure use case or participant project) realizes a role, and whose output is an NFDI resource such as a dataset, tool, software or digital service. The shortcut property mwo:implementedBy links the resource directly to the process that produced it.",
+  "category": "structural",
+  "domain": "research-data",
+  "competency_questions": "Which tools were developed, co-developed, or adopted in an organization?",
+  "pattern_iri": "https://ontoboard.org/patterns/mwo-resource-implementation.owl",
+  "source": "https://ise-fizkarlsruhe.github.io/mwo/docs/patterns/",
+  "collection": "mwo",
+  "publisher": "ise-fizkarlsruhe.github.io",
+  "extracted_from": "mwo",
+  "class_count": 11,
+  "property_count": 10
+}

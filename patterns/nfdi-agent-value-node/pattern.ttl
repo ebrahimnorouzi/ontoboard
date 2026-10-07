@@ -1,0 +1,117 @@
+@prefix : <https://ontoboard.org/patterns/nfdi-agent-value-node.owl#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@base <https://ontoboard.org/patterns/nfdi-agent-value-node.owl> .
+
+<https://ontoboard.org/patterns/nfdi-agent-value-node.owl> rdf:type owl:Ontology .
+
+#################################################################
+#    Annotation properties
+#################################################################
+
+###  http://purl.obolibrary.org/obo/IAO_0000112
+<http://purl.obolibrary.org/obo/IAO_0000112> rdf:type owl:AnnotationProperty .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000115
+<http://purl.obolibrary.org/obo/IAO_0000115> rdf:type owl:AnnotationProperty .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000116
+<http://purl.obolibrary.org/obo/IAO_0000116> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.w3.org/2004/02/skos/core#definition
+<http://www.w3.org/2004/02/skos/core#definition> rdf:type owl:AnnotationProperty .
+
+
+#################################################################
+#    Object Properties
+#################################################################
+
+###  http://purl.obolibrary.org/obo/IAO_0000235
+<http://purl.obolibrary.org/obo/IAO_0000235> rdf:type owl:ObjectProperty ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "inverse of the relation 'denotes'"@en ;
+                                             rdfs:label "denoted by"@en .
+
+
+#################################################################
+#    Classes
+#################################################################
+
+###  http://purl.obolibrary.org/obo/BFO_0000004
+<http://purl.obolibrary.org/obo/BFO_0000004> rdf:type owl:Class ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000112> "a chair"@en ,
+                                                                                          "a heart"@en ,
+                                                                                          "a leg"@en ,
+                                                                                          "a molecule"@en ,
+                                                                                          "a spatial region"@en ,
+                                                                                          "an atom"@en ,
+                                                                                          "an orchestra."@en ,
+                                                                                          "an organism"@en ,
+                                                                                          "the bottom right portion of a human torso"@en ,
+                                                                                          "the interior of your mouth"@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "b is an independent continuant = Def. b is a continuant which is such that there is no c and no t such that b s-depends_on c at t. (axiom label in BFO2 Reference: [017-002])"@en ;
+                                             rdfs:label "independent continuant"@en ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "b is an independent continuant =Def b is a continuant & there is no c such that b specifically depends on c or b generically depends on c"@en .
+
+
+###  http://purl.obolibrary.org/obo/OBI_0000245
+<http://purl.obolibrary.org/obo/OBI_0000245> rdf:type owl:Class ;
+                                             rdfs:subClassOf <https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000102> ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000112> "PMID: 16353909.AAPS J. 2005 Sep 22;7(2):E274-80. Review. The joint food and agriculture organization of the United Nations/World Health Organization Expert Committee on Food Additives and its role in the evaluation of the safety of veterinary drug residues in foods."@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "An entity that can bear roles, has members, and has a set of organization rules. Members of organizations are either organizations themselves or individual people. Members can bear specific organization member roles that are determined in the organization rules. The organization rules also determine how decisions are made on behalf of the organization by the organization members."@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000116> """BP: The definition summarizes long email discussions on the OBI developer, roles, biomaterial and denrie branches. It leaves open if an organization is a material entity or a dependent continuant, as no consensus was reached on that.  The current placement as material is therefore temporary, in order to move forward with development. Here is the entire email summary, on which the definition is based:
+
+1) there are organization_member_roles (president, treasurer, branch
+editor), with individual persons as bearers
+
+2) there are organization_roles (employer, owner, vendor, patent holder)
+
+3) an organization has a charter / rules / bylaws, which specify what roles
+there are, how they should be realized, and how to modify the
+charter/rules/bylaws themselves.
+
+It is debatable what the organization itself is (some kind of dependent
+continuant or an aggregate of people). This also determines who/what the
+bearer of organization_roles' are. My personal favorite is still to define
+organization as a kind of 'legal entity', but thinking it through leads to
+all kinds of questions that are clearly outside the scope of OBI.
+
+Interestingly enough, it does not seem to matter much where we place
+organization itself, as long as we can subclass it (University, Corporation,
+Government Agency, Hospital), instantiate it (Affymetrix, NCBI, NIH, ISO,
+W3C, University of Oklahoma), and have it play roles.
+
+This leads to my proposal: We define organization through the statements 1 -
+3 above, but without an 'is a' statement for now. We can leave it in its
+current place in the is_a hierarchy (material entity) or move it up to
+'continuant'. We leave further clarifications to BFO, and close this issue
+for now."""@en ;
+                                             rdfs:label "organization"@en .
+
+
+###  https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000004
+<https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000004> rdf:type owl:Class ;
+                                                      rdfs:subClassOf <https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000102> ;
+                                                      rdfs:label "person"@en ;
+                                                      <http://www.w3.org/2004/02/skos/core#definition> "An object that represents a single human individual."@en .
+
+
+###  https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000006
+<https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000006> rdf:type owl:Class ;
+                                                      rdfs:label "consortium"@en ;
+                                                      <http://www.w3.org/2004/02/skos/core#definition> "An organisation that consists of multiple independent groups and individuals, who join together to collaborate on a specific goal."@en .
+
+
+###  https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000102
+<https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000102> rdf:type owl:Class ;
+                                                      rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000004> ;
+                                                      rdfs:label "agent"@en ;
+                                                      <http://www.w3.org/2004/02/skos/core#definition> "An independent continuant that acts autonomously and is entrusted with the authority to represent, negotiate, or act on behalf of another agent."@en .
+
+
+###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

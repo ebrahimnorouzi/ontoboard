@@ -1,0 +1,131 @@
+@prefix : <http://www.ontologydesignpatterns.org/cp/owl/planconditions.owl#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@base <http://www.ontologydesignpatterns.org/cp/owl/planconditions.owl> .
+
+<http://www.ontologydesignpatterns.org/cp/owl/planconditions.owl> rdf:type owl:Ontology ;
+                                                                   owl:imports <http://www.ontologydesignpatterns.org/cp/owl/basicplan.owl> ,
+                                                                               <http://www.ontologydesignpatterns.org/cp/owl/sequence.owl> ;
+                                                                   owl:versionInfo "1.0"^^xsd:string ,
+                                                                                   "1.1 added rdfs:isDefinedBy for all named entities"^^xsd:string .
+
+#################################################################
+#    Annotation properties
+#################################################################
+
+###  http://www.w3.org/2000/01/rdf-schema#isDefinedBy
+rdfs:isDefinedBy rdf:type owl:AnnotationProperty .
+
+
+###  http://www.w3.org/2000/01/rdf-schema#label
+rdfs:label rdf:type owl:AnnotationProperty .
+
+
+###  http://www.w3.org/2002/07/owl#versionInfo
+owl:versionInfo rdf:type owl:AnnotationProperty .
+
+
+#################################################################
+#    Object Properties
+#################################################################
+
+###  http://www.ontologydesignpatterns.org/cp/owl/planconditions.owl#followsPrecondition
+:followsPrecondition rdf:type owl:ObjectProperty ;
+                     rdfs:subPropertyOf <http://www.ontologydesignpatterns.org/cp/owl/sequence.owl#follows> ;
+                     owl:inverseOf :isPreconditionFollowedBy ;
+                     rdfs:domain <http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl#PlanExecution> ;
+                     rdfs:range <http://www.ontologydesignpatterns.org/cp/owl/situation.owl#Situation> ;
+                     rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/planconditions.owl> ;
+                     rdfs:label "follows precondition"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/planconditions.owl#hasPostcondition
+:hasPostcondition rdf:type owl:ObjectProperty ;
+                  owl:inverseOf :isPostconditionOf ;
+                  rdfs:domain <http://www.ontologydesignpatterns.org/cp/owl/basicplandescription.owl#Plan> ;
+                  rdfs:range <http://www.ontologydesignpatterns.org/cp/owl/situation.owl#Situation> ;
+                  rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/planconditions.owl> ;
+                  rdfs:label "has postcondition"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/planconditions.owl#hasPrecondition
+:hasPrecondition rdf:type owl:ObjectProperty ;
+                 owl:inverseOf :isPreconditionOf ;
+                 rdfs:domain <http://www.ontologydesignpatterns.org/cp/owl/basicplandescription.owl#Plan> ;
+                 rdfs:range <http://www.ontologydesignpatterns.org/cp/owl/situation.owl#Situation> ;
+                 rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/planconditions.owl> ;
+                 rdfs:label "has precondition"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/planconditions.owl#isPostconditionOf
+:isPostconditionOf rdf:type owl:ObjectProperty ;
+                   rdfs:domain <http://www.ontologydesignpatterns.org/cp/owl/situation.owl#Situation> ;
+                   rdfs:range <http://www.ontologydesignpatterns.org/cp/owl/basicplandescription.owl#Plan> ;
+                   rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/planconditions.owl> ;
+                   rdfs:label "is postcondition of"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/planconditions.owl#isPostconditionPrecededBy
+:isPostconditionPrecededBy rdf:type owl:ObjectProperty ;
+                           rdfs:subPropertyOf <http://www.ontologydesignpatterns.org/cp/owl/sequence.owl#follows> ;
+                           owl:inverseOf :precedesPostcondition ;
+                           rdfs:domain <http://www.ontologydesignpatterns.org/cp/owl/situation.owl#Situation> ;
+                           rdfs:range <http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl#PlanExecution> ;
+                           rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/planconditions.owl> ;
+                           rdfs:label "is postcondition preceded by"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/planconditions.owl#isPreconditionFollowedBy
+:isPreconditionFollowedBy rdf:type owl:ObjectProperty ;
+                          rdfs:subPropertyOf <http://www.ontologydesignpatterns.org/cp/owl/sequence.owl#precedes> ;
+                          rdfs:domain <http://www.ontologydesignpatterns.org/cp/owl/situation.owl#Situation> ;
+                          rdfs:range <http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl#PlanExecution> ;
+                          rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/planconditions.owl> ;
+                          rdfs:label "is precondition followed by"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/planconditions.owl#isPreconditionOf
+:isPreconditionOf rdf:type owl:ObjectProperty ;
+                  rdfs:domain <http://www.ontologydesignpatterns.org/cp/owl/situation.owl#Situation> ;
+                  rdfs:range <http://www.ontologydesignpatterns.org/cp/owl/basicplandescription.owl#Plan> ;
+                  rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/planconditions.owl> ;
+                  rdfs:label "is precondition of"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/planconditions.owl#precedesPostcondition
+:precedesPostcondition rdf:type owl:ObjectProperty ;
+                       rdfs:subPropertyOf <http://www.ontologydesignpatterns.org/cp/owl/sequence.owl#precedes> ;
+                       rdfs:domain <http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl#PlanExecution> ;
+                       rdfs:range <http://www.ontologydesignpatterns.org/cp/owl/situation.owl#Situation> ;
+                       rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/planconditions.owl> ;
+                       rdfs:label "precedes postcondition"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/sequence.owl#follows
+<http://www.ontologydesignpatterns.org/cp/owl/sequence.owl#follows> rdf:type owl:ObjectProperty .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/sequence.owl#precedes
+<http://www.ontologydesignpatterns.org/cp/owl/sequence.owl#precedes> rdf:type owl:ObjectProperty .
+
+
+#################################################################
+#    Classes
+#################################################################
+
+###  http://www.ontologydesignpatterns.org/cp/owl/basicplandescription.owl#Plan
+<http://www.ontologydesignpatterns.org/cp/owl/basicplandescription.owl#Plan> rdf:type owl:Class .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl#PlanExecution
+<http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl#PlanExecution> rdf:type owl:Class .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/situation.owl#Situation
+<http://www.ontologydesignpatterns.org/cp/owl/situation.owl#Situation> rdf:type owl:Class .
+
+
+###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

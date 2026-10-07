@@ -20,13 +20,30 @@ public final class PatternSummary {
 
     /** The details pane, as HTML. */
     public static String asHtml(DesignPattern pattern, PatternLibrary.Contents contents) {
+        return asHtml(pattern, contents, null);
+    }
+
+    /**
+     * The same, with the reason the pattern was suggested.
+     *
+     * <p>At the top, above everything the pattern says about itself. Somebody looking at a
+     * suggested pattern is deciding whether the suggestion is any good, and the evidence is how
+     * they decide - a ranked list with no reason is a magic box.
+     */
+    public static String asHtml(DesignPattern pattern, PatternLibrary.Contents contents,
+            String whySuggested) {
         StringBuilder html = new StringBuilder("<html><body style='font-family:sans-serif'>");
         html.append("<h2 style='margin-bottom:2px'>").append(escape(pattern.getName()))
             .append("</h2>");
         html.append("<div style='color:#777777;margin-bottom:8px'>")
+            .append(escape(pattern.getCollection())).append(" &middot; ")
             .append(escape(pattern.getPublisher())).append(" &middot; ")
             .append(escape(pattern.getCategory())).append(" &middot; ")
             .append(escape(pattern.getDomain())).append("</div>");
+        if (whySuggested != null && !whySuggested.trim().isEmpty()) {
+            html.append("<div style='background:#E8F1FB;padding:6px;margin:6px 0'><b>Suggested:"
+                    + "</b> ").append(escape(whySuggested)).append("</div>");
+        }
 
         if (pattern.isDuplicate()) {
             html.append(note("This is <b>" + escape(pattern.getSameAs()) + "</b> under a second "

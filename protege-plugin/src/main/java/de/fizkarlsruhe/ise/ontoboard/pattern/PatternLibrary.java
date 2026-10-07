@@ -67,9 +67,10 @@ public final class PatternLibrary {
         return patterns;
     }
 
-    /** Forgets the loaded index. For tests. */
+    /** Forgets the loaded index and everything parsed from it. For tests. */
     static void forget() {
         cached = null;
+        PARSED.clear();
     }
 
     /** The pattern with that id, or null. */
@@ -201,6 +202,21 @@ public final class PatternLibrary {
     }
 
     /**
+     * What has already been parsed, because parsing the library is expensive.
+     *
+     * <p>Measured: one pass over all 123 patterns takes 24 seconds, which is what the
+     * recommender needs to answer a single question. Unusable in a dialog, and it would have
+     * shipped that way - nothing about the code looks slow, and the cost only appears when
+     * something asks about every pattern at once rather than the one a user clicked.
+     *
+     * <p>Safe to hold for the session: these files are inside the jar and cannot change under
+     * it. What is kept is the summary - lists of entities and import IRIs - not the ontologies,
+     * so the 123 {@code OWLOntology} objects and their managers are still collected.
+     */
+    private static final java.util.Map<String, Contents> PARSED =
+            new java.util.concurrent.ConcurrentHashMap<String, Contents>();
+
+    /**
      * Reads the pattern's OWL file out of the bundle and reports what is in it.
      *
      * <p>By a known resource path, never by listing a directory: under Felix a classpath
@@ -210,6 +226,16 @@ public final class PatternLibrary {
      * @throws IOException if the pattern is not in the bundle or will not parse
      */
     public static Contents contentsOf(DesignPattern pattern) throws IOException {
+        Contents already = PARSED.get(pattern.getId());
+        if (already != null) {
+            return already;
+        }
+        Contents read = parse(pattern);
+        PARSED.put(pattern.getId(), read);
+        return read;
+    }
+
+    private static Contents parse(DesignPattern pattern) throws IOException {
         OWLOntology ontology = load(pattern);
         List<OWLEntity> classes = new ArrayList<OWLEntity>();
         List<OWLEntity> properties = new ArrayList<OWLEntity>();

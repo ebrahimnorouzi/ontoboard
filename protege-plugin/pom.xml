@@ -6,7 +6,7 @@
 
   <groupId>de.fizkarlsruhe.ise</groupId>
   <artifactId>ontoboard</artifactId>
-  <version>1.86.0</version>
+  <version>1.87.0</version>
   <packaging>bundle</packaging>
 
   <name>OntoBoard</name>
@@ -179,6 +179,12 @@
         <includes>
           <include>index.tsv</include>
           <include>*/pattern.owl</include>
+          <!--
+            The Turtle beside each one. The plugin loads the RDF/XML; this is for a person -
+            an OWL file in RDF/XML is not something anybody reads, and a design pattern is
+            meant to be read before it is imported. It compresses to very little.
+          -->
+          <include>*/pattern.ttl</include>
         </includes>
       </resource>
     </resources>

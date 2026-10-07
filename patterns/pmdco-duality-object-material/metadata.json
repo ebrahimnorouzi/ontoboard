@@ -1,0 +1,15 @@
+{
+  "id": "pmdco-duality-object-material",
+  "name": "Duality of object and material",
+  "description": "Represents how an object and a portion of matter are the same material entity seen two ways: as material (steel) it bears chemical composition; as object (ingot) it bears mass. Distinguishes extensive qualities, which scale with the size of the object, from intensive qualities, which are independent of portion size.",
+  "category": "structural",
+  "domain": "materials",
+  "competency_questions": "Which material is this object made of? Which qualities does an entity bear as a portion of matter (chemical composition) versus as an object (mass)? Which of an entity's qualities scale with its size and which do not?",
+  "pattern_iri": "https://ontoboard.org/patterns/pmdco-duality-object-material.owl",
+  "source": "https://materialdigital.github.io/core-ontology/docs/patterns.html",
+  "collection": "pmdco",
+  "publisher": "materialdigital.github.io",
+  "extracted_from": "pmdco",
+  "class_count": 11,
+  "property_count": 2
+}

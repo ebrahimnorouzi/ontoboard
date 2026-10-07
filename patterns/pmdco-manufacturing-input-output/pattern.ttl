@@ -1,0 +1,216 @@
+@prefix : <https://ontoboard.org/patterns/pmdco-manufacturing-input-output.owl#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@base <https://ontoboard.org/patterns/pmdco-manufacturing-input-output.owl> .
+
+<https://ontoboard.org/patterns/pmdco-manufacturing-input-output.owl> rdf:type owl:Ontology .
+
+#################################################################
+#    Annotation properties
+#################################################################
+
+###  http://purl.obolibrary.org/obo/IAO_0000112
+<http://purl.obolibrary.org/obo/IAO_0000112> rdf:type owl:AnnotationProperty .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000115
+<http://purl.obolibrary.org/obo/IAO_0000115> rdf:type owl:AnnotationProperty .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000116
+<http://purl.obolibrary.org/obo/IAO_0000116> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.w3.org/2004/02/skos/core#definition
+<http://www.w3.org/2004/02/skos/core#definition> rdf:type owl:AnnotationProperty .
+
+
+#################################################################
+#    Object Properties
+#################################################################
+
+###  http://purl.obolibrary.org/obo/BFO_0000055
+<http://purl.obolibrary.org/obo/BFO_0000055> rdf:type owl:ObjectProperty ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "Paraphrase of elucidation: a relation between a process and a realizable entity, where there is some material entity that is bearer of the realizable entity and participates in the process, and the realizable entity comes to be realized in the course of the process"@en ;
+                                             rdfs:label "realizes"@en ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "(Elucidation) realizes is a relation between a process b and realizable entity c such that c inheres in some d & for all t, if b has participant d then c exists & the type instantiated by b is correlated with the type instantiated by c"@en .
+
+
+###  http://purl.obolibrary.org/obo/BFO_0000108
+<http://purl.obolibrary.org/obo/BFO_0000108> rdf:type owl:ObjectProperty ;
+                                             rdfs:label "exists at"@en ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "(Elucidation) exists at is a relation between a particular and some temporal region at which the particular exists"@en .
+
+
+###  http://purl.obolibrary.org/obo/OBI_0000293
+<http://purl.obolibrary.org/obo/OBI_0000293> rdf:type owl:ObjectProperty ;
+                                             owl:inverseOf <http://purl.obolibrary.org/obo/OBI_0000295> ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000112> "see is_input_of example_of_usage"@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "The inverse property of is specified input of" ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000116> "8/17/09: specified inputs of one process are not necessarily specified inputs of a larger process that it is part of. This is in contrast to how 'has participant' works." ;
+                                             rdfs:label "has specified input"@en .
+
+
+###  http://purl.obolibrary.org/obo/OBI_0000295
+<http://purl.obolibrary.org/obo/OBI_0000295> rdf:type owl:ObjectProperty ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000112> "some Autologous EBV(Epstein-Barr virus)-transformed B-LCL (B lymphocyte cell line) is_input_for instance of Chromum Release Assay described at https://wiki.cbil.upenn.edu/obiwiki/index.php/Chromium_Release_assay"@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "A relation between a completely executed planned process and a continuant participating in that process that is not created during the process. The presence of the continuant during the process is explicitly specified in the plan specification which the process realizes the concretization of." ;
+                                             rdfs:label "is specified input of"@en .
+
+
+###  http://purl.obolibrary.org/obo/OBI_0000299
+<http://purl.obolibrary.org/obo/OBI_0000299> rdf:type owl:ObjectProperty ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "The inverse property of is specified output of" ;
+                                             rdfs:label "has specified output"@en .
+
+
+###  http://purl.obolibrary.org/obo/RO_0000086
+<http://purl.obolibrary.org/obo/RO_0000086> rdf:type owl:ObjectProperty ;
+                                            <http://purl.obolibrary.org/obo/IAO_0000112> "this apple has quality this red color"@en ;
+                                            <http://purl.obolibrary.org/obo/IAO_0000115> "a relation between an independent continuant (the bearer) and a quality, in which the quality specifically depends on the bearer for its existence"@en ;
+                                            <http://purl.obolibrary.org/obo/IAO_0000116> "A bearer can have many qualities, and its qualities can exist for different periods of time, but none of its qualities can exist when the bearer does not exist."@en ;
+                                            rdfs:label "has quality"@en .
+
+
+###  http://purl.obolibrary.org/obo/RO_0002233
+<http://purl.obolibrary.org/obo/RO_0002233> rdf:type owl:ObjectProperty ;
+                                            <http://purl.obolibrary.org/obo/IAO_0000115> "p has input c iff: p is a process, c is a material entity, c is a participant in p, c is present at the start of p, and the state of c is modified during p." ;
+                                            rdfs:label "has input"@en .
+
+
+###  http://purl.obolibrary.org/obo/RO_0002234
+<http://purl.obolibrary.org/obo/RO_0002234> rdf:type owl:ObjectProperty ;
+                                            <http://purl.obolibrary.org/obo/IAO_0000115> "p has output c iff c is a participant in p, c is present at the end of p, and c is not present in the same state at the beginning of p." ;
+                                            rdfs:label "has output"@en .
+
+
+###  https://w3id.org/pmd/co/PMD_0000070
+<https://w3id.org/pmd/co/PMD_0000070> rdf:type owl:ObjectProperty ,
+                                               owl:FunctionalProperty ;
+                                      rdfs:label "is state of"@en ;
+                                      <http://www.w3.org/2004/02/skos/core#definition> "relates a temporally qualified continuant to the unique anchor continuant that it is a temporal phase of"@en .
+
+
+#################################################################
+#    Classes
+#################################################################
+
+###  http://purl.obolibrary.org/obo/BFO_0000004
+<http://purl.obolibrary.org/obo/BFO_0000004> rdf:type owl:Class ;
+                                             rdfs:label "independent continuant"@en ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "b is an independent continuant =Def b is a continuant & there is no c such that b specifically depends on c or b generically depends on c"@en .
+
+
+###  http://purl.obolibrary.org/obo/BFO_0000030
+<http://purl.obolibrary.org/obo/BFO_0000030> rdf:type owl:Class ;
+                                             rdfs:label "object"@en ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "(Elucidation) An object is a material entity which manifests causal unity & is of a type instances of which are maximal relative to the sort of causal unity manifested"@en .
+
+
+###  http://purl.obolibrary.org/obo/BFO_0000038
+<http://purl.obolibrary.org/obo/BFO_0000038> rdf:type owl:Class ;
+                                             rdfs:label "one-dimensional temporal region"@en ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "(Elucidation) A one-dimensional temporal region is a temporal region that is a whole that has a temporal interval and zero or more temporal intervals and temporal instants as parts"@en .
+
+
+###  http://purl.obolibrary.org/obo/BFO_0000202
+<http://purl.obolibrary.org/obo/BFO_0000202> rdf:type owl:Class ;
+                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000038> ;
+                                             rdfs:label "temporal interval"@en ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "(Elucidation) A temporal interval is a one-dimensional temporal region that is continuous, thus without gaps or breaks"@en .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000033
+<http://purl.obolibrary.org/obo/IAO_0000033> rdf:type owl:Class ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "An information content entity whose concretizations indicate to their bearer how to realize them in a process."@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000116> "2009-03-16: provenance: a term realizable information entity was proposed for OBI (OBI_0000337) , edited by the PlanAndPlannedProcess branch. Original definition was  \"is the specification of a process that can be concretized and realized by an actor\" with alternative term  \"instruction\".It has been subsequently moved to IAO where the objective for which the original term was defined was satisfied with the definitionof this, different, term."@en ,
+                                                                                          "2013-05-30 Alan Ruttenberg: What differentiates a directive information entity from an information concretization is that it can have concretizations that are either qualities or realizable entities. The concretizations that are realizable entities are created when an individual chooses to take up the direction, i.e. has the intention to (try to) realize it."@en ,
+                                                                                          "8/6/2009 Alan Ruttenberg: Changed label from \"information entity about a realizable\" after discussions at ICBO"@en ,
+                                                                                          "Werner pushed back on calling it realizable information entity as it isn't realizable. However this name isn't right either. An example would be a recipe. The realizable entity would be a plan, but the information entity isn't about the plan, it, once concretized, *is* the plan. -Alan"@en ;
+                                             rdfs:label "directive information entity"@en .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000104
+<http://purl.obolibrary.org/obo/IAO_0000104> rdf:type owl:Class ;
+                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/IAO_0000033> ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000112> "PMID: 18323827.Nat Med. 2008 Mar;14(3):226.New plan proposed to help resolve conflicting medical advice."@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "A directive information entity with action specifications and objective specifications as parts, and that may be concretized as a realizable entity that, if realized, is realized in a process in which the bearer tries to achieve the objectives by taking the actions specified."@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000116> "2009-03-16: provenance: a term a plan was proposed for OBI (OBI_0000344) , edited by the PlanAndPlannedProcess branch. Original definition was \" a plan is a specification of a process that is realized by an actor to achieve the objective specified as part of the plan\". It has been subsequently moved to IAO where the objective for which the original term was defined was satisfied with the definitionof this, different, term."@en ,
+                                                                                          "2014-03-31: A plan specification can have other parts, such as conditional specifications."@en ,
+                                                                                          "2022-01-16 Updated definition to that proposed by Clint Dowloand, IAO Issue 231."@en ,
+                                                                                          "Alternative previous definition: a plan is a set of instructions that specify how an objective should be achieved"@en ;
+                                             rdfs:comment """2/3/2009 Comment from OBI review.
+
+Action specification not well enough specified.
+Conditional specification not well enough specified.
+Question whether all plan specifications have objective specifications.
+
+Request that IAO either clarify these or change definitions not to use them"""@en ;
+                                             rdfs:label "plan specification"@en .
+
+
+###  https://w3id.org/pmd/co/PMD_0000000
+<https://w3id.org/pmd/co/PMD_0000000> rdf:type owl:Class ;
+                                      rdfs:comment "Instances of Portions Of Matter whose shape is relevant for their dispostion to participate in a manufacturing process may be (subclasses of) objects that bear a 'blank role' in the context of the manufacturing process."@en ,
+                                                   """Material is defined in terms of the three main perspectives that material specifications rely on: the structure of the material (\"intensive quality\"), the performance of the material (\"behavoiral material property\") and the processing the material must have undergone (\"output of some process\").
+
+When defining specific materials/material taxonomies, these three aspects shall be taken into account in the aristotelian (\"per genus et differentiam\") as differentiation."""@en ,
+                                                   "The sum of portions of matter of the same type form a portion of matter of that type."@en ;
+                                      rdfs:label "Material"@de ,
+                                                 "material"@en ;
+                                      <http://www.w3.org/2004/02/skos/core#definition> "A material is a portion of matter that may participate in some manufacturing process and whose shape is not relevant for its participation in the manufacturing process."@en .
+
+
+###  https://w3id.org/pmd/co/PMD_0000068
+<https://w3id.org/pmd/co/PMD_0000068> rdf:type owl:Class ;
+                                      rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000004> ;
+                                      <http://purl.obolibrary.org/obo/IAO_0000116> "For any temporally qualified continuant x@t, there exists a continuant y such that x@t has_state y, meaning that y is the anchor continuant of which x@t is a temporal phase existing at temporal regions t. The relation has_state is functional and signifies that all such temporally qualified continuants are uniquely associated with their basic anchor continuant."@en ;
+                                      rdfs:label "temporally qualified continuant"@en ;
+                                      <http://www.w3.org/2004/02/skos/core#definition> "A temporally qualified continuant is a continuant that, by reference to a determinate temporal region, is such as to possess its properties only for so long as that period obtains, being otherwise in its essentiality unchanged."@en .
+
+
+###  https://w3id.org/pmd/co/PMD_0000822
+<https://w3id.org/pmd/co/PMD_0000822> rdf:type owl:Class ;
+                                      rdfs:subClassOf <https://w3id.org/pmd/co/PMD_0000927> ;
+                                      rdfs:label "Spanen Mit Geometrisch Bestimmten Schneiden"@de ,
+                                                 "machining geometrically defined"@en ;
+                                      <http://www.w3.org/2004/02/skos/core#definition> "A separating process that involves removing material with a tool that has a defined shape and sharp edges, such as in sawing and drilling operations."@en ,
+                                                                                       "Ein Trennprozess, bei dem Material mit einem Werkzeug mit definierter Form und scharfen Kanten entfernt wird, wie z. B. beim Sägen und Bohren."@de .
+
+
+###  https://w3id.org/pmd/co/PMD_0000927
+<https://w3id.org/pmd/co/PMD_0000927> rdf:type owl:Class ;
+                                      rdfs:label "Trennen"@de ,
+                                                 "separating"@en ;
+                                      <http://www.w3.org/2004/02/skos/core#definition> "A manufacturing process in which the bond between objects is broken, resulting in a partial or complete reduction in cohesion."@en ,
+                                                                                       "Ein Herstellungsprozess, bei dem die Bindung zwischen Objekten aufgehoben wird, was zu einer teilweisen oder vollständigen Verringerung der Kohäsion führt."@de .
+
+
+###  https://w3id.org/pmd/co/PMD_0020132
+<https://w3id.org/pmd/co/PMD_0020132> rdf:type owl:Class ;
+                                      rdfs:label "spatial extend"@en ;
+                                      <http://www.w3.org/2004/02/skos/core#definition> "Dimension quality is a quality of a material entity that pertains to its measurable spatial extent, such as length, area, or volume"@en .
+
+
+###  https://w3id.org/pmd/co/PMD_0020176
+<https://w3id.org/pmd/co/PMD_0020176> rdf:type owl:Class ;
+                                      rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000030> ;
+                                      rdfs:label "plate"@en ;
+                                      <http://www.w3.org/2004/02/skos/core#definition> "A plate is a thick rectangular object that may bear a semi finished product role. At the same time it may be a material."@en .
+
+
+###  https://w3id.org/pmd/co/PMD_0040001
+<https://w3id.org/pmd/co/PMD_0040001> rdf:type owl:Class ;
+                                      rdfs:subClassOf <https://w3id.org/pmd/co/PMD_0020132> ;
+                                      <http://purl.obolibrary.org/obo/IAO_0000116> "Necessary and sufficient conditions for 'length' have not yet been formalized. The term is defined as a specific subtype of 'DimensionQuality'. Distinguishing criteria are domain-specific and depend on measurement conventions or source terminology not yet expressed as OWL restrictions. The definition is adapted from: http://purl.obolibrary.org/obo/PATO_0000122."@en ;
+                                      rdfs:comment "Length is a size that describes the spatial extent of its bearer in one dimension."@en ;
+                                      rdfs:label "Länge"@de ,
+                                                 "length"@en ;
+                                      <http://www.w3.org/2004/02/skos/core#definition> "Die Länge ist eine eindimensionale Größe."@de ,
+                                                                                       "Length is a one dimensional size."@en .
+
+
+###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

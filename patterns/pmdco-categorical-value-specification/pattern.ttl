@@ -1,0 +1,127 @@
+@prefix : <https://ontoboard.org/patterns/pmdco-categorical-value-specification.owl#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@base <https://ontoboard.org/patterns/pmdco-categorical-value-specification.owl> .
+
+<https://ontoboard.org/patterns/pmdco-categorical-value-specification.owl> rdf:type owl:Ontology .
+
+#################################################################
+#    Annotation properties
+#################################################################
+
+###  http://purl.obolibrary.org/obo/IAO_0000112
+<http://purl.obolibrary.org/obo/IAO_0000112> rdf:type owl:AnnotationProperty .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000115
+<http://purl.obolibrary.org/obo/IAO_0000115> rdf:type owl:AnnotationProperty .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000116
+<http://purl.obolibrary.org/obo/IAO_0000116> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.w3.org/2004/02/skos/core#definition
+<http://www.w3.org/2004/02/skos/core#definition> rdf:type owl:AnnotationProperty .
+
+
+#################################################################
+#    Object Properties
+#################################################################
+
+###  http://purl.obolibrary.org/obo/IAO_0000136
+<http://purl.obolibrary.org/obo/IAO_0000136> rdf:type owl:ObjectProperty ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000112> "This document is about information artifacts and their representations"@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "A (currently) primitive relation that relates an information artifact to an entity."@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000116> """7/6/2009 Alan Ruttenberg. Following discussion with Jonathan Rees, and introduction of \"mentions\" relation. Weaken the is_about relationship to be primitive. 
+
+We will try to build it back up by elaborating the various subproperties that are more precisely defined.
+
+Some currently missing phenomena that should be considered \"about\" are predications - \"The only person who knows the answer is sitting beside me\" , Allegory, Satire, and other literary forms that can be topical without explicitly mentioning the topic."""@en ;
+                                             rdfs:label "is about"@en .
+
+
+###  http://purl.obolibrary.org/obo/OBI_0001927
+<http://purl.obolibrary.org/obo/OBI_0001927> rdf:type owl:ObjectProperty ;
+                                             rdfs:subPropertyOf <http://purl.obolibrary.org/obo/IAO_0000136> ;
+                                             owl:inverseOf <https://w3id.org/pmd/co/PMD_0000077> ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "A relation between a value specification and an entity which the specification is about."@en ;
+                                             rdfs:label "specifies value of" .
+
+
+###  http://purl.obolibrary.org/obo/RO_0000086
+<http://purl.obolibrary.org/obo/RO_0000086> rdf:type owl:ObjectProperty ;
+                                            rdfs:range <http://purl.obolibrary.org/obo/BFO_0000019> ;
+                                            <http://purl.obolibrary.org/obo/IAO_0000112> "this apple has quality this red color"@en ;
+                                            <http://purl.obolibrary.org/obo/IAO_0000115> "a relation between an independent continuant (the bearer) and a quality, in which the quality specifically depends on the bearer for its existence"@en ;
+                                            <http://purl.obolibrary.org/obo/IAO_0000116> "A bearer can have many qualities, and its qualities can exist for different periods of time, but none of its qualities can exist when the bearer does not exist."@en ;
+                                            rdfs:label "has quality"@en .
+
+
+###  https://w3id.org/pmd/co/PMD_0000077
+<https://w3id.org/pmd/co/PMD_0000077> rdf:type owl:ObjectProperty ;
+                                      rdfs:label "specified by value"@en ;
+                                      <http://www.w3.org/2004/02/skos/core#definition> "A relation between an entity and a value specification which is about this entity."@en .
+
+
+#################################################################
+#    Classes
+#################################################################
+
+###  http://purl.obolibrary.org/obo/BFO_0000001
+<http://purl.obolibrary.org/obo/BFO_0000001> rdf:type owl:Class ;
+                                             rdfs:label "entity"@en ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "(Elucidation) An entity is anything that exists or has existed or will exist"@en .
+
+
+###  http://purl.obolibrary.org/obo/BFO_0000019
+<http://purl.obolibrary.org/obo/BFO_0000019> rdf:type owl:Class ;
+                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000020> ;
+                                             rdfs:label "quality"@en ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "(Elucidation) A quality is a specifically dependent continuant that, in contrast to roles and dispositions, does not require any further process in order to be realized"@en .
+
+
+###  http://purl.obolibrary.org/obo/BFO_0000020
+<http://purl.obolibrary.org/obo/BFO_0000020> rdf:type owl:Class ;
+                                             rdfs:label "specifically dependent continuant"@en ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "b is a specifically dependent continuant =Def b is a continuant & there is some independent continuant c which is not a spatial region & which is such that b specifically depends on c"@en .
+
+
+###  http://purl.obolibrary.org/obo/OBI_0001930
+<http://purl.obolibrary.org/obo/OBI_0001930> rdf:type owl:Class ;
+                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/OBI_0001933> ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "A value specification that is specifies one category out of a fixed number of nominal categories"@en ;
+                                             rdfs:label "categorical value specification" .
+
+
+###  http://purl.obolibrary.org/obo/OBI_0001933
+<http://purl.obolibrary.org/obo/OBI_0001933> rdf:type owl:Class ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000112> "The value of 'positive' in a classification scheme of \"positive or negative\"; the value of '20g' on the quantitative scale of mass." ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "An information content entity that specifies a value within a classification scheme or on a quantitative scale."@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000116> "This term is currently a descendant of 'information content entity', which requires that it 'is about' something. A value specification of '20g' for a measurement data item of the mass of a particular mouse 'is about' the mass of that mouse. However there are cases where a value specification is not clearly about any particular. In the future we may change 'value specification' to remove the 'is about' requirement." ;
+                                             rdfs:label "value specification" .
+
+
+###  https://w3id.org/pmd/co/PMD_0000000
+<https://w3id.org/pmd/co/PMD_0000000> rdf:type owl:Class ;
+                                      rdfs:comment "Instances of Portions Of Matter whose shape is relevant for their dispostion to participate in a manufacturing process may be (subclasses of) objects that bear a 'blank role' in the context of the manufacturing process."@en ,
+                                                   """Material is defined in terms of the three main perspectives that material specifications rely on: the structure of the material (\"intensive quality\"), the performance of the material (\"behavoiral material property\") and the processing the material must have undergone (\"output of some process\").
+
+When defining specific materials/material taxonomies, these three aspects shall be taken into account in the aristotelian (\"per genus et differentiam\") as differentiation."""@en ,
+                                                   "The sum of portions of matter of the same type form a portion of matter of that type."@en ;
+                                      rdfs:label "Material"@de ,
+                                                 "material"@en ;
+                                      <http://www.w3.org/2004/02/skos/core#definition> "A material is a portion of matter that may participate in some manufacturing process and whose shape is not relevant for its participation in the manufacturing process."@en .
+
+
+###  https://w3id.org/pmd/co/PMD_0020139
+<https://w3id.org/pmd/co/PMD_0020139> rdf:type owl:Class ;
+                                      rdfs:label "Schmelze"@de ,
+                                                 "melt"@en ;
+                                      <http://www.w3.org/2004/02/skos/core#definition> "is a fluid (object) with a disposition to realize a blank role in a manufacturing process"@en .
+
+
+###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

@@ -1,0 +1,15 @@
+{
+  "id": "nfdi-temporal-region",
+  "name": "temporal",
+  "description": "A one-dimensional temporal region (obo:BFO_0000038) is reified as an individual whose extent is given by obo:BFO_0000222 (has first instant) and obo:BFO_0000224 (has last instant) pointing at zero-dimensional regions. Other entities attach to it through obo:BFO_0000199.",
+  "category": "temporal",
+  "domain": "general",
+  "competency_questions": "Over which period did a given project, event or role run?; Which resources were created or published in a given year?",
+  "pattern_iri": "https://ontoboard.org/patterns/nfdi-temporal-region.owl",
+  "source": "https://nfdi.fiz-karlsruhe.de/matwerk/patterns/",
+  "collection": "nfdi",
+  "publisher": "nfdi.fiz-karlsruhe.de",
+  "extracted_from": "pmdco",
+  "class_count": 4,
+  "property_count": 4
+}

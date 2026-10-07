@@ -1,0 +1,15 @@
+{
+  "id": "pmdco-process-subprocess-chain",
+  "name": "A process with a chain of subprocesses",
+  "description": "Represents processes consisting of simultaneous and serial subprocesses. The hot rolling example decomposes into heating, rolling pass and cooling as proper occurrent parts, ordered by precedes/starts with/ends with, with a specified input (ingot) and output (strand) and a plan that is realized.",
+  "category": "behavioral",
+  "domain": "manufacturing",
+  "competency_questions": "Which subprocesses make up this process? Which subprocess starts it and which ends it? Which subprocesses run simultaneously and which precede which? What are the specified input and output of the overall process, and which plan does it realize?",
+  "pattern_iri": "https://ontoboard.org/patterns/pmdco-process-subprocess-chain.owl",
+  "source": "https://materialdigital.github.io/core-ontology/docs/patterns.html",
+  "collection": "pmdco",
+  "publisher": "materialdigital.github.io",
+  "extracted_from": "pmdco",
+  "class_count": 9,
+  "property_count": 11
+}

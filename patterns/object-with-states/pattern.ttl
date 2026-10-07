@@ -1,0 +1,118 @@
+@prefix : <http://delicias.dia.fi.upm.es/ontologies/ObjectWithStates.owl#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@base <http://delicias.dia.fi.upm.es/ontologies/ObjectWithStates.owl> .
+
+<http://delicias.dia.fi.upm.es/ontologies/ObjectWithStates.owl> rdf:type owl:Ontology ;
+                                                                 owl:imports <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl> ;
+                                                                 <http://purl.org/dc/terms/creator> <http://www.garcia-castro.com/#me> ;
+                                                                 <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> "An object can have three different states"@en ,
+                                                                                                                                                           "Object states must belong to a single collection of non-duplicate elements (i.e., to a set)"@en ,
+                                                                                                                                                           "Objects in StateA must have at least one value for property property1"@en ,
+                                                                                                                                                           "Objects in StateB must have at most one value for property property2"@en ,
+                                                                                                                                                           "Objects in StateC must have exactly one value for property property3"@en ,
+                                                                                                                                                           "Objects must have a unique state"@en ,
+                                                                                                                                                           "The possible states are: StateA, StateB and StateC"@en ;
+                                                                 <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences> "The pattern requires modelling states as individuals instead of as literals."@en ;
+                                                                 <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> "An object can have different states for which different restrictions apply. The goal of the pattern is to allow modelling the different states of an object and the restrictions on such object for its different states"@en ;
+                                                                 <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios> "A sample scenario is the following. A software defect created in an issue tracker must have a creator and be associated to a certain software product. Once it is checked that the defect is reproducible, it must be assigned to some developer and have a certain priority. However, before checking the defect reproducilibty the defect must not have either asignee or priority."@en ;
+                                                                 rdfs:comment "Ontology including the content ontology design pattern for modelling objects with states."@en ;
+                                                                 rdfs:label "Object with states ontology"@en .
+
+#################################################################
+#    Annotation properties
+#################################################################
+
+###  http://purl.org/dc/terms/creator
+<http://purl.org/dc/terms/creator> rdf:type owl:AnnotationProperty .
+
+
+#################################################################
+#    Object Properties
+#################################################################
+
+###  http://delicias.dia.fi.upm.es/ontologies/ObjectWithStates.owl#hasState
+:hasState rdf:type owl:ObjectProperty ;
+          rdfs:subPropertyOf <http://www.ontologydesignpatterns.org/cp/owl/situation.owl#hasSetting> ;
+          owl:inverseOf :isStateOf ;
+          rdfs:domain :Object ;
+          rdfs:range :State ;
+          rdfs:comment "Defines the state of an object."@en ;
+          rdfs:label "has state"@en .
+
+
+###  http://delicias.dia.fi.upm.es/ontologies/ObjectWithStates.owl#isStateOf
+:isStateOf rdf:type owl:ObjectProperty ;
+           rdfs:subPropertyOf <http://www.ontologydesignpatterns.org/cp/owl/situation.owl#isSettingFor> ;
+           rdfs:domain :State ;
+           rdfs:range :Object ;
+           rdfs:comment "Defines the object that has an state"@en ;
+           rdfs:label "is state of"@en .
+
+
+###  http://ontologydesignpatterns.org/cp/owl/collectionentity.owl#isMemberOf
+<http://ontologydesignpatterns.org/cp/owl/collectionentity.owl#isMemberOf> rdf:type owl:ObjectProperty .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/situation.owl#hasSetting
+<http://www.ontologydesignpatterns.org/cp/owl/situation.owl#hasSetting> rdf:type owl:ObjectProperty .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/situation.owl#isSettingFor
+<http://www.ontologydesignpatterns.org/cp/owl/situation.owl#isSettingFor> rdf:type owl:ObjectProperty .
+
+
+#################################################################
+#    Data properties
+#################################################################
+
+###  http://www.ontologydesignpatterns.org/cp/owl/set.owl#size
+<http://www.ontologydesignpatterns.org/cp/owl/set.owl#size> rdf:type owl:DatatypeProperty .
+
+
+#################################################################
+#    Classes
+#################################################################
+
+###  http://delicias.dia.fi.upm.es/ontologies/ObjectWithStates.owl#Object
+:Object rdf:type owl:Class ;
+        rdfs:subClassOf [ rdf:type owl:Restriction ;
+                          owl:onProperty :hasState ;
+                          owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+                          owl:onClass :State
+                        ] ;
+        rdfs:comment "Objects are entities that have different states and that in each state different restrictions on their properties apply."@en ;
+        rdfs:label "Object"@en .
+
+
+###  http://delicias.dia.fi.upm.es/ontologies/ObjectWithStates.owl#State
+:State rdf:type owl:Class ;
+       rdfs:subClassOf <http://www.ontologydesignpatterns.org/cp/owl/situation.owl#Situation> ,
+                       [ rdf:type owl:Restriction ;
+                         owl:onProperty <http://ontologydesignpatterns.org/cp/owl/collectionentity.owl#isMemberOf> ;
+                         owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+                         owl:onClass :StateSet
+                       ] ;
+       rdfs:comment "States are the different states that an object can have. States must belong to a single collection of non-duplicate elements (i.e., to a set)."@en ;
+       rdfs:label "State"@en .
+
+
+###  http://delicias.dia.fi.upm.es/ontologies/ObjectWithStates.owl#StateSet
+:StateSet rdf:type owl:Class ;
+          rdfs:subClassOf <http://www.ontologydesignpatterns.org/cp/owl/set.owl#Set> ;
+          rdfs:comment "State sets are sets of states (i.e., collections of non-duplicate states)."@en ;
+          rdfs:label "State set"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/set.owl#Set
+<http://www.ontologydesignpatterns.org/cp/owl/set.owl#Set> rdf:type owl:Class .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/situation.owl#Situation
+<http://www.ontologydesignpatterns.org/cp/owl/situation.owl#Situation> rdf:type owl:Class .
+
+
+###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

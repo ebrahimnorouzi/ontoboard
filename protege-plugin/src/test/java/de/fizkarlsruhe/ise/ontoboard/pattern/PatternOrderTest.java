@@ -32,7 +32,7 @@ class PatternOrderTest {
                             + pattern.getName());
             name = pattern.getName();
         }
-        assertEquals(123, sorted.size());
+        assertEquals(159, sorted.size());
     }
 
     /**

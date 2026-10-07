@@ -1,0 +1,116 @@
+@prefix : <http://www.ontologydesignpatterns.org/cp/owl/place.owl#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@base <http://www.ontologydesignpatterns.org/cp/owl/place.owl> .
+
+<http://www.ontologydesignpatterns.org/cp/owl/place.owl> rdf:type owl:Ontology ;
+                                                          owl:imports <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl> ;
+                                                          <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> "Where is a certain thing located? What is located at this place?" ;
+                                                          <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#extractedFrom> "http://www.ontologydesignpatterns.org/ont/dul/DUL.owl" ;
+                                                          <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasAuthor> "Aldo Gangemi" ;
+                                                          <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences> """We can represent, transitively, where something is located. It remains unspecified what kind of location relation we are trying to represent: reference location, partial location, physical location, social or metaphoric location, etc.
+Moreover, temporal location is not caught with this pattern (you need a placement situation for that).""" ;
+                                                          <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> "To talk about places of things." ;
+                                                          <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios> "The Colosseum is located in Rome." ;
+                                                          owl:versionInfo "1.1 added rdfs:isDefinedBy for all named entities"^^xsd:string .
+
+#################################################################
+#    Annotation properties
+#################################################################
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements
+<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#extractedFrom
+<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#extractedFrom> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasAuthor
+<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasAuthor> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences
+<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent
+<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios
+<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.w3.org/2000/01/rdf-schema#comment
+rdfs:comment rdf:type owl:AnnotationProperty .
+
+
+###  http://www.w3.org/2000/01/rdf-schema#isDefinedBy
+rdfs:isDefinedBy rdf:type owl:AnnotationProperty .
+
+
+###  http://www.w3.org/2000/01/rdf-schema#label
+rdfs:label rdf:type owl:AnnotationProperty .
+
+
+###  http://www.w3.org/2002/07/owl#versionInfo
+owl:versionInfo rdf:type owl:AnnotationProperty .
+
+
+#################################################################
+#    Object Properties
+#################################################################
+
+###  http://www.ontologydesignpatterns.org/cp/owl/place.owl#hasLocation
+:hasLocation rdf:type owl:ObjectProperty ;
+             owl:inverseOf :isLocationOf ;
+             rdf:type owl:TransitiveProperty ;
+             rdfs:domain owl:Thing ;
+             rdfs:range owl:Thing ;
+             rdfs:comment """A generic, relative localization, holding between any entities. E.g. 'the cat is on the mat', 'Omar is in Samarcanda', 'the wound is close to the femural artery'.
+For 'absolute' locations, see SpaceRegion""" ;
+             rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/place.owl> ;
+             rdfs:label "ha localizzazione"@it ,
+                        "has location"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/place.owl#isLocationOf
+:isLocationOf rdf:type owl:ObjectProperty ,
+                       owl:TransitiveProperty ;
+              rdfs:domain owl:Thing ;
+              rdfs:range owl:Thing ;
+              rdfs:comment """A generic, relative localization, holding between any entities. E.g. 'Rome is the seat of the Pope', 'the liver is the location of the tumor'.
+As a very general notion of localization, it is assumed as transitive.
+For 'absolute' locations, see SpaceRegion""" ;
+              rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/place.owl> ;
+              rdfs:label "is location of"@en ,
+                         "è una localizzazione di"@it .
+
+
+#################################################################
+#    Classes
+#################################################################
+
+###  http://www.ontologydesignpatterns.org/cp/owl/place.owl#Place
+:Place rdf:type owl:Class ;
+       owl:equivalentClass [ rdf:type owl:Restriction ;
+                             owl:onProperty :isLocationOf ;
+                             owl:someValuesFrom owl:Thing
+                           ] ;
+       rdfs:comment """A location, in a very generic sense: a political geographic entity (Roma, Lesotho), a location determined by the presence of other entities ('the area close to Roma'), pivot events or signs (\"the area where the helicopter fell\"), complements of other entities ('the area under the table'), as well as physical objects conceptualized as locations as their main identity criterion ('the territory of Italy').
+In this generic sense, a Place is an 'approximate', relative location. For an 'absolute', abstract location, cf. the pattern spaceregion.owl.
+Formally, a Place is defined by the fact of having something located in it; a Place is located in itself.""" ;
+       rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/place.owl> ;
+       rdfs:label "Luogo"@it ,
+                  "Place"@en .
+
+
+###  http://www.w3.org/2002/07/owl#Thing
+owl:Thing rdf:type owl:Class .
+
+
+###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

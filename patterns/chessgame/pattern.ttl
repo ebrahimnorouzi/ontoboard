@@ -1,0 +1,619 @@
+@prefix : <http://purl.org/NET/rdfchess/ontology/> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@base <http://purl.org/NET/rdfchess/ontology/> .
+
+<http://purl.org/NET/rdfchess/ontology/> rdf:type owl:Ontology ;
+                                          owl:imports <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl> ;
+                                          <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> "List all moves in a Fools Mate game where black wins after 2 moves by both players?" ,
+                                                                                                                                    "What did Kasparov say about his opponent first two moves in his commentary about his game against Topalov in 1999 Tournament in Wijk aan Zee?" ,
+                                                                                                                                    "What is the first move taken by black player in the Sicilian Defence opening?" ,
+                                                                                                                                    "Who played against Kasparov in the round 1994 Linares tournament? Did (s)he play as a white or black player?" ;
+                                          <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> "To model a flexible schema to allow exposing chess games as linked data." ;
+                                          <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#relatedCPs> <http://ontologydesignpatterns.org/wiki/Submissions:AgentRole> ,
+                                                                                                                            <http://schema.geolink.org/dev/pattern/agentrole> ;
+                                          <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios> "Exposing chess games as linked data" .
+
+#################################################################
+#    Object Properties
+#################################################################
+
+###  http://purl.org/NET/rdfchess/ontology/annotatesHalfMove
+:annotatesHalfMove rdf:type owl:ObjectProperty ;
+                   rdfs:label "annotatesHalfMove" .
+
+
+###  http://purl.org/NET/rdfchess/ontology/atPlace
+:atPlace rdf:type owl:ObjectProperty ;
+         rdfs:label "atPlace" .
+
+
+###  http://purl.org/NET/rdfchess/ontology/atTime
+:atTime rdf:type owl:ObjectProperty ;
+        rdfs:label "atTime" .
+
+
+###  http://purl.org/NET/rdfchess/ontology/containsAnnotation
+:containsAnnotation rdf:type owl:ObjectProperty ;
+                    rdfs:label "containsAnnotation" .
+
+
+###  http://purl.org/NET/rdfchess/ontology/hasFirstHalfMove
+:hasFirstHalfMove rdf:type owl:ObjectProperty ;
+                  rdfs:subPropertyOf :hasHalfMove ;
+                  rdfs:label "hasFirstHalfMove" .
+
+
+###  http://purl.org/NET/rdfchess/ontology/hasHalfMove
+:hasHalfMove rdf:type owl:ObjectProperty ;
+             rdfs:subPropertyOf [ owl:inverseOf :subEventOf
+                                ] ;
+             rdfs:label "hasHalfMove" .
+
+
+###  http://purl.org/NET/rdfchess/ontology/hasLastHalfMove
+:hasLastHalfMove rdf:type owl:ObjectProperty ;
+                 rdfs:subPropertyOf :hasHalfMove ;
+                 rdfs:label "hasLastHalfMove" .
+
+
+###  http://purl.org/NET/rdfchess/ontology/hasManifestation
+:hasManifestation rdf:type owl:ObjectProperty ;
+                  rdfs:label "hasManifestation" .
+
+
+###  http://purl.org/NET/rdfchess/ontology/hasOpening
+:hasOpening rdf:type owl:ObjectProperty ;
+            rdfs:label "hasOpening" .
+
+
+###  http://purl.org/NET/rdfchess/ontology/hasResult
+:hasResult rdf:type owl:ObjectProperty ;
+           rdfs:label "hasResult" .
+
+
+###  http://purl.org/NET/rdfchess/ontology/nextHalfMove
+:nextHalfMove rdf:type owl:ObjectProperty ;
+              rdfs:label "nextHalfMove" .
+
+
+###  http://purl.org/NET/rdfchess/ontology/partOf
+:partOf rdf:type owl:ObjectProperty ;
+        rdfs:label "partOf" .
+
+
+###  http://purl.org/NET/rdfchess/ontology/performedBy
+:performedBy rdf:type owl:ObjectProperty ;
+             rdfs:label "performedBy" .
+
+
+###  http://purl.org/NET/rdfchess/ontology/providesAgentRole
+:providesAgentRole rdf:type owl:ObjectProperty ;
+                   rdfs:label "providesAgentRole" .
+
+
+###  http://purl.org/NET/rdfchess/ontology/subEventOf
+:subEventOf rdf:type owl:ObjectProperty ;
+            rdfs:label "subEventOf" .
+
+
+#################################################################
+#    Data properties
+#################################################################
+
+###  http://purl.org/NET/rdfchess/ontology/encodedAsSAN
+:encodedAsSAN rdf:type owl:DatatypeProperty ;
+              rdfs:comment "SAN = Standard Algebraic Notation" ;
+              rdfs:label "encodedAsSAN" .
+
+
+###  http://purl.org/NET/rdfchess/ontology/hasContent
+:hasContent rdf:type owl:DatatypeProperty ;
+            rdfs:label "hasContent" .
+
+
+###  http://purl.org/NET/rdfchess/ontology/hasECOCode
+:hasECOCode rdf:type owl:DatatypeProperty ;
+            rdfs:comment "ECO = Encyclopedia of Chess Opening" ;
+            rdfs:label "hasECOCode" .
+
+
+###  http://purl.org/NET/rdfchess/ontology/hasOpeningName
+:hasOpeningName rdf:type owl:DatatypeProperty ;
+                rdfs:label "hasOpeningName" .
+
+
+###  http://purl.org/NET/rdfchess/ontology/hasPGNFile
+:hasPGNFile rdf:type owl:DatatypeProperty ;
+            rdfs:comment "PGN = Portable Game Notation" ;
+            rdfs:label "hasPGNFile" .
+
+
+###  http://purl.org/NET/rdfchess/ontology/hasSANRecord
+:hasSANRecord rdf:type owl:DatatypeProperty ;
+              rdfs:comment "SAN = Standard Algebraic Notation" ;
+              rdfs:label "hasSANRecord" .
+
+
+###  http://purl.org/NET/rdfchess/ontology/originatesFrom
+:originatesFrom rdf:type owl:DatatypeProperty ;
+                rdfs:label "originatesFrom" .
+
+
+#################################################################
+#    Classes
+#################################################################
+
+###  http://purl.org/NET/rdfchess/ontology/ActingPlayerRole
+:ActingPlayerRole rdf:type owl:Class ;
+                  rdfs:subClassOf :AgentRole ,
+                                  [ rdf:type owl:Restriction ;
+                                    owl:onProperty [ owl:inverseOf :providesAgentRole
+                                                   ] ;
+                                    owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+                                    owl:onClass :HalfMove
+                                  ] ;
+                  rdfs:label "ActingPlayerRole" .
+
+
+###  http://purl.org/NET/rdfchess/ontology/Agent
+:Agent rdf:type owl:Class ;
+       rdfs:label "Agent" .
+
+
+###  http://purl.org/NET/rdfchess/ontology/AgentRole
+:AgentRole rdf:type owl:Class ;
+           rdfs:subClassOf [ rdf:type owl:Restriction ;
+                             owl:onProperty :performedBy ;
+                             owl:allValuesFrom :Agent
+                           ] ,
+                           [ rdf:type owl:Restriction ;
+                             owl:onProperty :performedBy ;
+                             owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+                             owl:onClass :Agent
+                           ] ;
+           rdfs:label "AgentRole" .
+
+
+###  http://purl.org/NET/rdfchess/ontology/AuthorRole
+:AuthorRole rdf:type owl:Class ;
+            rdfs:subClassOf :AgentRole ,
+                            [ rdf:type owl:Restriction ;
+                              owl:onProperty [ owl:inverseOf :providesAgentRole
+                                             ] ;
+                              owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+                              owl:onClass :ChessGameManifestation
+                            ] ;
+            rdfs:label "AuthorRole" .
+
+
+###  http://purl.org/NET/rdfchess/ontology/BlackPlayerRole
+:BlackPlayerRole rdf:type owl:Class ;
+                 rdfs:subClassOf :AgentRole ,
+                                 [ rdf:type owl:Restriction ;
+                                   owl:onProperty [ owl:inverseOf :providesAgentRole
+                                                  ] ;
+                                   owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+                                   owl:onClass :ChessGame
+                                 ] ;
+                 rdfs:label "BlackPlayerRole" .
+
+
+###  http://purl.org/NET/rdfchess/ontology/ChessCompetitionInstance
+:ChessCompetitionInstance rdf:type owl:Class ;
+                          rdfs:subClassOf :Event ,
+                                          [ rdf:type owl:Restriction ;
+                                            owl:onProperty :partOf ;
+                                            owl:allValuesFrom :ChessCompetitionSeries
+                                          ] ;
+                          rdfs:label "ChessCompetitionInstance" .
+
+
+###  http://purl.org/NET/rdfchess/ontology/ChessCompetitionRound
+:ChessCompetitionRound rdf:type owl:Class ;
+                       rdfs:subClassOf :Event ,
+                                       [ rdf:type owl:Restriction ;
+                                         owl:onProperty :subEventOf ;
+                                         owl:allValuesFrom :ChessCompetitionInstance
+                                       ] ;
+                       rdfs:label "ChessCompetitionRound" .
+
+
+###  http://purl.org/NET/rdfchess/ontology/ChessCompetitionSeries
+:ChessCompetitionSeries rdf:type owl:Class ;
+                        rdfs:subClassOf :Event ;
+                        rdfs:label "ChessCompetitionSeries" .
+
+
+###  http://purl.org/NET/rdfchess/ontology/ChessGame
+:ChessGame rdf:type owl:Class ;
+           rdfs:subClassOf :Event ,
+                           [ rdf:type owl:Restriction ;
+                             owl:onProperty :providesAgentRole ;
+                             owl:someValuesFrom :BlackPlayerRole
+                           ] ,
+                           [ rdf:type owl:Restriction ;
+                             owl:onProperty :providesAgentRole ;
+                             owl:someValuesFrom :WhitePlayerRole
+                           ] ,
+                           [ rdf:type owl:Restriction ;
+                             owl:onProperty :hasHalfMove ;
+                             owl:allValuesFrom :HalfMove
+                           ] ,
+                           [ rdf:type owl:Restriction ;
+                             owl:onProperty :hasManifestation ;
+                             owl:allValuesFrom :ChessGameManifestation
+                           ] ,
+                           [ rdf:type owl:Restriction ;
+                             owl:onProperty :hasOpening ;
+                             owl:allValuesFrom :ChessOpening
+                           ] ,
+                           [ rdf:type owl:Restriction ;
+                             owl:onProperty :hasResult ;
+                             owl:allValuesFrom :ChessGameResult
+                           ] ,
+                           [ rdf:type owl:Restriction ;
+                             owl:onProperty :subEventOf ;
+                             owl:allValuesFrom :ChessCompetitionRound
+                           ] ,
+                           [ rdf:type owl:Restriction ;
+                             owl:onProperty :hasFirstHalfMove ;
+                             owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+                             owl:onClass :HalfMove
+                           ] ,
+                           [ rdf:type owl:Restriction ;
+                             owl:onProperty :hasLastHalfMove ;
+                             owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+                             owl:onClass :HalfMove
+                           ] ;
+           rdfs:label "ChessGame" .
+
+
+###  http://purl.org/NET/rdfchess/ontology/ChessGameManifestation
+:ChessGameManifestation rdf:type owl:Class ;
+                        rdfs:subClassOf [ rdf:type owl:Restriction ;
+                                          owl:onProperty :containsAnnotation ;
+                                          owl:allValuesFrom :HalfMoveAnnotation
+                                        ] ,
+                                        [ rdf:type owl:Restriction ;
+                                          owl:onProperty :hasPGNFile ;
+                                          owl:allValuesFrom xsd:anyURI
+                                        ] ,
+                                        [ rdf:type owl:Restriction ;
+                                          owl:onProperty :originatesFrom ;
+                                          owl:allValuesFrom xsd:anyURI
+                                        ] ;
+                        rdfs:label "ChessGameManifestation" .
+
+
+###  http://purl.org/NET/rdfchess/ontology/ChessGameResult
+:ChessGameResult rdf:type owl:Class ;
+                 rdfs:subClassOf [ rdf:type owl:Restriction ;
+                                   owl:onProperty :encodedAsSAN ;
+                                   owl:allValuesFrom xsd:string
+                                 ] ;
+                 rdfs:label "ChessGameResult" .
+
+
+###  http://purl.org/NET/rdfchess/ontology/ChessOpening
+:ChessOpening rdf:type owl:Class ;
+              rdfs:subClassOf [ rdf:type owl:Restriction ;
+                                owl:onProperty :hasECOCode ;
+                                owl:allValuesFrom xsd:string
+                              ] ,
+                              [ rdf:type owl:Restriction ;
+                                owl:onProperty :hasOpeningName ;
+                                owl:allValuesFrom xsd:string
+                              ] ;
+              rdfs:label "ChessOpening" .
+
+
+###  http://purl.org/NET/rdfchess/ontology/Event
+:Event rdf:type owl:Class ;
+       rdfs:subClassOf [ rdf:type owl:Restriction ;
+                         owl:onProperty :atPlace ;
+                         owl:someValuesFrom :Place
+                       ] ,
+                       [ rdf:type owl:Restriction ;
+                         owl:onProperty :atTime ;
+                         owl:someValuesFrom :TemporalExtent
+                       ] ,
+                       [ rdf:type owl:Restriction ;
+                         owl:onProperty :atPlace ;
+                         owl:allValuesFrom :Place
+                       ] ,
+                       [ rdf:type owl:Restriction ;
+                         owl:onProperty :atTime ;
+                         owl:allValuesFrom :TemporalExtent
+                       ] ,
+                       [ rdf:type owl:Restriction ;
+                         owl:onProperty :subEventOf ;
+                         owl:allValuesFrom :Event
+                       ] ;
+       rdfs:label "Event" .
+
+
+###  http://purl.org/NET/rdfchess/ontology/HalfMove
+:HalfMove rdf:type owl:Class ;
+          rdfs:subClassOf :Event ,
+                          [ rdf:type owl:Class ;
+                            owl:complementOf [ rdf:type owl:Restriction ;
+                                               owl:onProperty :nextHalfMove ;
+                                               owl:hasSelf "true"^^xsd:boolean
+                                             ]
+                          ] ,
+                          [ rdf:type owl:Restriction ;
+                            owl:onProperty :providesAgentRole ;
+                            owl:someValuesFrom :ActingPlayerRole
+                          ] ,
+                          [ rdf:type owl:Restriction ;
+                            owl:onProperty :nextHalfMove ;
+                            owl:allValuesFrom :HalfMove
+                          ] ,
+                          [ rdf:type owl:Restriction ;
+                            owl:onProperty :subEventOf ;
+                            owl:allValuesFrom :ChessGame
+                          ] ,
+                          [ rdf:type owl:Restriction ;
+                            owl:onProperty [ owl:inverseOf :hasHalfMove
+                                           ] ;
+                            owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+                            owl:onClass :ChessGame
+                          ] ,
+                          [ rdf:type owl:Restriction ;
+                            owl:onProperty :nextHalfMove ;
+                            owl:maxQualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+                            owl:onClass :HalfMove
+                          ] ,
+                          [ rdf:type owl:Restriction ;
+                            owl:onProperty :hasSANRecord ;
+                            owl:allValuesFrom xsd:string
+                          ] ;
+          rdfs:label "HalfMove" .
+
+
+###  http://purl.org/NET/rdfchess/ontology/HalfMoveAnnotation
+:HalfMoveAnnotation rdf:type owl:Class ;
+                    rdfs:subClassOf [ rdf:type owl:Restriction ;
+                                      owl:onProperty :annotatesHalfMove ;
+                                      owl:someValuesFrom :HalfMove
+                                    ] ,
+                                    [ rdf:type owl:Restriction ;
+                                      owl:onProperty :annotatesHalfMove ;
+                                      owl:allValuesFrom :HalfMove
+                                    ] ,
+                                    [ rdf:type owl:Restriction ;
+                                      owl:onProperty :hasContent ;
+                                      owl:someValuesFrom xsd:string
+                                    ] ,
+                                    [ rdf:type owl:Restriction ;
+                                      owl:onProperty :hasContent ;
+                                      owl:allValuesFrom xsd:string
+                                    ] ;
+                    rdfs:label "HalfMoveAnnotation" .
+
+
+###  http://purl.org/NET/rdfchess/ontology/Place
+:Place rdf:type owl:Class ;
+       rdfs:label "Place" .
+
+
+###  http://purl.org/NET/rdfchess/ontology/TemporalExtent
+:TemporalExtent rdf:type owl:Class ;
+                rdfs:label "TemporalExtent" .
+
+
+###  http://purl.org/NET/rdfchess/ontology/WhitePlayerRole
+:WhitePlayerRole rdf:type owl:Class ;
+                 rdfs:subClassOf :AgentRole ,
+                                 [ rdf:type owl:Restriction ;
+                                   owl:onProperty [ owl:inverseOf :providesAgentRole
+                                                  ] ;
+                                   owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+                                   owl:onClass :ChessGame
+                                 ] ;
+                 rdfs:label "WhitePlayerRole" .
+
+
+#################################################################
+#    General axioms
+#################################################################
+
+[ rdf:type owl:Restriction ;
+  owl:onProperty :annotatesHalfMove ;
+  owl:someValuesFrom :HalfMove ;
+  rdfs:subClassOf :HalfMoveAnnotation
+] .
+
+
+[ rdf:type owl:Restriction ;
+  owl:onProperty :atPlace ;
+  owl:someValuesFrom :Place ;
+  rdfs:subClassOf :Event
+] .
+
+
+[ rdf:type owl:Restriction ;
+  owl:onProperty :atTime ;
+  owl:someValuesFrom :TemporalExtent ;
+  rdfs:subClassOf :Event
+] .
+
+
+[ rdf:type owl:Restriction ;
+  owl:onProperty :containsAnnotation ;
+  owl:someValuesFrom :HalfMoveAnnotation ;
+  rdfs:subClassOf :ChessGameManifestation
+] .
+
+
+[ rdf:type owl:Restriction ;
+  owl:onProperty :hasHalfMove ;
+  owl:someValuesFrom :HalfMove ;
+  rdfs:subClassOf :ChessGame
+] .
+
+
+[ rdf:type owl:Restriction ;
+  owl:onProperty :hasManifestation ;
+  owl:someValuesFrom :ChessGameManifestation ;
+  rdfs:subClassOf :ChessGame
+] .
+
+
+[ rdf:type owl:Restriction ;
+  owl:onProperty :hasOpening ;
+  owl:someValuesFrom :ChessOpening ;
+  rdfs:subClassOf :ChessGame
+] .
+
+
+[ rdf:type owl:Restriction ;
+  owl:onProperty :hasResult ;
+  owl:someValuesFrom :ChessGameResult ;
+  rdfs:subClassOf :ChessGame
+] .
+
+
+[ rdf:type owl:Restriction ;
+  owl:onProperty :nextHalfMove ;
+  owl:someValuesFrom :HalfMove ;
+  rdfs:subClassOf :HalfMove
+] .
+
+
+[ rdf:type owl:Restriction ;
+  owl:onProperty :partOf ;
+  owl:someValuesFrom :ChessCompetitionSeries ;
+  rdfs:subClassOf :ChessCompetitionInstance
+] .
+
+
+[ rdf:type owl:Restriction ;
+  owl:onProperty :performedBy ;
+  owl:someValuesFrom :Agent ;
+  rdfs:subClassOf :AgentRole
+] .
+
+
+[ rdf:type owl:Axiom ;
+  owl:annotatedSource [ rdf:type owl:Restriction ;
+                        owl:onProperty :providesAgentRole ;
+                        owl:someValuesFrom :ActingPlayerRole ;
+                        rdfs:subClassOf :HalfMove
+                      ] ;
+  owl:annotatedProperty rdfs:subClassOf ;
+  owl:annotatedTarget :HalfMove ;
+  rdfs:comment "This is a guarded domain restriction for providesAgentRole with HalfMove as the domain. The corresponding guarded range restriction since HalfMove may provide roles of types other than ActingPlayerRole"
+] .
+
+
+[ rdf:type owl:Axiom ;
+  owl:annotatedSource [ rdf:type owl:Restriction ;
+                        owl:onProperty :providesAgentRole ;
+                        owl:someValuesFrom :AuthorRole ;
+                        rdfs:subClassOf :ChessGameManifestation
+                      ] ;
+  owl:annotatedProperty rdfs:subClassOf ;
+  owl:annotatedTarget :ChessGameManifestation ;
+  rdfs:comment "This is the guarded domain restriction for providesAgentRole with ChessGameManifestation as the domain. The corresponding guarded range restriction for the property is not asserted since ChessGameManifestation may provide roles of types other than AuthorRole"
+] .
+
+
+[ rdf:type owl:Axiom ;
+  owl:annotatedSource [ rdf:type owl:Restriction ;
+                        owl:onProperty :providesAgentRole ;
+                        owl:someValuesFrom [ rdf:type owl:Class ;
+                                             owl:unionOf ( :BlackPlayerRole
+                                                           :WhitePlayerRole
+                                                         )
+                                           ] ;
+                        rdfs:subClassOf :ChessGame
+                      ] ;
+  owl:annotatedProperty rdfs:subClassOf ;
+  owl:annotatedTarget :ChessGame ;
+  rdfs:comment "This is a guarded domain restriction for providesAgentRole with ChessGame as the domain. Note that the corresponding guarded range restriction is not asserted since ChessGame may provide roles of types other than WhitePlayerRole and BlackPlayerRole"
+] .
+
+
+[ rdf:type owl:Restriction ;
+  owl:onProperty :subEventOf ;
+  owl:someValuesFrom :ChessCompetitionInstance ;
+  rdfs:subClassOf :ChessCompetitionRound
+] .
+
+
+[ rdf:type owl:Restriction ;
+  owl:onProperty :subEventOf ;
+  owl:someValuesFrom :ChessCompetitionRound ;
+  rdfs:subClassOf :ChessGame
+] .
+
+
+[ rdf:type owl:Restriction ;
+  owl:onProperty :subEventOf ;
+  owl:someValuesFrom :ChessGame ;
+  rdfs:subClassOf :HalfMove
+] .
+
+
+[ rdf:type owl:Restriction ;
+  owl:onProperty :subEventOf ;
+  owl:someValuesFrom :Event ;
+  rdfs:subClassOf :Event
+] .
+
+
+[ rdf:type owl:Restriction ;
+  owl:onProperty :encodedAsSAN ;
+  owl:someValuesFrom xsd:string ;
+  rdfs:subClassOf :ChessGameResult
+] .
+
+
+[ rdf:type owl:Restriction ;
+  owl:onProperty :hasContent ;
+  owl:someValuesFrom xsd:string ;
+  rdfs:subClassOf :HalfMoveAnnotation
+] .
+
+
+[ rdf:type owl:Restriction ;
+  owl:onProperty :hasECOCode ;
+  owl:someValuesFrom xsd:string ;
+  rdfs:subClassOf :ChessOpening
+] .
+
+
+[ rdf:type owl:Restriction ;
+  owl:onProperty :hasOpeningName ;
+  owl:someValuesFrom xsd:string ;
+  rdfs:subClassOf :ChessOpening
+] .
+
+
+[ rdf:type owl:Restriction ;
+  owl:onProperty :hasPGNFile ;
+  owl:someValuesFrom xsd:anyURI ;
+  rdfs:subClassOf :ChessGameManifestation
+] .
+
+
+[ rdf:type owl:Restriction ;
+  owl:onProperty :hasSANRecord ;
+  owl:someValuesFrom xsd:string ;
+  rdfs:subClassOf :HalfMove
+] .
+
+
+[ rdf:type owl:Restriction ;
+  owl:onProperty :originatesFrom ;
+  owl:someValuesFrom xsd:anyURI ;
+  rdfs:subClassOf :ChessGameManifestation
+] .
+
+
+###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

@@ -1,0 +1,117 @@
+@prefix : <http://www.ontologydesignpatterns.org/cp/owl/parameter.owl#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@base <http://www.ontologydesignpatterns.org/cp/owl/parameter.owl> .
+
+<http://www.ontologydesignpatterns.org/cp/owl/parameter.owl> rdf:type owl:Ontology ;
+                                                              owl:imports <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl> ;
+                                                              <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#extractedFrom> "http://www.ontologydesignpatterns.org/ont/dul/DUL.owl" ;
+                                                              <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasAuthor> "Valentina Presutti" ;
+                                                              <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> "To represent parameters to be used for a certain concept." ;
+                                                              rdfs:comment "The parameter content ontology design pattern. This CP is extracted from the DOLCE Ultra Lite ontology. It represents parameters which are constraints or selections on observable values." ;
+                                                              rdfs:label "Parameter" ;
+                                                              owl:versionInfo """1.0
+- Created by Valentina Presutti"""^^xsd:string ,
+                                                                              "1.1 added rdfs:isDefinedBy for all named entities"^^xsd:string .
+
+#################################################################
+#    Annotation properties
+#################################################################
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#extractedFrom
+<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#extractedFrom> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasAuthor
+<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasAuthor> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent
+<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.w3.org/2000/01/rdf-schema#comment
+rdfs:comment rdf:type owl:AnnotationProperty .
+
+
+###  http://www.w3.org/2000/01/rdf-schema#isDefinedBy
+rdfs:isDefinedBy rdf:type owl:AnnotationProperty .
+
+
+###  http://www.w3.org/2000/01/rdf-schema#label
+rdfs:label rdf:type owl:AnnotationProperty .
+
+
+###  http://www.w3.org/2002/07/owl#versionInfo
+owl:versionInfo rdf:type owl:AnnotationProperty .
+
+
+#################################################################
+#    Object Properties
+#################################################################
+
+###  http://www.ontologydesignpatterns.org/cp/owl/parameter.owl#hasParameter
+:hasParameter rdf:type owl:ObjectProperty ;
+              owl:inverseOf :isParameterFor ;
+              rdfs:domain :Concept ;
+              rdfs:range :Parameter ;
+              rdfs:comment "A Concept can have a Parameter that constrains the attributes that a classified Entity can have in a certain Situation, e.g. a 4WheelDriver Role definedIn the ItalianTrafficLaw has a MinimumAge parameter on the Amount 16." ;
+              rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/parameter.owl> ;
+              rdfs:label "ha parametro"@it ,
+                         "has parameter"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/parameter.owl#isParameterFor
+:isParameterFor rdf:type owl:ObjectProperty ;
+                rdfs:domain :Parameter ;
+                rdfs:range :Concept ;
+                rdfs:comment "A Concept can have a Parameter that constrains the attributes that a classified Entity can have in a certain Situation, e.g. a 4WheelDriver Role definedIn the ItalianTrafficLaw has a MinimumAge parameter on the Amount 16." ;
+                rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/parameter.owl> ;
+                rdfs:label "is parameter for"@en ,
+                           "è un parametro per"@it .
+
+
+#################################################################
+#    Data properties
+#################################################################
+
+###  http://www.ontologydesignpatterns.org/cp/owl/parameter.owl#hasParameterDataValue
+:hasParameterDataValue rdf:type owl:DatatypeProperty ;
+                       rdfs:domain :Parameter ;
+                       rdfs:comment """Parametrizes values from a datatype. For example, a Parameter AgeForDriving hasParameterDataValue 18 on datatype xsd:int, in the Italian traffic code. In this example, AgeForDriving isDefinedIn the Norm ItalianTrafficCodeAgeDriving.
+More complex parametrization requires workarounds. E.g. AgeRangeForDrugUsage could parametrize data value: 14 to 50 on the datatype: xsd:int. Since complex datatypes are not allowed in OWL1.0, a solution to this can only work by creating two 'sub-parameters': MinimumAgeRangeForDrugUsage (that hasParameterDataValue 14) and MaximumAgeRangeForDrugUsage (that hasParameterDataValue 50), which are components of the main Parameter AgeRangeForDrugUsage.
+Ordering on subparameters can be created by using or specializing the object property 'precedes'.""" ;
+                       rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/parameter.owl> ;
+                       rdfs:label "ha valore"@it ,
+                                  "has parameter data value"@en .
+
+
+#################################################################
+#    Classes
+#################################################################
+
+###  http://www.ontologydesignpatterns.org/cp/owl/parameter.owl#Concept
+:Concept rdf:type owl:Class ;
+         rdfs:comment """A concept is a SocialObject, and isDefinedIn a Description . 
+Once defined, a Concept can be used in other descriptions. 
+The classifies relation relates concepts to entities at some time"""^^xsd:string ;
+         rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/parameter.owl> ;
+         rdfs:label "Concept"@en ,
+                    "Concetto"@it .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/parameter.owl#Parameter
+:Parameter rdf:type owl:Class ;
+           rdfs:subClassOf :Concept ;
+           rdfs:comment """A Concept that classifies something having a certain value, e.g. 'High' can be said of people taller than 185 cm.
+However, in order to formally represent this constraint, we need to add an anonymous type to a parameter instance, using a property that convey the semantics of the parameter, e.g.:
+High rdf:type Person and (some hasHeight (Height and (oneOf isTallerThan 185) and (oneOf hasUnitOfMeasure centimeter)))"""^^xsd:string ;
+           rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/parameter.owl> ;
+           rdfs:label "Parameter"@en ,
+                      "Parametro"@it .
+
+
+###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

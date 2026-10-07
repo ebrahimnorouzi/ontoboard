@@ -18,7 +18,8 @@ final class PatternIndexTestSupport {
     static DesignPattern patternNamed(String id) {
         try {
             return PatternIndex.read(new StringReader(
-                    id + "\t" + id + "\todp\texample.org\tstructural\tgeneral\t\t\t\n")).get(0);
+                    id + "\t" + id + "\todp\texample.org\tstructural\tgeneral\t\t\t\t\n"))
+                    .get(0);
         } catch (IOException impossible) {
             throw new IllegalStateException("reading a string cannot fail", impossible);
         }

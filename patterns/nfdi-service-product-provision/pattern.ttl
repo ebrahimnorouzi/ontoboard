@@ -1,0 +1,101 @@
+@prefix : <https://ontoboard.org/patterns/nfdi-service-product-provision.owl#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@base <https://ontoboard.org/patterns/nfdi-service-product-provision.owl> .
+
+<https://ontoboard.org/patterns/nfdi-service-product-provision.owl> rdf:type owl:Ontology .
+
+#################################################################
+#    Annotation properties
+#################################################################
+
+###  http://purl.obolibrary.org/obo/IAO_0000112
+<http://purl.obolibrary.org/obo/IAO_0000112> rdf:type owl:AnnotationProperty .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000115
+<http://purl.obolibrary.org/obo/IAO_0000115> rdf:type owl:AnnotationProperty .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000116
+<http://purl.obolibrary.org/obo/IAO_0000116> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.w3.org/2004/02/skos/core#definition
+<http://www.w3.org/2004/02/skos/core#definition> rdf:type owl:AnnotationProperty .
+
+
+#################################################################
+#    Object Properties
+#################################################################
+
+###  http://purl.obolibrary.org/obo/IAO_0000235
+<http://purl.obolibrary.org/obo/IAO_0000235> rdf:type owl:ObjectProperty ;
+                                             rdfs:subPropertyOf <https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000226> ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "inverse of the relation 'denotes'"@en ;
+                                             rdfs:label "denoted by"@en .
+
+
+###  http://purl.obolibrary.org/obo/RO_0002353
+<http://purl.obolibrary.org/obo/RO_0002353> rdf:type owl:ObjectProperty ;
+                                            <http://purl.obolibrary.org/obo/IAO_0000115> "inverse of has output" ;
+                                            rdfs:label "output of"@en .
+
+
+###  https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000226
+<https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000226> rdf:type owl:ObjectProperty ;
+                                                      rdfs:label "is subject of"@en ;
+                                                      <http://www.w3.org/2004/02/skos/core#definition> "inverse of the relation 'is about'" .
+
+
+#################################################################
+#    Classes
+#################################################################
+
+###  http://purl.obolibrary.org/obo/BFO_0000141
+<http://purl.obolibrary.org/obo/BFO_0000141> rdf:type owl:Class ;
+                                             rdfs:label "immaterial entity"@en ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "b is an immaterial entity =Def b is an independent continuant which is such that there is no time t when it has a material entity as continuant part"@en .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000104
+<http://purl.obolibrary.org/obo/IAO_0000104> rdf:type owl:Class ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000112> "PMID: 18323827.Nat Med. 2008 Mar;14(3):226.New plan proposed to help resolve conflicting medical advice."@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "A directive information entity with action specifications and objective specifications as parts, and that may be concretized as a realizable entity that, if realized, is realized in a process in which the bearer tries to achieve the objectives by taking the actions specified."@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000116> "2009-03-16: provenance: a term a plan was proposed for OBI (OBI_0000344) , edited by the PlanAndPlannedProcess branch. Original definition was \" a plan is a specification of a process that is realized by an actor to achieve the objective specified as part of the plan\". It has been subsequently moved to IAO where the objective for which the original term was defined was satisfied with the definitionof this, different, term."@en ,
+                                                                                          "2014-03-31: A plan specification can have other parts, such as conditional specifications."@en ,
+                                                                                          "2022-01-16 Updated definition to that proposed by Clint Dowloand, IAO Issue 231."@en ,
+                                                                                          "Alternative previous definition: a plan is a set of instructions that specify how an objective should be achieved"@en ;
+                                             rdfs:label "plan specification"@en .
+
+
+###  https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000101
+<https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000101> rdf:type owl:Class ;
+                                                      rdfs:label "service process"@en ;
+                                                      <http://www.w3.org/2004/02/skos/core#definition> "A process that organizes activities and resources to deliver a specific service, ensuring its efficiency, reliability, and alignment with intended goals."@en .
+
+
+###  https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000228
+<https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000228> rdf:type owl:Class ;
+                                                      rdfs:label "service product role"@en ;
+                                                      <http://www.w3.org/2004/02/skos/core#definition> "Role of an immaterial entity that facilitates the delivery or support of a service product, ensuring its proper execution and value realization."@en .
+
+
+###  https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000232
+<https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000232> rdf:type owl:Class ;
+                                                      rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000141> ;
+                                                      rdfs:label "service product"@en ;
+                                                      <http://www.w3.org/2004/02/skos/core#definition> "An immaterial entity that provides value through a service offering, delivering intangible benefits or functionality designed to fulfill specific needs or requirements, often in a structured process."@en .
+
+
+###  https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000244
+<https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000244> rdf:type owl:Class ;
+                                                      rdfs:subClassOf <http://purl.obolibrary.org/obo/IAO_0000104> ;
+                                                      rdfs:label "service specification"@en ;
+                                                      <http://www.w3.org/2004/02/skos/core#definition> "A plan specification that defines the requirements, features, and parameters of a service, outlining its scope, performance, and delivery criteria."@en .
+
+
+###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

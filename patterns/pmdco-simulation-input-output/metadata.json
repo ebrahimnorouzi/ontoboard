@@ -1,0 +1,15 @@
+{
+  "id": "pmdco-simulation-input-output",
+  "name": "Simulation with in- and output",
+  "description": "Models information content entities as the input and output of simulation processes. Because BFO roles inhere only in independent continuants, an ICE cannot bear a role directly; the pattern introduces input assignment and output assignment as dependent entities standing for the assignment of an ICE to a process. The example is a division process with numerator and denominator as ICE inputs and a quotient as output.",
+  "category": "information",
+  "domain": "simulation",
+  "competency_questions": "Which information content entities are the input and output of a simulation process? How is a digital datum assigned to a process when it cannot bear a role? Which assignment realizes which part of the simulation, and what numeric value does it carry?",
+  "pattern_iri": "https://ontoboard.org/patterns/pmdco-simulation-input-output.owl",
+  "source": "https://materialdigital.github.io/core-ontology/docs/patterns.html",
+  "collection": "pmdco",
+  "publisher": "materialdigital.github.io",
+  "extracted_from": "pmdco",
+  "class_count": 6,
+  "property_count": 6
+}

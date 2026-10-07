@@ -1,0 +1,89 @@
+@prefix : <http://www.ontologydesignpatterns.org/cp/owl/naryparticipation.owl#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@base <http://www.ontologydesignpatterns.org/cp/owl/naryparticipation.owl> .
+
+<http://www.ontologydesignpatterns.org/cp/owl/naryparticipation.owl> rdf:type owl:Ontology ;
+                                                                      owl:imports <http://www.ontologydesignpatterns.org/cp/owl/participation.owl> ,
+                                                                                  <http://www.ontologydesignpatterns.org/cp/owl/situation.owl> ,
+                                                                                  <http://www.ontologydesignpatterns.org/cp/owl/timeinterval.owl> ,
+                                                                                  <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl> ;
+                                                                      rdfs:comment """The nary participation pattern. 
+This pattern re-uses participation and situation patterns. It is extracted from DOLCE-UltraLite by partial clone of elements.""" ;
+                                                                      owl:versionInfo "Created by Aldo Gangemi and Valentina Presutti"^^xsd:string .
+
+#################################################################
+#    Object Properties
+#################################################################
+
+###  http://www.ontologydesignpatterns.org/cp/owl/naryparticipation.owl#isIncludedInParticipation
+:isIncludedInParticipation rdf:type owl:ObjectProperty ;
+                           rdfs:subPropertyOf <http://www.ontologydesignpatterns.org/cp/owl/situation.owl#hasSetting> ;
+                           rdfs:domain owl:Thing ;
+                           rdfs:range :NaryParticipation ;
+                           rdfs:label "is included in participation"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/naryparticipation.owl#participationIncludes
+:participationIncludes rdf:type owl:ObjectProperty ;
+                       rdfs:subPropertyOf <http://www.ontologydesignpatterns.org/cp/owl/situation.owl#isSettingFor> ;
+                       rdfs:domain :NaryParticipation ;
+                       rdfs:range owl:Thing ;
+                       rdfs:label "participation includes"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/situation.owl#hasSetting
+<http://www.ontologydesignpatterns.org/cp/owl/situation.owl#hasSetting> rdf:type owl:ObjectProperty .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/situation.owl#isSettingFor
+<http://www.ontologydesignpatterns.org/cp/owl/situation.owl#isSettingFor> rdf:type owl:ObjectProperty .
+
+
+#################################################################
+#    Classes
+#################################################################
+
+###  http://www.ontologydesignpatterns.org/cp/owl/naryparticipation.owl#NaryParticipation
+:NaryParticipation rdf:type owl:Class ;
+                   rdfs:subClassOf <http://www.ontologydesignpatterns.org/cp/owl/situation.owl#Situation> ,
+                                   [ rdf:type owl:Restriction ;
+                                     owl:onProperty :participationIncludes ;
+                                     owl:someValuesFrom <http://www.ontologydesignpatterns.org/cp/owl/participation.owl#Event>
+                                   ] ,
+                                   [ rdf:type owl:Restriction ;
+                                     owl:onProperty :participationIncludes ;
+                                     owl:someValuesFrom <http://www.ontologydesignpatterns.org/cp/owl/participation.owl#Object>
+                                   ] ,
+                                   [ rdf:type owl:Restriction ;
+                                     owl:onProperty :participationIncludes ;
+                                     owl:someValuesFrom <http://www.ontologydesignpatterns.org/cp/owl/timeinterval.owl#TimeInterval>
+                                   ] ;
+                   rdfs:label "Nary participation"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/participation.owl#Event
+<http://www.ontologydesignpatterns.org/cp/owl/participation.owl#Event> rdf:type owl:Class .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/participation.owl#Object
+<http://www.ontologydesignpatterns.org/cp/owl/participation.owl#Object> rdf:type owl:Class .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/situation.owl#Situation
+<http://www.ontologydesignpatterns.org/cp/owl/situation.owl#Situation> rdf:type owl:Class ;
+                                                                       owl:disjointWith <http://www.ontologydesignpatterns.org/cp/owl/timeinterval.owl#TimeInterval> .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/timeinterval.owl#TimeInterval
+<http://www.ontologydesignpatterns.org/cp/owl/timeinterval.owl#TimeInterval> rdf:type owl:Class .
+
+
+###  http://www.w3.org/2002/07/owl#Thing
+owl:Thing rdf:type owl:Class .
+
+
+###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

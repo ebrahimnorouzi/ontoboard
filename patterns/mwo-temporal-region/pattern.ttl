@@ -1,0 +1,212 @@
+@prefix : <https://ontoboard.org/patterns/mwo-temporal-region.owl#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@base <https://ontoboard.org/patterns/mwo-temporal-region.owl> .
+
+<https://ontoboard.org/patterns/mwo-temporal-region.owl> rdf:type owl:Ontology .
+
+#################################################################
+#    Annotation properties
+#################################################################
+
+###  http://purl.obolibrary.org/obo/IAO_0000112
+<http://purl.obolibrary.org/obo/IAO_0000112> rdf:type owl:AnnotationProperty .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000115
+<http://purl.obolibrary.org/obo/IAO_0000115> rdf:type owl:AnnotationProperty .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000116
+<http://purl.obolibrary.org/obo/IAO_0000116> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.w3.org/2004/02/skos/core#definition
+<http://www.w3.org/2004/02/skos/core#definition> rdf:type owl:AnnotationProperty .
+
+
+#################################################################
+#    Object Properties
+#################################################################
+
+###  http://purl.obolibrary.org/obo/BFO_0000199
+<http://purl.obolibrary.org/obo/BFO_0000199> rdf:type owl:ObjectProperty ,
+                                                      owl:FunctionalProperty ;
+                                             rdfs:range <http://purl.obolibrary.org/obo/BFO_0000008> ;
+                                             rdfs:label "occupies temporal region"@en ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "p occupies temporal region t =Def p is a process or process boundary & the spatiotemporal region occupied by p temporally projects onto t"@en .
+
+
+###  http://purl.obolibrary.org/obo/BFO_0000221
+<http://purl.obolibrary.org/obo/BFO_0000221> rdf:type owl:ObjectProperty ;
+                                             owl:inverseOf <http://purl.obolibrary.org/obo/BFO_0000222> ;
+                                             rdfs:range <http://purl.obolibrary.org/obo/BFO_0000008> ;
+                                             rdfs:label "first instant of"@en ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "t first instant of t' =Def t is a temporal instant & t' is a temporal region t' & t precedes all temporal parts of t' other than t"@en .
+
+
+###  http://purl.obolibrary.org/obo/BFO_0000222
+<http://purl.obolibrary.org/obo/BFO_0000222> rdf:type owl:ObjectProperty ,
+                                                      owl:FunctionalProperty ;
+                                             rdfs:domain <http://purl.obolibrary.org/obo/BFO_0000008> ;
+                                             rdfs:label "has first instant"@en ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "t has first instant t' =Def t' first instant of t"@en .
+
+
+###  http://purl.obolibrary.org/obo/BFO_0000223
+<http://purl.obolibrary.org/obo/BFO_0000223> rdf:type owl:ObjectProperty ;
+                                             owl:inverseOf <http://purl.obolibrary.org/obo/BFO_0000224> ;
+                                             rdfs:range <http://purl.obolibrary.org/obo/BFO_0000008> ;
+                                             rdfs:label "last instant of"@en ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "t last instant of t' =Def t is a temporal instant & t' is a temporal region & all temporal parts of t' other than t precede t"@en .
+
+
+###  http://purl.obolibrary.org/obo/BFO_0000224
+<http://purl.obolibrary.org/obo/BFO_0000224> rdf:type owl:ObjectProperty ,
+                                                      owl:FunctionalProperty ;
+                                             rdfs:domain <http://purl.obolibrary.org/obo/BFO_0000008> ;
+                                             rdfs:label "has last instant"@en ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "t has last instant t' =Def t' last instant of t"@en .
+
+
+#################################################################
+#    Data properties
+#################################################################
+
+###  https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0001007
+<https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0001007> rdf:type owl:DatatypeProperty ;
+                                                      rdfs:label "has value"@en ;
+                                                      <http://www.w3.org/2004/02/skos/core#definition> "A relation between an information content entity and its specific value."@en .
+
+
+#################################################################
+#    Classes
+#################################################################
+
+###  http://purl.obolibrary.org/obo/BFO_0000003
+<http://purl.obolibrary.org/obo/BFO_0000003> rdf:type owl:Class ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "An entity that has temporal parts and that happens, unfolds or develops through time."@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000116> "BFO 2 Reference: every occurrent that is not a temporal or spatiotemporal region is s-dependent on some independent continuant that is not a spatial region"@en ,
+                                                                                          "BFO 2 Reference: s-dependence obtains between every process and its participants in the sense that, as a matter of necessity, this process could not have existed unless these or those participants existed also. A process may have a succession of participants at different phases of its unfolding. Thus there may be different players on the field at different times during the course of a football game; but the process which is the entire game s-depends_on all of these players nonetheless. Some temporal parts of this process will s-depend_on on only some of the players."@en ;
+                                             rdfs:label "occurrent"@en ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "(Elucidation) An occurrent is an entity that unfolds itself in time or it is the start or end of such an entity or it is a temporal or spatiotemporal region"@en .
+
+
+###  http://purl.obolibrary.org/obo/BFO_0000008
+<http://purl.obolibrary.org/obo/BFO_0000008> rdf:type owl:Class ;
+                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000003> ;
+                                             rdfs:label "temporal region"@en ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "(Elucidation) A temporal region is an occurrent over which processes can unfold"@en .
+
+
+###  http://purl.obolibrary.org/obo/BFO_0000038
+<http://purl.obolibrary.org/obo/BFO_0000038> rdf:type owl:Class ;
+                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000008> ;
+                                             owl:disjointWith <http://purl.obolibrary.org/obo/BFO_0000148> ;
+                                             rdfs:label "one-dimensional temporal region"@en ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "(Elucidation) A one-dimensional temporal region is a temporal region that is a whole that has a temporal interval and zero or more temporal intervals and temporal instants as parts"@en .
+
+
+###  http://purl.obolibrary.org/obo/BFO_0000148
+<http://purl.obolibrary.org/obo/BFO_0000148> rdf:type owl:Class ;
+                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000008> ;
+                                             rdfs:label "zero-dimensional temporal region"@en ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "(Elucidation) A zero-dimensional temporal region is a temporal region that is a whole consisting of one or more separated temporal instants as parts"@en .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000027
+<http://purl.obolibrary.org/obo/IAO_0000027> rdf:type owl:Class ;
+                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/IAO_0000030> ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000112> "Data items include counts of things, analyte concentrations, and statistical summaries."@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "An information content entity that is intended to be a truthful statement about something (modulo, e.g., measurement precision or other systematic errors) and is constructed/acquired by a method which reliably tends to produce (approximately) truthful statements."@en ,
+                                                                                          "An information content entity that is intended to be one or more truthful statement(s) about something (modulo, e.g., measurement precision or other systematic errors) and is constructed/acquired by a method which reliably tends to produce (approximately) truthful statements."@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000116> "2/2/2009 Alan and Bjoern discussing FACS run output data. This is a data item because it is about the cell population. Each element records an event and is typically further composed a set of measurment data items that record the fluorescent intensity stimulated by one of the lasers."@en ,
+                                                                                          "2009-03-16: data item deliberatly ambiguous: we merged data set and datum to be one entity, not knowing how to define singular versus plural. So data item is more general than datum."@en ,
+                                                                                          "2009-03-16: removed datum as alternative term as datum specifically refers to singular form, and is thus not an exact synonym."@en ,
+                                                                                          "2014-03-31: See discussion at http://odontomachus.wordpress.com/2014/03/30/aboutness-objects-propositions/" ,
+                                                                                          """JAR: datum     -- well, this will be very tricky to define, but maybe some 
+information-like stuff that might be put into a computer and that is 
+meant, by someone, to denote and/or to be interpreted by some 
+process... I would include lists, tables, sentences... I think I might 
+defer to Barry, or to Brian Cantwell Smith
+
+JAR: A data item is an approximately justified approximately true approximate belief"""@en ;
+                                             rdfs:label "data entity"@en ,
+                                                        "data item"@en .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000030
+<http://purl.obolibrary.org/obo/IAO_0000030> rdf:type owl:Class ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000112> "Examples of information content entites include journal articles, data, graphical layouts, and graphs." ,
+                                                                                          "Examples of information content entites include journal articles, data, graphical layouts, and graphs."@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "A generically dependent continuant that is about some thing."@en ,
+                                                                                          "An information content entity is an entity that is generically dependent on some artifact and stands in relation of aboutness to some entity." ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000116> "2014-03-10: The use of \"thing\" is intended to be general enough to include universals and configurations (see https://groups.google.com/d/msg/information-ontology/GBxvYZCk1oc/-L6B5fSBBTQJ)."@en ,
+                                                                                          "Pier: 'data, information or knowledge'. OR 'representation'"@en ,
+                                                                                          """information_content_entity 'is_encoded_in' some digital_entity in obi before split (040907). information_content_entity 'is_encoded_in' some physical_document in obi before split (040907).
+
+Previous. An information content entity is a non-realizable information entity that 'is encoded in' some digital or physical entity."""@en ;
+                                             rdfs:label "information content entity" ,
+                                                        "information content entity"@en .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000032
+<http://purl.obolibrary.org/obo/IAO_0000032> rdf:type owl:Class ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000112> "10 feet. 3 ml."@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "A scalar measurement datum is a measurement datum that is composed of two parts, numerals and a unit label."@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000116> """2009-03-16: we decided to keep datum singular in scalar measurement datum, as in
+this case we explicitly refer to the singular form"""@en ,
+                                                                                          "Would write this as: has_part some 'measurement unit label' and has_part some numeral and has_part exactly 2, except for the fact that this won't let us take advantage of OWL reasoning over the numbers. Instead use has measurment value property to represent the same. Use has measurement unit label (subproperty of has_part) so we can easily say that there is only one of them."@en ;
+                                             rdfs:label "scalar measurement datum"@en .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000033
+<http://purl.obolibrary.org/obo/IAO_0000033> rdf:type owl:Class ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "An information content entity whose concretizations indicate to their bearer how to realize them in a process."@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000116> "2009-03-16: provenance: a term realizable information entity was proposed for OBI (OBI_0000337) , edited by the PlanAndPlannedProcess branch. Original definition was  \"is the specification of a process that can be concretized and realized by an actor\" with alternative term  \"instruction\".It has been subsequently moved to IAO where the objective for which the original term was defined was satisfied with the definitionof this, different, term."@en ,
+                                                                                          "2013-05-30 Alan Ruttenberg: What differentiates a directive information entity from an information concretization is that it can have concretizations that are either qualities or realizable entities. The concretizations that are realizable entities are created when an individual chooses to take up the direction, i.e. has the intention to (try to) realize it."@en ,
+                                                                                          "8/6/2009 Alan Ruttenberg: Changed label from \"information entity about a realizable\" after discussions at ICBO"@en ,
+                                                                                          "Werner pushed back on calling it realizable information entity as it isn't realizable. However this name isn't right either. An example would be a recipe. The realizable entity would be a plan, but the information entity isn't about the plan, it, once concretized, *is* the plan. -Alan"@en ;
+                                             rdfs:label "directive information entity"@en .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000416
+<http://purl.obolibrary.org/obo/IAO_0000416> rdf:type owl:Class ;
+                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/IAO_0000032> ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "A scalar measurement datum that is the result of measuring a temporal interval"@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000116> "2009/09/28 Alan Ruttenberg. Fucoidan-use-case"@en ;
+                                             rdfs:label "time measurement datum"@en .
+
+
+###  http://purl.obolibrary.org/obo/OBI_0002471
+<http://purl.obolibrary.org/obo/OBI_0002471> rdf:type owl:Class ;
+                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/IAO_0000027> ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "A data item that is the date when a process was initiated."@en ;
+                                             rdfs:label "date process started"@en .
+
+
+###  http://purls.helmholtz-metadaten.de/mwo/MWO_0001001
+<http://purls.helmholtz-metadaten.de/mwo/MWO_0001001> rdf:type owl:Class ;
+                                                      rdfs:subClassOf <https://w3id.org/pmd/co/PMD_0060009> ;
+                                                      rdfs:label "event frequency datum"@en ;
+                                                      <http://www.w3.org/2004/02/skos/core#definition> "Event frequency datum describes how often an events occurs within a given time interval" .
+
+
+###  http://purls.helmholtz-metadaten.de/mwo/MWO_0001012
+<http://purls.helmholtz-metadaten.de/mwo/MWO_0001012> rdf:type owl:Class ;
+                                                      rdfs:subClassOf <http://purl.obolibrary.org/obo/IAO_0000027> ;
+                                                      rdfs:label "date process ended"@en ;
+                                                      <http://www.w3.org/2004/02/skos/core#definition> "The date and time at which the experimental process was completed." .
+
+
+###  https://w3id.org/pmd/co/PMD_0060009
+<https://w3id.org/pmd/co/PMD_0060009> rdf:type owl:Class ;
+                                      rdfs:subClassOf <http://purl.obolibrary.org/obo/IAO_0000033> ;
+                                      rdfs:label "specification datum"@en ;
+                                      <http://www.w3.org/2004/02/skos/core#definition> "A directive information entity that provides information of a setpoint of some value, i.e., it is an intended value."@en .
+
+
+###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

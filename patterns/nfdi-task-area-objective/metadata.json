@@ -1,0 +1,15 @@
+{
+  "id": "nfdi-task-area-objective",
+  "name": "matwerkta",
+  "description": "An organisational work unit is modelled as an objective specification (obo:IAO_0000005) that is decomposed into work-package textual entities with obo:BFO_0000051 and is the subject of the processes carrying it out via nfdi:NFDI_0000226. The unit is thus represented by what it specifies rather than as an opaque organisational node.",
+  "category": "information",
+  "domain": "research-data",
+  "competency_questions": "Which task areas comprise NFDI-MatWerk, and what responsibilities does each hold?; Which researchers and organizations participate in a specified task area?; What infrastructure use cases and participant projects does a task area encompass?",
+  "pattern_iri": "https://ontoboard.org/patterns/nfdi-task-area-objective.owl",
+  "source": "https://nfdi.fiz-karlsruhe.de/matwerk/patterns/",
+  "collection": "nfdi",
+  "publisher": "nfdi.fiz-karlsruhe.de",
+  "extracted_from": "nfdi",
+  "class_count": 6,
+  "property_count": 4
+}

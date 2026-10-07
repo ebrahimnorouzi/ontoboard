@@ -1,0 +1,159 @@
+@prefix : <http://www.ontologydesignpatterns.org/cp/owl/fsdas/specieshabitat.owl#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@base <http://www.ontologydesignpatterns.org/cp/owl/fsdas/specieshabitat.owl> .
+
+<http://www.ontologydesignpatterns.org/cp/owl/fsdas/specieshabitat.owl> rdf:type owl:Ontology ;
+                                                                         owl:imports <http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresources.owl> ,
+                                                                                     <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl> ;
+                                                                         <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> "what species have what habitat in what water area?" ;
+                                                                         <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences> """The pattern allows to represent species with a typical habitat and a typical water area where the exemplars can be found. However, there is no direct relation between the habitat (type) and the water area; in principle, it is possible that there are no places in the water area that provide the conditions for that habitat.
+In order to represent that a species has a habitat within a given water area, the situation pattern should be reused and specialized, as in the speciesconditions.owl pattern.""" ;
+                                                                         <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> "to represent species together with their typical environment in terms of habitat and water area" ;
+                                                                         <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#relatedCPs> "speciesconditions.owl" ;
+                                                                         <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios> "give me the species having a 'demersal' habitat in water area '24'" ;
+                                                                         rdfs:comment """This pattern encodes a FSDAS competency question, with an indication to use some Species class, and some hasHabitat property, with range xsd:string.
+Since the application task of FSDAS is to jointly query FIGIS factsheet data and RTMS time series data, the pattern must encode elements that can be easily mapped to FIGIS and RTMS schemas/ontologies.
+Issue (1) mapping Species to FIGIS schema, since the needed schema elements are two instead of one.
+Issue (2) representation of habitats in the pattern is intuitively with objects, since habitats are typically objects, and points in a value space (as the referents of xsd datatypes typically are). The suggestion in the competencey question is to use xsd.string though.""" ;
+                                                                         owl:versionInfo "Created by Aldo Gangemi" .
+
+#################################################################
+#    Annotation properties
+#################################################################
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements
+<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences
+<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent
+<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios
+<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios> rdf:type owl:AnnotationProperty .
+
+
+#################################################################
+#    Object Properties
+#################################################################
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/specieshabitat.owl#hasBottomType
+:hasBottomType rdf:type owl:ObjectProperty ;
+               rdfs:domain owl:Thing ;
+               rdfs:range :BottomType ;
+               rdfs:label "hasBottomType" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/specieshabitat.owl#hasDepthZone
+:hasDepthZone rdf:type owl:ObjectProperty ;
+              rdfs:domain owl:Thing ;
+              rdfs:range :DepthZone ;
+              rdfs:label "hasDepthZone" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/specieshabitat.owl#hasGeoform
+:hasGeoform rdf:type owl:ObjectProperty ;
+            rdfs:domain owl:Thing ;
+            rdfs:range :Geoform ;
+            rdfs:label "hasGeoForm" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/specieshabitat.owl#hasHabitat
+:hasHabitat rdf:type owl:ObjectProperty ;
+            owl:inverseOf :isHabitatFor ;
+            rdfs:domain <http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresources.owl#AquaticSpecies> ;
+            rdfs:range :Habitat ;
+            rdfs:label "has habitat"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/specieshabitat.owl#isHabitatFor
+:isHabitatFor rdf:type owl:ObjectProperty ;
+              rdfs:domain :Habitat ;
+              rdfs:range <http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresources.owl#AquaticSpecies> ;
+              rdfs:label "is habitat for"@en ,
+                         "is habitat for"^^xsd:string .
+
+
+#################################################################
+#    Classes
+#################################################################
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresources.owl#AquaticResource
+<http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresources.owl#AquaticResource> rdf:type owl:Class ;
+                                                                                          rdfs:subClassOf [ rdf:type owl:Restriction ;
+                                                                                                            owl:onProperty :hasBottomType ;
+                                                                                                            owl:someValuesFrom :BottomType
+                                                                                                          ] ,
+                                                                                                          [ rdf:type owl:Restriction ;
+                                                                                                            owl:onProperty :hasDepthZone ;
+                                                                                                            owl:someValuesFrom :DepthZone
+                                                                                                          ] ,
+                                                                                                          [ rdf:type owl:Restriction ;
+                                                                                                            owl:onProperty :hasGeoform ;
+                                                                                                            owl:someValuesFrom :Geoform
+                                                                                                          ] ;
+                                                                                          owl:disjointWith :Habitat .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresources.owl#AquaticSpecies
+<http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresources.owl#AquaticSpecies> rdf:type owl:Class ;
+                                                                                         rdfs:subClassOf [ rdf:type owl:Restriction ;
+                                                                                                           owl:onProperty :hasHabitat ;
+                                                                                                           owl:someValuesFrom :Habitat
+                                                                                                         ] ;
+                                                                                         owl:disjointWith :Habitat ;
+                                                                                         rdfs:comment "Here also the complex type SpeciesFeature (holding association with HabitatBio) is the schema mapping required to refer to Habitat. Any mapping has to take care of that, e.g. maps(AquaticSpecies, owl:unionOf(SpeciesRef, SpeciesFeature))." .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresources.owl#WaterArea
+<http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresources.owl#WaterArea> rdf:type owl:Class ;
+                                                                                    owl:disjointWith :Habitat .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/specieshabitat.owl#BottomType
+:BottomType rdf:type owl:Class ;
+            rdfs:label "BottomType" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/specieshabitat.owl#DepthZone
+:DepthZone rdf:type owl:Class ;
+           rdfs:label "DepthZone" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/specieshabitat.owl#Geoform
+:Geoform rdf:type owl:Class ;
+         rdfs:label "Geoform" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/specieshabitat.owl#Habitat
+:Habitat rdf:type owl:Class ;
+         rdfs:subClassOf [ rdf:type owl:Restriction ;
+                           owl:onProperty :isHabitatFor ;
+                           owl:someValuesFrom <http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresources.owl#AquaticSpecies>
+                         ] ;
+         rdfs:comment "Habitat is the biological and ecological context of a species in the area of an aquatic resource." ;
+         rdfs:label "Habitat"@en .
+
+
+###  http://www.w3.org/2002/07/owl#Thing
+owl:Thing rdf:type owl:Class .
+
+
+#################################################################
+#    Individuals
+#################################################################
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/specieshabitat.owl
+<http://www.ontologydesignpatterns.org/cp/owl/fsdas/specieshabitat.owl> rdf:type owl:NamedIndividual ,
+                                                                                 owl:Thing .
+
+
+###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

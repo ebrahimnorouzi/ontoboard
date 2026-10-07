@@ -1,0 +1,198 @@
+@prefix : <https://ontoboard.org/patterns/nfdi-software-product.owl#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@base <https://ontoboard.org/patterns/nfdi-software-product.owl> .
+
+<https://ontoboard.org/patterns/nfdi-software-product.owl> rdf:type owl:Ontology .
+
+#################################################################
+#    Annotation properties
+#################################################################
+
+###  http://purl.obolibrary.org/obo/IAO_0000112
+<http://purl.obolibrary.org/obo/IAO_0000112> rdf:type owl:AnnotationProperty .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000115
+<http://purl.obolibrary.org/obo/IAO_0000115> rdf:type owl:AnnotationProperty .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000116
+<http://purl.obolibrary.org/obo/IAO_0000116> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.w3.org/2004/02/skos/core#definition
+<http://www.w3.org/2004/02/skos/core#definition> rdf:type owl:AnnotationProperty .
+
+
+#################################################################
+#    Object Properties
+#################################################################
+
+###  http://purl.obolibrary.org/obo/IAO_0000235
+<http://purl.obolibrary.org/obo/IAO_0000235> rdf:type owl:ObjectProperty ;
+                                             rdfs:subPropertyOf <https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000226> ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "inverse of the relation 'denotes'"@en ;
+                                             rdfs:label "denoted by"@en .
+
+
+###  http://purl.obolibrary.org/obo/RO_0000056
+<http://purl.obolibrary.org/obo/RO_0000056> rdf:type owl:ObjectProperty ;
+                                            <http://purl.obolibrary.org/obo/IAO_0000112> "this blood clot participates in this blood coagulation"@en ,
+                                                                                         "this input material (or this output material) participates in this process"@en ,
+                                                                                         "this investigator participates in this investigation"@en ;
+                                            <http://purl.obolibrary.org/obo/IAO_0000115> "a relation between a continuant and a process, in which the continuant is somehow involved in the process"@en ;
+                                            rdfs:label "participates in"@en .
+
+
+###  https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000226
+<https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000226> rdf:type owl:ObjectProperty ;
+                                                      rdfs:label "is subject of"@en ;
+                                                      <http://www.w3.org/2004/02/skos/core#definition> "inverse of the relation 'is about'" .
+
+
+#################################################################
+#    Classes
+#################################################################
+
+###  http://purl.obolibrary.org/obo/IAO_0000010
+<http://purl.obolibrary.org/obo/IAO_0000010> rdf:type owl:Class ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> """Software is a plan specification composed of a series of instructions that can be 
+interpreted by or directly executed by a processing unit."""@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000116> "see sourceforge tracker discussion at http://sourceforge.net/tracker/index.php?func=detail&aid=1958818&group_id=177891&atid=886178"@en ;
+                                             rdfs:label "software"@en .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000025
+<http://purl.obolibrary.org/obo/IAO_0000025> rdf:type owl:Class ;
+                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/IAO_0000104> ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000112> "R, Perl, Java"@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "A language in which source code is written that is intended to be executed/run by a software interpreter. Programming languages are ways to write instructions that specify what to do, and sometimes, how to do it."@en ;
+                                             rdfs:label "programming language"@en .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000028
+<http://purl.obolibrary.org/obo/IAO_0000028> rdf:type owl:Class ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000112> "a serial number such as \"12324X\""@en ,
+                                                                                          "a stop sign"@en ,
+                                                                                          "a written proper name such as \"OBI\""@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "An information content entity that is a mark(s) or character(s) used as a conventional representation of another entity."@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000116> "20091104, MC: this needs work and will most probably change"@en ,
+                                                                                          "2014-03-31: We would like to have a deeper analysis of 'mark' and 'sign' in the future (see https://github.com/information-artifact-ontology/IAO/issues/154)."@en ;
+                                             rdfs:label "symbol"@en .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000030
+<http://purl.obolibrary.org/obo/IAO_0000030> rdf:type owl:Class ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000112> "Examples of information content entites include journal articles, data, graphical layouts, and graphs." ,
+                                                                                          "Examples of information content entites include journal articles, data, graphical layouts, and graphs."@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "A generically dependent continuant that is about some thing."@en ,
+                                                                                          "An information content entity is an entity that is generically dependent on some artifact and stands in relation of aboutness to some entity." ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000116> "2014-03-10: The use of \"thing\" is intended to be general enough to include universals and configurations (see https://groups.google.com/d/msg/information-ontology/GBxvYZCk1oc/-L6B5fSBBTQJ)."@en ,
+                                                                                          """information_content_entity 'is_encoded_in' some digital_entity in obi before split (040907). information_content_entity 'is_encoded_in' some physical_document in obi before split (040907).
+
+Previous. An information content entity is a non-realizable information entity that 'is encoded in' some digital or physical entity."""@en ;
+                                             rdfs:label "information content entity" ,
+                                                        "information content entity"@en .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000104
+<http://purl.obolibrary.org/obo/IAO_0000104> rdf:type owl:Class ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000112> "PMID: 18323827.Nat Med. 2008 Mar;14(3):226.New plan proposed to help resolve conflicting medical advice."@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "A directive information entity with action specifications and objective specifications as parts, and that may be concretized as a realizable entity that, if realized, is realized in a process in which the bearer tries to achieve the objectives by taking the actions specified."@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000116> "2009-03-16: provenance: a term a plan was proposed for OBI (OBI_0000344) , edited by the PlanAndPlannedProcess branch. Original definition was \" a plan is a specification of a process that is realized by an actor to achieve the objective specified as part of the plan\". It has been subsequently moved to IAO where the objective for which the original term was defined was satisfied with the definitionof this, different, term."@en ,
+                                                                                          "2014-03-31: A plan specification can have other parts, such as conditional specifications."@en ,
+                                                                                          "2022-01-16 Updated definition to that proposed by Clint Dowloand, IAO Issue 231."@en ,
+                                                                                          "Alternative previous definition: a plan is a set of instructions that specify how an objective should be achieved"@en ;
+                                             rdfs:label "plan specification"@en .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000129
+<http://purl.obolibrary.org/obo/IAO_0000129> rdf:type owl:Class ;
+                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/IAO_0000028> ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "A version number is an information content entity which is a sequence of characters borne by part of each of a class of manufactured products or its packaging and indicates its order within a set of other products having the same name."@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000116> "Note: we feel that at the moment we are happy with a general version number, and that we will subclass as needed in the future. For example, see 7. genome sequence version"@en ;
+                                             rdfs:label "version number"@en .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000300
+<http://purl.obolibrary.org/obo/IAO_0000300> rdf:type owl:Class ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000112> "Words, sentences, paragraphs, and the written (non-figure) parts of publications are all textual entities"@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "A textual entity is a part of a manifestation (FRBR sense), a generically dependent continuant whose concretizations are patterns of glyphs intended to be interpreted as words, formulas, etc."@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000116> "AR, (IAO call 2009-09-01): a document as a whole is not typically a textual entity, because it has pictures in it - rather there are parts of it that are textual entities. Examples: The title, paragraph 2 sentence 7, etc."@en ,
+                                                                                          "MC, 2009-09-14 (following IAO call 2009-09-01): textual entities live at the FRBR (http://en.wikipedia.org/wiki/Functional_Requirements_for_Bibliographic_Records) manifestation level. Everything is significant: line break, pdf and html versions of same document are different textual entities."@en ;
+                                             rdfs:label "textual entity"@en .
+
+
+###  http://www.ebi.ac.uk/swo/SWO_0000002
+<http://www.ebi.ac.uk/swo/SWO_0000002> rdf:type owl:Class ;
+                                       rdfs:subClassOf <http://purl.obolibrary.org/obo/IAO_0000030> ;
+                                       <http://purl.obolibrary.org/obo/IAO_0000115> "A licence is a legal instrument (usually by way of contract law, with or without printed material) governing the use or redistribution of the resource containing the licence." ;
+                                       rdfs:label "licence"@en ,
+                                                  "software license" .
+
+
+###  https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000100
+<https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000100> rdf:type owl:Class ;
+                                                      rdfs:subClassOf <http://purl.obolibrary.org/obo/IAO_0000030> ;
+                                                      rdfs:label "academic discipline"@en ;
+                                                      <http://www.w3.org/2004/02/skos/core#definition> "An information content entity that specifies the subject area, domain or academic discipline of an entity. An academic discipline, a research field or domain of an entity, e.g. a domain of a data portal or a field of study of a person."@en .
+
+
+###  https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000121
+<https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000121> rdf:type owl:Class ;
+                                                      rdfs:subClassOf <http://purl.obolibrary.org/obo/IAO_0000010> ;
+                                                      rdfs:label "database software"@en ;
+                                                      <http://www.w3.org/2004/02/skos/core#definition> "Software that provides large amounts of structured data from repositories and archives to the user. Usually the data can be uploaded, accessed, searched and/or downloaded via a web browser."@en .
+
+
+###  https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000123
+<https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000123> rdf:type owl:Class ;
+                                                      rdfs:label "data portal"@en ;
+                                                      <http://www.w3.org/2004/02/skos/core#definition> "A website that serves as a centralized platform for accessing, managing, and sharing datasets, information, or resources related to a specific topic, theme, or domain."@en .
+
+
+###  https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000215
+<https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000215> rdf:type owl:Class ;
+                                                      rdfs:subClassOf <http://purl.obolibrary.org/obo/IAO_0000104> ;
+                                                      rdfs:label "technological method specification"@en ;
+                                                      <http://www.w3.org/2004/02/skos/core#definition> "A plan specification that refers to a technology method employed for the creation, management, utilization, or control of a digital resource."@en .
+
+
+###  https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000223
+<https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000223> rdf:type owl:Class ;
+                                                      rdfs:label "website"@en ;
+                                                      <http://www.w3.org/2004/02/skos/core#definition> "An information content entity that represents a collection of interconnected web pages, multimedia content, and digital resources accessible via the World Wide Web."@en .
+
+
+###  https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0001000
+<https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0001000> rdf:type owl:Class ;
+                                                      rdfs:label "software title"@en ;
+                                                      <http://www.w3.org/2004/02/skos/core#definition> "A textual entity that uniquely identifies a specific software application, program, or system, often used for branding, categorization, and reference in documentation, licensing, and distribution." .
+
+
+###  https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0001018
+<https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0001018> rdf:type owl:Class ;
+                                                      rdfs:subClassOf <http://purl.obolibrary.org/obo/IAO_0000300> ;
+                                                      rdfs:label "textual description"@en ;
+                                                      <http://www.w3.org/2004/02/skos/core#definition> "A textual entity that describe some resource."@en .
+
+
+###  https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0001047
+<https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0001047> rdf:type owl:Class ;
+                                                      rdfs:subClassOf <http://purl.obolibrary.org/obo/IAO_0000010> ;
+                                                      rdfs:label "operating system"@en ;
+                                                      <http://www.w3.org/2004/02/skos/core#definition> "An Operating System (OS) is a software system that manages computer hardware and software resources and provides common services for computer programs. It acts as an intermediary between users and the computer hardware, enabling the execution of application programs." .
+
+
+###  https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0001210
+<https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0001210> rdf:type owl:Class ;
+                                                      rdfs:subClassOf <https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000123> ;
+                                                      rdfs:label "software repository"@en ;
+                                                      <http://www.w3.org/2004/02/skos/core#definition> "A Software Repository is a data portal designed to store, manage, and distribute software packages, source code, and related documentation for research, development, and deployment purposes." .
+
+
+###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

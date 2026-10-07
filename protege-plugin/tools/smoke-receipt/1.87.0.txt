@@ -1,0 +1,161 @@
+OntoBoard 1.87.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-10-07  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 9/9  test 10/10
+  2026-10-07  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 9/9  test 10/10
+
+Both hosts report "pattern library readable - 159 patterns indexed".
+
+
+THE LIBRARY WAS 123 PATTERNS ABOUT SOMEBODY ELSE'S UPPER ONTOLOGY
+
+Asked for: the patterns introduced by MWO, PMDco and NFDI MatWerk, with the source named, and
+suggestions ranked against the open ontology.
+
+The measurement that justified both halves, taken before either was built: of the 123 ODP
+patterns, **zero** share a single IRI with a real BFO-based project. Not few - none. The ODP
+collection and the OBO world have no vocabulary in common, so for somebody working in MWO or
+PMDco the library was a catalogue of other people's modelling.
+
+36 patterns added, and the collection is now a first-class field rather than one bucket:
+
+    odp     123   the ODP portal, harvested earlier
+    nfdi     15   nfdi.fiz-karlsruhe.de/matwerk/patterns/
+    pmdco    13   materialdigital.github.io/core-ontology/docs/patterns.html
+    mwo       8   ise-fizkarlsruhe.github.io/mwo/docs/patterns/
+
+EVERY PATTERN IS NOW OWL AND TURTLE
+
+Asked for directly. Those three pages document their patterns as prose and diagrams, so there
+was nothing to ship: each one here was built by extracting its terms from the ontology it
+belongs to, which makes it importable like any other entry rather than something to read and
+copy by hand. Turtle was generated for all 159, the 123 originals included - RDF/XML is not
+something anybody reads, and a pattern is meant to be read before it is imported.
+
+A LOGICAL MODULE IS NOT A PATTERN
+
+The design decision of this release, and it took measuring two wrong answers to reach.
+
+ROBOT's STAR and BOT extraction are the right tools for an import: they guarantee the module
+entails everything the source entails about the seeds. Pointed at these sources they produce
+this:
+
+    STAR   a PMDco pattern documented with 8 terms -> 119 classes, 1508 axioms
+    BOT    the same pattern                        -> 121 classes, 1540 axioms
+    36 patterns, either way                        -> 13-14 MB
+
+Because a BFO-based ontology connects everything to the upper-ontology spine, and a logical
+module has to follow it. 119 classes is a chunk of ontology.
+
+A design pattern is not logically complete. It is a handful of terms and the relations between
+them - what the diagram on the documentation page shows. So each pattern is the induced
+sub-ontology: its own terms, every axiom mentioning only those terms, their labels and
+definitions, and one level of parent above each so you can see where it sits without importing
+BFO.
+
+    INDUCED   6 to 26 classes each, 39 to 231 axioms, 1.5 MB in total
+
+Checked by reading one rather than by trusting the numbers: mwo-process-agent-role came out as
+Process, Agent and Role with participates in, has participant, bearer of, realizes, has role
+and has realization, sixteen labels, and the BFO spine one level up. That is the documented
+pattern.
+
+HOW THE SEEDS WERE FOUND, AND HOW THEY WERE CHECKED
+
+Three agents read the three pages and resolved each documented pattern to the IRIs it uses,
+then one agent per pattern tried to confirm every IRI exists in the source file. The NFDI agent
+was properly strict, rejecting 11 of 26 entries - the city, materials and metadata listings are
+spreadsheet rows from a generated workbook, not reusable modelling decisions, and several others
+name a defining class that is simply not in nfdicore.owl.
+
+Twelve of those checks died on a weekly limit, so the same question was then asked
+deterministically instead: load each ontology, test set membership of every seed IRI against its
+signature. All 36 patterns had every seed confirmed - 100% - and the agents' own verdicts agreed
+once they could be re-run. Set membership is not a judgement call, and a script is the better
+tool for it.
+
+That check also found something the agents could not: four patterns documented by MWO are built
+entirely from NFDIcore vocabulary, because MWO imports an extracted *module* of NFDIcore rather
+than the whole thing, so the full file has terms MWO's copy does not. Those are extracted from
+nfdicore.owl while still being credited to the MWO page - 'collection' is who documented the
+pattern, 'extracted_from' is where its terms live, and collapsing the two would credit the wrong
+project.
+
+
+SUGGESTIONS, RANKED AGAINST THE OPEN ONTOLOGY
+
+The browser's first ordering is now "Suggested for this ontology". Pointed at the project these
+patterns came from, the top ten are its own eight documented patterns plus two NFDI ones, every
+one at 100% exact-IRI coverage - which is the right answer, and was not obtainable before this
+release because none of the 123 matched anything.
+
+THE REASON IS THE FEATURE
+
+A ranked list with no evidence is a magic box. Each suggestion says "3 of its 4 terms are
+already in your ontology: Agent, Role, hasRole" - checkable, where 0.75 is not. Where the
+ontology has a label for a matched term its own label is used, because BFO_0000004 tells nobody
+anything and "independent continuant" does.
+
+THREE THINGS THE MEASUREMENTS OVERTURNED
+
+1. The builtin vocabulary is not evidence. The first scoring looked like it worked: 43 of 123
+   patterns "shared an IRI" with a real project. Every one of those matches was owl:Thing, which
+   42 patterns declare. A signal that fires on everything ranks nothing. Had I shipped on that
+   number the feature would have appeared to function.
+
+2. Coverage, not count. Ranking by how many terms matched put a 195-term pattern first on
+   twenty-five generic words - "object", "entity", "agent". Ranking by how much of the pattern
+   the ontology covers puts Agent Role, Participation and Componency at the top, which is what a
+   project about processes and roles should be offered.
+
+3. It must not read the pattern files. Parsing them to answer one question took 24 seconds - a
+   dialog that looks like it has hung, and it would have shipped that way, because nothing about
+   the code looks slow and the cost only appears when something asks about every pattern at
+   once. Caching helped the second call and left the first at 28 seconds. So each pattern's
+   terms are stored in the index, generated from the files and compared against them by a test:
+   24 seconds became 0.3.
+
+   Storing derived data is what this project has twice caught other people getting wrong - 41 of
+   the harvested class counts are false. The difference is that this list is generated by our
+   own code and a test rebuilds it and fails on a mismatch. Derived data is safe exactly when
+   the derivation is reproducible and checked.
+
+A DEFECT THAT WOULD HAVE FAILED CI AND NOT ME
+
+The terms column came out holding
+
+    file:/C:/Users/eno/.../protege-plugin/../patterns/airline/pattern.owl#hasAircraft
+
+airline/pattern.owl declares no usable ontology IRI, so its hasAircraft resolves against
+wherever the file happens to be. The index was therefore unreproducible by construction: the
+same checkout on another machine generates a different one, and the test that rebuilds and
+compares would have gone red on CI while passing here - the worst way round. The same file is
+malformed, its DOCTYPE missing a space, so the OWL API also contributed
+org.semanticweb.owlapi/error#Error1 through Error6 to the signature.
+
+Neither kind can ever match a term in anybody's ontology, so neither is evidence. Both are
+excluded, and a test now asserts that nothing in the shipped index is true only on one machine.
+
+Narrowing the column to classes and properties - an annotation property is not modelling - took
+it from 451 KB to 298 KB and stopped the recommender offering IAO_0000115, "definition", as a
+reason. Every OBO ontology has it; it is owl:Thing again in a different costume.
+
+NUMBERS
+
+1662 tests, 0 failures, 0 skipped. 12 new, counted three ways and agreeing.
+
+159 patterns in the jar as .owl and as .ttl, plus the index. The jar grew 585 KB for 36
+patterns and 159 Turtle files.
+
+36/36 classes named in plugin.xml load on both hosts.
+
+STILL OPEN
+
+Adding your own pattern, or a fifth collection, without rebuilding the plugin. The library does
+not know what you have already imported, so it will not say you imported this one last week -
+and a suggestion scoring 1.00 means you already contain the whole pattern, which is a statement
+that you have applied it rather than advice to adopt it. Editing a list or a nested block in the
+ODK YAML. Three collaboration UI findings from the 1.86.0 audit, none security-related: whether
+a dead session and a retrying one are distinguishable at a glance, whether a peer joining is
+announced, and what happens to queued edits when a user disconnects during an outage.

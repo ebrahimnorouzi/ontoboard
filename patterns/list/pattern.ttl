@@ -1,0 +1,109 @@
+@prefix : <http://www.ontologydesignpatterns.org/cp/owl/list.owl#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@base <http://www.ontologydesignpatterns.org/cp/owl/list.owl> .
+
+<http://www.ontologydesignpatterns.org/cp/owl/list.owl> rdf:type owl:Ontology ;
+                                                         owl:imports <http://www.ontologydesignpatterns.org/cp/owl/bag.owl> ,
+                                                                     <http://www.ontologydesignpatterns.org/cp/owl/sequence.owl> ;
+                                                         <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> "What are the items (elements) in this list?"^^xsd:string ,
+                                                                                                                                                   "What is the first/last item in this list?"^^xsd:string ,
+                                                                                                                                                   "What is the length (size) of this list?"^^xsd:string ,
+                                                                                                                                                   "What it the next/previous item in the list?"^^xsd:string ,
+                                                                                                                                                   "What resource does this list item contain?"^^xsd:string ;
+                                                         <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#extractedFrom> "http://swan.mindinformatics.org/ontologies/1.2/collections.owl"^^xsd:string ;
+                                                         <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasAuthor> "PaoloCiccarese"^^xsd:string ;
+                                                         <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasComponent> "http://www.ontologydesignpatterns.org/cp/owl/collectionentity.owl"^^xsd:string ,
+                                                                                                                                             "http://www.ontologydesignpatterns.org/cp/owl/sequence.owl"^^xsd:string ;
+                                                         <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> "To represent ordered collections, i.e. lists."^^xsd:string ;
+                                                         <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#isSpecializationOf> "http://www.ontologydesignpatterns.org/cp/owl/sequence.owl"^^xsd:string ;
+                                                         <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#reengineeredFrom> "http://swan.mindinformatics.org/ontologies/1.2/collections.owl"^^xsd:string ;
+                                                         <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#relatedCPs> "http://www.ontologydesignpatterns.org/cp/owl/bag.owl"^^xsd:string ,
+                                                                                                                                           "http://www.ontologydesignpatterns.org/cp/owl/set.owl"^^xsd:string ;
+                                                         owl:versionInfo "Created with TopBraid Composer"^^xsd:string .
+
+#################################################################
+#    Object Properties
+#################################################################
+
+###  http://www.ontologydesignpatterns.org/cp/owl/list.owl#firstItemOf
+:firstItemOf rdf:type owl:ObjectProperty ;
+             rdfs:subPropertyOf <http://www.ontologydesignpatterns.org/cp/owl/bag.owl#itemOf> ;
+             owl:inverseOf :hasFirstItem ;
+             rdfs:domain :ListItem ;
+             rdfs:range :List ;
+             rdfs:label "first item of"^^xsd:string .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/list.owl#hasFirstItem
+:hasFirstItem rdf:type owl:ObjectProperty ;
+              rdfs:subPropertyOf <http://www.ontologydesignpatterns.org/cp/owl/bag.owl#hasItem> ;
+              rdf:type owl:FunctionalProperty ;
+              rdfs:domain :List ;
+              rdfs:range :ListItem ;
+              rdfs:comment "first item - The link to the first item of the list"^^xsd:string ;
+              rdfs:label "has first item"^^xsd:string .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/list.owl#hasLastItem
+:hasLastItem rdf:type owl:ObjectProperty ;
+             rdfs:subPropertyOf <http://www.ontologydesignpatterns.org/cp/owl/bag.owl#hasItem> ;
+             owl:inverseOf :lastItemOf ;
+             rdf:type owl:FunctionalProperty ;
+             rdfs:domain :List ;
+             rdfs:range :ListItem ;
+             rdfs:comment "last item - The link to the last item of the list"^^xsd:string ;
+             rdfs:label "has last item"^^xsd:string .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/list.owl#lastItemOf
+:lastItemOf rdf:type owl:ObjectProperty ;
+            rdfs:subPropertyOf <http://www.ontologydesignpatterns.org/cp/owl/bag.owl#itemOf> ;
+            rdfs:domain :ListItem ;
+            rdfs:range :List ;
+            rdfs:label "last item of"^^xsd:string .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/list.owl#nextItem
+:nextItem rdf:type owl:ObjectProperty ;
+          rdfs:subPropertyOf <http://www.ontologydesignpatterns.org/cp/owl/sequence.owl#directlyFollows> ;
+          owl:inverseOf :previousItem ;
+          rdf:type owl:FunctionalProperty ;
+          rdfs:domain :ListItem ;
+          rdfs:range :ListItem ;
+          rdfs:comment "next item - The link to the next item in a list (ordered collection)"^^xsd:string ;
+          rdfs:label "next item"^^xsd:string .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/list.owl#previousItem
+:previousItem rdf:type owl:ObjectProperty ;
+              rdfs:subPropertyOf <http://www.ontologydesignpatterns.org/cp/owl/sequence.owl#directlyPrecedes> ;
+              rdf:type owl:FunctionalProperty ;
+              rdfs:domain :ListItem ;
+              rdfs:range :ListItem ;
+              rdfs:comment "previous item - The link to the previous item in a list (ordered collection)"^^xsd:string ;
+              rdfs:label "previous item"^^xsd:string .
+
+
+#################################################################
+#    Classes
+#################################################################
+
+###  http://www.ontologydesignpatterns.org/cp/owl/list.owl#List
+:List rdf:type owl:Class ;
+      rdfs:subClassOf <http://www.ontologydesignpatterns.org/cp/owl/bag.owl#Bag> ;
+      rdfs:comment "List - An ordered array of items, that can be present in multiple copies"^^xsd:string ;
+      rdfs:label "list"^^xsd:string .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/list.owl#ListItem
+:ListItem rdf:type owl:Class ;
+          rdfs:subClassOf <http://www.ontologydesignpatterns.org/cp/owl/bag.owl#Item> ;
+          rdfs:comment "ListItem - Element belonging to a list"^^xsd:string ;
+          rdfs:label "list item"^^xsd:string .
+
+
+###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

@@ -1,0 +1,200 @@
+@prefix : <https://ontoboard.org/patterns/mwo-value-specification.owl#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@base <https://ontoboard.org/patterns/mwo-value-specification.owl> .
+
+<https://ontoboard.org/patterns/mwo-value-specification.owl> rdf:type owl:Ontology .
+
+#################################################################
+#    Annotation properties
+#################################################################
+
+###  http://purl.obolibrary.org/obo/IAO_0000112
+<http://purl.obolibrary.org/obo/IAO_0000112> rdf:type owl:AnnotationProperty .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000115
+<http://purl.obolibrary.org/obo/IAO_0000115> rdf:type owl:AnnotationProperty .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000116
+<http://purl.obolibrary.org/obo/IAO_0000116> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.w3.org/2004/02/skos/core#definition
+<http://www.w3.org/2004/02/skos/core#definition> rdf:type owl:AnnotationProperty .
+
+
+#################################################################
+#    Object Properties
+#################################################################
+
+###  http://purl.obolibrary.org/obo/IAO_0000039
+<http://purl.obolibrary.org/obo/IAO_0000039> rdf:type owl:ObjectProperty ;
+                                             owl:inverseOf <http://purls.helmholtz-metadaten.de/mwo/MWO_0001118> ;
+                                             rdf:type owl:FunctionalProperty ;
+                                             rdfs:range <http://purl.obolibrary.org/obo/IAO_0000003> ;
+                                             rdfs:label "has measurement unit label"@en .
+
+
+###  http://purl.obolibrary.org/obo/OBI_0001938
+<http://purl.obolibrary.org/obo/OBI_0001938> rdf:type owl:ObjectProperty ;
+                                             rdfs:domain <http://purl.obolibrary.org/obo/IAO_0000030> ;
+                                             rdfs:range <http://purl.obolibrary.org/obo/OBI_0001933> ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "A relation between an information content entity and a value specification that specifies its value."@en ;
+                                             rdfs:label "has value specification" .
+
+
+###  http://purls.helmholtz-metadaten.de/mwo/MWO_0001116
+<http://purls.helmholtz-metadaten.de/mwo/MWO_0001116> rdf:type owl:ObjectProperty ;
+                                                      owl:inverseOf <http://purls.helmholtz-metadaten.de/mwo/MWO_0001117> ;
+                                                      rdfs:range <http://purl.obolibrary.org/obo/IAO_0000109> ;
+                                                      rdfs:comment "The property is a relation between an entity and a measurement datum." ;
+                                                      rdfs:label "has measurement datum"@en .
+
+
+###  http://purls.helmholtz-metadaten.de/mwo/MWO_0001117
+<http://purls.helmholtz-metadaten.de/mwo/MWO_0001117> rdf:type owl:ObjectProperty ;
+                                                      rdfs:domain <http://purl.obolibrary.org/obo/IAO_0000109> ;
+                                                      rdfs:comment "inverse of  property \"has measurement datum\"" ;
+                                                      rdfs:label "measurement datum of"@en .
+
+
+###  http://purls.helmholtz-metadaten.de/mwo/MWO_0001118
+<http://purls.helmholtz-metadaten.de/mwo/MWO_0001118> rdf:type owl:ObjectProperty ;
+                                                      rdfs:comment "inverse of  property \"has measurement unit label\"" ;
+                                                      rdfs:label "measurement unit label of"@en .
+
+
+#################################################################
+#    Data properties
+#################################################################
+
+###  http://purl.obolibrary.org/obo/IAO_0000004
+<http://purl.obolibrary.org/obo/IAO_0000004> rdf:type owl:DatatypeProperty ,
+                                                      owl:FunctionalProperty ;
+                                             rdfs:range xsd:double ;
+                                             rdfs:label "has measurement value"@en .
+
+
+###  http://purl.obolibrary.org/obo/OBI_0001937
+<http://purl.obolibrary.org/obo/OBI_0001937> rdf:type owl:DatatypeProperty ;
+                                             rdfs:subPropertyOf <http://purl.obolibrary.org/obo/OBI_0002135> ;
+                                             rdfs:domain <http://purl.obolibrary.org/obo/OBI_0001933> ;
+                                             rdfs:range owl:real ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "A relation between a value specification and a number that quantifies it."@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000116> "A range of 'real' might be better than 'float'. For now we follow 'has measurement value' until we can consider technical issues with SPARQL queries and reasoning." ;
+                                             rdfs:label "has specified numeric value" .
+
+
+###  http://purl.obolibrary.org/obo/OBI_0002135
+<http://purl.obolibrary.org/obo/OBI_0002135> rdf:type owl:DatatypeProperty ;
+                                             rdfs:domain <http://purl.obolibrary.org/obo/OBI_0001933> ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "A relation between a value specification and a literal."@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000116> "This is not an RDF/OWL object property. It is intended to link a value found in e.g. a database column of 'M' (the literal) to an instance of a value specification class, which can then be linked to indicate that this is about the biological gender of a human subject." ;
+                                             rdfs:label "has specified value"@en .
+
+
+###  https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0001007
+<https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0001007> rdf:type owl:DatatypeProperty ;
+                                                      rdfs:label "has value"@en ;
+                                                      <http://www.w3.org/2004/02/skos/core#definition> "A relation between an information content entity and its specific value."@en .
+
+
+#################################################################
+#    Classes
+#################################################################
+
+###  http://purl.obolibrary.org/obo/BFO_0000031
+<http://purl.obolibrary.org/obo/BFO_0000031> rdf:type owl:Class ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000112> "The entries in your database are patterns instantiated as quality instances in your hard drive. The database itself is an aggregate of such patterns. When you create the database you create a particular instance of the generically dependent continuant type database. Each entry in the database is an instance of the generically dependent continuant type IAO: information content entity."@en ,
+                                                                                          "the pdf file on your laptop, the pdf file that is a copy thereof on my laptop"@en ,
+                                                                                          "the sequence of this protein molecule; the sequence that is a copy thereof in that protein molecule."@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "b is a generically dependent continuant = Def. b is a continuant that g-depends_on one or more other entities. (axiom label in BFO2 Reference: [074-001])"@en ;
+                                             rdfs:label "generically dependent continuant"@en ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "(Elucidation) A generically dependent continuant is an entity that exists in virtue of the fact that there is at least one of what may be multiple copies which is the content or the pattern that multiple copies would share"@en .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000003
+<http://purl.obolibrary.org/obo/IAO_0000003> rdf:type owl:Class ;
+                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/IAO_0000009> ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000112> "Examples of measurement unit labels are liters, inches, weight per volume."@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "A measurement unit label is as a label that is part of a scalar measurement datum and denotes a unit of measure."@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000116> """2009-03-16: provenance: a term measurement unit was
+proposed for OBI (OBI_0000176) , edited by Chris Stoeckert and
+Cristian Cocos, and subsequently moved to IAO where the objective for
+which the original term was defined was satisfied with the definition
+of this, different, term."""@en ,
+                                                                                          "2009-03-16: review of this term done during during the OBI workshop winter 2009 and the current definition was considered acceptable for use in OBI. If there is a need to modify this definition please notify OBI."@en ;
+                                             rdfs:label "measurement unit label"@en .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000009
+<http://purl.obolibrary.org/obo/IAO_0000009> rdf:type owl:Class ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "A label is a symbol that is part of some other datum and is used to either partially define  the denotation of that datum or to provide a means for identifying the datum as a member of the set of data with the same label"@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000116> "http://www.golovchenko.org/cgi-bin/wnsearch?q=label#4n"@en ;
+                                             rdfs:label "datum label"@en .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000027
+<http://purl.obolibrary.org/obo/IAO_0000027> rdf:type owl:Class ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000112> "Data items include counts of things, analyte concentrations, and statistical summaries."@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "An information content entity that is intended to be a truthful statement about something (modulo, e.g., measurement precision or other systematic errors) and is constructed/acquired by a method which reliably tends to produce (approximately) truthful statements."@en ,
+                                                                                          "An information content entity that is intended to be one or more truthful statement(s) about something (modulo, e.g., measurement precision or other systematic errors) and is constructed/acquired by a method which reliably tends to produce (approximately) truthful statements."@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000116> "2/2/2009 Alan and Bjoern discussing FACS run output data. This is a data item because it is about the cell population. Each element records an event and is typically further composed a set of measurment data items that record the fluorescent intensity stimulated by one of the lasers."@en ,
+                                                                                          "2009-03-16: data item deliberatly ambiguous: we merged data set and datum to be one entity, not knowing how to define singular versus plural. So data item is more general than datum."@en ,
+                                                                                          "2009-03-16: removed datum as alternative term as datum specifically refers to singular form, and is thus not an exact synonym."@en ,
+                                                                                          "2014-03-31: See discussion at http://odontomachus.wordpress.com/2014/03/30/aboutness-objects-propositions/" ,
+                                                                                          """JAR: datum     -- well, this will be very tricky to define, but maybe some 
+information-like stuff that might be put into a computer and that is 
+meant, by someone, to denote and/or to be interpreted by some 
+process... I would include lists, tables, sentences... I think I might 
+defer to Barry, or to Brian Cantwell Smith
+
+JAR: A data item is an approximately justified approximately true approximate belief"""@en ;
+                                             rdfs:label "data entity"@en ,
+                                                        "data item"@en .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000030
+<http://purl.obolibrary.org/obo/IAO_0000030> rdf:type owl:Class ;
+                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000031> ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000112> "Examples of information content entites include journal articles, data, graphical layouts, and graphs." ,
+                                                                                          "Examples of information content entites include journal articles, data, graphical layouts, and graphs."@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "A generically dependent continuant that is about some thing."@en ,
+                                                                                          "An information content entity is an entity that is generically dependent on some artifact and stands in relation of aboutness to some entity." ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000116> "2014-03-10: The use of \"thing\" is intended to be general enough to include universals and configurations (see https://groups.google.com/d/msg/information-ontology/GBxvYZCk1oc/-L6B5fSBBTQJ)."@en ,
+                                                                                          "Pier: 'data, information or knowledge'. OR 'representation'"@en ,
+                                                                                          """information_content_entity 'is_encoded_in' some digital_entity in obi before split (040907). information_content_entity 'is_encoded_in' some physical_document in obi before split (040907).
+
+Previous. An information content entity is a non-realizable information entity that 'is encoded in' some digital or physical entity."""@en ;
+                                             rdfs:label "information content entity" ,
+                                                        "information content entity"@en .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000109
+<http://purl.obolibrary.org/obo/IAO_0000109> rdf:type owl:Class ;
+                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/IAO_0000027> ,
+                                                             [ rdf:type owl:Restriction ;
+                                                               owl:onProperty <http://purl.obolibrary.org/obo/OBI_0001938> ;
+                                                               owl:someValuesFrom <http://purl.obolibrary.org/obo/OBI_0001933>
+                                                             ] ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000112> "Examples of measurement data are the recoding of the weight of a mouse as {40,mass,\"grams\"}, the recording of an observation of the behavior of the mouse {,process,\"agitated\"}, the recording of the expression level of a gene as measured through the process of microarray experiment {3.4,luminosity,}."@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "A measurement datum is an information content entity that is a recording of the output of a measurement such as produced by a device."@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000116> "2/2/2009 is_specified_output of some assay?"@en ;
+                                             rdfs:label "measurement datum"@en .
+
+
+###  http://purl.obolibrary.org/obo/OBI_0001933
+<http://purl.obolibrary.org/obo/OBI_0001933> rdf:type owl:Class ;
+                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/IAO_0000030> ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000112> "The value of 'positive' in a classification scheme of \"positive or negative\"; the value of '20g' on the quantitative scale of mass." ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "An information content entity that specifies a value within a classification scheme or on a quantitative scale."@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000116> "This term is currently a descendant of 'information content entity', which requires that it 'is about' something. A value specification of '20g' for a measurement data item of the mass of a particular mouse 'is about' the mass of that mouse. However there are cases where a value specification is not clearly about any particular. In the future we may change 'value specification' to remove the 'is about' requirement." ;
+                                             rdfs:label "value specification" .
+
+
+###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

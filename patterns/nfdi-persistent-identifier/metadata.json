@@ -1,0 +1,15 @@
+{
+  "id": "nfdi-persistent-identifier",
+  "name": "fdos",
+  "description": "A persistent identifier (nfdi:NFDI_0001037, digital object identifier) is a first-class individual that is part-of the object it identifies via obo:BFO_0000050 and carries its resolvable address through nfdi:NFDI_0001008 (has url). The identifier is therefore describable in its own right rather than being a literal on the dataset.",
+  "category": "information",
+  "domain": "research-data",
+  "competency_questions": "Which FAIR Digital Objects has NFDI-MatWerk registered?; What is the persistent identifier of a given FDO, and which dataset does it denote?",
+  "pattern_iri": "https://ontoboard.org/patterns/nfdi-persistent-identifier.owl",
+  "source": "https://nfdi.fiz-karlsruhe.de/matwerk/patterns/",
+  "collection": "nfdi",
+  "publisher": "nfdi.fiz-karlsruhe.de",
+  "extracted_from": "nfdi",
+  "class_count": 2,
+  "property_count": 3
+}

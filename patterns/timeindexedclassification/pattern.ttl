@@ -1,0 +1,115 @@
+@prefix : <http://www.ontologydesignpatterns.org/cp/owl/timeindexedclassification.owl#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@base <http://www.ontologydesignpatterns.org/cp/owl/timeindexedclassification.owl> .
+
+<http://www.ontologydesignpatterns.org/cp/owl/timeindexedclassification.owl> rdf:type owl:Ontology ;
+                                                                              owl:imports <http://www.ontologydesignpatterns.org/cp/owl/countingas.owl> ,
+                                                                                          <http://www.ontologydesignpatterns.org/cp/owl/timeindexedsituation.owl> ;
+                                                                              owl:versionInfo """0.1: Created by Aldo Gangemi
+0.2: Revised with specialization from timeindexedsituation.owl"""^^xsd:string ,
+                                                                                              "1.1 added rdfs:isDefinedBy for all named entities"^^xsd:string .
+
+#################################################################
+#    Annotation properties
+#################################################################
+
+###  http://www.w3.org/2000/01/rdf-schema#comment
+rdfs:comment rdf:type owl:AnnotationProperty .
+
+
+###  http://www.w3.org/2000/01/rdf-schema#isDefinedBy
+rdfs:isDefinedBy rdf:type owl:AnnotationProperty .
+
+
+###  http://www.w3.org/2000/01/rdf-schema#label
+rdfs:label rdf:type owl:AnnotationProperty .
+
+
+###  http://www.w3.org/2002/07/owl#versionInfo
+owl:versionInfo rdf:type owl:AnnotationProperty .
+
+
+#################################################################
+#    Object Properties
+#################################################################
+
+###  http://www.ontologydesignpatterns.org/cp/owl/classification.owl#isClassifiedBy
+<http://www.ontologydesignpatterns.org/cp/owl/classification.owl#isClassifiedBy> rdf:type owl:ObjectProperty .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/situation.owl#isSettingFor
+<http://www.ontologydesignpatterns.org/cp/owl/situation.owl#isSettingFor> rdf:type owl:ObjectProperty .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/timeindexedsituation.owl#atTime
+<http://www.ontologydesignpatterns.org/cp/owl/timeindexedsituation.owl#atTime> rdf:type owl:ObjectProperty .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/timeindexedsituation.owl#forEntity
+<http://www.ontologydesignpatterns.org/cp/owl/timeindexedsituation.owl#forEntity> rdf:type owl:ObjectProperty .
+
+
+#################################################################
+#    Classes
+#################################################################
+
+###  http://www.ontologydesignpatterns.org/cp/owl/classification.owl#Concept
+<http://www.ontologydesignpatterns.org/cp/owl/classification.owl#Concept> rdf:type owl:Class ;
+                                                                          owl:disjointWith <http://www.ontologydesignpatterns.org/cp/owl/situation.owl#Situation> ,
+                                                                                           <http://www.ontologydesignpatterns.org/cp/owl/timeinterval.owl#TimeInterval> .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/countingas.owl#CountingAs
+<http://www.ontologydesignpatterns.org/cp/owl/countingas.owl#CountingAs> rdf:type owl:Class .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/situation.owl#Situation
+<http://www.ontologydesignpatterns.org/cp/owl/situation.owl#Situation> rdf:type owl:Class ;
+                                                                       owl:disjointWith <http://www.ontologydesignpatterns.org/cp/owl/timeinterval.owl#TimeInterval> .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/timeindexedclassification.owl#TimeIndexedClassification
+:TimeIndexedClassification rdf:type owl:Class ;
+                           owl:equivalentClass [ owl:intersectionOf ( <http://www.ontologydesignpatterns.org/cp/owl/countingas.owl#CountingAs>
+                                                                      [ rdf:type owl:Restriction ;
+                                                                        owl:onProperty <http://www.ontologydesignpatterns.org/cp/owl/timeindexedsituation.owl#atTime> ;
+                                                                        owl:someValuesFrom <http://www.ontologydesignpatterns.org/cp/owl/timeinterval.owl#TimeInterval>
+                                                                      ]
+                                                                      [ rdf:type owl:Restriction ;
+                                                                        owl:onProperty <http://www.ontologydesignpatterns.org/cp/owl/timeindexedsituation.owl#forEntity> ;
+                                                                        owl:someValuesFrom [ rdf:type owl:Restriction ;
+                                                                                             owl:onProperty <http://www.ontologydesignpatterns.org/cp/owl/classification.owl#isClassifiedBy> ;
+                                                                                             owl:someValuesFrom <http://www.ontologydesignpatterns.org/cp/owl/classification.owl#Concept>
+                                                                                           ]
+                                                                      ]
+                                                                    ) ;
+                                                 rdf:type owl:Class
+                                               ] ;
+                           rdfs:subClassOf <http://www.ontologydesignpatterns.org/cp/owl/countingas.owl#CountingAs> ,
+                                           <http://www.ontologydesignpatterns.org/cp/owl/timeindexedsituation.owl#TimeIndexedSituation> ,
+                                           [ rdf:type owl:Restriction ;
+                                             owl:onProperty <http://www.ontologydesignpatterns.org/cp/owl/situation.owl#isSettingFor> ;
+                                             owl:minCardinality "3"^^xsd:nonNegativeInteger
+                                           ] ;
+                           rdfs:comment "A Situation to represent classification ('counting as') of an entity at some time." ;
+                           rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/timeindexedclassification.owl> ;
+                           rdfs:label "Time indexed classification"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/timeindexedsituation.owl#TimeIndexedSituation
+<http://www.ontologydesignpatterns.org/cp/owl/timeindexedsituation.owl#TimeIndexedSituation> rdf:type owl:Class .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/timeinterval.owl#TimeInterval
+<http://www.ontologydesignpatterns.org/cp/owl/timeinterval.owl#TimeInterval> rdf:type owl:Class .
+
+
+###  http://www.w3.org/2002/07/owl#Thing
+owl:Thing rdf:type owl:Class .
+
+
+###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

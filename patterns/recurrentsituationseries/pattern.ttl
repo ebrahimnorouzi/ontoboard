@@ -1,0 +1,446 @@
+@prefix : <http://www.ontologydesignpatterns.org/cp/owl/recurrentsituationseries.owl#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@base <http://www.ontologydesignpatterns.org/cp/owl/recurrentsituationseries.owl> .
+
+<http://www.ontologydesignpatterns.org/cp/owl/recurrentsituationseries.owl> rdf:type owl:Ontology ;
+                                                                             owl:imports <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl> ;
+                                                                             <http://ontologydesignpatterns.org/opla/reusesPatternAsTemplate> <http://ontologydesignpatterns.org/cp/owl/sequence.owl> ,
+                                                                                                                                              <http://www.ontologydesignpatterns.org/cp/owl/classification.owl> ,
+                                                                                                                                              <http://www.ontologydesignpatterns.org/cp/owl/collectionentity.owl> ,
+                                                                                                                                              <http://www.ontologydesignpatterns.org/cp/owl/description.owl> ,
+                                                                                                                                              <http://www.ontologydesignpatterns.org/cp/owl/situation.owl> ;
+                                                                             <http://purl.org/dc/elements/1.1/creator> "Aldo Gangemi" ,
+                                                                                                                       "Andrea Nuzzolese" ,
+                                                                                                                       "Valentina Carriero" ,
+                                                                                                                       "Valentina Presutti" ;
+                                                                             <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> "What are the situations of a recurrent situation series?, Which is the time period elapsing between two situations of a recurrent situation series?, When is the next situation of a recurrent situation series scheduled?,  What are the unifying criteria shared by all the situations in a recurrent situation series?, Which are the unifying situations shared by a (subset of) the situations member of a recurrent situation series?, When is a unifying situation valid?, Which is the (immediate) next situation in a recurrent situation series?, Which is the (immediate) previous situation in a recurrent situation series?" ;
+                                                                             <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences> "A series of recurrent situations, its unifying factors and the recurrent time period can be modeled." ;
+                                                                             <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> "To represent recurrent situation series as situations and collections of consecutive situations, with a regular time period between situations and unifying factors." ;
+                                                                             <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#relatedCPs> "Classification" ,
+                                                                                                                                                               "Collection" ,
+                                                                                                                                                               "Description" ,
+                                                                                                                                                               "Recurrent Event Series" ,
+                                                                                                                                                               "Sequence" ,
+                                                                                                                                                               "Situation" ;
+                                                                             <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios> "Umbria Jazz is a collection of situations, which all take place in July and in the Italian region of Umbria, and has the musical genre jazz as a topic. Its situations recur at regular time periods, i.e. annually." ;
+                                                                             rdfs:comment "A pattern for recurrent situation series. This pattern is a new version of the recurrent event series ODP (http://www.ontologydesignpatterns.org/cp/owl/recurrenteventseries.owl), based on new analysis which led to terminological and modelling changes."@en ;
+                                                                             rdfs:label "recurrent situation series" .
+
+#################################################################
+#    Annotation properties
+#################################################################
+
+###  http://ontologydesignpatterns.org/opla/isNativeTo
+<http://ontologydesignpatterns.org/opla/isNativeTo> rdf:type owl:AnnotationProperty .
+
+
+###  http://ontologydesignpatterns.org/opla/reusesPatternAsTemplate
+<http://ontologydesignpatterns.org/opla/reusesPatternAsTemplate> rdf:type owl:AnnotationProperty .
+
+
+###  http://purl.org/dc/elements/1.1/creator
+<http://purl.org/dc/elements/1.1/creator> rdf:type owl:AnnotationProperty .
+
+
+#################################################################
+#    Object Properties
+#################################################################
+
+###  http://www.ontologydesignpatterns.org/cp/owl/recurrentsituationseries.owl#hasEstimatedTimePeriod
+:hasEstimatedTimePeriod rdf:type owl:ObjectProperty ;
+                        rdfs:subPropertyOf :hasTimePeriod ;
+                        owl:inverseOf :isEstimatedTimePeriodOf ;
+                        rdfs:domain :RecurrentSituationSeries ;
+                        rdfs:range :TimePeriod ;
+                        rdfs:comment "This property relates a recurrent situation series to an estimated time period."@en ;
+                        rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/recurrentsituationseries.owl> ;
+                        rdfs:label "has estimated time period"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/recurrentsituationseries.owl#hasImmediateNextSituation
+:hasImmediateNextSituation rdf:type owl:ObjectProperty ;
+                           rdfs:subPropertyOf :hasNextSituation ;
+                           owl:inverseOf :hasImmediatePreviousSituation ;
+                           rdf:type owl:FunctionalProperty ;
+                           rdfs:domain :Situation ;
+                           rdfs:range :Situation ;
+                           rdfs:comment "This property relates a situation member of a recurrent situation series to the immediate next situation member of the same recurrent situation series."@en ;
+                           rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/recurrentsituationseries.owl> ;
+                           rdfs:label "has immediate next situation"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/recurrentsituationseries.owl#hasImmediatePreviousSituation
+:hasImmediatePreviousSituation rdf:type owl:ObjectProperty ;
+                               rdfs:subPropertyOf :hasPreviousSituation ;
+                               rdf:type owl:FunctionalProperty ;
+                               rdfs:domain :Situation ;
+                               rdfs:range :Situation ;
+                               rdfs:comment "This property relates a situation member of a recurrent situation series to the immediate previous situation member of the same recurrent situation series."@en ;
+                               rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/recurrentsituationseries.owl> ;
+                               rdfs:label "has immediate previous situation"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/recurrentsituationseries.owl#hasMeasuredTimePeriod
+:hasMeasuredTimePeriod rdf:type owl:ObjectProperty ;
+                       rdfs:subPropertyOf :hasTimePeriod ;
+                       owl:inverseOf :isMeasuredTimePeriodOf ;
+                       rdfs:domain :RecurrentSituationSeries ;
+                       rdfs:range :TimePeriod ;
+                       rdfs:comment "This property relates a recurrent situation series to a measured time period."@en ;
+                       rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/recurrentsituationseries.owl> ;
+                       rdfs:label "has measured time period"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/recurrentsituationseries.owl#hasMemberSituation
+:hasMemberSituation rdf:type owl:ObjectProperty ;
+                    rdfs:subPropertyOf <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasMember> ;
+                    owl:inverseOf :isSituationMemberOf ;
+                    rdfs:domain :RecurrentSituationSeries ;
+                    rdfs:range :Situation ;
+                    rdfs:comment "This property relates a recurrent situation series to a situation that is member of it."@en ;
+                    rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/recurrentsituationseries.owl> ;
+                    rdfs:label "has member situation"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/recurrentsituationseries.owl#hasNextSituation
+:hasNextSituation rdf:type owl:ObjectProperty ;
+                  rdfs:subPropertyOf <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#precedes> ;
+                  owl:inverseOf :hasPreviousSituation ;
+                  rdf:type owl:TransitiveProperty ;
+                  rdfs:domain :Situation ;
+                  rdfs:range :Situation ;
+                  rdfs:comment "This property relates a situation member of a recurrent situation series to a next situation member of the same recurrent situation series."@en ;
+                  rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/recurrentsituationseries.owl> ;
+                  rdfs:label "has next situation"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/recurrentsituationseries.owl#hasPreviousSituation
+:hasPreviousSituation rdf:type owl:ObjectProperty ;
+                      rdfs:subPropertyOf <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#follows> ;
+                      rdf:type owl:TransitiveProperty ;
+                      rdfs:domain :Situation ;
+                      rdfs:range :Situation ;
+                      rdfs:comment "This property relates a situation member of a recurrent situation series to a previous situation member of the same recurrent situation series."@en ;
+                      rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/recurrentsituationseries.owl> ;
+                      rdfs:label "has previous situation"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/recurrentsituationseries.owl#hasTimePeriod
+:hasTimePeriod rdf:type owl:ObjectProperty ;
+               owl:inverseOf :isTimePeriodOf ;
+               rdfs:domain :RecurrentSituationSeries ;
+               rdfs:range :TimePeriod ;
+               owl:propertyChainAxiom ( :hasMemberSituation
+                                        :hasTimePeriodBeforeNextSituation
+                                      ) ;
+               rdfs:comment "This property relates a recurrent situation series to a time period."@en ;
+               rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/recurrentsituationseries.owl> ;
+               rdfs:label "has time period"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/recurrentsituationseries.owl#hasTimePeriodBeforeNextSituation
+:hasTimePeriodBeforeNextSituation rdf:type owl:ObjectProperty ;
+                                  rdfs:subPropertyOf :hasTimePeriod ;
+                                  owl:inverseOf :isTimePeriodBeforeNextSituationOf ;
+                                  rdfs:domain :Situation ;
+                                  rdfs:range :TimePeriod ;
+                                  rdfs:comment "This property relates a situation member of a recurrent situation series to the time period elapsing before its next situation."@en ;
+                                  rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/recurrentsituationseries.owl> ;
+                                  rdfs:label "has time period before next situation"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/recurrentsituationseries.owl#hasUnifyingFactor
+:hasUnifyingFactor rdf:type owl:ObjectProperty ;
+                   owl:inverseOf :isUnifyingFactorOf ;
+                   rdfs:domain <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Collection> ;
+                   rdfs:range owl:Thing ;
+                   owl:propertyChainAxiom ( :hasUnifyingSituation
+                                            :involvesUnifyingFactor
+                                          ) ;
+                   rdfs:comment "This property relates a collection to a unifying factor."@en ;
+                   rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/recurrentsituationseries.owl> ;
+                   rdfs:label "has unifying factor"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/recurrentsituationseries.owl#hasUnifyingSituation
+:hasUnifyingSituation rdf:type owl:ObjectProperty ;
+                      owl:inverseOf :isUnifyingSituationOf ;
+                      rdfs:domain :RecurrentSituationSeries ;
+                      rdfs:range :UnifyingSituation ;
+                      rdfs:comment "This property relates a recurrent situation series to a unifying situation."@en ;
+                      rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/recurrentsituationseries.owl> ;
+                      rdfs:label "has unifying situation"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/recurrentsituationseries.owl#involvesUnifyingFactor
+:involvesUnifyingFactor rdf:type owl:ObjectProperty ;
+                        owl:inverseOf :isInvolvedInUnifyingSituation ;
+                        rdfs:domain :UnifyingSituation ;
+                        rdfs:range owl:Thing ;
+                        rdfs:comment "This property relates a unifying situation to the involved unifying factor."@en ;
+                        rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/recurrentsituationseries.owl> ;
+                        rdfs:label "involves unifying factor"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/recurrentsituationseries.owl#isEstimatedTimePeriodOf
+:isEstimatedTimePeriodOf rdf:type owl:ObjectProperty ;
+                         rdfs:subPropertyOf :isTimePeriodOf ;
+                         rdfs:domain :TimePeriod ;
+                         rdfs:range :RecurrentSituationSeries ;
+                         rdfs:comment "This property relates an estimated time period to a recurrent situation series."@en ;
+                         rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/recurrentsituationseries.owl> ;
+                         rdfs:label "is estimated time period of"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/recurrentsituationseries.owl#isInvolvedInUnifyingSituation
+:isInvolvedInUnifyingSituation rdf:type owl:ObjectProperty ;
+                               rdfs:domain owl:Thing ;
+                               rdfs:range :UnifyingSituation ;
+                               rdfs:comment "This property relates a unifying factor to the unifying situation it is involved in."@en ;
+                               rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/recurrentsituationseries.owl> ;
+                               rdfs:label "is involved in unifying situation"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/recurrentsituationseries.owl#isLocallyInconsistentWith
+:isLocallyInconsistentWith rdf:type owl:ObjectProperty ;
+                           rdfs:domain owl:Thing ;
+                           rdfs:range owl:Thing ;
+                           rdfs:comment "This property relates two entities that are considered locally inconsistent."@en ;
+                           rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/recurrentsituationseries.owl> ;
+                           rdfs:label "is locally inconsistent with"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/recurrentsituationseries.owl#isMeasuredTimePeriodOf
+:isMeasuredTimePeriodOf rdf:type owl:ObjectProperty ;
+                        rdfs:subPropertyOf :isTimePeriodOf ;
+                        rdfs:domain :TimePeriod ;
+                        rdfs:range :RecurrentSituationSeries ;
+                        rdfs:comment "This property relates a measured time period to a recurrent situation series."@en ;
+                        rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/recurrentsituationseries.owl> ;
+                        rdfs:label "is measured time period of"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/recurrentsituationseries.owl#isSituationMemberOf
+:isSituationMemberOf rdf:type owl:ObjectProperty ;
+                     rdfs:subPropertyOf <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isMemberOf> ;
+                     rdfs:domain :Situation ;
+                     rdfs:range :RecurrentSituationSeries ;
+                     rdfs:comment "This property relates a situation that is member of a recurrent situation series to the recurrent situation series."@en ;
+                     rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/recurrentsituationseries.owl> ;
+                     rdfs:label "is situation member of"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/recurrentsituationseries.owl#isTimePeriodBeforeNextSituationOf
+:isTimePeriodBeforeNextSituationOf rdf:type owl:ObjectProperty ;
+                                   rdfs:subPropertyOf :isTimePeriodOf ;
+                                   rdfs:domain :TimePeriod ;
+                                   rdfs:range :Situation ;
+                                   rdfs:comment "This property relates a time period, elapsing before the next situation of a situation member of a recurrent situation series, to one of the member situations."@en ;
+                                   rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/recurrentsituationseries.owl> ;
+                                   rdfs:label "is time period before next situation of"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/recurrentsituationseries.owl#isTimePeriodOf
+:isTimePeriodOf rdf:type owl:ObjectProperty ;
+                rdfs:domain :TimePeriod ;
+                rdfs:range :RecurrentSituationSeries ;
+                rdfs:comment "This property relates a time period to a recurrent situation series having that time period."@en ;
+                rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/recurrentsituationseries.owl> ;
+                rdfs:label "is time period of"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/recurrentsituationseries.owl#isUnifyingFactorOf
+:isUnifyingFactorOf rdf:type owl:ObjectProperty ;
+                    rdfs:domain owl:Thing ;
+                    rdfs:range <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Collection> ;
+                    rdfs:comment "This property relates a unifying factor to the collection that is unified by that factor."@en ;
+                    rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/recurrentsituationseries.owl> ;
+                    rdfs:label "is unifying factor of"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/recurrentsituationseries.owl#isUnifyingSituationOf
+:isUnifyingSituationOf rdf:type owl:ObjectProperty ;
+                       rdfs:domain :UnifyingSituation ;
+                       rdfs:range :RecurrentSituationSeries ;
+                       rdfs:comment "This property relates a unifying situation to the recurrent situation series it unifies."@en ;
+                       rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/recurrentsituationseries.owl> ;
+                       rdfs:label "is unifying situation of"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/recurrentsituationseries.owl#isValidIn
+:isValidIn rdf:type owl:ObjectProperty ;
+           rdfs:domain :UnifyingSituation ;
+           rdfs:range <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#TimeInterval> ;
+           rdfs:comment "This property relates a unifying situation to its temporal validity."@en ;
+           rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/recurrentsituationseries.owl> ;
+           rdfs:label "is valid in"@en .
+
+
+###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#classifies
+<http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#classifies> rdf:type owl:ObjectProperty .
+
+
+###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#follows
+<http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#follows> rdf:type owl:ObjectProperty .
+
+
+###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasMember
+<http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasMember> rdf:type owl:ObjectProperty .
+
+
+###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isClassifiedBy
+<http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isClassifiedBy> rdf:type owl:ObjectProperty .
+
+
+###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isMemberOf
+<http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isMemberOf> rdf:type owl:ObjectProperty .
+
+
+###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#precedes
+<http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#precedes> rdf:type owl:ObjectProperty .
+
+
+###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#satisfies
+<http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#satisfies> rdf:type owl:ObjectProperty .
+
+
+#################################################################
+#    Data properties
+#################################################################
+
+###  http://www.ontologydesignpatterns.org/cp/owl/recurrentsituationseries.owl#isTheLastSituation
+:isTheLastSituation rdf:type owl:DatatypeProperty ,
+                             owl:FunctionalProperty ;
+                    rdfs:domain :Situation ;
+                    rdfs:range xsd:boolean ;
+                    rdfs:comment "This property defines if a situation that is member of a recurrent situation series is the last one or not."@en ;
+                    rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/recurrentsituationseries.owl> ;
+                    rdfs:label "is the last situation"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/recurrentsituationseries.owl#situationNumber
+:situationNumber rdf:type owl:DatatypeProperty ,
+                          owl:FunctionalProperty ;
+                 rdfs:domain :Situation ;
+                 rdfs:range xsd:integer ;
+                 rdfs:comment "This property represents the number of the situation in the recurrent situation series (the first situation, the second situation, etc.)"@en ;
+                 rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/recurrentsituationseries.owl> ;
+                 rdfs:label "situation number"@en .
+
+
+#################################################################
+#    Classes
+#################################################################
+
+###  http://www.ontologydesignpatterns.org/cp/owl/recurrentsituationseries.owl#RecurrentSituationSeries
+:RecurrentSituationSeries rdf:type owl:Class ;
+                          rdfs:subClassOf [ owl:intersectionOf ( :Situation
+                                                                 <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Collection>
+                                                               ) ;
+                                            rdf:type owl:Class
+                                          ] ,
+                                          [ rdf:type owl:Restriction ;
+                                            owl:onProperty :hasMemberSituation ;
+                                            owl:someValuesFrom [ rdf:type owl:Class ;
+                                                                 owl:unionOf ( [ rdf:type owl:Restriction ;
+                                                                                 owl:onProperty :hasNextSituation ;
+                                                                                 owl:minQualifiedCardinality "0"^^xsd:nonNegativeInteger ;
+                                                                                 owl:onClass :Situation
+                                                                               ]
+                                                                               [ rdf:type owl:Restriction ;
+                                                                                 owl:onProperty :hasPreviousSituation ;
+                                                                                 owl:minQualifiedCardinality "0"^^xsd:nonNegativeInteger ;
+                                                                                 owl:onClass :Situation
+                                                                               ]
+                                                                             )
+                                                               ]
+                                          ] ,
+                                          [ rdf:type owl:Restriction ;
+                                            owl:onProperty :hasTimePeriod ;
+                                            owl:someValuesFrom :TimePeriod
+                                          ] ,
+                                          [ rdf:type owl:Restriction ;
+                                            owl:onProperty :hasUnifyingFactor ;
+                                            owl:someValuesFrom <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Description>
+                                          ] ,
+                                          [ rdf:type owl:Restriction ;
+                                            owl:onProperty <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#satisfies> ;
+                                            owl:someValuesFrom <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Description>
+                                          ] ,
+                                          [ rdf:type owl:Restriction ;
+                                            owl:onProperty :hasMemberSituation ;
+                                            owl:allValuesFrom :Situation
+                                          ] ;
+                          rdfs:comment "Recurrent situation series is modeled as an intersection of the classes Collection and Situation. Indeed, a recurrent situation is seen as a collection, since it contains entities that share one or more common properties and are unified conceptually. These entities are member of the collection, and are all consecutive situations, in such a manner that each situation has either a previous situation, or a next situation, or both, unless the series has never been instantiated. At the same time, a recurrent situation is a situation, intended as a relational context in which the contextualized things are based on a frame: a recurrent situation is similar to a plan that defines how the things involved in that plan (i.e. the specific situations) shall be carried out, e.g. where the situations shall be located, in which time of the year, etc."@en ;
+                          rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/recurrentsituationseries.owl> ;
+                          rdfs:label "Recurrent Situation Series"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/recurrentsituationseries.owl#Situation
+:Situation rdf:type owl:Class ;
+           rdfs:subClassOf <http://www.ontologydesignpatterns.org/ont/d0.owl#Eventuality> ;
+           rdfs:comment "This class represents a Situation."@en ;
+           rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/recurrentsituationseries.owl> ;
+           rdfs:label "Situation"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/recurrentsituationseries.owl#TimePeriod
+:TimePeriod rdf:type owl:Class ;
+            rdfs:comment "This class represents a Time Period (e.g. 1 week)."@en ;
+            rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/recurrentsituationseries.owl> ;
+            rdfs:label "Time Period"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/recurrentsituationseries.owl#UnifyingSituation
+:UnifyingSituation rdf:type owl:Class ;
+                   rdfs:subClassOf :Situation ,
+                                   [ rdf:type owl:Restriction ;
+                                     owl:onProperty :involvesUnifyingFactor ;
+                                     owl:someValuesFrom owl:Thing
+                                   ] ,
+                                   [ rdf:type owl:Restriction ;
+                                     owl:onProperty :isValidIn ;
+                                     owl:someValuesFrom <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#TimeInterval>
+                                   ] ;
+                   rdfs:comment "A Unifying Situation is a situation involving a unifying factor, i.e. a concept classifying an element or property occurring in each situation member of a recurrent situation series, which unifies the collection and makes all the situations attributable to a homogeneous collection, and is valid at a specific time interval."@en ;
+                   rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/recurrentsituationseries.owl> ;
+                   rdfs:label "Unifying Situation"@en .
+
+
+###  http://www.ontologydesignpatterns.org/ont/d0.owl#Eventuality
+<http://www.ontologydesignpatterns.org/ont/d0.owl#Eventuality> rdf:type owl:Class .
+
+
+###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Collection
+<http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Collection> rdf:type owl:Class .
+
+
+###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Concept
+<http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Concept> rdf:type owl:Class .
+
+
+###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Description
+<http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Description> rdf:type owl:Class .
+
+
+###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#TimeInterval
+<http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#TimeInterval> rdf:type owl:Class .
+
+
+#################################################################
+#    Individuals
+#################################################################
+
+###  http://www.ontologydesignpatterns.org/cp/owl/recurrentsituationseries.owl#unifying-factor
+:unifying-factor rdf:type owl:NamedIndividual ,
+                          <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Concept> ;
+                 rdfs:comment "A Unifying Factor is a concept, which classifies an element or property occurring in each situation member of a recurrent situation series. The unifying factor unifies the collection and makes all the situations attributable to a homogeneous collection."@en ;
+                 rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/recurrentsituationseries.owl> ;
+                 rdfs:label "Unifying Factor"@en .
+
+
+###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

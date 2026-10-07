@@ -1,0 +1,15 @@
+{
+  "id": "nfdi-agent-value-node",
+  "name": "agent",
+  "description": "An entity individual typed nfdi:NFDI_0000102 (agent) carries identity and label, while each descriptive value is a separate value-node individual reached by obo:IAO_0000235 (denoted by) rather than a direct literal. Agent subsumes people, organizations and consortia.",
+  "category": "structural",
+  "domain": "general",
+  "competency_questions": "Which agents (people, organisations, consortia) does the knowledge graph know?; Which agent is responsible for a given resource?",
+  "pattern_iri": "https://ontoboard.org/patterns/nfdi-agent-value-node.owl",
+  "source": "https://nfdi.fiz-karlsruhe.de/matwerk/patterns/",
+  "collection": "nfdi",
+  "publisher": "nfdi.fiz-karlsruhe.de",
+  "extracted_from": "nfdi",
+  "class_count": 5,
+  "property_count": 1
+}

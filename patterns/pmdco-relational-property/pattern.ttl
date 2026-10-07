@@ -1,0 +1,193 @@
+@prefix : <https://ontoboard.org/patterns/pmdco-relational-property.owl#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@base <https://ontoboard.org/patterns/pmdco-relational-property.owl> .
+
+<https://ontoboard.org/patterns/pmdco-relational-property.owl> rdf:type owl:Ontology .
+
+#################################################################
+#    Annotation properties
+#################################################################
+
+###  http://purl.obolibrary.org/obo/IAO_0000112
+<http://purl.obolibrary.org/obo/IAO_0000112> rdf:type owl:AnnotationProperty .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000115
+<http://purl.obolibrary.org/obo/IAO_0000115> rdf:type owl:AnnotationProperty .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000116
+<http://purl.obolibrary.org/obo/IAO_0000116> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.geneontology.org/formats/oboInOwl#hasDbXref
+<http://www.geneontology.org/formats/oboInOwl#hasDbXref> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.w3.org/2004/02/skos/core#definition
+<http://www.w3.org/2004/02/skos/core#definition> rdf:type owl:AnnotationProperty .
+
+
+#################################################################
+#    Object Properties
+#################################################################
+
+###  http://purl.obolibrary.org/obo/IAO_0000039
+<http://purl.obolibrary.org/obo/IAO_0000039> rdf:type owl:ObjectProperty ,
+                                                      owl:FunctionalProperty ;
+                                             rdfs:label "has measurement unit label"@en .
+
+
+###  http://purl.obolibrary.org/obo/OBI_0001927
+<http://purl.obolibrary.org/obo/OBI_0001927> rdf:type owl:ObjectProperty ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "A relation between a value specification and an entity which the specification is about."@en ;
+                                             rdfs:label "specifies value of" .
+
+
+###  http://purl.obolibrary.org/obo/RO_0000086
+<http://purl.obolibrary.org/obo/RO_0000086> rdf:type owl:ObjectProperty ;
+                                            <http://purl.obolibrary.org/obo/IAO_0000112> "this apple has quality this red color"@en ;
+                                            <http://purl.obolibrary.org/obo/IAO_0000115> "a relation between an independent continuant (the bearer) and a quality, in which the quality specifically depends on the bearer for its existence"@en ;
+                                            <http://purl.obolibrary.org/obo/IAO_0000116> "A bearer can have many qualities, and its qualities can exist for different periods of time, but none of its qualities can exist when the bearer does not exist."@en ;
+                                            rdfs:label "has quality"@en .
+
+
+###  https://w3id.org/pmd/co/PMD_0025999
+<https://w3id.org/pmd/co/PMD_0025999> rdf:type owl:ObjectProperty ;
+                                      <http://purl.obolibrary.org/obo/IAO_0000116> """The 'relational quality of' is more strict that 'quality of' from RO, since domain is 'relational quality'. The motivtion to introduce an object property for relational qualities is the following:
+RO's 'quality of' is functional i.e., a->b, a->c => b=c. The functionality is relevant for most of the SDC -> IC triples, expect for relational qualities, which per definiton can be simultaneously inherited in >=2 ICs. Thus,  'relational quality of'  has the same intention to connect SDC to IC, however, without cardinality constraints."""@en ;
+                                      rdfs:label "relational quality of"@en ,
+                                                 "relationale Qualität von"@de ;
+                                      <http://www.w3.org/2004/02/skos/core#definition> "a relation between a relational quality and an independent continuant (the bearer), in which the quality specifically depends on the bearer for its existence"@en ,
+                                                                                       "eine Beziehung zwischen einer relationalen Qualität und einem unabhängigen Kontinuum (dem Träger), bei der die Existenz der Qualität speziell vom Träger abhängt"@de .
+
+
+#################################################################
+#    Data properties
+#################################################################
+
+###  http://purl.obolibrary.org/obo/OBI_0001937
+<http://purl.obolibrary.org/obo/OBI_0001937> rdf:type owl:DatatypeProperty ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "A relation between a value specification and a number that quantifies it."@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000116> "A range of 'real' might be better than 'float'. For now we follow 'has measurement value' until we can consider technical issues with SPARQL queries and reasoning." ;
+                                             rdfs:label "has specified numeric value" .
+
+
+#################################################################
+#    Classes
+#################################################################
+
+###  http://purl.obolibrary.org/obo/BFO_0000019
+<http://purl.obolibrary.org/obo/BFO_0000019> rdf:type owl:Class ;
+                                             rdfs:label "quality"@en ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "(Elucidation) A quality is a specifically dependent continuant that, in contrast to roles and dispositions, does not require any further process in order to be realized"@en .
+
+
+###  http://purl.obolibrary.org/obo/BFO_0000030
+<http://purl.obolibrary.org/obo/BFO_0000030> rdf:type owl:Class ;
+                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000040> ;
+                                             rdfs:label "object"@en ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "(Elucidation) An object is a material entity which manifests causal unity & is of a type instances of which are maximal relative to the sort of causal unity manifested"@en .
+
+
+###  http://purl.obolibrary.org/obo/BFO_0000040
+<http://purl.obolibrary.org/obo/BFO_0000040> rdf:type owl:Class ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "An independent continuant that is spatially extended whose identity is independent of that of other entities and can be maintained through time."@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000116> "Elucidation: An independent continuant that is spatially extended whose identity is independent of that of other entities and can be maintained through time."@en ;
+                                             rdfs:label "material entity"@en ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "(Elucidation) A material entity is an independent continuant has some portion of matter as continuant part"@en .
+
+
+###  http://purl.obolibrary.org/obo/BFO_0000145
+<http://purl.obolibrary.org/obo/BFO_0000145> rdf:type owl:Class ;
+                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000019> ;
+                                             rdfs:label "relational quality"@en ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "b is a relational quality =Def b is a quality & there exists c and d such that c and d are not identical & b specifically depends on c & b specifically depends on d"@en .
+
+
+###  http://purl.obolibrary.org/obo/OBI_0001931
+<http://purl.obolibrary.org/obo/OBI_0001931> rdf:type owl:Class ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "A value specification that consists of two parts: a numeral and a unit label"@en ;
+                                             rdfs:label "scalar value specification" .
+
+
+###  http://purl.obolibrary.org/obo/UO_0000163
+<http://purl.obolibrary.org/obo/UO_0000163> rdf:type owl:Class ;
+                                            rdfs:subClassOf <http://purl.obolibrary.org/obo/UO_1000163> .
+
+
+###  http://purl.obolibrary.org/obo/UO_1000163
+<http://purl.obolibrary.org/obo/UO_1000163> rdf:type owl:Class ;
+                                            rdfs:label "mass percentage based unit" .
+
+
+###  https://w3id.org/pmd/co/PMD_0020026
+<https://w3id.org/pmd/co/PMD_0020026> rdf:type owl:Class ;
+                                      rdfs:subClassOf <https://w3id.org/pmd/co/PMD_0020140> ;
+                                      rdfs:comment "A Portion Of Matter that consists of only Iron atoms."@en ;
+                                      rdfs:label "portion of iron"@en ;
+                                      <http://www.w3.org/2004/02/skos/core#definition> "A 'portion of iron' is a 'Poriton Of Pure Substance' that 'consists of' only chebi:iron atom."@en .
+
+
+###  https://w3id.org/pmd/co/PMD_0020102
+<https://w3id.org/pmd/co/PMD_0020102> rdf:type owl:Class ;
+                                      rdfs:subClassOf <https://w3id.org/pmd/co/PMD_0080069> ;
+                                      <http://purl.obolibrary.org/obo/IAO_0000116> "Necessary and sufficient conditions for 'mass ratio' have not yet been formalized. The term is defined as a specific subtype of 'material composition'. Distinguishing criteria are domain-specific and depend on measurement conventions or source terminology not yet expressed as OWL restrictions."@en ;
+                                      rdfs:label "Massenverhältnis"@de ,
+                                                 "mass ratio"@en ;
+                                      <http://www.w3.org/2004/02/skos/core#definition> "Das Massenverhältnis bezeichnet eine relationale Qualität, die einen Massenwert im Verhältnis zu einem anderen ausdrückt und typischerweise eine dimensionslose Zahl ergibt"@de ,
+                                                                                       "Mass ratio denotes a relational quality expressing one mass value relative to another, typically producing a dimensionless number"@en .
+
+
+###  https://w3id.org/pmd/co/PMD_0020140
+<https://w3id.org/pmd/co/PMD_0020140> rdf:type owl:Class ;
+                                      rdfs:label "portion of pure chemical element"@en ;
+                                      <http://www.w3.org/2004/02/skos/core#definition> "A portion of pure chemical element is a pure substance composed of multiple atoms, which are all of the same kind."@en .
+
+
+###  https://w3id.org/pmd/co/PMD_0025997
+<https://w3id.org/pmd/co/PMD_0025997> rdf:type owl:Class ;
+                                      rdfs:subClassOf <http://purl.obolibrary.org/obo/OBI_0001931> ;
+                                      rdfs:label "Angabe des Bruchwerts"@de ,
+                                                 "fraction value specification"@en ;
+                                      <http://www.w3.org/2004/02/skos/core#definition> "Bei der Bruchwertspezifikation handelt es sich um eine Wertspezifikation, die Informationen über den quantitativen Anteil eines Teils im Verhältnis zu einem angegebenen Ganzen enthält."@de ,
+                                                                                       "Fraction value specification is a value specification that contains information about quantitative share of a part relative to a specified whole."@en .
+
+
+###  https://w3id.org/pmd/co/PMD_0080069
+<https://w3id.org/pmd/co/PMD_0080069> rdf:type owl:Class ;
+                                      <http://purl.obolibrary.org/obo/IAO_0000116> "Necessary and sufficient conditions for 'physical relational quality' have not yet been formalized. The term is defined as a specific subtype of 'BFO_0000145'. Distinguishing criteria are domain-specific and depend on measurement conventions or source terminology not yet expressed as OWL restrictions."@en ;
+                                      rdfs:label "physical relational quality"@en ,
+                                                 "physisch relative Qualität"@de ;
+                                      <http://www.w3.org/2004/02/skos/core#definition> "Die physische Beziehungsqualität bezieht sich auf Eigenschaften oder Merkmale einer Entität, die von ihrer Beziehung zu anderen Entitäten abhängig sind"@de ,
+                                                                                       "Physical relational quality pertains to properties or characteristics of an entity dependent on its relation to other entities"@en .
+
+
+#################################################################
+#    Individuals
+#################################################################
+
+###  http://purl.obolibrary.org/obo/UO_0000163
+<http://purl.obolibrary.org/obo/UO_0000163> rdf:type owl:NamedIndividual .
+
+
+#################################################################
+#    Annotations
+#################################################################
+
+<http://purl.obolibrary.org/obo/UO_0000163> rdfs:label "mass percentage" ;
+                                            <http://purl.obolibrary.org/obo/IAO_0000115> "A dimensionless concentration unit which denotes the mass of a substance in a mixture as a percentage of the mass of the entire mixture." .
+
+[ rdf:type owl:Axiom ;
+   owl:annotatedSource <http://purl.obolibrary.org/obo/UO_0000163> ;
+   owl:annotatedProperty <http://purl.obolibrary.org/obo/IAO_0000115> ;
+   owl:annotatedTarget "A dimensionless concentration unit which denotes the mass of a substance in a mixture as a percentage of the mass of the entire mixture." ;
+   <http://www.geneontology.org/formats/oboInOwl#hasDbXref> "Wikipedia:Wikipedia"
+ ] .
+
+
+###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

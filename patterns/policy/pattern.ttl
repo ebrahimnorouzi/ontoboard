@@ -1,0 +1,209 @@
+@prefix : <http://mklab.iti.gr/pericles/Policy_ODP#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@base <http://mklab.iti.gr/pericles/Policy_ODP> .
+
+<http://mklab.iti.gr/pericles/Policy_ODP> rdf:type owl:Ontology ;
+                                           owl:imports <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl> ,
+                                                       <http://xmlns.com/foaf/0.1/> ;
+                                           <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> """1. What are the main entities associated with a policy? A policy is usually associated with super/sub-policies, processes, agents and other entities.
+2. What are the main attributes of a policy? They are version, language, policy type, requirement level, implementation status and automation status.
+3. Where is a policy described? Statements are detailed text (formal or non- formal) definitions of the policy contents."""^^rdfs:Literal ;
+                                           <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences> "The Policy ODP is expected to facilitate the representation of the policy notion, which can be exploited in various domains. A well-established, comprehensible pattern will prove to be advantageous." ;
+                                           <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> "The pattern intends to model policies, their characteristics and their associated entities, such as processes and agents." ;
+                                           <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios> """Some examples of instantiation of the Policy ODP are:
+  1. The policy has two subpolicies
+  2. The policy is implemented by a certain process
+  3. The policy is validated by a certain process
+  4. The policy is assigned to John Smith
+  5. The policy is fully automated""" .
+
+#################################################################
+#    Object Properties
+#################################################################
+
+###  http://mklab.iti.gr/pericles/Policy_ODP#assignedTo
+:assignedTo rdf:type owl:ObjectProperty ;
+            rdfs:domain :Policy ;
+            rdfs:range <http://xmlns.com/foaf/0.1/Agent> ;
+            rdfs:comment "Associates a policy to the agent that is responsible for the application of the policy (person or role)." ;
+            rdfs:label "assigned to" .
+
+
+###  http://mklab.iti.gr/pericles/Policy_ODP#hasAutomationStatus
+:hasAutomationStatus rdf:type owl:ObjectProperty ;
+                     rdfs:domain :Policy ;
+                     rdfs:range :AutomationStatus ;
+                     rdfs:comment "Associates a policy with an automation level." ;
+                     rdfs:label "has automation status" .
+
+
+###  http://mklab.iti.gr/pericles/Policy_ODP#hasImplementationStatus
+:hasImplementationStatus rdf:type owl:ObjectProperty ;
+                         rdfs:domain :Policy ;
+                         rdfs:range :ImplementationStatus ;
+                         rdfs:comment "Associates a policy with an implementation level." ;
+                         rdfs:label "has implementation status" .
+
+
+###  http://mklab.iti.gr/pericles/Policy_ODP#hasLanguage
+:hasLanguage rdf:type owl:ObjectProperty ;
+             rdfs:domain :Policy ;
+             rdfs:range :Language ;
+             rdfs:comment "Associates a policy with the language used for the policy definition." ;
+             rdfs:label "has language" .
+
+
+###  http://mklab.iti.gr/pericles/Policy_ODP#hasPolicyType
+:hasPolicyType rdf:type owl:ObjectProperty ;
+               rdfs:domain :Policy ;
+               rdfs:range :PolicyType ;
+               rdfs:comment "Associates a policy with a policy type." ;
+               rdfs:label "has policy type" .
+
+
+###  http://mklab.iti.gr/pericles/Policy_ODP#hasRequirementLevel
+:hasRequirementLevel rdf:type owl:ObjectProperty ;
+                     rdfs:domain :Policy ;
+                     rdfs:range :RequirementLevel ;
+                     rdfs:comment "Associates a policy with an requirement level." ;
+                     rdfs:label "has requirement level" .
+
+
+###  http://mklab.iti.gr/pericles/Policy_ODP#hasStatement
+:hasStatement rdf:type owl:ObjectProperty ;
+              rdfs:domain :Policy ;
+              rdfs:range :Statement ;
+              rdfs:comment "Associates a policy with a statement, which is a detailed definition of the policy contents." ;
+              rdfs:label "has statement" .
+
+
+###  http://mklab.iti.gr/pericles/Policy_ODP#hasSubPolicy
+:hasSubPolicy rdf:type owl:ObjectProperty ;
+              rdfs:domain :Policy ;
+              rdfs:range :Policy ;
+              rdfs:comment "Associates a policy to another policy that is contained in the initial." ;
+              rdfs:label "has subpolicy" .
+
+
+###  http://mklab.iti.gr/pericles/Policy_ODP#hasValidationProcess
+:hasValidationProcess rdf:type owl:ObjectProperty ;
+                      rdfs:domain :Policy ;
+                      rdfs:range :Process ;
+                      rdfs:comment "Associates a policy with a process that is used to validate the policy." ;
+                      rdfs:label "has validation process" .
+
+
+###  http://mklab.iti.gr/pericles/Policy_ODP#hasVersion
+:hasVersion rdf:type owl:ObjectProperty ;
+            rdfs:range :Version ;
+            rdfs:comment "Defines a policy's version." ;
+            rdfs:label "has version" .
+
+
+###  http://mklab.iti.gr/pericles/Policy_ODP#implementedBy
+:implementedBy rdf:type owl:ObjectProperty ;
+               rdfs:domain :Policy ;
+               rdfs:range :Process ;
+               rdfs:comment "Associates a policy with a process that is used to implement the policy." ;
+               rdfs:label "implemented by" .
+
+
+###  http://mklab.iti.gr/pericles/Policy_ODP#targetsEntity
+:targetsEntity rdf:type owl:ObjectProperty ;
+               rdfs:domain :Policy ;
+               rdfs:range owl:Thing ;
+               rdfs:comment "Associates a policy with an entity that is subject to the policy." ;
+               rdfs:label "targets entity" .
+
+
+###  http://mklab.iti.gr/pericles/Policy_ODP#targetsUsers
+:targetsUsers rdf:type owl:ObjectProperty ;
+              rdfs:domain :Policy ;
+              rdfs:range <http://xmlns.com/foaf/0.1/Group> ;
+              rdfs:comment "Associates a policy to the user community the policy has been designed for." ;
+              rdfs:label "targets users" .
+
+
+#################################################################
+#    Classes
+#################################################################
+
+###  http://mklab.iti.gr/pericles/Policy_ODP#AutomationStatus
+:AutomationStatus rdf:type owl:Class ;
+                  rdfs:subClassOf :Descriptor ;
+                  rdfs:comment "E.g. manual, automated with human intervention, automated with human validation, fully automated, etc." ,
+                               "The level of automation of a policy. Specifies if a policy implementation requires human intervention." ;
+                  rdfs:label "Automation Status" .
+
+
+###  http://mklab.iti.gr/pericles/Policy_ODP#Descriptor
+:Descriptor rdf:type owl:Class ;
+            rdfs:comment "The various elements describing a policy." ;
+            rdfs:label "Descriptor" .
+
+
+###  http://mklab.iti.gr/pericles/Policy_ODP#ImplementationStatus
+:ImplementationStatus rdf:type owl:Class ;
+                      rdfs:subClassOf :Descriptor ;
+                      rdfs:comment "E.g. implemented, partially implemented, unimplemented, not-implementable, etc." ,
+                                   "The level of implementation of a policy" ;
+                      rdfs:label "Implementation Status" .
+
+
+###  http://mklab.iti.gr/pericles/Policy_ODP#Language
+:Language rdf:type owl:Class ;
+          rdfs:subClassOf :Descriptor ;
+          rdfs:comment "E.g. natural language, ReAL, SPIN, etc." ,
+                       "The language used for the policy definition" ;
+          rdfs:label "Language" .
+
+
+###  http://mklab.iti.gr/pericles/Policy_ODP#Policy
+:Policy rdf:type owl:Class ;
+        rdfs:comment "A deliberate system of principles to guide decisions and achieve rational outcomes. A policy is a statement of intent, and is implemented as a procedure or protocol." ;
+        rdfs:label "Policy" .
+
+
+###  http://mklab.iti.gr/pericles/Policy_ODP#PolicyType
+:PolicyType rdf:type owl:Class ;
+            rdfs:subClassOf :Descriptor ;
+            rdfs:comment "E.g. mandatory, legal requirement, aspirational, business driven, etc." ,
+                         "Not all policies are equal; mandatory ones must be implemented to satisfy law or other requirements, others are aspirational, and most are met with the best possible effort." ,
+                         "The type of policy." ;
+            rdfs:label "Policy Type" .
+
+
+###  http://mklab.iti.gr/pericles/Policy_ODP#Process
+:Process rdf:type owl:Class ;
+         rdfs:subClassOf owl:Thing ;
+         rdfs:comment "A sequence of interdependent and linked procedures which, at every stage, consume one or more resources (time, energy, machines, money) to convert inputs (data, material, parts, etc.) into outputs." ;
+         rdfs:label "Process" .
+
+
+###  http://mklab.iti.gr/pericles/Policy_ODP#RequirementLevel
+:RequirementLevel rdf:type owl:Class ;
+                  rdfs:subClassOf :Descriptor ;
+                  rdfs:comment "E.g. must, must not, should, shoud not, may, etc." ,
+                               "The level of a policy's compliance" ;
+                  rdfs:label "Requirement Level" .
+
+
+###  http://mklab.iti.gr/pericles/Policy_ODP#Statement
+:Statement rdf:type owl:Class ;
+           rdfs:subClassOf :Descriptor ;
+           rdfs:comment "Detailed definition of the policy contents." ;
+           rdfs:label "Statement" .
+
+
+###  http://mklab.iti.gr/pericles/Policy_ODP#Version
+:Version rdf:type owl:Class ;
+         rdfs:subClassOf :Descriptor ;
+         rdfs:comment "A policy's version" ;
+         rdfs:label "Version" .
+
+
+###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

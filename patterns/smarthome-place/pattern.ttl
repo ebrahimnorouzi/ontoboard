@@ -1,0 +1,88 @@
+@prefix : <http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Place.owl#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@base <http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Place.owl> .
+
+<http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Place.owl> rdf:type owl:Ontology ;
+                                                                            owl:imports <http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Geometry.owl> ,
+                                                                                        <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl> ;
+                                                                            <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> "How many and what sections are there in the SmartHome?"^^xsd:string ,
+                                                                                                                                                                      "What are the spatial/directional relations between sections of a smart home?"^^xsd:string ,
+                                                                                                                                                                      "Which physical objects are located in a section of a smart environment?"^^xsd:string ;
+                                                                            <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> "To represent a SmartHome as a place (specialization of http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#PhysicalPlace) which contains a number of sections (other physical places) and is also seen as a platform (e.g. a platform for a sensor network)."^^xsd:string ;
+                                                                            <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#isSpecializationOf> "The pattern extends both the SSN ontology and DUL. The extension is in the form of specialization of the two classes: http://purl.oclc.org/NET/ssnx/ssn#Platform and http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#PhysicalPlace."^^xsd:string ;
+                                                                            rdfs:isDefinedBy "This pattern also used the ODP Geometry (http://ontologydesignpatterns.org/wiki/Submissions:SmartHome_Geometry) to represent the spatial and directional relations between existing sections in a smart home."^^xsd:string .
+
+#################################################################
+#    Object Properties
+#################################################################
+
+###  http://purl.oclc.org/NET/ssnx/ssn#inDeployment
+<http://purl.oclc.org/NET/ssnx/ssn#inDeployment> rdf:type owl:ObjectProperty .
+
+
+###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasPart
+<http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasPart> rdf:type owl:ObjectProperty .
+
+
+###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isLocationOf
+<http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isLocationOf> rdf:type owl:ObjectProperty .
+
+
+###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isPartOf
+<http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isPartOf> rdf:type owl:ObjectProperty .
+
+
+#################################################################
+#    Classes
+#################################################################
+
+###  http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Place.owl#SmartHome
+:SmartHome rdf:type owl:Class ;
+           rdfs:subClassOf <http://purl.oclc.org/NET/ssnx/ssn#Platform> ,
+                           <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#PhysicalPlace> ,
+                           [ rdf:type owl:Restriction ;
+                             owl:onProperty <http://purl.oclc.org/NET/ssnx/ssn#inDeployment> ;
+                             owl:someValuesFrom <http://purl.oclc.org/NET/ssnx/ssn#Deployment>
+                           ] ,
+                           [ rdf:type owl:Restriction ;
+                             owl:onProperty <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasPart> ;
+                             owl:someValuesFrom :SmartHomeSection
+                           ] .
+
+
+###  http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Place.owl#SmartHomeSection
+:SmartHomeSection rdf:type owl:Class ;
+                  rdfs:subClassOf <http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Geometry.owl#SmartHomeGeoFeature> ,
+                                  <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#PhysicalPlace> ,
+                                  [ rdf:type owl:Restriction ;
+                                    owl:onProperty <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isLocationOf> ;
+                                    owl:someValuesFrom <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#PhysicalObject>
+                                  ] ,
+                                  [ rdf:type owl:Restriction ;
+                                    owl:onProperty <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isPartOf> ;
+                                    owl:someValuesFrom :SmartHome
+                                  ] ;
+                  rdfs:comment "Sections belonging to a SmartHome" .
+
+
+###  http://purl.oclc.org/NET/ssnx/ssn#Deployment
+<http://purl.oclc.org/NET/ssnx/ssn#Deployment> rdf:type owl:Class .
+
+
+###  http://purl.oclc.org/NET/ssnx/ssn#Platform
+<http://purl.oclc.org/NET/ssnx/ssn#Platform> rdf:type owl:Class .
+
+
+###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#PhysicalObject
+<http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#PhysicalObject> rdf:type owl:Class .
+
+
+###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#PhysicalPlace
+<http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#PhysicalPlace> rdf:type owl:Class .
+
+
+###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

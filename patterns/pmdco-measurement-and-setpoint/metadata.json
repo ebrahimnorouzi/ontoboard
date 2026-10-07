@@ -1,0 +1,15 @@
+{
+  "id": "pmdco-measurement-and-setpoint",
+  "name": "Measurement and setpoint",
+  "description": "Represents different aspects of a measured or a required value of some material property. In the measurement case an assay takes an object as input and outputs a measurement datum whose measurand is linked to the quality via specifies value of. In the setpoint case a specification datum carries a target value and the quality concretizes that specification datum instead of being measured.",
+  "category": "observation",
+  "domain": "measurement",
+  "competency_questions": "What was measured, by which assay, and what value came out? Which quality is a measurement datum about? What is the required or target value of a property, as opposed to the observed one? Which specification datum does a quality concretize, and which plan specification does the process realize?",
+  "pattern_iri": "https://ontoboard.org/patterns/pmdco-measurement-and-setpoint.owl",
+  "source": "https://materialdigital.github.io/core-ontology/docs/patterns.html",
+  "collection": "pmdco",
+  "publisher": "materialdigital.github.io",
+  "extracted_from": "pmdco",
+  "class_count": 25,
+  "property_count": 18
+}

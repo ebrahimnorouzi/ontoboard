@@ -1,0 +1,15 @@
+{
+  "id": "pmdco-categorical-value-specification",
+  "name": "Categorical value specification",
+  "description": "Represents how categorical rather than numeric values specify material characteristics, for instance a crystal structure of face-centered cubic, a grain structure of ferrite or an aggregate state of liquid. The categorical value specification is linked to the quality through specifies value of.",
+  "category": "information",
+  "domain": "materials",
+  "competency_questions": "What non-numeric value does this material characteristic take? Which categorical value specification specifies the value of a given quality, and which entity is it about?",
+  "pattern_iri": "https://ontoboard.org/patterns/pmdco-categorical-value-specification.owl",
+  "source": "https://materialdigital.github.io/core-ontology/docs/patterns.html",
+  "collection": "pmdco",
+  "publisher": "materialdigital.github.io",
+  "extracted_from": "pmdco",
+  "class_count": 7,
+  "property_count": 4
+}

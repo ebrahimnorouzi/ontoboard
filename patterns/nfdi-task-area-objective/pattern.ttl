@@ -1,0 +1,138 @@
+@prefix : <https://ontoboard.org/patterns/nfdi-task-area-objective.owl#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@base <https://ontoboard.org/patterns/nfdi-task-area-objective.owl> .
+
+<https://ontoboard.org/patterns/nfdi-task-area-objective.owl> rdf:type owl:Ontology .
+
+#################################################################
+#    Annotation properties
+#################################################################
+
+###  http://purl.obolibrary.org/obo/IAO_0000112
+<http://purl.obolibrary.org/obo/IAO_0000112> rdf:type owl:AnnotationProperty .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000115
+<http://purl.obolibrary.org/obo/IAO_0000115> rdf:type owl:AnnotationProperty .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000116
+<http://purl.obolibrary.org/obo/IAO_0000116> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.w3.org/2004/02/skos/core#definition
+<http://www.w3.org/2004/02/skos/core#definition> rdf:type owl:AnnotationProperty .
+
+
+#################################################################
+#    Object Properties
+#################################################################
+
+###  http://purl.obolibrary.org/obo/BFO_0000051
+<http://purl.obolibrary.org/obo/BFO_0000051> rdf:type owl:ObjectProperty ,
+                                                      owl:TransitiveProperty ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000112> "my body has part my brain (continuant parthood, two material entities)"@en ,
+                                                                                          "my stomach has part my stomach cavity (continuant parthood, material entity has part immaterial entity)"@en ,
+                                                                                          "this year has part this day (occurrent parthood)"@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "a core relation that holds between a whole and its part"@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000116> "Everything has itself as a part. Any part of any part of a thing is itself part of that thing. Two distinct things cannot have each other as a part."@en ,
+                                                                                          "Occurrents are not subject to change and so parthood between occurrents holds for all the times that the part exists. Many continuants are subject to change, so parthood between continuants will only hold at certain times, but this is difficult to specify in OWL. See http://purl.obolibrary.org/obo/ro/docs/temporal-semantics/"@en ,
+                                                                                          """Parthood requires the part and the whole to have compatible classes: only an occurrent have an occurrent as part; only a process can have a process as part; only a continuant can have a continuant as part; only an independent continuant can have an independent continuant as part; only a specifically dependent continuant can have a specifically dependent continuant as part; only a generically dependent continuant can have a generically dependent continuant as part. (This list is not exhaustive.)
+
+A continuant cannot have an occurrent as part: use 'participates in'. An occurrent cannot have a continuant as part: use 'has participant'. An immaterial entity cannot have a material entity as part: use 'location of'. An independent continuant cannot have a specifically dependent continuant as part: use 'bearer of'. A specifically dependent continuant cannot have an independent continuant as part: use 'inheres in'."""@en ;
+                                             rdfs:label "has part"@en .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000235
+<http://purl.obolibrary.org/obo/IAO_0000235> rdf:type owl:ObjectProperty ;
+                                             rdfs:subPropertyOf <https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000226> ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "inverse of the relation 'denotes'"@en ;
+                                             rdfs:label "denoted by"@en .
+
+
+###  http://purl.obolibrary.org/obo/RO_0000056
+<http://purl.obolibrary.org/obo/RO_0000056> rdf:type owl:ObjectProperty ;
+                                            <http://purl.obolibrary.org/obo/IAO_0000112> "this blood clot participates in this blood coagulation"@en ,
+                                                                                         "this input material (or this output material) participates in this process"@en ,
+                                                                                         "this investigator participates in this investigation"@en ;
+                                            <http://purl.obolibrary.org/obo/IAO_0000115> "a relation between a continuant and a process, in which the continuant is somehow involved in the process"@en ;
+                                            rdfs:label "participates in"@en .
+
+
+###  https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000226
+<https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000226> rdf:type owl:ObjectProperty ;
+                                                      rdfs:label "is subject of"@en ;
+                                                      <http://www.w3.org/2004/02/skos/core#definition> "inverse of the relation 'is about'" .
+
+
+#################################################################
+#    Classes
+#################################################################
+
+###  http://purl.obolibrary.org/obo/BFO_0000003
+<http://purl.obolibrary.org/obo/BFO_0000003> rdf:type owl:Class ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "An entity that has temporal parts and that happens, unfolds or develops through time."@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000116> "BFO 2 Reference: every occurrent that is not a temporal or spatiotemporal region is s-dependent on some independent continuant that is not a spatial region"@en ,
+                                                                                          "BFO 2 Reference: s-dependence obtains between every process and its participants in the sense that, as a matter of necessity, this process could not have existed unless these or those participants existed also. A process may have a succession of participants at different phases of its unfolding. Thus there may be different players on the field at different times during the course of a football game; but the process which is the entire game s-depends_on all of these players nonetheless. Some temporal parts of this process will s-depend_on on only some of the players."@en ;
+                                             rdfs:label "occurrent"@en ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "(Elucidation) An occurrent is an entity that unfolds itself in time or it is the start or end of such an entity or it is a temporal or spatiotemporal region"@en .
+
+
+###  http://purl.obolibrary.org/obo/BFO_0000015
+<http://purl.obolibrary.org/obo/BFO_0000015> rdf:type owl:Class ;
+                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000003> ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000112> "a process of cell-division, \\ a beating of the heart"@en ,
+                                                                                          "a process of meiosis"@en ,
+                                                                                          "a process of sleeping"@en ,
+                                                                                          "the course of a disease"@en ,
+                                                                                          "the flight of a bird"@en ,
+                                                                                          "the life of an organism"@en ,
+                                                                                          "your process of aging."@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "p is a process = Def. p is an occurrent that has temporal proper parts and for some time t, p s-depends_on some material entity at t. (axiom label in BFO2 Reference: [083-003])"@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000116> "BFO 2 Reference: The realm of occurrents is less pervasively marked by the presence of natural units than is the case in the realm of independent continuants. Thus there is here no counterpart of ‘object’. In BFO 1.0 ‘process’ served as such a counterpart. In BFO 2.0 ‘process’ is, rather, the occurrent counterpart of ‘material entity’. Those natural – as contrasted with engineered, which here means: deliberately executed – units which do exist in the realm of occurrents are typically either parasitic on the existence of natural units on the continuant side, or they are fiat in nature. Thus we can count lives; we can count football games; we can count chemical reactions performed in experiments or in chemical manufacturing. We cannot count the processes taking place, for instance, in an episode of insect mating behavior.Even where natural units are identifiable, for example cycles in a cyclical process such as the beating of a heart or an organism’s sleep/wake cycle, the processes in question form a sequence with no discontinuities (temporal gaps) of the sort that we find for instance where billiard balls or zebrafish or planets are separated by clear spatial gaps. Lives of organisms are process units, but they too unfold in a continuous series from other, prior processes such as fertilization, and they unfold in turn in continuous series of post-life processes such as post-mortem decay. Clear examples of boundaries of processes are almost always of the fiat sort (midnight, a time of death as declared in an operating theater or on a death certificate, the initiation of a state of war)"@en ;
+                                             rdfs:label "process"@en ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "(Elucidation) p is a process means p is an occurrent that has some temporal proper part and for some time t, p has some material entity as participant"@en .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000005
+<http://purl.obolibrary.org/obo/IAO_0000005> rdf:type owl:Class ;
+                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/IAO_0000033> ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000112> "In the protocol of a ChIP assay the objective specification says to identify protein and DNA interaction."@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "A directive information entity that describes an intended process endpoint. When part of a plan specification the concretization is realized in a planned process in which the bearer tries to effect the world so that the process endpoint is achieved."@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000116> "2009-03-16: original definition when imported from OBI read: \"objective is an non realizable information entity which can serve as that  proper part of a plan towards which the realization of the plan is directed.\""@en ,
+                                                                                          "2014-03-31: In the example of usage (\"In the protocol of a ChIP assay the objective specification says to identify protein and DNA interaction\") there is a protocol which is the ChIP assay protocol. In addition to being concretized on paper, the protocol can be concretized as a realizable entity, such as a plan that inheres in a person. The objective specification is the part that says that some protein and DNA interactions are identified. This is a specification of a process endpoint: the boundary in the process before which they are not identified and after which they are. During the realization of the plan, the goal is to get to the point of having the interactions, and participants in the realization of the plan try to do that."@en ,
+                                                                                          "Answers the question, why did you do this experiment?"@en ;
+                                             rdfs:label "objective specification"@en .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000033
+<http://purl.obolibrary.org/obo/IAO_0000033> rdf:type owl:Class ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "An information content entity whose concretizations indicate to their bearer how to realize them in a process."@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000116> "2009-03-16: provenance: a term realizable information entity was proposed for OBI (OBI_0000337) , edited by the PlanAndPlannedProcess branch. Original definition was  \"is the specification of a process that can be concretized and realized by an actor\" with alternative term  \"instruction\".It has been subsequently moved to IAO where the objective for which the original term was defined was satisfied with the definitionof this, different, term."@en ,
+                                                                                          "2013-05-30 Alan Ruttenberg: What differentiates a directive information entity from an information concretization is that it can have concretizations that are either qualities or realizable entities. The concretizations that are realizable entities are created when an individual chooses to take up the direction, i.e. has the intention to (try to) realize it."@en ,
+                                                                                          "8/6/2009 Alan Ruttenberg: Changed label from \"information entity about a realizable\" after discussions at ICBO"@en ,
+                                                                                          "Werner pushed back on calling it realizable information entity as it isn't realizable. However this name isn't right either. An example would be a recipe. The realizable entity would be a plan, but the information entity isn't about the plan, it, once concretized, *is* the plan. -Alan"@en ;
+                                             rdfs:label "directive information entity"@en .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000300
+<http://purl.obolibrary.org/obo/IAO_0000300> rdf:type owl:Class ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000112> "Words, sentences, paragraphs, and the written (non-figure) parts of publications are all textual entities"@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "A textual entity is a part of a manifestation (FRBR sense), a generically dependent continuant whose concretizations are patterns of glyphs intended to be interpreted as words, formulas, etc."@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000116> "AR, (IAO call 2009-09-01): a document as a whole is not typically a textual entity, because it has pictures in it - rather there are parts of it that are textual entities. Examples: The title, paragraph 2 sentence 7, etc."@en ,
+                                                                                          "MC, 2009-09-14 (following IAO call 2009-09-01): textual entities live at the FRBR (http://en.wikipedia.org/wiki/Functional_Requirements_for_Bibliographic_Records) manifestation level. Everything is significant: line break, pdf and html versions of same document are different textual entities."@en ;
+                                             rdfs:label "textual entity"@en .
+
+
+###  https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0001035
+<https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0001035> rdf:type owl:Class ;
+                                                      rdfs:subClassOf <http://purl.obolibrary.org/obo/IAO_0000300> ;
+                                                      rdfs:label "work package textual entity"@en ;
+                                                      <http://www.w3.org/2004/02/skos/core#definition> "A work package textual entity is a textual entity that describes a structured unit of work within a project, outlining specific tasks, objectives, deliverables, and assigned responsibilities to achieve defined project outcomes." .
+
+
+###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

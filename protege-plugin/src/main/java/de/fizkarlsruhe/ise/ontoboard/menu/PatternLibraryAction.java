@@ -3,6 +3,7 @@ package de.fizkarlsruhe.ise.ontoboard.menu;
 import de.fizkarlsruhe.ise.ontoboard.pattern.DesignPattern;
 import de.fizkarlsruhe.ise.ontoboard.pattern.PatternLibrary;
 import de.fizkarlsruhe.ise.ontoboard.pattern.PatternOrder;
+import de.fizkarlsruhe.ise.ontoboard.pattern.PatternRecommender;
 import de.fizkarlsruhe.ise.ontoboard.pattern.PatternSummary;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
@@ -61,6 +62,17 @@ public class PatternLibraryAction extends ProtegeOWLAction {
     private JComboBox<String> grouping;
     private JButton importButton;
     private JDialog dialog;
+
+    /**
+     * The orderings offered, with the suggestions first.
+     *
+     * <p>First because 159 patterns is too many to browse when you want one, and the ontology
+     * in front of somebody is the best evidence of what they are modelling.
+     */
+    static final String SUGGESTED = "Suggested for this ontology";
+
+    /** Why each suggested pattern was suggested, by id. Empty in the other orderings. */
+    private java.util.Map<String, String> reasons = new java.util.HashMap<String, String>();
 
     @Override
     public void initialise() {
@@ -200,19 +212,46 @@ public class PatternLibraryAction extends ProtegeOWLAction {
                 (DefaultListModel<DesignPattern>) patterns.getModel();
         model.clear();
         List<DesignPattern> matching = PatternLibrary.matching(search.getText());
-        for (DesignPattern pattern : PatternOrder.sorted(matching,
-                String.valueOf(grouping.getSelectedItem()))) {
+        String ordering = String.valueOf(grouping.getSelectedItem());
+        for (DesignPattern pattern : SUGGESTED.equals(ordering)
+                ? suggested(matching) : PatternOrder.sorted(matching, ordering)) {
             model.addElement(pattern);
         }
         if (!model.isEmpty()) {
             patterns.setSelectedIndex(0);
         } else {
-            details.setText("<html><body style='font-family:sans-serif'>"
-                    + "<p>Nothing matches.</p></body></html>");
+            details.setText("<html><body style='font-family:sans-serif'><p>"
+                    + (SUGGESTED.equals(String.valueOf(grouping.getSelectedItem()))
+                        ? "Nothing in the library shares enough vocabulary with this ontology to "
+                          + "be worth suggesting. Try another ordering and browse."
+                        : "Nothing matches.")
+                    + "</p></body></html>");
             ((DefaultListModel<IRI>) terms.getModel()).clear();
             importButton.setEnabled(false);
         }
     }
+
+    /**
+     * The patterns the open ontology already speaks the vocabulary of, best first.
+     *
+     * <p>Scored from the index rather than by opening 159 files: parsing them took 24 seconds,
+     * measured, which is a dialog that looks like it has hung.
+     */
+    private List<DesignPattern> suggested(List<DesignPattern> candidates) {
+        reasons = new java.util.HashMap<String, String>();
+        org.semanticweb.owlapi.model.OWLOntology ontology = getOWLModelManager() == null ? null
+                : getOWLModelManager().getActiveOntology();
+        List<DesignPattern> best = new ArrayList<DesignPattern>();
+        for (PatternRecommender.Recommendation one : PatternRecommender.forOntology(
+                PatternRecommender.vocabularyOf(ontology), candidates, MOST_SUGGESTED)) {
+            best.add(one.getPattern());
+            reasons.put(one.getPattern().getId(), one.explain());
+        }
+        return best;
+    }
+
+    /** Enough to choose from, few enough that the bottom of the list still means something. */
+    static final int MOST_SUGGESTED = 15;
 
     /** Reads the selected pattern's file and shows what is really in it. */
     private void showSelected() {
@@ -235,7 +274,7 @@ public class PatternLibraryAction extends ProtegeOWLAction {
         for (IRI term : contents.getTerms()) {
             termModel.addElement(term);
         }
-        details.setText(PatternSummary.asHtml(chosen, contents));
+        details.setText(PatternSummary.asHtml(chosen, contents, reasons.get(chosen.getId())));
         details.setCaretPosition(0);
         importButton.setEnabled(!contents.getTerms().isEmpty());
     }

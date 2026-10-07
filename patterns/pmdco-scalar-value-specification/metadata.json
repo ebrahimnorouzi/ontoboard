@@ -1,0 +1,15 @@
+{
+  "id": "pmdco-scalar-value-specification",
+  "name": "Scalar value specification",
+  "description": "Represents scalar physical quantities by combining a numerical value and a unit. A scalar value specification carries has specified numeric value plus a measurement unit label, and is attached to a specifically dependent continuant through specified by value. Units are drawn from UO or QUDT.",
+  "category": "information",
+  "domain": "measurement",
+  "competency_questions": "What is the numeric value of this quantity and in which unit is it expressed? Which quality or property does a given scalar value specification specify?",
+  "pattern_iri": "https://ontoboard.org/patterns/pmdco-scalar-value-specification.owl",
+  "source": "https://materialdigital.github.io/core-ontology/docs/patterns.html",
+  "collection": "pmdco",
+  "publisher": "materialdigital.github.io",
+  "extracted_from": "pmdco",
+  "class_count": 6,
+  "property_count": 3
+}

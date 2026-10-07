@@ -1,0 +1,227 @@
+@prefix : <http://semantic.cs.put.poznan.pl/ontologies/reportingevent.owl#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@base <http://semantic.cs.put.poznan.pl/ontologies/reportingevent.owl> .
+
+<http://semantic.cs.put.poznan.pl/ontologies/reportingevent.owl> rdf:type owl:Ontology ;
+                                                                  owl:imports <http://www.ontologydesignpatterns.org/cp/owl/intensionextension.owl> ,
+                                                                              <http://www.ontologydesignpatterns.org/cp/owl/situation.owl> ,
+                                                                              <http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl> ,
+                                                                              <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl> ,
+                                                                              <http://www.w3.org/ns/prov-o-20130430> ;
+                                                                  <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> """
+Pattern was designed to allow a completed ontology to answer the following questions:
+- What characteristics (date/participants/cause etc.) is an actual event said to have?
+- Which agent made a statement about an actual event?
+- On which sources these statements were based?
+- What were circumstances of providing information about an actual event?
+		"""@en ;
+                                                                  <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasComponent> "http://ontologydesignpatterns.org/wiki/Submissions:IntensionExtension" ,
+                                                                                                                                                      "http://ontologydesignpatterns.org/wiki/Submissions:Situation" ,
+                                                                                                                                                      "http://ontologydesignpatterns.org/wiki/Submissions:Types_of_entities" ;
+                                                                  <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences> """
+The pattern is rather complex and should only be used if the circumstances of the events
+are expected to be uncertain (to differ in different event reports).
+		"""@en ;
+                                                                  <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> """
+The intent of the pattern is to allow for modelling situations in which the knowledge
+about an event cannot be treated as certain. It is particularly useful for
+cases in which two or more agents provide different, contradictory information
+about the same event.
+
+It can be also used for modelling situation in which a single agent provided
+contradictory information about the same event in different points in time. In
+general the pattern allows for stating different circumstances of an act of the
+information provision.
+		"""@en ;
+                                                                  <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#relatedCPs> """
+Pattern TypesOfEntities (http://ontologydesignpatterns.org/wiki/Submissions:Types_of_entities) is a component of this pattern.
+ActualEvent, ActualEventView and ReportingEvent are subclasses of Event.
+ActualEventView is also a subclass of InformationObject, which is a subclass of Object.
+
+Pattern IntensionExtension (http://ontologydesignpatterns.org/wiki/Submissions:IntensionExtension) is a component of this pattern.
+It allows to link InformationObject (ActualEventView) to the event it is describing (ActualEvent) using property isAbout.
+
+Pattern Situation (http://ontologydesignpatterns.org/wiki/Submissions:Situation) is a component of this pattern.
+ReportingEvent can be viewed as subclass of Situation, as we use it to denote different circumstances of information (i.e. ActualEventView) provision.
+		"""@en ;
+                                                                  <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios> """
+Two History professors have different opinion about the same
+actual event. The exemplary actual event is baptism of prince Mieszko I.
+The baptism exact place is a subject to historical debate.
+According to professor Hanna Kóčka-Krenz the likely place was Poznań.
+She bases her claim on Poznań excavations that she conducted.
+However, the late professor Labuda pointed to Lednica Holm.
+He also based his claims on the local excavations, but also on historical annals.
+		"""@en ;
+                                                                  rdfs:comment "Pattern description is available at: http://ontologydesignpatterns.org/wiki/Submissions:ReportingEvent"@en ,
+                                                                               "Pattern description is included in: E. Kowalczuk, A. Ławrynowicz, \"The Reporting Event Ontology Design Pattern and Its Extension to Report News Events\" (2016)."@en ,
+                                                                               "This ontology is a formalisation of the Reporting Event ontology design pattern."@en .
+
+#################################################################
+#    Object Properties
+#################################################################
+
+###  http://semantic.cs.put.poznan.pl/ontologies/reportingevent.owl#hasAuthor
+:hasAuthor rdf:type owl:ObjectProperty ;
+           rdfs:subPropertyOf owl:topObjectProperty ,
+                              <http://www.w3.org/ns/prov#wasAssociatedWith> ;
+           rdfs:comment """The property can be used to link author (EventReporter) of event report (ActualEventView).
+We don't link it directly to ActualEventView, which is used for attaching properties of ActualEvent, as provided by EventReporter. Instead we link EventReporter to ReportingEvent, which is the Activity of producing and providing information included in ActualEventView."""@en .
+
+
+###  http://semantic.cs.put.poznan.pl/ontologies/reportingevent.owl#hasContext
+:hasContext rdf:type owl:ObjectProperty ;
+            rdfs:subPropertyOf owl:topObjectProperty ;
+            rdfs:comment "This is a general property to be used when attributing ActualEventView with any information. We can use any ontology designed for events description (CIDOC, LODE, etc.) in order to denote information about an actual event in ActualEventView, but it is assumed that all of this ontology properties will inherit from hasContext property and all objects of relations will inherit from ActualEventViewContext."@en .
+
+
+###  http://semantic.cs.put.poznan.pl/ontologies/reportingevent.owl#isBasedOn
+:isBasedOn rdf:type owl:ObjectProperty ;
+           rdfs:subPropertyOf :isBasedOn ;
+           rdfs:comment "This property can be used to link ReportingEvent and sources it used to gather the knowledge about an ActualEvent."@en .
+
+
+###  http://semantic.cs.put.poznan.pl/ontologies/reportingevent.owl#isBasedOnSourceActivity
+:isBasedOnSourceActivity rdf:type owl:ObjectProperty ;
+                         rdfs:subPropertyOf :isBasedOn ,
+                                            <http://www.w3.org/ns/prov#wasInformedBy> ;
+                         rdfs:range :SourceActivity ;
+                         rdfs:comment """We specialised property isBasedOn so that the specialisation can be mapped to PROV vocabulary. Property isBasedOnSourceActivity is a subproperty of prov:wasInformedBy, which links two instances of prov:Activity.
+This property can be used to link ReportingEvent with the SourceActivity that was used as a source of information about an ActualEvent, for example a correspondent visit to the event place."""@en .
+
+
+###  http://semantic.cs.put.poznan.pl/ontologies/reportingevent.owl#isBasedOnSourceObject
+:isBasedOnSourceObject rdf:type owl:ObjectProperty ;
+                       rdfs:subPropertyOf :isBasedOn ,
+                                          <http://www.w3.org/ns/prov#used> ;
+                       rdfs:range :SourceObject ;
+                       rdfs:comment """We specialised property isBasedOn so that the specialisation can be mapped to PROV vocabulary. Property isBasedOnSourceActivity is a subproperty of prov:used, which links an instance of prov:Activity and an instance of prov:Entity.
+This property can be used to link a ReportingEvent and a SourceObject that was used as a source of information about an ActualEvent, for example a historical book."""@en .
+
+
+###  http://semantic.cs.put.poznan.pl/ontologies/reportingevent.owl#reports
+:reports rdf:type owl:ObjectProperty ;
+         rdfs:subPropertyOf <http://www.ontologydesignpatterns.org/cp/owl/situation.owl#isSettingFor> ,
+                            [ owl:inverseOf <http://www.w3.org/ns/prov#wasGeneratedBy>
+                            ] ;
+         rdfs:comment "This property can be used to link a ReportingEvent to an ActualEventView."@en .
+
+
+#################################################################
+#    Classes
+#################################################################
+
+###  http://semantic.cs.put.poznan.pl/ontologies/reportingevent.owl#ActualEvent
+:ActualEvent rdf:type owl:Class ;
+             rdfs:subClassOf <http://www.ontologydesignpatterns.org/cp/owl/intensionextension.owl#SocialObject> ,
+                             <http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl#Event> ;
+             rdfs:comment """The event that is claimed to be real by a particular EventReporter. 
+The EventReporter is also making different claims about the event: its time interval, participants, place, cause, effect, etc. These properties are not directly attached to the ActualEvent, because it would make these facts the universal truths. Instead they are attached to an ActualEventView, There is one ActualEventView per each event report, but different instances can link to the same ActualEvent using the isAbout property."""@en .
+
+
+###  http://semantic.cs.put.poznan.pl/ontologies/reportingevent.owl#ActualEventView
+:ActualEventView rdf:type owl:Class ;
+                 rdfs:subClassOf <http://www.ontologydesignpatterns.org/cp/owl/intensionextension.owl#InformationObject> ,
+                                 <http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl#Event> ,
+                                 <http://www.w3.org/ns/prov#Entity> ,
+                                 [ rdf:type owl:Restriction ;
+                                   owl:onProperty :hasContext ;
+                                   owl:allValuesFrom :ActualEventViewContext
+                                 ] ,
+                                 [ rdf:type owl:Restriction ;
+                                   owl:onProperty <http://www.ontologydesignpatterns.org/cp/owl/intensionextension.owl#isAbout> ;
+                                   owl:allValuesFrom :ActualEvent
+                                 ] ,
+                                 [ rdf:type owl:Restriction ;
+                                   owl:onProperty <http://www.ontologydesignpatterns.org/cp/owl/intensionextension.owl#isAbout> ;
+                                   owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+                                   owl:onClass :ActualEvent
+                                 ] ,
+                                 [ rdf:type owl:Restriction ;
+                                   owl:onProperty [ owl:inverseOf :reports
+                                                  ] ;
+                                   owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+                                   owl:onClass :ReportingEvent
+                                 ] ;
+                 rdfs:comment """This is a special type of event, which represents an ActualEvent as viewed by a particular EventReporter. All statements about an ActualEvent, made by a particular EventReporter in a particular ReportingEvent are attached to a single ActualEventView. In this way the ActualEventView is a reflection of the ActualEvent in the eyes of the EventReporter.
+Any properties normally attached to an event (time interval, place, participants, cause, effects) can be attached to an instance of ActualEventView."""@en .
+
+
+###  http://semantic.cs.put.poznan.pl/ontologies/reportingevent.owl#ActualEventViewContext
+:ActualEventViewContext rdf:type owl:Class ;
+                        rdfs:subClassOf <http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl#Entity> ,
+                                        [ rdf:type owl:Restriction ;
+                                          owl:onProperty [ owl:inverseOf :hasContext
+                                                         ] ;
+                                          owl:someValuesFrom :ActualEventView
+                                        ] ;
+                        rdfs:comment """Any object that is associated with an ActualEventView using property hasContext: time, place, cause, effect, participant, etc.
+For example, if an EventReporter claims that an ActualEvent took place at Rome, then tookPlaceAt would be a subproperty of hasContext (attached to the ActualEventView) and Rome would be an instance of ActualEventViewContext. 
+There is no restriction on complexity of ActualEventViewContext, it can be for example a TimeInterval or a TimeIndexedParticipation."""@en .
+
+
+###  http://semantic.cs.put.poznan.pl/ontologies/reportingevent.owl#EventReporter
+:EventReporter rdf:type owl:Class ;
+               rdfs:subClassOf <http://www.w3.org/ns/prov#Agent> ,
+                               [ rdf:type owl:Restriction ;
+                                 owl:onProperty [ owl:inverseOf :hasAuthor
+                                                ] ;
+                                 owl:someValuesFrom :ReportingEvent
+                               ] ;
+               rdfs:comment "A person or organisation that reports a particular actual event in the act of ReportingEvent."@en .
+
+
+###  http://semantic.cs.put.poznan.pl/ontologies/reportingevent.owl#ReportingEvent
+:ReportingEvent rdf:type owl:Class ;
+                rdfs:subClassOf <http://www.ontologydesignpatterns.org/cp/owl/situation.owl#Situation> ,
+                                <http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl#Event> ,
+                                <http://www.w3.org/ns/prov#Activity> ,
+                                [ rdf:type owl:Restriction ;
+                                  owl:onProperty :hasAuthor ;
+                                  owl:someValuesFrom :EventReporter
+                                ] ,
+                                [ rdf:type owl:Restriction ;
+                                  owl:onProperty :reports ;
+                                  owl:someValuesFrom :ActualEventView
+                                ] ,
+                                [ rdf:type owl:Restriction ;
+                                  owl:onProperty :isBasedOn ;
+                                  owl:allValuesFrom :Source
+                                ] ,
+                                [ rdf:type owl:Restriction ;
+                                  owl:onProperty :reports ;
+                                  owl:allValuesFrom :ActualEventView
+                                ] ;
+                rdfs:comment "Instances of this class are the acts of reporting a particular ActualEvent as an ActualEventView. This class concentrates on the act of information provision. For example, if a reporter is describing in the 19:30 news programme an event that he claims took place at 10:00, the hour 10:00 would be associated with the ActualEventView and hour 19:30 would be associated with the ReportingEvent."@en .
+
+
+###  http://semantic.cs.put.poznan.pl/ontologies/reportingevent.owl#Source
+:Source rdf:type owl:Class ;
+        rdfs:subClassOf <http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl#Entity> ,
+                        [ rdf:type owl:Class ;
+                          owl:unionOf ( <http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl#Event>
+                                        <http://www.ontologydesignpatterns.org/cp/owl/typesofentities.owl#Object>
+                                      )
+                        ] ;
+        rdfs:comment "The class grouping different types of entities that can be a source of information for a particular event report. It encompasses activities as well as objects."@en .
+
+
+###  http://semantic.cs.put.poznan.pl/ontologies/reportingevent.owl#SourceActivity
+:SourceActivity rdf:type owl:Class ;
+                rdfs:subClassOf :Source ,
+                                <http://www.w3.org/ns/prov#Activity> ;
+                rdfs:comment "The activity that was a source of information for a particular event report. For example, if a reporter visited a place in which a particular ActualEvent took place, to later describe the event as an ActualEventView in the act of ReportingEvent, his visit is a SourceActivity."@en .
+
+
+###  http://semantic.cs.put.poznan.pl/ontologies/reportingevent.owl#SourceObject
+:SourceObject rdf:type owl:Class ;
+              rdfs:subClassOf :Source ,
+                              <http://www.w3.org/ns/prov#Entity> ;
+              rdfs:comment "The object that was a source of information for a particular event report. For example, if a historian describes a particular event based on a historical book, the book is an instance of the class SourceObject."@en .
+
+
+###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

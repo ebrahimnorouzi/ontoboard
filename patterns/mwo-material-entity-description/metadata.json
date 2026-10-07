@@ -1,0 +1,15 @@
+{
+  "id": "mwo-material-entity-description",
+  "name": "Pattern 8: Material Entity Description",
+  "description": "Gives a structured description of a material entity such as a device or a material: it is tied to the processes or projects it participates in or is an output of, its realizable aspects (role, disposition, function) hang off bearer_of, agents and a place are attached, and its structural composition is given by part and member relations. Further ICEs carry its identifiers, specifications and other descriptive metadata.",
+  "category": "structural",
+  "domain": "materials",
+  "competency_questions": "",
+  "pattern_iri": "https://ontoboard.org/patterns/mwo-material-entity-description.owl",
+  "source": "https://ise-fizkarlsruhe.github.io/mwo/docs/patterns/",
+  "collection": "mwo",
+  "publisher": "ise-fizkarlsruhe.github.io",
+  "extracted_from": "mwo",
+  "class_count": 23,
+  "property_count": 10
+}

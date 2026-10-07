@@ -1,0 +1,296 @@
+@prefix : <https://ontoboard.org/patterns/mwo-resource-description.owl#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@base <https://ontoboard.org/patterns/mwo-resource-description.owl> .
+
+<https://ontoboard.org/patterns/mwo-resource-description.owl> rdf:type owl:Ontology .
+
+#################################################################
+#    Annotation properties
+#################################################################
+
+###  http://purl.obolibrary.org/obo/IAO_0000112
+<http://purl.obolibrary.org/obo/IAO_0000112> rdf:type owl:AnnotationProperty .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000115
+<http://purl.obolibrary.org/obo/IAO_0000115> rdf:type owl:AnnotationProperty .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000116
+<http://purl.obolibrary.org/obo/IAO_0000116> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.w3.org/2004/02/skos/core#definition
+<http://www.w3.org/2004/02/skos/core#definition> rdf:type owl:AnnotationProperty .
+
+
+#################################################################
+#    Object Properties
+#################################################################
+
+###  http://purl.obolibrary.org/obo/IAO_0000136
+<http://purl.obolibrary.org/obo/IAO_0000136> rdf:type owl:ObjectProperty ;
+                                             owl:inverseOf <https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000226> ;
+                                             rdfs:domain <http://purl.obolibrary.org/obo/IAO_0000030> ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000112> "This document is about information artifacts and their representations"@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "A (currently) primitive relation that relates an information artifact to an entity."@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000116> """7/6/2009 Alan Ruttenberg. Following discussion with Jonathan Rees, and introduction of \"mentions\" relation. Weaken the is_about relationship to be primitive. 
+
+We will try to build it back up by elaborating the various subproperties that are more precisely defined.
+
+Some currently missing phenomena that should be considered \"about\" are predications - \"The only person who knows the answer is sitting beside me\" , Allegory, Satire, and other literary forms that can be topical without explicitly mentioning the topic."""@en ;
+                                             rdfs:label "is about"@en .
+
+
+###  https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000226
+<https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000226> rdf:type owl:ObjectProperty ;
+                                                      rdfs:label "is subject of"@en ;
+                                                      <http://www.w3.org/2004/02/skos/core#definition> "inverse of the relation 'is about'" .
+
+
+#################################################################
+#    Data properties
+#################################################################
+
+###  https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0001007
+<https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0001007> rdf:type owl:DatatypeProperty ;
+                                                      rdfs:label "has value"@en ;
+                                                      <http://www.w3.org/2004/02/skos/core#definition> "A relation between an information content entity and its specific value."@en .
+
+
+#################################################################
+#    Classes
+#################################################################
+
+###  http://purl.obolibrary.org/obo/BFO_0000031
+<http://purl.obolibrary.org/obo/BFO_0000031> rdf:type owl:Class ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000112> "The entries in your database are patterns instantiated as quality instances in your hard drive. The database itself is an aggregate of such patterns. When you create the database you create a particular instance of the generically dependent continuant type database. Each entry in the database is an instance of the generically dependent continuant type IAO: information content entity."@en ,
+                                                                                          "the pdf file on your laptop, the pdf file that is a copy thereof on my laptop"@en ,
+                                                                                          "the sequence of this protein molecule; the sequence that is a copy thereof in that protein molecule."@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "b is a generically dependent continuant = Def. b is a continuant that g-depends_on one or more other entities. (axiom label in BFO2 Reference: [074-001])"@en ;
+                                             rdfs:label "generically dependent continuant"@en ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "(Elucidation) A generically dependent continuant is an entity that exists in virtue of the fact that there is at least one of what may be multiple copies which is the content or the pattern that multiple copies would share"@en .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000028
+<http://purl.obolibrary.org/obo/IAO_0000028> rdf:type owl:Class ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000112> "a serial number such as \"12324X\""@en ,
+                                                                                          "a stop sign"@en ,
+                                                                                          "a written proper name such as \"OBI\""@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "An information content entity that is a mark(s) or character(s) used as a conventional representation of another entity."@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000116> "20091104, MC: this needs work and will most probably change"@en ,
+                                                                                          "2014-03-31: We would like to have a deeper analysis of 'mark' and 'sign' in the future (see https://github.com/information-artifact-ontology/IAO/issues/154)."@en ;
+                                             rdfs:label "symbol"@en .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000030
+<http://purl.obolibrary.org/obo/IAO_0000030> rdf:type owl:Class ;
+                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000031> ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000112> "Examples of information content entites include journal articles, data, graphical layouts, and graphs." ,
+                                                                                          "Examples of information content entites include journal articles, data, graphical layouts, and graphs."@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "A generically dependent continuant that is about some thing."@en ,
+                                                                                          "An information content entity is an entity that is generically dependent on some artifact and stands in relation of aboutness to some entity." ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000116> "2014-03-10: The use of \"thing\" is intended to be general enough to include universals and configurations (see https://groups.google.com/d/msg/information-ontology/GBxvYZCk1oc/-L6B5fSBBTQJ)."@en ,
+                                                                                          "Pier: 'data, information or knowledge'. OR 'representation'"@en ,
+                                                                                          """information_content_entity 'is_encoded_in' some digital_entity in obi before split (040907). information_content_entity 'is_encoded_in' some physical_document in obi before split (040907).
+
+Previous. An information content entity is a non-realizable information entity that 'is encoded in' some digital or physical entity."""@en ;
+                                             rdfs:label "information content entity" ,
+                                                        "information content entity"@en .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000033
+<http://purl.obolibrary.org/obo/IAO_0000033> rdf:type owl:Class ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "An information content entity whose concretizations indicate to their bearer how to realize them in a process."@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000116> "2009-03-16: provenance: a term realizable information entity was proposed for OBI (OBI_0000337) , edited by the PlanAndPlannedProcess branch. Original definition was  \"is the specification of a process that can be concretized and realized by an actor\" with alternative term  \"instruction\".It has been subsequently moved to IAO where the objective for which the original term was defined was satisfied with the definitionof this, different, term."@en ,
+                                                                                          "2013-05-30 Alan Ruttenberg: What differentiates a directive information entity from an information concretization is that it can have concretizations that are either qualities or realizable entities. The concretizations that are realizable entities are created when an individual chooses to take up the direction, i.e. has the intention to (try to) realize it."@en ,
+                                                                                          "8/6/2009 Alan Ruttenberg: Changed label from \"information entity about a realizable\" after discussions at ICBO"@en ,
+                                                                                          "Werner pushed back on calling it realizable information entity as it isn't realizable. However this name isn't right either. An example would be a recipe. The realizable entity would be a plan, but the information entity isn't about the plan, it, once concretized, *is* the plan. -Alan"@en ;
+                                             rdfs:label "directive information entity"@en .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000098
+<http://purl.obolibrary.org/obo/IAO_0000098> rdf:type owl:Class ;
+                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/IAO_0000033> ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> """A data format specification is the information content borne by the document published defining the specification.
+Example: The ISO document specifying what encompasses an XML document; The instructions in a XSD file"""@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000116> """2009-03-16: provenance: term imported from OBI_0000187, which had original definition \"A data format specification is a plan which organizes
+information. Example: The ISO document specifying what encompasses an
+XML document; The instructions in a XSD file\""""@en ;
+                                             rdfs:label "data format specification"@en .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000129
+<http://purl.obolibrary.org/obo/IAO_0000129> rdf:type owl:Class ;
+                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/IAO_0000028> ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "A version number is an information content entity which is a sequence of characters borne by part of each of a class of manufactured products or its packaging and indicates its order within a set of other products having the same name."@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000116> "Note: we feel that at the moment we are happy with a general version number, and that we will subclass as needed in the future. For example, see 7. genome sequence version"@en ;
+                                             rdfs:label "version number"@en .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000300
+<http://purl.obolibrary.org/obo/IAO_0000300> rdf:type owl:Class ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000112> "Words, sentences, paragraphs, and the written (non-figure) parts of publications are all textual entities"@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "A textual entity is a part of a manifestation (FRBR sense), a generically dependent continuant whose concretizations are patterns of glyphs intended to be interpreted as words, formulas, etc."@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000116> "AR, (IAO call 2009-09-01): a document as a whole is not typically a textual entity, because it has pictures in it - rather there are parts of it that are textual entities. Examples: The title, paragraph 2 sentence 7, etc."@en ,
+                                                                                          "MC, 2009-09-14 (following IAO call 2009-09-01): textual entities live at the FRBR (http://en.wikipedia.org/wiki/Functional_Requirements_for_Bibliographic_Records) manifestation level. Everything is significant: line break, pdf and html versions of same document are different textual entities."@en ;
+                                             rdfs:label "textual entity"@en .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000310
+<http://purl.obolibrary.org/obo/IAO_0000310> rdf:type owl:Class ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000112> "A journal article, patent application, laboratory notebook, or a book"@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "A collection of information content entities intended to be understood together as a whole"@en ;
+                                             rdfs:label "document"@en .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000578
+<http://purl.obolibrary.org/obo/IAO_0000578> rdf:type owl:Class ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000112> "The sentence \"The article has Pubmed ID 12345.\" contains a CRID that has two parts: one part is the CRID symbol, which is '12345'; the other part denotes the CRID registry, which is Pubmed."@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "An information content entity that consists of a CRID symbol and additional information about the CRID registry to which it belongs."@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000116> "2014-05-05: In defining this term we take no position on what the CRID denotes. In particular do not assume it denotes a *record* in the CRID registry (since the registry might not have 'records')."@en ,
+                                                                                          "Alan, IAO call 20101124: potentially the CRID denotes the instance it was associated with during creation."@en ,
+                                                                                          "Note, IAO call 20101124: URIs are not always CRID, as not centrally registered. We acknowledge that CRID is a subset of a larger identifier class, but this subset fulfills our current needs. OBI PURLs are CRID as they are registered with OCLC. UPCs (Universal Product Codes from AC Nielsen)are not CRID as they are not centrally registered."@en ;
+                                             rdfs:label "centrally registered identifier"@en .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000605
+<http://purl.obolibrary.org/obo/IAO_0000605> rdf:type owl:Class ;
+                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/IAO_0000300> ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000112> """From Shiba et al. Acta Neuropathol Commun. 2013; 1: 45. (http://www.ncbi.nlm.nih.gov/pmc/articles/PMC3893467/):
+
+BAC: Bacterial artificial chromosome; CR: Calretinin; GFAP: Glial fibrillary acidic protein; MAP: Microtubule-associated protein; MRI: Magnetic resonance imaging; NSC: Neural stem cell; PDA: Patent ductus arteriosus; PMG: Polymicrogyria; PNH: Periventricular nodular heterotopia; VSD: Ventricular septal defect."""@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "A textual entity listing abbreviations and their expansions that are used in a document."@en ;
+                                             rdfs:label "abbreviation textual entity"@en .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000629
+<http://purl.obolibrary.org/obo/IAO_0000629> rdf:type owl:Class ;
+                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/IAO_0000300> ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000112> """From: Fu and Lin. Identification of gene-oriented exon orthology between human and mouse. BMC Genomics. 2012; 13(Suppl 1): S10. (http://www.ncbi.nlm.nih.gov/pmc/articles/PMC3303729/):
+
+Exon orthology; alternative splicing; exon duplication; intron-exon structure."""@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "A textual entity listing keywords indicating the major theme(s) of a document."@en ;
+                                             rdfs:label "keyword textual entity"@en .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000642
+<http://purl.obolibrary.org/obo/IAO_0000642> rdf:type owl:Class ;
+                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/IAO_0000300> ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000112> """From Qi et al. BMC Bioinformatics. 2014; 15: 11. (http://www.ncbi.nlm.nih.gov/pmc/articles/PMC3897912/):
+
+• Operating systems: Platform independent
+
+• Programming language: Matlab, R, Python
+
+• Other requirements: None
+
+• License: GNU GPL v3
+
+• Any restrictions to use by non-academics: None"""@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "A textual entity that expresses the requirements necessary to use a resource, e.g. software."@en ;
+                                             rdfs:label "requirements textual entity"@en .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0020000
+<http://purl.obolibrary.org/obo/IAO_0020000> rdf:type owl:Class ;
+                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/IAO_0000030> ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "An information content entity that is the outcome of a dubbing process and is used to refer to one instance of entity shared by a group of people to refer to that individual entity."@en ;
+                                             rdfs:label "identifier"@en .
+
+
+###  http://www.ebi.ac.uk/swo/SWO_0000002
+<http://www.ebi.ac.uk/swo/SWO_0000002> rdf:type owl:Class ;
+                                       rdfs:subClassOf <http://purl.obolibrary.org/obo/IAO_0000030> ;
+                                       <http://purl.obolibrary.org/obo/IAO_0000115> "A licence is a legal instrument (usually by way of contract law, with or without printed material) governing the use or redistribution of the resource containing the licence." ;
+                                       rdfs:label "licence"@en ,
+                                                  "software license" .
+
+
+###  https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000030
+<https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000030> rdf:type owl:Class ;
+                                                      rdfs:subClassOf <http://purl.obolibrary.org/obo/IAO_0000310> ;
+                                                      rdfs:label "source code repository"@en ;
+                                                      <http://www.w3.org/2004/02/skos/core#definition> "A document that organizes and stores source code files, associated metadata, and version history to facilitate the management, sharing, and collaborative development of software projects. It serves as a structured collection of information that tracks changes, maintains integrity, and supports workflows such as version control, branching, and merging." .
+
+
+###  https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000100
+<https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000100> rdf:type owl:Class ;
+                                                      rdfs:subClassOf <http://purl.obolibrary.org/obo/IAO_0000030> ;
+                                                      rdfs:label "academic discipline"@en ;
+                                                      <http://www.w3.org/2004/02/skos/core#definition> "An information content entity that specifies the subject area, domain or academic discipline of an entity. An academic discipline, a research field or domain of an entity, e.g. a domain of a data portal or a field of study of a person."@en .
+
+
+###  https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000123
+<https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000123> rdf:type owl:Class ;
+                                                      rdfs:label "data portal"@en ;
+                                                      <http://www.w3.org/2004/02/skos/core#definition> "A website that serves as a centralized platform for accessing, managing, and sharing datasets, information, or resources related to a specific topic, theme, or domain."@en .
+
+
+###  https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000145
+<https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000145> rdf:type owl:Class ;
+                                                      rdfs:subClassOf <http://purl.obolibrary.org/obo/IAO_0000033> ;
+                                                      rdfs:label "media type"@en ;
+                                                      <http://www.w3.org/2004/02/skos/core#definition> "A directive information entity that describes a media type a bearer has."@en .
+
+
+###  https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000206
+<https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000206> rdf:type owl:Class ;
+                                                      rdfs:subClassOf <http://purl.obolibrary.org/obo/IAO_0000310> ;
+                                                      rdfs:label "standard"@en ;
+                                                      <http://www.w3.org/2004/02/skos/core#definition> "A specification that establishes a set of guidelines, criteria, or norms recognized and adopted by internationational community."@en .
+
+
+###  https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0001001
+<https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0001001> rdf:type owl:Class ;
+                                                      rdfs:subClassOf <http://purl.obolibrary.org/obo/IAO_0000300> ;
+                                                      rdfs:label "citation"@en ;
+                                                      <http://www.w3.org/2004/02/skos/core#definition> "A textual entity intended to identify a particular publication." .
+
+
+###  https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0001017
+<https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0001017> rdf:type owl:Class ;
+                                                      rdfs:label "export format specification"@en ;
+                                                      <http://www.w3.org/2004/02/skos/core#definition> "A directive information entity that defines the structural, syntactic, and encoding rules for representing data when it is exported from a system."@en .
+
+
+###  https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0001018
+<https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0001018> rdf:type owl:Class ;
+                                                      rdfs:subClassOf <http://purl.obolibrary.org/obo/IAO_0000300> ;
+                                                      rdfs:label "textual description"@en ;
+                                                      <http://www.w3.org/2004/02/skos/core#definition> "A textual entity that describe some resource."@en .
+
+
+###  https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0001019
+<https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0001019> rdf:type owl:Class ;
+                                                      rdfs:subClassOf <http://purl.obolibrary.org/obo/IAO_0000300> ;
+                                                      rdfs:label "title"@en ;
+                                                      <http://www.w3.org/2004/02/skos/core#definition> "A textual entity that denotes some resource."@en .
+
+
+###  https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0001037
+<https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0001037> rdf:type owl:Class ;
+                                                      rdfs:subClassOf <http://purl.obolibrary.org/obo/IAO_0000578> ;
+                                                      rdfs:label "digital object identifier"@en ;
+                                                      <http://www.w3.org/2004/02/skos/core#definition> "A Digital Object Identifier (DOI) is a centrally registered identifier that provides a unique, persistent reference to digital objects such as publications, datasets, and software, ensuring reliable access and citation." .
+
+
+###  https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0001102
+<https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0001102> rdf:type owl:Class ;
+                                                      rdfs:subClassOf <http://purl.obolibrary.org/obo/IAO_0000300> ;
+                                                      rdfs:label "affiliation"@en ;
+                                                      <http://www.w3.org/2004/02/skos/core#definition> "An affiliation is a textual entity that specifies the organizational or institutional association of an individual, group, or entity, typically used in academic, professional, or research contexts." .
+
+
+###  https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0001210
+<https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0001210> rdf:type owl:Class ;
+                                                      rdfs:subClassOf <https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000123> ;
+                                                      rdfs:label "software repository"@en ;
+                                                      <http://www.w3.org/2004/02/skos/core#definition> "A Software Repository is a data portal designed to store, manage, and distribute software packages, source code, and related documentation for research, development, and deployment purposes." .
+
+
+###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

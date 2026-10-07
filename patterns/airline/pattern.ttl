@@ -1,0 +1,113 @@
+@prefix : <file:/C:/Users/eno/Documents/Git_repo/ebrahimnorouzi_github/ISE-FIZKarlsruhe/ontoboard/protege-plugin/../patterns/airline/pattern.owl#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@base <file:/C:/Users/eno/Documents/Git_repo/ebrahimnorouzi_github/ISE-FIZKarlsruhe/ontoboard/protege-plugin/../patterns/airline/pattern.owl> .
+
+<file:/C:/Users/eno/Documents/Git_repo/ebrahimnorouzi_github/ISE-FIZKarlsruhe/ontoboard/protege-plugin/../patterns/airline/pattern.owl> rdf:type owl:Ontology ;
+                                                                                                                                         owl:imports <file:/schemas/cpannotationschema.owl> ;
+                                                                                                                                         <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#extractedFrom> <http://dbpedia.org/> ,
+                                                                                                                                                                                                                              <http://en.wikipedia.org/> ;
+                                                                                                                                         <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasAuthor> "Aldo Gangemi" ,
+                                                                                                                                                                                                                          "Andrea Giovanni Nuzzolese" ,
+                                                                                                                                                                                                                          "Valentina Presutti" ;
+                                                                                                                                         <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> "To represent the encyclopedic knowledge expressed by an object typed as Airline" ;
+                                                                                                                                         rdfs:comment "Airline Encyclopedic Knowledge Pattern" .
+
+#################################################################
+#    Annotation properties
+#################################################################
+
+###  file:/C:/Users/eno/Documents/Git_repo/ebrahimnorouzi_github/ISE-FIZKarlsruhe/ontoboard/protege-plugin/../patterns/airline/pattern.owl#hasAircraft
+:hasAircraft rdf:type owl:AnnotationProperty ;
+             rdfs:subPropertyOf <http://dbpedia.org/ontology/MeanOfTransportation> .
+
+
+###  http://dbpedia.org/ontology/MeanOfTransportation
+<http://dbpedia.org/ontology/MeanOfTransportation> rdf:type owl:AnnotationProperty ;
+                                                   rdfs:comment "Relation between Airline and Aircraft"@en ,
+                                                                "Relazione tra Airline e Aircraft"@it ;
+                                                   rdfs:label "has Aircraft"@en .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#extractedFrom
+<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#extractedFrom> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasAuthor
+<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasAuthor> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent
+<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> rdf:type owl:AnnotationProperty .
+
+
+#################################################################
+#    Object Properties
+#################################################################
+
+###  file:/C:/Users/eno/Documents/Git_repo/ebrahimnorouzi_github/ISE-FIZKarlsruhe/ontoboard/protege-plugin/../patterns/airline/pattern.owl#hasAircraft
+:hasAircraft rdf:type owl:ObjectProperty ;
+             rdfs:domain <http://dbpedia.org/ontology/Airline> ;
+             rdfs:range <http://dbpedia.org/ontology/Aircraft> .
+
+
+#################################################################
+#    Classes
+#################################################################
+
+###  http://dbpedia.org/ontology/Aircraft
+<http://dbpedia.org/ontology/Aircraft> rdf:type owl:Class ;
+                                       rdfs:label "aircraft"@en ,
+                                                  "avion"@fr ,
+                                                  "αεροσκάφος"@el .
+
+
+###  http://dbpedia.org/ontology/Airline
+<http://dbpedia.org/ontology/Airline> rdf:type owl:Class ;
+                                      rdfs:subClassOf <http://org.semanticweb.owlapi/error#Error1> ,
+                                                      <http://org.semanticweb.owlapi/error#Error2> ,
+                                                      <http://org.semanticweb.owlapi/error#Error3> ,
+                                                      <http://org.semanticweb.owlapi/error#Error4> ,
+                                                      <http://org.semanticweb.owlapi/error#Error5> ,
+                                                      <http://org.semanticweb.owlapi/error#Error6> ;
+                                      rdfs:label "airline"@en ,
+                                                 "compagnie aérienne"@fr .
+
+
+###  http://org.semanticweb.owlapi/error#Error1
+<http://org.semanticweb.owlapi/error#Error1> rdf:type owl:Class .
+
+
+###  http://org.semanticweb.owlapi/error#Error2
+<http://org.semanticweb.owlapi/error#Error2> rdf:type owl:Class .
+
+
+###  http://org.semanticweb.owlapi/error#Error3
+<http://org.semanticweb.owlapi/error#Error3> rdf:type owl:Class .
+
+
+###  http://org.semanticweb.owlapi/error#Error4
+<http://org.semanticweb.owlapi/error#Error4> rdf:type owl:Class .
+
+
+###  http://org.semanticweb.owlapi/error#Error5
+<http://org.semanticweb.owlapi/error#Error5> rdf:type owl:Class .
+
+
+###  http://org.semanticweb.owlapi/error#Error6
+<http://org.semanticweb.owlapi/error#Error6> rdf:type owl:Class .
+
+
+#################################################################
+#    Annotations
+#################################################################
+
+:hasAircraft rdfs:label "has Aircraft"@en ;
+             rdfs:comment "Relazione tra Airline e Aircraft"@it ,
+                          "Relation between Airline and Aircraft"@en .
+
+
+###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

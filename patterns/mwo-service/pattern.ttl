@@ -1,0 +1,205 @@
+@prefix : <https://ontoboard.org/patterns/mwo-service.owl#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@base <https://ontoboard.org/patterns/mwo-service.owl> .
+
+<https://ontoboard.org/patterns/mwo-service.owl> rdf:type owl:Ontology .
+
+#################################################################
+#    Annotation properties
+#################################################################
+
+###  http://purl.obolibrary.org/obo/IAO_0000112
+<http://purl.obolibrary.org/obo/IAO_0000112> rdf:type owl:AnnotationProperty .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000115
+<http://purl.obolibrary.org/obo/IAO_0000115> rdf:type owl:AnnotationProperty .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000116
+<http://purl.obolibrary.org/obo/IAO_0000116> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.w3.org/2004/02/skos/core#definition
+<http://www.w3.org/2004/02/skos/core#definition> rdf:type owl:AnnotationProperty .
+
+
+#################################################################
+#    Object Properties
+#################################################################
+
+###  http://purl.obolibrary.org/obo/BFO_0000055
+<http://purl.obolibrary.org/obo/BFO_0000055> rdf:type owl:ObjectProperty ;
+                                             rdfs:label "realizes"@en ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "(Elucidation) realizes is a relation between a process b and realizable entity c such that c inheres in some d & for all t, if b has participant d then c exists & the type instantiated by b is correlated with the type instantiated by c"@en .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000136
+<http://purl.obolibrary.org/obo/IAO_0000136> rdf:type owl:ObjectProperty ;
+                                             owl:inverseOf <https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000226> ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000112> "This document is about information artifacts and their representations"@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "A (currently) primitive relation that relates an information artifact to an entity."@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000116> """7/6/2009 Alan Ruttenberg. Following discussion with Jonathan Rees, and introduction of \"mentions\" relation. Weaken the is_about relationship to be primitive. 
+
+We will try to build it back up by elaborating the various subproperties that are more precisely defined.
+
+Some currently missing phenomena that should be considered \"about\" are predications - \"The only person who knows the answer is sitting beside me\" , Allegory, Satire, and other literary forms that can be topical without explicitly mentioning the topic."""@en ;
+                                             rdfs:label "is about"@en .
+
+
+###  http://purl.obolibrary.org/obo/OBI_0000299
+<http://purl.obolibrary.org/obo/OBI_0000299> rdf:type owl:ObjectProperty ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "The inverse property of is specified output of" ;
+                                             rdfs:label "has specified output"@en .
+
+
+###  http://purl.obolibrary.org/obo/RO_0000057
+<http://purl.obolibrary.org/obo/RO_0000057> rdf:type owl:ObjectProperty ;
+                                            <http://purl.obolibrary.org/obo/IAO_0000112> "this blood coagulation has participant this blood clot"@en ,
+                                                                                         "this investigation has participant this investigator"@en ,
+                                                                                         "this process has participant this input material (or this output material)"@en ;
+                                            <http://purl.obolibrary.org/obo/IAO_0000115> "a relation between a process and a continuant, in which the continuant is somehow involved in the process"@en ;
+                                            <http://purl.obolibrary.org/obo/IAO_0000116> "Has_participant is a primitive instance-level relation between a process, a continuant, and a time at which the continuant participates in some way in the process. The relation obtains, for example, when this particular process of oxygen exchange across this particular alveolar membrane has_participant this particular sample of hemoglobin at this particular time."@en ;
+                                            rdfs:label "has participant"@en .
+
+
+###  http://purl.obolibrary.org/obo/RO_0002234
+<http://purl.obolibrary.org/obo/RO_0002234> rdf:type owl:ObjectProperty ;
+                                            rdfs:subPropertyOf <http://purl.obolibrary.org/obo/RO_0000057> ;
+                                            <http://purl.obolibrary.org/obo/IAO_0000115> "p has output c iff c is a participant in p, c is present at the end of p, and c is not present in the same state at the beginning of p." ;
+                                            rdfs:label "has output"@en .
+
+
+###  https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000226
+<https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000226> rdf:type owl:ObjectProperty ;
+                                                      rdfs:label "is subject of"@en ;
+                                                      <http://www.w3.org/2004/02/skos/core#definition> "inverse of the relation 'is about'" .
+
+
+#################################################################
+#    Classes
+#################################################################
+
+###  http://purl.obolibrary.org/obo/BFO_0000141
+<http://purl.obolibrary.org/obo/BFO_0000141> rdf:type owl:Class ;
+                                             rdfs:label "immaterial entity"@en ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "b is an immaterial entity =Def b is an independent continuant which is such that there is no time t when it has a material entity as continuant part"@en .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000104
+<http://purl.obolibrary.org/obo/IAO_0000104> rdf:type owl:Class ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000112> "PMID: 18323827.Nat Med. 2008 Mar;14(3):226.New plan proposed to help resolve conflicting medical advice."@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "A directive information entity with action specifications and objective specifications as parts, and that may be concretized as a realizable entity that, if realized, is realized in a process in which the bearer tries to achieve the objectives by taking the actions specified."@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000116> "2009-03-16: provenance: a term a plan was proposed for OBI (OBI_0000344) , edited by the PlanAndPlannedProcess branch. Original definition was \" a plan is a specification of a process that is realized by an actor to achieve the objective specified as part of the plan\". It has been subsequently moved to IAO where the objective for which the original term was defined was satisfied with the definitionof this, different, term."@en ,
+                                                                                          "2014-03-31: A plan specification can have other parts, such as conditional specifications."@en ,
+                                                                                          "2022-01-16 Updated definition to that proposed by Clint Dowloand, IAO Issue 231."@en ,
+                                                                                          "Alternative previous definition: a plan is a set of instructions that specify how an objective should be achieved"@en ;
+                                             rdfs:label "plan specification"@en .
+
+
+###  http://purl.obolibrary.org/obo/OBI_0000245
+<http://purl.obolibrary.org/obo/OBI_0000245> rdf:type owl:Class ;
+                                             rdfs:subClassOf <https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000102> ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000112> "PMID: 16353909.AAPS J. 2005 Sep 22;7(2):E274-80. Review. The joint food and agriculture organization of the United Nations/World Health Organization Expert Committee on Food Additives and its role in the evaluation of the safety of veterinary drug residues in foods."@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "An entity that can bear roles, has members, and has a set of organization rules. Members of organizations are either organizations themselves or individual people. Members can bear specific organization member roles that are determined in the organization rules. The organization rules also determine how decisions are made on behalf of the organization by the organization members."@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000116> """BP: The definition summarizes long email discussions on the OBI developer, roles, biomaterial and denrie branches. It leaves open if an organization is a material entity or a dependent continuant, as no consensus was reached on that.  The current placement as material is therefore temporary, in order to move forward with development. Here is the entire email summary, on which the definition is based:
+
+1) there are organization_member_roles (president, treasurer, branch
+editor), with individual persons as bearers
+
+2) there are organization_roles (employer, owner, vendor, patent holder)
+
+3) an organization has a charter / rules / bylaws, which specify what roles
+there are, how they should be realized, and how to modify the
+charter/rules/bylaws themselves.
+
+It is debatable what the organization itself is (some kind of dependent
+continuant or an aggregate of people). This also determines who/what the
+bearer of organization_roles' are. My personal favorite is still to define
+organization as a kind of 'legal entity', but thinking it through leads to
+all kinds of questions that are clearly outside the scope of OBI.
+
+Interestingly enough, it does not seem to matter much where we place
+organization itself, as long as we can subclass it (University, Corporation,
+Government Agency, Hospital), instantiate it (Affymetrix, NCBI, NIH, ISO,
+W3C, University of Oklahoma), and have it play roles.
+
+This leads to my proposal: We define organization through the statements 1 -
+3 above, but without an 'is a' statement for now. We can leave it in its
+current place in the is_a hierarchy (material entity) or move it up to
+'continuant'. We leave further clarifications to BFO, and close this issue
+for now."""@en ;
+                                             rdfs:label "organization"@en .
+
+
+###  https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000101
+<https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000101> rdf:type owl:Class ;
+                                                      rdfs:label "service process"@en ;
+                                                      <http://www.w3.org/2004/02/skos/core#definition> "A process that organizes activities and resources to deliver a specific service, ensuring its efficiency, reliability, and alignment with intended goals."@en .
+
+
+###  https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000102
+<https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000102> rdf:type owl:Class ;
+                                                      rdfs:label "agent"@en ;
+                                                      <http://www.w3.org/2004/02/skos/core#definition> "An independent continuant that acts autonomously and is entrusted with the authority to represent, negotiate, or act on behalf of another agent."@en .
+
+
+###  https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000122
+<https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000122> rdf:type owl:Class ;
+                                                      rdfs:subClassOf <https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000101> ;
+                                                      rdfs:label "data curation service"@en ;
+                                                      <http://www.w3.org/2004/02/skos/core#definition> "The activity of managing and promoting the use of data from their point of creation to ensure that they are fit for contemporary purpose and available for discovery and reuse. For dynamic datasets this may mean continuous enrichment or updating to keep them fit for purpose. Higher levels of curation will also involve links with annotation and with other published materials"@en .
+
+
+###  https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000210
+<https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000210> rdf:type owl:Class ;
+                                                      rdfs:subClassOf <https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000101> ;
+                                                      rdfs:label "storage service"@en ;
+                                                      <http://www.w3.org/2004/02/skos/core#definition> "Provision of storage space for research data as a service to external users. Access is possible via web protocols."@en .
+
+
+###  https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000214
+<https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000214> rdf:type owl:Class ;
+                                                      rdfs:subClassOf <https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000101> ;
+                                                      rdfs:label "support service"@en ;
+                                                      <http://www.w3.org/2004/02/skos/core#definition> "Service with direct user contact for topics going beyond the support for specific single services."@en .
+
+
+###  https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000219
+<https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000219> rdf:type owl:Class ;
+                                                      rdfs:subClassOf <https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000101> ;
+                                                      rdfs:label "training service"@en ;
+                                                      <http://www.w3.org/2004/02/skos/core#definition> "Standalone training for self-study can be considered a technical service (usually a web application). Generally speaking, training materials often come in the form of specific measures or tutorials that are attached to a service and that are designed to improve the user’s service experience. Our joint understanding of training as a stand-alone service, however, is not limited to the above and includes materials designed for education in all fields of research data management."@en .
+
+
+###  https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000228
+<https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000228> rdf:type owl:Class ;
+                                                      rdfs:label "service product role"@en ;
+                                                      <http://www.w3.org/2004/02/skos/core#definition> "Role of an immaterial entity that facilitates the delivery or support of a service product, ensuring its proper execution and value realization."@en .
+
+
+###  https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000230
+<https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000230> rdf:type owl:Class ;
+                                                      rdfs:label "service provider role"@en ;
+                                                      <http://www.w3.org/2004/02/skos/core#definition> "A role inherent in an agent that is realized when delivering services, managing processes, and ensuring the effective fulfillment of service product requirements."@en .
+
+
+###  https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000232
+<https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000232> rdf:type owl:Class ;
+                                                      rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000141> ;
+                                                      rdfs:label "service product"@en ;
+                                                      <http://www.w3.org/2004/02/skos/core#definition> "An immaterial entity that provides value through a service offering, delivering intangible benefits or functionality designed to fulfill specific needs or requirements, often in a structured process."@en .
+
+
+###  https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000244
+<https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000244> rdf:type owl:Class ;
+                                                      rdfs:subClassOf <http://purl.obolibrary.org/obo/IAO_0000104> ;
+                                                      rdfs:label "service specification"@en ;
+                                                      <http://www.w3.org/2004/02/skos/core#definition> "A plan specification that defines the requirements, features, and parameters of a service, outlining its scope, performance, and delivery criteria."@en .
+
+
+###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

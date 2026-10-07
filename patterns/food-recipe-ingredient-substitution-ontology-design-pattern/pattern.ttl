@@ -1,0 +1,234 @@
+@prefix : <http://semantic.cs.put.poznan.pl/ontologies/food_ingredient_substitutes#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@base <http://semantic.cs.put.poznan.pl/ontologies/food_ingredient_substitutes> .
+
+<http://semantic.cs.put.poznan.pl/ontologies/food_ingredient_substitutes> rdf:type owl:Ontology ;
+                                                                           owl:versionIRI <http://semantic.cs.put.poznan.pl/ontologies/food_ingredient_substitutes/1.1.0> ;
+                                                                           owl:imports <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl> .
+
+#################################################################
+#    Datatypes
+#################################################################
+
+###  http://www.w3.org/2001/XMLSchema#anyType
+xsd:anyType rdf:type rdfs:Datatype .
+
+
+#################################################################
+#    Object Properties
+#################################################################
+
+###  http://semantic.cs.put.poznan.pl/ontologies/food_ingredient_substitutes#has_component
+:has_component rdf:type owl:ObjectProperty .
+
+
+###  http://semantic.cs.put.poznan.pl/ontologies/food_ingredient_substitutes#has_member
+:has_member rdf:type owl:ObjectProperty .
+
+
+###  http://semantic.cs.put.poznan.pl/ontologies/food_ingredient_substitutes#has_part
+:has_part rdf:type owl:ObjectProperty .
+
+
+###  http://semantic.cs.put.poznan.pl/ontologies/food_ingredient_substitutes#has_quality
+:has_quality rdf:type owl:ObjectProperty .
+
+
+###  http://semantic.cs.put.poznan.pl/ontologies/food_ingredient_substitutes#is_about
+:is_about rdf:type owl:ObjectProperty .
+
+
+###  http://semantic.cs.put.poznan.pl/ontologies/food_ingredient_substitutes#is_quality_measure_of
+:is_quality_measure_of rdf:type owl:ObjectProperty .
+
+
+#################################################################
+#    Data properties
+#################################################################
+
+###  http://semantic.cs.put.poznan.pl/ontologies/food_ingredient_substitutes#has_quantity
+:has_quantity rdf:type owl:DatatypeProperty .
+
+
+###  http://semantic.cs.put.poznan.pl/ontologies/food_ingredient_substitutes#has_unit
+:has_unit rdf:type owl:DatatypeProperty .
+
+
+#################################################################
+#    Classes
+#################################################################
+
+###  http://semantic.cs.put.poznan.pl/ontologies/food_ingredient_substitutes#action_specification
+:action_specification rdf:type owl:Class .
+
+
+###  http://semantic.cs.put.poznan.pl/ontologies/food_ingredient_substitutes#condition
+:condition rdf:type owl:Class ;
+           rdfs:subClassOf :proposition .
+
+
+###  http://semantic.cs.put.poznan.pl/ontologies/food_ingredient_substitutes#cultural_condition
+:cultural_condition rdf:type owl:Class ;
+                    rdfs:subClassOf :condition .
+
+
+###  http://semantic.cs.put.poznan.pl/ontologies/food_ingredient_substitutes#data_item
+:data_item rdf:type owl:Class ;
+           rdfs:subClassOf [ rdf:type owl:Restriction ;
+                             owl:onProperty :is_quality_measure_of ;
+                             owl:someValuesFrom :quality
+                           ] ,
+                           [ rdf:type owl:Restriction ;
+                             owl:onProperty :has_quantity ;
+                             owl:someValuesFrom xsd:anyType
+                           ] ,
+                           [ rdf:type owl:Restriction ;
+                             owl:onProperty :has_unit ;
+                             owl:someValuesFrom xsd:anyType
+                           ] .
+
+
+###  http://semantic.cs.put.poznan.pl/ontologies/food_ingredient_substitutes#data_set
+:data_set rdf:type owl:Class .
+
+
+###  http://semantic.cs.put.poznan.pl/ontologies/food_ingredient_substitutes#dietary_condition
+:dietary_condition rdf:type owl:Class ;
+                   rdfs:subClassOf :condition .
+
+
+###  http://semantic.cs.put.poznan.pl/ontologies/food_ingredient_substitutes#dietary_quality
+:dietary_quality rdf:type owl:Class ;
+                 rdfs:subClassOf :quality .
+
+
+###  http://semantic.cs.put.poznan.pl/ontologies/food_ingredient_substitutes#food_item
+:food_item rdf:type owl:Class ;
+           rdfs:subClassOf [ rdf:type owl:Restriction ;
+                             owl:onProperty :has_quality ;
+                             owl:someValuesFrom :quality
+                           ] .
+
+
+###  http://semantic.cs.put.poznan.pl/ontologies/food_ingredient_substitutes#food_recipe
+:food_recipe rdf:type owl:Class ;
+             rdfs:subClassOf :plan_specification ,
+                             [ rdf:type owl:Restriction ;
+                               owl:onProperty :has_component ;
+                               owl:someValuesFrom <http://semantic.cs.put.poznan.pl/ontologies/food_ingredient_substitutes#ingredient_set_(specification)>
+                             ] ,
+                             [ rdf:type owl:Restriction ;
+                               owl:onProperty :has_component ;
+                               owl:someValuesFrom <http://semantic.cs.put.poznan.pl/ontologies/food_ingredient_substitutes#instruction_set_(specification)>
+                             ] .
+
+
+###  http://semantic.cs.put.poznan.pl/ontologies/food_ingredient_substitutes#ingredient_set_transformation_specification
+:ingredient_set_transformation_specification rdf:type owl:Class .
+
+
+###  http://semantic.cs.put.poznan.pl/ontologies/food_ingredient_substitutes#ingredient_specification
+:ingredient_specification rdf:type owl:Class ;
+                          rdfs:subClassOf [ rdf:type owl:Restriction ;
+                                            owl:onProperty :has_component ;
+                                            owl:someValuesFrom :data_item
+                                          ] ,
+                                          [ rdf:type owl:Restriction ;
+                                            owl:onProperty :is_about ;
+                                            owl:someValuesFrom :food_item
+                                          ] .
+
+
+###  http://semantic.cs.put.poznan.pl/ontologies/food_ingredient_substitutes#instruction_set_transformation_specification
+:instruction_set_transformation_specification rdf:type owl:Class .
+
+
+###  http://semantic.cs.put.poznan.pl/ontologies/food_ingredient_substitutes#objective
+:objective rdf:type owl:Class ;
+           rdfs:subClassOf :objective_specification .
+
+
+###  http://semantic.cs.put.poznan.pl/ontologies/food_ingredient_substitutes#objective_specification
+:objective_specification rdf:type owl:Class .
+
+
+###  http://semantic.cs.put.poznan.pl/ontologies/food_ingredient_substitutes#plan_specification
+:plan_specification rdf:type owl:Class .
+
+
+###  http://semantic.cs.put.poznan.pl/ontologies/food_ingredient_substitutes#proposition
+:proposition rdf:type owl:Class .
+
+
+###  http://semantic.cs.put.poznan.pl/ontologies/food_ingredient_substitutes#quality
+:quality rdf:type owl:Class .
+
+
+###  http://semantic.cs.put.poznan.pl/ontologies/food_ingredient_substitutes#step_specification
+:step_specification rdf:type owl:Class ;
+                    rdfs:subClassOf :action_specification .
+
+
+###  http://semantic.cs.put.poznan.pl/ontologies/food_ingredient_substitutes#tastiness_quality
+:tastiness_quality rdf:type owl:Class ;
+                   rdfs:subClassOf :quality .
+
+
+###  http://semantic.cs.put.poznan.pl/ontologies/food_ingredient_substitutes#technological_condition
+:technological_condition rdf:type owl:Class ;
+                         rdfs:subClassOf :condition .
+
+
+###  http://semantic.cs.put.poznan.pl/ontologies/food_ingredient_substitutes#technological_quality
+:technological_quality rdf:type owl:Class ;
+                       rdfs:subClassOf :quality .
+
+
+###  http://semantic.cs.put.poznan.pl/ontologies/food_ingredient_substitutes#food_recipe_ingredient_substitution_(specification)
+<http://semantic.cs.put.poznan.pl/ontologies/food_ingredient_substitutes#food_recipe_ingredient_substitution_(specification)> rdf:type owl:Class ;
+                                                                                                                              rdfs:subClassOf :plan_specification ,
+                                                                                                                                              [ rdf:type owl:Restriction ;
+                                                                                                                                                owl:onProperty :has_part ;
+                                                                                                                                                owl:someValuesFrom :condition
+                                                                                                                                              ] ,
+                                                                                                                                              [ rdf:type owl:Restriction ;
+                                                                                                                                                owl:onProperty :has_part ;
+                                                                                                                                                owl:someValuesFrom :food_recipe
+                                                                                                                                              ] ,
+                                                                                                                                              [ rdf:type owl:Restriction ;
+                                                                                                                                                owl:onProperty :has_part ;
+                                                                                                                                                owl:someValuesFrom :ingredient_set_transformation_specification
+                                                                                                                                              ] ,
+                                                                                                                                              [ rdf:type owl:Restriction ;
+                                                                                                                                                owl:onProperty :has_part ;
+                                                                                                                                                owl:someValuesFrom :instruction_set_transformation_specification
+                                                                                                                                              ] ,
+                                                                                                                                              [ rdf:type owl:Restriction ;
+                                                                                                                                                owl:onProperty :has_part ;
+                                                                                                                                                owl:someValuesFrom :objective
+                                                                                                                                              ] .
+
+
+###  http://semantic.cs.put.poznan.pl/ontologies/food_ingredient_substitutes#ingredient_set_(specification)
+<http://semantic.cs.put.poznan.pl/ontologies/food_ingredient_substitutes#ingredient_set_(specification)> rdf:type owl:Class ;
+                                                                                                         rdfs:subClassOf :data_set ,
+                                                                                                                         [ rdf:type owl:Restriction ;
+                                                                                                                           owl:onProperty :has_member ;
+                                                                                                                           owl:someValuesFrom :ingredient_specification
+                                                                                                                         ] .
+
+
+###  http://semantic.cs.put.poznan.pl/ontologies/food_ingredient_substitutes#instruction_set_(specification)
+<http://semantic.cs.put.poznan.pl/ontologies/food_ingredient_substitutes#instruction_set_(specification)> rdf:type owl:Class ;
+                                                                                                          rdfs:subClassOf :data_set ,
+                                                                                                                          [ rdf:type owl:Restriction ;
+                                                                                                                            owl:onProperty :has_member ;
+                                                                                                                            owl:someValuesFrom :step_specification
+                                                                                                                          ] .
+
+
+###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

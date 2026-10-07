@@ -1,0 +1,15 @@
+{
+  "id": "nfdi-dataset-description",
+  "name": "dataset",
+  "description": "A dataset (nfdi:NFDI_0000009) is described by value nodes reached with obo:IAO_0000235, composed with obo:BFO_0000051 (has part), and related to its subject matter with obo:IAO_0000136 (is about). Creators and affiliations are modelled as ordered list individuals rather than repeated literals.",
+  "category": "information",
+  "domain": "research-data",
+  "competency_questions": "Which datasets does NFDI-MatWerk provide, and under which licence?; Who created a given dataset, and at which organisation?; Which dataset is described by a given metadata standard?; Which datasets relate to a given material or academic discipline?",
+  "pattern_iri": "https://ontoboard.org/patterns/nfdi-dataset-description.owl",
+  "source": "https://nfdi.fiz-karlsruhe.de/matwerk/patterns/",
+  "collection": "nfdi",
+  "publisher": "nfdi.fiz-karlsruhe.de",
+  "extracted_from": "nfdi",
+  "class_count": 7,
+  "property_count": 4
+}

@@ -1,0 +1,89 @@
+@prefix : <https://ontoboard.org/patterns/nfdi-temporal-region.owl#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@base <https://ontoboard.org/patterns/nfdi-temporal-region.owl> .
+
+<https://ontoboard.org/patterns/nfdi-temporal-region.owl> rdf:type owl:Ontology .
+
+#################################################################
+#    Annotation properties
+#################################################################
+
+###  http://purl.obolibrary.org/obo/IAO_0000115
+<http://purl.obolibrary.org/obo/IAO_0000115> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.w3.org/2004/02/skos/core#definition
+<http://www.w3.org/2004/02/skos/core#definition> rdf:type owl:AnnotationProperty .
+
+
+#################################################################
+#    Object Properties
+#################################################################
+
+###  http://purl.obolibrary.org/obo/BFO_0000199
+<http://purl.obolibrary.org/obo/BFO_0000199> rdf:type owl:ObjectProperty ,
+                                                      owl:FunctionalProperty ;
+                                             rdfs:range <http://purl.obolibrary.org/obo/BFO_0000008> ;
+                                             rdfs:label "occupies temporal region"@en ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "p occupies temporal region t =Def p is a process or process boundary & the spatiotemporal region occupied by p temporally projects onto t"@en .
+
+
+###  http://purl.obolibrary.org/obo/BFO_0000222
+<http://purl.obolibrary.org/obo/BFO_0000222> rdf:type owl:ObjectProperty ,
+                                                      owl:FunctionalProperty ;
+                                             rdfs:domain <http://purl.obolibrary.org/obo/BFO_0000008> ;
+                                             rdfs:label "has first instant"@en ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "t has first instant t' =Def t' first instant of t"@en .
+
+
+###  http://purl.obolibrary.org/obo/BFO_0000224
+<http://purl.obolibrary.org/obo/BFO_0000224> rdf:type owl:ObjectProperty ,
+                                                      owl:FunctionalProperty ;
+                                             rdfs:domain <http://purl.obolibrary.org/obo/BFO_0000008> ;
+                                             rdfs:label "has last instant"@en ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "t has last instant t' =Def t' last instant of t"@en .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000235
+<http://purl.obolibrary.org/obo/IAO_0000235> rdf:type owl:ObjectProperty ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "inverse of the relation 'denotes'"@en ;
+                                             rdfs:label "denoted by"@en .
+
+
+#################################################################
+#    Classes
+#################################################################
+
+###  http://purl.obolibrary.org/obo/BFO_0000003
+<http://purl.obolibrary.org/obo/BFO_0000003> rdf:type owl:Class ;
+                                             rdfs:label "occurrent"@en ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "(Elucidation) An occurrent is an entity that unfolds itself in time or it is the start or end of such an entity or it is a temporal or spatiotemporal region"@en .
+
+
+###  http://purl.obolibrary.org/obo/BFO_0000008
+<http://purl.obolibrary.org/obo/BFO_0000008> rdf:type owl:Class ;
+                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000003> ;
+                                             rdfs:label "temporal region"@en ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "(Elucidation) A temporal region is an occurrent over which processes can unfold"@en .
+
+
+###  http://purl.obolibrary.org/obo/BFO_0000038
+<http://purl.obolibrary.org/obo/BFO_0000038> rdf:type owl:Class ;
+                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000008> ;
+                                             owl:disjointWith <http://purl.obolibrary.org/obo/BFO_0000148> ;
+                                             rdfs:label "one-dimensional temporal region"@en ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "(Elucidation) A one-dimensional temporal region is a temporal region that is a whole that has a temporal interval and zero or more temporal intervals and temporal instants as parts"@en .
+
+
+###  http://purl.obolibrary.org/obo/BFO_0000148
+<http://purl.obolibrary.org/obo/BFO_0000148> rdf:type owl:Class ;
+                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000008> ;
+                                             rdfs:label "zero-dimensional temporal region"@en ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "(Elucidation) A zero-dimensional temporal region is a temporal region that is a whole consisting of one or more separated temporal instants as parts"@en .
+
+
+###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

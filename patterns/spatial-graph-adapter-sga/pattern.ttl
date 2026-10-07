@@ -1,0 +1,198 @@
+@prefix : <http://www.semanticweb.org/holly2012/ontologies/2016/SGA_Pattern#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@base <http://www.semanticweb.org/holly2012/ontologies/2016/SGA_Pattern> .
+
+<http://www.semanticweb.org/holly2012/ontologies/2016/SGA_Pattern> rdf:type owl:Ontology .
+
+#################################################################
+#    Object Properties
+#################################################################
+
+###  http://www.semanticweb.org/holly2012/ontologies/2016/SGA_Pattern#hasAttribute
+:hasAttribute rdf:type owl:ObjectProperty .
+
+
+###  http://www.semanticweb.org/holly2012/ontologies/2016/SGA_Pattern#hasContextRelation
+:hasContextRelation rdf:type owl:ObjectProperty ;
+                    owl:inverseOf :refersTo .
+
+
+###  http://www.semanticweb.org/holly2012/ontologies/2016/SGA_Pattern#hasType
+:hasType rdf:type owl:ObjectProperty ;
+         rdfs:domain :Attribute ,
+                     :ContextualizedRelation ;
+         rdfs:range :Type .
+
+
+###  http://www.semanticweb.org/holly2012/ontologies/2016/SGA_Pattern#hasValue
+:hasValue rdf:type owl:ObjectProperty .
+
+
+###  http://www.semanticweb.org/holly2012/ontologies/2016/SGA_Pattern#refersTo
+:refersTo rdf:type owl:ObjectProperty ;
+          rdfs:comment "The refersTo relation is an inverse of hasContextRelation."@en .
+
+
+###  http://www.semanticweb.org/holly2012/ontologies/2016/SGA_Pattern#represents
+:represents rdf:type owl:ObjectProperty .
+
+
+#################################################################
+#    Classes
+#################################################################
+
+###  http://www.semanticweb.org/holly2012/ontologies/2016/SGA_Pattern#Attribute
+:Attribute rdf:type owl:Class ;
+           rdfs:subClassOf [ rdf:type owl:Restriction ;
+                             owl:onProperty :hasType ;
+                             owl:allValuesFrom :Type
+                           ] ,
+                           [ rdf:type owl:Restriction ;
+                             owl:onProperty :hasValue ;
+                             owl:allValuesFrom :Value
+                           ] ,
+                           [ rdf:type owl:Restriction ;
+                             owl:onProperty :hasType ;
+                             owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+                             owl:onClass :Type
+                           ] ,
+                           [ rdf:type owl:Restriction ;
+                             owl:onProperty :hasValue ;
+                             owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+                             owl:onClass :Value
+                           ] ,
+                           [ rdf:type owl:Restriction ;
+                             owl:onProperty [ owl:inverseOf :hasAttribute
+                                            ] ;
+                             owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+                             owl:onClass :SpatialInformationObject
+                           ] ;
+           rdfs:comment "Types and Values are needed for the semantics for the same types of spatial objects are labeled differently schema to schema. Attribute must have exactly one Value and exactly one Type. It must be attached to exactly one SpatialInformationObject. Note that it is possible for two different SpatialInformationObjects to have attributes of the same Type and Value."@en .
+
+
+###  http://www.semanticweb.org/holly2012/ontologies/2016/SGA_Pattern#ContextualizedRelation
+:ContextualizedRelation rdf:type owl:Class ;
+                        rdfs:subClassOf [ rdf:type owl:Restriction ;
+                                          owl:onProperty :refersTo ;
+                                          owl:someValuesFrom :SpatialInformationObject
+                                        ] ,
+                                        [ rdf:type owl:Restriction ;
+                                          owl:onProperty :hasType ;
+                                          owl:allValuesFrom :Type
+                                        ] ,
+                                        [ rdf:type owl:Restriction ;
+                                          owl:onProperty :hasValue ;
+                                          owl:allValuesFrom :Value
+                                        ] ,
+                                        [ rdf:type owl:Restriction ;
+                                          owl:onProperty :hasType ;
+                                          owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+                                          owl:onClass :Type
+                                        ] ,
+                                        [ rdf:type owl:Restriction ;
+                                          owl:onProperty :hasValue ;
+                                          owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+                                          owl:onClass :Value
+                                        ] ;
+                        rdfs:comment "Types and Values are needed for the semantics for the same types of spatial objects are labeled differently schema to schema. Attribute must have exactly one Value and exactly one Type. It must be attached to exactly one SpatialInformationObject. Note that it is possible for two different SpatialInformationObjects to have attributes of the same Type and Value. ContextualizedRelation must have exactly one Value and exactly one Type.  ContextualizedRelation refers to at least one SpatialInformationObject."@en .
+
+
+###  http://www.semanticweb.org/holly2012/ontologies/2016/SGA_Pattern#SpatialInformationObject
+:SpatialInformationObject rdf:type owl:Class ;
+                          rdfs:subClassOf [ rdf:type owl:Restriction ;
+                                            owl:onProperty :hasAttribute ;
+                                            owl:allValuesFrom :Attribute
+                                          ] ,
+                                          [ rdf:type owl:Restriction ;
+                                            owl:onProperty :hasContextRelation ;
+                                            owl:allValuesFrom :ContextualizedRelation
+                                          ] ,
+                                          [ rdf:type owl:Restriction ;
+                                            owl:onProperty :represents ;
+                                            owl:allValuesFrom :SpatialObject
+                                          ] ,
+                                          [ rdf:type owl:Restriction ;
+                                            owl:onProperty :represents ;
+                                            owl:qualifiedCardinality "1"^^xsd:nonNegativeInteger ;
+                                            owl:onClass :SpatialObject
+                                          ] ;
+                          rdfs:comment "A SpatialInformationObject may have Attribute and may have ContextualizedRelation. Since Attributes and ContextualizedRelations have different descriptions in different data schema, these model classes were also chosen to work for any of the schemas used by our domain tools."@en .
+
+
+###  http://www.semanticweb.org/holly2012/ontologies/2016/SGA_Pattern#SpatialObject
+:SpatialObject rdf:type owl:Class ;
+               rdfs:comment "An InformationObject represents exactly one SpatialObject."@en .
+
+
+###  http://www.semanticweb.org/holly2012/ontologies/2016/SGA_Pattern#Type
+:Type rdf:type owl:Class ;
+      rdfs:comment "Our use of hasType makes the model more amenable to resolving the large variation of schema differences that exist; instead of subclassing we consider types to be instances of individuals so that we are not burdened by the decision to say that something is a subtype or not. Doing so would cause more hierarchical confusion instead of help in terms of its application. Nevertheless, having typing through properties does not preclude us from adding in the function of such a hierarchy later on."@en .
+
+
+###  http://www.semanticweb.org/holly2012/ontologies/2016/SGA_Pattern#Value
+:Value rdf:type owl:Class .
+
+
+#################################################################
+#    General axioms
+#################################################################
+
+[ rdf:type owl:Restriction ;
+  owl:onProperty :hasAttribute ;
+  owl:someValuesFrom :Attribute ;
+  rdfs:subClassOf :SpatialInformationObject
+] .
+
+
+[ rdf:type owl:Restriction ;
+  owl:onProperty :hasContextRelation ;
+  owl:someValuesFrom :ContextualizedRelation ;
+  rdfs:subClassOf :SpatialInformationObject
+] .
+
+
+[ rdf:type owl:Restriction ;
+  owl:onProperty :hasType ;
+  owl:someValuesFrom :Type ;
+  rdfs:subClassOf [ rdf:type owl:Class ;
+                    owl:unionOf ( :Attribute
+                                  :ContextualizedRelation
+                                )
+                  ]
+] .
+
+
+[ rdf:type owl:Restriction ;
+  owl:onProperty :hasValue ;
+  owl:someValuesFrom :Value ;
+  rdfs:subClassOf [ rdf:type owl:Class ;
+                    owl:unionOf ( :Attribute
+                                  :ContextualizedRelation
+                                )
+                  ]
+] .
+
+
+[ rdf:type owl:Restriction ;
+  owl:onProperty :represents ;
+  owl:someValuesFrom :SpatialObject ;
+  rdfs:subClassOf :SpatialInformationObject
+] .
+
+
+[ rdf:type owl:AllDisjointClasses ;
+  owl:members ( :Attribute
+                :ContextualizedRelation
+                :SpatialInformationObject
+                :SpatialObject
+                :Type
+                :Value
+              )
+] .
+
+
+###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

@@ -1,0 +1,15 @@
+{
+  "id": "pmdco-relational-property",
+  "name": "Relational property",
+  "description": "Relational qualities hold between two or more entities rather than inhering in one. The example is a mass proportion relating a portion of iron to a metal sheet with a magnitude of 97.7 mass-%, expressed through a fraction value specification.",
+  "category": "structural",
+  "domain": "materials",
+  "competency_questions": "Which quality holds between two entities rather than inhering in one? Which entities does a relational quality relate? What fraction value and unit express a mass proportion?",
+  "pattern_iri": "https://ontoboard.org/patterns/pmdco-relational-property.owl",
+  "source": "https://materialdigital.github.io/core-ontology/docs/patterns.html",
+  "collection": "pmdco",
+  "publisher": "materialdigital.github.io",
+  "extracted_from": "pmdco",
+  "class_count": 12,
+  "property_count": 5
+}

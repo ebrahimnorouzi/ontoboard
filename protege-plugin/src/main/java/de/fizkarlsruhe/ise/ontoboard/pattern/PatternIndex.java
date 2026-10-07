@@ -46,8 +46,8 @@ public final class PatternIndex {
     /** The index, beside the pattern directories. */
     public static final String RESOURCE = PatternLibrary.DIRECTORY + "index.tsv";
 
-    /** Nine tab-separated columns. */
-    static final int COLUMNS = 9;
+    /** Ten tab-separated columns. */
+    static final int COLUMNS = 10;
 
     private PatternIndex() {
     }
@@ -69,7 +69,7 @@ public final class PatternIndex {
                 continue;
             }
             patterns.add(new DesignPattern(cells[0], cells[1], cells[2], cells[3], cells[4],
-                    cells[5], cells[6], cells[7], cells[8]));
+                    cells[5], cells[6], cells[7], cells[8], cells[9]));
         }
         return Collections.unmodifiableList(patterns);
     }
@@ -102,12 +102,14 @@ public final class PatternIndex {
 
         Map<String, Map<String, Object>> metadata = new LinkedHashMap<String, Map<String, Object>>();
         Map<String, String> signatures = new LinkedHashMap<String, String>();
+        Map<String, String> terms = new LinkedHashMap<String, String>();
         Map<String, String> declaredIris = new LinkedHashMap<String, String>();
         for (File directory : directories) {
             String id = directory.getName();
             metadata.put(id, metadataIn(new File(directory, "metadata.json")));
             OWLOntology ontology = load(new File(directory, "pattern.owl"));
             signatures.put(id, signatureOf(ontology));
+            terms.put(id, termsOf(ontology));
             declaredIris.put(id, ontologyIriOf(ontology));
         }
 
@@ -127,13 +129,14 @@ public final class PatternIndex {
             String forPublisher = declared.startsWith("file:") ? declaredIris.get(id) : declared;
             out.append(id).append('\t')
                .append(oneLine(text(one.get("name")), id)).append('\t')
-               .append(COLLECTION_ODP).append('\t')
-               .append(publisherOf(forPublisher)).append('\t')
+               .append(oneLine(text(one.get("collection")), COLLECTION_ODP)).append('\t')
+               .append(publisherFor(one, forPublisher)).append('\t')
                .append(oneLine(text(one.get("category")), "uncategorised")).append('\t')
                .append(oneLine(text(one.get("domain")), "general")).append('\t')
                .append(sameAs.containsKey(id) ? sameAs.get(id) : "").append('\t')
                .append(descriptionOf(one)).append('\t')
-               .append(oneLine(text(one.get("competency_questions")), "")).append('\n');
+               .append(oneLine(text(one.get("competency_questions")), "")).append('\t')
+               .append(terms.containsKey(id) ? terms.get(id) : "").append('\n');
         }
         return out.toString();
     }
@@ -154,7 +157,7 @@ public final class PatternIndex {
         "# The only number worth showing is the one read from the OWL file when it is opened.",
         "#",
         "# id\tname\tcollection\tpublisher\tcategory\tdomain\tsameAs\tdescription"
-                + "\tcompetencyQuestions",
+                + "\tcompetencyQuestions\tterms",
     };
 
     // ---------- the pieces, each testable on its own ----------
@@ -242,6 +245,20 @@ public final class PatternIndex {
                 ? oneLine(text(metadata.get("competency_questions")), "") : scenarios;
     }
 
+    /**
+     * Who published the pattern: what the metadata says, or the host of its own IRI.
+     *
+     * <p>Both, because the two kinds of entry answer the question differently. An ODP pattern
+     * declares the IRI it was published under, so the host of that IRI is the publisher. A
+     * pattern harvested from a documentation page has a module IRI this project minted, which
+     * says nothing about anybody - so the harvest records the publisher directly, and that is
+     * believed in preference to deriving nonsense from our own IRI.
+     */
+    static String publisherFor(Map<String, Object> metadata, String ownIri) {
+        String declared = oneLine(text(metadata.get("publisher")), "");
+        return declared.isEmpty() ? publisherOf(ownIri) : declared;
+    }
+
     /** The publisher, as the host of the IRI a pattern declares for itself. */
     static String publisherOf(String iri) {
         if (iri == null || iri.trim().isEmpty()) {
@@ -300,12 +317,90 @@ public final class PatternIndex {
         }
     }
 
+    /**
+     * Every IRI the pattern declares, sorted, space separated.
+     *
+     * <p>One string serving two purposes. As the {@code terms} column it is what the
+     * recommender matches against, which is the whole reason it exists: parsing all 123
+     * patterns to answer one question takes 24 seconds, and reading a column takes none. As a
+     * fingerprint it is what {@link #duplicatesIn} compares, and two patterns with the same
+     * sorted signature produce the same string whichever way it is written.
+     *
+     * <p>Space separated because an IRI cannot contain a space, so nothing needs escaping and
+     * the column stays readable.
+     */
     private static String signatureOf(OWLOntology ontology) {
         Set<String> iris = new TreeSet<String>();
         for (OWLEntity entity : ontology.getSignature(Imports.EXCLUDED)) {
             iris.add(entity.getIRI().toString());
         }
-        return iris.toString();
+        StringBuilder joined = new StringBuilder();
+        for (String iri : iris) {
+            if (joined.length() > 0) {
+                joined.append(' ');
+            }
+            joined.append(iri);
+        }
+        return joined.toString();
+    }
+
+    /**
+     * The classes and properties a pattern models, for the {@code terms} column.
+     *
+     * <p>Narrower than the signature on purpose, and both are needed. The signature is a
+     * fingerprint, so it has to be everything. This is evidence, so it has to be only what
+     * carries any: an annotation property is not modelling. Measured, the difference matters
+     * twice over. The column went from 451 KB to a fraction of it, and the recommender stopped
+     * offering {@code IAO_0000115} - "definition" - as a reason, which every OBO ontology has
+     * and which is as meaningless as matching {@code owl:Thing}.
+     *
+     * <p>Builtins are left out here as well, so the stored list is the one the recommender
+     * actually scores against rather than a list it has to filter on every call.
+     */
+    private static String termsOf(OWLOntology ontology) {
+        Set<String> iris = new TreeSet<String>();
+        for (OWLEntity entity : ontology.getSignature(Imports.EXCLUDED)) {
+            if (!(entity.isOWLClass() || entity.isOWLObjectProperty()
+                    || entity.isOWLDataProperty())) {
+                continue;
+            }
+            if (entity.isBuiltIn() || PatternRecommender.isBuiltin(entity.getIRI())) {
+                continue;
+            }
+            if (isLocalOrBroken(entity.getIRI().toString())) {
+                continue;
+            }
+            iris.add(entity.getIRI().toString());
+        }
+        StringBuilder joined = new StringBuilder();
+        for (String iri : iris) {
+            if (joined.length() > 0) {
+                joined.append(' ');
+            }
+            joined.append(iri);
+        }
+        return joined.toString();
+    }
+
+    /**
+     * Whether an IRI is one of this machine's paths, or a parse failure wearing an IRI.
+     *
+     * <p>Both occur, in the same pattern, and both had to be caught. {@code airline/pattern.owl}
+     * declares no usable ontology IRI, so its {@code hasAircraft} resolves against wherever the
+     * file happens to be - the index came out holding
+     * {@code file:/C:/Users/.../protege-plugin/../patterns/airline/pattern.owl#hasAircraft}. That
+     * is unreproducible by construction: the same checkout on another machine, or the same
+     * machine loading by a different relative path, generates a different index, and the test
+     * that rebuilds and compares would have failed on CI rather than here.
+     *
+     * <p>The same file is malformed - its DOCTYPE is missing a space - so the OWL API invents
+     * {@code http://org.semanticweb.owlapi/error#Error1} through {@code Error6} and puts them in
+     * the signature. Neither kind can ever match a term in somebody's ontology, so neither is
+     * evidence and neither belongs in a column that exists to supply evidence.
+     */
+    static boolean isLocalOrBroken(String iri) {
+        return iri.startsWith("file:/") || iri.startsWith("jar:")
+                || iri.startsWith("http://org.semanticweb.owlapi/error#");
     }
 
     private static String ontologyIriOf(OWLOntology ontology) {

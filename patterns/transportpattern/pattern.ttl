@@ -1,0 +1,74 @@
+@prefix : <http://www.descartes-core.org/patterns/owl/transportPattern#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@base <http://www.descartes-core.org/patterns/owl/transportPattern> .
+
+<http://www.descartes-core.org/patterns/owl/transportPattern> rdf:type owl:Ontology ;
+                                                               owl:imports <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl> ;
+                                                               <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> "What is the extent of a point source pollution event? Where did a voyage begin, and where did it end?"^^xsd:string ;
+                                                               <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences> "This CP allows data modellers and ontology creators the ability to filter and categorise large geoscience data stores."^^xsd:string ;
+                                                               <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> "To reduce dimensionality of large data collections."^^xsd:string ;
+                                                               <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#relatedCPs> "No known CPs at this time."^^xsd:string ;
+                                                               <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios> "The rive water has pollution from a location, after a certain time.  A package left Auckland, New Zealand, at 5:45am on 01/06/2012 and arrived in Los Angeles, USA, on 01/12/2012."^^xsd:string ;
+                                                               rdfs:label "Transport Pattern" ;
+                                                               owl:versionInfo "0.1"^^xsd:string ,
+                                                                               "Created by Brandon Whitehead"^^xsd:string .
+
+#################################################################
+#    Object Properties
+#################################################################
+
+###  http://www.descartes-core.org/patterns/owl/transportPattern#partOf
+:partOf rdf:type owl:ObjectProperty ,
+                 owl:TransitiveProperty ;
+        rdfs:label "part of"@en .
+
+
+###  http://www.descartes-core.org/patterns/owl/transportPattern#referenceFrame
+:referenceFrame rdf:type owl:ObjectProperty ;
+                rdfs:domain :transportEvent ;
+                rdfs:range :transportEvent ;
+                rdfs:comment "This property is significant in that it serves to restrict and disambiguate a myriad of inherent facets, often in juxtaposition, associated with the Earths complex phenomena. The reference frame is provided to restrict the input values for a given instantiation, inherently providing context to the local representation." ;
+                rdfs:label "reference frame"@en .
+
+
+#################################################################
+#    Classes
+#################################################################
+
+###  http://www.descartes-core.org/patterns/owl/transportPattern#TransportEntity
+:TransportEntity rdf:type owl:Class ;
+                 rdfs:subClassOf owl:Thing ,
+                                 [ rdf:type owl:Restriction ;
+                                   owl:onProperty :partOf ;
+                                   owl:someValuesFrom :TransportEvent
+                                 ] ;
+                 rdfs:comment "The Transport Entity concept represents the identity of the circumscribed portion of energy or mass that is moved." ;
+                 rdfs:label "Transport Entity"@en .
+
+
+###  http://www.descartes-core.org/patterns/owl/transportPattern#TransportEvent
+:TransportEvent rdf:type owl:Class ;
+                rdfs:comment "A Transport Event describes a specific transport phenomenon, as movement of some mass or energy (measurable entity) from one location to another, based on a common and persistent frame of reference." ;
+                rdfs:label "Transport Event"@en .
+
+
+###  http://www.descartes-core.org/patterns/owl/transportPattern#TransportMechanim
+:TransportMechanim rdf:type owl:Class ;
+                   rdfs:subClassOf owl:Thing ,
+                                   [ rdf:type owl:Restriction ;
+                                     owl:onProperty :partOf ;
+                                     owl:someValuesFrom :TransportEvent
+                                   ] ;
+                   rdfs:comment "The transportMechanism concept captures the nature of the source that acts upon the transportEntity, and thus induces a transportEvent." ;
+                   rdfs:label "Transport Mechanism"@en .
+
+
+###  http://www.descartes-core.org/patterns/owl/transportPattern#transportEvent
+:transportEvent rdf:type owl:Class .
+
+
+###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

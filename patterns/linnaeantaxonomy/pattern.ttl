@@ -1,0 +1,320 @@
+@prefix : <http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@base <http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl> .
+
+<http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl> rdf:type owl:Ontology ;
+                                                                     owl:imports <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl> ;
+                                                                     <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#reengineeredFrom> "http://en.wikipedia.org/wiki/Linnaean_taxonomy" ,
+                                                                                                                                                             "http://en.wikipedia.org/wiki/Taxon" ,
+                                                                                                                                                             "http://en.wikipedia.org/wiki/Taxonomic_rank" ;
+                                                                     rdfs:comment "The linnaean taxonomy content ontology design pattern represents the layered classification invented by Linneus in the XVIII century. It is created by reengineering Wikipedia articles about taxa, taxonomic ranks, and linnaean taxonomy." ;
+                                                                     owl:versionInfo "1.1 added rdfs:isDefinedBy for all named entities"^^xsd:string ,
+                                                                                     "Created by Aldo Gangemi and Valentina Presutti"^^xsd:string .
+
+#################################################################
+#    Annotation properties
+#################################################################
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#reengineeredFrom
+<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#reengineeredFrom> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.w3.org/2000/01/rdf-schema#comment
+rdfs:comment rdf:type owl:AnnotationProperty .
+
+
+###  http://www.w3.org/2000/01/rdf-schema#isDefinedBy
+rdfs:isDefinedBy rdf:type owl:AnnotationProperty .
+
+
+###  http://www.w3.org/2000/01/rdf-schema#label
+rdfs:label rdf:type owl:AnnotationProperty .
+
+
+###  http://www.w3.org/2002/07/owl#versionInfo
+owl:versionInfo rdf:type owl:AnnotationProperty .
+
+
+#################################################################
+#    Object Properties
+#################################################################
+
+###  http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#hasDirectHigherRank
+:hasDirectHigherRank rdf:type owl:ObjectProperty ;
+                     rdfs:subPropertyOf :hasHigherRank ;
+                     owl:inverseOf :hasDirectLowerRank ;
+                     rdfs:domain :Taxon ;
+                     rdfs:range :Taxon ;
+                     rdfs:comment "This property relates two taxa, where the first is more specific then the second and there is no other taxon that is both more general than the first and more specific than the second." ;
+                     rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl> ;
+                     rdfs:label "has direct higher rank"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#hasDirectLowerRank
+:hasDirectLowerRank rdf:type owl:ObjectProperty ;
+                    rdfs:subPropertyOf :hasLowerRank ;
+                    rdfs:domain :Taxon ;
+                    rdfs:range :Taxon ;
+                    rdfs:comment "This property relates two taxa, where the first is less specific then the second and there is no other taxon that is both more specific than the first and more general than the second." ;
+                    rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl> ;
+                    rdfs:label "has direct lower rank"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#hasHigherRank
+:hasHigherRank rdf:type owl:ObjectProperty ;
+               owl:inverseOf :hasLowerRank ;
+               rdf:type owl:TransitiveProperty ;
+               rdfs:domain :Taxon ;
+               rdfs:range :Taxon ;
+               rdfs:comment "This property relates two taxa, where the first is more specific than the second." ;
+               rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl> ;
+               rdfs:label "has higher rank"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#hasLowerRank
+:hasLowerRank rdf:type owl:ObjectProperty ,
+                       owl:TransitiveProperty ;
+              rdfs:domain :Taxon ;
+              rdfs:range :Taxon ;
+              rdfs:comment "This property relates two taxa, where the first is less specific than the second." ;
+              rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl> ;
+              rdfs:label "has lower rank"@en .
+
+
+#################################################################
+#    Classes
+#################################################################
+
+###  http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Class
+:Class rdf:type owl:Class ;
+       rdfs:subClassOf :Taxon ,
+                       [ rdf:type owl:Restriction ;
+                         owl:onProperty :hasDirectHigherRank ;
+                         owl:allValuesFrom :Phylum
+                       ] ,
+                       [ rdf:type owl:Restriction ;
+                         owl:onProperty :hasDirectLowerRank ;
+                         owl:allValuesFrom :Order
+                       ] ,
+                       [ rdf:type owl:Restriction ;
+                         owl:onProperty :hasHigherRank ;
+                         owl:allValuesFrom [ rdf:type owl:Class ;
+                                             owl:unionOf ( :Kingdom
+                                                           :Phylum
+                                                         )
+                                           ]
+                       ] ,
+                       [ rdf:type owl:Restriction ;
+                         owl:onProperty :hasLowerRank ;
+                         owl:allValuesFrom [ rdf:type owl:Class ;
+                                             owl:complementOf [ rdf:type owl:Class ;
+                                                                owl:unionOf ( :Class
+                                                                              :Kingdom
+                                                                              :Phylum
+                                                                            )
+                                                              ]
+                                           ]
+                       ] ;
+       owl:disjointWith :Family ,
+                        :Genus ,
+                        :Kingdom ,
+                        :Order ,
+                        :Phylum ,
+                        :Species ;
+       rdfs:comment "Class is the third highest traditional taxon. E.g., in the case of humans the class is 'Mammalia'." ;
+       rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl> ;
+       rdfs:label "Class"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Family
+:Family rdf:type owl:Class ;
+        rdfs:subClassOf :Taxon ,
+                        [ rdf:type owl:Restriction ;
+                          owl:onProperty :hasDirectHigherRank ;
+                          owl:allValuesFrom :Order
+                        ] ,
+                        [ rdf:type owl:Restriction ;
+                          owl:onProperty :hasDirectLowerRank ;
+                          owl:allValuesFrom :Genus
+                        ] ,
+                        [ rdf:type owl:Restriction ;
+                          owl:onProperty :hasHigherRank ;
+                          owl:allValuesFrom [ rdf:type owl:Class ;
+                                              owl:complementOf [ rdf:type owl:Class ;
+                                                                 owl:unionOf ( :Family
+                                                                               :Genus
+                                                                               :Species
+                                                                             )
+                                                               ]
+                                            ]
+                        ] ,
+                        [ rdf:type owl:Restriction ;
+                          owl:onProperty :hasLowerRank ;
+                          owl:allValuesFrom [ rdf:type owl:Class ;
+                                              owl:unionOf ( :Genus
+                                                            :Species
+                                                          )
+                                            ]
+                        ] ;
+        owl:disjointWith :Genus ,
+                         :Kingdom ,
+                         :Order ,
+                         :Phylum ,
+                         :Species ;
+        rdfs:comment "Family is the fifth highest traditional taxon. E.g., in the case of humans the family is 'Hominidae'." ;
+        rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl> ;
+        rdfs:label "Family"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Genus
+:Genus rdf:type owl:Class ;
+       rdfs:subClassOf :Taxon ,
+                       [ rdf:type owl:Restriction ;
+                         owl:onProperty :hasDirectHigherRank ;
+                         owl:allValuesFrom :Family
+                       ] ,
+                       [ rdf:type owl:Restriction ;
+                         owl:onProperty :hasDirectLowerRank ;
+                         owl:allValuesFrom :Species
+                       ] ,
+                       [ rdf:type owl:Restriction ;
+                         owl:onProperty :hasHigherRank ;
+                         owl:allValuesFrom [ rdf:type owl:Class ;
+                                             owl:complementOf [ rdf:type owl:Class ;
+                                                                owl:unionOf ( :Genus
+                                                                              :Species
+                                                                            )
+                                                              ]
+                                           ]
+                       ] ,
+                       [ rdf:type owl:Restriction ;
+                         owl:onProperty :hasLowerRank ;
+                         owl:allValuesFrom :Species
+                       ] ;
+       owl:disjointWith :Kingdom ,
+                        :Order ,
+                        :Phylum ,
+                        :Species ;
+       rdfs:comment "Genus is the sixth highest traditional taxon. E.g., in the case of humans the genus is 'Homo'." ;
+       rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl> ;
+       rdfs:label "Genus"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Kingdom
+:Kingdom rdf:type owl:Class ;
+         rdfs:subClassOf :Taxon ,
+                         [ rdf:type owl:Restriction ;
+                           owl:onProperty :hasDirectLowerRank ;
+                           owl:allValuesFrom :Phylum
+                         ] ,
+                         [ rdf:type owl:Restriction ;
+                           owl:onProperty :hasLowerRank ;
+                           owl:allValuesFrom [ rdf:type owl:Class ;
+                                               owl:complementOf :Kingdom
+                                             ]
+                         ] ;
+         owl:disjointWith :Order ,
+                          :Phylum ,
+                          :Species ;
+         rdfs:comment "Kingdom is the highest traditional taxon. E.g., in the case of humans the kingdom is 'Animalia'." ;
+         rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl> ;
+         rdfs:label "Kingdom"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Order
+:Order rdf:type owl:Class ;
+       rdfs:subClassOf :Taxon ,
+                       [ rdf:type owl:Restriction ;
+                         owl:onProperty :hasDirectHigherRank ;
+                         owl:allValuesFrom :Class
+                       ] ,
+                       [ rdf:type owl:Restriction ;
+                         owl:onProperty :hasDirectLowerRank ;
+                         owl:allValuesFrom :Family
+                       ] ,
+                       [ rdf:type owl:Restriction ;
+                         owl:onProperty :hasHigherRank ;
+                         owl:allValuesFrom [ rdf:type owl:Class ;
+                                             owl:unionOf ( :Class
+                                                           :Kingdom
+                                                           :Phylum
+                                                         )
+                                           ]
+                       ] ,
+                       [ rdf:type owl:Restriction ;
+                         owl:onProperty :hasLowerRank ;
+                         owl:allValuesFrom [ rdf:type owl:Class ;
+                                             owl:unionOf ( :Family
+                                                           :Genus
+                                                           :Species
+                                                         )
+                                           ]
+                       ] ;
+       owl:disjointWith :Phylum ,
+                        :Species ;
+       rdfs:comment "Order is the fourth highest traditional taxon. E.g., in the case of humans the phylum is 'Primates'." ;
+       rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl> ;
+       rdfs:label "Order"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Phylum
+:Phylum rdf:type owl:Class ;
+        rdfs:subClassOf :Taxon ,
+                        [ rdf:type owl:Restriction ;
+                          owl:onProperty :hasDirectHigherRank ;
+                          owl:allValuesFrom :Kingdom
+                        ] ,
+                        [ rdf:type owl:Restriction ;
+                          owl:onProperty :hasDirectLowerRank ;
+                          owl:allValuesFrom :Class
+                        ] ,
+                        [ rdf:type owl:Restriction ;
+                          owl:onProperty :hasHigherRank ;
+                          owl:allValuesFrom :Kingdom
+                        ] ,
+                        [ rdf:type owl:Restriction ;
+                          owl:onProperty :hasLowerRank ;
+                          owl:allValuesFrom [ rdf:type owl:Class ;
+                                              owl:complementOf [ rdf:type owl:Class ;
+                                                                 owl:unionOf ( :Kingdom
+                                                                               :Phylum
+                                                                             )
+                                                               ]
+                                            ]
+                        ] ;
+        owl:disjointWith :Species ;
+        rdfs:comment "Phylum is the second highest traditional taxon. E.g., in the case of humans the phylum is 'Chordata'." ;
+        rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl> ;
+        rdfs:label "Phylum"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Species
+:Species rdf:type owl:Class ;
+         rdfs:subClassOf :Taxon ,
+                         [ rdf:type owl:Restriction ;
+                           owl:onProperty :hasDirectHigherRank ;
+                           owl:allValuesFrom :Genus
+                         ] ,
+                         [ rdf:type owl:Restriction ;
+                           owl:onProperty :hasHigherRank ;
+                           owl:allValuesFrom [ rdf:type owl:Class ;
+                                               owl:complementOf :Species
+                                             ]
+                         ] ;
+         rdfs:comment "Species is the lowest traditional taxon. E.g., in the case of humans the species is 'Homo sapiens'." ;
+         rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl> ;
+         rdfs:label "Species"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl#Taxon
+:Taxon rdf:type owl:Class ;
+       rdfs:comment "A taxon is a concept denoting a type of organism or of a group of organisms." ;
+       rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl> ;
+       rdfs:label "Taxon"@en .
+
+
+###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

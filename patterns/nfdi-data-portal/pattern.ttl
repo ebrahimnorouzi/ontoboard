@@ -1,0 +1,120 @@
+@prefix : <https://ontoboard.org/patterns/nfdi-data-portal.owl#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@base <https://ontoboard.org/patterns/nfdi-data-portal.owl> .
+
+<https://ontoboard.org/patterns/nfdi-data-portal.owl> rdf:type owl:Ontology .
+
+#################################################################
+#    Annotation properties
+#################################################################
+
+###  http://purl.obolibrary.org/obo/IAO_0000112
+<http://purl.obolibrary.org/obo/IAO_0000112> rdf:type owl:AnnotationProperty .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000115
+<http://purl.obolibrary.org/obo/IAO_0000115> rdf:type owl:AnnotationProperty .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000116
+<http://purl.obolibrary.org/obo/IAO_0000116> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.w3.org/2004/02/skos/core#definition
+<http://www.w3.org/2004/02/skos/core#definition> rdf:type owl:AnnotationProperty .
+
+
+#################################################################
+#    Object Properties
+#################################################################
+
+###  http://purl.obolibrary.org/obo/IAO_0000235
+<http://purl.obolibrary.org/obo/IAO_0000235> rdf:type owl:ObjectProperty ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "inverse of the relation 'denotes'"@en ;
+                                             rdfs:label "denoted by"@en .
+
+
+###  http://purl.obolibrary.org/obo/RO_0000056
+<http://purl.obolibrary.org/obo/RO_0000056> rdf:type owl:ObjectProperty ;
+                                            <http://purl.obolibrary.org/obo/IAO_0000112> "this blood clot participates in this blood coagulation"@en ,
+                                                                                         "this input material (or this output material) participates in this process"@en ,
+                                                                                         "this investigator participates in this investigation"@en ;
+                                            <http://purl.obolibrary.org/obo/IAO_0000115> "a relation between a continuant and a process, in which the continuant is somehow involved in the process"@en ;
+                                            rdfs:label "participates in"@en .
+
+
+#################################################################
+#    Data properties
+#################################################################
+
+###  https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0001008
+<https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0001008> rdf:type owl:DatatypeProperty ;
+                                                      rdfs:range xsd:anyURI ;
+                                                      rdfs:label "has url"@en ;
+                                                      <http://www.w3.org/2004/02/skos/core#definition> "A relation between an information content entity and its specific url."@en .
+
+
+#################################################################
+#    Classes
+#################################################################
+
+###  http://purl.obolibrary.org/obo/IAO_0000033
+<http://purl.obolibrary.org/obo/IAO_0000033> rdf:type owl:Class ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "An information content entity whose concretizations indicate to their bearer how to realize them in a process."@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000116> "2009-03-16: provenance: a term realizable information entity was proposed for OBI (OBI_0000337) , edited by the PlanAndPlannedProcess branch. Original definition was  \"is the specification of a process that can be concretized and realized by an actor\" with alternative term  \"instruction\".It has been subsequently moved to IAO where the objective for which the original term was defined was satisfied with the definitionof this, different, term."@en ,
+                                                                                          "2013-05-30 Alan Ruttenberg: What differentiates a directive information entity from an information concretization is that it can have concretizations that are either qualities or realizable entities. The concretizations that are realizable entities are created when an individual chooses to take up the direction, i.e. has the intention to (try to) realize it."@en ,
+                                                                                          "8/6/2009 Alan Ruttenberg: Changed label from \"information entity about a realizable\" after discussions at ICBO"@en ,
+                                                                                          "Werner pushed back on calling it realizable information entity as it isn't realizable. However this name isn't right either. An example would be a recipe. The realizable entity would be a plan, but the information entity isn't about the plan, it, once concretized, *is* the plan. -Alan"@en ;
+                                             rdfs:label "directive information entity"@en .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000098
+<http://purl.obolibrary.org/obo/IAO_0000098> rdf:type owl:Class ;
+                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/IAO_0000033> ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> """A data format specification is the information content borne by the document published defining the specification.
+Example: The ISO document specifying what encompasses an XML document; The instructions in a XSD file"""@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000116> """2009-03-16: provenance: term imported from OBI_0000187, which had original definition \"A data format specification is a plan which organizes
+information. Example: The ISO document specifying what encompasses an
+XML document; The instructions in a XSD file\""""@en ;
+                                             rdfs:label "data format specification"@en .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000310
+<http://purl.obolibrary.org/obo/IAO_0000310> rdf:type owl:Class ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000112> "A journal article, patent application, laboratory notebook, or a book"@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "A collection of information content entities intended to be understood together as a whole"@en ;
+                                             rdfs:label "document"@en .
+
+
+###  https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000123
+<https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000123> rdf:type owl:Class ;
+                                                      rdfs:subClassOf <https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000223> ;
+                                                      rdfs:label "data portal"@en ;
+                                                      <http://www.w3.org/2004/02/skos/core#definition> "A website that serves as a centralized platform for accessing, managing, and sharing datasets, information, or resources related to a specific topic, theme, or domain."@en .
+
+
+###  https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000206
+<https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000206> rdf:type owl:Class ;
+                                                      rdfs:subClassOf <http://purl.obolibrary.org/obo/IAO_0000310> ;
+                                                      rdfs:label "standard"@en ;
+                                                      <http://www.w3.org/2004/02/skos/core#definition> "A specification that establishes a set of guidelines, criteria, or norms recognized and adopted by internationational community."@en .
+
+
+###  https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000223
+<https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000223> rdf:type owl:Class ;
+                                                      rdfs:label "website"@en ;
+                                                      <http://www.w3.org/2004/02/skos/core#definition> "An information content entity that represents a collection of interconnected web pages, multimedia content, and digital resources accessible via the World Wide Web."@en .
+
+
+###  https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0001202
+<https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0001202> rdf:type owl:Class ;
+                                                      rdfs:subClassOf <https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000123> ;
+                                                      rdfs:label "repository hosting data portal"@en ;
+                                                      <http://www.w3.org/2004/02/skos/core#definition> "A Repository Hosting Data Portal is a data portal that provides infrastructure and tools for hosting datasets, code, and publications in a structured and accessible format." .
+
+
+###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

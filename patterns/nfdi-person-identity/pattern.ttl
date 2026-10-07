@@ -1,0 +1,134 @@
+@prefix : <https://ontoboard.org/patterns/nfdi-person-identity.owl#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@base <https://ontoboard.org/patterns/nfdi-person-identity.owl> .
+
+<https://ontoboard.org/patterns/nfdi-person-identity.owl> rdf:type owl:Ontology .
+
+#################################################################
+#    Annotation properties
+#################################################################
+
+###  http://purl.obolibrary.org/obo/IAO_0000112
+<http://purl.obolibrary.org/obo/IAO_0000112> rdf:type owl:AnnotationProperty .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000115
+<http://purl.obolibrary.org/obo/IAO_0000115> rdf:type owl:AnnotationProperty .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000116
+<http://purl.obolibrary.org/obo/IAO_0000116> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.w3.org/2004/02/skos/core#definition
+<http://www.w3.org/2004/02/skos/core#definition> rdf:type owl:AnnotationProperty .
+
+
+#################################################################
+#    Object Properties
+#################################################################
+
+###  http://purl.obolibrary.org/obo/IAO_0000235
+<http://purl.obolibrary.org/obo/IAO_0000235> rdf:type owl:ObjectProperty ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "inverse of the relation 'denotes'"@en ;
+                                             rdfs:label "denoted by"@en .
+
+
+###  http://purl.obolibrary.org/obo/RO_0000056
+<http://purl.obolibrary.org/obo/RO_0000056> rdf:type owl:ObjectProperty ;
+                                            <http://purl.obolibrary.org/obo/IAO_0000112> "this blood clot participates in this blood coagulation"@en ,
+                                                                                         "this input material (or this output material) participates in this process"@en ,
+                                                                                         "this investigator participates in this investigation"@en ;
+                                            <http://purl.obolibrary.org/obo/IAO_0000115> "a relation between a continuant and a process, in which the continuant is somehow involved in the process"@en ;
+                                            rdfs:label "participates in"@en .
+
+
+#################################################################
+#    Classes
+#################################################################
+
+###  http://purl.obolibrary.org/obo/BFO_0000015
+<http://purl.obolibrary.org/obo/BFO_0000015> rdf:type owl:Class ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000112> "a process of cell-division, \\ a beating of the heart"@en ,
+                                                                                          "a process of meiosis"@en ,
+                                                                                          "a process of sleeping"@en ,
+                                                                                          "the course of a disease"@en ,
+                                                                                          "the flight of a bird"@en ,
+                                                                                          "the life of an organism"@en ,
+                                                                                          "your process of aging."@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "p is a process = Def. p is an occurrent that has temporal proper parts and for some time t, p s-depends_on some material entity at t. (axiom label in BFO2 Reference: [083-003])"@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000116> "BFO 2 Reference: The realm of occurrents is less pervasively marked by the presence of natural units than is the case in the realm of independent continuants. Thus there is here no counterpart of ‘object’. In BFO 1.0 ‘process’ served as such a counterpart. In BFO 2.0 ‘process’ is, rather, the occurrent counterpart of ‘material entity’. Those natural – as contrasted with engineered, which here means: deliberately executed – units which do exist in the realm of occurrents are typically either parasitic on the existence of natural units on the continuant side, or they are fiat in nature. Thus we can count lives; we can count football games; we can count chemical reactions performed in experiments or in chemical manufacturing. We cannot count the processes taking place, for instance, in an episode of insect mating behavior.Even where natural units are identifiable, for example cycles in a cyclical process such as the beating of a heart or an organism’s sleep/wake cycle, the processes in question form a sequence with no discontinuities (temporal gaps) of the sort that we find for instance where billiard balls or zebrafish or planets are separated by clear spatial gaps. Lives of organisms are process units, but they too unfold in a continuous series from other, prior processes such as fertilization, and they unfold in turn in continuous series of post-life processes such as post-mortem decay. Clear examples of boundaries of processes are almost always of the fiat sort (midnight, a time of death as declared in an operating theater or on a death certificate, the initiation of a state of war)"@en ;
+                                             rdfs:label "process"@en ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "(Elucidation) p is a process means p is an occurrent that has some temporal proper part and for some time t, p has some material entity as participant"@en .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000578
+<http://purl.obolibrary.org/obo/IAO_0000578> rdf:type owl:Class ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000112> "The sentence \"The article has Pubmed ID 12345.\" contains a CRID that has two parts: one part is the CRID symbol, which is '12345'; the other part denotes the CRID registry, which is Pubmed."@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "An information content entity that consists of a CRID symbol and additional information about the CRID registry to which it belongs."@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000116> "2014-05-05: In defining this term we take no position on what the CRID denotes. In particular do not assume it denotes a *record* in the CRID registry (since the registry might not have 'records')."@en ,
+                                                                                          "Alan, IAO call 20101124: potentially the CRID denotes the instance it was associated with during creation."@en ,
+                                                                                          "Note, IAO call 20101124: URIs are not always CRID, as not centrally registered. We acknowledge that CRID is a subset of a larger identifier class, but this subset fulfills our current needs. OBI PURLs are CRID as they are registered with OCLC. UPCs (Universal Product Codes from AC Nielsen)are not CRID as they are not centrally registered."@en ;
+                                             rdfs:label "centrally registered identifier"@en .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000708
+<http://purl.obolibrary.org/obo/IAO_0000708> rdf:type owl:Class ;
+                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/IAO_0000578> ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "A centrally registered identifier that is issued by ORCID (https://orcid.org/) and used to persistantly identify oneself as a human researcher or contributor." ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000116> "\"You can connect your iD with your professional information — affiliations, grants, publications, peer review, and more. You can use your iD to share your information with other systems, ensuring you get recognition for all your contributions, saving you time and hassle, and reducing the risk of errors.\" [https://orcid.org/]" ,
+                                                                                          "This class was originally defined in Apollo_SV (http://purl.obolibrary.org/obo/APOLLO_SV_00000496) but due to it being more in scope of IAO, it was decided to add it to IAO and deprecate its Apollo_SV equivalent. (2022-10-25)" ;
+                                             rdfs:label "ORCID identifier"@en .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0020000
+<http://purl.obolibrary.org/obo/IAO_0020000> rdf:type owl:Class ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "An information content entity that is the outcome of a dubbing process and is used to refer to one instance of entity shared by a group of people to refer to that individual entity."@en ;
+                                             rdfs:label "identifier"@en .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0020015
+<http://purl.obolibrary.org/obo/IAO_0020015> rdf:type owl:Class ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "An identifier referring to an individual entity that is ascribed personhood by the user of the identifier."@en ;
+                                             rdfs:label "personal name"@en .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0020016
+<http://purl.obolibrary.org/obo/IAO_0020016> rdf:type owl:Class ;
+                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/IAO_0020015> ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "A personal name that specifies and differentiates between members of a group of individuals, especially in a family, all of whose members usually share the same family name (surname). A given name is purposefully given, usually by a child's parents at or near birth, in contrast to an inherited one such as a family name"@en ;
+                                             rdfs:label "given name"@en .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0020017
+<http://purl.obolibrary.org/obo/IAO_0020017> rdf:type owl:Class ;
+                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/IAO_0020000> ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "An identifier that is typically a part of a person's name which has been passed, according to law or custom, from one or both parents to their children."@en ;
+                                             rdfs:label "family name"@en .
+
+
+###  https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000002
+<https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000002> rdf:type owl:Class ;
+                                                      rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000015> ;
+                                                      rdfs:label "project"@en ;
+                                                      <http://www.w3.org/2004/02/skos/core#definition> "A process of a scientific or business endeavor that aims to conclude an investigation or to answer a research question."@en .
+
+
+###  https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000004
+<https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000004> rdf:type owl:Class ;
+                                                      rdfs:subClassOf <https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000102> ;
+                                                      rdfs:label "person"@en ;
+                                                      <http://www.w3.org/2004/02/skos/core#definition> "An object that represents a single human individual."@en .
+
+
+###  https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000102
+<https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000102> rdf:type owl:Class ;
+                                                      rdfs:label "agent"@en ;
+                                                      <http://www.w3.org/2004/02/skos/core#definition> "An independent continuant that acts autonomously and is entrusted with the authority to represent, negotiate, or act on behalf of another agent."@en .
+
+
+###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

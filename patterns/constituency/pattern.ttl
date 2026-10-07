@@ -1,0 +1,77 @@
+@prefix : <http://www.ontologydesignpatterns.org/cp/owl/constituency.owl#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@base <http://www.ontologydesignpatterns.org/cp/owl/constituency.owl> .
+
+<http://www.ontologydesignpatterns.org/cp/owl/constituency.owl> rdf:type owl:Ontology ;
+                                                                 owl:imports <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl> ;
+                                                                 rdfs:comment "The constituency pattern. It is extracted from DOLCE-UltraLite by partial clone of elements." ;
+                                                                 rdfs:label "constituency" ;
+                                                                 owl:versionInfo "1.1 added rdfs:isDefinedBy for all named entities"^^xsd:string ,
+                                                                                 "Created by Valentina Presutti"^^xsd:string .
+
+#################################################################
+#    Annotation properties
+#################################################################
+
+###  http://www.w3.org/2000/01/rdf-schema#comment
+rdfs:comment rdf:type owl:AnnotationProperty .
+
+
+###  http://www.w3.org/2000/01/rdf-schema#isDefinedBy
+rdfs:isDefinedBy rdf:type owl:AnnotationProperty .
+
+
+###  http://www.w3.org/2000/01/rdf-schema#label
+rdfs:label rdf:type owl:AnnotationProperty .
+
+
+###  http://www.w3.org/2002/07/owl#versionInfo
+owl:versionInfo rdf:type owl:AnnotationProperty .
+
+
+#################################################################
+#    Object Properties
+#################################################################
+
+###  http://www.ontologydesignpatterns.org/cp/owl/constituency.owl#hasConstituent
+:hasConstituent rdf:type owl:ObjectProperty ;
+                owl:inverseOf :isConstituentOf ;
+                rdfs:domain owl:Thing ;
+                rdfs:range owl:Thing ;
+                rdfs:comment """'Constituency' depends on some layering of  the world described by the ontology. For example, scientific granularities (e.g. body-organ-tissue-cell) or ontological 'strata' (e.g. social-mental-biological-physical) are  typical layerings. 
+Intuitively, a constituent is a part belonging to a lower layer. Since layering is actually a partition of the world described by the ontology, constituents are not properly classified as parts, although this kinship can be intuitive for common sense.
+A desirable advantage of this distinction is that we are able to talk e.g. of physical constituents of non-physical objects (e.g. systems), while this is not possible in terms of parts.
+Example of are the persons constituting a social system, the molecules constituting a person, the atoms constituting a river, etc. 
+In all these examples, we notice a typical discontinuity between the constituted and the constituent object: e.g. a social system is conceptualized at a different layer from the persons that constitute it, a person is conceptualized at a different layer from the molecules that constitute them, and a river is conceptualized at a different layer from the atoms that constitute it.""" ;
+                rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/constituency.owl> ;
+                rdfs:label "ha costituente"@it ,
+                           "has constituent"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/constituency.owl#isConstituentOf
+:isConstituentOf rdf:type owl:ObjectProperty ;
+                 rdfs:domain owl:Thing ;
+                 rdfs:range owl:Thing ;
+                 rdfs:comment """'Constituency' depends on some layering of  the world described by the ontology. For example, scientific granularities (e.g. body-organ-tissue-cell) or ontological 'strata' (e.g. social-mental-biological-physical) are  typical layerings. 
+Intuitively, a constituent is a part belonging to a lower layer. Since layering is actually a partition of the world described by the ontology, constituents are not properly classified as parts, although this kinship can be intuitive for common sense.
+A desirable advantage of this distinction is that we are able to talk e.g. of physical constituents of non-physical objects (e.g. systems), while this is not possible in terms of parts.
+Example of are the persons constituting a social system, the molecules constituting a person, the atoms constituting a river, etc. 
+In all these examples, we notice a typical discontinuity between the constituted and the constituent object: e.g. a social system is conceptualized at a different layer from the persons that constitute it, a person is conceptualized at a different layer from the molecules that constitute them, and a river is conceptualized at a different layer from the atoms that constitute it.""" ;
+                 rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/constituency.owl> ;
+                 rdfs:label "is constituent of"@en ,
+                            "è costituente di"@it .
+
+
+#################################################################
+#    Classes
+#################################################################
+
+###  http://www.w3.org/2002/07/owl#Thing
+owl:Thing rdf:type owl:Class .
+
+
+###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

@@ -1,0 +1,128 @@
+@prefix : <http://semantic.cs.put.poznan.pl/ontologies/oshdo/HazardousSituation#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@base <http://semantic.cs.put.poznan.pl/ontologies/oshdo/HazardousSituation> .
+
+<http://semantic.cs.put.poznan.pl/ontologies/oshdo/HazardousSituation> rdf:type owl:Ontology ;
+                                                                        owl:imports <http://www.ontologydesignpatterns.org/cp/owl/timeinterval.owl> ,
+                                                                                    <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl> .
+
+#################################################################
+#    Annotation properties
+#################################################################
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent
+<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> "To model hazardous situations and their associated hazardous events with events' participating objects and the hazards the objects are exposed to with the exposure value." .
+
+
+###  http://www.w3.org/2002/07/owl#versionInfo
+owl:versionInfo owl:versionInfo "v0.1" .
+
+
+#################################################################
+#    Object Properties
+#################################################################
+
+###  http://semantic.cs.put.poznan.pl/ontologies/oshdo/HazardousSituation#casuallyFollows
+:casuallyFollows rdf:type owl:ObjectProperty .
+
+
+###  http://semantic.cs.put.poznan.pl/ontologies/oshdo/HazardousSituation#exposedTo
+:exposedTo rdf:type owl:ObjectProperty ;
+           rdfs:domain :Object ;
+           rdfs:range :Hazard .
+
+
+###  http://semantic.cs.put.poznan.pl/ontologies/oshdo/HazardousSituation#hasDuration
+:hasDuration rdf:type owl:ObjectProperty .
+
+
+###  http://semantic.cs.put.poznan.pl/ontologies/oshdo/HazardousSituation#hasParticipant
+:hasParticipant rdf:type owl:ObjectProperty ;
+                owl:inverseOf :participantIn .
+
+
+###  http://semantic.cs.put.poznan.pl/ontologies/oshdo/HazardousSituation#hasQuality
+:hasQuality rdf:type owl:ObjectProperty .
+
+
+###  http://semantic.cs.put.poznan.pl/ontologies/oshdo/HazardousSituation#involves
+:involves rdf:type owl:ObjectProperty .
+
+
+###  http://semantic.cs.put.poznan.pl/ontologies/oshdo/HazardousSituation#participantIn
+:participantIn rdf:type owl:ObjectProperty .
+
+
+#################################################################
+#    Classes
+#################################################################
+
+###  http://semantic.cs.put.poznan.pl/ontologies/oshdo/HazardousSituation#Cause
+:Cause rdf:type owl:Class .
+
+
+###  http://semantic.cs.put.poznan.pl/ontologies/oshdo/HazardousSituation#Consequence
+:Consequence rdf:type owl:Class ;
+             rdfs:subClassOf [ rdf:type owl:Restriction ;
+                               owl:onProperty :casuallyFollows ;
+                               owl:someValuesFrom :HazardousEvent
+                             ] .
+
+
+###  http://semantic.cs.put.poznan.pl/ontologies/oshdo/HazardousSituation#Event
+:Event rdf:type owl:Class ;
+       rdfs:subClassOf [ rdf:type owl:Restriction ;
+                         owl:onProperty :hasDuration ;
+                         owl:someValuesFrom <http://www.ontologydesignpatterns.org/cp/owl/timeinterval.owl#TimeInterval>
+                       ] .
+
+
+###  http://semantic.cs.put.poznan.pl/ontologies/oshdo/HazardousSituation#Exposure
+:Exposure rdf:type owl:Class .
+
+
+###  http://semantic.cs.put.poznan.pl/ontologies/oshdo/HazardousSituation#Hazard
+:Hazard rdf:type owl:Class .
+
+
+###  http://semantic.cs.put.poznan.pl/ontologies/oshdo/HazardousSituation#HazardousEvent
+:HazardousEvent rdf:type owl:Class ;
+                owl:equivalentClass [ rdf:type owl:Restriction ;
+                                      owl:onProperty :hasParticipant ;
+                                      owl:someValuesFrom [ owl:intersectionOf ( :Object
+                                                                                [ rdf:type owl:Restriction ;
+                                                                                  owl:onProperty :exposedTo ;
+                                                                                  owl:someValuesFrom :Hazard
+                                                                                ]
+                                                                              ) ;
+                                                           rdf:type owl:Class
+                                                         ]
+                                    ] ;
+                rdfs:subClassOf :Event ,
+                                [ rdf:type owl:Restriction ;
+                                  owl:onProperty :casuallyFollows ;
+                                  owl:someValuesFrom :Cause
+                                ] ,
+                                [ rdf:type owl:Restriction ;
+                                  owl:onProperty :hasQuality ;
+                                  owl:someValuesFrom :Exposure
+                                ] .
+
+
+###  http://semantic.cs.put.poznan.pl/ontologies/oshdo/HazardousSituation#HazardousSituation
+:HazardousSituation rdf:type owl:Class ;
+                    rdfs:subClassOf [ rdf:type owl:Restriction ;
+                                      owl:onProperty :participantIn ;
+                                      owl:someValuesFrom :HazardousEvent
+                                    ] .
+
+
+###  http://semantic.cs.put.poznan.pl/ontologies/oshdo/HazardousSituation#Object
+:Object rdf:type owl:Class .
+
+
+###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

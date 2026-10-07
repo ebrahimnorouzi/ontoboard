@@ -1,0 +1,127 @@
+@prefix : <http://delicias.dia.fi.upm.es/ontologies/SimpleOrAggregated.owl#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@base <http://delicias.dia.fi.upm.es/ontologies/SimpleOrAggregated.owl> .
+
+<http://delicias.dia.fi.upm.es/ontologies/SimpleOrAggregated.owl> rdf:type owl:Ontology ;
+                                                                   owl:imports <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl> ;
+                                                                   <http://purl.org/dc/elements/1.1/creator> "Mari Carmen Suárez Figueroa Baonza" ,
+                                                                                                             "María Poveda" ;
+                                                                   <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> "What elements are aggregated members of this object?" ,
+                                                                                                                                                             "What is this object aggregated member of?" ;
+                                                                   <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences> "This Content OP allows designers to represent aggregations relations." ;
+                                                                   <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> "The goal of this pattern is to represent objects that can be simple or aggregated (that is, several objects gathered in another object acting as a whole). The main difference between the aggregation relation and other mereological relationships (such as part of or composition) is that the aggregated object and its aggregated members should belong to the same concept. For example, a turbine is part of an engine, whereas an aggregated provider is formed by providers. " .
+
+#################################################################
+#    Annotation properties
+#################################################################
+
+###  http://purl.org/dc/elements/1.1/creator
+<http://purl.org/dc/elements/1.1/creator> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements
+<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences
+<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent
+<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#isCloneOf
+<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#isCloneOf> rdf:type owl:AnnotationProperty .
+
+
+#################################################################
+#    Object Properties
+#################################################################
+
+###  http://delicias.dia.fi.upm.es/ontologies/SimpleOrAggregated.owl#hasAggregatedMember
+:hasAggregatedMember rdf:type owl:ObjectProperty ;
+                     owl:inverseOf :isAggregatedMemberOf ;
+                     rdf:type owl:TransitiveProperty ;
+                     rdfs:domain :AggregatedObject ;
+                     rdfs:range :Object ;
+                     rdfs:label "has aggregated member"@en ,
+                                "tiene miembro agregado"@es .
+
+
+###  http://delicias.dia.fi.upm.es/ontologies/SimpleOrAggregated.owl#hasDirectAggregatedMember
+:hasDirectAggregatedMember rdf:type owl:ObjectProperty ;
+                           rdfs:subPropertyOf :hasAggregatedMember ;
+                           rdfs:label "has direct aggregated member "@en ,
+                                      "tiene miembro agregado directamente"@es .
+
+
+###  http://delicias.dia.fi.upm.es/ontologies/SimpleOrAggregated.owl#isAggregatedMemberOf
+:isAggregatedMemberOf rdf:type owl:ObjectProperty ,
+                               owl:TransitiveProperty ;
+                      rdfs:domain :Object ;
+                      rdfs:range :AggregatedObject ;
+                      rdfs:label "es miembro agregado de"@es ,
+                                 "is aggregated member of"@en .
+
+
+###  http://delicias.dia.fi.upm.es/ontologies/SimpleOrAggregated.owl#isDirectAggregatedMemberOf
+:isDirectAggregatedMemberOf rdf:type owl:ObjectProperty ;
+                            rdfs:subPropertyOf :isAggregatedMemberOf ;
+                            rdfs:label "es miembro agregado directamente de"@es ,
+                                       "is direct aggregated member of"@en .
+
+
+#################################################################
+#    Classes
+#################################################################
+
+###  http://delicias.dia.fi.upm.es/ontologies/SimpleOrAggregated.owl#AggregatedObject
+:AggregatedObject rdf:type owl:Class ;
+                  owl:equivalentClass [ rdf:type owl:Restriction ;
+                                        owl:onProperty :hasAggregatedMember ;
+                                        owl:someValuesFrom :Object
+                                      ] ;
+                  rdfs:subClassOf :ObjectByCardinality ;
+                  owl:disjointWith :SimpleObject ;
+                  rdfs:comment "An object that is an aggregation of two or more objects."@en ,
+                               "Un objeto resultante de la agregación de dos o más objetos."@es ;
+                  rdfs:label "Aggregated object"@en ,
+                             "Objeto agregado"@es .
+
+
+###  http://delicias.dia.fi.upm.es/ontologies/SimpleOrAggregated.owl#Object
+:Object rdf:type owl:Class ;
+        owl:equivalentClass :ObjectByCardinality ;
+        <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#isCloneOf> "http://www.loa-cnr.it/ontologies/DUL.owl#Object" ;
+        rdfs:comment "Any physical, social, or mental object, or a substance."@en ,
+                     "Cualquier objeto físico, social o mental o sustancia."@es ;
+        rdfs:label "Object"@en ,
+                   "Objeto"@es .
+
+
+###  http://delicias.dia.fi.upm.es/ontologies/SimpleOrAggregated.owl#ObjectByCardinality
+:ObjectByCardinality rdf:type owl:Class ;
+                     owl:equivalentClass [ rdf:type owl:Class ;
+                                           owl:unionOf ( :AggregatedObject
+                                                         :SimpleObject
+                                                       )
+                                         ] ;
+                     rdfs:label "Object by cardinality"@en ,
+                                "Objeto por cardinalidad"@es .
+
+
+###  http://delicias.dia.fi.upm.es/ontologies/SimpleOrAggregated.owl#SimpleObject
+:SimpleObject rdf:type owl:Class ;
+              rdfs:subClassOf :ObjectByCardinality ;
+              rdfs:comment "A simple object, that is, an object that has no aggregated objects."@en ,
+                           "Un objeto simple, es decir, un objeto que no tiene objetos agregados."@es ;
+              rdfs:label "Objeto simple"@es ,
+                         "Simple object"@en .
+
+
+###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

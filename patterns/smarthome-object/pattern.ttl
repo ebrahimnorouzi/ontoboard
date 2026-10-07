@@ -1,0 +1,157 @@
+@prefix : <http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Object.owl#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@base <http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Object.owl> .
+
+<http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Object.owl> rdf:type owl:Ontology ;
+                                                                             owl:imports <http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Geometry.owl> ,
+                                                                                         <http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Property.owl> ,
+                                                                                         <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl> ;
+                                                                             <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> "Where is the location of a given object?"^^xsd:string ,
+                                                                                                                                                                       "Which devices (e.g. sensors) are attached to a NodeHolder?"^^xsd:string ,
+                                                                                                                                                                       "Which objects are the interest of the observation process?"^^xsd:string ,
+                                                                                                                                                                       "Which objects are there in a smart home environment?"^^xsd:string ,
+                                                                                                                                                                       "Which objects are used as the holder of sensors in the smart home environment?"^^xsd:string ;
+                                                                             rdfs:comment """This pattern relies on both the SSN ontology and DUL in order to represent an object in the context of Smart Home. Using this model we categorize the objects in to two groups of Smart Objects and NodeHolder based on the reason behind their existance in a smart home. 
+
+Due to usual difficulties to install sensors in a smart home environment it is common that some other objects (i.e. NodeHolder) are used to attache sensors on so as to observe the situation of other objects (i.e. SmartObject) specifically for the configuration planner. Using this pattern we are able to diffrentiate between these two types of objects.
+
+This pattern also allows us to extend the definition of an object's properties in the context of smart home. The properties of a SmartObject which are the interest of the sensing process can be defined as either a subclass of the class  http://purl.oclc.org/NET/ssnx/ssn#Property  (e.g. the temperature of a stove) or as part of the smart object (e.g. the door of a friedge)"""^^xsd:string .
+
+#################################################################
+#    Object Properties
+#################################################################
+
+###  http://purl.oclc.org/NET/ssnx/ssn#attachedSystem
+<http://purl.oclc.org/NET/ssnx/ssn#attachedSystem> rdf:type owl:ObjectProperty .
+
+
+###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasConstituent
+<http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasConstituent> rdf:type owl:ObjectProperty .
+
+
+###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasLocation
+<http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasLocation> rdf:type owl:ObjectProperty .
+
+
+###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isObjectIncludedIn
+<http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isObjectIncludedIn> rdf:type owl:ObjectProperty .
+
+
+###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isParticipantIn
+<http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isParticipantIn> rdf:type owl:ObjectProperty .
+
+
+#################################################################
+#    Classes
+#################################################################
+
+###  http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Object.owl#Location
+:Location rdf:type owl:Class ;
+          rdfs:subClassOf <http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Property.owl#SmartHomeProperty> ,
+                          [ rdf:type owl:Restriction ;
+                            owl:onProperty <http://purl.oclc.org/NET/ssnx/ssn#isPropertyOf> ;
+                            owl:someValuesFrom :MobileObject
+                          ] .
+
+
+###  http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Object.owl#MobileObject
+:MobileObject rdf:type owl:Class ;
+              rdfs:subClassOf :SmartHomeObject ,
+                              [ rdf:type owl:Restriction ;
+                                owl:onProperty <http://purl.oclc.org/NET/ssnx/ssn#hasProperty> ;
+                                owl:someValuesFrom :Location
+                              ] ;
+              owl:disjointWith :NonMobileObject .
+
+
+###  http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Object.owl#NodeHolder
+:NodeHolder rdf:type owl:Class ;
+            rdfs:subClassOf :SmartHomeObject ,
+                            <http://purl.oclc.org/NET/ssnx/ssn#Platform> ,
+                            [ rdf:type owl:Restriction ;
+                              owl:onProperty <http://purl.oclc.org/NET/ssnx/ssn#attachedSystem> ;
+                              owl:someValuesFrom <http://purl.oclc.org/NET/ssnx/ssn#Device>
+                            ] .
+
+
+###  http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Object.owl#NonMobileObject
+:NonMobileObject rdf:type owl:Class ;
+                 rdfs:subClassOf :SmartHomeObject .
+
+
+###  http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Object.owl#SmartHomeAgent
+:SmartHomeAgent rdf:type owl:Class ;
+                rdfs:subClassOf :MobileObject ,
+                                <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Agent> ,
+                                [ rdf:type owl:Restriction ;
+                                  owl:onProperty <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasConstituent> ;
+                                  owl:someValuesFrom :SmartHomeObject
+                                ] ,
+                                [ rdf:type owl:Restriction ;
+                                  owl:onProperty <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#isParticipantIn> ;
+                                  owl:someValuesFrom <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Event>
+                                ] .
+
+
+###  http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Object.owl#SmartHomeObject
+:SmartHomeObject rdf:type owl:Class ;
+                 rdfs:subClassOf <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#PhysicalObject> ,
+                                 [ rdf:type owl:Restriction ;
+                                   owl:onProperty <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#hasLocation> ;
+                                   owl:someValuesFrom <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#PhysicalPlace>
+                                 ] .
+
+
+###  http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Object.owl#SmartObject
+:SmartObject rdf:type owl:Class ;
+             rdfs:subClassOf :SmartHomeObject ,
+                             [ rdf:type owl:Restriction ;
+                               owl:onProperty <http://purl.oclc.org/NET/ssnx/ssn#hasProperty> ;
+                               owl:someValuesFrom <http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Property.owl#SmartHomeProperty>
+                             ] .
+
+
+###  http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Property.owl#SmartHomeProperty
+<http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Property.owl#SmartHomeProperty> rdfs:subClassOf [ rdf:type owl:Restriction ;
+                                                                                                                  owl:onProperty <http://purl.oclc.org/NET/ssnx/ssn#isPropertyOf> ;
+                                                                                                                  owl:someValuesFrom :SmartObject
+                                                                                                                ] .
+
+
+###  http://purl.oclc.org/NET/ssnx/ssn#Device
+<http://purl.oclc.org/NET/ssnx/ssn#Device> rdf:type owl:Class .
+
+
+###  http://purl.oclc.org/NET/ssnx/ssn#Platform
+<http://purl.oclc.org/NET/ssnx/ssn#Platform> rdf:type owl:Class .
+
+
+###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Agent
+<http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Agent> rdf:type owl:Class .
+
+
+###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Event
+<http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Event> rdf:type owl:Class .
+
+
+###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#NaturalPerson
+<http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#NaturalPerson> rdf:type owl:Class .
+
+
+###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#PhysicalObject
+<http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#PhysicalObject> rdf:type owl:Class .
+
+
+###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#PhysicalPlace
+<http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#PhysicalPlace> rdf:type owl:Class .
+
+
+###  http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Situation
+<http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#Situation> rdf:type owl:Class .
+
+
+###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

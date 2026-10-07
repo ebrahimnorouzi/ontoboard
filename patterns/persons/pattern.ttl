@@ -1,0 +1,133 @@
+@prefix : <http://www.ontologydesignpatterns.org/cp/owl/persons.owl#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@base <http://www.ontologydesignpatterns.org/cp/owl/persons.owl> .
+
+<http://www.ontologydesignpatterns.org/cp/owl/persons.owl> rdf:type owl:Ontology ;
+                                                            owl:imports <http://www.ontologydesignpatterns.org/cp/owl/agentrole.owl> ,
+                                                                        <http://www.ontologydesignpatterns.org/cp/owl/description.owl> ;
+                                                            owl:versionInfo "1.1 added rdfs:isDefinedBy for all named entities"^^xsd:string ,
+                                                                            "Created with TopBraid Composer"^^xsd:string .
+
+#################################################################
+#    Annotation properties
+#################################################################
+
+###  http://www.w3.org/2000/01/rdf-schema#comment
+rdfs:comment rdf:type owl:AnnotationProperty .
+
+
+###  http://www.w3.org/2000/01/rdf-schema#isDefinedBy
+rdfs:isDefinedBy rdf:type owl:AnnotationProperty .
+
+
+###  http://www.w3.org/2000/01/rdf-schema#label
+rdfs:label rdf:type owl:AnnotationProperty .
+
+
+###  http://www.w3.org/2002/07/owl#versionInfo
+owl:versionInfo rdf:type owl:AnnotationProperty .
+
+
+#################################################################
+#    Object Properties
+#################################################################
+
+###  http://www.ontologydesignpatterns.org/cp/owl/persons.owl#actsFor
+:actsFor rdf:type owl:ObjectProperty ;
+         owl:inverseOf :actsThrough ;
+         rdfs:domain <http://www.ontologydesignpatterns.org/cp/owl/agentrole.owl#Agent> ;
+         rdfs:range :SocialPerson ;
+         rdfs:comment "The relation holding between any Agent, and a SocialPerson. In principle, a SocialPerson requires at least one NaturalPerson in order to act, but this dependency can be 'delegated'; e.g. a university can be acted for by a department, which on its turm is acted for by natural persons." ;
+         rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/persons.owl> ;
+         rdfs:label "acts for"@en ,
+                    "agisce per"@it .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/persons.owl#actsThrough
+:actsThrough rdf:type owl:ObjectProperty ;
+             rdfs:domain :SocialPerson ;
+             rdfs:range <http://www.ontologydesignpatterns.org/cp/owl/agentrole.owl#Agent> ;
+             rdfs:comment "The relation holding between any Agent, and a SocialPerson. In principle, a SocialPerson requires at least one NaturalPerson in order to act, but this dependency can be 'delegated'; e.g. a university can be acted for by a department, which on its turm is acted for by natural persons." ;
+             rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/persons.owl> ;
+             rdfs:label "acts through"@en ,
+                        "agisce mediante"@it .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/persons.owl#introduces
+:introduces rdf:type owl:ObjectProperty ;
+            owl:inverseOf :isIntroducedBy ;
+            rdfs:domain <http://www.ontologydesignpatterns.org/cp/owl/description.owl#Description> ;
+            rdfs:range :SocialPerson ;
+            rdfs:comment "A relation between a Description and a SocialPerson, e.g. a Constitutional Charter that introduces the SocialPerson 'PresidentOfRepublic'." ;
+            rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/persons.owl> ;
+            rdfs:label "introduce"@it ,
+                       "introduces"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/persons.owl#isIntroducedBy
+:isIntroducedBy rdf:type owl:ObjectProperty ;
+                rdfs:domain :SocialPerson ;
+                rdfs:range <http://www.ontologydesignpatterns.org/cp/owl/description.owl#Description> ;
+                rdfs:comment "A relation between a Description and a SocialPerson, e.g. a Constitutional Charter that introduces the SocialPerson 'PresidentOfRepublic'." ;
+                rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/persons.owl> ;
+                rdfs:label "is introduced by"@en ,
+                           "è introdotto da"@it .
+
+
+#################################################################
+#    Classes
+#################################################################
+
+###  http://www.ontologydesignpatterns.org/cp/owl/agentrole.owl#Agent
+<http://www.ontologydesignpatterns.org/cp/owl/agentrole.owl#Agent> rdf:type owl:Class .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/description.owl#Description
+<http://www.ontologydesignpatterns.org/cp/owl/description.owl#Description> rdf:type owl:Class .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/persons.owl#NaturalPerson
+:NaturalPerson rdf:type owl:Class ;
+               rdfs:subClassOf :Person ;
+               rdfs:comment "A Person in the physical commonsense intuition: 'have you seen that person walking down the street?'" ;
+               rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/persons.owl> ;
+               rdfs:label "Natural person"@en ,
+                          "Persona fisica"@it .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/persons.owl#Person
+:Person rdf:type owl:Class ;
+        owl:equivalentClass [ rdf:type owl:Class ;
+                              owl:unionOf ( :NaturalPerson
+                                            :SocialPerson
+                                          )
+                            ] ;
+        rdfs:subClassOf <http://www.ontologydesignpatterns.org/cp/owl/agentrole.owl#Agent> ;
+        rdfs:comment "Persons in commonsense intuition, which does not apparently distinguish between either natural or social persons." ;
+        rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/persons.owl> ;
+        rdfs:label "Person"@en ,
+                   "Persona {it}" .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/persons.owl#SocialPerson
+:SocialPerson rdf:type owl:Class ;
+              rdfs:subClassOf :Person ,
+                              [ rdf:type owl:Restriction ;
+                                owl:onProperty :actsThrough ;
+                                owl:cardinality "1"^^xsd:nonNegativeInteger
+                              ] ;
+              rdfs:comment "A Person that needs the existence of a specific NaturalPerson in order to act (but the lifetime of the NaturalPerson has only to overlap that of the SocialPerson). The NaturalPerson through which it acts can be also indirectly related, e.g. an organization that acts through another organization, which actsThrough one or more NaturalPerson(s)."^^xsd:string ;
+              rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/persons.owl> ;
+              rdfs:label "Persona sociale"@it ,
+                         "Social person"@en .
+
+
+###  http://www.w3.org/2002/07/owl#Thing
+owl:Thing rdf:type owl:Class .
+
+
+###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

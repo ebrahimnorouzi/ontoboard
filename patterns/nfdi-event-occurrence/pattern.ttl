@@ -1,0 +1,142 @@
+@prefix : <https://ontoboard.org/patterns/nfdi-event-occurrence.owl#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@base <https://ontoboard.org/patterns/nfdi-event-occurrence.owl> .
+
+<https://ontoboard.org/patterns/nfdi-event-occurrence.owl> rdf:type owl:Ontology .
+
+#################################################################
+#    Annotation properties
+#################################################################
+
+###  http://purl.obolibrary.org/obo/IAO_0000112
+<http://purl.obolibrary.org/obo/IAO_0000112> rdf:type owl:AnnotationProperty .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000115
+<http://purl.obolibrary.org/obo/IAO_0000115> rdf:type owl:AnnotationProperty .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000116
+<http://purl.obolibrary.org/obo/IAO_0000116> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.w3.org/2004/02/skos/core#definition
+<http://www.w3.org/2004/02/skos/core#definition> rdf:type owl:AnnotationProperty .
+
+
+#################################################################
+#    Object Properties
+#################################################################
+
+###  http://purl.obolibrary.org/obo/BFO_0000199
+<http://purl.obolibrary.org/obo/BFO_0000199> rdf:type owl:ObjectProperty ,
+                                                      owl:FunctionalProperty ;
+                                             rdfs:label "occupies temporal region"@en ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "p occupies temporal region t =Def p is a process or process boundary & the spatiotemporal region occupied by p temporally projects onto t"@en .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000235
+<http://purl.obolibrary.org/obo/IAO_0000235> rdf:type owl:ObjectProperty ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "inverse of the relation 'denotes'"@en ;
+                                             rdfs:label "denoted by"@en .
+
+
+###  http://purl.obolibrary.org/obo/RO_0000057
+<http://purl.obolibrary.org/obo/RO_0000057> rdf:type owl:ObjectProperty ;
+                                            <http://purl.obolibrary.org/obo/IAO_0000112> "this blood coagulation has participant this blood clot"@en ,
+                                                                                         "this investigation has participant this investigator"@en ,
+                                                                                         "this process has participant this input material (or this output material)"@en ;
+                                            <http://purl.obolibrary.org/obo/IAO_0000115> "a relation between a process and a continuant, in which the continuant is somehow involved in the process"@en ;
+                                            <http://purl.obolibrary.org/obo/IAO_0000116> "Has_participant is a primitive instance-level relation between a process, a continuant, and a time at which the continuant participates in some way in the process. The relation obtains, for example, when this particular process of oxygen exchange across this particular alveolar membrane has_participant this particular sample of hemoglobin at this particular time."@en ;
+                                            rdfs:label "has participant"@en .
+
+
+###  http://purl.obolibrary.org/obo/RO_0002233
+<http://purl.obolibrary.org/obo/RO_0002233> rdf:type owl:ObjectProperty ;
+                                            rdfs:subPropertyOf <http://purl.obolibrary.org/obo/RO_0000057> ;
+                                            <http://purl.obolibrary.org/obo/IAO_0000115> "p has input c iff: p is a process, c is a material entity, c is a participant in p, c is present at the start of p, and the state of c is modified during p." ;
+                                            rdfs:label "has input"@en .
+
+
+#################################################################
+#    Classes
+#################################################################
+
+###  http://purl.obolibrary.org/obo/BFO_0000019
+<http://purl.obolibrary.org/obo/BFO_0000019> rdf:type owl:Class ;
+                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000020> ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000112> "the ambient temperature of this portion of air"@en ,
+                                                                                          "the color of a tomato"@en ,
+                                                                                          "the length of the circumference of your waist"@en ,
+                                                                                          "the mass of this piece of gold."@en ,
+                                                                                          "the shape of your nose"@en ,
+                                                                                          "the shape of your nostril"@en ;
+                                             rdfs:label "quality"@en ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "(Elucidation) A quality is a specifically dependent continuant that, in contrast to roles and dispositions, does not require any further process in order to be realized"@en .
+
+
+###  http://purl.obolibrary.org/obo/BFO_0000020
+<http://purl.obolibrary.org/obo/BFO_0000020> rdf:type owl:Class ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000112> "Reciprocal specifically dependent continuants: the function of this key to open this lock and the mutually dependent disposition of this lock: to be opened by this key"@en ,
+                                                                                          "of one-sided specifically dependent continuants: the mass of this tomato"@en ,
+                                                                                          "of relational dependent continuants (multiple bearers): John’s love for Mary, the ownership relation between John and this statue, the relation of authority between John and his subordinates."@en ,
+                                                                                          "the disposition of this fish to decay"@en ,
+                                                                                          "the function of this heart: to pump blood"@en ,
+                                                                                          "the mutual dependence of proton donors and acceptors in chemical reactions [79"@en ,
+                                                                                          "the mutual dependence of the role predator and the role prey as played by two organisms in a given interaction"@en ,
+                                                                                          "the pink color of a medium rare piece of grilled filet mignon at its center"@en ,
+                                                                                          "the role of being a doctor"@en ,
+                                                                                          "the shape of this hole."@en ,
+                                                                                          "the smell of this portion of mozzarella"@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "b is a specifically dependent continuant = Def. b is a continuant & there is some independent continuant c which is not a spatial region and which is such that b s-depends_on c at every time t during the course of b’s existence. (axiom label in BFO2 Reference: [050-003])"@en ;
+                                             rdfs:label "specifically dependent continuant"@en ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "b is a specifically dependent continuant =Def b is a continuant & there is some independent continuant c which is not a spatial region & which is such that b specifically depends on c"@en .
+
+
+###  http://purl.obolibrary.org/obo/BFO_0000027
+<http://purl.obolibrary.org/obo/BFO_0000027> rdf:type owl:Class ;
+                                             rdfs:label "object aggregate"@en ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "(Elucidation) An object aggregate is a material entity consisting exactly of a plurality (≥1) of objects as member parts which together form a unit"@en .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000300
+<http://purl.obolibrary.org/obo/IAO_0000300> rdf:type owl:Class ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000112> "Words, sentences, paragraphs, and the written (non-figure) parts of publications are all textual entities"@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "A textual entity is a part of a manifestation (FRBR sense), a generically dependent continuant whose concretizations are patterns of glyphs intended to be interpreted as words, formulas, etc."@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000116> "AR, (IAO call 2009-09-01): a document as a whole is not typically a textual entity, because it has pictures in it - rather there are parts of it that are textual entities. Examples: The title, paragraph 2 sentence 7, etc."@en ,
+                                                                                          "MC, 2009-09-14 (following IAO call 2009-09-01): textual entities live at the FRBR (http://en.wikipedia.org/wiki/Functional_Requirements_for_Bibliographic_Records) manifestation level. Everything is significant: line break, pdf and html versions of same document are different textual entities."@en ;
+                                             rdfs:label "textual entity"@en .
+
+
+###  https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000018
+<https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000018> rdf:type owl:Class ;
+                                                      rdfs:label "academic event"@en ;
+                                                      <http://www.w3.org/2004/02/skos/core#definition> "An event that focuses on scholarly activities and the exchange of knowledge, typically involving presentations, discussions, or collaborations among researchers, academics, and students, often in the context of conferences, workshops, seminars, symposia, or colloquia, to advance a specific field of study or interdisciplinary research."@en .
+
+
+###  https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000107
+<https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000107> rdf:type owl:Class ;
+                                                      rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000027> ;
+                                                      rdfs:label "collection"@en ;
+                                                      <http://www.w3.org/2004/02/skos/core#definition> "A material entity that represents a collection of material entities intended to be understood together as a whole."@en .
+
+
+###  https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0001019
+<https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0001019> rdf:type owl:Class ;
+                                                      rdfs:subClassOf <http://purl.obolibrary.org/obo/IAO_0000300> ;
+                                                      rdfs:label "title"@en ;
+                                                      <http://www.w3.org/2004/02/skos/core#definition> "A textual entity that denotes some resource."@en .
+
+
+###  https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0010020
+<https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0010020> rdf:type owl:Class ;
+                                                      rdfs:subClassOf <https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000018> ;
+                                                      rdfs:label "conference"@en ;
+                                                      <http://www.w3.org/2004/02/skos/core#definition> "An event where experts and scholars gather to present research, exchange ideas, and discuss advancements in a particular field."@en .
+
+
+###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

@@ -1,0 +1,137 @@
+@prefix : <http://www.ontologydesignpatterns.org/cp/owl/descriptionandsituation.owl#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@base <http://www.ontologydesignpatterns.org/cp/owl/descriptionandsituation.owl> .
+
+<http://www.ontologydesignpatterns.org/cp/owl/descriptionandsituation.owl> rdf:type owl:Ontology ;
+                                                                            owl:imports <http://www.ontologydesignpatterns.org/cp/owl/classification.owl> ,
+                                                                                        <http://www.ontologydesignpatterns.org/cp/owl/description.owl> ,
+                                                                                        <http://www.ontologydesignpatterns.org/cp/owl/situation.owl> ,
+                                                                                        <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl> ;
+                                                                            <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#extractedFrom> "http://www.ontologydesignpatterns.org/ont/dul/DUL.owl" ;
+                                                                            <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasComponent> "http://www.ontologydesignpatterns.org/cp/owl/classification.owl" ,
+                                                                                                                                                                "http://www.ontologydesignpatterns.org/cp/owl/description.owl" ,
+                                                                                                                                                                "http://www.ontologydesignpatterns.org/cp/owl/situation.owl" ;
+                                                                            rdfs:comment "The Description and Situation content ontology design pattern. This CP represents conceptualizations i.e., descriptions, and corresponding groundings i.e., situations. The pattern is extracted from DOLCE+DnS Ultralite by partial cloning of elements, and is composed of three other CPs: description, situation, and classification." ;
+                                                                            owl:versionInfo "1.1 added rdfs:isDefinedBy for all named entities"^^xsd:string ,
+                                                                                            "Created by Valentina Presutti"^^xsd:string .
+
+#################################################################
+#    Annotation properties
+#################################################################
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#extractedFrom
+<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#extractedFrom> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasComponent
+<http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasComponent> rdf:type owl:AnnotationProperty .
+
+
+###  http://www.w3.org/2000/01/rdf-schema#comment
+rdfs:comment rdf:type owl:AnnotationProperty .
+
+
+###  http://www.w3.org/2000/01/rdf-schema#isDefinedBy
+rdfs:isDefinedBy rdf:type owl:AnnotationProperty .
+
+
+###  http://www.w3.org/2000/01/rdf-schema#label
+rdfs:label rdf:type owl:AnnotationProperty .
+
+
+###  http://www.w3.org/2002/07/owl#versionInfo
+owl:versionInfo rdf:type owl:AnnotationProperty .
+
+
+#################################################################
+#    Object Properties
+#################################################################
+
+###  http://www.ontologydesignpatterns.org/cp/owl/description.owl#isDefinedIn
+<http://www.ontologydesignpatterns.org/cp/owl/description.owl#isDefinedIn> rdf:type owl:ObjectProperty .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/descriptionandsituation.owl#describes
+:describes rdf:type owl:ObjectProperty ;
+           owl:inverseOf :isDescribedBy ;
+           rdfs:domain <http://www.ontologydesignpatterns.org/cp/owl/description.owl#Description> ;
+           rdfs:range owl:Thing ;
+           rdfs:comment """The relation between a Description and an Entity : a Description gives a unity to a Collection of parts (the components), or constituents, by assigning a Role to each of them in the context of a whole Object (the system).
+A same Entity can be given different descriptions, for example, an old cradle can be given a unifying Description based on the original aesthetic design, the functionality it was built for, or a new aesthetic functionality in which it can be used as a flower pot.""" ;
+           rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/descriptionandsituation.owl> ;
+           rdfs:label "describes"@en ,
+                      "descrive"@it .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/descriptionandsituation.owl#isDescribedBy
+:isDescribedBy rdf:type owl:ObjectProperty ;
+               rdfs:domain owl:Thing ;
+               rdfs:range <http://www.ontologydesignpatterns.org/cp/owl/description.owl#Description> ;
+               rdfs:comment """The relation between any Thing and a Description: a Description gives a unity to a Collection of parts (the components), or constituents, by assigning a Role to each of them in the context of a whole Object (the system).
+A same Thing can be given different descriptions, for example, an old cradle can be given a unifying Description based on the original aesthetic design, the functionality it was built for, or a new aesthetic functionality in which it can be used as a flower pot.""" ;
+               rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/descriptionandsituation.owl> ;
+               rdfs:label "is described by"@en ,
+                          "è descritto da"@it .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/descriptionandsituation.owl#isSatisfiedBy
+:isSatisfiedBy rdf:type owl:ObjectProperty ;
+               owl:inverseOf :satisfies ;
+               rdfs:domain <http://www.ontologydesignpatterns.org/cp/owl/description.owl#Description> ;
+               rdfs:range <http://www.ontologydesignpatterns.org/cp/owl/situation.owl#Situation> ;
+               rdfs:comment "A relation between a Situation and a Description, e.g. the execution of a Plan satisfies that plan." ;
+               rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/descriptionandsituation.owl> ;
+               rdfs:label "is satisfied by"@en ,
+                          "è soddisfatta da"@it .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/descriptionandsituation.owl#satisfies
+:satisfies rdf:type owl:ObjectProperty ;
+           rdfs:domain <http://www.ontologydesignpatterns.org/cp/owl/situation.owl#Situation> ;
+           rdfs:range <http://www.ontologydesignpatterns.org/cp/owl/description.owl#Description> ;
+           rdfs:comment "A relation between a Situation and a Description, e.g. the execution of a Plan satisfies that plan."^^xsd:string ;
+           rdfs:isDefinedBy <http://www.ontologydesignpatterns.org/cp/owl/descriptionandsituation.owl> ;
+           rdfs:label "satisfies"@en ,
+                      "soddisfa"@it .
+
+
+#################################################################
+#    Classes
+#################################################################
+
+###  http://www.ontologydesignpatterns.org/cp/owl/classification.owl#Concept
+<http://www.ontologydesignpatterns.org/cp/owl/classification.owl#Concept> rdf:type owl:Class ;
+                                                                          owl:equivalentClass <http://www.ontologydesignpatterns.org/cp/owl/description.owl#Concept> ;
+                                                                          rdfs:subClassOf [ rdf:type owl:Restriction ;
+                                                                                            owl:onProperty <http://www.ontologydesignpatterns.org/cp/owl/description.owl#isDefinedIn> ;
+                                                                                            owl:minCardinality "1"^^xsd:nonNegativeInteger
+                                                                                          ] .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/description.owl#Concept
+<http://www.ontologydesignpatterns.org/cp/owl/description.owl#Concept> rdf:type owl:Class ;
+                                                                       owl:disjointWith <http://www.ontologydesignpatterns.org/cp/owl/situation.owl#Situation> .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/description.owl#Description
+<http://www.ontologydesignpatterns.org/cp/owl/description.owl#Description> rdf:type owl:Class ;
+                                                                           owl:disjointWith <http://www.ontologydesignpatterns.org/cp/owl/situation.owl#Situation> .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/situation.owl#Situation
+<http://www.ontologydesignpatterns.org/cp/owl/situation.owl#Situation> rdf:type owl:Class ;
+                                                                       rdfs:subClassOf [ rdf:type owl:Restriction ;
+                                                                                         owl:onProperty :satisfies ;
+                                                                                         owl:minCardinality "1"^^xsd:nonNegativeInteger
+                                                                                       ] .
+
+
+###  http://www.w3.org/2002/07/owl#Thing
+owl:Thing rdf:type owl:Class .
+
+
+###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

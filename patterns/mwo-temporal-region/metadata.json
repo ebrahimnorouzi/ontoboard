@@ -1,0 +1,15 @@
+{
+  "id": "mwo-temporal-region",
+  "name": "Pattern 7: Temporal Region",
+  "description": "Represents temporal regions in BFO terms, distinguishing a zero-dimensional temporal region (an instant such as the start or end of an event) from a one-dimensional temporal region (an interval with a duration), related by occupies_temporal_region, has_first_instance and has_last_instance. Data about those regions - start date, end date, duration, frequency - is carried by specification datum individuals linked to their values with nfdicore:hasValue.",
+  "category": "temporal",
+  "domain": "general",
+  "competency_questions": "",
+  "pattern_iri": "https://ontoboard.org/patterns/mwo-temporal-region.owl",
+  "source": "https://ise-fizkarlsruhe.github.io/mwo/docs/patterns/",
+  "collection": "mwo",
+  "publisher": "ise-fizkarlsruhe.github.io",
+  "extracted_from": "mwo",
+  "class_count": 13,
+  "property_count": 6
+}

@@ -1,0 +1,325 @@
+@prefix : <http://w3id.org/daselab/onto/trajectory#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@base <http://w3id.org/daselab/onto/trajectory> .
+
+<http://w3id.org/daselab/onto/trajectory> rdf:type owl:Ontology ;
+                                           owl:imports <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl> ;
+                                           <http://purl.org/dc/elements/1.1/creator> "Adila Krisnadhi, Pascal Hitzler" ;
+                                           <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> """Show the birds which stop at x and y,
+Show the birds which move at a ground speed of 0.4 m/s,
+Show the trajectories of rivers which cross national parks,
+Where are the ports at which the oceanographic cruise A3221 stopped after leaving Woods Hole?,
+List the places and times that represent the spatiotemporal extent of the 1990 World Chess Championship event,""" ;
+                                           <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences> "Unlike the original version of Semantic Trajectory, this pattern omits the hook to the data source for fixes (which was a subclass of ssn:Device) because instead of location/geo-coordinate, the notion of place is employed to capture the spatial extent. Nevertheless, it should be relatively straightforward to extend this version if the user wises to attach data source information to the fixes." ;
+                                           <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> "The pattern provides a model of trajectory, which is understood as a sequence of spatiotemporal points. The model generalizing the Semantic Trajectory pattern from [Hu, et al., COSIT 2013] by employing the notion of place, instead of location/geo-coordinate, to represent the spatial extent of the trajectory.  This pattern is suitable for a variety of trajectory datasets and easily extendible by by aligning to or matching with existing trajectory ontologies, foundational ontologies, or other domain specific vocabularies." ;
+                                           <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#reengineeredFrom> "Yingjie Hu; Krzysztof Janowicz; David Carral; Simon Scheider; Werner Kuhn; Gary Berg-Cross; Pascal Hitzler; Mike Dean; Dave Kolas: A Geo-ontology Design Pattern for Semantic Trajectories. In International Conference on Spatial Information Theory (COSIT) 2013) 438-456" ;
+                                           <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#relatedCPs> "Place, Time, MovingObject" ;
+                                           <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios> """Mike's trip to the GeoVoCamp 2012 from his home integrating data from GPS device, vehicle information, and personal information.
+
+A toucan flies through the air as recorded by researchers in the MoveBank.
+
+The 1990 World Chess Championship event that was held in two locations at two different times.""" ;
+                                           rdfs:label "Semantic Trajectory Pattern" .
+
+#################################################################
+#    Annotation properties
+#################################################################
+
+###  http://purl.org/dc/elements/1.1/creator
+<http://purl.org/dc/elements/1.1/creator> rdf:type owl:AnnotationProperty .
+
+
+#################################################################
+#    Object Properties
+#################################################################
+
+###  http://w3id.org/daselab/onto/trajectory#atPlace
+:atPlace rdf:type owl:ObjectProperty ;
+         rdfs:range :Place ;
+         rdfs:comment "Connects anything (including fixes in this pattern) to Place." ;
+         rdfs:label "atPlace" .
+
+
+###  http://w3id.org/daselab/onto/trajectory#atTime
+:atTime rdf:type owl:ObjectProperty ;
+        rdfs:range :TimeEntity ;
+        rdfs:comment "Connects anything (including fixes in this pattern) to TimeEntity" ;
+        rdfs:label "atTime" .
+
+
+###  http://w3id.org/daselab/onto/trajectory#endsAt
+:endsAt rdf:type owl:ObjectProperty ,
+                 owl:FunctionalProperty ;
+        rdfs:comment "Connects a segment to the fix it ends at." ;
+        rdfs:label "endsAt" .
+
+
+###  http://w3id.org/daselab/onto/trajectory#hasAttribute
+:hasAttribute rdf:type owl:ObjectProperty ;
+              rdfs:comment "Connects a fix or a segment to an additional information as represented by an instance of Attribute." ;
+              rdfs:label "hasAttribute" .
+
+
+###  http://w3id.org/daselab/onto/trajectory#hasFix
+:hasFix rdf:type owl:ObjectProperty ;
+        owl:propertyChainAxiom ( :hasSegment
+                                 :endsAt
+                               ) ,
+                               ( :hasSegment
+                                 :startsFrom
+                               ) ;
+        rdfs:comment "Relating the trajectory to each of its fixes." ;
+        rdfs:label "hasFix" .
+
+
+###  http://w3id.org/daselab/onto/trajectory#hasSegment
+:hasSegment rdf:type owl:ObjectProperty ;
+            rdfs:comment "Relating the trajectory to each of its segments." ;
+            rdfs:label "hasSegment" .
+
+
+###  http://w3id.org/daselab/onto/trajectory#hasTrajectory
+:hasTrajectory rdf:type owl:ObjectProperty ;
+               rdfs:range :Trajectory ;
+               rdfs:comment "Anything that has a trajectory can use this property to connect it to the trajectory instance." ;
+               rdfs:label "hasTrajectory" .
+
+
+###  http://w3id.org/daselab/onto/trajectory#nextFix
+:nextFix rdf:type owl:ObjectProperty ;
+         rdfs:comment "Relates one fix to the immediately following fix in the sequence." ;
+         rdfs:label "nextFix" .
+
+
+###  http://w3id.org/daselab/onto/trajectory#startsFrom
+:startsFrom rdf:type owl:ObjectProperty ,
+                     owl:FunctionalProperty ;
+            rdfs:comment "Connects a segment to the fix it starts from." ;
+            rdfs:label "startsFrom" .
+
+
+###  http://w3id.org/daselab/onto/trajectory#traversedBy
+:traversedBy rdf:type owl:ObjectProperty ;
+             rdfs:comment "Connect a segment to the moving object that traverses it." ;
+             rdfs:label "traversedBy" .
+
+
+#################################################################
+#    Classes
+#################################################################
+
+###  http://w3id.org/daselab/onto/trajectory#Attribute
+:Attribute rdf:type owl:Class ;
+           rdfs:comment "Captures additional information that enriches some fix or segment." ;
+           rdfs:label "Attribute" .
+
+
+###  http://w3id.org/daselab/onto/trajectory#EndingFix
+:EndingFix rdf:type owl:Class ;
+           owl:equivalentClass [ owl:intersectionOf ( :Fix
+                                                      [ rdf:type owl:Class ;
+                                                        owl:complementOf [ rdf:type owl:Restriction ;
+                                                                           owl:onProperty [ owl:inverseOf :startsFrom
+                                                                                          ] ;
+                                                                           owl:someValuesFrom :Segment
+                                                                         ]
+                                                      ]
+                                                    ) ;
+                                 rdf:type owl:Class
+                               ] ;
+           rdfs:subClassOf :Fix ;
+           rdfs:comment "The last fix in a particular sequence of fixes." ;
+           rdfs:label "EndingFix" .
+
+
+###  http://w3id.org/daselab/onto/trajectory#Fix
+:Fix rdf:type owl:Class ;
+     rdfs:subClassOf [ rdf:type owl:Restriction ;
+                       owl:onProperty :atPlace ;
+                       owl:someValuesFrom :Place
+                     ] ,
+                     [ rdf:type owl:Restriction ;
+                       owl:onProperty :atTime ;
+                       owl:someValuesFrom :TimeEntity
+                     ] ,
+                     [ rdf:type owl:Restriction ;
+                       owl:onProperty [ owl:inverseOf :hasFix
+                                      ] ;
+                       owl:someValuesFrom :Trajectory
+                     ] ,
+                     [ rdf:type owl:Restriction ;
+                       owl:onProperty :hasAttribute ;
+                       owl:allValuesFrom :Attribute
+                     ] ,
+                     [ rdf:type owl:Restriction ;
+                       owl:onProperty :nextFix ;
+                       owl:allValuesFrom :Fix
+                     ] ;
+     rdfs:comment "Describes a fix, which is an adorned spatiotemporal point. A sequence of fixes form the trajectory." ;
+     rdfs:label "Fix" .
+
+
+###  http://w3id.org/daselab/onto/trajectory#MovingObject
+:MovingObject rdf:type owl:Class ;
+              rdfs:comment "This is the hook to an ontology/pattern that describes the moving object, if any, which moves along the trajectory." ;
+              rdfs:label "MovingObject" .
+
+
+###  http://w3id.org/daselab/onto/trajectory#Place
+:Place rdf:type owl:Class ;
+       rdfs:comment "This is the hook to other pattern/ontology that describes the notion of place, which is more general than just a location/geo-coordinate." ;
+       rdfs:label "Place" .
+
+
+###  http://w3id.org/daselab/onto/trajectory#Segment
+:Segment rdf:type owl:Class ;
+         rdfs:subClassOf [ rdf:type owl:Restriction ;
+                           owl:onProperty :endsAt ;
+                           owl:someValuesFrom :Fix
+                         ] ,
+                         [ rdf:type owl:Restriction ;
+                           owl:onProperty :startsFrom ;
+                           owl:someValuesFrom :Fix
+                         ] ,
+                         [ rdf:type owl:Restriction ;
+                           owl:onProperty [ owl:inverseOf :hasSegment
+                                          ] ;
+                           owl:someValuesFrom :Trajectory
+                         ] ,
+                         [ rdf:type owl:Restriction ;
+                           owl:onProperty :endsAt ;
+                           owl:allValuesFrom :Fix
+                         ] ,
+                         [ rdf:type owl:Restriction ;
+                           owl:onProperty :hasAttribute ;
+                           owl:allValuesFrom :Attribute
+                         ] ,
+                         [ rdf:type owl:Restriction ;
+                           owl:onProperty :startsFrom ;
+                           owl:allValuesFrom :Fix
+                         ] ,
+                         [ rdf:type owl:Restriction ;
+                           owl:onProperty :traversedBy ;
+                           owl:allValuesFrom :MovingObject
+                         ] ;
+         rdfs:comment "The Segment class captures the \"connection\" between two consecutive fixes. That is, a segment starts from a fix and ends at another fix. If the pattern is used to model the trajectory of some moving object, each segment is traversed by that moving object. Additional information about a segment can be attached as attributes." ;
+         rdfs:label "Segment" .
+
+
+###  http://w3id.org/daselab/onto/trajectory#StartingFix
+:StartingFix rdf:type owl:Class ;
+             owl:equivalentClass [ owl:intersectionOf ( :Fix
+                                                        [ rdf:type owl:Class ;
+                                                          owl:complementOf [ rdf:type owl:Restriction ;
+                                                                             owl:onProperty [ owl:inverseOf :endsAt
+                                                                                            ] ;
+                                                                             owl:someValuesFrom :Segment
+                                                                           ]
+                                                        ]
+                                                      ) ;
+                                   rdf:type owl:Class
+                                 ] ;
+             rdfs:subClassOf :Fix ;
+             rdfs:comment "The first fix in a particular sequence of fixes." ;
+             rdfs:label "StartingFix" .
+
+
+###  http://w3id.org/daselab/onto/trajectory#TimeEntity
+:TimeEntity rdf:type owl:Class ;
+            rdfs:comment "The hook to class/pattern/ontology that models time, this class provides the temporal extent of the trajectory. One example of time model is the W3C Time Ontology." ;
+            rdfs:label "TimeEntity" ;
+            rdfs:seeAlso <http://www.w3.org/2006/time> .
+
+
+###  http://w3id.org/daselab/onto/trajectory#Trajectory
+:Trajectory rdf:type owl:Class ;
+            rdfs:subClassOf [ rdf:type owl:Restriction ;
+                              owl:onProperty :hasSegment ;
+                              owl:someValuesFrom :Segment
+                            ] ,
+                            [ rdf:type owl:Restriction ;
+                              owl:onProperty :hasFix ;
+                              owl:allValuesFrom :Fix
+                            ] ,
+                            [ rdf:type owl:Restriction ;
+                              owl:onProperty :hasSegment ;
+                              owl:allValuesFrom :Segment
+                            ] ;
+            rdfs:comment "Represents the notion of trajectory, this is the main class that can be hooked with other patterns that use the Trajectory pattern. Trajectory in this model is understood as a sequence of fixes connected by segments. There is exactly one starting fix and exactly one ending fix. Each fix has a temporal extent and a place (which is more general than just a location)." ;
+            rdfs:label "Trajectory" .
+
+
+#################################################################
+#    General axioms
+#################################################################
+
+[ rdf:type owl:Restriction ;
+  owl:onProperty :endsAt ;
+  owl:someValuesFrom :Fix ;
+  rdfs:subClassOf :Segment
+] .
+
+
+[ rdf:type owl:Restriction ;
+  owl:onProperty :hasAttribute ;
+  owl:someValuesFrom :Attribute ;
+  rdfs:subClassOf [ rdf:type owl:Class ;
+                    owl:unionOf ( :Fix
+                                  :Segment
+                                )
+                  ]
+] .
+
+
+[ rdf:type owl:Restriction ;
+  owl:onProperty :hasFix ;
+  owl:someValuesFrom :Fix ;
+  rdfs:subClassOf :Trajectory
+] .
+
+
+[ rdf:type owl:Restriction ;
+  owl:onProperty :hasSegment ;
+  owl:someValuesFrom :Segment ;
+  rdfs:subClassOf :Trajectory
+] .
+
+
+[ rdf:type owl:Restriction ;
+  owl:onProperty :nextFix ;
+  owl:someValuesFrom :Fix ;
+  rdfs:subClassOf :Fix
+] .
+
+
+[ rdf:type owl:Restriction ;
+  owl:onProperty :startsFrom ;
+  owl:someValuesFrom :Fix ;
+  rdfs:subClassOf :Segment
+] .
+
+
+[ rdf:type owl:Restriction ;
+  owl:onProperty :traversedBy ;
+  owl:someValuesFrom :MovingObject ;
+  rdfs:subClassOf :Segment
+] .
+
+
+[ rdf:type owl:AllDisjointClasses ;
+  owl:members ( :Attribute
+                :Fix
+                :MovingObject
+                :Place
+                :Segment
+                :TimeEntity
+                :Trajectory
+              )
+] .
+
+
+###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

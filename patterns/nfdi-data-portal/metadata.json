@@ -1,0 +1,15 @@
+{
+  "id": "nfdi-data-portal",
+  "name": "dataportal",
+  "description": "A data portal (nfdi:NFDI_0000123) is distinguished from the repository that hosts it (nfdi:NFDI_0001202), and the formats and standards it supports are separate individuals rather than strings. Its access point is carried by the nfdi:NFDI_0001008 (has url) datatype property.",
+  "category": "information",
+  "domain": "research-data",
+  "competency_questions": "Which data portals and repositories does NFDI-MatWerk reference?; Which organisation hosts a given portal, and what access conditions apply?; Which data formats and PID systems does a given repository support?",
+  "pattern_iri": "https://ontoboard.org/patterns/nfdi-data-portal.owl",
+  "source": "https://nfdi.fiz-karlsruhe.de/matwerk/patterns/",
+  "collection": "nfdi",
+  "publisher": "nfdi.fiz-karlsruhe.de",
+  "extracted_from": "nfdi",
+  "class_count": 7,
+  "property_count": 3
+}

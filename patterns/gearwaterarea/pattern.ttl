@@ -1,0 +1,59 @@
+@prefix : <http://www.ontologydesignpatterns.org/cp/owl/fsdas/gearwaterarea.owl#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@base <http://www.ontologydesignpatterns.org/cp/owl/fsdas/gearwaterarea.owl> .
+
+<http://www.ontologydesignpatterns.org/cp/owl/fsdas/gearwaterarea.owl> rdf:type owl:Ontology ;
+                                                                        owl:imports <http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresources.owl> ,
+                                                                                    <http://www.ontologydesignpatterns.org/cp/owl/fsdas/gearspecies.owl> ,
+                                                                                    <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl> ;
+                                                                        <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#coversRequirements> "in which water areas are what gear types used? (provided that species caught by geartypes are present in those water areas)" ;
+                                                                        <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasComponent> "http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresources.owl" ,
+                                                                                                                                                            "http://www.ontologydesignpatterns.org/cp/owl/fsdas/gearspecies.owl" ;
+                                                                        <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasConsequences> "The relation between gear types and water areas is general, i.e. not expressed in terms of logistics, legal constraints etc. Note that no statement is made as for the domain of the hasWaterArea property, as it applies to both GearType and VesselType in other patterns, and in principle could apply to other entities. Hence the domain is expressed through superclass universal restrictions on the GearType class." ;
+                                                                        <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent> "to represent gear types in terms of the water areas where they can be employed to collect aquatic resources" ;
+                                                                        <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#scenarios> "in which water areas are 'bottom gillnets' used?" ;
+                                                                        rdfs:comment """This pattern composes aquaticresources.owl and gearspecies.owl.
+This must be inferred compositionally, and requires either  more sophisticated logical pattern, like 'property chain', available in OWL2 (but not in OWL1), or a complex reasoning pattern, like 'DL classifier+SPARQL', or 'DL classifier+SWRL rule firing'.""" ;
+                                                                        owl:versionInfo "1.2" ,
+                                                                                        "Created by Alessandro Adamou"^^xsd:string .
+
+#################################################################
+#    Object Properties
+#################################################################
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/gearwaterarea.owl#isSuitableForGearType
+:isSuitableForGearType rdf:type owl:ObjectProperty ;
+                       owl:inverseOf :isUsedInWaterArea ;
+                       rdfs:domain <http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresources.owl#WaterArea> ;
+                       rdfs:range <http://www.ontologydesignpatterns.org/cp/owl/fsdas/gearspecies.owl#GearType> ;
+                       rdfs:comment """Actually a composed property: this needs either a property chain, a SPARQL query, or a SWRL rule to gather a value. E.g. in SPARQL:
+
+CONSTRUCT {?x :isUsedInWaterArea ?y . ?y :isSuitableForGearType ?x}
+WHERE {
+?x gearspecies:targetsSpecies ?z .
+?z aquaticresources:isSpeciesPresentIn ?w .
+?w aquaticresources:hasWaterArea ?y
+}""" ;
+                       rdfs:label "is suitable for gear type"@en .
+
+
+###  http://www.ontologydesignpatterns.org/cp/owl/fsdas/gearwaterarea.owl#isUsedInWaterArea
+:isUsedInWaterArea rdf:type owl:ObjectProperty ;
+                   rdfs:domain <http://www.ontologydesignpatterns.org/cp/owl/fsdas/gearspecies.owl#GearType> ;
+                   rdfs:range <http://www.ontologydesignpatterns.org/cp/owl/fsdas/aquaticresources.owl#WaterArea> ;
+                   rdfs:comment """Actually a composed property: this needs either a property chain, a SPARQL query, or a SWRL rule to gather a value. E.g. in SPARQL:
+
+CONSTRUCT {?x :isUsedInWaterArea ?y . ?y :isSuitableForGearType ?x}
+WHERE {
+?x gearspecies:targetsSpecies ?z .
+?z aquaticresources:isSpeciesPresentIn ?w .
+?w aquaticresources:hasWaterArea ?y
+}""" ;
+                   rdfs:label "is used in water area"@en .
+
+
+###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi
