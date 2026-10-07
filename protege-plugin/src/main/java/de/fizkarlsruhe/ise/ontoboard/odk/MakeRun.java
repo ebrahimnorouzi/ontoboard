@@ -214,10 +214,16 @@ public final class MakeRun {
         command.add(root.getAbsolutePath().replace(BACKSLASH, '/') + ":/work");
         command.add("-w");
         command.add("/work/src/ontology");
+        // The project's own setting, not a hardcoded one. These are passed with -e, which wins
+        // over anything in the environment, so a project declaring robot_java_args: "-Xmx16G"
+        // used to get 8G with nothing to say so - and on a large ontology that is the difference
+        // between a build that finishes and one that dies. Defaults to the value this plugin
+        // always used, so a project without the key behaves exactly as before.
+        String heap = OdkBuildSettings.robotJavaArgs(ontologyDirectory);
         command.add("-e");
-        command.add("ROBOT_JAVA_ARGS=-Xmx8G");
+        command.add("ROBOT_JAVA_ARGS=" + heap);
         command.add("-e");
-        command.add("JAVA_OPTS=-Xmx8G");
+        command.add("JAVA_OPTS=" + heap);
         command.add(image == null || image.trim().isEmpty() ? DEFAULT_IMAGE : image.trim());
         command.addAll(inContainer);
         return command;
@@ -442,8 +448,15 @@ public final class MakeRun {
                     + "PATH - the generated Makefile calls it directly rather than through Docker.";
         }
         if (transcript.contains("java.lang.outofmemoryerror")) {
-            return "ROBOT ran out of memory. Give it more with ROBOT_JAVA_ARGS, for example "
-                    + "-Xmx8G, before running the build.";
+            // Naming the YAML key, not the environment variable. The old advice could not work:
+            // the container is started with -e ROBOT_JAVA_ARGS=..., which overrides whatever the
+            // user had exported, so following it changed nothing and read as ROBOT ignoring the
+            // setting.
+            return "ROBOT ran out of memory. Raise robot_java_args in the project's "
+                    + "<id>-odk.yaml - \"-Xmx16G\" for example - and run the build again. "
+                    + "OntoBoard passes that value into the container, so setting "
+                    + "ROBOT_JAVA_ARGS in your own shell has no effect on it. "
+                    + "Project > Project configuration... edits the key.";
         }
         if (transcript.contains("violation") && transcript.contains("report")) {
             return "The quality report found violations the project treats as failures. Run "

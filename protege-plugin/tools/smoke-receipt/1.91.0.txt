@@ -1,0 +1,87 @@
+OntoBoard 1.91.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-10-07  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 9/9  test 10/10
+  2026-10-07  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 9/9  test 10/10
+
+
+THE CONFIGURATION WAS READ, WRITTEN, PRESERVED - AND OVERRIDDEN
+
+Three releases went into showing the ODK YAML, editing it faithfully and splicing it so a
+one-word change stays one line. None of that made the plugin obey it. The documentation listed
+the keys that drive nothing, which was honest, and left the worst case looking like a mere
+omission.
+
+It was not an omission. A containerised build ran with
+
+    docker run ... -e ROBOT_JAVA_ARGS=-Xmx8G -e JAVA_OPTS=-Xmx8G ...
+
+hardcoded. `-e` overrides the environment, so a project declaring robot_java_args: "-Xmx16G"
+got 8G, silently - and on a large ontology that is the difference between a release that
+finishes and one that dies in the reasoner. The plugin was overriding a setting the project had
+written down specifically to avoid that.
+
+AND THE ADVICE FOR IT COULD NOT WORK
+
+When ROBOT ran out of memory the plugin said:
+
+    "ROBOT ran out of memory. Give it more with ROBOT_JAVA_ARGS, for example -Xmx8G,
+     before running the build."
+
+Exporting ROBOT_JAVA_ARGS does nothing, because the next line of our own code passes -e
+ROBOT_JAVA_ARGS over the top of it. Someone following that advice would have seen no change and
+reasonably concluded ROBOT ignores its own setting.
+
+Both fixed. The build uses the project's value, defaulting to -Xmx8G so a project without the
+key behaves exactly as before, and the message now names robot_java_args, says that setting the
+environment variable has no effect, and points at the editor that changes the key.
+
+Worth recording that MWO declares "-Xmx8G" - the same as the hardcoded value - so this defect
+was invisible on the one project everything here is measured against. It was found by reading
+the line, not by running anything.
+
+THE QUALITY REPORT NOW AGREES WITH THE PROJECT
+
+ROBOT > Quality report... took profile.txt from the project by filesystem convention, with help
+text promising that leaving it set "is what makes this report agree with what the project's CI
+will say". It then ignored robot_report.fail_on and robot_report.use_labels, so the report could
+take the project's profile and still disagree with the project's build about which findings
+count as a failure. Both are read now, with ODK's upper-case ERROR normalised to what ROBOT
+expects, and the labels checkbox defaults to the project's setting rather than to a preference
+of OntoBoard's.
+
+A CONFIG PROBLEM MUST NOT STOP A BUILD
+
+Every read returns the documented default on any failure: no project, no file, unreadable YAML, a
+duplicate key, or the path naming a list where a scalar was expected. A build that refused to
+start because a configuration file had a problem somewhere else in it would be a worse tool than
+one that used its default, and there are tests for all six cases.
+
+The reader goes through OdkYaml, which 1.89.0 generalised to paths - so robot_report.fail_on is
+a one-line lookup, and quoting, comments and nesting are handled by code already tested for
+them rather than by a second regex. The two features compose: generalising the editor made
+honouring the file cheap.
+
+NUMBERS
+
+1702 tests, 0 failures, 0 skipped. 12 new, counted three ways and agreeing.
+
+37/37 classes named in plugin.xml load on both hosts, and the self-test still drives the quality
+report end to end: 6 findings, 2 of them errors.
+
+DOCUMENTATION
+
+The "everything else is ignored" list lost three entries and gained a table saying what each one
+now changes - including, in plain words, that the heap was previously overridden rather than
+merely unread. The paragraph claiming fail_on and use_labels "are never read" is corrected, and
+custom_profile is still listed as ignored, because the profile is found by looking rather than by
+being told.
+
+STILL OPEN
+
+import_group, release_artefacts, export_formats and primary_release are still text OntoBoard
+preserves and does not obey. Contributing a pattern, or a fifth collection, without rebuilding
+the plugin. Three low-severity collaboration findings: node moves do not travel and the UI does
+not say so, nothing in the product tells you how to obtain a server, and "N changes not shared"
+is erased by the next reconnect.

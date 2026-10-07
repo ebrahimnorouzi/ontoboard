@@ -73,6 +73,24 @@ public final class QualityReport {
         if (profile != null) {
             options.put(OPTION_PROFILE, profile.getAbsolutePath());
         }
+        // And what the project's own configuration asks for. Without this the profile came from
+        // the project while fail_on and use_labels did not, so the report could disagree with
+        // the project's CI about which findings count as a failure - the one thing taking the
+        // profile from the project is meant to make agree. Both keys were listed in the
+        // documentation as read by nothing.
+        File ontologyDirectory = ontologyFile == null ? null
+                : ontologyFile.getAbsoluteFile().getParentFile();
+        String failOn = de.fizkarlsruhe.ise.ontoboard.odk.OdkBuildSettings
+                .reportFailOn(ontologyDirectory);
+        if (failOn != null) {
+            // ODK writes it upper case; ROBOT expects lower.
+            options.put(OPTION_FAIL_ON, failOn.toLowerCase(java.util.Locale.ROOT));
+        }
+        Boolean labels = de.fizkarlsruhe.ise.ontoboard.odk.OdkBuildSettings
+                .reportUsesLabels(ontologyDirectory);
+        if (labels != null) {
+            options.put(OPTION_LABELS, labels.booleanValue() ? "true" : "false");
+        }
         return options;
     }
 

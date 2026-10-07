@@ -84,7 +84,11 @@ public class QualityReportAction extends OntoBoardAction {
                         .build(),
                 Parameter.of(QualityReport.OPTION_LABELS, "Show labels instead of IRIs",
                         Parameter.Kind.FLAG)
-                        .defaultValue("true")
+                        // From the project's robot_report.use_labels where it declares one, so
+                        // this report agrees with the project's own build rather than with a
+                        // preference of OntoBoard's.
+                        .defaultValue(starting.containsKey(QualityReport.OPTION_LABELS)
+                                ? starting.get(QualityReport.OPTION_LABELS) : "true")
                         .help("Reports the rdfs:label of each offending term rather than its full "
                                 + "IRI. Much easier to read for an OBO ontology, where an IRI is "
                                 + "an opaque number, and slower on a very large ontology because "

@@ -240,12 +240,19 @@ Five scalars are ever read — `id`, `title`, `description`, `license`, `robot_v
 by *Update project files…*, which refuses to run on a real ODK repository at all. *Open existing
 ODK project…* reads `title` and nothing else.
 
-Everything else is ignored, including every key you are most likely to want to change:
+**Three keys do drive something, since 1.91.0:**
+
+| Key | What it changes |
+|---|---|
+| `robot_java_args` | The heap a containerised build gives ROBOT. Previously hardcoded to `-Xmx8G` and passed with `docker run -e`, which **overrides the environment** — so a project asking for `-Xmx16G` got 8G in silence, and the plugin's own out-of-memory advice told you to set `ROBOT_JAVA_ARGS`, the very variable it was overriding. Both fixed |
+| `robot_report.fail_on` | Which severity *ROBOT → Quality report…* treats as a failure |
+| `robot_report.use_labels` | Whether that report shows labels or IRIs |
+
+Still ignored, including keys you are likely to want to change:
 
 > `uribase` · `github_org` · `repo` · `git_main_branch` · `release_artefacts` · `primary_release`
 > · `export_formats` · `import_group` (products, `mirror_from`, `module_type`) ·
-> `robot_java_args` · `documentation` · the whole `robot_report` block, including
-> `custom_profile`, `fail_on` and `use_labels`
+> `documentation` · `robot_report.custom_profile` and `report_on`
 
 Two consequences worth stating plainly. On a real ODK repository such as MWO, exactly **one** key
 (`title`) is ever read — the ontology id comes from the edit file's name instead. And five of the
@@ -285,9 +292,14 @@ range.
 *ROBOT → Quality report…* pre-fills its **Report profile** field with the `profile.txt` sitting
 beside the open ontology, and falls back to ROBOT's bundled profile when you clear it.
 
-It finds that file by filesystem convention. `robot_report.custom_profile: TRUE` — the key that
-*declares* your project ships one — is never read, and neither are `fail_on` or `use_labels`. A
-project whose Makefile points `ROBOT_PROFILE` somewhere else will not be honoured.
+It finds that file by filesystem convention. **Since 1.91.0 it also reads
+`robot_report.fail_on` and `robot_report.use_labels` from the project's YAML**, so the report
+agrees with the project's own build about which findings count as a failure — which is what
+taking the profile from the project was always meant to achieve, and did not.
+
+`robot_report.custom_profile: TRUE` — the key that *declares* your project ships a profile — is
+still not read, because the file is found by looking rather than by being told. A project whose
+Makefile points `ROBOT_PROFILE` somewhere else will not be honoured.
 
 > **Not the same thing:** *ROBOT → Profile…* is OWL 2 EL/QL/RL/DL validation — ODK's
 > `validate_profile`, not `robot report --profile`. The names collide; the operations do not.
@@ -490,7 +502,8 @@ in silence.
 
 OntoBoard is strongest where ODK needs ROBOT and a reasoner: building, reporting, explaining,
 extracting modules, comparing releases, minting identifiers. It is weakest wherever the ODK
-workflow routes through `<ontology>-odk.yaml`, because that file is effectively write-once.
+workflow routes through `<ontology>-odk.yaml`, because most of that file is still text it keeps
+rather than configuration it acts on.
 
 Since 1.80.0 the YAML is shown and its scalars are editable, and since 1.81.0 the project's own
 scripts are listed and runnable — the two gaps that used to head this list. What is left, in the
@@ -499,7 +512,8 @@ order it is worth doing:
 1. **Adding or removing a list entry in the YAML** — since 1.89.0 every scalar is editable at
    any depth, including inside `import_group` and `robot_report`; inserting a new product or a
    release artefact still means a text editor.
-2. **Acting on what the YAML says** — the file is read and written faithfully, but only five
-   scalars drive anything, so most keys are still just text OntoBoard preserves.
-4. **Adding your own pattern** — the library ships four collections and there is no way to
+2. **Acting on more of what the YAML says** — `robot_java_args` and two `robot_report` keys
+   drive something since 1.91.0; `import_group`, `release_artefacts`, `export_formats` and
+   `primary_release` are still text OntoBoard preserves and does not obey.
+3. **Adding your own pattern** — the library ships four collections and there is no way to
    contribute a fifth, or a single pattern, without rebuilding the plugin.
