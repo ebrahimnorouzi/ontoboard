@@ -91,6 +91,31 @@ class SelfCheckTest {
         assertFalse(menu.getDetail().startsWith("0/"), menu.getDetail());
     }
 
+    /**
+     * Every view plugin.xml registers is named, so the self-test knows what to insist on.
+     *
+     * <p>The self-test opens the OntoBoard tab and asks {@code ViewHealth} what built. Until
+     * 1.113.0 it only required that <em>something</em> had, which was enough while there was
+     * one view and useless the moment there were two: Protege constructs the visible tab of a
+     * tabbed group and not the one behind it, so the sheet editor never built and the check
+     * still passed. This is the list it compares against, and a view added to plugin.xml and
+     * forgotten here cannot happen - the list is read from the extension points.
+     */
+    @Test
+    void everyRegisteredViewIsNamedSoTheSelfTestCanInsistOnIt() throws Exception {
+        java.util.List<String> views = SelfCheck.declaredViewNames();
+
+        assertTrue(views.contains("SchemaCanvasView"), views.toString());
+        assertTrue(views.contains("SheetEditorView"),
+                "a view that nothing insists on is one nobody has seen work: " + views);
+        assertFalse(views.contains("OntoBoardTab"),
+                "that is a workspace tab, not a view component: " + views);
+        for (String name : views) {
+            assertFalse(name.contains("."),
+                    "simple names are what ViewHealth reports: " + name);
+        }
+    }
+
     /** An empty report is the failure mode this whole check exists to catch, so 0 must not pass. */
     @Test
     void anEmptyReportIsAFailureNotGoodNews() {

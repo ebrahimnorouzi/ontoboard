@@ -68,8 +68,34 @@ public class SheetEditorView extends AbstractOWLViewComponent {
     private SheetBook book = SheetBook.empty();
     private File folder;
 
+    /**
+     * Builds the view, and says so.
+     *
+     * <p>The report is the point, and the reasoning is {@code SchemaCanvasView}'s: Protege's
+     * {@code View.createContent} catches whatever {@code initialise()} throws and puts "An
+     * error occurred whilst creating the view" in its place, so from outside this method a view
+     * that died looks exactly like one that worked. That is how 1.73.0 shipped with the canvas
+     * crashing on every open and a receipt recording PASS 10/10. {@link ViewHealth} is read by
+     * the self-test immediately after it opens the tab, and from 1.113.0 that check requires
+     * every view plugin.xml registers rather than merely one of them - without which this view,
+     * sitting behind the canvas in a tabbed group, would never have been constructed by it at
+     * all.
+     *
+     * <p>The throwable is re-thrown unchanged. Protege's handling of it is right, and a view
+     * that swallowed its own construction failure would be a worse lie than the one this fixes.
+     */
     @Override
     protected void initialiseOWLView() {
+        try {
+            buildView();
+        } catch (RuntimeException | Error broke) {
+            ViewHealth.failed(getClass().getSimpleName(), broke);
+            throw broke;
+        }
+        ViewHealth.constructed(getClass().getSimpleName());
+    }
+
+    private void buildView() {
         setLayout(new BorderLayout());
         add(toolbar(), BorderLayout.NORTH);
         add(sheets, BorderLayout.CENTER);

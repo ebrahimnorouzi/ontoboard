@@ -173,11 +173,26 @@ public class SelfTestAction extends OntoBoardAction {
                 // every release up to 1.73.0 this check proved the tab was registered and
                 // nothing whatever about the canvas, while reporting "its views constructed".
                 workspace.setSelectedTab(tab);
+
+                // What SHOULD have been built, read from the extension points. Checking only
+                // that something was built is not enough once there is more than one view:
+                // Protege builds the visible tab of a tabbed group and not the one behind it,
+                // so the sheet editor sat beside the canvas and never constructed while this
+                // reported a pass. A view that is green in the suite and broken in Protege is
+                // the failure this whole self-test exists for.
+                java.util.List<String> expected;
+                try {
+                    expected = de.fizkarlsruhe.ise.ontoboard.SelfCheck.declaredViewNames();
+                } catch (Exception | LinkageError cannotRead) {
+                    expected = java.util.Collections.emptyList();
+                }
+
                 int forced = 0;
-                if (de.fizkarlsruhe.ise.ontoboard.views.ViewHealth.built().isEmpty()) {
-                    // Nothing was shown - a headless or unrealised frame. Ask the views directly
-                    // for the work the hierarchy event would have triggered, rather than report a
-                    // pass on a canvas nobody built.
+                if (!de.fizkarlsruhe.ise.ontoboard.views.ViewHealth.built()
+                        .containsAll(expected)) {
+                    // Either nothing was shown - a headless or unrealised frame - or something
+                    // was shown and the rest are behind it. Ask the views directly for the work
+                    // the hierarchy event would have triggered.
                     forced = buildViewsIn(tab);
                 }
 
@@ -196,6 +211,21 @@ public class SelfTestAction extends OntoBoardAction {
                             + (forced == 0
                                     ? " and none could be found in it to build"
                                     : " after building " + forced + " of them by hand");
+                }
+                java.util.List<String> missing = new java.util.ArrayList<String>();
+                for (String wanted : expected) {
+                    if (!built.contains(wanted)) {
+                        missing.add(wanted);
+                    }
+                }
+                if (!missing.isEmpty()) {
+                    // Naming what WAS in the tab, because the first two attempts at forcing
+                    // these to build failed and guessing at Protege's docking internals a
+                    // third time would be worse than measuring them.
+                    return "the tab opened and " + built + " built, but " + missing
+                            + " never did. A view registered in plugin.xml that nothing "
+                            + "constructs is one nobody has ever seen work. The tab contained: "
+                            + describeTree(tab, 0);
                 }
                 return "ok: opened, " + built + " built without throwing, and closed again";
             } finally {
@@ -223,8 +253,60 @@ public class SelfTestAction extends OntoBoardAction {
      *
      * @return how many views were asked
      */
+    /**
+     * The component classes inside a container, a few levels deep, as one line.
+     *
+     * <p>Diagnostic. A view that does not build leaves nothing to look at, and the useful
+     * question is what Protege put in the tab instead - a tabbed pane whose tabs can be
+     * selected, or a node that creates its views only when first shown.
+     */
+    private static String describeTree(java.awt.Container container, int depth) {
+        if (depth > 4) {
+            return "...";
+        }
+        StringBuilder text = new StringBuilder();
+        for (java.awt.Component child : container.getComponents()) {
+            if (text.length() > 0) {
+                text.append(", ");
+            }
+            text.append(child.getClass().getSimpleName());
+            if (child instanceof javax.swing.JTabbedPane) {
+                text.append("[").append(((javax.swing.JTabbedPane) child).getTabCount())
+                        .append(" tabs]");
+            }
+            if (child instanceof java.awt.Container && text.length() < 600) {
+                String inside = describeTree((java.awt.Container) child, depth + 1);
+                if (!inside.isEmpty()) {
+                    text.append('(').append(inside).append(')');
+                }
+            }
+        }
+        return text.toString();
+    }
+
     private static int buildViewsIn(java.awt.Container container) {
         int asked = 0;
+        // SHOW EVERY TAB FIRST. Two views in one mdock CNode render as a tabbed pane, and
+        // Protege builds the one on top: the sheet editor sat behind the canvas and never
+        // constructed, while the check - which then only required that something had built -
+        // reported a pass. Selecting each tab in turn is what a person does and is the path
+        // that actually constructs the view, so it is better evidence than reaching past the
+        // UI to call createUI directly, which the loop below still does as a fallback for a
+        // frame that was never realised.
+        if (container instanceof javax.swing.JTabbedPane) {
+            javax.swing.JTabbedPane tabs = (javax.swing.JTabbedPane) container;
+            int wasSelected = tabs.getSelectedIndex();
+            for (int at = 0; at < tabs.getTabCount(); at++) {
+                try {
+                    tabs.setSelectedIndex(at);
+                } catch (RuntimeException cannotSelect) {
+                    continue;
+                }
+            }
+            if (wasSelected >= 0 && wasSelected < tabs.getTabCount()) {
+                tabs.setSelectedIndex(wasSelected);
+            }
+        }
         for (java.awt.Component child : container.getComponents()) {
             if (child instanceof org.protege.editor.core.ui.view.View) {
                 ((org.protege.editor.core.ui.view.View) child).createUI();

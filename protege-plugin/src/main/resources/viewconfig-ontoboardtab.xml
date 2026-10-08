@@ -34,16 +34,31 @@
                 <Property id="pluginId" value="org.protege.editor.owl.OWLIndividualsList"/>
             </Component>
         </CNode>
-        <!-- Two components in one CNode render as tabs, so the canvas and the sheet editor
-             share the right column rather than halving it. They are alternatives: somebody is
-             drawing a diagram or filling in a spreadsheet, not both at once. -->
-        <CNode>
-            <Component label="Schema Canvas">
-                <Property id="pluginId" value="${project.artifactId}.SchemaCanvasView"/>
-            </Component>
-            <Component label="Sheets">
-                <Property id="pluginId" value="${project.artifactId}.SheetEditorView"/>
-            </Component>
-        </CNode>
+        <!-- The canvas above the sheet editor, each in its own node.
+
+             They were first put in ONE CNode, as tabs, on the reasoning that somebody is
+             drawing a diagram or filling in a spreadsheet and not both - which would have let
+             each use the full column. Protege does not do it: with two plugin views in one
+             CNode it instantiated the first and silently dropped the second, so the sheet
+             editor was registered, resolvable, and never constructed. The self-test caught it
+             only because it had just been taught to require every view plugin.xml registers,
+             and the tab's own component tree confirmed it - one View in this column, where the
+             entity column opposite shows six in a tabbed group. Protege's own views tab in one
+             node evidently is not the same thing as two plugin views in one node.
+
+             HSNode stacks its children in rows, so each gets the full width and half the
+             height, and both are built when the tab opens. The splitter moves. -->
+        <HSNode splits="0.55 0.45">
+            <CNode>
+                <Component label="Schema Canvas">
+                    <Property id="pluginId" value="${project.artifactId}.SchemaCanvasView"/>
+                </Component>
+            </CNode>
+            <CNode>
+                <Component label="Sheets">
+                    <Property id="pluginId" value="${project.artifactId}.SheetEditorView"/>
+                </Component>
+            </CNode>
+        </HSNode>
     </VSNode>
 </layout>

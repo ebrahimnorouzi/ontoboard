@@ -331,6 +331,59 @@ public final class SelfCheck {
                         + (broken.isEmpty() ? "" : ", broken: " + broken));
     }
 
+    /**
+     * The simple names of the view components plugin.xml registers, ours only.
+     *
+     * <p>Public because the self-test needs to know what <em>should</em> have been built when
+     * it opens the tab, and until now it only checked that something had been. Protege builds
+     * the view in the visible tab of a tabbed group and not the one behind it, so a second
+     * view could be registered, never construct, and leave the check reporting a pass - which
+     * is exactly how live collaboration stayed broken for forty releases with a green suite.
+     *
+     * <p>Read from the extension point rather than from the class names, because
+     * {@code OntoBoardTab} also lives in the views package and is a workspace tab rather than
+     * a view component.
+     */
+    public static List<String> declaredViewNames() throws Exception {
+        List<String> names = new ArrayList<String>();
+        java.io.InputStream in = SelfCheck.class.getClassLoader()
+                .getResourceAsStream("plugin.xml");
+        if (in == null) {
+            throw new java.io.IOException("plugin.xml is not on the bundle classpath");
+        }
+        try {
+            org.w3c.dom.NodeList extensions =
+                    javax.xml.parsers.DocumentBuilderFactory.newInstance()
+                            .newDocumentBuilder().parse(in)
+                            .getElementsByTagName("extension");
+            for (int i = 0; i < extensions.getLength(); i++) {
+                org.w3c.dom.Element extension = (org.w3c.dom.Element) extensions.item(i);
+                if (!extension.getAttribute("point").endsWith(".ViewComponent")) {
+                    continue;
+                }
+                org.w3c.dom.NodeList classes = extension.getElementsByTagName("class");
+                for (int at = 0; at < classes.getLength(); at++) {
+                    String name = ((org.w3c.dom.Element) classes.item(at))
+                            .getAttribute("value").trim();
+                    if (!name.startsWith("de.fizkarlsruhe.")) {
+                        continue;
+                    }
+                    String simple = shortName(name);
+                    if (!names.contains(simple)) {
+                        names.add(simple);
+                    }
+                }
+            }
+        } finally {
+            try {
+                in.close();
+            } catch (java.io.IOException ignored) {
+                // Closing a classpath resource cannot usefully fail.
+            }
+        }
+        return names;
+    }
+
     /** The {@code <class value="..."/>} entries in plugin.xml, in document order, deduplicated. */
     private static List<String> declaredClasses() throws Exception {
         List<String> names = new ArrayList<String>();

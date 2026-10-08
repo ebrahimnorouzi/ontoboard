@@ -56,12 +56,13 @@ public class OntoBoardTab extends OWLWorkspaceViewsTab {
         }
         Preferences preferences =
                 PreferencesManager.getInstance().getApplicationPreferences(PREFERENCE_SET);
-        if (shipped.equals(preferences.getString(REVISION_KEY, null))) {
+        String key = REVISION_KEY + "." + installKey();
+        if (shipped.equals(preferences.getString(key, null))) {
             return;
         }
         try {
             reset();
-            preferences.putString(REVISION_KEY, shipped);
+            preferences.putString(key, shipped);
             LOGGER.info("OntoBoard: adopted the layout shipped with this version ({})", shipped);
         } catch (RuntimeException failed) {
             // A tab that throws out of initialise() does not appear at all, which is a far worse
@@ -70,6 +71,42 @@ public class OntoBoardTab extends OWLWorkspaceViewsTab {
             LOGGER.warn("OntoBoard: could not apply the new tab layout; the previous arrangement"
                     + " is still in use. Window > Reset selected tab to default state will apply"
                     + " it manually.", failed);
+        }
+    }
+
+    /**
+     * Which installation this is, so two of them do not share one answer.
+     *
+     * <p>Java preferences are per user, not per application: on Windows they are one registry
+     * tree under {@code HKCU}. So two Prot&eacute;g&eacute; installations - which is the
+     * supported arrangement here, since every release is smoked on 5.5.0 and 5.6.9 - share
+     * this preference set. Without a discriminator the first one to start adopts the new
+     * layout, writes the digest, and the second then finds the digest already matching and
+     * never adopts anything. Measured: 5.6.9 took the stacked layout and 5.5.0 was still
+     * showing the previous one, with the self-test reporting a view that never built.
+     *
+     * <p>{@code user.dir} is the installation directory for every way Prot&eacute;g&eacute; is
+     * normally started - its own launcher, {@code run.bat}, and the smoke script, which sets a
+     * working directory explicitly. Somebody starting it from elsewhere gets a different key
+     * and so one extra layout reset, which is the harmless direction to be wrong in; the other
+     * direction is a layout that never arrives.
+     */
+    private static String installKey() {
+        String where = System.getProperty("user.dir", "");
+        if (where.isEmpty()) {
+            return "unknown";
+        }
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] bytes = digest.digest(where.getBytes("UTF-8"));
+            StringBuilder hex = new StringBuilder();
+            for (int i = 0; i < 4; i++) {
+                hex.append(String.format("%02x", bytes[i]));
+            }
+            return hex.toString();
+        } catch (java.security.NoSuchAlgorithmException | java.io.UnsupportedEncodingException
+                impossible) {
+            return "unknown";
         }
     }
 

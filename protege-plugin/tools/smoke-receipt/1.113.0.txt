@@ -1,0 +1,94 @@
+OntoBoard 1.113.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-10-09  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 9/9  test 10/10
+  2026-10-09  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 9/9  test 10/10
+
+  Window > Tabs > OntoBoard | ok | opened, [SchemaCanvasView, SheetEditorView] built
+  without throwing, and closed again        <- on both hosts
+
+
+THE SELF-TEST WAS SATISFIED BY ONE VIEW OUT OF TWO
+
+1.112.0 shipped a sheet editor and said so, and its own receipt admitted the host smoke did
+not cover it. This is what came of looking.
+
+The tab check asked ViewHealth what had been built and failed only if the answer was empty.
+That was enough while there was one view and worthless the moment there were two: Protege
+builds the visible member of a group and not the one behind it, so the answer was
+[SchemaCanvasView], the set was not empty, and the check passed. A view registered in
+plugin.xml, resolvable, counted in the 43/43, and never constructed by anything.
+
+It now reads the ViewComponent extension points and requires every one of ours to report
+itself. Put in place against 1.112.0's jar it said, immediately:
+
+    the tab opened and [SchemaCanvasView] built, but [SheetEditorView] never did. A view
+    registered in plugin.xml that nothing constructs is one nobody has ever seen work.
+
+TWO ATTEMPTS AT FORCING IT, BOTH WRONG
+
+First, walk the tree and select every tab of any JTabbedPane before building. No change.
+Second, the same with the forced build no longer gated on the built set being empty. No
+change. Guessing at Protege's docking internals a third time would have been worse than
+measuring them, so the failure now prints the tab's component tree, and the tree answered it:
+
+    ViewsPane(NodePanel(VerticalSplitter,
+        ([6 tabs](View, View, View, View, View, View)),     <- the entity column
+        (View(ViewBarComponent))))                          <- ONE view, where two were asked for
+
+Six of Protege's own views in one node render as six tabs. Two plugin views in one node
+render as one view and the other is dropped, silently, with no warning in the log. The
+viewconfig and plugin.xml inside the jar were both checked and both correct.
+
+So the layout is now an HSNode of two CNodes - the canvas above the sheet editor, each in its
+own node, full width and half height, splitter draggable. The cost is half the height; the
+alternative was a view nobody could see. ViewConfigTest pins it against being tidied back into
+one node, with the reason.
+
+AND THEN 5.5.0 STILL FAILED, FOR A DIFFERENT REASON
+
+5.6.9 adopted the new layout and passed. 5.5.0, with the same jar, still showed the old
+arrangement and still reported the editor unbuilt.
+
+OntoBoardTab exists precisely to push a changed viewconfig past a saved arrangement: it
+digests the shipped layout and calls reset() once when the digest changes. The digest is kept
+in application preferences - and Java preferences are per USER, not per application. On
+Windows that is one registry tree under HKCU, shared by every Protege on the machine.
+
+So 5.6.9 started first, adopted the layout, and wrote the digest. 5.5.0 then found the digest
+already matching and skipped its own reset. The mechanism worked exactly once and the second
+installation was guaranteed never to see a new layout - which matters here more than most
+places, because two installations is the supported arrangement: every release is smoked on
+both.
+
+The preference key now carries a short digest of user.dir, which is the installation directory
+for Protege's own launcher, for run.bat, and for the smoke script. Somebody starting it from
+elsewhere gets one extra layout reset, which is the harmless direction; the other direction is
+a layout that never arrives.
+
+WHAT THE SMOKE SCRIPT WAS DOING
+
+1.112.0's receipt recorded 5.5.0's verdict as read out of the log because smoke.ps1 would not
+return, and said it needed investigating. It did, and it is not the script: the wait loop caps
+at 120 seconds and the kill path at 15, so neither can produce a ten-minute hang. Both hangs
+were the invocation - piping the script's output through Select-String inside another
+PowerShell. Every run in this release redirects to a file instead and every one returned
+promptly, including the two that took the longest before.
+
+NUMBERS
+
+2125 tests, 0 failures. 1 new, pinning the list of views the self-test insists on; the layout
+test was rewritten rather than added to.
+
+43/43 classes named in plugin.xml load on both hosts. 163 patterns indexed.
+
+On 5.5.0, cellfie-2.2.4 and swrltab-plugin-2.1.3 fail to install. Neither is ours.
+
+STILL OPEN
+
+Opening a folder, editing a cell and saving has still not been done by a person in a running
+Protege. What is now proven is that the view constructs there; everything it then does is
+covered headlessly and nowhere else.
+
+The starter template still produces zero axioms on every real project.

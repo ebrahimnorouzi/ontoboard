@@ -114,29 +114,39 @@ class ViewConfigTest {
                         + pluginIdsIn(columns.get(0)));
         List<String> right = pluginIdsIn(columns.get(1));
         assertEquals(2, right.size(),
-                "the right column holds the canvas and the sheet editor as tabs: " + right);
+                "the right column holds the canvas and the sheet editor: " + right);
         assertTrue(right.get(0).endsWith(CANVAS_SUFFIX),
-                "the canvas comes first, so it is the one shown on opening: " + right.get(0));
+                "the canvas is on top: " + right.get(0));
         assertTrue(right.get(1).endsWith("SheetEditorView"), right.get(1));
     }
 
     /**
-     * The canvas and the sheet editor share one column rather than halving it.
+     * The canvas and the sheet editor are stacked, each in its own node.
      *
-     * <p>Two components in one {@code CNode} render as tabs, which is what the entity views in
-     * the left column already do. They are alternatives - somebody is drawing a diagram or
-     * filling in a spreadsheet - so giving each half the width would leave both cramped for no
-     * gain. Splitting them into two {@code CNode}s would do exactly that, which is why this is
-     * pinned rather than left to whoever edits the layout next.
+     * <p>They were first put in one {@code CNode} as tabs, so each could use the full column -
+     * the arrangement the six entity views opposite use. <b>Protege does not do it for plugin
+     * views.</b> With both in one {@code CNode} it instantiated the canvas and silently
+     * dropped the sheet editor, which was then registered, resolvable, and never constructed;
+     * the tab's own component tree showed one {@code View} in this column against six in a
+     * tabbed group opposite. The self-test caught it only because it had just been taught to
+     * require every view {@code plugin.xml} registers.
+     *
+     * <p>So this is pinned as two nodes, and pinned against somebody tidying it back into one.
+     * The cost is half the height each; the alternative was a view nobody could see.
      */
     @Test
-    void theCanvasAndTheSheetEditorAreTabsInOneColumnRatherThanTwoColumns() throws Exception {
-        List<Element> columns = children(onlyChild(layoutRoot()));
+    void theCanvasAndTheSheetEditorEachHaveTheirOwnNode() throws Exception {
+        Element right = children(onlyChild(layoutRoot())).get(1);
 
-        assertEquals(1, children(columns.get(1)).size() > 0 ? 1 : 0,
-                "the right column is one node");
-        assertEquals("CNode", columns.get(1).getTagName(),
-                "a splitter here would halve the width instead of making tabs");
+        assertEquals("HSNode", right.getTagName(),
+                "stacked in rows; one CNode holding both leaves the second unbuilt");
+        List<Element> stacked = children(right);
+        assertEquals(2, stacked.size(), "one node each");
+        for (Element node : stacked) {
+            assertEquals("CNode", node.getTagName());
+            assertEquals(1, pluginIdsIn(node).size(),
+                    "one view per node, or Protege drops the rest: " + pluginIdsIn(node));
+        }
     }
 
     /** A narrow tree column is the point; an even split would leave the canvas cramped. */
