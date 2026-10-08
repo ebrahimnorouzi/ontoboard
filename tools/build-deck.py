@@ -899,7 +899,12 @@ def main():
     # 17 ------------------------------------------------------ robot (shot)
     s = page()
     y = heading(s, "ROBOT, running in process", "no external binary")
-    shot = crop_shot("05-menu-robot.png", (545, 100, 1138, 604), "shot-robot.png")
+    # Cropped at the OntoBoard menu's own right border, not through the ROBOT submenu beside
+    # it. The capture is 1150px wide and the submenu runs off that edge, so a wider crop does
+    # not reveal more of it - it only slices the item labels mid-word, which is what this slide
+    # showed until it was rendered and looked at. The submenu's contents are the list of
+    # operations in the text beside the picture, so nothing is lost by ending the crop here.
+    shot = crop_shot("05-menu-robot.png", (545, 100, 1058, 604), "shot-robot.png")
     if shot:
         picture(s, shot, 6.05, y - 0.05, w=3.4)
     text(s, M, y, 5.3, 2.6, [
