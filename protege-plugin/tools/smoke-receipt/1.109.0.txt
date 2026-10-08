@@ -1,0 +1,106 @@
+OntoBoard 1.109.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-10-08  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 9/9  test 10/10
+  2026-10-08  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 9/9  test 10/10
+
+
+A SPREADSHEET CAN BE PERFECT AND STILL BE WRONG
+
+Template... has always answered one question: will this build, and if not, where is the fault.
+That is a question about ROBOT. Nobody was asking the other one - is this data any good - and
+it turns out to have different answers.
+
+The knowledge graph this was written against builds through ROBOT with ZERO problems. Checked
+as data, its 26 sheets and 8,471 rows report:
+
+    687  cells holding text a template left behind - "_name_", "n/a"
+    145  cells with pasted whitespace: a doubled space, a tab, a non-breaking space
+    144  cells with a curly quote or a long dash where a plain one was meant
+    123  references to a name that nothing defines
+     77  pairs of rows whose names are one edit apart, with different identifiers
+     49  references to a name that means TWO different things
+      1  pair of rows sharing one identifier
+      1  column with data in it that the template row ignores
+    ----
+   1227  findings, 289 of them carrying a correction that can be applied
+
+Six of the 26 sheets are completely clean. The whole audit takes about six seconds.
+
+WHAT IT IS CHECKING AGAINST
+
+A folder, not a sheet. Every reference in that project's dataportal sheet is a plain-text name
+whose target is defined five sheets upstream, so checking one sheet alone reports almost every
+reference as unresolvable. All the sheets in the folder, plus the ontology that is open, are
+indexed together first - 6,058 distinct names - and the sheets are checked against that.
+
+THE INTERESTING FINDING IS AMBIGUITY, NOT ABSENCE
+
+Of those 6,058 names, 30 name more than one thing. "National Institute for Materials Science
+(NIMS)" has two distinct IRIs and nine references name it; "IUC 05: Towards better digital
+infrastructures and workflows for experimental labs" names three things. ROBOT resolves such a
+name to whichever IRI it happens to pick, silently, and the author has no say - so the sheet
+builds and the graph is wrong. LabelIndex.resolve therefore returns nothing at all when a name
+is ambiguous, because returning one of two would be the behaviour the class exists to expose.
+
+THE CHECK THAT NEARLY SHIPPED UNUSABLE
+
+The near-duplicate check, as first written, reported 10,059 findings on the temporal sheet
+alone - and every one was wrong. That sheet names its rows "temporal region 1" through
+"temporal region 171", so each is a single edit from several others. A serial name is the point
+rather than a typo.
+
+Stripping the digits and comparing what is left separates "temporal region 1" from "temporal
+region 2" without losing "Stuttgart" from "Stuttgart_" or "Fraunhofer-Gesellschaft" from
+"Fraunhofer-Gesellschafft". That one rule took the count from 10,395 to 77, and the 77 are
+real. A check that cries wolf is one somebody turns off, so a named test asserts that a
+numbered series is not reported.
+
+Two more deliberate silences, each with a test: names shorter than six characters are not
+compared at all, because "iron" and "zinc" are two edits apart; and two similar names on ONE
+identifier are a thing with two names rather than two things.
+
+WHAT IT REFUSES TO DECIDE
+
+A finding carries a replacement only where there is an obvious one - whitespace, a curly quote,
+a quoted name, a near-miss reference with exactly one close candidate. Which of two duplicated
+entities to keep is not a decision a tool should make, so those findings carry no suggestion
+and say what the choice is instead. 289 of 1,227 are applicable; the rest need a person.
+
+THE MENU SAID WHERE THESE THINGS BELONG, AND IT WAS WRONG
+
+Adding Check sheets... to ROBOT made that group seven entries, and the test added in 1.105.0
+failed with "ontoboard.menu.OntoBoard.robot/SlotB has 7 entries with no separator between
+them". That is exactly what it was written to catch - an append instead of a decision - and it
+caught the person who wrote it.
+
+Building a knowledge graph from spreadsheets is something somebody sets out to do, not a ROBOT
+utility reached for in passing. So Template... and Check sheets... are now a Knowledge graph
+menu of their own, and Pattern library... sits beside it at the top level for the same reason:
+both are ways of getting content in, neither is about running a command. ROBOT keeps the ten
+things that are: inspect (6), terms in and out (2), change in bulk (2).
+
+NUMBERS
+
+2033 tests, 0 failures. 45 new - 20 for the index, 25 for the audit. No main-source visibility
+was widened.
+
+42/42 classes named in plugin.xml load on both hosts, up from 41. 163 patterns indexed. Quality
+report end to end: 6 findings, 2 of them errors.
+
+Two new classes carry no OWL API, no Swing and no robot-core between them, so they are cheap
+enough to re-run while somebody types - which is what the editor they are for will need.
+
+On 5.5.0, cellfie-2.2.4 and swrltab-plugin-2.1.3 fail to install. Neither is ours.
+
+STILL OPEN
+
+This is the engine, reachable through one read-only menu item. Editing a sheet in place -
+adding rows, completing a name as it is typed, applying a correction, minting an identifier,
+creating the referenced thing on the spot - is the next stage and is what the index and the
+audit were built to serve.
+
+The starter template still produces zero axioms on every real project, and PMD_0000001 and
+NFDI_0000001 are live published terms, so the fix cannot keep the hardcoded example
+identifiers. That one is specified rather than guessed.

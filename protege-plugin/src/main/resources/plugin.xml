@@ -223,6 +223,17 @@
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
+  <!-- Building a knowledge graph from spreadsheets is a thing somebody sets out to do, not a
+       ROBOT utility they reach for in passing, so it is a menu of its own rather than two
+       entries buried under ROBOT. Pattern library sits beside it for the same reason: both are
+       ways of getting content in, and neither is about running a command. -->
+  <extension id="menu.OntoBoard.kg" name="KnowledgeGraph"
+             point="org.protege.editor.core.application.EditorKitMenuAction">
+    <name value="Knowledge graph"/>
+    <path value="ontoboard.menu.OntoBoard/SlotBU-A"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
+
   <extension id="menu.OntoBoard.robot.measure"
              point="org.protege.editor.core.application.EditorKitMenuAction">
     <name value="Measure..."/>
@@ -273,7 +284,7 @@
     <name value="Transform..."/>
     <toolTip value="Relax, reduce, repair or merge imports - applied so Protege can undo it"/>
     <class value="de.fizkarlsruhe.ise.ontoboard.menu.TransformAction"/>
-    <path value="ontoboard.menu.OntoBoard.robot/SlotB-A"/>
+    <path value="ontoboard.menu.OntoBoard.robot/SlotC-A"/>
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
@@ -289,7 +300,7 @@
   <extension id="menu.OntoBoard.robot.rename"
              point="org.protege.editor.core.application.EditorKitMenuAction">
     <name value="Rename IRIs..."/>
-    <path value="ontoboard.menu.OntoBoard.robot/SlotB-RN"/>
+    <path value="ontoboard.menu.OntoBoard.robot/SlotC-B"/>
     <toolTip value="Move terms to new IRIs, or a whole namespace at once - previewed before it applies"/>
     <class value="de.fizkarlsruhe.ise.ontoboard.menu.RenameAction"/>
     <editorKitId value="OWLEditorKit"/>
@@ -300,7 +311,16 @@
     <name value="Template..."/>
     <toolTip value="Turn a spreadsheet of terms into axioms - every problem reported at once"/>
     <class value="de.fizkarlsruhe.ise.ontoboard.menu.TemplateAction"/>
-    <path value="ontoboard.menu.OntoBoard.robot/SlotB-C"/>
+    <path value="ontoboard.menu.OntoBoard.kg/SlotA-A"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
+
+  <extension id="menu.OntoBoard.robot.sheetCheck"
+             point="org.protege.editor.core.application.EditorKitMenuAction">
+    <name value="Check sheets..."/>
+    <toolTip value="Check a folder of spreadsheets as data - duplicated things, names that mean two things, pasted whitespace"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.menu.SheetCheckAction"/>
+    <path value="ontoboard.menu.OntoBoard.kg/SlotA-B"/>
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
@@ -318,7 +338,7 @@
     <name value="Pattern library..."/>
     <toolTip value="Browse the 159 bundled ontology design patterns, and your own, and import terms from one"/>
     <class value="de.fizkarlsruhe.ise.ontoboard.menu.PatternLibraryAction"/>
-    <path value="ontoboard.menu.OntoBoard.robot/SlotB-BP"/>
+    <path value="ontoboard.menu.OntoBoard/SlotBU-B"/>
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
