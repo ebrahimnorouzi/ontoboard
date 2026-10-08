@@ -24,7 +24,7 @@ ontoboard-1.93.0.jar installed, by driving the menus over the keyboard. They are
 redrawn. The desktop they were taken on is 1138x640, which is why the wider dialogs are shown
 cropped to the part that carries the content.
 
-    python tools/build-deck.py            # writes build/playground-ontoboard.pptx
+    python tools/build-deck.py            # writes playground-ontoboard.pptx
 """
 import io
 import os
@@ -42,7 +42,10 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 SHOTS = os.path.join(ROOT, "build", "shots")
 DECK = os.path.join(ROOT, "build", "deck")
-OUT = os.path.join(ROOT, "build", "playground-ontoboard.pptx")
+# Beside playground.pptx, the deck this one is shaped after, and ignored by git for the same
+# reason that one is: a 200 KB binary regenerated from tools/build-deck.py on demand does not
+# belong in the history, and the builder is what is worth keeping.
+OUT = os.path.join(ROOT, "playground-ontoboard.pptx")
 
 AUTHOR = "Ebrahim Norouzi"
 INSTITUTE = "FIZ Karlsruhe – Leibniz Institute for Information Infrastructure"

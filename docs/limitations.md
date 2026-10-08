@@ -23,8 +23,10 @@ SPARQL panel (1.33.0) used to be on this list and are now features - they are de
   notes (`IAO:0000116`/`IAO:0000232`) carry an author and date. But the argument itself
   lives in the tracker: there is no reply thread inside the ontology, deliberately, because
   an unbounded mutable conversation would appear in every release and every diff.
-- **Pull requests** — *Git…* does status, stage, commit, pull, push and branch, and
-  *Open from GitHub…* clones. Opening or reviewing a PR still means leaving Protégé.
+- **Reviewing a pull request** — *Pull request…* opens one and lists what is open, since
+  1.101.0. Reading a diff, leaving review comments and merging are still the browser's job, and
+  are a larger piece of work than opening one: a review needs the diff rendered, and an OWL diff
+  that means anything is *ROBOT → Compare releases…*, not a line diff of RDF/XML.
 - **Widoco HTML documentation.**
 - **Entity locking** — nothing stops two live collaborators editing the same term at once.
 
@@ -203,7 +205,10 @@ report for nine versions.
 
 Ordered by what is being worked on:
 
-1. **Pull requests** — the rest of the git surface ships; opening and reviewing a PR does not.
+1. ~~**Pull requests**~~ — **opening one shipped in 1.101.0.** *Project → Pull request…* runs
+   the GitHub CLI: it lists what is open and proposes the branch you are on, after `gh`'s own
+   `--dry-run` has checked it and you have approved the exact command. Reviewing one is still the
+   browser's job — see above.
 2. **Widoco** — generated documentation. The pattern library that used to share this line
    shipped in 1.82.0 and became extensible in 1.92.0.
 3. **Entity locking** — once live collaboration has been used in anger.

@@ -333,6 +333,15 @@
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
+  <extension id="menu.OntoBoard.pullRequest"
+             point="org.protege.editor.core.application.EditorKitMenuAction">
+    <name value="Pull request..."/>
+    <toolTip value="Propose the branch you are on, or see what is already open"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.menu.PullRequestAction"/>
+    <path value="ontoboard.menu.OntoBoard/SlotBY-B"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
+
   <!-- = Notes = -->
 
   <extension id="menu.OntoBoard.notes" name="Notes"

@@ -38,6 +38,8 @@ Thumbs.db
 
 # Temp files
 playground.pptx
+# Built by tools/build-deck.py, which is what is tracked.
+playground-ontoboard.pptx
 mwo301.ttl
 test_upload.ttl
 *.tmp

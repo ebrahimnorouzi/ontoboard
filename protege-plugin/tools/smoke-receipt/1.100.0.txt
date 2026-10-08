@@ -94,16 +94,23 @@ Three other candidate causes were refuted on inspection, one of which would have
 worse: raising NODE_W to 220 exceeds the 200 pitch every arrangement uses, and capturePositions
 persists the width, so the next Arrange would overlap nodes by 20px.
 
-THE SLIDE DECK WAS BUILT AND UNREACHABLE
+THE SLIDE DECK IS BUILT WHERE YOU CAN FIND IT
 
-tools/build-deck.py was committed in 8afc547 and build/playground-ontoboard.pptx was not: the
-.gitignore excludes build/*.pptx, nothing in docs or CI referenced it, and the only copy was on
-the machine that made it. The builder shipped and the deck did not.
+tools/build-deck.py was committed in 8afc547 and the deck it writes was not, because .gitignore
+excludes build/*.pptx and nothing in docs or CI referenced it - so the builder shipped, the deck
+existed only on the machine that made it, and nobody else could tell it was there.
 
-The release workflow builds it now and publishes it beside the jar, with a guard that opens the
-result and fails on a deck that lost slides or gained a blank one - checked in both directions,
-against the real deck and against a deliberately blanked copy. deck-requirements.txt pins what it
-needs. There is a download button on Getting started.
+It is written to playground-ontoboard.pptx at the repository root now, beside playground.pptx,
+the deck it is shaped after - and ignored by git for the same reason that one is. A 200 KB binary
+regenerated on demand does not belong in the history; the builder is what is worth keeping.
+deck-requirements.txt pins what it needs, derived from the script's own imports.
+
+    pip install -r deck-requirements.txt
+    python tools/build-deck.py
+
+It was briefly published as a release asset and is not any more, by request. A release carries
+the plugin; the deck is a document about it, which anybody with the repository can produce and
+which would otherwise have to be rebuilt and re-attached on every tag to stay current.
 
 It also grew from 28 slides to 33, following playground.pptx where this deck had gaps: that deck
 spends four slides on the workspace, six on the ontology directory and seven on a custom import,

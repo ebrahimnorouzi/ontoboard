@@ -165,7 +165,7 @@ individual views in a tabbed column beside the canvas, so none of this needs a t
 | Semantic merge engine | ✅ | ✅* | *Reused server-side rather than reimplemented in Java — deliberate |
 | Entity locking | ✅ | ❌ | **Build.** Advisory in both |
 | Comments, @mentions | ✅ | 🔶 | Attributed editor and curator notes ship, and *Notes → Discussion link…* points at the issue. No reply threads, no @mentions |
-| Git-based collaboration | ❌ | ✅ | *Git…* does status, stage, commit, pull, push and branch; *Project → Compare releases…* diffs two versions term by term. No pull requests |
+| Git-based collaboration | ❌ | ✅ | *Git…* does status, stage, commit, pull, push and branch; *Pull request…* opens one and lists what is open, through the GitHub CLI; *Project → Compare releases…* diffs two versions term by term. Reviewing a pull request is still the browser's job |
 | Task board (Kanban) | ✅ | ➖ | Belongs in the web app; a desktop plugin is the wrong home |
 
 ## 7. Web-application machinery

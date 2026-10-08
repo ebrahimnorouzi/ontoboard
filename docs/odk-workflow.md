@@ -375,16 +375,40 @@ but if an import resolves differently from how `robot` resolves it, that is the 
 
 ## 4. Adding a custom import
 
-| ODK step | | OntoBoard |
+ODK's own walkthrough is six steps. Four of them OntoBoard does for you, in one operation.
+
+| ODK's step | | In OntoBoard |
 |---|---|---|
-| Declare it under `import_group` in the YAML | ✅ | *ROBOT → Import terms…* writes the product itself. *Project configuration…* also edits every scalar in the block since 1.89.0 and adds or removes list entries since 1.97.0 |
-| Check the Makefile | 🔶 | *Build…* lists targets; nothing shows the import rules |
-| Add term IRIs to `<import>_terms.txt` | ✅ | *Project → Term lists…* since 1.90.0 — see below |
-| `sh run.sh make refresh-imports` | 🔶 | *Project → Refresh imports…* audits every declared product since 1.99.0, and rebuilds the `slme` ones with the project's own method |
-| Copy the import URI into the edit file and catalog | ✅ | *ROBOT → Import terms…* writes both, and *Pattern library…* feeds it |
-| Copy the import schema into `<ontology>.Makefile` | ❌ | By hand |
-| Set `module_type`, then `update_repo` | 🔶 | *Import terms…* writes the `module_type` it actually used. Changing it afterwards is a scalar edit in *Project configuration…*; regenerating is *Project → Update project files…* on a scaffolded project, or `sh run.sh make update_repo` on an ODK one — see section 3 |
-| `clean`, `make` | ✅ | *Project → Build…* lists and runs the targets, following `include` into `<ontology>.Makefile` |
+| **1.** Declare it under `import_group` in the YAML | ✅ | *ROBOT → Import terms…* writes the product itself, since 1.100.0. *Project configuration…* also edits every scalar in the block and adds or removes list entries |
+| **2.** Check the Makefile picked it up | 🔶 | *Project → Build…* lists the targets, following `include` into `<ontology>.Makefile`. Nothing shows you the generated import *rules* |
+| **3.** Add term IRIs to `<import>_terms.txt`, then `make refresh-imports` | ✅ | *Import terms…* writes the list from the terms you picked; *Project → Term lists…* edits it afterwards; *Project → Refresh imports* is the refresh |
+| **4.** Copy the import URI into `<ontology>-edit.owl` and `catalog-v001.xml` | ✅ | *Import terms…* writes both, so the import resolves offline. *Pattern library…* feeds the same operation |
+| **5.** Copy the generated import schema into `<ontology>.Makefile` | ❌ | By hand. Only needed for a `custom` module, which is the case ODK's own generated rule refuses to build too |
+| **6.** Set `module_type`, then `update_repo`, `clean`, `make` | 🔶 | *Import terms…* writes the `module_type` it actually used. Changing it later is a scalar edit in *Project configuration…*; regenerating is *Update project files…* on a scaffolded project or `sh run.sh make update_repo` on an ODK one; `clean` and `make` are targets in *Build…* |
+
+**An OBO id is enough; anything else needs its source — and OntoBoard writes it the same way.**
+ODK downloads `http://purl.obolibrary.org/obo/<id>.owl` when a product gives no `mirror_from`, so
+a product for an OBO ontology is one line. When *Import terms…* declares what it built it omits
+`mirror_from` for exactly that case and writes it for every other, which is why a declaration it
+produces looks like one a person would have written:
+
+```yaml
+products:
+  - id: iao            # an OBO ontology: the PURL is the default
+    module_type: slme
+    module_type_slme: BOT
+  - id: edam           # anything else has to say where it came from
+    mirror_from: https://edamontology.org/EDAM_1.25.owl
+    module_type: slme
+    module_type_slme: STAR
+```
+
+**BOT, TOP, STAR — and not SUBSET.** The [extraction methods](https://robot.obolibrary.org/extract)
+ODK documents for `module_type_slme` are BOT, TOP and STAR, and OntoBoard runs all three plus
+MIREOT. `SUBSET` is the one real projects use that it cannot: ROBOT reaches that through a
+different operation, so *Refresh imports* names it rather than falling back to BOT, which would
+quietly produce a module that is not the one in the repository. NFDIcore and PMDCO declare three
+SUBSET products between them.
 
 ### The pattern library — new in 1.82.0, four collections since 1.87.0, yours since 1.92.0
 
@@ -674,6 +698,43 @@ Reading the declaration also makes two states visible that a directory scan cann
 
 Such a module is still rebuilt from its `# Source:` comment when it has one, because that is what
 a refresh did before — reading the declaration must not take a working rebuild away.
+
+---
+
+## 5. Proposing the change
+
+*Project → Pull request…*, since 1.101.0. The last step that used to send you to a browser.
+
+**Show what is open** lists the repository's pull requests — number, state, title, branch and
+author — with each URL beside it.
+
+**Open a pull request for this branch** proposes the branch you are on. It asks for a title, a
+description, the branch to merge into (empty means the repository's default, which an ODK
+project's is not always) and whether to open it as a draft.
+
+**It runs the GitHub CLI rather than storing a token.** A pull request needs an authenticated
+GitHub session; `gh` already holds one in your system keyring, put there by `gh auth login` and
+scoped by you. OntoBoard keeps no credentials of its own, which is the same reason it runs real
+`git`, real `make` and real ROBOT rather than reimplementing them.
+
+**Nothing is proposed without being shown first.** This is the one operation in OntoBoard that
+other people see the moment it happens — it sends mail, it appears on a board, it asks for
+somebody's time. So three things happen in order, cheapest first:
+
+1. the branch is checked for being proposable at all — a detached HEAD, the base branch itself,
+   or a branch nobody has pushed each get their own message rather than a `gh` error about refs;
+2. `gh pr create --dry-run` validates the branch, the base and the remote **without creating
+   anything**;
+3. the exact command is shown, and nothing runs until you approve that text.
+
+**Without `gh` there is still an answer.** If it is not installed or not logged in, the result
+says which of the two and how to fix it — and gives you GitHub's own compare URL for your
+branch, which opens the "open a pull request" form with no install and no login. It is the one
+place in this plugin where leaving Protégé is the honest recommendation.
+
+**Reviewing one is still the browser's job.** Reading a diff, commenting and merging are a larger
+piece of work, and for an ontology a line diff of RDF/XML is not the diff anybody wants —
+*ROBOT → Compare releases…* is, and it already exists.
 
 ---
 

@@ -1,0 +1,105 @@
+OntoBoard 1.101.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-10-08  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 9/9  test 10/10
+  2026-10-08  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 9/9  test 10/10
+
+
+PROPOSING THE CHANGE, WITHOUT LEAVING PROTEGE
+
+Roadmap item 1, and the last gap in the git surface. Git... has done status, stage, commit,
+pull, push and branch since 1.19.0 and Open from GitHub... clones, so the only step still sending
+a curator to a browser was the one that ends the work: asking for it to be merged.
+
+Project > Pull request... lists what is open on the repository - number, state, title, branch,
+author, each with its URL - and opens one for the branch you are on, with a title, a description,
+a base and a draft flag.
+
+IT RUNS gh, AND STORES NOTHING
+
+The same decision as everywhere else here: ROBOT runs as robot-core in process, a build runs as
+make in ODK's own container, git runs as git. A pull request needs an authenticated GitHub
+session, and gh already holds one - in the system keyring, put there by `gh auth login`, scoped
+by the user who ran it.
+
+The alternative was to ask for a personal access token and keep it, which would make this plugin
+a place credentials live, and a worse place than the one that already exists. That is the whole
+argument, and it is why there is no settings page for this.
+
+NOTHING IS PROPOSED WITHOUT BEING SHOWN FIRST
+
+Opening a pull request is the one operation in OntoBoard that other people see the moment it
+happens: it sends mail, it appears on a board, it asks for somebody's time. Three gates, ordered
+so the cheapest failure comes first.
+
+  1. The branch has to be proposable. A detached HEAD, the base branch itself and an unpushed
+     branch each get their own sentence - gh's own error for all three is about refs and does not
+     say which happened.
+  2. `gh pr create --dry-run` validates the branch, the base and the remote WITHOUT creating
+     anything. The flag exists; this did not have to be approximated.
+  3. The exact command is shown and nothing runs until it is approved. Not a description of the
+     command - the command, so that what is agreed to and what happens are the same text. The
+     same rule Run a project script... follows, for the same reason.
+
+WITHOUT gh THERE IS STILL AN ANSWER
+
+Not installed and not logged in are different problems with different remedies, and are reported
+as such: one says to get it from cli.github.com, the other says to run `gh auth login` once. Both
+also give GitHub's own compare URL for the branch, which opens the "open a pull request" form
+with no install and no login at all.
+
+It is the one place in this plugin where leaving Protege is the honest recommendation, and the
+link is better than an apology.
+
+A DEFECT THE TESTS CAUGHT IN MY OWN CODE
+
+compareUrl assumed GitHubUrl.parse returns null for a non-GitHub address. It throws - because its
+other caller is a dialog where a user typed the address and wants to be told. A project hosted on
+GitLab would therefore have thrown IllegalArgumentException out of the fallback and into the
+action, at exactly the moment the fallback existed to help. Caught rather than pre-checked, since
+the one authority on what GitHub accepts is that method.
+
+THE PARSER IS TESTED AGAINST WHAT gh ACTUALLY PRINTS
+
+The fixture is real output, kept verbatim, from
+
+    gh pr list --repo INCATools/ontology-development-kit --json number,title,state,...
+
+and it carries two things a parser written against a guessed shape gets wrong: `author` is a
+nested object, and the fields arrive in alphabetical order rather than the order they were asked
+for. A parser that split on every brace would end a pull request at the author's closing one and
+lose every field after it - which, alphabetically, is all of them.
+
+The JSON is read by hand rather than by a library, for the reason the rest of this plugin embeds
+what it needs: the bundle already carries ROBOT and its dependencies, and adding a parser to read
+eight fields of a document this code specified the shape of is weight for nothing.
+
+WHAT IS STILL THE BROWSER'S JOB
+
+Reviewing. Reading a diff, leaving review comments and merging are a larger piece of work, and
+for an ontology a line diff of RDF/XML is not the diff anybody wants - ROBOT > Compare releases...
+is, and it already exists. The limitations page now says reviewing rather than pull requests.
+
+NUMBERS
+
+1893 tests, 0 failures. 21 new, all of PullRequest's command building and parsing.
+
+A note on the skip. A full `mvn clean test` reports 1 skipped and a full `mvn test` reports 0:
+BundleConfigurationTest's manifest check needs a built jar and `clean` has just deleted it. Run
+after packaging, it runs - verified against the real 1.101.0 bundle, 16 tests, 0 skipped. It is
+structural rather than a test quietly not running.
+
+39/39 classes named in plugin.xml load on both hosts - 38 before this, plus PullRequestAction.
+Quality report end to end: 6 findings, 2 of them errors. 163 patterns indexed.
+
+The operation is not exercised by the host self-test: it would open a pull request on somebody's
+repository, which a startup check must never do. What is covered is every command it builds and
+every output it reads, by twenty-one unit tests needing no network, no GitHub account and no
+process.
+
+STILL OPEN
+
+Widoco, entity locking, the axiom kinds live collaboration cannot carry, and src/metadata - all
+four being surveyed against the real code as this ships. release_artefacts and primary_release
+remain unread. And the pattern library still knows nothing about what you have already imported.
