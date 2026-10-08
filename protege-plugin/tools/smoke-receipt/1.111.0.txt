@@ -1,0 +1,121 @@
+OntoBoard 1.111.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-10-08  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 9/9  test 10/10
+  2026-10-08  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 9/9  test 10/10
+
+The first release since CI went green again. build and release had failed on every push since
+cea5bfe over a single assertion about a test resource's line endings, so v1.106.0 to v1.110.0
+were tagged and never published. Their tags still point at commits that fail the suite on
+Linux; this is the first tag whose release workflow can finish.
+
+
+CREATE THE THING YOU JUST REFERRED TO
+
+The step this workflow had no answer for. A curator fills in a row, reaches a column that names
+another term, types an institute's name - and nothing happens, because no term has that name.
+The only way forward was to leave the sheet, find the one holding institutes, add a row, invent
+an identifier, come back, and retype it. Measured on the MatWerk sheets, 123 references name
+something that does not exist.
+
+TermCreation answers three questions from the sheets rather than asking them:
+
+  WHICH SHEET. The one this column's other cells already point into. If eleven cells in a City
+  column resolve to rows in `city`, a twelfth city belongs there whatever the heading says.
+
+  WHAT TYPE. The commonest value in that sheet's TYPE column, because a sheet of institutes is
+  a sheet of one kind of thing.
+
+  WHICH IDENTIFIER. The shape its neighbours use - their prefix, then one past the highest
+  number - checked against every identifier in every open sheet, because these namespaces are
+  shared across them.
+
+Measured: 61 of the 123 unresolved references can now be created outright. The other 62 carry a
+sentence saying what the decision is, which is the honest answer rather than a guess.
+
+THREE DEFECTS IN IT, ALL FOUND BY MEASUREMENT
+
+The first version refused all 123. It took the longest common prefix across the whole target
+sheet, and one identifier of a different shape - a bare NFDIcore class IRI among five thousand
+.../matwerk/msekg/<digits> - dragged the prefix back to the host name, after which no remainder
+was all digits and there was no next number to find. Grouping by the commonest shape is immune
+to an outlier and is what "the shape its neighbours use" meant in the first place.
+
+The second read a whole cell as one name. On a SPLIT= column that is wrong: the real dataportal
+cell "Albert-Ludwigs-University of Freiburg, Fraunhofer Institute for Mechanics of Materials"
+would have become ONE individual labelled with both institutes joined by a comma. It also meant
+the already-exists check never fired on such a cell, because the joined string is not a name
+even when both halves are. There is now one proposal per name.
+
+The third matched a sheet called "s" against the heading "Points at", because that heading
+contains an s. A one or two letter sheet name matches almost any heading under
+`heading.contains(name)`. Whole words only now - the wrong sheet is a worse answer than no
+answer.
+
+A TYPE column is refused outright and told why: the value names the class a row instantiates,
+so it belongs to an ontology rather than to a sheet, and the right action is Import terms...
+On req_1 alone that is most of the unresolved references, so saying the right thing there
+matters more than the count.
+
+WHO ADDED THIS, WHEN, AND WHO CHANGED IT LAST
+
+Recorded in the sheet, not in the generated OWL - because the OWL is rebuilt from the sheet on
+every run, so provenance written only into the graph disappears at the next build.
+
+Deliberately not a second scheme. Provenance already decided this question for terms edited in
+Protege and argued it: dcterms:contributor rather than dcterms:creator, which is effectively
+dead in OBO; dcterms:created for when a thing was introduced; dcterms:date for when it last
+changed. Those three IRIs are read from that class rather than written out again, so the two
+halves cannot drift apart. Day precision, for the reason given there.
+
+Three columns, appended so no existing column number moves:
+
+    AI http://purl.org/dc/terms/contributor SPLIT=|
+    AT http://purl.org/dc/terms/created^^xsd:date
+    AT http://purl.org/dc/terms/date^^xsd:date
+
+AI for an ORCID and A for a plain name, because an ORCID is a thing with an IRI and a name is a
+string - and an AI column holding a plain name is the defect this plugin reports in 1.106.0.
+
+THE SPLIT ON THAT FIRST COLUMN WAS A BUG FOUND BY A TEST. Without it, two contributors in one
+cell reach the graph as a single bogus IRI made of both ORCIDs joined by a bar. The test put two
+people on a row, followed them through ROBOT, and found one annotation where two belonged.
+
+Creation is written once - that is what makes it creation - while the last-changed date is
+rewritten every time, and a second person is added rather than replacing the first. Two people
+editing one row is the normal case in a shared sheet, and whoever introduced it does not stop
+being its author because somebody fixed a typo. Measured end to end: a row stamped by two
+people arrives in the graph with 2 contributors, created 2026-10-08 and date 2026-11-20.
+
+A MESSAGE THAT TOLD PEOPLE WHAT THEY HAD ALREADY DONE
+
+The commonest failure on a real sheet set is a reference to a term an upstream sheet has not
+contributed yet. The message added in 1.106.0 answered it with "the column holds a reference to
+a term: an IRI, a CURIE such as obo:BFO_0000001, or the exact label" - to somebody whose cell
+already held http://purl.obolibrary.org/obo/OBI_0000245. Useless, and a persona evaluation said
+so before this release measured it.
+
+When the cell is already an absolute IRI, or a CURIE whose prefix is defined, the message now
+says the true thing instead: this names a term properly and the term is not here, so import it
+or build the sheet it comes from first.
+
+NUMBERS
+
+2107 tests, 0 failures. 30 new - 15 for term creation, 13 for provenance, 2 for the CRLF front
+matter that CI tripped over.
+
+42/42 classes named in plugin.xml load on both hosts. 163 patterns indexed. Quality report end
+to end: 6 findings, 2 of them errors.
+
+On 5.5.0, cellfie-2.2.4 and swrltab-plugin-2.1.3 fail to install. Neither is ours.
+
+STILL OPEN
+
+The Swing surface. Everything since 1.109.0 is the model behind the editor - open a folder,
+edit it, audit it, correct it in bulk, create a referenced thing, record who did it, write it
+back - and all of it is tested headlessly against the real sheets. The only way to reach any of
+it is still the read-only Check sheets... item. The table, the completing cell editor and the
+provenance strip are next, and they call this rather than reimplementing it.
+
+The starter template still produces zero axioms on every real project.

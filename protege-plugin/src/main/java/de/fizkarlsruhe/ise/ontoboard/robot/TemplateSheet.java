@@ -540,6 +540,23 @@ public final class TemplateSheet {
                         + "prefix to the project, or write the IRI out in full.";
             }
         }
+        // THE CELL MAY ALREADY BE WHAT THE ADVICE ASKS FOR. Telling somebody whose cell holds
+        // http://purl.obolibrary.org/obo/OBI_0000245 that the column wants "an IRI, a CURIE, or
+        // the exact label" is useless, and it is the commonest failure on real sheets: a
+        // knowledge graph built in stages fails this way on every term its upstream sheets have
+        // not contributed yet. What they need to know is that the term is absent, not what the
+        // column accepts.
+        boolean absoluteIri = (value.startsWith("http://") || value.startsWith("https://"))
+                && value.indexOf(' ') < 0;
+        boolean knownCurie = looksLikeCurie && io.getPrefixes().get(
+                value.substring(0, colon)) != null;
+        if (absoluteIri || knownCurie) {
+            return "This names a term properly, and the term is not here: nothing in this "
+                    + "ontology or its imports is \"" + value + "\". Either bring it in with "
+                    + "Import terms..., or - if it is meant to come from another sheet - build "
+                    + "that sheet first, because a sheet can only point at terms that already "
+                    + "exist when it runs.";
+        }
         return "Nothing in this ontology is called \"" + value + "\", so there is no term for "
                 + "this column to point at. The column is \"" + spec + "\", which holds a "
                 + "reference to a term: an IRI, a CURIE such as obo:BFO_0000001, or the exact "
