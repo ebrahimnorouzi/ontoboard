@@ -130,7 +130,10 @@ public final class OdkBuildSettings {
      * same file and a project whose id and filename disagree would otherwise read as having no
      * configuration at all. More than one is ambiguous, so neither is chosen.
      */
-    static File yamlIn(File ontologyDirectory) {
+    public static File yamlIn(File ontologyDirectory) {
+        if (ontologyDirectory == null) {
+            return null;
+        }
         File[] found = ontologyDirectory.listFiles();
         if (found == null) {
             return null;
@@ -145,5 +148,52 @@ public final class OdkBuildSettings {
             }
         }
         return only;
+    }
+
+    /**
+     * Replaces the configuration, but only if it still holds what the caller last read.
+     *
+     * <p>Two hazards, one method. The file is the one ODK reads for every target, so a lost edit
+     * is not a lost edit - it is a build that behaves differently from what somebody is looking
+     * at. And a crash or a full disk during a plain write leaves a truncated configuration, which
+     * breaks every target at once.
+     *
+     * <p>So: compare first and refuse, then write through a temporary file <em>in the same
+     * directory</em> and move it into place. The directory matters - a move across filesystems is
+     * not atomic, and the system temporary directory is frequently on another one.
+     *
+     * <p>Shared rather than copied. <i>Project configuration…</i> has written the file this way
+     * since 1.89.0 and <i>Import terms…</i> needs the same guarantee to add an import product; two
+     * implementations of an atomic replace is one that drifts.
+     *
+     * @param expected the text the caller read, which must still be what is on disk
+     * @throws IOException if the file has changed, or cannot be written
+     */
+    public static void writeIfUnchanged(File yaml, String expected, String updated)
+            throws IOException {
+        String onDisk = new String(Files.readAllBytes(yaml.toPath()), StandardCharsets.UTF_8);
+        if (!onDisk.equals(expected)) {
+            throw new IOException(yaml.getName() + " has changed on disk since it was read, so "
+                    + "nothing has been written - writing would have discarded that change.");
+        }
+        File directory = yaml.getAbsoluteFile().getParentFile();
+        File temporary = File.createTempFile(yaml.getName(), ".tmp", directory);
+        try {
+            Files.write(temporary.toPath(), updated.getBytes(StandardCharsets.UTF_8));
+            try {
+                Files.move(temporary.toPath(), yaml.toPath(),
+                        java.nio.file.StandardCopyOption.REPLACE_EXISTING,
+                        java.nio.file.StandardCopyOption.ATOMIC_MOVE);
+            } catch (java.nio.file.AtomicMoveNotSupportedException notAtomic) {
+                // Some Windows filesystems refuse an atomic replace. A plain replace is still
+                // better than writing in place, because the content is already complete on disk.
+                Files.move(temporary.toPath(), yaml.toPath(),
+                        java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            }
+        } finally {
+            if (temporary.exists() && !temporary.delete()) {
+                temporary.deleteOnExit();
+            }
+        }
     }
 }

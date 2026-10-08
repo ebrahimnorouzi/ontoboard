@@ -313,6 +313,146 @@ public final class OdkYaml {
     }
 
     /**
+     * Adds a whole mapping item to a list - an {@code import_group.products} entry, say.
+     *
+     * <p>{@link #appendTo} adds a scalar, which is enough for {@code export_formats} and not for
+     * the list people actually need to add to. An import product is a mapping:
+     *
+     * <pre>
+     * - id: ro
+     *   mirror_from: http://purl.obolibrary.org/obo/ro.owl
+     *   module_type: custom
+     * </pre>
+     *
+     * <p><b>And unlike {@link #appendTo} it can seed an empty list,</b> which is the case that
+     * matters. OntoBoard's own scaffold writes {@code products: []} into every project it
+     * generates, so refusing an empty list meant refusing every project this plugin made - the
+     * only ones where it would be adding the first product in the first place.
+     *
+     * <p>Refusing was right in 1.97.0 for a reason that turns out to be two reasons conflated.
+     * The stated one was that an empty sequence is written both as {@code key: []} and as a key
+     * with nothing under it, needing different edits. But those are not both empty sequences:
+     * {@code products:} with nothing under it parses as <em>null</em>, not as a list, and is
+     * rejected here by the same "is not a list" check as before. {@code []} is the only genuinely
+     * empty sequence, and replacing that token is unambiguous.
+     *
+     * <p>Indentation is still copied from the list's own last item whenever there is one. Only for
+     * {@code []} - where there is nothing to copy and the file is one OntoBoard wrote - is it
+     * computed, as the key's own indent plus two.
+     *
+     * @param path a sequence: {@code import_group.products}
+     * @param fields the item's keys and values, in the order they should be written; the first
+     *     goes on the {@code -} line
+     * @throws UnreadableException if there is no such list, or it is not a list, or no fields
+     */
+    public static String appendBlockTo(String text, String path,
+            java.util.LinkedHashMap<String, String> fields) {
+        if (fields == null || fields.isEmpty()) {
+            throw new UnreadableException("An item with no keys in it cannot be added.");
+        }
+        Node node = resolve(rootOf(text), path);
+        if (node == null) {
+            throw new UnreadableException("This file has no '" + path + "'.");
+        }
+        if (!(node instanceof SequenceNode)) {
+            // Covers `products:` with nothing under it, which YAML reads as null rather than as
+            // an empty list - so it is not the second spelling of empty, it is a different value.
+            throw new UnreadableException("'" + path + "' is not a list.");
+        }
+        List<Node> items = ((SequenceNode) node).getValue();
+        if (items.isEmpty()) {
+            return seedEmptyList(text, path, node, fields);
+        }
+
+        Node last = items.get(items.size() - 1);
+        int start = clamp(text, last.getStartMark().getIndex());
+        String indent = indentOfLineAt(text, start);
+        int at = endOfItemAt(text, start, indent);
+        return text.substring(0, at) + blockFor(indent, fields) + text.substring(at);
+    }
+
+    /**
+     * Where the item beginning at {@code start} ends, found by indentation rather than by marks.
+     *
+     * <p><b>Not snakeyaml's end mark, and this is the trap {@link #removeFrom} documents from the
+     * other direction.</b> A mapping inside a sequence ends, as far as snakeyaml is concerned, at
+     * the point the following structure begins - so for the LAST item of a list the end mark sits
+     * past the blank line after it and inside whatever top-level key comes next. Splicing there
+     * put a new import product after {@code components:} in NFDIcore and after
+     * {@code remove_owl_nothing: TRUE} in MWO, and the result was not YAML at all. Four of the
+     * five real spellings broke; the test that found it appends to each of them and reparses.
+     *
+     * <p>So the item's own text is what is measured: its first line, then every following line
+     * indented deeper than the dash. A line at the dash's own indent is the next item, a shallower
+     * one closes the list, and a blank line ends the item - which is also what keeps the blank
+     * line a file may have before its next key.
+     */
+    private static int endOfItemAt(String text, int start, String indent) {
+        int at = text.indexOf('\n', start);
+        if (at < 0) {
+            return text.length();
+        }
+        while (at + 1 < text.length()) {
+            int lineStart = at + 1;
+            int lineEnd = text.indexOf('\n', lineStart);
+            if (lineEnd < 0) {
+                lineEnd = text.length();
+            }
+            String line = text.substring(lineStart, lineEnd);
+            if (line.trim().isEmpty()) {
+                return at;
+            }
+            int deep = 0;
+            while (deep < line.length() && (line.charAt(deep) == ' ' || line.charAt(deep) == '\t')) {
+                deep++;
+            }
+            if (deep <= indent.length()) {
+                return at;
+            }
+            at = lineEnd;
+        }
+        return at;
+    }
+
+    /**
+     * Replaces a flow-style {@code []} with the first item as a block.
+     *
+     * <p>The one place an indent is computed rather than copied, because an empty list offers
+     * nothing to copy. Two spaces in from the key, which is what every ODK file in the wild does
+     * for a sequence it indents at all, and what OntoBoard's own scaffold would have written.
+     */
+    private static String seedEmptyList(String text, String path, Node node,
+            java.util.LinkedHashMap<String, String> fields) {
+        int start = clamp(text, node.getStartMark().getIndex());
+        int end = clamp(text, node.getEndMark().getIndex());
+        String flow = text.substring(start, end);
+        if (flow.indexOf('[') < 0) {
+            throw new UnreadableException("'" + path + "' is empty but is not written as [], so "
+                    + "there is no way to tell what shape to give it. Add the first entry in a "
+                    + "text editor.");
+        }
+        String keyIndent = indentOfLineAt(text, start);
+        return text.substring(0, start).replaceAll("[ \t]+$", "")
+                + blockFor(keyIndent + "  ", fields) + text.substring(end);
+    }
+
+    /** The item as lines, each one newline-prefixed so it splices after an existing line. */
+    private static String blockFor(String indent, java.util.LinkedHashMap<String, String> fields) {
+        StringBuilder block = new StringBuilder();
+        boolean first = true;
+        for (java.util.Map.Entry<String, String> field : fields.entrySet()) {
+            block.append('\n').append(indent);
+            // Continuation keys align under the first one, which sits two characters past the
+            // dash. Writing them at the dash's own indent would make them keys of the enclosing
+            // mapping instead of the item's, which is a different document.
+            block.append(first ? "- " : "  ");
+            block.append(field.getKey()).append(": ").append(scalarFor(field.getValue()));
+            first = false;
+        }
+        return block.toString();
+    }
+
+    /**
      * Removes one item from a list, with the whole of its line and nothing else.
      *
      * <p>Takes the line the item begins on through to the line its last nested value ends on, so

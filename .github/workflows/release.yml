@@ -117,6 +117,43 @@ jobs:
           cp "target/ontoboard-${{ steps.version.outputs.version }}.jar" target/ontoboard.jar
           ls -l target/ontoboard.jar
 
+      # The slide deck, built here rather than committed. It was built once and left in build/,
+      # which .gitignore excludes - so the builder shipped and the deck did not, and the only copy
+      # was on the machine that made it. A generated artefact belongs in the release beside the
+      # jar, built from the same commit, for the same reason the jar is not committed either.
+      #
+      # It needs no running Protege: the three screenshots it crops are tracked under
+      # build/shots/, and everything else - the logo, the pattern figure, the counts on the facts
+      # slide - it draws or reads from the repository.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Build the slide deck
+        run: |
+          pip install -r deck-requirements.txt
+          python tools/build-deck.py
+          ls -l build/playground-ontoboard.pptx
+
+      # A deck that opens is the only check worth making here: python-pptx will happily write a
+      # file that PowerPoint then refuses, and nobody would find out until they presented it.
+      - name: The deck must be a valid package with the slides it claims
+        run: |
+          python - <<'PY'
+          from pptx import Presentation
+          deck = Presentation("build/playground-ontoboard.pptx")
+          slides = len(deck.slides)
+          print("slides:", slides)
+          if slides < 20:
+              raise SystemExit("the deck lost slides: %d, expected at least 20" % slides)
+          blank = [i + 1 for i, s in enumerate(deck.slides)
+                   if not any(sh.has_text_frame and sh.text_frame.text.strip()
+                              for sh in s.shapes)]
+          if blank:
+              raise SystemExit("slides with no text at all: %s" % blank)
+          print("every slide carries text")
+          PY
+
       # The receipt is the release note. It records what was verified in a real Protege, on which
       # hosts, and - as importantly - what was not.
       - name: Publish
@@ -127,4 +164,5 @@ jobs:
           files: |
             protege-plugin/target/ontoboard-${{ steps.version.outputs.version }}.jar
             protege-plugin/target/ontoboard.jar
+            build/playground-ontoboard.pptx
           fail_on_unmatched_files: true

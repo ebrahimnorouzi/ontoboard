@@ -6,6 +6,9 @@ import de.fizkarlsruhe.ise.ontoboard.robot.ImportProvenance;
 import de.fizkarlsruhe.ise.ontoboard.robot.OntologySource;
 import de.fizkarlsruhe.ise.ontoboard.robot.RobotException;
 import de.fizkarlsruhe.ise.ontoboard.odk.ImportModules;
+import de.fizkarlsruhe.ise.ontoboard.odk.ImportProducts;
+import de.fizkarlsruhe.ise.ontoboard.odk.OdkBuildSettings;
+import de.fizkarlsruhe.ise.ontoboard.odk.OdkYaml;
 import de.fizkarlsruhe.ise.ontoboard.robot.TermExtract;
 import de.fizkarlsruhe.ise.ontoboard.robot.TermList;
 import java.io.File;
@@ -443,6 +446,13 @@ public class ImportTermsAction extends OntoBoardAction {
         // source. This plugin wrote only the module until 1.38.0.
         writeTermList(result, ontology, source, target, requestedTerms, sourceIri);
 
+        // And the product in import_group.products, without which the two files above are
+        // invisible to ODK. Its IMPORTS list is built from that key, so a module and term list
+        // that no product declares are files `make refresh-imports` never touches - and OntoBoard
+        // made exactly that state for itself, scaffolding `products: []` and then never adding to
+        // it. 1.99.0 started reporting it; this stops causing it.
+        declareProduct(result, ontology, source, sourceIri);
+
         if (isOutsideTheProject(ontology, target)) {
             result.warn("The module is outside the ontology's own directory, so it will not be "
                     + "committed with the project and the catalog entry pointing at it will not "
@@ -554,6 +564,77 @@ public class ImportTermsAction extends OntoBoardAction {
                     + cannotWrite.getMessage() + ". Without it nobody can rebuild "
                     + moduleFile.getName() + ".");
         }
+    }
+
+    /**
+     * Declares the import in {@code import_group.products}, so ODK's build knows it exists.
+     *
+     * <p>A warning rather than a failure whenever it cannot be done, on the same trade as the
+     * term list: the module, the list and the catalog entry are already written and working, and
+     * losing those over a YAML edit would be the wrong way round. But a warning and not a note,
+     * because an undeclared import is one {@code make refresh-imports} silently skips.
+     *
+     * <p>Nothing is written when the product is already declared. Re-running this on an existing
+     * import is ordinary - it is how a term list grows - and a second product with the same id
+     * would give ODK two rules for one module.
+     */
+    private void declareProduct(OperationResult.Builder result, OWLOntology ontology,
+            OWLOntology source, IRI sourceIri) {
+        File projectRoot = projectRootFor(ontology);
+        File editFile = fileOf(ontology);
+        if (projectRoot == null || editFile == null) {
+            return;
+        }
+        File ontologyDirectory = editFile.getAbsoluteFile().getParentFile();
+        File yaml = OdkBuildSettings.yamlIn(ontologyDirectory);
+        if (yaml == null) {
+            // Not an ODK project, or not one with a configuration - nothing to declare into, and
+            // nothing wrong with that. The module still works through the catalog.
+            return;
+        }
+
+        String id = TermExtract.shortNameOf(source);
+        if (ImportProducts.named(ImportProducts.declaredIn(ontologyDirectory), id) != null) {
+            result.note(id + " is already declared in import_group.products, so the list was "
+                    + "left alone.");
+            return;
+        }
+
+        ImportProducts.Declaration declaration = ImportProducts.declarationFor(id,
+                sourceIri == null ? null : sourceIri.toString(), method);
+        try {
+            String before = new String(java.nio.file.Files.readAllBytes(yaml.toPath()),
+                    java.nio.charset.StandardCharsets.UTF_8);
+            String after = OdkYaml.appendBlockTo(before, "import_group.products",
+                    declaration.getFields());
+            OdkBuildSettings.writeIfUnchanged(yaml, before, after);
+            result.wrote(yaml);
+            result.note("Declared " + id + " in import_group.products, so `make refresh-imports` "
+                    + "rebuilds it: " + describe(declaration.getFields()));
+            if (declaration.getCaveat() != null) {
+                result.warn(declaration.getCaveat());
+            }
+        } catch (RuntimeException cannotEdit) {
+            result.warn("Wrote the module and its term list, but could not add " + id + " to "
+                    + "import_group.products: " + cannotEdit.getMessage() + ". Until it is "
+                    + "declared there, ODK's IMPORTS list has no entry for it and "
+                    + "`make refresh-imports` will not rebuild it.");
+        } catch (IOException cannotEdit) {
+            result.warn("Wrote the module and its term list, but could not add " + id + " to "
+                    + "import_group.products: " + cannotEdit.getMessage() + ". Until it is "
+                    + "declared there, ODK's IMPORTS list has no entry for it and "
+                    + "`make refresh-imports` will not rebuild it.");
+        }
+    }
+
+    /** The declaration on one line, so the result says what went into the file. */
+    private static String describe(Map<String, String> fields) {
+        StringBuilder said = new StringBuilder();
+        for (Map.Entry<String, String> field : fields.entrySet()) {
+            said.append(said.length() == 0 ? "" : ", ")
+                    .append(field.getKey()).append(": ").append(field.getValue());
+        }
+        return said.toString();
     }
 
     /** The ODK project the open ontology belongs to, or null when it has never been saved. */

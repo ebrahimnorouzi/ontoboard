@@ -18,6 +18,15 @@ mvn clean package     # -> target/ontoboard-<version>.jar
 tests compiled against stale classes — on one occasion hiding a source file that did not
 compile at all. If a result matters, delete `target/` first.
 
+**One Maven at a time.** Two runs sharing `target/` corrupt each other, and the result does not
+look like corruption: a full suite running in the background while a single `-Dtest=` run
+started in the foreground produced three failures in the pattern library — `index.tsv is
+stale`, a pattern reporting three classes instead of five, and a collection total one too high
+— with not one pattern file changed on disk. All twenty-seven passed the moment they were
+run alone. The resources are copied into `target/classes` by each run, so the second clobbers
+what the first is in the middle of reading. A failure you cannot reproduce in isolation is this
+until proven otherwise.
+
 ### Versions are semantic, releases are dated
 
 The tag is a semantic version — `v1.84.0` — and the release it publishes is titled

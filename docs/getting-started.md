@@ -6,6 +6,7 @@
 
 [:material-download: **Download the latest OntoBoard**](https://github.com/ebrahimnorouzi/ontoboard/releases/latest/download/ontoboard.jar){ .md-button .md-button--primary }
 [All releases](https://github.com/ebrahimnorouzi/ontoboard/releases){ .md-button }
+[:material-file-presentation-box: Slide deck](https://github.com/ebrahimnorouzi/ontoboard/releases/latest/download/playground-ontoboard.pptx){ .md-button }
 
 That first link always serves the newest build — it is an unversioned copy of the same jar every
 release publishes, so the URL never has to be rewritten. If you need a specific version, or want

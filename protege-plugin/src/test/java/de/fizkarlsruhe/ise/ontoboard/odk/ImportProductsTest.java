@@ -534,6 +534,130 @@ class ImportProductsTest {
                 java.util.Collections.<ImportModules.Module>emptyList(), root).isEmpty());
     }
 
+    // ---------- declaring what Import terms... just extracted ----------
+
+    /**
+     * A BOT extraction declares its method explicitly, even though BOT is ODK's default.
+     *
+     * <p>The tempting economy is to leave {@code module_type_slme} out when it matches the
+     * default. It would be wrong: a project whose {@code import_group} sets
+     * {@code module_type_slme: STAR} at group level would rebuild this module as STAR, which is
+     * not what was extracted. {@link #aGroupDefaultCannotSilentlyChangeADeclaredModule} is the
+     * test for that.
+     */
+    @Test
+    void aBotExtractionIsDeclaredAsSlmeBot() {
+        ImportProducts.Declaration declaration = ImportProducts.declarationFor(
+                "ro", "http://purl.obolibrary.org/obo/ro.owl", TermExtract.Method.BOT);
+
+        assertEquals("[id, module_type, module_type_slme]",
+                declaration.getFields().keySet().toString());
+        assertEquals("ro", declaration.getFields().get("id"));
+        assertEquals("slme", declaration.getFields().get("module_type"));
+        assertEquals("BOT", declaration.getFields().get("module_type_slme"));
+        assertNull(declaration.getCaveat());
+        assertNull(declaration.getFields().get("slme_individuals"),
+                "ODK's default and robot-core's are both 'include', so saying it adds nothing");
+    }
+
+    /** The OBO PURL is left out, because it is what ODK downloads anyway. */
+    @Test
+    void theDefaultSourceIsNotWrittenOut() {
+        assertNull(ImportProducts.declarationFor("iao",
+                        "http://purl.obolibrary.org/obo/iao.owl", TermExtract.Method.BOT)
+                .getFields().get("mirror_from"),
+                "NFDIcore's iao product is one line for exactly this reason");
+    }
+
+    /** Any other source is written, because nothing else would find it. */
+    @Test
+    void anUnusualSourceIsWritten() {
+        assertEquals("https://edamontology.org/EDAM_1.25.owl",
+                ImportProducts.declarationFor("edam", "https://edamontology.org/EDAM_1.25.owl",
+                        TermExtract.Method.STAR).getFields().get("mirror_from"));
+    }
+
+    /** STAR and TOP travel through as themselves. */
+    @Test
+    void everyRunnableMethodIsDeclarable() {
+        for (TermExtract.Method method : new TermExtract.Method[] {
+                TermExtract.Method.BOT, TermExtract.Method.TOP, TermExtract.Method.STAR}) {
+            ImportProducts.Declaration declaration =
+                    ImportProducts.declarationFor("x", null, method);
+            assertEquals("slme", declaration.getFields().get("module_type"), method.getLabel());
+            assertEquals(method.getLabel(), declaration.getFields().get("module_type_slme"));
+            assertNull(declaration.getCaveat(), method.getLabel());
+        }
+    }
+
+    /**
+     * MIREOT is declared as custom, with the reason, because ODK has no module type for it.
+     *
+     * <p>Inventing {@code module_type_slme: MIREOT} would be outside ODK's documented set, and
+     * {@code custom} is ODK's own word for a rule written by hand - which is what NFDIcore does
+     * for its one MIREOT import.
+     */
+    @Test
+    void aMireotExtractionIsDeclaredCustomAndSaysWhy() {
+        ImportProducts.Declaration declaration = ImportProducts.declarationFor(
+                "swo", "https://example.org/swo.owl", TermExtract.Method.MIREOT);
+
+        assertEquals("custom", declaration.getFields().get("module_type"));
+        assertNull(declaration.getFields().get("module_type_slme"));
+        assertNotNull(declaration.getCaveat());
+        assertTrue(declaration.getCaveat().contains("Makefile"), declaration.getCaveat());
+    }
+
+    /** A declaration this writes is one this reads back the same way. */
+    @Test
+    void whatItDeclaresItReadsBack() {
+        ImportProducts.Declaration declaration = ImportProducts.declarationFor(
+                "chebi", "https://example.org/chebi_slim.owl", TermExtract.Method.STAR);
+
+        String yaml = OdkYaml.appendBlockTo("import_group:\n  products: []\n",
+                "import_group.products", declaration.getFields());
+        ImportProducts.Product read = ImportProducts.declaredIn(yaml).get(0);
+
+        assertEquals("chebi", read.getId());
+        assertEquals("https://example.org/chebi_slim.owl", read.getSource());
+        assertEquals(TermExtract.Method.STAR, read.getMethod(),
+                "the method that comes back is the one that was extracted");
+        assertTrue(read.isRebuildable());
+        assertNull(read.getRefusal());
+    }
+
+    /**
+     * And a group default cannot silently change it, which is why the method is written out.
+     *
+     * <p>Remove {@code module_type_slme} from the declaration and this test fails: the product
+     * inherits STAR from the group and a refresh rebuilds a module that is not the one extracted.
+     */
+    @Test
+    void aGroupDefaultCannotSilentlyChangeADeclaredModule() {
+        ImportProducts.Declaration declaration =
+                ImportProducts.declarationFor("ro", null, TermExtract.Method.BOT);
+
+        String yaml = OdkYaml.appendBlockTo(
+                "import_group:\n  module_type_slme: STAR\n  products: []\n",
+                "import_group.products", declaration.getFields());
+
+        assertEquals(TermExtract.Method.BOT,
+                ImportProducts.declaredIn(yaml).get(0).getMethod(),
+                "BOT was extracted, so BOT is what a rebuild must use - not the group's STAR");
+    }
+
+    /** A MIREOT declaration reads back as refused, which is honest about what make will do. */
+    @Test
+    void aMireotDeclarationReadsBackAsRefused() {
+        String yaml = OdkYaml.appendBlockTo("import_group:\n  products: []\n",
+                "import_group.products",
+                ImportProducts.declarationFor("swo", null, TermExtract.Method.MIREOT).getFields());
+
+        ImportProducts.Product read = ImportProducts.declaredIn(yaml).get(0);
+        assertFalse(read.isRebuildable());
+        assertTrue(read.getRefusal().contains("custom"), read.getRefusal());
+    }
+
     /** The module type reads as one line, with the SLME parameters only when they apply. */
     @Test
     void theModuleTypeDescribesItself() {

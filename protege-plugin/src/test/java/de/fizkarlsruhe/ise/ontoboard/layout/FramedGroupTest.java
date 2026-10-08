@@ -275,4 +275,59 @@ class FramedGroupTest {
         assertEquals(3, placement.getNodes().size());
         assertNotNull(placement.getFrame());
     }
+
+    /**
+     * The frame uses the same stride as every other placement on the board.
+     *
+     * <p>Reported as "so compact and lots of concepts are packed". This was the only multi-node
+     * placement that was tighter than the rest: {@code CanvasLayouts} puts nodes on a 200x100
+     * stride everywhere - {@code GRID_GAP = 40}, {@code LOOSE_PITCH_X/Y = 200/100},
+     * {@code NODE_PITCH = 200}, {@code RING_GAP = 200} - and this used 188x88.
+     *
+     * <p>Asserted as the stride rather than as {@code GAP == 40}, because the stride is the thing
+     * a user sees and the thing that has to agree with the other layouts. A test on the constant
+     * would pass if somebody changed the node size and left the gap alone.
+     */
+    @Test
+    void theStrideMatchesTheRestOfTheBoard() {
+        List<CanvasLayout.NodeLayout> row = new ArrayList<CanvasLayout.NodeLayout>(
+                FramedGroup.plan("P", iris(10), new CanvasLayout()).getNodes().values());
+        Collections.sort(row, new java.util.Comparator<CanvasLayout.NodeLayout>() {
+            @Override
+            public int compare(CanvasLayout.NodeLayout a, CanvasLayout.NodeLayout b) {
+                int byRow = Double.compare(a.y, b.y);
+                return byRow != 0 ? byRow : Double.compare(a.x, b.x);
+            }
+        });
+
+        assertEquals(200.0, row.get(1).x - row.get(0).x, 0.001,
+                "the horizontal stride every other layout uses is 200");
+        double firstRowY = row.get(0).y;
+        for (CanvasLayout.NodeLayout node : row) {
+            if (node.y > firstRowY + 0.001) {
+                assertEquals(100.0, node.y - firstRowY, 0.001,
+                        "the vertical stride every other layout uses is 100");
+                break;
+            }
+        }
+    }
+
+    /**
+     * Everything lands on the canvas's 20px snap grid.
+     *
+     * <p>So a pattern's nodes line up with whatever else is on the board, and do not jump the
+     * first time one is dragged - dragging snaps to 20, and the old insets of 34 and 64 did not.
+     */
+    @Test
+    void everyNodeLandsOnTheSnapGrid() {
+        FramedGroup.Placement placement = FramedGroup.plan("P", iris(7), new CanvasLayout());
+        CanvasLayout.FrameLayout frame = placement.getFrame();
+
+        for (CanvasLayout.NodeLayout node : placement.getNodes().values()) {
+            assertEquals(0.0, (node.x - frame.x) % 20, 0.001,
+                    "x inset off the 20px grid: " + (node.x - frame.x));
+            assertEquals(0.0, (node.y - frame.y) % 20, 0.001,
+                    "y inset off the 20px grid: " + (node.y - frame.y));
+        }
+    }
 }

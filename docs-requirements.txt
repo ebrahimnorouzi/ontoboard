@@ -14,4 +14,9 @@ mkdocs-material==9.5.49
 # owlready2, and ontoink then runs a HermiT consistency check per fence - a JVM per page -
 # which measured at 4.7s each and turns a 12-second site build into most of a quarter hour.
 # The graphs show the axioms each pattern asserts, which is what the pages say they show.
-ontoink==0.7.8
+ontoink==0.7.9
+# 0.7.9 fixes object and datatype properties being drawn and labelled as individuals. Measured
+# over the 163 patterns this site generates a page for: 1085 nodes across 147 of them were
+# affected - 997 object properties and 88 datatype properties - so every pattern graph on this
+# site was showing its relations as individuals. Reported against the componency pattern, whose
+# four object properties are declared `rdf:type owl:ObjectProperty` in the file.

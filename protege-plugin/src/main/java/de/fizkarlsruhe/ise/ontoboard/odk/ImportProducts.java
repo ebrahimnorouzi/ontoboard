@@ -504,6 +504,82 @@ public final class ImportProducts {
         }
     }
 
+    /** A product declaration describing an extraction OntoBoard has just done. */
+    public static final class Declaration {
+        private final java.util.LinkedHashMap<String, String> fields;
+        private final String caveat;
+
+        Declaration(java.util.LinkedHashMap<String, String> fields, String caveat) {
+            this.fields = fields;
+            this.caveat = caveat;
+        }
+
+        /** The keys and values to write, in order. */
+        public java.util.LinkedHashMap<String, String> getFields() {
+            return fields;
+        }
+
+        /** Why this declaration will not build as written, or null when it will. */
+        public String getCaveat() {
+            return caveat;
+        }
+    }
+
+    /**
+     * The {@code import_group.products} entry that describes this extraction.
+     *
+     * <p>So that <i>ROBOT &gt; Import terms…</i> can declare what it just built. Without it the
+     * module, the term list and the catalog entry all land on disk and ODK's {@code IMPORTS} list
+     * stays empty, so {@code make refresh-imports} rebuilds nothing - the orphan state 1.99.0
+     * started reporting, and which OntoBoard creates for itself.
+     *
+     * <p><b>The method is written explicitly, even when it is ODK's own default.</b> It would be
+     * tempting to leave {@code module_type} and {@code module_type_slme} out for a BOT extraction
+     * on the grounds that BOT is what a product inherits anyway - but a project whose
+     * {@code import_group} sets {@code module_type_slme: STAR} at the group level would then
+     * rebuild this module as STAR, which is not what was extracted. Saying it is the only way the
+     * declaration stays true of the file beside it.
+     *
+     * <p>{@code slme_individuals} is deliberately absent. ODK's group default is {@code include},
+     * and robot-core's {@code ExtractOperation.getDefaultOptions()} - which is what this plugin's
+     * extraction runs with - reports {@code individuals=include}. They already agree, so writing
+     * it would add a line that says nothing.
+     *
+     * @param id the product id, which names its module and its term list
+     * @param source where the terms were extracted from
+     * @param method the extraction that was run
+     */
+    public static Declaration declarationFor(String id, String source,
+            TermExtract.Method method) {
+        java.util.LinkedHashMap<String, String> fields =
+                new java.util.LinkedHashMap<String, String>();
+        fields.put("id", id);
+
+        // Omitted when it is what ODK would download anyway, which is how real files are written:
+        // NFDIcore's iao product is one line, because the PURL is the default.
+        String standard = OBO_BASE + "/" + id + ".owl";
+        if (source != null && !source.isEmpty() && !standard.equals(source)) {
+            fields.put("mirror_from", source);
+        }
+
+        if (method == null || method == TermExtract.Method.MIREOT) {
+            // ODK has no module_type that means MIREOT, so there is nothing truthful to write
+            // that `make` would act on. custom is ODK's own word for "the rule is hand-written",
+            // which is exactly the situation - and what a real project does: NFDIcore declares its
+            // MIREOT import as custom and writes the extract command in its own Makefile.
+            fields.put("module_type", "custom");
+            return new Declaration(fields, "ODK has no module_type for a MIREOT extraction, so "
+                    + "this was declared as module_type: custom - ODK's own word for a rule that "
+                    + "is written by hand. `make refresh-imports` will stop on it until you add "
+                    + "an extract command for " + id + " to the project's own Makefile, which is "
+                    + "what NFDIcore does for the same reason. The module, its term list and the "
+                    + "catalog entry are all on disk and working.");
+        }
+        fields.put("module_type", DEFAULT_MODULE_TYPE);
+        fields.put("module_type_slme", method.getLabel());
+        return new Declaration(fields, null);
+    }
+
     /** The product with this id, or null. */
     public static Product named(List<Product> products, String id) {
         for (Product product : products) {

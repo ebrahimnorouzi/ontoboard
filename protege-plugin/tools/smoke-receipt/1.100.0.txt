@@ -1,0 +1,176 @@
+OntoBoard 1.100.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-10-08  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 9/9  test 10/10
+  2026-10-08  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 9/9  test 10/10
+
+
+IMPORT TERMS... DECLARES WHAT IT BUILT
+
+1.99.0 taught Refresh imports to read import_group.products and, in doing so, made OntoBoard
+report a defect of its own: OdkScaffold writes
+
+    import_group:
+      products: []
+
+into every project the plugin generates, and ROBOT > Import terms... wrote the module, the term
+list and the catalog entry without ever adding the product. A repository built entirely with this
+plugin therefore had imports ODK's own build did not know about - IMPORTS empty, and
+`make refresh-imports` in somebody's CI rebuilding nothing, silently.
+
+It declares the product now. termText is unchanged, so the import still brings in what it always
+did; this adds the line that makes the build aware of it.
+
+THE METHOD IS WRITTEN OUT EVEN WHEN IT IS THE DEFAULT
+
+A BOT extraction could leave module_type and module_type_slme unsaid, since BOT is what a product
+inherits. That would be wrong: a project whose import_group sets module_type_slme: STAR at the
+group level would rebuild the module as STAR, which is not what was extracted. Saying it is the
+only way the declaration stays true of the file beside it, and there is a test named for exactly
+that.
+
+slme_individuals is deliberately absent. ODK's group default is include, and robot-core's
+ExtractOperation.getDefaultOptions() - which is what this plugin's extraction runs with - reports
+individuals=include. They already agree, so writing it would add a line that says nothing.
+
+MIREOT is declared module_type: custom, with the reason on screen. ODK has no module type that
+means MIREOT, so there is nothing truthful to write that `make` would act on; custom is ODK's own
+word for a rule written by hand, which is the situation, and is what NFDIcore does for its own
+MIREOT import.
+
+SEEDING AN EMPTY LIST, WHICH 1.97.0 REFUSED
+
+appendTo refuses an empty sequence, and OntoBoard's scaffold writes exactly one - so refusing it
+meant refusing every project this plugin made, which is the only place the first product would
+ever be added.
+
+The 1.97.0 reason turns out to be two things conflated. It said an empty sequence is written both
+as `key: []` and as a key with nothing under it, needing different edits. Those are not both empty
+sequences: measured, `products:` with nothing under it parses as NULL, not as a list, and is still
+refused here by the same "is not a list" check. `[]` is the only genuinely empty sequence, and
+replacing that token is unambiguous.
+
+Indentation is still copied from the list's own last item wherever there is one. Only for `[]` -
+where there is nothing to copy and the file is one OntoBoard wrote - is it computed, as the key's
+indent plus two.
+
+A DEFECT THAT PASSED THE OBVIOUS CASE AND BROKE FOUR REAL ONES
+
+The first appendBlockTo used snakeyaml's end mark for the last item. A mapping inside a sequence
+ends, as far as snakeyaml is concerned, where the FOLLOWING structure begins - so for the last
+item that mark sits past the blank line after it and inside whatever top-level key comes next.
+Splicing there put a new import product after NFDIcore's `components:` and after MWO's
+`remove_owl_nothing: TRUE`, and the result was not YAML at all.
+
+Four of the five real spellings broke. It is the same trap removeFrom documents from the other
+direction, and the code comment I had written claimed the opposite. The item's own text is now
+measured by indentation: its first line, then every following line indented deeper than the dash.
+
+Verified against every spelling in the wild - NFDIcore's three-space key with four-space items,
+MWO's two-space key with three-space items, ECTO's bare `- id:` entries, a list ending at the last
+line of the file, a trailing comment on the item above, and the scaffold's own `products: []`.
+Each one reparses, and each keeps its own indentation.
+
+THE CANVAS FRAME, REPORTED AS "SO COMPACT AND LOTS OF CONCEPTS ARE PACKED"
+
+Two causes, and the second is the one that mattered.
+
+SPACING. GAP was 28 and PADDING 34, giving a 188x88 node stride. Every other placement on the
+board uses 200x100 - CanvasLayouts' GRID_GAP 40, LOOSE_PITCH_X/Y 200/100, NODE_PITCH 200,
+RING_GAP 200 - so the imported frame was the only one tighter than the rest, and the only one off
+the canvas's 20px snap grid, so a pattern's nodes lined up with nothing and jumped the first time
+one was dragged. Now 40/40/40, with tests asserting the stride and the grid rather than the
+constant, because a test on the constant would pass if somebody changed the node size instead.
+
+WHAT WAS ACTUALLY PACKED. 44% of the boxes were not concepts. The 163 shipped patterns declare
+1318 classes and 1054 properties, and every term became a 160x60 box - while OntologyProjection
+already draws each property as an arrow between the classes it relates. The same fact was being
+shown twice and the grid was nearly doubled. Only classes are framed now; the import is untouched,
+so every selected term still reaches the ontology. The median pattern drops from 11 boxes at
+840x380 to 6 at 640x280.
+
+Three other candidate causes were refuted on inspection, one of which would have made things
+worse: raising NODE_W to 220 exceeds the 200 pitch every arrangement uses, and capturePositions
+persists the width, so the next Arrange would overlap nodes by 20px.
+
+THE SLIDE DECK WAS BUILT AND UNREACHABLE
+
+tools/build-deck.py was committed in 8afc547 and build/playground-ontoboard.pptx was not: the
+.gitignore excludes build/*.pptx, nothing in docs or CI referenced it, and the only copy was on
+the machine that made it. The builder shipped and the deck did not.
+
+The release workflow builds it now and publishes it beside the jar, with a guard that opens the
+result and fails on a deck that lost slides or gained a blank one - checked in both directions,
+against the real deck and against a deliberately blanked copy. deck-requirements.txt pins what it
+needs. There is a download button on Getting started.
+
+It also grew from 28 slides to 33, following playground.pptx where this deck had gaps: that deck
+spends four slides on the workspace, six on the ontology directory and seven on a custom import,
+and this one went from "create a repository" straight to "run the features".
+
+AND A DEFECT IN THE DECK FOUND BY RENDERING IT AND LOOKING
+
+Every two-line centred caption was ragged - "design patterns," hard left, "ready to import" hard
+right, on the slide anybody opens first. Setting run.text to a string containing a newline puts a
+line break inside the paragraph, and the alignment then applied to the first line only. One
+paragraph per line now. It was pre-existing and deck-wide.
+
+DOCUMENTATION: 1111 LINES TO 244
+
+limitations.md was 1111 lines, and its "Known constraints" section was 924 of them in 40 entries -
+of which 30 entries and 861 lines announce a defect fixed in a named version. A reader opening
+Limitations to find out what the tool cannot do met 861 lines of history before the 61 that answer
+the question. Those 30 moved to fixed.md; every one of the original 943 non-blank lines was
+checked present in one of the two files afterwards.
+
+The nav went from 25 entries to 12: ten internal spec and plan documents were listed as "Design
+record", which made the site look like a planning archive that happens to contain a plugin. They
+are still published and still linked; they are not in the sidebar.
+
+Two sections were audited against the code rather than edited: the src/ workspace, where three of
+the four directories are driven from the menu and src/metadata is not (now roadmap item 5), and
+the ontology directory, where the one undocumented item was `make update_repo` - OntoBoard's
+equivalent is Update project files..., and each tool refuses to regenerate the other's project.
+
+TWO STALE NUMBERS CORRECTED AT THE SOURCE
+
+OdkRegenerator's javadoc said MWO's Makefile is 767 lines carrying fifteen ODK markers. Measured
+today: 754 lines, and ODK_VERSION_MAKEFILE appears twice, against none in a scaffolded project,
+which has no run.sh either. The javadoc and the documentation now say what was measured, without a
+line count that will drift again.
+
+NUMBERS
+
+1872 tests, 0 failures, 0 skipped. 26 new, counted three ways and agreeing.
+
+Eight mutations were applied to appendBlockTo and all eight were caught, including the end-mark
+defect, which fails 16 of 16. Six were applied to the import-product reader and audit, and all six
+were caught.
+
+38/38 classes named in plugin.xml load on both hosts. Quality report end to end: 6 findings, 2 of
+them errors. 163 patterns indexed.
+
+A FAILURE THAT WAS NOT ONE, RECORDED BECAUSE THE SYMPTOM LOOKS NOTHING LIKE THE CAUSE
+
+A full suite reported three failures in the pattern library - index.tsv stale, a pattern with
+three classes instead of five, a collection total one too high - with not one pattern file changed
+on disk. All twenty-seven passed run alone. Two Maven runs had been sharing target/: a background
+full suite and a foreground -Dtest= run, each copying resources into target/classes while the
+other read them. docs/development.md now says so beside the existing "always clean" note. A
+failure that cannot be reproduced in isolation is this until proven otherwise.
+
+ONTOINK 0.7.9
+
+docs-requirements.txt is pinned to it. 0.7.9 fixes object and datatype properties being drawn and
+labelled as individuals, which affected 1085 nodes across 147 of the 163 pattern pages this site
+generates. Reported against the componency pattern, whose four object properties are declared
+rdf:type owl:ObjectProperty in the file - the pattern was right and the visualisation was not.
+
+STILL OPEN
+
+Roadmap: pull requests, Widoco, entity locking, the nine axiom kinds live collaboration cannot
+carry, and src/metadata. release_artefacts and primary_release remain unread - they mean three
+content variants rather than three serialisations. And the pattern library still knows nothing
+about what you have already imported, so a recommendation scoring 1.00 means you already contain
+the whole pattern without saying so.

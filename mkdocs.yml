@@ -131,18 +131,14 @@ nav:
       - Testing collaboration locally: testing-collaboration-locally.md
   - Honest accounting:
       - Limitations and roadmap: limitations.md
+      - What was fixed: fixed.md
       - Feature parity: feature-parity.md
       - Compared with OntoGraf: compared-with-ontograf.md
   - Going deeper:
       - Development: development.md
-  - Design record:
-      - Plugin design: superpowers/specs/2026-08-14-ontoboard-protege-plugin-design.md
-      - Provenance and release: superpowers/specs/2026-08-26-provenance-and-release-requirements.md
-      - Collaborative evolution: superpowers/specs/2026-08-30-collaborative-evolution-requirements.md
-      - Next phase: superpowers/specs/2026-09-24-next-phase-plan.md
-      - Canvas interface: superpowers/specs/2026-09-25-canvas-interface-plan.md
-      - Canvas board design: superpowers/specs/2026-09-26-canvas-board-design.md
-      - 'Plan: foundation and canvas': superpowers/plans/2026-08-14-protege-plugin-01-foundation-and-canvas.md
-      - 'Plan: canvas interaction': superpowers/plans/2026-08-24-protege-plugin-02-canvas-interaction.md
-      - 'Plan: collaboration': superpowers/plans/2026-08-25-protege-plugin-04-collaboration.md
-      - 'Plan: retirement': superpowers/plans/2026-08-20-protege-plugin-06-retirement.md
+      # The specs and plans under docs/superpowers/ are the design record. They are published
+      # with the site - every link to them still resolves - but they are not in the nav any more.
+      # Ten internal planning documents in the sidebar made the site look like a planning archive
+      # that happened to contain a plugin, and a reader deciding whether to install OntoBoard has
+      # no use for 'Plan: retirement'. limitations.md links the directory for anybody who wants it.
+      - Design record: superpowers/specs/2026-08-14-ontoboard-protege-plugin-design.md

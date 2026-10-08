@@ -375,30 +375,9 @@ public class ProjectConfigAction extends ProtegeOWLAction {
      * not atomic, and the system temporary directory is frequently on another one.
      */
     static void writeIfUnchanged(File yaml, String expected, String updated) throws IOException {
-        String onDisk = new String(Files.readAllBytes(yaml.toPath()), StandardCharsets.UTF_8);
-        if (!onDisk.equals(expected)) {
-            throw new IOException(yaml.getName() + " has changed on disk since it was opened, so "
-                    + "nothing has been written - saving would have discarded that change. Close "
-                    + "this and open it again.");
-        }
-        File directory = yaml.getAbsoluteFile().getParentFile();
-        File temporary = File.createTempFile(yaml.getName(), ".tmp", directory);
-        try {
-            Files.write(temporary.toPath(), updated.getBytes(StandardCharsets.UTF_8));
-            try {
-                Files.move(temporary.toPath(), yaml.toPath(),
-                        StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
-            } catch (java.nio.file.AtomicMoveNotSupportedException notAtomic) {
-                // Some Windows filesystems refuse an atomic replace. A plain replace is still
-                // better than writing in place, because the content is already complete on disk.
-                Files.move(temporary.toPath(), yaml.toPath(),
-                        StandardCopyOption.REPLACE_EXISTING);
-            }
-        } finally {
-            if (temporary.exists() && !temporary.delete()) {
-                temporary.deleteOnExit();
-            }
-        }
+        // One implementation, in OdkBuildSettings, because Import terms... needs the same
+        // guarantee to add an import product and two atomic replaces is one that drifts.
+        OdkBuildSettings.writeIfUnchanged(yaml, expected, updated);
     }
 
     /** Key, value and whether it can be edited - the third column explains a read-only row. */

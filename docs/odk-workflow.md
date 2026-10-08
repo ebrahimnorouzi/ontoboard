@@ -142,12 +142,17 @@ does not act on — what ODK does with it next is ODK's business, by way of `upd
 
 ## 2. The workspace
 
-| Directory | | Notes |
+| Directory | | What OntoBoard does with it |
 |---|---|---|
-| `src/ontology/` | 🔶 | Edit file, catalog and Makefiles are read and used; see section 3. `imports/` is listed and audited but cannot currently be *rebuilt* from term lists — see the defect in section 4 |
-| `src/sparql/` | 🔶 | Scaffolded with one check, and *ROBOT → SPARQL…* runs the project's committed queries. The scaffold writes one query, not ODK's full set |
-| `src/metadata/` | ❌ | Not scaffolded and not read. Needed for an OBO Foundry submission; create it by hand |
-| `src/scripts/` | 🔶 | Not scaffolded, but the scripts a project already has are listed and can be run; see below |
+| `src/ontology/` | ✅ | The edit file, the catalog, both Makefiles, `imports/` and the `-odk.yaml` are all read and acted on — see section 3. *Project → Refresh imports* audits every import the project declares and rebuilds the ones it can, since 1.99.0 |
+| `src/sparql/` | ✅ | *ROBOT → SPARQL…* runs your committed `*.rq` with the same pass/fail convention `make sparql_test` uses, since 1.33.0. The scaffold writes one starter query rather than ODK's full set |
+| `src/scripts/` | ✅ | *Project → Run a project script…* lists what is there — honouring a `SCRIPTSDIR` the Makefile moves — and runs the one you pick, with arguments, inside the container. See below |
+| `src/metadata/` | ❌ | Not read and not written. This is the OBO Foundry registry entry — `<id>.yml` carrying the PURL configuration (`idspace`, `base_url`, `products`, redirect `entries`) and `<id>.md` carrying the description — and it only matters when submitting to the Foundry. Edit it by hand; it is on the roadmap |
+
+Three of the four are covered, and the fourth is the one that is only needed for an OBO Foundry
+submission. **Everything in the first three runs inside Protégé** — no terminal, no separate
+`sh run.sh`: ROBOT operations run in-process, make targets and your own scripts run through the
+same container the build uses, and SPARQL checks run against the ontology you have open.
 
 ### Running your own scripts
 
@@ -266,6 +271,38 @@ decorative: the base IRI is recovered from the edit file, because `uribase` is l
 OntoBoard does not act on, remember that changing it here only changes the file. What ODK does
 with it next is ODK's business, by way of `update_repo`.
 
+### `make update_repo` 🔶 (each tool regenerates its own projects)
+
+ODK's `sh run.sh make update_repo` re-reads `<ontology>-odk.yaml` and regenerates what it
+derives from it: the `Makefile`, the GitHub Actions workflows, `profile.txt` when
+`robot_report.custom_profile` is not set, and the scaffolding for `imports/`.
+
+OntoBoard's equivalent is **Project → Update project files…**, which re-renders the
+generated files from the project's own YAML and **shows you the diff before writing anything**.
+It exists because a generator fix otherwise never reaches a project made last month — that
+project could only get a corrected Makefile by being created again.
+
+**Neither tool regenerates the other's project, and that is deliberate on both sides.**
+
+| | ODK `update_repo` | OntoBoard *Update project files…* |
+|---|---|---|
+| On an ODK repository | regenerates it | **refuses**, and names `sh run.sh make update_repo` |
+| On an OntoBoard-scaffolded project | cannot run — there is no `run.sh` | regenerates it |
+
+The refusal is the safety property. Regeneration rewrites the Makefile, the CI workflow, the
+README and the ignore files from OntoBoard's templates; on a real ODK repository that is
+destruction, not an update — MWO's `src/ontology/Makefile` is over 750 lines of ODK's own
+build, and replacing it with the eight-target one this plugin generates would remove every import
+rule, every release artefact and every quality target the project has. Two signals decide it,
+either one conclusive: `src/ontology/run.sh`, which only ODK writes, and
+`ODK_VERSION_MAKEFILE`, which ODK's generated Makefile declares and OntoBoard's does not.
+Measured against both: MWO's Makefile declares `ODK_VERSION_MAKEFILE` and has a `run.sh` beside
+it; a scaffolded project has neither.
+
+One difference worth knowing: **`imports/` is not part of this.** ODK's `update_repo` regenerates
+the import scaffolding; in OntoBoard that is *Project → Refresh imports*, which audits every
+product the project declares and rebuilds the ones it can — see section 4.
+
 ### `Makefile` and `<ontology>.Makefile` 🔶
 
 OntoBoard knows the difference when *listing* targets — it reads the generated `Makefile` and
@@ -340,13 +377,14 @@ but if an import resolves differently from how `robot` resolves it, that is the 
 
 | ODK step | | OntoBoard |
 |---|---|---|
-| Declare it under `import_group` in the YAML | 🔶 | *Project configuration…* edits every scalar in the block since 1.89.0 and can add a list entry since 1.97.0, but not a whole product block. *Refresh imports* reads `import_group.products` since 1.99.0 |
+| Declare it under `import_group` in the YAML | ✅ | *ROBOT → Import terms…* writes the product itself. *Project configuration…* also edits every scalar in the block since 1.89.0 and adds or removes list entries since 1.97.0 |
 | Check the Makefile | 🔶 | *Build…* lists targets; nothing shows the import rules |
 | Add term IRIs to `<import>_terms.txt` | ✅ | *Project → Term lists…* since 1.90.0 — see below |
 | `sh run.sh make refresh-imports` | 🔶 | *Project → Refresh imports…* audits every declared product since 1.99.0, and rebuilds the `slme` ones with the project's own method |
 | Copy the import URI into the edit file and catalog | ✅ | *ROBOT → Import terms…* writes both, and *Pattern library…* feeds it |
 | Copy the import schema into `<ontology>.Makefile` | ❌ | By hand |
-| Set `module_type: custom`, `update_repo`, `clean`, `make` | 🔶 | Only via the YAML in a text editor, then *Build…* |
+| Set `module_type`, then `update_repo` | 🔶 | *Import terms…* writes the `module_type` it actually used. Changing it afterwards is a scalar edit in *Project configuration…*; regenerating is *Project → Update project files…* on a scaffolded project, or `sh run.sh make update_repo` on an ODK one — see section 3 |
+| `clean`, `make` | ✅ | *Project → Build…* lists and runs the targets, following `include` into `<ontology>.Makefile` |
 
 ### The pattern library — new in 1.82.0, four collections since 1.87.0, yours since 1.92.0
 

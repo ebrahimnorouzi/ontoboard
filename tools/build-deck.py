@@ -153,19 +153,33 @@ def text(slide, x, y, w, h, runs, size=11, colour=INK, bold=False, align=PP_ALIG
     tf.vertical_anchor = anchor
     tf.margin_left = tf.margin_right = tf.margin_top = tf.margin_bottom = 0
     items = runs if isinstance(runs, list) else [runs]
-    for i, item in enumerate(items):
+    first = True
+    for item in items:
         body, over = item if isinstance(item, tuple) else (item, {})
-        p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
-        p.alignment = over.get("align", align)
-        p.space_after = Pt(over.get("space", space))
-        if line_spacing:
-            p.line_spacing = line_spacing
-        r = p.add_run()
-        r.text = body
-        r.font.size = Pt(over.get("size", size))
-        r.font.bold = over.get("bold", bold)
-        r.font.name = over.get("font", font)
-        r.font.color.rgb = over.get("colour", colour)
+        # One paragraph per line, rather than one run carrying "\n".
+        #
+        # Setting run.text to a string with a newline in it puts a line break inside the
+        # paragraph, and the alignment then applied to the first line only: every two-line
+        # centred caption in this deck came out with its first line hard left and its second
+        # hard right. It is visible on the "in numbers" slide, where "design patterns," and
+        # "ready to import" sat at opposite edges of their card. Found by rendering the deck
+        # and looking at it, which is the only way this kind of defect gets found.
+        lines = body.split("\n")
+        for at, line in enumerate(lines):
+            p = tf.paragraphs[0] if first else tf.add_paragraph()
+            first = False
+            p.alignment = over.get("align", align)
+            # Space only after the last line of a label, so the lines of one caption stay
+            # together and the gap to the next item is unchanged.
+            p.space_after = Pt(over.get("space", space) if at == len(lines) - 1 else 0)
+            if line_spacing:
+                p.line_spacing = line_spacing
+            r = p.add_run()
+            r.text = line
+            r.font.size = Pt(over.get("size", size))
+            r.font.bold = over.get("bold", bold)
+            r.font.name = over.get("font", font)
+            r.font.color.rgb = over.get("colour", colour)
     return box
 
 
@@ -735,8 +749,133 @@ def main():
          {"size": 10, "colour": MUTED}),
     ])
 
-    # 15 ------------------------------------------------- section: features
-    section("PART 3", "Running the features",
+    # 15 ------------------------------------------- section: the workspace
+    section("PART 3", "The workspace",
+            "What ODK puts on disk, and which of it OntoBoard drives.")
+
+    # 16 ------------------------------------------------- workspace overview
+    s = page()
+    y = heading(s, "Workspace overview", "what is in src/")
+    rows = [
+        ("src/ontology/", "Edit file, catalog, both Makefiles, imports/, the ODK YAML",
+         "Driven", True),
+        ("src/sparql/", "The quality-control queries your build runs", "Driven", True),
+        ("src/scripts/", "run-command.sh, update_repo.sh, anything you add", "Driven", True),
+        ("src/metadata/", "The OBO Foundry registry entry \u2014 only for a submission",
+         "By hand", False),
+    ]
+    h = 0.62
+    for i, (path, what, verdict, ok) in enumerate(rows):
+        ry = y + i * (h + 0.14)
+        card = rect(s, M, ry, 10 - 2 * M, h, fill=LIGHT if ok else RGBColor(0xFA, 0xF7, 0xF2),
+                    line=FAINT, shape=MSO_SHAPE.ROUNDED_RECTANGLE)
+        card.adjustments[0] = 0.12
+        text(s, M + 0.2, ry + 0.07, 1.85, 0.3, path, size=11.5, bold=True,
+             colour=INDIGO if ok else RGBColor(0x8A, 0x6D, 0x3B))
+        text(s, M + 2.1, ry + 0.09, 5.45, 0.42, what, size=10, colour=MUTED)
+        chip = rect(s, 10 - M - 1.05, ry + 0.14, 0.85, 0.34,
+                    fill=ACCENT if ok else RGBColor(0xE8, 0xDC, 0xC2), line=None,
+                    shape=MSO_SHAPE.ROUNDED_RECTANGLE)
+        chip.adjustments[0] = 0.3
+        text(s, 10 - M - 1.05, ry + 0.19, 0.85, 0.26, verdict, size=9, bold=True,
+             colour=WHITE if ok else RGBColor(0x6B, 0x55, 0x2C), align=PP_ALIGN.CENTER)
+    text(s, M, y + 4 * (h + 0.14) + 0.12, 10 - 2 * M, 0.7, [
+        ("Three of the four run from the menu bar.", {"size": 12, "bold": True, "colour": INK,
+                                                      "space": 6}),
+        ("No terminal and no `sh run.sh`: ROBOT runs in-process, make targets and your own "
+         "scripts run through the same container the build uses, and the SPARQL checks run "
+         "against the ontology you have open.", {"size": 10.5, "colour": MUTED}),
+    ])
+
+    # 17 ------------------------------------------------- the ontology directory
+    s = page()
+    y = heading(s, "The ontology directory", "src/ontology, file by file")
+    files = [
+        ("<id>-edit.owl", "The file you edit. Protégé opens it directly"),
+        ("<id>-odk.yaml", "Project configuration\u2026 edits every scalar, adds and removes "
+                          "list entries"),
+        ("Makefile", "Build\u2026 lists its targets, following include into <id>.Makefile"),
+        ("catalog-v001.xml", "Written by Import terms\u2026 so an import resolves offline"),
+        ("imports/", "Refresh imports audits every declared product and rebuilds what it can"),
+        ("reports/", "Quality report\u2026 runs ROBOT's 32 rules in-process"),
+    ]
+    col = (10 - 2 * M - 0.3) / 2
+    for i, (name, what) in enumerate(files):
+        cx = M + (i % 2) * (col + 0.3)
+        cy = y + (i // 2) * 0.95
+        card = rect(s, cx, cy, col, 0.82, fill=LIGHT, line=FAINT,
+                    shape=MSO_SHAPE.ROUNDED_RECTANGLE)
+        card.adjustments[0] = 0.09
+        text(s, cx + 0.18, cy + 0.08, col - 0.36, 0.28, name, size=11, bold=True, colour=INDIGO)
+        text(s, cx + 0.18, cy + 0.38, col - 0.36, 0.4, what, size=9.5, colour=MUTED)
+    text(s, M, y + 3 * 0.95 + 0.06, 10 - 2 * M, 0.45,
+         "Every one of these is read by something in the menu. The ODK YAML is the one OntoBoard "
+         "also writes \u2014 spliced, never re-serialised, so a one-word change stays a one-line "
+         "diff.", size=10.5, colour=MUTED)
+
+    # 18 --------------------------------------------- custom import, the old way
+    s = page()
+    y = heading(s, "Adding a custom import", "seven steps, in ODK's own walkthrough")
+    col = (10 - 2 * M - 0.35) / 2
+    old = rect(s, M, y, col, 3.0, fill=RGBColor(0xF7, 0xF8, 0xFA), line=FAINT,
+               shape=MSO_SHAPE.ROUNDED_RECTANGLE)
+    old.adjustments[0] = 0.04
+    text(s, M + 0.22, y + 0.18, col - 0.44, 0.3, "THE ODK WALKTHROUGH", size=9.5, colour=MUTED,
+         bold=True)
+    bullets(s, M + 0.22, y + 0.56, col - 0.44, [
+        "Declare the import in the ODK YAML",
+        "Check the Makefile picked it up",
+        "Add term IRIs to <id>_terms.txt",
+        "Copy the import URI into the edit file",
+        "Add it to the catalog by hand",
+        "Configure the module type",
+        "Run make refresh-imports in a shell",
+    ], size=10, gap=0.33, colour=MUTED)
+    new = rect(s, M + col + 0.35, y, col, 3.0, fill=LIGHT, line=FAINT,
+               shape=MSO_SHAPE.ROUNDED_RECTANGLE)
+    new.adjustments[0] = 0.04
+    text(s, M + col + 0.57, y + 0.18, col - 0.44, 0.3, "WITH ONTOBOARD", size=9.5, colour=INDIGO,
+         bold=True)
+    bullets(s, M + col + 0.57, y + 0.56, col - 0.44, [
+        "ROBOT \u2192 Import terms\u2026 picks the source and the terms",
+        "It writes the module, the term list and the catalog entry",
+        "It declares the product in import_group.products",
+        "Project \u2192 Refresh imports audits and rebuilds",
+    ], size=10, gap=0.42, colour=INK)
+    text(s, M + col + 0.57, y + 2.42, col - 0.44, 0.45,
+         "Four of the seven steps are the plugin's job now, and the two that were easiest to "
+         "forget \u2014 the catalog entry and the product \u2014 are not yours to remember.",
+         size=9, colour=MUTED)
+
+    # 19 ------------------------------------------- what refresh imports reports
+    s = page()
+    y = heading(s, "What a refresh tells you", "measured on four real projects")
+    figures = [
+        ("35", "import products\ndeclared across them"),
+        ("15", "a kind OntoBoard\nrebuilds itself"),
+        ("20", "named with the reason\nrather than guessed at"),
+        ("4", "on disk that no\nproduct declares"),
+    ]
+    w = (10 - 2 * M - 0.3 * 3) / 4
+    for i, (big, label) in enumerate(figures):
+        x = M + i * (w + 0.3)
+        card = rect(s, x, y, w, 1.45, fill=LIGHT, line=FAINT, shape=MSO_SHAPE.ROUNDED_RECTANGLE)
+        card.adjustments[0] = 0.06
+        text(s, x, y + 0.18, w, 0.55, big, size=32, colour=INDIGO, bold=True,
+             align=PP_ALIGN.CENTER)
+        text(s, x, y + 0.8, w, 0.55, label, size=9, colour=MUTED, align=PP_ALIGN.CENTER)
+    text(s, M, y + 1.68, 10 - 2 * M, 1.2, [
+        ("An import nobody can rebuild is one nobody else can build the repository from.",
+         {"size": 12, "bold": True, "colour": INK, "space": 7}),
+        ("NFDIcore, MWO, PMDCO and ECTO declare 35 import products between them. A module whose "
+         "module_type is custom is left alone on purpose \u2014 ODK's own generated rule for one "
+         "refuses too, because the real command is hand-written in the project's Makefile. And "
+         "four modules sit in imports/ that no product declares, so make refresh-imports never "
+         "touches them.", {"size": 10.5, "colour": MUTED}),
+    ])
+
+    # 20 ------------------------------------------------- section: features
+    section("PART 4", "Running the features",
             "What the menu gives you, and what each operation really does.")
 
     # 16 -------------------------------------------------- the menu (shot)
@@ -822,7 +961,7 @@ def main():
         text(s, x + 1.45, yy + 0.07, cw - 1.6, 0.42, note, size=9, colour=MUTED)
 
     # 20 --------------------------------------------- section: the patterns
-    section("PART 4", "The pattern library",
+    section("PART 5", "The pattern library",
             str(F["patterns"]) + " ontology design patterns, ranked against the ontology you have "
             "open.")
 
@@ -898,7 +1037,7 @@ def main():
     ], size=10, gap=0.42)
 
     # 24 ------------------------------------------- section: collaboration
-    section("PART 5", "Working with other people",
+    section("PART 6", "Working with other people",
             "A live session if your group runs a server, plain git if it does not.")
 
     # 25 ------------------------------------------------------ collaboration

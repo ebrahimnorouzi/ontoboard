@@ -148,7 +148,7 @@ public final class OdkRegenerator {
      * <p><b>This guard is the whole reason the operation is safe.</b> Regeneration rewrites the
      * Makefile, the CI workflow, the README and the ignore files from OntoBoard's own templates.
      * On a project OntoBoard scaffolded that is the point. On a real ODK repository it is
-     * destruction: MWO's {@code src/ontology/Makefile} is 767 lines of ODK's own build, and
+     * destruction: MWO's {@code src/ontology/Makefile} is over 750 lines of ODK's own build, and
      * replacing it with the eight-target one this plugin generates would take away every import
      * rule, every release artefact and every quality target the project has.
      *
@@ -161,7 +161,7 @@ public final class OdkRegenerator {
      * <p>Two signals, either of which is conclusive. {@code src/ontology/run.sh} is ODK's Docker
      * wrapper and only ODK puts one there. {@code ODK_VERSION_MAKEFILE} is declared by ODK's
      * generated Makefile and by nothing OntoBoard writes - checked against both: MWO's Makefile
-     * carries fifteen ODK markers, a scaffolded one carries none.
+     * declares ODK_VERSION_MAKEFILE and has a run.sh beside it, a scaffolded one has neither.
      *
      * <p>ODK regenerates these files itself, with {@code sh run.sh make update_repo}, so the
      * refusal

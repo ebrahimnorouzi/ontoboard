@@ -1,0 +1,17 @@
+# What tools/build-deck.py needs, pinned.
+#
+# Separate from docs-requirements.txt because the two run in different jobs: the site is built
+# on every push to docs, the deck only on a release. Installing a presentation library to
+# render a documentation page, or a documentation theme to render a deck, is a minute of CI
+# each time for nothing.
+#
+# Pinned for the same reason the docs toolchain is: the deck is a published artefact, and a
+# python-pptx major release that changes a default would change 28 slides on a commit that
+# touched none of them.
+#
+# These are the versions the deck was last built and looked at with.
+#
+#   pip install -r deck-requirements.txt
+#   python tools/build-deck.py
+python-pptx==1.0.2
+Pillow==12.1.1

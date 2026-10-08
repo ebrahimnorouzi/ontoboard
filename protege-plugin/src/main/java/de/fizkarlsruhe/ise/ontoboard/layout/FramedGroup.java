@@ -31,12 +31,33 @@ public final class FramedGroup {
     static final double NODE_W = 160;
     static final double NODE_H = 60;
 
-    /** Space between nodes, and between the outermost node and the frame's edge. */
-    static final double GAP = 28;
-    static final double PADDING = 34;
+    /**
+     * Space between nodes, and between the outermost node and the frame's edge.
+     *
+     * <p><b>40, because that is what the rest of the board uses.</b> Reported as "so compact and
+     * lots of concepts are packed", and measuring it showed the imported frame was the only
+     * multi-node placement on the canvas that was tighter than every other one. {@code
+     * CanvasLayouts} uses {@code GRID_GAP = 40}, {@code LOOSE_PITCH_X = 200} with {@code
+     * LOOSE_PITCH_Y = 100}, {@code NODE_PITCH = 200} and {@code RING_GAP = 200} - all of which are
+     * a 160x60 node with 40 around it. The grid layout, the unconnected-terms block, the circle,
+     * the expand-neighbours rings and a drag from Protégé's tree therefore all land on a 200x100
+     * stride. This was 28, giving 188x88: 30% less clear space, and the only stride off the
+     * canvas's 20px snap grid, so a pattern's nodes lined up with nothing else on the board and
+     * jumped the first time anybody dragged one.
+     *
+     * <p>It also matters for text. A quarter of the labels in the shipped patterns do not fit on
+     * one line inside a 160px node, and 82 of 2695 terms paint taller than the 60px box, spilling
+     * up to 17.6px above and below it. Two such nodes 28 apart <em>overlap</em> by 7.2px; 40 apart
+     * they clear. That the complaint was about crowding rather than about clipping is what this
+     * number fixes - the labels not fitting their box is a separate, board-wide thing, recorded in
+     * the limitations rather than worked around here by making pattern nodes a different size from
+     * every other node.
+     */
+    static final double GAP = 40;
+    static final double PADDING = 40;
 
     /** Room at the top of the frame for its label, so the first row does not sit under it. */
-    static final double LABEL_BAND = 30;
+    static final double LABEL_BAND = 40;
 
     /** Clear of whatever is already on the board. */
     static final double MARGIN = 60;
