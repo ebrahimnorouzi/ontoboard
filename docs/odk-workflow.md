@@ -604,9 +604,14 @@ order it is worth doing:
    files in the wild indent sequences both ways and guessing would reformat the file on the first
    edit. A value YAML would read as a number or a boolean is quoted for you; an ordinary word, or
    an IRI, is not.
-2. **Acting on more of what the YAML says** — `robot_java_args` and two `robot_report` keys
-   drive something since 1.91.0; `import_group`, `release_artefacts`, `export_formats` and
-   `primary_release` are still text OntoBoard preserves and does not obey.
+2. **Acting on more of what the YAML says** — `robot_java_args` and two `robot_report` keys drive
+   something since 1.91.0, and **`export_formats` since 1.98.0**: *Project → Release…* writes the
+   release in every format the project declares rather than one RDF/XML file, and names any it
+   cannot write rather than skipping it. That gap was one OntoBoard made itself — its own scaffold
+   writes `export_formats` into every project it generates. `import_group`, `release_artefacts` and
+   `primary_release` are still text OntoBoard preserves and does not obey; `release_artefacts` in
+   particular means three content variants (base, full, simple), which is a larger job than a
+   second writer.
 3. **Knowing what you already imported** — the pattern library will happily suggest a pattern
    whose terms are already in an import you wrote last week, and a score of 1.00 means exactly
    that without saying so. Your own patterns can be contributed without a rebuild since 1.92.0,

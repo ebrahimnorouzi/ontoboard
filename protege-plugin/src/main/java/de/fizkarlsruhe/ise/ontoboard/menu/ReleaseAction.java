@@ -5,6 +5,7 @@ import de.fizkarlsruhe.ise.ontoboard.odk.ReleaseDiff;
 import de.fizkarlsruhe.ise.ontoboard.prov.EditorNotes;
 import de.fizkarlsruhe.ise.ontoboard.robot.QualityFinding;
 import de.fizkarlsruhe.ise.ontoboard.robot.QualityReport;
+import de.fizkarlsruhe.ise.ontoboard.odk.ExportFormats;
 import de.fizkarlsruhe.ise.ontoboard.robot.Reasoners;
 import de.fizkarlsruhe.ise.ontoboard.robot.RobotException;
 import de.fizkarlsruhe.ise.ontoboard.robot.RobotTransform;
@@ -236,6 +237,22 @@ public class ReleaseAction extends OntoBoardAction {
             }
         }
 
+        // The formats the project declares, which OntoBoard's own scaffold writes into every
+        // project it creates and then, until 1.98.0, ignored: a release from this menu was one
+        // RDF/XML file whatever export_formats said, so it disagreed with the build of the very
+        // project it had generated. NFDIcore asks for owl and ttl.
+        de.fizkarlsruhe.ise.ontoboard.odk.ExportFormats.Wanted formats =
+                de.fizkarlsruhe.ise.ontoboard.odk.ExportFormats.wantedBy(
+                        editFile.getAbsoluteFile().getParentFile());
+        if (formats.wasDeclared()) {
+            StringBuilder named = new StringBuilder();
+            for (de.fizkarlsruhe.ise.ontoboard.odk.ExportFormats.Format format
+                    : formats.getWritable()) {
+                named.append(named.length() == 0 ? "" : ", ").append(format.getKey());
+            }
+            result.note("Formats, from this project's export_formats: " + named);
+        }
+
         File dated = Release.releaseFile(projectRoot, id, date);
         // The project root, which is where the generated Makefile's prepare_release copies it
         // (cp ../../releases/$(TODAY)/$(ONT).owl ../../$(ONT).owl) and where a PURL resolves. This
@@ -271,14 +288,29 @@ public class ReleaseAction extends OntoBoardAction {
                         .build();
             }
             OWLOntologyManager manager = release.getOWLOntologyManager();
-            manager.saveOntology(release, IRI.create(dated.toURI()));
-            manager.saveOntology(release, IRI.create(published.toURI()));
+            for (de.fizkarlsruhe.ise.ontoboard.odk.ExportFormats.Format format
+                    : formats.getWritable()) {
+                manager.saveOntology(release, format.newWriter(),
+                        IRI.create(ExportFormats.named(dated, format).toURI()));
+                manager.saveOntology(release, format.newWriter(),
+                        IRI.create(ExportFormats.named(published, format).toURI()));
+            }
         } catch (Exception cannotWrite) {
             return result.failed("Could not write the release: " + cannotWrite.getMessage())
                     .build();
         }
-        result.wrote(dated);
-        result.wrote(published);
+        for (de.fizkarlsruhe.ise.ontoboard.odk.ExportFormats.Format format
+                : formats.getWritable()) {
+            result.wrote(ExportFormats.named(dated, format));
+            result.wrote(ExportFormats.named(published, format));
+        }
+        // What the project asked for and did not get. A release missing a file somebody's
+        // pipeline consumes is worse when nothing said it was missing.
+        if (!formats.getUnsupported().isEmpty()) {
+            result.warn("This project's export_formats also asks for "
+                    + String.join(", ", formats.getUnsupported())
+                    + ". Those are not written here; the project's own build produces them.");
+        }
 
         // Generated, not remembered. Release notes written from memory are written once, badly,
         // and then not at all.

@@ -1,0 +1,78 @@
+OntoBoard 1.98.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-10-08  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 9/9  test 10/10
+  2026-10-08  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 9/9  test 10/10
+
+
+THE RELEASE IS WRITTEN IN THE FORMATS THE PROJECT ASKS FOR
+
+Roadmap item 2, in part. Project > Release... wrote one RDF/XML file whatever the project's
+export_formats said.
+
+The gap was one OntoBoard made for itself, which is what makes it worth fixing before the rest of
+item 2. OdkScaffold writes export_formats into every project the plugin generates - so the plugin
+created a configuration and then disagreed with it, and a release made from the menu was missing
+artefacts the very project it had scaffolded declares. NFDIcore, measured rather than imagined,
+asks for:
+
+    export_formats:
+      - owl
+      - ttl
+
+Now both are written, to both destinations the release already produced - the dated directory and
+the project root - with one file name per format, so two formats cannot write over each other.
+The result records which formats came from the project, so a release can be compared with what
+make produced.
+
+WHAT IT CANNOT WRITE, IT NAMES
+
+ODK's format list is longer than what an OWL API writer produces. OBO Graphs JSON is ROBOT's own
+converter rather than a document format, and this writes releases through the OWL API; a word that
+is no ODK format at all is also possible in a hand-edited file. Either way the result warns, naming
+the format as the project spelled it and saying who does produce it.
+
+Skipping silently was the alternative and it is the worse one: a release missing a file somebody's
+pipeline consumes is worse when nothing said it was missing.
+
+NOTHING CHANGES FOR A PROJECT THAT SAYS NOTHING
+
+No key, no project, unreadable YAML, a key that is not a list, a list with nothing writable in it -
+all of them give one RDF/XML file, which is exactly what this wrote before. Reading the key cannot
+change what an existing project's release looks like, and a configuration problem elsewhere in the
+file cannot stop a release being written at all.
+
+WHAT IS STILL NOT HONOURED, AND WHY IT IS NOT IN THIS RELEASE
+
+release_artefacts and primary_release. NFDIcore declares base, full and simple with full as
+primary, and those are three different CONTENT variants rather than three serialisations of one
+ontology: base is the project's own axioms, full has the imports merged, simple is a reduced
+version. Release already has "Merge the imports in" and "Leave the editorial notes out", which are
+adjacent to two of them without being them.
+
+Doing that properly is a larger job than a second writer, and doing it approximately would produce
+files named base and simple that are not what ODK means by those words - which is worse than not
+producing them, because a consumer cannot tell. Left for its own release, and the roadmap says so
+in those terms.
+
+import_group is also still unread. Adding a product to it works since 1.97.0; acting on one means
+driving Refresh imports from it, which is its own piece of work.
+
+NUMBERS
+
+1816 tests, 0 failures, 0 skipped. 13 new, counted three ways and agreeing.
+
+38/38 classes named in plugin.xml load on both hosts. Quality report end to end: 6 findings, 2 of
+them errors. 163 patterns indexed.
+
+The release path is not exercised by the host self-test - it writes files into a project and tags
+a version, which a startup check must not do. What is covered is the format resolution, by
+thirteen unit tests including the NFDIcore declaration copied from its own configuration file.
+
+STILL OPEN
+
+Roadmap item 2's remainder, above. Item 3: the pattern library knows nothing about what you have
+already imported, so a recommendation scoring 1.00 means you already contain the whole pattern
+without saying so. And, from the other roadmap: pull requests, Widoco, entity locking, and the
+nine axiom kinds the live collaboration protocol cannot carry.
