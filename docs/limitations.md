@@ -418,6 +418,9 @@ The plugin is early. These exist in the web application but not yet here:
   independent of docker". This reaches it everywhere except one cell, and that cell is ODK's: native ODK
   environments are GNU/Linux and macOS only, and ODK's own README says Docker is mandatory on Windows.
   The tools in the image - owltools, Konclude, rdftab, relation-graph - are not ours to reimplement.
+  **Konclude is now reachable without the image, since 1.94.0**, but by pointing at a binary you
+  installed rather than by shipping one: it is LGPLv3, OntoBoard is Apache-2.0, and upstream
+  publishes no arm64 build. See *ROBOT ▸ Reason with Konclude…*.
 
   **A scaffolded project builds with nothing installed.** `InProcessTargets` runs seven of the eight
   generated targets inside Protégé against the embedded robot-core. Only for Makefiles the plugin wrote:

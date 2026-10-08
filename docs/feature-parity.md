@@ -93,6 +93,7 @@ individual views in a tabbed column beside the canvas, so none of this needs a t
 | Feature | Web app | Plugin | Assessment |
 |---|---|---|---|
 | ELK, HermiT, JFact, Pellet | ✅ | 🧩 | Bundled reasoner plugins, with incremental and background reasoning the web app lacked |
+| Konclude | ➖ | ✅ | *ROBOT → Reason with Konclude…* since 1.94.0. A native OWL 2 DL reasoner that won five of six ORE 2014 disciplines. Not bundled — LGPLv3 against an Apache-2.0 plugin, and x86-64 only — so the dialog detects it, names the release asset for your platform, and looks in your Downloads folder. Classification, both property classifications, realization, consistency and satisfiability |
 | Explanation / justification | ✅ | 🧩 | `explanation-workbench`, bundled |
 | Consistency checking | ✅ | 🧩 | Protégé |
 | ROBOT report | ✅ | ✅ | *ROBOT → Quality report…*, all 32 of ROBOT's rules, on both hosts. Checked against real ROBOT in `obolibrary/odkfull` and by a startup self-check in the host |

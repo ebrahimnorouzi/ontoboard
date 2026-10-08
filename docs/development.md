@@ -188,6 +188,27 @@ is what makes Protégé's undo and its other tabs stay correct for free.
 
 ---
 
+## The documentation site
+
+Built with MkDocs Material and published by `.github/workflows/pages.yml`. Two things about
+building it locally that are not obvious:
+
+```bash
+pip install -r docs-requirements.txt
+python tools/generate-pattern-pages.py      # writes the 159 pattern pages into docs/patterns/
+ONTOINK_REASONER=none mkdocs build --strict
+```
+
+**The generator is not optional.** `docs/patterns/` is gitignored and generated from
+`patterns/index.tsv` at build time, so a checkout has no pattern pages until you run it. The nav
+entry points at `patterns/index.md`, so `--strict` will complain if you skip it.
+
+**`ONTOINK_REASONER=none` is the difference between 7 seconds and a quarter of an hour.** If
+`owlready2` happens to be importable in your environment, ontoink runs a HermiT consistency check
+per fence — a JVM per page — measured at about 4.7s each across 159 pages. `docs-requirements.txt`
+deliberately installs ontoink *without* its `[reasoning]` extra so CI never has owlready2, but a
+developer who has it for something else will hit this. The variable switches it off explicitly.
+
 ## The collaboration service
 
 The one part of OntoBoard that is not inside Protégé. It lives in `collab/` and is a small

@@ -298,9 +298,18 @@
   <extension id="menu.OntoBoard.robot.patterns"
              point="org.protege.editor.core.application.EditorKitMenuAction">
     <name value="Pattern library..."/>
-    <toolTip value="Browse 123 bundled ontology design patterns and import terms from one"/>
+    <toolTip value="Browse the 159 bundled ontology design patterns, and your own, and import terms from one"/>
     <class value="de.fizkarlsruhe.ise.ontoboard.menu.PatternLibraryAction"/>
     <path value="ontoboard.menu.OntoBoard.robot/SlotB-BP"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
+
+  <extension id="menu.OntoBoard.konclude"
+             point="org.protege.editor.core.application.EditorKitMenuAction">
+    <name value="Reason with Konclude..."/>
+    <toolTip value="Classify, realize or check consistency with the Konclude reasoner, if you have it installed"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.menu.KoncludeAction"/>
+    <path value="ontoboard.menu.OntoBoard.robot/SlotA-F"/>
     <editorKitId value="OWLEditorKit"/>
   </extension>
 

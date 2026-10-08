@@ -1,0 +1,121 @@
+OntoBoard 1.94.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-10-08  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 9/9  test 10/10
+  2026-10-08  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 9/9  test 10/10
+
+
+KONCLUDE, FROM A BINARY YOU INSTALLED
+
+ROBOT > Reason with Konclude... Classification, object and data property classification,
+realization, consistency and satisfiability, from the native reasoner that won five of the six
+ORE 2014 disciplines.
+
+Nothing of Konclude ships inside the jar, and that is a licence decision rather than a
+convenience. Konclude is LGPLv3 and OntoBoard is Apache-2.0. Running a binary the user installed
+creates no obligation at all - no copying, no linking, no distribution. Bundling would be
+distribution of the Library, and would carry Qt's LGPLv3 and a statically linked Redland with it,
+for an x86-64-only artifact that still leaves Apple silicon with nothing because upstream
+publishes no arm64 build.
+
+So the dialog answers "do you have it?" before it asks anything else. It looks in the path chosen
+last time, then in the Downloads folder - loose, and inside an unpacked release directory - then
+in the ODK native environment. When it finds nothing it names the exact release asset for this
+operating system, gives the releases URL, and pre-fills the field with the path the binary would
+have once unpacked into Downloads, so the next open finds it without being told.
+
+FOUND IS NOT THE SAME AS USABLE
+
+The Windows release links Qt DYNAMICALLY. Konclude.exe copied out of the zip on its own is
+present, executable, and cannot start - and what it produces is a Windows dialog about a missing
+DLL, which no reasoning run can report. So the dialog runs the binary and reads its version
+rather than calling File.canExecute, and when it answers nothing the message says to keep the exe
+with the DLLs it was unpacked beside. On macOS the same path says Rosetta 2 and quarantine; on
+Linux, chmod +x.
+
+TWO KONCLUDE BEHAVIOURS THAT WOULD HAVE SHIPPED AS BUGS
+
+IT EXITS 0 WHEN IT HAS FAILED. Measured: pointed at a file that does not exist, Konclude logs
+{error} ... File 'NOPE.owl.xml' not found, returns exit code 0, and writes an 896-byte,
+well-formed, parseable <Ontology> holding owl:Thing and owl:Nothing. Every obvious success test -
+the exit code, "did it write something", "does the output parse" - passes for a run that never
+opened the ontology, and the user is told "finished, 0 inferences".
+
+So KoncludeLog.failed is the only test used, matching on any level containing "error", which
+covers error, exceptional error and catastrophic error in one comparison. There is a test for
+exactly this transcript.
+
+IT FETCHES owl:imports OVER HTTP. Given an input that declares an import it schedules it,
+downloads it, and carries on; with an unreachable host it logs an HTTP error and classifies only
+the local axioms - exiting 0 either way. Every real ODK edit file has imports, so an unflattened
+input would mean the reasoner answering about a different ontology than Protege is showing, over
+the network, from a desktop application, silently. Konclude.writeInput merges the imports closure
+first and writes OWL 2 XML, which is one of the two syntaxes Konclude parses natively.
+
+WHAT IT CANNOT DO, SAID IN THE DIALOG
+
+Konclude's serialiser has exactly seven axiom shapes and emits the DIRECT hierarchy only: given
+A subClassOf B and B subClassOf C it returns both and never A subClassOf C. It cannot emit
+inferred property assertions, SameIndividual, DifferentIndividuals, disjointness or property
+characteristics - there is no code path for them. It offers no explanations. It is x86-64 only
+and its last release was 2021-06-19. All of that is in Konclude.LIMITS, stated once, shown in the
+dialog, and asserted by a test so the dialog and the docs cannot drift apart.
+
+THE INFERENCES ARE THE ONES THAT ARE NEW
+
+Konclude re-emits asserted subsumptions alongside inferred ones - on a small test ontology, 76
+SubClassOf axioms of which most were simply read back. Three subtractions, each with a reason:
+axioms the ontology already asserts, SubClassOf(X, owl:Thing), and declarations. The second is
+what ROBOT drops under --exclude-tautologies structural, and this project has already shipped the
+version without it once - the dialog showed seven axioms where make reason wrote two.
+
+The result says what it left out rather than quietly showing a smaller number than Konclude
+reported. Adding the inferences is OFF by default: a reasoner somebody has just installed should
+show its axioms before writing them. When it is on, the whole lot is one Edit > Undo step.
+
+NOT A SIXTH ENTRY IN Reasoners
+
+That roster is the reasoners ROBOT ships - ELK, HermiT, JFact, Whelk, Structural - every one an
+OWLReasonerFactory on the classpath, and three existing dialogs offer the whole list by calling
+Reasoners.labels(). Adding a native binary to it would put Konclude in front of users of Explain,
+Transform and Release, where it cannot work, and PizzaEndToEndTest constructs a factory for every
+Choice. So Konclude is its own action and the in-process five are untouched.
+
+A SCROLL PANE FOR TALL DIALOGS
+
+The Konclude form is nine rows - binary, task, class IRI, four log checkboxes, apply - against a
+largest-existing-form of six, and ParameterDialog had no scroll pane. A form taller than the
+screen is laid out and then clipped, so the rows past the bottom and the OK button under them
+cannot be reached: the dialog looks complete and is unusable. Forms over 420px tall are now
+scrolled; shorter ones are untouched, so every existing dialog keeps the layout it was designed
+with and no scrollbar appears where none is needed.
+
+NUMBERS
+
+1765 tests, 0 failures, 0 skipped. 21 new, counted three ways and agreeing.
+
+38/38 classes named in plugin.xml load on both hosts - 37 before this release. Quality report end
+to end: 6 findings, 2 of them errors. 159 patterns indexed.
+
+The self-test does not exercise Konclude, deliberately: a check that fails on every machine
+without the binary installed would turn a green startup line red for almost everybody. What is
+covered instead is the command line, by unit test - which is where the real risk is, because
+Konclude matches a flag on its first letter after stripping dashes, so a typo like -out is
+accepted as -o and never announces itself.
+
+DOCUMENTATION
+
+docs/limitations.md said the tools in the ODK image, Konclude among them, "are not ours to
+reimplement". Still true, and now incomplete: Konclude is reachable without the image, by pointing
+at a binary rather than by shipping one. Corrected in place. docs/feature-parity.md gains a row.
+
+The pattern library's tooltip still said "Browse 123 bundled ontology design patterns" - it has
+been 159 across four collections since 1.87.0, and contributable since 1.92.0. Fixed while in the
+file.
+
+STILL OPEN
+
+Imported patterns are not yet framed on the canvas. The four BFO-derived patterns the research
+settled on are not yet extracted. import_group, release_artefacts, export_formats and
+primary_release are still text OntoBoard preserves and does not obey.
