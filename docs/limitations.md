@@ -47,7 +47,11 @@ SPARQL panel (1.33.0) used to be on this list and are now features - they are de
   one ontology and opens it, since 1.103.0. Widoco's own multi-language and versioned-site
   features are not driven from here, and the generated CI workflow does not publish the page —
   the three real projects that publish one do it with a hand-written job.
-- **Entity locking** — nothing stops two live collaborators editing the same term at once.
+- **Nothing prevents two people editing one term** — and nothing in OntoBoard can.
+  Protégé owns the edit model, so this plugin learns of a change after it has happened; a lock
+  it could not enforce would be worse than none, because somebody would rely on it. What it does
+  instead, since 1.104.0, is tell you in time: a peer who has changed an axiom on a term within
+  the last five minutes is shown as *editing* it. See [collaboration](collaboration.md).
 
 ### Known constraints
 
@@ -237,8 +241,18 @@ Ordered by what is being worked on:
     second copy is how an OSGi plugin stops resolving. It also needs Java 11 (class file version
     55), so Protégé 5.6.9 runs it with its own JVM and 5.5.0, on Java 8, needs another one
     pointed at.
-3. **Entity locking** — once live collaboration has been used in anger.
-4. **Collaboration vocabulary** — the nine axiom kinds the live protocol cannot carry.
+3. ~~**Entity locking**~~ — **answered in 1.104.0, by not building it.** A lock cannot be
+   enforced from here, so what ships is an advisory claim: "Bob is editing Calzone", made by
+   actually changing an axiom rather than by announcing intent, expiring five minutes after the
+   last edit, and dying with its holder because it rides the ten-second presence heartbeat.
+   Selection already travelled and is deliberately not treated as editing — every click would
+   otherwise look like one.
+4. **Collaboration vocabulary** — equivalence and disjointness, which are the whole of the
+   practical loss. `OperationMapper` reaches an operation for four axiom classes; of the nine
+   kinds this page used to list as equals, `owl:hasKey`, negative assertions and datatype
+   definitions occur **zero** times across NFDIcore, MWO and PMDCO, while equivalence occurs 312
+   times and disjointness 80. A first plan for this was rejected on review for resting on a
+   justification the code contradicted, and it needs rescoping before anything is built.
 5. ~~**`src/metadata`**~~ — **closed as not planned in 1.102.0, and the evidence is why.**
    An editor for it was the plan; measuring it showed the file is inert for almost everyone.
 

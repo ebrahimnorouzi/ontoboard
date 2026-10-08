@@ -16,14 +16,20 @@ public final class PeerPresence {
     private final String selection;
     private final long seenAt;
     private final String ontologyIri;
+    private final String editing;
 
     public PeerPresence(String user, String colour, double x, double y, String selection,
             long seenAt) {
-        this(user, colour, x, y, selection, seenAt, "");
+        this(user, colour, x, y, selection, seenAt, "", "");
     }
 
     public PeerPresence(String user, String colour, double x, double y, String selection,
             long seenAt, String ontologyIri) {
+        this(user, colour, x, y, selection, seenAt, ontologyIri, "");
+    }
+
+    public PeerPresence(String user, String colour, double x, double y, String selection,
+            long seenAt, String ontologyIri, String editing) {
         this.user = user == null ? "anonymous" : user;
         this.colour = colour == null || colour.trim().isEmpty() ? "#4A90D9" : colour;
         this.x = x;
@@ -31,6 +37,24 @@ public final class PeerPresence {
         this.selection = selection;
         this.seenAt = seenAt;
         this.ontologyIri = ontologyIri == null ? "" : ontologyIri.trim();
+        this.editing = editing == null ? "" : editing.trim();
+    }
+
+    /**
+     * The term this peer is editing, or empty.
+     *
+     * <p>Distinct from {@link #getSelection()}, and the distinction is the point: selection is
+     * what somebody clicked, which changes constantly and means nothing; this is a term they
+     * have actually changed an axiom on within the last few minutes. Only the second is worth
+     * warning anybody about.
+     *
+     * <p>Empty for an older plugin, and empty when relayed through an older bridge, which
+     * copies named fields rather than passing the message through. Absence is not a claim that
+     * nobody is editing - it is no information - so it shows no badge rather than an "unlocked"
+     * one. See {@link EditingClaim}.
+     */
+    public String getEditing() {
+        return editing;
     }
 
     /**

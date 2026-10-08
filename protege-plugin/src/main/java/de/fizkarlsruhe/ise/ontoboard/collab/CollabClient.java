@@ -124,7 +124,21 @@ public final class CollabClient implements CollabTransport {
     private boolean connected;
     private String refusedReason;
     private int attempt;
-    private String lastPresenceFrame;
+    // The PARTS of the last presence, not a composed frame.
+    //
+    // It was a frozen string, resent unchanged as the heartbeat. That was fine while presence
+    // carried only a cursor, and became wrong the moment it carried a claim: a frame composed
+    // at the instant of an edit and resent every few seconds would announce "still editing
+    // Calzone" for as long as the session lasted, because nothing would ever recompose it. The
+    // five-minute hold has to expire at the holder, so the frame is built on every beat and
+    // asks the claim whether it is still live.
+    private boolean havePresence;
+    private double lastX;
+    private double lastY;
+    private String lastSelection;
+
+    /** What this user is editing, asked on every beat so the hold expires here. */
+    private final EditingClaim claim = new EditingClaim();
     private int droppedWhileOffline;
 
     public CollabClient(CollabSettings settings, Executor dispatcher, Listener listener) {
@@ -284,10 +298,13 @@ public final class CollabClient implements CollabTransport {
      */
     @Override
     public void publishPresence(double x, double y, String selection) {
-        String frame = CollabMessages.presence(settings.getDisplayName(), settings.getColour(),
-                x, y, selection);
+        String frame;
         synchronized (lock) {
-            lastPresenceFrame = frame;
+            havePresence = true;
+            lastX = x;
+            lastY = y;
+            lastSelection = selection;
+            frame = presenceFrame();
             if (!connected || socket == null) {
                 // A stale cursor is worth nothing, so presence is never queued.
                 return;
@@ -400,9 +417,11 @@ public final class CollabClient implements CollabTransport {
                 if (!stillPending.isEmpty()) {
                     requeue(stillPending);
                 }
-                String presence;
+                String presence = null;
                 synchronized (lock) {
-                    presence = lastPresenceFrame;
+                    if (havePresence) {
+                        presence = presenceFrame();
+                    }
                 }
                 if (presence != null) {
                     send(presence);
@@ -494,12 +513,32 @@ public final class CollabClient implements CollabTransport {
     private void beatPresence() {
         String frame;
         synchronized (lock) {
-            if (!connected || socket == null || lastPresenceFrame == null) {
+            if (!connected || socket == null || !havePresence) {
                 return;
             }
-            frame = lastPresenceFrame;
+            // Rebuilt rather than resent, so a claim that has run out of time stops being
+            // announced even when nothing else about this peer has changed.
+            frame = presenceFrame();
         }
         send(frame);
+    }
+
+    /** The current presence, including the claim if it is still live. Call under the lock. */
+    private String presenceFrame() {
+        return CollabMessages.presence(settings.getDisplayName(), settings.getColour(),
+                lastX, lastY, lastSelection, claim.current(System.currentTimeMillis()));
+    }
+
+    /**
+     * Records that this user has just changed an axiom on a term.
+     *
+     * <p>Observed rather than declared: the session calls this as it publishes an operation, so
+     * nothing has to be remembered or switched on. See {@link EditingClaim}.
+     */
+    public void noteEdited(String iri) {
+        synchronized (lock) {
+            claim.edited(iri, System.currentTimeMillis());
+        }
     }
 
     /**

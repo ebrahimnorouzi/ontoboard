@@ -200,6 +200,40 @@ refused at one end and the edit never arrives.
 
 ---
 
+## Who is editing what
+
+**Since 1.104.0.** A peer who has changed an axiom on a term within the last five minutes is
+shown as editing it — *"Bob is editing Calzone"* — so you find out before you start on the
+same term, not after.
+
+**It is advisory, and that is not a shortcoming to be fixed later.** Protégé owns the edit
+model: a change happens through its views, its undo stack and its keyboard, and OntoBoard hears
+about it afterwards. A lock this plugin could not enforce would be worse than none, because
+somebody would rely on it. Reporting in time is the whole of what is deliverable here, and it
+prevents the collision the only way anything in this position can.
+
+Three properties worth knowing, because they are what make it trustworthy:
+
+- **Observed, not declared.** The claim is made by actually editing, not by announcing an
+  intention. Nothing to switch on, nothing to remember to release.
+- **It dies with its holder.** It rides the presence heartbeat, which expires after ten
+  seconds, so a peer who closes Protégé, loses the network or crashes stops claiming anything.
+  That is structural rather than handled — a lock outliving its holder is the failure that
+  makes locking hated, and here it cannot happen.
+- **It expires in place.** Five minutes after the last edit, so a window left open over lunch
+  stops speaking for somebody. The frame is rebuilt on every beat rather than composed once,
+  which is what makes that true at the holder rather than only at the viewer.
+
+**Selection is not editing.** What a peer has clicked already travelled and is already drawn as
+a ring round the node. Treating that as a claim would make every click look like an edit, which
+would make the whole signal worthless.
+
+**An older bridge shows no badges rather than wrong ones.** The claim travels as one extra field
+on the presence message; a bridge that does not know about it drops it, and absence is treated as
+*no information* rather than as "nobody is editing".
+
+---
+
 ## Things that will confuse you once
 
 **Your name comes from the token, not from the plugin.** The bridge reads it from the token's

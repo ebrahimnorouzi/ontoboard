@@ -23,6 +23,17 @@ public interface CollabTransport {
     /** Sends the cursor position, in graph space. Never queued. */
     void publishPresence(double x, double y, String selection);
 
+    /**
+     * Records that this user has just changed an axiom on a term.
+     *
+     * <p>A default rather than a required method, because the claim is advisory: a transport
+     * that does not carry it - an older one, or a test fake - should still work, and showing no
+     * badge is the right behaviour when there is nothing to show. See {@code EditingClaim}.
+     */
+    default void noteEdited(String iri) {
+        // Nothing by default.
+    }
+
     /** Why the server refused us, or null while connected or retrying. */
     String getRefusedReason();
 

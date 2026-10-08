@@ -15,8 +15,8 @@
  *   -> { t: "hello",    board: "b1", token: "<jwt>", ontology?: "http://..." }
  *   <- { t: "welcome",  user: "alice", peers: [...] }
  *   <> { t: "op",       op: { id, type, timestamp, userId, data } }
- *   <> { t: "presence", user, colour, x, y, selection }
- *   <- { t: "peers",    peers: [ { user, colour, x, y, selection, ontology } ] }
+ *   <> { t: "presence", user, colour, x, y, selection, editing? }
+ *   <- { t: "peers",    peers: [ { user, colour, x, y, selection, ontology, editing } ] }
  *   <- { t: "error",    message: "..." }
  *
  * `op.type` must be one of the 18 in OPERATION_TYPES below, which the plugin mirrors in
@@ -183,6 +183,7 @@ export function livePeers(peers, now = Date.now(), ttl = PRESENCE_TTL_MS) {
         y: peer.y,
         selection: peer.selection,
         ontology: peer.ontology || "",
+        editing: peer.editing || "",
       });
     }
   }
@@ -412,6 +413,11 @@ export function startBridge({ port, secret, getDoc }) {
           peer.x = message.x;
           peer.y = message.y;
           peer.selection = message.selection || null;
+          // The term the peer is actually editing, which is not the same as the one they have
+          // selected. Copied here AND included in livePeers below - a field set in only one of
+          // the two places arrives empty at every peer, which is exactly what happened to
+          // `ontology` once and is the reason that pair is called out in both comments.
+          peer.editing = message.editing || null;
           peer.seenAt = Date.now();
         }
         broadcastPeers(board);

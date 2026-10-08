@@ -1,0 +1,95 @@
+OntoBoard 1.104.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-10-08  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 9/9  test 10/10
+  2026-10-08  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 9/9  test 10/10
+
+
+SEEING WHO IS EDITING WHAT - AND NOT CALLING IT A LOCK
+
+Roadmap item 3 was "entity locking: nothing stops two live collaborators editing the same term
+at once". That is true, and nothing in this plugin can change it. Protege owns the edit model -
+a change happens through its views, its undo stack and its keyboard, and OntoBoard hears about
+it afterwards. A lock it could not enforce would be worse than none, because somebody would
+rely on it.
+
+So the item is answered rather than built. A peer who has changed an axiom on a term within the
+last five minutes is shown as editing it: "Bob is editing Calzone". That is the whole of what is
+deliverable from this position, and it prevents the collision the only way anything here can -
+by telling you in time.
+
+THREE PROPERTIES THAT MAKE IT TRUSTWORTHY, EACH WITH A TEST THAT FAILS WITHOUT IT
+
+OBSERVED, NOT DECLARED. The claim is made by actually editing - CollabSession calls it as it
+publishes the operation it has just mapped - rather than by announcing an intention. Nothing to
+switch on and nothing to remember to release.
+
+IT DIES WITH ITS HOLDER. It rides the presence heartbeat, which expires after ten seconds, so a
+peer who closes Protege, loses the network or crashes stops claiming anything. Structural rather
+than handled: a lock outliving its holder is the failure that makes locking hated, and riding
+presence makes it impossible rather than merely unlikely.
+
+IT EXPIRES IN PLACE. Five minutes after the last edit, so a window left open over lunch stops
+speaking for somebody.
+
+SELECTION IS NOT EDITING. What a peer clicked already travelled and is already drawn as a ring.
+Treating it as a claim would make every click look like an edit and the signal worthless. The
+mutation that swaps one for the other fails two tests.
+
+TWO DEFECTS THE IMPLEMENTATION FOUND THAT THE PLAN HAD NOT
+
+THE HEARTBEAT WOULD HAVE FROZEN THE CLAIM. CollabClient kept lastPresenceFrame - a composed
+string, resent unchanged every few seconds. That was fine while presence carried only a cursor
+and wrong the moment it carried a claim: a frame built at the instant of an edit and resent
+would have announced "still editing Calzone" for as long as the session lasted, because nothing
+would ever rebuild it. Presence now keeps its parts and recomposes on every beat, asking the
+claim whether it is still live, so the five-minute hold expires at the holder rather than only
+at the viewer.
+
+IT IS A TWO-SIDED CHANGE, WHICH THE PLAN HAD NOT SAID. The bridge validates a presence loosely -
+it only requires numeric x and y - but relays it by copying named fields:
+
+    peer.x = message.x;
+    peer.y = message.y;
+    peer.selection = message.selection || null;
+
+and livePeers then rebuilds each peer as a fresh object from a fixed list of six. A new field
+passes validation, is dropped on receipt, and dropped again on broadcast. The bridge's own
+comments record exactly this happening to `ontology`, where "every peer's ontology arrived
+empty". Both sides are changed, and the test that covers it reads bridge.mjs and asserts both
+lines, because it is one bug and not two.
+
+Verified against the running bridge rather than by inspection: a peer with a claim round-trips
+through livePeers, and a peer that never set one comes back as "" rather than undefined. The
+bridge's own 71 tests pass unchanged.
+
+AN OLDER BRIDGE SHOWS NO BADGES RATHER THAN WRONG ONES
+
+The claim is omitted from the message entirely when there is none, so an older bridge sees
+exactly what it always saw. When a field it does not relay arrives, it is dropped and the peer
+reads as editing nothing - and absence is treated as no information rather than as "nobody is
+editing", so it shows no badge instead of an "unlocked" one.
+
+NUMBERS
+
+1950 tests, 0 failures. 20 new. Seven mutations applied to the claim and the marker, seven
+caught - including a claim that outlives its holder, selection counted as editing, and the
+sentence saying "has locked".
+
+41/41 classes named in plugin.xml load on both hosts. Quality report end to end: 6 findings, 2
+of them errors. 163 patterns indexed. The bridge's own suite: 71 passed.
+
+The claim is not exercised by the host self-test, which runs one Protege against no server.
+What is covered is the expiry arithmetic, the wire format in both directions, the marker, and
+the sentence - by twenty unit tests needing no socket - plus the live-socket collaboration
+tests, which pass unchanged.
+
+STILL OPEN
+
+The collaboration vocabulary, whose first plan was rejected on review for resting on a
+justification the code contradicted. The measured position: OperationMapper reaches an operation
+for four axiom classes, and of the nine kinds the documentation used to list as equals,
+owl:hasKey, negative assertions and datatype definitions occur zero times across NFDIcore, MWO
+and PMDCO while equivalence occurs 312 times and disjointness 80. Equivalence and disjointness
+are the whole of the practical loss, and that is where any work should go.

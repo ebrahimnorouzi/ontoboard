@@ -121,6 +121,25 @@ public final class CollabMessages {
     /** Coordinates are graph-space; see {@link PeerPresence}. */
     public static String presence(String user, String colour, double x, double y,
             String selection) {
+        return presence(user, colour, x, y, selection, null);
+    }
+
+    /**
+     * Coordinates are graph-space; see {@link PeerPresence}.
+     *
+     * <p>{@code editing} is the term this user has actually changed an axiom on recently, which
+     * is not the same as {@code selection} - that is merely what they clicked. See
+     * {@link EditingClaim}.
+     *
+     * <p><b>It is sent on every beat rather than once</b>, because the claim expires at the
+     * holder: a frame composed at the moment of the edit and resent unchanged would announce a
+     * term for as long as the session lasted.
+     *
+     * <p>Omitted entirely when there is no claim, so an older bridge - which copies named
+     * fields rather than relaying the message - sees exactly what it saw before.
+     */
+    public static String presence(String user, String colour, double x, double y,
+            String selection, String editing) {
         ObjectNode node = MAPPER.createObjectNode();
         node.put("t", "presence");
         node.put("user", user);
@@ -131,6 +150,9 @@ public final class CollabMessages {
             node.putNull("selection");
         } else {
             node.put("selection", selection);
+        }
+        if (editing != null && !editing.trim().isEmpty()) {
+            node.put("editing", editing.trim());
         }
         return node.toString();
     }
@@ -216,7 +238,8 @@ public final class CollabMessages {
             peers.add(new PeerPresence(user, text(peer, "colour"),
                     peer.has("x") ? peer.get("x").asDouble() : 0,
                     peer.has("y") ? peer.get("y").asDouble() : 0,
-                    text(peer, "selection"), receivedAt, text(peer, "ontology")));
+                    text(peer, "selection"), receivedAt, text(peer, "ontology"),
+                    text(peer, "editing")));
         }
         return peers;
     }

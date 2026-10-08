@@ -237,6 +237,10 @@ public final class CollabSession implements CollabClient.Listener {
                     settings.getDisplayName(), hints == null ? OperationMapper.NO_HINTS : hints);
             if (mapped.isMapped()) {
                 client.publish(mapped.getOperation());
+                // Observed, not declared: the term somebody is editing is the term they just
+                // changed an axiom on, which is exactly what has been mapped here. Nothing to
+                // switch on, and no claim on a term that was merely clicked.
+                client.noteEdited(editedTerm(mapped.getOperation()));
                 published++;
             } else {
                 unshareable++;
@@ -407,4 +411,24 @@ public final class CollabSession implements CollabClient.Listener {
         description.put("changes that could not be shared", String.valueOf(getUnshareableCount()));
         return description;
     }
+
+    /**
+     * The term an operation is about, or null.
+     *
+     * <p>An operation's id is the entity IRI for everything that concerns one term. The canvas
+     * also writes pipe-separated ids for an edge - {@code subprop|a|b} and the like - and those
+     * name a relation rather than a term, so they claim nothing: a badge on one end of an edge
+     * would be as likely to mislead as to help.
+     */
+    static String editedTerm(OntologyOperation operation) {
+        if (operation == null) {
+            return null;
+        }
+        String id = operation.getId();
+        if (id == null || id.indexOf('|') >= 0) {
+            return null;
+        }
+        return id.startsWith("http://") || id.startsWith("https://") ? id : null;
+    }
+
 }

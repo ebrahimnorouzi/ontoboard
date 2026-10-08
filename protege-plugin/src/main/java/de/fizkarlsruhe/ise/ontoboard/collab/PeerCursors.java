@@ -49,13 +49,19 @@ public final class PeerCursors {
         private final double x;
         private final double y;
         private final String selection;
+        private final String editing;
 
         Marker(String user, Color colour, double x, double y, String selection) {
+            this(user, colour, x, y, selection, null);
+        }
+
+        Marker(String user, Color colour, double x, double y, String selection, String editing) {
             this.user = user;
             this.colour = colour;
             this.x = x;
             this.y = y;
             this.selection = selection;
+            this.editing = editing == null || editing.trim().isEmpty() ? null : editing.trim();
         }
 
         /** The name to draw beside the cursor. Never null or blank. */
@@ -78,6 +84,17 @@ public final class PeerCursors {
         /** IRI this peer has selected, or null. Lets the canvas ring the node they are on. */
         public String getSelection() {
             return selection;
+        }
+
+        /**
+         * IRI this peer is editing, or null - which is not the same as the one they selected.
+         *
+         * <p>Selection changes with every click and means nothing; this is a term they have
+         * actually changed an axiom on within the last few minutes, and is the one worth
+         * warning somebody about before they start on it too. See {@code EditingClaim}.
+         */
+        public String getEditing() {
+            return editing;
         }
     }
 
@@ -125,7 +142,7 @@ public final class PeerCursors {
                 continue;
             }
             markers.add(new Marker(peer.getUser(), parseColour(peer.getColour()),
-                    peer.getX(), peer.getY(), peer.getSelection()));
+                    peer.getX(), peer.getY(), peer.getSelection(), peer.getEditing()));
         }
         Collections.sort(markers, new Comparator<Marker>() {
             @Override
