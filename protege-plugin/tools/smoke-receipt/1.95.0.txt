@@ -1,0 +1,95 @@
+OntoBoard 1.95.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-10-08  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 9/9  test 10/10
+  2026-10-08  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 9/9  test 10/10
+
+
+AN IMPORTED PATTERN ARRIVES AS A NAMED GROUP
+
+Asked for: "imported patterns from library of patterns should be shown in the canvas within the
+frame everything with what is connected together inside the frame and the frame is named the
+pattern".
+
+Before this, choosing a pattern did everything right except the last step. Its terms were
+extracted, the term list and the module and the import and the catalog entry were written - and
+then the terms went wherever SchemaGraph puts a node it has no position for, which is a row along
+the top of the board, mixed in with whatever was already there, with nothing to say that those
+eight classes arrived together or what they were called. The pattern is the unit the user chose;
+it was not a unit once it landed.
+
+Now the terms are laid out as one block inside a frame labelled with the pattern's name, placed
+clear of everything already drawn. A frame carries its contents when dragged, so the group stays
+a group.
+
+THREE THINGS IT DELIBERATELY DOES NOT DO
+
+IT DOES NOT MOVE TERMS YOU HAVE ALREADY PLACED. Somebody who has arranged a class is saying where
+they want it, and importing a pattern that happens to mention it is not a reason to drag it into
+a box. Those are reported instead, and the status line says how many were left where they were -
+so a frame holding less than the whole pattern is explained rather than puzzling. A pattern whose
+every term is already on the board produces no frame at all, rather than a labelled empty box.
+
+IT DOES NOT LAY THE PATTERN OUT CLEVERLY. A roughly square block, capped at five columns. The
+cap is the interesting half: 26 terms in one row is a frame four thousand pixels wide whose ends
+nobody can see, and five columns keeps the widest frame under a thousand, which fits a laptop
+canvas. Drawing the hierarchy properly is a layout algorithm, and the toolbar already has six of
+them - Arrange on the frame's contents does it better than a one-off here ever would.
+
+IT DOES NOT HAPPEN TWICE. The note the browser leaves is consumed, not read, so a refresh for any
+other reason - an edit, a reasoner run, changing tab - cannot re-frame a pattern that is already
+framed and drag the user's arrangement back into a box.
+
+And it is one undo step, through rememberBoard like every other board change.
+
+A TEST THAT PASSED WITH THE BUG IN IT
+
+The load-bearing claim is that every term is inside its frame, because a frame carries its
+contents by centre-point containment - a node whose centre falls outside silently stops belonging
+to the group the moment anybody moves it.
+
+The first version of that test asserted containment, which is the obvious thing to assert and is
+too loose. Removing the label band from the frame's height - leaving the last row four pixels
+from the bottom edge instead of thirty-four - left every node technically inside, and all fifteen
+tests stayed green. The bottom padding is wider than the band and absorbed it.
+
+Found by making exactly that change and watching the suite pass. The test now asserts the inset
+on each side rather than containment, and with the same change reintroduced it fails with
+"bottom inset is 4.0". Restored, it passes. A test nobody has seen fail is not a test.
+
+HOW THE BROWSER TELLS THE CANVAS
+
+They are two unrelated Protege components: one a menu action that opens a dialog, the other a
+view that may not be on screen. The browser knows which pattern was chosen and which terms went
+in; the canvas is the only thing that can draw them; nothing in Protege's API carries that
+between them.
+
+So PatternArrival is a one-slot handover - the import leaves a note, the canvas picks it up on
+its next refresh, which the import's own ontology change triggers anyway. One slot rather than a
+queue because two imports before a single refresh should leave the second pattern framed, not
+both half-framed: the first pattern's terms are on the board by then and would be reported as
+already placed, producing an empty frame with a name. It is also one thing to reason about when
+the canvas is closed, which is the common case - the note is replaced and nothing accumulates.
+
+The note is left BEFORE the import runs, because the import is what fires the change the canvas
+refreshes on. Leaving it afterwards is a race the canvas usually wins.
+
+NUMBERS
+
+1780 tests, 0 failures, 0 skipped. 15 new, counted three ways and agreeing.
+
+38/38 classes named in plugin.xml load on both hosts. Quality report end to end: 6 findings, 2 of
+them errors. 159 patterns indexed.
+
+The framing itself is not covered by the host self-test: it needs a canvas, an imported pattern
+and somebody to look at the result. What is covered is the geometry, by fifteen pure unit tests
+that need none of those - which is why FramedGroup is its own class rather than a method on a
+4,000-line view.
+
+STILL OPEN
+
+The four BFO-derived patterns the research settled on are extracted from
+bfo-2020-without-some-all-times.owl - the artifact NFDIcore pins by PURL and MWO agrees with term
+for term - and are not yet built. import_group, release_artefacts, export_formats and
+primary_release are still text OntoBoard preserves and does not obey.

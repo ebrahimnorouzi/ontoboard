@@ -3759,6 +3759,10 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         String selectedBeforeRender =
                 selectionBridge != null ? selectionBridge.currentCanvasSelection() : null;
 
+        // A pattern imported since the last refresh arrives as a group, in a frame that names it,
+        // rather than scattered along the top of the board among everything else.
+        frameAnyArrivedPattern();
+
         Projection projection = OntologyProjection
                 .project(getOWLModelManager().getActiveOntology(), membership.asSet());
         projection = withInferences(projection);
@@ -3779,6 +3783,64 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         if (selectionBridge != null) {
             selectionBridge.resyncAfterRender(selectedBeforeRender);
         }
+    }
+
+    /**
+     * Puts a just-imported pattern on the board as a named group.
+     *
+     * <p>Asked for: the terms of an imported pattern should appear inside a frame, together, with
+     * the frame named after the pattern. Before this they went wherever {@code SchemaGraph} puts a
+     * node with no position - a row along the top, mixed in with everything else, with nothing to
+     * say that these eight classes arrived together or what they are.
+     *
+     * <p>Three decisions worth stating, all of them about not overruling the user:
+     *
+     * <ul>
+     *   <li><b>Terms already on the board keep their positions.</b> Somebody who has arranged a
+     *       class is saying where they want it, and importing a pattern that happens to mention it
+     *       is not a reason to move it into a box. {@link FramedGroup} reports those separately and
+     *       the status line says how many, so the frame holding less than the whole pattern is
+     *       explained rather than puzzling.
+     *   <li><b>It is one undo step.</b> Through {@code rememberBoard}, like every other board
+     *       change, so a pattern that landed somewhere unhelpful is one Ctrl+Z away.
+     *   <li><b>The note is consumed, not read.</b> {@code PatternArrival.take} clears it, so a
+     *       refresh for any other reason - an edit, a reasoner run, changing tab - cannot re-frame
+     *       a pattern that is already framed and drag the user's arrangement back into a box.
+     * </ul>
+     */
+    private void frameAnyArrivedPattern() {
+        de.fizkarlsruhe.ise.ontoboard.pattern.PatternArrival.Arrival arrival =
+                de.fizkarlsruhe.ise.ontoboard.pattern.PatternArrival.take();
+        if (arrival == null) {
+            return;
+        }
+        de.fizkarlsruhe.ise.ontoboard.layout.FramedGroup.Placement placement =
+                de.fizkarlsruhe.ise.ontoboard.layout.FramedGroup.plan(
+                        arrival.getLabel(), arrival.getIris(), layout);
+        if (placement.isEmpty()) {
+            if (!placement.getAlreadyOnTheBoard().isEmpty()) {
+                setStatus("Every term of " + arrival.getLabel() + " was already on the board.");
+            }
+            return;
+        }
+        rememberBoard("importing " + arrival.getLabel());
+        de.fizkarlsruhe.ise.ontoboard.layout.FramedGroup.withId(placement.getFrame(),
+                SchemaGraph.FRAME_ID_PREFIX + nextAnnotationSuffix());
+        layout.frames.add(placement.getFrame());
+        for (java.util.Map.Entry<String, CanvasLayout.NodeLayout> entry
+                : placement.getNodes().entrySet()) {
+            layout.nodes.put(entry.getKey(), entry.getValue());
+            // Positioned AND on the board: a position for a term the canvas is not showing draws
+            // nothing, and this is the step that makes the pattern visible at all.
+            membership.add(entry.getKey());
+        }
+        int placed = placement.getNodes().size();
+        int kept = placement.getAlreadyOnTheBoard().size();
+        setStatus("Framed " + arrival.getLabel() + ": " + placed + " term"
+                + (placed == 1 ? "" : "s")
+                + (kept == 0 ? "" : ", " + kept + " already on the board and left where "
+                        + (kept == 1 ? "it was" : "they were")));
+        saveLayoutTo(layoutFile);
     }
 
     /** Copies live cell geometry back into the layout so it survives the next save. */

@@ -443,6 +443,29 @@ are one pattern with three directories. Importing two of them would import the s
 So the library lists 123 entries and holds 113 patterns, which is worth knowing before counting
 anything.
 
+#### An imported pattern arrives as a group — new in 1.95.0
+
+Choosing a pattern hands its terms to *Import terms…*, which writes the term list, the module, the
+import and the catalog entry. **Since 1.95.0 the canvas also shows them together**: the terms are
+laid out as one block inside a frame labelled with the pattern's name, placed clear of whatever is
+already on the board.
+
+Before this they went wherever an unpositioned node goes — a row along the top, mixed in with
+everything else, with nothing to say that those eight classes arrived together or what they are.
+
+Three things it deliberately does not do:
+
+- **It does not move terms you have already placed.** A class you have arranged stays where you put
+  it, and the status line says how many were left — so a frame holding less than the whole pattern
+  is explained rather than puzzling.
+- **It does not lay the pattern out cleverly.** A roughly square block, capped at five columns so a
+  26-term pattern does not become a frame four thousand pixels wide. The canvas already has six
+  layout algorithms on the toolbar; *Arrange* on the frame's contents does a better job than a
+  one-off ever would.
+- **It is one undo step.** Ctrl+Z puts the board back.
+
+A frame carries its contents when you drag it, so the pattern stays a unit afterwards.
+
 #### Patterns of your own — new in 1.92.0
 
 **A pattern of your own is a file in a folder.** No index, no metadata file, no registration, no

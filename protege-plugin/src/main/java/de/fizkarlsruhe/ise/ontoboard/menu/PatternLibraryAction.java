@@ -518,6 +518,16 @@ public class PatternLibraryAction extends ProtegeOWLAction {
             termText.append(term.toString()).append('\n');
         }
 
+        // Told before the import runs, because the import is what fires the ontology change the
+        // canvas refreshes on - leaving the note afterwards would be a race the canvas usually
+        // wins. It is a single slot that the canvas consumes, so nothing accumulates when the
+        // canvas is not open, which is the common case.
+        List<String> iris = new ArrayList<String>();
+        for (IRI term : wanted) {
+            iris.add(term.toString());
+        }
+        de.fizkarlsruhe.ise.ontoboard.pattern.PatternArrival.imported(chosen.getName(), iris);
+
         dialog.dispose();
         ImportTermsAction importer = new ImportTermsAction();
         importer.setEditorKit(getOWLEditorKit());
