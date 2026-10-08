@@ -262,6 +262,47 @@ class SheetAuditTest {
         assertEquals("Berlin", quoted.get(0).getSuggestion());
     }
 
+    /**
+     * A parent column is Manchester syntax, and ROBOT already checks it properly.
+     *
+     * <p>Both of these were false findings on the first real template this met - a sheet for
+     * the MatWerk ontology that ROBOT built with no problems at all, while the audit called
+     * two of its three rows wrong. Quoting a label is how a parent column wants a name with a
+     * space in it, and an expression like {@code 'has disposition' some %} is not a name to
+     * look up at all. A check that contradicts the builder is one nobody believes twice.
+     */
+    @Test
+    void aQuotedLabelInAParentColumnIsCorrectAndNotReported() {
+        List<SheetAudit.Finding> found = SheetAudit.of("terms", sheet(
+                new String[] {"#", "Label", "Parent"},
+                new String[] {"ID", "LABEL", "SC %"},
+                new String[] {"ex:1", "sintering process", "'annealing process'"}),
+                LabelIndex.empty());
+
+        assertTrue(found.isEmpty(), found.toString());
+    }
+
+    @Test
+    void aClassExpressionIsLeftToRobotRatherThanLookedUpAsAName() {
+        List<SheetAudit.Finding> found = SheetAudit.of("terms", sheet(
+                new String[] {"#", "Label", "What it does"},
+                new String[] {"ID", "LABEL", "C 'has disposition' some %"},
+                new String[] {"ex:1", "a thing", "'some quality'"}),
+                LabelIndex.empty());
+
+        assertTrue(found.isEmpty(), found.toString());
+    }
+
+    /** A quoted name in a column that is NOT a class expression is still reported. */
+    @Test
+    void quotesInAnIndividualColumnAreStillWrong() {
+        List<SheetAudit.Finding> found = SheetAudit.of("organization", organisations(
+                new String[] {MW + "1", "owl:NamedIndividual", "x", "'Berlin'"}),
+                LabelIndex.empty());
+
+        assertEquals(1, of(SheetAudit.Kind.QUOTED_REFERENCE, found).size(), found.toString());
+    }
+
     @Test
     void referenceChecksAreSkippedRatherThanGuessedWhenThereIsNoIndex() {
         List<SheetAudit.Finding> found = SheetAudit.of("organization", organisations(

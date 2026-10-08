@@ -1,0 +1,81 @@
+OntoBoard 1.114.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-10-09  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 9/9  test 10/10
+  2026-10-09  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 9/9  test 10/10
+
+  Window > Tabs > OntoBoard | ok | opened, [SchemaCanvasView, SheetEditorView] built
+  without throwing, and closed again        <- on both hosts
+
+
+THREE DEFECTS A USER FOUND IN AN HOUR
+
+All three came from somebody trying to use the template feature on their own project rather
+than from anything here. That ratio is worth noting: the suite is 2,128 tests and none of
+them was looking where a person looked first.
+
+A TEMPLATE WRITTEN AS .XLSX THAT WAS NOT ONE
+
+"Write me a template to start from" wrote its tab-separated text to whatever filename it was
+given, with no check on the extension. Somebody asked for templates.xlsx - which is the
+obvious thing to ask for, since the thing is a spreadsheet - and got 562 bytes of TSV under a
+name that says Excel workbook. Excel refuses it. ROBOT would not have read it either. The
+file looks fine until something tries to use it, which is the worst way for this to fail.
+
+It now refuses, names the problem, and offers the corrected filename: "A starter is
+tab-separated text, so it has to be named .tsv or .csv ... Name it templates.tsv instead."
+
+Writing a real .xlsx would need a library this bundle will not take. Refusing is the honest
+alternative; writing one format under another's extension is not.
+
+AN AUDIT THAT CONTRADICTED THE BUILDER
+
+The first real template this was pointed at - written here, for MWO, by hand - built through
+ROBOT with zero problems while the audit called two of its three rows wrong.
+
+Both findings were about the parent column. Quoting a label is how a parent column wants a
+name with a space in it: 'annealing process' is correct, and the audit reported the quotes as
+part of the name. Worse, an expression like `C 'has disposition' some %` is Manchester syntax
+and not a name to look up at all.
+
+Class-expression columns are now left to ROBOT entirely, which already reports a bad one with
+its row, its column and the expression. A check that contradicts the builder is one nobody
+believes twice. Three tests, including one asserting that quotes in a column which is NOT a
+class expression are still reported.
+
+A LAYOUT THAT ADOPTED ITSELF ONCE AND THEN REVERTED FOR EVER
+
+1.113.0 fixed OntoBoardTab to key its "layout adopted" marker per installation, and both
+hosts passed. 1.114.0, with no change to the config at all, failed on both - back to one view
+in the column.
+
+reset() rearranges the tab that is open; the arrangement is only persisted when Protege exits
+cleanly. The smoke script kills it every run, and a crash does the same to a user. So the new
+layout was never saved, the next launch restored the old one, and the digest - which said the
+layout had been adopted - stopped it being adopted again. Silently, and permanently.
+
+Remembering an intention is not the same as checking the outcome. The digest now only
+suppresses repeated resets; what triggers one is a view the shipped layout asks for that is
+not actually in the tab. It self-heals on every launch and costs nothing when correct. A
+failure to answer the question counts as "present", so a change in Protege's component tree
+cannot turn this into a reset that discards somebody's arrangement every time they start.
+
+NUMBERS
+
+2128 tests, 0 failures. 3 new, all for the audit's class-expression behaviour.
+
+43/43 classes named in plugin.xml load on both hosts. 163 patterns indexed.
+
+On 5.5.0, cellfie-2.2.4 and swrltab-plugin-2.1.3 fail to install. Neither is ours.
+
+STILL OPEN
+
+The starter still produces zero axioms on every real project, which is now the oldest known
+defect here and was hit again this week: on MWO it writes mwo:0000001, and mwo-edit.owl
+declares no mwo: prefix. Measured against that file - mwo:0000001 gives 0 axioms and 1
+problem, MWO:0000001 the same, and the full IRI gives 4 axioms and none. The fix is specified
+and not yet written.
+
+Opening a folder, editing a cell and saving has still not been done by a person in a running
+Protege.

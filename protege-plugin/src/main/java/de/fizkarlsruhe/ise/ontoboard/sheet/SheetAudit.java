@@ -288,7 +288,13 @@ public final class SheetAudit {
                 whitespace(sheet, number, column, name, raw, findings);
                 typography(sheet, number, column, name, raw, findings);
                 placeholder(sheet, number, column, name, raw, findings);
-                if (column.namesATerm() && index != null) {
+                // Class expressions are left to ROBOT. A cell there is Manchester syntax
+                // rather than a name - `'has disposition' some %` is not something to look up
+                // - and ROBOT already reports a bad one properly, with the row, the column and
+                // the expression. Checking it here produced two false findings on the first
+                // real template it met, against a sheet ROBOT built without complaint.
+                if (column.namesATerm() && index != null
+                        && column.getKind() != TemplateColumns.Kind.CLASS_EXPRESSION) {
                     reference(sheet, number, column, name, raw, index, findings);
                 }
             }
@@ -363,7 +369,14 @@ public final class SheetAudit {
             if (value.isEmpty() || looksLikeAnIri(value)) {
                 continue;
             }
-            if (value.length() > 1 && value.startsWith("'") && value.endsWith("'")) {
+            // A CLASS EXPRESSION COLUMN WANTS THE QUOTES. `SC %` with 'expert discussion' is
+            // how ROBOT's own documentation says to name a label with a space in it, and the
+            // Manchester parser needs them. Reporting it was a false positive found by
+            // running this over a template written for a real project: ROBOT accepted the
+            // sheet with no problems while the audit called two of its three rows wrong, and
+            // a check that contradicts the builder is one nobody will believe twice.
+            if (column.getKind() != TemplateColumns.Kind.CLASS_EXPRESSION
+                    && value.length() > 1 && value.startsWith("'") && value.endsWith("'")) {
                 String unquoted = value.substring(1, value.length() - 1);
                 findings.add(new Finding(Kind.QUOTED_REFERENCE, sheet, row, column.getNumber(),
                         heading, raw,

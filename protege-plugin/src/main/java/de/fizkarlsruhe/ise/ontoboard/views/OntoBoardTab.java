@@ -57,7 +57,18 @@ public class OntoBoardTab extends OWLWorkspaceViewsTab {
         Preferences preferences =
                 PreferencesManager.getInstance().getApplicationPreferences(PREFERENCE_SET);
         String key = REVISION_KEY + "." + installKey();
-        if (shipped.equals(preferences.getString(key, null))) {
+        // CHECK THE OUTCOME, NOT THE INTENTION. Remembering "this layout was adopted" is not
+        // the same as it having arrived: reset() rearranges the tab that is open, and the
+        // arrangement is only persisted when Protege exits cleanly. Kill it first - which the
+        // smoke script does every run, and which a crash does to a user - and the next launch
+        // restores the old saved arrangement while the digest says there is nothing to do. The
+        // layout then reverts silently and permanently. Measured between 1.113.0 and 1.114.0:
+        // the stacked layout adopted, both views built, and one release later the tab was back
+        // to one view with no change to the config at all.
+        //
+        // So the digest only suppresses REPEATED resets; what triggers one is a view the
+        // shipped layout asks for that is not actually here.
+        if (shipped.equals(preferences.getString(key, null)) && everyShippedViewIsPresent()) {
             return;
         }
         try {
@@ -72,6 +83,47 @@ public class OntoBoardTab extends OWLWorkspaceViewsTab {
                     + " is still in use. Window > Reset selected tab to default state will apply"
                     + " it manually.", failed);
         }
+    }
+
+    /**
+     * Whether every view the shipped layout asks for is actually in this tab.
+     *
+     * <p>Counted by class rather than asked of Protege's view registry, because the question
+     * is "is it on screen", and a view that is registered but was dropped when the layout was
+     * built is exactly the case this has to catch - Protege silently instantiates one of two
+     * plugin views placed in a single node.
+     *
+     * <p>A failure to answer is treated as "present", so a change in Protege's component tree
+     * cannot turn this into a reset on every launch. Discarding somebody's arrangement every
+     * time they start is worse than a layout that is one release stale.
+     */
+    private boolean everyShippedViewIsPresent() {
+        try {
+            int wanted = 0;
+            for (String name : de.fizkarlsruhe.ise.ontoboard.SelfCheck.declaredViewNames()) {
+                if (!name.isEmpty()) {
+                    wanted++;
+                }
+            }
+            return wanted == 0 || ourViewsIn(this) >= wanted;
+        } catch (Exception | LinkageError cannotTell) {
+            return true;
+        }
+    }
+
+    /** How many components in here are one of our own views. */
+    private static int ourViewsIn(java.awt.Container container) {
+        int found = 0;
+        for (java.awt.Component child : container.getComponents()) {
+            if (child.getClass().getName().startsWith(
+                    "de.fizkarlsruhe.ise.ontoboard.views.")) {
+                found++;
+            }
+            if (child instanceof java.awt.Container) {
+                found += ourViewsIn((java.awt.Container) child);
+            }
+        }
+        return found;
     }
 
     /**

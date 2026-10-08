@@ -219,6 +219,23 @@ public class TemplateAction extends OntoBoardAction {
      * back.
      */
     private OperationResult writeStarter(OWLOntology ontology, OperationResult.Builder result) {
+        // THE NAME HAS TO MATCH WHAT IS WRITTEN. What comes out is tab-separated text, and
+        // asking for a spreadsheet is the obvious thing to do - somebody typed templates.xlsx
+        // and got 562 bytes of TSV with an .xlsx name, which Excel then refused to open and
+        // which ROBOT would not have read either. Writing one format under another format's
+        // extension is worse than refusing, because the file looks fine until something tries
+        // to use it.
+        String lower = file.getName().toLowerCase();
+        if (!lower.endsWith(".tsv") && !lower.endsWith(".csv")) {
+            String suggested = file.getName();
+            int dot = suggested.lastIndexOf('.');
+            suggested = (dot > 0 ? suggested.substring(0, dot) : suggested) + ".tsv";
+            return result.failed("A starter is tab-separated text, so it has to be named .tsv "
+                    + "or .csv - \"" + file.getName() + "\" says it is something else, and "
+                    + "writing TSV into it would give you a file nothing can open. Name it \""
+                    + suggested + "\" instead. Every spreadsheet program opens a .tsv, and "
+                    + "saves back to one.").build();
+        }
         if (file.exists()) {
             return result.failed(file.getAbsolutePath() + " already exists. Overwriting it would "
                     + "destroy whatever is in it - name a file that does not exist.").build();
