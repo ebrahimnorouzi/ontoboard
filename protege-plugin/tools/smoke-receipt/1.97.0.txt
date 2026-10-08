@@ -1,0 +1,94 @@
+OntoBoard 1.97.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-10-08  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 9/9  test 10/10
+  2026-10-08  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 9/9  test 10/10
+
+
+ADDING AND REMOVING A LIST ENTRY IN THE ODK YAML
+
+Number one on the documented roadmap since 1.89.0, and the oldest thing on it. Every scalar in the
+file has been editable at any depth for eight releases - and the thing a user most often actually
+wants to do to an ODK YAML, add an import to import_group.products or a format to export_formats,
+still meant closing Protege and opening a text editor.
+
+Project > Project configuration... now has "Add to a list..." and "Remove entry". Pick a list, type
+the value, and it is appended. Select an entry and it goes - taking its continuation lines with it
+when it is a block, which an import product always is.
+
+INDENTATION IS COPIED, NEVER COMPUTED
+
+ODK files in the wild indent sequences both ways - flush with the key, and two spaces in - and both
+are valid YAML. A new entry takes its indent from the list's own last entry, because that is the
+one piece of evidence about what this particular file does. Computing it would reformat somebody's
+file on the first edit, which is the whole reason this project splices rather than rewrites.
+
+The corollary is that an empty list is refused, with the reason: there is nothing to copy from, and
+an empty sequence is written both as `key: []` and as a key with nothing under it - two different
+edits. The dialog says to add the first entry in a text editor rather than guessing which.
+
+STRUCTURAL AND SCALAR EDITS CANNOT BOTH BE DEFERRED
+
+The dialog collected scalar edits in the table and applied them all at OK, keyed by path. That
+cannot work for a list change, because adding or removing an entry renumbers every path after it:
+a pending edit to export_formats[2] would land on the wrong line.
+
+So a structural edit applies immediately, into a working copy, after first folding the table's
+pending scalar edits into it - and the table is then rebuilt from the result, so every path is
+right again. Without that flush, typing a new title and then adding an export format would lose
+the title silently: the table is rebuilt from the new text, and whatever was only in the old model
+goes with it.
+
+Nothing reaches disk until OK, and the write is still the atomic compare-then-move it always was.
+
+TWO DEFECTS IN MY OWN CODE, BOTH CAUGHT BY THE TESTS ON THEIR FIRST RUN
+
+REMOVING ONE IMPORT PRODUCT DELETED THE ONE AFTER IT. snakeyaml ends a mapping inside a sequence
+at the point the FOLLOWING item begins, not at the end of its own last line - so "take to the end
+of the line the end mark falls on" swallowed the next item's first line as well. Bounded by the
+next sibling's start now. The test that caught it asserts the neighbour survives, which is the
+only assertion that would have.
+
+EVERY IRI WAS BEING QUOTED. The new-value quoting rule treated any colon as structure, and
+mirror_from is always a URL - so adding an import product would have written
+"http://purl.obolibrary.org/obo/ro.owl" with quotes round it, reformatting the single most common
+thing anybody adds to one of these lists. A colon only separates a key from a value when
+whitespace follows it or it ends the token; same for '#', which starts a comment only after
+whitespace.
+
+Both were wrong in the implementation and right in the test. Neither would have been visible
+without running it.
+
+WHAT IS QUOTED, AND WHY IT MATTERS
+
+A value added to a list has no original to copy a quoting style from, so the code decides. Quoted:
+anything YAML would read as a boolean (`yes`, `no`, `on`, `off`, `true`, `false`), a number, a
+null, or anything carrying structure. Not quoted: an ordinary word, or an IRI.
+
+`- yes` in an ODK YAML is the boolean true, not the string "yes" - and a list of export formats
+containing a boolean is a build that fails somewhere else entirely, with an error that names
+neither the file nor the edit.
+
+NUMBERS
+
+1803 tests, 0 failures, 0 skipped. 16 new, counted three ways and agreeing.
+
+38/38 classes named in plugin.xml load on both hosts. Quality report end to end: 6 findings, 2 of
+them errors. 163 patterns indexed.
+
+A FALSE GREEN, RECORDED BECAUSE IT NEARLY WORKED
+
+Partway through this, `mvn -o compile` reported BUILD SUCCESS on a file with five unterminated
+character literals in it - the heredoc hazard this project has hit before, which splits '\\n' across
+a real line end. Maven had not recompiled, and the stale classes from the previous run answered
+for it. docs/development.md already says to clean first; this is the second time that advice has
+earned its place. The clean build then reported all five.
+
+STILL OPEN
+
+Roadmap item 2: import_group, release_artefacts, export_formats and primary_release are read and
+written faithfully and still drive nothing - adding a product to the list now works, but OntoBoard
+does not act on what the list says. Item 3: the pattern library knows nothing about what you have
+already imported, so a recommendation scoring 1.00 means you already contain the whole pattern
+without saying so.

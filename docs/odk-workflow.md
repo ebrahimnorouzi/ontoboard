@@ -597,9 +597,13 @@ Since 1.80.0 the YAML is shown and its scalars are editable, and since 1.81.0 th
 scripts are listed and runnable — the two gaps that used to head this list. What is left, in the
 order it is worth doing:
 
-1. **Adding or removing a list entry in the YAML** — since 1.89.0 every scalar is editable at
-   any depth, including inside `import_group` and `robot_report`; inserting a new product or a
-   release artefact still means a text editor.
+1. ~~**Adding or removing a list entry in the YAML**~~ — **done in 1.97.0.** *Project → Project
+   configuration…* has **Add to a list…** and **Remove entry**: pick a list, type the value, and
+   it is appended; select an entry and it goes, taking its continuation lines with it if it is a
+   block. Indentation is copied from the list's own last entry rather than computed, because ODK
+   files in the wild indent sequences both ways and guessing would reformat the file on the first
+   edit. A value YAML would read as a number or a boolean is quoted for you; an ordinary word, or
+   an IRI, is not.
 2. **Acting on more of what the YAML says** — `robot_java_args` and two `robot_report` keys
    drive something since 1.91.0; `import_group`, `release_artefacts`, `export_formats` and
    `primary_release` are still text OntoBoard preserves and does not obey.

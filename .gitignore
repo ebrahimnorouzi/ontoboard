@@ -56,3 +56,7 @@ docs/patterns/
 build/render/
 build/deck/
 build/*.pptx
+
+# The BFO artifact tools/extract-bfo-patterns.py downloads and verifies by sha256. Fetched on
+# demand; the patterns extracted from it are committed, the 72 KB source is not.
+build/bfo-notime.owl

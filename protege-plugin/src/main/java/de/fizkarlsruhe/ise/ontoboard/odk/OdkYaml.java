@@ -267,6 +267,168 @@ public final class OdkYaml {
     }
 
     /**
+     * Adds an item to the end of a list, spliced in rather than rewritten.
+     *
+     * <p>The gap this closes. Every scalar in the file has been editable at any depth since
+     * 1.89.0, and the one thing a user most often wants to do to an ODK YAML - add an import to
+     * {@code import_group.products}, add a format to {@code export_formats} - still meant opening
+     * a text editor. The documented roadmap has had it at number one ever since.
+     *
+     * <p><b>Indentation is copied from the list's own last item, never computed.</b> ODK files in
+     * the wild indent sequences both ways - flush with the key, and two spaces in - and both are
+     * valid YAML. Guessing would reformat somebody's file on the first edit, which is the whole
+     * thing splice-not-rewrite exists to avoid. The last item is the one piece of evidence about
+     * what this file does, so it is what gets copied.
+     *
+     * @param path a sequence: {@code export_formats}, {@code import_group.products}
+     * @throws UnreadableException if there is no such list, or it is not a list
+     */
+    public static String appendTo(String text, String path, String newValue) {
+        Node node = resolve(rootOf(text), path);
+        if (node == null) {
+            throw new UnreadableException("This file has no '" + path + "'.");
+        }
+        if (!(node instanceof SequenceNode)) {
+            throw new UnreadableException("'" + path + "' is not a list.");
+        }
+        List<Node> items = ((SequenceNode) node).getValue();
+        if (items.isEmpty()) {
+            // Nothing to copy an indent from. An empty sequence is written `key: []` or as a key
+            // with nothing under it, and the two need different edits; refusing is honest, and
+            // the dialog says to add the first item by hand.
+            throw new UnreadableException("'" + path + "' is empty, so there is no existing item "
+                    + "to match the indentation of. Add the first one in a text editor.");
+        }
+        Node last = items.get(items.size() - 1);
+        int end = clamp(text, last.getEndMark().getIndex());
+        // Past the end of the line the last item finishes on, so a trailing comment stays with it.
+        int lineEnd = text.indexOf('\n', end);
+        if (lineEnd < 0) {
+            lineEnd = text.length();
+        }
+        String indent = indentOfLineAt(text, clamp(text, last.getStartMark().getIndex()));
+        String marker = dashAt(text, clamp(text, last.getStartMark().getIndex())) ? "- " : "- ";
+        String addition = "\n" + indent + marker + scalarFor(newValue);
+        return text.substring(0, lineEnd) + addition + text.substring(lineEnd);
+    }
+
+    /**
+     * Removes one item from a list, with the whole of its line and nothing else.
+     *
+     * <p>Takes the line the item begins on through to the line its last nested value ends on, so
+     * a mapping item - which is what an {@code import_group} product is - goes as one unit rather
+     * than leaving its continuation lines orphaned under the item before it.
+     *
+     * @param path an item in a sequence: {@code export_formats[1]}
+     * @throws UnreadableException if the path does not name an item of a list
+     */
+    public static String removeFrom(String text, String path) {
+        int bracket = path == null ? -1 : path.lastIndexOf('[');
+        if (bracket < 0) {
+            throw new UnreadableException("'" + path + "' does not name an item of a list.");
+        }
+        Node node = resolve(rootOf(text), path);
+        if (node == null) {
+            throw new UnreadableException("This file has no '" + path + "'.");
+        }
+        int start = clamp(text, node.getStartMark().getIndex());
+        int lineStart = text.lastIndexOf('\n', Math.max(0, start - 1)) + 1;
+
+        // Bounded by the NEXT item, not by this one's end mark. snakeyaml ends a mapping inside a
+        // sequence at the point the following item begins, not at the end of its own last line -
+        // so taking "to the end of the line the end mark falls on" swallowed the next item's first
+        // line as well. Removing one import product deleted the one after it; the test for that
+        // failed on the first run and is the only reason this is written the hard way.
+        Node next = siblingAfter(text, path);
+        int lineEnd;
+        if (next != null) {
+            int nextStart = clamp(text, next.getStartMark().getIndex());
+            lineEnd = text.lastIndexOf('\n', Math.max(0, nextStart - 1));
+        } else {
+            lineEnd = text.indexOf('\n', clamp(text, node.getEndMark().getIndex()));
+        }
+        if (lineEnd < 0) {
+            // The last line of the file: take the newline before it instead, so the file does not
+            // end up with a trailing blank line where the item used to be.
+            return text.substring(0, Math.max(0, lineStart - 1));
+        }
+        return text.substring(0, lineStart) + text.substring(lineEnd + 1);
+    }
+
+    /** The item after the one this path names, or null when it is the last. */
+    private static Node siblingAfter(String text, String path) {
+        int bracket = path.lastIndexOf('[');
+        int close = path.indexOf(']', bracket);
+        if (close < 0) {
+            return null;
+        }
+        int which;
+        try {
+            which = Integer.parseInt(path.substring(bracket + 1, close).trim());
+        } catch (NumberFormatException notANumber) {
+            return null;
+        }
+        Node parent = resolve(rootOf(text), path.substring(0, bracket));
+        if (!(parent instanceof SequenceNode)) {
+            return null;
+        }
+        List<Node> items = ((SequenceNode) parent).getValue();
+        return which + 1 < items.size() ? items.get(which + 1) : null;
+    }
+
+    /** The leading whitespace of the line the index falls on. */
+    private static String indentOfLineAt(String text, int index) {
+        int lineStart = text.lastIndexOf('\n', Math.max(0, index - 1)) + 1;
+        int at = lineStart;
+        while (at < text.length() && (text.charAt(at) == ' ' || text.charAt(at) == '	')) {
+            at++;
+        }
+        return text.substring(lineStart, at);
+    }
+
+    /** Whether the item at this index is written with a leading dash. */
+    private static boolean dashAt(String text, int index) {
+        String indent = indentOfLineAt(text, index);
+        int lineStart = text.lastIndexOf('\n', Math.max(0, index - 1)) + 1;
+        return text.startsWith(indent + "-", lineStart);
+    }
+
+    /**
+     * A new scalar, quoted only when YAML would otherwise read it as something else.
+     *
+     * <p>A value added to a list has no original to copy a quoting style from, so this decides.
+     * Anything that would parse as a boolean, a number, a null or a date is quoted, because
+     * {@code - yes} in an ODK YAML is the boolean true and not the string "yes" - and so is a
+     * value carrying a character that would change the structure.
+     */
+    static String scalarFor(String value) {
+        String text = value == null ? "" : value.trim();
+        if (text.isEmpty()) {
+            return "''";
+        }
+        String lower = text.toLowerCase(Locale.ROOT);
+        boolean looksLikeSomethingElse =
+                lower.matches("true|false|yes|no|on|off|null|~")
+                || text.matches("[-+]?[0-9][0-9_]*(\\.[0-9]*)?([eE][-+]?[0-9]+)?")
+                // A colon only separates a key from a value when whitespace follows it, or when it
+                // ends the token. Quoting on any colon at all put quotes round every IRI in the
+                // file - and an import's mirror_from is always a URL, which is the single most
+                // common thing anybody adds to one of these lists. Same for '#': it starts a
+                // comment only after whitespace.
+                || text.contains(": ") || text.contains(":\t") || text.endsWith(":")
+                || text.contains(" #") || text.contains("\t#") || text.startsWith("#")
+                || text.indexOf('\n') >= 0
+                || text.startsWith("[") || text.startsWith("{") || text.startsWith("*")
+                || text.startsWith("&") || text.startsWith("!") || text.startsWith("%")
+                || text.startsWith("@") || text.startsWith("`") || text.startsWith("\"")
+                || text.startsWith("'");
+        if (!looksLikeSomethingElse) {
+            return text;
+        }
+        return "\"" + text.replace("\\", "\\\\").replace("\"", "\\\"") + "\"";
+    }
+
+    /**
      * The node a path names, or null.
      *
      * <p>Accepts {@code id}, {@code robot_report.fail_on} and {@code export_formats[1]}, and
