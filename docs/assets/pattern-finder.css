@@ -1,0 +1,115 @@
+/*
+ * The pattern finder's own styling, on top of MkDocs Material.
+ *
+ * Every colour here comes from a Material CSS variable rather than a literal, because the site
+ * has a light and a dark palette with a toggle and this page is a long list of rows - a hardcoded
+ * background is the one thing guaranteed to look wrong in one of the two schemes.
+ */
+
+.ob-finder {
+  margin: 1rem 0 2rem;
+}
+
+#ob-q {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.6rem 0.75rem;
+  font-size: 0.9rem;
+  color: var(--md-default-fg-color);
+  background: var(--md-default-bg-color);
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 0.2rem;
+}
+
+#ob-q:focus {
+  outline: none;
+  border-color: var(--md-accent-fg-color);
+}
+
+.ob-facet-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.3rem;
+  margin-top: 0.6rem;
+}
+
+.ob-facet-label {
+  min-width: 4.6rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--md-default-fg-color--light);
+}
+
+.ob-chip {
+  padding: 0.15rem 0.5rem;
+  font-size: 0.72rem;
+  font-family: inherit;
+  color: var(--md-default-fg-color--light);
+  cursor: pointer;
+  background: var(--md-default-fg-color--lightest);
+  border: 1px solid transparent;
+  border-radius: 1rem;
+}
+
+.ob-chip:hover {
+  color: var(--md-default-fg-color);
+}
+
+.ob-chip-on {
+  color: var(--md-primary-bg-color);
+  background: var(--md-primary-fg-color);
+}
+
+.ob-count {
+  margin: 0.8rem 0 0.4rem;
+  font-size: 0.75rem;
+  color: var(--md-default-fg-color--light);
+}
+
+.ob-hits {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ob-hit {
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--md-default-fg-color--lightest);
+}
+
+.ob-name {
+  font-weight: 600;
+}
+
+.ob-same {
+  margin-left: 0.4rem;
+  padding: 0.05rem 0.35rem;
+  font-size: 0.65rem;
+  color: var(--md-default-fg-color--light);
+  background: var(--md-default-fg-color--lightest);
+  border-radius: 0.2rem;
+}
+
+.ob-meta,
+.ob-cq {
+  display: block;
+  font-size: 0.72rem;
+  color: var(--md-default-fg-color--light);
+}
+
+.ob-meta {
+  margin-top: 0.1rem;
+}
+
+.ob-cq {
+  margin-top: 0.15rem;
+  font-style: italic;
+}
+
+/* ontoink sizes its own container; this only stops a graph from touching the prose above it. */
+.ontoink-container {
+  margin: 1rem 0;
+}

@@ -1,0 +1,222 @@
+/*
+ * The landing page: a hero, feature cards, and sections that arrive as you scroll.
+ *
+ * Three rules this file keeps, each of which is the difference between a nice page and a page that
+ * fails somebody:
+ *
+ * 1. EVERY COLOUR IS A MATERIAL VARIABLE. The site has a light and a dark palette with a toggle.
+ *    A literal background is the one thing guaranteed to look wrong in one of the two.
+ *
+ * 2. CONTENT IS VISIBLE BY DEFAULT. The reveal animation is opt-in: landing.js adds
+ *    `data-reveal="on"` to the page, and only then does anything start hidden. With JavaScript
+ *    off, broken or still loading, every section is simply there. A documentation front page that
+ *    needs JavaScript to show its text is not a documentation front page.
+ *
+ * 3. prefers-reduced-motion TURNS IT OFF. Motion that cannot be refused is an accessibility
+ *    problem, not a flourish, and this is a page somebody may be reading because they are stuck.
+ */
+
+/* ---------------------------------------------------------------- the hero */
+
+.ob-hero {
+  margin: 0 0 3rem;
+  padding: 2.5rem 0 2rem;
+  text-align: center;
+  border-bottom: 1px solid var(--md-default-fg-color--lightest);
+}
+
+.ob-hero h1 {
+  margin: 0 0 0.6rem;
+  font-size: 2.4rem;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+.ob-hero .ob-tagline {
+  max-width: 34rem;
+  margin: 0 auto 1.4rem;
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--md-default-fg-color--light);
+}
+
+.ob-hero .ob-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  justify-content: center;
+}
+
+.ob-hero .ob-sub {
+  margin-top: 1rem;
+  font-size: 0.7rem;
+  color: var(--md-default-fg-color--light);
+}
+
+/* ------------------------------------------------------------ feature grid */
+
+.ob-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 1rem;
+  margin: 1.5rem 0 2.5rem;
+}
+
+.ob-card {
+  padding: 1.1rem 1.2rem;
+  background: var(--md-code-bg-color);
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 0.3rem;
+}
+
+.ob-card h3 {
+  margin: 0 0 0.4rem;
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.ob-card p {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.55;
+  color: var(--md-default-fg-color--light);
+}
+
+.ob-card .ob-icon {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: var(--md-primary-fg-color);
+}
+
+.ob-card .ob-icon svg {
+  width: 1.4rem;
+  height: 1.4rem;
+  fill: currentcolor;
+}
+
+/* A number worth staring at: 159 patterns, 1744 tests, two Protege versions. */
+.ob-figures {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+  gap: 0.8rem;
+  margin: 1.5rem 0 2.5rem;
+  text-align: center;
+}
+
+.ob-figure strong {
+  display: block;
+  font-size: 1.7rem;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--md-primary-fg-color);
+}
+
+.ob-figure span {
+  font-size: 0.7rem;
+  line-height: 1.4;
+  color: var(--md-default-fg-color--light);
+}
+
+/* ------------------------------------------------- before and after, as prose */
+
+.ob-compare {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 1rem;
+  margin: 1.5rem 0 2.5rem;
+}
+
+.ob-compare > div {
+  padding: 1rem 1.1rem;
+  border-radius: 0.3rem;
+}
+
+.ob-without {
+  background: var(--md-code-bg-color);
+  border-left: 3px solid var(--md-default-fg-color--lighter);
+}
+
+.ob-with {
+  background: var(--md-code-bg-color);
+  border-left: 3px solid var(--md-primary-fg-color);
+}
+
+.ob-compare h3 {
+  margin: 0 0 0.5rem;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.ob-compare ul {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.78rem;
+  line-height: 1.6;
+  color: var(--md-default-fg-color--light);
+}
+
+/* ------------------------------------------------------- reveal on scroll */
+
+/*
+ * Opt-in, and only once the script has said so. Without [data-reveal="on"] on the page these
+ * rules do not apply at all, so no-JS readers see the finished page rather than an empty one.
+ */
+[data-reveal="on"] .ob-reveal {
+  opacity: 0;
+  transform: translateY(1rem);
+  transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+  will-change: opacity, transform;
+}
+
+[data-reveal="on"] .ob-reveal.ob-shown {
+  opacity: 1;
+  transform: none;
+}
+
+/* Staggered, so a grid arrives as a grid rather than as one block. */
+[data-reveal="on"] .ob-reveal.ob-shown .ob-card:nth-child(2),
+[data-reveal="on"] .ob-reveal.ob-shown .ob-figure:nth-child(2) {
+  transition-delay: 0.06s;
+}
+
+[data-reveal="on"] .ob-reveal.ob-shown .ob-card:nth-child(3),
+[data-reveal="on"] .ob-reveal.ob-shown .ob-figure:nth-child(3) {
+  transition-delay: 0.12s;
+}
+
+[data-reveal="on"] .ob-reveal.ob-shown .ob-card:nth-child(4),
+[data-reveal="on"] .ob-reveal.ob-shown .ob-figure:nth-child(4) {
+  transition-delay: 0.18s;
+}
+
+/*
+ * Somebody who has asked their system for less motion gets none, including no transition. Written
+ * as `revert` rather than as a second set of values so there is one definition of "normal".
+ */
+@media (prefers-reduced-motion: reduce) {
+  [data-reveal="on"] .ob-reveal,
+  [data-reveal="on"] .ob-reveal.ob-shown {
+    opacity: 1;
+    transform: none;
+    transition: none;
+    will-change: auto;
+  }
+}
+
+/* ------------------------------------------------------------------ mobile */
+
+@media screen and (max-width: 44.9375em) {
+  .ob-hero {
+    padding: 1.5rem 0 1.2rem;
+  }
+
+  .ob-hero h1 {
+    font-size: 1.8rem;
+  }
+
+  .ob-figure strong {
+    font-size: 1.4rem;
+  }
+}

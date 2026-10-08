@@ -10,3 +10,8 @@
 #   mkdocs serve
 mkdocs==1.6.1
 mkdocs-material==9.5.49
+# Renders the pattern graphs. Deliberately WITHOUT the [reasoning] extra: that pulls in
+# owlready2, and ontoink then runs a HermiT consistency check per fence - a JVM per page -
+# which measured at 4.7s each and turns a 12-second site build into most of a quarter hour.
+# The graphs show the axioms each pattern asserts, which is what the pages say they show.
+ontoink==0.7.8

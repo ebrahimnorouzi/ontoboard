@@ -4,12 +4,23 @@
 
 ### Install
 
-1. Download `ontoboard-<version>.jar` from the releases page.
-2. **Remove any older `ontoboard-*.jar`** from Protégé's `plugins/` folder. The bundle is
+[:material-download: **Download the latest OntoBoard**](https://github.com/ebrahimnorouzi/ontoboard/releases/latest/download/ontoboard.jar){ .md-button .md-button--primary }
+[All releases](https://github.com/ebrahimnorouzi/ontoboard/releases){ .md-button }
+
+That first link always serves the newest build — it is an unversioned copy of the same jar every
+release publishes, so the URL never has to be rewritten. If you need a specific version, or want
+to read what was verified in it, take the versioned `ontoboard-<version>.jar` from
+[the releases page](https://github.com/ebrahimnorouzi/ontoboard/releases); every release carries
+its host smoke receipt as its release notes, recording which Protégés it was checked on and what
+was *not* checked.
+
+Then:
+
+1. **Remove any older `ontoboard-*.jar`** from Protégé's `plugins/` folder. The bundle is
    `singleton:=true`; two versions side by side stop it resolving and the tab silently never
    appears.
-3. Copy the jar into `plugins/`.
-4. Restart Protégé, then **Window → Tabs → OntoBoard**.
+2. Copy the jar into `plugins/`.
+3. Restart Protégé, then **Window → Tabs → OntoBoard**.
 
 Protégé **5.6.x** is recommended. It runs on 5.5.0 with fewer ROBOT operations available —
 see [Known constraints](limitations.md#known-constraints).

@@ -45,8 +45,18 @@ theme:
         icon: material/weather-sunny
         name: Switch to light mode
 
+extra_css:
+  - assets/landing.css
+  - assets/pattern-finder.css
+
 markdown_extensions:
   - admonition
+  # Makes `markdown` on a raw HTML block mean something. The landing page lays its hero,
+  # cards and comparison out in <div> elements and writes their contents as Markdown; with
+  # this extension absent the attribute is inert and the whole block passes through raw, so
+  # the page renders literal '###' and ':material-draw:' text. Measured before believing it:
+  # without md_in_html the built index.html had 0 <h3> elements and 9 literal '###'.
+  - md_in_html
   - attr_list
   - def_list
   - tables
@@ -56,14 +66,31 @@ markdown_extensions:
   - pymdownx.superfences
   - pymdownx.highlight:
       anchor_linenums: true
+  # Material's icon shortcodes, so a button can carry :material-download: rather than a word.
+  # Without this configured the shortcode renders as literal text, which is how a download button
+  # ends up reading ":material-download: Download".
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
 
 plugins:
   - search
+  # Renders the ```ontoink fences on the generated pattern pages into interactive graphs at
+  # build time. It registers its own custom_fences on pymdownx.superfences in on_config, so
+  # nothing has to be declared for it under markdown_extensions.
+  #
+  # Deliberately with no options set. Its three config keys - report, quality_gate and
+  # strict_quality - and its shape, recommend_shapes and shape_drift fence keys all route their
+  # findings through logging.getLogger('mkdocs.plugins.ontoink') BY DESIGN so that --strict
+  # fails the build on them. Across 159 real-world patterns they would fire, and this site
+  # builds with --strict. A fence carrying only `source:` logs nothing.
+  - ontoink
 
 nav:
   - Home: index.md
   - Using it:
       - Getting started: getting-started.md
+      - Pattern library: patterns/index.md
       - Working with ODK: odk-workflow.md
       - Collaboration: collaboration.md
       - Testing collaboration locally: testing-collaboration-locally.md

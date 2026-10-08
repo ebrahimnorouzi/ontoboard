@@ -19,6 +19,11 @@ on:
       - 'mkdocs.yml'
       - 'docs-requirements.txt'
       - '.github/workflows/pages.yml'
+      # The pattern pages are generated from these at build time, so a pattern added or reindexed
+      # has to rebuild the site. Without this the library on the web would quietly lag the library
+      # in the plugin, which is the one thing a published catalogue must not do.
+      - 'patterns/**'
+      - 'tools/generate-pattern-pages.py'
   workflow_dispatch:
 
 permissions:
@@ -50,8 +55,51 @@ jobs:
       - name: Install mkdocs
         run: pip install -r docs-requirements.txt
 
+      # 159 pattern pages and 159 Turtle copies, from patterns/index.tsv. Generated rather than
+      # committed: 159 Markdown files in git would rot the moment somebody edited one by hand, and
+      # the index they come from is itself generated and checked by PatternIndexTest.
+      - name: Generate the pattern pages
+        run: python tools/generate-pattern-pages.py
+
       - name: Build
+        # ONTOINK_REASONER=none is not a preference, it is the difference between a 12-second build
+        # and a 15-minute one. Measured: with owlready2 importable, ontoink runs a HermiT
+        # consistency check per fence - a JVM per page - at about 4.7s each, and 159 of those is
+        # most of a quarter hour. owlready2 is an optional extra that `pip install ontoink` does not
+        # pull in, so CI would skip it anyway; the variable is set explicitly because relying on a
+        # dependency being absent is not a decision anybody made, and the day something pulls it in
+        # transitively the build would get fifteen minutes slower for no visible reason.
+        #
+        # It also switches off inference materialisation, which is right for this page: the graphs
+        # are the axioms each pattern asserts, and the pages say so.
+        env:
+          ONTOINK_REASONER: none
         run: mkdocs build --strict
+
+      # ontoink's fence renderer wraps its whole body in `except Exception` and returns a
+      # <div class="ov-error"> carrying the traceback, without raising and without logging. So a
+      # bad source path or a pattern.ttl rdflib cannot parse produces a GREEN --strict build with a
+      # red traceback box baked into the page - and across 159 generated pages nobody would see it.
+      # This is the assertion that makes the feature honest rather than merely green.
+      #
+      # Matching the opening div, not the bare class name: ov-error is also a CSS class in the
+      # stylesheet ontoink inlines into every page, so grepping for the name alone matches all 159
+      # pages whether or not anything failed. Measured that mistake before trusting it.
+      - name: No fence rendered an error
+        run: |
+          if grep -rl '<div class="ov-error"' site/patterns > /dev/null 2>&1; then
+            echo "::error::ontoink baked a render error into these pages:"
+            grep -rl '<div class="ov-error"' site/patterns
+            exit 1
+          fi
+          echo "$(find site/patterns -name index.html | wc -l) pattern pages, none with a render error"
+
+      # Said out loud because it is large and the reason is not obvious: ontoink inlines its own
+      # ~650 KB of JS and CSS into every page carrying a graph and offers no way to externalise it,
+      # so most of this is 159 copies of the same bundle. GitHub Pages allows 1 GB. If this line
+      # ever approaches that, the answer is fewer graph pages, not a smaller bundle.
+      - name: How big the site came out
+        run: du -sh site && du -sh site/patterns
 
       - uses: actions/configure-pages@v5
 

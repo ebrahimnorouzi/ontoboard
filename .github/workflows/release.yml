@@ -18,6 +18,11 @@
 #
 # Every tag keeps its own release and its own jar, so older versions stay downloadable. The
 # release page lists them all, newest first, and /releases/latest always resolves to the newest.
+#
+# Each release also carries an unversioned copy of the jar, so that
+# /releases/latest/download/ontoboard.jar is a permanent one-click download of the current build -
+# which is what the documentation links to. See the step near the bottom for why the versioned name
+# cannot serve that purpose.
 name: release
 
 on:
@@ -94,6 +99,24 @@ jobs:
         working-directory: protege-plugin
         run: unzip -t target/ontoboard-*.jar > /dev/null && echo "valid archive"
 
+      # A second copy under a name that never changes, so one URL always fetches the newest jar:
+      #
+      #     https://github.com/ebrahimnorouzi/ontoboard/releases/latest/download/ontoboard.jar
+      #
+      # GitHub's /releases/latest/download/<asset> redirect needs the asset NAME to be stable, and
+      # ontoboard-1.93.0.jar is not - a documented link would pin whichever version was current the
+      # day somebody wrote the sentence, and go on serving it after twenty releases. The versioned
+      # jar is still published beside it, because a user reporting a bug has to be able to say
+      # which build they ran and to fetch that exact one again.
+      #
+      # Copied rather than renamed: both names point at the same bytes from the same build, so
+      # there is no question of the stable link serving something that was not smoked.
+      - name: A stable filename for the latest-download link
+        working-directory: protege-plugin
+        run: |
+          cp "target/ontoboard-${{ steps.version.outputs.version }}.jar" target/ontoboard.jar
+          ls -l target/ontoboard.jar
+
       # The receipt is the release note. It records what was verified in a real Protege, on which
       # hosts, and - as importantly - what was not.
       - name: Publish
@@ -101,5 +124,7 @@ jobs:
         with:
           name: OntoBoard ${{ steps.version.outputs.version }} (${{ steps.when.outputs.date }})
           body_path: protege-plugin/tools/smoke-receipt/${{ steps.version.outputs.version }}.txt
-          files: protege-plugin/target/ontoboard-${{ steps.version.outputs.version }}.jar
+          files: |
+            protege-plugin/target/ontoboard-${{ steps.version.outputs.version }}.jar
+            protege-plugin/target/ontoboard.jar
           fail_on_unmatched_files: true
