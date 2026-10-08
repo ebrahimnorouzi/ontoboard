@@ -13,6 +13,40 @@ release notes on
 [the releases page](https://github.com/ebrahimnorouzi/ontoboard/releases), carries the same
 record for that version.
 
+- **Every non-ASCII character in a spreadsheet was corrupted on the way in, fixed in
+  1.110.0.** The worst defect found in this area, and it had been there since templates
+  arrived in 1.19.0.
+
+  `IOHelper.readTable(String)` opens the file with the *platform default* charset. Measured on
+  a Windows machine, where `Charset.defaultCharset()` is `windows-1252`, against the MatWerk
+  `city` sheet — which holds the bytes `4A C3 BC` for `Jü`:
+
+  | | |
+  |---|---|
+  | the file, decoded as the UTF-8 it is | `J<U+00FC>lich` — 6 characters |
+  | what `TemplateSheet.read` returned | `J<U+00C3><U+00BC>lich` — **7 characters** |
+  | UTF-8 bytes decoded as ISO-8859-1 | `J<U+00C3><U+00BC>lich` — identical |
+
+  So `Jülich`, `Saarbrücken`, `Institut für Materialwissenschaft` and `Humboldt-Universität zu
+  Berlin` were all entering the ontology as mojibake through *Template… > Add the axioms*, and
+  nothing reported it.
+
+  **Two reasons it hid for ninety releases.** It is platform-dependent — on a machine whose
+  default charset is already UTF-8 the same code is correct, so neither the suite nor a release
+  build would show it. And it is invisible at a terminal: printing the mojibake string `fÃ¼r`
+  to a cp1252 console emits the bytes `C3 BC`, which a UTF-8 terminal then renders as `ü`. The
+  bug round-trips into looking correct. It was only caught by comparing code points, and only
+  looked for because a write-then-read-again test produced a double-encoded file.
+
+  The fix uses `IOHelper`'s own `readCSV(Reader)` and `readTSV(Reader)` overloads with an
+  explicit UTF-8 reader — ROBOT's parser and its quoting rules, with only the decoding changed.
+  An extension this does not recognise is still passed to `readTable`, so its refusal and its
+  wording are unchanged. A leading byte order mark is also dropped now: three bytes that decode
+  to one invisible character, which otherwise sits in front of the first heading so `ID` is not
+  recognised as `ID` and nothing on screen says why.
+
+  The tests are written in code points rather than literals, for the reason above.
+
 - **A label column with a language tag produced no label at all, fixed in 1.108.0.** The first
   defect found by running a real knowledge graph through the plugin rather than a fixture, and
   the first one where ROBOT raises nothing, produces axioms, and gets them wrong.

@@ -201,6 +201,74 @@ class TemplateSheetTest {
         assertFalse(result.getProblems().isEmpty());
     }
 
+    // ---------- the file is UTF-8, whatever the machine thinks ----------
+
+    /**
+     * A spreadsheet is read as UTF-8 and not as whatever the machine's default charset is.
+     *
+     * <p>{@code IOHelper.readTable(String)} opens the file with the platform default. Measured
+     * on a Windows machine, where {@code Charset.defaultCharset()} is {@code windows-1252}: the
+     * MatWerk city sheet holds the bytes {@code 4A C3 BC} for J&uuml;, and the reader returned
+     * the <b>seven</b>-character string {@code J U+00C3 U+00BC lich} - which is exactly UTF-8
+     * decoded as ISO-8859-1. So every German name in those sheets was entering the ontology as
+     * mojibake, and nothing said so.
+     *
+     * <p>It hid because it is platform-dependent. On a machine whose default is already UTF-8
+     * the old code is correct, so neither the suite nor a release build would show it. This
+     * test is written in code points for the same reason: a console can mangle mojibake back
+     * into the right-looking character.
+     */
+    @Test
+    void aSheetIsReadAsUtf8WhateverTheMachineDefaultIs() throws Exception {
+        String umlaut = "J" + ((char) 0x00fc) + "lich";
+        String dash = "298" + ((char) 0x2014) + "305";
+        File file = new File(dir, "city.tsv");
+        Files.write(file.toPath(), ("#\tLabel\tRange\nID\tLABEL\tA rdfs:comment\n"
+                + "ex:0001\t" + umlaut + "\t" + dash + "\n")
+                .getBytes(Charset.forName("UTF-8")));
+
+        List<List<String>> rows = TemplateSheet.read(file);
+
+        assertEquals(umlaut, rows.get(2).get(1),
+                "got " + rows.get(2).get(1).length() + " characters; 7 means the UTF-8 bytes "
+                        + "were decoded one byte at a time");
+        assertEquals(6, rows.get(2).get(1).length(),
+                "J, u-umlaut, l, i, c, h - and 7 is the mojibake");
+        assertEquals(dash, rows.get(2).get(2));
+        assertEquals(7, rows.get(2).get(2).length());
+    }
+
+    @Test
+    void aCsvIsReadAsUtf8Too() throws Exception {
+        String umlaut = "Saarbr" + ((char) 0x00fc) + "cken";
+        File file = new File(dir, "city.csv");
+        Files.write(file.toPath(), ("#,Label\nID,LABEL\nex:0001," + umlaut + "\n")
+                .getBytes(Charset.forName("UTF-8")));
+
+        assertEquals(umlaut, TemplateSheet.read(file).get(2).get(1));
+    }
+
+    /**
+     * A byte order mark is three bytes that decode to one invisible character. Left in place it
+     * sits in front of the first heading, so {@code ID} is not recognised as {@code ID} and
+     * nothing on screen shows why.
+     */
+    @Test
+    void aByteOrderMarkDoesNotHideTheIdColumn() throws Exception {
+        File file = new File(dir, "withbom.tsv");
+        Files.write(file.toPath(), ("﻿#\tLabel\nID\tLABEL\nex:0001\tsteel\n")
+                .getBytes(Charset.forName("UTF-8")));
+
+        List<List<String>> rows = TemplateSheet.read(file);
+
+        assertEquals("#", rows.get(0).get(0),
+                "the mark is still in front of the first heading");
+        TemplateSheet.Result result = TemplateSheet.run("withbom.tsv", rows, context,
+                prefixes, null);
+        assertTrue(result.getProblems().isEmpty(), result.getProblems().toString());
+        assertEquals(1, result.getDataRows());
+    }
+
     // ---------- a column that is wrong in a way ROBOT does not mind ----------
 
     /**

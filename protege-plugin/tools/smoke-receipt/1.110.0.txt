@@ -1,0 +1,115 @@
+OntoBoard 1.110.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-10-08  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 9/9  test 10/10
+  2026-10-08  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 9/9  test 10/10
+
+
+EVERY NON-ASCII CHARACTER IN A SPREADSHEET WAS CORRUPTED ON THE WAY IN
+
+The worst defect found in this area, present since templates arrived in 1.19.0, and found by
+accident while testing something else.
+
+IOHelper.readTable(String) opens the file with the PLATFORM DEFAULT charset. Measured on this
+Windows machine, where Charset.defaultCharset() is windows-1252, against the MatWerk city
+sheet, which holds the bytes 4A C3 BC:
+
+    the file decoded as the UTF-8 it is       J <U+00FC> l i c h      6 characters
+    what TemplateSheet.read returned          J <U+00C3> <U+00BC> lich   7 characters
+    UTF-8 bytes decoded as ISO-8859-1         J <U+00C3> <U+00BC> lich   identical
+
+So Julich, Saarbrucken, Institut fuer Materialwissenschaft and Humboldt-Universitaet zu Berlin
+were all entering the ontology as mojibake through Template... > Add the axioms, and nothing
+reported it.
+
+TWO REASONS IT HID FOR NINETY RELEASES
+
+It is platform-dependent. On a machine whose default charset is already UTF-8 the same code is
+correct, so neither the test suite nor a release build would ever show it.
+
+And it is invisible at a terminal. Printing the mojibake string fA<<r to a cp1252 console emits
+the bytes C3 BC, which a UTF-8 terminal then renders as the correct character. The bug
+round-trips into looking right. An earlier probe in this session printed "Institut fuer
+Materialwissenschaft" with a correct-looking umlaut while holding the broken string, and that
+was taken as evidence the reader was fine. It was not evidence of anything.
+
+It was caught only because a write-then-read-again test over 99,154 real cells produced a
+DOUBLE-ENCODED file - J C3 83 C2 BC lich - which can only happen if the string in memory was
+already wrong. Then code points settled it, because consoles cannot be trusted here.
+
+The fix uses IOHelper's own readCSV(Reader) and readTSV(Reader) overloads with an explicit
+UTF-8 reader: ROBOT's parser, ROBOT's quoting rules, only the decoding changed. An extension
+this does not recognise still goes to readTable, so that refusal and its wording are unchanged.
+A leading byte order mark is dropped too - three bytes that decode to one invisible character,
+which otherwise sits in front of the first heading so ID is not recognised as ID.
+
+A SHEET YOU CAN EDIT, AND A FIX YOU CAN APPLY
+
+SheetBook holds a whole folder open at once, because that is the only way the interesting
+questions have answers: every reference in the MatWerk dataportal sheet names a row defined
+five sheets upstream. It carries the edits a spreadsheet needs - set a cell, add, insert,
+duplicate and delete a row, fill down, paste a block - with its own bounded undo, since
+Protege's undo covers the ontology and these are files.
+
+Rows and columns are numbered as a spreadsheet numbers them: row 1 is the author's headings,
+row 2 is ROBOT's, data starts at row 3. Most of its tests are about that, because getting it
+wrong puts every message one or two rows away from what the person is looking at.
+
+SheetFix applies what the audit suggested, one finding or a kind at a time. Measured on the
+real sheets:
+
+    1,278 findings, 340 offered as batches (145 whitespace, 195 curly quote or long dash)
+      307 applied
+       33 skipped because an earlier fix in the same batch had already changed that cell
+      971 findings remain, which is exactly 307 fewer
+
+    build before   36,761 axioms   6,771 individuals   31,675 combined
+    build after    36,761 axioms   6,771 individuals   31,675 combined
+
+Identical. That is the property that matters: a bulk fix that quietly changed what a sheet
+produces would be far worse than the whitespace it cleaned up.
+
+THREE DEFECTS THE NEW TESTS FOUND IN THE NEW CODE
+
+Worth recording because each would have shipped.
+
+A TSV WRITER THAT COULD NOT BE READ BACK. It escaped nothing, on the reasoning that a tab
+cannot appear inside a cell so no quoting is needed. But ROBOT reads both formats through
+opencsv, which begins a quoted field at any quote directly following a delimiter - so a cell
+starting with one swallowed the rest of the file and came back as "Unterminated quoted field at
+end of CSV line". There is such a cell in req_2, and the published original quotes it. The rule
+is now CSV's rule for both formats.
+
+A FILL THAT COPIED A HEADING OVER THE DATA. fillDown read from whatever row it was given,
+including row 1, so filling column 4 from row 1 copied the author's own heading - "City" - down
+over the data and reported three cells changed. A fill now refuses any row above the first data
+row.
+
+A TEST THAT MEASURED THE WRONG THING. Three of the first SheetBook failures were the fixture's
+fault, not the product's: the sample organization referenced a city no sheet defined, so an
+audit that was supposed to be empty legitimately was not. Reported here because the fourth
+failure in the same run was the real fill-down bug, and telling them apart is the work.
+
+NUMBERS
+
+2077 tests, 0 failures. 44 new - 31 for the book, 10 for the fix, 3 for the charset and the
+byte order mark.
+
+42/42 classes named in plugin.xml load on both hosts. 163 patterns indexed. Quality report end
+to end: 6 findings, 2 of them errors.
+
+99,154 real cells written and read back with 0 differences, which is the test that found the
+charset bug and the quoting bug.
+
+On 5.5.0, cellfie-2.2.4 and swrltab-plugin-2.1.3 fail to install. Neither is ours.
+
+STILL OPEN
+
+The editor's Swing surface. Everything above is the model: a sheet can be opened, edited,
+audited, corrected and written back, and all of it is tested headlessly - but the only way to
+reach it is still the read-only Check sheets... item. The table, the completing cell editor and
+the create-the-referenced-thing action are next, and they call this rather than reimplementing
+it.
+
+The starter template still produces zero axioms on every real project.

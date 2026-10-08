@@ -2,6 +2,11 @@ package de.fizkarlsruhe.ise.ontoboard.robot;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.FileInputStream;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.Reader;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
@@ -168,12 +173,64 @@ public final class TemplateSheet {
         if (file == null || !file.isFile()) {
             throw new RobotException("No template file to read.");
         }
+        String name = file.getName().toLowerCase();
+        boolean csv = name.endsWith(".csv");
+        boolean tsv = name.endsWith(".tsv") || name.endsWith(".tab");
         try {
-            return IOHelper.readTable(file.getAbsolutePath());
+            if (!csv && !tsv) {
+                // An extension this does not know stays with ROBOT, so its refusal and its
+                // wording are unchanged.
+                return IOHelper.readTable(file.getAbsolutePath());
+            }
+            // UTF-8 EXPLICITLY. IOHelper.readTable(String) opens the file with the platform
+            // default charset, so on a Windows machine - where Charset.defaultCharset() is
+            // windows-1252 - every non-ASCII character in a UTF-8 spreadsheet is corrupted on
+            // the way in. Measured on the MatWerk city sheet: the file holds the bytes
+            // 4A C3 BC for "Ju" + u-umlaut, and readTable returned the seven-character string
+            // J U+00C3 U+00BC lich. That is exactly UTF-8 bytes decoded as ISO-8859-1, and it
+            // means every German name in those sheets - Julich, Saarbrucken, Institut fuer
+            // Materialwissenschaft - was entering the ontology as mojibake through
+            // Template... > Add the axioms.
+            //
+            // It hid because it is platform-dependent: on a machine whose default charset is
+            // already UTF-8 the same code is correct, so neither the test suite nor a release
+            // build would show it. The Reader overloads take ROBOT's own parser, with its own
+            // quoting rules, and only the decoding changes.
+            InputStream bytes = new FileInputStream(file);
+            try {
+                Reader reader = new InputStreamReader(bytes, Charset.forName("UTF-8"));
+                List<List<String>> rows = csv ? IOHelper.readCSV(reader)
+                        : IOHelper.readTSV(reader);
+                return withoutByteOrderMark(rows);
+            } finally {
+                bytes.close();
+            }
         } catch (IOException cannotRead) {
             throw new RobotException("Could not read " + file.getName() + ": "
                     + cannotRead.getMessage(), cannotRead);
         }
+    }
+
+    /**
+     * Drops a byte order mark from the very first cell.
+     *
+     * <p>A UTF-8 BOM is three bytes that decode to one invisible character, and a spreadsheet
+     * program may write one. Left in place it sits in front of the first header - usually
+     * {@code ID} - so the column is not recognised, and nothing on screen shows why.
+     */
+    private static List<List<String>> withoutByteOrderMark(List<List<String>> rows) {
+        if (rows.isEmpty() || rows.get(0).isEmpty()) {
+            return rows;
+        }
+        String first = rows.get(0).get(0);
+        if (first == null || first.isEmpty() || first.charAt(0) != '﻿') {
+            return rows;
+        }
+        List<String> header = new ArrayList<String>(rows.get(0));
+        header.set(0, first.substring(1));
+        List<List<String>> fixed = new ArrayList<List<String>>(rows);
+        fixed.set(0, header);
+        return fixed;
     }
 
     /**
