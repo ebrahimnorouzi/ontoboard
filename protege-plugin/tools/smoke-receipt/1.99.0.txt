@@ -1,0 +1,157 @@
+OntoBoard 1.99.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-10-08  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 9/9  test 10/10
+  2026-10-08  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 9/9  test 10/10
+
+
+REFRESH IMPORTS READS THE PROJECT, NOT THE DIRECTORY
+
+Roadmap item 2, the import_group half. Project > Refresh imports found its imports by listing
+src/ontology/imports/ and read each one's upstream source from a "# Source:" comment at the top of
+the term list.
+
+That comment is OntoBoard's own invention - ImportModules.writeTerms puts it there. Measured
+across four real ODK projects:
+
+  nfdicore   9 term lists, 0 with a '# Source:' line
+  mwo        4 term lists, 0
+  pmdco     10 term lists, 0
+  ecto      16 term lists, 0
+
+Thirty-nine term lists, none of them carrying it. So the rebuild worked on projects OntoBoard had
+created and on no real one, and every import of every real repository reported "has a term list
+but does not record where its terms came from, so a refresh cannot know what to extract from".
+
+The project said so all along, in the place ODK itself looks: import_group.products, where each
+product names an id and either a mirror_from or nothing - and nothing means ODK downloads
+$(OBOBASE)/<id>.owl.
+
+WHAT CHANGED, IN NUMBERS, OVER THOSE FOUR PROJECTS
+
+  rows                          39   (35 declared products + 4 on disk and undeclared)
+  with a known source           35   (was 0)
+  rebuilt by a refresh          15   (was 0)
+  refused with a named reason   20
+  on disk and undeclared         4
+
+The 15 are the slme modules, and they are now extracted with the PROJECT's method and individuals
+setting rather than this plugin's default - a project declaring module_type_slme: STAR and getting
+BOT back would have had its module replaced by a larger one that no longer matches its own CI.
+
+WHAT IT REFUSES, AND WHY REFUSING IS THE ANSWER
+
+  custom        14   ODK's own generated rule for a custom module is three lines: two echoes
+                     saying "This rule needs to be overwritten in <project>.Makefile" and @false.
+                     ODK declines to build it generically, because the real command is
+                     hand-written there - NFDIcore's swo rule runs a SPARQL preprocess, a MIREOT
+                     extract with an upper-terms file, two injects, a remove and two seds.
+  slme SUBSET    3   ROBOT reaches that extraction through ExtractOperation.extractSubset rather
+                     than the module extractor this uses. Falling back to BOT would write a
+                     different module and say nothing.
+  mirror         2   The module IS the mirrored ontology. ODK's rule for it has no term list
+                     prerequisite at all - so NFDIcore's bfo_terms.txt is a file its own build
+                     never opens, and reporting it MISSING would send somebody to write a list
+                     nothing reads.
+  filter         1   ODK extracts BOT and then removes the axioms outside the base IRIs. Without
+                     the removal the module comes out larger than the repository's.
+
+Every one of those is ODK's own rule for that module_type, said in words. The worst outcome
+available here is a module that looks right, differs from the one the repository holds, and says
+nothing about the difference.
+
+EVERY DEFAULT IS QUOTED FROM ODK, NOT GUESSED
+
+The source resolution is Makefile.jinja2's download-mirror- rule: mirror_from if given, else the
+use_variant path under the product's own directory, else $(OBOBASE)/<id>.owl, plus .gz when
+use_gzipped. The inherited slme defaults are ImportGroup's field initialisers in odkcore/model.py
+- module_type "slme", module_type_slme "BOT", slme_individuals "include" - and the
+product-inherits-group rule is its derive_fields, including fast_slme normalising to slme.
+
+Checked against a real ODK-generated Makefile rather than taken on trust: a bare `- id: iao`
+became `curl -L $(OBOBASE)/iao.owl` and `extract ... --individuals include --method BOT`, and a
+product declaring STAR with individuals excluded got its own rule saying exactly that.
+
+TWO STATES A DIRECTORY SCAN CANNOT SEE
+
+DECLARED AND ABSENT. A product in the YAML with nothing built for it - exactly where 1.97.0's
+"Add to a list..." leaves you. None of the four projects is in this state, but every user who adds
+a product is, until they run an extraction.
+
+ON DISK AND UNDECLARED. A module in imports/ that no product names. ODK builds its IMPORTS
+variable from import_group.products, so `make refresh-imports` and `make all_imports` never touch
+that file and nothing regenerates it. Found in three of the four: nfdicore's schema (commented out
+of its products while both files sit in imports/), mwo's foaf, ecto's iao and ons.
+
+AND ONTOBOARD DOES THIS TO ITSELF
+
+OdkScaffold writes
+
+    import_group:
+      products: []
+
+into every project the plugin generates, and ROBOT > Import terms... writes the module, the term
+list and the catalog entry without adding the product. So a repository built entirely with this
+plugin has imports that ODK's own build does not know about: IMPORTS is empty, and
+`make refresh-imports` in somebody's CI rebuilds nothing, silently.
+
+The result says so, naming OntoBoard as the cause. Fixing it means making Import terms... declare
+the product, which needs a YAML operation that can seed an EMPTY list - and OdkYaml.appendTo
+deliberately refuses an empty one, because an empty sequence is written both as `key: []` and as a
+key with nothing under it, and the two need different edits. That is its own release, and the
+roadmap now says so in those terms.
+
+A REGRESSION I WROTE AND THEN CAUGHT
+
+The first draft rebuilt only declared products. That would have taken the rebuild away from every
+project OntoBoard made - the ones whose term lists DO carry a "# Source:" line, which is the only
+place the old path ever worked. An undeclared module with a recorded source is still rebuilt, with
+the ODK default method, exactly as before.
+
+It was caught by extracting the merge out of the Swing action into ImportProducts.audit, which is
+pure and tested. The mutation that deletes the undeclared rebuild now fails a test that says so in
+its name.
+
+NUMBERS
+
+1846 tests, 0 failures, 0 skipped. 30 new, counted three ways and agreeing (surefire sum 1846,
+anchored @Test 1846).
+
+All 30 were green on their first run, which in this project is a smell rather than a result:
+1.97.0's receipt is headed "TWO DEFECTS IN MY OWN CODE, BOTH CAUGHT BY THE TESTS ON THEIR FIRST
+RUN", and a suite that passes immediately has proved nothing about itself. So twelve mutations
+were applied to the implementation and each had to fail something:
+
+  no .gz suffix                              1 failure
+  fast_slme not normalised                   1
+  SUBSET falls back to BOT                   2
+  group defaults ignored                     1
+  product does not override its group         3
+  filter and minimal share a reason          1
+  undeclared never rebuilds (the regression) 1
+  mirror is asked for a term list            1
+  rows returned in reverse order             2
+  NO_SOURCE collapsed into REFUSED           1
+  undeclared gets no method                  1
+  declared-but-absent reads as rebuildable   1
+
+Twelve applied, twelve caught. One thirteenth attempt caught nothing and was my own fault: the
+mutation added a row and removed it again, so it changed nothing. Replaced with a real reversal,
+which fails two tests.
+
+38/38 classes named in plugin.xml load on both hosts. Quality report end to end: 6 findings, 2 of
+them errors. 163 patterns indexed.
+
+The host self-test exercises the new path on an empty project - "No imports. This project declares
+none in import_group.products, and there is nothing under src/ontology/imports" - and the four
+real projects were run through the compiled audit directly, which agreed to the row with an
+independent tally written in Python from the same YAML files.
+
+STILL OPEN
+
+Making Import terms... declare the product, above. release_artefacts and primary_release, which
+mean three content variants rather than three serialisations. Item 3: the pattern library knows
+nothing about what you have already imported, so a recommendation scoring 1.00 means you already
+contain the whole pattern without saying so. And, from the other roadmap: pull requests, Widoco,
+entity locking, and the nine axiom kinds the live collaboration protocol cannot carry.

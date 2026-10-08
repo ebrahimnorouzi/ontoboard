@@ -6,7 +6,7 @@
 
   <groupId>de.fizkarlsruhe.ise</groupId>
   <artifactId>ontoboard</artifactId>
-  <version>1.98.0</version>
+  <version>1.99.0</version>
   <packaging>bundle</packaging>
 
   <name>OntoBoard</name>

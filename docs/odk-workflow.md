@@ -233,8 +233,9 @@ change. The write goes through a temporary file in the same directory and an ato
 crash cannot leave a truncated config that breaks every ODK target at once.
 
 **Reading and writing are not the same as honouring.** Five scalars drive the generated-project
-regenerator; the rest — `import_group`, `release_artefacts`, `robot_report`, `uribase` — are
-shown and saved but not yet acted on by anything in the plugin.
+regenerator, `export_formats` drives *Release…* since 1.98.0 and `import_group.products` drives
+*Refresh imports* since 1.99.0; the rest — `release_artefacts`, `primary_release`, `uribase`,
+`documentation` — are shown and saved but not yet acted on by anything in the plugin.
 
 Five scalars are ever read — `id`, `title`, `description`, `license`, `robot_version` — and only
 by *Update project files…*, which refuses to run on a real ODK repository at all. *Open existing
@@ -251,8 +252,10 @@ ODK project…* reads `title` and nothing else.
 Still ignored, including keys you are likely to want to change:
 
 > `uribase` · `github_org` · `repo` · `git_main_branch` · `release_artefacts` · `primary_release`
-> · `export_formats` · `import_group` (products, `mirror_from`, `module_type`) ·
-> `documentation` · `robot_report.custom_profile` and `report_on`
+> · `documentation` · `robot_report.custom_profile` and `report_on`
+>
+> No longer on this list: `export_formats`, which *Release…* honours since 1.98.0, and
+> `import_group.products`, which *Refresh imports* reads since 1.99.0.
 
 Two consequences worth stating plainly. On a real ODK repository such as MWO, exactly **one** key
 (`title`) is ever read — the ontology id comes from the edit file's name instead. And five of the
@@ -337,10 +340,10 @@ but if an import resolves differently from how `robot` resolves it, that is the 
 
 | ODK step | | OntoBoard |
 |---|---|---|
-| Declare it under `import_group` in the YAML | 🔶 | *Project configuration…* edits every scalar in the block since 1.89.0, but cannot add a new product, and nothing reads `import_group` |
+| Declare it under `import_group` in the YAML | 🔶 | *Project configuration…* edits every scalar in the block since 1.89.0 and can add a list entry since 1.97.0, but not a whole product block. *Refresh imports* reads `import_group.products` since 1.99.0 |
 | Check the Makefile | 🔶 | *Build…* lists targets; nothing shows the import rules |
 | Add term IRIs to `<import>_terms.txt` | ✅ | *Project → Term lists…* since 1.90.0 — see below |
-| `sh run.sh make refresh-imports` | 🔶 | *Project → Refresh imports…* audits, and rebuilds from term lists |
+| `sh run.sh make refresh-imports` | 🔶 | *Project → Refresh imports…* audits every declared product since 1.99.0, and rebuilds the `slme` ones with the project's own method |
 | Copy the import URI into the edit file and catalog | ✅ | *ROBOT → Import terms…* writes both, and *Pattern library…* feeds it |
 | Copy the import schema into `<ontology>.Makefile` | ❌ | By hand |
 | Set `module_type: custom`, `update_repo`, `clean`, `make` | 🔶 | Only via the YAML in a text editor, then *Build…* |
@@ -584,6 +587,56 @@ Measured on a real repository at the time: five lists, 49 terms, **none** readab
 now, and a line that genuinely is not a term is still reported as malformed rather than skipped
 in silence.
 
+### Where an import comes from — fixed in 1.99.0
+
+The same shape of defect, one layer up. *Refresh imports* found its imports by listing
+`imports/` and read each one's upstream source from a `# Source:` comment at the top of the term
+list — a comment **only OntoBoard ever writes**. Measured across NFDIcore, MWO, PMDCO and ECTO:
+39 term lists, **none** carrying it. So the rebuild worked on projects OntoBoard had created and
+on no real one, and every import of every real repository reported "does not record where its
+terms came from".
+
+The project said so all along, in the place ODK itself looks:
+
+```yaml
+import_group:
+  products:
+    - id: bfo
+      mirror_from: http://purl.obolibrary.org/obo/bfo/2020/notime/bfo.owl
+      module_type: mirror
+    - id: iao            # no mirror_from: ODK downloads $(OBOBASE)/iao.owl
+      module_type: custom
+    - id: obi
+      module_type: slme
+      module_type_slme: BOT
+      slme_individuals: exclude
+```
+
+All 35 products those four projects declare now have a source. 15 are a kind OntoBoard rebuilds —
+`slme` with BOT, TOP, STAR or MIREOT, run with the project's own method and individuals setting
+rather than this plugin's default. The other 20 are **named with the reason** instead:
+
+| `module_type` | why not | count |
+|---|---|---|
+| `custom` | ODK's own generated rule for it prints *"This rule needs to be overwritten in `<project>.Makefile`"* and fails — the real command is hand-written there, and a generic rebuild would overwrite it | 14 |
+| `slme` with `SUBSET` | ROBOT reaches that extraction another way; rebuilding with BOT would quietly produce a different module | 3 |
+| `mirror` | the module *is* the mirrored ontology — ODK's rule has no term list at all, so there is nothing to extract | 2 |
+| `filter` | ODK extracts BOT and then removes the axioms outside the base IRIs; without that removal the module comes out larger than the repository's | 1 |
+
+Reading the declaration also makes two states visible that a directory scan cannot see:
+
+- **Declared and absent** — a product in the YAML with nothing built for it. Exactly where adding
+  one to the list leaves you.
+- **On disk and undeclared** — a module in `imports/` that no product names. ODK builds its
+  `IMPORTS` list from `import_group.products`, so `make refresh-imports` never touches that file
+  and nothing regenerates it. Three of the four projects have one, and **so does every project
+  OntoBoard makes**: the scaffold writes `products: []` and *Import terms…* does not add to it.
+  OntoBoard says so about itself now; making *Import terms…* declare the product is the next piece
+  of work.
+
+Such a module is still rebuilt from its `# Source:` comment when it has one, because that is what
+a refresh did before — reading the declaration must not take a working rebuild away.
+
 ---
 
 ## What this adds up to
@@ -605,13 +658,26 @@ order it is worth doing:
    edit. A value YAML would read as a number or a boolean is quoted for you; an ordinary word, or
    an IRI, is not.
 2. **Acting on more of what the YAML says** — `robot_java_args` and two `robot_report` keys drive
-   something since 1.91.0, and **`export_formats` since 1.98.0**: *Project → Release…* writes the
-   release in every format the project declares rather than one RDF/XML file, and names any it
-   cannot write rather than skipping it. That gap was one OntoBoard made itself — its own scaffold
-   writes `export_formats` into every project it generates. `import_group`, `release_artefacts` and
-   `primary_release` are still text OntoBoard preserves and does not obey; `release_artefacts` in
-   particular means three content variants (base, full, simple), which is a larger job than a
-   second writer.
+   something since 1.91.0, **`export_formats` since 1.98.0**, and **`import_group.products` since
+   1.99.0**: *Project → Refresh imports* now gets its list of imports and each one's upstream
+   source from the project, rather than by listing `imports/` and reading a `# Source:` comment
+   only OntoBoard ever wrote. Across NFDIcore, MWO, PMDCO and ECTO there are 39 term lists and not
+   one carries that comment, so the rebuild used to work on projects OntoBoard had made and on no
+   real one; all 35 products those four declare now have a source, 15 of them a kind this
+   rebuilds, and the other 20 are named with the reason — most often `module_type: custom`, which
+   ODK's own generated rule refuses too.
+
+    Reading the declaration also turns up two things a directory scan cannot see. An import can be
+    **declared and absent**, which is the state adding a product leaves you in. And an import can
+    be **on disk and undeclared**, which means ODK's `IMPORTS` list has no entry for it and `make
+    refresh-imports` never touches it — three of those four projects have one, and so does every
+    project OntoBoard makes, because the scaffold writes `products: []` and *Import terms…* does
+    not add to it. OntoBoard reports that about itself now; making *Import terms…* declare the
+    product is the next piece of work, and needs a YAML operation that can seed an empty list.
+
+    `release_artefacts` and `primary_release` are still text OntoBoard preserves and does not obey;
+    `release_artefacts` in particular means three content variants (base, full, simple), which is a
+    larger job than a second writer.
 3. **Knowing what you already imported** — the pattern library will happily suggest a pattern
    whose terms are already in an import you wrote last week, and a score of 1.00 means exactly
    that without saying so. Your own patterns can be contributed without a rebuild since 1.92.0,

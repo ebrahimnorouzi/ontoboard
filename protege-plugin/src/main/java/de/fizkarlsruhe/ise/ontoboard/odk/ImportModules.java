@@ -134,6 +134,19 @@ public final class ImportModules {
     }
 
     /**
+     * The import named {@code name}, whether or not either of its files exists yet.
+     *
+     * <p>{@link #modulesIn} can only report what is on disk, which is why this exists: a product
+     * declared in {@code import_group.products} with nothing built for it yet is precisely the
+     * state a user is left in after adding one to the list, and the state a directory scan cannot
+     * see. {@link Module#hasModule()} and {@link Module#isRebuildable()} answer for themselves.
+     */
+    public static Module moduleFor(File projectRoot, String name) {
+        return new Module(name, moduleFileFor(projectRoot, name),
+                termsFileFor(projectRoot, name));
+    }
+
+    /**
      * Every import this project has, by name, sorted.
      *
      * <p>Found from both the modules and the term lists, so an import whose module has not been
