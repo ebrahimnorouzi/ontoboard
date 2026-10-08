@@ -201,6 +201,162 @@ class TemplateSheetTest {
         assertFalse(result.getProblems().isEmpty());
     }
 
+    // ---------- a column that points at another term ----------
+
+    /**
+     * An {@code I} column - one whose cells name another term - is the kind a knowledge graph is
+     * mostly made of. The MatWerk KG spreadsheet this was measured against is built from 26 such
+     * sheets, where six of {@code organization}'s twelve columns and eight of
+     * {@code dataportal}'s are {@code I} columns.
+     *
+     * <p>robot-core 1.9.8 raises a bare {@code NullPointerException("object cannot be null")} for
+     * a cell in one of those columns that is neither an IRI, nor a CURIE with a known prefix, nor
+     * the label of a term that exists - and it does so in partial mode as well as strict. These
+     * tests pin what OntoBoard does with that, because what it used to do was discard the entire
+     * sheet and report "object cannot be null" against no row and no column.
+     */
+    private void anIndividualCalled(String localName, String label) {
+        OWLDataFactory factory = context.getOWLOntologyManager().getOWLDataFactory();
+        IRI iri = IRI.create(NS + localName);
+        context.getOWLOntologyManager().addAxiom(context,
+                factory.getOWLDeclarationAxiom(factory.getOWLNamedIndividual(iri)));
+        context.getOWLOntologyManager().addAxiom(context,
+                factory.getOWLAnnotationAssertionAxiom(factory.getRDFSLabel(), iri,
+                        factory.getOWLLiteral(label)));
+    }
+
+    private void aVocabularyOfOrganisations() {
+        OWLDataFactory factory = context.getOWLOntologyManager().getOWLDataFactory();
+        context.getOWLOntologyManager().addAxiom(context, factory.getOWLDeclarationAxiom(
+                factory.getOWLObjectProperty(IRI.create(NS + "hostedBy"))));
+        context.getOWLOntologyManager().addAxiom(context, factory.getOWLDeclarationAxiom(
+                factory.getOWLClass(IRI.create(NS + "Portal"))));
+        anIndividualCalled("org1", "Fraunhofer-Gesellschaft");
+    }
+
+    /** Nine good rows and one typo. Losing the nine is not an acceptable answer. */
+    @Test
+    void theGoodRowsSurviveACellThatPointsAtNothing() throws Exception {
+        aVocabularyOfOrganisations();
+        String[] lines = new String[12];
+        lines[0] = tabs("#", "TYPE", "Name", "Host institute");
+        lines[1] = tabs("ID", "TYPE", "A rdfs:label", "I ex:hostedBy");
+        for (int row = 1; row <= 9; row++) {
+            lines[row + 1] = tabs("ex:p" + row, "ex:Portal", "portal " + row,
+                    "Fraunhofer-Gesellschaft");
+        }
+        lines[11] = tabs("ex:pX", "ex:Portal", "the one with a typo", "Fraunhofer-Gesellschafft");
+
+        TemplateSheet.Result result = run(lines);
+
+        assertNotNull(result.getOntology(),
+                "one bad cell discarded the whole sheet: " + result.getProblems());
+        OWLDataFactory factory = result.getOntology().getOWLOntologyManager().getOWLDataFactory();
+        assertTrue(result.getOntology().containsAxiom(factory.getOWLObjectPropertyAssertionAxiom(
+                factory.getOWLObjectProperty(IRI.create(NS + "hostedBy")),
+                factory.getOWLNamedIndividual(IRI.create(NS + "p1")),
+                factory.getOWLNamedIndividual(IRI.create(NS + "org1")))),
+                "a good row's assertion was lost with the bad row");
+        assertEquals(1, result.getProblems().size(), result.getProblems().toString());
+    }
+
+    /**
+     * The fault is in the fourth column, and the fourth column is what must be named.
+     *
+     * <p>This test exists because the first implementation of the search blamed {@code TYPE}. It
+     * looked for a cell that, when emptied, let the row build - and emptying {@code TYPE} does
+     * exactly that, by creating no individual at all, so the real fault is never reached. A
+     * precise and confident wrong answer is worse than the vague one it replaced.
+     */
+    @Test
+    void theColumnAtFaultIsTheOneNamedAndNotTheTypeColumn() throws Exception {
+        aVocabularyOfOrganisations();
+        TemplateSheet.Result result = run(
+                tabs("#", "TYPE", "Name", "Host institute"),
+                tabs("ID", "TYPE", "A rdfs:label", "I ex:hostedBy"),
+                tabs("ex:pX", "ex:Portal", "a portal", "Fraunhofer-Gesellschafft"));
+
+        assertEquals(1, result.getProblems().size(), result.getProblems().toString());
+        TemplateSheet.Problem problem = result.getProblems().get(0);
+        assertEquals(3, problem.getRow());
+        assertEquals(4, problem.getColumn(),
+                "blamed the wrong column: " + problem.getColumnName());
+        assertEquals("Host institute", problem.getColumnName());
+        assertEquals("Fraunhofer-Gesellschafft", problem.getCell());
+    }
+
+    /** "object cannot be null" describes a variable. This says what to do about it. */
+    @Test
+    void theReasonSaysWhatThatColumnNeeds() throws Exception {
+        aVocabularyOfOrganisations();
+        TemplateSheet.Result result = run(
+                tabs("#", "TYPE", "Name", "Host institute"),
+                tabs("ID", "TYPE", "A rdfs:label", "I ex:hostedBy"),
+                tabs("ex:pX", "ex:Portal", "a portal", "Fraunhofer-Gesellschafft"));
+
+        String message = result.getProblems().get(0).getMessage();
+        assertTrue(message.contains("Fraunhofer-Gesellschafft"),
+                "the reason does not quote the cell: " + message);
+        assertTrue(message.contains("label"), message);
+        assertFalse(message.contains("object cannot be null"),
+                "ROBOT's internal message reached the user: " + message);
+    }
+
+    /** A CURIE whose prefix nothing defines is a different mistake, and gets a different answer. */
+    @Test
+    void anUndefinedPrefixInAReferenceColumnNamesThePrefix() throws Exception {
+        aVocabularyOfOrganisations();
+        TemplateSheet.Result result = run(
+                tabs("#", "TYPE", "Name", "Host institute"),
+                tabs("ID", "TYPE", "A rdfs:label", "I ex:hostedBy"),
+                tabs("ex:pX", "ex:Portal", "a portal", "zz:0001"));
+
+        String message = result.getProblems().get(0).getMessage();
+        assertTrue(message.contains("zz"), "the undefined prefix is not named: " + message);
+    }
+
+    /**
+     * A row may point at a term another row of the same sheet introduces, in an {@code I} column
+     * too - not only in a parent column. Rows are built in as many passes as the chain is long.
+     */
+    @Test
+    void aReferenceColumnMayPointAtATermAnotherRowIntroduces() throws Exception {
+        aVocabularyOfOrganisations();
+        TemplateSheet.Result result = run(
+                tabs("#", "TYPE", "Name", "Host institute"),
+                tabs("ID", "TYPE", "A rdfs:label", "I ex:hostedBy"),
+                tabs("ex:p1", "ex:Portal", "a portal", "an institute defined below"),
+                tabs("ex:org2", "ex:Portal", "an institute defined below", ""),
+                tabs("ex:pX", "ex:Portal", "the broken one", "nothing is called this"));
+
+        assertEquals(1, result.getProblems().size(),
+                "a row pointing forward within the sheet was wrongly blamed: "
+                        + result.getProblems());
+        assertEquals(5, result.getProblems().get(0).getRow());
+        OWLDataFactory factory = result.getOntology().getOWLOntologyManager().getOWLDataFactory();
+        assertTrue(result.getOntology().containsAxiom(factory.getOWLObjectPropertyAssertionAxiom(
+                factory.getOWLObjectProperty(IRI.create(NS + "hostedBy")),
+                factory.getOWLNamedIndividual(IRI.create(NS + "p1")),
+                factory.getOWLNamedIndividual(IRI.create(NS + "org2")))),
+                "the forward reference did not resolve: " + result.getOntology().getAxioms());
+    }
+
+    /** Two bad cells in two rows are two problems, not one and a shrug. */
+    @Test
+    void everyCellThatPointsAtNothingIsReported() throws Exception {
+        aVocabularyOfOrganisations();
+        TemplateSheet.Result result = run(
+                tabs("#", "TYPE", "Name", "Host institute"),
+                tabs("ID", "TYPE", "A rdfs:label", "I ex:hostedBy"),
+                tabs("ex:p1", "ex:Portal", "fine", "Fraunhofer-Gesellschaft"),
+                tabs("ex:p2", "ex:Portal", "first typo", "Fraunhofer-Gesellschafft"),
+                tabs("ex:p3", "ex:Portal", "second typo", "Fraunhofer Gesellschaft e.V."));
+
+        assertEquals(2, result.getProblems().size(), result.getProblems().toString());
+        assertEquals(4, result.getProblems().get(0).getRow());
+        assertEquals(5, result.getProblems().get(1).getRow());
+    }
+
     // ---------- the template row is a different kind of problem ----------
 
     /**

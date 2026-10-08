@@ -4,8 +4,12 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.obolibrary.robot.IOHelper;
 import org.obolibrary.robot.Template;
 import org.obolibrary.robot.exceptions.RowParseException;
@@ -220,9 +224,11 @@ public final class TemplateSheet {
         OWLOntology salvaged;
         try {
             salvaged = template(name, rows, context, io).generateOutputOntology(iri, true);
-        } catch (Exception nothingUsable) {
-            problems.add(new Problem(0, 0, "", "", explain(nothingUsable)));
-            return new Result(null, problems, dataRows, false);
+        } catch (Exception nothingSalvageable) {
+            // ROBOT's own salvage gave up, so there is no partial ontology to report against.
+            // Building from the rows that do work is the only way to keep the two promises this
+            // class exists for - every problem placed, and the good rows surviving the bad ones.
+            return fromRowsThatWork(name, rows, context, io, iri, dataRows);
         }
 
         problems.addAll(problemsPerRow(name, rows, contextIncluding(context, salvaged), io, iri));
@@ -259,6 +265,227 @@ public final class TemplateSheet {
             }
         }
         return problems;
+    }
+
+    /**
+     * Builds the sheet from the rows that work, when ROBOT cannot build it at all.
+     *
+     * <p>Reached when even {@code allowPartial} throws, which is not a rare corner. Measured on
+     * robot-core 1.9.8: an {@code I} column - the kind that points at another term - whose cell
+     * holds plain text that is not a known label raises a bare
+     * {@code NullPointerException("object cannot be null")} in <em>both</em> strict and partial
+     * mode. Before this method existed that cost the caller everything: a sheet of sixty good
+     * rows with one typo in it produced no ontology, and the single problem reported was
+     * "object cannot be null" against no row and no column - which is nothing a person can act
+     * on. The MatWerk KG spreadsheet this was measured against is built almost entirely of
+     * {@code I} columns, so it is the normal case there rather than an exotic one.
+     *
+     * <p>Rows are run one at a time and the ones that succeed are kept. Repeatedly, because a row
+     * may legitimately point at a term another row introduces: each pass adds what it built to
+     * the context of the next, and it stops when a pass gets nowhere. So a chain of forward
+     * references resolves in as many passes as it is long, and an unresolvable one costs one
+     * wasted pass rather than a wrong answer.
+     */
+    private static Result fromRowsThatWork(String name, List<List<String>> rows,
+            OWLOntology context, IOHelper io, String iri, int dataRows) {
+        List<Problem> problems = new ArrayList<Problem>();
+        List<String> headings = rows.get(0);
+        List<String> templateRow = rows.get(1);
+
+        Set<Integer> pending = new LinkedHashSet<Integer>();
+        for (int index = FIRST_DATA_ROW; index < rows.size(); index++) {
+            if (!isBlank(rows.get(index))) {
+                pending.add(index);
+            }
+        }
+
+        OWLOntology built = emptyOntology();
+        Map<Integer, Exception> failures = new LinkedHashMap<Integer, Exception>();
+        OWLOntology scope = contextIncluding(context, built);
+
+        boolean progressed = true;
+        while (progressed && !pending.isEmpty()) {
+            progressed = false;
+            failures.clear();
+            for (Iterator<Integer> each = pending.iterator(); each.hasNext();) {
+                int index = each.next();
+                try {
+                    OWLOntology produced = oneRow(name, rows, index, scope, io, iri);
+                    built.getOWLOntologyManager().addAxioms(built, produced.getAxioms());
+                    each.remove();
+                    progressed = true;
+                } catch (Exception rowFailed) {
+                    failures.put(index, rowFailed);
+                }
+            }
+            if (progressed) {
+                scope = contextIncluding(context, built);
+            }
+        }
+
+        for (Integer index : pending) {
+            problems.add(blame(name, rows, index, headings, templateRow, scope, io, iri,
+                    failures.get(index)));
+        }
+        return new Result(built, problems, dataRows, false);
+    }
+
+    /** One data row, with the two header rows above it, as ROBOT needs to be handed it. */
+    private static OWLOntology oneRow(String name, List<List<String>> rows, int index,
+            OWLOntology scope, IOHelper io, String iri) throws Exception {
+        List<List<String>> justThisRow = new ArrayList<List<String>>(rows.subList(0, 2));
+        justThisRow.add(rows.get(index));
+        return template(name, justThisRow, scope, io).generateOutputOntology(iri, false);
+    }
+
+    /**
+     * Works out which cell broke a row, by experiment on the row itself.
+     *
+     * <p>Established by experiment rather than by reasoning about ROBOT's rules, because the
+     * failure that makes this necessary is an undifferentiated {@code NullPointerException} that
+     * carries no row, no column and no cell. A rule for what an {@code I} column accepts would be
+     * a guess about somebody else's code that could go stale without a test noticing.
+     *
+     * <p><b>A cell is blamed only when the evidence runs both ways:</b> the row still fails when
+     * that cell is the only one present, and the row builds when that cell alone is removed.
+     * Removal on its own is not enough, and the first version of this made exactly that mistake -
+     * it blamed the {@code TYPE} column of a row whose fault was four columns further along,
+     * because a row with no {@code TYPE} creates no individual, so the offending assertion is
+     * never attempted and the row "builds" by doing nothing. A precise, confident, wrong finding
+     * is worse than the vague one it replaced, so both directions are required.
+     *
+     * <p>{@code ID}, {@code LABEL} and {@code TYPE} are held constant throughout: they say which
+     * thing the row is about, and a row stripped of them is a different row. The cost of that is
+     * that a fault in {@code TYPE} itself cannot be isolated this way, so it is tried separately
+     * at the end, and if nothing can be shown the row is reported without a column rather than
+     * with a guessed one.
+     */
+    private static Problem blame(String name, List<List<String>> rows, int index,
+            List<String> headings, List<String> templateRow, OWLOntology scope, IOHelper io,
+            String iri, Exception failure) {
+        if (failure instanceof RowParseException) {
+            RowParseException parsed = (RowParseException) failure;
+            return new Problem(index + 1, parsed.colNum, headingAt(headings, parsed.colNum),
+                    parsed.cellValue, explain(parsed));
+        }
+        List<String> row = rows.get(index);
+        int width = Math.min(row.size(), templateRow.size());
+
+        for (int column = 0; column < width; column++) {
+            String cell = row.get(column);
+            if (cell == null || cell.trim().isEmpty() || isStructural(templateRow.get(column))) {
+                continue;
+            }
+            boolean failsAlone = !builds(name, rows, index,
+                    onlyThisColumn(row, templateRow, column, width), scope, io, iri);
+            boolean buildsWithout = builds(name, rows, index,
+                    withoutThisColumn(row, column), scope, io, iri);
+            if (failsAlone && buildsWithout) {
+                return new Problem(index + 1, column + 1, headingAt(headings, column + 1), cell,
+                        whyNot(cell, templateRow.get(column), io));
+            }
+        }
+
+        // TYPE is held constant above, so if it is the fault nothing isolates it. Removing it
+        // makes the row produce nothing at all, which is not evidence on its own - but combined
+        // with every other column having been cleared, it is the only candidate left.
+        for (int column = 0; column < width; column++) {
+            String cell = row.get(column);
+            if (cell == null || cell.trim().isEmpty()
+                    || !"TYPE".equalsIgnoreCase(templateRow.get(column).trim())) {
+                continue;
+            }
+            if (builds(name, rows, index, withoutThisColumn(row, column), scope, io, iri)) {
+                return new Problem(index + 1, column + 1, headingAt(headings, column + 1), cell,
+                        whyNot(cell, templateRow.get(column), io));
+            }
+        }
+
+        return new Problem(index + 1, 0, "", "",
+                failure == null ? "This row could not be read." : explain(failure));
+    }
+
+    /** The row with everything cleared but the columns that say which thing it is about. */
+    private static List<String> onlyThisColumn(List<String> row, List<String> templateRow,
+            int keep, int width) {
+        List<String> trimmed = new ArrayList<String>(row);
+        for (int column = 0; column < width; column++) {
+            if (column != keep && !isStructural(templateRow.get(column))) {
+                trimmed.set(column, "");
+            }
+        }
+        return trimmed;
+    }
+
+    private static List<String> withoutThisColumn(List<String> row, int drop) {
+        List<String> trimmed = new ArrayList<String>(row);
+        trimmed.set(drop, "");
+        return trimmed;
+    }
+
+    /** Whether the row builds with the given cells in place of its own. */
+    private static boolean builds(String name, List<List<String>> rows, int index,
+            List<String> replacement, OWLOntology scope, IOHelper io, String iri) {
+        List<List<String>> altered = new ArrayList<List<String>>(rows);
+        altered.set(index, replacement);
+        try {
+            oneRow(name, altered, index, scope, io, iri);
+            return true;
+        } catch (Exception stillBroken) {
+            return false;
+        }
+    }
+
+    /**
+     * The columns that say which thing the row is about, rather than something about it.
+     *
+     * <p>Held constant while the others are varied. {@code TYPE} belongs here even though it is
+     * not an identifier: without it no individual is created, so no assertion about one is
+     * attempted and every other column looks innocent.
+     */
+    private static boolean isStructural(String templateCell) {
+        String spec = templateCell == null ? "" : templateCell.trim();
+        return spec.equalsIgnoreCase("ID") || spec.equalsIgnoreCase("LABEL")
+                || spec.equalsIgnoreCase("TYPE");
+    }
+
+    /**
+     * Why a cell that points at a term did not work, in terms its author can act on.
+     *
+     * <p>ROBOT's own message for this is "object cannot be null", which describes a variable
+     * rather than a spreadsheet. What the person needs to know is that this column holds a
+     * reference to a term, and that this text is not one.
+     */
+    private static String whyNot(String cell, String templateCell, IOHelper io) {
+        String value = cell.trim();
+        String spec = templateCell == null ? "" : templateCell.trim();
+        int colon = value.indexOf(':');
+        boolean looksLikeCurie = colon > 0 && value.indexOf(' ') < 0
+                && value.indexOf('/') < 0 && !value.startsWith("http");
+        if (looksLikeCurie) {
+            String prefix = value.substring(0, colon);
+            if (io.getPrefixes().get(prefix) == null) {
+                return "\"" + value + "\" looks like a CURIE, but nothing defines the prefix \""
+                        + prefix + ":\" - so there is no way to tell which IRI it means. Add the "
+                        + "prefix to the project, or write the IRI out in full.";
+            }
+        }
+        return "Nothing in this ontology is called \"" + value + "\", so there is no term for "
+                + "this column to point at. The column is \"" + spec + "\", which holds a "
+                + "reference to a term: an IRI, a CURIE such as obo:BFO_0000001, or the exact "
+                + "label of a term that already exists - here, in an import, or in another row "
+                + "of this sheet.";
+    }
+
+    /** Somewhere to accumulate the rows that work. */
+    private static OWLOntology emptyOntology() {
+        try {
+            return OWLManager.createOWLOntologyManager().createOntology(
+                    IRI.create("http://www.ontoboard.org/template"));
+        } catch (OWLOntologyCreationException cannotCreate) {
+            throw new RobotException("Could not start an ontology for the template's output: "
+                    + cannotCreate.getMessage(), cannotCreate);
+        }
     }
 
     /**

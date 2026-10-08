@@ -13,6 +13,47 @@ release notes on
 [the releases page](https://github.com/ebrahimnorouzi/ontoboard/releases), carries the same
 record for that version.
 
+- **One bad cell used to discard a whole ROBOT template, fixed in 1.106.0.** Found by testing
+  the plugin against a real 26-sheet knowledge-graph spreadsheet rather than against its own
+  fixtures, which is why it had survived since templates arrived in 1.19.0.
+
+  An `I` column is one whose cells name another term — `I http://purl.obolibrary.org/obo/RO_0001025`
+  for "located in", say. It is the kind of column a knowledge graph is mostly made of: six of
+  twelve columns in the MatWerk `organization` sheet are `I` columns, and eight of twelve in
+  `dataportal`.
+
+  robot-core 1.9.8 raises a bare `NullPointerException("object cannot be null")` for a cell in
+  such a column that is neither an IRI, nor a CURIE with a known prefix, nor the label of a term
+  that exists. It raises it in partial mode as well as strict — and partial mode is the whole
+  basis of this plugin's "report every problem, keep every good row" behaviour. So
+  `TemplateSheet.run` fell through to its last-resort branch and returned **no ontology at all**,
+  with one problem attached to no row and no column, reading `object cannot be null`.
+
+  Measured on a sheet of nine good rows and one typo: before, nothing was produced and the only
+  thing a user was told was `object cannot be null`. After, the nine rows arrive as 36 axioms and
+  the problem reads
+
+  > row 12, column "Host institute": Nothing in this ontology is called
+  > "Fraunhofer-Gesellschafft", so there is no term for this column to point at. The column is
+  > "I ex:hostedBy", which holds a reference to a term: an IRI, a CURIE such as obo:BFO_0000001,
+  > or the exact label of a term that already exists — here, in an import, or in another row of
+  > this sheet.
+
+  Rows are now built one at a time, repeatedly, so a row may still point at a term that another
+  row introduces — the passes continue until one gets nowhere. The offending cell is found by
+  experiment on the row, not by reasoning about ROBOT's rules: a cell is blamed only when the row
+  still fails with that cell alone in place **and** builds when that cell alone is removed.
+
+  Both halves of that are necessary, and the first attempt had only the second — it blamed the
+  `TYPE` column of a row whose fault was four columns further along, because a row with no `TYPE`
+  creates no individual, so the offending assertion is never attempted and the row "builds" by
+  doing nothing. A precise, confident, wrong finding is worse than the vague one it replaced.
+  `theColumnAtFaultIsTheOneNamedAndNotTheTypeColumn` exists to keep that fixed.
+
+  Six tests, all of which fail without the change, each with the symptom above. The blast radius
+  was measured rather than assumed: of `I`, `AI`, `TI`, `SC %`, `EC %`, `C %` and `A`, only `I`
+  and its `SPLIT=` variant behaved this way.
+
 - **The bundle-resource barrier is fixed as of 1.25.0.** It is written up here rather than
   deleted, because the way it hid for nine versions is the more useful part.
 

@@ -1,0 +1,113 @@
+OntoBoard 1.106.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-10-08  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 9/9  test 10/10
+  2026-10-08  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 9/9  test 10/10
+
+
+TESTED AGAINST SOMEBODY ELSE'S REAL SPREADSHEET, AND IT BROKE
+
+Everything in this release came out of pointing the ROBOT template support at a working
+26-sheet knowledge graph instead of at its own fixtures. The MatWerk KG is built from one
+published Google Sheet by an Airflow DAG that runs, per sheet,
+
+    robot merge --include-annotations true -i <upstream>.owl \
+          template --merge-before --template <sheet>.tsv --output <sheet>.owl
+    robot explain --reasoner hermit -M inconsistency
+
+and refuses the sheet unless the explanation reads exactly "No explanations found." Its
+merge-chain depth reaches 8 and one of its tabs is 5,097 lines.
+
+ONE BAD CELL DISCARDED THE WHOLE SHEET
+
+An `I` column is one whose cells name another term - `I http://purl.obolibrary.org/obo/RO_0001025`
+for "located in". It is what a knowledge graph is mostly made of: six of twelve columns in that
+project's `organization` sheet are `I` columns, and eight of twelve in `dataportal`.
+
+robot-core 1.9.8 raises a bare NullPointerException("object cannot be null") for a cell in such
+a column that is neither an IRI, nor a CURIE with a known prefix, nor the label of a term that
+exists. It raises it in partial mode as well as strict - and partial mode is the entire basis of
+this plugin's "report every problem, keep every good row" behaviour. So TemplateSheet fell
+through to its last-resort branch and returned no ontology at all.
+
+Measured on nine good rows and one typo:
+
+    before   ontology: none. problems: 1, attached to no row and no column,
+             reading "object cannot be null".
+    after    ontology: 36 axioms, all nine rows. problems: 1, reading
+             row 12, column "Host institute": Nothing in this ontology is called
+             "Fraunhofer-Gesellschafft", so there is no term for this column to point
+             at. The column is "I ex:hostedBy", which holds a reference to a term: an
+             IRI, a CURIE such as obo:BFO_0000001, or the exact label of a term that
+             already exists - here, in an import, or in another row of this sheet.
+
+Rows are now built one at a time and repeatedly, so a row may still point at a term another row
+introduces; the passes stop when one gets nowhere.
+
+THE FIRST VERSION OF THE FIX BLAMED THE WRONG COLUMN
+
+Worth recording, because it would have shipped as a verified improvement. The offending cell is
+found by experiment on the row rather than by reasoning about ROBOT's rules. The first attempt
+looked for a cell which, when emptied, let the row build - and reported the TYPE column of a row
+whose fault was four columns further along. A row with no TYPE creates no individual, so the
+offending assertion is never attempted and the row "builds" by doing nothing.
+
+A cell is now blamed only when the evidence runs both ways: the row still fails with that cell
+alone in place, AND builds when that cell alone is removed. theColumnAtFaultIsTheOneNamedAndNotTheTypeColumn
+keeps it that way. A precise, confident, wrong finding is worse than the vague one it replaced.
+
+THE BLAST RADIUS WAS MEASURED, NOT ASSUMED
+
+Of the column types a sheet can use, one good row plus one unresolvable reference gives:
+
+    I <prop>              lost the whole sheet   ->  now survives, problem placed
+    I <prop> SPLIT=,      lost the whole sheet   ->  now survives, problem placed
+    AI, TI, SC %, EC %, C %, A      unaffected either way
+
+So the fix is scoped to a real set rather than to the one case that was noticed. Six tests, all
+of which fail without the change, each with the symptom above.
+
+A QUESTION THAT NOW HAS A MEASURED ANSWER
+
+tools/shared-shapes.py is new, and exists because "extract the patterns several ontologies
+share" needs a prior question answered: is there anything there? Run over the three projects
+this plugin is developed against, on their own authored artefacts rather than their complete
+ones:
+
+    nfdicore-base.ttl    1,506 triples     22 restriction shapes
+    mwo-base.ttl           514 triples      4 restriction shapes
+    pmdco-base.ttl       8,627 triples    236 restriction shapes
+    shared by all three: 0
+
+Zero. On the -full artefacts the same three share 23, and 19 of those have a BFO property and a
+BFO filler - they arrive with the imports. So an extractor that mined the complete files and
+matched axioms would report twenty-three shared "patterns", every one an artefact of a shared
+import. These three do reach the same shapes - the role pattern is in all of them - but through
+different vocabulary, and exact IRI matching cannot see it.
+
+That is a finding about the research direction rather than a feature, which is why it ships as a
+tool that reprints it rather than as a menu item.
+
+NUMBERS
+
+1962 tests, 0 failures, 1 skipped. 6 new, all in TemplateSheetTest, which goes from 18 to 24.
+No main-source visibility was widened for them.
+
+41/41 classes named in plugin.xml load on both hosts. 163 patterns indexed. Quality report end
+to end: 6 findings, 2 of them errors.
+
+On 5.5.0, cellfie-2.2.4 and swrltab-plugin-2.1.3 fail to install. Neither is ours and neither is
+new; the receipt records them because a broken neighbour can change what resolves.
+
+STILL OPEN
+
+The collaboration vocabulary, whose plan was rejected on review: equivalence and disjointness
+are the whole of the practical loss, and carrying them is a two-sided protocol change that needs
+its own measured design.
+
+Cross-sheet reference itself - a sheet resolving labels minted by another sheet - is not in this
+release. The primitive is already present and one scope narrower: TemplateSheet feeds a sheet its
+own output as context, which is why a row may point at a row below it. Widening that to a set of
+sheets, and deriving the build order from the references instead of asking somebody to maintain
+it by hand, is the next step and is specified by the measurements above rather than guessed.
