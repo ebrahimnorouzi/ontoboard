@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" role="img" aria-label="OntoBoard">
+  <title>OntoBoard</title>
+  <!--
+    The mark: an ontology on a board.
+
+    OntoBoard's whole argument is that the ODK and ROBOT pipeline belongs where the ontology is
+    being drawn, so the mark is a board with a graph on it rather than a letter or an abstract
+    shape. Three classes and a property each - one parent, two children, and a relation between the
+    children - is the smallest drawing that reads as an ontology rather than as an org chart.
+
+    Single path colour via currentColor, so one file serves the indigo header, the light page and
+    the dark page without a second copy. Stroked rather than filled at this size: at 1.2rem in the
+    header a filled board becomes a solid block and the graph inside it disappears.
+  -->
+  <g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+     stroke-linejoin="round">
+    <!-- The board. Inset by 2 so the stroke is not clipped by the viewBox at small sizes. -->
+    <rect x="2" y="3.5" width="20" height="17" rx="2.6"/>
+    <!-- The edges, drawn before the nodes so the node fills sit on top of the line ends. -->
+    <path d="M12 9.2 7.4 13.6M12 9.2l4.6 4.4M9 15.6h6"/>
+  </g>
+  <g fill="currentColor">
+    <!-- The three terms. Filled, so they read as nodes at 16px where a stroked ring turns to mush. -->
+    <circle cx="12" cy="8.2" r="1.9"/>
+    <circle cx="7.4" cy="15.6" r="1.9"/>
+    <circle cx="16.6" cy="15.6" r="1.9"/>
+  </g>
+</svg>

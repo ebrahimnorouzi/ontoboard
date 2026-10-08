@@ -20,12 +20,47 @@ docs_dir: docs
 
 theme:
   name: material
+  # The mark is a board with three terms and their relations on it - an ontology being drawn,
+  # which is the whole argument for the plugin. One SVG using currentColor serves the indigo
+  # header, the light page and the dark page; see docs/assets/logo.svg for why it is stroked
+  # rather than filled. Material links the logo to the site root, so it is also the way home.
+  logo: assets/logo.svg
+  favicon: assets/favicon.png
+  custom_dir: overrides
   features:
-    - navigation.instant
+    # navigation.instant is DELIBERATELY ABSENT. It swaps the document body over XHR instead of
+    # loading a page, and DOMContentLoaded therefore never fires again - while ontoink mounts every
+    # graph from exactly that event:
+    #
+    #     document.addEventListener("DOMContentLoaded", function () {
+    #       document.querySelectorAll(".ontoink-container").forEach(function (el) { initGraph(el.id); });
+    #     });
+    #
+    # So every pattern page reached by clicking a link showed an empty box, and the graph appeared
+    # only after a manual reload. Reported from the live site, and reproduced in the bundle: it has
+    # four DOMContentLoaded listeners, no document$ subscription and no IntersectionObserver.
+    #
+    # Not worked around from this side. ontoink's public surface is `liveEditor` alone - initGraph
+    # is internal - so the only hooks available were re-dispatching a synthetic DOMContentLoaded at
+    # the whole document, which re-runs every other listener too and double-mounts as the inlined
+    # IIFE re-registers on each swap. Reaching into a third-party bundle's internals to fix its
+    # lifecycle is a thing that breaks silently on its next release.
+    #
+    # Little is lost: each pattern page inlines its own ~650 KB of ontoink, so these pages are
+    # ~800 KB whether or not the shell is reused. Correct beats instant.
+    #
+    # The real fix belongs upstream - ontoink could subscribe to Material's document$ when present,
+    # the way docs/assets/landing.js does. If that lands, this comment and the flag can come back.
     - navigation.top
+    # A row of top-level sections in the header, and sticky so it stays there while you read.
+    # Without these the only way back to another part of the site from half-way down a long
+    # reference page is to scroll to the top first - and the pattern pages are long.
+    - navigation.tabs
+    - navigation.tabs.sticky
     - navigation.sections
     - content.code.copy
     - search.highlight
+    - search.suggest
     - toc.follow
   palette:
     # The toggle matters here: several pages are long reference tables, and a dark default would

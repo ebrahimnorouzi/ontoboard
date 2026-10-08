@@ -61,6 +61,24 @@ jobs:
       - name: Generate the pattern pages
         run: python tools/generate-pattern-pages.py
 
+      # ontoink mounts every graph from DOMContentLoaded and nothing else - no document$
+      # subscription, no IntersectionObserver. Material's navigation.instant swaps the body over
+      # XHR, so that event never fires again and every pattern page reached by a click shows an
+      # empty box until the reader presses reload. It was reported from the live site.
+      #
+      # A build with both enabled is GREEN and broken, which is the only reason this check exists:
+      # nothing else would catch it. If ontoink gains a document$ hook, delete this and the comment
+      # in mkdocs.yml together.
+      - name: Instant navigation must stay off while ontoink renders the graphs
+        run: |
+          if grep -qE '^\s*-\s*ontoink\s*$' mkdocs.yml && grep -qE '^\s*-\s*navigation\.instant\s*$' mkdocs.yml; then
+            echo "::error::mkdocs.yml enables navigation.instant while ontoink is a plugin."
+            echo "ontoink mounts graphs on DOMContentLoaded, which instant navigation never fires"
+            echo "again - every pattern page would render an empty graph until a manual reload."
+            exit 1
+          fi
+          echo "navigation.instant is off; ontoink graphs will mount on every page load"
+
       - name: Build
         # ONTOINK_REASONER=none is not a preference, it is the difference between a 12-second build
         # and a 15-minute one. Measured: with owlready2 importable, ontoink runs a HermiT

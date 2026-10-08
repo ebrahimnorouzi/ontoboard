@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{#
+  Only to add the icons Material's `favicon` option cannot carry on its own.
+
+  `theme.favicon` emits a single <link rel="icon">. That covers the browser tab and nothing else:
+  an iOS home-screen shortcut falls back to a screenshot of the page without apple-touch-icon, and
+  the .ico is what Windows and several feed readers still ask for first. All three are the same
+  mark, generated together by the script recorded in docs/assets - so they cannot drift apart.
+#}
+{% block extrahead %}
+  <link rel="apple-touch-icon" sizes="180x180" href="{{ 'assets/apple-touch-icon.png' | url }}">
+  <link rel="icon" type="image/png" sizes="48x48" href="{{ 'assets/favicon-48.png' | url }}">
+  <link rel="icon" type="image/x-icon" href="{{ 'assets/favicon.ico' | url }}">
+{% endblock %}
