@@ -15,3 +15,9 @@
 #   python tools/build-deck.py
 python-pptx==1.0.2
 Pillow==12.1.1
+# Reads the pattern TTL for the figure on the pattern slide. Missing from the first version of
+# this file, which listed only what the deck obviously needed - and the release failed with
+# ModuleNotFoundError on a clean runner while building fine here, because rdflib arrives as a
+# dependency of something else on a development machine. The list is now derived from the
+# script's own imports rather than from memory, and checked in a clean virtual environment.
+rdflib==7.6.0

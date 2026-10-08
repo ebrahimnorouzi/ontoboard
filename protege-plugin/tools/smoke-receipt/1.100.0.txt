@@ -116,6 +116,18 @@ right, on the slide anybody opens first. Setting run.text to a string containing
 line break inside the paragraph, and the alignment then applied to the first line only. One
 paragraph per line now. It was pre-existing and deck-wide.
 
+AND THE DECK STEP FAILED ON ITS FIRST CI RUN
+
+deck-requirements.txt listed python-pptx and Pillow, which is what the deck obviously needs, and
+the release died on a clean runner with ModuleNotFoundError: No module named 'rdflib'. The builder
+reads a pattern's Turtle to draw the figure on the pattern slide, and rdflib is present on a
+development machine as a dependency of something else - so pinning from memory produced a list
+that was right here and wrong everywhere else.
+
+The list is derived from the script's own imports now, and was checked by installing only those
+three into an empty environment and building the deck there. That is the check that was missing:
+the first version was verified by running it on the machine that already had everything.
+
 DOCUMENTATION: 1111 LINES TO 244
 
 limitations.md was 1111 lines, and its "Known constraints" section was 924 of them in 40 entries -
