@@ -113,8 +113,30 @@ class ViewConfigTest {
                 "the first column is the left one and must hold the class hierarchy: "
                         + pluginIdsIn(columns.get(0)));
         List<String> right = pluginIdsIn(columns.get(1));
-        assertEquals(1, right.size(), "the canvas column holds the canvas alone: " + right);
-        assertTrue(right.get(0).endsWith(CANVAS_SUFFIX), right.get(0));
+        assertEquals(2, right.size(),
+                "the right column holds the canvas and the sheet editor as tabs: " + right);
+        assertTrue(right.get(0).endsWith(CANVAS_SUFFIX),
+                "the canvas comes first, so it is the one shown on opening: " + right.get(0));
+        assertTrue(right.get(1).endsWith("SheetEditorView"), right.get(1));
+    }
+
+    /**
+     * The canvas and the sheet editor share one column rather than halving it.
+     *
+     * <p>Two components in one {@code CNode} render as tabs, which is what the entity views in
+     * the left column already do. They are alternatives - somebody is drawing a diagram or
+     * filling in a spreadsheet - so giving each half the width would leave both cramped for no
+     * gain. Splitting them into two {@code CNode}s would do exactly that, which is why this is
+     * pinned rather than left to whoever edits the layout next.
+     */
+    @Test
+    void theCanvasAndTheSheetEditorAreTabsInOneColumnRatherThanTwoColumns() throws Exception {
+        List<Element> columns = children(onlyChild(layoutRoot()));
+
+        assertEquals(1, children(columns.get(1)).size() > 0 ? 1 : 0,
+                "the right column is one node");
+        assertEquals("CNode", columns.get(1).getTagName(),
+                "a splitter here would halve the width instead of making tabs");
     }
 
     /** A narrow tree column is the point; an even split would leave the canvas cramped. */

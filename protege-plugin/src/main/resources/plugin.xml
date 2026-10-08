@@ -29,6 +29,13 @@
     <category value="@org.protege.ontologycategory"/>
   </extension>
 
+  <extension id="SheetEditorView" point="org.protege.editor.core.application.ViewComponent">
+    <label value="Sheets"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.views.SheetEditorView"/>
+    <headerColor value="@org.protege.ontologycolor"/>
+    <category value="@org.protege.ontologycategory"/>
+  </extension>
+
 
   <!-- ============================================================================
        The OntoBoard menu.

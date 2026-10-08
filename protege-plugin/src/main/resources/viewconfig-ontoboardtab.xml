@@ -34,9 +34,15 @@
                 <Property id="pluginId" value="org.protege.editor.owl.OWLIndividualsList"/>
             </Component>
         </CNode>
+        <!-- Two components in one CNode render as tabs, so the canvas and the sheet editor
+             share the right column rather than halving it. They are alternatives: somebody is
+             drawing a diagram or filling in a spreadsheet, not both at once. -->
         <CNode>
             <Component label="Schema Canvas">
                 <Property id="pluginId" value="${project.artifactId}.SchemaCanvasView"/>
+            </Component>
+            <Component label="Sheets">
+                <Property id="pluginId" value="${project.artifactId}.SheetEditorView"/>
             </Component>
         </CNode>
     </VSNode>

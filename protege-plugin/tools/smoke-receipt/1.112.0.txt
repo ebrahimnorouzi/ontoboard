@@ -1,0 +1,122 @@
+OntoBoard 1.112.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-10-09  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 9/9  test 10/10
+  2026-10-09  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 9/9  test 10/10
+
+5.5.0's line was read out of the log rather than from the script's own verdict, and that is
+worth saying plainly. The run completed and the log holds every line the script checks for:
+
+    Plugin: OntoBoard (1.112.0)
+    menu classes resolve - 43/43 classes named in plugin.xml loaded
+    self-check: PASS 9/9
+    self-test: PASS - 10 of 10 checks ran
+
+but smoke.ps1 did not return afterwards and was killed twice at its timeout, with no java
+process left running either time. The product passed; the harness hung after it. Not
+investigated here beyond confirming no Protege process survived, and it should be - a smoke
+script that cannot be trusted to terminate is a smoke script somebody stops running.
+
+
+THE GRID
+
+The sheet work since 1.109.0 has all been model: open a folder, edit it, audit it, correct it
+in bulk, create a thing it refers to, record who did it, write it back - every bit of it tested
+headlessly and none of it reachable except through a read-only report. This is the surface.
+
+THE HEADER ROWS ARE THE HEADER, NOT THE FIRST TWO ROWS
+
+A ROBOT template's first two rows are not data: row 1 is the author's headings and row 2 says
+what each column means. Putting them in the grid invites somebody to sort them into the middle
+of the sheet, and a sorted template is a template that stops building. So the grid holds data
+only, starting at the sheet's row 3, and the two header rows become the column header - the
+heading above the spec, which is also the only arrangement in which both are visible.
+
+SheetTableModel converts between the two numbering schemes, and every message uses the sheet's
+own, because that is the number the person can see in their spreadsheet.
+
+COMPLETION WHERE IT BELONGS AND NOWHERE ELSE
+
+A column whose cells name another term gets an editable combo offering names from every open
+sheet and from the ontology. A column holding text gets a plain field. Completing a label
+column would be wrong: the text there is the value, not a reference - and a test asserts that
+asking for completions on one returns nothing.
+
+The combo stays editable so a name nobody has used yet can be typed, which is the case that
+leads to creating it. A closed dropdown would make the 123 unresolved references on the real
+sheets impossible to enter in the first place.
+
+MARKED CELLS
+
+A cell the audit has something to say about is tinted and carries the finding as its tooltip,
+with the correction appended when there is one. Two shades, because the actions differ: pale
+yellow for something that can be corrected automatically, pale pink for something needing a
+person. Pale on purpose - on a sheet where a fifth of the cells carry a finding, a strong
+colour makes the grid unreadable.
+
+THE PICTURE CAUGHT WHAT THE ASSERTIONS DID NOT
+
+The best argument for rendering the thing. Every test passed, including one asserting that each
+header contains its heading and is two lines - and the rendered image showed the City column's
+second line clipped to "I" and the Website column's to "AT". The two columns whose behaviour
+that line exists to explain were the two saying nothing.
+
+The cause is that an IRI does not fit: `I http://purl.obolibrary.org/obo/RO_0001025` is 43
+characters, and a column wide enough for it makes the grid unusable. So the spec is shown with
+its IRIs shortened to their last segment - `I RO_0001025`, `AT IAO_0000235^^xsd:anyURI` - and
+the full text stays in the header's tooltip. A CURIE is already short and is left alone.
+
+There is now an assertion that no header wants more width than its column has, which is the
+decidable form of what the picture showed.
+
+The image lands in target/design/sheet-editor.png, beside the canvas and dialog proofs.
+
+A FAILURE THAT WAS NOT ONE
+
+Worth recording because it cost a verification round. A full run reported
+PatternIndexTest.theShippedIndexMatchesTheDirectories as "patterns/index.tsv is stale" - a
+failure in a directory this release does not touch. Checked rather than assumed: git reports
+nothing changed under patterns/, and the test passes in isolation, and a second clean full run
+passes. It is the concurrent-Maven artefact documented in development.md, caused here by a
+targeted run overlapping the full one. One Maven at a time.
+
+THE VIEW IT LIVES IN
+
+SheetEditorView is the wiring, and deliberately thin: every action is one call into a tested
+class - SheetBook for the edits, SheetAudit for the marks, SheetFix for the corrections,
+TermCreation for a new row, SheetProvenance for who did it - so what is left is a file chooser
+and some buttons. Open a folder, edit, add and duplicate and delete rows, fill down, undo,
+check, apply a whole kind of correction in one step, record who did it, save. Right-clicking a
+marked cell offers its correction, offers to create the thing it refers to, and explains why it
+is marked.
+
+It sits as a second tab beside Schema Canvas in the OntoBoard tab rather than in a column of
+its own: they are alternatives, and halving the width would leave both cramped. ViewConfigTest
+pins that, because splitting them into two CNodes is the obvious thing for whoever edits the
+layout next to do.
+
+Nothing is written until Save. These files are in git and somebody else is editing them.
+
+NUMBERS
+
+2124 tests, 0 failures. 17 new - 16 for the grid, of which one renders, and one pinning the
+tab layout.
+
+43/43 classes named in plugin.xml load on both hosts, up from 42. 163 patterns indexed. Quality report end
+to end: 6 findings, 2 of them errors.
+
+On 5.5.0, cellfie-2.2.4 and swrltab-plugin-2.1.3 fail to install. Neither is ours.
+
+STILL OPEN
+
+The self-test opens the OntoBoard tab and reports "[SchemaCanvasView] built without throwing" -
+the canvas only, because Protege constructs the visible tab and not the one behind it. So the
+sheet editor's construction inside a real Protege is NOT yet covered by the host smoke, which
+is the one oracle that has historically caught what the suite could not. That is the next thing
+to fix, and until it is, this release's claim about the editor rests on headless tests alone.
+
+Opening a folder, editing and saving have not been exercised by a person in a running Protege
+either.
+
+The starter template still produces zero axioms on every real project.
