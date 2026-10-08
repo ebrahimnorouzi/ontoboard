@@ -13,6 +13,41 @@ release notes on
 [the releases page](https://github.com/ebrahimnorouzi/ontoboard/releases), carries the same
 record for that version.
 
+- **A label column with a language tag produced no label at all, fixed in 1.108.0.** The first
+  defect found by running a real knowledge graph through the plugin rather than a fixture, and
+  the first one where ROBOT raises nothing, produces axioms, and gets them wrong.
+
+  `A rdfs:label@en` looks like the obvious way to write an English label. Measured on
+  robot-core 1.9.8, it produces an annotation whose **property** is
+  `http://www.w3.org/2000/01/rdf-schema#label@en` — the language tag concatenated onto the
+  property IRI — carrying an untagged `xsd:string`. So `isLabel()` is false and `getLang()` is
+  empty: the cell is not a label in English, and not an `rdfs:label` at all. The spelling that
+  works is `AL rdfs:label@en`.
+
+  ROBOT **validates `AL` without a tag and rejects it, and does not validate `A` with one.**
+  That asymmetry is the whole defect, and it means the sheet succeeds in strict mode — so none
+  of the machinery added in 1.106.0 for placing problems is ever entered. The sheet is reported
+  as perfect.
+
+  Measured on the MatWerk knowledge graph, 26 sheets and 8,471 rows: its `organization` sheet
+  is written this way in two columns across **81 filled cells**, so not one of its
+  organizations carries a name that a reader, a query or Protégé's own label renderer can see.
+  With the check in place, 25 of the 26 sheets report nothing and `organization` reports two
+  problems, each naming the author's own heading and the replacement to paste in.
+
+  The fix is a new class rather than a condition, because reading the template row is what
+  several things needed. `TemplateColumns` parses row two into typed columns — kind, property,
+  language, datatype, `SPLIT=`, and the `>` depth of an axiom annotation — and reports faults in
+  the row itself. `TemplateSheet.run` now consults it before asking ROBOT anything, so the
+  faults arrive on the **success** path, which is the only path this sheet takes.
+
+  It deliberately refuses to report what it merely fails to recognise. ROBOT's own acceptance
+  pattern for annotation columns is `^>{0,2}A[LTI]? .*` and it gains column types between
+  versions, so an unknown spec parses to `OTHER` and is left alone — `DOMAIN` and `RANGE` were
+  promoted out of `OTHER` only because the MatWerk sheets use them. One test asserts that
+  fourteen specs taken from real PMDco, ECTO and MatWerk templates produce no fault at all; a
+  check that fires on a working sheet would be worse than no check.
+
 - **A rename pasted from a spreadsheet used to build an IRI with a tab in it, fixed in
   1.107.0.** Silent corruption reported as success, from the most ordinary thing a person can
   do with that dialog.

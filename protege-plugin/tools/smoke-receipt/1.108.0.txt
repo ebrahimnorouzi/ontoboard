@@ -1,0 +1,109 @@
+OntoBoard 1.108.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-10-08  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 9/9  test 10/10
+  2026-10-08  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 9/9  test 10/10
+
+
+A LABEL COLUMN WITH A LANGUAGE TAG PRODUCED NO LABEL AT ALL
+
+Found by running a real 26-sheet knowledge graph through the plugin instead of a fixture. The
+first defect in this area where ROBOT raises nothing, produces axioms, and gets them wrong.
+
+`A rdfs:label@en` is the obvious way to write an English label. Measured on robot-core 1.9.8 it
+produces an annotation whose PROPERTY is
+
+    http://www.w3.org/2000/01/rdf-schema#label@en
+
+- the language tag concatenated onto the property IRI - carrying an untagged xsd:string. So
+isLabel() is false and getLang() is empty: not a label in English, and not an rdfs:label at all.
+The spelling that works is `AL rdfs:label@en`.
+
+The asymmetry is the defect: ROBOT VALIDATES `AL` WITHOUT A TAG AND REJECTS IT, AND DOES NOT
+VALIDATE `A` WITH ONE. Measured across every spelling:
+
+    A rdfs:label                 0 problems   real rdfs:label, no tag
+    A rdfs:label@en              0 problems   property rdfs:label@en, NOT a label
+    AL rdfs:label                1 problem    correctly rejected by ROBOT
+    AL rdfs:label@en             0 problems   real rdfs:label tagged en
+    LABEL                        0 problems   real rdfs:label
+    AT rdfs:label^^xsd:string    0 problems   real rdfs:label
+    A rdfs:label@zz-nonsense     0 problems   property rdfs:label@zz-nonsense
+    A rdfs:label@                0 problems   property rdfs:label@
+
+Because the sheet succeeds in strict mode, none of the problem-placing machinery added in
+1.106.0 is entered. The sheet is reported as perfect.
+
+WHAT IT COSTS IN A LIVE KNOWLEDGE GRAPH
+
+The whole MatWerk KG was run through the engine in the order its Airflow DAG runs it - 26
+sheets, 8,471 data rows, merge-chain depth 8:
+
+    36,761 axioms generated, 6,771 distinct individuals, 0 problems, about 7 seconds
+
+Its `organization` sheet has two columns written `A rdfs:label@en` and `A rdfs:label@de`, over
+81 filled cells. Not one of its organizations carries a name that a reader, a query, or
+Protege's own label renderer can see. With the check in place 25 of the 26 sheets report
+nothing and `organization` reports two problems, each naming the heading its author wrote and
+the exact replacement to paste in. The axiom counts are unchanged: this reports, it does not
+rewrite.
+
+A NEW CLASS RATHER THAN A CONDITION
+
+Nothing in this plugin had ever parsed the template row; the whole table was handed to
+robot-core and whatever came back was the answer. That is why a column could be malformed in a
+way that silently produced the wrong axiom.
+
+TemplateColumns reads row two into typed columns - kind, property, language, datatype, SPLIT=,
+and the `>` depth of an axiom annotation - and reports faults in the row itself. TemplateSheet
+consults it before asking ROBOT anything, so faults arrive on the success path, which is the
+only path this sheet takes. Threading them through mattered: one return path builds its own
+problem list, and the faults would have been dropped there.
+
+It refuses to report what it merely fails to recognise. ROBOT's acceptance pattern for
+annotation columns is ^>{0,2}A[LTI]? .* and it gains column types between versions, so an
+unknown spec parses to OTHER and is left alone. DOMAIN and RANGE were promoted out of OTHER
+only because the MatWerk sheets use them - 2 of each, measured. One test asserts that fourteen
+specs taken from real PMDco, ECTO and MatWerk templates produce no fault at all, because a
+check that fires on a working sheet is worse than no check.
+
+WHAT ELSE THE RUN ESTABLISHED, NOT ACTED ON HERE
+
+Adding a row works end to end. Appending one organization - a fresh IRI, a type from the
+sheet's own TYPE column, a label - and rebuilding every sheet gives +4 axioms and +1
+individual, declared, typed OBI_0000245, two labels, and absent from the graph built before the
+edit.
+
+Reasoning over the whole graph does not finish. ELK on all 34,773 axioms: consistent, 0
+unsatisfiable, 3.0 s. HermiT on the same: no result in 840 s, killed. The production pipeline
+gates each sheet separately rather than the whole graph, and that is evidently the only shape
+that terminates.
+
+Cross-sheet label references are AMBIGUOUS rather than unresolvable, which corrects what the
+1.106.0 work assumed. 57 institute labels are declared in two sheets; 55 agree on an IRI and 2
+do not. "National Institute for Materials Science (NIMS)" has two distinct IRIs in scope and 9
+of dataportal's 17 institute references name that label. A further 23 labels carry two IRIs
+inside one upstream sheet alone. A reference resolves to whichever IRI ROBOT picks.
+
+NUMBERS
+
+1988 tests, 0 failures. 22 new - 19 in a new TemplateColumnsTest and 3 in TemplateSheetTest,
+which goes from 24 to 27. The before state was measured against the shipped code rather than by
+reverting a guard: 0 problems before, 1 after, on each of the five broken spellings.
+
+41/41 classes named in plugin.xml load on both hosts. 163 patterns indexed. Quality report end
+to end: 6 findings, 2 of them errors.
+
+On 5.5.0, cellfie-2.2.4 and swrltab-plugin-2.1.3 fail to install. Neither is ours and neither
+is new.
+
+STILL OPEN
+
+The starter template, which has never produced a single axiom out of the box - measured on
+PMDco, NFDIcore, MWO, ECTO and a project OntoBoard scaffolds itself, all 0 axioms and 3 errors.
+The derived prefix is right for MWO and ECTO and still fails, because no project declares it,
+so fixing the derivation alone fixes none of them. And PMD_0000001 and NFDI_0000001 are LIVE
+published terms, so any fix that keeps the hardcoded 0000001-0000003 would assert
+rdfs:label "an example term" onto PMDco's "portion of matter" and report a clean success. That
+is the next thing to do and it is specified, not guessed.

@@ -199,6 +199,18 @@ public final class TemplateSheet {
         IOHelper io = ioHelper(prefixes);
         String iri = outputIri == null ? "http://www.ontoboard.org/template" : outputIri.toString();
 
+        // Faults in the template row itself, found before ROBOT is asked anything. These are the
+        // ones ROBOT does not object to and does not get right either - a column that silently
+        // writes onto a property nobody defined - so they have to be found by reading the row
+        // rather than by watching what ROBOT does with it. See TemplateColumns.
+        List<Problem> templateFaults = new ArrayList<Problem>();
+        for (TemplateColumns.Fault fault : TemplateColumns.of(rows).getFaults()) {
+            templateFaults.add(new Problem(0, fault.getColumn().getNumber(),
+                    fault.getColumn().getHeading(), fault.getColumn().getSpec(),
+                    fault.getMessage()));
+        }
+        problems.addAll(templateFaults);
+
         // The template row on its own first. A problem there is a whole-table problem - nothing is
         // produced and no row is salvageable - so it must not be reported as though one row were
         // at fault.
@@ -228,7 +240,7 @@ public final class TemplateSheet {
             // ROBOT's own salvage gave up, so there is no partial ontology to report against.
             // Building from the rows that do work is the only way to keep the two promises this
             // class exists for - every problem placed, and the good rows surviving the bad ones.
-            return fromRowsThatWork(name, rows, context, io, iri, dataRows);
+            return fromRowsThatWork(name, rows, context, io, iri, dataRows, templateFaults);
         }
 
         problems.addAll(problemsPerRow(name, rows, contextIncluding(context, salvaged), io, iri));
@@ -287,8 +299,9 @@ public final class TemplateSheet {
      * wasted pass rather than a wrong answer.
      */
     private static Result fromRowsThatWork(String name, List<List<String>> rows,
-            OWLOntology context, IOHelper io, String iri, int dataRows) {
-        List<Problem> problems = new ArrayList<Problem>();
+            OWLOntology context, IOHelper io, String iri, int dataRows,
+            List<Problem> templateFaults) {
+        List<Problem> problems = new ArrayList<Problem>(templateFaults);
         List<String> headings = rows.get(0);
         List<String> templateRow = rows.get(1);
 

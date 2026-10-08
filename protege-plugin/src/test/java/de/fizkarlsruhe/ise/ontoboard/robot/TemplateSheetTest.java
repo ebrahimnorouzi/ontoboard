@@ -201,6 +201,82 @@ class TemplateSheetTest {
         assertFalse(result.getProblems().isEmpty());
     }
 
+    // ---------- a column that is wrong in a way ROBOT does not mind ----------
+
+    /**
+     * A sheet that ROBOT accepts, produces axioms from, and gets wrong.
+     *
+     * <p>Every other failure in this class is one ROBOT objects to somehow. This one it does
+     * not: {@code A rdfs:label@en} succeeds in strict mode, so none of the machinery for
+     * placing problems is ever entered, and the sheet is reported as perfect. What it actually
+     * writes is an annotation on a property named
+     * {@code http://www.w3.org/2000/01/rdf-schema#label@en} - the language tag glued onto the
+     * property IRI - carrying an untagged {@code xsd:string}. So the cell is not a label in any
+     * language, and {@code isLabel()} is false.
+     *
+     * <p>Measured on the MatWerk knowledge graph: its {@code organization} sheet has two such
+     * columns across 81 filled cells, which is why none of its organizations shows a name.
+     */
+    @Test
+    void aLanguageTagOnTheWrongColumnKindIsReportedEvenThoughTheSheetSucceeds() throws Exception {
+        TemplateSheet.Result result = run(
+                tabs("#", "Label", "DE label"),
+                tabs("ID", "A rdfs:label@en", "A rdfs:label@de"),
+                tabs("ex:0001", "a name", "ein Name"));
+
+        assertNotNull(result.getOntology(),
+                "the sheet still produces its axioms; the point is that they are wrong");
+        assertEquals(2, result.getProblems().size(), result.getProblems().toString());
+        for (TemplateSheet.Problem problem : result.getProblems()) {
+            assertEquals(0, problem.getRow(),
+                    "this is a fault in the template row, not in a data row");
+            assertTrue(problem.getColumn() > 0,
+                    "the problem must name its column: " + problem);
+            assertTrue(problem.getMessage().contains("AL"), problem.getMessage());
+        }
+        assertEquals("Label", result.getProblems().get(0).getColumnName());
+        assertEquals("DE label", result.getProblems().get(1).getColumnName());
+    }
+
+    /** And the correct spelling produces a real label, with its tag, and no complaint. */
+    @Test
+    void theCorrectedSpellingProducesARealLabelWithItsLanguage() throws Exception {
+        TemplateSheet.Result result = run(
+                tabs("#", "Label"),
+                tabs("ID", "AL rdfs:label@en"),
+                tabs("ex:0001", "a name"));
+
+        assertTrue(result.getProblems().isEmpty(), result.getProblems().toString());
+        boolean found = false;
+        for (org.semanticweb.owlapi.model.OWLAnnotationAssertionAxiom axiom
+                : result.getOntology().getAnnotationAssertionAxioms(IRI.create(NS + "0001"))) {
+            assertTrue(axiom.getProperty().isLabel(),
+                    "not rdfs:label but " + axiom.getProperty().getIRI());
+            org.semanticweb.owlapi.model.OWLLiteral value =
+                    (org.semanticweb.owlapi.model.OWLLiteral) axiom.getValue();
+            assertEquals("a name", value.getLiteral());
+            assertEquals("en", value.getLang());
+            found = true;
+        }
+        assertTrue(found, "no annotation was produced at all");
+    }
+
+    /**
+     * The 25 other MatWerk sheets carry no such fault, and nor do the real templates in PMDco
+     * and ECTO. A check that fires on a working sheet would be worse than no check.
+     */
+    @Test
+    void theColumnShapesRealProjectsUseAreNotReported() throws Exception {
+        TemplateSheet.Result result = run(
+                tabs("#", "TYPE", "Label", "Definition", "Source", "Parent", "Located in"),
+                tabs("ID", "TYPE", "AL rdfs:label@en", "A IAO:0000115", ">A IAO:0000119",
+                        "SC %", "I http://purl.obolibrary.org/obo/RO_0001025 SPLIT=,"),
+                tabs("ex:0001", "owl:Class", "a name", "What it means.", "https://doi.org/x",
+                        "owl:Thing", ""));
+
+        assertTrue(result.getProblems().isEmpty(), result.getProblems().toString());
+    }
+
     // ---------- a column that points at another term ----------
 
     /**
