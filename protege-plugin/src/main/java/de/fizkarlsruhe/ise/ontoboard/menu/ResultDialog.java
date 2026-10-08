@@ -48,11 +48,7 @@ public final class ResultDialog {
 
     /** Shows {@code result}, blocking until dismissed. */
     public static void show(Component parent, OperationResult result) {
-        JPanel content = new JPanel(new BorderLayout(0, 8));
-        content.add(header(result), BorderLayout.NORTH);
-        content.add(body(result), BorderLayout.CENTER);
-        content.setPreferredSize(new Dimension(result.hasTable() ? 680 : 520,
-                result.hasTable() ? 460 : 260));
+        JPanel content = buildContent(result);
 
         JButton save = new JButton("Save report...");
         save.setToolTipText("Write the summary, the table and the log to a file");
@@ -61,6 +57,24 @@ public final class ResultDialog {
         JOptionPane pane = new JOptionPane(content, JOptionPane.PLAIN_MESSAGE,
                 JOptionPane.DEFAULT_OPTION, null, new Object[] {save, "Close"}, "Close");
         pane.createDialog(parent, "OntoBoard: " + result.getOperation()).setVisible(true);
+    }
+
+    /**
+     * The panel the dialog shows, separated from showing it.
+     *
+     * <p>Visible to the package so a test can paint it. This is what every operation in the
+     * plugin puts on screen when it finishes, and until it could be rendered headlessly any
+     * claim about how it looks meant launching Prot&eacute;g&eacute; and running something. See
+     * {@code DialogDesignProofTest}, and {@code CanvasDesignProofTest} for the same argument
+     * about the diagram.
+     */
+    static JPanel buildContent(OperationResult result) {
+        JPanel content = new JPanel(new BorderLayout(0, 8));
+        content.add(header(result), BorderLayout.NORTH);
+        content.add(body(result), BorderLayout.CENTER);
+        content.setPreferredSize(new Dimension(result.hasTable() ? 680 : 520,
+                result.hasTable() ? 460 : 260));
+        return content;
     }
 
     private static Component header(OperationResult result) {

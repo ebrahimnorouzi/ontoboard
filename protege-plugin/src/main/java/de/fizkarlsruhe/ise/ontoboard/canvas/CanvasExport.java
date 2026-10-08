@@ -34,6 +34,38 @@ public final class CanvasExport {
     private static final double SCALE = 1.0;
     private static final Color BACKGROUND = Color.WHITE;
 
+    /**
+     * Breathing room around the diagram, in graph units.
+     *
+     * <p>Without it the image is sized to the graph bounds exactly, and a node sitting at the
+     * leftmost or topmost position has its border drawn half outside the picture. Measured on
+     * the rendered design proof before this existed: column x=0 carried 101 non-background
+     * pixels, rising to 331 by x=3 - a node outline running off the edge of the file.
+     *
+     * <p>Eight units rather than two, because the stroke is not the only thing at the boundary:
+     * a selected node is drawn with a wider outline, and a frame's dashed border sits outside
+     * the shape it encloses.
+     */
+    static final double MARGIN = 8;
+
+    /**
+     * The graph's own bounds, widened by {@link #MARGIN} on every side.
+     *
+     * <p>Null when the graph is empty, which both renderers take to mean "work it out", and
+     * for an empty graph there is nothing to work out.
+     */
+    static com.mxgraph.util.mxRectangle framed(com.mxgraph.view.mxGraph graph, double scale) {
+        com.mxgraph.util.mxRectangle bounds = graph.getGraphBounds();
+        if (bounds == null || bounds.getWidth() <= 0 || bounds.getHeight() <= 0) {
+            return null;
+        }
+        return new com.mxgraph.util.mxRectangle(
+                (bounds.getX() - MARGIN) * scale,
+                (bounds.getY() - MARGIN) * scale,
+                (bounds.getWidth() + 2 * MARGIN) * scale,
+                (bounds.getHeight() + 2 * MARGIN) * scale);
+    }
+
     /** How wide the key is drawn when the diagram is narrower than it needs. */
     private static final int MINIMUM_KEY_WIDTH = 420;
 
@@ -73,7 +105,7 @@ public final class CanvasExport {
             throw new IllegalArgumentException("export scale must be positive, got " + scale);
         }
         BufferedImage diagram = mxCellRenderer.createBufferedImage(
-                graph, null, scale, BACKGROUND, true, null);
+                graph, null, scale, BACKGROUND, true, framed(graph, scale));
         if (diagram == null) {
             // An empty graph has no bounds; emit a 1x1 rather than a corrupt file.
             diagram = new BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB);
@@ -102,7 +134,7 @@ public final class CanvasExport {
             List<CanvasLegend.Entry> entries, List<CanvasLegend.Namespace> namespaces)
             throws IOException {
         Document document = mxCellRenderer.createSvgDocument(
-                graph, null, SCALE, BACKGROUND, null);
+                graph, null, SCALE, BACKGROUND, framed(graph, SCALE));
         if (document == null) {
             Files.write(target.toPath(),
                     "<svg xmlns=\"http://www.w3.org/2000/svg\"/>".getBytes(

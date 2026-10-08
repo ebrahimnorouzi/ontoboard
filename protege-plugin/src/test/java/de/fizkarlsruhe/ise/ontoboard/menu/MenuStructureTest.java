@@ -205,6 +205,44 @@ class MenuStructureTest {
     }
 
     /**
+     * No group of menu entries grows past what somebody can scan.
+     *
+     * <p>Prot&eacute;g&eacute; draws a separator between slot groups, so {@code SlotA-*} and
+     * {@code SlotB-*} are the only grouping this plugin has. Nothing enforced their size, and
+     * the Project submenu reached seventeen entries in three groups of 7, 3 and 7 - with
+     * <i>Term lists</i>, <i>Refresh imports</i> and <i>Imports graph</i> sitting in the group
+     * that creates a project, because that is where there was room. The slot names recorded it:
+     * {@code SlotA-RH}, {@code SlotA-RI}, {@code SlotA-RJ}, {@code SlotA-UP}.
+     *
+     * <p>A menu drifts that way one feature at a time, and no single commit looks wrong. Six is
+     * the limit because a group of seven is where scanning turns into reading - and because the
+     * point is not the number but that adding the seventh forces somebody to decide where it
+     * belongs instead of appending it.
+     */
+    @Test
+    void noMenuGroupGrowsPastWhatSomebodyCanScan() throws Exception {
+        Map<String, Integer> sizes = new HashMap<String, Integer>();
+        for (Element extension : menuExtensions()) {
+            String path = valueOf(extension, "path");
+            int slash = path.lastIndexOf('/');
+            if (slash < 0) {
+                continue;
+            }
+            String slot = path.substring(slash + 1);
+            int dash = slot.indexOf('-');
+            String group = path.substring(0, slash + 1) + (dash < 0 ? slot : slot.substring(0, dash));
+            Integer was = sizes.get(group);
+            sizes.put(group, was == null ? 1 : was + 1);
+        }
+        for (Map.Entry<String, Integer> each : sizes.entrySet()) {
+            assertTrue(each.getValue() <= 6,
+                    each.getKey() + " has " + each.getValue() + " entries with no separator "
+                            + "between them. Split it into another slot group rather than "
+                            + "appending to this one.");
+        }
+    }
+
+    /**
      * A submenu with no children is an empty menu a user opens and finds nothing in - and it is
      * what is left behind when an entry's path is changed and its parent forgotten.
      */

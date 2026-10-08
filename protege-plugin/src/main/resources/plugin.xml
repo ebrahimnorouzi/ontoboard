@@ -84,7 +84,7 @@
     <name value="Documentation..."/>
     <toolTip value="Generate the ontology's HTML page with Widoco and open it"/>
     <class value="de.fizkarlsruhe.ise.ontoboard.menu.WidocoAction"/>
-    <path value="ontoboard.menu.OntoBoard.project/SlotC-G"/>
+    <path value="ontoboard.menu.OntoBoard.project/SlotF-A"/>
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
@@ -93,7 +93,7 @@
     <name value="Check project metadata"/>
     <toolTip value="Where this project's ontology, its ODK YAML and its registry entry disagree"/>
     <class value="de.fizkarlsruhe.ise.ontoboard.menu.MetadataCheckAction"/>
-    <path value="ontoboard.menu.OntoBoard.project/SlotC-F"/>
+    <path value="ontoboard.menu.OntoBoard.project/SlotE-B"/>
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
@@ -102,7 +102,7 @@
     <name value="Run a project script..."/>
     <toolTip value="Run one of the scripts in the project's src/scripts directory"/>
     <class value="de.fizkarlsruhe.ise.ontoboard.odk.RunScriptAction"/>
-    <path value="ontoboard.menu.OntoBoard.project/SlotC-E"/>
+    <path value="ontoboard.menu.OntoBoard.project/SlotF-C"/>
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
@@ -111,7 +111,7 @@
     <name value="Project configuration..."/>
     <toolTip value="Show and edit this project's &lt;id&gt;-odk.yaml"/>
     <class value="de.fizkarlsruhe.ise.ontoboard.odk.ProjectConfigAction"/>
-    <path value="ontoboard.menu.OntoBoard.project/SlotC-D"/>
+    <path value="ontoboard.menu.OntoBoard.project/SlotB-A"/>
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
@@ -120,7 +120,7 @@
     <name value="Check requirements..."/>
     <toolTip value="What this machine can do, what is missing, and what to install"/>
     <class value="de.fizkarlsruhe.ise.ontoboard.odk.RequirementsAction"/>
-    <path value="ontoboard.menu.OntoBoard.project/SlotC-C"/>
+    <path value="ontoboard.menu.OntoBoard.project/SlotE-A"/>
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
@@ -129,7 +129,7 @@
     <name value="ID ranges..."/>
     <toolTip value="Who may mint which identifiers, and give a block to a new editor"/>
     <class value="de.fizkarlsruhe.ise.ontoboard.menu.IdRangesAction"/>
-    <path value="ontoboard.menu.OntoBoard.project/SlotB-A"/>
+    <path value="ontoboard.menu.OntoBoard.project/SlotB-B"/>
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
@@ -147,7 +147,7 @@
     <name value="Release..."/>
     <toolTip value="Produce the published version: check it, classify it, stamp a dated version IRI"/>
     <class value="de.fizkarlsruhe.ise.ontoboard.menu.ReleaseAction"/>
-    <path value="ontoboard.menu.OntoBoard.project/SlotC-A"/>
+    <path value="ontoboard.menu.OntoBoard.project/SlotD-B"/>
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
@@ -156,7 +156,7 @@
     <name value="Build..."/>
     <toolTip value="Run one of this project's make targets and keep the whole transcript"/>
     <class value="de.fizkarlsruhe.ise.ontoboard.menu.BuildAction"/>
-    <path value="ontoboard.menu.OntoBoard.project/SlotB-B"/>
+    <path value="ontoboard.menu.OntoBoard.project/SlotD-A"/>
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
@@ -165,14 +165,14 @@
     <name value="Imports"/>
     <toolTip value="What this ontology imports and whether any of it actually arrived"/>
     <class value="de.fizkarlsruhe.ise.ontoboard.menu.ImportsAction"/>
-    <path value="ontoboard.menu.OntoBoard.project/SlotB-C"/>
+    <path value="ontoboard.menu.OntoBoard.project/SlotC-A"/>
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
   <extension id="menu.OntoBoard.project.update"
              point="org.protege.editor.core.application.EditorKitMenuAction">
     <name value="Update project files..."/>
-    <path value="ontoboard.menu.OntoBoard.project/SlotA-UP"/>
+    <path value="ontoboard.menu.OntoBoard.project/SlotF-B"/>
     <toolTip value="Re-render this project's generated files from its own -odk.yaml, previewed first"/>
     <class value="de.fizkarlsruhe.ise.ontoboard.menu.UpdateProjectAction"/>
     <editorKitId value="OWLEditorKit"/>
@@ -181,7 +181,7 @@
   <extension id="menu.OntoBoard.project.refreshImports"
              point="org.protege.editor.core.application.EditorKitMenuAction">
     <name value="Refresh imports..."/>
-    <path value="ontoboard.menu.OntoBoard.project/SlotA-RI"/>
+    <path value="ontoboard.menu.OntoBoard.project/SlotC-C"/>
     <toolTip value="Can this project's import modules be rebuilt from its own term lists - and rebuild them"/>
     <class value="de.fizkarlsruhe.ise.ontoboard.menu.RefreshImportsAction"/>
     <editorKitId value="OWLEditorKit"/>
@@ -190,7 +190,7 @@
   <extension id="menu.OntoBoard.project.termLists"
              point="org.protege.editor.core.application.EditorKitMenuAction">
     <name value="Term lists..."/>
-    <path value="ontoboard.menu.OntoBoard.project/SlotA-RH"/>
+    <path value="ontoboard.menu.OntoBoard.project/SlotC-D"/>
     <toolTip value="View and edit the &lt;import&gt;_terms.txt files an import is rebuilt from"/>
     <class value="de.fizkarlsruhe.ise.ontoboard.odk.TermListAction"/>
     <editorKitId value="OWLEditorKit"/>
@@ -199,7 +199,7 @@
   <extension id="menu.OntoBoard.project.importsGraph"
              point="org.protege.editor.core.application.EditorKitMenuAction">
     <name value="Imports graph..."/>
-    <path value="ontoboard.menu.OntoBoard.project/SlotA-RJ"/>
+    <path value="ontoboard.menu.OntoBoard.project/SlotC-B"/>
     <toolTip value="The owl:imports structure as a picture, including which modules are shared"/>
     <class value="de.fizkarlsruhe.ise.ontoboard.menu.ImportsGraphAction"/>
     <editorKitId value="OWLEditorKit"/>
@@ -210,7 +210,7 @@
     <name value="Compare releases..."/>
     <toolTip value="What changed between two versions, term by term - added, obsoleted, redefined, moved"/>
     <class value="de.fizkarlsruhe.ise.ontoboard.menu.CompareReleasesAction"/>
-    <path value="ontoboard.menu.OntoBoard.project/SlotC-B"/>
+    <path value="ontoboard.menu.OntoBoard.project/SlotD-C"/>
     <editorKitId value="OWLEditorKit"/>
   </extension>
 

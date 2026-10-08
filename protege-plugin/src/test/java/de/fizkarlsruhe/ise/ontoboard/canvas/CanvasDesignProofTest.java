@@ -185,6 +185,41 @@ class CanvasDesignProofTest {
                 "the diagram rendered as " + distinctColours(image) + " colours - it is blank");
     }
 
+    /**
+     * The export a user actually gets does not clip the diagram at its own edge.
+     *
+     * <p>The other render in this class calls {@code mxCellRenderer} directly, which is the
+     * right thing for reviewing a stylesheet and the wrong thing for proving anything about the
+     * product: it is not the code path <i>Export…</i> uses. Measured through that direct call,
+     * the leftmost column of the proof image carried 101 non-background pixels - a node outline
+     * running off the picture - and changing {@code CanvasExport} did not move the number,
+     * because the proof never went through it.
+     *
+     * <p>So this one goes through {@code CanvasExport.writePng} and looks at the border. The
+     * image is sized from the graph bounds, and a node at the leftmost or topmost position has
+     * its stroke centred on that boundary - half of it outside the file - unless the bounds are
+     * widened first.
+     */
+    @Test
+    void theExportedImageDoesNotClipTheDiagram() throws Exception {
+        File png = new File(designDirectory(), "exported.png");
+
+        CanvasExport.writePng(representativeBoard(), png, 2.0, null, null);
+
+        BufferedImage image = ImageIO.read(png);
+        int background = image.getRGB(image.getWidth() - 1, image.getHeight() - 1);
+        for (int y = 0; y < image.getHeight(); y++) {
+            assertTrue(image.getRGB(0, y) == background,
+                    "the diagram touches the left edge at y=" + y + ", so its border is cut");
+            assertTrue(image.getRGB(image.getWidth() - 1, y) == background,
+                    "the diagram touches the right edge at y=" + y);
+        }
+        for (int x = 0; x < image.getWidth(); x++) {
+            assertTrue(image.getRGB(x, 0) == background,
+                    "the diagram touches the top edge at x=" + x + ", so its border is cut");
+        }
+    }
+
     /** The same board as SVG, which is what goes into a paper. */
     @Test
     void theBoardRendersToSvg() throws Exception {

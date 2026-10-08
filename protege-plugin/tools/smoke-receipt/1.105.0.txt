@@ -1,0 +1,115 @@
+OntoBoard 1.105.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-10-08  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 9/9  test 10/10
+  2026-10-08  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 9/9  test 10/10
+
+
+HOW IT LOOKS, MADE VISIBLE BEFORE IT WAS CHANGED
+
+CanvasDesignProofTest has rendered the diagram to a PNG since 1.65.0, on the argument that a
+claim about appearance should not rest on somebody launching Protege and squinting. The two
+things a user actually looks at on every single operation - the parameter form and the result
+panel - had no such proof. They do now, and the three fixes below were all found by rendering
+them and looking.
+
+AN EXPORT CLIPPED ITS OWN DIAGRAM
+
+mxCellRenderer sizes the image to the graph bounds exactly, so a node at the leftmost or topmost
+position had its border stroke centred on the boundary - half of it outside the file. Measured
+on the rendered board: 101 non-background pixels in column x=0, rising to 331 by x=3, which is
+an outline running off the picture.
+
+Exports now carry an eight-unit margin, in both the PNG and the SVG path. Eight rather than two
+because the stroke is not the only thing at the boundary: a selected node draws a wider outline
+and a frame's dashed border sits outside the shape it encloses.
+
+AND THE FIRST MEASUREMENT OF IT PROVED NOTHING
+
+Worth recording because it nearly shipped as a verified fix. The clipping was measured on the
+design proof's image, CanvasExport was changed, the image was re-rendered - and every number was
+identical. The non-result was the useful one: that proof calls mxCellRenderer directly, which is
+the right thing for reviewing a stylesheet and not the code path Export... uses. Nothing had been
+verified.
+
+The new test goes through CanvasExport.writePng and checks every border pixel. Reverting the
+margin fails it with "the diagram touches the left edge at y=1387, so its border is cut" - the
+same y as the original measurement.
+
+A FORM WITH THREE RIGHT EDGES
+
+Measured on a representative six-field form: every control started at x=127, and they ended at
+
+    dropdown     351
+    text field   417
+    text area    464
+    file row     464
+
+There was no weightx anywhere in ParameterDialog, so the control column never absorbed the extra
+width and each control sat at whatever its content preferred. Everything that can usefully be
+wider now stretches to one edge. A checkbox is deliberately excluded: a tick box stretched
+across a dialog has a vast dead click target and looks like a mistake.
+
+A label beside a six-line text area was also vertically centred, so it sat halfway down the box
+rather than beside the line where typing starts. Top-aligned now.
+
+TWO THINGS THAT LOOKED LIKE DEFECTS AND WERE NOT
+
+THE RESULT TABLE APPEARED TO HAVE NO COLUMN HEADERS. That would be a serious thing to ship -
+five columns of values with nothing saying what they are. Before changing anything, the code:
+the table is inside a JScrollPane, and Swing puts a table's header in that pane's column-header
+viewport. Checked after validate(), the header is present with its three columns at 672x20,
+parented to a JViewport. The product was right.
+
+The proof was wrong. It laid components out with a recursive doLayout(), which does not lay out
+a scroll pane's column-header viewport, so the header painted at zero height. render() now calls
+addNotify() and validate(). A proof image that lies about the product is worse than no proof
+image, and that sentence is in the method's javadoc so the next person does not reintroduce it.
+
+THE CANVAS PROOF'S EMPTY BAND. The rendered board has a large vertical gap with the sticky note
+and frame stranded at the bottom. The fixture hand-places the note at y=620 and the frame at
+y=600 while the auto-laid-out nodes end near y=420. An artifact of the fixture, not the layout.
+
+ONE THING LEFT ALONE DELIBERATELY
+
+The empty-state card separates "Add every term" from the three actions above it with a 16px gap
+where the others get 8. That is the only uncommented deviation in a heavily commented file and
+read as accidental - but it is right: that action is the one that can put ten thousand nodes on
+the board, and grouping it apart is correct. It is explained now rather than flattened.
+
+NUMBERS
+
+1955 tests, 0 failures. 5 new - four rendering proofs and one that asserts no control falls
+outside the form, which GridBagLayout will do silently when fill and weight disagree.
+
+Two main-source methods were made package-visible so a test could paint them: buildForm in
+ParameterDialog and a new buildContent extracted from ResultDialog.show. Both carry a javadoc
+saying why.
+
+41/41 classes named in plugin.xml load on both hosts. Quality report end to end: 6 findings, 2
+of them errors. 163 patterns indexed.
+
+The images land in target/design/: board.png, board-large.png, board.svg, legend.png,
+empty-state.png, exported.png, parameter-form.png and result-dialog.png.
+
+THE MENU HAD DRIFTED, AND NOTHING STOPPED IT
+
+Protege draws a separator between slot groups, so SlotA-* and SlotB-* are the only grouping this
+plugin has. The Project submenu had reached seventeen entries in three groups of 7, 3 and 7,
+with Term lists, Refresh imports and Imports graph sitting in the group that CREATES a project -
+because that is where there was room. The slot names recorded how it happened: SlotA-RH,
+SlotA-RI, SlotA-RJ, SlotA-UP, appended one feature at a time, no single commit looking wrong.
+
+Regrouped by what somebody is trying to do: start a project (3), configure it (2), imports (4),
+build and release (3), check (2), generate and run (3).
+
+A test now fails when any group passes six. Six because a group of seven is where scanning turns
+into reading, and because the point is not the number - it is that adding the seventh forces a
+decision about where it belongs instead of an append. Checked against the old layout: it fails
+with "SlotC has 7 entries with no separator between them".
+
+STILL OPEN And the collaboration
+vocabulary, whose plan was rejected on review: equivalence and disjointness are the whole of the
+practical loss, and carrying them is a two-sided protocol change that needs its own measured
+design rather than a continuation of this one.

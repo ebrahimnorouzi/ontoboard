@@ -105,7 +105,15 @@ public final class ParameterDialog {
         }
     }
 
-    private static JPanel buildForm(Component parent, List<Parameter> parameters,
+    /**
+     * Visible to the package so a test can render it.
+     *
+     * <p>The form every operation in this plugin shows is the thing a user looks at most, and
+     * until now nothing could look at it without launching Protege. {@code DialogDesignProof}
+     * paints this panel to a PNG for the same reason {@code CanvasDesignProofTest} paints the
+     * board: a claim about how something looks should not rest on somebody squinting.
+     */
+    static JPanel buildForm(Component parent, List<Parameter> parameters,
             Map<String, Component> controls) {
         JPanel form = new JPanel(new GridBagLayout());
         GridBagConstraints at = new GridBagConstraints();
@@ -117,18 +125,38 @@ public final class ParameterDialog {
             at.gridx = 0;
             JLabel label = new JLabel(parameter.getLabel()
                     + (parameter.isRequired() ? " *" : ""));
+            // Beside the first line of a tall control rather than halfway down it. A label
+            // centred against a six-line text area reads as belonging to the middle of the box,
+            // and the eye has to travel up again to find where typing starts.
+            at.anchor = parameter.getKind() == Parameter.Kind.MULTILINE
+                    ? GridBagConstraints.NORTHWEST : GridBagConstraints.WEST;
             form.add(label, at);
+            at.anchor = GridBagConstraints.WEST;
 
             at.gridx = 1;
             Component control = controlFor(parent, parameter);
             controls.put(parameter.getKey(), control);
             // A text area needs the row to grow, or GridBag draws it at its minimum and the
             // "several lines" the kind exists for are one line with a scrollbar.
-            at.fill = parameter.getKind() == Parameter.Kind.MULTILINE
-                    ? GridBagConstraints.BOTH : GridBagConstraints.NONE;
-            at.weighty = parameter.getKind() == Parameter.Kind.MULTILINE ? 1 : 0;
+            //
+            // Everything else that can usefully be wider is stretched to the same right edge.
+            // Without this each control sat at its own preferred width and a form ended with
+            // three different right edges - measured on a representative six-field form: the
+            // dropdown stopped at 351, the text field at 417, the text area and the file row at
+            // 464. Nothing was broken and it read as unfinished, which for the panel every
+            // operation in this plugin puts in front of somebody is worth the four lines.
+            //
+            // A checkbox is deliberately left alone: a tick box stretched across a dialog has a
+            // vast dead click target and looks like a mistake.
+            boolean multiline = parameter.getKind() == Parameter.Kind.MULTILINE;
+            boolean stretches = parameter.getKind() != Parameter.Kind.FLAG;
+            at.fill = multiline ? GridBagConstraints.BOTH
+                    : stretches ? GridBagConstraints.HORIZONTAL : GridBagConstraints.NONE;
+            at.weightx = stretches ? 1 : 0;
+            at.weighty = multiline ? 1 : 0;
             form.add(control, at);
             at.fill = GridBagConstraints.NONE;
+            at.weightx = 0;
             at.weighty = 0;
 
             at.gridx = 2;
