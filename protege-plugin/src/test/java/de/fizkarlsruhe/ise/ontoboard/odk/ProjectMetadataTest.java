@@ -54,12 +54,24 @@ class ProjectMetadataTest {
 
     // ---------------------------------------------------------------- front matter
 
-    /** The real .md files have CRLF front matter, and it is read without touching the bytes. */
+    /**
+     * A real registry entry is read, whatever line endings it arrives with.
+     *
+     * <p>This used to assert that the fixtures still contained {@code \r\n}, as a guard against
+     * somebody normalising them. The guard was the defect: git stores these files with LF and
+     * checks them out with CRLF on Windows, so the assertion passed on the machine it was
+     * written on and failed on every Linux CI run from the commit that added it. The build was
+     * red for nine releases over a line ending in a test resource.
+     *
+     * <p>What matters is that the parser copes with CRLF, and that is now asserted on text
+     * built in the test - where no checkout can change it - by
+     * {@link #crlfFrontMatterIsReadWithoutMangling}. A test whose outcome depends on how git
+     * was configured is not testing the product.
+     */
     @Test
     void theFrontMatterOfARealRegistryEntryIsRead() throws Exception {
         for (String name : new String[] {"nfdicore.md", "mwo.md", "ecto.md"}) {
             String text = fixture(name);
-            assertTrue(text.contains("\r\n"), name + " should still have CRLF");
             assertTrue(FrontMatter.has(text), name);
 
             String yaml = FrontMatter.yamlOf(text);
@@ -69,6 +81,41 @@ class ProjectMetadataTest {
             assertFalse(FrontMatter.bodyOf(text).contains("layout:"),
                     name + " body must not contain the header");
         }
+    }
+
+    /**
+     * CRLF front matter, with the line endings written here rather than read from a file.
+     *
+     * <p>The OBO Foundry's own registry entries are CRLF, and a checkout can turn a fixture's
+     * endings into anything - so the only way to pin this behaviour is to build the text.
+     */
+    @Test
+    void crlfFrontMatterIsReadWithoutMangling() {
+        String text = "---\r\nlayout: ontology_detail\r\nid: nfdicore\r\n"
+                + "title: NFDI core ontology\r\n---\r\n\r\nSome prose about it.\r\n";
+
+        assertTrue(FrontMatter.has(text));
+        String yaml = FrontMatter.yamlOf(text);
+        assertNotNull(yaml);
+        assertTrue(yaml.contains("layout: ontology_detail"), yaml);
+        assertTrue(yaml.contains("id: nfdicore"), yaml);
+        assertFalse(yaml.contains("---"), "the fence must not be in the header: " + yaml);
+        assertFalse(FrontMatter.bodyOf(text).contains("layout:"),
+                "the header must not be in the body: " + FrontMatter.bodyOf(text));
+        assertTrue(FrontMatter.bodyOf(text).contains("Some prose about it."),
+                FrontMatter.bodyOf(text));
+    }
+
+    /** And the same text with LF endings, because a file can arrive either way. */
+    @Test
+    void lfFrontMatterIsReadTheSameWay() {
+        String crlf = "---\r\nlayout: ontology_detail\r\nid: nfdicore\r\n---\r\n\r\nProse.\r\n";
+        String lf = crlf.replace("\r\n", "\n");
+
+        assertTrue(FrontMatter.has(lf));
+        assertEquals(FrontMatter.yamlOf(crlf).replace("\r\n", "\n"),
+                FrontMatter.yamlOf(lf),
+                "the two line endings must give the same header");
     }
 
     /** A file with no front matter is returned whole rather than mangled. */
