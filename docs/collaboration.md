@@ -96,15 +96,27 @@ is the name that appears beside the person's cursor — so mint one per person:
 
 ```bash
 cd collab
-node -e "console.log(require('jsonwebtoken').sign({sub:'alice'}, process.env.SECRET_KEY, {expiresIn:'12h'}))"
+npm run --silent mint-token -- "Ada Lovelace"              # 30 days
+npm run --silent mint-token -- "Ada Lovelace" --days 7     # or as long as you want
 ```
 
-Send each person their own. Two people sharing a token appear as two cursors with one name.
+The token goes to stdout and everything else to stderr, so `> ada.txt` gives a file you can send
+— **with `--silent`**, which is why it is there. Without it `npm run` writes four lines of its own
+banner to stdout and they land in the file ahead of the token. `node mint-token.mjs "Ada Lovelace"`
+is the same thing without npm in the way.
+Send each person their own: two people sharing a token appear as two cursors with one name.
 
-**Choose the expiry deliberately.** `expiresIn` is yours to set; there is no server-side
-default any more. A Protégé session left open past it is refused the next morning, and the
-plugin stops rather than retrying — retrying a rejected token would only loop against your
-server. It shows `invalid token: jwt expired`; mint a new one and reconnect.
+> **New in 1.93.0.** This used to be a `node -e "require('jsonwebtoken').sign(…)"` one-liner here
+> and nothing else — 90 characters of quoting that a Windows shell mangles differently from a POSIX
+> one, which mints an unusable token in silence if `SECRET_KEY` happens to be empty. Worse, the
+> plugin's own dialog said the token came "from the web application", retired six releases earlier,
+> so the one field nobody can guess pointed at a product that no longer existed. The dialog now
+> names this command, and a test checks that what it mints is what the bridge accepts.
+
+**Choose the expiry deliberately.** `--days` is yours to set; there is no server-side default any
+more. A Protégé session left open past it is refused the next morning, and the plugin stops rather
+than retrying — retrying a rejected token would only loop against your server. It shows
+`invalid token: jwt expired`; mint a new one and reconnect.
 
 ### 4. Configure each person's plugin
 
@@ -144,7 +156,7 @@ was stored rather than leaving it behind.
 
 ### 5. Check it worked
 
-The toolbar shows `Collaborating as <you> on <board>`. Move your mouse over the canvas and a
+The status bar shows `Collaborating as <you> on <board>`. Move your mouse over the canvas and a
 colleague should see your cursor with your name on it. Select a class and they should see a ring
 appear around it on their board.
 
@@ -168,11 +180,19 @@ assertions, global domain and range, datatype definitions, SWRL rules, imports, 
 ontology-level annotations. **Moving a node** does not travel either: positions are sent for a
 node when it is created, and a later drag is local.
 
-The plugin does not hide this. Anything it cannot share is counted, and the toolbar shows
-`N changes not shared` with the most recent reason in its tooltip — for example *"an
+The plugin does not hide this. Anything it cannot share is counted, and the status bar shows
+`N changes not shared` on the right with the most recent reason in its tooltip — for example *"an
 EquivalentClasses axiom, which the shared session has no way to express"*. If you are working on
 axioms outside that list, **use git for those** and treat live mode as being for the shape of the
 ontology rather than its full logic.
+
+> **Two things 1.93.0 fixed about that notice.** It was written into the same label as the
+> connection status, so the next `Connected` erased it — and an automatic reconnect produces one, so
+> a green light could sit over a session in which three of your axioms had gone nowhere. It now has
+> its own place in the status bar, which nothing else writes, and it lasts the whole session. And
+> moving a node was in the "does not travel" list above while the product said nothing at all: an
+> unshareable axiom was counted, but arranging thirty classes produced no count and no message.
+> Dragging a node while connected now says so once, in the board's own status line.
 
 This is a limitation of the shared vocabulary, not of the plugin. Widening it means adding the
 type to `collab/bridge.mjs` and `OntologyOperation.TYPES` together — both, or the new type is
@@ -199,7 +219,7 @@ culprit.
 **Any malformed message closes the connection.** The bridge answers a frame it cannot parse by
 saying why and hanging up. The plugin reconnects automatically for anything that looks like an
 outage, with the delay doubling up to thirty seconds, and does *not* reconnect when the server
-gave a reason — retrying a rejected token would just be a loop against your server. The toolbar
+gave a reason — retrying a rejected token would just be a loop against your server. The status bar
 says which of the two happened.
 
 **An outage does not lose your edits, in either direction — since 1.88.0.** Up to 200 of your own
@@ -219,7 +239,7 @@ are expected and harmless: you are sent your own earlier operations too, and the
 deduplicates by operation id across reconnects.
 
 **If an incoming change cannot be read, you are told.** A frame that arrives shaped like an
-operation but will not decode is dropped — there is nothing to apply — and the toolbar says so,
+operation but will not decode is dropped — there is nothing to apply — and the status bar says so,
 with a count. It used to share a branch with "a message type this version does not understand",
 which is deliberately ignored for forward compatibility, and was logged where nobody would see
 it. The two now differ: an unknown type stays silent, a lost edit does not.
@@ -265,8 +285,8 @@ Work down this list; it is ordered by how often each one is the answer.
 2. **Was the token signed with the running server's `SECRET_KEY`?** This is the most common
    cause of a token that looks valid and is not. The message is `invalid token: invalid
    signature`.
-3. **Has the token expired?** Whatever `expiresIn` you chose when you minted it. The message
-   says `jwt expired`.
+3. **Has the token expired?** Whatever `--days` you gave when you minted it, 30 by default. The
+   message says `jwt expired`; mint another.
 4. **Is everyone using the same board id?** It is free-form text, so a typo makes a second,
    empty board rather than an error.
 5. **Is the service actually up?** The terminal running `node server.mjs` prints a line per
@@ -275,7 +295,9 @@ Work down this list; it is ordered by how often each one is the answer.
 6. **What does Protégé say?** `~/.Protege/logs/protege.log`, searching for `ontoboard`.
 
 The plugin is built to fail with a reason rather than a spinner: every state — connecting,
-connected, retrying in Ns, refused because X, N changes not shared — appears in the toolbar. If
+connected, retrying in Ns, refused because X, N changes not shared — appears in the status bar
+along the bottom of the board, with the unshared count kept in its own corner so a reconnect
+cannot wipe it. If
 you see a state that does not explain itself, that is a bug worth reporting.
 
 ---

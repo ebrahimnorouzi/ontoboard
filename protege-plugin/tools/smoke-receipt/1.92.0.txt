@@ -22,12 +22,28 @@ under Felix a classpath directory answers a bundle: URL that enumerates nothing,
 only reason patterns/index.tsv exists. A directory on disk can be listed. The asymmetry is in the
 container, not in the patterns.
 
-Nothing is asked for that the file already says. Measured over the 159 shipped patterns: 112
-carry coversRequirements, 66 hasIntent, 65 rdfs:comment, 38 rdfs:label, 6 dc:title, 4
-dc:publisher. So the name, the description, the competency questions and the publisher are read
-out of the file, and a file that documents nothing falls back to its own filename and the host of
-its IRI. dc:creator, which 34 of them carry, is deliberately not read: it names a person, and the
-grouping answers "whose modelling am I adopting".
+Nothing is asked for that the file already says. Measured over the shipped patterns: 77 carry
+coversRequirements, 73 hasIntent, 62 rdfs:comment, 36 rdfs:label, 6 dc:title, 2 dc:publisher. So
+the name, the description, the competency questions and the publisher are read out of the file,
+and a file that documents nothing falls back to its own filename and the host of its IRI.
+dc:creator, which 13 of them carry, is deliberately not read: it names a person, and the grouping
+answers "whose modelling am I adopting".
+
+  CORRECTED 2026-10-08, in 1.93.0. This receipt first published those as 112 coversRequirements,
+  66 hasIntent, 65 rdfs:comment, 38 rdfs:label and 4 dc:publisher, with 34 dc:creator, and every
+  one of them was wrong. The measurement matched tag names inside the <Ontology> element with a
+  regular expression - and in OWL/XML, which every shipped pattern is, that element is the whole
+  document, so an annotation on any class counted as an annotation on the ontology. Re-measured
+  with an XML parser reading only the ontology node's direct children. Two of the 159 files are
+  not well-formed XML and parse in neither count, so the denominator is 157. Only 6 dc:title
+  survived unchanged. The ordering decisions these numbers were cited to justify all still hold:
+  hasIntent is still the most common description, rdfs:label still far outnumbers dc:title, and a
+  declared publisher is rarer than first stated, not commoner - 2 patterns, which makes the
+  fallback to the IRI's host more load-bearing rather than less.
+
+  The numbers were quoted as "measured" and were not reproducible, which is the one kind of error
+  this file exists to prevent. Found by an adversarial review that re-ran the measurement instead
+  of reading the claim.
 
 TWO ORDERINGS NOBODY COULD SELECT
 

@@ -13,6 +13,7 @@
     "vitest": "^2.1.8"
   },
   "scripts": {
-    "test": "vitest run"
+    "test": "vitest run",
+    "mint-token": "node mint-token.mjs"
   }
 }

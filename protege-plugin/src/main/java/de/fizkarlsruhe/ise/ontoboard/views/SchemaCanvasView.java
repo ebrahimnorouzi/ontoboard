@@ -239,6 +239,49 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
      * only warning that a colleague would never see your edit, and nothing brought it back.
      */
     private javax.swing.JLabel boardStatus;
+
+    /**
+     * How many of this user's edits were never shared, in a place nothing else writes.
+     *
+     * <p>1.67.0 split the transient board message out of the session label because whichever wrote
+     * last won permanently, so arranging the board erased the warning that a colleague would never
+     * see an edit. The same bug survived one level down, inside the session label itself: the count
+     * and the connection status were both written there, so the next "Connected" - and every
+     * automatic reconnect produces one - erased it. The user is then told their session is healthy
+     * when three of their axioms have gone nowhere, which is the most misleading state this view
+     * can show.
+     *
+     * <p>Its own label rather than a carefully composed string, because the two facts have
+     * different lifetimes. A connection status is true now; "3 changes not shared" stays true for
+     * the rest of the session however many times the socket comes and goes, and nothing that writes
+     * a status should have to remember to carry it.
+     */
+    private javax.swing.JLabel unshareableStatus;
+
+    /**
+     * The notices that last a whole session, and their rules.
+     *
+     * <p>A separate object rather than two fields here, because this view has made the same mistake
+     * twice: a lasting notice kept in the same place as a changing one gets overwritten by it, and
+     * neither line of code looks wrong on its own. Keeping the rules in
+     * {@link de.fizkarlsruhe.ise.ontoboard.collab.SessionNotices} also makes them testable, which
+     * nothing in a view needing a live {@code OWLEditorKit} can be.
+     */
+    private final de.fizkarlsruhe.ise.ontoboard.collab.SessionNotices notices =
+            new de.fizkarlsruhe.ise.ontoboard.collab.SessionNotices();
+
+    /**
+     * Set when a session is started, acted on when one is actually joined.
+     *
+     * <p>"A new session" has to mean a session that happened. Clearing the notices where the session
+     * object is constructed meant a refused connection - a bad token, a server that is not running -
+     * destroyed a count that was still true, so the way to make "3 changes not shared" go away was
+     * to attempt a session and fail. And because {@code onConnected} fires on every automatic
+     * reconnect, clearing in the callback without this flag would have reintroduced the exact bug
+     * {@link de.fizkarlsruhe.ise.ontoboard.collab.SessionNotices} exists to prevent.
+     */
+    private boolean clearNoticesOnFirstJoin;
+
     /**
      * When the cursor was last published. Presence is sent on mouse movement, which fires far
      * faster than anyone needs to see, so it is throttled - and the client's own heartbeat
@@ -391,6 +434,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             // both went back with no way to take back only the second.
             if (!movingProgrammatically) {
                 rememberBoard("moving things on the board");
+                sayOnceThatMovesStayHere();
             }
             capturePositions();
             positionSaveTimer.restart();
@@ -1083,6 +1127,35 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
     }
 
     /**
+     * Says, once per session, that moving a node does not reach anybody.
+     *
+     * <p>A gap the product was silent about. Positions <em>are</em> shared, but only as a hint
+     * attached to the operation that creates a term - there is no "moved" operation in the
+     * vocabulary, and {@link de.fizkarlsruhe.ise.ontoboard.collab.PeerGeometry} deliberately
+     * refuses to overwrite a position the receiving board already has, so that a colleague adding a
+     * label cannot yank a node across somebody's screen. Both halves of that are right. What was
+     * wrong is that nothing said so: an unshareable <em>axiom</em> is counted and reported, while
+     * arranging thirty classes into a readable diagram produced no count, no message and no hint
+     * that the colleague watching sees none of it.
+     *
+     * <p>Once, and in the transient board line rather than the session one. Dragging is the most
+     * repeated action on this canvas; a message per drag would be noise, and a persistent one would
+     * occupy the place that belongs to warnings that need acting on. Only while connected, because
+     * with no session there is nobody for a move to fail to reach.
+     */
+    private void sayOnceThatMovesStayHere() {
+        // Only while connected, because with no session there is nobody for a move to fail to
+        // reach - and the check comes first, so an offline drag does not use up the one chance to
+        // say it.
+        if (collab == null || !notices.shouldSayMovesAreLocal()) {
+            return;
+        }
+        say(boardStatus,
+                de.fizkarlsruhe.ise.ontoboard.collab.SessionNotices.MOVES_ARE_LOCAL,
+                de.fizkarlsruhe.ise.ontoboard.collab.SessionNotices.MOVES_ARE_LOCAL_DETAIL);
+    }
+
+    /**
      * The collaboration channel: connected, retrying, refused, or how much is unshared.
      *
      * <p>Separate from {@link #setStatus} so that a board message cannot overwrite it. The dot is the
@@ -1093,6 +1166,38 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         say(collabStatus, text, text);
         if (collabStatus != null) {
             collabStatus.setIcon(new CanvasIcons.Dot(light));
+        }
+    }
+
+    /**
+     * Shows how many edits were never shared, and what the last one was.
+     *
+     * <p>Separate from {@link #setSessionStatus} on purpose - see {@link #unshareableStatus}. The
+     * count never goes down within a session, because an axiom that was not sent is not sent later;
+     * {@link #forgetUnshareable} is called when a new session begins, and only then.
+     */
+    private void showUnshareable(int count, String exampleReason) {
+        notices.noteUnshareable(count, exampleReason);
+        if (unshareableStatus == null) {
+            return;
+        }
+        say(unshareableStatus, notices.unshareableLabel(), notices.unshareableTooltip());
+        unshareableStatus.setVisible(notices.hasUnshareable());
+    }
+
+    /**
+     * Clears the count, for a new session only.
+     *
+     * <p>Not on disconnect. Those edits are still unshared after the socket closes, and clearing the
+     * warning when the session ends would hide it at exactly the moment it starts to matter - the
+     * user is about to commit, and this is the thing telling them that a commit is how their
+     * colleagues get these changes.
+     */
+    private void forgetUnshareable() {
+        notices.forget();
+        if (unshareableStatus != null) {
+            say(unshareableStatus, "", null);
+            unshareableStatus.setVisible(false);
         }
     }
 
@@ -2711,6 +2816,13 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         graphComponent.setPeerCursors(collab.getCursors());
         collaborateButton.setText("Disconnect");
         setSessionStatus("Connecting...", LIGHT_ATTENTION);
+        // A new session, so the previous one's count no longer describes anything on screen. The
+        // only place this is cleared: a reconnect inside a session must not clear it, which is the
+        // defect this whole arrangement exists to fix.
+        // Armed here, acted on in onJoined - not cleared here. A session that is refused, or that
+        // never connects, must leave the previous one's count alone, because those edits are still
+        // unshared and this attempt shared nothing.
+        clearNoticesOnFirstJoin = true;
         collab.start();
     }
 
@@ -2850,12 +2962,15 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
 
         @Override
         public void onUnshareable(int count, String exampleReason) {
-            // A running count in the status line rather than a dialog per change: Protege can
-            // produce a dozen unshareable axioms from one action, and a dozen modal dialogs
-            // would be worse than the problem. The tooltip carries the detail.
-            setSessionStatus(count + " change" + (count == 1 ? "" : "s") + " not shared",
-                    LIGHT_ATTENTION);
-            collabStatus.setToolTipText("The most recent was " + exampleReason);
+            // A running count in its own corner of the status bar rather than a dialog per change:
+            // Protege can produce a dozen unshareable axioms from one action, and a dozen modal
+            // dialogs would be worse than the problem. The tooltip carries the detail.
+            //
+            // Not through setSessionStatus, which is what this used to do. That put the count in
+            // the label the connection status also writes, so the next "Connected" - and every
+            // automatic reconnect produces one - erased it, leaving a green light over a session in
+            // which some of the user's axioms had gone nowhere.
+            showUnshareable(count, exampleReason);
         }
 
         @Override
@@ -2883,6 +2998,17 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
 
         @Override
         public void onJoined() {
+            // The one place the lasting notices are cleared, and it is a JOIN rather than an
+            // attempt. Clearing them where the session is constructed looked equivalent and was
+            // not: a connection the server refuses, or one that never comes up, had already wiped a
+            // count that was still true of the ontology in front of the user - so the remedy for
+            // "3 changes not shared" became "try to collaborate and fail". onConnected fires again
+            // on every automatic reconnect, which is why the flag is needed: the invariant this
+            // class exists to keep is that a reconnect changes nothing about the count.
+            if (clearNoticesOnFirstJoin) {
+                clearNoticesOnFirstJoin = false;
+                forgetUnshareable();
+            }
             announcePresence();
         }
     }
@@ -3160,6 +3286,15 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         collabStatus.setPreferredSize(new Dimension(220, collabStatus.getPreferredSize().height));
         statusBar.add(collabStatus, BorderLayout.WEST);
         statusBar.add(boardStatus, BorderLayout.CENTER);
+        // On the right, and invisible until there is something to say. A warning that outlives
+        // every connection status needs somewhere no status writes over it.
+        unshareableStatus = new javax.swing.JLabel("", new CanvasIcons.Dot(LIGHT_ATTENTION),
+                javax.swing.SwingConstants.LEADING);
+        unshareableStatus.setFont(unshareableStatus.getFont().deriveFont(
+                java.awt.Font.PLAIN, unshareableStatus.getFont().getSize() - 1f));
+        unshareableStatus.setIconTextGap(6);
+        unshareableStatus.setVisible(false);
+        statusBar.add(unshareableStatus, BorderLayout.EAST);
         // The zoom controls moved onto the board itself in 1.68.0, where a drawing tool puts them
         // and where they are next to what they act on. Keeping a second copy here would also have
         // meant two buttons claiming to be the readout, with only whichever was built last actually

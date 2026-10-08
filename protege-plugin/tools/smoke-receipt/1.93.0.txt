@@ -1,0 +1,177 @@
+OntoBoard 1.93.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-10-08  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 9/9  test 10/10
+  2026-10-08  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 9/9  test 10/10
+
+
+THREE COLLABORATION FINDINGS, AND THE ONE THAT MADE THE FEATURE UNUSABLE
+
+The three lowest-severity findings left over from the collaboration audit. One of them turned out
+not to be low severity at all.
+
+THERE WAS NO WAY TO GET A TOKEN
+
+Live collaboration needs a server the group runs and one access token per person. The server is two
+Node files in this repository and refuses to start without a SECRET_KEY, which it verifies every
+token against. Nothing in the repository minted a token. The documentation gave this:
+
+    node -e "console.log(require('jsonwebtoken').sign({sub:'alice'}, process.env.SECRET_KEY, {expiresIn:'12h'}))"
+
+and the plugin's own dialog said the token came "from the web application" - a product retired six
+releases earlier. So the one field a user cannot possibly guess pointed at nothing that exists, and
+the actual procedure was a line of shell that cannot be named in a dialog, that a Windows shell
+quotes differently from a POSIX one, and that silently mints an unusable token when SECRET_KEY
+happens to be empty.
+
+Live collaboration was, in practice, unreachable for anybody who had not read the source.
+
+Now: collab/mint-token.mjs, and
+
+    SECRET_KEY=<secret> npm run mint-token -- "Ada Lovelace" [--days N]
+
+The token goes to stdout and everything else to stderr, so redirecting gives a file to send. It
+refuses without a secret, refuses without a name, refuses a lifetime that is not a positive number,
+and joins an unquoted name so a surname is not lost to the shell. 14 tests, and the one that
+matters asserts that what this mints is what collab/bridge.mjs accepts - the two halves are in
+separate files and nothing else would notice them drifting, which is exactly how the server came to
+admit anonymous connections in the first place.
+
+The dialog now names that command, names collab/, and names docs/collaboration.md.
+
+"N CHANGES NOT SHARED" WAS ERASED BY EVERY RECONNECT
+
+The notice that some of your edits never reached anybody was written into the same label as the
+connection status. The next "Connected" overwrote it - and an automatic reconnect produces one. So
+a green light could sit over a session in which three of the user's axioms had gone nowhere, and
+the warning that said so had been wiped by the recovery.
+
+This is the second time this view has made this mistake. 1.67.0 found the first: the transient
+board confirmations and the session notices shared one label, whichever wrote last won permanently,
+and arranging the board erased the same warning. The fix then was to split the labels. The bug
+survived one level down, inside the session label itself, because the two statements were still the
+same type in the same field.
+
+So the lasting notices are now their own object, SessionNotices, with their own rules: the count
+never decreases, and nothing clears it but the start of a new session - not a reconnect, and not a
+disconnect either, because those edits are still unshared after the socket closes and clearing the
+warning as the session ends would hide it at the moment it starts to matter: the user is about
+to commit, and that warning is what tells them a commit is how their colleagues get these changes.
+It has its own place in the status bar, on the right, which nothing else writes.
+
+Pure, so the rules are testable - the same reason PeerGeometry is. The view itself needs a live
+OWLEditorKit and cannot be constructed in a headless test, which is how the rule came to be
+untested twice.
+
+MOVING A NODE WAS IN THE DOCUMENTATION AND NOWHERE IN THE PRODUCT
+
+Positions are shared, but only as a hint attached to the operation that creates a term; there is no
+move operation in the vocabulary, and PeerGeometry deliberately refuses to overwrite a position the
+receiving board already has so that a colleague adding a label cannot yank a node across somebody's
+screen. Both halves of that are right.
+
+What was wrong is that nothing said so. An unshareable axiom is counted and reported; arranging
+thirty classes into a readable diagram produced no count, no message and no hint that the colleague
+watching sees none of it. The docs listed it under "does not travel" while claiming in the next
+paragraph that "the plugin does not hide this".
+
+Dragging a node while connected now says so once per session, in the board's own transient line -
+once, because dragging is the most repeated action on this canvas, and in the transient line
+because the persistent one belongs to warnings that need acting on.
+
+FIFTEEN MORE, FOUND BY REVIEWING THIS RELEASE BEFORE SHIPPING IT
+
+Six reviewers over the 1.92.0 and 1.93.0 diff, each finding verified by two independent agents
+instructed to refute it. 32 candidates, 17 refuted, 15 confirmed and fixed here. The ones worth
+recording:
+
+A PUBLISHED "MEASURED" NUMBER THAT DID NOT REPRODUCE. 1.92.0 said 112 of the shipped patterns
+carry coversRequirements, 66 hasIntent, 65 rdfs:comment, 38 rdfs:label and 34 dc:creator. A
+reviewer re-ran the measurement instead of reading the claim: 77, 73, 62, 36 and 13. The count
+matched tag names inside the <Ontology> element with a regular expression, and in OWL/XML - which
+every shipped pattern is - that element IS the whole document, so an annotation on any class was
+counted as an annotation on the ontology. Corrected in docs/odk-workflow.md, in two javadocs, and
+in the 1.92.0 receipt itself with a dated correction note rather than a silent edit. Only "6
+dc:title" survived unchanged. Every ordering decision the numbers were cited to justify still
+holds, which is luck, not vindication.
+
+A REFUSED CONNECTION DESTROYED A STILL-TRUE WARNING. The whole point of SessionNotices is that
+only a new session clears the count - and the clear was wired to where the session object is
+CONSTRUCTED, not to where one is joined. So a bad token, or a server that is not running, wiped a
+count that was still true of the ontology in front of the user: the remedy for "3 changes not
+shared" was to attempt a session and fail. Now armed on connect and acted on in onJoined, behind a
+flag, because onConnected fires again on every automatic reconnect and clearing there would have
+reintroduced the exact bug this release exists to fix.
+
+THE DIALOG SHOWED A COMMAND THE SCRIPT REJECTS. The new "where a server comes from" notice said to
+run 'npm run mint-token -- <name>'. Swing's HTML renderer parses <name> as an unknown tag and drops
+it, so the dialog displayed the command with the placeholder missing. And wrapped() pinned every
+notice to 52px, which fitted the two that existed when it was written and cut the third off
+mid-sentence - losing precisely the lines naming the command and the documentation. Both fixed; the
+escaping now goes through a helper named for the hazard.
+
+THE DOCUMENTED REDIRECTION DID NOT WORK. docs/collaboration.md promised that '> ada.txt' gives a
+sendable token file. Measured: npm run writes four lines of its own banner to stdout, so the file
+began with npm noise. The documented command is 'npm run --silent' now, and says why the flag is
+there.
+
+A STALE BANNER AND A WASTED PASS IN THE PATTERN BROWSER. The "Suggested: 3 of its 4 terms are
+already in your ontology" box was filled only by the suggested ordering and emptied by nothing, so
+it stayed on the details pane in every other ordering - and, because the action object outlives the
+dialog, could assert a suggestion about an ontology no longer open. Separately, setting the initial
+ordering fired the combo's listener, running a whole refill including the recommender against an
+empty candidate list before anything had been scanned. One line each.
+
+A ROOT THAT ENDS IN A SEPARATOR. File.getAbsolutePath() strips a trailing separator from every path
+except a filesystem root, so a patterns folder of C:\ or / produced the prefix "C://" and matched
+nothing: every contributed pattern reported collection "yours" however deep its folders went, and
+its id collapsed to the basename. The case that matters is a drive letter mapped to a team's
+pattern share - cheap to walk, never hits the file cap, quietly wrong about every collection. Fixed
+with a test that runs through File.listRoots() so it exercises C:\ here and / on CI.
+
+A SCRIPT THAT ANNOUNCED SUCCESS AND THEN CRASHED. mint-token's --days accepted any positive finite
+number. Number("1e21") is one, and it stringifies to "1e+21", so the script printed "valid for
+1e+21 day(s)" and then died inside jwt.sign with a stack trace. A whole number between 1 and 36500
+now, with a test over every rejected form and a test that every accepted lifetime actually mints.
+
+AND A JAVADOC POINTING AT THE WRONG GUARD. The ORDERINGS constant named PatternOrderTest as the
+test that catches a missing ordering. That check had to move to the menu package - a test in the
+pattern package cannot see a package-private constant in this one - and the javadoc was not
+updated. A javadoc pointing at the wrong guard is how a guard gets deleted.
+
+The scan still runs on the event thread when the browser opens; it now sets a wait cursor and the
+file cap is what bounds it. Three reviewers disagreed about whether that is a defect and the
+honest answer is that it is a cost, not a wrong answer.
+
+NUMBERS
+
+1744 tests, 0 failures, 0 skipped. 11 new Java tests, counted three ways and agreeing.
+71 collab vitest tests, 0 failures. 15 new.
+
+37/37 classes named in plugin.xml load on both hosts. Quality report end to end: 6 findings, 2 of
+them errors. 159 patterns indexed.
+
+DOCUMENTATION
+
+docs/collaboration.md: the minting section is the command rather than a one-liner, with the reason
+the one-liner was the wrong answer, and with --silent because without it the documented redirection
+captures npm's banner. Troubleshooting no longer asks the reader to recall an expiresIn this
+release removed from the user-facing path. docs/testing-collaboration-locally.md uses the command
+too. docs/limitations.md: the status-bar correction, and the admission that moving a node was
+reported nowhere.
+
+"Toolbar" meant a status line that moved to the status bar in 1.68.0. An earlier draft of this
+receipt claimed two files had been corrected; one occurrence in each had been, and nine more were
+left. All of them are corrected now, across docs/collaboration.md, docs/limitations.md and
+docs/testing-collaboration-locally.md - and the one remaining mention of a toolbar is the
+Collaborate button, which really is in it.
+
+STILL OPEN
+
+The collaboration audit is now empty. What remains elsewhere: the pattern library does not know what
+you have already imported, so it will suggest a pattern whose terms are in an import from last week
+- and a score of 1.00 means precisely that without saying so. A contributed pattern gets no category
+or domain, because nothing can infer one. import_group, release_artefacts, export_formats and
+primary_release are still text OntoBoard preserves and does not obey, and inserting an element into
+one of those lists still means a text editor.

@@ -34,9 +34,16 @@ import org.semanticweb.owlapi.model.OWLOntology;
  * file in a folder, and dropping one in is the whole procedure.
  *
  * <p><b>What it says about itself is believed.</b> Measured across the 159 shipped patterns,
- * 112 carry {@code coversRequirements}, 66 {@code hasIntent}, 65 {@code rdfs:comment} and 38
+ * 77 carry {@code coversRequirements}, 73 {@code hasIntent}, 62 {@code rdfs:comment} and 36
  * {@code rdfs:label} on the ontology itself - so the name, the description and the competency
- * questions are read out of the file rather than asked for in a dialog. A pattern that documents
+ * questions are read out of the file rather than asked for in a dialog.
+ *
+ * <p>Those counts were first published as 112, 66, 65 and 38, and they were wrong. The
+ * measurement matched tag names inside the {@code <Ontology>} element with a regular expression,
+ * and in OWL/XML - which every shipped pattern is - that element is the whole document, so an
+ * annotation on any class counted as an annotation on the ontology. Re-measured with an XML
+ * parser, reading only the direct children of the ontology node. Two of the 159 files are not
+ * well-formed XML at all and parse in neither count, so the denominator is 157. A pattern that documents
  * itself needs nothing typed in. One that documents nothing falls back to its filename, which is
  * at least the user's own word for it.
  *
@@ -296,9 +303,9 @@ public final class ContributedPatterns {
     /**
      * The ontology-level annotations that name a pattern, in the order they are believed.
      *
-     * <p>Measured on the 159 shipped patterns: 38 carry {@code rdfs:label} and 6
-     * {@code dc:title}. Dublin Core comes first anyway, because a label is often the same word
-     * as the filename while a title was written to be read.
+     * <p>Measured on the shipped patterns: 36 carry {@code rdfs:label} and 6 {@code dc:title}.
+     * Dublin Core comes first anyway, because a label is often the same word as the filename
+     * while a title was written to be read.
      */
     static final List<String> TITLES = Collections.unmodifiableList(Arrays.asList(
             "http://purl.org/dc/terms/title",
@@ -308,9 +315,9 @@ public final class ContributedPatterns {
     /**
      * Where a description comes from.
      *
-     * <p>{@code hasIntent} is the ODP portal's own annotation and the most common of these by
-     * far - 66 of the 159 - so a pattern copied out of this library and edited keeps its
-     * description. {@code rdfs:comment} is next with 65.
+     * <p>{@code hasIntent} is the ODP portal's own annotation and the most common of these - 73
+     * patterns - so a pattern copied out of this library and edited keeps its description.
+     * {@code rdfs:comment} is next with 62.
      */
     static final List<String> DESCRIPTIONS = Collections.unmodifiableList(Arrays.asList(
             "http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#hasIntent",
@@ -321,9 +328,9 @@ public final class ContributedPatterns {
     /**
      * The competency questions, which are how an ODP is actually chosen.
      *
-     * <p>112 of the 159 shipped patterns carry {@code coversRequirements} - more than carry any
-     * other annotation except {@code owl:versionInfo}. "What role does this agent play?" decides
-     * whether Agent Role is the pattern wanted; "behavioural, general" does not.
+     * <p>77 of the shipped patterns carry {@code coversRequirements} - more than carry any other
+     * annotation except {@code owl:imports}, which 98 do. "What role does this agent play?"
+     * decides whether Agent Role is the pattern wanted; "behavioural, general" does not.
      */
     static final List<String> QUESTIONS = Collections.unmodifiableList(Arrays.asList(
             "http://www.ontologydesignpatterns.org/schemas/"
@@ -333,9 +340,11 @@ public final class ContributedPatterns {
     /**
      * Who published it.
      *
-     * <p>Not {@code dc:creator}, which 34 shipped patterns carry and which names a person.
+     * <p>Not {@code dc:creator}, which 13 shipped patterns carry and which names a person.
      * "Who wrote this" and "whose modelling am I adopting" are different questions, and the
-     * grouping answers the second.
+     * grouping answers the second. Almost nothing declares a publisher - 2 patterns - so in
+     * practice this falls through to the host of the pattern's own IRI, which is the point of
+     * having a fallback rather than a required field.
      */
     static final List<String> PUBLISHERS = Collections.unmodifiableList(Arrays.asList(
             "http://purl.org/dc/terms/publisher",
@@ -424,11 +433,28 @@ public final class ContributedPatterns {
         return dot > 0 ? name.substring(0, dot) : name;
     }
 
+    /**
+     * The file's path under the root, with forward slashes, or its bare name.
+     *
+     * <p>The trailing-separator strip is not tidiness. {@code File.getAbsolutePath()} drops a
+     * trailing separator from every path except a filesystem root, so a root of {@code C:\} comes
+     * back as {@code C:\} and appending one gives the prefix {@code C://}, which matches nothing.
+     * Every file then took the bare-name fallback: the collection became "yours" however deep the
+     * folders went, the id collapsed to the basename, and a problem line named a file by a name that
+     * the shipped {@code <collection>/<name>/pattern.owl} layout gives to all of them. The case that
+     * matters is not somebody choosing {@code C:\} by accident - that trips the file cap and says so
+     * - but a drive letter mapped to a team's pattern share, which is cheap to walk, never hits the
+     * cap, and was quietly wrong about every collection.
+     */
     private static String relative(File root, File file) {
         String rootPath = root.getAbsolutePath().replace('\\', '/');
+        while (rootPath.length() > 1 && rootPath.endsWith("/")) {
+            rootPath = rootPath.substring(0, rootPath.length() - 1);
+        }
         String filePath = file.getAbsolutePath().replace('\\', '/');
-        if (filePath.toLowerCase(Locale.ROOT).startsWith(rootPath.toLowerCase(Locale.ROOT) + "/")) {
-            return filePath.substring(rootPath.length() + 1);
+        String prefix = rootPath.endsWith("/") ? rootPath : rootPath + "/";
+        if (filePath.toLowerCase(Locale.ROOT).startsWith(prefix.toLowerCase(Locale.ROOT))) {
+            return filePath.substring(prefix.length());
         }
         return file.getName();
     }

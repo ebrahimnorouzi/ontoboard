@@ -461,10 +461,18 @@ shows and changes the folder. **Point the folder inside an ODK project** — `sr
 and the patterns travel with the repository, so everybody who clones it has them.
 
 **Nothing is asked for that the file already says.** Measured across the 159 shipped patterns,
-112 carry `coversRequirements`, 66 `hasIntent`, 65 `rdfs:comment` and 38 `rdfs:label` on the
+77 carry `coversRequirements`, 73 `hasIntent`, 62 `rdfs:comment` and 36 `rdfs:label` on the
 ontology itself, so the name, the description, the competency questions and the publisher are
 read out of the file rather than typed into a dialog. A file that documents nothing falls back to
-its own filename and the host of its IRI.
+its own filename and the host of its IRI — which is all but two of them for the publisher, since
+only 2 declare one.
+
+> **Those four numbers were wrong when first published, in 1.92.0, as 112/66/65/38.** They came
+> from a regular expression matching tag names inside the `<Ontology>` element — and in OWL/XML,
+> which every shipped pattern is, that element *is* the whole document, so an annotation on any
+> class was counted as an annotation on the ontology. Re-measured in 1.93.0 with an XML parser
+> reading only the ontology node's direct children. Two of the 159 files are not well-formed XML
+> and parse in neither count, so the denominator is 157.
 
 **Why this needs no index when the shipped library does.** A jar cannot be listed — under Felix a
 classpath directory answers a `bundle:` URL that enumerates nothing, which is why

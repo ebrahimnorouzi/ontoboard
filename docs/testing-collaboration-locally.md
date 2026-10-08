@@ -81,15 +81,15 @@ The bridge only checks that a token is signed with `SECRET_KEY` and takes the us
 
 ```bash
 cd collab
-node -e "console.log(require('jsonwebtoken').sign({sub:'alice'},'local-test-secret'))"
-node -e "console.log(require('jsonwebtoken').sign({sub:'bob'},'local-test-secret'))"
+SECRET_KEY=local-test-secret npm run --silent mint-token -- alice
+SECRET_KEY=local-test-secret npm run --silent mint-token -- bob
 ```
 
 Keep both. **The name beside a cursor comes from `sub`, not from anything you type in Protégé** —
 the bridge sets it once at connect from the authenticated user and ignores what a client claims
 afterwards. Two tokens with the same `sub` would give you two cursors both labelled the same.
 
-For a longer session add an expiry: `sign({sub:'alice'}, secret, {expiresIn:'12h'})`.
+The default is 30 days; `--days 1` is plenty for an afternoon of testing.
 
 ## 3. Start two Protégé instances
 
@@ -121,7 +121,7 @@ In each window: **Window → Tabs → OntoBoard → Collaborate…**
 Leave *Remember the token* unticked — it is a credential, and for a test there is no reason to
 write it to the registry.
 
-Both toolbars should read `Collaborating as alice on pizza-test` and `Collaborating as bob on
+Both status bars should read `Collaborating as alice on pizza-test` and `Collaborating as bob on
 pizza-test`. The bridge log should show two joins - `[bridge] alice joined 'pizza-test'`. If it
 shows a refusal instead, the message names the reason; an unauthenticated peer is refused rather
 than admitted as nobody, deliberately.
@@ -145,7 +145,7 @@ there is not a bug.
 | Stop moving for 30 seconds | The cursor stays — a heartbeat re-sends it every 3s |
 | Select a class in A's tree | A ring in alice's colour appears round that node on B |
 | Close A | alice's cursor disappears from B within ten seconds |
-| Stop the bridge | Both toolbars say `Disconnected …; retrying in Ns`, cursors vanish |
+| Stop the bridge | Both status bars say `Disconnected …; retrying in Ns`, cursors vanish |
 | Restart the bridge | Both reconnect on their own |
 
 ### Editing
@@ -163,11 +163,11 @@ appears in B's class hierarchy, not just on the canvas.
 | Subclass axiom | yes | |
 | New individual, and its type | yes | |
 | Delete a class | yes | Also retracts axioms mentioning it, as Protégé's own delete does |
-| Delete an individual | **no** | The shared vocabulary has no `removeIndividual`; the toolbar will say `1 change not shared` |
-| Equivalent classes, disjointness, `owl:hasKey`, domain/range, property characteristics | **no** | Counted in the toolbar with the reason in its tooltip |
+| Delete an individual | **no** | The shared vocabulary has no `removeIndividual`; the status bar will say `1 change not shared` |
+| Equivalent classes, disjointness, `owl:hasKey`, domain/range, property characteristics | **no** | Counted in the status bar with the reason in its tooltip |
 | Undo (Ctrl+Z) in A | yes | Undo produces real changes, so they publish like any other |
 
-Watch the toolbar. `N changes not shared` is the feature working correctly, not failing — hover it
+Watch the status bar. `N changes not shared` is the feature working correctly, not failing — hover it
 for which axiom kind it was.
 
 ### Not built yet

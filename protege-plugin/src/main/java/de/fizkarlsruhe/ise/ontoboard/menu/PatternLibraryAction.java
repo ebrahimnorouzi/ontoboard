@@ -89,10 +89,13 @@ public class PatternLibraryAction extends ProtegeOWLAction {
      * release, to answer "show me the MWO patterns", and was never offered either. Both were
      * implemented, tested, documented and unreachable.
      *
-     * <p>{@link de.fizkarlsruhe.ise.ontoboard.pattern.PatternOrderTest} now fails if an ordering
-     * {@code PatternOrder} knows how to sort by is missing from here, which is the only way this
-     * class of mistake gets caught: the code that implements an option and the code that offers
-     * it have no reason to be read together.
+     * <p>{@link PatternLibraryOrderingsTest} now fails if an ordering {@code PatternOrder} knows how
+     * to sort by is missing from here, which is the only way this class of mistake gets caught: the
+     * code that implements an option and the code that offers it have no reason to be read together.
+     * It names that class because this javadoc first named {@code PatternOrderTest}, where the check
+     * was written and from where it had to move - a test in the pattern package cannot see a
+     * package-private constant in this one. A javadoc pointing at the wrong guard is how a guard
+     * gets deleted.
      */
     static final String[] ORDERINGS = {
         SUGGESTED, PatternOrder.BY_PUBLISHER, PatternOrder.BY_COLLECTION,
@@ -266,9 +269,23 @@ public class PatternLibraryAction extends ProtegeOWLAction {
         // offered first because it is the most useful way in, but with no ontology open - or one
         // with nothing in it yet - it can only say that nothing matches, which is a poor thing
         // for a browser to open on.
-        grouping.setSelectedItem(canSuggest() ? SUGGESTED : PatternOrder.BY_PUBLISHER);
+        //
+        // Set on the model rather than through setSelectedItem, which fires the action listener
+        // and so ran a whole refill - including the recommender over the open ontology - against an
+        // empty candidate list, before rescan() had put anything in it. The work was wasted twice
+        // over: thrown away immediately, and done against nothing.
+        grouping.getModel().setSelectedItem(canSuggest() ? SUGGESTED : PatternOrder.BY_PUBLISHER);
 
-        rescan();
+        // The scan parses every file in the user's folder, so on a folder with a few dozen in it
+        // this is seconds rather than milliseconds, and the dialog is not on screen yet to say so.
+        // A wait cursor is the honest minimum; the file cap is what bounds it.
+        getOWLWorkspace().setCursor(java.awt.Cursor.getPredefinedCursor(
+                java.awt.Cursor.WAIT_CURSOR));
+        try {
+            rescan();
+        } finally {
+            getOWLWorkspace().setCursor(java.awt.Cursor.getDefaultCursor());
+        }
         dialog.pack();
         dialog.setLocationRelativeTo(getOWLWorkspace());
         dialog.setVisible(true);
@@ -382,6 +399,14 @@ public class PatternLibraryAction extends ProtegeOWLAction {
         DefaultListModel<DesignPattern> model =
                 (DefaultListModel<DesignPattern>) patterns.getModel();
         model.clear();
+        // Cleared here, not inside suggested(). Only the suggested ordering filled this map, and
+        // nothing emptied it again, so the blue "Suggested: 3 of its 4 terms are already in your
+        // ontology" box stayed on the details pane in every other ordering - the field's own
+        // javadoc says "Empty in the other orderings", which the code never made true. Worse across
+        // openings: the action object outlives the dialog, so after switching Protege to an empty
+        // ontology the browser opens on By publisher and still asserts a suggestion about an
+        // ontology that is no longer open.
+        reasons = new java.util.HashMap<String, String>();
         List<DesignPattern> matching = PatternLibrary.matching(everything, search.getText());
         String ordering = String.valueOf(grouping.getSelectedItem());
         for (DesignPattern pattern : SUGGESTED.equals(ordering)
@@ -409,7 +434,6 @@ public class PatternLibraryAction extends ProtegeOWLAction {
      * measured, which is a dialog that looks like it has hung.
      */
     private List<DesignPattern> suggested(List<DesignPattern> candidates) {
-        reasons = new java.util.HashMap<String, String>();
         org.semanticweb.owlapi.model.OWLOntology ontology = getOWLModelManager() == null ? null
                 : getOWLModelManager().getActiveOntology();
         List<DesignPattern> best = new ArrayList<DesignPattern>();

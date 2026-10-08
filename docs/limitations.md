@@ -13,7 +13,7 @@ The plugin is early. These exist in the web application but not yet here:
 - **Live collaboration** — built as of 1.9.0, but only for the seventeen operation types
   the web application understands. Equivalence, disjointness, property characteristics,
   chains, `owl:hasKey`, negative assertions, global domain and range, datatype definitions
-  and imports do **not** travel; the plugin counts them and says so in the toolbar rather
+  and imports do **not** travel; the plugin counts them and says so in the status bar rather
   than dropping them silently. Use git for work on those. See
   [collaboration](collaboration.md).
 - **Threaded comments and discussion** — a term can be linked to its issue with
@@ -149,8 +149,13 @@ The plugin is early. These exist in the web application but not yet here:
   declarations and every `ObjectPropertyAssertion` do not, because the shared vocabulary has
   eighteen operation types fixed by the web client and an axiom with no operation cannot cross.
 
-  The plugin reports this rather than hiding it - the toolbar shows `N changes not shared` with the
-  reason in its tooltip. The practical consequence is worth saying plainly: live mode is for drawing
+  The plugin reports this rather than hiding it - the status bar shows `N changes not shared` on the
+  right, with the reason in its tooltip. **Corrected in 1.93.0:** that notice used to be written into
+  the same label as the connection status, so the next `Connected` erased it - and an automatic
+  reconnect produces one, so a green light could sit over a session in which three of your axioms had
+  gone nowhere. It has its own place now and lasts the session. Moving a node, which also does not
+  travel, was reported nowhere at all; dragging one while connected now says so once.
+  The practical consequence is worth saying plainly: live mode is for drawing
   a hierarchy, naming terms and leaving notes. It is not a way to build a release, because most of
   the logical content is in the second list. `reports/v5/collaboration.md` in the pizza project
   carries the per-axiom-type table.

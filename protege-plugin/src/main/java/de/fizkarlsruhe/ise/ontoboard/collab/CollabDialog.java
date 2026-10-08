@@ -3,7 +3,6 @@ package de.fizkarlsruhe.ise.ontoboard.collab;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
-import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
@@ -101,8 +100,12 @@ public final class CollabDialog {
                 ? "The board you and your colleagues share"
                 : "Derived from this ontology, so everyone editing it reaches the same board "
                         + "without being told the name. Change it only if you mean to.");
+        // Not "from the web application", which this said for six releases after that application
+        // was retired - so the one field nobody can guess pointed at a product that no longer
+        // exists. A token is a JWT your own server's operator mints; the notice below says how.
         addRow(form, at, "Access token", token,
-                "From the web application; your name comes from it, not from this dialog");
+                "A JWT signed with your server's SECRET_KEY; your name comes from it, not from "
+                        + "this dialog");
         addRow(form, at, "Your colour", colour,
                 "Your cursor and selection colour, fixed for the session once connected");
 
@@ -114,6 +117,8 @@ public final class CollabDialog {
         at.gridy++;
         at.gridwidth = 2;
         form.add(storageNotice(), at);
+        at.gridy++;
+        form.add(whereAServerComesFromNotice(), at);
         at.gridy++;
         form.add(gitModeNotice(), at);
 
@@ -193,6 +198,28 @@ public final class CollabDialog {
     }
 
     /**
+     * Where a server comes from, said in the one place somebody needs to know.
+     *
+     * <p>The gap this closes: the dialog asked for an address and a token and never said that
+     * OntoBoard ships neither, that the server is two files in this project's own repository, or
+     * that there is documentation for standing one up. A user with three empty fields and no
+     * sentence about where to get the values can only conclude the feature is not for them. Naming
+     * {@code collab/} and {@code docs/collaboration.md} turns a dead end into a next step.
+     */
+    private static Component whereAServerComesFromNotice() {
+        JPanel notice = new JPanel(new BorderLayout());
+        notice.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(0, 3, 0, 0, new Color(0x9C, 0xA3, 0xAF)),
+                BorderFactory.createEmptyBorder(6, 8, 6, 8)));
+        notice.add(wrapped("Nobody provides this server - your group runs it. It is two Node "
+                + "files in the OntoBoard repository under collab/: start it with a SECRET_KEY, "
+                + "then mint one token per person with <code>npm run --silent mint-token -- "
+                + angled("name") + "</code>. docs/collaboration.md walks through all of it, "
+                + "including what travels between you and what does not."));
+        return notice;
+    }
+
+    /**
      * Paints each palette entry as a swatch with a readable name beside it.
      *
      * <p>The names matter as much as the swatches: "#9C6ADE" is nothing a user can repeat to a
@@ -267,9 +294,33 @@ public final class CollabDialog {
         return hex;
     }
 
+    /**
+     * A notice that wraps at a readable width and is as tall as its own text.
+     *
+     * <p>The height used to be pinned at 52px, which fitted the two notices that existed when it was
+     * written and silently cut the third off mid-sentence - losing precisely the lines that name the
+     * command to mint a token and the file that documents it. A fixed height on a wrapped label is a
+     * promise about how much text will ever be in it, and that promise does not survive the next
+     * notice. The width stays fixed, because that is what makes it wrap at all; the height comes
+     * from the HTML view.
+     *
+     * <p>{@code text} is HTML, so a caller writing a placeholder has to escape it - see
+     * {@link #angled}. That is not hypothetical: this method is why the server notice first read
+     * "npm run mint-token -- " with the placeholder gone, Swing having parsed it as a tag.
+     */
     private static JLabel wrapped(String text) {
-        JLabel label = new JLabel("<html><body style='width:340px'>" + text + "</body></html>");
-        label.setPreferredSize(new Dimension(360, 52));
-        return label;
+        return new JLabel("<html><body style='width:340px'>" + text + "</body></html>");
+    }
+
+    /**
+     * A placeholder a user is meant to replace, in text that will be rendered as HTML.
+     *
+     * <p>Swing's HTML renderer drops anything that looks like an unknown tag, so a literal
+     * {@code <name>} in a notice disappears without trace and the dialog shows a command that the
+     * script it names would refuse. Escaped here rather than written escaped at each call site,
+     * because the next person to add a notice will not think of it either.
+     */
+    private static String angled(String placeholder) {
+        return "&lt;" + placeholder + "&gt;";
     }
 }

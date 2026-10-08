@@ -83,9 +83,11 @@ class ContributedPatternsTest {
     /**
      * What the file says about itself is what is shown.
      *
-     * <p>Measured across the 159 shipped patterns, 112 carry {@code coversRequirements} and 66
+     * <p>Measured across the shipped patterns, 77 carry {@code coversRequirements} and 73
      * {@code hasIntent} - so reading the file is how a contributed pattern gets described without
-     * anybody typing anything into a dialog.
+     * anybody typing anything into a dialog. (First published as 112 and 66, from a regular
+     * expression that counted class annotations as ontology annotations; re-measured with a
+     * parser.)
      */
     @Test
     void theFileDescribesItself(@TempDir File root) throws Exception {
@@ -406,6 +408,41 @@ class ContributedPatternsTest {
                 new File(root, "mwo/sample.ttl")));
         assertEquals("sample", ContributedPatterns.idFor(root, new File(root, "sample.owl")));
         assertEquals("a-b-c", ContributedPatterns.idFor(root, new File(root, "a/B  C.owl")));
+    }
+
+    /**
+     * A folder whose path already ends in a separator is still a folder.
+     *
+     * <p>{@code File.getAbsolutePath()} strips a trailing separator from every path except a
+     * filesystem root, so a root of {@code C:\} - or {@code /} - came back with its separator
+     * intact, and appending another gave the prefix {@code C://}, which matches nothing. Every file
+     * then fell through to its bare name: the collection became "yours" however deep the folders
+     * went, the id collapsed to the basename, and a problem line named a file by a name the shipped
+     * {@code <collection>/<name>/pattern.owl} layout gives to all of them.
+     *
+     * <p>Not an exotic case. Nobody browses to {@code C:\} on purpose - that trips the file cap and
+     * says so - but a drive letter mapped to a team's pattern share is cheap to walk, never reaches
+     * the cap, and was quietly wrong about every collection it reported.
+     *
+     * <p>Through {@code File.listRoots()} so this runs on both platforms: {@code C:\} on Windows,
+     * {@code /} on Linux, which is where CI runs it. No file is read, so nothing depends on what is
+     * actually on the volume.
+     */
+    @Test
+    void aRootThatEndsInASeparatorStillYieldsAPath() {
+        File[] roots = File.listRoots();
+        assertTrue(roots != null && roots.length > 0, "a machine has at least one root");
+        File root = roots[0];
+        assertTrue(root.getAbsolutePath().endsWith(File.separator),
+                "the premise: a filesystem root keeps its trailing separator, unlike every other "
+                        + "path: " + root.getAbsolutePath());
+
+        File deep = new File(root, "pats" + File.separator + "mwo" + File.separator + "a.owl");
+
+        assertEquals("pats-mwo-a", ContributedPatterns.idFor(root, deep),
+                "the whole path under the root, not just the filename");
+        assertEquals("pats", ContributedPatterns.collectionOf(root, deep),
+                "the first folder under the root, not the default collection");
     }
 
     // ---------- falling back ----------
