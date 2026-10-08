@@ -310,3 +310,11 @@ cost.
 Specs and plans live in [superpowers/](https://github.com/ebrahimnorouzi/ontoboard/tree/main/docs/superpowers/), including the reasoning behind
 decisions that were reversed — the plugin was briefly intended to replace the web
 application, and does not.
+
+The longest single list of things this tool does not do well is
+[the expert evaluation of 2026-10-08](https://github.com/ebrahimnorouzi/ontoboard/blob/main/docs/superpowers/specs/2026-10-08-expert-evaluation-triage.md),
+in which six personas were walked through the plugin against NFDIcore, MWO, PMDco, ECTO and a
+real 26-sheet knowledge-graph spreadsheet. 72 findings survived an adversarial pass and 49
+claims were thrown out. It is kept out of this page deliberately: it is a triage list rather
+than an account of the shipped tool, and two of its findings were fixed in 1.106.0 and 1.107.0
+before it was written down.
