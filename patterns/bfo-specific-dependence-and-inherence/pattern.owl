@@ -1,0 +1,228 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rdf:RDF
+   xmlns:owl="http://www.w3.org/2002/07/owl#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+   xmlns:skos="http://www.w3.org/2004/02/skos/core#"
+>
+  <rdf:Description rdf:nodeID="Nd227fa2ffea74e1c8a65774056a7d307">
+    <rdf:first rdf:resource="http://purl.obolibrary.org/obo/BFO_0000004"/>
+    <rdf:rest rdf:nodeID="Nc769039817f448debfb4c0eb63e4b684"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://purl.obolibrary.org/obo/BFO_0000197">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:subPropertyOf rdf:resource="http://purl.obolibrary.org/obo/BFO_0000195"/>
+    <rdfs:domain rdf:resource="http://purl.obolibrary.org/obo/BFO_0000020"/>
+    <rdfs:range rdf:nodeID="Na4178c15c3bc48a9b3b225c68619522d"/>
+    <rdfs:label xml:lang="en">inheres in</rdfs:label>
+    <skos:definition xml:lang="en">b inheres in c =Def b is a specifically dependent continuant &amp; c is an independent continuant that is not a spatial region &amp; b specifically depends on c</skos:definition>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://purl.obolibrary.org/obo/BFO_0000054">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <owl:inverseOf rdf:resource="http://purl.obolibrary.org/obo/BFO_0000055"/>
+    <rdfs:domain rdf:resource="http://purl.obolibrary.org/obo/BFO_0000017"/>
+    <rdfs:range rdf:resource="http://purl.obolibrary.org/obo/BFO_0000015"/>
+    <rdfs:label xml:lang="en">has realization</rdfs:label>
+    <skos:definition xml:lang="en">b has realization c =Def c realizes b</skos:definition>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://purl.obolibrary.org/obo/BFO_0000031">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:subClassOf rdf:resource="http://purl.obolibrary.org/obo/BFO_0000002"/>
+    <rdfs:label xml:lang="en">generically dependent continuant</rdfs:label>
+    <skos:definition xml:lang="en">(Elucidation) A generically dependent continuant is an entity that exists in virtue of the fact that there is at least one of what may be multiple copies which is the content or the pattern that multiple copies would share</skos:definition>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://purl.obolibrary.org/obo/BFO_0000016">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:subClassOf rdf:resource="http://purl.obolibrary.org/obo/BFO_0000017"/>
+    <owl:disjointWith rdf:resource="http://purl.obolibrary.org/obo/BFO_0000023"/>
+    <rdfs:label xml:lang="en">disposition</rdfs:label>
+    <skos:definition xml:lang="en">(Elucidation) A disposition b is a realizable entity such that if b ceases to exist then its bearer is physically changed &amp; b's realization occurs when and because this bearer is in some special physical circumstances &amp; this realization occurs in virtue of the bearer's physical make-up</skos:definition>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://purl.obolibrary.org/obo/BFO_0000017">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:subClassOf rdf:resource="http://purl.obolibrary.org/obo/BFO_0000020"/>
+    <owl:disjointWith rdf:resource="http://purl.obolibrary.org/obo/BFO_0000019"/>
+    <rdfs:label xml:lang="en">realizable entity</rdfs:label>
+    <skos:definition xml:lang="en">(Elucidation) A realizable entity is a specifically dependent continuant that inheres in some independent continuant which is not a spatial region &amp; which is of a type some instances of which are realized in processes of a correlated type</skos:definition>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="N040d3641593a472ea7d2b20ff76f6243">
+    <rdf:first rdf:nodeID="Na0577ce2c80746d28cf651776c09d6cf"/>
+    <rdf:rest rdf:resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#nil"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://purl.obolibrary.org/obo/BFO_0000194">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <owl:inverseOf rdf:resource="http://purl.obolibrary.org/obo/BFO_0000195"/>
+    <rdfs:domain rdf:nodeID="Ndd92485ad97d42ffaa874cbfb4e82925"/>
+    <rdfs:range rdf:resource="http://purl.obolibrary.org/obo/BFO_0000020"/>
+    <rdfs:label xml:lang="en">specifically depended on by</rdfs:label>
+    <skos:definition xml:lang="en">b specifically depended on by c =Def c specifically depends on b</skos:definition>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://purl.obolibrary.org/obo/BFO_0000023">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:subClassOf rdf:resource="http://purl.obolibrary.org/obo/BFO_0000017"/>
+    <rdfs:label xml:lang="en">role</rdfs:label>
+    <skos:definition xml:lang="en">(Elucidation) A role b is a realizable entity such that b exists because there is some single bearer that is in some special physical, social, or institutional set of circumstances in which this bearer does not have to be &amp; b is not such that, if it ceases to exist, then the physical make-up of the bearer is thereby changed</skos:definition>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://purl.obolibrary.org/obo/BFO_0000195">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:domain rdf:resource="http://purl.obolibrary.org/obo/BFO_0000020"/>
+    <rdfs:range rdf:nodeID="N8478e8c4172d498caf6ae4bbe43083b7"/>
+    <rdfs:label xml:lang="en">specifically depends on</rdfs:label>
+    <skos:definition xml:lang="en">(Elucidation) specifically depends on is a relation between a specifically dependent continuant b and specifically dependent continuant or independent continuant that is not a spatial region c such that b and c share no parts in common &amp; b is of a nature such that at all times t it cannot exist unless c exists &amp; b is not a boundary of c</skos:definition>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="Ne4d33ea606c0456f8bfe563c23eda70f">
+    <rdf:first rdf:resource="http://purl.obolibrary.org/obo/BFO_0000004"/>
+    <rdf:rest rdf:nodeID="N330a6171fe704f7d84c2c90359d9de04"/>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="Nc769039817f448debfb4c0eb63e4b684">
+    <rdf:first rdf:nodeID="Na2ec81faffee43f385a7d9e0bb41b94b"/>
+    <rdf:rest rdf:resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#nil"/>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="Nb5c7bd0514884cfc9029849d33a35da9">
+    <rdf:first rdf:resource="http://purl.obolibrary.org/obo/BFO_0000004"/>
+    <rdf:rest rdf:nodeID="N040d3641593a472ea7d2b20ff76f6243"/>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="Ndd92485ad97d42ffaa874cbfb4e82925">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <owl:unionOf rdf:nodeID="N0f9a5750520241babc0bf112520f607f"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://purl.obolibrary.org/obo/BFO_0000004">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:subClassOf rdf:resource="http://purl.obolibrary.org/obo/BFO_0000002"/>
+    <rdfs:label xml:lang="en">independent continuant</rdfs:label>
+    <skos:definition xml:lang="en">b is an independent continuant =Def b is a continuant &amp; there is no c such that b specifically depends on c or b generically depends on c</skos:definition>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="Nefe03d4991314aedb5c1164a3978f239">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <owl:intersectionOf rdf:nodeID="N230010908be94ce980b8c5e56af95828"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://purl.obolibrary.org/obo/BFO_0000003">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label xml:lang="en">occurrent</rdfs:label>
+    <skos:definition xml:lang="en">(Elucidation) An occurrent is an entity that unfolds itself in time or it is the start or end of such an entity or it is a temporal or spatiotemporal region</skos:definition>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://purl.obolibrary.org/obo/BFO_0000145">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:subClassOf rdf:resource="http://purl.obolibrary.org/obo/BFO_0000019"/>
+    <rdfs:label xml:lang="en">relational quality</rdfs:label>
+    <skos:definition xml:lang="en">b is a relational quality =Def b is a quality &amp; there exists c and d such that c and d are not identical &amp; b specifically depends on c &amp; b specifically depends on d</skos:definition>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="Nd92ff26482954b33b1fd344786cb4dd2">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <owl:intersectionOf rdf:nodeID="Ne4d33ea606c0456f8bfe563c23eda70f"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://purl.obolibrary.org/obo/BFO_0000002">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <owl:disjointWith rdf:resource="http://purl.obolibrary.org/obo/BFO_0000003"/>
+    <rdfs:label xml:lang="en">continuant</rdfs:label>
+    <skos:definition xml:lang="en">(Elucidation) A continuant is an entity that persists, endures, or continues to exist through time while maintaining its identity</skos:definition>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://purl.obolibrary.org/obo/BFO_0000141">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:subClassOf rdf:resource="http://purl.obolibrary.org/obo/BFO_0000004"/>
+    <rdfs:label xml:lang="en">immaterial entity</rdfs:label>
+    <skos:definition xml:lang="en">b is an immaterial entity =Def b is an independent continuant which is such that there is no time t when it has a material entity as continuant part</skos:definition>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="N15d0f0e6b8a5408eb87ea15dc59369c6">
+    <rdf:first rdf:nodeID="Nd92ff26482954b33b1fd344786cb4dd2"/>
+    <rdf:rest rdf:resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#nil"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://purl.obolibrary.org/obo/BFO_0000020">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:subClassOf rdf:resource="http://purl.obolibrary.org/obo/BFO_0000002"/>
+    <rdfs:label xml:lang="en">specifically dependent continuant</rdfs:label>
+    <skos:definition xml:lang="en">b is a specifically dependent continuant =Def b is a continuant &amp; there is some independent continuant c which is not a spatial region &amp; which is such that b specifically depends on c</skos:definition>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="Na4178c15c3bc48a9b3b225c68619522d">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <owl:intersectionOf rdf:nodeID="Nb5c7bd0514884cfc9029849d33a35da9"/>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="N1ec64f5c18134c359c1bdb5b866f7928">
+    <rdf:first rdf:resource="http://purl.obolibrary.org/obo/BFO_0000020"/>
+    <rdf:rest rdf:nodeID="Nffec1e5c9cdb4718b49dff9a485b1e12"/>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="N230010908be94ce980b8c5e56af95828">
+    <rdf:first rdf:resource="http://purl.obolibrary.org/obo/BFO_0000004"/>
+    <rdf:rest rdf:nodeID="N443e3c4d91d3499ab7e2c17f3d4f73b9"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://purl.obolibrary.org/obo/BFO_0000196">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:subPropertyOf rdf:resource="http://purl.obolibrary.org/obo/BFO_0000194"/>
+    <owl:inverseOf rdf:resource="http://purl.obolibrary.org/obo/BFO_0000197"/>
+    <rdfs:domain rdf:nodeID="Nefe03d4991314aedb5c1164a3978f239"/>
+    <rdfs:range rdf:resource="http://purl.obolibrary.org/obo/BFO_0000020"/>
+    <rdfs:label xml:lang="en">bearer of</rdfs:label>
+    <skos:definition xml:lang="en">b bearer of c =Def c inheres in b</skos:definition>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://purl.obolibrary.org/obo/BFO_0000055">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:domain rdf:resource="http://purl.obolibrary.org/obo/BFO_0000015"/>
+    <rdfs:range rdf:resource="http://purl.obolibrary.org/obo/BFO_0000017"/>
+    <rdfs:label xml:lang="en">realizes</rdfs:label>
+    <skos:definition xml:lang="en">(Elucidation) realizes is a relation between a process b and realizable entity c such that c inheres in some d &amp; for all t, if b has participant d then c exists &amp; the type instantiated by b is correlated with the type instantiated by c</skos:definition>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="N443e3c4d91d3499ab7e2c17f3d4f73b9">
+    <rdf:first rdf:nodeID="N01df0696f0534274bc9100bec4702420"/>
+    <rdf:rest rdf:resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#nil"/>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="N330a6171fe704f7d84c2c90359d9de04">
+    <rdf:first rdf:nodeID="Nf72814ac15e34203aae27b2351125d51"/>
+    <rdf:rest rdf:resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#nil"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://purl.obolibrary.org/obo/BFO_0000019">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:subClassOf rdf:resource="http://purl.obolibrary.org/obo/BFO_0000020"/>
+    <rdfs:label xml:lang="en">quality</rdfs:label>
+    <skos:definition xml:lang="en">(Elucidation) A quality is a specifically dependent continuant that, in contrast to roles and dispositions, does not require any further process in order to be realized</skos:definition>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="N8478e8c4172d498caf6ae4bbe43083b7">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <owl:unionOf rdf:nodeID="N1ec64f5c18134c359c1bdb5b866f7928"/>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="Nffec1e5c9cdb4718b49dff9a485b1e12">
+    <rdf:first rdf:nodeID="N719d7fe54ec24b13bafbcdc0e20f6806"/>
+    <rdf:rest rdf:resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#nil"/>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="Na0577ce2c80746d28cf651776c09d6cf">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <owl:complementOf rdf:resource="http://purl.obolibrary.org/obo/BFO_0000006"/>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="N01df0696f0534274bc9100bec4702420">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <owl:complementOf rdf:resource="http://purl.obolibrary.org/obo/BFO_0000006"/>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="Na2ec81faffee43f385a7d9e0bb41b94b">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <owl:complementOf rdf:resource="http://purl.obolibrary.org/obo/BFO_0000006"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://purl.obolibrary.org/obo/BFO_0000015">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:subClassOf rdf:resource="http://purl.obolibrary.org/obo/BFO_0000003"/>
+    <rdfs:label xml:lang="en">process</rdfs:label>
+    <skos:definition xml:lang="en">(Elucidation) p is a process means p is an occurrent that has some temporal proper part and for some time t, p has some material entity as participant</skos:definition>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://purl.obolibrary.org/obo/BFO_0000034">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:subClassOf rdf:resource="http://purl.obolibrary.org/obo/BFO_0000016"/>
+    <rdfs:label xml:lang="en">function</rdfs:label>
+    <skos:definition xml:lang="en">(Elucidation) A function is a disposition that exists in virtue of its bearer's physical make-up &amp; this physical make-up is something the bearer possesses because it came into being either through evolution (in the case of natural biological entities) or through intentional design (in the case of artefacts) in order to realize processes of a certain sort</skos:definition>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="N719d7fe54ec24b13bafbcdc0e20f6806">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <owl:intersectionOf rdf:nodeID="Nd227fa2ffea74e1c8a65774056a7d307"/>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="Nf72814ac15e34203aae27b2351125d51">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <owl:complementOf rdf:resource="http://purl.obolibrary.org/obo/BFO_0000006"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://purl.obolibrary.org/obo/BFO_0000006">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:subClassOf rdf:resource="http://purl.obolibrary.org/obo/BFO_0000141"/>
+    <rdfs:label xml:lang="en">spatial region</rdfs:label>
+    <skos:definition xml:lang="en">(Elucidation) A spatial region is a continuant entity that is a continuant part of the spatial projection of a portion of spacetime at a given time</skos:definition>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="N0f9a5750520241babc0bf112520f607f">
+    <rdf:first rdf:resource="http://purl.obolibrary.org/obo/BFO_0000020"/>
+    <rdf:rest rdf:nodeID="N15d0f0e6b8a5408eb87ea15dc59369c6"/>
+  </rdf:Description>
+</rdf:RDF>

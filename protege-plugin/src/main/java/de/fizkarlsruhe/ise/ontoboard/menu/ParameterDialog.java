@@ -70,28 +70,8 @@ public final class ParameterDialog {
             header.setBorder(BorderFactory.createEmptyBorder(0, 0, 6, 0));
             content.add(header, BorderLayout.NORTH);
         }
-        // Scrolled, and only when it has to be. A form taller than the screen is laid out by
-        // Swing anyway and then clipped by the dialog, so the rows past the bottom - and the OK
-        // button under them - simply cannot be reached: the dialog looks complete and is
-        // unusable. The threshold is a height, not a row count, because a MULTILINE parameter is
-        // eight rows tall on its own while a flag is one.
-        //
-        // Below the threshold nothing changes, so every existing dialog keeps the exact layout it
-        // was designed with and no scrollbar appears where none is needed.
-        java.awt.Dimension wanted = form.getPreferredSize();
-        if (wanted.height > TALLEST_UNSCROLLED) {
-            javax.swing.JScrollPane scroller = new javax.swing.JScrollPane(form,
-                    javax.swing.ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,
-                    javax.swing.ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-            scroller.setBorder(BorderFactory.createEmptyBorder());
-            scroller.getVerticalScrollBar().setUnitIncrement(16);
-            scroller.setPreferredSize(new java.awt.Dimension(
-                    wanted.width + scroller.getVerticalScrollBar().getPreferredSize().width,
-                    TALLEST_UNSCROLLED));
-            content.add(scroller, BorderLayout.CENTER);
-        } else {
-            content.add(form, BorderLayout.CENTER);
-        }
+        // Scrolled, and only when it has to be - see TallForm for what goes wrong otherwise.
+        content.add(TallForm.scrolledIfTall(form), BorderLayout.CENTER);
 
         JButton reset = new JButton("Reset");
         reset.setToolTipText("Put every option back to its default");
@@ -124,16 +104,6 @@ public final class ParameterDialog {
                     JOptionPane.WARNING_MESSAGE);
         }
     }
-
-    /**
-     * How tall a form may be before it is put in a scroll pane.
-     *
-     * <p>Chosen against the smallest display this plugin is used on rather than against a row
-     * count: 640px is the height of the desktop these dialogs were last captured on, and a
-     * JOptionPane also needs room for its own title bar, the explanation above the form and the
-     * buttons below it. 420 leaves that room.
-     */
-    private static final int TALLEST_UNSCROLLED = 420;
 
     private static JPanel buildForm(Component parent, List<Parameter> parameters,
             Map<String, Component> controls) {

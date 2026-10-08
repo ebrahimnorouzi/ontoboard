@@ -1,0 +1,76 @@
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+
+<http://purl.obolibrary.org/obo/BFO_0000066> a owl:ObjectProperty ;
+    rdfs:label "occurs in"@en ;
+    rdfs:domain [ a owl:Class ;
+            owl:unionOf ( <http://purl.obolibrary.org/obo/BFO_0000015> <http://purl.obolibrary.org/obo/BFO_0000035> ) ] ;
+    rdfs:range [ a owl:Class ;
+            owl:unionOf ( <http://purl.obolibrary.org/obo/BFO_0000029> <http://purl.obolibrary.org/obo/BFO_0000040> ) ] ;
+    owl:inverseOf <http://purl.obolibrary.org/obo/BFO_0000183> ;
+    skos:definition "b occurs in c =Def b is a process or a process boundary & c is a material entity or site & there exists a spatiotemporal region r & b occupies spatiotemporal region r & for all time t, if b exists at t then c exists at t & there exist spatial regions s and s' where b spatially projects onto s at t & c occupies spatial region s' at t & s is a continuant part of s' at t"@en .
+
+<http://purl.obolibrary.org/obo/BFO_0000184> a owl:FunctionalProperty,
+        owl:InverseFunctionalProperty,
+        owl:ObjectProperty ;
+    rdfs:label "history of"@en ;
+    rdfs:domain <http://purl.obolibrary.org/obo/BFO_0000182> ;
+    rdfs:range <http://purl.obolibrary.org/obo/BFO_0000040> ;
+    owl:inverseOf <http://purl.obolibrary.org/obo/BFO_0000185> ;
+    skos:definition "(Elucidation) history of is a relation between history b and material entity c such that b is the unique history of c"@en .
+
+<http://purl.obolibrary.org/obo/BFO_0000183> a owl:ObjectProperty ;
+    rdfs:label "environs"@en ;
+    rdfs:domain [ a owl:Class ;
+            owl:unionOf ( <http://purl.obolibrary.org/obo/BFO_0000029> <http://purl.obolibrary.org/obo/BFO_0000040> ) ] ;
+    rdfs:range [ a owl:Class ;
+            owl:unionOf ( <http://purl.obolibrary.org/obo/BFO_0000015> <http://purl.obolibrary.org/obo/BFO_0000035> ) ] ;
+    skos:definition "b environs c =Def c occurs in b"@en .
+
+<http://purl.obolibrary.org/obo/BFO_0000185> a owl:ObjectProperty ;
+    rdfs:label "has history"@en ;
+    rdfs:domain <http://purl.obolibrary.org/obo/BFO_0000040> ;
+    rdfs:range <http://purl.obolibrary.org/obo/BFO_0000182> ;
+    skos:definition "b has history c =Def c history of b"@en .
+
+<http://purl.obolibrary.org/obo/BFO_0000003> a owl:Class ;
+    rdfs:label "occurrent"@en ;
+    skos:definition "(Elucidation) An occurrent is an entity that unfolds itself in time or it is the start or end of such an entity or it is a temporal or spatiotemporal region"@en .
+
+<http://purl.obolibrary.org/obo/BFO_0000004> a owl:Class ;
+    rdfs:label "independent continuant"@en ;
+    skos:definition "b is an independent continuant =Def b is a continuant & there is no c such that b specifically depends on c or b generically depends on c"@en .
+
+<http://purl.obolibrary.org/obo/BFO_0000029> a owl:Class ;
+    rdfs:label "site"@en ;
+    rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000141> ;
+    skos:definition "(Elucidation) A site is a three-dimensional immaterial entity whose boundaries either (partially or wholly) coincide with the boundaries of one or more material entities or have locations determined in relation to some material entity"@en .
+
+<http://purl.obolibrary.org/obo/BFO_0000035> a owl:Class ;
+    rdfs:label "process boundary"@en ;
+    rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000003> ;
+    skos:definition "p is a process boundary =Def p is a temporal part of a process & p has no proper temporal parts"@en .
+
+<http://purl.obolibrary.org/obo/BFO_0000141> a owl:Class ;
+    rdfs:label "immaterial entity"@en ;
+    rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000004> ;
+    skos:definition "b is an immaterial entity =Def b is an independent continuant which is such that there is no time t when it has a material entity as continuant part"@en .
+
+<http://purl.obolibrary.org/obo/BFO_0000182> a owl:Class ;
+    rdfs:label "history"@en ;
+    rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000015> ;
+    skos:definition "(Elucidation) A history is a process that is the sum of the totality of processes taking place in the spatiotemporal region occupied by the material part of a material entity"@en .
+
+<http://purl.obolibrary.org/obo/BFO_0000015> a owl:Class ;
+    rdfs:label "process"@en ;
+    rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000003> ;
+    skos:definition "(Elucidation) p is a process means p is an occurrent that has some temporal proper part and for some time t, p has some material entity as participant"@en .
+
+<http://purl.obolibrary.org/obo/BFO_0000040> a owl:Class ;
+    rdfs:label "material entity"@en ;
+    rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000004> ;
+    owl:disjointWith <http://purl.obolibrary.org/obo/BFO_0000141> ;
+    skos:definition "(Elucidation) A material entity is an independent continuant has some portion of matter as continuant part"@en .
+

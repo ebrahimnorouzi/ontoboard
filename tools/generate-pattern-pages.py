@@ -65,6 +65,12 @@ COLUMNS = [
 # What each collection is, and where it is documented. The maintainer named these four as "the
 # source", so the finder leads with them rather than with the sixteen publishers.
 SOURCES = {
+    "bfo": (
+        "BFO",
+        "Extracted in 1.96.0 from the exact BFO artifact NFDIcore pins and MWO agrees with — "
+        "[BFO 2020 'notime'](http://purl.obolibrary.org/obo/bfo/2020/notime/bfo.owl), verified by "
+        "sha256 at extraction time.",
+    ),
     "odp": (
         "ODP portal",
         "Harvested from [ontologydesignpatterns.org](https://ontologydesignpatterns.org/), a "
@@ -89,7 +95,7 @@ SOURCES = {
 
 # The order the finder lists them in: the BFO family first, because a reader arriving from
 # NFDIcore or MWO wants those and the ODP collection is 123 of the 159.
-SOURCE_ORDER = ["mwo", "nfdi", "pmdco", "odp"]
+SOURCE_ORDER = ["bfo", "mwo", "nfdi", "pmdco", "odp"]
 
 
 def read_index():

@@ -1,0 +1,15 @@
+{
+  "id": "bfo-occurrent-parthood-and-order",
+  "name": "Occurrent Parthood And Order",
+  "description": "How a process decomposes, and in what order. Four parthood relations in a proper/improper lattice - occurrent part, proper occurrent part, temporal part, proper temporal part - each paired with its inverse and declared transitive, with BFO's closure axioms saying which kinds of occurrent can be parts of which. Plus precedes and preceded by, and the process boundaries that begin and end a process.",
+  "category": "structural",
+  "domain": "upper ontology",
+  "competency_questions": "Which sub-processes make up a given process, and which of them are temporal parts rather than merely occurrent parts?; Which process precedes a given process, and which process boundary begins or ends it?",
+  "pattern_iri": "https://ontoboard.org/patterns/bfo-occurrent-parthood-and-order.owl",
+  "source": "https://raw.githubusercontent.com/BFO-ontology/BFO-2020/release-2024-01-29/src/owl/profiles/atemporal/bfo-2020-without-some-all-times.owl",
+  "collection": "bfo",
+  "publisher": "basic-formal-ontology.org",
+  "extracted_from": "bfo",
+  "class_count": 4,
+  "property_count": 10
+}

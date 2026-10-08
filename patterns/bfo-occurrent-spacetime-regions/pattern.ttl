@@ -1,0 +1,112 @@
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+
+<http://purl.obolibrary.org/obo/BFO_0000108> a owl:ObjectProperty ;
+    rdfs:label "exists at"@en ;
+    rdfs:domain <http://purl.obolibrary.org/obo/BFO_0000001> ;
+    rdfs:range <http://purl.obolibrary.org/obo/BFO_0000008> ;
+    skos:definition "(Elucidation) exists at is a relation between a particular and some temporal region at which the particular exists"@en .
+
+<http://purl.obolibrary.org/obo/BFO_0000153> a owl:FunctionalProperty,
+        owl:ObjectProperty ;
+    rdfs:label "temporally projects onto"@en ;
+    rdfs:domain <http://purl.obolibrary.org/obo/BFO_0000011> ;
+    rdfs:range <http://purl.obolibrary.org/obo/BFO_0000008> ;
+    skos:definition "(Elucidation) temporally projects onto is a relation between a spatiotemporal region s and some temporal region which is the temporal extent of s"@en .
+
+<http://purl.obolibrary.org/obo/BFO_0000199> a owl:FunctionalProperty,
+        owl:ObjectProperty ;
+    rdfs:label "occupies temporal region"@en ;
+    rdfs:domain [ a owl:Class ;
+            owl:unionOf ( <http://purl.obolibrary.org/obo/BFO_0000015> <http://purl.obolibrary.org/obo/BFO_0000035> ) ] ;
+    rdfs:range <http://purl.obolibrary.org/obo/BFO_0000008> ;
+    skos:definition "p occupies temporal region t =Def p is a process or process boundary & the spatiotemporal region occupied by p temporally projects onto t"@en .
+
+<http://purl.obolibrary.org/obo/BFO_0000200> a owl:FunctionalProperty,
+        owl:ObjectProperty ;
+    rdfs:label "occupies spatiotemporal region"@en ;
+    rdfs:domain [ a owl:Class ;
+            owl:unionOf ( <http://purl.obolibrary.org/obo/BFO_0000015> <http://purl.obolibrary.org/obo/BFO_0000035> ) ] ;
+    rdfs:range <http://purl.obolibrary.org/obo/BFO_0000011> ;
+    skos:definition "(Elucidation) occupies spatiotemporal region is a relation between a process or process boundary p and the spatiotemporal region s which is its spatiotemporal extent"@en .
+
+<http://purl.obolibrary.org/obo/BFO_0000202> a owl:Class ;
+    rdfs:label "temporal interval"@en ;
+    rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000038> ;
+    skos:definition "(Elucidation) A temporal interval is a one-dimensional temporal region that is continuous, thus without gaps or breaks"@en .
+
+<http://purl.obolibrary.org/obo/BFO_0000221> a owl:ObjectProperty ;
+    rdfs:label "first instant of"@en ;
+    rdfs:domain <http://purl.obolibrary.org/obo/BFO_0000203> ;
+    rdfs:range <http://purl.obolibrary.org/obo/BFO_0000008> ;
+    owl:inverseOf <http://purl.obolibrary.org/obo/BFO_0000222> ;
+    skos:definition "t first instant of t' =Def t is a temporal instant & t' is a temporal region t' & t precedes all temporal parts of t' other than t"@en .
+
+<http://purl.obolibrary.org/obo/BFO_0000223> a owl:ObjectProperty ;
+    rdfs:label "last instant of"@en ;
+    rdfs:domain <http://purl.obolibrary.org/obo/BFO_0000203> ;
+    rdfs:range <http://purl.obolibrary.org/obo/BFO_0000008> ;
+    owl:inverseOf <http://purl.obolibrary.org/obo/BFO_0000224> ;
+    skos:definition "t last instant of t' =Def t is a temporal instant & t' is a temporal region & all temporal parts of t' other than t precede t"@en .
+
+<http://purl.obolibrary.org/obo/BFO_0000038> a owl:Class ;
+    rdfs:label "one-dimensional temporal region"@en ;
+    rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000008> ;
+    owl:disjointWith <http://purl.obolibrary.org/obo/BFO_0000148> ;
+    skos:definition "(Elucidation) A one-dimensional temporal region is a temporal region that is a whole that has a temporal interval and zero or more temporal intervals and temporal instants as parts"@en .
+
+<http://purl.obolibrary.org/obo/BFO_0000222> a owl:FunctionalProperty,
+        owl:ObjectProperty ;
+    rdfs:label "has first instant"@en ;
+    rdfs:domain <http://purl.obolibrary.org/obo/BFO_0000008> ;
+    rdfs:range <http://purl.obolibrary.org/obo/BFO_0000203> ;
+    skos:definition "t has first instant t' =Def t' first instant of t"@en .
+
+<http://purl.obolibrary.org/obo/BFO_0000224> a owl:FunctionalProperty,
+        owl:ObjectProperty ;
+    rdfs:label "has last instant"@en ;
+    rdfs:domain <http://purl.obolibrary.org/obo/BFO_0000008> ;
+    rdfs:range <http://purl.obolibrary.org/obo/BFO_0000203> ;
+    skos:definition "t has last instant t' =Def t' last instant of t"@en .
+
+<http://purl.obolibrary.org/obo/BFO_0000001> a owl:Class ;
+    rdfs:label "entity"@en ;
+    skos:definition "(Elucidation) An entity is anything that exists or has existed or will exist"@en .
+
+<http://purl.obolibrary.org/obo/BFO_0000011> a owl:Class ;
+    rdfs:label "spatiotemporal region"@en ;
+    rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000003> ;
+    skos:definition "(Elucidation) A spatiotemporal region is an occurrent that is an occurrent part of spacetime"@en .
+
+<http://purl.obolibrary.org/obo/BFO_0000015> a owl:Class ;
+    rdfs:label "process"@en ;
+    rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000003> ;
+    skos:definition "(Elucidation) p is a process means p is an occurrent that has some temporal proper part and for some time t, p has some material entity as participant"@en .
+
+<http://purl.obolibrary.org/obo/BFO_0000035> a owl:Class ;
+    rdfs:label "process boundary"@en ;
+    rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000003> ;
+    skos:definition "p is a process boundary =Def p is a temporal part of a process & p has no proper temporal parts"@en .
+
+<http://purl.obolibrary.org/obo/BFO_0000148> a owl:Class ;
+    rdfs:label "zero-dimensional temporal region"@en ;
+    rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000008> ;
+    skos:definition "(Elucidation) A zero-dimensional temporal region is a temporal region that is a whole consisting of one or more separated temporal instants as parts"@en .
+
+<http://purl.obolibrary.org/obo/BFO_0000003> a owl:Class ;
+    rdfs:label "occurrent"@en ;
+    rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000001> ;
+    skos:definition "(Elucidation) An occurrent is an entity that unfolds itself in time or it is the start or end of such an entity or it is a temporal or spatiotemporal region"@en .
+
+<http://purl.obolibrary.org/obo/BFO_0000203> a owl:Class ;
+    rdfs:label "temporal instant"@en ;
+    rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000148> ;
+    skos:definition "(Elucidation) A temporal instant is a zero-dimensional temporal region that has no proper temporal part"@en .
+
+<http://purl.obolibrary.org/obo/BFO_0000008> a owl:Class ;
+    rdfs:label "temporal region"@en ;
+    rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000003> ;
+    skos:definition "(Elucidation) A temporal region is an occurrent over which processes can unfold"@en .
+

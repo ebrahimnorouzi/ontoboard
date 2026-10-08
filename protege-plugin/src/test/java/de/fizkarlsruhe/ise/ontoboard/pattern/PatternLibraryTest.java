@@ -31,7 +31,7 @@ class PatternLibraryTest {
         PatternLibrary.forget();
         List<DesignPattern> all = PatternLibrary.all();
 
-        assertEquals(159, all.size(), "the bundled collection");
+        assertEquals(163, all.size(), "the bundled collection");
         assertNotNull(PatternLibrary.find("componency"));
         assertNull(PatternLibrary.find("no-such-pattern"));
     }
@@ -99,7 +99,7 @@ class PatternLibraryTest {
             }
         }
         assertEquals("[]", broken.toString());
-        assertEquals(1355, classes, "the measured total across the collection");
+        assertEquals(1391, classes, "the measured total across the collection");
     }
 
     /**
@@ -131,14 +131,15 @@ class PatternLibraryTest {
     void theyGroupByPublisher() {
         Map<String, List<DesignPattern>> groups = PatternLibrary.byPublisher();
 
-        assertEquals(16, groups.size(),
-                "thirteen behind the ODP portal, plus the three pattern pages harvested in 1.87.0");
+        assertEquals(17, groups.size(),
+                "thirteen behind the ODP portal, the three pattern pages harvested in 1.87.0, "
+                        + "and basic-formal-ontology.org for the four extracted in 1.96.0");
         assertTrue(groups.containsKey("ontologydesignpatterns.org"));
         int total = 0;
         for (List<DesignPattern> group : groups.values()) {
             total += group.size();
         }
-        assertEquals(159, total, "every pattern lands in exactly one group");
+        assertEquals(163, total, "every pattern lands in exactly one group");
     }
 
     /** And by category, for the other way people look. */
@@ -151,7 +152,7 @@ class PatternLibraryTest {
         for (List<DesignPattern> group : groups.values()) {
             total += group.size();
         }
-        assertEquals(159, total);
+        assertEquals(163, total);
     }
 
     /** Ten patterns are another one under a second name, and say so. */
@@ -182,8 +183,8 @@ class PatternLibraryTest {
 
         assertTrue(justTime > 0);
         assertTrue(timeAndPart < justTime, justTime + " then " + timeAndPart);
-        assertEquals(159, PatternLibrary.matching("").size());
-        assertEquals(159, PatternLibrary.matching(null).size());
+        assertEquals(163, PatternLibrary.matching("").size());
+        assertEquals(163, PatternLibrary.matching(null).size());
     }
 
     /** Case does not matter, and the id is searched as well as the name. */

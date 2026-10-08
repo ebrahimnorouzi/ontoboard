@@ -1,0 +1,127 @@
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+
+<http://purl.obolibrary.org/obo/BFO_0000062> a owl:ObjectProperty,
+        owl:TransitiveProperty ;
+    rdfs:label "preceded by"@en ;
+    rdfs:domain <http://purl.obolibrary.org/obo/BFO_0000003> ;
+    rdfs:range <http://purl.obolibrary.org/obo/BFO_0000003> ;
+    owl:inverseOf <http://purl.obolibrary.org/obo/BFO_0000063> ;
+    skos:definition "b preceded by c =Def b precedes c"@en .
+
+<http://purl.obolibrary.org/obo/BFO_0000118> a owl:ObjectProperty,
+        owl:TransitiveProperty ;
+    rdfs:label "has proper occurrent part"@en ;
+    rdfs:domain <http://purl.obolibrary.org/obo/BFO_0000003> ;
+    rdfs:range <http://purl.obolibrary.org/obo/BFO_0000003> ;
+    rdfs:subPropertyOf <http://purl.obolibrary.org/obo/BFO_0000117> ;
+    owl:inverseOf <http://purl.obolibrary.org/obo/BFO_0000138> ;
+    skos:definition "b has proper occurrent part c =Def b has occurrent part c & b and c are not identical"@en .
+
+<http://purl.obolibrary.org/obo/BFO_0000136> a owl:ObjectProperty ;
+    rdfs:label "proper temporal part of"@en ;
+    rdfs:domain <http://purl.obolibrary.org/obo/BFO_0000003> ;
+    rdfs:range <http://purl.obolibrary.org/obo/BFO_0000003> ;
+    rdfs:subPropertyOf <http://purl.obolibrary.org/obo/BFO_0000139> ;
+    owl:inverseOf <http://purl.obolibrary.org/obo/BFO_0000181> ;
+    skos:definition "b proper temporal part of c =Def b temporal part of c & not (b = c)"@en .
+
+<http://purl.obolibrary.org/obo/BFO_0000001> a owl:Class ;
+    rdfs:label "entity"@en ;
+    skos:definition "(Elucidation) An entity is anything that exists or has existed or will exist"@en .
+
+<http://purl.obolibrary.org/obo/BFO_0000063> a owl:ObjectProperty,
+        owl:TransitiveProperty ;
+    rdfs:label "precedes"@en ;
+    rdfs:domain <http://purl.obolibrary.org/obo/BFO_0000003> ;
+    rdfs:range <http://purl.obolibrary.org/obo/BFO_0000003> ;
+    skos:definition "(Elucidation) precedes is a relation between occurrents o, o' such that if t is the temporal extent of o & t' is the temporal extent of o' then either the last instant of o is before the first instant of o' or the last instant of o is the first instant of o' & neither o nor o' are temporal instants"@en .
+
+<http://purl.obolibrary.org/obo/BFO_0000138> a owl:ObjectProperty,
+        owl:TransitiveProperty ;
+    rdfs:label "proper occurrent part of"@en ;
+    rdfs:domain <http://purl.obolibrary.org/obo/BFO_0000003> ;
+    rdfs:range <http://purl.obolibrary.org/obo/BFO_0000003> ;
+    rdfs:subPropertyOf <http://purl.obolibrary.org/obo/BFO_0000132> ;
+    skos:definition "b proper occurrent part of c =Def b occurrent part of c & b and c are not identical"@en .
+
+<http://purl.obolibrary.org/obo/BFO_0000181> a owl:ObjectProperty ;
+    rdfs:label "has proper temporal part"@en ;
+    rdfs:domain <http://purl.obolibrary.org/obo/BFO_0000003> ;
+    rdfs:range <http://purl.obolibrary.org/obo/BFO_0000003> ;
+    rdfs:subPropertyOf <http://purl.obolibrary.org/obo/BFO_0000121> ;
+    skos:definition "b has proper temporal part c =Def c proper temporal part of b"@en .
+
+<http://purl.obolibrary.org/obo/BFO_0000121> a owl:ObjectProperty,
+        owl:TransitiveProperty ;
+    rdfs:label "has temporal part"@en ;
+    rdfs:domain <http://purl.obolibrary.org/obo/BFO_0000003> ;
+    rdfs:range <http://purl.obolibrary.org/obo/BFO_0000003> ;
+    rdfs:subPropertyOf <http://purl.obolibrary.org/obo/BFO_0000117> ;
+    owl:inverseOf <http://purl.obolibrary.org/obo/BFO_0000139> ;
+    skos:definition "b has temporal part c =Def c temporal part of b"@en .
+
+<http://purl.obolibrary.org/obo/BFO_0000117> a owl:ObjectProperty,
+        owl:TransitiveProperty ;
+    rdfs:label "has occurrent part"@en ;
+    rdfs:domain <http://purl.obolibrary.org/obo/BFO_0000003> ;
+    rdfs:range <http://purl.obolibrary.org/obo/BFO_0000003> ;
+    owl:inverseOf <http://purl.obolibrary.org/obo/BFO_0000132> ;
+    skos:definition "b has occurrent part c =Def c occurrent part of b"@en .
+
+<http://purl.obolibrary.org/obo/BFO_0000139> a owl:ObjectProperty,
+        owl:TransitiveProperty ;
+    rdfs:label "temporal part of"@en ;
+    rdfs:domain <http://purl.obolibrary.org/obo/BFO_0000003> ;
+    rdfs:range <http://purl.obolibrary.org/obo/BFO_0000003> ;
+    rdfs:subPropertyOf <http://purl.obolibrary.org/obo/BFO_0000132> ;
+    skos:definition "b temporal part of c =Def b occurrent part of c & (b and c are temporal regions) or (b and c are spatiotemporal regions & b temporally projects onto an occurrent part of the temporal region that c temporally projects onto) or (b and c are processes or process boundaries & b occupies a temporal region that is an occurrent part of the temporal region that c occupies)"@en .
+
+<http://purl.obolibrary.org/obo/BFO_0000015> a owl:Class ;
+    rdfs:label "process"@en ;
+    rdfs:subClassOf [ a owl:Restriction ;
+            owl:allValuesFrom <http://purl.obolibrary.org/obo/BFO_0000015> ;
+            owl:onProperty <http://purl.obolibrary.org/obo/BFO_0000132> ],
+        [ a owl:Restriction ;
+            owl:allValuesFrom [ a owl:Class ;
+                    owl:unionOf ( <http://purl.obolibrary.org/obo/BFO_0000015> <http://purl.obolibrary.org/obo/BFO_0000035> ) ] ;
+            owl:onProperty <http://purl.obolibrary.org/obo/BFO_0000117> ],
+        [ a owl:Restriction ;
+            owl:allValuesFrom <http://purl.obolibrary.org/obo/BFO_0000015> ;
+            owl:onProperty <http://purl.obolibrary.org/obo/BFO_0000139> ],
+        <http://purl.obolibrary.org/obo/BFO_0000003> ;
+    skos:definition "(Elucidation) p is a process means p is an occurrent that has some temporal proper part and for some time t, p has some material entity as participant"@en .
+
+<http://purl.obolibrary.org/obo/BFO_0000035> a owl:Class ;
+    rdfs:label "process boundary"@en ;
+    rdfs:subClassOf [ a owl:Restriction ;
+            owl:allValuesFrom <http://purl.obolibrary.org/obo/BFO_0000035> ;
+            owl:onProperty <http://purl.obolibrary.org/obo/BFO_0000117> ],
+        [ a owl:Restriction ;
+            owl:allValuesFrom [ a owl:Class ;
+                    owl:unionOf ( <http://purl.obolibrary.org/obo/BFO_0000015> <http://purl.obolibrary.org/obo/BFO_0000035> ) ] ;
+            owl:onProperty <http://purl.obolibrary.org/obo/BFO_0000132> ],
+        [ a owl:Restriction ;
+            owl:allValuesFrom [ a owl:Class ;
+                    owl:unionOf ( <http://purl.obolibrary.org/obo/BFO_0000015> <http://purl.obolibrary.org/obo/BFO_0000035> ) ] ;
+            owl:onProperty <http://purl.obolibrary.org/obo/BFO_0000139> ],
+        [ a owl:Restriction ;
+            owl:allValuesFrom <http://purl.obolibrary.org/obo/BFO_0000035> ;
+            owl:onProperty <http://purl.obolibrary.org/obo/BFO_0000121> ],
+        <http://purl.obolibrary.org/obo/BFO_0000003> ;
+    skos:definition "p is a process boundary =Def p is a temporal part of a process & p has no proper temporal parts"@en .
+
+<http://purl.obolibrary.org/obo/BFO_0000132> a owl:ObjectProperty,
+        owl:TransitiveProperty ;
+    rdfs:label "occurrent part of"@en ;
+    rdfs:domain <http://purl.obolibrary.org/obo/BFO_0000003> ;
+    rdfs:range <http://purl.obolibrary.org/obo/BFO_0000003> ;
+    skos:definition "(Elucidation) occurrent part of is a relation between occurrents b and c when b is part of c"@en .
+
+<http://purl.obolibrary.org/obo/BFO_0000003> a owl:Class ;
+    rdfs:label "occurrent"@en ;
+    rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000001> ;
+    skos:definition "(Elucidation) An occurrent is an entity that unfolds itself in time or it is the start or end of such an entity or it is a temporal or spatiotemporal region"@en .
+

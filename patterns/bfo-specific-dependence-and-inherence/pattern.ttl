@@ -1,0 +1,127 @@
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+
+<http://purl.obolibrary.org/obo/BFO_0000031> a owl:Class ;
+    rdfs:label "generically dependent continuant"@en ;
+    rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000002> ;
+    skos:definition "(Elucidation) A generically dependent continuant is an entity that exists in virtue of the fact that there is at least one of what may be multiple copies which is the content or the pattern that multiple copies would share"@en .
+
+<http://purl.obolibrary.org/obo/BFO_0000034> a owl:Class ;
+    rdfs:label "function"@en ;
+    rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000016> ;
+    skos:definition "(Elucidation) A function is a disposition that exists in virtue of its bearer's physical make-up & this physical make-up is something the bearer possesses because it came into being either through evolution (in the case of natural biological entities) or through intentional design (in the case of artefacts) in order to realize processes of a certain sort"@en .
+
+<http://purl.obolibrary.org/obo/BFO_0000054> a owl:ObjectProperty ;
+    rdfs:label "has realization"@en ;
+    rdfs:domain <http://purl.obolibrary.org/obo/BFO_0000017> ;
+    rdfs:range <http://purl.obolibrary.org/obo/BFO_0000015> ;
+    owl:inverseOf <http://purl.obolibrary.org/obo/BFO_0000055> ;
+    skos:definition "b has realization c =Def c realizes b"@en .
+
+<http://purl.obolibrary.org/obo/BFO_0000145> a owl:Class ;
+    rdfs:label "relational quality"@en ;
+    rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000019> ;
+    skos:definition "b is a relational quality =Def b is a quality & there exists c and d such that c and d are not identical & b specifically depends on c & b specifically depends on d"@en .
+
+<http://purl.obolibrary.org/obo/BFO_0000196> a owl:ObjectProperty ;
+    rdfs:label "bearer of"@en ;
+    rdfs:domain [ a owl:Class ;
+            owl:intersectionOf ( <http://purl.obolibrary.org/obo/BFO_0000004> [ a owl:Class ;
+                        owl:complementOf <http://purl.obolibrary.org/obo/BFO_0000006> ] ) ] ;
+    rdfs:range <http://purl.obolibrary.org/obo/BFO_0000020> ;
+    rdfs:subPropertyOf <http://purl.obolibrary.org/obo/BFO_0000194> ;
+    owl:inverseOf <http://purl.obolibrary.org/obo/BFO_0000197> ;
+    skos:definition "b bearer of c =Def c inheres in b"@en .
+
+<http://purl.obolibrary.org/obo/BFO_0000016> a owl:Class ;
+    rdfs:label "disposition"@en ;
+    rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000017> ;
+    owl:disjointWith <http://purl.obolibrary.org/obo/BFO_0000023> ;
+    skos:definition "(Elucidation) A disposition b is a realizable entity such that if b ceases to exist then its bearer is physically changed & b's realization occurs when and because this bearer is in some special physical circumstances & this realization occurs in virtue of the bearer's physical make-up"@en .
+
+<http://purl.obolibrary.org/obo/BFO_0000023> a owl:Class ;
+    rdfs:label "role"@en ;
+    rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000017> ;
+    skos:definition "(Elucidation) A role b is a realizable entity such that b exists because there is some single bearer that is in some special physical, social, or institutional set of circumstances in which this bearer does not have to be & b is not such that, if it ceases to exist, then the physical make-up of the bearer is thereby changed"@en .
+
+<http://purl.obolibrary.org/obo/BFO_0000055> a owl:ObjectProperty ;
+    rdfs:label "realizes"@en ;
+    rdfs:domain <http://purl.obolibrary.org/obo/BFO_0000015> ;
+    rdfs:range <http://purl.obolibrary.org/obo/BFO_0000017> ;
+    skos:definition "(Elucidation) realizes is a relation between a process b and realizable entity c such that c inheres in some d & for all t, if b has participant d then c exists & the type instantiated by b is correlated with the type instantiated by c"@en .
+
+<http://purl.obolibrary.org/obo/BFO_0000141> a owl:Class ;
+    rdfs:label "immaterial entity"@en ;
+    rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000004> ;
+    skos:definition "b is an immaterial entity =Def b is an independent continuant which is such that there is no time t when it has a material entity as continuant part"@en .
+
+<http://purl.obolibrary.org/obo/BFO_0000194> a owl:ObjectProperty ;
+    rdfs:label "specifically depended on by"@en ;
+    rdfs:domain [ a owl:Class ;
+            owl:unionOf ( <http://purl.obolibrary.org/obo/BFO_0000020> [ a owl:Class ;
+                        owl:intersectionOf ( <http://purl.obolibrary.org/obo/BFO_0000004> [ a owl:Class ;
+                                    owl:complementOf <http://purl.obolibrary.org/obo/BFO_0000006> ] ) ] ) ] ;
+    rdfs:range <http://purl.obolibrary.org/obo/BFO_0000020> ;
+    owl:inverseOf <http://purl.obolibrary.org/obo/BFO_0000195> ;
+    skos:definition "b specifically depended on by c =Def c specifically depends on b"@en .
+
+<http://purl.obolibrary.org/obo/BFO_0000197> a owl:ObjectProperty ;
+    rdfs:label "inheres in"@en ;
+    rdfs:domain <http://purl.obolibrary.org/obo/BFO_0000020> ;
+    rdfs:range [ a owl:Class ;
+            owl:intersectionOf ( <http://purl.obolibrary.org/obo/BFO_0000004> [ a owl:Class ;
+                        owl:complementOf <http://purl.obolibrary.org/obo/BFO_0000006> ] ) ] ;
+    rdfs:subPropertyOf <http://purl.obolibrary.org/obo/BFO_0000195> ;
+    skos:definition "b inheres in c =Def b is a specifically dependent continuant & c is an independent continuant that is not a spatial region & b specifically depends on c"@en .
+
+<http://purl.obolibrary.org/obo/BFO_0000003> a owl:Class ;
+    rdfs:label "occurrent"@en ;
+    skos:definition "(Elucidation) An occurrent is an entity that unfolds itself in time or it is the start or end of such an entity or it is a temporal or spatiotemporal region"@en .
+
+<http://purl.obolibrary.org/obo/BFO_0000015> a owl:Class ;
+    rdfs:label "process"@en ;
+    rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000003> ;
+    skos:definition "(Elucidation) p is a process means p is an occurrent that has some temporal proper part and for some time t, p has some material entity as participant"@en .
+
+<http://purl.obolibrary.org/obo/BFO_0000019> a owl:Class ;
+    rdfs:label "quality"@en ;
+    rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000020> ;
+    skos:definition "(Elucidation) A quality is a specifically dependent continuant that, in contrast to roles and dispositions, does not require any further process in order to be realized"@en .
+
+<http://purl.obolibrary.org/obo/BFO_0000195> a owl:ObjectProperty ;
+    rdfs:label "specifically depends on"@en ;
+    rdfs:domain <http://purl.obolibrary.org/obo/BFO_0000020> ;
+    rdfs:range [ a owl:Class ;
+            owl:unionOf ( <http://purl.obolibrary.org/obo/BFO_0000020> [ a owl:Class ;
+                        owl:intersectionOf ( <http://purl.obolibrary.org/obo/BFO_0000004> [ a owl:Class ;
+                                    owl:complementOf <http://purl.obolibrary.org/obo/BFO_0000006> ] ) ] ) ] ;
+    skos:definition "(Elucidation) specifically depends on is a relation between a specifically dependent continuant b and specifically dependent continuant or independent continuant that is not a spatial region c such that b and c share no parts in common & b is of a nature such that at all times t it cannot exist unless c exists & b is not a boundary of c"@en .
+
+<http://purl.obolibrary.org/obo/BFO_0000002> a owl:Class ;
+    rdfs:label "continuant"@en ;
+    owl:disjointWith <http://purl.obolibrary.org/obo/BFO_0000003> ;
+    skos:definition "(Elucidation) A continuant is an entity that persists, endures, or continues to exist through time while maintaining its identity"@en .
+
+<http://purl.obolibrary.org/obo/BFO_0000006> a owl:Class ;
+    rdfs:label "spatial region"@en ;
+    rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000141> ;
+    skos:definition "(Elucidation) A spatial region is a continuant entity that is a continuant part of the spatial projection of a portion of spacetime at a given time"@en .
+
+<http://purl.obolibrary.org/obo/BFO_0000017> a owl:Class ;
+    rdfs:label "realizable entity"@en ;
+    rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000020> ;
+    owl:disjointWith <http://purl.obolibrary.org/obo/BFO_0000019> ;
+    skos:definition "(Elucidation) A realizable entity is a specifically dependent continuant that inheres in some independent continuant which is not a spatial region & which is of a type some instances of which are realized in processes of a correlated type"@en .
+
+<http://purl.obolibrary.org/obo/BFO_0000004> a owl:Class ;
+    rdfs:label "independent continuant"@en ;
+    rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000002> ;
+    skos:definition "b is an independent continuant =Def b is a continuant & there is no c such that b specifically depends on c or b generically depends on c"@en .
+
+<http://purl.obolibrary.org/obo/BFO_0000020> a owl:Class ;
+    rdfs:label "specifically dependent continuant"@en ;
+    rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000002> ;
+    skos:definition "b is a specifically dependent continuant =Def b is a continuant & there is some independent continuant c which is not a spatial region & which is such that b specifically depends on c"@en .
+

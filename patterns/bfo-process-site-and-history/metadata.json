@@ -1,0 +1,15 @@
+{
+  "id": "bfo-process-site-and-history",
+  "name": "Process Site And History",
+  "description": "Where a process happens and what a thing's history is. Occurs in and its inverse environs, relating a process to the material entity or site that contains it, together with history and the material entity it is the history of.",
+  "category": "structural",
+  "domain": "upper ontology",
+  "competency_questions": "In which site or material entity does a given process occur, and which processes does a given facility environ?; What is the history of a given material entity?",
+  "pattern_iri": "https://ontoboard.org/patterns/bfo-process-site-and-history.owl",
+  "source": "https://raw.githubusercontent.com/BFO-ontology/BFO-2020/release-2024-01-29/src/owl/profiles/atemporal/bfo-2020-without-some-all-times.owl",
+  "collection": "bfo",
+  "publisher": "basic-formal-ontology.org",
+  "extracted_from": "bfo",
+  "class_count": 8,
+  "property_count": 4
+}

@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rdf:RDF
+   xmlns:owl="http://www.w3.org/2002/07/owl#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+   xmlns:skos="http://www.w3.org/2004/02/skos/core#"
+>
+  <rdf:Description rdf:about="http://purl.obolibrary.org/obo/BFO_0000132">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#TransitiveProperty"/>
+    <rdfs:domain rdf:resource="http://purl.obolibrary.org/obo/BFO_0000003"/>
+    <rdfs:range rdf:resource="http://purl.obolibrary.org/obo/BFO_0000003"/>
+    <rdfs:label xml:lang="en">occurrent part of</rdfs:label>
+    <skos:definition xml:lang="en">(Elucidation) occurrent part of is a relation between occurrents b and c when b is part of c</skos:definition>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://purl.obolibrary.org/obo/BFO_0000139">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#TransitiveProperty"/>
+    <rdfs:subPropertyOf rdf:resource="http://purl.obolibrary.org/obo/BFO_0000132"/>
+    <rdfs:domain rdf:resource="http://purl.obolibrary.org/obo/BFO_0000003"/>
+    <rdfs:range rdf:resource="http://purl.obolibrary.org/obo/BFO_0000003"/>
+    <rdfs:label xml:lang="en">temporal part of</rdfs:label>
+    <skos:definition xml:lang="en">b temporal part of c =Def b occurrent part of c &amp; (b and c are temporal regions) or (b and c are spatiotemporal regions &amp; b temporally projects onto an occurrent part of the temporal region that c temporally projects onto) or (b and c are processes or process boundaries &amp; b occupies a temporal region that is an occurrent part of the temporal region that c occupies)</skos:definition>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://purl.obolibrary.org/obo/BFO_0000138">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#TransitiveProperty"/>
+    <rdfs:subPropertyOf rdf:resource="http://purl.obolibrary.org/obo/BFO_0000132"/>
+    <rdfs:domain rdf:resource="http://purl.obolibrary.org/obo/BFO_0000003"/>
+    <rdfs:range rdf:resource="http://purl.obolibrary.org/obo/BFO_0000003"/>
+    <rdfs:label xml:lang="en">proper occurrent part of</rdfs:label>
+    <skos:definition xml:lang="en">b proper occurrent part of c =Def b occurrent part of c &amp; b and c are not identical</skos:definition>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="N35ad1b2258c843a4a24009f8448faf44">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Restriction"/>
+    <owl:onProperty rdf:resource="http://purl.obolibrary.org/obo/BFO_0000117"/>
+    <owl:allValuesFrom rdf:resource="http://purl.obolibrary.org/obo/BFO_0000035"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://purl.obolibrary.org/obo/BFO_0000121">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#TransitiveProperty"/>
+    <rdfs:subPropertyOf rdf:resource="http://purl.obolibrary.org/obo/BFO_0000117"/>
+    <owl:inverseOf rdf:resource="http://purl.obolibrary.org/obo/BFO_0000139"/>
+    <rdfs:domain rdf:resource="http://purl.obolibrary.org/obo/BFO_0000003"/>
+    <rdfs:range rdf:resource="http://purl.obolibrary.org/obo/BFO_0000003"/>
+    <rdfs:label xml:lang="en">has temporal part</rdfs:label>
+    <skos:definition xml:lang="en">b has temporal part c =Def c temporal part of b</skos:definition>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://purl.obolibrary.org/obo/BFO_0000015">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:subClassOf rdf:resource="http://purl.obolibrary.org/obo/BFO_0000003"/>
+    <rdfs:subClassOf rdf:nodeID="N66cd3bf01836467793cf0cb4a251ec7a"/>
+    <rdfs:subClassOf rdf:nodeID="N281be9e6cb8a450f9937c34a30d605b7"/>
+    <rdfs:subClassOf rdf:nodeID="Ne57fb918154e44d58c1b0e6f7770a001"/>
+    <rdfs:label xml:lang="en">process</rdfs:label>
+    <skos:definition xml:lang="en">(Elucidation) p is a process means p is an occurrent that has some temporal proper part and for some time t, p has some material entity as participant</skos:definition>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="N904b030d863e45b687b666404d810d07">
+    <rdf:first rdf:resource="http://purl.obolibrary.org/obo/BFO_0000035"/>
+    <rdf:rest rdf:resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#nil"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://purl.obolibrary.org/obo/BFO_0000181">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:subPropertyOf rdf:resource="http://purl.obolibrary.org/obo/BFO_0000121"/>
+    <rdfs:domain rdf:resource="http://purl.obolibrary.org/obo/BFO_0000003"/>
+    <rdfs:range rdf:resource="http://purl.obolibrary.org/obo/BFO_0000003"/>
+    <rdfs:label xml:lang="en">has proper temporal part</rdfs:label>
+    <skos:definition xml:lang="en">b has proper temporal part c =Def c proper temporal part of b</skos:definition>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="N66cd3bf01836467793cf0cb4a251ec7a">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Restriction"/>
+    <owl:onProperty rdf:resource="http://purl.obolibrary.org/obo/BFO_0000117"/>
+    <owl:allValuesFrom rdf:nodeID="N5061d91e9ddc440ab515af3e8f5a544d"/>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="Ne57fb918154e44d58c1b0e6f7770a001">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Restriction"/>
+    <owl:onProperty rdf:resource="http://purl.obolibrary.org/obo/BFO_0000139"/>
+    <owl:allValuesFrom rdf:resource="http://purl.obolibrary.org/obo/BFO_0000015"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://purl.obolibrary.org/obo/BFO_0000117">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#TransitiveProperty"/>
+    <owl:inverseOf rdf:resource="http://purl.obolibrary.org/obo/BFO_0000132"/>
+    <rdfs:domain rdf:resource="http://purl.obolibrary.org/obo/BFO_0000003"/>
+    <rdfs:range rdf:resource="http://purl.obolibrary.org/obo/BFO_0000003"/>
+    <rdfs:label xml:lang="en">has occurrent part</rdfs:label>
+    <skos:definition xml:lang="en">b has occurrent part c =Def c occurrent part of b</skos:definition>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://purl.obolibrary.org/obo/BFO_0000035">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:subClassOf rdf:resource="http://purl.obolibrary.org/obo/BFO_0000003"/>
+    <rdfs:subClassOf rdf:nodeID="N35ad1b2258c843a4a24009f8448faf44"/>
+    <rdfs:subClassOf rdf:nodeID="N5befec07e3d442159e786d14852d2151"/>
+    <rdfs:subClassOf rdf:nodeID="N4974da7631134326aeb7ba3b0eccb5f7"/>
+    <rdfs:subClassOf rdf:nodeID="N4e04cd004142484daa21a2cfb9e7b6cb"/>
+    <rdfs:label xml:lang="en">process boundary</rdfs:label>
+    <skos:definition xml:lang="en">p is a process boundary =Def p is a temporal part of a process &amp; p has no proper temporal parts</skos:definition>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="N18e3d69b06784277a89082ae4fcd7d05">
+    <rdf:first rdf:resource="http://purl.obolibrary.org/obo/BFO_0000035"/>
+    <rdf:rest rdf:resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#nil"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://purl.obolibrary.org/obo/BFO_0000003">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:subClassOf rdf:resource="http://purl.obolibrary.org/obo/BFO_0000001"/>
+    <rdfs:label xml:lang="en">occurrent</rdfs:label>
+    <skos:definition xml:lang="en">(Elucidation) An occurrent is an entity that unfolds itself in time or it is the start or end of such an entity or it is a temporal or spatiotemporal region</skos:definition>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://purl.obolibrary.org/obo/BFO_0000136">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:subPropertyOf rdf:resource="http://purl.obolibrary.org/obo/BFO_0000139"/>
+    <owl:inverseOf rdf:resource="http://purl.obolibrary.org/obo/BFO_0000181"/>
+    <rdfs:domain rdf:resource="http://purl.obolibrary.org/obo/BFO_0000003"/>
+    <rdfs:range rdf:resource="http://purl.obolibrary.org/obo/BFO_0000003"/>
+    <rdfs:label xml:lang="en">proper temporal part of</rdfs:label>
+    <skos:definition xml:lang="en">b proper temporal part of c =Def b temporal part of c &amp; not (b = c)</skos:definition>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://purl.obolibrary.org/obo/BFO_0000118">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#TransitiveProperty"/>
+    <rdfs:subPropertyOf rdf:resource="http://purl.obolibrary.org/obo/BFO_0000117"/>
+    <owl:inverseOf rdf:resource="http://purl.obolibrary.org/obo/BFO_0000138"/>
+    <rdfs:domain rdf:resource="http://purl.obolibrary.org/obo/BFO_0000003"/>
+    <rdfs:range rdf:resource="http://purl.obolibrary.org/obo/BFO_0000003"/>
+    <rdfs:label xml:lang="en">has proper occurrent part</rdfs:label>
+    <skos:definition xml:lang="en">b has proper occurrent part c =Def b has occurrent part c &amp; b and c are not identical</skos:definition>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://purl.obolibrary.org/obo/BFO_0000062">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#TransitiveProperty"/>
+    <owl:inverseOf rdf:resource="http://purl.obolibrary.org/obo/BFO_0000063"/>
+    <rdfs:domain rdf:resource="http://purl.obolibrary.org/obo/BFO_0000003"/>
+    <rdfs:range rdf:resource="http://purl.obolibrary.org/obo/BFO_0000003"/>
+    <rdfs:label xml:lang="en">preceded by</rdfs:label>
+    <skos:definition xml:lang="en">b preceded by c =Def b precedes c</skos:definition>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://purl.obolibrary.org/obo/BFO_0000063">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#TransitiveProperty"/>
+    <rdfs:domain rdf:resource="http://purl.obolibrary.org/obo/BFO_0000003"/>
+    <rdfs:range rdf:resource="http://purl.obolibrary.org/obo/BFO_0000003"/>
+    <rdfs:label xml:lang="en">precedes</rdfs:label>
+    <skos:definition xml:lang="en">(Elucidation) precedes is a relation between occurrents o, o' such that if t is the temporal extent of o &amp; t' is the temporal extent of o' then either the last instant of o is before the first instant of o' or the last instant of o is the first instant of o' &amp; neither o nor o' are temporal instants</skos:definition>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="N4e04cd004142484daa21a2cfb9e7b6cb">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Restriction"/>
+    <owl:onProperty rdf:resource="http://purl.obolibrary.org/obo/BFO_0000139"/>
+    <owl:allValuesFrom rdf:nodeID="N3197a570516a427eb302913c25592658"/>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="N3197a570516a427eb302913c25592658">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <owl:unionOf rdf:nodeID="N038f63829bab4dd98ebcede113862d48"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://purl.obolibrary.org/obo/BFO_0000001">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:label xml:lang="en">entity</rdfs:label>
+    <skos:definition xml:lang="en">(Elucidation) An entity is anything that exists or has existed or will exist</skos:definition>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="N038f63829bab4dd98ebcede113862d48">
+    <rdf:first rdf:resource="http://purl.obolibrary.org/obo/BFO_0000015"/>
+    <rdf:rest rdf:nodeID="N135dd73ec1594c8a83a5634c1188371c"/>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="N5061d91e9ddc440ab515af3e8f5a544d">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <owl:unionOf rdf:nodeID="Nf2730dc38b69431bbdb26598734da3e8"/>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="N4c8aa9b9864d4f5a8e6ba6eef37b9e2d">
+    <rdf:first rdf:resource="http://purl.obolibrary.org/obo/BFO_0000015"/>
+    <rdf:rest rdf:nodeID="N904b030d863e45b687b666404d810d07"/>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="N281be9e6cb8a450f9937c34a30d605b7">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Restriction"/>
+    <owl:onProperty rdf:resource="http://purl.obolibrary.org/obo/BFO_0000132"/>
+    <owl:allValuesFrom rdf:resource="http://purl.obolibrary.org/obo/BFO_0000015"/>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="N0a0904e0b0954afdb2060ebd17142d52">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <owl:unionOf rdf:nodeID="N4c8aa9b9864d4f5a8e6ba6eef37b9e2d"/>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="N5befec07e3d442159e786d14852d2151">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Restriction"/>
+    <owl:onProperty rdf:resource="http://purl.obolibrary.org/obo/BFO_0000121"/>
+    <owl:allValuesFrom rdf:resource="http://purl.obolibrary.org/obo/BFO_0000035"/>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="N4974da7631134326aeb7ba3b0eccb5f7">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Restriction"/>
+    <owl:onProperty rdf:resource="http://purl.obolibrary.org/obo/BFO_0000132"/>
+    <owl:allValuesFrom rdf:nodeID="N0a0904e0b0954afdb2060ebd17142d52"/>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="N135dd73ec1594c8a83a5634c1188371c">
+    <rdf:first rdf:resource="http://purl.obolibrary.org/obo/BFO_0000035"/>
+    <rdf:rest rdf:resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#nil"/>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="Nf2730dc38b69431bbdb26598734da3e8">
+    <rdf:first rdf:resource="http://purl.obolibrary.org/obo/BFO_0000015"/>
+    <rdf:rest rdf:nodeID="N18e3d69b06784277a89082ae4fcd7d05"/>
+  </rdf:Description>
+</rdf:RDF>

@@ -1,0 +1,15 @@
+{
+  "id": "bfo-occurrent-spacetime-regions",
+  "name": "Occurrent Spacetime Regions",
+  "description": "Where and when an occurrent is. The spatiotemporal region a process occupies, the temporal region that region projects onto, and the temporal regions at which a continuant exists.",
+  "category": "structural",
+  "domain": "upper ontology",
+  "competency_questions": "Which spatiotemporal region does a given process occupy, and onto which temporal region does that project?; At which times does a given entity exist?",
+  "pattern_iri": "https://ontoboard.org/patterns/bfo-occurrent-spacetime-regions.owl",
+  "source": "https://raw.githubusercontent.com/BFO-ontology/BFO-2020/release-2024-01-29/src/owl/profiles/atemporal/bfo-2020-without-some-all-times.owl",
+  "collection": "bfo",
+  "publisher": "basic-formal-ontology.org",
+  "extracted_from": "bfo",
+  "class_count": 10,
+  "property_count": 8
+}

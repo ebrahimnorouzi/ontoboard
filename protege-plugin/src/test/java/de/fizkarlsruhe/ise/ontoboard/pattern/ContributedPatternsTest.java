@@ -223,7 +223,7 @@ class ContributedPatternsTest {
                 collection = pattern.getCollection();
             }
         }
-        assertEquals(5, blocks.size(), "four shipped collections and the user's: " + blocks);
+        assertEquals(6, blocks.size(), "five shipped collections and the user's: " + blocks);
         assertTrue(blocks.contains("ourgroup"));
     }
 
@@ -570,7 +570,7 @@ class ContributedPatternsTest {
 
         ContributedPatterns.scan(root, nothingTaken());
 
-        assertEquals(159, PatternLibrary.all().size(),
+        assertEquals(163, PatternLibrary.all().size(),
                 "all() means the jar; a folder on this machine must not change it");
         assertNull(PatternLibrary.find("mine-sample"));
     }

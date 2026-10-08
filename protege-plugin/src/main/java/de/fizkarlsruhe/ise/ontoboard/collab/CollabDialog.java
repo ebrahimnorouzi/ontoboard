@@ -122,13 +122,20 @@ public final class CollabDialog {
         at.gridy++;
         form.add(gitModeNotice(), at);
 
+        // The form is taller than a small screen. Reported against this dialog: on a 1138x640
+        // display the five fields, three notices and Reset came to more than 640px, so the
+        // notices and the OK button were simply below the bottom edge - laid out, present, and
+        // unreachable. JOptionPane sizes to its content and the window manager clips the rest
+        // without saying anything. TallForm is the same fix ParameterDialog already carries.
+        java.awt.Component body = de.fizkarlsruhe.ise.ontoboard.menu.TallForm.scrolledIfTall(form);
+
         // A loop over the same components, not a recursive call to show(). Re-entering show()
         // built a fresh dialog from the *stored* settings, so a typo in the address threw away
         // everything typed in the same sitting - including a token pasted from elsewhere, which
         // is the one field nobody can retype from memory. Re-showing these components keeps
         // what is in them, so a correction is a correction rather than starting again.
         while (true) {
-            int answer = JOptionPane.showConfirmDialog(parent, form, "Collaboration",
+            int answer = JOptionPane.showConfirmDialog(parent, body, "Collaboration",
                     JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
             if (answer != JOptionPane.OK_OPTION) {
                 return null;

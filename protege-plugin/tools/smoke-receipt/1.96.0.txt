@@ -1,0 +1,112 @@
+OntoBoard 1.96.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-10-08  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 9/9  test 10/10
+  2026-10-08  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 9/9  test 10/10
+
+
+A FIFTH COLLECTION, FROM THE BFO THAT NFDICORE AND MWO ACTUALLY USE
+
+Asked for, with the care made explicit: "the ontology design patterns that could be extracted from
+exactly the BFO ontology that NFDI core is using ... there are several versions, just be careful".
+
+The care was warranted. http://purl.obolibrary.org/obo/bfo.owl - the obvious URL, the one a
+reasonable person would reach for - returns HTTP 200 and serves BFO/v2019-08-26/
+bfo_classes_only.owl, which contains ZERO owl:ObjectProperty elements. Four patterns extracted
+from that would have had no relations in them at all: class lists wearing the name of a design
+pattern, which is precisely what makes the 123 ODP patterns useless to a BFO project and precisely
+the mistake this collection exists to correct.
+
+WHICH BFO, ON FOUR INDEPENDENT LINES OF EVIDENCE
+
+  1. NFDIcore's own src/ontology/nfdicore-odk.yaml, verbatim:
+         - id: bfo
+           mirror_from: http://purl.obolibrary.org/obo/bfo/2020/notime/bfo.owl
+  2. Its committed module src/ontology/imports/bfo_import.owl records
+         Annotation(dc11:source <http://purl.obolibrary.org/obo/bfo/2020/notime/bfo.owl>)
+  3. That PURL resolves to BFO-2020 release-2024-01-29,
+     src/owl/profiles/atemporal/bfo-2020-without-some-all-times.owl - 72,263 bytes, sha256
+     57264477d936fc2ed30da6498e2e5fd37ec98c93e0ae68402e3692fea145bf7e, versionIRI
+     http://purl.obolibrary.org/obo/bfo/2020/notime/bfo.owl, 716 triples, 56 classes, 28 object
+     properties. The extractor checks that hash and refuses to run if it does not match.
+  4. MWO 3.0.2 uses the IDENTICAL set of 66 BFO terms as NFDIcore 3.0.4, and declares no BFO
+     product of its own - so its BFO is NFDIcore's by construction rather than by coincidence.
+
+Points 1, 2 and 3 were verified here rather than taken on trust. The immutable raw tag URL is what
+the extractor fetches, not the PURL: a PURL is a redirect somebody else controls, and this
+artifact's own versionIRI is that same undated PURL.
+
+WHAT WAS EXTRACTED, AND WHAT IT IS WORTH
+
+  bfo-occurrent-parthood-and-order         4 classes, 10 object properties, 130 triples
+  bfo-specific-dependence-and-inherence   14 classes,  6 object properties, 136 triples
+  bfo-process-site-and-history             8 classes,  4 object properties,  79 triples
+  bfo-occurrent-spacetime-regions         10 classes,  8 object properties,  99 triples
+
+Relation-heavy by design: the first is four parthood relations in a proper/improper lattice, each
+paired with its inverse and declared transitive, with BFO's closure axioms. A pattern with no
+relations in it is a class list.
+
+MEASURED: NFDIcore uses 66 distinct BFO terms. The previous 159 patterns between them touched 37
+of those. The four new ones touch 53 - every one of which NFDIcore uses - of which 20 were covered
+by nothing in the library before. BFO coverage goes from 37/66 to 57/66.
+
+ONE CHANGE TO THE 1.87.0 EXTRACTION RULE
+
+The rule is kept - own terms, every axiom mentioning only those terms, labels and definitions, one
+level of parent - with SIGNATURE CLOSURE added before the parent step: for every object property,
+the named classes inside its domain and range expressions, its inverses and its super-properties,
+until stable. Without it the four lose domain and range axioms between them and the dependence
+pattern ships both its headline relations with half a signature.
+
+Plus an orphan check: a property that survives extraction with no domain, no range and no
+restriction is not modelling content, it is a name, and the extractor refuses rather than shipping
+it. That check is what stops this collection becoming the other 76.
+
+TWO DEFECTS IN MY OWN EXTRACTOR, BOTH CAUGHT BY RUNNING IT
+
+The first version produced "4 classes, 0 object properties, 78 triples" - and then "0 classes" for
+the first pattern. The filter asked whether every named IRI in a statement was one of the pattern's
+terms, which is true of the subject and false of owl:Class, so every single rdf:type declaration
+was discarded. Vocabulary is not a domain term; RDF, RDFS, OWL, SKOS and XSD are now exempt.
+
+The second: BFO_0000101 was in the draft seed for the dependence pattern and is not declared by
+this artifact at all. The extractor refuses on an unknown seed rather than quietly extracting a
+smaller pattern, which is how that was found in one run. Two other seeds were corrected against
+the real term list - "temporally projects onto", the relation the spacetime pattern is named for,
+was missing from it.
+
+THE COLLABORATION DIALOG WAS CUT OFF AT THE BOTTOM
+
+Reported. Reproduced by opening it in a real Protege and measuring the window: five fields, three
+notices and a Reset button on a 1138x640 display, with the notices and the OK button below the
+bottom edge of the screen - laid out, present, and impossible to see or click. JOptionPane sizes
+itself to its content and the window manager clips the rest without a word, so the dialog looks
+finished and cannot be completed.
+
+1.93.0 removed a hardcoded 52px height from those notices, which was a real defect and not this
+one. 1.94.0 added a scroll pane to ParameterDialog for exactly this reason - and CollabDialog
+builds its own form and never got it.
+
+So the logic is now one class, TallForm, used by both, with the ceiling taken as a share of the
+actual screen rather than a constant, because the displays this runs on differ by a factor of
+three. Measured after the fix, on the same 1138x640 screen: the Collaboration window is top=93,
+bottom=593, height 500 - it fits, with room to spare. Before, it ran past 640.
+
+NUMBERS
+
+1787 tests, 0 failures, 0 skipped. 7 new, counted three ways and agreeing.
+
+The library is 163 patterns in five collections: odp 123, nfdi 15, pmdco 13, mwo 8, bfo 4.
+PatternIndexTest rebuilds index.tsv from the directories and compares byte for byte - it passes,
+which is what says the index is not stale. Eight assertions carrying measured constants moved with
+the data: 159 to 163, 16 publishers to 17, 1355 classes to 1391, four shipped collections to five.
+
+38/38 classes named in plugin.xml load on both hosts.
+
+STILL OPEN
+
+import_group, release_artefacts, export_formats and primary_release are still text OntoBoard
+preserves and does not obey. The pattern library still knows nothing about what you have already
+imported, so a score of 1.00 means you already contain the whole pattern without saying so.

@@ -347,11 +347,25 @@ but if an import resolves differently from how `robot` resolves it, that is the 
 
 ### The pattern library — new in 1.82.0, four collections since 1.87.0, yours since 1.92.0
 
-*ROBOT → Pattern library…* browses **159** ontology design patterns shipped inside the plugin,
+*ROBOT → Pattern library…* browses **163** ontology design patterns shipped inside the plugin,
 any you have added yourself, and imports terms from one.
+
+**The BFO four, new in 1.96.0.** Extracted from the BFO that NFDIcore and MWO actually use —
+which took some care, because the obvious URL is the wrong one. `purl.obolibrary.org/obo/bfo.owl`
+resolves to `bfo_classes_only.owl`, which declares **zero** object properties: patterns extracted
+from it would have had no relations in them at all, which is exactly what makes the 123 ODP
+patterns useless to a BFO project. The artifact used is the one NFDIcore's own
+`nfdicore-odk.yaml` names — `mirror_from: http://purl.obolibrary.org/obo/bfo/2020/notime/bfo.owl`
+— pinned by its immutable raw tag URL and checked by sha256 at extraction time. MWO 3.0.2 uses
+the identical set of 66 BFO terms and declares no BFO product of its own, so its BFO is
+NFDIcore's by construction.
+
+Measured: NFDIcore uses 66 distinct BFO terms. The previous 159 patterns between them touched
+**37** of those; the four new ones touch **53**, of which **20** were covered by nothing before.
 
 | Collection | Patterns | Documented at |
 |---|---|---|
+| `bfo` | 4 | extracted in 1.96.0 from [BFO 2020 ‘notime’](http://purl.obolibrary.org/obo/bfo/2020/notime/bfo.owl), the exact artifact NFDIcore pins and MWO agrees with |
 | `odp` | 123 | the [ODP portal](https://ontologydesignpatterns.org/), harvested earlier |
 | `nfdi` | 15 | [NFDI MatWerk](https://nfdi.fiz-karlsruhe.de/matwerk/patterns/) |
 | `pmdco` | 13 | [PMDco](https://materialdigital.github.io/core-ontology/docs/patterns.html) |

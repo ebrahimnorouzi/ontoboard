@@ -1,0 +1,15 @@
+{
+  "id": "bfo-specific-dependence-and-inherence",
+  "name": "Specific Dependence And Inherence",
+  "description": "What it means for one entity to depend on another. Inherence and its inverse - the quality, role, disposition or function that a bearer carries - sitting on generic and specific dependence, with the realizable entities and the processes that realize them.",
+  "category": "structural",
+  "domain": "upper ontology",
+  "competency_questions": "Which qualities, roles, dispositions or functions inhere in a given entity, and which entity bears a given one?; What must exist for a given dependent entity to exist?",
+  "pattern_iri": "https://ontoboard.org/patterns/bfo-specific-dependence-and-inherence.owl",
+  "source": "https://raw.githubusercontent.com/BFO-ontology/BFO-2020/release-2024-01-29/src/owl/profiles/atemporal/bfo-2020-without-some-all-times.owl",
+  "collection": "bfo",
+  "publisher": "basic-formal-ontology.org",
+  "extracted_from": "bfo",
+  "class_count": 14,
+  "property_count": 6
+}
