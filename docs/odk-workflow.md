@@ -738,6 +738,49 @@ piece of work, and for an ontology a line diff of RDF/XML is not the diff anybod
 
 ---
 
+## 6. Publishing the documentation
+
+*Project → Documentation…*, since 1.103.0. Widoco turns an ontology's own annotations into the
+HTML page an ODK project publishes; this runs it on the release product and opens the result,
+so you can see the page without pushing and waiting for a deploy.
+
+**Widoco is installed, not bundled, and the reason is measured.** It is not on Maven Central at
+all, and its only published form is a 40,858,575-byte shaded jar containing **1,533 OWL API
+entries and 2,044 Guava entries** — packages this plugin imports from Protégé. A second copy
+of those inside the bundle is how an OSGi plugin stops resolving. So OntoBoard finds the jar the
+way it finds Konclude, and tells you where to get it when it cannot:
+
+```
+widoco-1.4.25-jar-with-dependencies_JDK-11.jar   (about 39 MB)
+https://github.com/dgarijo/Widoco/releases/download/v1.4.25/
+```
+
+**It needs Java 11.** The jar is compiled to class file version 55. Measured on both hosts:
+
+| | bundled Java | can run Widoco |
+|---|---|---|
+| Protégé 5.6.9 | Temurin 11.0.25 | yes, with its own JVM |
+| Protégé 5.5.0 | 1.8.0_121 | no — point the *Run it with* field at a JDK 11 |
+
+The dialog shows which Java it found and what version it reported, so a failure says *your
+Protégé's Java is too old* rather than printing a class-file error.
+
+**The release product, not the edit file.** An edit file imports its modules rather than
+containing them, so a page made from it covers the terms you wrote and none you reuse — and the
+version IRI *Release…* stamps is not in it yet. Documenting the open ontology is offered as a
+preview of unreleased work, with a warning saying exactly that.
+
+**Success is the page existing, not the exit code.** A real run exited 0 while printing
+`ERROR … Could not generate changelog`: Widoco could not fetch the previous release to diff
+against and quietly left that section out. So the page is checked for directly, and the log
+lines worth reading are reported beside it — the two Xerces warnings every run prints are
+dropped, because nobody can act on them.
+
+**It writes to a scratch folder,** `build/documentation`, not to `docs/`. That directory is
+published, and a generated page landing there would be committed by accident.
+
+---
+
 ## What this adds up to
 
 OntoBoard is strongest where ODK needs ROBOT and a reasoner: building, reporting, explaining,

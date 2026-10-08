@@ -43,7 +43,10 @@ SPARQL panel (1.33.0) used to be on this list and are now features - they are de
   1.101.0. Reading a diff, leaving review comments and merging are still the browser's job, and
   are a larger piece of work than opening one: a review needs the diff rendered, and an OWL diff
   that means anything is *ROBOT → Compare releases…*, not a line diff of RDF/XML.
-- **Widoco HTML documentation.**
+- **A multi-version documentation site.** *Project → Documentation…* generates the page for
+  one ontology and opens it, since 1.103.0. Widoco's own multi-language and versioned-site
+  features are not driven from here, and the generated CI workflow does not publish the page —
+  the three real projects that publish one do it with a hand-written job.
 - **Entity locking** — nothing stops two live collaborators editing the same term at once.
 
 ### Known constraints
@@ -225,8 +228,15 @@ Ordered by what is being worked on:
    the GitHub CLI: it lists what is open and proposes the branch you are on, after `gh`'s own
    `--dry-run` has checked it and you have approved the exact command. Reviewing one is still the
    browser's job — see above.
-2. **Widoco** — generated documentation. The pattern library that used to share this line
-   shipped in 1.82.0 and became extensible in 1.92.0.
+2. ~~**Widoco**~~ — **shipped in 1.103.0.** *Project → Documentation…* runs it on the release
+   product and opens the page.
+
+    It is installed rather than embedded, and that was measured: Widoco is not on Maven Central
+    at all, and its only published form is a 40,858,575-byte shaded jar carrying 1,533 OWL API
+    entries and 2,044 Guava entries — packages this bundle imports from the host, where a
+    second copy is how an OSGi plugin stops resolving. It also needs Java 11 (class file version
+    55), so Protégé 5.6.9 runs it with its own JVM and 5.5.0, on Java 8, needs another one
+    pointed at.
 3. **Entity locking** — once live collaboration has been used in anger.
 4. **Collaboration vocabulary** — the nine axiom kinds the live protocol cannot carry.
 5. ~~**`src/metadata`**~~ — **closed as not planned in 1.102.0, and the evidence is why.**

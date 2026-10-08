@@ -30,8 +30,8 @@ OntoBoard versions would duplicate mature tools and is the wrong use of effort.
 links, notifications, an admin page — these are not ontology features, they are what a
 multi-tenant web service needs. A desktop plugin has no use for them.
 
-What genuinely remains is the SPARQL panel, Widoco documentation, pull requests, and
-threaded comments. The ODK/ROBOT pipeline surface, provenance, quality
+What genuinely remains is threaded comments, and reviewing a pull request rather than opening
+one. The ODK/ROBOT pipeline surface, provenance, quality
 reporting, git tooling and live collaboration all ship — this document said otherwise for
 several releases, because the plugin grew faster than the table did.
 
@@ -149,7 +149,7 @@ individual views in a tabbed column beside the canvas, so none of this needs a t
 | Explanation of unsatisfiability | ➖ | ✅ | *ROBOT → Explain…* names every unsatisfiable class, the axioms behind each, and which single axiom appears in the most justifications. Protégé's explanation workbench explains one entailment you have already selected; this starts from "the reasoner went red" |
 | Term table export | ➖ | ✅ | *ROBOT → Export terms…* writes one row per term and the columns you choose, as TSV, CSV, JSON, YAML or HTML. Not in the web application. `xlsx` is the one format the bundle cannot write — see Known constraints |
 | ZIP export | ✅ | ➖ | It is a folder on disk |
-| Widoco HTML docs | ✅ | ❌ | **Build.** External 39 MB jar, invoked as a subprocess |
+| Widoco HTML docs | ✅ | ✅ | *Project → Documentation…* since 1.103.0. The 39 MB jar is installed rather than embedded — it carries its own OWL API and Guava — and needs Java 11, which 5.6.9 has and 5.5.0 does not |
 | Prefix management | ✅ | 🔶 | Colouring done; editing prefixes not |
 | Provenance (Dublin Core) | ✅ | ✅ | `dcterms:contributor`/`created`/`date`, stamped for edits made anywhere in Protégé, not only on the canvas |
 

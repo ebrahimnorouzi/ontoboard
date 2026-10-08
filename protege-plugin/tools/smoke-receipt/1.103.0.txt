@@ -1,0 +1,101 @@
+OntoBoard 1.103.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-10-08  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 9/9  test 10/10
+  2026-10-08  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 9/9  test 10/10
+
+
+THE DOCUMENTATION PAGE, WITHOUT PUSHING AND WAITING
+
+Roadmap item 2. An ODK project publishes an HTML page generated from its ontology's own
+annotations, and the three real projects that publish one do it with a hand-written CI job - so
+the only way to see what the page would look like was to push and wait for the deploy.
+
+Project > Documentation... runs Widoco on the release product and opens the result.
+
+INSTALLED RATHER THAN EMBEDDED, AND THAT IS MEASURED
+
+Widoco is not on Maven Central at all, so there is no coordinate to depend on. Its only
+published form is a shaded jar of 40,858,575 bytes, and inside it:
+
+    org/semanticweb/owlapi/**   1,533 entries
+    com/google/common/**        2,044 entries
+
+Both are packages this bundle imports from the host. A second copy of either inside an OSGi
+bundle is how it stops resolving. So Widoco is found rather than carried, the way Konclude has
+been since 1.94.0, and the dialog names the asset and the release URL when it cannot find one.
+
+AND IT NEEDS JAVA 11, WHICH ONE OF THE TWO HOSTS DOES NOT HAVE
+
+The jar is compiled to class file version 55. Measured on both:
+
+    Protege 5.6.9   Temurin 11.0.25   runs it with its own JVM
+    Protege 5.5.0   1.8.0_121         cannot - another JDK has to be pointed at
+
+So the action resolves a Java rather than assuming one, reports which it found and what version
+it printed, and refuses with a sentence naming the host and the class file version instead of
+letting the JVM print an UnsupportedClassVersionError nobody can act on.
+
+THREE THINGS A PLAN GOT WRONG, AND RUNNING IT CAUGHT
+
+The implementation was planned from reading rather than running, and the plan asserted three
+things about Widoco's behaviour. All three were checked by downloading the jar and running it
+against MWO's mwo.owl, and all three were wrong or incomplete.
+
+THE PAGE IS NOT IN A doc/ SUBFOLDER. With -outFolder given it is written to
+<out>/index-<lang>.html directly - measured at 854,425 bytes. Looking for <out>/doc/index-en.html
+would have reported failure on every successful run. Widoco does create doc/ when no output
+folder is given, which is presumably where the belief came from.
+
+A SUCCESSFUL RUN DOES NOT PRINT HUNDREDS OF ERRORS. It printed 27 lines, of which the warnings
+were a missing config/config.properties and two SAX parser properties the bundled Xerces does
+not recognise. Treating warnings as failure would reject every run there is.
+
+THE CONFIGURATION IS FOUND BESIDE THE JAR, NOT THE WORKING DIRECTORY. This one corrected me
+rather than the plan: the javadoc I wrote said the working directory decides, and running the
+process from one directory with the jar in another showed Widoco still looking for config/ next
+to the jar. Setting the working directory does not help a user who wrote a configuration.
+
+WHAT THE RUN DID ESTABLISH, WHICH IS WHY SUCCESS IS NOT THE EXIT CODE
+
+The same run exited 0 while printing
+
+    ERROR widoco.WidocoUtils - Failed to download vocabulary in RDF format
+    ERROR widoco.CreateResources - Could not generate changelog
+
+Widoco tried to fetch the previous release to diff against, could not, and carried on without
+the changelog section - a complete page with a piece quietly missing. So the page is checked for
+directly and its size tested, and the log lines worth reading are reported beside it while the
+two Xerces warnings are dropped.
+
+THE RELEASE PRODUCT, NOT THE EDIT FILE
+
+An edit file imports its modules rather than containing them, so a page made from it covers the
+terms the project wrote and none it reuses - and the version IRI Release... stamps is not in it
+yet. The open ontology is offered as a preview of unreleased work, with a warning that says so.
+
+Output goes to build/documentation rather than docs/, because docs/ is published and a generated
+page landing there would be committed by accident.
+
+NUMBERS
+
+1930 tests, 0 failures. 19 new.
+
+Verified end to end rather than only in unit tests: the command this plugin builds was run
+against the real jar through Protege 5.6.9's own JVM, and the page landed exactly where
+indexIn() said it would. That check is what caught the doc/ mistake; no unit test could have.
+
+41/41 classes named in plugin.xml load on both hosts. Quality report end to end: 6 findings, 2
+of them errors. 163 patterns indexed.
+
+The operation is not exercised by the host self-test: it needs a 39 MB jar this plugin does not
+ship, and a startup check must not depend on something the user may not have installed.
+
+STILL OPEN
+
+Entity locking, which will be advisory rather than enforced - Protege owns the edit model, so a
+lock OntoBoard cannot enforce should not claim to be one. And the collaboration vocabulary,
+whose plan was rejected on review and needs rescoping: the measured counts say equivalence and
+disjointness are the whole of the practical loss, while three of the nine kinds the docs listed
+occur zero times in three real ontologies.

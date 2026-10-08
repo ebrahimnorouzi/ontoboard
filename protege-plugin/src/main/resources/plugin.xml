@@ -79,6 +79,15 @@
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
+  <extension id="menu.OntoBoard.project.documentation"
+             point="org.protege.editor.core.application.EditorKitMenuAction">
+    <name value="Documentation..."/>
+    <toolTip value="Generate the ontology's HTML page with Widoco and open it"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.menu.WidocoAction"/>
+    <path value="ontoboard.menu.OntoBoard.project/SlotC-G"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
+
   <extension id="menu.OntoBoard.project.metadata"
              point="org.protege.editor.core.application.EditorKitMenuAction">
     <name value="Check project metadata"/>
