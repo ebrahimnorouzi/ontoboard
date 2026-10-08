@@ -89,6 +89,54 @@ class TermRenameTest {
         assertTrue(failed.getMessage().contains("no separator"), failed.getMessage());
     }
 
+    /**
+     * A line copied out of a spreadsheet that has a third column.
+     *
+     * <p>The most ordinary thing a person can do with this box, and it used to corrupt the
+     * ontology without saying anything. Both splits take a limit of two, so the third column
+     * stayed attached to the second: the target IRI arrived as
+     * {@code http://b/y<tab>renamed for clarity}, {@code plan} accepted it, reported one entity
+     * affected and no unmatched mappings, and the changes were to declare a class with a tab in
+     * its IRI and remove the real one.
+     */
+    @Test
+    void athirdColumnIsRefusedRatherThanFoldedIntoTheNewIri() {
+        RobotException failed = assertThrows(RobotException.class,
+                () -> TermRename.parse("http://a/y\thttp://b/y\trenamed for clarity\n"));
+
+        assertTrue(failed.getMessage().contains("Line 1"), failed.getMessage());
+        assertTrue(failed.getMessage().contains("tab"), failed.getMessage());
+        assertTrue(failed.getMessage().contains("third column"), failed.getMessage());
+    }
+
+    /** The same mistake written with an arrow, where the spare text has a space in front of it. */
+    @Test
+    void textAfterTheNewIriIsRefused() {
+        RobotException failed = assertThrows(RobotException.class,
+                () -> TermRename.parse("http://a/x -> http://b/x and also fix the label\n"));
+
+        assertTrue(failed.getMessage().contains("a space"), failed.getMessage());
+    }
+
+    /** A space in the term being renamed is refused too, and names that side. */
+    @Test
+    void whitespaceOnTheLeftIsRefusedAndQuotesThatSide() {
+        RobotException failed = assertThrows(RobotException.class,
+                () -> TermRename.parse("http://a/old term\thttp://b/new\n"));
+
+        assertTrue(failed.getMessage().contains("http://a/old term"), failed.getMessage());
+    }
+
+    /** And the legitimate forms still parse, including a prefix that is not a whole IRI. */
+    @Test
+    void aPrefixMappingIsStillAccepted() {
+        Map<String, String> parsed = TermRename.parse(
+                "http://example.org/ -> http://purl.obolibrary.org/obo/\n");
+
+        assertEquals(1, parsed.size());
+        assertEquals("http://purl.obolibrary.org/obo/", parsed.get("http://example.org/"));
+    }
+
     @Test
     void emptyInputIsRefusedRatherThanReportedAsSuccess() throws Exception {
         OWLOntology pizza = PizzaOntology.v1();

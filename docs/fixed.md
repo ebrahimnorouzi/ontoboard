@@ -13,6 +13,34 @@ release notes on
 [the releases page](https://github.com/ebrahimnorouzi/ontoboard/releases), carries the same
 record for that version.
 
+- **A rename pasted from a spreadsheet used to build an IRI with a tab in it, fixed in
+  1.107.0.** Silent corruption reported as success, from the most ordinary thing a person can
+  do with that dialog.
+
+  *Rename terms…* takes mappings one per line, as `old -> new` or separated by a tab. Both
+  splits were taken with a limit of two, so anything after the second field stayed attached to
+  it. A line copied out of a spreadsheet that has a third column — a note, a date, whoever
+  decided it — therefore arrived as a target IRI containing a tab and a sentence.
+
+  Nothing downstream objected. Measured on the real code before the fix, a paste of
+  `http://example.org/o#old⇥http://example.org/o#new⇥renamed for clarity` gave a plan of
+  exactly two changes:
+
+  ```
+  AddAxiom(Declaration(Class(<http://example.org/o#new    renamed for clarity>)))
+  RemoveAxiom(Declaration(Class(<http://example.org/o#old>)))
+  ```
+
+  with `getUnmatched()` empty and `getEntitiesAffected()` reporting 1 — so the dialog called it
+  a clean rename of one term while deleting the real one and declaring a class whose IRI cannot
+  be dereferenced, typed or found again.
+
+  The check is whitespace rather than full IRI validation, because that is one rule for both
+  modes: `PREFIX` takes the leading part of an IRI rather than a whole one, and that cannot
+  contain a space either. The message names which side and which character, and says that a
+  third column causes it — "is not a valid IRI" would send somebody looking at the IRI instead
+  of at the column they pasted.
+
 - **One bad cell used to discard a whole ROBOT template, fixed in 1.106.0.** Found by testing
   the plugin against a real 26-sheet knowledge-graph spreadsheet rather than against its own
   fixtures, which is why it had survived since templates arrived in 1.19.0.

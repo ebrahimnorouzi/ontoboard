@@ -1,0 +1,95 @@
+OntoBoard 1.107.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-10-08  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 9/9  test 10/10
+  2026-10-08  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 9/9  test 10/10
+
+
+A RENAME PASTED FROM A SPREADSHEET BUILT AN IRI WITH A TAB IN IT
+
+Found while six expert personas were walked through the plugin against the real ODK projects
+on this machine. It is the most ordinary thing a person can do with that dialog, and it
+corrupted the ontology without saying anything.
+
+Rename terms... takes mappings one per line, as "old -> new" or separated by a tab. Both
+splits took a limit of two, so anything after the second field stayed attached to it. A line
+copied out of a spreadsheet with a third column - a note, a date, whoever decided it - arrived
+as a target IRI containing a tab and a sentence.
+
+Measured on the real code before the fix. Pasting
+
+    http://example.org/o#old <TAB> http://example.org/o#new <TAB> renamed for clarity
+
+gave a plan of exactly two changes:
+
+    AddAxiom(Declaration(Class(<http://example.org/o#new    renamed for clarity>)))
+    RemoveAxiom(Declaration(Class(<http://example.org/o#old>)))
+
+with getUnmatched() empty and getEntitiesAffected() reporting 1. So the dialog called it a
+clean rename of one term, while deleting the real term and declaring a class whose IRI cannot
+be dereferenced, typed, or found again. Nothing between the paste and the ontology objected.
+
+WHY WHITESPACE AND NOT IRI VALIDATION
+
+One rule covers both modes. PREFIX mode takes the leading part of an IRI rather than a whole
+one - "http://example.org/" is a legitimate value there and is not a valid IRI to parse - but
+it cannot contain a space either. So the check is that neither side contains whitespace, which
+is true of every IRI and of every IRI prefix.
+
+The message names which side and which character, and says that a third column causes it.
+"Is not a valid IRI" would send somebody looking at the IRI instead of at the column they
+pasted, which is where the mistake actually is.
+
+Four tests: the tab case, the same mistake written with an arrow, whitespace on the left-hand
+side, and a prefix mapping that must still be accepted so the fix does not break the mode it
+is not about.
+
+A CORRECTION, RECORDED BECAUSE IT WAS NEARLY SHIPPED AS A FINDING
+
+The 1.106.0 receipt describes testing against a real 26-sheet knowledge graph. In the course of
+that this session also concluded that 17 cross-sheet references in that project's dataportal
+sheet could not resolve, because the sheet's ROBOT call does not merge the sheet those labels
+are declared in.
+
+That was wrong, and the mechanism is worth writing down: `template --merge-before` writes the
+merged input into its output, so a sheet's label scope is its whole transitive upstream chain
+and not the sheets named on its own command line. All 17 resolve, through a sheet five steps
+upstream that happens to hold 5,064 labels.
+
+What is actually wrong there is subtler and was found by the same measurement. 57 institute
+labels are declared in two different sheets; 55 agree on an IRI and 2 do not. "National
+Institute for Materials Science (NIMS)" has two distinct IRIs in scope and nine of those
+seventeen references point at that label. A further 23 labels are ambiguous within one upstream
+sheet alone - VTK, LAMMPS, ASE, "crystal plasticity", "atomistic simulations" each carry two
+IRIs. So a cross-sheet label reference resolves to whichever IRI ROBOT picks, with no warning
+and no say for the author.
+
+Nothing in this release acts on that; it is recorded because it changes what the template
+feature has to do. Reporting an ambiguous label with every candidate IRI and the sheet each
+came from is now a requirement with evidence behind it, where "cannot resolve" was a
+requirement with a mistake behind it.
+
+NUMBERS
+
+1966 tests, 0 failures. 4 new, all in TermRenameTest, which goes from 8 to 12. The
+before-measurement is in the entry above rather than in a reverted test run: the defect was
+reproduced against the shipped code first, which is stronger evidence than a test that fails
+when a guard is removed.
+
+41/41 classes named in plugin.xml load on both hosts. 163 patterns indexed. Quality report end
+to end: 6 findings, 2 of them errors.
+
+On 5.5.0, cellfie-2.2.4 and swrltab-plugin-2.1.3 fail to install. Neither is ours and neither
+is new; the receipt records them because a broken neighbour can change what resolves.
+
+STILL OPEN
+
+Everything the persona walkthroughs turned up beyond this one fix, which is a list to be
+triaged rather than a backlog to be worked: no cross-ontology mapping support of any kind
+(verified - no SSSOM, no skos:exactMatch, no hasDbXref; the only oboInOwl use is obsoletion),
+no DOSDP support while ECTO ships 31 DOSDP templates, no way to find a term by its label rather
+than its IRI, and Import terms... rewriting a term list from its argument where its own javadoc
+says re-running is how the list grows.
+
+The collaboration vocabulary, whose plan was rejected on review.

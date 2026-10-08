@@ -86,6 +86,28 @@ public final class TermRename {
         }
     }
 
+    /**
+     * Names the whitespace in a mapping's side, or null when there is none.
+     *
+     * <p>Named rather than just detected because "has a tab inside it" tells somebody who pasted
+     * three columns what happened, where "is not a valid IRI" would send them looking at the IRI.
+     */
+    private static String whitespaceIn(String value) {
+        for (int at = 0; at < value.length(); at++) {
+            char character = value.charAt(at);
+            if (character == '\t') {
+                return "a tab";
+            }
+            if (character == ' ') {
+                return "a space";
+            }
+            if (Character.isWhitespace(character)) {
+                return "whitespace";
+            }
+        }
+        return null;
+    }
+
     /** What a rename would do, before anything is changed. */
     public static final class Plan {
         private final List<OWLOntologyChange> changes;
@@ -152,7 +174,30 @@ public final class TermRename {
                 throw new RobotException("Line " + number + " is not a mapping: '" + trimmed
                         + "'. Write 'old -> new', or separate the two with a tab.");
             }
-            mappings.put(halves[0].trim(), halves[1].trim());
+            String from = halves[0].trim();
+            String to = halves[1].trim();
+            // Both splits above have a limit of 2, so anything after the second field stays
+            // attached to it. A line copied out of a spreadsheet that has a third column - a
+            // note, a date, whoever decided it - therefore used to arrive as a target IRI with a
+            // tab and a sentence inside it, and nothing downstream objected: the plan came back
+            // as one entity affected, no unmatched mappings, and it would have declared
+            // Class(<http://example.org/o#new    renamed for clarity>) while deleting the real
+            // term. Silent corruption reported as success, from an ordinary paste.
+            //
+            // No IRI may contain whitespace, in either mode - PREFIX takes the leading part of an
+            // IRI rather than a whole one, but that cannot contain a space either. So this is one
+            // rule for both, and it is checked here rather than in plan() because the dialog's
+            // own parse is where a person can still see what they pasted.
+            String offending = whitespaceIn(from) != null ? from : to;
+            String whitespace = whitespaceIn(from) != null ? whitespaceIn(from) : whitespaceIn(to);
+            if (whitespace != null) {
+                throw new RobotException("Line " + number + " has " + whitespace + " inside '"
+                        + offending.replace("\t", "    ") + "', and no IRI can contain "
+                        + "whitespace. A line with a third column does this: only the first two "
+                        + "are the mapping, so the rest ends up inside the new IRI. Keep two "
+                        + "columns, or write 'old -> new'.");
+            }
+            mappings.put(from, to);
         }
         return mappings;
     }
