@@ -12,12 +12,28 @@ What the plugin does not do today. The pattern library (1.82.0, extensible since
 SPARQL panel (1.33.0) used to be on this list and are now features - they are described in
 [working with ODK](odk-workflow.md) and the [pattern library](patterns/index.md).
 
-- **Live collaboration** — built as of 1.9.0, but only for the seventeen operation types
-  the web application understands. Equivalence, disjointness, property characteristics,
-  chains, `owl:hasKey`, negative assertions, global domain and range, datatype definitions
-  and imports do **not** travel; the plugin counts them and says so in the status bar rather
-  than dropping them silently. Use git for work on those. See
-  [collaboration](collaboration.md).
+- **Live collaboration carries four kinds of axiom.** Built as of 1.9.0, with a vocabulary of
+  eighteen operation types — but `OperationMapper` reaches an operation for exactly four axiom
+  classes: declarations, `SubClassOf`, class assertions and annotation assertions. Everything
+  else is counted and reported in the status bar rather than dropped silently. Use git for work
+  on the rest. See [collaboration](collaboration.md).
+
+    **Ordered by what people actually write**, counted in NFDIcore, MWO and PMDCO rather than
+    listed alphabetically — because the gap that matters is not the one that sounds most
+    technical:
+
+    | Not carried | nfdicore | mwo | pmdco |
+    |---|---|---|---|
+    | equivalence | 16 | 36 | **260** |
+    | disjointness | 18 | 18 | 44 |
+    | `owl:hasKey` | 0 | 0 | 0 |
+    | negative assertions | 0 | 0 | 0 |
+    | datatype definitions | 0 | 0 | 0 |
+
+    Equivalence and disjointness are the whole of the practical loss; the three that read as
+    serious OWL gaps do not occur once in three real ontologies. A list that gives all nine equal
+    weight — as this entry did until 1.102.0 — misdirects whoever reads it next, including
+    whoever decides what to implement.
 - **Threaded comments and discussion** — a term can be linked to its issue with
   *Notes → Discussion link…*, which writes `IAO:0000233 term tracker item`, and editorial
   notes (`IAO:0000116`/`IAO:0000232`) carry an author and date. But the argument itself
@@ -213,12 +229,29 @@ Ordered by what is being worked on:
    shipped in 1.82.0 and became extensible in 1.92.0.
 3. **Entity locking** — once live collaboration has been used in anger.
 4. **Collaboration vocabulary** — the nine axiom kinds the live protocol cannot carry.
-5. **`src/metadata`** — the OBO Foundry registry entry: `<id>.yml` holding the PURL
-   configuration and `<id>.md` holding the description. Neither is read nor written today, and
-   it is last on this list because it only matters when submitting to the Foundry — three of the
-   four real projects measured for 1.99.0 have one, and the fourth is not an OBO ontology.
-   The other three `src/` directories are all covered; see
-   [the workspace](odk-workflow.md#2-the-workspace).
+5. ~~**`src/metadata`**~~ — **closed as not planned in 1.102.0, and the evidence is why.**
+   An editor for it was the plan; measuring it showed the file is inert for almost everyone.
+
+    | | registry | PURL config | ontology IRI |
+    |---|---|---|---|
+    | ECTO | 200 | 200 | `purl.obolibrary.org/obo` |
+    | NFDIcore | **404** | **404** | `nfdi.fiz-karlsruhe.de` |
+    | MWO | **404** | **404** | `purls.helmholtz-metadaten.de` |
+    | PMDCO | **404** | **404** | `w3id.org/pmd` |
+
+    Three of four declare `base_url: /obo/<id>`, configuring a PURL namespace they do not own.
+    For ECTO, which does own one, the committed copy has already drifted from the deployed one,
+    so editing it locally reaches nobody. The Foundry's intake is now a 15-field GitHub issue
+    form rather than these two files, and the directory is generator-owned — MWO shows ODK
+    putting all three back after a maintainer deleted them. An editor would have made editing a
+    dead file feel productive.
+
+    **What shipped instead** is *Project → Check project metadata*, which reports where a
+    project's statements about itself disagree. Every check in it fires on a real project: all
+    three registry entries declare CC-BY while their ontologies annotate CC0, three of four
+    disagree on the title between the ontology and the ODK YAML, and all four annotate a licence
+    their ODK YAML omits. When the registry entry is one nothing reads, it gets a single finding
+    saying so rather than an itemised list of faults inside it.
 
 Done, with the release that did it: live collaboration and cursors (1.9.0); the entity-view
 column and tab layout (1.8.0); ROBOT transforms, term import and the quality report

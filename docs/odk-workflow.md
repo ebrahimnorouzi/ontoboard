@@ -147,7 +147,7 @@ does not act on — what ODK does with it next is ODK's business, by way of `upd
 | `src/ontology/` | ✅ | The edit file, the catalog, both Makefiles, `imports/` and the `-odk.yaml` are all read and acted on — see section 3. *Project → Refresh imports* audits every import the project declares and rebuilds the ones it can, since 1.99.0 |
 | `src/sparql/` | ✅ | *ROBOT → SPARQL…* runs your committed `*.rq` with the same pass/fail convention `make sparql_test` uses, since 1.33.0. The scaffold writes one starter query rather than ODK's full set |
 | `src/scripts/` | ✅ | *Project → Run a project script…* lists what is there — honouring a `SCRIPTSDIR` the Makefile moves — and runs the one you pick, with arguments, inside the container. See below |
-| `src/metadata/` | ❌ | Not read and not written. This is the OBO Foundry registry entry — `<id>.yml` carrying the PURL configuration (`idspace`, `base_url`, `products`, redirect `entries`) and `<id>.md` carrying the description — and it only matters when submitting to the Foundry. Edit it by hand; it is on the roadmap |
+| `src/metadata/` | 🔶 | Read to check it, never written. The OBO Foundry registry entry: `<id>.yml` is the PURL configuration for `purl.obolibrary.org/config`, `<id>.md` the entry for `OBOFoundry.github.io`. *Project → Check project metadata* compares both against the ontology; nothing edits them, because for a project not in the Foundry the file is scaffold the build never reads — [and three of four measured projects are not](limitations.md#roadmap) |
 
 Three of the four are covered, and the fourth is the one that is only needed for an OBO Foundry
 submission. **Everything in the first three runs inside Protégé** — no terminal, no separate

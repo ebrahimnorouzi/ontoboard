@@ -1,0 +1,119 @@
+OntoBoard 1.102.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-10-08  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 9/9  test 10/10
+  2026-10-08  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 9/9  test 10/10
+
+
+A ROADMAP ITEM CLOSED BY MEASURING IT
+
+src/metadata was on the roadmap as something to edit. Measuring it closed the item instead, and
+produced a different feature that is worth more.
+
+                    registry   PURL config   ontology IRI
+  ECTO                 200         200       purl.obolibrary.org/obo
+  NFDIcore             404         404       nfdi.fiz-karlsruhe.de
+  MWO                  404         404       purls.helmholtz-metadaten.de
+  PMDCO                404         404       w3id.org/pmd
+
+Three of the four declare `base_url: /obo/<id>`, which configures a redirect under
+purl.obolibrary.org - a namespace they do not own. For ECTO, which does, the committed copy has
+already drifted from the deployed one (2 products against 3, and a lowercase example term), so
+editing it locally reaches nobody either. The Foundry's intake is now a fifteen-field GitHub
+issue form rather than these two files, and the directory is generator-owned: MWO's history
+shows ODK putting all three back after a maintainer deleted them.
+
+An editor for that would have made editing a dead file feel productive. The item is closed with
+the numbers above beside it.
+
+WHAT THE MEASURING FOUND INSTEAD
+
+Every project carrying a registry entry contradicts its own ontology about the licence:
+
+    license:
+      url: http://creativecommons.org/licenses/by/3.0/
+      label: CC-BY
+
+while nfdicore.owl, mwo.owl and ecto.owl all annotate CC0 1.0. A file whose purpose is to state
+the licence disagrees with the thing it describes, in all three. Also: three of four disagree on
+the title between the ontology's annotation and the ODK YAML, and all four annotate a licence
+their ODK YAML does not declare at all.
+
+So Project > Check project metadata reports where a project's statements about itself disagree -
+the ontology's own annotations, the ODK YAML, and the registry entry when there is one.
+
+READ-ONLY, AND INVOKED RATHER THAN AUTOMATIC
+
+It writes nothing. src/metadata is generator-owned, so an edit made there could be reverted by
+the next update_repo without a trace, and the ODK YAML already has an editor in Project
+configuration...
+
+It is a menu item rather than a release gate or a startup check, because it will have something
+to say about most real projects the first time it runs, and six findings arriving unasked before
+a release is noise at the worst moment.
+
+A DESIGN FLAW THE ADVERSARIAL REVIEW CAUGHT IN MY OWN PLAN
+
+The first version had seven checks, four of which read src/metadata - the file the same check
+reports as one nothing reads. Saying "nothing reads this" and then itemising six faults inside
+it invites somebody to go and fix them, which is exactly the work the finding exists to prevent.
+
+An inert registry now gets one finding saying it is inert. Its contents are only itemised when
+the project really is in the OBO namespace the file configures. Two tests pin that, and the one
+named anInertRegistryIsReportedOnceNotItemised fails if the gate is removed.
+
+The checks on files the build DOES read - the ontology and the ODK YAML - always run.
+
+TWO ERRORS IN THIS PROJECT'S OWN DOCUMENTATION, BOTH VERIFIED IN SOURCE
+
+limitations.md said live collaboration carries "the seventeen operation types". It is eighteen:
+OntologyOperation.TYPES, counted. collaboration.md had it right, so the two pages disagreed.
+
+The same entry listed nine uncarried axiom kinds as equals. Counted in the real ontologies:
+
+                          nfdicore   mwo   pmdco
+    equivalence                 16    36     260
+    disjointness                18    18      44
+    owl:hasKey                   0     0       0
+    negative assertions          0     0       0
+    datatype definitions         0     0       0
+
+Equivalence and disjointness are the whole of the practical loss. The three that read as serious
+OWL gaps do not occur once. A list giving all nine equal weight misdirects whoever reads it -
+including whoever decides what to implement next. It is a measured table now.
+
+Also corrected: OperationMapper reaches an operation for exactly four axiom classes - checked,
+four instanceof branches - which the entry now says rather than implying the eighteen operation
+types correspond to eighteen kinds of axiom.
+
+NUMBERS
+
+1911 tests, 0 failures. 18 new. Six mutations applied to the new code, six caught.
+
+The fixtures are the real files - nfdicore, mwo and ecto's src/metadata pairs - copied byte for
+byte with their CRLF endings, because the claim this check rests on is that its findings fire on
+real projects rather than on invented ones.
+
+40/40 classes named in plugin.xml load on both hosts. Quality report end to end: 6 findings, 2
+of them errors. 163 patterns indexed.
+
+TWO OF MY OWN MISTAKES, BOTH CAUGHT BY TESTS THAT ALREADY EXISTED
+
+A heredoc turned \n inside a Java string literal into a real newline, for the third time in this
+project. docs/development.md has warned about it since 1.97.0 and it still happened; the fix is
+to stop writing Java through the shell, which the Edit tool does.
+
+MenuStructureTest refused "Check project metadata..." because the action has no configure() and
+so acts immediately, and the convention is that only an entry opening a dialog ends in an
+ellipsis. Renamed. Neither of these would have been caught by reading the diff.
+
+STILL OPEN
+
+Widoco, entity locking and the collaboration vocabulary, all three surveyed against the code as
+this ships. Widoco cannot be embedded - it is not on Maven Central at all, and its only
+distributed form is a 39 MB shaded jar carrying a second OWL API and a second Guava inside
+packages this bundle imports from the host - so it will follow Konclude's pattern of a tool you
+install and OntoBoard finds. Entity locking will be advisory rather than enforced, because
+Protege owns the edit model. The collaboration-vocabulary plan was rejected on review and needs
+rescoping before anything is built.

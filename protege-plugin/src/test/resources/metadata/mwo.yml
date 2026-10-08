@@ -1,0 +1,28 @@
+# PURL configuration for http://purl.obolibrary.org/obo/mwo
+
+idspace: MWO
+base_url: /obo/mwo
+
+products:
+- mwo.owl: https://raw.githubusercontent.com/ISE-FIZKarlsruhe/mwo/main/mwo.owl
+- mwo.obo: https://raw.githubusercontent.com/ISE-FIZKarlsruhe/mwo/main/mwo.obo
+
+term_browser: ontobee
+example_terms:
+- MWO_0000000
+
+entries:
+
+- prefix: /releases/
+  replacement: https://raw.githubusercontent.com/ISE-FIZKarlsruhe/mwo/v
+
+- prefix: /tracker/
+  replacement: https://github.com/ISE-FIZKarlsruhe/mwo/issues
+
+- prefix: /about/
+  replacement: http://www.ontobee.org/ontology/MWO?iri=http://purl.obolibrary.org/obo/
+
+## generic fall-through, serve direct from github by default
+- prefix: /
+  replacement: https://raw.githubusercontent.com/ISE-FIZKarlsruhe/mwo/main/
+

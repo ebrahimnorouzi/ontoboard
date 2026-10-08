@@ -79,6 +79,15 @@
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
+  <extension id="menu.OntoBoard.project.metadata"
+             point="org.protege.editor.core.application.EditorKitMenuAction">
+    <name value="Check project metadata"/>
+    <toolTip value="Where this project's ontology, its ODK YAML and its registry entry disagree"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.menu.MetadataCheckAction"/>
+    <path value="ontoboard.menu.OntoBoard.project/SlotC-F"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
+
   <extension id="menu.OntoBoard.project.scripts"
              point="org.protege.editor.core.application.EditorKitMenuAction">
     <name value="Run a project script..."/>
