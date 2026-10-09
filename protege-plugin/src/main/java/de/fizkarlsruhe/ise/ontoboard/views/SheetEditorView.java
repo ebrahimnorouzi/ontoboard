@@ -5,6 +5,8 @@ import de.fizkarlsruhe.ise.ontoboard.prov.ProvenanceSettings;
 import de.fizkarlsruhe.ise.ontoboard.sheet.SheetAudit;
 import de.fizkarlsruhe.ise.ontoboard.sheet.SheetBook;
 import de.fizkarlsruhe.ise.ontoboard.sheet.SheetFix;
+import de.fizkarlsruhe.ise.ontoboard.menu.TemplateAction;
+import de.fizkarlsruhe.ise.ontoboard.sheet.SheetLocation;
 import de.fizkarlsruhe.ise.ontoboard.sheet.SheetProvenance;
 import de.fizkarlsruhe.ise.ontoboard.sheet.SheetTableModel;
 import de.fizkarlsruhe.ise.ontoboard.sheet.TermCreation;
@@ -109,8 +111,53 @@ public class SheetEditorView extends AbstractOWLViewComponent {
                 new java.awt.Color(0xC8, 0xC8, 0xC8)));
         add(bottom, BorderLayout.SOUTH);
 
-        say("Open a folder of .tsv or .csv templates to begin. In an ODK project that is "
-                + "usually src/templates.");
+        openTheProjectsOwnTemplates();
+    }
+
+    /**
+     * Opens the templates of whatever ontology is already loaded, without being asked.
+     *
+     * <p>A project has one obvious place for them and the editor knows where it is, so
+     * beginning with an empty grid and a file chooser puts a question to somebody whose answer
+     * was already determined. If the folder is there with sheets in it, they are open before
+     * anybody clicks anything; if it is empty or absent, the status line says where it would
+     * be rather than making them guess.
+     *
+     * <p>Nothing is created here. An editor that puts a directory into a repository just by
+     * being opened would be a surprise in somebody's next {@code git status}.
+     */
+    private void openTheProjectsOwnTemplates() {
+        File ontologyFile = ontologyFileOrNull();
+        File templates = SheetLocation.forOntologyFile(ontologyFile);
+        if (templates == null) {
+            say("Open a folder of .tsv or .csv templates to begin. In an ODK project that is "
+                    + "usually src/templates.");
+            return;
+        }
+        folder = templates;
+        if (SheetLocation.sheetsIn(templates) == 0) {
+            say("No templates yet. They belong in " + templates.getAbsolutePath()
+                    + " - write one with ROBOT > Template... and it will open here, or use "
+                    + "Open folder... for somewhere else.");
+            return;
+        }
+        open(SheetBook.open(templates).against(ontologyOrNull(), "the open ontology"));
+    }
+
+    /** Where the open ontology was loaded from, or null. */
+    private File ontologyFileOrNull() {
+        OWLOntology ontology = ontologyOrNull();
+        if (ontology == null) {
+            return null;
+        }
+        try {
+            org.semanticweb.owlapi.model.IRI document = getOWLModelManager()
+                    .getOWLOntologyManager().getOntologyDocumentIRI(ontology);
+            return document == null || !"file".equals(document.getScheme()) ? null
+                    : new File(document.toURI());
+        } catch (RuntimeException notAFile) {
+            return null;
+        }
     }
 
     @Override
@@ -122,11 +169,25 @@ public class SheetEditorView extends AbstractOWLViewComponent {
     private JComponent toolbar() {
         JToolBar bar = new JToolBar();
         bar.setFloatable(false);
-        bar.add(button("Open folder...", "Read every .tsv and .csv in a folder",
+        bar.add(button("Project templates", "Open this project's own src/templates",
+                new ActionListener() {
+                    @Override
+                    public void actionPerformed(ActionEvent event) {
+                        openTheProjectsOwnTemplates();
+                    }
+                }));
+        bar.add(button("Open folder...", "Read every .tsv and .csv in some other folder",
                 new ActionListener() {
                     @Override
                     public void actionPerformed(ActionEvent event) {
                         openFolder();
+                    }
+                }));
+        bar.add(button("New sheet...", "Add another template to this folder",
+                new ActionListener() {
+                    @Override
+                    public void actionPerformed(ActionEvent event) {
+                        newSheet();
                     }
                 }));
         bar.add(button("Save", "Write this sheet back to its file", new ActionListener() {
@@ -241,6 +302,63 @@ public class SheetEditorView extends AbstractOWLViewComponent {
             return;
         }
         recheck();
+    }
+
+    /**
+     * Adds another template to the folder that is open, and opens it with the others.
+     *
+     * <p>A knowledge graph is many sheets - the one this was built against is twenty-six - so
+     * adding the second is not an unusual thing to want. The new sheet gets the same starter
+     * columns {@code ROBOT > Template...} writes, with identifiers taken from the project's
+     * own id ranges, because a new sheet full of examples that produce nothing is how the old
+     * starter wasted people's time.
+     */
+    private void newSheet() {
+        if (folder == null) {
+            say("Open a folder first, so there is somewhere to put it.");
+            return;
+        }
+        String name = JOptionPane.showInputDialog(this,
+                wrap("What should the sheet be called? It becomes a .tsv in "
+                        + folder.getAbsolutePath() + "."), "terms");
+        if (name == null || name.trim().isEmpty()) {
+            return;
+        }
+        File created = SheetLocation.create(folder);
+        if (created == null) {
+            say("Could not create " + folder.getAbsolutePath());
+            return;
+        }
+        File file = SheetLocation.freeNameIn(created, name.trim().replaceAll("[^A-Za-z0-9_-]",
+                "-"));
+        if (file == null) {
+            say("Could not find a free name for it.");
+            return;
+        }
+        String[] ids = TemplateAction.starterIdentifiersFor(ontologyOrNull(),
+                ontologyFileOrNull());
+        try {
+            java.nio.file.Files.write(file.toPath(),
+                    de.fizkarlsruhe.ise.ontoboard.robot.TemplateSheet
+                            .starterWithIris(ids[0], ids[1], ids[2])
+                            .getBytes(java.nio.charset.Charset.forName("UTF-8")));
+        } catch (IOException cannotWrite) {
+            say("Could not write " + file.getName() + ": " + cannotWrite.getMessage());
+            return;
+        }
+        open(SheetBook.open(folder).against(ontologyOrNull(), "the open ontology"));
+        for (int at = 0; at < sheets.getTabCount(); at++) {
+            if (sheets.getTitleAt(at).equals(stemOf(file.getName()))) {
+                sheets.setSelectedIndex(at);
+            }
+        }
+        say("Wrote " + file.getName() + " with three example rows to replace. Its identifiers "
+                + "continue this project's own numbering.");
+    }
+
+    private static String stemOf(String name) {
+        int dot = name.lastIndexOf('.');
+        return dot > 0 ? name.substring(0, dot) : name;
     }
 
     private OWLOntology ontologyOrNull() {

@@ -683,19 +683,46 @@ public final class TemplateSheet {
      */
     public static String starter(String prefix) {
         String name = prefix == null || prefix.trim().isEmpty() ? "ex" : prefix.trim();
+        return starterWithIris(name + ":0000001", name + ":0000002", name + ":0000003");
+    }
+
+    /**
+     * A starter whose identifiers are the project's own, written out in full.
+     *
+     * <p><b>This exists because the CURIE version produces nothing.</b> Measured on every real
+     * project to hand - PMDco, NFDIcore, MWO, ECTO and a project OntoBoard scaffolds itself -
+     * the old starter gave 0 axioms and 3 errors, every time. It takes the prefix from the
+     * last segment of the ontology IRI, which is right for MWO and ECTO and wrong for the
+     * other two, and then it does not matter which: <em>no project declares that prefix</em>,
+     * and ROBOT's 277 built-in ones do not include it either. Against the real
+     * {@code mwo-edit.owl}: {@code mwo:0000001} gives 0 axioms and 1 problem,
+     * {@code MWO:0000001} the same, and the full IRI gives 4 axioms and none.
+     *
+     * <p>A full IRI resolves with no prefix map at all, which also means the file still works
+     * when ODK's generated Makefile runs it outside Protege - and the Makefile owns template
+     * output, so it will.
+     *
+     * <p>The numbers matter as much as the form. {@code PMD_0000001} and {@code NFDI_0000001}
+     * are <em>live published terms</em> - "portion of matter" and "obsolete NFDI resource" -
+     * so a starter keeping the hardcoded 0000001 would have asserted
+     * {@code rdfs:label "an example term"} onto them and reported a clean success. The caller
+     * passes identifiers that are free.
+     */
+    public static String starterWithIris(String first, String second, String third) {
         StringBuilder text = new StringBuilder();
         text.append("ID\tLabel\tParent\tDefinition\tDefinition source\tNote\n");
         text.append("ID\tLABEL\tSC %\tA IAO:0000115\t>A IAO:0000119\tA IAO:0000116\n");
-        text.append(name).append(":0000001\tan example term\towl:Thing\t")
+        text.append(first).append("\tan example term\towl:Thing\t")
                 .append("What this term means, in a sentence that could stand alone.\t")
                 .append("https://doi.org/...\t")
-                .append("Delete this row and the two example rows below it.\n");
-        text.append(name).append(":0000002\ta child of it\t").append(name).append(":0000001\t")
-                .append("A parent can be an ID from this sheet, an ID from your ontology, or a "
-                        + "label in quotes.\t\t\n");
-        text.append(name).append(":0000003\ta related term\t\"an example term\"\t")
-                .append("The second row is the one that matters: it says what each column means. "
-                        + "SC % is 'this column holds the parent'.\t\t\n");
+                .append("Replace these three rows with your own. The identifiers continue the "
+                        + "numbering your project already uses.\n");
+        text.append(second).append("\ta child of it\t").append(first).append("\t")
+                .append("A parent can be an identifier from this sheet, as here, or a label "
+                        + "from your ontology - quoted if it has spaces in it.\t\t\n");
+        text.append(third).append("\ta related term\t'an example term'\t")
+                .append("The second row is the one that matters: it says what each column "
+                        + "means. SC % is 'this column holds the parent'.\t\t\n");
         return text.toString();
     }
 }

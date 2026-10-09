@@ -245,9 +245,11 @@ public class TemplateAction extends OntoBoardAction {
             return result.failed("Could not create " + file.getParentFile().getAbsolutePath())
                     .build();
         }
+        String[] ids = starterIdentifiersFor(ontology, fileOf(ontology));
         try {
-            Files.write(file.toPath(), TemplateSheet.starter(projectPrefixOf(ontology))
-                    .getBytes(Charset.forName("UTF-8")));
+            Files.write(file.toPath(),
+                    TemplateSheet.starterWithIris(ids[0], ids[1], ids[2])
+                            .getBytes(Charset.forName("UTF-8")));
         } catch (IOException cannotWrite) {
             return result.failed("Could not write " + file.getAbsolutePath() + ": "
                     + cannotWrite.getMessage()).build();
@@ -283,6 +285,112 @@ public class TemplateAction extends OntoBoardAction {
      * other people's namespaces and there is no way to tell which one is the project's - whereas
      * {@code .../obo/mwo.owl} says "mwo" unambiguously.
      */
+    /**
+     * Three identifiers for the starter's example rows, free and in the project's own shape.
+     *
+     * <p>Read from {@code -idranges.owl}, which is the file that decides what this project's
+     * identifiers look like, and continued past the highest already in the ontology so the
+     * rows cannot land on a published term. Where there is no id ranges file - an ontology
+     * that is not an ODK project - the ontology's own IRI gives the namespace, and failing
+     * that the rows fall back to {@code ex:}, which at least resolves because ROBOT knows it.
+     *
+     * <p>Static and package-visible so a test can check the three against a real project
+     * without opening Prot&eacute;g&eacute;.
+     */
+    public static String[] starterIdentifiersFor(OWLOntology ontology, File ontologyFile) {
+        String namespace = "";
+        int digits = 7;
+        long aboveEveryRange = 0;
+        File rangesFile = de.fizkarlsruhe.ise.ontoboard.odk.TermMinter
+                .findRangesFile(ontologyFile);
+        if (rangesFile != null) {
+            try {
+                de.fizkarlsruhe.ise.ontoboard.odk.IdRanges ranges =
+                        de.fizkarlsruhe.ise.ontoboard.odk.IdRanges.parse(
+                                new String(Files.readAllBytes(rangesFile.toPath()),
+                                        Charset.forName("UTF-8")));
+                if (ranges != null && ranges.getIdPrefix() != null
+                        && !ranges.getIdPrefix().trim().isEmpty()) {
+                    namespace = ranges.getIdPrefix().trim();
+                    digits = ranges.getIdDigits() > 0 ? ranges.getIdDigits() : 7;
+                    for (de.fizkarlsruhe.ise.ontoboard.odk.IdRanges.Range range
+                            : ranges.getRanges()) {
+                        aboveEveryRange = Math.max(aboveEveryRange, range.getUpper());
+                    }
+                }
+            } catch (IOException | RuntimeException | Error noRanges) {
+                namespace = "";
+            }
+        }
+        if (namespace.isEmpty()) {
+            return new String[] {"ex:0000001", "ex:0000002", "ex:0000003"};
+        }
+
+        // ABOVE EVERY ALLOCATED RANGE, not merely above what this file happens to mention.
+        //
+        // The first version of this took the highest identifier in the ontology's signature
+        // and added one, which is right when the ontology holds its own terms and dangerous
+        // when it does not. nfdicore-edit.owl is fifty-three lines that import components:
+        // zero NFDI_ identifiers in the file itself. So "highest in use" came back as nought
+        // and the starter proposed NFDI_0000001 - a live published term, "obsolete NFDI
+        // resource" - onto which it would have asserted rdfs:label "an example term" and
+        // reported a clean success.
+        //
+        // An id ranges file declares the blocks allocated to each editor, so one past the
+        // highest upper bound is outside all of them by construction, whatever any single
+        // file happens to contain. The signature is still consulted, because a project can
+        // have terms above its declared ranges, and the larger of the two wins.
+        long next = Math.max(aboveEveryRange, highestUnder(ontology, namespace)) + 1;
+        String[] ids = new String[3];
+        for (int at = 0; at < 3; at++) {
+            ids[at] = namespace + pad(next + at, digits);
+        }
+        return ids;
+    }
+
+    /** The highest number already used under this namespace, or zero. */
+    private static long highestUnder(OWLOntology ontology, String namespace) {
+        long highest = 0;
+        if (ontology == null) {
+            return highest;
+        }
+        for (org.semanticweb.owlapi.model.OWLEntity entity : ontology.getSignature(
+                org.semanticweb.owlapi.model.parameters.Imports.INCLUDED)) {
+            String iri = entity.getIRI().toString();
+            if (!iri.startsWith(namespace)) {
+                continue;
+            }
+            String rest = iri.substring(namespace.length());
+            if (rest.isEmpty()) {
+                continue;
+            }
+            boolean digitsOnly = true;
+            for (int at = 0; at < rest.length(); at++) {
+                if (!Character.isDigit(rest.charAt(at))) {
+                    digitsOnly = false;
+                    break;
+                }
+            }
+            if (!digitsOnly) {
+                continue;
+            }
+            try {
+                highest = Math.max(highest, Long.parseLong(rest));
+            } catch (NumberFormatException tooBig) {
+                continue;
+            }
+        }
+        return highest;
+    }
+
+    private static String pad(long number, int digits) {
+        StringBuilder text = new StringBuilder(Long.toString(number));
+        while (text.length() < digits) {
+            text.insert(0, '0');
+        }
+        return text.toString();
+    }
+
     private String projectPrefixOf(OWLOntology ontology) {
         if (ontology == null || !ontology.getOntologyID().getOntologyIRI().isPresent()) {
             return "ex";

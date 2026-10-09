@@ -1,0 +1,78 @@
+OntoBoard 1.115.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-10-09  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 9/9  test 10/10
+  2026-10-09  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 9/9  test 10/10
+
+  Window > Tabs > OntoBoard | ok | opened, [SchemaCanvasView, SheetEditorView] built
+  without throwing, and closed again        <- on both hosts
+
+
+THE OLDEST KNOWN DEFECT HERE IS FIXED
+
+The starter template has never produced a single axiom. Measured again this week on five
+projects - PMDco, NFDIcore, MWO, ECTO and a project OntoBoard scaffolds itself - every one
+gave 0 axioms and 3 errors. It writes a CURIE taken from the last segment of the ontology
+IRI, which is right for MWO and ECTO and wrong for the others, and it does not matter which:
+no project declares that prefix and ROBOT's 277 built-in ones do not include it.
+
+Against the real mwo-edit.owl: mwo:0000001 gives 0 axioms and 1 problem, MWO:0000001 the
+same, the full IRI gives 4 and none. So the starter now writes full IRIs, taken from the
+project's own -idranges.owl. All five projects:
+
+    mwo        MWO_0030000      13 axioms   0 problems
+    nfdicore   NFDI_0030000     13 axioms   0 problems
+    pmdco      PMD_1000000      13 axioms   0 problems
+    ecto       ECTO_9002179     13 axioms   0 problems
+
+AND THE FIRST VERSION OF THAT FIX WOULD HAVE VANDALISED A PUBLISHED ONTOLOGY
+
+Worth recording in full. The identifiers were first chosen as "one past the highest already
+in the ontology", which is right when the ontology holds its own terms. nfdicore-edit.owl is
+fifty-three lines that import components and contains ZERO NFDI_ identifiers. So the highest
+came back as nought and the starter proposed NFDI_0000001 - which is a live published term,
+"obsolete NFDI resource" - onto which the example row would have asserted
+rdfs:label "an example term" and reported a clean success.
+
+An id ranges file declares the blocks allocated to each editor, so one past the highest upper
+bound is outside all of them by construction, whatever any single file happens to contain.
+That is what it uses now, taking the larger of that and the signature. NFDI_0000001 became
+NFDI_0030000.
+
+The lesson is the one this repo keeps relearning: a rule that is right about the data in
+front of you is not the same as a rule that is right.
+
+OPENING A TEMPLATE IS NO LONGER A QUESTION
+
+The sheet editor began with an empty grid and a file chooser, which puts a question to
+somebody whose answer was already determined: a project has one place for its templates and
+the editor knows where it is. SheetLocation works it out - src/templates beside src/ontology
+for an ODK project, which is where ODK's own Makefile reads them and where PMDco and ECTO
+both keep theirs, and a templates folder beside the ontology for anything else.
+
+The view now opens them when it builds. Where there are none it says where they would go
+rather than leaving somebody to guess. Nothing is created by looking: an editor that puts a
+directory into a repository just by being opened is a surprise in the next git status.
+
+New sheet... adds another template to the open folder with the same starter columns and the
+same project identifiers, because a knowledge graph is many sheets - the one this was built
+against is twenty-six - and adding the second should not mean leaving.
+
+NUMBERS
+
+2136 tests, 0 failures. 8 new, for where templates live and what the starter writes.
+
+43/43 classes named in plugin.xml load on both hosts. 163 patterns indexed.
+
+On 5.5.0, cellfie-2.2.4 and swrltab-plugin-2.1.3 fail to install. Neither is ours.
+
+STILL OPEN
+
+Reading .xlsx. A workbook is a zip of XML and Java 8 has what is needed to read one without a
+new dependency, but writing one is a different size of job - so a starter is still refused if
+you name it .xlsx rather than written as one.
+
+Opening a folder, editing a cell and saving has still not been done by a person in a running
+Protege. What is proven is that the view constructs there and that everything behind it works
+headlessly against twenty-six real sheets.
