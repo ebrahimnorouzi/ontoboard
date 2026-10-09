@@ -1,0 +1,57 @@
+OntoBoard 1.116.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-10-09  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 9/9  test 10/10
+  2026-10-09  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 9/9  test 10/10
+
+
+KONCLUDIX
+
+Asked for, because the MatWerk pipeline already reasons with it rather than with Konclude.
+
+Koncludix is a Konclude build from ISE-FIZKarlsruhe that adds one command, materialize, which
+writes the complete inferred ABox in a single pass - transitively closed class and property
+hierarchies, class assertions, object and data property assertions, and same-individual
+equivalences - instead of making somebody run classification and realization separately and
+join the results. Its documented invocation is
+
+    Konclude-x86_64.AppImage input.ttl output.ttl
+    docker run --rm -v "$PWD:/data" konclude materialize -w AUTO -i /data/in.ttl -o /data/out.ttl
+
+which is the shape this plugin already builds: binary, command, -i, -o, -w AUTO. So supporting
+it is one more Task and nothing else. Two things were checked rather than assumed before
+writing it:
+
+  - KoncludeInferences.read iterates every axiom and skips declarations and
+    SubClassOf(X, owl:Thing); the only cast is guarded by an instanceof. So it reads class
+    assertions, property assertions and same-individual without a change. Materialize output
+    needed no new reader.
+  - On Windows, Koncludix takes OWL2-XML or OWL2-Functional only - which is what this plugin
+    writes for Konclude already.
+
+The task carries the dependency in its own label - "Materialise everything (needs Koncludix)" -
+because a task that silently needs a different binary is one somebody debugs against their
+ontology. And a stock Konclude rejecting the command now gets a sentence saying so rather than
+"unknown command" passed through, since that is the commonest way to meet this failure.
+
+NOT VERIFIED END TO END, AND THAT MATTERS
+
+There is no Koncludix on this machine - only a stock Konclude zip in Downloads - so what is
+proven here is that the command line is built correctly, the task is offered, the reader
+handles the axiom kinds materialize emits, and the plugin loads on both hosts. Whether a real
+Koncludix binary accepts this exact invocation and whether its output parses has NOT been
+tested, because testing it means downloading and running a third-party binary and that was not
+asked for. The first person to point this at a Koncludix build is doing the real test.
+
+NUMBERS
+
+2138 tests, 0 failures. 2 new.
+
+43/43 classes named in plugin.xml load on both hosts. 163 patterns indexed.
+
+On 5.5.0, cellfie-2.2.4 and swrltab-plugin-2.1.3 fail to install. Neither is ours.
+
+STILL OPEN
+
+Reading .xlsx. Opening a folder, editing a cell and saving in a running Protege by a person.

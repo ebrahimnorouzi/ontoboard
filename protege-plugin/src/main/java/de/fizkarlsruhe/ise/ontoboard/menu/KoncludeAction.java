@@ -264,8 +264,18 @@ public class KoncludeAction extends OntoBoardAction {
         // Never the exit code. Konclude returns 0 after logging an error and still writes a
         // well-formed, empty-looking output file - see KoncludeLog's own note.
         if (KoncludeLog.failed(log)) {
-            return result.failed("Konclude reported an error: " + KoncludeLog.firstError(log))
-                    .build();
+            String error = KoncludeLog.firstError(log);
+            // "Materialise" is Koncludix's command, and the commonest way to meet this failure
+            // is to ask for it with a stock Konclude. Passing on "unknown command" would leave
+            // somebody looking at their ontology for a fault that is in their binary.
+            if (task == Konclude.Task.MATERIALIZE && looksLikeAnUnknownCommand(error)) {
+                return result.failed("This binary does not have the materialise command, which "
+                        + "means it is stock Konclude. Materialising needs Koncludix - the "
+                        + "Konclude build from ISE-FIZKarlsruhe that adds it - so point the "
+                        + "binary at a Koncludix build, or use Classify classes and Realize "
+                        + "individuals instead. Konclude said: " + error).build();
+            }
+            return result.failed("Konclude reported an error: " + error).build();
         }
 
         if (task.answersYesOrNo()) {
@@ -318,6 +328,24 @@ public class KoncludeAction extends OntoBoardAction {
     }
 
     /** Consistency and satisfiability write a word, not axioms. */
+    /**
+     * Whether an error reads like a binary rejecting a command it has never heard of.
+     *
+     * <p>Matched on wording rather than an exit code, for the reason the rest of this class
+     * exists: Konclude returns 0 after logging an error. Deliberately loose - several
+     * phrasings mean the same thing and a missed match only costs the plainer message.
+     */
+    static boolean looksLikeAnUnknownCommand(String error) {
+        if (error == null) {
+            return false;
+        }
+        String lower = error.toLowerCase(java.util.Locale.ROOT);
+        return lower.contains("unknown command") || lower.contains("unknown parameter")
+                || lower.contains("not a valid command") || lower.contains("unrecognized")
+                || lower.contains("unrecognised")
+                || (lower.contains("materialize") && lower.contains("command"));
+    }
+
     private OperationResult answer(OperationResult.Builder result, File output) {
         String text;
         try {

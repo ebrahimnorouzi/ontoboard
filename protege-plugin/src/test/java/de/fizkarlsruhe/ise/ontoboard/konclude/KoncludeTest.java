@@ -39,6 +39,39 @@ class KoncludeTest {
      * it, so a typo is absorbed in silence and the run goes on doing something subtly different.
      * Nothing else in this project catches that.
      */
+    /**
+     * Koncludix's materialise command is offered, and says so in its own label.
+     *
+     * <p>It is not a Konclude command: Koncludix is a Konclude build that adds it, writing the
+     * whole inferred ABox in one pass instead of making somebody run classification and
+     * realization and join the results. The MatWerk pipeline already reasons this way. The
+     * label carries the dependency because a task that silently needs a different binary is
+     * one somebody debugs against their ontology.
+     */
+    @Test
+    void materialiseIsOfferedAndNamesTheBinaryItNeeds() {
+        Konclude.Task task = Konclude.Task.MATERIALIZE;
+
+        assertEquals("materialize", task.getCommand());
+        assertFalse(task.needsEntity());
+        assertFalse(task.answersYesOrNo(),
+                "it writes axioms, so the output has to be read as an ontology");
+        assertTrue(task.getLabel().contains("Koncludix"), task.getLabel());
+        assertTrue(task.getHelp().contains("Koncludix"), task.getHelp());
+    }
+
+    /** The command line is built the same way as any other task: -i, -o, -w AUTO. */
+    @Test
+    void materialiseIsInvokedLikeEveryOtherTask() {
+        List<String> command = Konclude.commandLine(BIN, Konclude.Task.MATERIALIZE,
+                IN, OUT, false, null);
+
+        assertEquals("materialize", command.get(1));
+        assertTrue(command.contains("-i"));
+        assertTrue(command.contains("-o"));
+        assertTrue(command.contains("AUTO"));
+    }
+
     @Test
     void theCommandLineIsExactlyTheDocumentedOne() {
         List<String> command = Konclude.commandLine(BIN, Konclude.Task.CLASSIFY_CLASSES,

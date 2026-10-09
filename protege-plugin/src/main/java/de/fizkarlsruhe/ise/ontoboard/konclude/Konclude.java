@@ -84,7 +84,28 @@ public final class Konclude {
                         + "before trusting a long classification."),
         SATISFIABILITY("Check one class is satisfiable", "satisfiability", true,
                 "Answers whether one named class can have any instance. Needs the IRI of the "
-                        + "class to test.");
+                        + "class to test."),
+        /**
+         * Koncludix's addition: everything inferred, in one pass.
+         *
+         * <p>Not a Konclude command. Koncludix is a Konclude build from ISE-FIZKarlsruhe that
+         * adds {@code materialize}, which writes the complete inferred ABox - transitively
+         * closed class and property hierarchies, class assertions, object and data property
+         * assertions, and same-individual equivalences - rather than making you run
+         * classification and realization separately and join the results.
+         *
+         * <p>It is offered here because the MatWerk pipeline already reasons this way, and
+         * because a knowledge graph built from spreadsheets wants exactly this: one file of
+         * everything that follows from the data, saved beside it. Stock Konclude does not have
+         * the command and will refuse, which {@link #explainIfNotKoncludix} turns into a
+         * sentence naming the reason rather than passing on "unknown command".
+         */
+        MATERIALIZE("Materialise everything (needs Koncludix)", "materialize", false,
+                "Writes everything inferred in one pass - the class and property hierarchies, "
+                        + "the types of every individual, the property assertions between them "
+                        + "and which individuals are the same. This is Koncludix's command, not "
+                        + "Konclude's: point the binary at a Koncludix build, or stock Konclude "
+                        + "will reject it.");
 
         private final String label;
         private final String command;
