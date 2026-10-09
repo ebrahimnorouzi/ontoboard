@@ -952,24 +952,108 @@ def main():
         ("Profile", "OWL 2 EL / QL / RL / DL, and which axioms break it."),
         ("Explain", "Why a class is unsatisfiable, with the justification."),
         ("SPARQL", "Your query, or the project's own checks in src/sparql."),
+        ("Konclude", "A second, faster reasoner, fetched and run for you."),
         ("Transform", "ROBOT's transformations, previewed before applying."),
         ("Export terms", "TSV or CSV, the columns you choose."),
-        ("Template", "A ROBOT template, with every bad row reported at once."),
+        ("Rename IRIs", "One term or a whole namespace, previewed before it applies."),
         ("Import terms", "Extracts a module, writes the term list, the import and the catalog."),
+        ("Documentation", "Widoco, installed on demand, writing the ontology's own pages."),
     ]
     cw = (10 - 2 * M - 0.28) / 2
     for i, (head, note) in enumerate(ops):
         col_i, row_i = i % 2, i // 2
         x = M + col_i * (cw + 0.28)
-        yy = y + row_i * 0.63
+        yy = y + row_i * 0.57
         c = rect(s, x, yy, cw, 0.54, fill=RGBColor(0xF7, 0xF8, 0xFA), line=FAINT,
                  shape=MSO_SHAPE.ROUNDED_RECTANGLE)
         c.adjustments[0] = 0.12
         text(s, x + 0.16, yy + 0.07, 1.5, 0.22, head, size=10, colour=INDIGO, bold=True)
         text(s, x + 1.45, yy + 0.07, cw - 1.6, 0.42, note, size=9, colour=MUTED)
 
+    # 19b ------------------------------------ section: knowledge graphs
+    section("PART 5", "Building a knowledge graph",
+            "Spreadsheets of data, turned into individuals, without leaving Protégé.")
+
+    # 19c ------------------------------------------------ the sheet editor
+    s = page()
+    y = heading(s, "A spreadsheet inside Protégé", "Window → Tabs → OntoBoard → Sheets")
+    text(s, M, y, 10 - 2 * M, 0.5,
+         "An OBO project's data arrives as ROBOT templates - a table whose second row says what "
+         "each column means. The editor opens the whole folder at once, because a reference in "
+         "one sheet usually names a row in another.", size=11, colour=INK)
+    pts = [
+        ("It opens your project's own templates",
+         "src/templates beside src/ontology, which is where ODK's Makefile reads them. No file "
+         "chooser, no question whose answer was already decided."),
+        ("The header rows stay the header",
+         "Row 1 is your heading, row 2 is ROBOT's. They are the column header rather than the "
+         "first two rows, so they cannot be sorted into the middle of the data."),
+        ("Completion where it belongs",
+         "A column that names another term offers every name in every open sheet and in the "
+         "ontology. A column that holds text does not - there the text IS the value."),
+    ]
+    for i, (head, note) in enumerate(pts):
+        yy = y + 0.62 + i * 0.78
+        rect(s, M, yy, 0.055, 0.6, fill=ACCENT)
+        text(s, M + 0.22, yy - 0.02, 9 - M, 0.75, [
+            (head, {"size": 11.5, "bold": True, "colour": INDIGO, "space": 3}),
+            (note, {"size": 10, "colour": INK}),
+        ], space=0)
+
+    # 19d ------------------------------------------- what it finds in real data
+    s = page()
+    y = heading(s, "It builds, and it is still wrong", "checking data, not syntax")
+    text(s, M, y, 10 - 2 * M, 0.5,
+         "Template… asks whether a sheet will build. That is a question about ROBOT. The other "
+         "question - is this data any good - has different answers. A real 26-sheet knowledge "
+         "graph that ROBOT builds with zero problems:", size=11, colour=INK)
+    rows = [
+        ("687", "cells holding text a template left behind - “_name_”, “n/a”"),
+        ("145", "cells with pasted whitespace: a doubled space, a tab, a non-breaking space"),
+        ("144", "cells with a curly quote where a plain one was meant"),
+        ("123", "references to a name that nothing defines"),
+        ("49", "references to a name that means TWO different things"),
+    ]
+    for i, (count, note) in enumerate(rows):
+        yy = y + 0.62 + i * 0.44
+        c = rect(s, M, yy, 0.85, 0.36, fill=RGBColor(0xF7, 0xF8, 0xFA), line=FAINT,
+                 shape=MSO_SHAPE.ROUNDED_RECTANGLE)
+        c.adjustments[0] = 0.18
+        text(s, M, yy + 0.05, 0.85, 0.26, count, size=12, colour=INDIGO, bold=True,
+             align=PP_ALIGN.CENTER)
+        text(s, M + 1.0, yy + 0.06, 8.2, 0.3, note, size=10, colour=INK)
+    text(s, M, y + 0.62 + len(rows) * 0.44 + 0.08, 10 - 2 * M, 0.4,
+         "289 of them carry an exact correction, applied in one step you can undo. Which of two "
+         "duplicated entities to keep is not a decision a tool should make, so those say what "
+         "the choice is instead.", size=10, colour=MUTED)
+
+    # 19e --------------------------------------------- data, not just terms
+    s = page()
+    y = heading(s, "From a row to an individual", "and back again")
+    pts = [
+        ("Create the thing you just referred to",
+         "Type an institute's name into a column that wants a term and nothing exists yet. "
+         "The editor works out which sheet holds things of that kind, what type to give it and "
+         "which identifier is free - then adds the row."),
+        ("Record who added it, and when",
+         "dcterms:contributor, created and date, as columns in the sheet rather than in the "
+         "generated OWL - which is rebuilt on every run, so provenance written only there "
+         "disappears."),
+        ("Reason over what comes out",
+         "ELK by default and Konclude or HermiT when you want them. On a graph of 34,773 axioms "
+         "ELK finishes in three seconds; HermiT over the whole thing does not finish at all, "
+         "which is why the build gates each sheet separately."),
+    ]
+    for i, (head, note) in enumerate(pts):
+        yy = y + 0.04 + i * 1.08
+        rect(s, M, yy, 0.055, 0.88, fill=ACCENT)
+        text(s, M + 0.22, yy - 0.02, 9 - M, 1.0, [
+            (head, {"size": 11.5, "bold": True, "colour": INDIGO, "space": 3}),
+            (note, {"size": 10, "colour": INK}),
+        ], space=0)
+
     # 20 --------------------------------------------- section: the patterns
-    section("PART 5", "The pattern library",
+    section("PART 6", "The pattern library",
             str(F["patterns"]) + " ontology design patterns, ranked against the ontology you have "
             "open.")
 
@@ -1045,7 +1129,7 @@ def main():
     ], size=10, gap=0.42)
 
     # 24 ------------------------------------------- section: collaboration
-    section("PART 6", "Working with other people",
+    section("PART 7", "Working with other people",
             "A live session if your group runs a server, plain git if it does not.")
 
     # 25 ------------------------------------------------------ collaboration
