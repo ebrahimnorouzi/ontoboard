@@ -9,7 +9,7 @@ cases measured against a real ontology — NFDIcore, MWO, PMDCO or the 26-sheet 
 graph. **Partly** means it works within a limit, and the limit is written out. **No** means it
 is not there; where it is not there on purpose, the reason is given.
 
-Current release: **1.117.0**. 2,277 tests; both supported hosts (Protégé 5.5.0 on Java 8 and
+Current release: **1.118.0**. 2,347 tests; both supported hosts (Protégé 5.5.0 on Java 8 and
 5.6.9 on Java 11) start the bundle, pass the self-check 9/9 and the self-test 11/11.
 
 ---
@@ -96,7 +96,9 @@ The steps below are the ODK workflow as it was given to OntoBoard, in order.
 | Cleaning and suggestions | Yes | Ten kinds of finding, marked in the cell; the ones with an obvious correction can be fixed in a single undoable step. 307 were applied to the MatWerk sheets with the build byte-identical afterwards. |
 | Duplicate detection | Yes | Duplicate identifiers, near-duplicate labels, ambiguous names. |
 | Create an instance from a name typed into an object-property column | Yes | Right-click the cell. The sheet, the type and the identifier are all decided from the sheets' own evidence, and it refuses rather than guessing when they do not say. |
-| **An IRI generator** | **Yes (1.117.0)** | *Generate IRIs…* fills every row that has content but no identifier, out of the project's `-idranges.owl` block allocated to you — or, where there is no ranges file, by continuing the sheets' own numbering at the same digit width. Right-click a cell for one row. |
+| **An IRI generator** | **Yes (1.117.0)** | *Generate IRIs...* fills every row that has content but no identifier. Right-click a cell for one row. |
+| **More ways to form an identifier** | **Yes (1.118.0)** | Six, each previewed with a real example before anything is written: a block from `-idranges.owl`; continuing the sheet's own numbering; a **timestamp** (epoch milliseconds plus a counter - the scheme 8,406 of the 8,471 live MatWerk identifiers already use); a **timestamp and the editor**; a **random UUID**; a **UUID derived from the label** (version 5 under the same namespace the MatWerk harvester uses, so a row filled in by hand and the same row harvested later agree); and the **label as a readable slug**. |
+| **Editing the ROBOT template row** | **Yes (1.118.0)** | Rows 1 and 2 are two editable rows where the column header was. Every edit is checked against robot-core's own `validateTemplateString`: a string ROBOT would refuse is marked, because it costs the whole sheet rather than the column. *Add column* adds one with its template cell empty, which is ROBOT's way of saying "ignore this". |
 | Search the data | Yes (1.117.0) | The Find box searches every sheet and wraps. |
 | Pop-up menus | Yes | Right-click: fix, create, mint, insert/duplicate/delete a row, find this value everywhere, explain the mark. |
 | Add further sheets | Yes | *New sheet…*, with starter columns and identifiers continuing the project's numbering. |
@@ -180,6 +182,16 @@ one nobody fixes:
 - An `AI` column whose prefix cannot be resolved.
 - Several patterns collapsing onto one import module.
 - The *Getting started* page still describing the removed web application.
+
+## Fixed in 1.118.0
+
+- `JTable` reinstates its own column header when it is added to a scroll pane, so the editable
+  header rows laid out at 0 x 0 while the rendered picture still looked plausible. Caught by
+  asserting the layout rather than the appearance.
+- Column widths were fitted to the data and the heading but never to the template string, so the
+  columns whose spec explains the most - `AT ...^^xsd:anyURI` - were the ones whose spec clipped.
+- `IriGenerator.fillBlanks` returned 0 both when there was nothing to do and when it could not
+  find the ID column. Those are different answers and it now says which.
 
 ## Fixed in 1.117.0 while auditing this list
 

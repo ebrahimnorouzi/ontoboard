@@ -74,6 +74,17 @@ public class SheetEditorView extends AbstractOWLViewComponent {
     private final JTextField search = new JTextField(16);
     private final Map<String, SheetTableModel> models =
             new LinkedHashMap<String, SheetTableModel>();
+    private final Map<String, SheetHeaderTable> headers =
+            new LinkedHashMap<String, SheetHeaderTable>();
+
+    /**
+     * The source the dialog was last told to use, so the right-click mint agrees with it.
+     *
+     * <p>Not a saved preference: a choice remembered across sessions would quietly outlive the
+     * sheet it was made for, and the right answer is per sheet - the live MatWerk tabs want a
+     * timestamp and the hand-written MWO templates want the ID ranges.
+     */
+    private IriGenerator.Source lastChosen;
 
     private SheetBook book = SheetBook.empty();
     private File folder;
@@ -277,6 +288,13 @@ public class SheetEditorView extends AbstractOWLViewComponent {
                         withSheet(FILL_DOWN);
                     }
                 }));
+        bar.add(button("Add column", "A new column, with its template row left empty until "
+                + "you say what it does", new ActionListener() {
+                    @Override
+                    public void actionPerformed(ActionEvent event) {
+                        addColumn();
+                    }
+                }));
         bar.addSeparator();
         bar.add(button("Generate IRIs...", "Mint identifiers for the rows that have none, out "
                 + "of this project's own allocated block", new ActionListener() {
@@ -350,10 +368,12 @@ public class SheetEditorView extends AbstractOWLViewComponent {
         lastFound = null;
         models.clear();
         sheets.removeAll();
+        headers.clear();
         for (SheetBook.Sheet sheet : book.getSheets()) {
-            SheetTableModel model = new SheetTableModel(book, sheet.getName());
-            models.put(sheet.getName(), model);
-            SheetTable table = new SheetTable(model);
+            final String name = sheet.getName();
+            SheetTableModel model = new SheetTableModel(book, name);
+            models.put(name, model);
+            final SheetTable table = new SheetTable(model);
             table.addMouseListener(new RightClick(table, model));
             table.autofitColumns();
             JScrollPane scrolled = new JScrollPane(table);
@@ -361,7 +381,28 @@ public class SheetEditorView extends AbstractOWLViewComponent {
             // names a row, and until 1.117.0 the grid showed none, so finding the row a message
             // named meant counting.
             scrolled.setRowHeaderView(table.rowNumbers());
-            sheets.addTab(sheet.getName(), scrolled);
+
+            // The two header rows, editable, where the column header goes. The real
+            // JTableHeader stays above them - it is what resizes columns - and now carries the
+            // spreadsheet column letter, because the heading it used to paint is in the row
+            // immediately below and is editable there.
+            final SheetHeaderTable header = new SheetHeaderTable(book, name, table);
+            headers.put(name, header);
+            JPanel columnHeader = new JPanel(new BorderLayout());
+            columnHeader.add(table.getTableHeader(), BorderLayout.NORTH);
+            columnHeader.add(header, BorderLayout.CENTER);
+            table.setCompositeColumnHeader(columnHeader);
+            scrolled.setColumnHeaderView(columnHeader);
+            scrolled.setCorner(JScrollPane.UPPER_LEFT_CORNER,
+                    header.corner(table.getTableHeader().getPreferredSize().height));
+            header.getModel().addTableModelListener(
+                    new javax.swing.event.TableModelListener() {
+                        @Override
+                        public void tableChanged(javax.swing.event.TableModelEvent event) {
+                            headerEdited(name, table, header);
+                        }
+                    });
+            sheets.addTab(name, scrolled);
         }
         if (book.size() == 0) {
             say("No .tsv or .csv files there, so there is nothing to edit.");
@@ -481,6 +522,39 @@ public class SheetEditorView extends AbstractOWLViewComponent {
                 + "changed and is not written back to.");
     }
 
+    /**
+     * What has to be redone when a header cell changes.
+     *
+     * <p>The model layer needs nothing - {@code SheetBook.setCell} already takes rows 1 and 2,
+     * and {@code Sheet.getColumns()} re-parses the template row on every call, with no cache
+     * anywhere. What goes stale is Swing: {@code SheetTable.configureColumns} binds each
+     * column's cell editor and width from the spec <em>once</em>, so a column changed from
+     * {@code A rdfs:label} to {@code I RO:0001025} keeps a plain text field and offers no
+     * completion until this runs.
+     *
+     * <p>And a structure change only when the column COUNT moved, which typing into a cell past
+     * the end of the sheet does - {@code getColumnCount()} is the width of the widest row,
+     * header rows included. Firing it unconditionally would throw away the column widths and the
+     * renderers on every keystroke.
+     */
+    private void headerEdited(String name, SheetTable table, SheetHeaderTable header) {
+        SheetTableModel model = models.get(name);
+        if (model == null) {
+            return;
+        }
+        if (model.getColumnCount() != table.getColumnCount()) {
+            model.fireTableStructureChanged();
+            header.refreshStructure();
+        }
+        table.configureColumns();
+        header.refresh();
+        recheck();
+        String wrong = header.summary();
+        if (!wrong.isEmpty()) {
+            say(wrong + "  Hover the marked cell for what ROBOT would say.");
+        }
+    }
+
     private static String stemOf(String name) {
         int dot = name.lastIndexOf('.');
         return dot > 0 ? name.substring(0, dot) : name;
@@ -566,68 +640,123 @@ public class SheetEditorView extends AbstractOWLViewComponent {
     /**
      * Mints identifiers for the rows that have none.
      *
-     * <p>The dialog exists to show where the numbers come from before any are written. Both
-     * sources are offered with what each would produce, and the one that cannot be used carries
-     * the reason - "no ID range is allocated to you" has a remedy one menu item away, and
-     * quietly falling back to guessing from the sheets would hide it.
+     * <p>Every source is offered with a real example of what it would produce, because the
+     * choice is not a preference - it decides what the identifiers of this graph look like for
+     * ever, and the shapes are not interchangeable. The example is the value that will actually
+     * be written: each generator fixes its instant and its UUIDs when it is built, so the
+     * preview and the write agree.
+     *
+     * <p>A source that cannot be used is still listed, greyed, with the reason - "no ID range is
+     * allocated to you" has a remedy one menu item away, and hiding it would hide the remedy.
      */
     private void generateIdentifiers() {
         SheetTable table = selectedTable();
         if (table == null) {
             return;
         }
-        String sheetName = ((SheetTableModel) table.getModel()).getSheetName();
+        final String sheetName = ((SheetTableModel) table.getModel()).getSheetName();
         List<Integer> waiting = IriGenerator.rowsNeedingAnIdentifier(book, sheetName);
         if (waiting.isEmpty()) {
             say("Every row in " + sheetName + " that has anything in it already has an "
                     + "identifier.");
             return;
         }
+
+        final Map<IriGenerator.Source, IriGenerator> offered =
+                new LinkedHashMap<IriGenerator.Source, IriGenerator>();
         String editor = IriGenerator.editorName();
-        IriGenerator ranges = IriGenerator.using(IriGenerator.Source.ID_RANGES, book,
-                ontologyOrNull(), ontologyFileOrNull(), editor);
-        IriGenerator pattern = IriGenerator.using(IriGenerator.Source.SHEET_PATTERN, book,
-                ontologyOrNull(), ontologyFileOrNull(), editor);
-        if (!ranges.canMint() && !pattern.canMint()) {
-            JOptionPane.showMessageDialog(this,
-                    wrap("Nothing can be minted here.\n\nFrom the ID ranges: "
-                            + ranges.getRefusal() + "\n\nFrom the sheets: "
-                            + pattern.getRefusal()),
-                    "No identifiers to give", JOptionPane.WARNING_MESSAGE);
+        for (IriGenerator.Source source : IriGenerator.Source.values()) {
+            offered.put(source, IriGenerator.using(source, book, ontologyOrNull(),
+                    ontologyFileOrNull(), editor, sheetName, IriGenerator.Moment.now()));
+        }
+        boolean anyUsable = false;
+        for (IriGenerator each : offered.values()) {
+            anyUsable |= each.canMint();
+        }
+        if (!anyUsable) {
+            StringBuilder why = new StringBuilder("Nothing can be minted for this sheet.\n");
+            for (Map.Entry<IriGenerator.Source, IriGenerator> each : offered.entrySet()) {
+                why.append("\n").append(each.getKey().getLabel()).append(": ")
+                        .append(each.getValue().getRefusal());
+            }
+            JOptionPane.showMessageDialog(this, wrap(why.toString()), "No identifiers to give",
+                    JOptionPane.WARNING_MESSAGE);
             return;
         }
 
-        List<String> choices = new ArrayList<String>();
-        if (ranges.canMint()) {
-            choices.add(IriGenerator.Source.ID_RANGES.getLabel());
+        IriGenerator.Source preferred = lastChosen != null && offered.get(lastChosen).canMint()
+                ? lastChosen
+                : IriGenerator.preferredFor(book, sheetName, ontologyFileOrNull());
+        if (!offered.get(preferred).canMint()) {
+            for (Map.Entry<IriGenerator.Source, IriGenerator> each : offered.entrySet()) {
+                if (each.getValue().canMint()) {
+                    preferred = each.getKey();
+                    break;
+                }
+            }
         }
-        if (pattern.canMint()) {
-            choices.add(IriGenerator.Source.SHEET_PATTERN.getLabel());
-        }
-        StringBuilder explanation = new StringBuilder();
-        explanation.append(waiting.size()).append(waiting.size() == 1 ? " row in " : " rows in ")
-                .append(sheetName).append(" have content but no identifier")
-                .append(waiting.size() == 1 ? "" : "").append(".\n\n")
-                .append(IriGenerator.Source.ID_RANGES.getLabel()).append(": ")
-                .append(ranges.canMint() ? ranges.describe() : ranges.getRefusal())
-                .append("\n\n").append(IriGenerator.Source.SHEET_PATTERN.getLabel())
-                .append(": ")
-                .append(pattern.canMint() ? pattern.describe() : pattern.getRefusal())
-                .append("\n\nNothing is written to the file until you save.");
 
-        Object chosen = JOptionPane.showInputDialog(this, wrap(explanation.toString()),
-                "Generate identifiers", JOptionPane.PLAIN_MESSAGE, null,
-                choices.toArray(new Object[0]), choices.get(0));
-        if (chosen == null) {
+        final javax.swing.JComboBox<IriGenerator.Source> choice =
+                new javax.swing.JComboBox<IriGenerator.Source>();
+        for (IriGenerator.Source source : IriGenerator.Source.values()) {
+            choice.addItem(source);
+        }
+        choice.setSelectedItem(preferred);
+        choice.setRenderer(new javax.swing.DefaultListCellRenderer() {
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            public java.awt.Component getListCellRendererComponent(javax.swing.JList<?> list,
+                    Object value, int index, boolean selected, boolean focused) {
+                java.awt.Component painted = super.getListCellRendererComponent(list, value,
+                        index, selected, focused);
+                IriGenerator.Source source = (IriGenerator.Source) value;
+                setText(source.getLabel());
+                setEnabled(offered.get(source).canMint());
+                return painted;
+            }
+        });
+
+        final JLabel preview = new JLabel();
+        preview.setBorder(BorderFactory.createEmptyBorder(8, 0, 0, 0));
+        choice.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent event) {
+                IriGenerator.Source source = (IriGenerator.Source) choice.getSelectedItem();
+                preview.setText(wrap(offered.get(source).describe()));
+            }
+        });
+        preview.setText(wrap(offered.get(preferred).describe()));
+
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.add(new JLabel(wrap(waiting.size() + (waiting.size() == 1 ? " row in " : " rows in ")
+                + sheetName + " have content but no identifier. Nothing is written to the file "
+                + "until you save.")), BorderLayout.NORTH);
+        JPanel middle = new JPanel(new BorderLayout());
+        middle.setBorder(BorderFactory.createEmptyBorder(10, 0, 0, 0));
+        middle.add(choice, BorderLayout.NORTH);
+        middle.add(preview, BorderLayout.CENTER);
+        panel.add(middle, BorderLayout.CENTER);
+
+        if (JOptionPane.showConfirmDialog(this, panel, "Generate identifiers",
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE)
+                != JOptionPane.OK_OPTION) {
             return;
         }
-        IriGenerator minting = IriGenerator.Source.byLabel(String.valueOf(chosen))
-                == IriGenerator.Source.ID_RANGES ? ranges : pattern;
+        IriGenerator.Source chosen = (IriGenerator.Source) choice.getSelectedItem();
+        IriGenerator minting = offered.get(chosen);
+        if (!minting.canMint()) {
+            JOptionPane.showMessageDialog(this, wrap(minting.getRefusal()),
+                    "That one cannot be used here", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        lastChosen = chosen;
         int filled;
         try {
             filled = minting.fillBlanks(sheetName);
         } catch (RuntimeException cannotMint) {
-            say(cannotMint.getMessage());
+            JOptionPane.showMessageDialog(this, wrap(cannotMint.getMessage()),
+                    "Nothing was written", JOptionPane.WARNING_MESSAGE);
             return;
         }
         SheetTableModel model = models.get(sheetName);
@@ -636,21 +765,38 @@ public class SheetEditorView extends AbstractOWLViewComponent {
         }
         recheck();
         say(filled + (filled == 1 ? " identifier" : " identifiers") + " minted in " + sheetName
-                + ", from " + minting.getPrefix() + " at " + minting.identifierWidth()
-                + " digits. Undo reverses them one at a time; nothing is written until you "
-                + "save.");
+                + " - " + chosen.getLabel().toLowerCase(java.util.Locale.ROOT)
+                + ". Undo reverses them one at a time; nothing is written until you save.");
     }
 
-    /** Mints one identifier into one row, from the right-click menu. */
+    /**
+     * Mints one identifier into one cell, from the right-click menu.
+     *
+     * <p>Using whatever the dialog was last told to use, so the two ways of minting into one
+     * sheet do not quietly disagree about its shape.
+     */
     private void generateOneIdentifier(String sheetName, int sheetRow, int column) {
-        IriGenerator minting = IriGenerator.forSheet(book, sheetName, ontologyOrNull(),
-                ontologyFileOrNull(), IriGenerator.editorName());
+        IriGenerator minting = lastChosen == null
+                ? IriGenerator.forSheet(book, sheetName, ontologyOrNull(), ontologyFileOrNull(),
+                        IriGenerator.editorName())
+                : IriGenerator.using(lastChosen, book, ontologyOrNull(), ontologyFileOrNull(),
+                        IriGenerator.editorName(), sheetName, IriGenerator.Moment.now());
         if (!minting.canMint()) {
             JOptionPane.showMessageDialog(this, wrap(minting.getRefusal()),
                     "No identifier to give", JOptionPane.WARNING_MESSAGE);
             return;
         }
-        String minted = minting.mint(1).get(0);
+        String minted;
+        try {
+            minted = minting.getSource().needsALabel()
+                    ? minting.mintFor(java.util.Collections.singletonList(
+                            minting.labelIn(sheetName, sheetRow))).get(0)
+                    : minting.mint(1).get(0);
+        } catch (RuntimeException cannotMint) {
+            JOptionPane.showMessageDialog(this, wrap(cannotMint.getMessage()),
+                    "No identifier to give", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
         book.setCell(sheetName, sheetRow, column, minted);
         SheetTableModel model = models.get(sheetName);
         if (model != null) {
@@ -659,6 +805,7 @@ public class SheetEditorView extends AbstractOWLViewComponent {
         recheck();
         say("Row " + sheetRow + " of " + sheetName + " is now " + minted + ".");
     }
+
 
     // ---------------------------------------------------------------- searching
 
@@ -697,13 +844,21 @@ public class SheetEditorView extends AbstractOWLViewComponent {
         }
         SheetTable table = tableFor(found.getSheet());
         int total = book.countMatches(wanted);
+        if (found.getRow() <= 2) {
+            // A match in a heading or a template row. Those are editable from 1.118.0, so the
+            // search goes to them rather than apologising for not being able to.
+            SheetHeaderTable header = headers.get(found.getSheet());
+            if (header != null && header.goTo(found.getRow(), found.getColumn())) {
+                say("Found in " + found.getSheet() + ", row " + found.getRow()
+                        + " - the " + (found.getRow() == 1 ? "heading" : "template")
+                        + " row. " + total + (total == 1 ? " match in all." : " matches in "
+                                + "all."));
+                return;
+            }
+        }
         if (table == null || !table.goTo(found.getRow(), found.getColumn())) {
-            // A match in a template row: real, worth reporting, and not a cell the grid holds -
-            // the grid starts at the first data row. Saying where it is beats pretending there
-            // was no match.
             say("Found in " + found.getSheet() + " at row " + found.getRow() + ", column "
-                    + found.getColumn() + " - which is a heading or template row, above the "
-                    + "grid. " + total + " in all.");
+                    + found.getColumn() + ", which is not in the grid. " + total + " in all.");
             return;
         }
         say("Found in " + found.getSheet() + ", row " + found.getRow() + ". " + total
@@ -771,6 +926,46 @@ public class SheetEditorView extends AbstractOWLViewComponent {
                 break;
         }
         recheck();
+    }
+
+    /**
+     * Adds a column at the end, named but not yet doing anything.
+     *
+     * <p>Its template cell is left empty on purpose: an empty template string is ROBOT's own way
+     * of saying "ignore this column", so a new column changes nothing about what the sheet
+     * builds until somebody says what it is for. Inventing a spec would be inventing axioms.
+     *
+     * <p>Only the heading is written, and {@code width()} is the widest row, so that one cell is
+     * what makes the column exist.
+     */
+    private void addColumn() {
+        SheetTable table = selectedTable();
+        if (table == null) {
+            return;
+        }
+        String sheetName = ((SheetTableModel) table.getModel()).getSheetName();
+        int next = book.width(sheetName) + 1;
+        String name = JOptionPane.showInputDialog(this,
+                wrap("What should column " + SheetHeaderTable.letterFor(next - 1)
+                        + " be called? That is the heading in row 1 - ROBOT needs every column "
+                        + "with a template string to have one."), "New column");
+        if (name == null || name.trim().isEmpty()) {
+            return;
+        }
+        book.setCell(sheetName, 1, next, name.trim());
+        SheetTableModel model = models.get(sheetName);
+        if (model != null) {
+            model.fireTableStructureChanged();
+        }
+        SheetHeaderTable header = headers.get(sheetName);
+        if (header != null) {
+            header.refreshStructure();
+        }
+        table.configureColumns();
+        recheck();
+        say("Column " + SheetHeaderTable.letterFor(next - 1) + " added as \"" + name.trim()
+                + "\". Its template row is empty, so the build ignores it - click the cell "
+                + "under the heading and choose what the column should do.");
     }
 
     private void undo() {

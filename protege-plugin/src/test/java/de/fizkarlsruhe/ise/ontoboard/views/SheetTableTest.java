@@ -227,19 +227,42 @@ class SheetTableTest {
                 "the MatWerk identifiers are 46 characters and must be readable");
     }
 
+    /**
+     * Both lines are still there, and both are now editable.
+     *
+     * <p>Until 1.118.0 the heading and the spec were painted into the column header by one
+     * renderer and could not be touched. They are two rows of {@link SheetHeaderTable} now, so
+     * this asserts the same promise - a reader can see what the author called the column AND
+     * what ROBOT does with it - against the component that keeps it.
+     */
     @Test
-    void everyColumnHasATwoLineHeaderShowingBothTheHeadingAndTheSpec() {
+    void bothHeaderRowsAreShownAndAreEditable() {
+        SheetBook book = book();
+        SheetTable table = new SheetTable(new SheetTableModel(book, "organization"));
+        SheetHeaderTable header = new SheetHeaderTable(book, "organization", table);
+
+        assertEquals(2, header.getRowCount(), "the author's heading, and ROBOT's spec");
+        for (int at = 0; at < table.getColumnCount(); at++) {
+            assertEquals(book.cell("organization", 1, at + 1), header.getValueAt(0, at),
+                    "row 1 of the header is the author's heading");
+            assertEquals(book.cell("organization", 2, at + 1), header.getValueAt(1, at),
+                    "row 2 of the header is ROBOT's template string");
+            assertTrue(header.isCellEditable(0, at), "the heading must be editable");
+            assertTrue(header.isCellEditable(1, at), "the template string must be editable");
+        }
+    }
+
+    /** The column header itself still exists - it is what resizes columns - and names the column. */
+    @Test
+    void theColumnHeaderCarriesTheSpreadsheetLetter() {
         SheetTable table = new SheetTable(model());
 
+        assertNotNull(table.getTableHeader(), "without a header, columns cannot be resized");
         for (int at = 0; at < table.getColumnCount(); at++) {
-            assertNotNull(table.getColumnModel().getColumn(at).getHeaderRenderer(),
-                    "column " + at + " has no header renderer");
             Component header = table.getColumnModel().getColumn(at).getHeaderRenderer()
                     .getTableCellRendererComponent(table, null, false, false, 0, at);
-            String text = ((javax.swing.JLabel) header).getText();
-            assertTrue(text.contains(table.getModel().getColumnName(at)),
-                    "the heading is missing from the header: " + text);
-            assertTrue(text.contains("<br>"), "the header is not two lines: " + text);
+            assertEquals(SheetHeaderTable.letterFor(at),
+                    ((javax.swing.JLabel) header).getText());
         }
     }
 
@@ -264,17 +287,18 @@ class SheetTableTest {
         assertEquals("ID", SheetTable.shortSpec("ID"));
         assertEquals("", SheetTable.shortSpec(""));
 
-        SheetTable table = new SheetTable(model());
+        SheetBook book = book();
+        SheetTable table = new SheetTable(new SheetTableModel(book, "organization"));
+        table.autofitColumns();
+        SheetHeaderTable header = new SheetHeaderTable(book, "organization", table);
         for (int at = 0; at < table.getColumnCount(); at++) {
-            Component header = table.getColumnModel().getColumn(at).getHeaderRenderer()
-                    .getTableCellRendererComponent(table, null, false, false, 0, at);
-            javax.swing.JLabel label = (javax.swing.JLabel) header;
+            Component painted = header.getCellRenderer(1, at).getTableCellRendererComponent(
+                    header, header.getValueAt(1, at), false, false, 1, at);
+            javax.swing.JLabel label = (javax.swing.JLabel) painted;
             int width = table.getColumnModel().getColumn(at).getPreferredWidth();
             assertTrue(label.getPreferredSize().width <= width + 8,
-                    "column " + at + " header wants " + label.getPreferredSize().width
+                    "column " + at + " spec wants " + label.getPreferredSize().width
                             + "px in a " + width + "px column, so it will be clipped");
-            assertNotNull(label.getToolTipText(),
-                    "the full spec should still be reachable on column " + at);
         }
     }
 
@@ -288,12 +312,13 @@ class SheetTableTest {
                 new String[] {"ex:1", "steel", "a note"}), '\t');
         SheetTableModel model = new SheetTableModel(book, "s");
         SheetTable table = new SheetTable(model);
+        SheetHeaderTable header = new SheetHeaderTable(book, "s", table);
 
-        Component header = table.getColumnModel().getColumn(2).getHeaderRenderer()
-                .getTableCellRendererComponent(table, null, false, false, 0, 2);
+        Component painted = header.getCellRenderer(1, 2).getTableCellRendererComponent(
+                header, header.getValueAt(1, 2), false, false, 1, 2);
 
-        assertTrue(((javax.swing.JLabel) header).getText().contains("not used"),
-                ((javax.swing.JLabel) header).getText());
+        assertTrue(((javax.swing.JLabel) painted).getText().contains("not used"),
+                ((javax.swing.JLabel) painted).getText());
     }
 
     // ---------- something to look at ----------
@@ -308,8 +333,27 @@ class SheetTableTest {
      */
     @Test
     void theGridRendersToAnImageSomebodyCanLookAt() throws Exception {
-        SheetTable table = new SheetTable(model());
+        SheetBook book = book();
+        SheetTableModel model = new SheetTableModel(book, "organization");
+        // The marks are half of what this picture is for: the fixture has a label with pasted
+        // whitespace and a city nothing defines, and a proof that did not compute the findings
+        // would be a picture of a grid that never flags anything.
+        model.refreshFindings();
+        SheetTable table = new SheetTable(model);
+        table.autofitColumns();
         JScrollPane pane = new JScrollPane(table);
+        // The whole arrangement the view builds, not the grid alone: the editable heading and
+        // template rows sit in the column-header viewport under the real JTableHeader, and a
+        // picture of the grid without them would not be a picture of the product.
+        SheetHeaderTable header = new SheetHeaderTable(book, "organization", table);
+        JPanel columnHeader = new JPanel(new java.awt.BorderLayout());
+        columnHeader.add(table.getTableHeader(), java.awt.BorderLayout.NORTH);
+        columnHeader.add(header, java.awt.BorderLayout.CENTER);
+        table.setCompositeColumnHeader(columnHeader);
+        pane.setColumnHeaderView(columnHeader);
+        pane.setRowHeaderView(table.rowNumbers());
+        pane.setCorner(JScrollPane.UPPER_LEFT_CORNER,
+                header.corner(table.getTableHeader().getPreferredSize().height));
         JPanel holder = new JPanel(new java.awt.BorderLayout());
         holder.add(pane, java.awt.BorderLayout.CENTER);
 
@@ -342,8 +386,18 @@ class SheetTableTest {
         assertTrue(table.getTableHeader().getWidth() > 0
                         && table.getTableHeader().getHeight() > 0,
                 "the header did not lay out, so the picture is lying about the product");
-        assertTrue(table.getTableHeader().getHeight() >= 24,
-                "a two-line header needs more than one line of height, got "
+        assertTrue(header.getWidth() > 0 && header.getHeight() > 0,
+                "the editable header rows did not lay out");
+        assertEquals(2 * header.getRowHeight(), header.getHeight(),
+                "both header rows have to be fully visible, not clipped to one");
+        // The composite is exactly its parts: the column-letter header, then both editable
+        // rows. Anything less means one of them was squeezed to nothing - which is what
+        // happened twice while building this, each time leaving a picture that looked fine.
+        assertEquals(table.getTableHeader().getHeight() + 2 * header.getRowHeight(),
+                columnHeader.getHeight(),
+                "the column letters and both header rows have to fit");
+        assertTrue(table.getTableHeader().getHeight() >= 14,
+                "the column letters need a readable line, got "
                         + table.getTableHeader().getHeight());
     }
 

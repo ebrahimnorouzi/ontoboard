@@ -99,13 +99,75 @@ public final class SheetTable extends JTable {
         configureColumns();
     }
 
+    /**
+     * What the scroll pane should show above the grid, instead of the bare column header.
+     *
+     * <p>Set by the view to a panel holding the {@code JTableHeader} and the two editable header
+     * rows. It has to be remembered rather than simply installed, because {@code JTable} puts
+     * its own header back: {@code configureEnclosingScrollPane()} runs from {@code addNotify()}
+     * and calls {@code setColumnHeaderView(getTableHeader())}, so a composite installed before
+     * the table is realised is silently discarded. Measured - the editable rows laid out at
+     * 0 x 0 while the picture still looked plausible.
+     */
+    private javax.swing.JComponent compositeHeader;
+
+    /**
+     * Puts {@code view} above the grid, and keeps it there.
+     *
+     * <p>{@code view} must use a {@link java.awt.BorderLayout} with its NORTH slot reserved for
+     * this table's own {@code JTableHeader}, because that header gets <em>reparented</em>: when
+     * {@code JTable} reinstates its own column header it moves the component out of whatever
+     * container it was in, and this has to put it back.
+     */
+    public void setCompositeColumnHeader(javax.swing.JComponent view) {
+        this.compositeHeader = view;
+        installCompositeHeader();
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>Overridden to put the composite header back after {@code JTable} has replaced it with
+     * its own. This is the hook {@code JTable} documents for the purpose.
+     */
+    @Override
+    protected void configureEnclosingScrollPane() {
+        super.configureEnclosingScrollPane();
+        installCompositeHeader();
+    }
+
+    private void installCompositeHeader() {
+        if (compositeHeader == null) {
+            return;
+        }
+        // JTable does not merely replace the scroll pane's column header view - it moves the
+        // JTableHeader into it, out of the composite. Measured: the composite then laid out at
+        // 44px rather than 60 and the column letters vanished, while the editable rows were
+        // present and the picture looked fine.
+        if (getTableHeader() != null && getTableHeader().getParent() != compositeHeader) {
+            compositeHeader.add(getTableHeader(), java.awt.BorderLayout.NORTH);
+            compositeHeader.revalidate();
+        }
+        java.awt.Container parent = getParent();
+        if (!(parent instanceof javax.swing.JViewport)) {
+            return;
+        }
+        java.awt.Container above = parent.getParent();
+        if (above instanceof javax.swing.JScrollPane) {
+            javax.swing.JScrollPane pane = (javax.swing.JScrollPane) above;
+            if (pane.getViewport() != null && pane.getViewport().getView() == this) {
+                pane.setColumnHeaderView(compositeHeader);
+            }
+        }
+    }
+
     /** Re-reads the sheet's shape, for when a column has been added. */
     public void configureColumns() {
         setDefaultRenderer(Object.class, new Marked());
         for (int at = 0; at < getColumnCount(); at++) {
             TableColumn column = getColumnModel().getColumn(at);
             column.setPreferredWidth(widthFor(at));
-            column.setHeaderRenderer(new TwoLineHeader());
+            column.setHeaderRenderer(new ColumnLetter());
             column.setCellEditor(editorFor(at));
         }
     }
@@ -130,6 +192,10 @@ public final class SheetTable extends JTable {
         for (int at = 0; at < getColumnCount(); at++) {
             int model = convertColumnIndexToModel(at);
             int widest = metrics.stringWidth(sheet.getColumnName(model));
+            // The template string too, shortened as the header row shows it. Measuring only the
+            // heading and the data clipped the spec on exactly the columns whose spec explains
+            // something - "AT IAO_0000235^^xsd:anyURI" is wider than any of that column's values.
+            widest = Math.max(widest, metrics.stringWidth(shortSpec(sheet.specOf(model))));
             for (int row = 0; row < sample; row++) {
                 Object value = sheet.getValueAt(row, model);
                 if (value != null) {
@@ -387,30 +453,34 @@ public final class SheetTable extends JTable {
         return out.toString();
     }
 
-    /** The author's heading, with ROBOT's spec in small type underneath. */
-    private final class TwoLineHeader implements TableCellRenderer {
+    /**
+     * The spreadsheet column letter, and nothing else.
+     *
+     * <p>It used to paint the author's heading above ROBOT's spec, which was the only way to see
+     * either of them. From 1.118.0 both are in {@link SheetHeaderTable}, one row each, directly
+     * underneath this - where they can be read <em>and</em> edited. Repeating them here would
+     * cost a third of the vertical space to say the same thing twice.
+     *
+     * <p>The letter is not decoration: it is the drag target for resizing a column, which is why
+     * this header stays rather than being removed outright, and it is how a person refers to a
+     * column out loud.
+     */
+    private final class ColumnLetter implements TableCellRenderer {
         @Override
         public Component getTableCellRendererComponent(JTable table, Object value,
                 boolean selected, boolean focused, int row, int column) {
-            int model = table.convertColumnIndexToModel(column);
-            String heading = escape(sheet.getColumnName(model));
-            String full = sheet.specOf(model);
-            String spec = escape(shortSpec(full));
-            JLabel label = new JLabel("<html><div style='padding:2px 4px'>"
-                    + "<b>" + heading + "</b><br>"
-                    + "<span style='font-size:85%;color:#777'>"
-                    + (spec.isEmpty() ? "not used" : spec) + "</span></div></html>");
-            label.setToolTipText(full.isEmpty()
-                    ? "This column has nothing in the template row, so the build ignores it."
-                    : full);
+            JLabel label = new JLabel(
+                    SheetHeaderTable.letterFor(table.convertColumnIndexToModel(column)),
+                    JLabel.CENTER);
             label.setOpaque(true);
+            label.setFont(label.getFont().deriveFont(java.awt.Font.PLAIN,
+                    Math.max(10f, label.getFont().getSize() - 1f)));
+            label.setForeground(new Color(0x60, 0x60, 0x68));
+            label.setBorder(javax.swing.BorderFactory.createMatteBorder(0, 0, 1, 1,
+                    new Color(0xC8, 0xC8, 0xC8)));
             JTableHeader header = table.getTableHeader();
-            if (header != null) {
-                label.setBackground(header.getBackground());
-                label.setForeground(header.getForeground());
-                label.setBorder(javax.swing.BorderFactory.createMatteBorder(0, 0, 1, 1,
-                        new Color(0xC8, 0xC8, 0xC8)));
-            }
+            label.setBackground(header == null ? new Color(0xE8, 0xE8, 0xEC)
+                    : header.getBackground());
             return label;
         }
     }

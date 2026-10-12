@@ -1,0 +1,156 @@
+OntoBoard 1.118.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-10-12  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 9/9  test 11/11
+  2026-10-12  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 9/9  test 11/11
+
+Both verdicts were returned by the script this time - 5.5.0 took about thirteen minutes and was
+mistaken for the harness hang recorded against 1.112.0 before it finished. It is still slow
+enough on that host to need more patience than a ten-minute window.
+
+2,347 tests, 0 failures, 70 new.
+
+Two things were asked for: editing the ROBOT template row, and more ways to generate an
+identifier. Both were mapped against the real data and the real robot-core jar before anything
+was written, and in both cases the measurement changed the design.
+
+
+WHAT THE MEASUREMENT CHANGED
+
+The 26 live MatWerk tabs were fetched and counted, and the robot-core 1.9.8 jar this bundle
+embeds was read out of its constant pool. Four things came back that would otherwise have been
+guessed wrong:
+
+  - A TIMESTAMP IS NOT A NEW IDEA HERE. 8,406 of the 8,471 identifiers in the live workbook are
+    already a 13-digit epoch-millisecond base followed by a row counter. "Timestamp" and
+    "timestamp + identifier" are the incumbent scheme, so the new source matches its shape
+    rather than inventing one.
+
+  - THE EXISTING SCHEME HAS AN ORDERING DEFECT. Its counter is unpadded, so ...2051 and ...20510
+    sort as text in an order that is not their numeric order. The new one pads the counter to
+    three digits: same family of shapes, and it sorts.
+
+  - A LABEL SLUG WOULD HAVE MERGED THINGS THE SHEETS KEEP APART. The city tab distinguishes a
+    city from the city's NAME by a trailing underscore - Karlsruhe is the place, Karlsruhe_ is
+    its name, different rows, different types - for 19 of its 38 rows. So the slug keeps
+    underscores and does not collapse runs of punctuation, which also keeps "... and more..."
+    and "... and more<U+2026>" apart. Where two labels really are the same it refuses rather than
+    appending a 2: which of two things with one name keeps it is not a tool's decision.
+
+  - THE PROJECT ALREADY MINTS UUIDS, AND NOT RANDOM ONES. matwerk/dags/pmd_harvester/
+    template_builder.py mints uuid5 under a fixed namespace, keyed on a label-ish string, into
+    the same msekg namespace. So "a UUID derived from the label" uses uuid5 with THAT namespace
+    - a row filled in by hand and the same row harvested later come out as one thing instead of
+    two - and the random option is labelled as the one that cannot be re-derived.
+
+The six sources are therefore: a block from -idranges.owl; continuing the sheet's own numbering;
+a timestamp; a timestamp and who is editing; a random UUID; a UUID derived from the label; and
+the label as a readable identifier. Each is previewed with a real example before anything is
+written, and the one offered first is the one that matches what the sheet already holds -
+IriGenerator.looksLikeTimestamps reads the column rather than asking.
+
+
+THE PURITY PROBLEM, AND WHY IT IS NOT SOLVED BY GIVING UP ON IT
+
+IriGenerator.mint promises in its own javadoc that "calling it twice gives the same answers, so
+what a dialog previews is what gets written", and describe() previews by minting. A clock or a
+random source breaks that promise, and the dialog then shows a value that is never written.
+
+The fix is not to weaken the promise. The instant and the UUIDs are fixed when the GENERATOR is
+built, not when a value is formed: Moment.now() reads the clock once, Moment.at(millis) fixes it
+for a test or a reproducible run, and UUIDs are memoised per instance. A given generator is
+still idempotent; the non-determinism moved to construction, where it belongs. Pinned by a test
+that mints twice from one generator and requires the same answer, and by another that builds two
+generators for real and requires different ones.
+
+AND THE REGRESSION A CLOCK INTRODUCES
+
+mint had no "already minted" guard, deliberately: a counter cannot produce the same number
+twice. A clock can. Five rows filled in the same millisecond would have been given ONE identifier
+and written into all five with no error anywhere - SheetAudit reports duplicate identifiers only
+within a sheet, and fillBlanks checks nothing after it writes. Every produced value now joins the
+taken set inside the loop, with a bounded number of attempts and a real refusal at the end rather
+than an unbounded loop. The test freezes the clock and requires mint(5) to return five different
+identifiers.
+
+
+EDITING THE TEMPLATE ROW, AND THE VALIDATOR THAT MAKES IT SAFE
+
+Row 1 is the author's column name, row 2 is ROBOT's template string. Until now both were painted
+into the column header and could not be touched, which meant the one row that decides what a
+sheet builds was the one row you had to leave Protege to change. The production data says what
+that cost:
+
+  req_2       row 1 column 1 is 'l 5' where the other 25 tabs say '#'
+  organization  two columns spelled 'A rdfs:label@en'
+  collaboration one spec with a double space before SPLIT=
+  this repo's own generated Person-template.tsv: six columns whose spec is a bare 'A'
+
+They are now two editable rows where the column header was, with the spreadsheet column letter
+above them - the letter is the drag target for resizing, which is why the JTableHeader stays.
+
+VALIDATED AGAINST ROBOT-CORE, NOT AGAINST AN IDEA OF IT
+
+A template string ROBOT does not recognise is not a bad column: Template.addTable throws
+ColumnException and NOTHING is built from the sheet. So an editable cell without a check would
+have been a new way to lose a day's work in one keystroke.
+
+TemplateColumns cannot be that check. It is written never to reject - an unrecognised spec is
+Kind.OTHER - and it is wrong in both directions for this question: it accepts four strings
+robot-core refuses (a bare 'A', '> A x', '>>>A x', '>I <prop>') and calls sixteen legal ones
+OTHER (AP, CHARACTERISTIC, SP, PI, SI and the rest).
+
+So TemplateSpec is a literal transcription of TemplateHelper.validateTemplateString - eight
+String.equals and seven regexes, read out of the jar's constant pool - and the test does not
+trust the transcription at all. It asks robot-core's own method for 80 strings and requires the
+same answer, with a second test proving the corpus contains both answers so the agreement is not
+vacuous. If robot-core is upgraded, that test is what notices.
+
+The checks that span columns are there too, because a per-cell check cannot see them: a template
+string requires a non-empty heading in the same column (COLUMN MISMATCH ERROR), a sheet needs an
+ID or a LABEL somewhere ("Template row must include an \"ID\" or \"LABEL\" column", in ROBOT's
+words), an axiom-annotation column has to follow the column it annotates, and a '>>' with no '>'
+before it is a bare NullPointerException out of ROBOT naming nothing.
+
+Marked red where ROBOT would refuse the sheet, amber where it accepts and then produces nothing.
+Nothing is normalised on the way in: the double-space spec round-trips exactly as typed, because
+a working sheet that changed because it was opened is the worst thing an editor can do.
+
+
+TWO DEFECTS THE PICTURE WOULD NOT HAVE SHOWN
+
+JTable reinstates its own column header when it is added to a scroll pane -
+configureEnclosingScrollPane() runs from addNotify() and calls setColumnHeaderView(getTableHeader()).
+The composite was therefore discarded, and the editable rows laid out at 0 x 0. Worse, the fix
+for that exposed a second one: JTable does not merely replace the view, it REPARENTS the
+JTableHeader out of the composite, so the composite then measured 44px instead of 60 and the
+column letters vanished. Both were caught by asserting the laid-out geometry; the rendered PNG
+looked plausible in both cases. configureEnclosingScrollPane is overridden now, and the header is
+put back where it belongs.
+
+Column widths were fitted to the data and the heading but never to the template string, so the
+columns whose spec explains the most - AT ...^^xsd:anyURI - were exactly the ones whose spec was
+clipped. autofitColumns measures the spec row now.
+
+IriGenerator.fillBlanks returned 0 both when there was nothing to do and when it could not find
+the ID column at all. With the template row editable the second case is reachable by a keystroke,
+so it resolves the ID column first and says so.
+
+
+WHAT IS STILL NOT TRUE
+
+  - Nobody has opened a folder, edited a header cell and saved it in a running Protege. The
+    whole path is covered headlessly and by the host smoke only as far as "the view constructed".
+  - The build reads the sheet from DISK, not from the editor's copy, so a spec corrected here and
+    not saved is not the spec Check or Build will see.
+  - TemplateColumns still models 9 of robot-core's 25 forms and sends the rest to OTHER; it
+    mis-kinds TI as an individual column where robot-core reads a class expression, and models DI
+    without SI. That is a separate piece of work and the completion offered for those columns is
+    wrong until it is done.
+  - Deleting a column is not implemented. Adding one is.
+  - Koncludix is still unverified end to end, and .xlsx is still read-only.
+
+docs/requirements-status.md is the full audit.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>

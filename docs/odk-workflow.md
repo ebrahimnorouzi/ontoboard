@@ -178,9 +178,21 @@ there that a spreadsheet program is not:
 - **A reference to something that does not exist can be made to exist.** Right-click it: the
   sheet, the type and the identifier are all worked out from the sheets’ own evidence, and it
   refuses rather than guessing when they do not say.
-- **Identifiers are minted, not typed.** *Generate IRIs…* fills every row that has content but
-  no identifier, out of the block allocated to you in the project’s `-idranges.owl` — or, where
-  there is no ranges file, by continuing the sheet’s own numbering at the same digit width.
+- **The header rows are editable.** Row 1 is your column name and row 2 is ROBOT's template
+  string - the line that decides what the column *does*. They are two editable rows where the
+  column header used to be, with the spreadsheet column letter above them. Every edit is checked
+  against robot-core's own `validateTemplateString`, because a template string ROBOT does not
+  recognise is not a bad column: it is a `ColumnException` and **nothing at all** is built from
+  the sheet. A cell ROBOT would refuse is marked red; one it accepts and then quietly does
+  nothing with - `II`, a `>` on a class column, an axiom annotation that follows nothing - is
+  marked amber. *Add column* adds one with its template cell empty, which is ROBOT's own way of
+  saying "ignore this column".
+- **Identifiers are minted, not typed.** *Generate IRIs...* fills every row that has content but
+  no identifier, and offers six ways to form one, each previewed with a real example before
+  anything is written: a block from the project's `-idranges.owl`; continuing the sheet's own
+  numbering; a timestamp; a timestamp and who is editing; a random UUID; a UUID derived from the
+  label; or the label itself as a readable identifier. The one offered first is the one that
+  matches what the sheet already holds.
 - **An existing Excel file can be brought in.** *Import Excel…* reads an `.xlsx` and writes each
   tab into the folder as a `.tsv`. It does not write `.xlsx` back: reading that format is four
   of its parts and writing it is all of them, and `.tsv` is what ROBOT reads and what git can
