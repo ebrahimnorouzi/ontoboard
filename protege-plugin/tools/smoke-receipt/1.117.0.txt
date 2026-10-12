@@ -1,0 +1,230 @@
+OntoBoard 1.117.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-10-12  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 9/9  test 11/11
+  2026-10-12  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 9/9  test 11/11
+
+Eleven rather than ten, because there are two tabs now, and the self-test opens both:
+
+  Window > Tabs > OntoBoard         | ok | opened, [SchemaCanvasView] built without throwing
+  Window > Tabs > OntoBoard Sheets  | ok | opened, [SheetEditorView] built without throwing
+
+2,277 tests, 0 failures, 139 new.
+
+
+SEMANTIC VERSIONING, BECAUSE MATWERK PUBLISHES THAT WAY
+
+The release menu dated every release, OBO style. MatWerk does not. Its
+src/ontology/release.sh reads
+
+    VERSION=3.0.2
+    PRIOR_VERSION=3.0.1
+    ONTBASE=http://purls.helmholtz-metadaten.de/mwo
+
+and its published mwo.owl carries owl:versionIRI http://purls.helmholtz-metadaten.de/mwo/3.0.2
+with owl:versionInfo "3.0.2". So releasing it from the menu would not have continued its
+history - it would have started a second, parallel one under a different IRI shape, which is
+the one mistake a version IRI cannot recover from once anybody has imported it.
+
+Both conventions, chosen in the dialog, differing in more than the text:
+
+                     dated (OBO)                          semantic (MatWerk)
+  versionIRI         <base>/releases/2026-10-12/mwo.owl   <base>/3.0.2
+  kept at            releases/2026-10-12/mwo.owl          releases/3.0.2/mwo.owl
+  next one           whatever day it is                   patch, minor or major
+  ordering           lexical, because ISO                 numeric per field
+
+That last row is the whole reason OntologyVersion parses the fields rather than keeping text:
+3.10.0 sorts BEFORE 3.9.0 as a string, so a project on its tenth minor release would have
+compared every release against the wrong predecessor and reported everything added since 3.9.0
+as new again - and, with the check on, refused the release over terms that never disappeared.
+There is a test that asserts both the right answer and that text ordering gives the wrong one.
+
+Three more things that fall out of it:
+
+  - The default is read from what the ontology already declares, so releasing somebody else's
+    project continues their history instead of starting a second one beside it.
+  - A semantic release links owl:priorVersion to the release before it, which is what MatWerk's
+    own custom Makefile adds.
+  - A predecessor is only ever looked for within the same convention. A project with both
+    histories has two, and diffing across them would compare things that were never
+    consecutive.
+
+The generated Makefile takes VERSION and VERSION_IRI as overrides now (?=, so the dated default
+is unchanged), because the build has to be able to do what release.sh does:
+
+    make VERSION=3.0.2 VERSION_IRI=$(ONTBASE)/3.0.2 prepare_release
+
+And if a project keeps a release.sh whose VERSION disagrees with what is being cut, the result
+says so before anything is written. Two release paths with two versions is how a project
+publishes 3.0.2 twice, and each path is internally consistent so neither notices.
+
+
+THE SHEET EDITOR HAS A TAB OF ITS OWN
+
+It was stacked under the canvas, at 45% of the height of a 72%-wide column - about a third of
+the window, for a grid that is twenty-six columns wide on the graph it was built against. Three
+or four columns were visible and the toolbar wrapped.
+
+Tabbing the two views together inside one tab would have given each the whole column. Protege
+does not do it for plugin views: with both in one CNode it instantiates the first and silently
+drops the second, which is what 1.112.0 found. A second workspace tab is the mechanism that
+works, and both views now build - the self-test lines above are the evidence.
+
+A tab nobody has opened before is not in the tab strip, so Knowledge graph > Sheet editor adds
+it and brings it to the front.
+
+WHICH COST A TAB FIRST, AND THE SMOKE CAUGHT IT
+
+viewconfig-sheetstab.xml started as a bare <CNode> - one view, no splitter. That parses; the SAX
+handler ignores what it does not recognise. Then it throws while the tab is being built, and
+what Protege does with that is the interesting part:
+
+    TabbedWorkspace.addTab(tab):
+        tabbedPane.addTab(label, icon, tab)
+        workspaceTabs.add(tab)
+        try { tab.initialise() }
+        catch (Exception e) {
+            tabbedPane.remove(tab)                      <- the tab is taken back out
+            tabbedPane.addTab(label, icon, errorPanel)  <- and replaced
+        }                                               <- and nothing is logged
+
+addTabForPlugin still returns the tab, so the next call fails with "component not found in
+tabbed pane", naming neither the config nor the view. 2,276 unit tests were green. The host
+smoke caught it on the first run, which is the fourth time that oracle has found something the
+suite could not.
+
+Protege's own one-view tab - viewconfig-explanationtab.xml in protege-editor-owl - is a VSNode
+with a single splits value and one CNode inside. ViewConfigTest now pins that shape for every
+config this plugin ships.
+
+
+THE IRI GENERATOR, AND THE DEFECT IT FOUND
+
+Asked for, and it turned out the existing code was producing wrong identifiers.
+
+TermCreation.nextIdentifier - the "create the thing this cell refers to" path, shipped in
+1.111.0 - took the stem as everything before the trailing digits, parsed the digits as a number,
+added one and appended it. The padding was in the digits it had just discarded. Against
+MatWerk's own shape:
+
+    in the sheet    http://purls.helmholtz-metadaten.de/mwo/MWO_0002011
+    what it made    http://purls.helmholtz-metadaten.de/mwo/MWO_2012
+
+Four digits where the project uses seven. It sorts before every identifier it follows, matches
+no project's iddigits, and builds perfectly happily - ROBOT has no opinion about how wide an
+identifier is - so nothing said so. Found by writing the generator and asking what the old code
+did with the real shape; the test that proves it was written first and watched fail.
+
+IriGenerator is now the one rule, and it has two sources:
+
+  - the project's -idranges.owl, when there is one and this editor has a block in it. MatWerk's
+    says idprefix http://purls.helmholtz-metadaten.de/mwo/MWO_, iddigits 7, and allocates
+    1000-9999, 10000-19999 and 20000-29999 to three names. Minting from joergwa's block gives
+    .../MWO_0010000 - which is tested against the real file on this machine, not only against a
+    fixture.
+  - the sheets themselves otherwise: the commonest stem before the trailing digits, the
+    commonest width among identifiers sharing it, the next free number.
+
+Taken means every identifier in every open sheet AND every IRI in the ontology and its imports.
+Minting over an imported IRI does not create a term; it adds axioms to somebody else's, and the
+build succeeds.
+
+An editor with no allocated block is refused, with the remedy and the list of who does have one
+- not quietly fallen back to guessing, because "no range is allocated to you" is fixable in one
+menu item and hiding it is how two people end up minting the same identifier.
+
+
+READING AN EXCEL WORKBOOK
+
+"Work with some existing Excel file" was the half of the 1.115.0 request that was not done. It
+is done, for reading.
+
+An .xlsx is a zip of XML and Java 8 has both, so this is one class and no new dependency -
+against a bundle that is already 66 MB and already imports javax.xml.parsers. Apache POI would
+have been 12 MB of jars and a second XML stack inside an OSGi bundle.
+
+Four parts are read. workbook.xml for the tab names and their order; workbook.xml.rels, because
+sheet order and file order are different things and matching sheet1.xml to the first tab is
+wrong for any workbook whose tabs have been reordered; sharedStrings.xml, where nearly every
+text cell actually lives - a cell holding <v>12</v> with t="s" means "the thirteenth shared
+string" and reading it as the number is how a column of names becomes a column of small
+integers; and styles.xml, only to find which cells are formatted as dates, because Excel has no
+date type and 2026-10-12 is the number 46307 with a format applied.
+
+VERIFIED AGAINST ANOTHER READER, ON FILES THIS CODE DID NOT WRITE
+
+A reader of somebody else's format should be held to somebody else's reading of it. Every cell
+was compared with openpyxl's:
+
+    sample.xlsx (the fixture)                   3 tabs       38 cells   exact
+    frequency_all.xlsx                          1 tab        28 cells   exact
+    Combined Cleaned Vocabulary.xlsx            7 tabs    9,715 cells   exact
+    PMDco Material Classification work.xlsx     1 tab     1,154 cells   exact
+    LOD.xlsx                                    1 tab        36 cells   exact
+    ISWC2026_ODP-Reuse_Reviews.xlsx             5 tabs      143 cells   exact
+    MappingHeatmap.xlsx                         1 tab       275 cells   exact
+                                               19 tabs   11,389 cells
+
+Six of the seven were written by Excel rather than by a library, so the shared-strings path and
+the date styles are genuinely exercised. The first comparison reported 259 disagreements; every
+one was a cell holding only whitespace that the comparison script skipped on one side and not
+the other. One of them really does hold three tab characters. Both readers had it right.
+
+IT DOES NOT WRITE .XLSX, AND THAT IS NOT A GAP TO FILL QUIETLY
+
+Reading a workbook is four parts of the format; writing one Excel will open is all of it. So an
+import converts each tab to a .tsv in the folder - which is what ROBOT reads and what git can
+merge - and the editor owns them from then on. The workbook is not changed and not written back
+to, and the result says so, because somebody who imported a workbook will go looking for it
+again.
+
+A file named .xlsx that is really tab-separated text - which is what this plugin itself wrote
+once, and what Excel then refuses with a message about the format not matching the extension -
+is now diagnosed as exactly that, with what to do about it. The file is fine; the name is wrong.
+
+
+THE GRID
+
+Row numbers down the left, which are the SHEET's numbers and not the grid's: data starts at
+sheet row 3, every message about these files names a row, and a header counting from 1 would
+send somebody two rows wrong. Banding on alternate rows, because reading along one row of a
+twenty-six-column grid is where people take a value from the row above. Column widths from the
+content, clamped to 60-420px, because a fixed 180px made a column of two-sentence notes
+unreadable and a column of four-digit years mostly white space. A find box that searches every
+sheet and wraps. A right-click menu that fixes, creates, mints, inserts, duplicates, deletes and
+searches.
+
+Rendered to target/design-proof/sheet-grid.png by the test, because a claim about how something
+looks should not rest on somebody squinting.
+
+
+TWO SMALLER THINGS FOUND WHILE AUDITING
+
+The project wizard said "leave Base IRI empty to use the OBO convention", and an empty field
+became http://purl.obolibrary.org/obo/<id>.owl - OBO Foundry's namespace, which a project that
+is not in the Foundry does not own, in every term IRI, permanently. MWO publishes under
+purls.helmholtz-metadaten.de and NFDIcore under nfdi.fiz-karlsruhe.de. The default is now filled
+into the box as the id is typed, where it can be read and overtyped, and the hint says when to
+change it. A visible default is not a trap; an invisible one is.
+
+MenuPathsInMessagesTest caught a message of mine that sent a user to "Project > ID" because the
+string literal was split mid-phrase. That test exists because a message naming a menu item that
+does not exist is worse than no message.
+
+
+WHAT IS STILL NOT TRUE
+
+  - Nobody has opened a folder, edited a cell and saved it in a running Protege. The whole sheet
+    path is covered headlessly against the 26 MatWerk sheets and by the host smoke only as far
+    as "the view constructed".
+  - Koncludix is still not verified end to end: there is no such binary on this machine.
+  - Writing .xlsx is not implemented, deliberately.
+  - Compare releases still finds nothing in a project that publishes by git tag and PURL without
+    keeping a releases/ directory, which is what MWO does.
+
+docs/requirements-status.md is the full audit - every capability asked for, with where it is or
+what is missing.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>

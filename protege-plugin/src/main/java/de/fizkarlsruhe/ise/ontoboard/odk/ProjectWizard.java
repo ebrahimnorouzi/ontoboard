@@ -39,7 +39,46 @@ public final class ProjectWizard {
         JTextField id = new JTextField();
         JTextField title = new JTextField();
         JTextField description = new JTextField();
-        JTextField iri = new JTextField();
+        final JTextField iri = new JTextField();
+        // Filled in as the id is typed, and visible rather than implied.
+        //
+        // The default is OBO's namespace, which is right for an ontology being registered with
+        // OBO Foundry and wrong for every other project - and it ends up in every term IRI,
+        // permanently. The wizard used to say "leave Base IRI empty to use the OBO convention",
+        // which is an invitation to mint terms under a namespace you do not own: MWO publishes
+        // under purls.helmholtz-metadaten.de and NFDIcore under nfdi.fiz-karlsruhe.de, and
+        // neither would notice until the IRIs failed to resolve for somebody else.
+        //
+        // So the same default is still there, but in the box where it can be read and
+        // overtyped. It stops following the id as soon as anybody edits it.
+        id.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
+            private String suggested = "";
+
+            private void follow() {
+                if (!iri.getText().trim().isEmpty() && !iri.getText().equals(suggested)) {
+                    return;
+                }
+                String typed = id.getText().trim().toLowerCase(java.util.Locale.ROOT);
+                suggested = typed.isEmpty() ? ""
+                        : "http://purl.obolibrary.org/obo/" + typed + ".owl";
+                iri.setText(suggested);
+            }
+
+            @Override
+            public void insertUpdate(javax.swing.event.DocumentEvent event) {
+                follow();
+            }
+
+            @Override
+            public void removeUpdate(javax.swing.event.DocumentEvent event) {
+                follow();
+            }
+
+            @Override
+            public void changedUpdate(javax.swing.event.DocumentEvent event) {
+                follow();
+            }
+        });
         JTextField license = new JTextField("https://creativecommons.org/licenses/by/4.0/");
         final JTextField folder = new JTextField();
         folder.setEditable(false);
@@ -73,8 +112,10 @@ public final class ProjectWizard {
         fields.add(folderRow);
 
         JLabel hint = new JLabel("<html><i>ID becomes file names and IRIs - lowercase, "
-                + "no spaces, e.g. <b>mwo</b>. Leave Base IRI empty to use the OBO "
-                + "convention.</i></html>");
+                + "no spaces, e.g. <b>mwo</b>. The Base IRI is filled in with OBO's "
+                + "namespace, which is right only if this ontology is being registered with "
+                + "OBO Foundry - otherwise change it to one you own, because it becomes part "
+                + "of every term IRI and cannot be changed afterwards.</i></html>");
         hint.setBorder(BorderFactory.createEmptyBorder(8, 0, 0, 0));
 
         // Where a rejected value is explained, in the dialog rather than on top of it. Hidden

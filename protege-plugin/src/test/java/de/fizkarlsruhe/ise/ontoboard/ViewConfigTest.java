@@ -113,40 +113,133 @@ class ViewConfigTest {
                 "the first column is the left one and must hold the class hierarchy: "
                         + pluginIdsIn(columns.get(0)));
         List<String> right = pluginIdsIn(columns.get(1));
-        assertEquals(2, right.size(),
-                "the right column holds the canvas and the sheet editor: " + right);
-        assertTrue(right.get(0).endsWith(CANVAS_SUFFIX),
-                "the canvas is on top: " + right.get(0));
-        assertTrue(right.get(1).endsWith("SheetEditorView"), right.get(1));
+        assertEquals(1, right.size(), "the right column is the canvas, alone: " + right);
+        assertTrue(right.get(0).endsWith(CANVAS_SUFFIX), right.get(0));
     }
 
     /**
-     * The canvas and the sheet editor are stacked, each in its own node.
+     * The canvas has this column to itself, and the sheet editor is in a tab of its own.
      *
-     * <p>They were first put in one {@code CNode} as tabs, so each could use the full column -
-     * the arrangement the six entity views opposite use. <b>Protege does not do it for plugin
-     * views.</b> With both in one {@code CNode} it instantiated the canvas and silently
-     * dropped the sheet editor, which was then registered, resolvable, and never constructed;
-     * the tab's own component tree showed one {@code View} in this column against six in a
-     * tabbed group opposite. The self-test caught it only because it had just been taught to
-     * require every view {@code plugin.xml} registers.
+     * <p>The history is worth keeping because both obvious tidy-ups have been tried and both
+     * are wrong. Putting the two views in one {@code CNode} as tabs - the arrangement the six
+     * entity views opposite use - is a thing <b>Protege does not do for plugin views</b>: it
+     * instantiated the canvas and silently dropped the sheet editor, which was then registered,
+     * resolvable, and never constructed. Stacking them in an {@code HSNode} did build both, and
+     * gave a twenty-six-column spreadsheet 45% of the height of a 72%-wide column.
      *
-     * <p>So this is pinned as two nodes, and pinned against somebody tidying it back into one.
-     * The cost is half the height each; the alternative was a view nobody could see.
+     * <p>So the sheet editor moved to its own workspace tab, which is the mechanism that gives
+     * each of them the window. This pins the OntoBoard tab against somebody stacking it back
+     * in, and {@link #theSheetEditorHasItsOwnConfigAndHasTheWholeOfIt} pins the other side.
      */
     @Test
-    void theCanvasAndTheSheetEditorEachHaveTheirOwnNode() throws Exception {
+    void theCanvasHasTheRightColumnToItselfAndTheSheetEditorIsElsewhere() throws Exception {
         Element right = children(onlyChild(layoutRoot())).get(1);
 
-        assertEquals("HSNode", right.getTagName(),
-                "stacked in rows; one CNode holding both leaves the second unbuilt");
-        List<Element> stacked = children(right);
-        assertEquals(2, stacked.size(), "one node each");
-        for (Element node : stacked) {
-            assertEquals("CNode", node.getTagName());
-            assertEquals(1, pluginIdsIn(node).size(),
-                    "one view per node, or Protege drops the rest: " + pluginIdsIn(node));
+        assertEquals("CNode", right.getTagName(),
+                "the canvas is alone here; a splitter would mean something was stacked back in");
+        assertEquals(1, pluginIdsIn(right).size(), pluginIdsIn(right).toString());
+        assertFalse(pluginIdsIn(layoutRoot()).toString().contains("SheetEditorView"),
+                "the sheet editor belongs to " + SHEETS_CONFIG + " now; two tabs placing the "
+                        + "same view means two of it, each with its own unsaved edits");
+    }
+
+    // ---------- the sheets tab ----------
+
+    private static final String SHEETS_CONFIG = "/viewconfig-sheetstab.xml";
+
+    private Element sheetsLayoutRoot() throws Exception {
+        try (InputStream in = getClass().getResourceAsStream(SHEETS_CONFIG)) {
+            assertNotNull(in, SHEETS_CONFIG + " missing from the built classpath");
+            Document document =
+                    DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(in);
+            Element layout = document.getDocumentElement();
+            assertEquals("layout", layout.getTagName());
+            return layout;
         }
+    }
+
+    /**
+     * One view, the whole tab. Space is the only reason this tab exists, so anything else placed
+     * in it is taking back what it was made for.
+     */
+    @Test
+    void theSheetEditorHasItsOwnConfigAndHasTheWholeOfIt() throws Exception {
+        List<String> ids = pluginIdsIn(sheetsLayoutRoot());
+
+        assertEquals(1, ids.size(), "the sheets tab holds the sheet editor and nothing else: "
+                + ids);
+        assertTrue(ids.get(0).endsWith(".SheetEditorView"), ids.get(0));
+    }
+
+    /**
+     * The root has to be a splitter even with one view in it.
+     *
+     * <p>A bare {@code <CNode>} at the root parses - the SAX handler ignores what it does not
+     * recognise - and then throws while the tab is being built. {@code TabbedWorkspace.addTab}
+     * catches that, <em>removes the tab from the tabbed pane</em>, puts an error panel in its
+     * place and logs nothing; {@code addTabForPlugin} still returns the tab, so the next call
+     * fails with "component not found in tabbed pane" and nothing says why. Shipped in a jar,
+     * caught by the host smoke, invisible to 2,276 unit tests.
+     *
+     * <p>Protege's own one-view tab is the reference: {@code viewconfig-explanationtab.xml} in
+     * protege-editor-owl is a {@code VSNode} with a single {@code splits} value and one
+     * {@code CNode} inside.
+     */
+    @Test
+    void everyConfigRootIsASplitterBecauseABareNodeBreaksTheTab() throws Exception {
+        for (Element root : new Element[] {layoutRoot(), sheetsLayoutRoot()}) {
+            Element child = onlyChild(root);
+            assertTrue("VSNode".equals(child.getTagName()) || "HSNode".equals(child.getTagName()),
+                    "the root of a view config must be a splitter, not " + child.getTagName());
+            assertFalse(child.getAttribute("splits").trim().isEmpty(),
+                    "a splitter with no splits leaves mdock nothing to divide by");
+        }
+    }
+
+    @Test
+    void theSheetsConfigNamesARealViewAndCarriesNoUnfilteredProperty() throws Exception {
+        List<String> ids = pluginIdsIn(sheetsLayoutRoot());
+        for (String id : ids) {
+            assertFalse(id.contains("${"), "unfiltered Maven property: " + id);
+        }
+        assertTrue(declaredViewComponentIds().containsAll(ids),
+                "no bundle on the classpath declares " + ids);
+    }
+
+    @Test
+    void everyComponentInTheSheetsConfigIsLabelled() throws Exception {
+        NodeList components = sheetsLayoutRoot().getElementsByTagName("Component");
+        assertTrue(components.getLength() >= 1);
+        for (int i = 0; i < components.getLength(); i++) {
+            assertFalse(((Element) components.item(i)).getAttribute("label").trim().isEmpty(),
+                    "unlabelled Component at index " + i);
+        }
+    }
+
+    /**
+     * plugin.xml and the two configs have to agree, in both directions: a tab whose
+     * {@code defaultViewConfigFileName} names a file that is not packaged comes up empty, and a
+     * config that is packaged but named by no tab is dead weight nobody notices.
+     */
+    @Test
+    void everyTabsConfigIsPackagedAndEveryPackagedConfigBelongsToATab() throws Exception {
+        Document plugin;
+        try (InputStream in = getClass().getResourceAsStream("/plugin.xml")) {
+            assertNotNull(in);
+            plugin = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(in);
+        }
+        NodeList declared = plugin.getElementsByTagName("defaultViewConfigFileName");
+        assertEquals(2, declared.getLength(),
+                "two workspace tabs, two configs - the canvas and the sheets");
+        Set<String> named = new HashSet<>();
+        for (int i = 0; i < declared.getLength(); i++) {
+            String file = "/" + ((Element) declared.item(i)).getAttribute("value");
+            named.add(file);
+            try (InputStream in = getClass().getResourceAsStream(file)) {
+                assertNotNull(in, file + " is named by a tab but is not on the classpath");
+            }
+        }
+        assertTrue(named.contains(CONFIG) && named.contains(SHEETS_CONFIG), named.toString());
     }
 
     /** A narrow tree column is the point; an even split would leave the canvas cramped. */

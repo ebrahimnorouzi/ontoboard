@@ -13,6 +13,34 @@ release notes on
 [the releases page](https://github.com/ebrahimnorouzi/ontoboard/releases), carries the same
 record for that version.
 
+- **A new row in a sheet lost the padding of the identifiers around it, fixed in 1.117.0.**
+  A project whose identifiers are seven digits wide - MatWerk publishes
+  `http://purls.helmholtz-metadaten.de/mwo/MWO_0001225` - got `MWO_1226` for the next row.
+
+  `TermCreation.nextIdentifier` took the stem as everything before the trailing digits, read
+  the digits as a number, added one, and appended it. The padding was in the digits it had just
+  discarded. Every identifier produced that way sorts before the ones it follows, matches no
+  project's `iddigits`, and **builds perfectly happily**, which is why nothing said so: ROBOT
+  has no opinion about how wide an identifier is.
+
+  Found by writing an IRI generator and asking what the existing code did with MatWerk's own
+  shape. Both paths now go through `IriGenerator`, which pads to the width its neighbours use
+  or to the `iddigits` in the project's `-idranges.owl`.
+
+- **A view config with one view at its root silently cost the tab, fixed in 1.117.0.**
+  `viewconfig-sheetstab.xml` began with a bare `<CNode>` rather than a splitter. That parses -
+  the SAX handler ignores what it does not recognise - and then throws while the tab is being
+  built.
+
+  What Protege does with that is the interesting part. `TabbedWorkspace.addTab` catches the
+  exception, **removes the tab from the tabbed pane**, puts an error panel in its place, and
+  logs nothing; `addTabForPlugin` still returns the tab. The next call then fails with
+  `component not found in tabbed pane`, which names neither the config nor the view.
+
+  2,276 unit tests were green. The host smoke caught it on the first run. Protege's own
+  one-view tab - `viewconfig-explanationtab.xml` - is a `VSNode` with one `splits` value, and
+  `ViewConfigTest` now pins that shape for every config this plugin ships.
+
 - **Every non-ASCII character in a spreadsheet was corrupted on the way in, fixed in
   1.110.0.** The worst defect found in this area, and it had been there since templates
   arrived in 1.19.0.

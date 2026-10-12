@@ -729,13 +729,15 @@ def main():
     s = page()
     y = heading(s, "Step 7 — Release", "and prove it works")
     left = [
-        ("Release…", "Builds the release artefacts and tags the version."),
+        ("Release…", "Reasons, stamps a version, keeps a copy that will never change, and "
+         "refuses if a published term has vanished."),
+        ("Dated or semantic — you choose", "OBO's .../releases/2026-10-12/mwo.owl, or "
+         "MatWerk's .../mwo/3.0.2. They publish different IRIs, so it is not a preference."),
         ("Compare releases…", "What changed between two versions, axiom by axiom."),
-        ("Git…", "Status, branch, commit and push, without leaving the editor."),
     ]
     for i, (head, note) in enumerate(left):
-        yy = y + i * 0.62
-        text(s, M, yy, 4.4, 0.6, [
+        yy = y + i * 0.78
+        text(s, M, yy, 4.6, 0.76, [
             (head, {"size": 11.5, "bold": True, "colour": INDIGO, "space": 2}),
             (note, {"size": 10, "colour": MUTED}),
         ], space=0)
@@ -976,7 +978,8 @@ def main():
 
     # 19c ------------------------------------------------ the sheet editor
     s = page()
-    y = heading(s, "A spreadsheet inside Protégé", "Window → Tabs → OntoBoard → Sheets")
+    y = heading(s, "A spreadsheet inside Protégé",
+                "Window → Tabs → OntoBoard Sheets, or Knowledge graph → Sheet editor")
     text(s, M, y, 10 - 2 * M, 0.5,
          "An OBO project's data arrives as ROBOT templates - a table whose second row says what "
          "each column means. The editor opens the whole folder at once, because a reference in "
@@ -1046,6 +1049,34 @@ def main():
     ]
     for i, (head, note) in enumerate(pts):
         yy = y + 0.04 + i * 1.08
+        rect(s, M, yy, 0.055, 0.88, fill=ACCENT)
+        text(s, M + 0.22, yy - 0.02, 9 - M, 1.0, [
+            (head, {"size": 11.5, "bold": True, "colour": INDIGO, "space": 3}),
+            (note, {"size": 10, "colour": INK}),
+        ], space=0)
+
+    # 19f ------------------------------------- identifiers, and the file people have
+    s = page()
+    y = heading(s, "The two things that sent people back out", "identifiers, and Excel")
+    text(s, M, y, 10 - 2 * M, 0.5,
+         "Both were reasons to leave the editor, and both were where the data went wrong.",
+         size=11, colour=INK)
+    pts = [
+        ("An identifier is not a thing to type",
+         "Generate IRIs… fills every row that has content but no identifier, out of the block "
+         "allocated to YOU in the project's -idranges.owl - which is what makes two editors "
+         "safe. No ranges file, and it continues the sheet's own numbering instead."),
+        ("At the width its neighbours use",
+         "A sheet of seven-digit identifiers gets MWO_0001226, not MWO_1226. The old rule "
+         "dropped the padding, and the result sorts wrongly, matches no project's iddigits, "
+         "and builds perfectly happily - so nothing ever said so."),
+        ("The workbook people actually have",
+         "Import Excel… reads a real .xlsx - shared strings, styles, dates, formulas, rich "
+         "text - and writes each tab into the folder as a .tsv. Checked cell by cell against "
+         "another reader on seven workbooks: 11,389 cells, exact agreement."),
+    ]
+    for i, (head, note) in enumerate(pts):
+        yy = y + 0.66 + i * 1.08
         rect(s, M, yy, 0.055, 0.88, fill=ACCENT)
         text(s, M + 0.22, yy - 0.02, 9 - M, 1.0, [
             (head, {"size": 11.5, "bold": True, "colour": INDIGO, "space": 3}),

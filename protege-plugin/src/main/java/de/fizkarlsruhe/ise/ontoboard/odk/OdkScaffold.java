@@ -421,6 +421,22 @@ public final class OdkScaffold {
                 + "ONT_ID := " + id + "\n"
                 + "ONT := $(ONT_ID)\n"
                 + "TODAY := $(shell date +%Y-%m-%d)\n"
+                // Overridable, because both release conventions are legitimate and a project
+                // has to be able to build under the one it publishes. Dated is the default, as
+                // in ODK's own Makefile (VERSION = $(TODAY)); a project that versions
+                // semantically overrides both, which is what MatWerk's own
+                // src/ontology/release.sh does:
+                //
+                //   make VERSION=3.0.2 VERSION_IRI=$(ONTBASE)/3.0.2 prepare_release
+                //
+                // Two variables rather than one, because the shapes differ as well as the text:
+                // a dated release publishes .../releases/<date>/<id>.owl and a semantic one
+                // .../<version>. A version IRI cannot be taken back once anybody has imported
+                // it, so the Release menu builds those same two shapes from one rule - see
+                // OntologyVersion - and this is the build side of the same decision.
+                + "VERSION ?= $(TODAY)\n"
+                + "VERSION_IRI ?= " + ProjectIri.stemOf(c.getBaseIri())
+                + "/releases/$(VERSION)/$(ONT).owl\n"
                 // Every robot call goes through $(ROBOT) so that --catalog is not optional.
                 // Without it the catalog beside this file is inert: ROBOT resolves an owl:imports
                 // over the network, or fails offline, and the whole point of the catalog entry that
@@ -513,17 +529,18 @@ public final class OdkScaffold {
                 // Dated and stamped, not copied. A release with no owl:versionIRI cannot be
                 // cited or pinned by anyone downstream, and an undated copy means each release
                 // destroys the last - which is what the previous single cp did.
-                + "\t@mkdir -p ../../releases/$(TODAY)\n"
+                + "\t@mkdir -p ../../releases/$(VERSION)\n"
                 + "\t$(ROBOT) annotate --input $(ONT).owl \\\n"
                 // ProjectIri.stemOf, not the raw base IRI: a base ending in .owl - which is
                 // what the wizard defaults to - produced .../obo/mwo.owl/releases/<date>/mwo.owl,
                 // a third spelling of the same release. The ID-ranges IRI below already stripped
                 // the extension, so the generator disagreed with itself in one file.
-                + "\t  --version-iri \"" + ProjectIri.stemOf(c.getBaseIri())
-                + "/releases/$(TODAY)/$(ONT).owl\" \\\n"
-                + "\t  --annotation owl:versionInfo \"$(TODAY)\" \\\n"
-                + "\t  --output ../../releases/$(TODAY)/$(ONT).owl\n"
-                + "\t@cp ../../releases/$(TODAY)/$(ONT).owl ../../$(ONT).owl\n";
+                // It reaches here through VERSION_IRI, which is now the one place the
+                // shape is written.
+                + "\t  --version-iri \"$(VERSION_IRI)\" \\\n"
+                + "\t  --annotation owl:versionInfo \"$(VERSION)\" \\\n"
+                + "\t  --output ../../releases/$(VERSION)/$(ONT).owl\n"
+                + "\t@cp ../../releases/$(VERSION)/$(ONT).owl ../../$(ONT).owl\n";
     }
 
     private static String customMakefile(OdkProjectConfig c) {

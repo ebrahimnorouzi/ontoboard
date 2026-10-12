@@ -63,7 +63,25 @@ public final class SheetTable extends JTable {
     private static final Color NEEDS_A_PERSON = new Color(0xFF, 0xE4, 0xE1);
     private static final Color MARKED_SELECTED = new Color(0xDC, 0xE7, 0xF5);
 
+    /**
+     * Every other row, very slightly off-white.
+     *
+     * <p>Not decoration. The sheets this was built for are up to twenty-six columns wide, and
+     * reading along one row of a wide grid without a banding cue is the thing people get wrong -
+     * they take a value from the row above or below. Two percent of grey is enough to follow and
+     * too little to compete with the audit tints, which are the only colours here that mean
+     * anything.
+     */
+    private static final Color EVERY_OTHER_ROW = new Color(0xF2, 0xF3, 0xF7);
+
+    /** A cell the search has just landed on, for as long as it stays selected. */
+    private static final Color FOUND = new Color(0xFF, 0xE9, 0x7F);
+
     private final SheetTableModel sheet;
+
+    /** Where the search last landed: sheet row and 1-based column, or -1. */
+    private int foundRow = -1;
+    private int foundColumn = -1;
 
     public SheetTable(SheetTableModel sheet) {
         super(sheet);
@@ -90,6 +108,134 @@ public final class SheetTable extends JTable {
             column.setHeaderRenderer(new TwoLineHeader());
             column.setCellEditor(editorFor(at));
         }
+    }
+
+    /**
+     * Widths from what the cells actually hold, within limits.
+     *
+     * <p>The fixed widths {@link #widthFor} gives are right for the columns a ROBOT template
+     * always has and wrong for the rest: a <i>Note</i> column of two-sentence comments and a
+     * <i>Year</i> column of four digits were both 180px, so one was unreadable and the other
+     * was mostly white space. Measured from a sample rather than the whole sheet, because the
+     * MatWerk graph is 8,471 rows and nobody needs the widest cell in it to decide a column
+     * width.
+     *
+     * <p>Clamped at both ends. A column narrower than 60px cannot show even a truncated value,
+     * and one wider than 420px pushes everything after it off the screen - which on a
+     * twenty-six-column sheet means most of it.
+     */
+    public void autofitColumns() {
+        java.awt.FontMetrics metrics = getFontMetrics(getFont());
+        int sample = Math.min(getRowCount(), 60);
+        for (int at = 0; at < getColumnCount(); at++) {
+            int model = convertColumnIndexToModel(at);
+            int widest = metrics.stringWidth(sheet.getColumnName(model));
+            for (int row = 0; row < sample; row++) {
+                Object value = sheet.getValueAt(row, model);
+                if (value != null) {
+                    widest = Math.max(widest, metrics.stringWidth(value.toString()));
+                }
+            }
+            int wanted = Math.max(60, Math.min(420, widest + 18));
+            getColumnModel().getColumn(at).setPreferredWidth(wanted);
+        }
+    }
+
+    /**
+     * A column of sheet row numbers down the left, as a spreadsheet has.
+     *
+     * <p>Every message about these sheets names a row - the audit says "row 412", the build says
+     * which row would not build - and until now the grid showed no row numbers at all, so
+     * finding the row a message named meant counting. The numbers are the <em>sheet's</em>, not
+     * the grid's: data starts at sheet row 3, and a header that counted from 1 would send
+     * somebody two rows wrong.
+     */
+    public javax.swing.JComponent rowNumbers() {
+        final javax.swing.JList<String> numbers = new javax.swing.JList<String>(
+                new javax.swing.AbstractListModel<String>() {
+                    private static final long serialVersionUID = 1L;
+
+                    @Override
+                    public int getSize() {
+                        return getRowCount();
+                    }
+
+                    @Override
+                    public String getElementAt(int index) {
+                        return String.valueOf(sheet.sheetRowOf(index));
+                    }
+                });
+        numbers.setFixedCellHeight(getRowHeight());
+        numbers.setFixedCellWidth(52);
+        numbers.setFocusable(false);
+        numbers.setBackground(new Color(0xF0, 0xF0, 0xF2));
+        numbers.setCellRenderer(new javax.swing.ListCellRenderer<String>() {
+            @Override
+            public java.awt.Component getListCellRendererComponent(
+                    javax.swing.JList<? extends String> list, String value, int index,
+                    boolean selected, boolean focused) {
+                JLabel label = new JLabel(value, JLabel.RIGHT);
+                label.setOpaque(true);
+                label.setBorder(javax.swing.BorderFactory.createCompoundBorder(
+                        javax.swing.BorderFactory.createMatteBorder(0, 0, 0, 1,
+                                new Color(0xC8, 0xC8, 0xC8)),
+                        javax.swing.BorderFactory.createEmptyBorder(0, 0, 0, 5)));
+                label.setFont(label.getFont().deriveFont(java.awt.Font.PLAIN,
+                        Math.max(10f, label.getFont().getSize() - 1f)));
+                boolean here = isRowSelected(index);
+                label.setBackground(here ? new Color(0xDC, 0xE7, 0xF5)
+                        : new Color(0xF0, 0xF0, 0xF2));
+                label.setForeground(new Color(0x60, 0x60, 0x68));
+                return label;
+            }
+        });
+        // The numbers have to follow the rows. Adding, deleting or inserting a row changes how
+        // many there are, and a header that did not notice would go on showing the old count -
+        // which is worse than no header, because it is a wrong row number rather than none.
+        sheet.addTableModelListener(new javax.swing.event.TableModelListener() {
+            @Override
+            public void tableChanged(javax.swing.event.TableModelEvent event) {
+                numbers.setFixedCellHeight(getRowHeight());
+                numbers.revalidate();
+                numbers.repaint();
+            }
+        });
+        getSelectionModel().addListSelectionListener(
+                new javax.swing.event.ListSelectionListener() {
+                    @Override
+                    public void valueChanged(javax.swing.event.ListSelectionEvent event) {
+                        numbers.repaint();
+                    }
+                });
+        return numbers;
+    }
+
+    /**
+     * Moves to a cell and marks it as the one the search found.
+     *
+     * @param sheetRow the row as the sheet numbers rows
+     * @param column 1-based, as the template columns are numbered
+     * @return false when that cell is not in this grid
+     */
+    public boolean goTo(int sheetRow, int column) {
+        int row = sheet.tableRowOf(sheetRow);
+        if (row < 0 || row >= getRowCount() || column < 1 || column > getColumnCount()) {
+            return false;
+        }
+        foundRow = sheetRow;
+        foundColumn = column;
+        changeSelection(row, convertColumnIndexToView(column - 1), false, false);
+        java.awt.Rectangle where = getCellRect(row, convertColumnIndexToView(column - 1), true);
+        scrollRectToVisible(where);
+        repaint();
+        return true;
+    }
+
+    /** Forgets the search highlight, for when the box is cleared. */
+    public void clearFound() {
+        foundRow = -1;
+        foundColumn = -1;
+        repaint();
     }
 
     /**
@@ -195,14 +341,20 @@ public final class SheetTable extends JTable {
                 boolean selected, boolean focused, int row, int column) {
             Component painted = super.getTableCellRendererComponent(table, value, selected,
                     focused, row, column);
-            SheetAudit.Finding finding =
-                    sheet.findingAt(row, table.convertColumnIndexToModel(column));
+            int model = table.convertColumnIndexToModel(column);
+            SheetAudit.Finding finding = sheet.findingAt(row, model);
+            boolean isTheFoundCell = sheet.sheetRowOf(row) == foundRow
+                    && model + 1 == foundColumn;
             if (finding == null) {
                 if (!selected) {
-                    painted.setBackground(table.getBackground());
+                    painted.setBackground(isTheFoundCell ? FOUND
+                            : row % 2 == 1 ? EVERY_OTHER_ROW : table.getBackground());
                 }
                 return painted;
             }
+            // A finding outranks the stripe, and the search outranks nothing: somebody who
+            // searched knows where they are, and a tint that means "this is wrong" is the one
+            // colour in the grid that has to survive.
             painted.setBackground(selected ? MARKED_SELECTED
                     : finding.isFixable() ? FIXABLE : NEEDS_A_PERSON);
             return painted;

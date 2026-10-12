@@ -289,4 +289,35 @@ class TermCreationTest {
         assertTrue(described.contains("city"), described);
         assertTrue(described.contains(MW + "12"), described);
     }
+
+    /**
+     * The padding has to survive.
+     *
+     * <p>A sheet of seven-digit identifiers that gains an eighth row four digits wide sorts
+     * wrongly, matches no project's iddigits, and builds perfectly happily - so nothing says so.
+     * Found by writing an IRI generator and asking what the existing one did with MatWerk's own
+     * shape.
+     */
+    @Test
+    void aCreatedRowKeepsTheWidthOfTheIdentifiersAroundIt() {
+        String mwo = "http://purls.helmholtz-metadaten.de/mwo/MWO_";
+        SheetBook book = SheetBook.empty();
+        book.add("organization", null, rows(
+                new String[] {"#", "TYPE", "Label", "City"},
+                new String[] {"ID", "TYPE", "A rdfs:label",
+                              "I http://purl.obolibrary.org/obo/RO_0001025"},
+                new String[] {mwo + "0001225", "obo:OBI_0000245", "Fraunhofer", "Potsdam"}),
+                '	');
+        book.add("city", null, rows(
+                new String[] {"#", "TYPE", "Label"},
+                new String[] {"ID", "TYPE", "A rdfs:label"},
+                new String[] {mwo + "0002010", "obo:ENVO_00000856", "Berlin"},
+                new String[] {mwo + "0002011", "obo:ENVO_00000856", "Hamburg"}), '	');
+
+        TermCreation.Proposal proposal = TermCreation.propose(book, "organization", 3, 4);
+
+        assertTrue(proposal.isPossible(), proposal.getRefusal());
+        assertEquals(mwo + "0002012", proposal.getIri(),
+                "seven digits in, seven digits out");
+    }
 }

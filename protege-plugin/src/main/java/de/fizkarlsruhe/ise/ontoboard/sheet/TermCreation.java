@@ -156,7 +156,22 @@ public final class TermCreation {
      * @param column the cell's column, 1-based
      */
     public static Proposal propose(SheetBook book, String sheetName, int row, int column) {
-        List<Proposal> all = proposeAll(book, sheetName, row, column);
+        return propose(book, sheetName, row, column, null);
+    }
+
+    /**
+     * As {@link #propose(SheetBook, String, int, int)}, minting the identifier with
+     * {@code minting} rather than from the target sheet's own numbering.
+     *
+     * <p>Which matters in a shared ODK project: the sheet's numbering says what shape an
+     * identifier has, and only the project's {@code -idranges.owl} says which numbers are
+     * <em>this editor's</em> to use. Pass the ranges-backed generator and a new row lands in
+     * the block allocated to whoever is typing; pass null and it continues the sheet, which is
+     * all a project without ranges can do.
+     */
+    public static Proposal propose(SheetBook book, String sheetName, int row, int column,
+            IriGenerator minting) {
+        List<Proposal> all = proposeAll(book, sheetName, row, column, minting);
         return all.isEmpty()
                 ? Proposal.refused("", "There is nothing in this cell left to create.")
                 : all.get(0);
@@ -175,6 +190,12 @@ public final class TermCreation {
      */
     public static List<Proposal> proposeAll(SheetBook book, String sheetName, int row,
             int column) {
+        return proposeAll(book, sheetName, row, column, null);
+    }
+
+    /** As {@link #proposeAll(SheetBook, String, int, int)}, with an explicit minter. */
+    public static List<Proposal> proposeAll(SheetBook book, String sheetName, int row,
+            int column, IriGenerator minting) {
         List<Proposal> proposals = new ArrayList<Proposal>();
         if (book == null || book.get(sheetName) == null) {
             proposals.add(Proposal.refused("", "There is no sheet called " + sheetName + "."));
@@ -205,13 +226,14 @@ public final class TermCreation {
             }
         }
         for (String part : parts) {
-            proposals.add(proposeOne(book, sheetName, row, column, part, spec));
+            proposals.add(proposeOne(book, sheetName, row, column, part, spec,
+                    minting));
         }
         return proposals;
     }
 
     private static Proposal proposeOne(SheetBook book, String sheetName, int row, int column,
-            String label, TemplateColumns.Column spec) {
+            String label, TemplateColumns.Column spec, IriGenerator minting) {
         if (book.index().knows(label)) {
             return Proposal.refused(label, "\"" + label + "\" already names something. "
                     + "Creating a second thing with the same name is what makes a reference "
@@ -246,7 +268,7 @@ public final class TermCreation {
                     + "to put the name - and without it the reference would not resolve.");
         }
 
-        String iri = nextIdentifier(book, target, id.getNumber());
+        String iri = nextIdentifier(book, target, minting);
         if (iri.isEmpty()) {
             return Proposal.refused(label, "The identifiers in " + target + " do not end in a "
                     + "number, so there is no next one to use. Give the new row an identifier "
@@ -440,102 +462,22 @@ public final class TermCreation {
      * the MatWerk sheets all mint under {@code .../matwerk/msekg/}, so the next free number in
      * {@code city} is not a question about {@code city}.
      */
-    private static String nextIdentifier(SheetBook book, String target, int idColumn) {
-        List<String> existing = new ArrayList<String>();
-        SheetBook.Sheet sheet = book.get(target);
-        for (int row = SheetBook.FIRST_DATA_ROW; row <= sheet.getLastRow(); row++) {
-            String value = book.cell(target, row, idColumn).trim();
-            if (!value.isEmpty()) {
-                existing.add(value);
-            }
-        }
-        if (existing.isEmpty()) {
-            return "";
-        }
-
-        // THE COMMONEST SHAPE, not the common prefix of everything. Taking the longest common
-        // prefix across the whole sheet was the first attempt and it failed on all 123 cases
-        // the real sheets offer: one identifier of a different shape - a bare NFDIcore class
-        // IRI among five thousand .../matwerk/msekg/<digits> - drags the common prefix back to
-        // "https://nfdi.fiz-karlsruhe.de/", after which no remainder is all digits and there is
-        // no next number to find. Grouping by the part before the trailing digits is immune to
-        // an outlier, and "the shape its neighbours use" is what was wanted in the first place.
-        Map<String, Long> highestFor = new LinkedHashMap<String, Long>();
-        Map<String, Integer> countFor = new LinkedHashMap<String, Integer>();
-        for (String each : existing) {
-            int end = each.length();
-            while (end > 0 && Character.isDigit(each.charAt(end - 1))) {
-                end--;
-            }
-            if (end == each.length() || end == 0) {
-                continue;
-            }
-            String stem = each.substring(0, end);
-            String digits = each.substring(end);
-            long value;
-            try {
-                value = Long.parseLong(digits);
-            } catch (NumberFormatException tooBig) {
-                continue;
-            }
-            Integer seen = countFor.get(stem);
-            countFor.put(stem, seen == null ? 1 : seen + 1);
-            Long best = highestFor.get(stem);
-            if (best == null || value > best) {
-                highestFor.put(stem, value);
-            }
-        }
-        String prefix = "";
-        int most = 0;
-        for (Map.Entry<String, Integer> each : countFor.entrySet()) {
-            if (each.getValue() > most) {
-                most = each.getValue();
-                prefix = each.getKey();
-            }
-        }
-        if (prefix.isEmpty()) {
-            return "";
-        }
-        long highest = highestFor.get(prefix);
-        Set<String> taken = everyIdentifier(book);
-        long next = highest + 1;
-        while (taken.contains(prefix + next)) {
-            next++;
-        }
-        return prefix + next;
-    }
-
-    private static Set<String> everyIdentifier(SheetBook book) {
-        Set<String> taken = new LinkedHashSet<String>();
-        for (SheetBook.Sheet sheet : book.getSheets()) {
-            TemplateColumns.Column id = sheet.getColumns().firstOf(TemplateColumns.Kind.ID);
-            if (id == null) {
-                continue;
-            }
-            for (int row = SheetBook.FIRST_DATA_ROW; row <= sheet.getLastRow(); row++) {
-                String value = book.cell(sheet.getName(), row, id.getNumber()).trim();
-                if (!value.isEmpty()) {
-                    taken.add(value);
-                }
-            }
-        }
-        return taken;
-    }
-
-    private static String commonPrefix(String one, String other) {
-        int at = 0;
-        while (at < one.length() && at < other.length() && one.charAt(at) == other.charAt(at)) {
-            at++;
-        }
-        return one.substring(0, at);
-    }
-
-    private static boolean isAllDigits(String text) {
-        for (int at = 0; at < text.length(); at++) {
-            if (!Character.isDigit(text.charAt(at))) {
-                return false;
-            }
-        }
-        return true;
+    /**
+     * The identifier a new row in {@code target} gets.
+     *
+     * <p>One rule, in {@link IriGenerator}, since 1.117.0 - and the reason is a defect the
+     * version here had from the start. It took the stem as everything before the trailing
+     * digits and appended the next number <em>unpadded</em>, so a sheet of seven-digit
+     * identifiers ({@code .../MWO_0002011}, MatWerk's actual shape) produced
+     * {@code .../MWO_2012} for its next row: four digits wide, sorting before every identifier
+     * it follows, matching no project's {@code iddigits} - and building perfectly happily, so
+     * nothing ever said so.
+     *
+     * @param minting the generator to use, or null to continue {@code target}'s own numbering
+     */
+    private static String nextIdentifier(SheetBook book, String target, IriGenerator minting) {
+        IriGenerator generator = minting != null ? minting
+                : IriGenerator.forSheet(book, target, null, null, null);
+        return generator.canMint() ? generator.mint(1).get(0) : "";
     }
 }

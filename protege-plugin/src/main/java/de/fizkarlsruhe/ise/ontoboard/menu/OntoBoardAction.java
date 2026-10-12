@@ -79,6 +79,23 @@ public abstract class OntoBoardAction extends ProtegeOWLAction {
         return true;
     }
 
+    /**
+     * Whether clicking this entry asks for something before it acts.
+     *
+     * <p>That is exactly what the ellipsis in a menu label promises, and {@code MenuStructureTest}
+     * holds every entry to it - an entry that acts immediately and is spelled {@code Thing...}
+     * gives a user no warning either way.
+     *
+     * <p>The default is "an action that stays on the dispatch thread is there to open a dialog",
+     * which was true of every such action in this plugin and is a sound inference from
+     * {@link #runsInBackground}. It stopped being exhaustive with the first action that stays on
+     * the thread to build Swing components and asks nothing, so that one says so here rather
+     * than taking an ellipsis it does not earn.
+     */
+    protected boolean asksBeforeActing() {
+        return !runsInBackground();
+    }
+
     @Override
     public final void actionPerformed(ActionEvent event) {
         OWLOntology ontology = getOWLModelManager() == null ? null

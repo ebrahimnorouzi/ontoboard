@@ -1,11 +1,12 @@
 package de.fizkarlsruhe.ise.ontoboard.views;
 
+import de.fizkarlsruhe.ise.ontoboard.menu.TemplateAction;
 import de.fizkarlsruhe.ise.ontoboard.prov.Provenance;
 import de.fizkarlsruhe.ise.ontoboard.prov.ProvenanceSettings;
+import de.fizkarlsruhe.ise.ontoboard.sheet.IriGenerator;
 import de.fizkarlsruhe.ise.ontoboard.sheet.SheetAudit;
 import de.fizkarlsruhe.ise.ontoboard.sheet.SheetBook;
 import de.fizkarlsruhe.ise.ontoboard.sheet.SheetFix;
-import de.fizkarlsruhe.ise.ontoboard.menu.TemplateAction;
 import de.fizkarlsruhe.ise.ontoboard.sheet.SheetLocation;
 import de.fizkarlsruhe.ise.ontoboard.sheet.SheetProvenance;
 import de.fizkarlsruhe.ise.ontoboard.sheet.SheetTableModel;
@@ -33,6 +34,7 @@ import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
+import javax.swing.JTextField;
 import javax.swing.JToolBar;
 import org.protege.editor.owl.ui.view.AbstractOWLViewComponent;
 import org.semanticweb.owlapi.model.OWLOntology;
@@ -45,14 +47,19 @@ import org.semanticweb.owlapi.model.OWLOntology;
  * match live in another window, nothing says which of them are wrong until a build runs, and
  * creating the thing a cell refers to means leaving the sheet entirely. This closes that loop:
  * the names come from every open sheet and from the ontology, the mistakes are marked where
- * the typing happens, and a reference to something that does not exist can be made to exist
- * without going anywhere.
+ * the typing happens, a reference to something that does not exist can be made to exist
+ * without going anywhere, and a new row gets an identifier out of the project's own allocated
+ * block rather than out of somebody's head.
+ *
+ * <p>It has a workspace tab of its own from 1.117.0 - see {@link SheetsTab} - because for five
+ * releases it was a third of a window and a sheet is twenty-six columns wide.
  *
  * <p>Thin on purpose. Every action here is one call into a tested class - {@code SheetBook}
- * for the edits, {@code SheetAudit} for the marks, {@code SheetFix} for the corrections,
- * {@code TermCreation} for the new row, {@code SheetProvenance} for who did it - so what is
- * left is wiring, a file chooser and some buttons. That is the half a test cannot reach, and
- * keeping it small is what makes the rest of it testable at all.
+ * for the edits and the search, {@code SheetAudit} for the marks, {@code SheetFix} for the
+ * corrections, {@code TermCreation} for the new row, {@code IriGenerator} for the identifiers,
+ * {@code SheetProvenance} for who did it - so what is left is wiring, a file chooser and some
+ * buttons. That is the half a test cannot reach, and keeping it small is what makes the rest of
+ * it testable at all.
  *
  * <p>Nothing is written until <i>Save</i>. These files are in git and somebody else is editing
  * them.
@@ -64,11 +71,15 @@ public class SheetEditorView extends AbstractOWLViewComponent {
     private final JTabbedPane sheets = new JTabbedPane();
     private final JLabel status = new JLabel(" ");
     private final JPanel fixes = new JPanel();
+    private final JTextField search = new JTextField(16);
     private final Map<String, SheetTableModel> models =
             new LinkedHashMap<String, SheetTableModel>();
 
     private SheetBook book = SheetBook.empty();
     private File folder;
+
+    /** Where the last search landed, so the next press moves on rather than finding it again. */
+    private SheetBook.Match lastFound;
 
     /**
      * Builds the view, and says so.
@@ -79,9 +90,7 @@ public class SheetEditorView extends AbstractOWLViewComponent {
      * that died looks exactly like one that worked. That is how 1.73.0 shipped with the canvas
      * crashing on every open and a receipt recording PASS 10/10. {@link ViewHealth} is read by
      * the self-test immediately after it opens the tab, and from 1.113.0 that check requires
-     * every view plugin.xml registers rather than merely one of them - without which this view,
-     * sitting behind the canvas in a tabbed group, would never have been constructed by it at
-     * all.
+     * every view the tab's own layout asks for rather than merely one of them.
      *
      * <p>The throwable is re-thrown unchanged. Protege's handling of it is right, and a view
      * that swallowed its own construction failure would be a worse lie than the one this fixes.
@@ -99,7 +108,10 @@ public class SheetEditorView extends AbstractOWLViewComponent {
 
     private void buildView() {
         setLayout(new BorderLayout());
-        add(toolbar(), BorderLayout.NORTH);
+        JPanel north = new JPanel(new BorderLayout());
+        north.add(toolbar(), BorderLayout.NORTH);
+        north.add(dataBar(), BorderLayout.SOUTH);
+        add(north, BorderLayout.NORTH);
         add(sheets, BorderLayout.CENTER);
 
         JPanel bottom = new JPanel(new BorderLayout());
@@ -166,6 +178,7 @@ public class SheetEditorView extends AbstractOWLViewComponent {
         // Unsaved edits are deliberately not written here: closing a view is not consent.
     }
 
+    /** The file row: where the sheets come from and where they go. */
     private JComponent toolbar() {
         JToolBar bar = new JToolBar();
         bar.setFloatable(false);
@@ -190,6 +203,14 @@ public class SheetEditorView extends AbstractOWLViewComponent {
                         newSheet();
                     }
                 }));
+        bar.add(button("Import Excel...", "Read an .xlsx workbook and add each of its tabs to "
+                + "this folder as a template", new ActionListener() {
+                    @Override
+                    public void actionPerformed(ActionEvent event) {
+                        importWorkbook();
+                    }
+                }));
+        bar.addSeparator();
         bar.add(button("Save", "Write this sheet back to its file", new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent event) {
@@ -210,6 +231,26 @@ public class SheetEditorView extends AbstractOWLViewComponent {
             }
         }));
         bar.addSeparator();
+        bar.add(button("Check", "Look again for mistakes in every sheet",
+                new ActionListener() {
+                    @Override
+                    public void actionPerformed(ActionEvent event) {
+                        recheck();
+                    }
+                }));
+        return bar;
+    }
+
+    /**
+     * The data row: the operations on rows, and the search.
+     *
+     * <p>Two rows rather than one because there are now eleven of these and a single toolbar
+     * wrapped - a wrapped toolbar hides whichever buttons happen to fall off the end, which for
+     * five releases was every one past "Fill down".
+     */
+    private JComponent dataBar() {
+        JToolBar bar = new JToolBar();
+        bar.setFloatable(false);
         bar.add(button("Add row", "A new empty row at the end", new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent event) {
@@ -237,11 +278,11 @@ public class SheetEditorView extends AbstractOWLViewComponent {
                     }
                 }));
         bar.addSeparator();
-        bar.add(button("Check", "Look again for mistakes in every sheet",
-                new ActionListener() {
+        bar.add(button("Generate IRIs...", "Mint identifiers for the rows that have none, out "
+                + "of this project's own allocated block", new ActionListener() {
                     @Override
                     public void actionPerformed(ActionEvent event) {
-                        recheck();
+                        generateIdentifiers();
                     }
                 }));
         bar.add(button("Record who", "Add the provenance columns and stamp every row",
@@ -249,6 +290,24 @@ public class SheetEditorView extends AbstractOWLViewComponent {
                     @Override
                     public void actionPerformed(ActionEvent event) {
                         stamp();
+                    }
+                }));
+        bar.addSeparator();
+        bar.add(new JLabel(" Find "));
+        search.setToolTipText("Any text, in any sheet. Enter finds the next one and wraps "
+                + "round.");
+        search.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent event) {
+                findNext();
+            }
+        });
+        bar.add(search);
+        bar.add(button("Next", "The next cell containing that text, in any sheet",
+                new ActionListener() {
+                    @Override
+                    public void actionPerformed(ActionEvent event) {
+                        findNext();
                     }
                 }));
         return bar;
@@ -288,6 +347,7 @@ public class SheetEditorView extends AbstractOWLViewComponent {
     /** Package-visible so a test can open a book without a file chooser. */
     void open(SheetBook opened) {
         book = opened;
+        lastFound = null;
         models.clear();
         sheets.removeAll();
         for (SheetBook.Sheet sheet : book.getSheets()) {
@@ -295,7 +355,13 @@ public class SheetEditorView extends AbstractOWLViewComponent {
             models.put(sheet.getName(), model);
             SheetTable table = new SheetTable(model);
             table.addMouseListener(new RightClick(table, model));
-            sheets.addTab(sheet.getName(), new JScrollPane(table));
+            table.autofitColumns();
+            JScrollPane scrolled = new JScrollPane(table);
+            // Row numbers down the left, as a spreadsheet has: every message about these sheets
+            // names a row, and until 1.117.0 the grid showed none, so finding the row a message
+            // named meant counting.
+            scrolled.setRowHeaderView(table.rowNumbers());
+            sheets.addTab(sheet.getName(), scrolled);
         }
         if (book.size() == 0) {
             say("No .tsv or .csv files there, so there is nothing to edit.");
@@ -356,6 +422,65 @@ public class SheetEditorView extends AbstractOWLViewComponent {
                 + "continue this project's own numbering.");
     }
 
+    /**
+     * Reads an Excel workbook and adds each of its tabs to this folder as a template.
+     *
+     * <p>Converted, not opened in place. {@link de.fizkarlsruhe.ise.ontoboard.sheet.Workbook}
+     * reads the format and deliberately does not write it, so a workbook left open here could
+     * never be saved - and TSV is what ROBOT reads and what git can show a diff of anyway.
+     * Said plainly in the result, because somebody who imported a workbook will go looking for
+     * it again.
+     */
+    private void importWorkbook() {
+        if (folder == null) {
+            say("Open a folder first, so there is somewhere to put the tabs.");
+            return;
+        }
+        JFileChooser chooser = new JFileChooser(folder);
+        chooser.setDialogTitle("An Excel workbook");
+        chooser.setFileFilter(new javax.swing.filechooser.FileFilter() {
+            @Override
+            public boolean accept(File file) {
+                return file.isDirectory()
+                        || file.getName().toLowerCase(java.util.Locale.ROOT).endsWith(".xlsx");
+            }
+
+            @Override
+            public String getDescription() {
+                return "Excel workbooks (*.xlsx)";
+            }
+        });
+        if (chooser.showOpenDialog(this) != JFileChooser.APPROVE_OPTION) {
+            return;
+        }
+        File workbook = chooser.getSelectedFile();
+        String refusal = de.fizkarlsruhe.ise.ontoboard.sheet.Workbook.whyNot(workbook);
+        if (!refusal.isEmpty()) {
+            // Which is usually not a corrupt file: it is a tab-separated file named .xlsx, and
+            // saying so is the difference between a five-minute fix and an afternoon.
+            JOptionPane.showMessageDialog(this, wrap(refusal), "Not a workbook",
+                    JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        List<File> written;
+        try {
+            written = de.fizkarlsruhe.ise.ontoboard.sheet.Workbook.importInto(workbook, folder);
+        } catch (IOException cannotRead) {
+            JOptionPane.showMessageDialog(this, wrap(cannotRead.getMessage()),
+                    "Could not import it", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        open(SheetBook.open(folder).against(ontologyOrNull(), "the open ontology"));
+        StringBuilder names = new StringBuilder();
+        for (File each : written) {
+            names.append(names.length() == 0 ? "" : ", ").append(each.getName());
+        }
+        say("Imported " + written.size() + (written.size() == 1 ? " tab" : " tabs")
+                + " from " + workbook.getName() + " as " + names + ". They are tab-separated "
+                + "files now, which is what the build reads - the workbook itself is not "
+                + "changed and is not written back to.");
+    }
+
     private static String stemOf(String name) {
         int dot = name.lastIndexOf('.');
         return dot > 0 ? name.substring(0, dot) : name;
@@ -399,10 +524,20 @@ public class SheetEditorView extends AbstractOWLViewComponent {
         for (Integer count : fixable.values()) {
             correctable += count;
         }
+        int waiting = identifiersWanted();
         say(book.size() + " sheets, " + book.index().size() + " names. "
                 + all.size() + (all.size() == 1 ? " finding" : " findings")
                 + ", " + correctable + " with an obvious correction."
+                + (waiting == 0 ? "" : "  " + waiting + (waiting == 1 ? " row needs"
+                        : " rows need") + " an identifier.")
                 + (book.isUnsaved() ? "  Unsaved changes." : ""));
+    }
+
+    /** How many rows in the open sheet have content but no identifier. */
+    private int identifiersWanted() {
+        SheetTable table = selectedTableOrNull();
+        return table == null ? 0 : IriGenerator.rowsNeedingAnIdentifier(book,
+                ((SheetTableModel) table.getModel()).getSheetName()).size();
     }
 
     private void applyKind(SheetAudit.Kind kind) {
@@ -424,6 +559,172 @@ public class SheetEditorView extends AbstractOWLViewComponent {
             default:
                 return kind.name().toLowerCase().replace('_', ' ');
         }
+    }
+
+    // ---------------------------------------------------------------- identifiers
+
+    /**
+     * Mints identifiers for the rows that have none.
+     *
+     * <p>The dialog exists to show where the numbers come from before any are written. Both
+     * sources are offered with what each would produce, and the one that cannot be used carries
+     * the reason - "no ID range is allocated to you" has a remedy one menu item away, and
+     * quietly falling back to guessing from the sheets would hide it.
+     */
+    private void generateIdentifiers() {
+        SheetTable table = selectedTable();
+        if (table == null) {
+            return;
+        }
+        String sheetName = ((SheetTableModel) table.getModel()).getSheetName();
+        List<Integer> waiting = IriGenerator.rowsNeedingAnIdentifier(book, sheetName);
+        if (waiting.isEmpty()) {
+            say("Every row in " + sheetName + " that has anything in it already has an "
+                    + "identifier.");
+            return;
+        }
+        String editor = IriGenerator.editorName();
+        IriGenerator ranges = IriGenerator.using(IriGenerator.Source.ID_RANGES, book,
+                ontologyOrNull(), ontologyFileOrNull(), editor);
+        IriGenerator pattern = IriGenerator.using(IriGenerator.Source.SHEET_PATTERN, book,
+                ontologyOrNull(), ontologyFileOrNull(), editor);
+        if (!ranges.canMint() && !pattern.canMint()) {
+            JOptionPane.showMessageDialog(this,
+                    wrap("Nothing can be minted here.\n\nFrom the ID ranges: "
+                            + ranges.getRefusal() + "\n\nFrom the sheets: "
+                            + pattern.getRefusal()),
+                    "No identifiers to give", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        List<String> choices = new ArrayList<String>();
+        if (ranges.canMint()) {
+            choices.add(IriGenerator.Source.ID_RANGES.getLabel());
+        }
+        if (pattern.canMint()) {
+            choices.add(IriGenerator.Source.SHEET_PATTERN.getLabel());
+        }
+        StringBuilder explanation = new StringBuilder();
+        explanation.append(waiting.size()).append(waiting.size() == 1 ? " row in " : " rows in ")
+                .append(sheetName).append(" have content but no identifier")
+                .append(waiting.size() == 1 ? "" : "").append(".\n\n")
+                .append(IriGenerator.Source.ID_RANGES.getLabel()).append(": ")
+                .append(ranges.canMint() ? ranges.describe() : ranges.getRefusal())
+                .append("\n\n").append(IriGenerator.Source.SHEET_PATTERN.getLabel())
+                .append(": ")
+                .append(pattern.canMint() ? pattern.describe() : pattern.getRefusal())
+                .append("\n\nNothing is written to the file until you save.");
+
+        Object chosen = JOptionPane.showInputDialog(this, wrap(explanation.toString()),
+                "Generate identifiers", JOptionPane.PLAIN_MESSAGE, null,
+                choices.toArray(new Object[0]), choices.get(0));
+        if (chosen == null) {
+            return;
+        }
+        IriGenerator minting = IriGenerator.Source.byLabel(String.valueOf(chosen))
+                == IriGenerator.Source.ID_RANGES ? ranges : pattern;
+        int filled;
+        try {
+            filled = minting.fillBlanks(sheetName);
+        } catch (RuntimeException cannotMint) {
+            say(cannotMint.getMessage());
+            return;
+        }
+        SheetTableModel model = models.get(sheetName);
+        if (model != null) {
+            model.fireTableDataChanged();
+        }
+        recheck();
+        say(filled + (filled == 1 ? " identifier" : " identifiers") + " minted in " + sheetName
+                + ", from " + minting.getPrefix() + " at " + minting.identifierWidth()
+                + " digits. Undo reverses them one at a time; nothing is written until you "
+                + "save.");
+    }
+
+    /** Mints one identifier into one row, from the right-click menu. */
+    private void generateOneIdentifier(String sheetName, int sheetRow, int column) {
+        IriGenerator minting = IriGenerator.forSheet(book, sheetName, ontologyOrNull(),
+                ontologyFileOrNull(), IriGenerator.editorName());
+        if (!minting.canMint()) {
+            JOptionPane.showMessageDialog(this, wrap(minting.getRefusal()),
+                    "No identifier to give", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        String minted = minting.mint(1).get(0);
+        book.setCell(sheetName, sheetRow, column, minted);
+        SheetTableModel model = models.get(sheetName);
+        if (model != null) {
+            model.fireTableDataChanged();
+        }
+        recheck();
+        say("Row " + sheetRow + " of " + sheetName + " is now " + minted + ".");
+    }
+
+    // ---------------------------------------------------------------- searching
+
+    /**
+     * The next cell containing what is in the search box, in any sheet.
+     *
+     * <p>Across the book, because a graph spread over twenty-six files is one body of data and
+     * "which sheet is this in" is the question. Wrapping, so repeated presses walk every match.
+     */
+    private void findNext() {
+        String wanted = search.getText();
+        if (wanted == null || wanted.trim().isEmpty()) {
+            for (SheetTableModel model : models.values()) {
+                SheetTable table = tableFor(model.getSheetName());
+                if (table != null) {
+                    table.clearFound();
+                }
+            }
+            say("Type something to find.");
+            return;
+        }
+        SheetBook.Match found = lastFound == null
+                ? book.findNext(wanted, null, 0, 0)
+                : book.findNext(wanted, lastFound.getSheet(), lastFound.getRow(),
+                        lastFound.getColumn());
+        if (found == null) {
+            lastFound = null;
+            say("Nothing in any sheet contains \"" + wanted.trim() + "\".");
+            return;
+        }
+        lastFound = found;
+        for (int at = 0; at < sheets.getTabCount(); at++) {
+            if (sheets.getTitleAt(at).equals(found.getSheet())) {
+                sheets.setSelectedIndex(at);
+            }
+        }
+        SheetTable table = tableFor(found.getSheet());
+        int total = book.countMatches(wanted);
+        if (table == null || !table.goTo(found.getRow(), found.getColumn())) {
+            // A match in a template row: real, worth reporting, and not a cell the grid holds -
+            // the grid starts at the first data row. Saying where it is beats pretending there
+            // was no match.
+            say("Found in " + found.getSheet() + " at row " + found.getRow() + ", column "
+                    + found.getColumn() + " - which is a heading or template row, above the "
+                    + "grid. " + total + " in all.");
+            return;
+        }
+        say("Found in " + found.getSheet() + ", row " + found.getRow() + ". " + total
+                + (total == 1 ? " match in all." : " matches in all.  Press Next for the "
+                        + "following one."));
+    }
+
+    private SheetTable tableFor(String sheetName) {
+        for (int at = 0; at < sheets.getTabCount(); at++) {
+            if (!sheets.getTitleAt(at).equals(sheetName)) {
+                continue;
+            }
+            Component chosen = sheets.getComponentAt(at);
+            if (chosen instanceof JScrollPane) {
+                Component inside = ((JScrollPane) chosen).getViewport().getView();
+                if (inside instanceof SheetTable) {
+                    return (SheetTable) inside;
+                }
+            }
+        }
+        return null;
     }
 
     // ---------------------------------------------------------------- editing
@@ -567,6 +868,8 @@ public class SheetEditorView extends AbstractOWLViewComponent {
             }
             table.changeSelection(row, column, false, false);
             final int modelColumn = table.convertColumnIndexToModel(column);
+            final int sheetRow = model.sheetRowOf(row);
+            final String sheetName = model.getSheetName();
             JPopupMenu menu = new JPopupMenu();
 
             final SheetAudit.Finding finding = model.findingAt(row, modelColumn);
@@ -581,7 +884,9 @@ public class SheetEditorView extends AbstractOWLViewComponent {
                         }));
             }
             for (final TermCreation.Proposal proposal : TermCreation.proposeAll(book,
-                    model.getSheetName(), model.sheetRowOf(row), modelColumn + 1)) {
+                    sheetName, sheetRow, modelColumn + 1,
+                    IriGenerator.forSheet(book, sheetName, ontologyOrNull(),
+                            ontologyFileOrNull(), IriGenerator.editorName()))) {
                 if (!proposal.isPossible()) {
                     continue;
                 }
@@ -593,7 +898,61 @@ public class SheetEditorView extends AbstractOWLViewComponent {
                             }
                         }));
             }
+            // Minting into the cell that is open, which is the other half of "a new row needs an
+            // identifier": Generate IRIs... fills a whole column, and this is for the one row
+            // somebody is typing.
+            if (model.columnAt(modelColumn + 1) != null
+                    && model.columnAt(modelColumn + 1).getKind()
+                            == de.fizkarlsruhe.ise.ontoboard.robot.TemplateColumns.Kind.ID) {
+                menu.add(item("Mint an identifier here", new ActionListener() {
+                    @Override
+                    public void actionPerformed(ActionEvent event) {
+                        generateOneIdentifier(sheetName, sheetRow, modelColumn + 1);
+                    }
+                }));
+            }
+            menu.addSeparator();
+            menu.add(item("Insert a row above this one", new ActionListener() {
+                @Override
+                public void actionPerformed(ActionEvent event) {
+                    book.insertRow(sheetName, sheetRow);
+                    model.fireTableDataChanged();
+                    recheck();
+                }
+            }));
+            menu.add(item("Duplicate this row", new ActionListener() {
+                @Override
+                public void actionPerformed(ActionEvent event) {
+                    book.duplicateRow(sheetName, sheetRow);
+                    model.fireTableDataChanged();
+                    recheck();
+                }
+            }));
+            menu.add(item("Delete this row", new ActionListener() {
+                @Override
+                public void actionPerformed(ActionEvent event) {
+                    if (confirm("Delete row " + sheetRow + " of " + sheetName + "?")) {
+                        book.deleteRow(sheetName, sheetRow);
+                        model.fireTableDataChanged();
+                        recheck();
+                    }
+                }
+            }));
+            final String value = book.cell(sheetName, sheetRow, modelColumn + 1);
+            if (!value.trim().isEmpty()) {
+                menu.addSeparator();
+                menu.add(item("Find \"" + shorten(value) + "\" everywhere",
+                        new ActionListener() {
+                            @Override
+                            public void actionPerformed(ActionEvent event) {
+                                search.setText(value.trim());
+                                lastFound = null;
+                                findNext();
+                            }
+                        }));
+            }
             if (finding != null) {
+                menu.addSeparator();
                 menu.add(item("Why is this marked?", new ActionListener() {
                     @Override
                     public void actionPerformed(ActionEvent event) {
@@ -607,6 +966,12 @@ public class SheetEditorView extends AbstractOWLViewComponent {
                 menu.show(table, event.getX(), event.getY());
             }
         }
+    }
+
+    /** A cell value short enough for a menu entry. */
+    private static String shorten(String value) {
+        String trimmed = value.trim();
+        return trimmed.length() <= 40 ? trimmed : trimmed.substring(0, 37) + "...";
     }
 
     private void create(TermCreation.Proposal proposal) {
@@ -624,15 +989,25 @@ public class SheetEditorView extends AbstractOWLViewComponent {
         }
         recheck();
         say("Added \"" + proposal.getLabel() + "\" to " + proposal.getTargetSheet()
-                + " at row " + row + ". Nothing is written until you save.");
+                + " at row " + row + " as " + proposal.getIri()
+                + ". Nothing is written until you save.");
     }
 
     // ---------------------------------------------------------------- odds and ends
 
+    /** The grid in front, or null, having said why. */
     private SheetTable selectedTable() {
+        SheetTable found = selectedTableOrNull();
+        if (found == null) {
+            say("Open a folder of templates first.");
+        }
+        return found;
+    }
+
+    /** The grid in front, or null, saying nothing. */
+    private SheetTable selectedTableOrNull() {
         Component chosen = sheets.getSelectedComponent();
         if (!(chosen instanceof JScrollPane)) {
-            say("Open a folder of templates first.");
             return null;
         }
         Component inside = ((JScrollPane) chosen).getViewport().getView();
@@ -646,7 +1021,8 @@ public class SheetEditorView extends AbstractOWLViewComponent {
 
     private static String wrap(String text) {
         return "<html><body style='width:420px'>"
-                + text.replace("&", "&amp;").replace("<", "&lt;") + "</body></html>";
+                + text.replace("&", "&amp;").replace("<", "&lt;").replace("\n", "<br>")
+                + "</body></html>";
     }
 
     private void say(String text) {

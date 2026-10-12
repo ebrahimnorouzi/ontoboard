@@ -130,6 +130,7 @@ nav:
       - Collaboration: collaboration.md
       - Testing collaboration locally: testing-collaboration-locally.md
   - Honest accounting:
+      - What is supported: requirements-status.md
       - Limitations and roadmap: limitations.md
       - What was fixed: fixed.md
       - Feature parity: feature-parity.md

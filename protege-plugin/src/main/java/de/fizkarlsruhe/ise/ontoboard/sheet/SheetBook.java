@@ -478,6 +478,101 @@ public final class SheetBook {
         return index;
     }
 
+    /** Where a search found something. */
+    public static final class Match {
+        private final String sheet;
+        private final int row;
+        private final int column;
+
+        Match(String sheet, int row, int column) {
+            this.sheet = sheet;
+            this.row = row;
+            this.column = column;
+        }
+
+        public String getSheet() {
+            return sheet;
+        }
+
+        /** The row as a spreadsheet numbers rows. */
+        public int getRow() {
+            return row;
+        }
+
+        /** The column, 1-based. */
+        public int getColumn() {
+            return column;
+        }
+
+        @Override
+        public String toString() {
+            return sheet + " row " + row + ", column " + column;
+        }
+    }
+
+    /**
+     * The next cell containing {@code text}, starting after a position and wrapping round.
+     *
+     * <p>Across every sheet, in the order they are open, because a knowledge graph spread over
+     * twenty-six sheets is one body of data and "which tab is Fraunhofer in" is the question
+     * being asked. Case-insensitive and substring, which is what a person typing three letters
+     * into a search box means.
+     *
+     * <p>Wrapping, and visiting each cell at most once, so repeated calls walk every match and
+     * then come back to the first rather than stopping at the end of a sheet. The template rows
+     * are searched too: a heading or a ROBOT spec is a legitimate thing to look for, and
+     * excluding them would make the box lie about how many matches there are.
+     *
+     * @param fromSheet where to start, or null to start at the beginning
+     * @return the next match, or null when there is none anywhere
+     */
+    public Match findNext(String text, String fromSheet, int fromRow, int fromColumn) {
+        if (text == null || text.trim().isEmpty()) {
+            return null;
+        }
+        String wanted = text.trim().toLowerCase(java.util.Locale.ROOT);
+        List<String> order = new ArrayList<String>(sheets.keySet());
+        if (order.isEmpty()) {
+            return null;
+        }
+        int startSheet = fromSheet == null ? 0 : Math.max(0, order.indexOf(fromSheet));
+        for (int step = 0; step <= order.size(); step++) {
+            String name = order.get((startSheet + step) % order.size());
+            Sheet sheet = sheets.get(name);
+            boolean first = step == 0 && fromSheet != null;
+            for (int row = first ? Math.max(1, fromRow) : 1; row <= sheet.rows.size(); row++) {
+                int column = first && row == Math.max(1, fromRow) ? fromColumn + 1 : 1;
+                for (; column <= width(name); column++) {
+                    if (cell(name, row, column).toLowerCase(java.util.Locale.ROOT)
+                            .contains(wanted)) {
+                        return new Match(name, row, column);
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    /** How many cells, in every sheet, contain {@code text}. */
+    public int countMatches(String text) {
+        if (text == null || text.trim().isEmpty()) {
+            return 0;
+        }
+        String wanted = text.trim().toLowerCase(java.util.Locale.ROOT);
+        int found = 0;
+        for (Sheet sheet : sheets.values()) {
+            for (int row = 1; row <= sheet.rows.size(); row++) {
+                for (int column = 1; column <= width(sheet.name); column++) {
+                    if (cell(sheet.name, row, column).toLowerCase(java.util.Locale.ROOT)
+                            .contains(wanted)) {
+                        found++;
+                    }
+                }
+            }
+        }
+        return found;
+    }
+
     /** Everything wrong with one sheet, checked against every name in the book. */
     public List<SheetAudit.Finding> audit(String sheetName) {
         Sheet sheet = sheets.get(sheetName);

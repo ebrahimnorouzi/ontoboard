@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Layout of the OntoBoard Sheets tab.
+
+  One view, the whole window. That is the point of the tab: the sheet editor spent five releases
+  under the canvas at 45% of a 72%-wide column, which on the twenty-six-sheet knowledge graph it
+  was built against showed three or four of twenty-six columns and wrapped its own toolbar.
+
+  THE ROOT MUST BE A SPLITTER, even for one view. A bare <CNode> here parses - the SAX handler
+  ignores what it does not recognise - and then throws while the tab is being built. Protege
+  catches that inside TabbedWorkspace.addTab, REMOVES the tab from the tabbed pane, puts an
+  error panel in its place and logs nothing; addTabForPlugin still hands back the tab, so the
+  next call fails with "component not found in tabbed pane" and nothing says why. The host
+  smoke caught it; 2,276 unit tests did not. Protege's own one-view tab -
+  viewconfig-explanationtab.xml in protege-editor-owl - is a VSNode with a single splits value
+  and one CNode inside, which is exactly the shape below.
+
+  Deliberately no entity column beside it. A spreadsheet is wide - the identifier column alone
+  is 320px because the MatWerk identifiers are 46 characters - and the views that would go there
+  are one click away in the OntoBoard tab and in Protege's own Entities tab. Space is the whole
+  reason this tab exists; spending a fifth of it on a tree would be giving back what it was made
+  for.
+-->
+<layout>
+    <VSNode splits="1.0">
+        <CNode>
+            <Component label="Sheets">
+                <Property id="pluginId" value="${project.artifactId}.SheetEditorView"/>
+            </Component>
+        </CNode>
+    </VSNode>
+</layout>

@@ -22,6 +22,20 @@
     <defaultViewConfigFileName value="viewconfig-ontoboardtab.xml"/>
   </extension>
 
+  <!-- A second tab, for the spreadsheets. From 1.112.0 the sheet editor was stacked under the
+       canvas inside the OntoBoard tab, which gave a twenty-six-column grid about a third of the
+       window. Tabbing the two together inside one tab would have given each the whole column,
+       and is what the six entity views opposite do, but Protege does not do it for plugin views:
+       with both in one CNode it builds the first and silently drops the second. A workspace tab
+       of its own is the mechanism that works - see SheetsTab. -->
+  <extension id="SheetsTab" point="org.protege.editor.core.application.WorkspaceTab">
+    <label value="OntoBoard Sheets"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.views.SheetsTab"/>
+    <index value="P"/>
+    <editorKitId value="OWLEditorKit"/>
+    <defaultViewConfigFileName value="viewconfig-sheetstab.xml"/>
+  </extension>
+
   <extension id="SchemaCanvasView" point="org.protege.editor.core.application.ViewComponent">
     <label value="Schema Canvas"/>
     <class value="de.fizkarlsruhe.ise.ontoboard.views.SchemaCanvasView"/>
@@ -328,6 +342,17 @@
     <toolTip value="Check a folder of spreadsheets as data - duplicated things, names that mean two things, pasted whitespace"/>
     <class value="de.fizkarlsruhe.ise.ontoboard.menu.SheetCheckAction"/>
     <path value="ontoboard.menu.OntoBoard.kg/SlotA-B"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
+
+  <!-- The way to the tab for anybody who has not noticed it in Window > Tabs. A feature behind
+       a tab nobody opens is one nobody has, and the menu is where this plugin's other work is. -->
+  <extension id="menu.OntoBoard.kg.sheets"
+             point="org.protege.editor.core.application.EditorKitMenuAction">
+    <name value="Sheet editor"/>
+    <toolTip value="Open the spreadsheet editor, in a tab of its own - edit, clean, complete and mint identifiers"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.menu.SheetEditorAction"/>
+    <path value="ontoboard.menu.OntoBoard.kg/SlotA-C"/>
     <editorKitId value="OWLEditorKit"/>
   </extension>
 

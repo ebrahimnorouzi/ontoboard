@@ -81,11 +81,21 @@ public class SelfTestAction extends OntoBoardAction {
      * the menu item execute the same code. A self-test with two implementations is two things to
      * keep in step, and the one nobody runs is the one that rots.
      */
-    /** The {@code WorkspaceTab} extension id in plugin.xml. */
-    private static final String TAB_ID = "OntoBoardTab";
-
-    /** The {@code label} in the same extension - what Window &gt; Tabs shows. */
-    private static final String TAB_LABEL = "OntoBoard";
+    /**
+     * Every workspace tab this plugin ships: extension id, the label Window &gt; Tabs shows, and
+     * the view config it is laid out from.
+     *
+     * <p>Two of them since 1.117.0. The sheet editor moved out of the OntoBoard tab into one of
+     * its own, which immediately made the old check wrong in both directions: it required every
+     * view plugin.xml registers to be in the OntoBoard tab - so the canvas tab would fail for
+     * not containing the sheet editor - while nothing opened the new tab at all, which is
+     * exactly the hole this check was added to close. What each tab must contain is now read
+     * from that tab's own layout.
+     */
+    private static final String[][] TABS = {
+        {"OntoBoardTab", "OntoBoard", "/viewconfig-ontoboardtab.xml"},
+        {"SheetsTab", "OntoBoard Sheets", "/viewconfig-sheetstab.xml"},
+    };
 
     /**
      * Opens the OntoBoard tab, letting its views construct, and closes it again.
@@ -99,13 +109,14 @@ public class SelfTestAction extends OntoBoardAction {
      * self-test from the menu should not have their tab closed underneath them. Otherwise it is
      * opened and removed, which returns the workspace to how it was found.
      */
-    private String openTheTabOnce() {
+    private String openTheTabOnce(final String tabId, final String tabLabel,
+            final String configResource) {
         final java.util.concurrent.atomic.AtomicReference<String> outcome =
                 new java.util.concurrent.atomic.AtomicReference<String>("nothing ran");
         Runnable onTheEventThread = new Runnable() {
             @Override
             public void run() {
-                outcome.set(attemptToOpenTheTab());
+                outcome.set(attemptToOpenTheTab(tabId, tabLabel, configResource));
             }
         };
         try {
@@ -123,11 +134,11 @@ public class SelfTestAction extends OntoBoardAction {
         return outcome.get();
     }
 
-    private String attemptToOpenTheTab() {
+    private String attemptToOpenTheTab(String tabId, String tabLabel, String configResource) {
         try {
             org.protege.editor.core.ui.workspace.TabbedWorkspace workspace =
                     getOWLEditorKit().getOWLWorkspace();
-            if (workspace.containsTab(TAB_ID)) {
+            if (workspace.containsTab(tabId)) {
                 return "ok: already open in the restored workspace";
             }
             // By id or by label. Protege composes a plugin's id from the bundle and the
@@ -146,8 +157,8 @@ public class SelfTestAction extends OntoBoardAction {
                     offered.append("; ");
                 }
                 offered.append(id).append('=').append(label);
-                if (TAB_ID.equals(id) || TAB_LABEL.equals(label)
-                        || (id != null && id.endsWith(TAB_ID))) {
+                if (tabId.equals(id) || tabLabel.equals(label)
+                        || (id != null && id.endsWith(tabId))) {
                     plugin = candidate;
                     break;
                 }
@@ -155,7 +166,7 @@ public class SelfTestAction extends OntoBoardAction {
             if (plugin == null) {
                 // Naming what was on offer rather than only what was missing: without it this says
                 // the tab cannot be opened and gives nobody a way to find out why.
-                return "no workspace tab is registered as " + TAB_ID + " or \"" + TAB_LABEL
+                return "no workspace tab is registered as " + tabId + " or \"" + tabLabel
                         + "\". Protege offers: " + offered;
             }
             // Cleared immediately before the tab is opened, so what comes back describes this
@@ -164,7 +175,7 @@ public class SelfTestAction extends OntoBoardAction {
             org.protege.editor.core.ui.workspace.WorkspaceTab tab =
                     workspace.addTabForPlugin(plugin);
             if (tab == null) {
-                return "addTabForPlugin returned null for " + TAB_ID;
+                return "addTabForPlugin returned null for " + tabId;
             }
             try {
                 // Selecting it is what normally builds the views: Protege creates a view's
@@ -174,17 +185,29 @@ public class SelfTestAction extends OntoBoardAction {
                 // nothing whatever about the canvas, while reporting "its views constructed".
                 workspace.setSelectedTab(tab);
 
-                // What SHOULD have been built, read from the extension points. Checking only
-                // that something was built is not enough once there is more than one view:
-                // Protege builds the visible tab of a tabbed group and not the one behind it,
-                // so the sheet editor sat beside the canvas and never constructed while this
-                // reported a pass. A view that is green in the suite and broken in Protege is
-                // the failure this whole self-test exists for.
+                // What SHOULD have been built, read from THIS TAB'S OWN LAYOUT. Checking
+                // only that something was built is not enough once there is more than one
+                // view: Protege builds the visible tab of a tabbed group and not the one
+                // behind it, so the sheet editor sat beside the canvas and never constructed
+                // while this reported a pass. A view that is green in the suite and broken in
+                // Protege is the failure this whole self-test exists for.
+                //
+                // Per layout rather than per plugin.xml, because the two are no longer the
+                // same question: every registered view in every tab was right while there was
+                // one tab and became wrong the moment the sheet editor got its own.
                 java.util.List<String> expected;
                 try {
-                    expected = de.fizkarlsruhe.ise.ontoboard.SelfCheck.declaredViewNames();
+                    expected = de.fizkarlsruhe.ise.ontoboard.views.ShippedLayout
+                            .viewsNamedIn(configResource);
                 } catch (Exception | LinkageError cannotRead) {
                     expected = java.util.Collections.emptyList();
+                }
+                if (expected.isEmpty()) {
+                    // A layout naming none of our views has nothing for this check to prove,
+                    // and claiming a pass over an empty expectation is how a check becomes
+                    // decoration. Said out loud instead.
+                    return "ok: opened and closed again, but " + configResource + " names no"
+                            + " OntoBoard view, so nothing was proved about one";
                 }
 
                 int forced = 0;
@@ -373,14 +396,16 @@ public class SelfTestAction extends OntoBoardAction {
         // This asks for it. Opening the tab constructs SchemaCanvasView - 2,114 lines and the
         // largest class in the plugin, covered until now only by tests that construct no view - so
         // this is also the first check that the canvas can be built at all under Felix.
-        String tabOutcome = openTheTabOnce();
-        boolean tabOk = tabOutcome.startsWith("ok:");
-        if (!tabOk) {
-            failed++;
-            result.warn("Window > Tabs > OntoBoard failed: " + tabOutcome);
+        for (String[] tab : TABS) {
+            String tabOutcome = openTheTabOnce(tab[0], tab[1], tab[2]);
+            boolean tabOk = tabOutcome.startsWith("ok:");
+            if (!tabOk) {
+                failed++;
+                result.warn("Window > Tabs > " + tab[1] + " failed: " + tabOutcome);
+            }
+            result.row("Window > Tabs > " + tab[1], tabOk ? "ok" : "FAILED",
+                    tabOk ? tabOutcome.substring(3).trim() : tabOutcome);
         }
-        result.row("Window > Tabs > OntoBoard", tabOk ? "ok" : "FAILED",
-                tabOk ? tabOutcome.substring(3).trim() : tabOutcome);
 
         for (String skipped : skippedWithReasons()) {
             result.note(skipped);
@@ -393,14 +418,15 @@ public class SelfTestAction extends OntoBoardAction {
         // only the map said "9 of 9" on a run that had in fact checked ten things - a summary that
         // undercounts its own work is the kind of small lie that makes the rest of it less
         // believable, and the receipts quote this line verbatim.
-        int checks = underTest.size() + 1;
+        int checks = underTest.size() + TABS.length;
         if (failed > 0) {
             return result.failed(failed + " of " + checks
                     + " checks failed. This is a defect in the plugin, not in your "
                     + "ontology.").build();
         }
         return result.summary(checks + " of " + checks
-                + " checks ran - " + underTest.size() + " menu items and the tab itself. "
+                + " checks ran - " + underTest.size() + " menu items and " + TABS.length
+                + " tabs. "
                 + skippedWithReasons().size()
                 + " others are not covered here - see the notes.").build();
     }

@@ -149,10 +149,44 @@ does not act on — what ODK does with it next is ODK's business, by way of `upd
 | `src/scripts/` | ✅ | *Project → Run a project script…* lists what is there — honouring a `SCRIPTSDIR` the Makefile moves — and runs the one you pick, with arguments, inside the container. See below |
 | `src/metadata/` | 🔶 | Read to check it, never written. The OBO Foundry registry entry: `<id>.yml` is the PURL configuration for `purl.obolibrary.org/config`, `<id>.md` the entry for `OBOFoundry.github.io`. *Project → Check project metadata* compares both against the ontology; nothing edits them, because for a project not in the Foundry the file is scaffold the build never reads — [and three of four measured projects are not](limitations.md#roadmap) |
 
-Three of the four are covered, and the fourth is the one that is only needed for an OBO Foundry
+| `src/templates/` | ✅ | The ROBOT templates a knowledge graph is built from. Opened automatically in the **OntoBoard Sheets** tab — see below — and built by *Knowledge graph → Template…* |
+
+Three of the five are covered, and the one that is not is only needed for an OBO Foundry
 submission. **Everything in the first three runs inside Protégé** — no terminal, no separate
 `sh run.sh`: ROBOT operations run in-process, make targets and your own scripts run through the
 same container the build uses, and SPARQL checks run against the ontology you have open.
+
+### The sheet editor — its own tab since 1.117.0
+
+**Window → Tabs → OntoBoard Sheets**, or *Knowledge graph → Sheet editor*, which opens it for
+you. A tab you have never opened is not in the tab strip until something adds it, which is what
+that menu item is for.
+
+It opens `src/templates` for whatever project you have open, with one grid per file. What is
+there that a spreadsheet program is not:
+
+- **The names come from the ontology.** A column that names another term completes from every
+  open sheet *and* from the ontology, so a reference to something that exists is one keystroke
+  and a reference to something that does not is visible immediately.
+- **The mistakes are marked where the typing happens.** Ten kinds — ambiguous names, duplicate
+  identifiers, near-duplicate labels, dead references, pasted whitespace, curly quotes, missing
+  identifiers, placeholders, quoted references, columns the template ignores. On the MatWerk
+  sheets that is 1,227 marked cells on a graph that builds with zero problems, which is the
+  argument for the feature: ROBOT is happy and the data is not.
+- **The ones with an obvious correction can be fixed in one undoable step.** 307 were applied to
+  the MatWerk sheets at once, and the built graph was byte-identical afterwards.
+- **A reference to something that does not exist can be made to exist.** Right-click it: the
+  sheet, the type and the identifier are all worked out from the sheets’ own evidence, and it
+  refuses rather than guessing when they do not say.
+- **Identifiers are minted, not typed.** *Generate IRIs…* fills every row that has content but
+  no identifier, out of the block allocated to you in the project’s `-idranges.owl` — or, where
+  there is no ranges file, by continuing the sheet’s own numbering at the same digit width.
+- **An existing Excel file can be brought in.** *Import Excel…* reads an `.xlsx` and writes each
+  tab into the folder as a `.tsv`. It does not write `.xlsx` back: reading that format is four
+  of its parts and writing it is all of them, and `.tsv` is what ROBOT reads and what git can
+  merge.
+- **Nothing is written until you press Save.** These files are in git and somebody else is
+  editing them.
 
 ### Running your own scripts
 
@@ -738,7 +772,47 @@ piece of work, and for an ontology a line diff of RDF/XML is not the diff anybod
 
 ---
 
-## 6. Publishing the documentation
+## 6. Releasing, in either convention
+
+*Project → Release…* turns the edit file into the published one: it runs the reasoner, writes
+the inferences down, stamps a version, keeps a copy that will never change again, and refuses if
+the project’s own quality profile reports an error or if a term the last release published has
+vanished.
+
+**The version is written in one of two conventions, and from 1.117.0 you choose which.** They
+are not a formatting preference — they publish different IRIs, and a version IRI cannot be taken
+back once anybody has imported it:
+
+| | Dated (OBO) | Semantic (MatWerk) |
+|---|---|---|
+| version | `2026-10-12` | `3.0.2` |
+| `owl:versionIRI` | `<base>/releases/2026-10-12/<id>.owl` | `<base>/3.0.2` |
+| kept at | `releases/2026-10-12/<id>.owl` | `releases/3.0.2/<id>.owl` |
+| next one | whatever day it is | a decision: patch, minor or major |
+
+The dated form is what OBO publishes and what the generated Makefile defaults to
+(`VERSION = $(TODAY)`). The semantic form is what MatWerk publishes: its
+`src/ontology/release.sh` sets `VERSION=3.0.2` and its `mwo.owl` carries
+`owl:versionIRI http://purls.helmholtz-metadaten.de/mwo/3.0.2`.
+
+**The default is read from what the ontology already declares**, so releasing a project you did
+not create continues its history instead of starting a second one beside it. A semantic release
+also links `owl:priorVersion` to the one before it, so a consumer can walk the chain backwards.
+
+**The build does both too.** The generated Makefile takes `VERSION` and `VERSION_IRI` as
+overrides, which is how `release.sh` drives it:
+
+```sh
+make VERSION=3.0.2 VERSION_IRI=http://purls.helmholtz-metadaten.de/mwo/3.0.2 prepare_release
+```
+
+And if the project keeps a `release.sh` whose `VERSION` disagrees with what you are about to
+cut, the result says so before anything is written — two release paths with two versions is how
+a project publishes 3.0.2 twice.
+
+---
+
+## 7. Publishing the documentation
 
 *Project → Documentation…*, since 1.103.0. Widoco turns an ontology's own annotations into the
 HTML page an ODK project publishes; this runs it on the release product and opens the result,

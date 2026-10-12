@@ -71,17 +71,66 @@ class OntoBoardTabTest {
         }
     }
 
-    /** plugin.xml names the same file independently, and the two must not drift apart. */
+    /**
+     * plugin.xml names each config independently of the class that reads it, and the two must
+     * not drift apart - a tab whose class reads a file no tab declares stops adopting new
+     * layouts, silently, and every future layout change then ships to nobody.
+     */
     @Test
-    void pluginXmlDeclaresTheConfigTheTabReads() throws Exception {
+    void pluginXmlDeclaresTheConfigEachTabReads() throws Exception {
         Document plugin;
         try (InputStream in = OntoBoardTab.class.getResourceAsStream("/plugin.xml")) {
             assertNotNull(in);
             plugin = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(in);
         }
         NodeList declared = plugin.getElementsByTagName("defaultViewConfigFileName");
-        assertEquals(1, declared.getLength());
-        assertEquals(OntoBoardTab.CONFIG,
-                "/" + ((Element) declared.item(0)).getAttribute("value"));
+        assertEquals(2, declared.getLength(), "two workspace tabs, two configs");
+        java.util.List<String> named = new java.util.ArrayList<>();
+        for (int at = 0; at < declared.getLength(); at++) {
+            named.add("/" + ((Element) declared.item(at)).getAttribute("value"));
+        }
+        assertTrue(named.contains(OntoBoardTab.CONFIG), named.toString());
+        assertTrue(named.contains(SheetsTab.CONFIG), named.toString());
+    }
+
+    /**
+     * Each tab keys its own preference, or the two fight: adopting one layout would write the
+     * digest the other reads, and whichever opened second would decide there was nothing to do.
+     * The digests differ because the configs differ, which is the whole mechanism.
+     */
+    @Test
+    void theTwoTabsDigestTwoDifferentLayouts() throws Exception {
+        String canvas;
+        String sheets;
+        try (InputStream in = OntoBoardTab.class.getResourceAsStream(OntoBoardTab.CONFIG)) {
+            assertNotNull(in, OntoBoardTab.CONFIG + " is not on the built classpath");
+            canvas = OntoBoardTab.revisionOf(in);
+        }
+        try (InputStream in = OntoBoardTab.class.getResourceAsStream(SheetsTab.CONFIG)) {
+            assertNotNull(in, SheetsTab.CONFIG + " is not on the built classpath");
+            sheets = OntoBoardTab.revisionOf(in);
+        }
+        assertNotEquals(canvas, sheets);
+    }
+
+    /**
+     * What each tab must contain, read from its own layout rather than from plugin.xml.
+     *
+     * <p>Requiring every registered view in every tab was right while there was one tab and
+     * became wrong the moment the sheet editor got its own: the canvas tab would then have
+     * reset itself on every launch, for ever, hunting a view that is deliberately elsewhere.
+     */
+    @Test
+    void eachLayoutAsksForExactlyTheViewItPlaces() throws Exception {
+        assertEquals(java.util.Collections.singletonList("SchemaCanvasView"),
+                ShippedLayout.viewsNamedIn(OntoBoardTab.CONFIG));
+        assertEquals(java.util.Collections.singletonList("SheetEditorView"),
+                ShippedLayout.viewsNamedIn(SheetsTab.CONFIG));
+    }
+
+    /** A config that is not there asks for nothing rather than throwing on startup. */
+    @Test
+    void aMissingConfigAsksForNothing() throws Exception {
+        assertTrue(ShippedLayout.viewsNamedIn("/viewconfig-nothing-like-this.xml").isEmpty());
     }
 }

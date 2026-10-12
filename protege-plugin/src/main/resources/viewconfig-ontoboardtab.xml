@@ -34,31 +34,25 @@
                 <Property id="pluginId" value="org.protege.editor.owl.OWLIndividualsList"/>
             </Component>
         </CNode>
-        <!-- The canvas above the sheet editor, each in its own node.
+        <!-- The canvas, with the whole of the right-hand column.
 
-             They were first put in ONE CNode, as tabs, on the reasoning that somebody is
-             drawing a diagram or filling in a spreadsheet and not both - which would have let
-             each use the full column. Protege does not do it: with two plugin views in one
-             CNode it instantiated the first and silently dropped the second, so the sheet
-             editor was registered, resolvable, and never constructed. The self-test caught it
-             only because it had just been taught to require every view plugin.xml registers,
-             and the tab's own component tree confirmed it - one View in this column, where the
-             entity column opposite shows six in a tabbed group. Protege's own views tab in one
-             node evidently is not the same thing as two plugin views in one node.
+             For five releases the sheet editor was stacked underneath it here, at 45% of this
+             column. That was not a design: putting both in ONE CNode, as tabs, so each could
+             use the full column - the arrangement the six entity views opposite use - is a
+             thing Protege does not do for plugin views. With both in one CNode it instantiated
+             the canvas and silently dropped the sheet editor, which was then registered,
+             resolvable, and never constructed; the self-test caught it only because it had
+             just been taught to require every view plugin.xml registers. So they were stacked,
+             and both were built, and both were cramped.
 
-             HSNode stacks its children in rows, so each gets the full width and half the
-             height, and both are built when the tab opens. The splitter moves. -->
-        <HSNode splits="0.55 0.45">
-            <CNode>
-                <Component label="Schema Canvas">
-                    <Property id="pluginId" value="${project.artifactId}.SchemaCanvasView"/>
-                </Component>
-            </CNode>
-            <CNode>
-                <Component label="Sheets">
-                    <Property id="pluginId" value="${project.artifactId}.SheetEditorView"/>
-                </Component>
-            </CNode>
-        </HSNode>
+             The sheet editor now has a workspace tab of its own - viewconfig-sheetstab.xml -
+             which is the mechanism that gives each of them the window. ViewConfigTest pins
+             that this column holds the canvas alone and that the sheet editor is in that other
+             config, because "tidying" the two back together is the obvious thing to try. -->
+        <CNode>
+            <Component label="Schema Canvas">
+                <Property id="pluginId" value="${project.artifactId}.SchemaCanvasView"/>
+            </Component>
+        </CNode>
     </VSNode>
 </layout>

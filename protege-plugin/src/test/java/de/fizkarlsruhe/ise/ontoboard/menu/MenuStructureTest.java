@@ -342,10 +342,15 @@ class MenuStructureTest {
             return true;
         }
         Object action = type.getDeclaredConstructor().newInstance();
-        java.lang.reflect.Method staysOnTheEventThread =
-                OntoBoardAction.class.getDeclaredMethod("runsInBackground");
-        staysOnTheEventThread.setAccessible(true);
-        return !((Boolean) staysOnTheEventThread.invoke(action)).booleanValue();
+        // asksBeforeActing, not runsInBackground. The two agreed for every action in the plugin
+        // while the only reason to stay on the dispatch thread was a dialog; the first action
+        // that stays there to build Swing components and asks nothing - Sheet editor, which
+        // opens a tab - broke the inference, and taking an ellipsis it does not earn would be
+        // the wrong way to satisfy this test.
+        java.lang.reflect.Method asksFirst =
+                OntoBoardAction.class.getDeclaredMethod("asksBeforeActing");
+        asksFirst.setAccessible(true);
+        return ((Boolean) asksFirst.invoke(action)).booleanValue();
     }
 
     /** Whether anything below {@link OntoBoardAction} overrides {@code configure}. */

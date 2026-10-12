@@ -1,6 +1,7 @@
 package de.fizkarlsruhe.ise.ontoboard.odk;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -94,15 +95,28 @@ class ProjectIriTest {
                     new File(config.getProjectRoot(), "src/ontology/Makefile").toPath()),
                     Charset.forName("UTF-8"));
 
-            // What the Makefile would expand for a given date, with make's own variables filled in.
+            // What the Makefile would expand for a given date, with make's own variables filled
+            // in. --version-iri now reads $(VERSION_IRI), which is overridable so that a project
+            // versioning semantically can build under the IRI shape it publishes; this resolves
+            // it the way make would, so the agreement being checked is still the real one.
             String fromMake = null;
+            String versionIri = null;
             for (String line : makefile.split("\r?\n")) {
+                if (line.trim().startsWith("VERSION_IRI ?=")) {
+                    versionIri = line.substring(line.indexOf("?=") + 2).trim();
+                }
                 if (line.contains("--version-iri")) {
-                    fromMake = line.substring(line.indexOf('"') + 1, line.lastIndexOf('"'))
-                            .replace("$(TODAY)", "2026-08-30")
-                            .replace("$(ONT)", "mwo");
+                    fromMake = line.substring(line.indexOf('"') + 1, line.lastIndexOf('"'));
                 }
             }
+            assertNotNull(versionIri, "the Makefile no longer defines VERSION_IRI");
+            assertEquals("$(VERSION_IRI)", fromMake,
+                    "the release target must use the overridable IRI, or overriding it does "
+                            + "nothing");
+            fromMake = versionIri
+                    .replace("$(VERSION)", "2026-08-30")
+                    .replace("$(TODAY)", "2026-08-30")
+                    .replace("$(ONT)", "mwo");
             String fromMenu = Release.versionIri(
                     IRI.create(config.getBaseIri()), "2026-08-30").toString();
 

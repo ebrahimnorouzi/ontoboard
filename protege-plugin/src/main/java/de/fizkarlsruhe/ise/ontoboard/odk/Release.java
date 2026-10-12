@@ -60,6 +60,20 @@ public final class Release {
      */
     public static IRI versionIri(IRI ontologyIri, String date) {
         requireIsoDate(date);
+        return versionIri(ontologyIri, OntologyVersion.dated(date));
+    }
+
+    /**
+     * The version IRI for a release in whichever convention {@code version} is written.
+     *
+     * <p>{@link OntologyVersion} holds the two shapes and why they differ. The short of it: a
+     * dated release publishes OBO's {@code <stem>/releases/<date>/<id>.owl}, and a semantic one
+     * publishes {@code <stem>/<version>}, which is what MatWerk's own {@code mwo.owl} carries.
+     * Cutting a semantic project's release under the dated pattern would start a second, parallel
+     * version history under a different IRI shape - which is the one mistake a version IRI
+     * cannot recover from once anybody has imported it.
+     */
+    public static IRI versionIri(IRI ontologyIri, OntologyVersion version) {
         if (ontologyIri == null) {
             throw new IllegalArgumentException(
                     "the ontology has no IRI, so a release IRI cannot be derived from it");
@@ -69,7 +83,7 @@ public final class Release {
         // .../obo/releases/<date>/mwo.owl, in OBO's shared root, where every ontology built with
         // this plugin would collide. See ProjectIri for the three places that got this wrong and
         // the three different answers they produced for one release.
-        String versionIri = ProjectIri.releaseIri(ontologyIri.toString(), date);
+        String versionIri = version.versionIriUnder(ontologyIri.toString());
         if (versionIri == null) {
             throw new IllegalArgumentException(
                     "the ontology IRI '" + ontologyIri + "' has no name to build a release IRI "
@@ -85,9 +99,14 @@ public final class Release {
      * of the previous release resolving to the current file, which is worse than having no version
      * IRI at all - it is one that lies.
      */
-    public static File releaseFile(File projectRoot, String ontologyId, String date) {
-        requireIsoDate(date);
-        return new File(new File(new File(projectRoot, "releases"), date), ontologyId + ".owl");
+    public static File releaseFile(File projectRoot, String ontologyId, String version) {
+        // Either convention: releases/2026-10-12/mwo.owl or releases/3.0.2/mwo.owl. Still
+        // validated, because a directory named "today" or "final" is one nothing can sort and
+        // nothing can parse, and the mistake stays invisible until somebody looks for the
+        // previous release.
+        OntologyVersion.of(version);
+        return new File(new File(new File(projectRoot, "releases"), version),
+                ontologyId + ".owl");
     }
 
     /**
@@ -104,6 +123,28 @@ public final class Release {
      */
     public static List<OWLOntologyChange> stamp(OWLOntology ontology, String date) {
         requireIsoDate(date);
+        return stamp(ontology, OntologyVersion.dated(date), null);
+    }
+
+    /**
+     * Changes that stamp an ontology as {@code version}, in whichever convention it is written,
+     * optionally linking the release it follows.
+     *
+     * <p>Three annotations, each a different kind of thing. {@code owl:versionIRI} lives on the
+     * ontology's identity, so it takes a {@link SetOntologyID}. {@code owl:versionInfo} is an
+     * ontology annotation holding the version as text. And {@code owl:priorVersion} points at
+     * the release this one follows - which is what lets a consumer walk the chain backwards, and
+     * what MatWerk's own custom Makefile adds
+     * ({@code --link-annotation owl:priorVersion $(ONTBASE)/$(PRIOR_VERSION)}).
+     *
+     * <p>Any previous {@code owl:versionInfo} or {@code owl:priorVersion} is removed rather than
+     * added to: two version numbers on one ontology is not a history, it is an ambiguity, and
+     * consumers pick whichever their parser happened to return first.
+     *
+     * @param previous the release this one follows, or null when it is the first
+     */
+    public static List<OWLOntologyChange> stamp(OWLOntology ontology, OntologyVersion version,
+            OntologyVersion previous) {
         List<OWLOntologyChange> changes = new ArrayList<OWLOntologyChange>();
         if (ontology == null) {
             return changes;
@@ -116,18 +157,58 @@ public final class Release {
                     + "carry a version IRI. Give it one in the ontology header before releasing.");
         }
         changes.add(new SetOntologyID(ontology, new OWLOntologyID(ontologyIri,
-                com.google.common.base.Optional.of(versionIri(ontologyIri.get(), date)))));
+                com.google.common.base.Optional.of(versionIri(ontologyIri.get(), version)))));
 
         for (OWLAnnotation existing : ontology.getAnnotations()) {
-            if (OWLRDFVocabulary.OWL_VERSION_INFO.getIRI()
-                    .equals(existing.getProperty().getIRI())) {
+            IRI property = existing.getProperty().getIRI();
+            if (OWLRDFVocabulary.OWL_VERSION_INFO.getIRI().equals(property)
+                    || PRIOR_VERSION.equals(property)) {
                 changes.add(new RemoveOntologyAnnotation(ontology, existing));
             }
         }
         changes.add(new AddOntologyAnnotation(ontology, factory.getOWLAnnotation(
                 factory.getOWLAnnotationProperty(OWLRDFVocabulary.OWL_VERSION_INFO.getIRI()),
-                factory.getOWLLiteral(date))));
+                factory.getOWLLiteral(version.getText()))));
+        if (previous != null) {
+            String priorIri = previous.versionIriUnder(ontologyIri.get().toString());
+            if (priorIri != null) {
+                changes.add(new AddOntologyAnnotation(ontology, factory.getOWLAnnotation(
+                        factory.getOWLAnnotationProperty(PRIOR_VERSION),
+                        IRI.create(priorIri))));
+            }
+        }
         return changes;
+    }
+
+    /** {@code owl:priorVersion}, which OWL API 4 does not put in its vocabulary enum. */
+    private static final IRI PRIOR_VERSION =
+            IRI.create("http://www.w3.org/2002/07/owl#priorVersion");
+
+    /** The {@code owl:priorVersion} an ontology currently carries, or null. */
+    public static IRI priorVersionOf(OWLOntology ontology) {
+        if (ontology == null) {
+            return null;
+        }
+        for (OWLAnnotation annotation : ontology.getAnnotations()) {
+            if (PRIOR_VERSION.equals(annotation.getProperty().getIRI())
+                    && annotation.getValue() instanceof IRI) {
+                return (IRI) annotation.getValue();
+            }
+        }
+        return null;
+    }
+
+    /**
+     * The version this ontology already declares, or null.
+     *
+     * <p>What the release dialog should default to. Read from the artefact rather than from a
+     * preference, so that opening somebody else's project and releasing it continues their
+     * version history instead of starting a second one beside it.
+     */
+    public static OntologyVersion declaredVersionOf(OWLOntology ontology) {
+        IRI versionIri = versionIriOf(ontology);
+        return OntologyVersion.declaredBy(versionInfoOf(ontology),
+                versionIri == null ? null : versionIri.toString());
     }
 
     /** The version IRI an ontology currently carries, or null. */

@@ -317,13 +317,26 @@ public class CompareReleasesAction extends OntoBoardAction {
         if (directories == null) {
             return dates;
         }
+        java.util.List<de.fizkarlsruhe.ise.ontoboard.odk.OntologyVersion> found =
+                new ArrayList<de.fizkarlsruhe.ise.ontoboard.odk.OntologyVersion>();
         for (File directory : directories) {
-            if (directory.isDirectory() && directory.getName().matches("\\d{4}-\\d{2}-\\d{2}")) {
-                dates.add(directory.getName());
+            // Either convention - releases/2026-10-12 or releases/3.0.2. Listing only dated
+            // directories made a project on semantic versions look as though it had never
+            // released anything, so "compare with the last release" offered nothing at all.
+            de.fizkarlsruhe.ise.ontoboard.odk.OntologyVersion version = directory.isDirectory()
+                    ? de.fizkarlsruhe.ise.ontoboard.odk.OntologyVersion
+                            .parseOrNull(directory.getName())
+                    : null;
+            if (version != null) {
+                found.add(version);
             }
         }
         // Newest first: the comparison people want is nearly always against the last release.
-        Collections.sort(dates, Collections.reverseOrder());
+        // By number, not as text, or 3.9.0 would be offered ahead of 3.10.0.
+        for (de.fizkarlsruhe.ise.ontoboard.odk.OntologyVersion version
+                : de.fizkarlsruhe.ise.ontoboard.odk.OntologyVersion.newestFirst(found)) {
+            dates.add(version.getText());
+        }
         return dates;
     }
 

@@ -247,9 +247,47 @@ class OdkScaffoldTest {
         String makefile = read(config, "Makefile");
         assertTrue(makefile.contains("--version-iri"), makefile);
         assertTrue(makefile.contains("owl:versionInfo"), makefile);
-        assertTrue(makefile.contains("releases/$(TODAY)"),
-                "an undated release directory means each release overwrites the last");
+        assertTrue(makefile.contains("releases/$(VERSION)"),
+                "an unversioned release directory means each release overwrites the last");
         assertTrue(makefile.contains("TODAY :="), "TODAY has to be defined to be used");
+        // Dated by default, which is what ODK itself does, so a project created here builds
+        // exactly as before unless somebody asks for something else.
+        assertTrue(makefile.contains("VERSION ?= $(TODAY)"), makefile);
+    }
+
+    /**
+     * Both release conventions, from the build as well as from the menu.
+     *
+     * <p>MatWerk versions semantically: its {@code release.sh} runs
+     * {@code make VERSION=3.0.2 ... prepare_release} and its published {@code mwo.owl} carries
+     * {@code owl:versionIRI .../mwo/3.0.2}. With the version IRI hard-coded as
+     * {@code .../releases/$(TODAY)/$(ONT).owl} that was impossible without editing a file the
+     * header says must not be edited - so a semantic project either hand-patched the generated
+     * Makefile on every regeneration or published under a shape it does not use.
+     *
+     * <p>{@code ?=} rather than {@code =} is the whole mechanism: it takes a value from the
+     * environment or the command line and otherwise keeps the default.
+     */
+    @Test
+    void theVersionAndItsIriCanBothBeOverriddenForASemanticProject(@TempDir Path dir)
+            throws Exception {
+        OdkProjectConfig config = new OdkProjectConfig("mwo", "MWO", "",
+                "http://purls.helmholtz-metadaten.de/mwo", CC0, dir.toFile());
+        OdkScaffold.create(config);
+
+        String makefile = read(config, "Makefile");
+
+        assertTrue(makefile.contains("VERSION ?="), "VERSION must be overridable: " + makefile);
+        assertTrue(makefile.contains("VERSION_IRI ?="),
+                "the IRI shape must be overridable too, since the two conventions differ in "
+                        + "shape and not only in text: " + makefile);
+        assertTrue(makefile.contains("--version-iri \"$(VERSION_IRI)\""),
+                "the release target has to use the overridable one: " + makefile);
+        assertTrue(makefile.contains("owl:versionInfo \"$(VERSION)\""), makefile);
+        // And the default is still the dated OBO shape, with the ontology id in it.
+        assertTrue(makefile.contains(
+                "VERSION_IRI ?= http://purls.helmholtz-metadaten.de/mwo/releases/$(VERSION)/"
+                        + "$(ONT).owl"), makefile);
     }
 
     /**

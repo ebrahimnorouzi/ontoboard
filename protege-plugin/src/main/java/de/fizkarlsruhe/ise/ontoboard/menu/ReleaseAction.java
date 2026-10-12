@@ -1,5 +1,6 @@
 package de.fizkarlsruhe.ise.ontoboard.menu;
 
+import de.fizkarlsruhe.ise.ontoboard.odk.OntologyVersion;
 import de.fizkarlsruhe.ise.ontoboard.odk.Release;
 import de.fizkarlsruhe.ise.ontoboard.odk.ReleaseDiff;
 import de.fizkarlsruhe.ise.ontoboard.prov.EditorNotes;
@@ -44,6 +45,7 @@ public class ReleaseAction extends OntoBoardAction {
 
     private static final long serialVersionUID = 1L;
 
+    private static final String OPTION_SCHEME = "scheme";
     private static final String OPTION_DATE = "date";
     private static final String OPTION_CHECK = "check";
     private static final String OPTION_REASON = "reason";
@@ -52,6 +54,7 @@ public class ReleaseAction extends OntoBoardAction {
     private static final String OPTION_STRIP = "strip";
 
     private volatile String date = "";
+    private volatile OntologyVersion version;
     private volatile boolean check = true;
     private volatile boolean reason = true;
     private volatile Reasoners.Choice reasoner = Reasoners.DEFAULT;
@@ -66,19 +69,131 @@ public class ReleaseAction extends OntoBoardAction {
     @Override
     protected boolean configure() {
         String today = LocalDate.now().toString();
-        List<Parameter> parameters = Arrays.asList(
-                Parameter.of(OPTION_DATE, "Release date", Parameter.Kind.TEXT)
-                        .defaultValue(today)
+        OntologyVersion declared = Release.declaredVersionOf(openOntologyOrNull());
+        OntologyVersion proposed =
+                declared == null ? OntologyVersion.of(today) : declared.suggestNext(today);
+
+        Map<String, String> values = new java.util.LinkedHashMap<String, String>();
+        values.put(OPTION_SCHEME, proposed.getScheme().getLabel());
+        values.put(OPTION_DATE, proposed.getText());
+        values.put(OPTION_CHECK, "true");
+        values.put(OPTION_REASON, "true");
+        values.put(OPTION_REASONER, Reasoners.DEFAULT.getLabel());
+        values.put(OPTION_MERGE, "false");
+        values.put(OPTION_STRIP, "false");
+
+        // A loop, because the rule spans two fields - the version has to be written in the
+        // convention that was chosen - and a per-field validator cannot express that. Re-showing
+        // with what was typed rather than with the defaults is the difference between a
+        // correction and starting again, which is what the ODK wizard was asked for too.
+        Map<String, String> chosen;
+        while (true) {
+            chosen = ParameterDialog.show(getOWLWorkspace(), "Release",
+                    "Produces the published version from the file you have open. Your edit file "
+                            + "is not modified.",
+                    parametersFrom(values, declared, today));
+            if (chosen == null) {
+                return false;
+            }
+            values = chosen;
+            List<String> problems = versionProblems(chosen);
+            if (problems.isEmpty()) {
+                break;
+            }
+            StringBuilder message = new StringBuilder();
+            for (String problem : problems) {
+                message.append("- ").append(problem).append('\n');
+            }
+            javax.swing.JOptionPane.showMessageDialog(getOWLWorkspace(),
+                    message.toString().trim(), "The version needs changing",
+                    javax.swing.JOptionPane.WARNING_MESSAGE);
+        }
+
+        version = OntologyVersion.of(chosen.get(OPTION_DATE).trim());
+        date = version.getText();
+        check = "true".equalsIgnoreCase(chosen.get(OPTION_CHECK));
+        reason = "true".equalsIgnoreCase(chosen.get(OPTION_REASON));
+        reasoner = Reasoners.byLabel(chosen.get(OPTION_REASONER));
+        merge = "true".equalsIgnoreCase(chosen.get(OPTION_MERGE));
+        strip = "true".equalsIgnoreCase(chosen.get(OPTION_STRIP));
+        return true;
+    }
+
+    /** The ontology Protege has open, or null - read in {@link #configure} before any work. */
+    private OWLOntology openOntologyOrNull() {
+        try {
+            return getOWLModelManager() == null ? null : getOWLModelManager().getActiveOntology();
+        } catch (RuntimeException noOntology) {
+            return null;
+        }
+    }
+
+    /**
+     * Why the typed version cannot be released, or nothing.
+     *
+     * <p>Two rules, and both have bitten real projects. A version that is neither shape produces
+     * a release directory nothing can sort. And a version written in one convention while the
+     * other is selected would publish, say, {@code .../mwo/releases/3.0.2/mwo.owl} - a shape that
+     * belongs to neither history, under an IRI that cannot be taken back.
+     */
+    static List<String> versionProblems(Map<String, String> values) {
+        List<String> problems = new java.util.ArrayList<String>();
+        String typed = values.get(OPTION_DATE) == null ? "" : values.get(OPTION_DATE).trim();
+        OntologyVersion.Scheme wanted =
+                OntologyVersion.Scheme.byLabel(values.get(OPTION_SCHEME));
+        OntologyVersion parsed = OntologyVersion.parseOrNull(typed);
+        if (parsed == null) {
+            problems.add("'" + typed + "' is neither a date (" + OntologyVersion.Scheme.DATE
+                    .getExample() + ") nor a semantic version ("
+                    + OntologyVersion.Scheme.SEMANTIC.getExample() + "). The version names the "
+                    + "release directory and goes into the version IRI, so it has to be one "
+                    + "that sorts.");
+            return problems;
+        }
+        if (parsed.getScheme() != wanted) {
+            problems.add("You chose \"" + wanted.getLabel() + "\" but typed " + typed
+                    + ", which is " + (wanted == OntologyVersion.Scheme.DATE
+                            ? "a semantic version" : "a date")
+                    + ". Change one of the two, because they publish under different IRIs: "
+                    + wanted.getExample() + " is what \"" + wanted.getLabel() + "\" expects.");
+        }
+        return problems;
+    }
+
+    /** The form, with whatever was typed last time already in it. */
+    private List<Parameter> parametersFrom(Map<String, String> values, OntologyVersion declared,
+            String today) {
+        String history = declared == null
+                ? "This ontology declares no version yet, so this is its first release."
+                : "This ontology currently declares " + declared.describe() + ", so the next one "
+                        + "is proposed in the same convention - a release that switches "
+                        + "convention starts a second version history beside the first.";
+        return Arrays.asList(
+                Parameter.of(OPTION_SCHEME, "Versioning", Parameter.Kind.CHOICE)
+                        .choices(OntologyVersion.Scheme.labels().toArray(new String[0]))
+                        .defaultValue(values.get(OPTION_SCHEME))
+                        .help("How this project names its releases, and it changes the published "
+                                + "IRI rather than only the text. Dated publishes OBO's "
+                                + ".../releases/" + today + "/<id>.owl, which is what the "
+                                + "generated Makefile does (VERSION = $(TODAY)). Semantic "
+                                + "publishes .../<id>/3.0.2, which is what MatWerk's own "
+                                + "release.sh does and what its published mwo.owl carries. "
+                                + history)
+                        .build(),
+                Parameter.of(OPTION_DATE, "Version", Parameter.Kind.TEXT)
+                        .defaultValue(values.get(OPTION_DATE))
                         .required()
-                        .help("YYYY-MM-DD, and it is not decoration: it becomes the version IRI "
-                                + "(.../releases/" + today + "/<id>.owl) and the name of the "
+                        .help("Not decoration: it becomes the version IRI and the name of the "
                                 + "directory the copy is kept in, so it is what anybody uses to "
-                                + "say which release they were looking at. Change it only to "
-                                + "reproduce a release you meant to cut on an earlier day.")
+                                + "say which release they were looking at. A date for the dated "
+                                + "convention, MAJOR.MINOR.PATCH for the semantic one - where "
+                                + "patch means nothing moved, minor means terms were added, and "
+                                + "major means something published is gone or has moved. A "
+                                + "leading v, as in the git tag, is ignored.")
                         .build(),
                 Parameter.of(OPTION_CHECK, "Refuse to release on an error",
                         Parameter.Kind.FLAG)
-                        .defaultValue("true")
+                        .defaultValue(values.get(OPTION_CHECK))
                         .help("Two checks. ROBOT's quality report, with this project's own "
                                 + "profile.txt, stopping if anything comes back at error. And "
                                 + "whether this release drops a term the last one published - "
@@ -90,7 +205,7 @@ public class ReleaseAction extends OntoBoardAction {
                                 + "rather than pretending it passed.")
                         .build(),
                 Parameter.of(OPTION_REASON, "Write down the inferences", Parameter.Kind.FLAG)
-                        .defaultValue("true")
+                        .defaultValue(values.get(OPTION_REASON))
                         .help("Runs the reasoner and records its conclusions as ordinary subclass "
                                 + "axioms, so a consumer who never runs a reasoner still sees the "
                                 + "whole hierarchy. This is what 'make reason' does and what most "
@@ -98,11 +213,11 @@ public class ReleaseAction extends OntoBoardAction {
                         .build(),
                 Parameter.of(OPTION_REASONER, "Reasoner", Parameter.Kind.CHOICE)
                         .choices(Reasoners.labels().toArray(new String[0]))
-                        .defaultValue(Reasoners.DEFAULT.getLabel())
+                        .defaultValue(values.get(OPTION_REASONER))
                         .help(Reasoners.help())
                         .build(),
                 Parameter.of(OPTION_MERGE, "Merge the imports in", Parameter.Kind.FLAG)
-                        .defaultValue("false")
+                        .defaultValue(values.get(OPTION_MERGE))
                         .help("Copies every imported axiom into the release and drops the import "
                                 + "statements, giving one self-contained file. OBO projects "
                                 + "publish this as the '-full' artefact alongside the ordinary "
@@ -110,7 +225,7 @@ public class ReleaseAction extends OntoBoardAction {
                                 + "Off gives the release the same imports the edit file has.")
                         .build(),
                 Parameter.of(OPTION_STRIP, "Leave the editorial notes out", Parameter.Kind.FLAG)
-                        .defaultValue("false")
+                        .defaultValue(values.get(OPTION_STRIP))
                         .help("Removes IAO:0000116 editor notes and IAO:0000232 curator notes "
                                 + "from the release. Their own definition permits this - a note "
                                 + "'may not be included in the publication version' - but it is "
@@ -118,21 +233,6 @@ public class ReleaseAction extends OntoBoardAction {
                                 + "ontologies keep them because they explain the modelling. Off "
                                 + "by default for that reason.")
                         .build());
-
-        Map<String, String> chosen = ParameterDialog.show(getOWLWorkspace(), "Release",
-                "Produces the published version from the file you have open. Your edit file is "
-                        + "not modified.",
-                parameters);
-        if (chosen == null) {
-            return false;
-        }
-        date = chosen.get(OPTION_DATE).trim();
-        check = "true".equalsIgnoreCase(chosen.get(OPTION_CHECK));
-        reason = "true".equalsIgnoreCase(chosen.get(OPTION_REASON));
-        reasoner = Reasoners.byLabel(chosen.get(OPTION_REASONER));
-        merge = "true".equalsIgnoreCase(chosen.get(OPTION_MERGE));
-        strip = "true".equalsIgnoreCase(chosen.get(OPTION_STRIP));
-        return true;
     }
 
     @Override
@@ -147,7 +247,14 @@ public class ReleaseAction extends OntoBoardAction {
         String id = Release.ontologyIdFrom(editFile);
         File projectRoot = projectRootOf(editFile);
         result.note("Project: " + projectRoot.getAbsolutePath());
-        result.note("Date: " + date);
+        result.note("Version: " + version.describe());
+        // Two release paths that disagree about the version is how a project ends up with two
+        // histories. MatWerk keeps the version in src/ontology/release.sh, so if that file names
+        // a different one, say so before anything is written rather than after it is published.
+        String disagreement = whatReleaseScriptSays(editFile, version);
+        if (disagreement != null) {
+            result.warn(disagreement);
+        }
 
         // Refuse before doing any work. A release is the one artefact that cannot be taken back
         // once somebody has imported it.
@@ -193,12 +300,17 @@ public class ReleaseAction extends OntoBoardAction {
             result.note("Editorial notes removed: " + removed.size());
         }
 
+        String previous = previousRelease(projectRoot, id, date);
         try {
-            release.getOWLOntologyManager().applyChanges(Release.stamp(release, date));
+            release.getOWLOntologyManager().applyChanges(Release.stamp(release, version,
+                    previous == null ? null : OntologyVersion.of(previous)));
         } catch (IllegalArgumentException cannotStamp) {
             return result.failed(cannotStamp.getMessage()).build();
         }
         result.note("Version IRI: " + Release.versionIriOf(release));
+        if (Release.priorVersionOf(release) != null) {
+            result.note("Follows: " + Release.priorVersionOf(release));
+        }
 
         if (BackgroundRun.abandoned()) {
             return result.failed("Stopped before anything was written.").build();
@@ -208,7 +320,6 @@ public class ReleaseAction extends OntoBoardAction {
         // obsoleted breaks every ontology that imported it and tells nobody, so this is the last
         // moment it can be caught for free.
         ReleaseDiff diff = null;
-        String previous = previousRelease(projectRoot, id, date);
         if (previous != null) {
             try {
                 diff = ReleaseDiff.between(
@@ -344,7 +455,8 @@ public class ReleaseAction extends OntoBoardAction {
                     + "publishes; tick 'Merge the imports in' if you want a file that stands on "
                     + "its own.");
         }
-        return result.summary("Released " + id + " " + date + ": " + release.getAxiomCount()
+        return result.summary("Released " + id + " " + version.getText() + ": "
+                + release.getAxiomCount()
                 + " axioms, written to " + published.getName() + " and kept as "
                 + relative(projectRoot, dated) + ".").build();
     }
@@ -396,26 +508,79 @@ public class ReleaseAction extends OntoBoardAction {
      * on elsewhere.
      */
     static String previousRelease(File projectRoot, String ontologyId, String date) {
-        java.util.List<String> dates = new java.util.ArrayList<String>();
+        OntologyVersion releasing = OntologyVersion.parseOrNull(date);
+        if (releasing == null) {
+            return null;
+        }
         File releases = new File(projectRoot, "releases");
         File[] directories = releases.listFiles();
         if (directories == null) {
             return null;
         }
+        OntologyVersion best = null;
         for (File directory : directories) {
-            if (directory.isDirectory()
-                    && directory.getName().matches("\\d{4}-\\d{2}-\\d{2}")
-                    && directory.getName().compareTo(date) < 0
-                    && Release.releaseFile(projectRoot, ontologyId,
-                            directory.getName()).isFile()) {
-                dates.add(directory.getName());
+            if (!directory.isDirectory()) {
+                continue;
+            }
+            OntologyVersion found = OntologyVersion.parseOrNull(directory.getName());
+            // Same convention only. A dated release and a semantic one are not two points on
+            // one line: a project that released 2026-01-01 and is now cutting 3.0.0 has two
+            // histories, and diffing across them would compare two things that were never
+            // consecutive - then refuse the release over every term that "disappeared".
+            if (found == null || found.getScheme() != releasing.getScheme()
+                    || found.compareTo(releasing) >= 0
+                    || !Release.releaseFile(projectRoot, ontologyId, found.getText()).isFile()) {
+                continue;
+            }
+            if (best == null || found.compareTo(best) > 0) {
+                best = found;
             }
         }
-        if (dates.isEmpty()) {
+        return best == null ? null : best.getText();
+    }
+
+    /**
+     * Why the project's own release script disagrees with what is being cut, or null.
+     *
+     * <p>MatWerk keeps the version in {@code src/ontology/release.sh} ({@code VERSION=3.0.2}),
+     * which is the other way its releases are made. Two release paths with two different
+     * versions is how a project ends up publishing 3.0.2 twice, or skipping it, and the
+     * discrepancy is invisible in both places - each is internally consistent. Checked before
+     * anything is written, and reported rather than enforced: cutting a version the script has
+     * not caught up with is a legitimate thing to do deliberately.
+     */
+    static String whatReleaseScriptSays(File editFile, OntologyVersion releasing) {
+        if (editFile == null || editFile.getParentFile() == null) {
             return null;
         }
-        java.util.Collections.sort(dates);
-        return dates.get(dates.size() - 1);
+        File script = new File(editFile.getParentFile(), "release.sh");
+        if (!script.isFile()) {
+            return null;
+        }
+        String declared = null;
+        try {
+            for (String line : java.nio.file.Files.readAllLines(script.toPath(),
+                    java.nio.charset.Charset.forName("UTF-8"))) {
+                String trimmed = line.trim();
+                if (trimmed.startsWith("VERSION=")) {
+                    declared = trimmed.substring("VERSION=".length()).trim()
+                            .replace("\"", "").replace("'", "");
+                }
+            }
+        } catch (java.io.IOException | RuntimeException cannotRead) {
+            return null;
+        }
+        if (declared == null || declared.isEmpty() || declared.startsWith("$")) {
+            return null;
+        }
+        OntologyVersion scripted = OntologyVersion.parseOrNull(declared);
+        if (scripted != null && scripted.equals(releasing)) {
+            return null;
+        }
+        return script.getName() + " in this project says VERSION=" + declared + ", and this "
+                + "release is " + releasing.getText() + ". Those are the two ways this project "
+                + "cuts a release, so one of them is about to publish a version the other does "
+                + "not know about.";
     }
 
     /**
