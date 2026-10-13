@@ -476,8 +476,17 @@ public final class TermCreation {
      * @param minting the generator to use, or null to continue {@code target}'s own numbering
      */
     private static String nextIdentifier(SheetBook book, String target, IriGenerator minting) {
-        IriGenerator generator = minting != null ? minting
+        // Re-scoped to the TARGET sheet, not the one the cursor is in. A proposal's whole point
+        // is that the row lands somewhere else - "create this organization in organization" is
+        // invoked from the instrument sheet - and a minter scoped to the caller gave the new
+        // row the caller's shape, permanently.
+        IriGenerator generator = minting != null ? minting.forAnotherSheet(target)
                 : IriGenerator.forSheet(book, target, null, null, null);
-        return generator.canMint() ? generator.mint(1).get(0) : "";
+        if (!generator.canMint()) {
+            return "";
+        }
+        return generator.getSource().needsALabel()
+                ? generator.mintFor(java.util.Collections.singletonList("")).get(0)
+                : generator.mint(1).get(0);
     }
 }

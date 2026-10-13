@@ -228,16 +228,15 @@ public final class Workbook {
             }
             StringBuilder text = new StringBuilder();
             for (List<String> row : tab.getRows()) {
-                for (int at = 0; at < row.size(); at++) {
-                    if (at > 0) {
-                        text.append('\t');
-                    }
-                    // A tab or a newline inside a cell would add a column or a row on the way
-                    // out. Excel allows both; TSV does not survive either.
-                    text.append(row.get(at).replace('\t', ' ').replace("\r\n", " ")
-                            .replace('\n', ' ').replace('\r', ' '));
+                // Flattened, because a cell holding two lines is a row holding two rows
+                // everywhere downstream - and then escaped, because a cell holding a
+                // quote was written out raw and read back as the start of a quoted field,
+                // taking the next tab, the next newline, and every column after it.
+                List<String> flat = new ArrayList<String>(row.size());
+                for (String cell : row) {
+                    flat.add(Delimited.flatten(cell));
                 }
-                text.append('\n');
+                text.append(Delimited.line(flat, '\t'));
             }
             java.nio.file.Files.write(file.toPath(),
                     text.toString().getBytes(java.nio.charset.Charset.forName("UTF-8")));

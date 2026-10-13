@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -249,6 +250,100 @@ class WorkbookTest {
 
         assertFalse(again.get(0).getName().equals("mwo-instances.tsv"),
                 "the second import must not write over the first: " + again);
+    }
+
+    // ---------- what we write has to be readable by what reads it ----------
+
+    /**
+     * A workbook built here rather than shipped as a fixture, because the point is one cell:
+     * {@code a 36" bar}. Imported raw, that cell opened a quoted field for OpenCSV, which then
+     * ate the tab after it, the newline after that, and every column of every row below until
+     * it found another quote or the end of the file. In the workbook this came from it moved an
+     * identifier onto the wrong row and changed 20,795 cells, and two tabs could not be opened
+     * at all - with no error anywhere.
+     */
+    private static File workbookWithAQuoteInACell(File folder) throws Exception {
+        File file = new File(folder, "quoted.xlsx");
+        java.util.zip.ZipOutputStream zip = new java.util.zip.ZipOutputStream(
+                new java.io.FileOutputStream(file));
+        put(zip, "xl/workbook.xml",
+                "<?xml version=\"1.0\"?><workbook"
+                + " xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\""
+                + " xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/"
+                + "relationships\">"
+                + "<sheets><sheet name=\"terms\" sheetId=\"1\" r:id=\"rId1\"/></sheets>"
+                + "</workbook>");
+        put(zip, "xl/_rels/workbook.xml.rels",
+                "<?xml version=\"1.0\"?><Relationships"
+                + " xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">"
+                + "<Relationship Id=\"rId1\" Target=\"worksheets/sheet1.xml\" Type=\"http://"
+                + "schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet\"/>"
+                + "</Relationships>");
+        put(zip, "xl/worksheets/sheet1.xml",
+                "<?xml version=\"1.0\"?><worksheet"
+                + " xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\">"
+                + "<sheetData>"
+                + row(1, "#", "Label", "Note")
+                + row(2, "ID", "LABEL", "A rdfs:comment")
+                + row(3, "ex:1", "a 36&quot; bar", "inch marks")
+                + row(4, "ex:2", "the row below it", "must stay its own")
+                + "</sheetData></worksheet>");
+        zip.close();
+        return file;
+    }
+
+    private static String row(int number, String... cells) {
+        StringBuilder xml = new StringBuilder("<row r=\"" + number + "\">");
+        for (int at = 0; at < cells.length; at++) {
+            xml.append("<c r=\"").append((char) ('A' + at)).append(number)
+                    .append("\" t=\"inlineStr\"><is><t>").append(cells[at])
+                    .append("</t></is></c>");
+        }
+        return xml.append("</row>").toString();
+    }
+
+    private static void put(java.util.zip.ZipOutputStream zip, String name, String content)
+            throws Exception {
+        zip.putNextEntry(new java.util.zip.ZipEntry(name));
+        zip.write(content.getBytes(Charset.forName("UTF-8")));
+        zip.closeEntry();
+    }
+
+    @Test
+    void aQuoteInACellSurvivesTheTripThroughRobotsOwnReader(@TempDir File folder)
+            throws Exception {
+        File workbook = workbookWithAQuoteInACell(folder);
+        File into = new File(folder, "templates");
+        assertTrue(into.mkdirs());
+
+        Workbook.importInto(workbook, into);
+        SheetBook book = SheetBook.open(into);
+
+        assertTrue(book.getUnreadable().isEmpty(),
+                "the sheet must open at all: " + book.getUnreadable());
+        assertEquals(1, book.size());
+        assertEquals("a 36\" bar", book.cell("terms", 3, 2), "the cell itself");
+        assertEquals("ex:2", book.cell("terms", 4, 1),
+                "the row below must keep its own identifier");
+        assertEquals("must stay its own", book.cell("terms", 4, 3),
+                "and its own last column");
+    }
+
+    /**
+     * The same file, read by ROBOT rather than by us, because that is who reads it next.
+     */
+    @Test
+    void whatWeWriteForRobotIsWhatRobotReads(@TempDir File folder) throws Exception {
+        File into = new File(folder, "templates");
+        assertTrue(into.mkdirs());
+        Workbook.importInto(workbookWithAQuoteInACell(folder), into);
+
+        List<List<String>> back = de.fizkarlsruhe.ise.ontoboard.robot.TemplateSheet.read(
+                new File(into, "terms.tsv"));
+
+        assertEquals(4, back.size(), "four rows in, four rows out: " + back);
+        assertEquals(Arrays.asList("ex:1", "a 36\" bar", "inch marks"), back.get(2));
+        assertEquals(Arrays.asList("ex:2", "the row below it", "must stay its own"), back.get(3));
     }
 
     // ---------- the arithmetic, directly ----------

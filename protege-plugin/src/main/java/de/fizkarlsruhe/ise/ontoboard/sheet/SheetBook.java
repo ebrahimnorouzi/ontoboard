@@ -62,11 +62,23 @@ public final class SheetBook {
         private final char delimiter;
         private boolean unsaved;
 
+        /**
+         * When the file was last read or written by us, as the filesystem reports it.
+         *
+         * <p>Kept so that saving can tell the difference between a file nobody has touched and
+         * a file that has moved under us - a {@code git pull}, a merge, the pipeline that
+         * rebuilds these sheets, or the same folder open in Excel. Saving was a bare write, so
+         * in all of those cases it silently replaced somebody else's work with a copy of a
+         * file read minutes earlier.
+         */
+        private long readAt;
+
         Sheet(String name, File file, List<List<String>> rows, char delimiter) {
             this.name = name;
             this.file = file;
             this.rows = rows;
             this.delimiter = delimiter;
+            this.readAt = file == null ? 0L : file.lastModified();
         }
 
         /** The file's name without its extension, which is what references and findings use. */
@@ -109,6 +121,35 @@ public final class SheetBook {
         }
     }
 
+    /**
+     * Saving would have overwritten a file that changed since it was read.
+     *
+     * <p>Its own type so that a caller can offer the only two answers that make sense -
+     * overwrite it, or reload and lose the edits - rather than printing a message and carrying
+     * on. {@link #getSheet} and {@link #getFile} are there so the question can name them.
+     */
+    public static final class ChangedOnDisk extends IOException {
+        private static final long serialVersionUID = 1L;
+
+        private final String sheet;
+        private final File file;
+
+        ChangedOnDisk(String sheet, File file) {
+            super(file.getName() + " changed on disk after it was opened here, so saving "
+                    + sheet + " would overwrite whatever that change was.");
+            this.sheet = sheet;
+            this.file = file;
+        }
+
+        public String getSheet() {
+            return sheet;
+        }
+
+        public File getFile() {
+            return file;
+        }
+    }
+
     /** One reversible change. */
     private static final class Change {
         private final String sheet;
@@ -122,8 +163,49 @@ public final class SheetBook {
         }
     }
 
+    /**
+     * A file in the folder that is not open, and why it is not.
+     *
+     * <p>This type exists because the alternative was a {@code continue}. A file ROBOT's reader
+     * throws on was skipped so that one bad file could not stop the other twenty-five from
+     * opening - which is right - but nothing then said it had been skipped, so the file was
+     * simply absent: no tab, no message, nothing in the log. Two sheets of a twenty-six sheet
+     * knowledge graph went missing that way, and the only trace was a tab count nobody counts.
+     */
+    public static final class Unreadable {
+        private final File file;
+        private final String reason;
+
+        Unreadable(File file, String reason) {
+            this.file = file;
+            this.reason = reason;
+        }
+
+        public File getFile() {
+            return file;
+        }
+
+        /** The name the sheet would have had. */
+        public String getName() {
+            return stem(file.getName());
+        }
+
+        public String getReason() {
+            return reason;
+        }
+
+        @Override
+        public String toString() {
+            return getName() + ": " + reason;
+        }
+    }
+
     private final Map<String, Sheet> sheets = new LinkedHashMap<String, Sheet>();
+    private final List<Unreadable> unreadable = new ArrayList<Unreadable>();
     private final List<Change> history = new ArrayList<Change>();
+
+    /** Where changes go while a gesture is being recorded, or null. See {@link #asOneChange}. */
+    private List<Change> group;
     private OWLOntology ontology;
     private String ontologyName = "the open ontology";
     private LabelIndex index;
@@ -170,12 +252,14 @@ public final class SheetBook {
                     rows.add(new ArrayList<String>(row));
                 }
                 if (rows.size() < 2) {
+                    book.unreadable.add(new Unreadable(file, "it has no template row: a sheet "
+                            + "needs a heading row and a row of ROBOT template strings under "
+                            + "it"));
                     continue;
                 }
                 book.add(stem(file.getName()), file, rows, lower.endsWith(".csv") ? ',' : '\t');
             } catch (RuntimeException cannotRead) {
-                // Skipped on purpose; the caller lists what opened.
-                continue;
+                book.unreadable.add(new Unreadable(file, because(cannotRead)));
             }
         }
         return book;
@@ -200,6 +284,37 @@ public final class SheetBook {
      * <p>Held rather than indexed immediately: a book is opened before anybody asks a question
      * about it, and indexing a large ontology's labels is not free.
      */
+    /**
+     * What to tell somebody whose file did not open.
+     *
+     * <p>OpenCSV names the symptom at the point it gave up, which is the end of the file, and
+     * not the cause, which is a cell several hundred rows earlier. Since that is the failure
+     * this folder actually hits, it gets translated.
+     */
+    private static String because(RuntimeException cannotRead) {
+        String said = cannotRead.getMessage();
+        if (said == null || said.trim().isEmpty()) {
+            return cannotRead.getClass().getSimpleName();
+        }
+        if (said.contains("Unterminated quoted field")) {
+            return "a cell opens a double quote and never closes it, so the reader ran to the "
+                    + "end of the file looking for the other one. Quote the cell, or double the "
+                    + "quote inside it.";
+        }
+        return said.trim();
+    }
+
+    /**
+     * The files in the folder that are not open, in the order they were found.
+     *
+     * <p>Empty for the ordinary case. A caller that opened a folder is expected to say what is
+     * in here, because a sheet that is not open is a sheet whose rows nobody is editing and
+     * whose errors nobody is seeing.
+     */
+    public List<Unreadable> getUnreadable() {
+        return Collections.unmodifiableList(new ArrayList<Unreadable>(unreadable));
+    }
+
     public SheetBook against(OWLOntology open, String name) {
         this.ontology = open;
         if (name != null && !name.trim().isEmpty()) {
@@ -385,17 +500,28 @@ public final class SheetBook {
         while (trailing > 0 && Character.isDigit(source.charAt(trailing - 1))) {
             trailing--;
         }
-        boolean numbered = trailing < source.length();
-        String stem = source.substring(0, trailing);
-        long first = numbered ? Long.parseLong(source.substring(trailing)) : 0;
-        int changed = 0;
-        for (int row = fromRow + 1; row <= toRow; row++) {
-            String value = numbered ? stem + (first + (row - fromRow)) : source;
-            if (setCell(sheetName, row, column, value)) {
-                changed++;
-            }
-        }
-        return changed;
+        final boolean numbered = trailing < source.length();
+        final String stem = source.substring(0, trailing);
+        final long first = numbered ? Long.parseLong(source.substring(trailing)) : 0;
+        final String from = source;
+        final String where = sheetName;
+        final int down = column;
+        final int top = fromRow;
+        final int bottom = toRow;
+        return asOneChange("fill down " + (toRow - fromRow) + " cells in " + sheetName,
+                new Gesture() {
+                    @Override
+                    public int run() {
+                        int changed = 0;
+                        for (int row = top + 1; row <= bottom; row++) {
+                            String value = numbered ? stem + (first + (row - top)) : from;
+                            if (setCell(where, row, down, value)) {
+                                changed++;
+                            }
+                        }
+                        return changed;
+                    }
+                });
     }
 
     /**
@@ -407,33 +533,96 @@ public final class SheetBook {
      *
      * @return how many cells were changed
      */
-    public int paste(String sheetName, int row, int column, List<List<String>> block) {
+    public int paste(final String sheetName, final int row, final int column,
+            final List<List<String>> block) {
         if (sheets.get(sheetName) == null || block == null || block.isEmpty()) {
             return 0;
         }
-        int changed = 0;
-        for (int down = 0; down < block.size(); down++) {
-            int target = row + down;
-            while (target > sheets.get(sheetName).rows.size()) {
-                addRow(sheetName);
-            }
-            List<String> line = block.get(down);
-            for (int across = 0; across < line.size(); across++) {
-                if (setCell(sheetName, target, column + across, line.get(across))) {
-                    changed++;
+        return asOneChange("paste into " + sheetName, new Gesture() {
+            @Override
+            public int run() {
+                int changed = 0;
+                for (int down = 0; down < block.size(); down++) {
+                    int target = row + down;
+                    while (target > sheets.get(sheetName).rows.size()) {
+                        addRow(sheetName);
+                    }
+                    List<String> line = block.get(down);
+                    for (int across = 0; across < line.size(); across++) {
+                        if (setCell(sheetName, target, column + across, line.get(across))) {
+                            changed++;
+                        }
+                    }
                 }
+                return changed;
             }
-        }
-        return changed;
+        });
     }
 
     private void touched(Sheet sheet, String what, Runnable undo) {
         sheet.unsaved = true;
         index = null;
-        history.add(new Change(sheet.name, what, undo));
+        Change change = new Change(sheet.name, what, undo);
+        if (group != null) {
+            // Inside a gesture. Held aside rather than put in the history, so that forty rows
+            // of pasted cells cannot push the previous forty edits off the end of it.
+            group.add(change);
+            return;
+        }
+        history.add(change);
         while (history.size() > HISTORY) {
             history.remove(0);
         }
+    }
+
+    /** A gesture that changes many cells and reports how many. */
+    public interface Gesture {
+        int run();
+    }
+
+    /**
+     * Runs a gesture and leaves one thing to undo.
+     *
+     * <p>Every cell edit records its own reversal, which is right: the cell is the only thing
+     * that knows what it held. But undo is a person's idea, not a cell's, and the person
+     * pasted once - so pasting forty rows into two columns used to need eighty undos, during
+     * which the sheet passed through seventy-nine states nobody had ever asked for. With a
+     * history of 200 entries, that one paste also pushed almost everything else off the end.
+     *
+     * <p>Nesting is allowed and does nothing: the outermost gesture owns the entry, so a
+     * gesture built out of smaller ones is still one undo.
+     */
+    public int asOneChange(String what, Gesture body) {
+        if (group != null) {
+            return body.run();
+        }
+        final List<Change> made = new ArrayList<Change>();
+        group = made;
+        int changed;
+        try {
+            changed = body.run();
+        } finally {
+            group = null;
+        }
+        if (made.isEmpty()) {
+            return changed;
+        }
+        if (made.size() == 1) {
+            history.add(made.get(0));
+        } else {
+            history.add(new Change(made.get(0).sheet, what, new Runnable() {
+                @Override
+                public void run() {
+                    for (int at = made.size() - 1; at >= 0; at--) {
+                        made.get(at).undo.run();
+                    }
+                }
+            }));
+        }
+        while (history.size() > HISTORY) {
+            history.remove(0);
+        }
+        return changed;
     }
 
     // ---------------------------------------------------------------- undo
@@ -615,6 +804,18 @@ public final class SheetBook {
      * @throws IOException if the file cannot be written
      */
     public void save(String sheetName) throws IOException {
+        save(sheetName, false);
+    }
+
+    /**
+     * Writes the sheet back to the file it came from.
+     *
+     * @param overwriteWhateverIsThere true to write even though the file has changed since it
+     *     was read. Only pass it after asking somebody, because what it overwrites is a change
+     *     that is not in this editor and therefore not in its undo history either.
+     * @throws ChangedOnDisk if the file changed and this was not told to overwrite it
+     */
+    public void save(String sheetName, boolean overwriteWhateverIsThere) throws IOException {
         Sheet sheet = sheets.get(sheetName);
         if (sheet == null) {
             throw new IOException("No sheet called " + sheetName);
@@ -623,7 +824,36 @@ public final class SheetBook {
             throw new IOException(sheetName + " was never on disk, so there is nowhere to save "
                     + "it. Use writeTo to choose a file.");
         }
+        if (!overwriteWhateverIsThere && changedOnDisk(sheetName)) {
+            throw new ChangedOnDisk(sheetName, sheet.file);
+        }
         writeTo(sheetName, sheet.file);
+    }
+
+    /**
+     * Has the file this sheet came from changed since it was read?
+     *
+     * <p>False for a sheet that was never on disk, and false if the file has gone - a missing
+     * file is not a conflicting change, and saving is how to put it back.
+     */
+    public boolean changedOnDisk(String sheetName) {
+        Sheet sheet = sheets.get(sheetName);
+        if (sheet == null || sheet.file == null || !sheet.file.isFile()) {
+            return false;
+        }
+        long now = sheet.file.lastModified();
+        return now != 0L && sheet.readAt != 0L && now != sheet.readAt;
+    }
+
+    /** Every sheet whose file has changed under us, in sheet order. */
+    public List<String> changedOnDisk() {
+        List<String> names = new ArrayList<String>();
+        for (String name : sheets.keySet()) {
+            if (changedOnDisk(name)) {
+                names.add(name);
+            }
+        }
+        return names;
     }
 
     /** Writes one sheet to a named file and, if it was unsaved, marks it saved. */
@@ -634,6 +864,11 @@ public final class SheetBook {
         }
         Files.write(file.toPath(), render(sheet).getBytes(Charset.forName("UTF-8")));
         sheet.unsaved = false;
+        if (file.equals(sheet.file)) {
+            // Our own write is not somebody else's change. Without this the second save of a
+            // session refuses, having found a modification time it set itself.
+            sheet.readAt = file.lastModified();
+        }
     }
 
     /** The sheet as text, exactly as {@link #save} would write it. */
@@ -645,35 +880,8 @@ public final class SheetBook {
     private static String render(Sheet sheet) {
         StringBuilder text = new StringBuilder();
         for (List<String> row : sheet.rows) {
-            for (int at = 0; at < row.size(); at++) {
-                if (at > 0) {
-                    text.append(sheet.delimiter);
-                }
-                text.append(escape(row.get(at) == null ? "" : row.get(at), sheet.delimiter));
-            }
-            text.append('\n');
+            text.append(Delimited.line(row, sheet.delimiter));
         }
         return text.toString();
-    }
-
-    /**
-     * Quotes a cell when it has to be, by the same rule for TSV as for CSV.
-     *
-     * <p>The first version of this returned a TSV cell untouched, reasoning that a tab cannot
-     * appear inside one so nothing needs quoting. The round-trip test killed it. ROBOT reads
-     * both formats through opencsv, which begins a quoted field at any {@code "} that directly
-     * follows a delimiter - so a cell starting with a quote, written raw, swallows the rest of
-     * the file and comes back as {@code Unterminated quoted field at end of CSV line}. There is
-     * such a cell in the MatWerk {@code req_2} sheet, and the published original quotes it.
-     *
-     * <p>So the rule is the one CSV uses, for both: quote when the cell holds a quote, a
-     * newline, or the delimiter, and double any quote inside. A cell holding a tab is quoted
-     * too rather than silently splitting the row - the audit reports it separately.
-     */
-    private static String escape(String cell, char delimiter) {
-        boolean needs = cell.indexOf(delimiter) >= 0 || cell.indexOf('"') >= 0
-                || cell.indexOf('\n') >= 0 || cell.indexOf('\r') >= 0
-                || cell.indexOf('\t') >= 0;
-        return needs ? '"' + cell.replace("\"", "\"\"") + '"' : cell;
     }
 }

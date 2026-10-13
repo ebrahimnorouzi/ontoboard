@@ -157,13 +157,18 @@ public class SheetEditorView extends AbstractOWLViewComponent {
                     + "usually src/templates.");
             return;
         }
-        folder = templates;
         if (SheetLocation.sheetsIn(templates) == 0) {
+            folder = templates;
             say("No templates yet. They belong in " + templates.getAbsolutePath()
                     + " - write one with ROBOT > Template... and it will open here, or use "
                     + "Open folder... for somewhere else.");
             return;
         }
+        if (decideAboutUnsaved("Opening this project's own templates would replace them.")
+                == Unsaved.CANCEL) {
+            return;
+        }
+        folder = templates;
         open(SheetBook.open(templates).against(ontologyOrNull(), "the open ontology"));
     }
 
@@ -354,12 +359,45 @@ public class SheetEditorView extends AbstractOWLViewComponent {
         if (chooser.showOpenDialog(this) != JFileChooser.APPROVE_OPTION) {
             return;
         }
-        if (book.isUnsaved() && !confirm("Some sheets have unsaved changes. Open another "
-                + "folder and lose them?")) {
+        if (decideAboutUnsaved("Opening another folder would replace them.")
+                == Unsaved.CANCEL) {
             return;
         }
         folder = chooser.getSelectedFile();
         open(SheetBook.open(folder).against(ontologyOrNull(), "the open ontology"));
+    }
+
+    /**
+     * Puts the files that did not open where they can be seen.
+     *
+     * <p>In the status line rather than a dialog, because the folder being opened may hold a
+     * stray one-line csv and nobody wants a modal for that - but in the status line and not
+     * only the log, because the thing being reported is that a sheet somebody has is not in
+     * front of them. The reasons go in the tooltip, one per file.
+     *
+     * <p>The alternative, which is what this did until 1.119.0, is that the tab count is one
+     * short and nothing anywhere says why.
+     */
+    private void tellAboutWhatDidNotOpen() {
+        List<SheetBook.Unreadable> missing = book.getUnreadable();
+        if (missing.isEmpty()) {
+            status.setToolTipText(null);
+            return;
+        }
+        if (book.size() > 0) {
+            say(status.getText().trim() + "  -  " + countOf(missing.size())
+                    + " did not open. Hover for why.");
+        }
+        StringBuilder why = new StringBuilder("<html><body style='width:420px'>");
+        for (SheetBook.Unreadable each : missing) {
+            why.append("<b>").append(each.getFile().getName()).append("</b> - ")
+                    .append(each.getReason()).append("<br>");
+        }
+        status.setToolTipText(why.append("</body></html>").toString());
+    }
+
+    private static String countOf(int files) {
+        return files == 1 ? "1 file" : files + " files";
     }
 
     /** Package-visible so a test can open a book without a file chooser. */
@@ -375,6 +413,13 @@ public class SheetEditorView extends AbstractOWLViewComponent {
             models.put(name, model);
             final SheetTable table = new SheetTable(model);
             table.addMouseListener(new RightClick(table, model));
+            SheetClipboard.install(table, new Runnable() {
+                @Override
+                public void run() {
+                    recheck();
+                    say("Pasted into " + name + ".");
+                }
+            });
             table.autofitColumns();
             JScrollPane scrolled = new JScrollPane(table);
             // Row numbers down the left, as a spreadsheet has: every message about these sheets
@@ -405,9 +450,14 @@ public class SheetEditorView extends AbstractOWLViewComponent {
             sheets.addTab(name, scrolled);
         }
         if (book.size() == 0) {
-            say("No .tsv or .csv files there, so there is nothing to edit.");
+            say(book.getUnreadable().isEmpty()
+                    ? "No .tsv or .csv files there, so there is nothing to edit."
+                    : countOf(book.getUnreadable().size()) + " there, and none of them opened. "
+                            + "Hover for why.");
+            tellAboutWhatDidNotOpen();
             return;
         }
+        tellAboutWhatDidNotOpen();
         recheck();
     }
 
@@ -423,6 +473,10 @@ public class SheetEditorView extends AbstractOWLViewComponent {
     private void newSheet() {
         if (folder == null) {
             say("Open a folder first, so there is somewhere to put it.");
+            return;
+        }
+        if (decideAboutUnsaved("Adding a sheet rereads the folder, which would replace them.")
+                == Unsaved.CANCEL) {
             return;
         }
         String name = JOptionPane.showInputDialog(this,
@@ -475,6 +529,10 @@ public class SheetEditorView extends AbstractOWLViewComponent {
     private void importWorkbook() {
         if (folder == null) {
             say("Open a folder first, so there is somewhere to put the tabs.");
+            return;
+        }
+        if (decideAboutUnsaved("Importing a workbook rereads the folder, which would replace "
+                + "them.") == Unsaved.CANCEL) {
             return;
         }
         JFileChooser chooser = new JFileChooser(folder);
@@ -982,25 +1040,56 @@ public class SheetEditorView extends AbstractOWLViewComponent {
         say("Undone, in " + where + ".");
     }
 
+    /**
+     * Writes the open sheets back, asking about any file that changed under us.
+     *
+     * <p>The asking is the point. Saving used to be a bare write, so a sheet opened before a
+     * {@code git pull} - or before the pipeline rebuilt it, or while the same folder was open in
+     * Excel - was written back as it had been read, and the other change was gone with nothing
+     * said and nothing in the undo history. The question is per file, because one stale sheet
+     * is no reason not to save the other twenty-five.
+     */
     private void save(boolean everything) {
         SheetTable table = selectedTable();
         List<String> written = new ArrayList<String>();
-        try {
-            for (SheetBook.Sheet sheet : book.getSheets()) {
-                boolean wanted = everything
-                        || (table != null && ((SheetTableModel) table.getModel())
-                                .getSheetName().equals(sheet.getName()));
-                if (wanted && sheet.isUnsaved()) {
-                    book.save(sheet.getName());
-                    written.add(sheet.getName());
-                }
+        List<String> left = new ArrayList<String>();
+        for (SheetBook.Sheet sheet : book.getSheets()) {
+            boolean wanted = everything
+                    || (table != null && ((SheetTableModel) table.getModel())
+                            .getSheetName().equals(sheet.getName()));
+            if (!wanted || !sheet.isUnsaved()) {
+                continue;
             }
-        } catch (IOException cannotWrite) {
-            say("Could not write: " + cannotWrite.getMessage());
-            return;
+            String name = sheet.getName();
+            try {
+                book.save(name);
+                written.add(name);
+            } catch (SheetBook.ChangedOnDisk moved) {
+                if (!confirm(moved.getMessage() + "\n\nOverwrite it with what is open here?"
+                        + " Cancel to leave the file alone and keep the edits unsaved.")) {
+                    left.add(name);
+                    continue;
+                }
+                try {
+                    book.save(name, true);
+                    written.add(name);
+                } catch (IOException cannotWrite) {
+                    say("Could not write " + name + ": " + cannotWrite.getMessage());
+                    return;
+                }
+            } catch (IOException cannotWrite) {
+                say("Could not write " + name + ": " + cannotWrite.getMessage());
+                return;
+            }
         }
-        say(written.isEmpty() ? "Nothing had changed."
-                : "Wrote " + written.size() + ": " + String.join(", ", written));
+        String said = written.isEmpty() ? "Nothing written."
+                : "Wrote " + written.size() + ": " + String.join(", ", written) + ".";
+        if (!left.isEmpty()) {
+            said += "  Left alone, still unsaved: " + String.join(", ", left) + ".";
+        } else if (written.isEmpty()) {
+            said = "Nothing had changed.";
+        }
+        say(said);
     }
 
     // ---------------------------------------------------------------- provenance
@@ -1207,6 +1296,56 @@ public class SheetEditorView extends AbstractOWLViewComponent {
         }
         Component inside = ((JScrollPane) chosen).getViewport().getView();
         return inside instanceof SheetTable ? (SheetTable) inside : null;
+    }
+
+    /** What to do about unsaved edits before the open sheets are replaced. */
+    private enum Unsaved {
+        /** Nothing was unsaved, or it has just been written. */
+        DEALT_WITH,
+        /** Throw the edits away, as asked. */
+        DISCARD,
+        /** Do not do the thing that would have replaced them. */
+        CANCEL
+    }
+
+    /**
+     * Asks before replacing sheets that have unsaved edits, and offers to save them.
+     *
+     * <p>Three answers rather than two. Only one of the four paths that replace the open
+     * sheets used to ask at all - the other three were "add a sheet", "import a workbook" and
+     * "open this project's templates", each of which rereads the folder from disk and so threw
+     * away every unsaved edit in every sheet without a word. Those three are things somebody
+     * does in the middle of editing, so offering a choice between discarding and cancelling
+     * would be answering the wrong question: what they want is to keep the edits and carry on.
+     *
+     * <p>A failed write leaves the book unsaved, and that counts as cancelling - the one thing
+     * this must never do is carry on after failing to keep what it offered to keep.
+     */
+    private Unsaved decideAboutUnsaved(String what) {
+        if (!book.isUnsaved()) {
+            return Unsaved.DEALT_WITH;
+        }
+        Object[] answers = new Object[] {"Save first", "Discard them", "Cancel"};
+        int answer = JOptionPane.showOptionDialog(this, wrap(unsavedSheets() + " " + what),
+                "Unsaved changes", JOptionPane.DEFAULT_OPTION, JOptionPane.WARNING_MESSAGE, null,
+                answers, answers[0]);
+        if (answer == 0) {
+            save(true);
+            return book.isUnsaved() ? Unsaved.CANCEL : Unsaved.DEALT_WITH;
+        }
+        return answer == 1 ? Unsaved.DISCARD : Unsaved.CANCEL;
+    }
+
+    /** The unsaved sheets, named, because "some sheets" is not enough to decide by. */
+    private String unsavedSheets() {
+        List<String> names = new ArrayList<String>();
+        for (SheetBook.Sheet sheet : book.getSheets()) {
+            if (sheet.isUnsaved()) {
+                names.add(sheet.getName());
+            }
+        }
+        return names.size() == 1 ? "Sheet " + names.get(0) + " has unsaved changes."
+                : "Sheets " + String.join(", ", names) + " have unsaved changes.";
     }
 
     private boolean confirm(String question) {

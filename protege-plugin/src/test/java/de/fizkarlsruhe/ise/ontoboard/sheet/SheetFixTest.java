@@ -149,6 +149,45 @@ class SheetFixTest {
         assertEquals("Max" + CURLY + "Planck", book.cell("organization", 4, 3));
     }
 
+    /**
+     * In one go literally: one entry in the history, not one per cell.
+     *
+     * <p>The difference does not show in a two-cell fixture, which is why it survived. On the
+     * published NFDI-MatWerk workbook the audit suggests 7,446 replacements and 7,406 apply, so
+     * per-cell entries meant the batch both filled the 200-entry history and could not be taken
+     * back - and the Undo button, which reverses one entry, took back one cell of 7,406.
+     */
+    @Test
+    void theBatchIsOneEntryInTheHistoryAndNotOnePerCell() {
+        SheetBook book = messy();
+
+        SheetFix.Outcome outcome = SheetFix.applyAll(book, book.auditAll());
+
+        assertEquals(2, outcome.getApplied());
+        assertEquals("apply the audit's suggestions", book.nextUndo());
+        book.undo();
+        assertEquals("  Fraunhofer  ", book.cell("organization", 3, 3),
+                "one undo has to put every cell of the batch back");
+        assertEquals("Max" + CURLY + "Planck", book.cell("organization", 4, 3));
+        assertFalse(book.canUndo(), "and leave nothing of the batch behind");
+    }
+
+    /** Fixing one cell on its own is still one entry describing that cell. */
+    @Test
+    void oneFixOnItsOwnIsStillJustThatOneEdit() {
+        SheetBook book = messy();
+        List<SheetAudit.Finding> whitespace = new java.util.ArrayList<SheetAudit.Finding>();
+        for (SheetAudit.Finding finding : book.auditAll()) {
+            if (finding.getKind() == SheetAudit.Kind.WHITESPACE) {
+                whitespace.add(finding);
+            }
+        }
+
+        SheetFix.applyAll(book, whitespace);
+
+        assertTrue(book.nextUndo().startsWith("edit of organization"), book.nextUndo());
+    }
+
     @Test
     void theOutcomeSaysSomethingUsefulWhenThereIsNothingToDo() {
         SheetBook clean = SheetBook.empty();

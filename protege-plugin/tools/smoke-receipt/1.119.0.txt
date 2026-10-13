@@ -1,0 +1,165 @@
+OntoBoard 1.119.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-10-13  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 9/9  test 11/11
+  2026-10-13  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 9/9  test 11/11
+
+Both verdicts came back from the script. 5.5.0 again reported two of its own plugins failing to
+install - cellfie-2.2.4 and swrltab-plugin-2.1.3 - which is not ours and is recorded because a
+broken neighbour changes what resolves.
+
+2,385 tests, 0 failures, 38 new.
+
+This release is five data-loss defects, four of them in code shipped in the last two versions.
+All five were found the same way: by running the shipped code over the knowledge graph it is for
+and comparing the result against the file it came from.
+
+
+THE ONE THAT WAS LOSING A THIRD OF THE DATA
+
+A cleaned copy of the NFDI-MatWerk workbook was imported, and then every cell of the workbook
+was compared against what ROBOT's own reader gets back out of the .tsv files written for it.
+
+  before this release:  2 of 35 tabs would not open at all
+                        20,795 cells differed from the workbook
+                        8,691 data rows in the file, 5,980 of them in the editor
+  after:                35 of 35 tabs open
+                        100,498 cells compared, 0 differ
+                        8,691 rows in the file, 8,691 in the editor
+
+The cause is one character. Saving a sheet quoted a cell that held a double quote; importing a
+workbook wrote the cell out raw. Both files were called .tsv and both were read by the same
+reader - ROBOT's, which is OpenCSV - so the raw kind came back wrong, in the worst way the format
+allows: a cell holding one unbalanced " opens a quoted field, then swallows the tab after it,
+then the newline, then every column of every row below until it finds another quote or the end of
+the file.
+
+In this workbook 13 of the 35 tabs hold 404 such characters. Two tabs - Process and temporal -
+ran to the end of the file looking for the closing quote and were dropped. The other eleven were
+read without any error at all and silently wrong: in Others, one cell on row 392 shifted every
+row after it, so row 393's identifier became row 392's and 2,711 data rows (31% of the graph)
+were not in the editor. Nothing was reported anywhere, in the log or on screen. The tab count
+was two short and that was the only clue.
+
+There is now one escaper, de.fizkarlsruhe.ise.ontoboard.sheet.Delimited, used by everything that
+writes a delimited file, and a test that reads back what each writer produced through ROBOT's
+reader for fourteen awkward cells - inch marks, a quoted paper title inside a sentence, a quote
+at the start of a cell, a comma, a tab, a curly quote. A second copy of those rules is the bug,
+so there is one. Delimited also reads now, for the clipboard; the same fourteen cells go out and
+come back by both paths.
+
+AND THE SILENCE AROUND IT
+
+SheetBook.open skipped a file ROBOT's reader threw on so that one bad file could not stop the
+other twenty-five from opening. That is right. Doing it with a bare `continue` was not: the file
+was simply absent. It records SheetBook.Unreadable now, with a reason in words somebody can act
+on rather than OpenCSV's own ("a cell opens a double quote and never closes it, so the reader ran
+to the end of the file looking for the other one"), and the editor puts the count in the status
+line with the reasons in its tooltip. In the status line and not a dialog, because a templates
+folder may hold a stray one-line csv and nobody wants a modal for that.
+
+
+THREE MORE WAYS THE EDITOR WAS LOSING EDITS
+
+OPENING ANYTHING REPLACED UNSAVED WORK. Four paths reread the folder from disk - open a folder,
+open this project's templates, add a sheet, import a workbook - and exactly one of them asked
+first. The other three discarded every unsaved edit in every sheet without a word. All four now
+ask, and ask the right question: three answers, not two, because "add a sheet" and "import a
+workbook" are things somebody does in the middle of editing, so offering a choice between
+discarding and cancelling answers the wrong question. Save first is the default. A failed write
+counts as cancelling - the one thing this must never do is carry on after failing to keep what it
+offered to keep. The two paths that write a file are asked before anything is written, so
+cancelling does not leave a sheet nobody asked for.
+
+SAVING OVERWROTE WHATEVER WAS THERE. SheetBook.writeTo was a bare Files.write. A sheet opened
+before a git pull - or before the pipeline rebuilt it, or while the same folder was open in Excel
+- was written back as it had been read, and the other change was gone with nothing said and
+nothing in the undo history to get it back from. Each sheet now remembers the modification time
+it was read at, save() throws SheetBook.ChangedOnDisk rather than writing, and the editor asks
+per file, because one stale sheet is no reason not to save the other twenty-five. Our own write
+updates the stamp, or the second save of a session would refuse on the strength of the first.
+
+CTRL+V DID NOTHING. SheetTableModel.paste has been there since the grid was written, with its
+rows-grow-to-fit behaviour, and nothing was bound to it: the only way to reach it was from a
+test. A spreadsheet editor without a paste is a spreadsheet editor somebody retypes forty rows
+into, so this is not a convenience - the paste path is how real data arrives. Ctrl+C and Ctrl+V
+now work by the same quoting rules the files use, so a block survives the journey to Excel and
+back. Cut is deliberately absent: clearing a block is Delete, and a cut that empties cells
+somebody has not pasted yet is the one clipboard operation that loses data on its own. An
+all-blank block - what is left when somebody selects past the end of their data - is not pasted,
+because quietly emptying the cells it landed on is the other one.
+
+
+ONE GESTURE IS ONE UNDO
+
+Every cell edit records its own reversal, which is right: the cell is the only thing that knows
+what it held. But undo is a person's idea, not a cell's. Measured on this workbook:
+
+  paste 40 rows into 2 columns          80 undo entries
+  stamp a 400-row sheet with provenance 1,200 entries
+  apply everything the audit suggests   7,406 entries
+
+The history holds 200. So the largest offer in the whole tool, "fix 7,406 things", was the one
+action that could not be taken back - and taking back as much of it as the history held left the
+sheets in a state that was neither before nor after. SheetFix's own javadoc had claimed "as one
+action with one undo" since it was written.
+
+SheetBook.asOneChange now wraps a gesture and leaves one entry. Applied to paste, fill-down,
+minting identifiers for blank rows, stamping every row, and the audit batch. Verified on the real
+workbook: the batch changes 7,406 cells, the history holds one entry called "apply the audit's
+suggestions", and one undo puts all 8,031 findings back exactly with nothing left to undo.
+
+
+WHAT DID NOT REPRODUCE, AND IS WRITTEN DOWN BECAUSE IT DID NOT
+
+The audit of 1.118.0 predicted that the bulk fix damages cross-references - that fixing a cell
+which defines a term leaves every reference to its old value dangling, for 181 of 340 fixable
+findings. Measured on this workbook, it does not happen:
+
+  findings before               8,031
+  carrying a replacement        7,446
+  applied                       7,406   (40 skipped: the cell had changed under the batch)
+  findings after                  625
+  unresolved references    269 -> 265   four fewer, not more
+
+The reason is that the typographic character which made a reference miss its target was usually
+in both cells, so fixing both is what the batch does. No fix was made for a defect that could not
+be demonstrated. What is left after the batch is only the kinds no replacement can settle: 184
+near-duplicates, 83 duplicated identifiers, 23 ambiguous names, 22 unused columns, 10
+placeholders, 1 missing identifier, and those 265 references.
+
+
+THE WORKBOOK ITSELF, MEASURED
+
+The cleaned file resolves what the last audit flagged: 0 cells still contain _name_. The reader
+was checked against openpyxl on it cell by cell - 35 tabs, 37,424 non-empty cells, exact
+agreement, no disagreements of any kind. That is the eighth workbook checked this way and brings
+the total to 48,813 cells.
+
+  35 tabs, 28 of them ROBOT templates (a template row naming ID or LABEL)
+  8,438 data rows and 36,512 non-empty cells in those 28
+  8,411 identifiers
+
+One thing in it is worth a decision rather than a fix: 1,639 of the 8,411 identifiers appear as
+the subject of a row in more than one tab, most often between Agent and Others. SheetAudit
+reports duplicate identifiers only WITHIN a sheet, so it says nothing about these. Whether they
+are deliberate - several templates contributing different axioms about one IRI, which ROBOT
+merges - or a duplication problem is a question about the graph, not about the tool, and nothing
+was changed on a guess.
+
+
+WHAT IS STILL NOT TRUE
+
+  - Nobody has opened a folder, pasted a block and saved it in a running Protege. The clipboard,
+    the guards and the stale-file check are covered headlessly; the host smoke reaches only
+    "SheetEditorView built without throwing".
+  - The unsaved-edit dialog and the stale-file question have no test, because no test can build a
+    SheetEditorView - it needs an OWLEditorKit. The layer under both is tested.
+  - .xlsx is still read-only. Import writes .tsv and says so.
+  - Cross-sheet duplicate identifiers are still not reported by the audit.
+  - Koncludix is still unverified end to end.
+  - docs/compared-with-ontoeditor.md and docs/evaluation-plan.md are new and are plans, not
+    claims: nothing in either has been carried out.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>

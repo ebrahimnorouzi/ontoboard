@@ -207,7 +207,23 @@ public final class SheetProvenance {
     }
 
     /** Stamps every row that has anything in it, for a sheet somebody is adopting. */
-    public static int stampEveryRow(SheetBook book, String sheetName, String agent,
+    public static int stampEveryRow(final SheetBook book, final String sheetName,
+            final String agent, final String isoDate) {
+        if (book == null) {
+            return 0;
+        }
+        // One undo for the gesture. Stamping a 400-row sheet wrote three cells per row, so
+        // undoing it meant 1,200 undos - and with a history of 200 entries, 1,000 of those
+        // were not there to use.
+        return book.asOneChange("stamp every row of " + sheetName, new SheetBook.Gesture() {
+            @Override
+            public int run() {
+                return stampEveryRowOnce(book, sheetName, agent, isoDate);
+            }
+        });
+    }
+
+    private static int stampEveryRowOnce(SheetBook book, String sheetName, String agent,
             String isoDate) {
         SheetBook.Sheet sheet = book == null ? null : book.get(sheetName);
         if (sheet == null) {

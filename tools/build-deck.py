@@ -1063,9 +1063,9 @@ def main():
          size=11, colour=INK)
     pts = [
         ("An identifier is not a thing to type",
-         "Generate IRIs… fills every row that has content but no identifier, out of the block "
-         "allocated to YOU in the project's -idranges.owl - which is what makes two editors "
-         "safe. No ranges file, and it continues the sheet's own numbering instead."),
+         "Generate IRIs… fills every row that has none, six ways: a block from the project's "
+         "-idranges.owl, the sheet's own numbering, a timestamp and a row number, that plus who "
+         "is editing, a random UUID, a UUID derived from the label, or a readable slug."),
         ("At the width its neighbours use",
          "A sheet of seven-digit identifiers gets MWO_0001226, not MWO_1226. The old rule "
          "dropped the padding, and the result sorts wrongly, matches no project's iddigits, "
@@ -1074,6 +1074,36 @@ def main():
          "Import Excel… reads a real .xlsx - shared strings, styles, dates, formulas, rich "
          "text - and writes each tab into the folder as a .tsv. Checked cell by cell against "
          "another reader on seven workbooks: 11,389 cells, exact agreement."),
+    ]
+    for i, (head, note) in enumerate(pts):
+        yy = y + 0.66 + i * 1.08
+        rect(s, M, yy, 0.055, 0.88, fill=ACCENT)
+        text(s, M + 0.22, yy - 0.02, 9 - M, 1.0, [
+            (head, {"size": 11.5, "bold": True, "colour": INDIGO, "space": 3}),
+            (note, {"size": 10, "colour": INK}),
+        ], space=0)
+
+    # 19g ------------------------------------------ the row that decides everything
+    s = page()
+    y = heading(s, "The row that decides what gets built", "and why it is checked as you type")
+    text(s, M, y, 10 - 2 * M, 0.5,
+         "Row 2 of a ROBOT template says what each column DOES. Until 1.118.0 it was painted "
+         "into the column header and could not be edited here at all - so the one row that "
+         "controls the build was the one row you had to leave Protégé to change.",
+         size=11, colour=INK)
+    pts = [
+        ("A spec ROBOT does not know costs the whole sheet",
+         "Not the column - the sheet. Template.addTable throws and nothing at all is built. So "
+         "every edit is checked against a transcription of robot-core's own "
+         "validateTemplateString, and the test asks robot-core for 80 strings and requires the "
+         "same answer."),
+        ("Red breaks it, amber builds and does nothing",
+         "II produces no axiom and no error. A > in front of a class column is accepted and "
+         "discarded. An axiom annotation that follows nothing annotates nothing. All legal, all "
+         "silent, all marked."),
+        ("Found in files that were already here",
+         "A template committed in this repo has thirteen columns spelled A with no property. "
+         "Every one is fatal, the file builds nothing, and nothing had ever said so."),
     ]
     for i, (head, note) in enumerate(pts):
         yy = y + 0.66 + i * 1.08

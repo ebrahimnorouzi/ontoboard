@@ -320,4 +320,45 @@ class TermCreationTest {
         assertEquals(mwo + "0002012", proposal.getIri(),
                 "seven digits in, seven digits out");
     }
+
+    /**
+     * The identifier belongs to the sheet the row LANDS IN, not the one the cursor is in.
+     *
+     * <p>The whole point of a proposal is that the row goes somewhere else: you are standing in
+     * {@code instrument}, you right-click an organization's name, and the row is created in
+     * {@code organization}. From 1.117.0 until 1.119.0 the editor built the minter for the sheet
+     * being edited and handed it to a proposal targeting another, so the new organization was
+     * given an instrument-shaped identifier - permanently, with the only warning being the IRI
+     * inside a confirmation dialog nobody reads twice.
+     */
+    @Test
+    void aCreatedRowTakesTheIdentifierShapeOfTheSheetItLandsIn() {
+        String instruments = "https://example.org/instrument/INS_";
+        String organizations = "https://example.org/org/ORG_";
+        SheetBook book = SheetBook.empty();
+        book.add("instrument", null, rows(
+                new String[] {"#", "TYPE", "Label", "Operated by"},
+                new String[] {"ID", "TYPE", "A rdfs:label",
+                              "I http://purl.obolibrary.org/obo/RO_0001025"},
+                // Row 4 is the evidence that this column names rows in organization: without
+                // it TermCreation refuses rather than guessing which sheet should hold the
+                // new row, which is its documented behaviour.
+                new String[] {instruments + "0000900", "obo:OBI_0000968", "SEM", "Max Planck"},
+                new String[] {instruments + "0000901", "obo:OBI_0000968", "TEM", "Fraunhofer"}),
+                '	');
+        book.add("organization", null, rows(
+                new String[] {"#", "TYPE", "Label"},
+                new String[] {"ID", "TYPE", "A rdfs:label"},
+                new String[] {organizations + "0000010", "obo:OBI_0000245", "Max Planck"}), '	');
+
+        // The minter the editor builds: scoped to the sheet being looked at.
+        IriGenerator standingIn = IriGenerator.forSheet(book, "instrument", null, null, "eno");
+        TermCreation.Proposal proposal =
+                TermCreation.propose(book, "instrument", 4, 4, standingIn);
+
+        assertTrue(proposal.isPossible(), proposal.getRefusal());
+        assertEquals("organization", proposal.getTargetSheet());
+        assertEquals(organizations + "0000011", proposal.getIri(),
+                "a new organization must get an organization identifier, not an instrument one");
+    }
 }

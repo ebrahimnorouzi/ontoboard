@@ -69,10 +69,10 @@ public final class IriGenerator {
         ID_RANGES("A block from this project's ID ranges", true),
         /** The shape the sheets already use, continued. */
         SHEET_PATTERN("Continue the numbering in these sheets", true),
-        /** {@code <stem>1760258400000001}: epoch milliseconds, then a counter. */
-        TIMESTAMP("A timestamp", false),
+        /** {@code <stem>1760258400000001}: epoch milliseconds, then a per-row counter. */
+        TIMESTAMP("A timestamp and a row number", false),
         /** The same, with who is editing in it. */
-        TIMESTAMP_AND_EDITOR("A timestamp and who is editing", false),
+        TIMESTAMP_AND_EDITOR("A timestamp, a row number and who is editing", false),
         /** A random UUID. Unique without coordination, and impossible to re-derive. */
         UUID_RANDOM("A random UUID", false),
         /** A UUID derived from the row's label, so the same label always gives the same one. */
@@ -261,9 +261,21 @@ public final class IriGenerator {
     private final String refusal;
     private final Moment moment;
 
+    /**
+     * What this generator was built from, so it can be re-derived for a different sheet.
+     *
+     * <p>Needed because the sheet a row is CREATED IN is not always the sheet somebody is
+     * looking at: "create this organization in organization" is invoked from the instrument
+     * sheet, and a generator scoped to instrument would give the new organization an
+     * instrument-shaped identifier. See {@link #forAnotherSheet}.
+     */
+    private final OWLOntology ontology;
+    private final File ontologyFile;
+
     private IriGenerator(Source source, SheetBook book, Set<String> inTheOntology,
             IdRanges ranges, String editor, String prefix, int width, long firstNumber,
-            long lastNumber, String refusal, Moment moment) {
+            long lastNumber, String refusal, Moment moment, OWLOntology ontology,
+            File ontologyFile) {
         this.source = source;
         this.book = book;
         this.inTheOntology = inTheOntology;
@@ -275,6 +287,28 @@ public final class IriGenerator {
         this.lastNumber = lastNumber;
         this.refusal = refusal;
         this.moment = moment == null ? Moment.now() : moment;
+        this.ontology = ontology;
+        this.ontologyFile = ontologyFile;
+    }
+
+    /**
+     * The same generator, reading another sheet's shape instead of this one's.
+     *
+     * <p>For the one case where the sheet being looked at and the sheet being written to are
+     * different: creating the thing a cell refers to puts a row in whichever sheet holds things
+     * of that kind. Before 1.119.0 the minter was built for the sheet the cursor was in and
+     * handed to a proposal targeting another, so a new organization created from the instrument
+     * sheet was given an instrument-shaped identifier - permanently, and the only warning was
+     * the IRI inside a confirmation dialog.
+     *
+     * <p>An ID-ranges generator is returned unchanged: its prefix, width and block come from the
+     * project's {@code -idranges.owl} and have nothing to do with which sheet is open.
+     */
+    public IriGenerator forAnotherSheet(String sheetName) {
+        if (source == Source.ID_RANGES || sheetName == null) {
+            return this;
+        }
+        return using(source, book, ontology, ontologyFile, editor, sheetName, moment);
     }
 
     // ---------------------------------------------------------------- building one
@@ -408,7 +442,7 @@ public final class IriGenerator {
                     + "source.", moment);
         }
         return new IriGenerator(source, book, inTheOntology, null, editor, namespace, 0, 0, 0,
-                "", moment);
+                "", moment, ontology, ontologyFile);
     }
 
     /** The fallback name {@link #editorName()} returns when nothing has said who is editing. */
@@ -536,7 +570,7 @@ public final class IriGenerator {
         }
         return new IriGenerator(Source.ID_RANGES, book, inTheOntology, parsed, editor,
                 parsed.getIdPrefix(), parsed.getIdDigits(), mine.getLower(), mine.getUpper(), "",
-                moment);
+                moment, null, ontologyFile);
     }
 
     /**
@@ -614,7 +648,7 @@ public final class IriGenerator {
         }
         int width = commonestKey(widthsFor.get(stem));
         return new IriGenerator(Source.SHEET_PATTERN, book, inTheOntology, null, editor, stem,
-                width, highestFor.get(stem) + 1, Long.MAX_VALUE - 1, "", moment);
+                width, highestFor.get(stem) + 1, Long.MAX_VALUE - 1, "", moment, null, null);
     }
 
     private static int commonestKey(Map<Integer, Integer> counts) {
@@ -642,7 +676,7 @@ public final class IriGenerator {
     private static IriGenerator refused(Source source, SheetBook book, Set<String> inTheOntology,
             String editor, String why, Moment moment) {
         return new IriGenerator(source, book, inTheOntology, null, editor, "", 0, 0, 0, why,
-                moment);
+                moment, null, null);
     }
 
     /**
@@ -721,9 +755,10 @@ public final class IriGenerator {
                 return "Continuing " + prefix + " at " + width + " digits, from the sheets "
                         + "themselves. Next: " + next;
             case TIMESTAMP:
-                return "The moment the row is made, then a counter: " + next;
+                return "The moment this batch is minted, then 001, 002, 003 down the rows: "
+                        + next;
             case TIMESTAMP_AND_EDITOR:
-                return "The moment, and " + editor + ": " + next;
+                return "The moment, the row number, and " + editor + ": " + next;
             case UUID_RANDOM:
                 return "A random UUID, which nothing can derive again: " + next;
             case UUID_FROM_LABEL:
@@ -959,10 +994,23 @@ public final class IriGenerator {
         for (Integer row : rows) {
             labels.add(labelIn(sheetName, row));
         }
-        List<String> minted = mintFor(labels);
-        for (int at = 0; at < rows.size(); at++) {
-            book.setCell(sheetName, rows.get(at), id.getNumber(), minted.get(at));
-        }
+        final List<String> minted = mintFor(labels);
+        final List<Integer> writeTo = rows;
+        final int column = id.getNumber();
+        final String where = sheetName;
+        book.asOneChange("mint " + rows.size() + " identifiers in " + sheetName,
+                new SheetBook.Gesture() {
+                    @Override
+                    public int run() {
+                        int changed = 0;
+                        for (int at = 0; at < writeTo.size(); at++) {
+                            if (book.setCell(where, writeTo.get(at), column, minted.get(at))) {
+                                changed++;
+                            }
+                        }
+                        return changed;
+                    }
+                });
         return rows.size();
     }
 

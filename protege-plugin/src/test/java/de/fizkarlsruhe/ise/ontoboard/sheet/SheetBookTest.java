@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import de.fizkarlsruhe.ise.ontoboard.robot.TemplateSheet;
@@ -477,6 +478,191 @@ class SheetBookTest {
     void openingSomethingThatIsNotAFolderGivesAnEmptyBook() {
         assertEquals(0, SheetBook.open(null).size());
         assertEquals(0, SheetBook.open(new File(dir, "nope")).size());
+    }
+
+    // ---------- what did not open says so ----------
+
+    /**
+     * The folder this was found in has twenty-six sheets and two of them did not open, because
+     * a cell several hundred rows down holds one unmatched double quote and OpenCSV reads to the
+     * end of the file looking for its pair. Skipping the file is right. Skipping it in silence
+     * is how two sheets of a knowledge graph stayed missing.
+     */
+    @Test
+    void aFileRobotsReaderChokesOnIsNamedRatherThanJustMissing() throws Exception {
+        write(new File(dir, "good.tsv"), "#\tLabel\nID\tLABEL\nex:1\tsteel\n");
+        write(new File(dir, "broken.tsv"),
+                "#\tLabel\nID\tLABEL\nex:1\ta 36\" bar\nex:2\tthe row below\n");
+
+        SheetBook book = SheetBook.open(dir);
+
+        assertEquals(1, book.size(), "the good sheet must still open");
+        assertEquals(1, book.getUnreadable().size(), "and the bad one must be accounted for");
+        SheetBook.Unreadable missing = book.getUnreadable().get(0);
+        assertEquals("broken", missing.getName());
+        assertEquals("broken.tsv", missing.getFile().getName());
+        assertTrue(missing.getReason().contains("double quote"),
+                "the reason has to say what to look for, not name an exception: "
+                        + missing.getReason());
+    }
+
+    @Test
+    void aFileWithNoTemplateRowIsAccountedForToo() throws Exception {
+        write(new File(dir, "good.tsv"), "#\tLabel\nID\tLABEL\nex:1\tsteel\n");
+        write(new File(dir, "tiny.tsv"), "#\tLabel\n");
+
+        SheetBook book = SheetBook.open(dir);
+
+        assertEquals(1, book.getUnreadable().size());
+        assertTrue(book.getUnreadable().get(0).getReason().contains("template row"),
+                book.getUnreadable().get(0).getReason());
+    }
+
+    @Test
+    void anOrdinaryFolderHasNothingToReport() throws Exception {
+        write(new File(dir, "good.tsv"), "#\tLabel\nID\tLABEL\nex:1\tsteel\n");
+
+        assertTrue(SheetBook.open(dir).getUnreadable().isEmpty());
+    }
+
+    /**
+     * A cell with a quote in it is written quoted, so the sheet it was edited in opens again.
+     * The same folder, saved and reopened, used to lose the sheet it had just saved.
+     */
+    @Test
+    void aSheetHoldingAQuoteSurvivesBeingSavedAndOpenedAgain() throws Exception {
+        write(new File(dir, "one.tsv"), "#\tLabel\nID\tLABEL\nex:1\tsteel\n");
+        SheetBook book = SheetBook.open(dir);
+        book.setCell("one", 3, 2, "a 36\" bar, \"nominal\"");
+        book.save("one");
+
+        SheetBook again = SheetBook.open(dir);
+
+        assertTrue(again.getUnreadable().isEmpty(), "" + again.getUnreadable());
+        assertEquals(1, again.size());
+        assertEquals("a 36\" bar, \"nominal\"", again.cell("one", 3, 2));
+    }
+
+    // ---------- saving does not overwrite somebody else's change ----------
+
+    /**
+     * The file was read, then changed by something else - a pull, a merge, the pipeline that
+     * rebuilds these sheets, Excel - and then saved from here. Saving was a bare write, so the
+     * other change was replaced by a copy of a file read minutes earlier, with nothing said
+     * and nothing in the undo history to get it back from.
+     */
+    @Test
+    void savingRefusesToOverwriteAFileThatChangedUnderUs() throws Exception {
+        File file = new File(dir, "one.tsv");
+        write(file, "#\tLabel\nID\tLABEL\nex:1\tsteel\n");
+        SheetBook book = SheetBook.open(dir);
+        book.setCell("one", 3, 2, "stainless steel");
+
+        touchLater(file, "#\tLabel\nID\tLABEL\nex:1\tsomebody else's work\n");
+
+        assertTrue(book.changedOnDisk("one"), "the change has to be noticed");
+        SheetBook.ChangedOnDisk refused = assertThrows(SheetBook.ChangedOnDisk.class,
+                () -> book.save("one"));
+        assertEquals("one", refused.getSheet());
+        assertEquals(file, refused.getFile());
+        assertTrue(refused.getMessage().contains("changed on disk"), refused.getMessage());
+        assertEquals("somebody else's work", TemplateSheet.read(file).get(2).get(1),
+                "and the other change must still be there");
+        assertTrue(book.isUnsaved(), "the edits are still unsaved, so they are not lost either");
+    }
+
+    @Test
+    void savingOverwritesWhenToldToInSoManyWords() throws Exception {
+        File file = new File(dir, "one.tsv");
+        write(file, "#\tLabel\nID\tLABEL\nex:1\tsteel\n");
+        SheetBook book = SheetBook.open(dir);
+        book.setCell("one", 3, 2, "stainless steel");
+        touchLater(file, "#\tLabel\nID\tLABEL\nex:1\tsomebody else's work\n");
+
+        book.save("one", true);
+
+        assertEquals("stainless steel", TemplateSheet.read(file).get(2).get(1));
+        assertFalse(book.isUnsaved());
+    }
+
+    @Test
+    void anUntouchedFileSavesWithoutBeingAskedAbout() throws Exception {
+        File file = new File(dir, "one.tsv");
+        write(file, "#\tLabel\nID\tLABEL\nex:1\tsteel\n");
+        SheetBook book = SheetBook.open(dir);
+        book.setCell("one", 3, 2, "stainless steel");
+
+        assertFalse(book.changedOnDisk("one"));
+        book.save("one");
+
+        assertEquals("stainless steel", TemplateSheet.read(file).get(2).get(1));
+    }
+
+    /**
+     * The second save of a session must not refuse on the strength of the first save's own
+     * modification time, which is the obvious way to get this wrong.
+     */
+    @Test
+    void savingTwiceInARowIsFine() throws Exception {
+        File file = new File(dir, "one.tsv");
+        write(file, "#\tLabel\nID\tLABEL\nex:1\tsteel\n");
+        SheetBook book = SheetBook.open(dir);
+
+        book.setCell("one", 3, 2, "first");
+        book.save("one");
+        book.setCell("one", 3, 2, "second");
+        book.save("one");
+
+        assertEquals("second", TemplateSheet.read(file).get(2).get(1));
+        assertFalse(book.changedOnDisk("one"));
+    }
+
+    @Test
+    void aSheetThatWasNeverOnDiskHasNothingToConflictWith() {
+        SheetBook book = SheetBook.empty();
+        book.add("fresh", null, rows(new String[] {"#", "Label"}, new String[] {"ID", "LABEL"}),
+                '\t');
+
+        assertFalse(book.changedOnDisk("fresh"));
+        assertTrue(book.changedOnDisk().isEmpty());
+    }
+
+    @Test
+    void aFileThatHasGoneIsNotAConflictBecauseSavingIsHowToPutItBack() throws Exception {
+        File file = new File(dir, "one.tsv");
+        write(file, "#\tLabel\nID\tLABEL\nex:1\tsteel\n");
+        SheetBook book = SheetBook.open(dir);
+        book.setCell("one", 3, 2, "stainless steel");
+        assertTrue(file.delete());
+
+        assertFalse(book.changedOnDisk("one"));
+        book.save("one");
+
+        assertEquals("stainless steel", TemplateSheet.read(file).get(2).get(1));
+    }
+
+    @Test
+    void everySheetThatMovedIsListedAtOnce() throws Exception {
+        write(new File(dir, "one.tsv"), "#\tLabel\nID\tLABEL\nex:1\tsteel\n");
+        write(new File(dir, "two.tsv"), "#\tLabel\nID\tLABEL\nex:2\tiron\n");
+        write(new File(dir, "three.tsv"), "#\tLabel\nID\tLABEL\nex:3\ttin\n");
+        SheetBook book = SheetBook.open(dir);
+
+        touchLater(new File(dir, "one.tsv"), "#\tLabel\nID\tLABEL\nex:1\tmoved\n");
+        touchLater(new File(dir, "three.tsv"), "#\tLabel\nID\tLABEL\nex:3\tmoved\n");
+
+        assertEquals(Arrays.asList("one", "three"), book.changedOnDisk());
+    }
+
+    /**
+     * Writes a file and gives it a modification time that is definitely later, because a
+     * filesystem whose timestamps have one-second granularity would otherwise report no change
+     * for a write that happened in the same second as the read.
+     */
+    private static void touchLater(File file, String text) throws Exception {
+        write(file, text);
+        assertTrue(file.setLastModified(file.lastModified() + 4000L),
+                "could not age the file, so the test cannot say anything");
     }
 
     private static void write(File file, String text) throws Exception {
