@@ -1,0 +1,29 @@
+# /ontoboard/
+#
+# Permanent identifiers for OntoBoard, a Protege Desktop plugin that runs ODK
+# and ROBOT ontology engineering workflows inside the editor.
+#
+# https://w3id.org/ontoboard/ and everything under it redirects to the
+# documentation site at https://ebrahimnorouzi.github.io/ontoboard/
+#
+# ## Contact
+# TODO Ebrahim: w3id requires a contact here. One line with your
+# name, a citable address and your GitHub username. See
+# docs/persistent-identifiers.md, and pick the same address you put in
+# CITATION.cff and NOTICE.
+
+RewriteEngine on
+
+# Source repository
+RewriteRule ^repo/?$ https://github.com/ebrahimnorouzi/ontoboard [R=302,L]
+
+# Issue tracker
+RewriteRule ^issues/?$ https://github.com/ebrahimnorouzi/ontoboard/issues [R=302,L]
+
+# Latest release, where the installable plugin jar is attached
+RewriteRule ^download/?$ https://github.com/ebrahimnorouzi/ontoboard/releases/latest [R=302,L]
+
+# Everything else, including the bare identifier, goes to the documentation
+# site with the path preserved, so that
+# https://w3id.org/ontoboard/getting-started/ reaches the page of that name.
+RewriteRule ^(.*)$ https://ebrahimnorouzi.github.io/ontoboard/$1 [R=302,L]

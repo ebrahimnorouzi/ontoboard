@@ -206,6 +206,9 @@ public final class SheetBook {
 
     /** Where changes go while a gesture is being recorded, or null. See {@link #asOneChange}. */
     private List<Change> group;
+
+    /** Cached cross-sheet contradictions, dropped whenever a cell changes. */
+    private List<SheetAudit.Finding> contradictions;
     private OWLOntology ontology;
     private String ontologyName = "the open ontology";
     private LabelIndex index;
@@ -275,6 +278,7 @@ public final class SheetBook {
         Sheet sheet = new Sheet(name, file, rows, delimiter);
         sheets.put(name, sheet);
         index = null;
+        contradictions = null;
         return sheet;
     }
 
@@ -321,6 +325,7 @@ public final class SheetBook {
             this.ontologyName = name.trim();
         }
         index = null;
+        contradictions = null;
         return this;
     }
 
@@ -562,6 +567,7 @@ public final class SheetBook {
     private void touched(Sheet sheet, String what, Runnable undo) {
         sheet.unsaved = true;
         index = null;
+        contradictions = null;
         Change change = new Change(sheet.name, what, undo);
         if (group != null) {
             // Inside a gesture. Held aside rather than put in the history, so that forty rows
@@ -644,6 +650,7 @@ public final class SheetBook {
         Change change = history.remove(history.size() - 1);
         change.undo.run();
         index = null;
+        contradictions = null;
         return change.sheet;
     }
 
@@ -765,8 +772,39 @@ public final class SheetBook {
     /** Everything wrong with one sheet, checked against every name in the book. */
     public List<SheetAudit.Finding> audit(String sheetName) {
         Sheet sheet = sheets.get(sheetName);
-        return sheet == null ? Collections.<SheetAudit.Finding>emptyList()
-                : SheetAudit.of(sheet.name, sheet.rows, index());
+        if (sheet == null) {
+            return Collections.<SheetAudit.Finding>emptyList();
+        }
+        List<SheetAudit.Finding> found =
+                new ArrayList<SheetAudit.Finding>(SheetAudit.of(sheet.name, sheet.rows, index()));
+        // The cross-sheet contradictions that land in THIS sheet, so the grid marks the cell
+        // and the count in the status line is the whole truth about the sheet somebody is
+        // looking at. A sheet cannot find these on its own: the other row is in another file.
+        for (SheetAudit.Finding finding : contradictions()) {
+            if (finding.getSheet().equals(sheet.name)) {
+                found.add(finding);
+            }
+        }
+        return found;
+    }
+
+    /**
+     * Where two sheets disagree about one identifier, held until something changes.
+     *
+     * <p>Memoised because it reads every sheet, and {@link #audit} is called once per sheet and
+     * three times per refresh of a grid. On the published NFDI-MatWerk workbook that is 37,424
+     * cells per call, so computing it 78 times to paint one grid would be felt.
+     */
+    private List<SheetAudit.Finding> contradictions() {
+        if (contradictions == null) {
+            Map<String, List<List<String>>> everything =
+                    new LinkedHashMap<String, List<List<String>>>();
+            for (Sheet sheet : sheets.values()) {
+                everything.put(sheet.name, sheet.rows);
+            }
+            contradictions = SheetAudit.across(everything);
+        }
+        return contradictions;
     }
 
     /** Everything wrong with every sheet. */
@@ -775,6 +813,7 @@ public final class SheetBook {
         for (Sheet sheet : sheets.values()) {
             found.addAll(SheetAudit.of(sheet.name, sheet.rows, index()));
         }
+        found.addAll(contradictions());
         return found;
     }
 

@@ -24,6 +24,124 @@ class SheetFixTest {
 
     private static final String CURLY = String.valueOf((char) 0x201c);
 
+    // ---------- a cell with two things wrong with it ----------
+
+    /**
+     * One cell, a doubled space and a curly quote, and one click that fixes both.
+     *
+     * <p>Forty cells of the NFDI-MatWerk workbook are this shape, and until the batch learned to
+     * go round again they were the forty it reported as "edited since the check ran" - true, but
+     * the thing that edited them was the batch itself. Each finding carries a replacement
+     * computed from the cell as the audit found it, so applying the first leaves the second
+     * describing text that is no longer there.
+     */
+    private static SheetBook twoThingsWrongWithOneCell() {
+        SheetBook book = SheetBook.empty();
+        book.add("organization", null, rows(
+                new String[] {"#", "TYPE", "Institution name"},
+                new String[] {"ID", "TYPE", "A rdfs:label"},
+                new String[] {MW + "1", "", "Max" + CURLY + "Planck  Society"}), '\t');
+        return book;
+    }
+
+    @Test
+    void acellWithTwoThingsWrongWithItIsFullyFixedByOneBatch() {
+        SheetBook book = twoThingsWrongWithOneCell();
+        assertEquals(2, fixableIn(book.auditAll()),
+                "the fixture has to produce two fixable findings on one cell");
+
+        SheetFix.Outcome outcome = SheetFix.applyAll(book, book.auditAll());
+
+        assertEquals("Max\"Planck Society", book.cell("organization", 3, 3),
+                "both the quote and the doubled space, in one action");
+        assertEquals(0, outcome.getSkipped(), "and nothing reported as somebody else's edit");
+        assertEquals(2, outcome.getPasses(), "which took two passes");
+        assertEquals(1, outcome.getApplied(), "one cell changed, not two");
+        assertEquals(0, fixableIn(book.auditAll()), "nothing fixable left");
+    }
+
+    /** Running it again must do nothing at all. That is what idempotent means here. */
+    @Test
+    void asecondBatchChangesNothing() {
+        SheetBook book = twoThingsWrongWithOneCell();
+        SheetFix.applyAll(book, book.auditAll());
+
+        SheetFix.Outcome again = SheetFix.applyAll(book, book.auditAll());
+
+        assertEquals(0, again.getApplied());
+        assertFalse(again.changedAnything());
+    }
+
+    /** And it is still one thing to undo, however many passes it took. */
+    @Test
+    void severalPassesAreStillOneUndo() {
+        SheetBook book = twoThingsWrongWithOneCell();
+        SheetFix.applyAll(book, book.auditAll());
+
+        book.undo();
+
+        assertEquals("Max" + CURLY + "Planck  Society", book.cell("organization", 3, 3));
+        assertFalse(book.canUndo(), "two passes, one entry");
+    }
+
+    @Test
+    void anordinaryBatchStillTakesOnePass() {
+        SheetBook book = messy();
+
+        SheetFix.Outcome outcome = SheetFix.applyAll(book, book.auditAll());
+
+        assertEquals(1, outcome.getPasses(),
+                "going round again costs an audit of the whole book, so it must not happen "
+                        + "when the first pass settled it");
+    }
+
+    /**
+     * The guard that makes a bulk fix safe is not weakened by going round again.
+     *
+     * <p>The second pass re-audits only cells THIS batch wrote. A cell somebody else changed
+     * while the dialog was open is not one of those, so it is still left exactly alone.
+     */
+    @Test
+    void acellSomebodyElseChangedIsStillLeftAloneAcrossPasses() {
+        SheetBook book = twoThingsWrongWithOneCell();
+        book.add("other", null, rows(
+                new String[] {"#", "Institution name"},
+                new String[] {"ID", "A rdfs:label"},
+                new String[] {MW + "2", "  Fraunhofer  "}), '\t');
+        List<SheetAudit.Finding> asSeen = book.auditAll();
+        book.setCell("other", 3, 2, "something a person just typed");
+
+        SheetFix.Outcome outcome = SheetFix.applyAll(book, asSeen);
+
+        assertEquals("something a person just typed", book.cell("other", 3, 2),
+                "no pass may overwrite an edit this fix did not make");
+        assertEquals(1, outcome.getSkipped());
+        assertEquals("Max\"Planck Society", book.cell("organization", 3, 3),
+                "while the cell it did write is finished properly");
+    }
+
+    @Test
+    void theOutcomeMentionsThePassesOnlyWhenThereWasMoreThanOne() {
+        SheetBook one = messy();
+        SheetBook two = twoThingsWrongWithOneCell();
+
+        String ordinary = SheetFix.applyAll(one, one.auditAll()).describe();
+        String twice = SheetFix.applyAll(two, two.auditAll()).describe();
+
+        assertFalse(ordinary.contains("passes"), ordinary);
+        assertTrue(twice.contains("over 2 passes"), twice);
+    }
+
+    private static int fixableIn(List<SheetAudit.Finding> findings) {
+        int fixable = 0;
+        for (SheetAudit.Finding finding : findings) {
+            if (finding.isFixable()) {
+                fixable++;
+            }
+        }
+        return fixable;
+    }
+
     private static List<List<String>> rows(String[]... lines) {
         List<List<String>> table = new ArrayList<List<String>>();
         for (String[] line : lines) {

@@ -219,6 +219,50 @@ class BundleConfigurationTest {
                 "the registry id must equal the bundle symbolic name so Protege matches installs to updates");
     }
 
+    /**
+     * The bundle has to be runnable from a command line as well as from Felix.
+     *
+     * <p>Not a nicety: every measurement this project quotes comes out of
+     * de.fizkarlsruhe.ise.ontoboard.bench.Bench, and without a Main-Class the only way to reach
+     * it is to assemble a classpath by hand. The header is harmless to OSGi, which reads the
+     * Bundle- headers and ignores this one, and the plugin's own host smoke proves it still
+     * resolves and starts.
+     */
+    @Test
+    void thePomDeclaresAMainClassSoTheJarCanBeRun() throws Exception {
+        String pom = new String(java.nio.file.Files.readAllBytes(
+                new java.io.File("pom.xml").toPath()), "UTF-8");
+
+        assertTrue(pom.contains("<Main-Class>de.fizkarlsruhe.ise.ontoboard.bench.Launcher"
+                + "</Main-Class>"),
+                "pom.xml must declare the launcher as Main-Class, or java -jar does nothing");
+        assertTrue(pom.indexOf("<Main-Class>") > pom.indexOf("<instructions>"),
+                "it belongs in the bundle plugin's instructions, beside the Bundle- headers");
+    }
+
+    /**
+     * The launcher must not need anything the bundle does not have.
+     *
+     * <p>It runs before the embedded jars are unpacked, so anything it touches has to come from
+     * the JDK. A dependency here would be a NoClassDefFoundError in the first line of the
+     * reproduction package.
+     */
+    @Test
+    void theLauncherOnlyUsesTheJdk() throws Exception {
+        String source = new String(java.nio.file.Files.readAllBytes(new java.io.File(
+                "src/main/java/de/fizkarlsruhe/ise/ontoboard/bench/Launcher.java").toPath()),
+                "UTF-8");
+
+        for (String line : source.split("\n")) {
+            String trimmed = line.trim();
+            if (!trimmed.startsWith("import ")) {
+                continue;
+            }
+            assertTrue(trimmed.startsWith("import java."),
+                    "the launcher runs before anything is unpacked: " + trimmed);
+        }
+    }
+
     private static String pomVersion() throws Exception {
         Document pom = DocumentBuilderFactory.newInstance().newDocumentBuilder()
                 .parse(new File("pom.xml"));

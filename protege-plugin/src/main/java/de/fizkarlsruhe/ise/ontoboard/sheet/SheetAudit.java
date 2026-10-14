@@ -55,7 +55,27 @@ public final class SheetAudit {
         /** A reference wrapped in quotes, which works in some columns and not in this one. */
         QUOTED_REFERENCE,
         /** A column with data in it that the template row ignores. */
-        UNUSED_COLUMN
+        UNUSED_COLUMN,
+        /**
+         * Two sheets are the subject of one identifier and disagree about what it is.
+         *
+         * <p>Not the same thing as two sheets being the subject of one identifier, which is
+         * ordinary and useful: ROBOT merges templates, so one sheet can give a person their
+         * name and another their affiliation.
+         *
+         * <p>Measured on the published NFDI-MatWerk workbook, which decided the shape of this
+         * check. 1,639 of its 6,688 identifiers are the subject of rows in more than one sheet.
+         * Of those, 1,627 carry a label on both sides - and all 1,627 agree, exactly, which is
+         * a thing its curators are keeping true by hand. Twenty disagree about the declared
+         * type. None disagree about a label. So a check that reported every identifier spanning
+         * sheets would be a list of 1,619 non-problems, and a check that reported only the
+         * contradictions is a list of twenty.
+         *
+         * <p>Raised, therefore, only where the sheets contradict each other: a different label,
+         * or a different type, for one identifier, in two files neither author can see from the
+         * other. Which one is right is not a tool's decision, so nothing is suggested.
+         */
+        CONFLICTING_DEFINITION
     }
 
     /** One thing found, where it is, and what to do. */
@@ -170,7 +190,210 @@ public final class SheetAudit {
     private static final char EN_DASH = 0x2013;
     private static final char EM_DASH = 0x2014;
 
+    /** Row 1 is the author's headings, row 2 is ROBOT's, so data starts at 3. */
+    private static final int FIRST_DATA_ROW = 3;
+
     private SheetAudit() {
+    }
+
+    /**
+     * Audits what no single sheet can see: one identifier that two sheets disagree about.
+     *
+     * <p>Every other check in this class reads one sheet, because that is the unit somebody
+     * edits. This one cannot: the whole point is the second file. ROBOT reads a folder of
+     * templates and merges what they assert, so two sheets contributing different columns about
+     * one identifier is the intended way to use it - and two sheets asserting a different LABEL
+     * or a different TYPE for one identifier is a contradiction that neither author can see and
+     * that ROBOT resolves silently, by whichever order the files happen to be merged in.
+     *
+     * <p>A finding is raised against each participating row, so that both sides are marked
+     * rather than the one that happens to be scanned first.
+     *
+     * @param sheets every sheet in play, name to rows, both header rows included
+     */
+    public static List<Finding> across(Map<String, List<List<String>>> sheets) {
+        List<Finding> findings = new ArrayList<Finding>();
+        if (sheets == null || sheets.size() < 2) {
+            return findings;
+        }
+        Map<String, List<Claim>> claims = new LinkedHashMap<String, List<Claim>>();
+        for (Map.Entry<String, List<List<String>>> each : sheets.entrySet()) {
+            collectClaims(each.getKey(), each.getValue(), claims);
+        }
+        for (Map.Entry<String, List<Claim>> each : claims.entrySet()) {
+            List<Claim> rows = each.getValue();
+            if (rows.size() < 2 || oneSheetOnly(rows)) {
+                continue;
+            }
+            report(each.getKey(), rows, true, findings);
+            report(each.getKey(), rows, false, findings);
+        }
+        return findings;
+    }
+
+    /** One row that is the subject of an identifier, and what its sheet says about it. */
+    private static final class Claim {
+        private final String sheet;
+        private final int row;
+        private final String label;
+        private final int labelColumn;
+        private final Set<String> types;
+        private final int typeColumn;
+
+        Claim(String sheet, int row, String label, int labelColumn, Set<String> types,
+                int typeColumn) {
+            this.sheet = sheet;
+            this.row = row;
+            this.label = label;
+            this.labelColumn = labelColumn;
+            this.types = types;
+            this.typeColumn = typeColumn;
+        }
+
+        String where() {
+            return sheet + " row " + row;
+        }
+    }
+
+    private static void collectClaims(String sheetName, List<List<String>> rows,
+            Map<String, List<Claim>> into) {
+        if (rows == null || rows.size() < 2) {
+            return;
+        }
+        String sheet = sheetName == null || sheetName.trim().isEmpty() ? "this sheet"
+                : sheetName.trim();
+        TemplateColumns columns = TemplateColumns.of(rows);
+        TemplateColumns.Column id = columns.firstOf(TemplateColumns.Kind.ID);
+        if (id == null) {
+            return;
+        }
+        TemplateColumns.Column label = columns.firstLabelColumn();
+        TemplateColumns.Column type = columns.firstOf(TemplateColumns.Kind.TYPE);
+        for (int at = FIRST_DATA_ROW - 1; at < rows.size(); at++) {
+            List<String> row = rows.get(at);
+            String identifier = cell(row, id.getNumber()).trim();
+            if (identifier.isEmpty()) {
+                continue;
+            }
+            List<Claim> seen = into.get(identifier);
+            if (seen == null) {
+                seen = new ArrayList<Claim>();
+                into.put(identifier, seen);
+            }
+            seen.add(new Claim(sheet, at + 1,
+                    label == null ? "" : cell(row, label.getNumber()).trim(),
+                    label == null ? 0 : label.getNumber(),
+                    type == null ? new LinkedHashSet<String>()
+                            : valuesIn(cell(row, type.getNumber()), type.getSplit()),
+                    type == null ? 0 : type.getNumber()));
+        }
+    }
+
+    /**
+     * A cell's values, separated as its template row says to separate them.
+     *
+     * <p>A {@code TYPE SPLIT=,} cell holding two classes in the other order is the same cell,
+     * and comparing the raw strings would call that a contradiction.
+     */
+    private static Set<String> valuesIn(String value, String split) {
+        Set<String> values = new LinkedHashSet<String>();
+        if (value == null) {
+            return values;
+        }
+        String[] parts = split == null || split.isEmpty() ? new String[] {value}
+                : value.split(java.util.regex.Pattern.quote(split), -1);
+        for (String part : parts) {
+            String one = part.trim();
+            if (!one.isEmpty()) {
+                values.add(one);
+            }
+        }
+        return values;
+    }
+
+    private static boolean oneSheetOnly(List<Claim> rows) {
+        String first = rows.get(0).sheet;
+        for (Claim claim : rows) {
+            if (!claim.sheet.equals(first)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Raises a finding against every row, when the rows disagree.
+     *
+     * <p>A blank is not a disagreement. The sheet that contributes other columns and leaves the
+     * label empty is the normal case and must stay silent.
+     */
+    private static void report(String identifier, List<Claim> rows, boolean aboutLabel,
+            List<Finding> findings) {
+        Map<String, List<Claim>> saying = new LinkedHashMap<String, List<Claim>>();
+        for (Claim claim : rows) {
+            // Sorted, so that a SPLIT cell listing the same two classes in the other order is
+            // the same cell. Set equality is the question; Set.toString() answers a different
+            // one, and answered it wrongly for every reordered cell in the workbook.
+            String said = aboutLabel ? claim.label : new java.util.TreeSet<String>(claim.types)
+                    .toString();
+            if (aboutLabel ? said.isEmpty() : claim.types.isEmpty()) {
+                continue;
+            }
+            List<Claim> already = saying.get(said);
+            if (already == null) {
+                already = new ArrayList<Claim>();
+                saying.put(said, already);
+            }
+            already.add(claim);
+        }
+        if (saying.size() < 2) {
+            return;
+        }
+        for (Map.Entry<String, List<Claim>> group : saying.entrySet()) {
+            for (Claim claim : group.getValue()) {
+                findings.add(new Finding(Kind.CONFLICTING_DEFINITION, claim.sheet, claim.row,
+                        aboutLabel ? claim.labelColumn : claim.typeColumn,
+                        aboutLabel ? "Label" : "TYPE",
+                        aboutLabel ? claim.label : readable(claim.types),
+                        identifier + " is also the subject of " + elsewhere(claim, rows)
+                                + ", and " + (aboutLabel ? "the labels disagree: "
+                                        : "the types disagree: ") + disagreement(saying)
+                                + ". ROBOT merges these sheets, so one of them wins by merge "
+                                + "order and nothing says which.",
+                        ""));
+            }
+        }
+    }
+
+    private static String elsewhere(Claim claim, List<Claim> rows) {
+        StringBuilder said = new StringBuilder();
+        for (Claim other : rows) {
+            if (other == claim) {
+                continue;
+            }
+            said.append(said.length() == 0 ? "" : ", ").append(other.where());
+        }
+        return said.toString();
+    }
+
+    private static String disagreement(Map<String, List<Claim>> saying) {
+        StringBuilder said = new StringBuilder();
+        for (Map.Entry<String, List<Claim>> group : saying.entrySet()) {
+            said.append(said.length() == 0 ? "" : " against ");
+            said.append('"').append(readable(group.getKey())).append("\" in ");
+            StringBuilder where = new StringBuilder();
+            for (Claim claim : group.getValue()) {
+                where.append(where.length() == 0 ? "" : " and ").append(claim.sheet);
+            }
+            said.append(where);
+        }
+        return said.toString();
+    }
+
+    private static String readable(Object value) {
+        String said = String.valueOf(value);
+        return said.startsWith("[") && said.endsWith("]")
+                ? said.substring(1, said.length() - 1) : said;
     }
 
     /**

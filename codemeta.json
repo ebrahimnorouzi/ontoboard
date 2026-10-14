@@ -1,0 +1,80 @@
+{
+  "@context": "https://w3id.org/codemeta/4.0",
+  "@type": "SoftwareSourceCode",
+  "identifier": "https://github.com/ebrahimnorouzi/ontoboard",
+  "name": "OntoBoard",
+  "description": "A Protégé Desktop plugin that brings the ODK and ROBOT ontology-engineering workflow into the editor: scaffold an Ontology Development Kit project, build it, run ROBOT's report, explain what the reasoner concluded, refresh imports, edit ROBOT template spreadsheets and cut a release — all against the ontology already open in Protégé. ROBOT (robot-core 1.9.8) is embedded as a library and its operations run in-process, so the common ones need no terminal, no make and no container. The plugin ships as a single OSGi bundle dropped into Protégé's plugins folder.",
+  "applicationCategory": "Ontology engineering",
+  "applicationSubCategory": "Protégé Desktop plugin",
+  "programmingLanguage": "Java",
+  "runtimePlatform": [
+    "Java 8",
+    "OSGi"
+  ],
+  "codeRepository": "https://github.com/ebrahimnorouzi/ontoboard",
+  "license": "https://spdx.org/licenses/Apache-2.0",
+  "softwareVersion": "1.120.0",
+  "version": "1.120.0",
+  "dateCreated": "2026-04-11",
+  "datePublished": "2026-10-14",
+  "dateModified": "2026-10-14",
+  "developmentStatus": "active",
+  "author": [
+    {
+      "@id": "https://github.com/ebrahimnorouzi",
+      "@type": "Person",
+      "givenName": "Ebrahim",
+      "familyName": "Norouzi",
+      "affiliation": {
+        "@type": "Organization",
+        "name": "Information Service Engineering (ISE), FIZ Karlsruhe - Leibniz Institute for Information Infrastructure",
+        "url": "https://www.fiz-karlsruhe.de/en/forschung/information-service-engineering"
+      }
+    }
+  ],
+  "maintainer": {
+    "@id": "https://github.com/ebrahimnorouzi",
+    "@type": "Person",
+    "givenName": "Ebrahim",
+    "familyName": "Norouzi",
+    "affiliation": {
+      "@type": "Organization",
+      "name": "Information Service Engineering (ISE), FIZ Karlsruhe - Leibniz Institute for Information Infrastructure",
+      "url": "https://www.fiz-karlsruhe.de/en/forschung/information-service-engineering"
+    }
+  },
+  "copyrightHolder": {
+    "@type": "Organization",
+    "name": "FIZ Karlsruhe - Leibniz Institute for Information Infrastructure",
+    "url": "https://www.fiz-karlsruhe.de/en"
+  },
+  "copyrightYear": 2026,
+  "keywords": [
+    "ontology engineering",
+    "ROBOT",
+    "ODK",
+    "Protégé plugin",
+    "OWL",
+    "knowledge graph",
+    "ROBOT templates",
+    "spreadsheet",
+    "OBO"
+  ],
+  "softwareRequirements": [
+    "https://protege.stanford.edu",
+    "https://github.com/ontodev/robot"
+  ],
+  "targetProduct": {
+    "@type": "SoftwareApplication",
+    "name": "Protégé Desktop",
+    "softwareVersion": "5.6.x or 5.5.0",
+    "url": "https://protege.stanford.edu"
+  },
+  "relatedLink": "https://ebrahimnorouzi.github.io/ontoboard/",
+  "downloadUrl": "https://github.com/ebrahimnorouzi/ontoboard/releases/latest/download/ontoboard.jar",
+  "readme": "https://github.com/ebrahimnorouzi/ontoboard/blob/main/README.md",
+  "issueTracker": "https://github.com/ebrahimnorouzi/ontoboard/issues",
+  "buildInstructions": "https://ebrahimnorouzi.github.io/ontoboard/development/",
+  "continuousIntegration": "https://github.com/ebrahimnorouzi/ontoboard/actions",
+  "releaseNotes": "https://github.com/ebrahimnorouzi/ontoboard/releases/tag/v1.120.0"
+}

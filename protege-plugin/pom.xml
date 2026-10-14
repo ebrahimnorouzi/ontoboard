@@ -6,7 +6,7 @@
 
   <groupId>de.fizkarlsruhe.ise</groupId>
   <artifactId>ontoboard</artifactId>
-  <version>1.119.0</version>
+  <version>1.120.0</version>
   <packaging>bundle</packaging>
 
   <name>OntoBoard</name>
@@ -239,6 +239,15 @@
               the same trade-off already accepted for the optional import tail.
             -->
             <_noee>true</_noee>
+            <!--
+              So that `java -jar ontoboard.jar corpus book.xlsx` works. Harmless to OSGi, which
+              reads the Bundle- headers and ignores this one, and the difference between a
+              reproduction package a reviewer can run and one they cannot: the measurements live
+              in a class that needs robot-core, and robot-core is one of the 104 jars
+              Embed-Dependency nests inside this bundle, where the java launcher cannot see it.
+              Launcher reads Bundle-ClassPath and unpacks exactly those.
+            -->
+            <Main-Class>de.fizkarlsruhe.ise.ontoboard.bench.Launcher</Main-Class>
             <Bundle-Activator>org.protege.editor.owl.ProtegeOWL</Bundle-Activator>
             <Bundle-SymbolicName>${project.artifactId};singleton:=true</Bundle-SymbolicName>
             <Bundle-Vendor>ISE / FIZ Karlsruhe</Bundle-Vendor>

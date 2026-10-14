@@ -1,0 +1,104 @@
+# Citation metadata for OntoBoard.
+#
+# Format:       Citation File Format (CFF), schema version 1.2.0
+# Schema guide: https://github.com/citation-file-format/citation-file-format/blob/main/schema-guide.md
+# Schema:       https://github.com/citation-file-format/citation-file-format/blob/main/schema.json
+#
+# 1.2.0 is the current version: it is the latest release of the citation-file-format
+# repository (tag 1.2.0, published 2021-08-09) and the schema pins the key with
+# pattern ^1\.2\.0$, so "cff-version" below is not a value you may bump freely.
+#
+# Validate before committing. Both of these exit non-zero on a bad file:
+#   pipx run cffconvert --validate -i CITATION.cff
+#   gem install cff && ruby -rcff -e 'CFF::File.validate!("CITATION.cff")'
+#
+# TWO THINGS ARE DELIBERATELY MISSING. Please fill them in.
+#
+#   1. orcid. Add it to the author entry below, in the full URI form the schema demands:
+#          orcid: "https://orcid.org/XXXX-XXXX-XXXX-XXXX"   # TODO Ebrahim: your ORCID
+#      The key is absent rather than present-with-a-placeholder, and the reason is not
+#      the obvious one. The schema pattern is
+#      https://orcid\.org/[0-9]{4}-[0-9]{4}-[0-9]{4}-[0-9]{3}[0-9X]{1}
+#      and "https://orcid.org/0000-0000-0000-0000" MATCHES it. An all-zeros placeholder
+#      would therefore pass every validator, go green in CI, and feed a false identifier
+#      into the APA and BibTeX snippets GitHub generates and into anything that harvests
+#      them. A false ORCID that validates is worse than no ORCID, so there is none here.
+#      The XXXX form above is used deliberately: it does NOT match the pattern, so if it
+#      is ever uncommented and left unfilled the validator fails loudly instead of
+#      shipping a lie quietly.
+#
+#   2. email. Same reasoning: omitted, not invented. If you want a contact address in the
+#      published citation, add it to the author entry:
+#          email: "XXXX"                                    # TODO Ebrahim: your address
+#      XXXX fails the schema's email pattern on purpose, for the reason given above.
+#      Note that the repository already publishes TWO DIFFERENT addresses for you, at
+#      NOTICE line 5 (one domain) and at paper/main.tex:42 and
+#      paper/ontoboard-iswc2026.tex:33 (another). They are not repeated here, because this
+#      file is published metadata and a comment is not the place to add a third copy.
+#      codemeta.json beside this file asserts NEITHER, on purpose, so that the two agree.
+#      Pick ONE canonical citable address and make NOTICE, both papers and codemeta.json
+#      agree before publishing. Do not use a personal address here; this file is published
+#      metadata that Zenodo, Software Heritage and GitHub all harvest.
+
+cff-version: 1.2.0
+message: "If you use this software, please cite it using the metadata from this file."
+type: software
+title: OntoBoard
+abstract: >-
+  OntoBoard is a Protégé Desktop plugin, packaged as an OSGi bundle, for maintaining
+  OBO-style ontologies with the Ontology Development Kit (ODK) and ROBOT. It embeds
+  robot-core as a library rather than shelling out to the ROBOT command-line tool, so
+  ROBOT operations such as report, measure, profile, explain, SPARQL, transform,
+  template, term export, IRI renaming and import-module extraction run in process
+  against the ontology already open in the editor. OntoBoard also scaffolds and builds
+  ODK projects, running most generated build targets with no make, shell or container
+  installed; compares two releases axiom by axiom; edits ROBOT template spreadsheets;
+  ships a built-in library of ontology design patterns; and draws a canvas of classes,
+  individuals and their relations read from the asserted axioms, with reasoner
+  conclusions and axiom-level explanations available on demand.
+version: "1.120.0"
+date-released: "2026-10-14"
+license: Apache-2.0
+repository-code: "https://github.com/ebrahimnorouzi/ontoboard"
+url: "https://ebrahimnorouzi.github.io/ontoboard/"
+authors:
+  - given-names: Ebrahim
+    family-names: Norouzi
+    affiliation: "Information Service Engineering (ISE), FIZ Karlsruhe - Leibniz Institute for Information Infrastructure, Germany"
+keywords:
+  - ontology engineering
+  - ROBOT
+  - ROBOT templates
+  - ODK
+  - Protégé plugin
+  - OWL
+  - OBO
+  - knowledge graph
+  - spreadsheet
+
+# NO "preferred-citation" KEY, ON PURPOSE.
+#
+# preferred-citation redirects credit away from the software and onto another work.
+# The ISWC paper in paper/ is not published, so there is no other work to redirect to.
+# A stub would technically validate (a reference needs only authors, title and type),
+# but GitHub renders preferred-citation in place of the software metadata: the APA and
+# BibTeX snippets under "Cite this repository" would then advertise a paper nobody can
+# find, and would stop showing the version, date and licence of the thing being cited.
+# Omitting it means GitHub cites the software, which is the honest answer today.
+#
+# When the paper is accepted, add a block like this and change "message" to say that the
+# paper is the preferred citation:
+#
+#   preferred-citation:
+#     type: conference-paper
+#     title: "<paper title>"
+#     authors:
+#       - given-names: Ebrahim
+#         family-names: Norouzi
+#         affiliation: "Information Service Engineering (ISE), FIZ Karlsruhe - Leibniz Institute for Information Infrastructure, Germany"
+#     collection-title: "<proceedings title>"
+#     year: <year>
+#     doi: "<doi>"
+#
+# Also: add "identifiers:" with a Zenodo DOI once the repository is archived there.
+# A DOI is what makes the citation resolvable; the GitHub URL alone is not.

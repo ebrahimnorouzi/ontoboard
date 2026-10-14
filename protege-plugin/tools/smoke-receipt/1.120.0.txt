@@ -1,0 +1,197 @@
+OntoBoard 1.120.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-10-14  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 9/9  test 11/11
+  2026-10-14  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 9/9  test 11/11
+
+5.6.9's verdict is the script's own. 5.5.0's was read out of ~/.Protege/logs/protege.log, which
+is where the script reads it from too: "Plugin: OntoBoard (1.120.0)", "OntoBoard self-check: PASS
+9/9", "OntoBoard self-test: PASS - 11 of 11 checks ran", all at 02:58 against this jar. The
+script itself had to be run three times to get there, and the two runs that produced nothing are
+worth writing down because the next person will hit them:
+
+  - Start-Process from a detached shell did not launch Protege 5.5.0 at all. No process, no line
+    in the log, and the script sat in its wait loop until it was killed. The same script from a
+    shell with a console attached launched it immediately. Not understood; recorded.
+  - Run through a PowerShell pipeline that ends in Out-String, the script's output is buffered
+    until the pipeline closes, so a run in progress looks like a run that has produced nothing.
+    Watch the log, not the console.
+
+Protege 5.5.0 also logs eleven CURIEShortFormProvider warnings about the self-check's own
+synthetic namespaces (http://www.ontoboard.org/self-check#...). They are Protege's, they are
+harmless, and they appear on both hosts.
+
+WHY THERE IS NO 1.119.0 RELEASE
+
+1.119.0 was committed, pushed and tagged, and both the build and the release workflow failed on
+it. The failure was in one of its own new tests, and it was a real defect rather than a flaky
+build: SheetClipboard asked Toolkit.getMenuShortcutKeyMask() for the Ctrl/Cmd modifier, and that
+method throws HeadlessException, so the clipboard could not be installed on a machine with no
+display. The host smoke could never have caught it - a Protege has a display - and the whole
+local suite passed, because Windows is not headless unless told to be. CI found it within three
+minutes.
+
+The canvas has bound both CTRL_DOWN_MASK and META_DOWN_MASK since it was written, with a comment
+saying why that call is avoided. The new code did not follow the convention that was already
+there. It does now, the clipboard gives up quietly where there is no clipboard at all, and the
+suite is run with -Djava.awt.headless=true locally so that the next one is caught here.
+
+The v1.119.0 tag stays, as v1.0.0's did, because it is what was tested and found wanting. There
+is no downloadable release for it, and update.properties and codemeta.json point at this one.
+
+
+WHAT CROSS-SHEET CONTRADICTIONS ARE, AND THE 1,619 NON-PROBLEMS THAT SHAPED THEM
+
+ROBOT merges a folder of templates, so one sheet can give a person their name and another their
+affiliation. On the published NFDI-MatWerk workbook 1,639 of 6,688 identifiers are the subject of
+rows in more than one sheet, and reporting all of them would have been a list of 1,619
+non-problems. SheetAudit.across therefore reports only where the sheets contradict each other,
+and the shape of that check came out of measuring the workbook rather than reasoning about it:
+
+  identifiers that are the subject of rows in more than one sheet   1,639
+  of those, carrying a label on BOTH sides                          1,627
+  of those, where the labels disagree                                   0
+  where the declared TYPE disagrees                                     20
+
+Twenty, all the same shape: typed as MWO_0001029 in MatWerk-PP and NFDI_0000002 in Others, in two
+files neither author can see from the other, which ROBOT settles by whichever order it merged
+them in. A finding is raised against each participating row so that both sides are marked, and
+none of them carries a suggestion, because which of two types is right is not a tool's decision.
+
+THE VACUOUS VERSION OF THAT CHECK, WHICH SHIPPED FOR AN HOUR AND NOT A DAY
+
+The first version looked for TemplateColumns.Kind.LABEL. No tab in that workbook uses it - all 28
+write A rdfs:label - so the check compared no labels at all and reported, confidently, that
+labels never disagree. The number was 0 either way, which is exactly why it would have survived.
+
+What caught it was a test with two sheets and two different labels in it, asserting two findings.
+LabelIndex already had the right predicate - LABEL, or ANNOTATION_LANGUAGE, or an annotation
+whose property ends in label - and the fix was to move it to TemplateColumns.labelColumns and
+have both callers use it, rather than to write a third copy. That the workbook's labels really do
+all agree is now a measurement: 1,627 compared, 1,627 identical, which is something its curators
+are keeping true by hand.
+
+
+THE BULK FIX NOW FINISHES THE JOB
+
+Forty cells of that workbook carry two fixable findings each - 37 a doubled space and a curly
+quote, 2 a curly quote and an unresolved reference, 1 two unresolved references in one SPLIT
+cell. Each finding's replacement is computed from the cell as the audit found it, so applying the
+first leaves the second describing text that is no longer there. It was skipped, and reported as
+"edited since the check ran" - true, but the thing that had edited it was the batch itself. The
+class javadoc had said so since it was written ("on the real sheets this fires 33 times in one
+batch") and left it there.
+
+SheetFix.applyAll now goes round again, re-auditing only the cells it wrote itself and only for
+the kinds it was asked about. Measured, one action:
+
+                         before 1.120.0        now
+  cells changed                  7,406       7,406   (over 2 passes)
+  left alone                        40           0
+  findings after                   665         625
+  a second run changes               40           0
+
+The guard is not weakened: a cell somebody else edited while the dialog was open is not a cell
+this fix wrote, so it is still left exactly alone, and there is a test that says so. "Left alone"
+now means what it says - changed by something other than this fix - and the eight-pass bound is
+there so a suggestion that re-created what it fixed could not spin.
+
+
+A MAIN METHOD, AT LAST: THE MEASUREMENTS AS COMMANDS
+
+There was no main() anywhere in src/main/java. Every number this project quotes came from
+starting Protege, opening a folder and reading a status line, which is not something a reviewer
+can check. de.fizkarlsruhe.ise.ontoboard.bench.Bench is six commands over the shipped code - not
+a copy of it, not a reimplementation for the benchmark - writing tab-separated numbers to stdout:
+
+  mvn -q dependency:build-classpath -Dmdep.outputFile=target/cp.txt
+  java -cp "target/classes:$(cat target/cp.txt)"        de.fizkarlsruhe.ise.ontoboard.bench.Bench corpus|summary|audit|conflicts|repair|roundtrip
+
+No clock and no randomness, so two runs on one input give identical bytes; nothing touches AWT,
+so it runs on a build machine; the input is never written to, and an .xlsx is expanded into a
+temporary folder that is deleted on the way out. roundtrip exits 1 if a single cell changed, so
+it can gate a build. The version in the header comes from the filtered build properties, as the
+embedded ROBOT version already did, because a measurement labelled with the wrong version is
+worse than one with no version at all.
+
+AND WHY IT IS NOT ONE COMMAND AGAINST THE PLUGIN JAR, WHICH IS WHAT WAS WANTED
+
+It should have been `java -jar ontoboard.jar corpus book.xlsx`, and the first version of this
+claimed it was. Trying it is what settled the matter, in three steps:
+
+  1. `java -cp ontoboard.jar ... version` works and `... corpus book.xlsx` does not:
+     NoClassDefFoundError org/obolibrary/robot/exceptions/RowParseException. Embed-Dependency
+     nests 104 dependency jars INSIDE the bundle and lists them in Bundle-ClassPath, which Felix
+     understands and the java launcher does not.
+  2. So Launcher reads Bundle-ClassPath out of its own manifest, unpacks exactly those entries
+     once into a cache keyed on the bundle version, and runs Bench through a loader over them.
+     That fixes 103 of the 104, and then fails on the OWL API - which is `provided`, because
+     Protege supplies it and a second copy inside an OSGi framework breaks the plugin.
+  3. Taking the OWL API from a Protege install was tried next, and it fails on Caffeine; taking
+     the whole bundles directory fails on org.slf4j.spi.LoggingEventAware, because this bundle
+     embeds logback 1.5.6 against slf4j-api 1.7.12 and that only resolves because Protege's
+     framework wires org.slf4j to its own 2.x.
+
+Reassembling an OSGi runtime on a flat classpath is not a supported configuration, and a flag
+that half-works is worse than no flag. So Launcher ships doing step 2 - which is real work, and
+leaves exactly one thing missing - and when that one thing is missing it prints the two commands
+above and exits 3. `version` and `--help` work from the jar alone. docs/measurements.md says the
+same, and says why.
+
+docs/measurements.md is every figure this project quotes, with the command that produces it and
+the output as it came out.
+
+
+AVAILABILITY: WHAT A RESOURCE TRACK ASKS FOR BEFORE IT READS THE PAPER
+
+  CITATION.cff     validated with cffconvert against CFF 1.2.0, not asserted to be valid.
+                   Renders as: Norouzi E. (2026). OntoBoard (version 1.120.0).
+  codemeta.json    CodeMeta 4.0 context.
+  .zenodo.json     for the archive, once the integration is enabled.
+  docs/persistent-identifiers.md   Zenodo and w3id, step by step, checked against both.
+  docs/protege-registry.md         how the plugin gets into Protege's own plugin list.
+  docs/w3id/ontoboard.htaccess     the redirect rules, ready to submit.
+  docs/paper-claims-audit.md       every claim in the two .tex sources, checked.
+
+Each was drafted against the live specification and then checked by somebody trying to get it
+rejected, and three classes of thing were taken out rather than shipped:
+
+  - AN EMAIL ADDRESS. The repository publishes three: ebrahim.norouzi@fiz-karlsruhe.de in
+    NOTICE, and ebrahim.norouzi@kit.edu in both paper/main.tex and paper/ontoboard-iswc2026.tex.
+    Published metadata is harvested by Zenodo, Software Heritage and GitHub, so none of them is
+    a tool's to pick. CITATION.cff and codemeta.json both assert none, and say so.
+  - AN ORCID. "0000-0000-0000-0000" MATCHES the CFF schema pattern, so a placeholder would pass
+    every validator, go green in CI and feed a false identifier into the APA and BibTeX
+    snippets GitHub generates. The key is absent, and the comment explains the XXXX form to use
+    if a reminder is wanted, because that one fails loudly.
+  - FACTS NOBODY EVIDENCED. An operating-system list for a plugin whose CI runs only on Ubuntu
+    and whose smoke runs only on Windows; a personal homepage no file in the repository names.
+
+THREE THINGS THAT NEED EBRAHIM AND NOT A TOOL
+
+  1. Which contact address is the citable one, in CITATION.cff, NOTICE, codemeta.json and both
+     .tex files, all agreeing.
+  2. The ORCID, in CITATION.cff and .zenodo.json.
+  3. The paper. docs/paper-claims-audit.md read both sources against the repository and its
+     verdict is REWRITE, NOT PATCH: 75-80% of the body describes the deleted web application,
+     the claimed principal contribution is a merge engine that no longer exists, and three
+     passages assert evidence that was never produced - "25 unit tests and 19 integration
+     tests", "has been measured", "has been shown". Those last three are the ones that would
+     end badly in review. The audit also lists what survives verbatim, which is the ODK/ROBOT
+     barrier argument the README already leads with.
+
+
+WHAT IS STILL NOT TRUE
+
+  - Nobody has pasted a block, saved over a changed file or seen a cross-sheet contradiction in
+    a running Protege. All three are covered headlessly; the host smoke reaches only
+    "SheetEditorView built without throwing".
+  - There is no Zenodo DOI and no w3id PURL yet: both need an action in somebody's browser, and
+    .zenodo.json and the .htaccess are the parts that could be prepared here.
+  - OntoBoard is not in Protege's plugin registry. docs/protege-registry.md says what that
+    takes.
+  - The paper has not been rewritten. Only audited.
+  - .xlsx is still read-only, and Koncludix is still unverified end to end.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>

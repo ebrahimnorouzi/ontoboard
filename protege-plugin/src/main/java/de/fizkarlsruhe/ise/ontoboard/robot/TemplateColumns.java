@@ -382,6 +382,55 @@ public final class TemplateColumns {
     }
 
     /** Every column whose cells name another term. */
+    /**
+     * The columns that give a row's entity its name, in column order.
+     *
+     * <p>Three spellings, because real sheets use all three: the {@code LABEL} shorthand, an
+     * {@code AL rdfs:label@en} with a language tag, and - much the most common in the
+     * NFDI-MatWerk workbook, where it is what every one of the 28 template tabs uses - a plain
+     * {@code A rdfs:label} annotation.
+     *
+     * <p>This lives here rather than in a caller because two callers already needed it and a
+     * third got it wrong: a check for {@code Kind.LABEL} alone finds nothing in that workbook,
+     * so a cross-sheet comparison of labels written that way silently compared no labels at all
+     * and reported that they always agreed.
+     */
+    public List<Column> labelColumns() {
+        List<Column> labels = new ArrayList<Column>();
+        for (Column column : getColumns()) {
+            if (column.getKind() == Kind.LABEL || column.getKind() == Kind.ANNOTATION_LANGUAGE
+                    || isALabelAnnotation(column)) {
+                labels.add(column);
+            }
+        }
+        return labels;
+    }
+
+    /** The first column that holds a name, or null. */
+    public Column firstLabelColumn() {
+        List<Column> labels = labelColumns();
+        return labels.isEmpty() ? null : labels.get(0);
+    }
+
+    /**
+     * Whether an annotation column carries a label.
+     *
+     * <p>Spelt out rather than compared to one string because the property can be written as a
+     * CURIE or in full, and because the broken {@code A rdfs:label@en} form - which this plugin
+     * reports but which exists in real sheets - should still count. Somebody typing a name wants
+     * it completed whether or not the column that holds it is written correctly.
+     */
+    private static boolean isALabelAnnotation(Column column) {
+        if (column.getKind() != Kind.ANNOTATION && column.getKind() != Kind.ANNOTATION_TYPED) {
+            return false;
+        }
+        String property = column.getProperty();
+        int hash = property.lastIndexOf('#');
+        int colon = property.lastIndexOf(':');
+        String local = property.substring(Math.max(hash, colon) + 1);
+        return "label".equals(local) || local.startsWith("label@");
+    }
+
     public List<Column> referenceColumns() {
         List<Column> found = new ArrayList<Column>();
         for (Column column : columns) {

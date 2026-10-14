@@ -197,21 +197,52 @@ class SheetClipboardTest {
 
     // ---------- the keys ----------
 
+    /**
+     * Both modifiers, and no call to {@code Toolkit.getMenuShortcutKeyMask()}.
+     *
+     * <p>That call is how this was written first, and CI caught it within the minute: it throws
+     * {@code HeadlessException}, so installing the clipboard was impossible on a machine with no
+     * display. The host smoke could never have found it - a Protege has a display. Binding both
+     * CTRL and META is what the canvas has always done, and it costs nothing.
+     */
     @Test
-    void theKeysAreBoundOnTheGridItself() {
+    void bothMenuModifiersAreBoundAndNeitherNeedsADisplay() {
         SheetTable grid = table();
         SheetClipboard.install(grid, null);
-        int menuKey = java.awt.Toolkit.getDefaultToolkit().getMenuShortcutKeyMask();
 
-        assertEquals("ontoboard.sheet.copy",
-                grid.getInputMap(javax.swing.JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT)
-                        .get(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_C,
-                                menuKey)));
-        assertEquals("ontoboard.sheet.paste",
-                grid.getInputMap(javax.swing.JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT)
-                        .get(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_V,
-                                menuKey)));
+        for (int mask : new int[] {java.awt.event.InputEvent.CTRL_DOWN_MASK,
+                                   java.awt.event.InputEvent.META_DOWN_MASK}) {
+            assertEquals("ontoboard.sheet.copy", boundTo(grid, java.awt.event.KeyEvent.VK_C, mask),
+                    "copy under mask " + mask);
+            assertEquals("ontoboard.sheet.paste", boundTo(grid, java.awt.event.KeyEvent.VK_V, mask),
+                    "paste under mask " + mask);
+        }
         assertTrue(grid.getActionMap().get("ontoboard.sheet.paste") != null,
                 "and an action to go with them");
+    }
+
+    /**
+     * Reaching for the system clipboard where there is none gives up quietly.
+     *
+     * <p>On a build machine this is the headless case; on a desktop it is another application
+     * holding the clipboard open, which happens. Either way the grid must be unchanged and
+     * nothing may propagate - a failed copy is not worth a stack trace in somebody's log.
+     */
+    @Test
+    void copyingWithNoClipboardAvailableIsQuietRatherThanFatal() {
+        SheetTable grid = table();
+        grid.setRowSelectionInterval(0, 0);
+        grid.setColumnSelectionInterval(1, 1);
+
+        String put = SheetClipboard.copy(grid);
+
+        assertTrue(put.isEmpty() || put.equals("Fraunhofer-Gesellschaft\n"), put);
+        assertEquals("Fraunhofer-Gesellschaft", bookOf(grid).cell("organization", 3, 2));
+        assertEquals(0, SheetClipboard.paste(grid), "and pasting from nothing changes nothing");
+    }
+
+    private static Object boundTo(SheetTable grid, int key, int mask) {
+        return grid.getInputMap(javax.swing.JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT)
+                .get(javax.swing.KeyStroke.getKeyStroke(key, mask));
     }
 }

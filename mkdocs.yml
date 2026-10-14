@@ -134,9 +134,20 @@ nav:
       - Limitations and roadmap: limitations.md
       - What was fixed: fixed.md
       - Feature parity: feature-parity.md
+      - Measurements: measurements.md
+      - Compared with other tools: compared-with.md
+      - Compared with OntoEditor: compared-with-ontoeditor.md
       - Compared with OntoGraf: compared-with-ontograf.md
   - Going deeper:
       - Development: development.md
+      - Persistent identifiers: persistent-identifiers.md
+      - Protege plugin registry: protege-registry.md
+      - Evaluation plan: evaluation-plan.md
+      - 'User study':
+          - Session protocol: study/protocol.md
+          - Consent and information: study/consent.md
+          - Questionnaires: study/questionnaires.md
+      - Paper claims audit: paper-claims-audit.md
       # The specs and plans under docs/superpowers/ are the design record. They are published
       # with the site - every link to them still resolves - but they are not in the nav any more.
       # Ten internal planning documents in the sidebar made the site look like a planning archive

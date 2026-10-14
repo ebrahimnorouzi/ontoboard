@@ -211,14 +211,7 @@ public final class LabelIndex {
         if (id == null) {
             return this;
         }
-        List<TemplateColumns.Column> labels = new ArrayList<TemplateColumns.Column>();
-        for (TemplateColumns.Column column : columns.getColumns()) {
-            if (column.getKind() == TemplateColumns.Kind.LABEL
-                    || column.getKind() == TemplateColumns.Kind.ANNOTATION_LANGUAGE
-                    || isALabelAnnotation(column)) {
-                labels.add(column);
-            }
-        }
+        List<TemplateColumns.Column> labels = columns.labelColumns();
         if (labels.isEmpty()) {
             return this;
         }
@@ -242,27 +235,6 @@ public final class LabelIndex {
             }
         }
         return this;
-    }
-
-    /**
-     * Whether an annotation column carries a label.
-     *
-     * <p>Spelt out rather than compared to one string because the property can be written as a
-     * CURIE or in full, and because the broken {@code rdfs:label@en} form - which this plugin
-     * reports but which exists in real sheets - should still contribute its text to the index.
-     * Somebody typing a name wants it completed whether or not the column that holds it is
-     * written correctly.
-     */
-    private static boolean isALabelAnnotation(TemplateColumns.Column column) {
-        if (column.getKind() != TemplateColumns.Kind.ANNOTATION
-                && column.getKind() != TemplateColumns.Kind.ANNOTATION_TYPED) {
-            return false;
-        }
-        String property = column.getProperty();
-        int hash = property.lastIndexOf('#');
-        int colon = property.lastIndexOf(':');
-        String local = property.substring(Math.max(hash, colon) + 1);
-        return "label".equals(local) || local.startsWith("label@");
     }
 
     private static String cell(List<String> row, int number) {

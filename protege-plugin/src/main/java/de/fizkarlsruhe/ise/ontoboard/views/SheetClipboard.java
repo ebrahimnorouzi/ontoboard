@@ -63,10 +63,23 @@ final class SheetClipboard {
         });
     }
 
+    /**
+     * The modifiers a copy or a paste is bound under.
+     *
+     * <p>Both, rather than {@code Toolkit.getMenuShortcutKeyMask()}: that is deprecated on the
+     * newer of the two Java versions this plugin is built for, and - the reason it was found -
+     * it throws {@code HeadlessException}, so a class that asks for it cannot be constructed on
+     * a build machine. The canvas has bound both masks since it was written; this now matches it.
+     */
+    private static final int[] MENU_KEYS = {
+        java.awt.event.InputEvent.CTRL_DOWN_MASK, java.awt.event.InputEvent.META_DOWN_MASK,
+    };
+
     private static void bind(SheetTable table, int key, String name, final Runnable what) {
-        int menuKey = java.awt.Toolkit.getDefaultToolkit().getMenuShortcutKeyMask();
-        table.getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT)
-                .put(KeyStroke.getKeyStroke(key, menuKey), name);
+        for (int mask : MENU_KEYS) {
+            table.getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT)
+                    .put(KeyStroke.getKeyStroke(key, mask), name);
+        }
         table.getActionMap().put(name, new AbstractAction() {
             private static final long serialVersionUID = 1L;
 
@@ -86,8 +99,11 @@ final class SheetClipboard {
             try {
                 clipboard().setContents(new StringSelection(text), null);
             } catch (IllegalStateException busy) {
-                // Another application is holding the clipboard open. Nothing to be done, and
-                // nothing lost - the grid is unchanged.
+                // Another application is holding the clipboard open, which happens. Nothing to
+                // be done, and nothing lost - the grid is unchanged.
+                return "";
+            } catch (java.awt.HeadlessException noDisplay) {
+                // No clipboard to put it on. A failed copy is not worth a stack trace.
                 return "";
             }
         }
@@ -189,6 +205,8 @@ final class SheetClipboard {
             Object text = held.getTransferData(DataFlavor.stringFlavor);
             return text == null ? "" : text.toString();
         } catch (IllegalStateException busy) {
+            return "";
+        } catch (java.awt.HeadlessException noDisplay) {
             return "";
         } catch (java.awt.datatransfer.UnsupportedFlavorException notText) {
             return "";
