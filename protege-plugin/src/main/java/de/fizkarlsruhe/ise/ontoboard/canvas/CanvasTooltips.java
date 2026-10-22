@@ -205,6 +205,8 @@ public final class CanvasTooltips {
                 return "Object property";
             case DATA_PROPERTY:
                 return "Data property";
+            case EXPRESSION:
+                return "Class expression";
             default:
                 return kind.name();
         }

@@ -106,6 +106,10 @@ public final class DotExport {
                 return "ellipse";
             case LITERAL:
                 return "note";
+            case EXPRESSION:
+                // Rounded, because DOT has no "this is not a term" shape and the border is
+                // the only channel left once box, ellipse, diamond, hexagon and note are taken.
+                return "Mrecord";
             case OBJECT_PROPERTY:
             case DATA_PROPERTY:
                 return "hexagon";

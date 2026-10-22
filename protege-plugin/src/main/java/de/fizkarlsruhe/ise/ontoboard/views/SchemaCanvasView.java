@@ -128,6 +128,21 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
     private OWLModelManagerListener modelManagerListener;
     /** The last peer-mismatch warning shown, so it is not repeated on every cursor move. */
     private String lastPeerOntologyWarning;
+    /**
+     * Whether an anonymous class expression gets a node of its own.
+     *
+     * <p>On by default, because off is a diagram that silently omits a third of what the
+     * ontology says - 39 of MWO 3.0.1's 116 restriction occurrences were undrawable before
+     * there was a node to point at. Measured cost of having it on, over the whole of MWO with
+     * every term on the board: 524 nodes and 525 edges become 553 and 652, and a render goes
+     * from 70ms to 123ms. The switch is there because a reader who wants the plain class
+     * hierarchy should be able to have it, not because the cost demands one.
+     */
+    private boolean showExpressions = true;
+
+    /** Where that choice is remembered, so it survives a restart. */
+    static final String EXPRESSIONS_PREFERENCE = "ontoboard.canvas.expressions";
+
     private SelectionBridge selectionBridge;
     private OWLSelectionModelListener selectionListener;
     /**
@@ -394,6 +409,9 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                 .userNodeForPackage(SchemaCanvasView.class)
                 .get(CanvasGesture.PREFERENCE_KEY, null)), false);
 
+        showExpressions = java.util.prefs.Preferences
+                .userNodeForPackage(SchemaCanvasView.class)
+                .getBoolean(EXPRESSIONS_PREFERENCE, true);
         loadLayoutForActiveOntology();
         installContextMenu();
         refresh();
@@ -3224,6 +3242,24 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             menu.add(collaborate);
             menu.addSeparator();
 
+            final javax.swing.JCheckBoxMenuItem expressions =
+                    new javax.swing.JCheckBoxMenuItem("Show class expressions", showExpressions);
+            expressions.setToolTipText("Draw a node for a restriction, union, complement or "
+                    + "enumeration that has no name. Off, those shapes are not drawn at all.");
+            expressions.addActionListener(b -> {
+                showExpressions = expressions.isSelected();
+                java.util.prefs.Preferences.userNodeForPackage(SchemaCanvasView.class)
+                        .putBoolean(EXPRESSIONS_PREFERENCE, showExpressions);
+                refresh();
+                setStatus(showExpressions
+                        ? "Class expressions are drawn. A grey rounded node is a restriction, "
+                                + "a union, a complement or an enumeration."
+                        : "Class expressions are hidden. Anything whose filler has no name is "
+                                + "not drawn.");
+            });
+            menu.add(expressions);
+            menu.addSeparator();
+
             final javax.swing.JCheckBoxMenuItem snap =
                     new javax.swing.JCheckBoxMenuItem("Snap to grid", graph.isGridEnabled());
             snap.setToolTipText("A 20px grid. Alt while dragging ignores it for one move.");
@@ -3852,8 +3888,8 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         // rather than scattered along the top of the board among everything else.
         frameAnyArrivedPattern();
 
-        Projection projection = OntologyProjection
-                .project(getOWLModelManager().getActiveOntology(), membership.asSet());
+        Projection projection = OntologyProjection.project(
+                getOWLModelManager().getActiveOntology(), membership.asSet(), showExpressions);
         projection = withInferences(projection);
         // Kept because the DOT export needs the model rather than the rendered picture, and
         // recomputing it at export time could disagree with what is on screen.
@@ -5084,9 +5120,20 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         }
         com.mxgraph.util.mxRectangle content = graph.getView().getGraphBounds();
         java.awt.Rectangle visible = graphComponent.getViewport().getViewRect();
+
+        // ANYTHING ABOVE OR LEFT OF THE ORIGIN IS OUTSIDE THE SCROLLABLE AREA, because the
+        // control's preferred size is the content's FAR edge and a negative origin is subtracted
+        // from it. Pushing the drawing into positive space is what makes the top of a board
+        // reachable at all; see CanvasPan.shiftFor for the measurement.
+        java.awt.Point shift = CanvasPan.shiftFor(
+                content == null ? 0 : content.getX(), content == null ? 0 : content.getY());
+        if (!shift.equals(graphComponent.getGraphControl().getTranslate())) {
+            graphComponent.getGraphControl().setTranslate(shift);
+        }
+
         java.awt.Dimension wanted = CanvasPan.room(
-                content == null ? 0 : content.getX() + content.getWidth(),
-                content == null ? 0 : content.getY() + content.getHeight(),
+                (content == null ? 0 : content.getX() + content.getWidth()) + shift.x,
+                (content == null ? 0 : content.getY() + content.getHeight()) + shift.y,
                 visible.width, visible.height, graph.getView().getScale());
         if (wanted.width <= 0 || wanted.height <= 0) {
             return;

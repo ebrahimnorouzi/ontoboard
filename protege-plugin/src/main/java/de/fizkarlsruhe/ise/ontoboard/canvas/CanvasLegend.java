@@ -245,6 +245,15 @@ public final class CanvasLegend {
                         + "node.",
                 "#E6F2F4", "#0E6E78", null));
 
+        entries.add(new Entry(Form.NODE, SchemaStyles.EXPRESSION, "Class expression",
+                "An anonymous class expression - a restriction, a union, a complement "
+                        + "or an enumeration - standing in for a class with no name. An "
+                        + "arrow needs a box at each end, so these are what let the "
+                        + "canvas draw A subClassOf (R some (B or C)) at all. Not a "
+                        + "term: it is not in the ontology signature, and clicking it "
+                        + "selects nothing in Protege.",
+                "#F2F2F4", "#6B6B76", null));
+
         entries.add(new Entry(Form.EDGE, SchemaStyles.SUBCLASS, "rdfs:subClassOf",
                 "The child is a kind of the parent. A hollow triangle points at the parent - "
                         + "UML's generalisation head, which is what an ontology reader already "
@@ -349,6 +358,8 @@ public final class CanvasLegend {
                 return SchemaStyles.OBJECT_PROPERTY_NODE;
             case DATA_PROPERTY:
                 return SchemaStyles.DATA_PROPERTY_NODE;
+            case EXPRESSION:
+                return SchemaStyles.EXPRESSION;
             default:
                 return null;
         }

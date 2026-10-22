@@ -282,28 +282,31 @@ class ViewConfigTest {
                         + pluginIdsIn(panels.get(0)));
         assertEquals(0, panels.get(0).getElementsByTagName("CNode").getLength(),
                 "a nested CNode would split the tree panel again instead of adding a tab");
-        assertEquals(java.util.Collections.singletonList(
+        assertEquals(java.util.Arrays.asList(
+                        "org.protege.editor.owl.SelectedEntityView",
                         "org.protege.editor.owl.ManchesterSyntaxFrameView"),
                 pluginIdsIn(panels.get(1)),
-                "the lower panel is the axioms of the selected term, alone. Not the per-type "
-                        + "description views - there are nineteen of them and they do not switch "
-                        + "by entity type - and not SelectedEntityView, whose own inner splitter "
-                        + "needs more height than a stacked panel has");
+                "the lower panel is what the selected term says: the editable frames first, the "
+                        + "read-only Manchester text second. Not the per-type description views - "
+                        + "there are nineteen of them and they do not switch by entity type - and "
+                        + "the editable one has to come first, because a pane that can only be "
+                        + "read is what shipped in 1.122.0 and is not what the tab is for");
     }
 
-    /** Both panels in the left column get a share, and the trees the larger one. */
+    /** Both panels in the left column get a share, and the editable one enough to edit in. */
     @Test
-    void theTreesKeepMoreOfTheLeftColumnThanTheAxiomsPane() throws Exception {
+    void thePaneForTheSelectedTermGetsEnoughOfTheLeftColumn() throws Exception {
         Element left = children(onlyChild(layoutRoot())).get(0);
         String[] splits = left.getAttribute("splits").trim().split("\\s+");
 
         assertEquals(2, splits.length, "one split fraction per panel");
         double trees = Double.parseDouble(splits[0]);
-        double axioms = Double.parseDouble(splits[1]);
-        assertTrue(axioms > 0.25, "an axiom frame needs room to be readable: " + axioms);
-        assertTrue(trees > axioms, "the tree is what a reader navigates with: " + trees + " vs "
-                + axioms);
-        assertEquals(1.0, trees + axioms, 0.001, "the fractions should cover the column");
+        double details = Double.parseDouble(splits[1]);
+        // SelectedEntityCardView spends its own height on an inner splitter - annotations over
+        // description - so half of a narrow column is the floor at which both halves are usable.
+        assertTrue(details >= 0.45, "the editable frames need the room: " + details);
+        assertTrue(trees >= 0.35, "and the tree is still what a reader navigates with: " + trees);
+        assertEquals(1.0, trees + details, 0.001, "the fractions should cover the column");
     }
 
     /**

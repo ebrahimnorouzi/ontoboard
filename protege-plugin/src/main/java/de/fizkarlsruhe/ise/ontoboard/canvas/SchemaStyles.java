@@ -34,6 +34,9 @@ public final class SchemaStyles {
     public static final String DATATYPE = "obDatatype";
     public static final String LITERAL = "obLiteral";
 
+    /** An anonymous class expression: a restriction, a union, a complement, an enumeration. */
+    public static final String EXPRESSION = "obExpression";
+
     public static final String SUBCLASS = "obSubClass";
     public static final String OBJECT_PROPERTY = "obObjectProperty";
     public static final String DATA_PROPERTY = "obDataProperty";
@@ -255,6 +258,17 @@ public final class SchemaStyles {
                 false, false, 12, 0));
         sheet.putCellStyle(LITERAL, vertex(mxConstants.SHAPE_RECTANGLE, "#FFF6DB", "#8A6A00",
                 false, false, 12, 0));
+
+        // An anonymous class expression, drawn the way Graffoo draws one: small, rounded and
+        // grey, so it reads as scaffolding between two terms rather than as a term. Grey is
+        // the one hue left unclaimed - blue is a class, purple an individual, green a
+        // datatype, orange and teal the two property kinds - and it is the right meaning as
+        // well as the only one free: this node is not in the ontology's signature and cannot
+        // be clicked through to anything.
+        Map<String, Object> expression = vertex(mxConstants.SHAPE_RECTANGLE, "#F2F2F4",
+                "#6B6B76", false, false, 11, mxConstants.FONT_ITALIC);
+        expression.put(mxConstants.STYLE_ARCSIZE, 40);
+        sheet.putCellStyle(EXPRESSION, expression);
 
         // A hollow triangle pointing at the parent: UML's generalisation head, which is what an
         // ontology reader already expects for is-a. Solid, because that frees the dash to mean "the

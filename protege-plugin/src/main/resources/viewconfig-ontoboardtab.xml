@@ -41,7 +41,7 @@
 -->
 <layout>
     <VSNode splits="0.28 0.72">
-        <HSNode splits="0.58 0.42">
+        <HSNode splits="0.46 0.54">
         <CNode>
             <Component label="Classes">
                 <Property id="pluginId" value="org.protege.editor.owl.OWLAssertedClassHierarchy"/>
@@ -62,10 +62,24 @@
                 <Property id="pluginId" value="org.protege.editor.owl.OWLIndividualsList"/>
             </Component>
         </CNode>
-        <!-- The axioms of whatever is selected, in Manchester syntax. In a CNode of its own so
-             it is beside the trees rather than one more tab among them: a reader who clicks a
-             class in the tree wants to see the tree AND what the class says. -->
+        <!-- What the selected term says, in a CNode of its own so it is beside the trees rather
+             than one more tab among them: a reader who clicks a class in the tree wants to see
+             the tree AND what the class says. Two Components, so mdock renders them as tabs.
+
+             SelectedEntityView FIRST, because it is the editable one. It is the same view
+             Protege's own Entities tab uses - annotations, the class or property description,
+             usage and characteristics, each an editable frame with its own add button, and it
+             switches by entity type on its own because it is a CardLayout over all six. Shipping
+             only the Manchester view made this pane a reader: it prints the whole axiom frame of
+             anything selected and lets you change none of it.
+
+             Both are kept because they answer different questions. The frames are for editing one
+             assertion; the Manchester text is the whole entity in one scrollable block, which is
+             what you want when you are reading rather than changing. -->
         <CNode>
+            <Component label="Annotations and description">
+                <Property id="pluginId" value="org.protege.editor.owl.SelectedEntityView"/>
+            </Component>
             <Component label="Axioms">
                 <Property id="pluginId" value="org.protege.editor.owl.ManchesterSyntaxFrameView"/>
             </Component>

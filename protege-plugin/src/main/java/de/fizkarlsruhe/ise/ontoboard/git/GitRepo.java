@@ -95,10 +95,18 @@ public final class GitRepo {
         private final int behind;
         private final List<String> changed;
         private final List<String> untracked;
+        private final List<String> conflicted;
         private final boolean hasUpstream;
 
         Status(String branch, int ahead, int behind, List<String> changed,
                 List<String> untracked, boolean hasUpstream) {
+            this(branch, ahead, behind, changed, untracked,
+                    Collections.<String>emptyList(), hasUpstream);
+        }
+
+        Status(String branch, int ahead, int behind, List<String> changed,
+                List<String> untracked, List<String> conflicted, boolean hasUpstream) {
+            this.conflicted = Collections.unmodifiableList(conflicted);
             this.branch = branch;
             this.ahead = ahead;
             this.behind = behind;
@@ -131,19 +139,43 @@ public final class GitRepo {
             return untracked;
         }
 
+        /**
+         * Files in an unmerged state: a merge or a rebase stopped here and left both sides.
+         *
+         * <p><b>Why this had to exist.</b> The parser had two buckets, {@code ??} and
+         * everything else, so {@code UU ontology.owl} - the code git uses for "both sides
+         * modified this" - read as an ordinary changed file. The commit path then did what it
+         * does for a changed file: {@code git add -A} followed by {@code git commit}, which
+         * exits 0 and records a blob containing {@code &lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD}. The plugin reported
+         * "Committed 1 files." Reproduced on a real conflicted tree before this was written.
+         *
+         * <p>An .owl full of conflict markers does not parse, so the next person to open it
+         * loses the ontology, not a line of text - and the commit that did it says it
+         * succeeded.
+         */
+        public List<String> getConflicted() {
+            return conflicted;
+        }
+
+        /** True while a merge or rebase is unfinished. Committing now would record markers. */
+        public boolean hasConflicts() {
+            return !conflicted.isEmpty();
+        }
+
         /** False for a branch that has never been pushed, which needs a different push command. */
         public boolean hasUpstream() {
             return hasUpstream;
         }
 
         public boolean isClean() {
-            return changed.isEmpty() && untracked.isEmpty();
+            return changed.isEmpty() && untracked.isEmpty() && conflicted.isEmpty();
         }
 
         @Override
         public String toString() {
             return branch + (ahead > 0 ? " +" + ahead : "") + (behind > 0 ? " -" + behind : "")
-                    + ", " + changed.size() + " changed, " + untracked.size() + " new";
+                    + ", " + changed.size() + " changed, " + untracked.size() + " new"
+                    + (conflicted.isEmpty() ? "" : ", " + conflicted.size() + " conflicted");
         }
     }
 
@@ -161,6 +193,7 @@ public final class GitRepo {
         boolean hasUpstream = false;
         List<String> changed = new ArrayList<String>();
         List<String> untracked = new ArrayList<String>();
+        List<String> conflicted = new ArrayList<String>();
 
         for (String raw : output == null ? Collections.<String>emptyList() : output) {
             String line = raw == null ? "" : raw;
@@ -184,11 +217,26 @@ public final class GitRepo {
             String path = line.substring(3).trim();
             if ("??".equals(code)) {
                 untracked.add(path);
+            } else if (isUnmerged(code)) {
+                conflicted.add(path);
             } else {
                 changed.add(path);
             }
         }
-        return new Status(branch, ahead, behind, changed, untracked, hasUpstream);
+        return new Status(branch, ahead, behind, changed, untracked, conflicted, hasUpstream);
+    }
+
+    /**
+     * Whether a porcelain code means "a merge left both sides here".
+     *
+     * <p>The seven git documents in git-status(1) under "Unmerged": both-modified, both-added,
+     * both-deleted, and the four one-sided ones. Listed rather than inferred from the presence
+     * of a U, because DD has no U in it and would be missed.
+     */
+    private static boolean isUnmerged(String code) {
+        return "UU".equals(code) || "AA".equals(code) || "DD".equals(code)
+                || "AU".equals(code) || "UA".equals(code)
+                || "DU".equals(code) || "UD".equals(code);
     }
 
     private static int numberAfter(String text, String marker) {

@@ -183,6 +183,18 @@ public final class AxiomRemoval {
         if (!parsed.getOrigin().isRetractable()) {
             throw new RefusedException(parsed.getOrigin().getRefusal());
         }
+        if (parsed.getFiller() != null && parsed.getFiller().startsWith(
+                de.fizkarlsruhe.ise.ontoboard.model.OntologyProjection.EXPRESSION_PREFIX)) {
+            // THE FILLER IS SCAFFOLDING, NOT A CLASS. Since 1.123.0 an arrow may end on a node
+            // that stands for an anonymous class expression - R some (B or C) - and the filler
+            // slot then holds that node's id rather than an IRI. Everything below builds
+            // OWLClass(IRI.create(filler)) and asks the ontology to remove an axiom about it,
+            // which would match nothing and report success: a retraction that silently does
+            // nothing is worse than one that declines.
+            throw new RefusedException("This arrow ends on a class expression rather than on a "
+                    + "named class, so there is no single axiom to take away. Edit the class's "
+                    + "definition in Protege's own description view instead.");
+        }
 
         OWLDataFactory f = ontology.getOWLOntologyManager().getOWLDataFactory();
         OWLObjectProperty property =

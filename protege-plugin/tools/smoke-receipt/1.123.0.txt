@@ -1,0 +1,133 @@
+OntoBoard 1.123.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-10-22  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 9/9  test 11/11
+  2026-10-22  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 9/9  test 11/11
+
+
+THE CANVAS DRAWS THE OTHER THIRD NOW
+
+An arrow needs a box at each end, and an anonymous class expression has no IRI to be a box. So
+every shape whose filler had no name was dropped without trace. Measured over MWO 3.0.1: 39 of
+its 116 restriction occurrences, 34%, were invisible, and the page showing the diagram said the
+graph was the axioms the ontology asserts.
+
+  A SubClassOf (R some (B or C))     drew nothing
+  A SubClassOf (B or C)              drew nothing
+  A SubClassOf (not B)               drew nothing
+  A EquivalentTo {x, y}              drew nothing
+  A SubClassOf (inverse R some B)    drew nothing - the property was anonymous, not the filler
+
+NodeKind.EXPRESSION is a small grey rounded node carrying the operator, with its operands hanging
+off it, which is how Graffoo draws one. It is NOT a term: no IRI, not in the signature, clicking
+it selects nothing, and it is minted fresh by every projection rather than remembered in the
+layout - the same way a DATATYPE node already behaves.
+
+PURE ADDITION, BY DESIGN. The compact form is kept wherever the filler has a name, so no existing
+board changes: a node appears only where there was nothing at all before. That is also why it
+costs a twentieth of what was estimated when the work was scoped from the inventory alone:
+
+                       nodes   edges   render
+  MWO 3.0.1, without     524     525     70 ms
+  MWO 3.0.1, with        553     652    123 ms
+  estimated beforehand   668     904  2,580 ms
+
+29 expression nodes on MWO - 6 "and", 6 "or", 7 "one of", 10 restrictions with an anonymous
+filler. On by default, because off is a diagram that silently omits a third of what the ontology
+says; the switch is under the toolbar's kebab menu and is remembered per user.
+
+ALSO DRAWN FOR THE FIRST TIME, and neither needed a new edge kind:
+  - the NAMED conjunct of SubClassOf(A, B and (R some C)) - 36 of them on MWO, lost because
+    walk() had no branch for a named operand of an intersection
+  - EquivalentClasses(A B), two named classes, drawn as the two subclass edges it is defined to be
+
+A RETRACTION THAT WOULD HAVE DONE NOTHING, REFUSED. AxiomRemoval builds OWLClass(IRI.create(
+filler)) out of an edge id. An arrow that ends on an expression node carries a node id there, not
+an IRI, so the removal would have matched nothing and reported success. It declines by name now.
+
+
+THE TOP OF THE BOARD WAS UNREACHABLE
+
+Reported during the release: "the upper part of canvas is not shown, even when i dragged it".
+Reproduced from the maintainer's own saved layout - four of its nine nodes at a negative y, the
+topmost at -400.
+
+The cause is not the clamp at zero, it is that the negative region is not in the scrollable area
+at all. getScaledPreferredSizeForGraph is round(bounds.x + bounds.width), so a negative origin is
+SUBTRACTED from the size. Measured: content spanning 880x762 from (-120,-400) gave a control of
+761x363. There was nothing above the origin to scroll to, so no amount of dragging could help.
+
+mxGraphControl carries a translate for exactly this, and it survives a pan - measured, still
+(160,440) after a scrollRectToVisible. Through the production path:
+
+  shift                      (160, 440)
+  control preferred  761x363 -> 1792x1536
+  the node at (-120,-400) paints at (40, 40)
+  top of the board visible at scroll position zero?   yes
+
+It moves no cell. Geometry, the saved layout, the PNG/SVG export and the overview all still see
+the coordinates the ontology was drawn with.
+
+
+COMMITTING A MERGE CONFLICT USED TO SUCCEED
+
+Found by reading the collaboration code rather than by a report, and reproduced on a real
+conflicted tree. GitRepo.parseStatus had two buckets - "??" and everything else - so
+`UU ontology.owl` read as an ordinary changed file. The commit path then did what it does for a
+changed file: `git add -A` and `git commit`, which exit 0 on a conflicted tree. The committed blob
+contained <<<<<<< HEAD and the plugin reported "Committed 1 files."
+
+An .owl full of conflict markers does not parse, so what was committed is not an ontology, and
+the person who did it was told it worked. All seven unmerged codes git documents are their own
+state now (UU AA DD AU UA DU UD - DD has no U in it, which is why they are listed rather than
+sniffed), and a commit while any exists is refused with the file names in the message.
+
+Refused rather than resolved: which of two definitions of a class is right is not a tool's
+decision, and the plugin has no three-way merge to offer. What it can do is not destroy the file
+while the question is open.
+
+
+THE LEFT PANEL EDITS NOW
+
+1.122.0 put the axioms of the selected term in the left column and they were read-only - the
+Manchester syntax view prints everything and changes nothing. org.protege.editor.owl
+.SelectedEntityView, the card view Protege's own Entities tab uses, is now the first tab beside
+it: annotations, the class or property description, usage and characteristics, each an editable
+frame with its own add button, switching by entity type on its own. Both are kept - one is for
+changing an assertion, the other for reading the whole entity in one block.
+
+
+WHAT WAS MEASURED, NOT ASSERTED
+
+  2,448 tests in a clean copy of the repository, 0 failures.
+  ExpressionNodesTest        7 new - one per shape that used to vanish, each asserting that
+                             nothing is drawn with expressions off
+  CanvasPanTest             10 - 3 new for the negative origin
+  GitRepoTest               28 - 3 new, including all seven unmerged codes
+  ViewConfigTest            15 - the editable pane is first in the lower-left panel
+
+PatternIndexTest passed in this run. It failed on main this morning because
+ecareathome-ontology.mpi.aass.oru.se stopped answering; 1.122.1 made it name the rows it could
+not compare instead of failing, and the five smarthome rows are compared again now that the host
+is back.
+
+
+WHAT IS STILL NOT TRUE
+
+  - Nobody has seen the expression nodes, the editable pane or the git refusal in a running
+    Protege. The pan fix was verified through the production path headlessly; the earlier pan
+    work was photographed.
+  - Disjointness, inverse pairs and the property characteristics are still hover text - 15, 38
+    and 25 axioms on MWO - so they are neither edges nor hops.
+  - An expression node has no saved position, so it is laid out afresh on every render, exactly
+    as a datatype node is.
+  - COLLABORATION HAS NO CONCURRENCY CONTROL, and now says so in docs/conflicts.md: last writer
+    wins by arrival, no version check, no server authority. The editing claim that was meant to
+    be advisory never fires at all - editedTerm expects an IRI and is handed the operation's
+    random UUID - so the badge is dead. Half a day to fix, not fixed here.
+  - Everything 1.122.1 listed as outstanding still is: no Zenodo DOI, no w3id PURL, not in
+    Protege's plugin registry, the paper audited and not rewritten, .xlsx read-only, Koncludix
+    unverified end to end, 39 thin patterns, and no contact address or ORCID in CITATION.cff.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>

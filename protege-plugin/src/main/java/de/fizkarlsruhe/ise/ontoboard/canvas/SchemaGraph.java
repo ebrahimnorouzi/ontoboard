@@ -314,6 +314,7 @@ public class SchemaGraph extends mxGraph {
             case INDIVIDUAL: return SchemaStyles.INDIVIDUAL;
             case DATATYPE:   return SchemaStyles.DATATYPE;
             case LITERAL:    return SchemaStyles.LITERAL;
+            case EXPRESSION: return SchemaStyles.EXPRESSION;
             case OBJECT_PROPERTY: return SchemaStyles.OBJECT_PROPERTY_NODE;
             case DATA_PROPERTY:   return SchemaStyles.DATA_PROPERTY_NODE;
             case CLASS:

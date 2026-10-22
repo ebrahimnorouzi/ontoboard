@@ -103,6 +103,47 @@ class CanvasPanTest {
                 + "could oscillate between showing and hiding one");
     }
 
+    /**
+     * A board with content above the origin gets pushed into positive space.
+     *
+     * <p>The reported symptom was "the upper part of the canvas is not shown, even when I
+     * dragged it". A real board in this repository had four of nine nodes at a negative y, the
+     * topmost at -400 - and a negative origin is SUBTRACTED from the control's preferred size
+     * ({@code round(bounds.x + bounds.width)}), so that region is not in the scrollable area at
+     * all. Measured: content spanning 880x762 from (-120,-400) gave a control of 761x363.
+     * Dragging cannot reach what is not there to scroll to.
+     */
+    @Test
+    void contentAboveTheOriginIsPushedBackIntoView() {
+        java.awt.Point shift = CanvasPan.shiftFor(-120, -400);
+
+        assertTrue(shift.x >= 120, "the leftmost node has to land at a positive x: " + shift);
+        assertTrue(shift.y >= 400, "and the topmost at a positive y: " + shift);
+        assertEquals(120 + CanvasPan.MARGIN, shift.x, "with a margin, not flush against the edge");
+        assertEquals(400 + CanvasPan.MARGIN, shift.y, "" + shift);
+    }
+
+    /**
+     * A board that is already wholly positive is left exactly as it was.
+     *
+     * <p>Shifting it would move every node on screen for no reason, and a reader who has
+     * arranged a diagram would find it had slid.
+     */
+    @Test
+    void anOrdinaryBoardIsNotMoved() {
+        assertEquals(new java.awt.Point(0, 0), CanvasPan.shiftFor(40, 40));
+        assertEquals(new java.awt.Point(0, 0), CanvasPan.shiftFor(0, 0));
+    }
+
+    /** One side negative shifts only that side. */
+    @Test
+    void onlyTheNegativeAxisIsShifted() {
+        assertEquals(new java.awt.Point(0, 100 + CanvasPan.MARGIN),
+                CanvasPan.shiftFor(300, -100));
+        assertEquals(new java.awt.Point(50 + CanvasPan.MARGIN, 0),
+                CanvasPan.shiftFor(-50, 10));
+    }
+
     /** No viewport yet means "ask again later", not a room of zero. */
     @Test
     void anUnlaidOutViewportIsNotAnAnswer() {

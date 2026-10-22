@@ -53,7 +53,40 @@ public final class CanvasPan {
      */
     public static final int QUANTUM = 256;
 
+    /** Clear space left between the topmost or leftmost node and the edge of the board. */
+    public static final int MARGIN = 40;
+
     private CanvasPan() {
+    }
+
+    /**
+     * How far the drawing must be pushed right and down so that nothing sits above the origin.
+     *
+     * <p><b>Why anything sits above the origin at all.</b> Dragging a node up or left puts it
+     * there, and the auto-arrange can too. A real board in this repository had four of its nine
+     * nodes at a negative y, the topmost at -400.
+     *
+     * <p><b>Why that made the top of the board unreachable.</b> A pan is a scroll, and a
+     * {@code JViewport} clamps its position at zero - but the deeper problem is that the negative
+     * region is not part of the scrollable area in the first place.
+     * {@code getScaledPreferredSizeForGraph} is {@code round(bounds.x + bounds.width)}, so a
+     * negative origin is <em>subtracted</em> from the size. Measured: content spanning 880x762
+     * from (-120,-400) gave a control of 761x363. The missing 400 pixels are the ones the reader
+     * cannot reach, and dragging cannot help, because there is nothing there to scroll to.
+     *
+     * <p>{@code mxGraphControl} carries a {@code translate} for exactly this, and it survives a
+     * pan - measured: still (160,440) after a {@code scrollRectToVisible}. Pushing the drawing
+     * into positive space is therefore the whole fix, and it moves no cell: geometry, the saved
+     * layout, the export and the overview all still see the coordinates the ontology was drawn
+     * with.
+     *
+     * @return the translate for the graph control, in pixels; {@code (0,0)} when the content is
+     *         already wholly positive, so an ordinary board is left exactly as it was
+     */
+    public static java.awt.Point shiftFor(double contentLeftPx, double contentTopPx) {
+        int x = contentLeftPx < 0 ? (int) Math.ceil(-contentLeftPx) + MARGIN : 0;
+        int y = contentTopPx < 0 ? (int) Math.ceil(-contentTopPx) + MARGIN : 0;
+        return new java.awt.Point(x, y);
     }
 
     /**

@@ -110,6 +110,61 @@ class GitRepoTest {
         assertFalse(status.isClean());
     }
 
+    /**
+     * A conflicted file is not a changed file, and the difference is destructive.
+     *
+     * <p>Until 1.123.0 the parser had two buckets - {@code ??} and everything else - so
+     * {@code UU ontology.owl} read as an ordinary change. The commit path then ran
+     * {@code git add -A} and {@code git commit}, which exit 0 on a conflicted tree and record a
+     * blob containing {@code <<<<<<< HEAD}; the plugin reported "Committed 1 files." Reproduced
+     * on a real conflicted repository. An .owl full of conflict markers does not parse, so the
+     * commit destroys the ontology and says it worked.
+     */
+    @Test
+    void anUnmergedFileIsNotCountedAsAnOrdinaryChange() {
+        GitRepo.Status status = GitRepo.parseStatus(Arrays.asList(
+                "## main...origin/main",
+                "UU src/ontology/mwo-edit.owl",
+                " M src/ontology/catalog-v001.xml",
+                "?? notes.txt"));
+
+        assertEquals(Arrays.asList("src/ontology/mwo-edit.owl"), status.getConflicted());
+        assertEquals(Arrays.asList("src/ontology/catalog-v001.xml"), status.getChanged(),
+                "the conflicted file must not also be reported as changed");
+        assertEquals(Arrays.asList("notes.txt"), status.getUntracked());
+        assertTrue(status.hasConflicts());
+        assertFalse(status.isClean());
+    }
+
+    /**
+     * All seven unmerged codes, because DD has no U in it.
+     *
+     * <p>Spelling the set out is the point: a check for "contains a U" would file a
+     * both-deleted as an ordinary change, and that is the one of the seven whose resolution is
+     * least obvious to the person who has to make it.
+     */
+    @Test
+    void everyUnmergedCodeGitDocumentsIsRecognised() {
+        for (String code : new String[] {"UU", "AA", "DD", "AU", "UA", "DU", "UD"}) {
+            GitRepo.Status status = GitRepo.parseStatus(Arrays.asList(
+                    "## main", code + " ontology.owl"));
+
+            assertEquals(Arrays.asList("ontology.owl"), status.getConflicted(),
+                    code + " is an unmerged state and git-status(1) lists it as one");
+            assertTrue(status.getChanged().isEmpty(), code + " must not also count as changed");
+        }
+    }
+
+    /** A clean tree has no conflicts, and nothing asserts one into existence. */
+    @Test
+    void anOrdinaryTreeReportsNoConflicts() {
+        GitRepo.Status status = GitRepo.parseStatus(Arrays.asList(
+                "## main...origin/main", " M a.owl", "?? b.owl"));
+
+        assertFalse(status.hasConflicts());
+        assertTrue(status.getConflicted().isEmpty());
+    }
+
     /** Pushing before pulling is the commonest way to be rejected, so this has to be visible. */
     @Test
     void aheadAndBehindAreRead() {

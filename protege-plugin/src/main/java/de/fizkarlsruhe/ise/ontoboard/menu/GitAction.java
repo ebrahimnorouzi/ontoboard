@@ -161,6 +161,24 @@ public class GitAction extends OntoBoardAction {
             return result.failed(GitRepo.explain("commit", 1,
                     Arrays.asList("nothing to commit"))).build();
         }
+        if (status.hasConflicts()) {
+            // MEASURED BEFORE THIS GUARD EXISTED: on a tree where git reported `UU ontology.owl`,
+            // `git add -A` followed by `git commit` exited 0 and recorded a blob containing
+            // <<<<<<< HEAD, and this method reported "Committed 1 files." An .owl full of
+            // conflict markers does not parse, so what was committed is not an ontology - and
+            // the person who did it was told it worked.
+            //
+            // Refused rather than resolved: which of two definitions of a class is right is not
+            // a tool's decision, and the plugin has no three-way merge to offer. What it can do
+            // is not destroy the file while the question is open.
+            return result.failed("This repository is in the middle of a merge, and "
+                    + status.getConflicted().size() + " file"
+                    + (status.getConflicted().size() == 1 ? " is" : "s are")
+                    + " still conflicted: " + String.join(", ", status.getConflicted())
+                    + ". Committing now would record the conflict markers into the ontology, "
+                    + "which then no longer parses. Resolve them first - in Protege, or with "
+                    + "git mergetool - and commit after.").build();
+        }
         // Said before committing, because afterwards it is a commit that silently records less
         // than the user believes.
         String unsaved = GitRepo.unsavedWarning(getOWLModelManager().isDirty(ontology));
