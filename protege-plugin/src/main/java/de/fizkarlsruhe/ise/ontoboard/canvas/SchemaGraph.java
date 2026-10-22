@@ -186,6 +186,45 @@ public class SchemaGraph extends mxGraph {
     }
 
     /**
+     * Every cell that stands for one entity: a box with that IRI, and each arrow about it.
+     *
+     * <p><b>Why this is not a second index.</b> Since 1.75.0 a property on the board is usually
+     * an arrow rather than a box, and one property owns as many arrows as it has axioms - a
+     * {@code hasTopping} is on every pizza. Keyed into a map, the first arrow would win, which
+     * arrow that is depends on the order the projection happened to emit its axioms, and
+     * selecting the property from Prot&eacute;g&eacute;'s tree would jump the board to an
+     * arbitrary one of them - measured 400px away from the one the reader was looking at, and not
+     * stable across reloads. So the question is answered by asking every cell, and the answer is
+     * all of them.
+     *
+     * <p>A linear scan because a board is a few hundred cells and this runs on a click, and
+     * because an index would be one more thing that can disagree with {@link #render} - which
+     * destroys and recreates every cell.
+     */
+    public java.util.List<Object> getCellsForEntity(String iri) {
+        java.util.List<Object> found = new java.util.ArrayList<Object>();
+        if (iri == null) {
+            return found;
+        }
+        Object box = cellsById.get(iri);
+        if (box != null) {
+            // First, so a property that is on the board as a box is what gets centred rather
+            // than one of its own arrows.
+            found.add(box);
+        }
+        for (Map.Entry<String, Object> entry : cellsById.entrySet()) {
+            if (entry.getValue() == box) {
+                continue;
+            }
+            if (iri.equals(de.fizkarlsruhe.ise.ontoboard.model.PropertyEdgeId
+                    .propertyIn(entry.getKey()))) {
+                found.add(entry.getValue());
+            }
+        }
+        return found;
+    }
+
+    /**
      * Only board furniture can be edited in place.
      *
      * <p>A term node's label is its {@code rdfs:label}. Renaming it is an ontology edit with its own

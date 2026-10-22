@@ -332,10 +332,11 @@ public final class OntologyProjection {
                     continue;
                 }
                 for (OWLClassExpression other : axiom.getClassExpressions()) {
-                    if (other.isAnonymous()) {
-                        walk(ontology, on, subject, other, PropertyEdgeId.Origin.EQUIVALENCE,
-                                nodes, edges);
-                    }
+                    // A named operand goes the same way as an anonymous one now. Until 1.122.0
+                    // this branch was `if (other.isAnonymous())`, so EquivalentClasses(A B) - two
+                    // named classes, the plainest equivalence there is - drew nothing at all.
+                    walk(ontology, on, subject, other, PropertyEdgeId.Origin.EQUIVALENCE,
+                            nodes, edges);
                 }
             }
         }
@@ -357,6 +358,17 @@ public final class OntologyProjection {
     private static void walk(OWLOntology ontology, Set<String> on, IRI subject,
             OWLClassExpression expression, PropertyEdgeId.Origin origin,
             List<CanvasNode> nodes, List<CanvasEdge> edges) {
+        if (!expression.isAnonymous()) {
+            // A NAMED OPERAND, which until 1.122.0 fell off the end of this method drawing
+            // nothing. SubClassOf(A, ObjectIntersectionOf(B, R some C)) asserts A subClassOf B
+            // just as plainly as SubClassOf(A B) does, and the hierarchy edge was simply lost -
+            // measured on MWO 3.0.1, 41 of them, 32 inside a SubClassOf intersection and 9
+            // inside an equivalence. Nothing reached here with a named expression before: the
+            // only callers are the intersection branch below and the two collectors, both of
+            // which handle a named side themselves and return.
+            subclassBetweenNamed(on, subject, expression.asOWLClass().getIRI(), origin, edges);
+            return;
+        }
         if (expression instanceof org.semanticweb.owlapi.model.OWLObjectIntersectionOf) {
             for (OWLClassExpression operand
                     : ((org.semanticweb.owlapi.model.OWLObjectIntersectionOf) expression)
@@ -403,6 +415,51 @@ public final class OntologyProjection {
             dataEdge(ontology, subject, origin, data.getProperty().asOWLDataProperty().getIRI(),
                     data.getFiller().asOWLDatatype().getIRI(), nodes, edges);
         }
+    }
+
+    /**
+     * The hierarchy edge between two named classes, both ways round for an equivalence.
+     *
+     * <p><b>Why an equivalence is drawn as two subclass arrows.</b> {@code A equivalentTo B} is
+     * exactly {@code A subClassOf B} and {@code B subClassOf A}, so two arrows say what the axiom
+     * says and a reader of any hierarchy notation reads the pair as equivalence. The alternative
+     * is a new {@code CanvasEdge.Kind}, and that is not a free choice here: a kind needs a
+     * colour, a style, a legend row, a tooltip, a DOT shape and a change to the legend's
+     * completeness guard, all in the same commit, which is the reason
+     * {@link #collectEquivalenceEdges} gives for not having added one already.
+     *
+     * <p>Ids are the plain {@code sub|} ones so a relation asserted twice - once on its own and
+     * once inside a conjunction, which is redundant but legal and not rare - is one arrow rather
+     * than two drawn on top of each other. That is what the duplicate check is for.
+     */
+    private static void subclassBetweenNamed(Set<String> on, IRI subject, IRI other,
+            PropertyEdgeId.Origin origin, List<CanvasEdge> edges) {
+        if (subject.equals(other) || !isOn(on, subject) || !isOn(on, other)) {
+            return;
+        }
+        addUnlessAlreadyThere(edges, new CanvasEdge("sub|" + subject + "|" + other,
+                iri(subject), iri(other), "", CanvasEdge.Kind.SUBCLASS));
+        if (origin == PropertyEdgeId.Origin.EQUIVALENCE) {
+            addUnlessAlreadyThere(edges, new CanvasEdge("sub|" + other + "|" + subject,
+                    iri(other), iri(subject), "", CanvasEdge.Kind.SUBCLASS));
+        }
+    }
+
+    /**
+     * Adds an edge unless one with the same id is already there.
+     *
+     * <p>A linear scan, because the only callers are the two shapes that can restate a relation
+     * an earlier collector already drew, and a board is a few hundred edges. The id is what
+     * {@code SchemaGraph.render} keys its cells by, so a duplicate id is two cells drawn one on
+     * top of the other - invisible, and one of them unreachable.
+     */
+    private static void addUnlessAlreadyThere(List<CanvasEdge> edges, CanvasEdge edge) {
+        for (CanvasEdge already : edges) {
+            if (already.getId().equals(edge.getId())) {
+                return;
+            }
+        }
+        edges.add(edge);
     }
 
     /** {@code some}, {@code only}, {@code min2}, {@code max1}, {@code exactly3}. */

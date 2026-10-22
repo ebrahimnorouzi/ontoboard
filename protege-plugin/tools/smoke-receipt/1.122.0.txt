@@ -1,0 +1,190 @@
+OntoBoard 1.122.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-10-22  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 9/9  test 11/11
+  2026-10-22  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 9/9  test 11/11
+
+5.6.9's verdict is the script's own, exit 0. 5.5.0's was read out of ~/.Protege/logs/protege.log,
+which is where the script reads it from too; quoting every -D argument is what makes it launch,
+and 1.121.0's receipt explains why.
+
+AND THIS TIME SOMEBODY LOOKED AT THE SCREEN
+
+Four releases of receipts have said "nobody has seen this in a running Protege". This one was
+seen. Protege 5.6.9 was launched with mwo301.ttl, maximised, driven with synthetic clicks, and
+photographed - the images are in the session scratchpad, and three of the four changes below are
+visible in them:
+
+  - THE AXIOMS PANE IS THERE AND FOLLOWS THE SELECTION. The left column shows the six entity
+    tabs over a second panel titled "Manchester syntax entity renderin...", and clicking owl:Thing
+    in the class hierarchy put "Class: owl:Thing" in it. The canvas kept its full width.
+  - THE BOARD HAS SOMEWHERE TO PAN TO. With one term on it, the canvas now has a horizontal and
+    a vertical scrollbar where it had neither.
+  - A PLAIN LEFT-DRAG MOVES THE BOARD. On MWO's 524 terms, fitted to 10%, a 400px-left and
+    200px-up drag moved 9.9% of the canvas pixels, and the before and after images show the same
+    row of terms in two places.
+
+The fourth - that panning no longer clears the selection - is covered by CanvasPanTest and by the
+measurement below, not by a photograph.
+
+
+WHAT WAS WRONG WITH THE CANVAS, AND WHAT WAS NOT
+
+Four defects were reported. Each was diagnosed against the code and then the diagnosis was
+attacked, and in three of the four the attack won. What follows is what survived.
+
+1. "I want to move the canvas by dragging and it is not possible."
+
+   NOT THE GESTURE, AND NOT THE HANDLER. CanvasGesture.leftDragPans returns true for a plain
+   left-drag on empty board, isPanningEvent agrees, the panning handler accepts the press, and -
+   measured with the coordinates AWT actually delivers - JGraphX's handler tracks the cursor 1:1
+   in all four directions with an exact round trip. The first diagnosis said the handler
+   overshoots by 2.5x-6x and pans only one way; both were artefacts of a probe that walked the
+   mouse in the graph control's frame, which is not what a drag does, and both were withdrawn.
+
+   THE ONE REAL DEFECT. A pan in JGraphX is a scroll of the viewport, and mxGraphControl is only
+   ever as large as the content's far edge - getScaledPreferredSizeForGraph is
+   round(bounds.x + bounds.width) + border + 1. A board whose content fits the window therefore
+   gives the viewport a scroll range of zero. Measured: one node at (40,40,120,40), control
+   161x81 against a viewport extent of 782x582, board moved 0px for 100px of cursor travel, on
+   both hosts.
+
+   So the fix is to give the board room rather than to rewrite the pan: CanvasPan.room is the
+   content plus one windowful, floored at two windowfuls and quantised to 256px, and
+   SchemaCanvasView sets it after every render and every layout. Read from the bytecode of
+   mxGraphControl.updatePreferredSize, the minimum is applied as
+   max(size, round(min.getWidth() * scale)) and nowhere else, so the view translate stays (0,0) -
+   which is the invariant zoomAt's arithmetic depends on and which a translating pan would have
+   broken - and cell geometry, getGraphBounds, the PNG/SVG export and the overview are untouched.
+
+   TWO MORE, FOUND BY THE ATTACK RATHER THAN BY THE REPORT:
+
+   - PANNING CLEARED THE SELECTION. The library consumes the release only when press and release
+     are significantly apart in the graph control's coordinates, and a successful pan ends on the
+     control pixel it started on, because the board moved underneath. So the release was never
+     consumed and mxGraphHandler.mouseReleased - guarded only by !isConsumed - called
+     clearSelection(). Measured 1 cell selected before a pan, 0 after; and since the canvas pushes
+     its selection into OWLSelectionModel, every pan also reset Protege's selected entity, against
+     the very next item on this list. The panning handler now measures the gesture in the
+     component's frame, which does not move, and consumes a release that was a drag.
+   - RIGHT-DRAG DID NOT PAN, although CollaborativeGraphComponent's own comment had said it did
+     since 1.66.0 and the context menu had been taught to stand aside for it. The right button
+     fell through to mxGraphComponent.isPanningEvent, which in 4.2.2 is literally
+     isShiftDown() && isControlDown(). Named explicitly now.
+
+2. "Clicking a class or property should take me to it and stay in sync."
+
+   Both directions were wired and each dropped one of the two things sync means.
+
+   - THE ECHO DESELECTED THE ARROW YOU JUST CLICKED. Clicking an arrow tells Protege the property
+     it stands for; Protege tells the canvas that IRI; the canvas looked for a cell whose id IS
+     that IRI, and an arrow's id is pe|...|property|..., so it found none and cleared the
+     selection. Two lines: an inbound IRI that the selected cell already stands for is not a
+     change. PropertyEdgeId.propertyIn already decodes every id shape the canvas has written.
+   - A PROPERTY IS SEVERAL ARROWS. Selecting one from Protege's tree used to highlight nothing.
+     It now selects every arrow the property owns - measured on a two-arrow board - rather than
+     indexing one of them, because which one an index would win depends on the order the
+     projection emitted its axioms, and the board would jump to a different one on each reload.
+   - CTRL-CLICK TOLD PROTEGE THE WRONG TERM. mxGraphSelectionModel.getSelectionCell is
+     cells.get(0) - the cell selected FIRST - and this canvas turns single selection off. Measured:
+     click Person, Ctrl-click Topping, Protege was told Person. That is the reported defect on a
+     gesture nobody had tried. The bridge now reports the cell the gesture added, computed from
+     the ids rather than from mxGraph's added/removed, which have been reported the wrong way
+     round in more than one of its ports. A marquee over several terms reports nothing, because
+     Protege's model holds one entity and an arbitrary member of five is worse than leaving the
+     panel alone.
+   - THE TAB THAT COULD SHOW IT WAS THE ONE YOU COULD NOT SEE. All six entity trees share one
+     CNode, so five are hidden, and AbstractOWLSelectionViewComponent returns early when it is not
+     showing. Clicking an object property on the board while Classes was in front did nothing
+     visible. The view now raises the matching tab by plugin id. NOT by asking each view what it
+     can show, which was the first design and is impossible here: View.getViewComponent() is a
+     bare field written only by createUI(), which Protege calls from a HierarchyListener the first
+     time a view is shown, so a tab that has never been in front has no component - measured 1 of
+     3 non-null in a fresh tabbed pane - and the loop would skip exactly the tabs that need
+     raising.
+
+3. "One hop should show sub and super properties, and everything related."
+
+   A HOP ON A PROPERTY RETURNED NOTHING, ALWAYS - 85 of 85 object properties on MWO 3.0.1, 112 of
+   112 on DUL, 60 of 60 on NFDIcore. CanvasMembership.expandOneHop was a second, hand-written
+   notion of what relates to what, independent of the one OntologyProjection draws, and every way
+   the two can disagree was present at once: no branch that started from a property; properties
+   inside restrictions discarded (102 on MWO); ontology.getAxioms(type) with no Imports argument,
+   which is EXCLUDED, while the canvas projects INCLUDED - so on an ODK edit file the menu said a
+   term had no neighbours while the board would have drawn two edges for it; and a domain-to-range
+   jump that is two hops and added 21 non-neighbours on MWO.
+
+   One hop is now adjacency in the graph the canvas draws: the other end of an edge, plus the
+   property an arrow stands for. One definition, in the place that already owns it. Measured
+   after the change: properties whose hop returns nothing fall from 85 to 10 on MWO and from 112
+   to 0 on DUL, 59 of 85 MWO properties now reach another property - their super- and
+   sub-properties, which is what was asked for - and a hop costs 11-20ms.
+
+   The ten that still return nothing are properties the canvas draws no edge for at all. That is
+   the honest answer rather than a borrowed one, and the same rule is why disjointness is still
+   not a hop: 15 DisjointClasses axioms on MWO draw 0 edges, so a disjoint class would arrive as
+   a box joined to nothing.
+
+4. "Complex class expressions should be shown."
+
+   The shape named in the request - a class that is a subclass or equivalent of a class AND some
+   property some other class - was half drawn. The restriction half has been drawn since 1.75.0;
+   the NAMED half was silently dropped, because walk() had no branch for a named operand of an
+   intersection. SubClassOf(A, ObjectIntersectionOf(B, R some C)) asserts A subClassOf B as plainly
+   as SubClassOf(A B) does, and that edge was lost: 41 on MWO 3.0.1. EquivalentClasses(A B), two
+   named classes, drew nothing at all.
+
+   Both are drawn now, as hierarchy edges - an equivalence as the two subclass edges it is defined
+   to be - so no new CanvasEdge.Kind was needed, which matters because a kind costs a colour, a
+   style, a legend row with a completeness guard, a tooltip and a DOT shape, all in one commit.
+   Measured on MWO: 489 edges before, 525 after, every one of the 36 in sub|.
+
+   WHAT IS STILL NOT DRAWN, AND WHAT IT WOULD COST. A restriction whose filler is itself anonymous,
+   a union, a complement, an enumeration, and a restriction on an inverse property: 39 of MWO's
+   116 restriction occurrences, 34%. These need a node that stands for an anonymous class
+   expression, which the model has no kind for. Measured: in the Graffoo form - a small node for
+   the restriction, the property on the edge - MWO goes from 524 nodes and 489 edges to 668 and
+   904, and a render from 1,241ms to 2,580ms, on a render that runs after every edit anywhere in
+   Protege. One new NodeKind touches seven files and five tests. The realistic case is small - the
+   worst single class in MWO is 27 nodes and renders in 38ms - so the cost is an "Add all"
+   problem, not a "one hop" problem, and the shape of the answer is probably a toggle. It is the
+   next piece of work, not this one.
+
+
+TESTS
+
+2,438 run in a clean copy of the repository, 1 failure, and that failure is at HEAD too.
+
+  CanvasPanTest             7 new - the room, the quantisation, the units, the drag threshold
+  SelectionBridgeTest       4 new - every arrow of a property, the echo, Ctrl-click, a marquee
+  CanvasMembershipTest      2 new, 2 corrected - a hop on a property, and every neighbour being
+                            an end of an edge the canvas would draw
+  ViewConfigTest            2 rewritten - the left column is now a splitter with the trees over
+                            the axioms pane, and both panels get a share
+
+THE ONE FAILURE IS NOT THIS RELEASE'S. PatternIndexTest rebuilds the index by loading every
+pattern with its imports, and patterns/smarthome-featureofinterest/pattern.owl imports
+http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Property.owl. That host resolves
+to 130.243.109.196 and does not answer: HTTP 000 after 8.3 seconds from here, "Connection timed
+out" from the OWL API, and three ssn# terms then go missing from the rebuild. Proven not to be
+this change by running HEAD from `git archive` in the same clean room, where it fails identically.
+CI passed the same test at 01:25 today with no skip condition, so GitHub's runners reached the
+host. The shipped index is reproducible only while a Swedish university server answers, which is
+worth fixing and is not fixed here.
+
+
+WHAT IS STILL NOT TRUE
+
+  - Nobody has seen the Ctrl-click fix, the tab raising or the echo fix in a running Protege.
+    They are measured and tested headlessly; the photographs cover the pan, the axioms pane and
+    the scroll range.
+  - The 34% of restrictions that need an anonymous-expression node are still undrawn, and the
+    toggle that would make them affordable is not written.
+  - Disjointness, inverse pairs and the property characteristics are still hover text - 15, 38 and
+    25 axioms on MWO - so they are not hops and not edges.
+  - Everything 1.121.0 listed as outstanding still is: no Zenodo DOI, no w3id PURL, not in
+    Protege's plugin registry, the paper audited and not rewritten, .xlsx read-only, Koncludix
+    unverified end to end, 39 thin patterns, and no contact address or ORCID in CITATION.cff.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>

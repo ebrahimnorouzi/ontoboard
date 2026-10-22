@@ -257,18 +257,53 @@ class ViewConfigTest {
 
     /**
      * Six views in six CNodes would be six slivers of a 28%-wide column. One CNode holding six
-     * Components is what makes mdock render them as tabs, so the count of CNodes in the left
-     * column is load-bearing rather than stylistic.
+     * Components is what makes mdock render them as tabs, so where the CNode boundaries fall in
+     * the left column is load-bearing rather than stylistic.
+     *
+     * <p>Since 1.122.0 the column is a splitter with exactly two panels: the six trees as tabs,
+     * and the axioms of the selected term underneath them. Two, not seven - a seventh tab beside
+     * the trees would have been free and is the thing to resist, because it hides the tree exactly
+     * when a reader is using the tree to pick what to read about.
      */
     @Test
-    void everyEntityViewSharesOneNodeSoTheyRenderAsTabs() throws Exception {
+    void theTreesShareOneNodeAndTheAxiomsPaneSitsUnderThem() throws Exception {
         Element left = children(onlyChild(layoutRoot())).get(0);
-        assertEquals("CNode", left.getTagName(),
-                "a splitter here would divide the column into panels instead of tabs");
-        assertEquals(0, left.getElementsByTagName("CNode").getLength(),
-                "a nested CNode would split the column again instead of adding a tab");
-        assertTrue(pluginIdsIn(left).size() >= 4,
-                "expected the class, property and individual views to share the column");
+        assertEquals("HSNode", left.getTagName(),
+                "the trees and the axioms pane are stacked, so this is a horizontal splitter");
+
+        List<Element> panels = children(left);
+        assertEquals(2, panels.size(), "the trees and the axioms pane, and nothing else");
+        for (Element panel : panels) {
+            assertEquals("CNode", panel.getTagName(),
+                    "a splitter here would divide a panel into slivers instead of tabs");
+        }
+        assertTrue(pluginIdsIn(panels.get(0)).size() >= 4,
+                "expected the class, property and individual views to share the upper panel: "
+                        + pluginIdsIn(panels.get(0)));
+        assertEquals(0, panels.get(0).getElementsByTagName("CNode").getLength(),
+                "a nested CNode would split the tree panel again instead of adding a tab");
+        assertEquals(java.util.Collections.singletonList(
+                        "org.protege.editor.owl.ManchesterSyntaxFrameView"),
+                pluginIdsIn(panels.get(1)),
+                "the lower panel is the axioms of the selected term, alone. Not the per-type "
+                        + "description views - there are nineteen of them and they do not switch "
+                        + "by entity type - and not SelectedEntityView, whose own inner splitter "
+                        + "needs more height than a stacked panel has");
+    }
+
+    /** Both panels in the left column get a share, and the trees the larger one. */
+    @Test
+    void theTreesKeepMoreOfTheLeftColumnThanTheAxiomsPane() throws Exception {
+        Element left = children(onlyChild(layoutRoot())).get(0);
+        String[] splits = left.getAttribute("splits").trim().split("\\s+");
+
+        assertEquals(2, splits.length, "one split fraction per panel");
+        double trees = Double.parseDouble(splits[0]);
+        double axioms = Double.parseDouble(splits[1]);
+        assertTrue(axioms > 0.25, "an axiom frame needs room to be readable: " + axioms);
+        assertTrue(trees > axioms, "the tree is what a reader navigates with: " + trees + " vs "
+                + axioms);
+        assertEquals(1.0, trees + axioms, 0.001, "the fractions should cover the column");
     }
 
     /**

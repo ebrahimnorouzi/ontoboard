@@ -11,9 +11,37 @@
   A CNode holding several Components renders them as tabs, one visible at a time. All six entity
   views therefore share the left column instead of competing for space, the same arrangement
   Protege's own Entities tab uses (viewconfig-entitiestab.xml).
+
+  THE AXIOMS PANE UNDER THE TREES. Until 1.122.0 this tab had no view that showed anything about
+  the selected term: six trees and a canvas, and nowhere to read what a class actually says. A
+  reader clicking a term on the board got its name selected in a tree and no axioms anywhere.
+
+  org.protege.editor.owl.ManchesterSyntaxFrameView is one id that prints the whole axiom frame of
+  whatever is selected - class, object property, data property, individual, datatype, annotation
+  property - because it is an AbstractOWLSelectionViewComponent over the same global
+  OWLSelectionModel that SchemaCanvasView.pushSelectionToProtege writes to and the trees opposite
+  read. It needs no per-type variants and no CardLayout: one scrolling text area that follows the
+  selection. Declared identically in Protege 5.5.0 and 5.6.9 (plugin.xml:730 and :740), so it
+  resolves on both hosts.
+
+  WHY NOT A THIRD COLUMN, which is the obvious arrangement and is what Protege's own per-type tabs
+  use. The canvas column cannot afford it. The toolbar was measured at 777px minimum in 1.116.0
+  after three rounds of shortening (see SchemaCanvasView's own comment: it wanted 1261px and began
+  clipping at 1030, and a 1440px window gives this column 857px). Taking the canvas from 0.72 to
+  0.52 for a details column gives the toolbar 619px in that same window - 158px short - and the
+  clipping it silently returns to is a button that is laid out past the right edge, unpainted and
+  unclickable. Stacked here instead, the canvas keeps every pixel of its width.
+
+  WHY NOT org.protege.editor.owl.SelectedEntityView, the card view Protege's Entities tab uses.
+  It spends its own height on an inner HSNode (0.375/0.625 for annotations over description), so
+  in a pane this narrow it is two cramped halves rather than one readable one; and its six nested
+  ViewsPanes use hard-coded memento ids, so with Protege's Entities tab also open the two
+  instances share saved inner layouts and dragging a divider in one moves the other. The two views
+  are complements - that one edits frames, this one reads axioms - and reading is what was missing.
 -->
 <layout>
     <VSNode splits="0.28 0.72">
+        <HSNode splits="0.58 0.42">
         <CNode>
             <Component label="Classes">
                 <Property id="pluginId" value="org.protege.editor.owl.OWLAssertedClassHierarchy"/>
@@ -34,6 +62,15 @@
                 <Property id="pluginId" value="org.protege.editor.owl.OWLIndividualsList"/>
             </Component>
         </CNode>
+        <!-- The axioms of whatever is selected, in Manchester syntax. In a CNode of its own so
+             it is beside the trees rather than one more tab among them: a reader who clicks a
+             class in the tree wants to see the tree AND what the class says. -->
+        <CNode>
+            <Component label="Axioms">
+                <Property id="pluginId" value="org.protege.editor.owl.ManchesterSyntaxFrameView"/>
+            </Component>
+        </CNode>
+        </HSNode>
         <!-- The canvas, with the whole of the right-hand column.
 
              For five releases the sheet editor was stacked underneath it here, at 45% of this

@@ -76,13 +76,21 @@ public final class CollaborativeGraphComponent extends mxGraphComponent {
      * <p>The middle and right buttons always pan, which is mxGraph's own convention and the one
      * every canvas application shares. Since 1.66.0 the context menu no longer opens at the end
      * of a right-drag.
+     *
+     * <p>That last paragraph was written in 1.66.0 and was not true until now: the right button
+     * fell through to {@code mxGraphComponent.isPanningEvent}, which in 4.2.2 is literally
+     * {@code event.isShiftDown() && event.isControlDown()}, so a right-drag panned only with both
+     * modifiers held. The context menu had already been taught to stand aside for a right-drag,
+     * so the gesture it was standing aside for did nothing. Named explicitly here instead, and
+     * the fall-through is kept so Shift+Ctrl still pans whatever the button.
      */
     @Override
     public boolean isPanningEvent(java.awt.event.MouseEvent event) {
         if (event == null) {
             return false;
         }
-        if (javax.swing.SwingUtilities.isMiddleMouseButton(event)) {
+        if (javax.swing.SwingUtilities.isMiddleMouseButton(event)
+                || javax.swing.SwingUtilities.isRightMouseButton(event)) {
             return true;
         }
         if (javax.swing.SwingUtilities.isLeftMouseButton(event)) {
@@ -102,6 +110,72 @@ public final class CollaborativeGraphComponent extends mxGraphComponent {
     @Override
     protected com.mxgraph.swing.handler.mxGraphHandler createGraphHandler() {
         return new GuideGraphHandler(this);
+    }
+
+    /**
+     * The panning handler, taught not to throw the selection away.
+     *
+     * <p>The library's own handler consumes a release only when the press and the release are
+     * significantly apart <em>in the graph control's coordinates</em>, and a pan ends with the
+     * cursor over the control pixel it started on, because the board moved underneath it. So the
+     * release was never consumed, {@code mxGraphHandler.mouseReleased} ran next - it is guarded
+     * only by {@code !isConsumed} - and cleared the selection. Measured: one cell selected before
+     * a 100px pan, none after; and because the view pushes the canvas selection into Protege's
+     * {@code OWLSelectionModel}, panning also reset the selected entity, which is the opposite of
+     * what the other half of this canvas is for.
+     *
+     * <p>The fix is to measure the gesture in a frame that does not move while it happens. This
+     * component does not move; the control inside it does. {@link CanvasPan#movedFarEnough} is the
+     * comparison, so it can be tested - none of this class can be, because
+     * {@code mxGraphHandler} builds a {@code java.awt.dnd.DragSource} and that throws
+     * {@code HeadlessException}.
+     *
+     * <p>Called from the superclass constructor, like {@link #createGraphHandler()}, so the
+     * handler must not read this class's fields. It reads none: {@code getTolerance()} is the
+     * superclass's and {@link CanvasPan} is static.
+     */
+    @Override
+    protected com.mxgraph.swing.handler.mxPanningHandler createPanningHandler() {
+        return new com.mxgraph.swing.handler.mxPanningHandler(this) {
+            private static final long serialVersionUID = 1L;
+
+            private transient java.awt.Point pressedAt;
+
+            @Override
+            public void mousePressed(java.awt.event.MouseEvent event) {
+                pressedAt = inThisComponent(event);
+                super.mousePressed(event);
+            }
+
+            @Override
+            public void mouseReleased(java.awt.event.MouseEvent event) {
+                java.awt.Point now = inThisComponent(event);
+                if (pressedAt != null && now != null && CanvasPan.movedFarEnough(
+                        pressedAt.x, pressedAt.y, now.x, now.y, getTolerance())) {
+                    // Before super, which is where the library would have decided the same thing
+                    // and got it wrong, and before the drag handler, which is registered after
+                    // this one and reads isConsumed.
+                    event.consume();
+                }
+                pressedAt = null;
+                super.mouseReleased(event);
+            }
+        };
+    }
+
+    /**
+     * A mouse event's point in this component's coordinates, or null if it cannot be converted.
+     *
+     * <p>Not {@code getLocationOnScreen}: that throws {@code IllegalComponentStateException} for a
+     * component that is not showing, which is every synthetic event in a test and every event
+     * during construction.
+     */
+    private java.awt.Point inThisComponent(java.awt.event.MouseEvent event) {
+        if (event == null || event.getComponent() == null) {
+            return null;
+        }
+        return javax.swing.SwingUtilities.convertPoint(
+                event.getComponent(), event.getPoint(), this);
     }
 
     /** The guides the drag handler currently wants drawn, or none. */

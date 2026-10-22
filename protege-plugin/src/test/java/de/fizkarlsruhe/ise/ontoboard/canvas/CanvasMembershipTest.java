@@ -52,11 +52,74 @@ class CanvasMembershipTest {
         membership.add(NS + "Person");
         java.util.List<String> added = membership.expandOneHop(ontology, NS + "Person");
 
-        // Agent via SubClassOf, Organization via the worksFor domain/range pair, alice via rdf:type.
-        assertEquals(3, added.size());
+        // Agent via SubClassOf, Organization via the worksFor domain/range pair, alice via
+        // rdf:type - and worksFor itself, which is the fourth and was missing until 1.122.0.
+        assertEquals(4, added.size(), added.toString());
         assertTrue(membership.contains(NS + "Agent"));
         assertTrue(membership.contains(NS + "Organization"));
         assertTrue(membership.contains(NS + "alice"));
+        assertTrue(membership.contains(NS + "worksFor"),
+                "the property the arrow stands for is a neighbour of both its ends. The hop used "
+                        + "to keep only entity.isOWLClass(), so a class whose only relation is a "
+                        + "restriction had the filler as a neighbour and not the property - 102 "
+                        + "of them on MWO 3.0.1");
+    }
+
+    /**
+     * A hop on a property reaches the terms its arrows join, and its super- and sub-properties.
+     *
+     * <p>This direction returned <b>nothing at all</b> until 1.122.0, for every property in every
+     * ontology: the collector had no branch that started from one. Measured: 85 of 85 object
+     * properties on MWO 3.0.1, 112 of 112 on DUL, 60 of 60 on NFDIcore. After the change, 0 of
+     * 112 on DUL and 10 of 85 on MWO - those ten being properties the canvas draws no edge for at
+     * all, which is the honest answer rather than a borrowed one.
+     */
+    @Test
+    void expandOneHopOnAPropertyReachesWhatItsArrowsJoin() {
+        membership.add(NS + "worksFor");
+
+        java.util.List<String> added = membership.expandOneHop(ontology, NS + "worksFor");
+
+        assertTrue(added.contains(NS + "Person"), added.toString());
+        assertTrue(added.contains(NS + "Organization"), added.toString());
+    }
+
+    /**
+     * One hop is adjacency in the graph the canvas draws, which is why it is asked of the
+     * projection rather than of the axioms.
+     *
+     * <p>The rule used to be a second, hand-written reading of the axioms, and it disagreed with
+     * the canvas in four measured ways at once: nothing for a property, no property inside a
+     * restriction, imports excluded while the canvas includes them, and a domain-to-range jump
+     * that is two hops and added 21 non-neighbours on MWO. Pinned here so that a term the board
+     * would join to this one cannot stop being a neighbour without a test saying so.
+     */
+    @Test
+    void everyNeighbourIsAnEndOfAnEdgeTheCanvasWouldDraw() {
+        java.util.Set<String> hop = CanvasMembership.neighboursOf(ontology, NS + "Person");
+
+        de.fizkarlsruhe.ise.ontoboard.model.Projection whole =
+                de.fizkarlsruhe.ise.ontoboard.model.OntologyProjection.project(ontology,
+                        de.fizkarlsruhe.ise.ontoboard.model.OntologyProjection.termIdentifiers(
+                                ontology, org.semanticweb.owlapi.model.parameters.Imports
+                                        .INCLUDED));
+        for (String neighbour : hop) {
+            boolean joined = false;
+            for (de.fizkarlsruhe.ise.ontoboard.model.CanvasEdge edge : whole.getEdges()) {
+                boolean ends = (NS + "Person").equals(edge.getSourceId())
+                        || (NS + "Person").equals(edge.getTargetId());
+                if (!ends) {
+                    continue;
+                }
+                if (neighbour.equals(edge.getSourceId()) || neighbour.equals(edge.getTargetId())
+                        || neighbour.equals(de.fizkarlsruhe.ise.ontoboard.model.PropertyEdgeId
+                                .propertyIn(edge.getId()))) {
+                    joined = true;
+                    break;
+                }
+            }
+            assertTrue(joined, neighbour + " is a neighbour of Person but no edge joins them");
+        }
     }
 
     /**
@@ -92,6 +155,8 @@ class CanvasMembershipTest {
     void expandOneHopDoesNotCountEntitiesAlreadyPresent() {
         membership.add(NS + "Person");
         membership.add(NS + "Agent");
-        assertEquals(2, membership.expandOneHop(ontology, NS + "Person").size());
+
+        // Organization, alice and worksFor: the four neighbours less the one already there.
+        assertEquals(3, membership.expandOneHop(ontology, NS + "Person").size());
     }
 }

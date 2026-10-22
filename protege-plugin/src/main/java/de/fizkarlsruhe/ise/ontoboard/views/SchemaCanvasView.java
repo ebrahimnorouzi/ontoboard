@@ -14,6 +14,7 @@ import de.fizkarlsruhe.ise.ontoboard.canvas.CanvasGesture;
 import de.fizkarlsruhe.ise.ontoboard.canvas.CanvasIcons;
 import de.fizkarlsruhe.ise.ontoboard.canvas.CanvasLayouts;
 import de.fizkarlsruhe.ise.ontoboard.canvas.CanvasMembership;
+import de.fizkarlsruhe.ise.ontoboard.canvas.CanvasPan;
 import de.fizkarlsruhe.ise.ontoboard.canvas.CanvasSearch;
 import de.fizkarlsruhe.ise.ontoboard.canvas.CanvasZoom;
 import de.fizkarlsruhe.ise.ontoboard.canvas.CollaborativeGraphComponent;
@@ -398,6 +399,10 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         refresh();
 
         selectionBridge = new SelectionBridge(graph, this::pushSelectionToProtege);
+        // A term selected in Protege's tree is one the reader is asking about, so bring it into
+        // view rather than highlighting it somewhere off-screen. Only when none of its cells is
+        // already visible: a node the reader is looking at must not jump under the cursor.
+        selectionBridge.setReveal(this::bringIntoViewIfOffScreen);
         selectionBridge.install();
 
         // Once, ever, per user. The pan gesture has now been decided in both directions - it
@@ -634,7 +639,86 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         OWLEntity entity = entityToSelect(getOWLModelManager().getActiveOntology(), id);
         if (entity != null) {
             getOWLEditorKit().getOWLWorkspace().getOWLSelectionModel().setSelectedEntity(entity);
+            raiseTheTreeThatCanShow(entity);
         }
+    }
+
+    /**
+     * Brings the left column's tab for this kind of entity to the front.
+     *
+     * <p><b>Why clicking the canvas looked like nothing had happened.</b> All six entity trees
+     * share one {@code CNode}, so they are one tabbed pane and five of the six are hidden.
+     * {@code AbstractOWLSelectionViewComponent.updateViewContentAndHeader} returns early with
+     * {@code needsRefresh = true} when the view is not showing, and acts on that flag from its own
+     * {@code HierarchyListener} - so the selection does reach a hidden tree, and the tree waits
+     * until somebody reveals it. Click an object property on the board while Classes is in front
+     * and the tab that would show it is the one tab you cannot see.
+     *
+     * <p><b>Why by plugin id and not by asking the views.</b> The obvious loop - over
+     * {@code ViewsPane.getViews()}, asking each {@code canShowEntity} - cannot work here, and that
+     * was measured before it was abandoned: {@code View.getViewComponent()} is a bare field read
+     * and the field is written only by {@code createUI()}, which Prot&eacute;g&eacute; calls from a
+     * {@code HierarchyListener} the first time the view is shown. So a tab that has never been in
+     * front has no component at all - 1 of 3 non-null in a fresh tabbed pane - and the loop would
+     * skip exactly the tabs that need raising. The ids below are the ones
+     * {@code viewconfig-ontoboardtab.xml} names, which is the same file that decides the tabs
+     * exist.
+     *
+     * <p>Nothing happens when this view is not itself showing: another workspace tab is in front,
+     * and raising a tab underneath it would be an invisible change that moves what the reader
+     * comes back to.
+     */
+    private void raiseTheTreeThatCanShow(OWLEntity entity) {
+        String wanted = treeViewIdFor(entity);
+        if (wanted == null || !isShowing()) {
+            return;
+        }
+        org.protege.editor.owl.ui.OWLWorkspaceViewsTab tab =
+                (org.protege.editor.owl.ui.OWLWorkspaceViewsTab) javax.swing.SwingUtilities
+                        .getAncestorOfClass(org.protege.editor.owl.ui.OWLWorkspaceViewsTab.class,
+                                this);
+        if (tab == null || tab.getViewsPane() == null) {
+            // A detached view, or the self-test's harness, which builds this view with no tab.
+            return;
+        }
+        try {
+            tab.getViewsPane().bringViewToFront(wanted);
+        } catch (RuntimeException notThere) {
+            // A user who rearranged the tab may not have that view any more. Their arrangement
+            // is theirs; a selection is not worth an exception dialog over it.
+            LOGGER.debug("OntoBoard: no {} view to raise for the selected entity", wanted);
+        }
+    }
+
+    /**
+     * The plugin id of the tree that shows this kind of entity, or null for a kind with no tab.
+     *
+     * <p>Read off {@code viewconfig-ontoboardtab.xml} rather than guessed; {@code ViewConfigTest}
+     * pins that those ids are what the layout asks for, so the two cannot drift apart silently.
+     */
+    static String treeViewIdFor(OWLEntity entity) {
+        if (entity == null) {
+            return null;
+        }
+        if (entity.isOWLClass()) {
+            return "org.protege.editor.owl.OWLAssertedClassHierarchy";
+        }
+        if (entity.isOWLObjectProperty()) {
+            return "org.protege.editor.owl.OWLObjectPropertyTree";
+        }
+        if (entity.isOWLDataProperty()) {
+            return "org.protege.editor.owl.OWLDataPropertyTree";
+        }
+        if (entity.isOWLAnnotationProperty()) {
+            return "org.protege.editor.owl.OWLAnnotationPropertyTree";
+        }
+        if (entity.isOWLDatatype()) {
+            return "org.protege.editor.owl.OWLDatatypeList";
+        }
+        if (entity.isOWLNamedIndividual()) {
+            return "org.protege.editor.owl.OWLIndividualsList";
+        }
+        return null;
     }
 
     /**
@@ -1526,6 +1610,11 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             @Override
             public void doLayout() {
                 graphComponent.setBounds(0, 0, getWidth(), getHeight());
+                // The window just changed size, so the slack a drag needs has too. Here rather
+                // than on a ComponentListener for the reason this class already documents: this
+                // runs before the first paint, so the board is draggable immediately instead of
+                // becoming draggable after the first resize.
+                giveTheBoardRoomToPan();
                 int margin = 12;
                 Dimension zoom = zoomCluster.getPreferredSize();
                 Dimension map = minimapPanel.getPreferredSize();
@@ -3779,6 +3868,8 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         ontologyTerms = null;
         autoArrangeIfUnpositioned();
         showAppropriateCard();
+        // The content just changed, so what there is to pan over has too.
+        giveTheBoardRoomToPan();
 
         if (selectionBridge != null) {
             selectionBridge.resyncAfterRender(selectedBeforeRender);
@@ -4936,6 +5027,78 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         }
         CanvasLayouts.apply(graph, CanvasLayouts.Algorithm.HIERARCHICAL);
         capturePositions();
+    }
+
+    /**
+     * Scrolls to the nearest of these cells, unless one of them is already on screen.
+     *
+     * <p>A property is several arrows, so "the" cell to go to is a choice: the nearest to what is
+     * already in view, which keeps the board from leaping across itself when a reader walks down
+     * the property tree. Nothing moves when one of them is visible, because a reader clicking in
+     * the tree to check what they are looking at must not have it slide away.
+     */
+    private void bringIntoViewIfOffScreen(java.util.List<Object> cells) {
+        if (cells == null || cells.isEmpty() || graphComponent.getViewport() == null) {
+            return;
+        }
+        java.awt.Rectangle visible = graphComponent.getViewport().getViewRect();
+        Object nearest = null;
+        double best = Double.MAX_VALUE;
+        for (Object cell : cells) {
+            com.mxgraph.view.mxCellState state = graph.getView().getState(cell);
+            if (state == null) {
+                continue;
+            }
+            java.awt.Rectangle box = state.getRectangle();
+            if (visible.intersects(box)) {
+                return;
+            }
+            double away = Math.hypot(box.getCenterX() - visible.getCenterX(),
+                    box.getCenterY() - visible.getCenterY());
+            if (away < best) {
+                best = away;
+                nearest = cell;
+            }
+        }
+        if (nearest != null) {
+            graphComponent.scrollCellToVisible(nearest, true);
+        }
+    }
+
+    /**
+     * Makes sure a drag has somewhere to move the board to.
+     *
+     * <p>A pan in JGraphX is a scroll of the viewport, and the graph control is only ever as big
+     * as the content's far edge, so a board that fits the window has a scroll range of zero and
+     * cannot be dragged at all - measured, 0px of board for 100px of cursor. {@link CanvasPan}
+     * carries the whole explanation and the arithmetic; this is the wiring, called from the two
+     * places that can change the answer: a render, which moves the content, and a layout, which
+     * resizes the window.
+     *
+     * <p>Only written when it differs, because {@code updatePreferredSize} revalidates and this
+     * is called from {@code doLayout}.
+     */
+    private void giveTheBoardRoomToPan() {
+        if (graph == null || graphComponent == null || graphComponent.getViewport() == null) {
+            return;
+        }
+        com.mxgraph.util.mxRectangle content = graph.getView().getGraphBounds();
+        java.awt.Rectangle visible = graphComponent.getViewport().getViewRect();
+        java.awt.Dimension wanted = CanvasPan.room(
+                content == null ? 0 : content.getX() + content.getWidth(),
+                content == null ? 0 : content.getY() + content.getHeight(),
+                visible.width, visible.height, graph.getView().getScale());
+        if (wanted.width <= 0 || wanted.height <= 0) {
+            return;
+        }
+        com.mxgraph.util.mxRectangle current = graph.getMinimumGraphSize();
+        if (current != null && (int) current.getWidth() == wanted.width
+                && (int) current.getHeight() == wanted.height) {
+            return;
+        }
+        graph.setMinimumGraphSize(
+                new com.mxgraph.util.mxRectangle(0, 0, wanted.width, wanted.height));
+        graphComponent.getGraphControl().updatePreferredSize();
     }
 
     /** Guidance while the board is empty, the board once it is not. */

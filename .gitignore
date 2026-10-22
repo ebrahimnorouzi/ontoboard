@@ -62,3 +62,8 @@ build/*.pptx
 # The BFO artifact tools/extract-bfo-patterns.py downloads and verifies by sha256. Fetched on
 # demand; the patterns extracted from it are committed, the 72 KB source is not.
 build/bfo-notime.owl
+
+# The canvas layout OntoBoard saves beside an ontology. One appears for every file anybody
+# opens in the plugin - mwo301.ttl grew a 3,164-line one the first time all 524 of its terms
+# went on a board - and it is per-person board furniture, not shared state.
+*.ontoboard.json

@@ -94,6 +94,108 @@ class SelectionBridgeTest {
      * {@link #selectOnCanvas}, this is reported outward with {@code null} so the caller can
      * clear Protege's selection too and the two models end up agreeing again.
      */
+    // ---------- a property is several arrows, and a click is not always the first cell ----------
+
+    private static final String KNOWS = "http://example.org/tiny#knows";
+
+    /** Person -knows-> Agent and Agent -knows-> Person: one property, two arrows. */
+    private void renderTwoArrowsForOneProperty() {
+        String one = de.fizkarlsruhe.ise.ontoboard.model.PropertyEdgeId.of(
+                de.fizkarlsruhe.ise.ontoboard.model.PropertyEdgeId.Origin.SUBCLASS,
+                "some", PERSON, KNOWS, AGENT);
+        String two = de.fizkarlsruhe.ise.ontoboard.model.PropertyEdgeId.of(
+                de.fizkarlsruhe.ise.ontoboard.model.PropertyEdgeId.Origin.SUBCLASS,
+                "some", AGENT, KNOWS, PERSON);
+        graph.render(new Projection(Arrays.asList(
+                new CanvasNode(PERSON, NodeKind.CLASS, "Person"),
+                new CanvasNode(AGENT, NodeKind.CLASS, "Agent")),
+                Arrays.asList(
+                        new de.fizkarlsruhe.ise.ontoboard.model.CanvasEdge(one, PERSON, AGENT,
+                                "knows",
+                                de.fizkarlsruhe.ise.ontoboard.model.CanvasEdge.Kind
+                                        .OBJECT_PROPERTY),
+                        new de.fizkarlsruhe.ise.ontoboard.model.CanvasEdge(two, AGENT, PERSON,
+                                "knows",
+                                de.fizkarlsruhe.ise.ontoboard.model.CanvasEdge.Kind
+                                        .OBJECT_PROPERTY))),
+                new CanvasLayout());
+    }
+
+    /**
+     * Selecting a property from Protege's tree highlights every arrow it owns.
+     *
+     * <p>Not one of them: which arrow a first-wins index would pick depends on the order the
+     * projection emitted its axioms, so the board would jump to an arbitrary one - measured 400px
+     * from the one the reader was looking at - and not to the same one twice.
+     */
+    @Test
+    void selectingAPropertyHighlightsEveryArrowItOwns() {
+        renderTwoArrowsForOneProperty();
+
+        bridge.selectOnCanvas(KNOWS);
+
+        assertEquals(2, graph.getSelectionCells().length,
+                "one property, two arrows, both of them it");
+        assertEquals(Collections.emptyList(), outbound, "still an inbound selection");
+    }
+
+    /**
+     * Clicking an arrow and being told about the property it stands for is not a change.
+     *
+     * <p>This is the echo that used to deselect the arrow the reader had just clicked: the canvas
+     * tells Protege the property, Protege tells the canvas the property, and the canvas looked for
+     * a cell whose id <em>is</em> that IRI. An arrow's id is {@code pe|...|property|...}, so it
+     * found none and cleared the selection.
+     */
+    @Test
+    void beingToldThePropertyOfTheArrowAlreadySelectedChangesNothing() {
+        renderTwoArrowsForOneProperty();
+        String arrow = de.fizkarlsruhe.ise.ontoboard.model.PropertyEdgeId.of(
+                de.fizkarlsruhe.ise.ontoboard.model.PropertyEdgeId.Origin.SUBCLASS,
+                "some", PERSON, KNOWS, AGENT);
+        graph.setSelectionCell(graph.getCellForId(arrow));
+        assertEquals(Collections.singletonList(arrow), outbound,
+                "the bridge reports the cell id; it is the view's entityToSelect that reads the "
+                        + "property out of it, which is why the IRI that comes back in does not "
+                        + "match any cell's id and why this case needed fixing at all");
+
+        bridge.selectOnCanvas(KNOWS);
+
+        assertEquals(arrow, bridge.currentCanvasSelection(),
+                "the arrow the reader clicked must still be the selected one");
+        assertEquals(1, graph.getSelectionCells().length,
+                "and the other arrow for the same property must not have joined it");
+    }
+
+    /**
+     * After a Ctrl-click, Protege is told about the term just clicked - not the first one.
+     *
+     * <p>{@code mxGraphSelectionModel.getSelectionCell} is {@code cells.get(0)}, and this canvas
+     * turns single selection off, so the canvas used to report whichever term was selected
+     * <em>first</em>. Measured: click Person, Ctrl-click Agent, and Protege was told Person. That
+     * is the reported defect - clicking a class does not take Protege to that class - on a gesture
+     * that needs no rubberband to reach.
+     */
+    @Test
+    void ctrlClickingASecondTermReportsTheSecondOne() {
+        graph.setSelectionCell(graph.getCellForId(PERSON));
+        graph.addSelectionCell(graph.getCellForId(AGENT));
+
+        assertEquals(Arrays.asList(PERSON, AGENT), outbound,
+                "the second click must report Agent, not Person again");
+    }
+
+    /** A marquee over several terms has no single answer, so Protege is left where it was. */
+    @Test
+    void selectingSeveralTermsAtOnceReportsNothing() {
+        graph.setSelectionCells(new Object[] {
+            graph.getCellForId(PERSON), graph.getCellForId(AGENT)});
+
+        assertEquals(Collections.emptyList(), outbound,
+                "Protege holds one entity; an arbitrary member of a group is worse than leaving "
+                        + "the panel where the reader put it");
+    }
+
     @Test
     void resyncAfterRenderClearsAndReportsWhenTheSelectionFallsOffTheCanvas() {
         graph.setSelectionCell(graph.getCellForId(PERSON));
