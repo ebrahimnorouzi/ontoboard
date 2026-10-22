@@ -1,0 +1,34 @@
+# Categorical value specification: a characteristic whose value is a category, not a number. The ferrite of specimen
+# A-13 has the crystal structure "body-centred cubic"; a ladle melt has the aggregate state "liquid". Each category is a
+# categorical value specification that specifies the value of the quality. Invented specimen, heat and values.
+
+@prefix co: <https://w3id.org/pmd/co/> .
+@prefix obo: <http://purl.obolibrary.org/obo/> .
+@prefix ex: <https://w3id.org/ontoboard/example/pmdco-categorical-value-specification#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+# A solid material and its crystal structure.
+ex:Specimen_A13 a owl:NamedIndividual , co:PMD_0000000 ;
+    rdfs:label "specimen A-13, steel S355J2 (normalised), ferritic-pearlitic" ;
+    obo:RO_0000086 ex:CrystalStructure_A13 .
+
+ex:CrystalStructure_A13 a owl:NamedIndividual , obo:BFO_0000019 ;
+    rdfs:label "crystal structure of the ferrite in specimen A-13" .
+
+ex:BodyCentredCubic a owl:NamedIndividual , obo:OBI_0001930 ;
+    rdfs:label "body-centred cubic (Strukturbericht A2, space group Im-3m)" ;
+    obo:OBI_0001927 ex:CrystalStructure_A13 ;
+    obo:IAO_0000136 ex:Specimen_A13 .
+
+# A melt and its aggregate state.
+ex:Melt_H45812_L2 a owl:NamedIndividual , co:PMD_0020139 ;
+    rdfs:label "melt of heat H-45812 in ladle L2 at 1 585 °C" ;
+    obo:RO_0000086 ex:AggregateState_H45812_L2 .
+
+ex:AggregateState_H45812_L2 a owl:NamedIndividual , obo:BFO_0000019 ;
+    rdfs:label "aggregate state of the melt of heat H-45812 in ladle L2" .
+
+ex:Liquid a owl:NamedIndividual , obo:OBI_0001930 ;
+    rdfs:label "liquid" ;
+    obo:OBI_0001927 ex:AggregateState_H45812_L2 .

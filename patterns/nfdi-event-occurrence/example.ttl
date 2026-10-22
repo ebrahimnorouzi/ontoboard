@@ -1,0 +1,34 @@
+# The NFDI-MatWerk Conference 2023 (27-29 June 2023, Siegburg): a process that occupies one 1-dimensional temporal region and has participants.
+# Organisers and audience are participants (has participant), the headcount is an input (has input); title and web page are value nodes (denoted by).
+# Dates, place and web address come from the Zenodo record of the proceedings (DOI 10.5281/zenodo.11353339).
+
+@prefix obo: <http://purl.obolibrary.org/obo/> .
+@prefix ontology: <https://nfdi.fiz-karlsruhe.de/ontology/> .
+@prefix ex: <https://w3id.org/ontoboard/example/nfdi-event-occurrence#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+ex:matwerk_conference_2023 a owl:NamedIndividual , ontology:NFDI_0010020 ;
+    rdfs:label "NFDI-MatWerk Conference 2023" ;
+    obo:IAO_0000235 ex:conference_title , ex:conference_web_page ;
+    obo:BFO_0000199 ex:conference_days ;
+    obo:RO_0000057 ex:organising_committee , ex:conference_participants ;
+    obo:RO_0002233 ex:conference_headcount .
+
+ex:conference_title a owl:NamedIndividual , ontology:NFDI_0001019 ;
+    rdfs:label "NFDI-MatWerk Conference 2023" .
+
+ex:conference_web_page a owl:NamedIndividual , obo:IAO_0000300 ;
+    rdfs:label "https://nfdi-matwerk.de/nfdi/2023/" .
+
+ex:conference_days a owl:NamedIndividual , obo:BFO_0000038 ;
+    rdfs:label "27-29 June 2023" .
+
+ex:organising_committee a owl:NamedIndividual , ontology:NFDI_0000107 ;
+    rdfs:label "organising committee of the NFDI-MatWerk Conference 2023" .
+
+ex:conference_participants a owl:NamedIndividual , ontology:NFDI_0000107 ;
+    rdfs:label "participants of the NFDI-MatWerk Conference 2023 (Siegburg)" .
+
+ex:conference_headcount a owl:NamedIndividual , obo:BFO_0000019 ;
+    rdfs:label "number of participants of the NFDI-MatWerk Conference 2023" .

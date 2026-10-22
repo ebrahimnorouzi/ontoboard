@@ -1,0 +1,50 @@
+# Worked example for bfo-occurrent-parthood-and-order: a materials-testing campaign that contains a tensile test and
+# a hardness test, with the tensile test cut into ordered phases and bounded by two process boundaries. The phases and
+# boundaries are asserted as temporal parts; the extensometer recording only as an occurrent part of the test.
+
+@prefix obo: <http://purl.obolibrary.org/obo/> .
+@prefix ex: <https://w3id.org/ontoboard/example/bfo-occurrent-parthood-and-order#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+ex:QualificationCampaign a owl:NamedIndividual , obo:BFO_0000015 ;
+    rdfs:label "mechanical qualification campaign MQ-2024-03" ;
+    rdfs:comment "Has the two tests as occurrent parts only: they cover some of what the campaign does, not a time slice of all of it." ;
+    obo:BFO_0000117 ex:TensileTest , ex:HardnessTest .   # has occurrent part
+
+ex:TensileTest a owl:NamedIndividual , obo:BFO_0000015 ;
+    rdfs:label "tensile test TT-017 of specimen S-17 (ISO 6892-1)" ;
+    obo:BFO_0000063 ex:HardnessTest ;                    # precedes
+    obo:BFO_0000181 ex:ElasticLoading , ex:PlasticDeformation , ex:Necking ;   # has proper temporal part
+    obo:BFO_0000121 ex:LoadingStart , ex:Fracture ;      # has temporal part
+    obo:BFO_0000118 ex:ExtensometerRecording .           # has proper occurrent part
+
+ex:HardnessTest a owl:NamedIndividual , obo:BFO_0000015 ;
+    rdfs:label "Vickers hardness test HV-018 of specimen S-18 (ISO 6507-1)" .
+
+ex:ElasticLoading a owl:NamedIndividual , obo:BFO_0000015 ;
+    rdfs:label "elastic loading phase of TT-017" ;
+    obo:BFO_0000063 ex:PlasticDeformation .              # precedes
+
+ex:PlasticDeformation a owl:NamedIndividual , obo:BFO_0000015 ;
+    rdfs:label "uniform plastic deformation phase of TT-017" ;
+    obo:BFO_0000063 ex:Necking .                         # precedes
+
+ex:Necking a owl:NamedIndividual , obo:BFO_0000015 ;
+    rdfs:label "necking phase of TT-017, up to fracture" .
+
+ex:LoadingStart a owl:NamedIndividual , obo:BFO_0000035 ;
+    rdfs:label "start of loading in TT-017" ;
+    rdfs:comment "Process boundary: a temporal part of the test with no temporal parts of its own. It begins the test." .
+
+ex:Fracture a owl:NamedIndividual , obo:BFO_0000035 ;
+    rdfs:label "fracture of specimen S-17" ;
+    rdfs:comment "Process boundary at the end of the test. It ends the test." .
+
+ex:ExtensometerRecording a owl:NamedIndividual , obo:BFO_0000015 ;
+    rdfs:label "extensometer strain recording during TT-017" ;
+    rdfs:comment "Asserted only as an occurrent part of the test, not as a temporal part: it is one thread of what happens, not a time slice of all of it." .
+
+# One direction of each inverse pair is asserted (precedes, not preceded by; has ... part, not ... part of); a reasoner
+# adds the other, and the transitive consequences, for example that ElasticLoading precedes Necking and that the
+# campaign has every phase and both boundaries as occurrent parts.

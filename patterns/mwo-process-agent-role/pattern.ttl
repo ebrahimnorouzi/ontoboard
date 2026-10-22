@@ -8,6 +8,16 @@
 
 <https://ontoboard.org/patterns/mwo-process-agent-role.owl> rdf:type owl:Ontology .
 
+# MWO 3.0.2 reading of Pattern 1 "Process- Agent- Role" (https://ise-fizkarlsruhe.github.io/mwo/docs/patterns/).
+# The figure was drawn against MWO 3.0.0. Every term below was checked against the 3.0.2 release; domains, ranges and
+# characteristics are 3.0.2's own and none is narrowed to the classes the figure draws.
+# Edges of the figure (tail --property--> head); all three are carried:
+#   process --has participant--> agent       obo:RO_0000057   (obo:BFO_0000057 in 3.0.0)
+#   agent --bearer of--> role                obo:BFO_0000196
+#   process --realizes--> role               obo:BFO_0000055
+# The direction is the figure's. The MatWerk knowledge graph states the role link the other way round
+# (role --role of--> agent, obo:RO_0000081) and its SHACL shapes require role --realized in--> process (obo:BFO_0000054).
+
 #################################################################
 #    Annotation properties
 #################################################################
@@ -35,6 +45,7 @@
 ###  http://purl.obolibrary.org/obo/BFO_0000054
 <http://purl.obolibrary.org/obo/BFO_0000054> rdf:type owl:ObjectProperty ;
                                              owl:inverseOf <http://purl.obolibrary.org/obo/BFO_0000055> ;
+                                             rdfs:domain <http://purl.obolibrary.org/obo/BFO_0000017> ;
                                              rdfs:range <http://purl.obolibrary.org/obo/BFO_0000015> ;
                                              rdfs:label "has realization"@en ;
                                              <http://www.w3.org/2004/02/skos/core#definition> "b has realization c =Def c realizes b"@en .
@@ -43,12 +54,20 @@
 ###  http://purl.obolibrary.org/obo/BFO_0000055
 <http://purl.obolibrary.org/obo/BFO_0000055> rdf:type owl:ObjectProperty ;
                                              rdfs:domain <http://purl.obolibrary.org/obo/BFO_0000015> ;
+                                             rdfs:range <http://purl.obolibrary.org/obo/BFO_0000017> ;
                                              rdfs:label "realizes"@en ;
                                              <http://www.w3.org/2004/02/skos/core#definition> "(Elucidation) realizes is a relation between a process b and realizable entity c such that c inheres in some d & for all t, if b has participant d then c exists & the type instantiated by b is correlated with the type instantiated by c"@en .
 
 
 ###  http://purl.obolibrary.org/obo/BFO_0000196
 <http://purl.obolibrary.org/obo/BFO_0000196> rdf:type owl:ObjectProperty ;
+                                             rdfs:domain [ owl:intersectionOf ( <http://purl.obolibrary.org/obo/BFO_0000004>
+                                                                                [ rdf:type owl:Class ;
+                                                                                  owl:complementOf <http://purl.obolibrary.org/obo/BFO_0000006>
+                                                                                ]
+                                                                              ) ;
+                                                           rdf:type owl:Class
+                                                         ] ;
                                              rdfs:range <http://purl.obolibrary.org/obo/BFO_0000020> ;
                                              rdfs:label "bearer of"@en ;
                                              <http://www.w3.org/2004/02/skos/core#definition> "b bearer of c =Def c inheres in b"@en .
@@ -57,6 +76,7 @@
 ###  http://purl.obolibrary.org/obo/RO_0000056
 <http://purl.obolibrary.org/obo/RO_0000056> rdf:type owl:ObjectProperty ;
                                             owl:inverseOf <http://purl.obolibrary.org/obo/RO_0000057> ;
+                                            rdfs:domain <http://purl.obolibrary.org/obo/BFO_0000002> ;
                                             rdfs:range <http://purl.obolibrary.org/obo/BFO_0000003> ;
                                             <http://purl.obolibrary.org/obo/IAO_0000112> "this blood clot participates in this blood coagulation"@en ,
                                                                                          "this input material (or this output material) participates in this process"@en ,
@@ -68,6 +88,7 @@
 ###  http://purl.obolibrary.org/obo/RO_0000057
 <http://purl.obolibrary.org/obo/RO_0000057> rdf:type owl:ObjectProperty ;
                                             rdfs:domain <http://purl.obolibrary.org/obo/BFO_0000003> ;
+                                            rdfs:range <http://purl.obolibrary.org/obo/BFO_0000002> ;
                                             <http://purl.obolibrary.org/obo/IAO_0000112> "this blood coagulation has participant this blood clot"@en ,
                                                                                          "this investigation has participant this investigator"@en ,
                                                                                          "this process has participant this input material (or this output material)"@en ;
@@ -103,6 +124,8 @@
 
 ###  http://purl.obolibrary.org/obo/BFO_0000002
 <http://purl.obolibrary.org/obo/BFO_0000002> rdf:type owl:Class ;
+                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000001> ;
+                                             owl:disjointWith <http://purl.obolibrary.org/obo/BFO_0000003> ;
                                              <http://purl.obolibrary.org/obo/IAO_0000115> "An entity that exists in full at any time in which it exists at all, persists through time while maintaining its identity and has no temporal parts."@en ;
                                              <http://purl.obolibrary.org/obo/IAO_0000116> "BFO 2 Reference: Continuant entities are entities which can be sliced to yield parts only along the spatial dimension, yielding for example the parts of your table which we call its legs, its top, its nails. ‘My desk stretches from the window to the door. It has spatial parts, and can be sliced (in space) in two. With respect to time, however, a thing is a continuant.’ [60, p. 240"@en ;
                                              rdfs:label "continuant"@en ;
@@ -138,6 +161,13 @@
                                              <http://www.w3.org/2004/02/skos/core#definition> "b is an independent continuant =Def b is a continuant & there is no c such that b specifically depends on c or b generically depends on c"@en .
 
 
+###  http://purl.obolibrary.org/obo/BFO_0000006
+<http://purl.obolibrary.org/obo/BFO_0000006> rdf:type owl:Class ;
+                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000141> ;
+                                             rdfs:label "spatial region"@en ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "(Elucidation) A spatial region is a continuant entity that is a continuant part of the spatial projection of a portion of spacetime at a given time"@en .
+
+
 ###  http://purl.obolibrary.org/obo/BFO_0000015
 <http://purl.obolibrary.org/obo/BFO_0000015> rdf:type owl:Class ;
                                              rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000003> ;
@@ -156,6 +186,7 @@
 
 ###  http://purl.obolibrary.org/obo/BFO_0000017
 <http://purl.obolibrary.org/obo/BFO_0000017> rdf:type owl:Class ;
+                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000020> ;
                                              <http://purl.obolibrary.org/obo/IAO_0000112> "the disposition of this piece of metal to conduct electricity."@en ,
                                                                                           "the disposition of your blood to coagulate"@en ,
                                                                                           "the function of your reproductive organs"@en ,
@@ -201,6 +232,13 @@
                                              <http://www.w3.org/2004/02/skos/core#definition> "(Elucidation) A role b is a realizable entity such that b exists because there is some single bearer that is in some special physical, social, or institutional set of circumstances in which this bearer does not have to be & b is not such that, if it ceases to exist, then the physical make-up of the bearer is thereby changed"@en .
 
 
+###  http://purl.obolibrary.org/obo/BFO_0000141
+<http://purl.obolibrary.org/obo/BFO_0000141> rdf:type owl:Class ;
+                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000004> ;
+                                             rdfs:label "immaterial entity"@en ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "b is an immaterial entity =Def b is an independent continuant which is such that there is no time t when it has a material entity as continuant part"@en .
+
+
 ###  https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000102
 <https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000102> rdf:type owl:Class ;
                                                       owl:equivalentClass [ owl:intersectionOf ( <http://purl.obolibrary.org/obo/BFO_0000004>
@@ -222,6 +260,7 @@
 
 ###  https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000229
 <https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000229> rdf:type owl:Class ;
+                                                      rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000023> ;
                                                       rdfs:label "agent role"@en ;
                                                       <http://www.w3.org/2004/02/skos/core#definition> "Role of an independent continuant that is realized through an agent's actions, enabling the agent to perform specific functions or achieve particular outcomes within a system or context."@en .
 

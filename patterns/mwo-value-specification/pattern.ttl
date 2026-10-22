@@ -8,6 +8,18 @@
 
 <https://ontoboard.org/patterns/mwo-value-specification.owl> rdf:type owl:Ontology .
 
+# MWO 3.0.2 reading of Pattern 6 "Value specification" (https://ise-fizkarlsruhe.github.io/mwo/docs/patterns/).
+# The figure was drawn against MWO 3.0.0. Every term below was checked against the 3.0.2 release; domains, ranges and
+# characteristics are 3.0.2's own and none is narrowed to the classes the figure draws.
+# Edges of the figure (tail --property--> head); all four are carried:
+#   information content entity --has value--> literal       nfdi:NFDI_0001007 (a data property; no domain, no range)
+#   quality --is quality measured as--> measurement datum    obo:IAO_0000417
+#   measurement datum --has value--> literal                 nfdi:NFDI_0001007
+#   measurement datum --has measurement unit label--> measurement unit label
+#                                                            obo:IAO_0000039 (mwo:MWO_0001119 in 3.0.0 and 3.0.1)
+# obo:IAO_0000417 declares no domain or range of its own; its inverse obo:IAO_0000221 (declared here) says measurement datum -> quality,
+# which entails them. The unit is an individual of measurement unit label, not a literal.
+
 #################################################################
 #    Annotation properties
 #################################################################
@@ -38,6 +50,58 @@
                                              rdf:type owl:FunctionalProperty ;
                                              rdfs:range <http://purl.obolibrary.org/obo/IAO_0000003> ;
                                              rdfs:label "has measurement unit label"@en .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000221
+<http://purl.obolibrary.org/obo/IAO_0000221> rdf:type owl:ObjectProperty ;
+                                             owl:inverseOf <http://purl.obolibrary.org/obo/IAO_0000417> ;
+                                             rdfs:domain <http://purl.obolibrary.org/obo/IAO_0000109> ;
+                                             rdfs:range <http://purl.obolibrary.org/obo/BFO_0000019> ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "m is a quality measurement of q at t. When q is a quality, there is a measurement process p that has specified output m, a measurement datum, that is about q"@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000116> "8/6/2009 Alan Ruttenberg: The strategy is to be rather specific with this relationship. There are other kinds of measurements that are not of qualities, such as those that measure time. We will add these as separate properties for the moment and see about generalizing later"@en ,
+                                                                                          """From the second IAO workshop [Alan Ruttenberg 8/6/2009: not completely current, though bringing in comparison is probably important]
+
+This one is the one we are struggling with at the moment. The issue is what a measurement measures. On the one hand saying that it measures the quality would include it "measuring" the bearer = referring to the bearer in the measurement. However this makes comparisons of two different things not possible. On the other hand not having it inhere in the bearer, on the face of it, breaks the audit trail.
+
+Werner suggests a solution based on "Magnitudes" a proposal for which we are awaiting details.
+--
+From the second IAO workshop, various comments, [commented on by Alan Ruttenberg 8/6/2009]
+
+unit of measure is a quality, e.g. the length of a ruler.
+
+[We decided to hedge on what units of measure are, instead talking about measurement unit labels, which are the information content entities that are about whatever measurement units are. For IAO we need that information entity in any case. See the term measurement unit label]
+
+[Some struggling with the various subflavors of is_about. We subsequently removed the relation represents, and describes until and only when we have a better theory]
+
+a represents b means either a denotes b or a describes
+
+describe:
+a describes b means a is about b and a allows an inference of at least one quality of b
+
+We have had a long discussion about denotes versus describes."""@en ,
+                                                                                          """From the second IAO workshop: An attempt at tieing the quality to the measurement datum more carefully.
+
+a is a magnitude means a is a determinate quality particular inhering in some bearer b existing at a time t that can be represented/denoted by an information content entity e that has parts denoting a unit of measure, a number, and b. The unit of measure is an instance of the determinable quality."""@en ,
+                                                                                          """From the second meeting on IAO:
+
+An attempt at defining assay using Barry's "reliability" wording
+
+assay:
+process and has_input some material entity
+and has_output some information content entity 
+and which is such that instances of this process type reliably generate 
+outputs that describes the input."""@en ,
+                                                                                          """This one is the one we are struggling with at the moment. The issue is what a measurement measures. On the one hand saying that it measures the quality would include it "measuring" the bearer = referring to the bearer in the measurement. However this makes comparisons of two different things not possible. On the other hand not having it inhere in the bearer, on the face of it, breaks the audit trail.
+
+Werner suggests a solution based on "Magnitudes" a proposal for which we are awaiting details."""@en ;
+                                             rdfs:label "is quality measurement of"@en .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000417
+<http://purl.obolibrary.org/obo/IAO_0000417> rdf:type owl:ObjectProperty ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "inverse of the relation of is quality measurement of"@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000116> "2009/10/19 Alan Ruttenberg. Named 'junk' relation useful in restrictions, but not a real instance relationship"@en ;
+                                             rdfs:label "is quality measured as"@en .
 
 
 ###  http://purl.obolibrary.org/obo/OBI_0001938
@@ -108,8 +172,62 @@
 #    Classes
 #################################################################
 
+###  http://purl.obolibrary.org/obo/BFO_0000001
+<http://purl.obolibrary.org/obo/BFO_0000001> rdf:type owl:Class ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000112> "Julius Caesar"@en ,
+                                                                                          "Verdi’s Requiem"@en ,
+                                                                                          "the Second World War"@en ,
+                                                                                          "your body mass index"@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000116> "BFO 2 Reference: In all areas of empirical inquiry we encounter general terms of two sorts. First are general terms which refer to universals or types:animaltuberculosissurgical procedurediseaseSecond, are general terms used to refer to groups of entities which instantiate a given universal but do not correspond to the extension of any subuniversal of that universal because there is nothing intrinsic to the entities in question by virtue of which they – and only they – are counted as belonging to the given group. Examples are: animal purchased by the Emperortuberculosis diagnosed on a Wednesdaysurgical procedure performed on a patient from Stockholmperson identified as candidate for clinical trial #2056-555person who is signatory of Form 656-PPVpainting by Leonardo da VinciSuch terms, which represent what are called ‘specializations’ in [81"@en ;
+                                             rdfs:label "entity"@en ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "(Elucidation) An entity is anything that exists or has existed or will exist"@en .
+
+
+###  http://purl.obolibrary.org/obo/BFO_0000002
+<http://purl.obolibrary.org/obo/BFO_0000002> rdf:type owl:Class ;
+                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000001> ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "An entity that exists in full at any time in which it exists at all, persists through time while maintaining its identity and has no temporal parts."@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000116> "BFO 2 Reference: Continuant entities are entities which can be sliced to yield parts only along the spatial dimension, yielding for example the parts of your table which we call its legs, its top, its nails. ‘My desk stretches from the window to the door. It has spatial parts, and can be sliced (in space) in two. With respect to time, however, a thing is a continuant.’ [60, p. 240"@en ;
+                                             rdfs:label "continuant"@en ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "(Elucidation) A continuant is an entity that persists, endures, or continues to exist through time while maintaining its identity"@en .
+
+
+###  http://purl.obolibrary.org/obo/BFO_0000019
+<http://purl.obolibrary.org/obo/BFO_0000019> rdf:type owl:Class ;
+                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000020> ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000112> "the ambient temperature of this portion of air"@en ,
+                                                                                          "the color of a tomato"@en ,
+                                                                                          "the length of the circumference of your waist"@en ,
+                                                                                          "the mass of this piece of gold."@en ,
+                                                                                          "the shape of your nose"@en ,
+                                                                                          "the shape of your nostril"@en ;
+                                             rdfs:label "quality"@en ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "(Elucidation) A quality is a specifically dependent continuant that, in contrast to roles and dispositions, does not require any further process in order to be realized"@en .
+
+
+###  http://purl.obolibrary.org/obo/BFO_0000020
+<http://purl.obolibrary.org/obo/BFO_0000020> rdf:type owl:Class ;
+                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000002> ;
+                                             owl:disjointWith <http://purl.obolibrary.org/obo/BFO_0000031> ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000112> "Reciprocal specifically dependent continuants: the function of this key to open this lock and the mutually dependent disposition of this lock: to be opened by this key"@en ,
+                                                                                          "of one-sided specifically dependent continuants: the mass of this tomato"@en ,
+                                                                                          "of relational dependent continuants (multiple bearers): John’s love for Mary, the ownership relation between John and this statue, the relation of authority between John and his subordinates."@en ,
+                                                                                          "the disposition of this fish to decay"@en ,
+                                                                                          "the function of this heart: to pump blood"@en ,
+                                                                                          "the mutual dependence of proton donors and acceptors in chemical reactions [79"@en ,
+                                                                                          "the mutual dependence of the role predator and the role prey as played by two organisms in a given interaction"@en ,
+                                                                                          "the pink color of a medium rare piece of grilled filet mignon at its center"@en ,
+                                                                                          "the role of being a doctor"@en ,
+                                                                                          "the shape of this hole."@en ,
+                                                                                          "the smell of this portion of mozzarella"@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "b is a specifically dependent continuant = Def. b is a continuant & there is some independent continuant c which is not a spatial region and which is such that b s-depends_on c at every time t during the course of b’s existence. (axiom label in BFO2 Reference: [050-003])"@en ;
+                                             rdfs:label "specifically dependent continuant"@en ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "b is a specifically dependent continuant =Def b is a continuant & there is some independent continuant c which is not a spatial region & which is such that b specifically depends on c"@en .
+
+
 ###  http://purl.obolibrary.org/obo/BFO_0000031
 <http://purl.obolibrary.org/obo/BFO_0000031> rdf:type owl:Class ;
+                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000002> ;
                                              <http://purl.obolibrary.org/obo/IAO_0000112> "The entries in your database are patterns instantiated as quality instances in your hard drive. The database itself is an aggregate of such patterns. When you create the database you create a particular instance of the generically dependent continuant type database. Each entry in the database is an instance of the generically dependent continuant type IAO: information content entity."@en ,
                                                                                           "the pdf file on your laptop, the pdf file that is a copy thereof on my laptop"@en ,
                                                                                           "the sequence of this protein molecule; the sequence that is a copy thereof in that protein molecule."@en ;
@@ -134,6 +252,7 @@ of this, different, term."""@en ,
 
 ###  http://purl.obolibrary.org/obo/IAO_0000009
 <http://purl.obolibrary.org/obo/IAO_0000009> rdf:type owl:Class ;
+                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/IAO_0000030> ;
                                              <http://purl.obolibrary.org/obo/IAO_0000115> "A label is a symbol that is part of some other datum and is used to either partially define  the denotation of that datum or to provide a means for identifying the datum as a member of the set of data with the same label"@en ;
                                              <http://purl.obolibrary.org/obo/IAO_0000116> "http://www.golovchenko.org/cgi-bin/wnsearch?q=label#4n"@en ;
                                              rdfs:label "datum label"@en .
@@ -141,6 +260,7 @@ of this, different, term."""@en ,
 
 ###  http://purl.obolibrary.org/obo/IAO_0000027
 <http://purl.obolibrary.org/obo/IAO_0000027> rdf:type owl:Class ;
+                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/IAO_0000030> ;
                                              <http://purl.obolibrary.org/obo/IAO_0000112> "Data items include counts of things, analyte concentrations, and statistical summaries."@en ;
                                              <http://purl.obolibrary.org/obo/IAO_0000115> "An information content entity that is intended to be a truthful statement about something (modulo, e.g., measurement precision or other systematic errors) and is constructed/acquired by a method which reliably tends to produce (approximately) truthful statements."@en ,
                                                                                           "An information content entity that is intended to be one or more truthful statement(s) about something (modulo, e.g., measurement precision or other systematic errors) and is constructed/acquired by a method which reliably tends to produce (approximately) truthful statements."@en ;

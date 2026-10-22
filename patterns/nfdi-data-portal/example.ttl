@@ -1,0 +1,34 @@
+# The MatWerk Knowledge Graph as a data portal, kept distinct from Zenodo, the repository that hosts its RDF dumps.
+# The portal states its URL (has url) and reaches the standard and the format it supports by has standard and has file format.
+# Its description, publication and repository are separate individuals reached by denoted by; URLs and DOI were checked on 2026-10-21.
+
+@prefix obo: <http://purl.obolibrary.org/obo/> .
+@prefix ontology: <https://nfdi.fiz-karlsruhe.de/ontology/> .
+@prefix ex: <https://w3id.org/ontoboard/example/nfdi-data-portal#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+ex:matwerk_kg_portal a owl:NamedIndividual , ontology:NFDI_0000123 ;
+    rdfs:label "MatWerk Knowledge Graph portal" ;
+    ontology:NFDI_0001008 "https://nfdi.fiz-karlsruhe.de/matwerk/"^^xsd:anyURI ;
+    obo:IAO_0000235 ex:matwerk_kg_description , ex:matwerk_kg_publication , ex:zenodo ;
+    ontology:NFDI_0000207 ex:sparql_protocol ;
+    ontology:NFDI_0000132 ex:turtle_format .
+
+ex:matwerk_kg_description a owl:NamedIndividual , obo:IAO_0000030 ;
+    rdfs:label "Semantic integration of distributed materials science resources, enabling structured discovery, cross-resource linkage and machine-actionable reuse across datasets, publications, software and domain actors" .
+
+ex:matwerk_kg_publication a owl:NamedIndividual , obo:IAO_0000310 ;
+    rdfs:label "NFDI MatWerk Ontology (MWO): A BFO-Compliant Ontology for Research Data Management in Materials Science and Engineering" ;
+    ontology:NFDI_0001008 "https://doi.org/10.1002/adem.202502331"^^xsd:anyURI .
+
+ex:zenodo a owl:NamedIndividual , ontology:NFDI_0001202 ;
+    rdfs:label "Zenodo" ;
+    ontology:NFDI_0001008 "https://zenodo.org/"^^xsd:anyURI .
+
+ex:sparql_protocol a owl:NamedIndividual , ontology:NFDI_0000206 ;
+    rdfs:label "SPARQL 1.1 Protocol (W3C Recommendation)" .
+
+ex:turtle_format a owl:NamedIndividual , obo:IAO_0000098 ;
+    rdfs:label "RDF 1.1 Turtle (W3C Recommendation)" .

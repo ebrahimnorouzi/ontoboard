@@ -9,6 +9,6 @@
   "pattern_iri": "http://semantic.cs.put.poznan.pl/ontologies/newsreportingevent.owl",
   "source": "https://ontologydesignpatterns.org/wiki/Submissions:NewsReportingEvent",
   "references": "https://ontologydesignpatterns.org/wiki/Submissions:NewsReportingEvent",
-  "class_count": 6,
-  "property_count": 3
+  "class_count": 10,
+  "property_count": 5
 }

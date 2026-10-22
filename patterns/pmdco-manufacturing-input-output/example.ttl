@@ -1,0 +1,52 @@
+# A manufacturing process with its input and outputs: band sawing of strand ST-2026-0417 consumes the strand and produces
+# two slabs. Strand and slabs are temporally qualified continuants, three states of the same material at different
+# times. The identifiers and lengths are invented; the classes and properties are the pattern's.
+
+@prefix co: <https://w3id.org/pmd/co/> .
+@prefix obo: <http://purl.obolibrary.org/obo/> .
+@prefix ex: <https://w3id.org/ontoboard/example/pmdco-manufacturing-input-output#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+ex:Sawing_ST2026_0417 a owl:NamedIndividual , co:PMD_0000822 ;
+    rdfs:label "band sawing of strand ST-2026-0417 into two slabs (kerf 4 mm)" ;
+    obo:OBI_0000293 ex:Strand_ST2026_0417 ;
+    obo:OBI_0000299 ex:Slab_SL0417_A , ex:Slab_SL0417_B ;
+    obo:BFO_0000055 ex:CroppingPlan_CP0417 .
+
+# What the process follows. The pattern has no class for it, so it is a bare individual.
+ex:CroppingPlan_CP0417 a owl:NamedIndividual ;
+    rdfs:label "cropping plan CP-0417: two slabs of 2 498 mm from one 5 000 mm strand" .
+
+# The anchor: the steel itself, which is neither the strand nor a slab but is in the state of both.
+ex:Material_S355J2_H45812 a owl:NamedIndividual , co:PMD_0000000 ;
+    rdfs:label "steel S355J2 of heat H-45812" .
+
+ex:Strand_ST2026_0417 a owl:NamedIndividual , obo:BFO_0000030 , co:PMD_0000068 ;
+    rdfs:label "strand ST-2026-0417, 5 000 mm (state before the cut)" ;
+    co:PMD_0000070 ex:Material_S355J2_H45812 ;
+    obo:BFO_0000108 ex:Interval_BeforeSawing .
+
+ex:Slab_SL0417_A a owl:NamedIndividual , co:PMD_0020176 , co:PMD_0000068 ;
+    rdfs:label "slab SL-0417-A (state after the cut)" ;
+    co:PMD_0000070 ex:Material_S355J2_H45812 ;
+    obo:BFO_0000108 ex:Interval_AfterSawing ;
+    obo:RO_0000086 ex:Length_SL0417_A .
+
+ex:Slab_SL0417_B a owl:NamedIndividual , co:PMD_0020176 , co:PMD_0000068 ;
+    rdfs:label "slab SL-0417-B (state after the cut)" ;
+    co:PMD_0000070 ex:Material_S355J2_H45812 ;
+    obo:BFO_0000108 ex:Interval_AfterSawing ;
+    obo:RO_0000086 ex:Length_SL0417_B .
+
+ex:Length_SL0417_A a owl:NamedIndividual , co:PMD_0040001 ;
+    rdfs:label "length of slab SL-0417-A: 2 498 mm" .
+
+ex:Length_SL0417_B a owl:NamedIndividual , co:PMD_0040001 ;
+    rdfs:label "length of slab SL-0417-B: 2 498 mm" .
+
+ex:Interval_BeforeSawing a owl:NamedIndividual , obo:BFO_0000202 ;
+    rdfs:label "2026-03-04 until the saw starts at 2026-03-05T08:15" .
+
+ex:Interval_AfterSawing a owl:NamedIndividual , obo:BFO_0000202 ;
+    rdfs:label "from 2026-03-05T08:42, when the cut is through" .

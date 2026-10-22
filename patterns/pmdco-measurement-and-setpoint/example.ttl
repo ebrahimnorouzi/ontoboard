@@ -1,0 +1,65 @@
+# Measurement and setpoint: a Vickers HV 5 test on plate P-0417-A outputs a measurement datum whose value specification
+# (172 HV 5) specifies the value of the plate's indentation hardness. A delivery specification asks for 170 HV 5: a
+# specification datum that is concretized by the same hardness, with its own value specification. Invented identifiers.
+
+@prefix co: <https://w3id.org/pmd/co/> .
+@prefix obo: <http://purl.obolibrary.org/obo/> .
+@prefix ex: <https://w3id.org/ontoboard/example/pmdco-measurement-and-setpoint#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+# The thing measured and the property measured.
+ex:Plate_P0417_A a owl:NamedIndividual , co:PMD_0020176 ;
+    rdfs:label "plate P-0417-A cut from slab SL-0417-A (S355J2, heat H-45812)" ;
+    obo:RO_0000053 ex:IndentationHardness_P0417_A .
+
+ex:IndentationHardness_P0417_A a owl:NamedIndividual , co:PMD_0000789 ;
+    rdfs:label "indentation hardness of plate P-0417-A" ;
+    obo:RO_0000059 ex:HardnessRequirement_DS5521 .
+
+# The measurement.
+ex:VickersTest_VT0417 a owl:NamedIndividual , co:PMD_0000849 ;
+    rdfs:label "Vickers hardness test HV 5 on plate P-0417-A (test VT-0417)" ;
+    obo:OBI_0000293 ex:Plate_P0417_A ;
+    obo:OBI_0000299 ex:HardnessResult_VT0417 ;
+    obo:RO_0009006 ex:IndentationHardness_P0417_A ;
+    obo:BFO_0000055 ex:Plan_VT0417 .
+
+ex:Plan_VT0417 a owl:NamedIndividual , obo:OBI_0000260 ;
+    rdfs:label "plan of test VT-0417" ;
+    obo:RO_0000059 ex:ISO6507_1 .
+
+ex:ISO6507_1 a owl:NamedIndividual , obo:IAO_0000104 ;
+    rdfs:label "ISO 6507-1: Metallic materials, Vickers hardness test, part 1: test method" .
+
+ex:HardnessResult_VT0417 a owl:NamedIndividual , obo:IAO_0000109 ;
+    rdfs:label "result record of test VT-0417" ;
+    obo:IAO_0000136 ex:Plate_P0417_A ;
+    obo:IAO_0000221 ex:IndentationHardness_P0417_A ;
+    obo:OBI_0001938 ex:MeasuredHardness_VT0417 .
+
+ex:MeasuredHardness_VT0417 a owl:NamedIndividual , obo:OBI_0001931 ;
+    rdfs:label "measured: 172 HV 5 (mean of three indentations)" ;
+    obo:OBI_0001937 172.0 ;
+    obo:IAO_0000039 ex:HV5 ;
+    obo:OBI_0001927 ex:IndentationHardness_P0417_A .
+
+# The setpoint: the same property, as required rather than as observed. The hardness concretizes the requirement.
+ex:DeliverySpec_DS5521 a owl:NamedIndividual , obo:IAO_0000033 ;
+    rdfs:label "delivery specification DS-5521 for slab material of heat H-45812" ;
+    obo:IAO_0000136 ex:Plate_P0417_A .
+
+ex:HardnessRequirement_DS5521 a owl:NamedIndividual , co:PMD_0060009 ;
+    rdfs:label "required hardness of the plates under DS-5521" ;
+    obo:IAO_0000136 ex:Plate_P0417_A ;
+    obo:OBI_0001938 ex:TargetHardness_DS5521 .
+
+ex:TargetHardness_DS5521 a owl:NamedIndividual , obo:OBI_0001931 ;
+    rdfs:label "required: 170 HV 5 (target value, no limits)" ;
+    obo:OBI_0001937 170.0 ;
+    obo:IAO_0000039 ex:HV5 ;
+    obo:OBI_0001927 ex:IndentationHardness_P0417_A .
+
+ex:HV5 a owl:NamedIndividual ;
+    rdfs:label "HV 5" ;
+    rdfs:comment "stands for https://w3id.org/pmd/vto/HV5 in the Vickers Testing Ontology" .

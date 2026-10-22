@@ -9,6 +9,6 @@
   "pattern_iri": "https://kastle-labl.org/lod/ontology/",
   "source": "https://ontologydesignpatterns.org/wiki/Submissions:RoleDependentNames",
   "references": "https://ontologydesignpatterns.org/wiki/Submissions:RoleDependentNames",
-  "class_count": 5,
+  "class_count": 4,
   "property_count": 5
 }

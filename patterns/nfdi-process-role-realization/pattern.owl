@@ -1,147 +1,96 @@
-<?xml version="1.0"?>
-<rdf:RDF xmlns="https://ontoboard.org/patterns/nfdi-process-role-realization.owl#"
-     xml:base="https://ontoboard.org/patterns/nfdi-process-role-realization.owl"
-     xmlns:obo="http://purl.obolibrary.org/obo/"
-     xmlns:owl="http://www.w3.org/2002/07/owl#"
-     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-     xmlns:xml="http://www.w3.org/XML/1998/namespace"
-     xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
-     xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
-     xmlns:skos="http://www.w3.org/2004/02/skos/core#">
-    <owl:Ontology rdf:about="https://ontoboard.org/patterns/nfdi-process-role-realization.owl"/>
-    
-
-
-    <!-- 
-    ///////////////////////////////////////////////////////////////////////////////////////
-    //
-    // Annotation properties
-    //
-    ///////////////////////////////////////////////////////////////////////////////////////
-     -->
-
-    
-
-
-    <!-- http://purl.obolibrary.org/obo/IAO_0000112 -->
-
-    <owl:AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/IAO_0000112"/>
-    
-
-
-    <!-- http://purl.obolibrary.org/obo/IAO_0000115 -->
-
-    <owl:AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/IAO_0000115"/>
-    
-
-
-    <!-- http://purl.obolibrary.org/obo/IAO_0000116 -->
-
-    <owl:AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/IAO_0000116"/>
-    
-
-
-    <!-- http://www.w3.org/2004/02/skos/core#definition -->
-
-    <owl:AnnotationProperty rdf:about="http://www.w3.org/2004/02/skos/core#definition"/>
-    
-
-
-    <!-- 
-    ///////////////////////////////////////////////////////////////////////////////////////
-    //
-    // Object Properties
-    //
-    ///////////////////////////////////////////////////////////////////////////////////////
-     -->
-
-    
-
-
-    <!-- http://purl.obolibrary.org/obo/BFO_0000055 -->
-
-    <owl:ObjectProperty rdf:about="http://purl.obolibrary.org/obo/BFO_0000055">
-        <rdfs:label xml:lang="en">realizes</rdfs:label>
-        <skos:definition xml:lang="en">(Elucidation) realizes is a relation between a process b and realizable entity c such that c inheres in some d &amp; for all t, if b has participant d then c exists &amp; the type instantiated by b is correlated with the type instantiated by c</skos:definition>
-    </owl:ObjectProperty>
-    
-
-
-    <!-- http://purl.obolibrary.org/obo/BFO_0000199 -->
-
-    <owl:ObjectProperty rdf:about="http://purl.obolibrary.org/obo/BFO_0000199">
-        <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#FunctionalProperty"/>
-        <rdfs:range rdf:resource="http://purl.obolibrary.org/obo/BFO_0000008"/>
-        <rdfs:label xml:lang="en">occupies temporal region</rdfs:label>
-        <skos:definition xml:lang="en">p occupies temporal region t =Def p is a process or process boundary &amp; the spatiotemporal region occupied by p temporally projects onto t</skos:definition>
-    </owl:ObjectProperty>
-    
-
-
-    <!-- http://purl.obolibrary.org/obo/RO_0000057 -->
-
-    <owl:ObjectProperty rdf:about="http://purl.obolibrary.org/obo/RO_0000057">
-        <obo:IAO_0000112 xml:lang="en">this blood coagulation has participant this blood clot</obo:IAO_0000112>
-        <obo:IAO_0000112 xml:lang="en">this investigation has participant this investigator</obo:IAO_0000112>
-        <obo:IAO_0000112 xml:lang="en">this process has participant this input material (or this output material)</obo:IAO_0000112>
-        <obo:IAO_0000115 xml:lang="en">a relation between a process and a continuant, in which the continuant is somehow involved in the process</obo:IAO_0000115>
-        <obo:IAO_0000116 xml:lang="en">Has_participant is a primitive instance-level relation between a process, a continuant, and a time at which the continuant participates in some way in the process. The relation obtains, for example, when this particular process of oxygen exchange across this particular alveolar membrane has_participant this particular sample of hemoglobin at this particular time.</obo:IAO_0000116>
-        <rdfs:label xml:lang="en">has participant</rdfs:label>
-    </owl:ObjectProperty>
-    
-
-
-    <!-- http://purl.obolibrary.org/obo/RO_0000059 -->
-
-    <owl:ObjectProperty rdf:about="http://purl.obolibrary.org/obo/RO_0000059">
-        <obo:IAO_0000112 xml:lang="en">A journal article is an information artifact that inheres in some number of printed journals. For each copy of the printed journal there is some quality that carries the journal article, such as a pattern of ink. The quality (a specifically dependent continuant) concretizes the journal article (a generically dependent continuant), and both depend on that copy of the printed journal (an independent continuant).</obo:IAO_0000112>
-        <obo:IAO_0000112 xml:lang="en">An investigator reads a protocol and forms a plan to carry out an assay. The plan is a realizable entity (a specifically dependent continuant) that concretizes the protocol (a generically dependent continuant), and both depend on the investigator (an independent continuant). The plan is then realized by the assay (a process).</obo:IAO_0000112>
-        <obo:IAO_0000115 xml:lang="en">A relationship between a specifically dependent continuant or process and a generically dependent continuant, in which the generically dependent continuant depends on some independent continuant in virtue of the fact that the specifically dependent continuant or process also depends on that same independent continuant. Multiple specifically dependent continuants or processes can concretize the same generically dependent continuant.</obo:IAO_0000115>
-        <rdfs:label xml:lang="en">concretizes</rdfs:label>
-    </owl:ObjectProperty>
-    
-
-
-    <!-- 
-    ///////////////////////////////////////////////////////////////////////////////////////
-    //
-    // Classes
-    //
-    ///////////////////////////////////////////////////////////////////////////////////////
-     -->
-
-    
-
-
-    <!-- http://purl.obolibrary.org/obo/BFO_0000003 -->
-
-    <owl:Class rdf:about="http://purl.obolibrary.org/obo/BFO_0000003">
-        <obo:IAO_0000115 xml:lang="en">An entity that has temporal parts and that happens, unfolds or develops through time.</obo:IAO_0000115>
-        <obo:IAO_0000116 xml:lang="en">BFO 2 Reference: every occurrent that is not a temporal or spatiotemporal region is s-dependent on some independent continuant that is not a spatial region</obo:IAO_0000116>
-        <obo:IAO_0000116 xml:lang="en">BFO 2 Reference: s-dependence obtains between every process and its participants in the sense that, as a matter of necessity, this process could not have existed unless these or those participants existed also. A process may have a succession of participants at different phases of its unfolding. Thus there may be different players on the field at different times during the course of a football game; but the process which is the entire game s-depends_on all of these players nonetheless. Some temporal parts of this process will s-depend_on on only some of the players.</obo:IAO_0000116>
-        <rdfs:label xml:lang="en">occurrent</rdfs:label>
-        <skos:definition xml:lang="en">(Elucidation) An occurrent is an entity that unfolds itself in time or it is the start or end of such an entity or it is a temporal or spatiotemporal region</skos:definition>
-    </owl:Class>
-    
-
-
-    <!-- http://purl.obolibrary.org/obo/BFO_0000008 -->
-
-    <owl:Class rdf:about="http://purl.obolibrary.org/obo/BFO_0000008">
-        <rdfs:subClassOf rdf:resource="http://purl.obolibrary.org/obo/BFO_0000003"/>
-        <rdfs:label xml:lang="en">temporal region</rdfs:label>
-        <skos:definition xml:lang="en">(Elucidation) A temporal region is an occurrent over which processes can unfold</skos:definition>
-    </owl:Class>
-    
-
-
-    <!-- http://purl.obolibrary.org/obo/OBI_0000245 -->
-
-    <owl:Class rdf:about="http://purl.obolibrary.org/obo/OBI_0000245">
-        <rdfs:subClassOf rdf:resource="https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000102"/>
-        <obo:IAO_0000112 xml:lang="en">PMID: 16353909.AAPS J. 2005 Sep 22;7(2):E274-80. Review. The joint food and agriculture organization of the United Nations/World Health Organization Expert Committee on Food Additives and its role in the evaluation of the safety of veterinary drug residues in foods.</obo:IAO_0000112>
-        <obo:IAO_0000115 xml:lang="en">An entity that can bear roles, has members, and has a set of organization rules. Members of organizations are either organizations themselves or individual people. Members can bear specific organization member roles that are determined in the organization rules. The organization rules also determine how decisions are made on behalf of the organization by the organization members.</obo:IAO_0000115>
-        <obo:IAO_0000116 xml:lang="en">BP: The definition summarizes long email discussions on the OBI developer, roles, biomaterial and denrie branches. It leaves open if an organization is a material entity or a dependent continuant, as no consensus was reached on that.  The current placement as material is therefore temporary, in order to move forward with development. Here is the entire email summary, on which the definition is based:
+<?xml version="1.0" encoding="utf-8"?>
+<rdf:RDF
+   xmlns:ns1="http://purl.obolibrary.org/obo/"
+   xmlns:owl="http://www.w3.org/2002/07/owl#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+   xmlns:skos="http://www.w3.org/2004/02/skos/core#"
+>
+  <rdf:Description rdf:about="http://purl.obolibrary.org/obo/BFO_0000003">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:subClassOf rdf:resource="http://purl.obolibrary.org/obo/BFO_0000001"/>
+    <ns1:IAO_0000115 xml:lang="en">An entity that has temporal parts and that happens, unfolds or develops through time.</ns1:IAO_0000115>
+    <ns1:IAO_0000116 xml:lang="en">BFO 2 Reference: every occurrent that is not a temporal or spatiotemporal region is s-dependent on some independent continuant that is not a spatial region</ns1:IAO_0000116>
+    <ns1:IAO_0000116 xml:lang="en">BFO 2 Reference: s-dependence obtains between every process and its participants in the sense that, as a matter of necessity, this process could not have existed unless these or those participants existed also. A process may have a succession of participants at different phases of its unfolding. Thus there may be different players on the field at different times during the course of a football game; but the process which is the entire game s-depends_on all of these players nonetheless. Some temporal parts of this process will s-depend_on on only some of the players.</ns1:IAO_0000116>
+    <rdfs:label xml:lang="en">occurrent</rdfs:label>
+    <skos:definition xml:lang="en">(Elucidation) An occurrent is an entity that unfolds itself in time or it is the start or end of such an entity or it is a temporal or spatiotemporal region</skos:definition>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://purl.obolibrary.org/obo/RO_0000059">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:domain rdf:nodeID="na5998652feb242899d8f0a0158114533b8"/>
+    <rdfs:range rdf:resource="http://purl.obolibrary.org/obo/BFO_0000031"/>
+    <ns1:IAO_0000112 xml:lang="en">A journal article is an information artifact that inheres in some number of printed journals. For each copy of the printed journal there is some quality that carries the journal article, such as a pattern of ink. The quality (a specifically dependent continuant) concretizes the journal article (a generically dependent continuant), and both depend on that copy of the printed journal (an independent continuant).</ns1:IAO_0000112>
+    <ns1:IAO_0000112 xml:lang="en">An investigator reads a protocol and forms a plan to carry out an assay. The plan is a realizable entity (a specifically dependent continuant) that concretizes the protocol (a generically dependent continuant), and both depend on the investigator (an independent continuant). The plan is then realized by the assay (a process).</ns1:IAO_0000112>
+    <ns1:IAO_0000115 xml:lang="en">A relationship between a specifically dependent continuant or process and a generically dependent continuant, in which the generically dependent continuant depends on some independent continuant in virtue of the fact that the specifically dependent continuant or process also depends on that same independent continuant. Multiple specifically dependent continuants or processes can concretize the same generically dependent continuant.</ns1:IAO_0000115>
+    <rdfs:label xml:lang="en">concretizes</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://purl.obolibrary.org/obo/BFO_0000035">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:subClassOf rdf:resource="http://purl.obolibrary.org/obo/BFO_0000003"/>
+    <rdfs:label xml:lang="en">process boundary</rdfs:label>
+    <skos:definition xml:lang="en">p is a process boundary =Def p is a temporal part of a process &amp; p has no proper temporal parts</skos:definition>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://purl.obolibrary.org/obo/BFO_0000004">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:subClassOf rdf:resource="http://purl.obolibrary.org/obo/BFO_0000002"/>
+    <owl:disjointWith rdf:resource="http://purl.obolibrary.org/obo/BFO_0000020"/>
+    <owl:disjointWith rdf:resource="http://purl.obolibrary.org/obo/BFO_0000031"/>
+    <ns1:IAO_0000112 xml:lang="en">a chair</ns1:IAO_0000112>
+    <ns1:IAO_0000112 xml:lang="en">a heart</ns1:IAO_0000112>
+    <ns1:IAO_0000112 xml:lang="en">a leg</ns1:IAO_0000112>
+    <ns1:IAO_0000112 xml:lang="en">a molecule</ns1:IAO_0000112>
+    <ns1:IAO_0000112 xml:lang="en">a spatial region</ns1:IAO_0000112>
+    <ns1:IAO_0000112 xml:lang="en">an atom</ns1:IAO_0000112>
+    <ns1:IAO_0000112 xml:lang="en">an orchestra.</ns1:IAO_0000112>
+    <ns1:IAO_0000112 xml:lang="en">an organism</ns1:IAO_0000112>
+    <ns1:IAO_0000112 xml:lang="en">the bottom right portion of a human torso</ns1:IAO_0000112>
+    <ns1:IAO_0000112 xml:lang="en">the interior of your mouth</ns1:IAO_0000112>
+    <ns1:IAO_0000115 xml:lang="en">b is an independent continuant = Def. b is a continuant which is such that there is no c and no t such that b s-depends_on c at t. (axiom label in BFO2 Reference: [017-002])</ns1:IAO_0000115>
+    <rdfs:label xml:lang="en">independent continuant</rdfs:label>
+    <skos:definition xml:lang="en">b is an independent continuant =Def b is a continuant &amp; there is no c such that b specifically depends on c or b generically depends on c</skos:definition>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://purl.obolibrary.org/obo/BFO_0000006">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:subClassOf rdf:resource="http://purl.obolibrary.org/obo/BFO_0000141"/>
+    <rdfs:label xml:lang="en">spatial region</rdfs:label>
+    <skos:definition xml:lang="en">(Elucidation) A spatial region is a continuant entity that is a continuant part of the spatial projection of a portion of spacetime at a given time</skos:definition>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://purl.obolibrary.org/obo/BFO_0000055">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:domain rdf:resource="http://purl.obolibrary.org/obo/BFO_0000015"/>
+    <rdfs:range rdf:resource="http://purl.obolibrary.org/obo/BFO_0000017"/>
+    <rdfs:label xml:lang="en">realizes</rdfs:label>
+    <skos:definition xml:lang="en">(Elucidation) realizes is a relation between a process b and realizable entity c such that c inheres in some d &amp; for all t, if b has participant d then c exists &amp; the type instantiated by b is correlated with the type instantiated by c</skos:definition>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://purl.obolibrary.org/obo/BFO_0000015">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:subClassOf rdf:resource="http://purl.obolibrary.org/obo/BFO_0000003"/>
+    <ns1:IAO_0000112 xml:lang="en">a process of cell-division, \ a beating of the heart</ns1:IAO_0000112>
+    <ns1:IAO_0000112 xml:lang="en">a process of meiosis</ns1:IAO_0000112>
+    <ns1:IAO_0000112 xml:lang="en">a process of sleeping</ns1:IAO_0000112>
+    <ns1:IAO_0000112 xml:lang="en">the course of a disease</ns1:IAO_0000112>
+    <ns1:IAO_0000112 xml:lang="en">the flight of a bird</ns1:IAO_0000112>
+    <ns1:IAO_0000112 xml:lang="en">the life of an organism</ns1:IAO_0000112>
+    <ns1:IAO_0000112 xml:lang="en">your process of aging.</ns1:IAO_0000112>
+    <ns1:IAO_0000115 xml:lang="en">p is a process = Def. p is an occurrent that has temporal proper parts and for some time t, p s-depends_on some material entity at t. (axiom label in BFO2 Reference: [083-003])</ns1:IAO_0000115>
+    <ns1:IAO_0000116 xml:lang="en">BFO 2 Reference: The realm of occurrents is less pervasively marked by the presence of natural units than is the case in the realm of independent continuants. Thus there is here no counterpart of ‘object’. In BFO 1.0 ‘process’ served as such a counterpart. In BFO 2.0 ‘process’ is, rather, the occurrent counterpart of ‘material entity’. Those natural – as contrasted with engineered, which here means: deliberately executed – units which do exist in the realm of occurrents are typically either parasitic on the existence of natural units on the continuant side, or they are fiat in nature. Thus we can count lives; we can count football games; we can count chemical reactions performed in experiments or in chemical manufacturing. We cannot count the processes taking place, for instance, in an episode of insect mating behavior.Even where natural units are identifiable, for example cycles in a cyclical process such as the beating of a heart or an organism’s sleep/wake cycle, the processes in question form a sequence with no discontinuities (temporal gaps) of the sort that we find for instance where billiard balls or zebrafish or planets are separated by clear spatial gaps. Lives of organisms are process units, but they too unfold in a continuous series from other, prior processes such as fertilization, and they unfold in turn in continuous series of post-life processes such as post-mortem decay. Clear examples of boundaries of processes are almost always of the fiat sort (midnight, a time of death as declared in an operating theater or on a death certificate, the initiation of a state of war)</ns1:IAO_0000116>
+    <rdfs:label xml:lang="en">process</rdfs:label>
+    <skos:definition xml:lang="en">(Elucidation) p is a process means p is an occurrent that has some temporal proper part and for some time t, p has some material entity as participant</skos:definition>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="na5998652feb242899d8f0a0158114533b3">
+    <rdf:first rdf:resource="http://purl.obolibrary.org/obo/BFO_0000004"/>
+    <rdf:rest rdf:nodeID="na5998652feb242899d8f0a0158114533b4"/>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="na5998652feb242899d8f0a0158114533b10">
+    <rdf:first rdf:resource="http://purl.obolibrary.org/obo/BFO_0000020"/>
+    <rdf:rest rdf:resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#nil"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://purl.obolibrary.org/obo/OBI_0000245">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:subClassOf rdf:resource="https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000102"/>
+    <ns1:IAO_0000112 xml:lang="en">PMID: 16353909.AAPS J. 2005 Sep 22;7(2):E274-80. Review. The joint food and agriculture organization of the United Nations/World Health Organization Expert Committee on Food Additives and its role in the evaluation of the safety of veterinary drug residues in foods.</ns1:IAO_0000112>
+    <ns1:IAO_0000115 xml:lang="en">An entity that can bear roles, has members, and has a set of organization rules. Members of organizations are either organizations themselves or individual people. Members can bear specific organization member roles that are determined in the organization rules. The organization rules also determine how decisions are made on behalf of the organization by the organization members.</ns1:IAO_0000115>
+    <ns1:IAO_0000116 xml:lang="en">BP: The definition summarizes long email discussions on the OBI developer, roles, biomaterial and denrie branches. It leaves open if an organization is a material entity or a dependent continuant, as no consensus was reached on that.  The current placement as material is therefore temporary, in order to move forward with development. Here is the entire email summary, on which the definition is based:
 
 1) there are organization_member_roles (president, treasurer, branch
 editor), with individual persons as bearers
@@ -154,8 +103,8 @@ charter/rules/bylaws themselves.
 
 It is debatable what the organization itself is (some kind of dependent
 continuant or an aggregate of people). This also determines who/what the
-bearer of organization_roles&apos; are. My personal favorite is still to define
-organization as a kind of &apos;legal entity&apos;, but thinking it through leads to
+bearer of organization_roles' are. My personal favorite is still to define
+organization as a kind of 'legal entity', but thinking it through leads to
 all kinds of questions that are clearly outside the scope of OBI.
 
 Interestingly enough, it does not seem to matter much where we place
@@ -164,89 +113,244 @@ Government Agency, Hospital), instantiate it (Affymetrix, NCBI, NIH, ISO,
 W3C, University of Oklahoma), and have it play roles.
 
 This leads to my proposal: We define organization through the statements 1 -
-3 above, but without an &apos;is a&apos; statement for now. We can leave it in its
+3 above, but without an 'is a' statement for now. We can leave it in its
 current place in the is_a hierarchy (material entity) or move it up to
-&apos;continuant&apos;. We leave further clarifications to BFO, and close this issue
-for now.</obo:IAO_0000116>
-        <rdfs:label xml:lang="en">organization</rdfs:label>
-    </owl:Class>
-    
-
-
-    <!-- https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000014 -->
-
-    <owl:Class rdf:about="https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000014">
-        <rdfs:label xml:lang="en">obsolete publishing process</rdfs:label>
-        <skos:definition xml:lang="en">A process of making information, such as literature, music, and software etc., available to the public for sale or for free.</skos:definition>
-    </owl:Class>
-    
-
-
-    <!-- https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000102 -->
-
-    <owl:Class rdf:about="https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000102">
-        <rdfs:label xml:lang="en">agent</rdfs:label>
-        <skos:definition xml:lang="en">An independent continuant that acts autonomously and is entrusted with the authority to represent, negotiate, or act on behalf of another agent.</skos:definition>
-    </owl:Class>
-    
-
-
-    <!-- https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000114 -->
-
-    <owl:Class rdf:about="https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000114">
-        <rdfs:subClassOf rdf:resource="https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000229"/>
-        <rdfs:label xml:lang="en">contact point role</rdfs:label>
-        <skos:definition xml:lang="en">A role inherent in an agent that is realized when the agent is a contact point of a resource or a project.</skos:definition>
-    </owl:Class>
-    
-
-
-    <!-- https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000118 -->
-
-    <owl:Class rdf:about="https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000118">
-        <rdfs:subClassOf rdf:resource="https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000229"/>
-        <rdfs:label xml:lang="en">contributor role</rdfs:label>
-        <skos:definition xml:lang="en">A role inherent in an agent that provides input, resources, or effort to support or enhance a project, work, or process.</skos:definition>
-    </owl:Class>
-    
-
-
-    <!-- https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000193 -->
-
-    <owl:Class rdf:about="https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000193">
-        <rdfs:label xml:lang="en">publisher role</rdfs:label>
-        <skos:definition xml:lang="en">A role inherent in an agent that is realized when the bearer participates in the publishing of the document.</skos:definition>
-    </owl:Class>
-    
-
-
-    <!-- https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000228 -->
-
-    <owl:Class rdf:about="https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000228">
-        <rdfs:label xml:lang="en">service product role</rdfs:label>
-        <skos:definition xml:lang="en">Role of an immaterial entity that facilitates the delivery or support of a service product, ensuring its proper execution and value realization.</skos:definition>
-    </owl:Class>
-    
-
-
-    <!-- https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000229 -->
-
-    <owl:Class rdf:about="https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000229">
-        <rdfs:label xml:lang="en">agent role</rdfs:label>
-        <skos:definition xml:lang="en">Role of an independent continuant that is realized through an agent&apos;s actions, enabling the agent to perform specific functions or achieve particular outcomes within a system or context.</skos:definition>
-    </owl:Class>
-    
-
-
-    <!-- https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0001058 -->
-
-    <owl:Class rdf:about="https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0001058">
-        <rdfs:label xml:lang="en">co spokesperson role</rdfs:label>
-        <skos:definition xml:lang="en">A role inherent in an agent that is realized when shareing the responsibilities of representing an organization, group, or initiative, typically communicating its views, policies, or findings to the public.</skos:definition>
-    </owl:Class>
+'continuant'. We leave further clarifications to BFO, and close this issue
+for now.</ns1:IAO_0000116>
+    <rdfs:label xml:lang="en">organization</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000118">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:subClassOf rdf:resource="https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000229"/>
+    <rdfs:label xml:lang="en">contributor role</rdfs:label>
+    <skos:definition xml:lang="en">A role inherent in an agent that provides input, resources, or effort to support or enhance a project, work, or process.</skos:definition>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://purl.obolibrary.org/obo/BFO_0000017">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:subClassOf rdf:resource="http://purl.obolibrary.org/obo/BFO_0000020"/>
+    <ns1:IAO_0000112 xml:lang="en">the disposition of this piece of metal to conduct electricity.</ns1:IAO_0000112>
+    <ns1:IAO_0000112 xml:lang="en">the disposition of your blood to coagulate</ns1:IAO_0000112>
+    <ns1:IAO_0000112 xml:lang="en">the function of your reproductive organs</ns1:IAO_0000112>
+    <ns1:IAO_0000112 xml:lang="en">the role of being a doctor</ns1:IAO_0000112>
+    <ns1:IAO_0000112 xml:lang="en">the role of this boundary to delineate where Utah and Colorado meet</ns1:IAO_0000112>
+    <ns1:IAO_0000115 xml:lang="en">A specifically dependent continuant  that inheres in continuant  entities and are not exhibited in full at every time in which it inheres in an entity or group of entities. The exhibition or actualization of a realizable entity is a particular manifestation, functioning or process that occurs under certain circumstances.</ns1:IAO_0000115>
+    <rdfs:label xml:lang="en">realizable entity</rdfs:label>
+    <skos:definition xml:lang="en">(Elucidation) A realizable entity is a specifically dependent continuant that inheres in some independent continuant which is not a spatial region &amp; which is of a type some instances of which are realized in processes of a correlated type</skos:definition>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://purl.obolibrary.org/obo/BFO_0000008">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:subClassOf rdf:resource="http://purl.obolibrary.org/obo/BFO_0000003"/>
+    <rdfs:label xml:lang="en">temporal region</rdfs:label>
+    <skos:definition xml:lang="en">(Elucidation) A temporal region is an occurrent over which processes can unfold</skos:definition>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="na5998652feb242899d8f0a0158114533b1">
+    <owl:intersectionOf rdf:nodeID="na5998652feb242899d8f0a0158114533b3"/>
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://purl.obolibrary.org/obo/IAO_0000115">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#AnnotationProperty"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://purl.obolibrary.org/obo/BFO_0000023">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:subClassOf rdf:resource="http://purl.obolibrary.org/obo/BFO_0000017"/>
+    <ns1:IAO_0000112 xml:lang="en">John’s role of husband to Mary is dependent on Mary’s role of wife to John, and both are dependent on the object aggregate comprising John and Mary as member parts joined together through the relational quality of being married.</ns1:IAO_0000112>
+    <ns1:IAO_0000112 xml:lang="en">the priest role</ns1:IAO_0000112>
+    <ns1:IAO_0000112 xml:lang="en">the role of a boundary to demarcate two neighboring administrative territories</ns1:IAO_0000112>
+    <ns1:IAO_0000112 xml:lang="en">the role of a building in serving as a military target</ns1:IAO_0000112>
+    <ns1:IAO_0000112 xml:lang="en">the role of a stone in marking a property boundary</ns1:IAO_0000112>
+    <ns1:IAO_0000112 xml:lang="en">the role of subject in a clinical trial</ns1:IAO_0000112>
+    <ns1:IAO_0000112 xml:lang="en">the student role</ns1:IAO_0000112>
+    <ns1:IAO_0000115 xml:lang="en">A realizable entity  the manifestation of which brings about some result or end that is not essential to a continuant  in virtue of the kind of thing that it is but that can be served or participated in by that kind of continuant  in some kinds of natural, social or institutional contexts.</ns1:IAO_0000115>
+    <ns1:IAO_0000116 xml:lang="en">BFO 2 Reference: One major family of examples of non-rigid universals involves roles, and ontologies developed for corresponding administrative purposes may consist entirely of representatives of entities of this sort. Thus ‘professor’, defined as follows,b instance_of professor at t =Def. there is some c, c instance_of professor role &amp; c inheres_in b at t.denotes a non-rigid universal and so also do ‘nurse’, ‘student’, ‘colonel’, ‘taxpayer’, and so forth. (These terms are all, in the jargon of philosophy, phase sortals.) By using role terms in definitions, we can create a BFO conformant treatment of such entities drawing on the fact that, while an instance of professor may be simultaneously an instance of trade union member, no instance of the type professor role is also (at any time) an instance of the type trade union member role (any more than any instance of the type color is at any time an instance of the type length).If an ontology of employment positions should be defined in terms of roles following the above pattern, this enables the ontology to do justice to the fact that individuals instantiate the corresponding universals –  professor, sergeant, nurse – only during certain phases in their lives.</ns1:IAO_0000116>
+    <rdfs:label xml:lang="en">role</rdfs:label>
+    <skos:definition xml:lang="en">(Elucidation) A role b is a realizable entity such that b exists because there is some single bearer that is in some special physical, social, or institutional set of circumstances in which this bearer does not have to be &amp; b is not such that, if it ceases to exist, then the physical make-up of the bearer is thereby changed</skos:definition>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://purl.obolibrary.org/obo/BFO_0000199">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#FunctionalProperty"/>
+    <rdfs:domain rdf:nodeID="na5998652feb242899d8f0a0158114533b5"/>
+    <rdfs:range rdf:resource="http://purl.obolibrary.org/obo/BFO_0000008"/>
+    <rdfs:label xml:lang="en">occupies temporal region</rdfs:label>
+    <skos:definition xml:lang="en">p occupies temporal region t =Def p is a process or process boundary &amp; the spatiotemporal region occupied by p temporally projects onto t</skos:definition>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://purl.obolibrary.org/obo/BFO_0000020">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:subClassOf rdf:resource="http://purl.obolibrary.org/obo/BFO_0000002"/>
+    <owl:disjointWith rdf:resource="http://purl.obolibrary.org/obo/BFO_0000031"/>
+    <ns1:IAO_0000112 xml:lang="en">Reciprocal specifically dependent continuants: the function of this key to open this lock and the mutually dependent disposition of this lock: to be opened by this key</ns1:IAO_0000112>
+    <ns1:IAO_0000112 xml:lang="en">of one-sided specifically dependent continuants: the mass of this tomato</ns1:IAO_0000112>
+    <ns1:IAO_0000112 xml:lang="en">of relational dependent continuants (multiple bearers): John’s love for Mary, the ownership relation between John and this statue, the relation of authority between John and his subordinates.</ns1:IAO_0000112>
+    <ns1:IAO_0000112 xml:lang="en">the disposition of this fish to decay</ns1:IAO_0000112>
+    <ns1:IAO_0000112 xml:lang="en">the function of this heart: to pump blood</ns1:IAO_0000112>
+    <ns1:IAO_0000112 xml:lang="en">the mutual dependence of proton donors and acceptors in chemical reactions [79</ns1:IAO_0000112>
+    <ns1:IAO_0000112 xml:lang="en">the mutual dependence of the role predator and the role prey as played by two organisms in a given interaction</ns1:IAO_0000112>
+    <ns1:IAO_0000112 xml:lang="en">the pink color of a medium rare piece of grilled filet mignon at its center</ns1:IAO_0000112>
+    <ns1:IAO_0000112 xml:lang="en">the role of being a doctor</ns1:IAO_0000112>
+    <ns1:IAO_0000112 xml:lang="en">the shape of this hole.</ns1:IAO_0000112>
+    <ns1:IAO_0000112 xml:lang="en">the smell of this portion of mozzarella</ns1:IAO_0000112>
+    <ns1:IAO_0000115 xml:lang="en">b is a specifically dependent continuant = Def. b is a continuant &amp; there is some independent continuant c which is not a spatial region and which is such that b s-depends_on c at every time t during the course of b’s existence. (axiom label in BFO2 Reference: [050-003])</ns1:IAO_0000115>
+    <rdfs:label xml:lang="en">specifically dependent continuant</rdfs:label>
+    <skos:definition xml:lang="en">b is a specifically dependent continuant =Def b is a continuant &amp; there is some independent continuant c which is not a spatial region &amp; which is such that b specifically depends on c</skos:definition>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000102">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:subClassOf rdf:resource="http://purl.obolibrary.org/obo/BFO_0000004"/>
+    <rdfs:label xml:lang="en">agent</rdfs:label>
+    <skos:definition xml:lang="en">An independent continuant that acts autonomously and is entrusted with the authority to represent, negotiate, or act on behalf of another agent.</skos:definition>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://purl.obolibrary.org/obo/BFO_0000141">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:subClassOf rdf:resource="http://purl.obolibrary.org/obo/BFO_0000004"/>
+    <rdfs:label xml:lang="en">immaterial entity</rdfs:label>
+    <skos:definition xml:lang="en">b is an immaterial entity =Def b is an independent continuant which is such that there is no time t when it has a material entity as continuant part</skos:definition>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="na5998652feb242899d8f0a0158114533b2">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <owl:complementOf rdf:resource="http://purl.obolibrary.org/obo/BFO_0000006"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000228">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:subClassOf rdf:resource="http://purl.obolibrary.org/obo/BFO_0000023"/>
+    <rdfs:label xml:lang="en">service product role</rdfs:label>
+    <skos:definition xml:lang="en">Role of an immaterial entity that facilitates the delivery or support of a service product, ensuring its proper execution and value realization.</skos:definition>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://purl.obolibrary.org/obo/BFO_0000001">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <ns1:IAO_0000112 xml:lang="en">Julius Caesar</ns1:IAO_0000112>
+    <ns1:IAO_0000112 xml:lang="en">Verdi’s Requiem</ns1:IAO_0000112>
+    <ns1:IAO_0000112 xml:lang="en">the Second World War</ns1:IAO_0000112>
+    <ns1:IAO_0000112 xml:lang="en">your body mass index</ns1:IAO_0000112>
+    <ns1:IAO_0000116 xml:lang="en">BFO 2 Reference: In all areas of empirical inquiry we encounter general terms of two sorts. First are general terms which refer to universals or types:animaltuberculosissurgical procedurediseaseSecond, are general terms used to refer to groups of entities which instantiate a given universal but do not correspond to the extension of any subuniversal of that universal because there is nothing intrinsic to the entities in question by virtue of which they – and only they – are counted as belonging to the given group. Examples are: animal purchased by the Emperortuberculosis diagnosed on a Wednesdaysurgical procedure performed on a patient from Stockholmperson identified as candidate for clinical trial #2056-555person who is signatory of Form 656-PPVpainting by Leonardo da VinciSuch terms, which represent what are called ‘specializations’ in [81</ns1:IAO_0000116>
+    <rdfs:label xml:lang="en">entity</rdfs:label>
+    <skos:definition xml:lang="en">(Elucidation) An entity is anything that exists or has existed or will exist</skos:definition>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="na5998652feb242899d8f0a0158114533b5">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <owl:unionOf rdf:nodeID="na5998652feb242899d8f0a0158114533b6"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://purl.obolibrary.org/obo/BFO_0000031">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:subClassOf rdf:resource="http://purl.obolibrary.org/obo/BFO_0000002"/>
+    <ns1:IAO_0000112 xml:lang="en">The entries in your database are patterns instantiated as quality instances in your hard drive. The database itself is an aggregate of such patterns. When you create the database you create a particular instance of the generically dependent continuant type database. Each entry in the database is an instance of the generically dependent continuant type IAO: information content entity.</ns1:IAO_0000112>
+    <ns1:IAO_0000112 xml:lang="en">the pdf file on your laptop, the pdf file that is a copy thereof on my laptop</ns1:IAO_0000112>
+    <ns1:IAO_0000112 xml:lang="en">the sequence of this protein molecule; the sequence that is a copy thereof in that protein molecule.</ns1:IAO_0000112>
+    <ns1:IAO_0000115 xml:lang="en">b is a generically dependent continuant = Def. b is a continuant that g-depends_on one or more other entities. (axiom label in BFO2 Reference: [074-001])</ns1:IAO_0000115>
+    <rdfs:label xml:lang="en">generically dependent continuant</rdfs:label>
+    <skos:definition xml:lang="en">(Elucidation) A generically dependent continuant is an entity that exists in virtue of the fact that there is at least one of what may be multiple copies which is the content or the pattern that multiple copies would share</skos:definition>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="na5998652feb242899d8f0a0158114533b7">
+    <rdf:first rdf:resource="http://purl.obolibrary.org/obo/BFO_0000035"/>
+    <rdf:rest rdf:resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#nil"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://purl.obolibrary.org/obo/RO_0000057">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:domain rdf:resource="http://purl.obolibrary.org/obo/BFO_0000003"/>
+    <rdfs:range rdf:resource="http://purl.obolibrary.org/obo/BFO_0000002"/>
+    <ns1:IAO_0000112 xml:lang="en">this blood coagulation has participant this blood clot</ns1:IAO_0000112>
+    <ns1:IAO_0000112 xml:lang="en">this investigation has participant this investigator</ns1:IAO_0000112>
+    <ns1:IAO_0000112 xml:lang="en">this process has participant this input material (or this output material)</ns1:IAO_0000112>
+    <ns1:IAO_0000115 xml:lang="en">a relation between a process and a continuant, in which the continuant is somehow involved in the process</ns1:IAO_0000115>
+    <ns1:IAO_0000116 xml:lang="en">Has_participant is a primitive instance-level relation between a process, a continuant, and a time at which the continuant participates in some way in the process. The relation obtains, for example, when this particular process of oxygen exchange across this particular alveolar membrane has_participant this particular sample of hemoglobin at this particular time.</ns1:IAO_0000116>
+    <rdfs:label xml:lang="en">has participant</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://purl.obolibrary.org/obo/BFO_0000197">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <rdfs:domain rdf:resource="http://purl.obolibrary.org/obo/BFO_0000020"/>
+    <rdfs:range rdf:nodeID="na5998652feb242899d8f0a0158114533b1"/>
+    <rdfs:label xml:lang="en">inheres in</rdfs:label>
+    <skos:definition xml:lang="en">b inheres in c =Def b is a specifically dependent continuant &amp; c is an independent continuant that is not a spatial region &amp; b specifically depends on c</skos:definition>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://purl.obolibrary.org/obo/BFO_0000002">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:subClassOf rdf:resource="http://purl.obolibrary.org/obo/BFO_0000001"/>
+    <owl:disjointWith rdf:resource="http://purl.obolibrary.org/obo/BFO_0000003"/>
+    <ns1:IAO_0000115 xml:lang="en">An entity that exists in full at any time in which it exists at all, persists through time while maintaining its identity and has no temporal parts.</ns1:IAO_0000115>
+    <ns1:IAO_0000116 xml:lang="en">BFO 2 Reference: Continuant entities are entities which can be sliced to yield parts only along the spatial dimension, yielding for example the parts of your table which we call its legs, its top, its nails. ‘My desk stretches from the window to the door. It has spatial parts, and can be sliced (in space) in two. With respect to time, however, a thing is a continuant.’ [60, p. 240</ns1:IAO_0000116>
+    <rdfs:label xml:lang="en">continuant</rdfs:label>
+    <skos:definition xml:lang="en">(Elucidation) A continuant is an entity that persists, endures, or continues to exist through time while maintaining its identity</skos:definition>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="na5998652feb242899d8f0a0158114533b6">
+    <rdf:first rdf:resource="http://purl.obolibrary.org/obo/BFO_0000015"/>
+    <rdf:rest rdf:nodeID="na5998652feb242899d8f0a0158114533b7"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000229">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:subClassOf rdf:resource="http://purl.obolibrary.org/obo/BFO_0000023"/>
+    <rdfs:label xml:lang="en">agent role</rdfs:label>
+    <skos:definition xml:lang="en">Role of an independent continuant that is realized through an agent's actions, enabling the agent to perform specific functions or achieve particular outcomes within a system or context.</skos:definition>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://purl.obolibrary.org/obo/IAO_0000444">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:subClassOf rdf:resource="http://purl.obolibrary.org/obo/BFO_0000015"/>
+    <ns1:IAO_0000115 xml:lang="en">A planned process of making information, such as literature, music, and software etc., available to the public for sale or for free.</ns1:IAO_0000115>
+    <rdfs:label xml:lang="en">publishing process</rdfs:label>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0001058">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:subClassOf rdf:resource="https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000229"/>
+    <rdfs:label xml:lang="en">co spokesperson role</rdfs:label>
+    <skos:definition xml:lang="en">A role inherent in an agent that is realized when shareing the responsibilities of representing an organization, group, or initiative, typically communicating its views, policies, or findings to the public.</skos:definition>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000114">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:subClassOf rdf:resource="https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000229"/>
+    <rdfs:label xml:lang="en">contact point role</rdfs:label>
+    <skos:definition xml:lang="en">A role inherent in an agent that is realized when the agent is a contact point of a resource or a project.</skos:definition>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000193">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <rdfs:subClassOf rdf:resource="https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000229"/>
+    <rdfs:subClassOf rdf:nodeID="na5998652feb242899d8f0a0158114533b11"/>
+    <rdfs:label xml:lang="en">publisher role</rdfs:label>
+    <skos:definition xml:lang="en">A role inherent in an agent that is realized when the bearer participates in the publishing of the document.</skos:definition>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://purl.obolibrary.org/obo/BFO_0000054">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
+    <owl:inverseOf rdf:resource="http://purl.obolibrary.org/obo/BFO_0000055"/>
+    <rdfs:domain rdf:resource="http://purl.obolibrary.org/obo/BFO_0000017"/>
+    <rdfs:range rdf:resource="http://purl.obolibrary.org/obo/BFO_0000015"/>
+    <rdfs:label xml:lang="en">has realization</rdfs:label>
+    <skos:definition xml:lang="en">b has realization c =Def c realizes b</skos:definition>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="na5998652feb242899d8f0a0158114533b12">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Restriction"/>
+    <owl:onProperty rdf:resource="http://purl.obolibrary.org/obo/BFO_0000054"/>
+    <owl:someValuesFrom rdf:resource="http://purl.obolibrary.org/obo/IAO_0000444"/>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="na5998652feb242899d8f0a0158114533b13">
+    <rdf:first rdf:resource="https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000229"/>
+    <rdf:rest rdf:nodeID="na5998652feb242899d8f0a0158114533b14"/>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="na5998652feb242899d8f0a0158114533b8">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+    <owl:unionOf rdf:nodeID="na5998652feb242899d8f0a0158114533b9"/>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="na5998652feb242899d8f0a0158114533b14">
+    <rdf:first rdf:nodeID="na5998652feb242899d8f0a0158114533b12"/>
+    <rdf:rest rdf:resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#nil"/>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="na5998652feb242899d8f0a0158114533b4">
+    <rdf:first rdf:nodeID="na5998652feb242899d8f0a0158114533b2"/>
+    <rdf:rest rdf:resource="http://www.w3.org/1999/02/22-rdf-syntax-ns#nil"/>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="na5998652feb242899d8f0a0158114533b9">
+    <rdf:first rdf:resource="http://purl.obolibrary.org/obo/BFO_0000015"/>
+    <rdf:rest rdf:nodeID="na5998652feb242899d8f0a0158114533b10"/>
+  </rdf:Description>
+  <rdf:Description rdf:nodeID="na5998652feb242899d8f0a0158114533b11">
+    <owl:intersectionOf rdf:nodeID="na5998652feb242899d8f0a0158114533b13"/>
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://www.w3.org/2004/02/skos/core#definition">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#AnnotationProperty"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://purl.obolibrary.org/obo/IAO_0000116">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#AnnotationProperty"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="http://purl.obolibrary.org/obo/IAO_0000112">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#AnnotationProperty"/>
+  </rdf:Description>
+  <rdf:Description rdf:about="https://ontoboard.org/patterns/nfdi-process-role-realization.owl">
+    <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Ontology"/>
+  </rdf:Description>
 </rdf:RDF>
-
-
-
-<!-- Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi -->
-

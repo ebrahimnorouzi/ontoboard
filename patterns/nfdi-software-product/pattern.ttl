@@ -32,20 +32,71 @@
 #    Object Properties
 #################################################################
 
+###  http://purl.obolibrary.org/obo/IAO_0000219
+<http://purl.obolibrary.org/obo/IAO_0000219> rdf:type owl:ObjectProperty ;
+                                             owl:inverseOf <http://purl.obolibrary.org/obo/IAO_0000235> ;
+                                             rdfs:domain <http://purl.obolibrary.org/obo/IAO_0000030> ;
+                                             rdfs:range <http://purl.obolibrary.org/obo/BFO_0000001> ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000112> "A person's name denotes the person. A variable name in a computer program denotes some piece of memory. Lexically equivalent strings can denote different things, for instance \"Alan\" can denote different people. In each case of use, there is a case of the denotation relation obtaining, between \"Alan\" and the person that is being named."@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "A primitive, instance-level, relation obtaining between an information content entity and some portion of reality. Denotation is what happens when someone creates an information content entity E in order to specifically refer to something. The only relation between E and the thing is that E can be used to 'pick out' the thing. This relation connects those two together. Freedictionary.com sense 3: To signify directly; refer to specifically"@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000116> """2009-11-10 Alan Ruttenberg. Old definition said the following to emphasize the generic nature of this relation. We no longer have 'specifically denotes', which would have been primitive, so make this relation primitive.
+g denotes r =def 
+r is a portion of reality
+there is some c that is a concretization of g 
+every c that is a concretization of g specifically denotes r"""@en ;
+                                             rdfs:label "denotes"@en .
+
+
 ###  http://purl.obolibrary.org/obo/IAO_0000235
 <http://purl.obolibrary.org/obo/IAO_0000235> rdf:type owl:ObjectProperty ;
                                              rdfs:subPropertyOf <https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000226> ;
+                                             rdfs:domain <http://purl.obolibrary.org/obo/BFO_0000001> ;
+                                             rdfs:range <http://purl.obolibrary.org/obo/IAO_0000030> ;
                                              <http://purl.obolibrary.org/obo/IAO_0000115> "inverse of the relation 'denotes'"@en ;
                                              rdfs:label "denoted by"@en .
 
 
 ###  http://purl.obolibrary.org/obo/RO_0000056
 <http://purl.obolibrary.org/obo/RO_0000056> rdf:type owl:ObjectProperty ;
+                                            rdfs:domain <http://purl.obolibrary.org/obo/BFO_0000002> ;
+                                            rdfs:range <http://purl.obolibrary.org/obo/BFO_0000003> ;
                                             <http://purl.obolibrary.org/obo/IAO_0000112> "this blood clot participates in this blood coagulation"@en ,
                                                                                          "this input material (or this output material) participates in this process"@en ,
                                                                                          "this investigator participates in this investigation"@en ;
                                             <http://purl.obolibrary.org/obo/IAO_0000115> "a relation between a continuant and a process, in which the continuant is somehow involved in the process"@en ;
                                             rdfs:label "participates in"@en .
+
+
+###  https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000142
+<https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000142> rdf:type owl:ObjectProperty ;
+                                                      rdfs:subPropertyOf <https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000226> ;
+                                                      rdfs:range <http://www.ebi.ac.uk/swo/SWO_0000002> ;
+                                                      rdfs:label "has license"@en ;
+                                                      <http://www.w3.org/2004/02/skos/core#definition> "The property is a relationship between a resource and a license file." .
+
+
+###  https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000187
+<https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000187> rdf:type owl:ObjectProperty ;
+                                                      rdfs:subPropertyOf <https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000226> ;
+                                                      rdfs:range <http://purl.obolibrary.org/obo/IAO_0000025> ;
+                                                      rdfs:label "has programming language"@en ;
+                                                      <http://www.w3.org/2004/02/skos/core#definition> "The property links software to a programming language its written in." .
+
+
+###  https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000211
+<https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000211> rdf:type owl:ObjectProperty ;
+                                                      rdfs:subPropertyOf <https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000226> ;
+                                                      rdfs:range <https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000100> ;
+                                                      rdfs:label "has subject area"@en ;
+                                                      <http://www.w3.org/2004/02/skos/core#definition> "The property establishes a connection between a resource, an agent, or a project, and the academic discipline, subject area, or domain within which they operate."@en .
+
+
+###  https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000216
+<https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000216> rdf:type owl:ObjectProperty ;
+                                                      rdfs:subPropertyOf <https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000226> ;
+                                                      rdfs:range <https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000215> ;
+                                                      rdfs:label "has technology"@en ;
+                                                      <http://www.w3.org/2004/02/skos/core#definition> "The property is a relationship between a resource and a technology it uses."@en .
 
 
 ###  https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000226
@@ -58,8 +109,51 @@
 #    Classes
 #################################################################
 
+###  http://purl.obolibrary.org/obo/BFO_0000001
+<http://purl.obolibrary.org/obo/BFO_0000001> rdf:type owl:Class ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000112> "Julius Caesar"@en ,
+                                                                                          "Verdi’s Requiem"@en ,
+                                                                                          "the Second World War"@en ,
+                                                                                          "your body mass index"@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000116> "BFO 2 Reference: In all areas of empirical inquiry we encounter general terms of two sorts. First are general terms which refer to universals or types:animaltuberculosissurgical procedurediseaseSecond, are general terms used to refer to groups of entities which instantiate a given universal but do not correspond to the extension of any subuniversal of that universal because there is nothing intrinsic to the entities in question by virtue of which they – and only they – are counted as belonging to the given group. Examples are: animal purchased by the Emperortuberculosis diagnosed on a Wednesdaysurgical procedure performed on a patient from Stockholmperson identified as candidate for clinical trial #2056-555person who is signatory of Form 656-PPVpainting by Leonardo da VinciSuch terms, which represent what are called ‘specializations’ in [81"@en ;
+                                             rdfs:label "entity"@en ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "(Elucidation) An entity is anything that exists or has existed or will exist"@en .
+
+
+###  http://purl.obolibrary.org/obo/BFO_0000002
+<http://purl.obolibrary.org/obo/BFO_0000002> rdf:type owl:Class ;
+                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000001> ;
+                                             owl:disjointWith <http://purl.obolibrary.org/obo/BFO_0000003> ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "An entity that exists in full at any time in which it exists at all, persists through time while maintaining its identity and has no temporal parts."@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000116> "BFO 2 Reference: Continuant entities are entities which can be sliced to yield parts only along the spatial dimension, yielding for example the parts of your table which we call its legs, its top, its nails. ‘My desk stretches from the window to the door. It has spatial parts, and can be sliced (in space) in two. With respect to time, however, a thing is a continuant.’ [60, p. 240"@en ;
+                                             rdfs:label "continuant"@en ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "(Elucidation) A continuant is an entity that persists, endures, or continues to exist through time while maintaining its identity"@en .
+
+
+###  http://purl.obolibrary.org/obo/BFO_0000003
+<http://purl.obolibrary.org/obo/BFO_0000003> rdf:type owl:Class ;
+                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000001> ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "An entity that has temporal parts and that happens, unfolds or develops through time."@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000116> "BFO 2 Reference: every occurrent that is not a temporal or spatiotemporal region is s-dependent on some independent continuant that is not a spatial region"@en ,
+                                                                                          "BFO 2 Reference: s-dependence obtains between every process and its participants in the sense that, as a matter of necessity, this process could not have existed unless these or those participants existed also. A process may have a succession of participants at different phases of its unfolding. Thus there may be different players on the field at different times during the course of a football game; but the process which is the entire game s-depends_on all of these players nonetheless. Some temporal parts of this process will s-depend_on on only some of the players."@en ;
+                                             rdfs:label "occurrent"@en ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "(Elucidation) An occurrent is an entity that unfolds itself in time or it is the start or end of such an entity or it is a temporal or spatiotemporal region"@en .
+
+
+###  http://purl.obolibrary.org/obo/BFO_0000031
+<http://purl.obolibrary.org/obo/BFO_0000031> rdf:type owl:Class ;
+                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000002> ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000112> "The entries in your database are patterns instantiated as quality instances in your hard drive. The database itself is an aggregate of such patterns. When you create the database you create a particular instance of the generically dependent continuant type database. Each entry in the database is an instance of the generically dependent continuant type IAO: information content entity."@en ,
+                                                                                          "the pdf file on your laptop, the pdf file that is a copy thereof on my laptop"@en ,
+                                                                                          "the sequence of this protein molecule; the sequence that is a copy thereof in that protein molecule."@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "b is a generically dependent continuant = Def. b is a continuant that g-depends_on one or more other entities. (axiom label in BFO2 Reference: [074-001])"@en ;
+                                             rdfs:label "generically dependent continuant"@en ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "(Elucidation) A generically dependent continuant is an entity that exists in virtue of the fact that there is at least one of what may be multiple copies which is the content or the pattern that multiple copies would share"@en .
+
+
 ###  http://purl.obolibrary.org/obo/IAO_0000010
 <http://purl.obolibrary.org/obo/IAO_0000010> rdf:type owl:Class ;
+                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/IAO_0000104> ;
                                              <http://purl.obolibrary.org/obo/IAO_0000115> """Software is a plan specification composed of a series of instructions that can be 
 interpreted by or directly executed by a processing unit."""@en ;
                                              <http://purl.obolibrary.org/obo/IAO_0000116> "see sourceforge tracker discussion at http://sourceforge.net/tracker/index.php?func=detail&aid=1958818&group_id=177891&atid=886178"@en ;
@@ -76,6 +170,7 @@ interpreted by or directly executed by a processing unit."""@en ;
 
 ###  http://purl.obolibrary.org/obo/IAO_0000028
 <http://purl.obolibrary.org/obo/IAO_0000028> rdf:type owl:Class ;
+                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/IAO_0000030> ;
                                              <http://purl.obolibrary.org/obo/IAO_0000112> "a serial number such as \"12324X\""@en ,
                                                                                           "a stop sign"@en ,
                                                                                           "a written proper name such as \"OBI\""@en ;
@@ -87,6 +182,7 @@ interpreted by or directly executed by a processing unit."""@en ;
 
 ###  http://purl.obolibrary.org/obo/IAO_0000030
 <http://purl.obolibrary.org/obo/IAO_0000030> rdf:type owl:Class ;
+                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000031> ;
                                              <http://purl.obolibrary.org/obo/IAO_0000112> "Examples of information content entites include journal articles, data, graphical layouts, and graphs." ,
                                                                                           "Examples of information content entites include journal articles, data, graphical layouts, and graphs."@en ;
                                              <http://purl.obolibrary.org/obo/IAO_0000115> "A generically dependent continuant that is about some thing."@en ,
@@ -99,8 +195,20 @@ Previous. An information content entity is a non-realizable information entity t
                                                         "information content entity"@en .
 
 
+###  http://purl.obolibrary.org/obo/IAO_0000033
+<http://purl.obolibrary.org/obo/IAO_0000033> rdf:type owl:Class ;
+                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/IAO_0000030> ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "An information content entity whose concretizations indicate to their bearer how to realize them in a process."@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000116> "2009-03-16: provenance: a term realizable information entity was proposed for OBI (OBI_0000337) , edited by the PlanAndPlannedProcess branch. Original definition was  \"is the specification of a process that can be concretized and realized by an actor\" with alternative term  \"instruction\".It has been subsequently moved to IAO where the objective for which the original term was defined was satisfied with the definitionof this, different, term."@en ,
+                                                                                          "2013-05-30 Alan Ruttenberg: What differentiates a directive information entity from an information concretization is that it can have concretizations that are either qualities or realizable entities. The concretizations that are realizable entities are created when an individual chooses to take up the direction, i.e. has the intention to (try to) realize it."@en ,
+                                                                                          "8/6/2009 Alan Ruttenberg: Changed label from \"information entity about a realizable\" after discussions at ICBO"@en ,
+                                                                                          "Werner pushed back on calling it realizable information entity as it isn't realizable. However this name isn't right either. An example would be a recipe. The realizable entity would be a plan, but the information entity isn't about the plan, it, once concretized, *is* the plan. -Alan"@en ;
+                                             rdfs:label "directive information entity"@en .
+
+
 ###  http://purl.obolibrary.org/obo/IAO_0000104
 <http://purl.obolibrary.org/obo/IAO_0000104> rdf:type owl:Class ;
+                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/IAO_0000033> ;
                                              <http://purl.obolibrary.org/obo/IAO_0000112> "PMID: 18323827.Nat Med. 2008 Mar;14(3):226.New plan proposed to help resolve conflicting medical advice."@en ;
                                              <http://purl.obolibrary.org/obo/IAO_0000115> "A directive information entity with action specifications and objective specifications as parts, and that may be concretized as a realizable entity that, if realized, is realized in a process in which the bearer tries to achieve the objectives by taking the actions specified."@en ;
                                              <http://purl.obolibrary.org/obo/IAO_0000116> "2009-03-16: provenance: a term a plan was proposed for OBI (OBI_0000344) , edited by the PlanAndPlannedProcess branch. Original definition was \" a plan is a specification of a process that is realized by an actor to achieve the objective specified as part of the plan\". It has been subsequently moved to IAO where the objective for which the original term was defined was satisfied with the definitionof this, different, term."@en ,
@@ -120,6 +228,7 @@ Previous. An information content entity is a non-realizable information entity t
 
 ###  http://purl.obolibrary.org/obo/IAO_0000300
 <http://purl.obolibrary.org/obo/IAO_0000300> rdf:type owl:Class ;
+                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/IAO_0000030> ;
                                              <http://purl.obolibrary.org/obo/IAO_0000112> "Words, sentences, paragraphs, and the written (non-figure) parts of publications are all textual entities"@en ;
                                              <http://purl.obolibrary.org/obo/IAO_0000115> "A textual entity is a part of a manifestation (FRBR sense), a generically dependent continuant whose concretizations are patterns of glyphs intended to be interpreted as words, formulas, etc."@en ;
                                              <http://purl.obolibrary.org/obo/IAO_0000116> "AR, (IAO call 2009-09-01): a document as a whole is not typically a textual entity, because it has pictures in it - rather there are parts of it that are textual entities. Examples: The title, paragraph 2 sentence 7, etc."@en ,
@@ -151,6 +260,7 @@ Previous. An information content entity is a non-realizable information entity t
 
 ###  https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000123
 <https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000123> rdf:type owl:Class ;
+                                                      rdfs:subClassOf <https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000223> ;
                                                       rdfs:label "data portal"@en ;
                                                       <http://www.w3.org/2004/02/skos/core#definition> "A website that serves as a centralized platform for accessing, managing, and sharing datasets, information, or resources related to a specific topic, theme, or domain."@en .
 
@@ -164,12 +274,22 @@ Previous. An information content entity is a non-realizable information entity t
 
 ###  https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000223
 <https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0000223> rdf:type owl:Class ;
+                                                      rdfs:subClassOf <http://purl.obolibrary.org/obo/IAO_0000030> ;
                                                       rdfs:label "website"@en ;
                                                       <http://www.w3.org/2004/02/skos/core#definition> "An information content entity that represents a collection of interconnected web pages, multimedia content, and digital resources accessible via the World Wide Web."@en .
 
 
 ###  https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0001000
 <https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0001000> rdf:type owl:Class ;
+                                                      rdfs:subClassOf <https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0001019> ,
+                                                                      [ owl:intersectionOf ( <https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0001019>
+                                                                                             [ rdf:type owl:Restriction ;
+                                                                                               owl:onProperty <http://purl.obolibrary.org/obo/IAO_0000219> ;
+                                                                                               owl:someValuesFrom <http://purl.obolibrary.org/obo/IAO_0000010>
+                                                                                             ]
+                                                                                           ) ;
+                                                                        rdf:type owl:Class
+                                                                      ] ;
                                                       rdfs:label "software title"@en ;
                                                       <http://www.w3.org/2004/02/skos/core#definition> "A textual entity that uniquely identifies a specific software application, program, or system, often used for branding, categorization, and reference in documentation, licensing, and distribution." .
 
@@ -179,6 +299,13 @@ Previous. An information content entity is a non-realizable information entity t
                                                       rdfs:subClassOf <http://purl.obolibrary.org/obo/IAO_0000300> ;
                                                       rdfs:label "textual description"@en ;
                                                       <http://www.w3.org/2004/02/skos/core#definition> "A textual entity that describe some resource."@en .
+
+
+###  https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0001019
+<https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0001019> rdf:type owl:Class ;
+                                                      rdfs:subClassOf <http://purl.obolibrary.org/obo/IAO_0000300> ;
+                                                      rdfs:label "title"@en ;
+                                                      <http://www.w3.org/2004/02/skos/core#definition> "A textual entity that denotes some resource."@en .
 
 
 ###  https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0001047

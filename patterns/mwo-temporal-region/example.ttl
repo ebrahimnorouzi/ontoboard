@@ -1,0 +1,50 @@
+# The term of the NFDI-MatWerk Advisory Board. A process occupies ONE one-dimensional temporal region (the property is functional); that region has a first and a last instant and is a proper temporal
+# part of an enclosing period. Dates, duration and frequency are not on the regions but on data items that denote them (obo:IAO_0000235) and carry nfdi:NFDI_0001007.
+# The interval's label and its two dates, 29 February 2024 and 30 September 2026, are the knowledge graph's temporal tab (which spells it 'Advisoy'); the other nodes are labelled by what they are of.
+
+@prefix obo: <http://purl.obolibrary.org/obo/> .
+@prefix ontology: <https://nfdi.fiz-karlsruhe.de/ontology/> .
+@prefix mwo: <http://purls.helmholtz-metadaten.de/mwo/> .
+@prefix pmdco: <https://w3id.org/pmd/co/> .
+@prefix ex: <https://w3id.org/ontoboard/example/mwo-temporal-region#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+ex:term_of_the_advisory_board a owl:NamedIndividual , obo:BFO_0000015 ;
+    rdfs:label "term of the NFDI-MatWerk Advisory Board" ;
+    obo:BFO_0000199 ex:time_span_of_the_advisory_board ;
+    obo:IAO_0000235 ex:advisory_board_term_frequency .
+
+ex:advisory_board_term_frequency a owl:NamedIndividual , mwo:MWO_0001001 ;
+    rdfs:label "frequency of the term of the NFDI-MatWerk Advisory Board" ;
+    ontology:NFDI_0001007 "once" .
+
+ex:period_enclosing_the_advisory_board_term a owl:NamedIndividual , obo:BFO_0000038 ;
+    rdfs:label "period enclosing the time span of the NFDI-MatWerk Advisory Board" ;
+    obo:BFO_0000181 ex:time_span_of_the_advisory_board .
+
+ex:time_span_of_the_advisory_board a owl:NamedIndividual , obo:BFO_0000038 ;
+    rdfs:label "time span of the NFDI-MatWerk Advisory Board" ;
+    obo:BFO_0000222 ex:start_of_the_advisory_board_term ;
+    obo:BFO_0000224 ex:end_of_the_advisory_board_term ;
+    obo:IAO_0000235 ex:duration_of_the_advisory_board_term .
+
+ex:start_of_the_advisory_board_term a owl:NamedIndividual , obo:BFO_0000203 ;
+    rdfs:label "first instant of the time span of the NFDI-MatWerk Advisory Board" ;
+    obo:IAO_0000235 ex:start_date_of_the_advisory_board_term .
+
+ex:end_of_the_advisory_board_term a owl:NamedIndividual , obo:BFO_0000203 ;
+    rdfs:label "last instant of the time span of the NFDI-MatWerk Advisory Board" ;
+    obo:IAO_0000235 ex:end_date_of_the_advisory_board_term .
+
+ex:start_date_of_the_advisory_board_term a owl:NamedIndividual , pmdco:PMD_0060009 ;
+    rdfs:label "start date of the term of the NFDI-MatWerk Advisory Board" ;
+    ontology:NFDI_0001007 "2024-02-29" .
+
+ex:end_date_of_the_advisory_board_term a owl:NamedIndividual , pmdco:PMD_0060009 ;
+    rdfs:label "end date of the term of the NFDI-MatWerk Advisory Board" ;
+    ontology:NFDI_0001007 "2026-09-30" .
+
+ex:duration_of_the_advisory_board_term a owl:NamedIndividual , pmdco:PMD_0060009 ;
+    rdfs:label "duration of the term of the NFDI-MatWerk Advisory Board" ;
+    ontology:NFDI_0001007 "P944D" .

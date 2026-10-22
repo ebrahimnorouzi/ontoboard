@@ -130,8 +130,21 @@ def write(path, text):
         handle.write(text)
 
 
-def pattern_page(row, has_ttl):
-    """One pattern: what it is, what it answers, what is in it, and its graph."""
+def pattern_page(row, has_ttl, has_example):
+    """One pattern: what it is, what it answers, what is in it, its graph, and a worked example.
+
+    THE GRAPHS OPEN AT LEVEL OF DETAIL 3, and that is done by docs/assets/pattern-lod.js rather
+    than by a fence option, because ontoink has no fence option for it. Its JS has the hook and
+    a comment promising `lod: N`, but nothing on the Python side ever writes `lod_default` and
+    the fence reader ignores unknown keys - measured: `lod:`, `lod_default:`, `lod_level:`,
+    `detail:` and `level:` all give a payload identical to passing nothing. L3 is the highest
+    level that hides every literal while keeping all the structure, which is what a reader of a
+    pattern wants: eep.ttl is 772 nodes at L6, 558 of them literals, and 214 at L3.
+
+    `metrics_splash: false` is a real fence option and is set so that a graph of 500 nodes or
+    more does not open a "start rendering at" dialog in front of the diagram, which would
+    override the level the script asks for.
+    """
     out = []
     out.append("# " + row["name"])
     out.append("")
@@ -171,9 +184,16 @@ def pattern_page(row, has_ttl):
         out.append("```ontoink")
         out.append("source: patterns/ttl/" + row["id"] + ".ttl")
         out.append("height: 560px")
+        out.append("metrics_splash: false")
         out.append("```")
         out.append("")
-        out.append("[Download the Turtle](ttl/" + row["id"] + ".ttl)")
+        out.append(
+            "Opens at level of detail 3: classes, individuals, properties and restrictions, "
+            "without the literals. Raise it with the **LOD** control in the graph's own toolbar "
+            "to see annotation values and anything a reasoner adds."
+        )
+        out.append("")
+        out.append("[Download the pattern](ttl/" + row["id"] + ".ttl)")
         out.append("")
     else:
         out.append("!!! note \"No graph for this one\"")
@@ -193,6 +213,34 @@ def pattern_page(row, has_ttl):
         for term in terms:
             out.append("- `" + term + "`")
         out.append("")
+
+    if has_example:
+        out.append("## An example of it in use")
+        out.append("")
+        out.append(
+            "The pattern says what may be asserted; this says it. The graph below is a small "
+            "set of individuals that instantiate the classes above and are connected by its "
+            "properties, so the shape the pattern describes is visible as data rather than as a "
+            "schema."
+        )
+        out.append("")
+        out.append("```ontoink")
+        out.append("source: patterns/ttl/" + row["id"] + "-example.ttl")
+        out.append("height: 460px")
+        out.append("metrics_splash: false")
+        out.append("```")
+        out.append("")
+        out.append("[Download the example](ttl/" + row["id"] + "-example.ttl)")
+        out.append("")
+    elif has_ttl:
+        out.append("!!! note \"No worked example yet\"")
+        out.append("    This pattern has no `example.ttl`. The graph above is the schema only.")
+        out.append("")
+
+    # No <script> tag for the level of detail: docs/assets/pattern-lod.js is in mkdocs.yml's
+    # extra_javascript, so mkdocs works out the path to it from each page. A tag written here
+    # cannot - these pages are served from patterns/<id>/index.html and mkdocs does not rewrite
+    # a src attribute, so the relative path was wrong on every one of them.
 
     out.append("---")
     out.append("")
@@ -346,12 +394,26 @@ def main():
         by_source.setdefault(source_of(row), []).append(row)
         ttl = os.path.join(PATTERNS, row["id"], "pattern.ttl")
         has_ttl = os.path.isfile(ttl)
+        example = os.path.join(PATTERNS, row["id"], "example.ttl")
+        has_example = os.path.isfile(example)
+        if has_example:
+            # Copied rather than referenced, for the reason the pattern itself is copied: a
+            # fence's `source` resolves under docs_dir with no containment check, so a path that
+            # climbs out of it works locally and breaks wherever the site is built from a
+            # different working directory.
+            #
+            # The directory is made here as well as below, because OUT was just deleted and
+            # this copy can be the first thing to write into it.
+            os.makedirs(os.path.join(OUT, "ttl"), exist_ok=True)
+            shutil.copyfile(example,
+                            os.path.join(OUT, "ttl", row["id"] + "-example.ttl"))
         if has_ttl:
             target = os.path.join(OUT, "ttl", row["id"] + ".ttl")
             os.makedirs(os.path.dirname(target), exist_ok=True)
             shutil.copyfile(ttl, target)
             copied += 1
-        write(os.path.join(OUT, row["id"] + ".md"), pattern_page(row, has_ttl))
+        write(os.path.join(OUT, row["id"] + ".md"),
+              pattern_page(row, has_ttl, has_example))
         written += 1
 
     write(os.path.join(OUT, "index.md"), finder_page(rows, by_source))

@@ -1,0 +1,52 @@
+# Worked example for bfo-specific-dependence-and-inherence: tensile specimen S-17 and extensometer E-3. A quality, a
+# disposition and a role inhere in the specimen; a function and a relational quality inhere in the extensometer, the
+# relational quality also depending on the specimen. The two processes below realize the realizable entities.
+
+@prefix obo: <http://purl.obolibrary.org/obo/> .
+@prefix ex: <https://w3id.org/ontoboard/example/bfo-specific-dependence-and-inherence#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+ex:SpecimenS17 a owl:NamedIndividual , obo:BFO_0000004 ;
+    rdfs:label "aluminium alloy tensile specimen S-17" ;
+    rdfs:comment "A material entity, typed as independent continuant, the most specific bearer class this pattern declares." .
+
+ex:ExtensometerE3 a owl:NamedIndividual , obo:BFO_0000004 ;
+    rdfs:label "clip-on extensometer E-3" .
+
+ex:GaugeDiameter a owl:NamedIndividual , obo:BFO_0000019 ;
+    rdfs:label "gauge diameter of S-17" ;
+    rdfs:comment "A quality: it needs no process to be realized. A measured value such as 6.0 mm belongs to a measurement datum, not to the quality." ;
+    obo:BFO_0000197 ex:SpecimenS17 .                     # inheres in
+
+ex:YieldStrength a owl:NamedIndividual , obo:BFO_0000016 ;
+    rdfs:label "yield strength of S-17" ;
+    rdfs:comment "A disposition of the specimen, realized when it yields under tensile load." ;
+    obo:BFO_0000197 ex:SpecimenS17 .                     # inheres in
+
+ex:TestPieceRole a owl:NamedIndividual , obo:BFO_0000023 ;
+    rdfs:label "tensile test-piece role of S-17" ;
+    rdfs:comment "A role: conferred by the test setup, not by anything in the specimen's make-up." ;
+    obo:BFO_0000197 ex:SpecimenS17 .                     # inheres in
+
+ex:ElongationMeasuringFunction a owl:NamedIndividual , obo:BFO_0000034 ;
+    rdfs:label "elongation-measuring function of extensometer E-3" ;
+    obo:BFO_0000197 ex:ExtensometerE3 .                  # inheres in
+
+ex:GaugeLength a owl:NamedIndividual , obo:BFO_0000145 ;
+    rdfs:label "gauge length of extensometer E-3 on specimen S-17" ;
+    rdfs:comment "A relational quality: it inheres in the extensometer and also depends on the specimen it is clipped to." ;
+    obo:BFO_0000197 ex:ExtensometerE3 ;                  # inheres in
+    obo:BFO_0000195 ex:SpecimenS17 .                     # specifically depends on
+
+ex:TensileTest a owl:NamedIndividual , obo:BFO_0000015 ;
+    rdfs:label "tensile test TT-017 of S-17" ;
+    obo:BFO_0000055 ex:YieldStrength , ex:TestPieceRole . # realizes
+
+ex:ElongationMeasurement a owl:NamedIndividual , obo:BFO_0000015 ;
+    rdfs:label "elongation measurement by E-3 during TT-017" ;
+    obo:BFO_0000055 ex:ElongationMeasuringFunction .     # realizes
+
+# One direction of each inverse pair is asserted (inheres in, not bearer of; specifically depends on, not specifically
+# depended on by; realizes, not has realization); a reasoner adds the other. Inheres in is a sub-property of specifically
+# depends on, so every dependent entity above also depends on its bearer by inference.

@@ -1,0 +1,57 @@
+# Two services of the MatWerk knowledge graph: the KIT Data Manager Base Repo (a service product; consortium partner Karlsruhe Institute of Technology) and the large scale facility
+# Deutsches Elektronen-Synchrotron (DESY), which is MWO use case 6, this pattern applied to a facility. In each, the service process has the organization as participant and the product as
+# output, realizes the provider role and the product role, and concretizes the specification. Both are knowledge-graph rows; the provider is the row's partner (KIT) or, for the facility, DESY, which the row says operates its sites.
+
+@prefix obo: <http://purl.obolibrary.org/obo/> .
+@prefix ontology: <https://nfdi.fiz-karlsruhe.de/ontology/> .
+@prefix ex: <https://w3id.org/ontoboard/example/mwo-service#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+ex:provision_of_kit_data_manager_base_repo a owl:NamedIndividual , ontology:NFDI_0000101 ;
+    rdfs:label "provision of the KIT Data Manager Base Repo service" ;
+    obo:RO_0000057 ex:karlsruhe_institute_of_technology ;
+    obo:BFO_0000055 ex:kit_service_provider_role , ex:kit_data_manager_service_product_role ;
+    obo:RO_0002234 ex:kit_data_manager_base_repo ;
+    obo:RO_0000059 ex:kit_data_manager_service_specification .
+
+ex:karlsruhe_institute_of_technology a owl:NamedIndividual , obo:OBI_0000245 ;
+    rdfs:label "Karlsruhe Institute of Technology" ;
+    obo:BFO_0000196 ex:kit_service_provider_role .
+
+ex:kit_service_provider_role a owl:NamedIndividual , ontology:NFDI_0000230 ;
+    rdfs:label "service provider role of Karlsruhe Institute of Technology" .
+
+ex:kit_data_manager_base_repo a owl:NamedIndividual , ontology:NFDI_0000232 ;
+    rdfs:label "KIT Data Manager Base Repo" ;
+    obo:BFO_0000196 ex:kit_data_manager_service_product_role .
+
+ex:kit_data_manager_service_product_role a owl:NamedIndividual , ontology:NFDI_0000228 ;
+    rdfs:label "service product role of the KIT Data Manager Base Repo" .
+
+ex:kit_data_manager_service_specification a owl:NamedIndividual , ontology:NFDI_0000244 ;
+    rdfs:label "service specification of the KIT Data Manager Base Repo" .
+
+ex:provision_of_desy a owl:NamedIndividual , ontology:NFDI_0000101 ;
+    rdfs:label "provision of the Deutsches Elektronen-Synchrotron facility" ;
+    obo:RO_0000057 ex:desy ;
+    obo:BFO_0000055 ex:desy_service_provider_role , ex:desy_facility_service_product_role ;
+    obo:RO_0002234 ex:desy_facility ;
+    obo:RO_0000059 ex:desy_facility_service_specification .
+
+ex:desy a owl:NamedIndividual , obo:OBI_0000245 ;
+    rdfs:label "Deutsches Elektronen-Synchrotron (DESY)" ;
+    obo:BFO_0000196 ex:desy_service_provider_role .
+
+ex:desy_service_provider_role a owl:NamedIndividual , ontology:NFDI_0000230 ;
+    rdfs:label "service provider role of DESY" .
+
+ex:desy_facility a owl:NamedIndividual , ontology:NFDI_0001206 ;
+    rdfs:label "Deutsches Elektronen-Synchrotron (DESY), large scale facility" ;
+    obo:BFO_0000196 ex:desy_facility_service_product_role .
+
+ex:desy_facility_service_product_role a owl:NamedIndividual , ontology:NFDI_0000228 ;
+    rdfs:label "service product role of the DESY facility" .
+
+ex:desy_facility_service_specification a owl:NamedIndividual , ontology:NFDI_0000244 ;
+    rdfs:label "It conducts a broad spectrum of inter-disciplinary scientific research in three main areas: particle and high energy physics; photon science; and the development, construction and operation of particle accelerators." .

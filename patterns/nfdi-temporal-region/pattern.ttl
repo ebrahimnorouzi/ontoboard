@@ -24,9 +24,23 @@
 #    Object Properties
 #################################################################
 
+###  http://purl.obolibrary.org/obo/BFO_0000121
+<http://purl.obolibrary.org/obo/BFO_0000121> rdf:type owl:ObjectProperty ,
+                                                      owl:TransitiveProperty ;
+                                             rdfs:domain <http://purl.obolibrary.org/obo/BFO_0000003> ;
+                                             rdfs:range <http://purl.obolibrary.org/obo/BFO_0000003> ;
+                                             rdfs:label "has temporal part"@en ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "b has temporal part c =Def c temporal part of b"@en .
+
+
 ###  http://purl.obolibrary.org/obo/BFO_0000199
 <http://purl.obolibrary.org/obo/BFO_0000199> rdf:type owl:ObjectProperty ,
                                                       owl:FunctionalProperty ;
+                                             rdfs:domain [ rdf:type owl:Class ;
+                                                           owl:unionOf ( <http://purl.obolibrary.org/obo/BFO_0000015>
+                                                                         <http://purl.obolibrary.org/obo/BFO_0000035>
+                                                                       )
+                                                         ] ;
                                              rdfs:range <http://purl.obolibrary.org/obo/BFO_0000008> ;
                                              rdfs:label "occupies temporal region"@en ;
                                              <http://www.w3.org/2004/02/skos/core#definition> "p occupies temporal region t =Def p is a process or process boundary & the spatiotemporal region occupied by p temporally projects onto t"@en .
@@ -36,6 +50,7 @@
 <http://purl.obolibrary.org/obo/BFO_0000222> rdf:type owl:ObjectProperty ,
                                                       owl:FunctionalProperty ;
                                              rdfs:domain <http://purl.obolibrary.org/obo/BFO_0000008> ;
+                                             rdfs:range <http://purl.obolibrary.org/obo/BFO_0000203> ;
                                              rdfs:label "has first instant"@en ;
                                              <http://www.w3.org/2004/02/skos/core#definition> "t has first instant t' =Def t' first instant of t"@en .
 
@@ -44,22 +59,51 @@
 <http://purl.obolibrary.org/obo/BFO_0000224> rdf:type owl:ObjectProperty ,
                                                       owl:FunctionalProperty ;
                                              rdfs:domain <http://purl.obolibrary.org/obo/BFO_0000008> ;
+                                             rdfs:range <http://purl.obolibrary.org/obo/BFO_0000203> ;
                                              rdfs:label "has last instant"@en ;
                                              <http://www.w3.org/2004/02/skos/core#definition> "t has last instant t' =Def t' last instant of t"@en .
 
 
 ###  http://purl.obolibrary.org/obo/IAO_0000235
 <http://purl.obolibrary.org/obo/IAO_0000235> rdf:type owl:ObjectProperty ;
+                                             rdfs:domain <http://purl.obolibrary.org/obo/BFO_0000001> ;
+                                             rdfs:range <http://purl.obolibrary.org/obo/IAO_0000030> ;
                                              <http://purl.obolibrary.org/obo/IAO_0000115> "inverse of the relation 'denotes'"@en ;
                                              rdfs:label "denoted by"@en .
+
+
+#################################################################
+#    Data properties
+#################################################################
+
+###  https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0001007
+<https://nfdi.fiz-karlsruhe.de/ontology/NFDI_0001007> rdf:type owl:DatatypeProperty ;
+                                                      rdfs:label "has value"@en ;
+                                                      <http://www.w3.org/2004/02/skos/core#definition> "A relation between an information content entity and its specific value."@en .
 
 
 #################################################################
 #    Classes
 #################################################################
 
+###  http://purl.obolibrary.org/obo/BFO_0000001
+<http://purl.obolibrary.org/obo/BFO_0000001> rdf:type owl:Class ;
+                                             rdfs:label "entity"@en ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "(Elucidation) An entity is anything that exists or has existed or will exist"@en .
+
+
+###  http://purl.obolibrary.org/obo/BFO_0000002
+<http://purl.obolibrary.org/obo/BFO_0000002> rdf:type owl:Class ;
+                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000001> ;
+                                             owl:disjointWith <http://purl.obolibrary.org/obo/BFO_0000003> ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "An entity that exists in full at any time in which it exists at all, persists through time while maintaining its identity and has no temporal parts."@en ;
+                                             rdfs:label "continuant"@en ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "(Elucidation) A continuant is an entity that persists, endures, or continues to exist through time while maintaining its identity"@en .
+
+
 ###  http://purl.obolibrary.org/obo/BFO_0000003
 <http://purl.obolibrary.org/obo/BFO_0000003> rdf:type owl:Class ;
+                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000001> ;
                                              rdfs:label "occurrent"@en ;
                                              <http://www.w3.org/2004/02/skos/core#definition> "(Elucidation) An occurrent is an entity that unfolds itself in time or it is the start or end of such an entity or it is a temporal or spatiotemporal region"@en .
 
@@ -71,9 +115,44 @@
                                              <http://www.w3.org/2004/02/skos/core#definition> "(Elucidation) A temporal region is an occurrent over which processes can unfold"@en .
 
 
+###  http://purl.obolibrary.org/obo/BFO_0000015
+<http://purl.obolibrary.org/obo/BFO_0000015> rdf:type owl:Class ;
+                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000003> ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "p is a process = Def. p is an occurrent that has temporal proper parts and for some time t, p s-depends_on some material entity at t. (axiom label in BFO2 Reference: [083-003])"@en ;
+                                             rdfs:label "process"@en ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "(Elucidation) p is a process means p is an occurrent that has some temporal proper part and for some time t, p has some material entity as participant"@en .
+
+
+###  http://purl.obolibrary.org/obo/BFO_0000031
+<http://purl.obolibrary.org/obo/BFO_0000031> rdf:type owl:Class ;
+                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000002> ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "b is a generically dependent continuant = Def. b is a continuant that g-depends_on one or more other entities. (axiom label in BFO2 Reference: [074-001])"@en ;
+                                             rdfs:label "generically dependent continuant"@en ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "(Elucidation) A generically dependent continuant is an entity that exists in virtue of the fact that there is at least one of what may be multiple copies which is the content or the pattern that multiple copies would share"@en .
+
+
+###  http://purl.obolibrary.org/obo/BFO_0000035
+<http://purl.obolibrary.org/obo/BFO_0000035> rdf:type owl:Class ;
+                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000003> ,
+                                                             [ rdf:type owl:Restriction ;
+                                                               owl:onProperty <http://purl.obolibrary.org/obo/BFO_0000121> ;
+                                                               owl:allValuesFrom <http://purl.obolibrary.org/obo/BFO_0000035>
+                                                             ] ;
+                                             rdfs:label "process boundary"@en ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "p is a process boundary =Def p is a temporal part of a process & p has no proper temporal parts"@en .
+
+
 ###  http://purl.obolibrary.org/obo/BFO_0000038
 <http://purl.obolibrary.org/obo/BFO_0000038> rdf:type owl:Class ;
-                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000008> ;
+                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000008> ,
+                                                             [ rdf:type owl:Restriction ;
+                                                               owl:onProperty <http://purl.obolibrary.org/obo/BFO_0000121> ;
+                                                               owl:allValuesFrom [ rdf:type owl:Class ;
+                                                                                   owl:unionOf ( <http://purl.obolibrary.org/obo/BFO_0000038>
+                                                                                                 <http://purl.obolibrary.org/obo/BFO_0000148>
+                                                                                               )
+                                                                                 ]
+                                                             ] ;
                                              owl:disjointWith <http://purl.obolibrary.org/obo/BFO_0000148> ;
                                              rdfs:label "one-dimensional temporal region"@en ;
                                              <http://www.w3.org/2004/02/skos/core#definition> "(Elucidation) A one-dimensional temporal region is a temporal region that is a whole that has a temporal interval and zero or more temporal intervals and temporal instants as parts"@en .
@@ -81,9 +160,29 @@
 
 ###  http://purl.obolibrary.org/obo/BFO_0000148
 <http://purl.obolibrary.org/obo/BFO_0000148> rdf:type owl:Class ;
-                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000008> ;
+                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000008> ,
+                                                             [ rdf:type owl:Restriction ;
+                                                               owl:onProperty <http://purl.obolibrary.org/obo/BFO_0000121> ;
+                                                               owl:allValuesFrom <http://purl.obolibrary.org/obo/BFO_0000148>
+                                                             ] ;
                                              rdfs:label "zero-dimensional temporal region"@en ;
                                              <http://www.w3.org/2004/02/skos/core#definition> "(Elucidation) A zero-dimensional temporal region is a temporal region that is a whole consisting of one or more separated temporal instants as parts"@en .
+
+
+###  http://purl.obolibrary.org/obo/BFO_0000203
+<http://purl.obolibrary.org/obo/BFO_0000203> rdf:type owl:Class ;
+                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000148> ;
+                                             rdfs:label "temporal instant"@en ;
+                                             <http://www.w3.org/2004/02/skos/core#definition> "(Elucidation) A temporal instant is a zero-dimensional temporal region that has no proper temporal part"@en .
+
+
+###  http://purl.obolibrary.org/obo/IAO_0000030
+<http://purl.obolibrary.org/obo/IAO_0000030> rdf:type owl:Class ;
+                                             rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000031> ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "A generically dependent continuant that is about some thing."@en ,
+                                                                                          "An information content entity is an entity that is generically dependent on some artifact and stands in relation of aboutness to some entity." ;
+                                             rdfs:label "information content entity"@en ,
+                                                        "information content entity" .
 
 
 ###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

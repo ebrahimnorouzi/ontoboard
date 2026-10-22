@@ -1,0 +1,38 @@
+# The contact point of the software ParaView. The resource is tied to a contacting process; the process has the contact point as participant and realizes the contact point role,
+# which the agent bears and which the resource is concretized as. The NAME hangs off the agent; the e-mail address and the website hang off the ROLE, not the agent.
+# Role, e-mail address and website node are the 'contact point role for ParaView' row of the MatWerk knowledge graph; the name node is labelled as that graph labels Calphy's.
+
+@prefix obo: <http://purl.obolibrary.org/obo/> .
+@prefix ontology: <https://nfdi.fiz-karlsruhe.de/ontology/> .
+@prefix ex: <https://w3id.org/ontoboard/example/mwo-resource-contact-point#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+# The figure draws the resource as a participant (obo:RO_0000056) of the process. That property and obo:RO_0000057 are inverses, and the checker allows an
+# example one direction of the pair, so the resource's participation is written from the process, as the contact point's is.
+ex:contacting_process_for_paraview a owl:NamedIndividual , ontology:NFDI_0000111 ;
+    rdfs:label "contacting process for ParaView" ;
+    obo:RO_0000057 ex:paraview , ex:contact_point_of_paraview ;
+    obo:BFO_0000055 ex:contact_point_role_for_paraview .
+
+ex:paraview a owl:NamedIndividual , obo:IAO_0000030 ;
+    rdfs:label "ParaView (software)" ;
+    obo:RO_0000058 ex:contact_point_role_for_paraview .
+
+ex:contact_point_of_paraview a owl:NamedIndividual , ontology:NFDI_0000102 ;
+    rdfs:label "contact point of ParaView" ;
+    obo:BFO_0000196 ex:contact_point_role_for_paraview ;
+    obo:IAO_0000235 ex:written_name_of_paraview .
+
+ex:written_name_of_paraview a owl:NamedIndividual , obo:IAO_0000590 ;
+    rdfs:label "written name of ParaView" .
+
+ex:contact_point_role_for_paraview a owl:NamedIndividual , ontology:NFDI_0000114 ;
+    rdfs:label "contact point role for ParaView" ;
+    obo:IAO_0000235 ex:e_mail_address_of_paraview , ex:role_website_of_paraview .
+
+ex:e_mail_address_of_paraview a owl:NamedIndividual , obo:IAO_0000429 ;
+    rdfs:label "support@kitware.com" .
+
+ex:role_website_of_paraview a owl:NamedIndividual , ontology:NFDI_0000223 ;
+    rdfs:label "role website of ParaView" .

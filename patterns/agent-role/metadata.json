@@ -9,6 +9,6 @@
   "domain": "general",
   "scenarios": "John is working as a project manager for ACME Corp. A software agent acts on behalf of a user.",
   "source": "https://ontologydesignpatterns.org/wiki/Submissions:AgentRole",
-  "class_count": 3,
+  "class_count": 2,
   "property_count": 2
 }

@@ -1,0 +1,37 @@
+# Two processes joining agents, roles and time: FIZ Karlsruhe publishing the MatWerk Knowledge Graph RDF dumps, and the leadership of Task Area TA-SD.
+# A process has participants (has participant), realizes the role an agent bears (the role inheres in its bearer) and occupies a temporal region.
+# The first case follows the Zenodo record of 2026-10-21; the second follows the TA-SD row of the MatWerk Knowledge Graph.
+
+@prefix obo: <http://purl.obolibrary.org/obo/> .
+@prefix ontology: <https://nfdi.fiz-karlsruhe.de/ontology/> .
+@prefix ex: <https://w3id.org/ontoboard/example/nfdi-process-role-realization#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+ex:publishing_of_rdf_dumps a owl:NamedIndividual , obo:IAO_0000444 ;
+    rdfs:label "publishing of the MatWerk Knowledge Graph RDF dumps (v2.2.1) on Zenodo" ;
+    obo:RO_0000057 ex:fiz_karlsruhe ;
+    obo:BFO_0000055 ex:fiz_karlsruhe_publisher_role ;
+    obo:BFO_0000199 ex:publication_day .
+
+ex:fiz_karlsruhe a owl:NamedIndividual , obo:OBI_0000245 ;
+    rdfs:label "FIZ Karlsruhe - Leibniz Institute for Information Infrastructure" .
+
+ex:fiz_karlsruhe_publisher_role a owl:NamedIndividual , ontology:NFDI_0000193 ;
+    rdfs:label "publisher role of FIZ Karlsruhe for the RDF dumps" ;
+    obo:BFO_0000197 ex:fiz_karlsruhe .
+
+ex:publication_day a owl:NamedIndividual , obo:BFO_0000008 ;
+    rdfs:label "21 October 2026" .
+
+ex:ta_sd_leadership a owl:NamedIndividual , obo:BFO_0000015 ;
+    rdfs:label "leadership of Task Area Strategy Development (TA-SD)" ;
+    obo:RO_0000057 ex:ta_sd_co_spokesperson ;
+    obo:BFO_0000055 ex:ta_sd_co_spokesperson_role .
+
+ex:ta_sd_co_spokesperson a owl:NamedIndividual , ontology:NFDI_0000102 ;
+    rdfs:label "co-spokesperson of TA-SD" .
+
+ex:ta_sd_co_spokesperson_role a owl:NamedIndividual , ontology:NFDI_0001058 ;
+    rdfs:label "co-spokesperson role in TA-SD" ;
+    obo:BFO_0000197 ex:ta_sd_co_spokesperson .

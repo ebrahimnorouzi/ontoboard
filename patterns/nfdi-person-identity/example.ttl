@@ -1,0 +1,31 @@
+# A researcher and how the MatWerk Knowledge Graph would identify them. Given name and family name are value nodes reached by
+# obo:IAO_0000235 (denoted by), the ORCID iD by has external identifier; involvement in a project is obo:RO_0000056 (participates in)
+# and affiliation is obo:RO_0002350 (member of). Josiah Carberry is ORCID's documentation sample, so the participation is illustrative.
+
+@prefix obo: <http://purl.obolibrary.org/obo/> .
+@prefix ontology: <https://nfdi.fiz-karlsruhe.de/ontology/> .
+@prefix ex: <https://w3id.org/ontoboard/example/nfdi-person-identity#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+ex:josiah_carberry a owl:NamedIndividual , ontology:NFDI_0000004 ;
+    rdfs:label "Josiah Carberry" ;
+    obo:IAO_0000235 ex:given_name , ex:family_name ;
+    ontology:NFDI_0001006 ex:orcid_id ;
+    obo:RO_0000056 ex:nfdi_matwerk_project ;
+    obo:RO_0002350 ex:brown_university .
+
+ex:given_name a owl:NamedIndividual , obo:IAO_0020016 ;
+    rdfs:label "Josiah" .
+
+ex:family_name a owl:NamedIndividual , obo:IAO_0020017 ;
+    rdfs:label "Carberry" .
+
+ex:orcid_id a owl:NamedIndividual , obo:IAO_0000708 ;
+    rdfs:label "https://orcid.org/0000-0002-1825-0097" .
+
+ex:nfdi_matwerk_project a owl:NamedIndividual , ontology:NFDI_0000002 ;
+    rdfs:label "NFDI-MatWerk (DFG project number 460247524)" .
+
+ex:brown_university a owl:NamedIndividual , obo:OBI_0000245 ;
+    rdfs:label "Brown University" .

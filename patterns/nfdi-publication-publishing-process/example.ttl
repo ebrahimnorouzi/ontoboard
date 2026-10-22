@@ -1,0 +1,30 @@
+# The article that introduced the NFDI MatWerk Ontology (Advanced Engineering Materials, DOI 10.1002/adem.202502331), tied to its publishing process.
+# The publication participates in the publishing process, an individual of its own; title and author list are parts, the DOI is an external identifier.
+# Title, authors, journal, publisher and date (27 November 2025) were checked against Crossref on 2026-10-21.
+
+@prefix obo: <http://purl.obolibrary.org/obo/> .
+@prefix ontology: <https://nfdi.fiz-karlsruhe.de/ontology/> .
+@prefix ex: <https://w3id.org/ontoboard/example/nfdi-publication-publishing-process#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+ex:mwo_article a owl:NamedIndividual , obo:IAO_0000311 ;
+    rdfs:label "NFDI MatWerk Ontology (MWO): A BFO-Compliant Ontology for Research Data Management in Materials Science and Engineering" ;
+    obo:IAO_0000235 ex:mwo_article_title ;
+    ontology:NFDI_0001006 ex:mwo_article_doi ;
+    obo:BFO_0000051 ex:mwo_article_authors ;
+    obo:RO_0000056 ex:mwo_article_publishing .
+
+ex:mwo_article_title a owl:NamedIndividual , obo:IAO_0000305 ;
+    rdfs:label "NFDI MatWerk Ontology (MWO): A BFO-Compliant Ontology for Research Data Management in Materials Science and Engineering" .
+
+ex:mwo_article_doi a owl:NamedIndividual , ontology:NFDI_0001037 ;
+    rdfs:label "DOI 10.1002/adem.202502331" ;
+    ontology:NFDI_0001008 "https://doi.org/10.1002/adem.202502331"^^xsd:anyURI .
+
+ex:mwo_article_authors a owl:NamedIndividual , ontology:NFDI_0001030 ;
+    rdfs:label "Hossein Beygi Nasrabadi, Ebrahim Norouzi, Kostiantyn Hubaiev, Jörg Waitelonis, Harald Sack" .
+
+ex:mwo_article_publishing a owl:NamedIndividual , obo:IAO_0000444 ;
+    rdfs:label "publishing of the MWO article in Advanced Engineering Materials (Wiley), 27 November 2025" .

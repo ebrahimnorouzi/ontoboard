@@ -1,0 +1,205 @@
+OntoBoard 1.121.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-10-22  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 9/9  test 11/11
+  2026-10-22  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 9/9  test 11/11
+
+5.6.9's verdict is the script's own, exit 0. Both hosts report the library out of the jar:
+
+  OntoBoard self-check ok: pattern library readable - 163 patterns indexed, and actingfor
+  parsed to 2 classes, 2 properties
+
+5.5.0's was read out of ~/.Protege/logs/protege.log, which is where the script reads it from
+too: "Plugin: OntoBoard (1.121.0)" at 03:14:58, "OntoBoard self-check: PASS 9/9" at 03:15:18,
+"OntoBoard self-test: PASS - 11 of 11 checks ran" at 03:15:20, all against this jar. Both
+installs write to that one file; there is no per-version log directory.
+
+WHY 5.5.0 WOULD NOT LAUNCH, WHICH THE 1.120.0 RECEIPT RECORDED AND DID NOT EXPLAIN
+
+That receipt said "Start-Process from a detached shell did not launch Protege 5.5.0 at all. No
+process, no line in the log ... Not understood; recorded." It is understood now, and it is not
+about detachment: PowerShell splits an unquoted `-Dontoboard.selftest=true` on the argument
+line, and java then reports
+
+    Error: Could not find or load main class .selftest=true
+
+so the JVM exits before Felix starts, which is exactly "no process, no line in the log". Quoting
+every -D and -XX argument launches it first time. smoke.ps1 builds its argument list as one
+string and hands it to Start-Process -ArgumentList, which is where the splitting happens; the
+script is not changed in this release, because the verdict it reads from the log is the same
+verdict either way and changing the harness during a release is how a harness starts lying.
+Somebody should make it pass an array.
+
+Protege 5.5.0 also logs eleven CURIEShortFormProvider warnings about the self-check's own
+synthetic namespaces (http://www.ontoboard.org/self-check#...). They are Protege's, they are
+harmless, and they appear on both hosts.
+
+
+WHAT IS IN THIS RELEASE: THE PATTERN LIBRARY, ITS EXAMPLES, AND ITS GRAPHS
+
+Every pattern page now shows the pattern and an example of it in use, and offers both to
+download. The jar carries index.tsv, pattern.owl and pattern.ttl as before; the examples are a
+documentation artefact and nothing in the plugin reads one yet, so they are not in the bundle.
+
+  patterns in the library                 163
+  with a worked example                   162   (template-instance declares nothing to instantiate)
+  made instantiable in this release        24   all 15 NFDIcore, 6 of 8 MWO, 3 of PMDco's
+
+A pattern counts as THIN when it declares no object property with both an rdfs:domain and an
+rdfs:range: a term list, not a pattern. Nothing can be instantiated as a shape and the graph
+draws a row of unconnected dots. Measured on the patterns themselves, at HEAD and now:
+
+  thin at HEAD                             63
+  thin now                                 39
+
+THE CAUSE IS THE HARVESTER, NOT CARELESSNESS. tools/harvest-patterns.py keeps an axiom only when
+every term in it is already in the pattern, so a domain or range naming a class just outside the
+pattern's own term set was dropped in silence. PMDco states a domain or range for 71 of its 90
+property declarations and the harvested files had lost at least one on 56 of them. The 24 were
+repaired from upstream: MWO's own use-case figures and the MatWerk knowledge graph for MWO,
+NFDIcore 3.0.1 and PMDco 3.0.0 for the rest.
+
+An earlier version of this count asked the question of the EXAMPLE - "does any individual stand
+alone?" - and a curator who connects everything with properties that have no declared domain or
+range makes a thin pattern look sound. It undercounted, and two of the figures I reported during
+this work came from it. 63 and 39 are measured on the pattern, which is the only way the two
+sides are comparable.
+
+
+THREE DEFECTS THAT WERE SHIPPED IN THIS WORK AND CAUGHT BEFORE THE RELEASE
+
+Each is a feature that was green and did nothing, which is the failure mode this project keeps
+finding. Each now has a check with an exit code.
+
+  1. THE LEVEL-OF-DETAIL SCRIPT COULD NEVER HAVE LOADED. It was emitted as
+     `<script src="../assets/pattern-lod.js">` into each generated page. use_directory_urls
+     defaults to true, so a pattern page is served from patterns/<id>/index.html and that
+     resolves to patterns/assets/pattern-lod.js - a 404 on all 163 pages, under prose saying the
+     graphs open at level 3, in a green --strict build. mkdocs rewrites relative links written
+     in Markdown; it copies a src attribute out verbatim. It is in mkdocs.yml's extra_javascript
+     now and mkdocs emits ../../assets/pattern-lod.js, which is the prefix I got wrong.
+
+     tools/check-pattern-pages.py resolves every script and every .ttl link the BUILT pages ask
+     for against the files mkdocs wrote. On this build: 164 pages, 163 with a graph, 325
+     downloadable .ttl links of which 162 are examples, 0 problems.
+
+  2. THE SCRIPT MARKED A NO-OP AS SUCCESS. ontoink's setLodLevel begins
+     `var inst = instances[id]; if (!inst) return;` and returns the same way when the instance
+     has no cytoscape core yet, so a graph still fetching its Turtle accepts the call and ignores
+     it. The script set done[id] after calling it, so the retries - written for exactly that case
+     - could not fire. It reads the level back off the instance now.
+
+     tools/check-pattern-lod.js runs the script against a stub reproducing that guard. Four
+     behaviours hold: a late-mounting graph still ends at 3, an early one is set once and not
+     five times, a reader who picks another level keeps it, and a page without ontoink does not
+     throw. Run against the version that shipped first, the first of those ends with NO graph set
+     at all - so the test is not vacuous. CI runs it; node is on the runner already.
+
+  3. SIX DEFECTS IN THE EXAMPLE GENERATOR, all found by the gate built beside it rather than by
+     reading it: 119 examples full of unconnected individuals, two files that did not parse
+     (parentheses are illegal in a Turtle prefixed name), a string written where an xsd:integer
+     was declared, a domain the pattern never declares, a self-loop on an asymmetric property,
+     and only the first of several domain axioms honoured. 162 examples checked, 162 sound.
+
+
+THE TWO SERIALISATIONS, AND A FALSE POSITIVE WORTH THE MEASUREMENT
+
+Each pattern ships twice: the .ttl the site renders and the .owl the plugin loads. Thirty-six
+were corrected by hand in the .ttl only, so tools/sync-pattern-owl.py rewrites the .owl from the
+.ttl and refreshes metadata.json's counts - for the patterns THIS TREE edited, and no others.
+The library's two serialisations already disagreed in 68 patterns, and not by omission: bag's
+.owl carries an owl:cardinality restriction its .ttl does not, and the two assert opposite
+directions of the same inverse pair. Rewriting all of them would have deleted axioms to fix a
+consistency problem nobody reported.
+
+  edited in this tree       41
+  the .owl had drifted      39   rewritten, and --check is now clean
+  metadata counts stale     35   refreshed
+  drifted before this work  68   reported, left alone
+
+It is 68 and not 70. airline and airline-owl have no ontology IRI, so each of their terms is
+named after the file it was read from, and the two files spell that path differently -
+file:/C:/.../protege-plugin/../patterns/... against file:///C:/.../patterns/... . 32 triples
+each side, 17 differing on each, every one of them the same triple twice. The comparison
+normalises file: IRIs now. The alternative was to pick a spelling for somebody else's term IRIs,
+and these should not be local paths at all, which is a maintainer's decision and is still open.
+
+--check is NOT in CI, and its docstring said it should be. On a clean checkout the set of
+patterns this tree has edited is empty, so in CI it would pass without comparing anything. It is
+a pre-commit check. The docstring says that now.
+
+
+FOUR DEFECTS IN THE LIBRARY ITSELF
+
+  - airline, airline-owl and roledependentnames asserted dbpedia:Airline rdfs:subClassOf six
+    classes called Error1 .. Error6 in http://org.semanticweb.owlapi/error#. The OWL API
+    substitutes those placeholders for something it cannot read and then serialises them as if
+    they were real, which is why airline reported 8 classes where its own metadata says 2. 13
+    such classes removed across the three, with an editorial note on the affected class recording
+    that axioms were lost at harvest and naming the source - the honest record is "we do not know
+    what was here", not a silent gap.
+  - transportpattern declared both TransportEvent and transportEvent and pointed referenceFrame's
+    domain AND range at the typo. The serialiser had added a bare declaration for it, which is
+    what hid it.
+  - BFO's own definition of `preceded by` reads "b preceded by c =Def b precedes c", which
+    reverses the relation. Wrong in BFO 2020 release-2024-01-29, in bfo-core.owl, in both
+    profiles and in current master, and contradicting BFO's own owl:inverseOf and its Common
+    Logic axiom tib-1. Corrected here as an erratum in tools/extract-bfo-patterns.py, so
+    re-running the extractor cannot revert it and the day BFO fixes it upstream the extractor
+    says the erratum is spent.
+  - metadata.json attributes 8 patterns to MWO; exactly one is actually built mostly from MWO
+    terms, and P1, P2 and P3 contain no MWO-owned term at all. `source` records where a pattern
+    was harvested from, not what it models. The likely cause of the original mis-harvest: the
+    bottom line of each box in MWO's figures is an INSTANCE name carrying the mwo: prefix, not
+    the class.
+
+A CLAIM I MADE AND HAD TO WITHDRAW: that winstonpartwhole/pattern.owl being malformed XML meant
+the plugin could not import it. It is valid Turtle with a .owl extension, the OWL API sniffs
+content rather than trusting the name, and its terms are in index.tsv line 175. My tool was
+inferring RDF/XML from the extension. The tool sniffs now.
+
+
+TESTS
+
+2,424 tests, 0 failures, run in a clean copy of the repository because this machine's IDE writes
+Eclipse-compiled classes into target/classes beside javac's output and produces phantom
+NoSuchMethodError: access$0 failures that do not exist anywhere else.
+
+Two assertions in PatternLibraryTest encoded measurements this release changes, and both failed
+in that run before being corrected to what the library now is:
+
+  airline's class count          8  ->     2   six were the error placeholders
+  classes across the library  1391  ->  1556   restored axioms bring the classes they name into
+                                               the signature; 13 placeholders went the other way
+
+patterns/index.tsv was rebuilt with PatternIndex.buildFrom - PatternIndexTest compares the
+shipped index with one built from the directories - and 27 rows changed, in the terms column
+only. No pattern's publisher, name or collection moved.
+
+
+WHAT IS STILL NOT TRUE
+
+  - 39 patterns are still thin, 8 of them PMDco's. Several need a maintainer's decision rather
+    than a tool's: whether a pattern may cite the NFDIcore 3.0.5 extension (49 shortcut
+    relations outside MWO's import closure, which the MatWerk KG uses undeclared);
+    NFDI_0000121 "database software" against IAO_0000010 for all 202 MatWerk software rows; what
+    a task area is; a stand-in for the deprecated NFDI_0000001 "NFDI resource"; whether to
+    narrow domains to the classes a figure shows.
+  - 3 patterns still have terms in a file:/C:/Users/... namespace.
+  - Nobody has opened a pattern page in a browser and looked at the graph. Everything in the
+    chain that can be checked without one has been: the script is served and resolvable, it is
+    ontoink's own exported API, the page defines window.ontoink before the handler runs, and the
+    handler reads the level back. Whether cytoscape is mounted by `load` is the part no check
+    here reaches.
+  - The examples are not in the jar.
+  - Upstream defects found and not yet reported upstream: BFO's reversed `preceded by`; MWO use
+    cases 2 and 3 have swapped headings and its `developed by` / `adapted by` comments look
+    swapped; the NFDIcore extension's reversed `has sparql endpoint` domain, two unlabelled
+    properties and two obsolete ranges; PMDco's figures binding tensile_testing_process: to the
+    fatigue-testing IRI, figure 8b's six obsolete terms, and a `has part` subproperty cycle.
+  - Everything the 1.120.0 receipt listed as outstanding still is: no Zenodo DOI, no w3id PURL,
+    not in Protege's plugin registry, the paper audited and not rewritten, .xlsx read-only,
+    Koncludix unverified end to end, and no contact address or ORCID in CITATION.cff.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>

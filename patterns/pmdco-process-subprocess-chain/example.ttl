@@ -1,0 +1,47 @@
+# A process with a chain of subprocesses: the hot rolling of ingot I-2026-0417 decomposes into heating, one rolling pass
+# and cooling (proper occurrent parts that start and end it and follow each other), takes the ingot as specified input,
+# gives a strand as specified output and realizes a plan that concretizes the rolling schedule. Invented identifiers.
+
+@prefix co: <https://w3id.org/pmd/co/> .
+@prefix obo: <http://purl.obolibrary.org/obo/> .
+@prefix ex: <https://w3id.org/ontoboard/example/pmdco-process-subprocess-chain#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+ex:HotRolling_I2026_0417 a owl:NamedIndividual , obo:BFO_0000015 ;
+    rdfs:label "hot rolling of ingot I-2026-0417 into strand ST-2026-0417" ;
+    obo:BFO_0000118 ex:Heating_I2026_0417 , ex:RollingPass_I2026_0417 , ex:Cooling_I2026_0417 ;
+    obo:RO_0002224 ex:Heating_I2026_0417 ;
+    obo:RO_0002230 ex:Cooling_I2026_0417 ;
+    obo:OBI_0000293 ex:Ingot_I2026_0417 ;
+    obo:OBI_0000299 ex:Strand_ST2026_0417 ;
+    obo:BFO_0000055 ex:RollingPlan_RP17 ;
+    co:PMD_0000004 ex:RollingSchedule_RS17 .
+
+ex:Heating_I2026_0417 a owl:NamedIndividual , obo:BFO_0000015 ;
+    rdfs:label "reheating of the ingot to 1250 °C" ;
+    obo:BFO_0000063 ex:RollingPass_I2026_0417 .
+
+ex:RollingPass_I2026_0417 a owl:NamedIndividual , obo:BFO_0000015 ;
+    rdfs:label "breakdown rolling pass in the roughing stand" ;
+    obo:BFO_0000063 ex:Cooling_I2026_0417 ;
+    obo:RO_0002082 ex:PlasticDeformation_I2026_0417 .
+
+ex:Cooling_I2026_0417 a owl:NamedIndividual , obo:BFO_0000015 ;
+    rdfs:label "air cooling of the strand to 200 °C" .
+
+ex:PlasticDeformation_I2026_0417 a owl:NamedIndividual , obo:BFO_0000015 ;
+    rdfs:label "plastic deformation of the ingot during the pass (runs at the same time)" .
+
+ex:Ingot_I2026_0417 a owl:NamedIndividual , co:PMD_0020170 ;
+    rdfs:label "ingot I-2026-0417 (steel S355J2, ceases to exist as an ingot in the process)" .
+
+ex:Strand_ST2026_0417 a owl:NamedIndividual , obo:BFO_0000030 ;
+    rdfs:label "strand ST-2026-0417 (5 000 mm hot rolled bar, comes into being in the process)" .
+
+ex:RollingSchedule_RS17 a owl:NamedIndividual , obo:IAO_0000033 ;
+    rdfs:label "rolling schedule RS-17 (document: temperatures, reductions, pass sequence)" .
+
+ex:RollingPlan_RP17 a owl:NamedIndividual , obo:OBI_0000260 ;
+    rdfs:label "plan RP-17 followed by the rolling mill operator" ;
+    obo:RO_0000059 ex:RollingSchedule_RS17 .

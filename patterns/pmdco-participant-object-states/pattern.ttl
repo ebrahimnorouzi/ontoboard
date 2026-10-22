@@ -211,4 +211,77 @@ granularity. At these coarser levels, the individual molecules cannot be differe
                                                                                        "Length is a one dimensional size."@en .
 
 
+#################################################################
+#    Axioms restored from PMDco 3.1.2
+#################################################################
+# The extraction dropped these although each mentions only terms declared above; no term is added.
+#   S stated by PMDco 3.1.2.   E follows from one PMDco 3.1.2 axiom (a conjunct, or an inverse property's domain/range).
+#   T follows from PMDco 3.1.2 subclass axioms through classes outside the pattern.   O stated by the real OBO file only.
+
+# S: stated by PMDco 3.1.2
+<http://purl.obolibrary.org/obo/BFO_0000004> owl:disjointWith <http://purl.obolibrary.org/obo/BFO_0000020> .
+
+# T: entailed by PMDco 3.1.2 through classes outside the pattern: object < material entity < independent continuant
+<http://purl.obolibrary.org/obo/BFO_0000030> rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000004> .
+
+# S: stated by PMDco 3.1.2
+<http://purl.obolibrary.org/obo/BFO_0000063> rdfs:domain <http://purl.obolibrary.org/obo/BFO_0000003> ;
+# S: stated by PMDco 3.1.2
+                                             rdfs:range <http://purl.obolibrary.org/obo/BFO_0000003> .
+
+# E: one conjunct of a PMDco 3.1.2 axiom on 'material'
+<https://w3id.org/pmd/co/PMD_0000000> rdfs:subClassOf [ rdf:type owl:Restriction ;
+                                                        owl:onProperty <http://purl.obolibrary.org/obo/RO_0000086> ;
+                                                        owl:someValuesFrom <http://purl.obolibrary.org/obo/BFO_0000019>
+                                                      ] ;
+# T: entailed by PMDco 3.1.2 through classes outside the pattern: material < portion of matter
+                                      rdfs:subClassOf <https://w3id.org/pmd/co/PMD_0000001> .
+
+# T: entailed by PMDco 3.1.2 through classes outside the pattern: portion of matter < material entity < independent continuant
+<https://w3id.org/pmd/co/PMD_0000001> rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000004> .
+
+# S: stated by PMDco 3.1.2
+<https://w3id.org/pmd/co/PMD_0000068> rdfs:subClassOf [ rdf:type owl:Restriction ;
+                                                        owl:onProperty <https://w3id.org/pmd/co/PMD_0000070> ;
+                                                        owl:someValuesFrom [ owl:intersectionOf ( <http://purl.obolibrary.org/obo/BFO_0000004>
+                                                                                                  [ owl:complementOf <https://w3id.org/pmd/co/PMD_0000068> ;
+                                                                                                    rdf:type owl:Class
+                                                                                                  ]
+                                                                                                ) ;
+                                                                             rdf:type owl:Class
+                                                                           ]
+                                                      ] ;
+# S: stated by PMDco 3.1.2
+                                      owl:equivalentClass [ owl:intersectionOf ( <http://purl.obolibrary.org/obo/BFO_0000004>
+                                                                                 [ rdf:type owl:Restriction ;
+                                                                                   owl:onProperty <http://purl.obolibrary.org/obo/BFO_0000108> ;
+                                                                                   owl:someValuesFrom <http://purl.obolibrary.org/obo/BFO_0000008>
+                                                                                 ]
+                                                                                 [ rdf:type owl:Restriction ;
+                                                                                   owl:onProperty <https://w3id.org/pmd/co/PMD_0000070> ;
+                                                                                   owl:someValuesFrom [ owl:intersectionOf ( <http://purl.obolibrary.org/obo/BFO_0000004>
+                                                                                                                             [ owl:complementOf <https://w3id.org/pmd/co/PMD_0000068> ;
+                                                                                                                               rdf:type owl:Class
+                                                                                                                             ]
+                                                                                                                           ) ;
+                                                                                                        rdf:type owl:Class
+                                                                                                      ]
+                                                                                 ]
+                                                                               ) ;
+                                                            rdf:type owl:Class
+                                                          ] .
+
+# E: inverse of 'has state', whose range is 'temporally qualified continuant' in PMDco 3.1.2
+<https://w3id.org/pmd/co/PMD_0000070> rdfs:domain <https://w3id.org/pmd/co/PMD_0000068> .
+
+# T: entailed by PMDco 3.1.2 through classes outside the pattern: spatial extend < quality
+<https://w3id.org/pmd/co/PMD_0020132> rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000019> .
+
+# S: stated by PMDco 3.1.2
+<https://w3id.org/pmd/co/PMD_0023000> rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000019> .
+
+# S: stated by PMDco 3.1.2
+<https://w3id.org/pmd/co/PMD_0023043> rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000019> .
+
+
 ###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

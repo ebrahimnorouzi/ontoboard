@@ -1,0 +1,69 @@
+# Simulation with in- and output: a diffusion model of the manganese homogenisation of ingot I-2026-0417 takes four
+# numbers and returns one. A number is an information content entity and cannot bear a role, so each is attached to the
+# simulation through an input or output assignment that is part of it. Invented run, model and values.
+
+@prefix co: <https://w3id.org/pmd/co/> .
+@prefix obo: <http://purl.obolibrary.org/obo/> .
+@prefix ex: <https://w3id.org/ontoboard/example/pmdco-simulation-input-output#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+ex:Run_R12 a owl:NamedIndividual , co:PMD_0000933 ;
+    rdfs:label "simulation run R-12: decay of a sinusoidal manganese segregation profile in ingot I-2026-0417 during the 12 h soak at 1250 °C" ;
+    obo:BFO_0000055 ex:Model_M1 .
+
+ex:Model_M1 a owl:NamedIndividual ;
+    rdfs:label "model M-1: segregation factor = 1 + (f0 - 1) * exp(-4 * pi^2 * D * t / lambda^2)" .
+
+# The inputs.
+ex:InitialFactor_In a owl:NamedIndividual , obo:IAO_0000030 ;
+    rdfs:label "input: segregation factor f0 before the annealing, 1.42" ;
+    obo:OBI_0001937 1.42 ;
+    obo:OBI_0000295 ex:Run_R12 .
+
+ex:ArmSpacing_In a owl:NamedIndividual , obo:IAO_0000030 ;
+    rdfs:label "input: secondary dendrite arm spacing lambda, 200 µm" ;
+    obo:OBI_0001937 200.0 ;
+    obo:OBI_0000295 ex:Run_R12 .
+
+ex:Diffusivity_In a owl:NamedIndividual , obo:IAO_0000030 ;
+    rdfs:label "input: diffusion coefficient D of manganese in austenite at 1250 °C, 0.016 µm²/s (1.6e-14 m²/s)" ;
+    obo:OBI_0001937 0.016 ;
+    obo:OBI_0000295 ex:Run_R12 .
+
+ex:SoakTime_In a owl:NamedIndividual , obo:IAO_0000030 ;
+    rdfs:label "input: soak time t, 43 200 s (12 h)" ;
+    obo:OBI_0001937 43200.0 ;
+    obo:OBI_0000295 ex:Run_R12 .
+
+# The output.
+ex:FinalFactor_Out a owl:NamedIndividual , obo:IAO_0000030 ;
+    rdfs:label "output: segregation factor after the annealing, 1.21" ;
+    obo:OBI_0001937 1.21 ;
+    obo:OBI_0000312 ex:Run_R12 .
+
+# The assignments, one per number, each part of the run.
+ex:InitialFactorAssignment a owl:NamedIndividual , co:PMD_0000066 ;
+    rdfs:label "assignment of f0 as an input of run R-12" ;
+    obo:RO_0000057 ex:InitialFactor_In ;
+    obo:BFO_0000050 ex:Run_R12 .
+
+ex:ArmSpacingAssignment a owl:NamedIndividual , co:PMD_0000066 ;
+    rdfs:label "assignment of lambda as an input of run R-12" ;
+    obo:RO_0000057 ex:ArmSpacing_In ;
+    obo:BFO_0000050 ex:Run_R12 .
+
+ex:DiffusivityAssignment a owl:NamedIndividual , co:PMD_0000066 ;
+    rdfs:label "assignment of D as an input of run R-12" ;
+    obo:RO_0000057 ex:Diffusivity_In ;
+    obo:BFO_0000050 ex:Run_R12 .
+
+ex:SoakTimeAssignment a owl:NamedIndividual , co:PMD_0000066 ;
+    rdfs:label "assignment of t as an input of run R-12" ;
+    obo:RO_0000057 ex:SoakTime_In ;
+    obo:BFO_0000050 ex:Run_R12 .
+
+ex:FinalFactorAssignment a owl:NamedIndividual , co:PMD_0000067 ;
+    rdfs:label "assignment of the result as the output of run R-12" ;
+    obo:RO_0000057 ex:FinalFactor_Out ;
+    obo:BFO_0000050 ex:Run_R12 .

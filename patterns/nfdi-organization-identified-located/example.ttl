@@ -1,0 +1,82 @@
+# Two research institutes and their parent organizations: located (located in), identified (has external identifier, denoted by) and linked upwards.
+# Country, cities, names, ROR identifiers and postal codes are separate reusable individuals; the acronym is an annotation.
+# Parents, acronyms and ROR identifiers follow the ROR registry (looked up 2026-10-21); postal codes are those of the main addresses.
+
+@prefix obo: <http://purl.obolibrary.org/obo/> .
+@prefix ontology: <https://nfdi.fiz-karlsruhe.de/ontology/> .
+@prefix ex: <https://w3id.org/ontoboard/example/nfdi-organization-identified-located#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+ex:mpie a owl:NamedIndividual , obo:OBI_0000245 ;
+    rdfs:label "Max Planck Institute for Sustainable Materials" ;
+    ontology:NFDI_0010015 "MPIE" ;
+    obo:RO_0001025 ex:duesseldorf , ex:germany ;
+    ontology:NFDI_0000182 ex:max_planck_society ;
+    ontology:NFDI_0001006 ex:mpie_ror ;
+    obo:IAO_0000235 ex:mpie_name , ex:mpie_postal_code .
+
+ex:mpie_name a owl:NamedIndividual , obo:IAO_0000303 ;
+    rdfs:label "Max-Planck-Institut für Nachhaltige Materialien" .
+
+ex:mpie_ror a owl:NamedIndividual , ontology:NFDI_0001013 ;
+    rdfs:label "https://ror.org/01ngpvg12" .
+
+ex:mpie_postal_code a owl:NamedIndividual , ontology:NFDI_0001042 ;
+    rdfs:label "40237" .
+
+ex:max_planck_society a owl:NamedIndividual , obo:OBI_0000245 ;
+    rdfs:label "Max Planck Society" ;
+    ontology:NFDI_0010015 "MPG" ;
+    obo:RO_0001025 ex:munich , ex:germany ;
+    ontology:NFDI_0001006 ex:max_planck_society_ror ;
+    obo:IAO_0000235 ex:max_planck_society_name .
+
+ex:max_planck_society_name a owl:NamedIndividual , obo:IAO_0000303 ;
+    rdfs:label "Max-Planck-Gesellschaft zur Förderung der Wissenschaften" .
+
+ex:max_planck_society_ror a owl:NamedIndividual , ontology:NFDI_0001013 ;
+    rdfs:label "https://ror.org/01hhn8329" .
+
+ex:fiz_karlsruhe a owl:NamedIndividual , obo:OBI_0000245 ;
+    rdfs:label "FIZ Karlsruhe - Leibniz Institute for Information Infrastructure" ;
+    obo:RO_0001025 ex:eggenstein_leopoldshafen , ex:germany ;
+    ontology:NFDI_0000182 ex:leibniz_association ;
+    ontology:NFDI_0001006 ex:fiz_karlsruhe_ror ;
+    obo:IAO_0000235 ex:fiz_karlsruhe_name , ex:fiz_karlsruhe_postal_code .
+
+ex:fiz_karlsruhe_name a owl:NamedIndividual , obo:IAO_0000303 ;
+    rdfs:label "FIZ Karlsruhe - Leibniz-Institut für Informationsinfrastruktur" .
+
+ex:fiz_karlsruhe_ror a owl:NamedIndividual , ontology:NFDI_0001013 ;
+    rdfs:label "https://ror.org/0387prb75" .
+
+ex:fiz_karlsruhe_postal_code a owl:NamedIndividual , ontology:NFDI_0001042 ;
+    rdfs:label "76344" .
+
+ex:leibniz_association a owl:NamedIndividual , obo:OBI_0000245 ;
+    rdfs:label "Leibniz Association" ;
+    obo:RO_0001025 ex:berlin , ex:germany ;
+    ontology:NFDI_0001006 ex:leibniz_association_ror ;
+    obo:IAO_0000235 ex:leibniz_association_name .
+
+ex:leibniz_association_name a owl:NamedIndividual , obo:IAO_0000303 ;
+    rdfs:label "Leibniz-Gemeinschaft" .
+
+ex:leibniz_association_ror a owl:NamedIndividual , ontology:NFDI_0001013 ;
+    rdfs:label "https://ror.org/01n6r0e97" .
+
+ex:duesseldorf a owl:NamedIndividual , ontology:NFDI_0000106 ;
+    rdfs:label "Düsseldorf" .
+
+ex:munich a owl:NamedIndividual , ontology:NFDI_0000106 ;
+    rdfs:label "Munich" .
+
+ex:eggenstein_leopoldshafen a owl:NamedIndividual , ontology:NFDI_0000106 ;
+    rdfs:label "Eggenstein-Leopoldshafen" .
+
+ex:berlin a owl:NamedIndividual , ontology:NFDI_0000106 ;
+    rdfs:label "Berlin" .
+
+ex:germany a owl:NamedIndividual , ontology:NFDI_0000119 ;
+    rdfs:label "Germany" .

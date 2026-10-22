@@ -10,5 +10,5 @@
   "scenarios": "A project runs from January to June. A lecture is scheduled from 10:00 to 11:30.",
   "source": "https://ontologydesignpatterns.org/wiki/Submissions:TimeInterval",
   "class_count": 1,
-  "property_count": 3
+  "property_count": 2
 }

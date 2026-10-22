@@ -9,6 +9,6 @@
   "pattern_iri": "http://www.irit.fr/recherches/MELODI/ontologies/SAN",
   "source": "https://ontologydesignpatterns.org/wiki/Submissions:Actuation-Actuator-Effect",
   "references": "https://ontologydesignpatterns.org/wiki/Submissions:Actuation-Actuator-Effect",
-  "class_count": 33,
+  "class_count": 36,
   "property_count": 25
 }

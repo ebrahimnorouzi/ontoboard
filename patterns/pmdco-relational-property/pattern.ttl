@@ -60,8 +60,8 @@
 <https://w3id.org/pmd/co/PMD_0025999> rdf:type owl:ObjectProperty ;
                                       <http://purl.obolibrary.org/obo/IAO_0000116> """The 'relational quality of' is more strict that 'quality of' from RO, since domain is 'relational quality'. The motivtion to introduce an object property for relational qualities is the following:
 RO's 'quality of' is functional i.e., a->b, a->c => b=c. The functionality is relevant for most of the SDC -> IC triples, expect for relational qualities, which per definiton can be simultaneously inherited in >=2 ICs. Thus,  'relational quality of'  has the same intention to connect SDC to IC, however, without cardinality constraints."""@en ;
-                                      rdfs:label "relational quality of"@en ,
-                                                 "relationale Qualität von"@de ;
+                                      rdfs:label "relational property of"@en ,
+                                                 "relationale Eigenschaft von"@de ;
                                       <http://www.w3.org/2004/02/skos/core#definition> "a relation between a relational quality and an independent continuant (the bearer), in which the quality specifically depends on the bearer for its existence"@en ,
                                                                                        "eine Beziehung zwischen einer relationalen Qualität und einem unabhängigen Kontinuum (dem Träger), bei der die Existenz der Qualität speziell vom Träger abhängt"@de .
 
@@ -135,12 +135,8 @@ RO's 'quality of' is functional i.e., a->b, a->c => b=c. The functionality is re
 
 ###  https://w3id.org/pmd/co/PMD_0020102
 <https://w3id.org/pmd/co/PMD_0020102> rdf:type owl:Class ;
-                                      rdfs:subClassOf <https://w3id.org/pmd/co/PMD_0080069> ;
-                                      <http://purl.obolibrary.org/obo/IAO_0000116> "Necessary and sufficient conditions for 'mass ratio' have not yet been formalized. The term is defined as a specific subtype of 'material composition'. Distinguishing criteria are domain-specific and depend on measurement conventions or source terminology not yet expressed as OWL restrictions."@en ;
-                                      rdfs:label "Massenverhältnis"@de ,
-                                                 "mass ratio"@en ;
-                                      <http://www.w3.org/2004/02/skos/core#definition> "Das Massenverhältnis bezeichnet eine relationale Qualität, die einen Massenwert im Verhältnis zu einem anderen ausdrückt und typischerweise eine dimensionslose Zahl ergibt"@de ,
-                                                                                       "Mass ratio denotes a relational quality expressing one mass value relative to another, typically producing a dimensionless number"@en .
+                                      rdfs:label "mass fraction"@en ;
+                                      <http://www.w3.org/2004/02/skos/core#definition> "a relational quality expressing a mass of a part in relation to the the mass of the whole"@en .
 
 
 ###  https://w3id.org/pmd/co/PMD_0020140
@@ -152,19 +148,8 @@ RO's 'quality of' is functional i.e., a->b, a->c => b=c. The functionality is re
 ###  https://w3id.org/pmd/co/PMD_0025997
 <https://w3id.org/pmd/co/PMD_0025997> rdf:type owl:Class ;
                                       rdfs:subClassOf <http://purl.obolibrary.org/obo/OBI_0001931> ;
-                                      rdfs:label "Angabe des Bruchwerts"@de ,
-                                                 "fraction value specification"@en ;
-                                      <http://www.w3.org/2004/02/skos/core#definition> "Bei der Bruchwertspezifikation handelt es sich um eine Wertspezifikation, die Informationen über den quantitativen Anteil eines Teils im Verhältnis zu einem angegebenen Ganzen enthält."@de ,
-                                                                                       "Fraction value specification is a value specification that contains information about quantitative share of a part relative to a specified whole."@en .
-
-
-###  https://w3id.org/pmd/co/PMD_0080069
-<https://w3id.org/pmd/co/PMD_0080069> rdf:type owl:Class ;
-                                      <http://purl.obolibrary.org/obo/IAO_0000116> "Necessary and sufficient conditions for 'physical relational quality' have not yet been formalized. The term is defined as a specific subtype of 'BFO_0000145'. Distinguishing criteria are domain-specific and depend on measurement conventions or source terminology not yet expressed as OWL restrictions."@en ;
-                                      rdfs:label "physical relational quality"@en ,
-                                                 "physisch relative Qualität"@de ;
-                                      <http://www.w3.org/2004/02/skos/core#definition> "Die physische Beziehungsqualität bezieht sich auf Eigenschaften oder Merkmale einer Entität, die von ihrer Beziehung zu anderen Entitäten abhängig sind"@de ,
-                                                                                       "Physical relational quality pertains to properties or characteristics of an entity dependent on its relation to other entities"@en .
+                                      rdfs:label "concentration value specification"@en ;
+                                      <http://www.w3.org/2004/02/skos/core#definition> "a value specification that contains information about quantitative share of a part relative to a specified whole."@en .
 
 
 #################################################################
@@ -188,6 +173,36 @@ RO's 'quality of' is functional i.e., a->b, a->c => b=c. The functionality is re
    owl:annotatedTarget "A dimensionless concentration unit which denotes the mass of a substance in a mixture as a percentage of the mass of the entire mixture." ;
    <http://www.geneontology.org/formats/oboInOwl#hasDbXref> "Wikipedia:Wikipedia"
  ] .
+
+
+#################################################################
+#    Axioms restored from PMDco 3.1.2
+#################################################################
+# The extraction dropped these although each mentions only terms declared above; no term is added.
+#   S stated by PMDco 3.1.2.   E follows from one PMDco 3.1.2 axiom (a conjunct, or an inverse property's domain/range).
+#   T follows from PMDco 3.1.2 subclass axioms through classes outside the pattern.   O stated by the real OBO file only.
+
+# S: stated by PMDco 3.1.2
+<http://purl.obolibrary.org/obo/OBI_0001931> rdfs:subClassOf [ rdf:type owl:Restriction ;
+                                                               owl:onProperty <http://purl.obolibrary.org/obo/OBI_0001937> ;
+                                                               owl:minCardinality "1"^^xsd:nonNegativeInteger
+                                                             ] ;
+# O: the real OBI (2026-07-27, as imported by PMDco 3.1.2) states it, PMDco's copy omits it, PMDco's SHACL shape requires it
+                                             rdfs:subClassOf [ rdf:type owl:Restriction ;
+                                                               owl:onProperty <http://purl.obolibrary.org/obo/IAO_0000039> ;
+                                                               owl:minCardinality "1"^^xsd:nonNegativeInteger
+                                                             ] .
+
+# S: stated by PMDco 3.1.2
+<http://purl.obolibrary.org/obo/RO_0000086> rdfs:range <http://purl.obolibrary.org/obo/BFO_0000019> .
+
+# S: stated by PMDco 3.1.2
+<http://purl.obolibrary.org/obo/UO_0000163> owl:equivalentClass [ owl:oneOf ( <http://purl.obolibrary.org/obo/UO_0000163> ) ;
+                                                                  rdf:type owl:Class
+                                                                ] .
+
+# T: entailed by PMDco 3.1.2 through classes outside the pattern: portion of pure chemical element < pure substance < chemical substance < chemical entity < portion of matter < material entity
+<https://w3id.org/pmd/co/PMD_0020140> rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000040> .
 
 
 ###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi

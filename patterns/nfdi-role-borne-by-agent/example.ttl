@@ -1,0 +1,24 @@
+# The contact point role for the MatWerk Knowledge Graph, borne by the team that runs it. The role is a first-class
+# individual: it is the role of an agent (obo:RO_0000081), is realized in a process (obo:BFO_0000054) and carries its
+# e-mail address as a value node reached by obo:IAO_0000235 (denoted by). The address is a reserved example.org one.
+
+@prefix obo: <http://purl.obolibrary.org/obo/> .
+@prefix ontology: <https://nfdi.fiz-karlsruhe.de/ontology/> .
+@prefix ex: <https://w3id.org/ontoboard/example/nfdi-role-borne-by-agent#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+ex:kg_contact_point_role a owl:NamedIndividual , ontology:NFDI_0000114 ;
+    rdfs:label "contact point role for the MatWerk Knowledge Graph" ;
+    obo:RO_0000081 ex:ise_team ;
+    obo:BFO_0000054 ex:answering_an_enquiry ;
+    obo:IAO_0000235 ex:kg_contact_email .
+
+ex:ise_team a owl:NamedIndividual , ontology:NFDI_0000102 ;
+    rdfs:label "Information Service Engineering team, FIZ Karlsruhe" .
+
+ex:answering_an_enquiry a owl:NamedIndividual , obo:BFO_0000015 ;
+    rdfs:label "answering an enquiry about the MatWerk Knowledge Graph" .
+
+ex:kg_contact_email a owl:NamedIndividual , obo:IAO_0000429 ;
+    rdfs:label "matwerk-kg@example.org" .

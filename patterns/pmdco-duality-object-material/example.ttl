@@ -1,0 +1,25 @@
+# Duality of object and material: ingot I-2026-0417 of heat H-45812 is ONE individual that is an ingot (an object,
+# which bears mass) and steel (a portion of matter, which bears chemical composition). The identifiers and numbers
+# are invented; the classes and properties are the pattern's.
+
+@prefix co: <https://w3id.org/pmd/co/> .
+@prefix obo: <http://purl.obolibrary.org/obo/> .
+@prefix ex: <https://w3id.org/ontoboard/example/pmdco-duality-object-material#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+ex:Ingot_I2026_0417 a owl:NamedIndividual , co:PMD_0020170 , co:PMD_0020096 ;
+    rdfs:label "ingot I-2026-0417, steel S355J2 of heat H-45812" ;
+    obo:RO_0000086 ex:Mass_I2026_0417 , ex:Composition_H45812 ;
+    obo:BFO_0000051 ex:HotTop_I2026_0417 .
+
+# The quality it bears as an object: extensive, it halves if the ingot is cut in two.
+ex:Mass_I2026_0417 a owl:NamedIndividual , co:PMD_0020133 ;
+    rdfs:label "mass of ingot I-2026-0417 (12 480 kg)" .
+
+# The quality it bears as a material: intensive, the same in every portion of the heat.
+ex:Composition_H45812 a owl:NamedIndividual , co:PMD_0000551 ;
+    rdfs:label "chemical composition of heat H-45812 (C 0.16, Mn 1.45, Si 0.30, balance Fe, mass-%)" .
+
+ex:HotTop_I2026_0417 a owl:NamedIndividual , obo:BFO_0000030 ;
+    rdfs:label "hot top of ingot I-2026-0417 (upper 1.2 t, cropped before rolling)" .

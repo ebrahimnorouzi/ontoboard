@@ -1,0 +1,39 @@
+# Realization of a role: plate P-0417-A bears the evaluant role, which a Vickers hardness test realizes. The test takes
+# the plate as specified input, outputs a measurement datum about it, measures the plate's indentation hardness and
+# achieves a stated objective. The identifiers are invented; the classes and properties are the pattern's.
+
+@prefix co: <https://w3id.org/pmd/co/> .
+@prefix obo: <http://purl.obolibrary.org/obo/> .
+@prefix ex: <https://w3id.org/ontoboard/example/pmdco-role-realization#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+ex:VickersTest_VT0417 a owl:NamedIndividual , co:PMD_0000849 ;
+    rdfs:label "Vickers hardness test HV 5 on plate P-0417-A (test VT-0417)" ;
+    obo:OBI_0000293 ex:Plate_P0417_A ;
+    obo:OBI_0000299 ex:HardnessResult_VT0417 ;
+    obo:BFO_0000055 ex:EvaluantRole_P0417_A ;
+    obo:RO_0009006 ex:IndentationHardness_P0417_A ;
+    obo:OBI_0000417 ex:Objective_VT0417 .
+
+ex:Plate_P0417_A a owl:NamedIndividual , co:PMD_0020176 ;
+    rdfs:label "plate P-0417-A cut from slab SL-0417-A" ;
+    obo:RO_0000087 ex:EvaluantRole_P0417_A .
+
+ex:EvaluantRole_P0417_A a owl:NamedIndividual , obo:OBI_0000067 ;
+    rdfs:label "evaluant role of plate P-0417-A, realized in test VT-0417" .
+
+ex:IndentationHardness_P0417_A a owl:NamedIndividual , co:PMD_0000789 ;
+    rdfs:label "indentation hardness of plate P-0417-A" ;
+    obo:RO_0000052 ex:Plate_P0417_A .
+
+ex:HardnessResult_VT0417 a owl:NamedIndividual , obo:IAO_0000109 ;
+    rdfs:label "result record of test VT-0417" ;
+    obo:IAO_0000136 ex:Plate_P0417_A ;
+    obo:OBI_0001938 ex:HardnessValue_VT0417 .
+
+ex:HardnessValue_VT0417 a owl:NamedIndividual , obo:OBI_0001933 ;
+    rdfs:label "172 HV 5 (mean of three indentations, load 49.03 N)" .
+
+ex:Objective_VT0417 a owl:NamedIndividual , obo:IAO_0000005 ;
+    rdfs:label "objective: determine the Vickers hardness HV 5 of plate P-0417-A according to ISO 6507-1" .

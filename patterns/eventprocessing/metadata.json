@@ -9,6 +9,6 @@
   "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/eventprocessing.owl",
   "source": "https://ontologydesignpatterns.org/wiki/Submissions:EventProcessing",
   "references": "https://ontologydesignpatterns.org/wiki/Submissions:EventProcessing",
-  "class_count": 8,
-  "property_count": 22
+  "class_count": 17,
+  "property_count": 35
 }

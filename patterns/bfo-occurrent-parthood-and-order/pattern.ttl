@@ -9,7 +9,8 @@
     rdfs:domain <http://purl.obolibrary.org/obo/BFO_0000003> ;
     rdfs:range <http://purl.obolibrary.org/obo/BFO_0000003> ;
     owl:inverseOf <http://purl.obolibrary.org/obo/BFO_0000063> ;
-    skos:definition "b preceded by c =Def b precedes c"@en .
+    skos:definition "b preceded by c =Def c precedes b"@en ;
+    skos:editorialNote "Definition corrected here. BFO 2020 (release-2024-01-29 and the current master) gives 'b preceded by c =Def b precedes c', which reverses the relation: preceded by is the inverse of precedes (owl:inverseOf BFO_0000063 above; BFO Common Logic axiom tib-1 in order.cl)."@en .
 
 <http://purl.obolibrary.org/obo/BFO_0000118> a owl:ObjectProperty,
         owl:TransitiveProperty ;

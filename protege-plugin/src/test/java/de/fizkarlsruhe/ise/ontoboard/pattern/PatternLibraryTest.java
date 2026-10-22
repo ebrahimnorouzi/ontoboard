@@ -99,7 +99,12 @@ class PatternLibraryTest {
             }
         }
         assertEquals("[]", broken.toString());
-        assertEquals(1391, classes, "the measured total across the collection");
+        // 1,556, up from 1,391 before 1.121.0. Forty-one patterns had domains, ranges and
+        // relations restored from the ontologies they were harvested from, and a restored
+        // axiom brings the classes it names into the signature. Against that, thirteen
+        // owl-api error placeholders were removed from three patterns. Only regenerating or
+        // correcting the library should move this number.
+        assertEquals(1556, classes, "the measured total across the collection");
     }
 
     /**
@@ -118,7 +123,11 @@ class PatternLibraryTest {
         PatternLibrary.Contents contents =
                 PatternLibrary.contentsOf(PatternLibrary.find("airline"));
 
-        assertEquals(8, contents.getClasses().size());
+        // Two, where it was eight: six of those were http://org.semanticweb.owlapi/error#
+        // placeholders, which the OWL API substitutes for something it cannot read and then
+        // serialises as if they were real - here as six superclasses of dbpedia:Airline.
+        // They were removed in 1.121.0, and the pattern's own metadata.json always said two.
+        assertEquals(2, contents.getClasses().size());
         assertFalse(contents.getImports().isEmpty(), "the import is still reported");
         assertTrue(PatternLibrary.baseFor(PatternLibrary.find("airline")).toString()
                 .startsWith("file:/"), "the base has to be a scheme with a factory");

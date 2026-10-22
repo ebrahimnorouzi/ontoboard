@@ -1,0 +1,40 @@
+# The dataset "MatWerk Knowledge Graph - RDF Dumps (v2.2.1)" (Zenodo, DOI 10.5281/zenodo.23531121), described by value nodes and lists.
+# Title, description and link are value nodes reached by denoted by, each carrying has value; creators and affiliations are parts (has part).
+# Title, creators, affiliations and graph names are as published on the Zenodo record on 2026-10-21; the subject matter is reached by is about.
+
+@prefix obo: <http://purl.obolibrary.org/obo/> .
+@prefix ontology: <https://nfdi.fiz-karlsruhe.de/ontology/> .
+@prefix ex: <https://w3id.org/ontoboard/example/nfdi-dataset-description#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+ex:matwerk_kg_rdf_dumps a owl:NamedIndividual , obo:IAO_0001000 ;
+    rdfs:label "MatWerk Knowledge Graph - RDF Dumps (v2.2.1)" ;
+    obo:IAO_0000235 ex:dumps_title , ex:dumps_description , ex:dumps_link ;
+    obo:BFO_0000051 ex:dumps_creators , ex:dumps_affiliations ;
+    obo:IAO_0000136 ex:matwerk_resources ;
+    obo:RO_0000056 ex:dumps_publication_on_zenodo .
+
+ex:dumps_title a owl:NamedIndividual , obo:IAO_0000300 ;
+    rdfs:label "title of the RDF dumps" ;
+    ontology:NFDI_0001007 "MatWerk Knowledge Graph - RDF Dumps (v2.2.1)" .
+
+ex:dumps_description a owl:NamedIndividual , obo:IAO_0000300 ;
+    rdfs:label "description of the RDF dumps" ;
+    ontology:NFDI_0001007 "RDF dumps of the MatWerk Knowledge Graph as Turtle files, one per named graph: spreadsheets_assertions, spreadsheets_inferences, spreadsheets_validated, zenodo_validated and endpoints_validated." .
+
+ex:dumps_link a owl:NamedIndividual , obo:IAO_0000300 ;
+    rdfs:label "link to the RDF dumps" ;
+    ontology:NFDI_0001007 "https://doi.org/10.5281/zenodo.23531121" .
+
+ex:dumps_creators a owl:NamedIndividual , ontology:NFDI_0001032 ;
+    rdfs:label "Harald Sack, Jörg Waitelonis, Ebrahim Norouzi, Hossein Beygi Nasrabadi" .
+
+ex:dumps_affiliations a owl:NamedIndividual , ontology:NFDI_0001033 ;
+    rdfs:label "FIZ Karlsruhe - Leibniz Institute for Information Infrastructure (all four creators); Karlsruhe Institute of Technology (Harald Sack)" .
+
+ex:matwerk_resources a owl:NamedIndividual , obo:BFO_0000001 ;
+    rdfs:label "NFDI-MatWerk research resources: datasets, publications, software and domain actors" .
+
+ex:dumps_publication_on_zenodo a owl:NamedIndividual , obo:BFO_0000003 ;
+    rdfs:label "publication of the RDF dumps on Zenodo, 21 October 2026" .

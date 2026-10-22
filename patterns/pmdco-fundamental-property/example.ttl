@@ -1,0 +1,43 @@
+# Fundamental property: ingot I-2026-0417, which is both an ingot and steel, always has a mass (as an object) and a mass
+# density (as a portion of matter). Each is given a value by a scalar value specification, a number with a unit label.
+# The identifiers and numbers are invented; the classes and properties are the pattern's.
+
+@prefix co: <https://w3id.org/pmd/co/> .
+@prefix obo: <http://purl.obolibrary.org/obo/> .
+@prefix ex: <https://w3id.org/ontoboard/example/pmdco-fundamental-property#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+ex:Ingot_I2026_0417 a owl:NamedIndividual , co:PMD_0020170 , co:PMD_0020096 ;
+    rdfs:label "ingot I-2026-0417, steel S355J2 of heat H-45812" ;
+    obo:RO_0000086 ex:Mass_I2026_0417 , ex:Density_H45812 ;
+    obo:BFO_0000051 ex:IronPortion_I2026_0417 .
+
+ex:IronPortion_I2026_0417 a owl:NamedIndividual , co:PMD_0020026 ;
+    rdfs:label "the iron in ingot I-2026-0417" .
+
+ex:Mass_I2026_0417 a owl:NamedIndividual , co:PMD_0020133 ;
+    rdfs:label "mass of ingot I-2026-0417" ;
+    co:PMD_0000077 ex:MassValue_I2026_0417 .
+
+ex:MassValue_I2026_0417 a owl:NamedIndividual , obo:OBI_0001931 ;
+    rdfs:label "12 480 kg" ;
+    obo:OBI_0001937 12480.0 ;
+    obo:IAO_0000039 ex:Kilogram .
+
+ex:Density_H45812 a owl:NamedIndividual , co:PMD_0000597 ;
+    rdfs:label "mass density of the steel of heat H-45812" ;
+    co:PMD_0000077 ex:DensityValue_H45812 .
+
+ex:DensityValue_H45812 a owl:NamedIndividual , obo:OBI_0001931 ;
+    rdfs:label "7.85 g/cm³" ;
+    obo:OBI_0001937 7.85 ;
+    obo:IAO_0000039 ex:GramPerCubicCentimetre .
+
+ex:Kilogram a owl:NamedIndividual ;
+    rdfs:label "kilogram" ;
+    rdfs:comment "stands for UO_0000009 in the Units Ontology" .
+
+ex:GramPerCubicCentimetre a owl:NamedIndividual ;
+    rdfs:label "gram per cubic centimetre" ;
+    rdfs:comment "stands for UO_0000084 in the Units Ontology" .

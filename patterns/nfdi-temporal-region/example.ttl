@@ -1,0 +1,40 @@
+# The three days of the NFDI-MatWerk Conference 2023 as a reified time interval that the conference, a process, occupies.
+# The interval states its first and last instant (their dates are has value), has one temporal part per day, and carries its text by denoted by.
+# The dates, 27 to 29 June 2023, come from the Zenodo record of the conference proceedings (DOI 10.5281/zenodo.11353339).
+
+@prefix obo: <http://purl.obolibrary.org/obo/> .
+@prefix ontology: <https://nfdi.fiz-karlsruhe.de/ontology/> .
+@prefix ex: <https://w3id.org/ontoboard/example/nfdi-temporal-region#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+ex:matwerk_conference_2023 a owl:NamedIndividual , obo:BFO_0000015 ;
+    rdfs:label "NFDI-MatWerk Conference 2023" ;
+    obo:BFO_0000199 ex:conference_days .
+
+ex:conference_days a owl:NamedIndividual , obo:BFO_0000038 ;
+    rdfs:label "27-29 June 2023" ;
+    obo:IAO_0000235 ex:conference_days_text ;
+    obo:BFO_0000222 ex:first_instant ;
+    obo:BFO_0000224 ex:last_instant ;
+    obo:BFO_0000121 ex:first_day , ex:second_day , ex:third_day .
+
+ex:conference_days_text a owl:NamedIndividual , obo:IAO_0000030 ;
+    rdfs:label "time span of the NFDI-MatWerk Conference 2023" .
+
+ex:first_instant a owl:NamedIndividual , obo:BFO_0000203 ;
+    rdfs:label "start of 27 June 2023" ;
+    ontology:NFDI_0001007 "2023-06-27" .
+
+ex:last_instant a owl:NamedIndividual , obo:BFO_0000203 ;
+    rdfs:label "end of 29 June 2023" ;
+    ontology:NFDI_0001007 "2023-06-29" .
+
+ex:first_day a owl:NamedIndividual , obo:BFO_0000038 ;
+    rdfs:label "27 June 2023" .
+
+ex:second_day a owl:NamedIndividual , obo:BFO_0000038 ;
+    rdfs:label "28 June 2023" .
+
+ex:third_day a owl:NamedIndividual , obo:BFO_0000038 ;
+    rdfs:label "29 June 2023" .

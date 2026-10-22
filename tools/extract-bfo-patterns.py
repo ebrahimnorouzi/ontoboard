@@ -312,6 +312,63 @@ def orphan_properties(out):
     return sorted(orphans)
 
 
+# A HANDFUL OF UPSTREAM MISTAKES, CORRECTED ON THE WAY OUT.
+#
+# This extractor is mechanical on purpose: whatever BFO says is what the pattern says, so a
+# pattern cannot drift from its source. The cost is that an error in BFO is copied faithfully,
+# and re-running the extractor silently reverts any hand-fix. So the fixes live here instead,
+# where they are applied every time and are visible.
+#
+# Each entry has to say which upstream release it was checked against and why the upstream text
+# is wrong, because the day BFO fixes it this list has to shrink rather than start fighting it.
+ERRATA = [
+    {
+        "term": "http://purl.obolibrary.org/obo/BFO_0000062",
+        "predicate": "http://www.w3.org/2004/02/skos/core#definition",
+        "wrong": "b preceded by c =Def b precedes c",
+        "right": "b preceded by c =Def c precedes b",
+        "note": "Definition corrected here. BFO 2020 (release-2024-01-29 and the current "
+                "master) gives 'b preceded by c =Def b precedes c', which reverses the "
+                "relation: preceded by is the inverse of precedes (owl:inverseOf BFO_0000063 "
+                "above; BFO Common Logic axiom tib-1 in order.cl).",
+    },
+]
+
+
+def apply_errata(graph):
+    """Corrects the known upstream mistakes in a freshly extracted pattern.
+
+    Silent when the pattern does not contain the term, so every pattern can be passed through.
+    Loud when the term is there but the wrong text is not: that means BFO has changed the
+    wording, and an erratum that no longer matches must be re-checked rather than ignored.
+    """
+    import rdflib
+
+    for erratum in ERRATA:
+        term = rdflib.URIRef(erratum["term"])
+        predicate = rdflib.URIRef(erratum["predicate"])
+        values = list(graph.objects(term, predicate))
+        if not values:
+            continue
+        wrong = [v for v in values if str(v) == erratum["wrong"]]
+        if not wrong:
+            if any(str(v) == erratum["right"] for v in values):
+                print("    erratum for %s is no longer needed: upstream now says the right "
+                      "thing" % erratum["term"].rsplit("/", 1)[-1])
+                continue
+            raise SystemExit(
+                "erratum for %s no longer matches upstream.\n  expected: %r\n  found:    %r\n"
+                "Re-check it against the current BFO before shipping."
+                % (erratum["term"], erratum["wrong"], [str(v) for v in values]))
+        for value in wrong:
+            graph.remove((term, predicate, value))
+            graph.add((term, predicate, rdflib.Literal(erratum["right"], lang=value.language)))
+            graph.add((term, rdflib.URIRef("http://www.w3.org/2004/02/skos/core#editorialNote"),
+                       rdflib.Literal(erratum["note"], lang="en")))
+            print("    corrected %s %s" % (erratum["term"].rsplit("/", 1)[-1],
+                                           erratum["predicate"].rsplit("#", 1)[-1]))
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", action="store_true",
@@ -354,6 +411,8 @@ def main():
                           key=str)
         dataprops = sorted({c for c in out.subjects(RDF.type, OWL.DatatypeProperty)
                             if named(c)}, key=str)
+
+        apply_errata(out)
 
         folder = os.path.join(PATTERNS, spec["id"])
         os.makedirs(folder, exist_ok=True)

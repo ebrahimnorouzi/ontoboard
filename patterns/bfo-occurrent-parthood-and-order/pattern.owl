@@ -132,7 +132,8 @@
     <rdfs:domain rdf:resource="http://purl.obolibrary.org/obo/BFO_0000003"/>
     <rdfs:range rdf:resource="http://purl.obolibrary.org/obo/BFO_0000003"/>
     <rdfs:label xml:lang="en">preceded by</rdfs:label>
-    <skos:definition xml:lang="en">b preceded by c =Def b precedes c</skos:definition>
+    <skos:definition xml:lang="en">b preceded by c =Def c precedes b</skos:definition>
+    <skos:editorialNote xml:lang="en">Definition corrected here. BFO 2020 (release-2024-01-29 and the current master) gives 'b preceded by c =Def b precedes c', which reverses the relation: preceded by is the inverse of precedes (owl:inverseOf BFO_0000063 above; BFO Common Logic axiom tib-1 in order.cl).</skos:editorialNote>
   </rdf:Description>
   <rdf:Description rdf:about="http://purl.obolibrary.org/obo/BFO_0000063">
     <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>

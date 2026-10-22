@@ -1,0 +1,26 @@
+# The NFDI-MatWerk project and the ontology it produced. The project, a process, has the NFDI-MatWerk consortium as participant; the consortium bears a role that the project
+# realizes. The project has the NFDI Matwerk Ontology (release 3.0.2, 2026-06-22) as output, and the ontology is implemented by the consortium: implemented by ends at the
+# independent continuant, not at the process. 'the matwerk project' is an individual MWO ships (mwo:MWO_0001019); 'NFDI-MatWerk' is the knowledge graph's consortium row (class mwo:MWO_0001022); the role label is descriptive.
+
+@prefix obo: <http://purl.obolibrary.org/obo/> .
+@prefix mwo: <http://purls.helmholtz-metadaten.de/mwo/> .
+@prefix ex: <https://w3id.org/ontoboard/example/mwo-resource-implementation#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+ex:the_matwerk_project a owl:NamedIndividual , mwo:MWO_0001002 ;
+    rdfs:label "the matwerk project" ;
+    obo:RO_0000057 ex:nfdi_matwerk ;
+    obo:BFO_0000055 ex:nfdi_matwerk_role_in_the_matwerk_project ;
+    obo:RO_0002234 ex:nfdi_matwerk_ontology .
+
+ex:nfdi_matwerk a owl:NamedIndividual , obo:BFO_0000004 ;
+    rdfs:label "NFDI-MatWerk" ;
+    obo:BFO_0000196 ex:nfdi_matwerk_role_in_the_matwerk_project .
+
+ex:nfdi_matwerk_role_in_the_matwerk_project a owl:NamedIndividual , obo:BFO_0000023 ;
+    rdfs:label "role of NFDI-MatWerk in the matwerk project" .
+
+ex:nfdi_matwerk_ontology a owl:NamedIndividual , obo:IAO_0000030 ;
+    rdfs:label "NFDI Matwerk Ontology (mwo) 3.0.2" ;
+    mwo:MWO_0001028 ex:nfdi_matwerk .

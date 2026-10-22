@@ -84,6 +84,19 @@ extra_css:
   - assets/landing.css
   - assets/pattern-finder.css
 
+# Opens every pattern graph at level of detail 3. See docs/assets/pattern-lod.js for why a
+# script and not a fence option.
+#
+# IT IS LISTED HERE RATHER THAN EMITTED AS A <script> TAG ON EACH PATTERN PAGE, which is how it
+# was written first and which could never have worked: use_directory_urls defaults to true, so a
+# pattern page is served at patterns/<id>/index.html and a hand-written src="../assets/..."
+# resolves to patterns/assets/... - a 404 on all 163 pages. mkdocs rewrites relative links in
+# Markdown, not src attributes in raw HTML. Listed here, mkdocs computes the prefix per page.
+# It loads on every page and does nothing where there is no graph: it only registers a `load`
+# handler, which is also why it needs no `defer`.
+extra_javascript:
+  - assets/pattern-lod.js
+
 markdown_extensions:
   - admonition
   # Makes `markdown` on a raw HTML block mean something. The landing page lays its hero,
@@ -126,6 +139,7 @@ nav:
   - Using it:
       - Getting started: getting-started.md
       - Pattern library: patterns/index.md
+      - 'Patterns: graphs and examples': pattern-examples.md
       - Working with ODK: odk-workflow.md
       - Collaboration: collaboration.md
       - Testing collaboration locally: testing-collaboration-locally.md

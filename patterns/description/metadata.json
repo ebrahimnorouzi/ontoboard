@@ -9,6 +9,6 @@
   "domain": "general",
   "scenarios": "A project plan describes the tasks and timeline. A medical diagnosis describes a patient condition.",
   "source": "https://ontologydesignpatterns.org/wiki/Submissions:Description",
-  "class_count": 3,
-  "property_count": 4
+  "class_count": 2,
+  "property_count": 2
 }

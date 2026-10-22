@@ -9,6 +9,6 @@
   "pattern_iri": "http://w3id.org/daselab/onto/spatiotemporalextent",
   "source": "https://ontologydesignpatterns.org/wiki/Submissions:SpatioTemporalExtent",
   "references": "https://ontologydesignpatterns.org/wiki/Submissions:SpatioTemporalExtent",
-  "class_count": 2,
+  "class_count": 3,
   "property_count": 2
 }

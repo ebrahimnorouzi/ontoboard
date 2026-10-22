@@ -1,0 +1,53 @@
+# Two resources of the MatWerk knowledge graph described the way the figure describes any resource: whatever names, explains or locates them hangs off obo:IAO_0000235 (denoted by), and a document has parts.
+# Calphy, a software, has a title, a short description, a version number, a website, a repository and a publication whose author list Calphy is also denoted by; the Dislocation Ontology (DISO) shows a title with its abbreviation.
+# Calphy's name, description and publication, the authors, and DISO's name, repository and documentation nodes are knowledge-graph rows; the other nodes are labelled by what they are of.
+
+@prefix obo: <http://purl.obolibrary.org/obo/> .
+@prefix ontology: <https://nfdi.fiz-karlsruhe.de/ontology/> .
+@prefix ex: <https://w3id.org/ontoboard/example/mwo-resource-description#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+ex:calphy a owl:NamedIndividual , obo:IAO_0000010 ;
+    rdfs:label "Calphy" ;
+    obo:IAO_0000235 ex:calphy_title , ex:calphy_short_description , ex:calphy_version_number ,
+        ex:calphy_website , ex:calphy_repository , ex:calphy_publication , ex:calphy_authors .
+
+ex:calphy_title a owl:NamedIndividual , ontology:NFDI_0001019 ;
+    rdfs:label "Calphy" .
+
+ex:calphy_short_description a owl:NamedIndividual , ontology:NFDI_0001018 ;
+    rdfs:label "Python library and command line tool for calculation of free energies" .
+
+ex:calphy_version_number a owl:NamedIndividual , obo:IAO_0000129 ;
+    rdfs:label "version number of Calphy" .
+
+ex:calphy_website a owl:NamedIndividual , ontology:NFDI_0000223 ;
+    rdfs:label "website of Calphy" .
+
+ex:calphy_repository a owl:NamedIndividual , ontology:NFDI_0001210 ;
+    rdfs:label "repository of Calphy" .
+
+ex:calphy_publication a owl:NamedIndividual , obo:IAO_0000310 ;
+    rdfs:label "Automated free-energy calculation from atomistic simulations" ;
+    obo:BFO_0000051 ex:calphy_authors .
+
+ex:calphy_authors a owl:NamedIndividual , ontology:NFDI_0001029 ;
+    rdfs:label "Sarath Menon, Yury Lysogorskiy, Jutta Rogal, Ralf Drautz" .
+
+ex:diso a owl:NamedIndividual , obo:IAO_0000030 ;
+    rdfs:label "Dislocation Ontology (DISO)" ;
+    obo:IAO_0000235 ex:diso_title , ex:diso_repository , ex:diso_documentation .
+
+ex:diso_title a owl:NamedIndividual , ontology:NFDI_0001019 ;
+    rdfs:label "Dislocation Ontology" ;
+    obo:IAO_0000235 ex:diso_abbreviation .
+
+ex:diso_abbreviation a owl:NamedIndividual , obo:IAO_0000605 ;
+    rdfs:label "DISO" .
+
+ex:diso_repository a owl:NamedIndividual , ontology:NFDI_0000123 ;
+    rdfs:label "repository of Dislocation Ontology (DISO)" .
+
+ex:diso_documentation a owl:NamedIndividual , ontology:NFDI_0000223 ;
+    rdfs:label "documentation of Dislocation Ontology (DISO)" .

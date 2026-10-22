@@ -10,5 +10,5 @@
   "scenarios": "A sensor measures temperature in a room. A biologist observes species abundance in a habitat.",
   "source": "https://ontologydesignpatterns.org/wiki/Submissions:Observation",
   "class_count": 4,
-  "property_count": 4
+  "property_count": 3
 }

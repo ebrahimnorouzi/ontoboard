@@ -1,0 +1,30 @@
+# Behavioral property: the yield stress of tensile specimen TS-0417-A1 shows itself only under load. It is a
+# characteristic of the steel specimen, realized in the tensile test, and given its value by a scalar value
+# specification (a number and a unit). The identifiers and numbers are invented; the classes and properties are the pattern's.
+
+@prefix co: <https://w3id.org/pmd/co/> .
+@prefix obo: <http://purl.obolibrary.org/obo/> .
+@prefix ex: <https://w3id.org/ontoboard/example/pmdco-behavioral-property#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+ex:TensileSpecimen_TS0417_A1 a owl:NamedIndividual , co:PMD_0020096 ;
+    rdfs:label "tensile specimen TS-0417-A1, steel S355J2 of heat H-45812, 10 mm round bar" ;
+    obo:RO_0000053 ex:YieldStress_TS0417_A1 .
+
+ex:YieldStress_TS0417_A1 a owl:NamedIndividual , co:PMD_0080171 ;
+    rdfs:label "yield stress of specimen TS-0417-A1" ;
+    co:PMD_0000077 ex:YieldStressValue_TS0417_A1 ;
+    obo:BFO_0000054 ex:TensileTest_TT0417 .
+
+ex:YieldStressValue_TS0417_A1 a owl:NamedIndividual , obo:OBI_0001931 ;
+    rdfs:label "398 MPa (upper yield point ReH)" ;
+    obo:OBI_0001937 398.0 ;
+    obo:IAO_0000039 ex:MegaPascal .
+
+ex:TensileTest_TT0417 a owl:NamedIndividual , co:PMD_0000522 ;
+    rdfs:label "tensile test TT-0417 on specimen TS-0417-A1 (ISO 6892-1, strain rate 0.00025 1/s)" .
+
+ex:MegaPascal a owl:NamedIndividual ;
+    rdfs:label "megapascal" ;
+    rdfs:comment "the Units Ontology has pascal (UO_0000110) but no megapascal; QUDT has unit:MegaPA" .

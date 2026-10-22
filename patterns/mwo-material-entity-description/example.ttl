@@ -1,0 +1,48 @@
+# The instrument Procon CT-alpha of the MatWerk knowledge graph (an X-ray micro computed tomography device made by ProCon X-ray), described from the material entity outward: it takes part
+# in its manufacturing process, is the output of a project, is located in a place, has a part, bears a function and a role, and is denoted by an identifier, a description and a specification datum.
+# The device's name, its description (also used as its function) and its maker are knowledge-graph data; every other node is labelled by what it is of, as that graph labels its value nodes.
+
+@prefix obo: <http://purl.obolibrary.org/obo/> .
+@prefix ontology: <https://nfdi.fiz-karlsruhe.de/ontology/> .
+@prefix mwo: <http://purls.helmholtz-metadaten.de/mwo/> .
+@prefix pmdco: <https://w3id.org/pmd/co/> .
+@prefix ex: <https://w3id.org/ontoboard/example/mwo-material-entity-description#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+ex:procon_ct_alpha a owl:NamedIndividual , pmdco:PMD_0000602 ;
+    rdfs:label "Procon CT-alpha" ;
+    obo:RO_0000056 ex:manufacturing_of_the_procon_ct_alpha ;
+    obo:RO_0002353 ex:project_of_the_procon_ct_alpha ;
+    obo:RO_0001025 ex:place_of_the_procon_ct_alpha ;
+    obo:BFO_0000051 ex:x_ray_source_of_the_procon_ct_alpha ;
+    obo:BFO_0000196 ex:micro_ct_function_of_the_procon_ct_alpha , ex:instrument_role_of_the_procon_ct_alpha ;
+    obo:IAO_0000235 ex:model_number_of_the_procon_ct_alpha , ex:description_of_the_procon_ct_alpha ,
+        ex:specification_datum_of_the_procon_ct_alpha .
+
+ex:manufacturing_of_the_procon_ct_alpha a owl:NamedIndividual , obo:BFO_0000015 ;
+    rdfs:label "manufacturing of the Procon CT-alpha by ProCon X-ray" .
+
+ex:project_of_the_procon_ct_alpha a owl:NamedIndividual , ontology:NFDI_0000002 ;
+    rdfs:label "project of the Procon CT-alpha" .
+
+ex:place_of_the_procon_ct_alpha a owl:NamedIndividual , ontology:NFDI_0000005 ;
+    rdfs:label "place of the Procon CT-alpha" .
+
+ex:x_ray_source_of_the_procon_ct_alpha a owl:NamedIndividual , obo:BFO_0000040 ;
+    rdfs:label "X-ray source of the Procon CT-alpha" .
+
+ex:micro_ct_function_of_the_procon_ct_alpha a owl:NamedIndividual , obo:BFO_0000034 ;
+    rdfs:label "X-ray micro computed tomography (micro-CT)" .
+
+ex:instrument_role_of_the_procon_ct_alpha a owl:NamedIndividual , obo:BFO_0000023 ;
+    rdfs:label "instrument role of the Procon CT-alpha" .
+
+ex:model_number_of_the_procon_ct_alpha a owl:NamedIndividual , mwo:MWO_0001016 ;
+    rdfs:label "model number of the Procon CT-alpha" .
+
+ex:description_of_the_procon_ct_alpha a owl:NamedIndividual , obo:IAO_0000030 ;
+    rdfs:label "X-ray micro computed tomography (micro-CT)" .
+
+ex:specification_datum_of_the_procon_ct_alpha a owl:NamedIndividual , pmdco:PMD_0060009 ;
+    rdfs:label "specification datum of the Procon CT-alpha" .

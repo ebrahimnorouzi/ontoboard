@@ -1,0 +1,46 @@
+# NFDI-MatWerk, FIZ Karlsruhe, a researcher and a contact point as agents: each carries only its identity and label.
+# Every descriptive value (written name, description, ROR or ORCID identifier) is its own information content entity, reached by denoted by.
+# FIZ Karlsruhe, its ROR record and the DFG project number are real; Josiah Carberry is ORCID's documentation sample researcher.
+
+@prefix obo: <http://purl.obolibrary.org/obo/> .
+@prefix ontology: <https://nfdi.fiz-karlsruhe.de/ontology/> .
+@prefix ex: <https://w3id.org/ontoboard/example/nfdi-agent-value-node#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+ex:nfdi_matwerk a owl:NamedIndividual , ontology:NFDI_0000006 ;
+    rdfs:label "NFDI-MatWerk consortium" ;
+    obo:IAO_0000235 ex:nfdi_matwerk_name , ex:nfdi_matwerk_description .
+
+ex:nfdi_matwerk_name a owl:NamedIndividual , obo:IAO_0000030 ;
+    rdfs:label "NFDI-MatWerk" .
+
+ex:nfdi_matwerk_description a owl:NamedIndividual , obo:IAO_0000030 ;
+    rdfs:label "National research data infrastructure for materials science and materials engineering (DFG project number 460247524)" .
+
+ex:fiz_karlsruhe a owl:NamedIndividual , obo:OBI_0000245 ;
+    rdfs:label "FIZ Karlsruhe" ;
+    obo:IAO_0000235 ex:fiz_karlsruhe_name , ex:fiz_karlsruhe_ror .
+
+ex:fiz_karlsruhe_name a owl:NamedIndividual , obo:IAO_0000030 ;
+    rdfs:label "FIZ Karlsruhe - Leibniz Institute for Information Infrastructure" .
+
+ex:fiz_karlsruhe_ror a owl:NamedIndividual , obo:IAO_0000030 ;
+    rdfs:label "https://ror.org/0387prb75" .
+
+ex:josiah_carberry a owl:NamedIndividual , ontology:NFDI_0000004 ;
+    rdfs:label "Josiah Carberry" ;
+    obo:IAO_0000235 ex:josiah_carberry_name , ex:josiah_carberry_orcid .
+
+ex:josiah_carberry_name a owl:NamedIndividual , obo:IAO_0000030 ;
+    rdfs:label "Josiah Carberry" .
+
+ex:josiah_carberry_orcid a owl:NamedIndividual , obo:IAO_0000030 ;
+    rdfs:label "https://orcid.org/0000-0002-1825-0097" .
+
+ex:kg_contact_point a owl:NamedIndividual , ontology:NFDI_0000102 ;
+    rdfs:label "contact point of the MatWerk Knowledge Graph" ;
+    obo:IAO_0000235 ex:kg_contact_point_name .
+
+ex:kg_contact_point_name a owl:NamedIndividual , obo:IAO_0000030 ;
+    rdfs:label "MatWerk Knowledge Graph contact point" .

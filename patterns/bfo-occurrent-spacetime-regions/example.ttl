@@ -1,0 +1,45 @@
+# Worked example for bfo-occurrent-spacetime-regions: the tensile test TT-017 seen through its regions. The test occupies
+# a spatiotemporal region that projects onto a temporal interval; the process boundaries that start and end the test
+# occupy the interval's first and last instants, and the specimen exists at the interval.
+
+@prefix obo: <http://purl.obolibrary.org/obo/> .
+@prefix ex: <https://w3id.org/ontoboard/example/bfo-occurrent-spacetime-regions#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+ex:SpecimenS17 a owl:NamedIndividual , obo:BFO_0000001 ;
+    rdfs:label "aluminium alloy specimen S-17" ;
+    rdfs:comment "A material entity. It is typed only as BFO entity, the class this pattern declares as the domain of exists at." ;
+    obo:BFO_0000108 ex:TestInterval .                    # exists at
+
+ex:TensileTest a owl:NamedIndividual , obo:BFO_0000015 ;
+    rdfs:label "tensile test TT-017 of specimen S-17" ;
+    obo:BFO_0000200 ex:TestSpacetimeRegion ;             # occupies spatiotemporal region
+    obo:BFO_0000199 ex:TestInterval .                    # occupies temporal region
+
+ex:TestSpacetimeRegion a owl:NamedIndividual , obo:BFO_0000011 ;
+    rdfs:label "spatiotemporal region occupied by TT-017" ;
+    obo:BFO_0000153 ex:TestInterval .                    # temporally projects onto
+
+ex:TestInterval a owl:NamedIndividual , obo:BFO_0000202 ;
+    rdfs:label "2024-03-12 09:00:00 to 09:07:42" ;
+    rdfs:comment "The temporal region of the test. Occupying it directly (occupies temporal region) is the shortcut for occupying a spatiotemporal region that projects onto it." .
+
+ex:LoadingStartInstant a owl:NamedIndividual , obo:BFO_0000203 ;
+    rdfs:label "instant 2024-03-12 09:00:00" ;
+    obo:BFO_0000221 ex:TestInterval .                    # first instant of
+
+ex:FractureInstant a owl:NamedIndividual , obo:BFO_0000203 ;
+    rdfs:label "instant 2024-03-12 09:07:42" ;
+    obo:BFO_0000223 ex:TestInterval .                    # last instant of
+
+ex:LoadingStart a owl:NamedIndividual , obo:BFO_0000035 ;
+    rdfs:label "start of loading in TT-017" ;
+    obo:BFO_0000199 ex:LoadingStartInstant .             # occupies temporal region
+
+ex:Fracture a owl:NamedIndividual , obo:BFO_0000035 ;
+    rdfs:label "fracture of specimen S-17" ;
+    obo:BFO_0000199 ex:FractureInstant .                 # occupies temporal region
+
+# One direction of each inverse pair is asserted (first instant of, not has first instant; last instant of, not has last
+# instant); a reasoner adds the other. The test and the two boundaries are tied together only through their temporal regions.

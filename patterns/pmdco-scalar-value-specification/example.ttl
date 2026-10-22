@@ -1,0 +1,22 @@
+# Scalar value specification: a property (here the mean grain diameter of specimen A-13) is given its value by a scalar
+# value specification, which carries one number and one measurement unit label. The unit is an individual typed as a
+# measurement unit label; in practice it would be a Units Ontology or QUDT unit. Invented specimen and value.
+
+@prefix co: <https://w3id.org/pmd/co/> .
+@prefix obo: <http://purl.obolibrary.org/obo/> .
+@prefix ex: <https://w3id.org/ontoboard/example/pmdco-scalar-value-specification#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+ex:GrainDiameter_A13 a owl:NamedIndividual , obo:BFO_0000020 ;
+    rdfs:label "mean ferrite grain diameter of specimen A-13 (S355J2, normalised)" ;
+    co:PMD_0000077 ex:GrainDiameterValue_A13 .
+
+ex:GrainDiameterValue_A13 a owl:NamedIndividual , obo:OBI_0001931 ;
+    rdfs:label "23.4 µm (linear intercept method, ISO 643)" ;
+    obo:OBI_0001937 23.4 ;
+    obo:IAO_0000039 ex:Micrometre .
+
+ex:Micrometre a owl:NamedIndividual , obo:IAO_0000003 ;
+    rdfs:label "micrometre" ;
+    rdfs:comment "stands for UO_0000017 in the Units Ontology" .

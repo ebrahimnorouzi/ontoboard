@@ -1,0 +1,37 @@
+# Worked example for bfo-process-site-and-history: stress-relief annealing of specimen S-17 in furnace F-2. The annealing,
+# its end boundary and a process inside the specimen occur in a site (the furnace chamber) and in a material entity (the
+# specimen), and the specimen has a history.
+
+@prefix obo: <http://purl.obolibrary.org/obo/> .
+@prefix ex: <https://w3id.org/ontoboard/example/bfo-process-site-and-history#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+ex:SpecimenS17 a owl:NamedIndividual , obo:BFO_0000040 ;
+    rdfs:label "aluminium alloy specimen S-17" ;
+    obo:BFO_0000185 ex:HistoryOfS17 .                    # has history
+
+ex:HistoryOfS17 a owl:NamedIndividual , obo:BFO_0000182 ;
+    rdfs:label "life history of specimen S-17" ;
+    rdfs:comment "A history is a process: the totality of what happens in the region the specimen's matter occupies, for as long as the specimen exists. Each material entity has exactly one." .
+
+ex:FurnaceChamber a owl:NamedIndividual , obo:BFO_0000029 ;
+    rdfs:label "chamber of annealing furnace F-2" ;
+    rdfs:comment "A site: the cavity inside the furnace, bounded by the furnace walls." .
+
+ex:Annealing a owl:NamedIndividual , obo:BFO_0000015 ;
+    rdfs:label "stress-relief annealing of S-17 in F-2 (2 h at 350 C)" ;
+    obo:BFO_0000066 ex:FurnaceChamber .                  # occurs in
+
+ex:AnnealingEnd a owl:NamedIndividual , obo:BFO_0000035 ;
+    rdfs:label "end of annealing (heating switched off)" ;
+    rdfs:comment "A process boundary can occur in a site just as a process can." ;
+    obo:BFO_0000066 ex:FurnaceChamber .                  # occurs in
+
+ex:StressRelaxation a owl:NamedIndividual , obo:BFO_0000015 ;
+    rdfs:label "relaxation of residual stress inside S-17 during annealing" ;
+    rdfs:comment "Occurs in the specimen, and also in the chamber, because S-17 sits inside the chamber for as long as the relaxation lasts." ;
+    obo:BFO_0000066 ex:SpecimenS17 , ex:FurnaceChamber . # occurs in
+
+# One direction of each inverse pair is asserted (occurs in, not environs; has history, not history of); a reasoner adds the
+# other, so the chamber environs all three of them and the history is the history of S-17.

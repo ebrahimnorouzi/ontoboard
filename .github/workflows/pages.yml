@@ -24,6 +24,11 @@ on:
       # in the plugin, which is the one thing a published catalogue must not do.
       - 'patterns/**'
       - 'tools/generate-pattern-pages.py'
+      - 'tools/make-pattern-examples.py'
+      - 'tools/check-pattern-examples.py'
+      - 'tools/check-pattern-pages.py'
+      - 'tools/check-pattern-lod.js'
+      - 'docs/assets/pattern-lod.js'
   workflow_dispatch:
 
 permissions:
@@ -58,6 +63,22 @@ jobs:
       # 159 pattern pages and 159 Turtle copies, from patterns/index.tsv. Generated rather than
       # committed: 159 Markdown files in git would rot the moment somebody edited one by hand, and
       # the index they come from is itself generated and checked by PatternIndexTest.
+      # Every example is instantiated from its pattern's own rdfs:domain and rdfs:range, so a
+      # pattern whose property is declared backwards produces an example that teaches it
+      # backwards. This is the gate: it parses each example, checks that every term it uses is
+      # one the pattern declares or imports, and checks every domain and range. It also reports
+      # the patterns too thin for a derived example, which is a defect in the pattern and does
+      # not fail the build.
+      - name: The pattern examples must match their patterns
+        run: python tools/check-pattern-examples.py
+
+      # The graphs open at level of detail 3, and ontoink ignores a request to set it on a graph
+      # that has not mounted yet WITHOUT saying so, so "the script calls the API" is not evidence
+      # that the API did anything. This runs the script against a stub that reproduces that guard.
+      # Node is on the runner already; there is nothing to install.
+      - name: The level-of-detail script sets the level
+        run: node tools/check-pattern-lod.js
+
       - name: Generate the pattern pages
         run: python tools/generate-pattern-pages.py
 
@@ -111,6 +132,16 @@ jobs:
             exit 1
           fi
           echo "$(find site/patterns -name index.html | wc -l) pattern pages, none with a render error"
+
+      # The pages promise three things that are invisible when they break: graphs that open at
+      # level of detail 3, a pattern and an example to download, and a rendered graph rather than
+      # a traceback. The first was shipped broken once - the script was emitted as a per-page
+      # <script src="../assets/..."> and 404s under use_directory_urls, so every graph would have
+      # opened at level 6 under a page that said it opened at 3 - and nothing in this workflow
+      # could have noticed. This resolves every script and every .ttl link the built pages ask
+      # for, against the files mkdocs actually wrote.
+      - name: The built pattern pages deliver what they promise
+        run: python tools/check-pattern-pages.py --site site
 
       # Said out loud because it is large and the reason is not obvious: ontoink inlines its own
       # ~650 KB of JS and CSS into every page carrying a graph and offers no way to externalise it,

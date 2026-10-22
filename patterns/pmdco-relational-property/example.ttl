@@ -1,0 +1,25 @@
+# Relational property: the mass fraction of iron in steel sheet SH-0417 does not belong to the iron alone or to the
+# sheet alone, it holds between them. A concentration value specification gives it a value in mass-%.
+# The identifiers and the value are invented; the classes and properties are the pattern's.
+
+@prefix co: <https://w3id.org/pmd/co/> .
+@prefix obo: <http://purl.obolibrary.org/obo/> .
+@prefix ex: <https://w3id.org/ontoboard/example/pmdco-relational-property#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+ex:Sheet_SH0417 a owl:NamedIndividual , obo:BFO_0000030 ;
+    rdfs:label "steel sheet SH-0417 (S355J2, heat H-45812, 3 mm)" .
+
+ex:IronPortion_SH0417 a owl:NamedIndividual , co:PMD_0020026 ;
+    rdfs:label "the iron in sheet SH-0417" .
+
+ex:IronMassFraction_SH0417 a owl:NamedIndividual , co:PMD_0020102 ;
+    rdfs:label "mass fraction of iron in sheet SH-0417" ;
+    co:PMD_0025999 ex:IronPortion_SH0417 , ex:Sheet_SH0417 .
+
+ex:IronFractionValue_SH0417 a owl:NamedIndividual , co:PMD_0025997 ;
+    rdfs:label "97.9 mass-% (optical emission spectrometry, mean of five sparks)" ;
+    obo:OBI_0001937 97.9 ;
+    obo:IAO_0000039 obo:UO_0000163 ;
+    obo:OBI_0001927 ex:IronMassFraction_SH0417 .

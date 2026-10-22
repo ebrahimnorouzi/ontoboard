@@ -1,0 +1,49 @@
+# pyiron_atomistics, an integrated development environment for atomistic simulation, described as the MatWerk Knowledge Graph describes software.
+# Licence, programming language, subject area and technology use has license, has programming language, has subject area and has technology; the rest denoted by.
+# Version 0.8.12, the BSD-3-Clause licence and the repository were checked on GitHub on 2026-10-21.
+
+@prefix obo: <http://purl.obolibrary.org/obo/> .
+@prefix ontology: <https://nfdi.fiz-karlsruhe.de/ontology/> .
+@prefix swo: <http://www.ebi.ac.uk/swo/> .
+@prefix ex: <https://w3id.org/ontoboard/example/nfdi-software-product#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+ex:pyiron_atomistics a owl:NamedIndividual , obo:IAO_0000010 ;
+    rdfs:label "pyiron_atomistics" ;
+    obo:IAO_0000235 ex:pyiron_title , ex:pyiron_description , ex:pyiron_version , ex:pyiron_repository , ex:pyiron_operating_system ;
+    ontology:NFDI_0000142 ex:pyiron_licence ;
+    ontology:NFDI_0000187 ex:pyiron_language ;
+    ontology:NFDI_0000211 ex:materials_science ;
+    ontology:NFDI_0000216 ex:atomistic_simulation ;
+    ontology:NFDI_0000226 ex:pyiron_documentation .
+
+ex:pyiron_title a owl:NamedIndividual , ontology:NFDI_0001000 ;
+    rdfs:label "pyiron_atomistics" .
+
+ex:pyiron_description a owl:NamedIndividual , ontology:NFDI_0001018 ;
+    rdfs:label "An integrated development environment (IDE) for atomistic simulation in computational materials science" .
+
+ex:pyiron_version a owl:NamedIndividual , obo:IAO_0000129 ;
+    rdfs:label "0.8.12" .
+
+ex:pyiron_repository a owl:NamedIndividual , ontology:NFDI_0001210 ;
+    rdfs:label "https://github.com/pyiron/pyiron_atomistics" .
+
+ex:pyiron_licence a owl:NamedIndividual , swo:SWO_0000002 ;
+    rdfs:label "BSD 3-Clause License" .
+
+ex:pyiron_language a owl:NamedIndividual , obo:IAO_0000025 ;
+    rdfs:label "Python" .
+
+ex:pyiron_operating_system a owl:NamedIndividual , ontology:NFDI_0001047 ;
+    rdfs:label "Linux" .
+
+ex:materials_science a owl:NamedIndividual , ontology:NFDI_0000100 ;
+    rdfs:label "materials science" .
+
+ex:atomistic_simulation a owl:NamedIndividual , ontology:NFDI_0000215 ;
+    rdfs:label "atomistic simulation" .
+
+ex:pyiron_documentation a owl:NamedIndividual , ontology:NFDI_0000223 ;
+    rdfs:label "https://pyiron.readthedocs.io" .

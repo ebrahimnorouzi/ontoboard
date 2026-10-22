@@ -1,0 +1,23 @@
+# The lattice parameter of Nickel, a material of the MatWerk knowledge graph. The quality is measured as a measurement datum; the datum carries the number
+# (nfdi:NFDI_0001007, a literal) and points to its unit, which is an individual of measurement unit label, not a literal. The unit label has its own value, the symbol.
+# The knowledge graph's materials tab names the material 'Nickel' but the sources used here record no measurement of it, so the number is the textbook value for face-centred cubic nickel at room temperature.
+
+@prefix obo: <http://purl.obolibrary.org/obo/> .
+@prefix ontology: <https://nfdi.fiz-karlsruhe.de/ontology/> .
+@prefix ex: <https://w3id.org/ontoboard/example/mwo-value-specification#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+ex:lattice_parameter_of_nickel a owl:NamedIndividual , obo:BFO_0000019 ;
+    rdfs:label "lattice parameter of Nickel" ;
+    obo:IAO_0000417 ex:lattice_parameter_of_nickel_measurement .
+
+ex:lattice_parameter_of_nickel_measurement a owl:NamedIndividual , obo:IAO_0000109 ;
+    rdfs:label "measurement of the lattice parameter of Nickel" ;
+    ontology:NFDI_0001007 "0.3524"^^xsd:double ;
+    obo:IAO_0000039 ex:nanometre .
+
+ex:nanometre a owl:NamedIndividual , obo:IAO_0000003 ;
+    rdfs:label "nanometre" ;
+    ontology:NFDI_0001007 "nm" .
