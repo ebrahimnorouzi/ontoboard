@@ -1,0 +1,73 @@
+OntoBoard 1.122.1 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-10-22  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 9/9  test 11/11
+  2026-10-22  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 9/9  test 11/11
+
+WHY THERE IS NO 1.122.0 RELEASE
+
+The same shape as 1.119.0, and for once not our fault. 1.122.0 was committed, pushed and tagged,
+and both the build and the release workflow failed on it - the release workflow runs
+`mvn -B clean test` before it packages, deliberately, because the jar a user downloads has to be
+the jar that was tested.
+
+The failing test was PatternIndexTest, and nothing in the repository had changed to cause it.
+It rebuilds patterns/index.tsv by loading every pattern WITH its imports, and
+patterns/smarthome-featureofinterest/pattern.owl imports
+http://ecareathome-ontology.mpi.aass.oru.se/patterns/SmartHome_Property.owl. That host resolves
+to 130.243.109.196 and stopped answering between 01:25 and 10:03 on 2026-10-22: HTTP 000 after
+8.3 seconds with curl, "Connection timed out" from the OWL API. Three ssn# terms then vanish from
+the rebuild and the shipped index no longer matches. CI had passed the same test at 01:25 that
+morning. Checked against HEAD from `git archive` in a clean room, where it fails identically, so
+it is not 1.122.0's canvas work.
+
+1.122.1 is 1.122.0 plus the one test file. No shipped code differs between them.
+
+WHY THE INDEX WAS NOT SIMPLY REGENERATED
+
+Measured over all 163 patterns, each loaded twice - once with fetches allowed, once with every
+fetch refused through a dead proxy:
+
+  patterns compared                            163
+  whose signature depends on a live fetch       97
+  affordance, with imports resolving           237 terms
+  affordance, offline                           24 terms
+
+So an offline rebuild is not a different answer to the same question; it is an answer to a
+different one, and writing it into index.tsv would shrink what the library says 97 patterns
+contain. The test now compares the rows it can and names the rows it cannot: today 158 of 163
+compared exactly and five - all the smarthome ones - reported as uncompared because their import
+did not load. A pattern missing from the index or new to it still fails whatever the network did,
+and the tolerated count is printed, so a build that quietly tolerated half the library would be
+visible rather than green.
+
+PROVED NOT TO BE VACUOUS. With one cell of the actingfor row altered, the test fails with "stale
+for these, and their imports all loaded, so the network is not the reason". Without the change:
+14 run, 1 failed. With it: 14 run, 0 failed, 5 rows named.
+
+LEFT FOR A MAINTAINER, AND WRITTEN INTO THE JAVADOC SO IT IS NOT FORGOTTEN: the shipped index's
+content depends on thirteen websites. PatternLibrary already refuses to depend on them at
+runtime, for this exact reason - "Resolving them would make opening a pattern depend on thirteen
+websites". Making the index hermetic means either vendoring those ontologies into the repository
+or rebuilding it without imports, and the second rewrites 97 entries, one of them by a factor of
+ten. That is a decision about what the library claims a pattern contains, not a test's to take.
+
+EVERYTHING ELSE IN THIS RELEASE IS 1.122.0'S
+
+See protege-plugin/tools/smoke-receipt/1.122.0.txt for the canvas work: a board that can be
+dragged, a selection that survives a pan and follows a Ctrl-click, one hop defined as adjacency
+in the graph the canvas draws, the named half of a complex superclass finally drawn, and the
+axioms of the selected term in the left column. That receipt also records the three changes that
+were photographed in a running Protege rather than only logged.
+
+WHAT IS STILL NOT TRUE
+
+  - Unchanged from 1.122.0: the 34% of MWO's restrictions that need a node for an anonymous class
+    expression are still undrawn; disjointness, inverse pairs and property characteristics are
+    still hover text; no Zenodo DOI, no w3id PURL, not in Protege's plugin registry; the paper
+    audited and not rewritten; .xlsx read-only; Koncludix unverified end to end; 39 thin patterns;
+    no contact address or ORCID in CITATION.cff.
+  - New, and not fixed: the index's dependence on thirteen websites, described above.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
