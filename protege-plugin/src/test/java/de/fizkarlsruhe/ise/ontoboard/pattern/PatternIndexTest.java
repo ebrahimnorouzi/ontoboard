@@ -37,6 +37,26 @@ class PatternIndexTest {
      * <p>If this fails, the fix is to regenerate: the message prints what the index should
      * contain. It is not a formatting check - it loads all 123 ontologies - so it is the
      * slowest test here and the only one that can catch a pattern going missing.
+     *
+     * <p><b>A line whose pattern could not fetch its imports is reported and not failed.</b>
+     * That is not a softened assertion, it is the only one that can be made: 97 of the 163
+     * patterns have a signature that depends on a live fetch - {@code affordance} is 237 terms
+     * when its imports resolve and 24 when they do not - so for those, a rebuild on a machine
+     * that cannot reach the web is not a different answer to the same question, it is an answer
+     * to a different one. This failed on main on 2026-10-22 because
+     * {@code ecareathome-ontology.mpi.aass.oru.se} stopped answering between 01:25 and 10:03,
+     * having answered for every build before it, and nothing in the repository had changed.
+     *
+     * <p>The check stays sharp where it can be: every pattern whose imports <em>did</em> load is
+     * compared exactly, a pattern that is missing from the index or new to it fails whatever the
+     * network did, and the count of tolerated lines is printed so a build that quietly tolerates
+     * half the library is visible rather than green.
+     *
+     * <p>The deeper problem is that the shipped index's content depends on thirteen websites,
+     * which {@code PatternLibrary} already refuses to depend on at runtime for the same reason.
+     * Fixing that means either vendoring those ontologies or rebuilding the index without
+     * imports, and the second changes what the library says a pattern contains - 97 entries,
+     * {@code affordance} by a factor of ten - so it is a maintainer's decision and not a test's.
      */
     @Test
     void theShippedIndexMatchesTheDirectories() throws Exception {
@@ -46,12 +66,89 @@ class PatternIndexTest {
         String rebuilt = PatternIndex.buildFrom(patterns);
         String shipped = new String(Files.readAllBytes(new File(patterns, "index.tsv").toPath()),
                 StandardCharsets.UTF_8).replace("\r\n", "\n");
-
-        if (!shipped.equals(rebuilt)) {
-            assertEquals(firstDifference(shipped, rebuilt), "",
-                    "patterns/index.tsv is stale. Regenerate it with PatternIndex.buildFrom.");
+        if (shipped.equals(rebuilt)) {
+            return;
         }
-        assertEquals(shipped, rebuilt);
+
+        Map<String, String> shippedRows = rowsById(shipped);
+        Map<String, String> rebuiltRows = rowsById(rebuilt);
+        assertEquals(shippedRows.keySet().toString(), rebuiltRows.keySet().toString(),
+                "patterns/index.tsv lists different patterns than the directories do. That is "
+                        + "staleness, not a network problem - regenerate it with "
+                        + "PatternIndex.buildFrom.");
+
+        List<String> stale = new ArrayList<String>();
+        List<String> unreachable = new ArrayList<String>();
+        for (Map.Entry<String, String> row : shippedRows.entrySet()) {
+            if (row.getValue().equals(rebuiltRows.get(row.getKey()))) {
+                continue;
+            }
+            if (importsThatDidNotLoad(new File(patterns, row.getKey())).isEmpty()) {
+                stale.add(row.getKey());
+            } else {
+                unreachable.add(row.getKey());
+            }
+        }
+
+        if (!unreachable.isEmpty()) {
+            System.out.println("PatternIndexTest: " + unreachable.size() + " of "
+                    + shippedRows.size() + " rows were not compared because their pattern's "
+                    + "imports could not be fetched: " + unreachable);
+        }
+        String firstOne = stale.isEmpty() ? ""
+                : firstDifference(shippedRows.get(stale.get(0)), rebuiltRows.get(stale.get(0)));
+        assertEquals("[]", stale.toString(),
+                "patterns/index.tsv is stale for these, and their imports all loaded, so the "
+                        + "network is not the reason. Regenerate it with PatternIndex.buildFrom. "
+                        + firstOne);
+    }
+
+    /** The index, as a map from a pattern id to its whole line. Comments and blanks dropped. */
+    private static Map<String, String> rowsById(String index) {
+        Map<String, String> rows = new LinkedHashMap<String, String>();
+        for (String line : index.split("\n")) {
+            if (line.trim().isEmpty() || line.startsWith("#")) {
+                continue;
+            }
+            int tab = line.indexOf('\t');
+            rows.put(tab < 0 ? line : line.substring(0, tab), line);
+        }
+        return rows;
+    }
+
+    /**
+     * The imports this pattern declares that an OWL API load could not resolve.
+     *
+     * <p>Asked of the file rather than of the network: an import that resolves to a document the
+     * parser rejects is as unusable as one that times out, and both are reasons the signature a
+     * rebuild sees is not the signature the index was built from.
+     */
+    private static List<String> importsThatDidNotLoad(File folder) {
+        List<String> missing = new ArrayList<String>();
+        File owl = new File(folder, "pattern.owl");
+        if (!owl.isFile()) {
+            return missing;
+        }
+        org.semanticweb.owlapi.model.OWLOntologyManager manager =
+                org.semanticweb.owlapi.apibinding.OWLManager.createOWLOntologyManager();
+        try {
+            org.semanticweb.owlapi.model.OWLOntology ontology =
+                    manager.loadOntologyFromOntologyDocument(
+                            new org.semanticweb.owlapi.io.FileDocumentSource(owl),
+                            new org.semanticweb.owlapi.model.OWLOntologyLoaderConfiguration()
+                                    .setMissingImportHandlingStrategy(
+                                            org.semanticweb.owlapi.model
+                                                    .MissingImportHandlingStrategy.SILENT));
+            for (org.semanticweb.owlapi.model.OWLImportsDeclaration declared
+                    : ontology.getImportsDeclarations()) {
+                if (manager.getImportedOntology(declared) == null) {
+                    missing.add(declared.getIRI().toString());
+                }
+            }
+        } catch (Exception couldNotRead) {        // NOPMD - the reason is the answer
+            missing.add(owl.getName() + ": " + couldNotRead.getClass().getSimpleName());
+        }
+        return missing;
     }
 
     /** The library loads what the index describes, out of the built classpath. */
