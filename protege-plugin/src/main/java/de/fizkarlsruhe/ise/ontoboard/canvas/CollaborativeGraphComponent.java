@@ -143,7 +143,19 @@ public final class CollaborativeGraphComponent extends mxGraphComponent {
 
             @Override
             public void mousePressed(java.awt.event.MouseEvent event) {
-                pressedAt = inThisComponent(event);
+                // ONLY WHEN THIS PRESS ACTUALLY STARTED A PAN. The first version recorded every
+                // press and then consumed any release that had travelled, which ate the release
+                // of a NODE DRAG and of a RUBBERBAND - and mxGraphHandler.mouseReleased, which
+                // is what applies a move and a marquee selection, is guarded by !isConsumed. So
+                // a dragged node snapped back and a dragged selection never took: "I cannot move
+                // the items" and "select is not working", both from one missing condition.
+                //
+                // isPanningEvent is the library's own predicate and already answers false over a
+                // cell and false for a marquee, so it is exactly the set of gestures whose
+                // release this handler has any business consuming.
+                pressedAt = CollaborativeGraphComponent.this.isPanningEvent(event)
+                        ? inThisComponent(event)
+                        : null;
                 super.mousePressed(event);
             }
 

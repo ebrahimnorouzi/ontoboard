@@ -66,7 +66,7 @@ public final class PeerCursorLayer {
         try {
             for (PeerCursors.Marker marker : markers) {
                 drawSelection(graphics, graph, marker);
-                drawCursor(graphics, marker, scale);
+                drawCursor(graphics, marker, scale, graph.getView().getTranslate());
             }
         } finally {
             // Restored rather than left behind: the same Graphics goes on to paint the rest of
@@ -102,9 +102,17 @@ public final class PeerCursorLayer {
                 (int) state.getWidth() + 8, (int) state.getHeight() + 8, 12, 12);
     }
 
-    private static void drawCursor(Graphics2D graphics, PeerCursors.Marker marker, double scale) {
-        int x = (int) Math.round(marker.getX() * scale);
-        int y = (int) Math.round(marker.getY() * scale);
+    /**
+     * @param translate the view's own translate, which a board with content above the origin
+     *                  carries since 1.123.1 - a peer's cursor is a board coordinate, and without
+     *                  this it would be drawn where that coordinate used to be
+     */
+    private static void drawCursor(Graphics2D graphics, PeerCursors.Marker marker, double scale,
+            com.mxgraph.util.mxPoint translate) {
+        double shiftX = translate == null ? 0 : translate.getX();
+        double shiftY = translate == null ? 0 : translate.getY();
+        int x = (int) Math.round((marker.getX() + shiftX) * scale);
+        int y = (int) Math.round((marker.getY() + shiftY) * scale);
 
         Polygon pointer = new Polygon();
         pointer.addPoint(x, y);

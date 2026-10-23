@@ -2377,6 +2377,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                 : CanvasZoom.scaleToFit(bounds.getWidth() / zoom, bounds.getHeight() / zoom,
                         window.getWidth(), window.getHeight());
         graphComponent.zoomTo(fitted, false);
+        giveTheBoardRoomToPan(false);
 
         // Then bring the content itself into view: fitting the scale without scrolling leaves a board
         // that starts at x=2000 exactly as invisible as it was, only smaller.
@@ -2498,6 +2499,10 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         final double ratio = target / scale;
 
         graphComponent.zoomTo(target, false);
+        // zoomTo calls scaleAndTranslate(newScale, 0, 0) whenever page view is off, which it
+        // is - so it throws the board's translate away and the content above the origin goes
+        // out of reach again. Measured: (-250,-175) became (0,0) on one zoom.
+        giveTheBoardRoomToPan(false);
         // After the component has finished: zoomTo defers its own scrollbar maintenance to an
         // invokeLater, so a scroll position set synchronously here would simply be overwritten.
         javax.swing.SwingUtilities.invokeLater(new Runnable() {
@@ -5115,6 +5120,14 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
      * is called from {@code doLayout}.
      */
     private void giveTheBoardRoomToPan() {
+        giveTheBoardRoomToPan(true);
+    }
+
+    /**
+     * @param compensateViewport false when the caller sets the scroll position itself, as a zoom
+     *                           does - compensating and then being overruled makes the board jump
+     */
+    private void giveTheBoardRoomToPan(boolean compensateViewport) {
         if (graph == null || graphComponent == null || graphComponent.getViewport() == null) {
             return;
         }
@@ -5125,16 +5138,37 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         // control's preferred size is the content's FAR edge and a negative origin is subtracted
         // from it. Pushing the drawing into positive space is what makes the top of a board
         // reachable at all; see CanvasPan.shiftFor for the measurement.
+        double scale = graph.getView().getScale();
+        com.mxgraph.util.mxPoint was = graph.getView().getTranslate();
         java.awt.Point shift = CanvasPan.shiftFor(
                 content == null ? 0 : content.getX(), content == null ? 0 : content.getY());
-        if (!shift.equals(graphComponent.getGraphControl().getTranslate())) {
-            graphComponent.getGraphControl().setTranslate(shift);
+        // IN BOARD UNITS, because the view translate is applied before the scale.
+        double wantX = was.getX() + (scale > 0 ? shift.x / scale : shift.x);
+        double wantY = was.getY() + (scale > 0 ? shift.y / scale : shift.y);
+        if (shift.x != 0 || shift.y != 0) {
+            // THE VIEW'S TRANSLATE, NOT THE CONTROL'S. 1.123.0 used mxGraphControl.setTranslate,
+            // which moves the pixels and nothing else: measured, with the control translated by
+            // (340,540) a cell painted at (520,670) was still found by getCellAt at (180,130) and
+            // not at all where it was drawn. So every click, drag and marquee landed at the wrong
+            // place on any board with content above the origin - which is "select is not working"
+            // and "I cannot move the items". The view translate is part of the coordinate
+            // transform, so the cell state itself reports the new position and hit testing agrees;
+            // cell geometry is untouched either way.
+            graph.getView().setTranslate(new com.mxgraph.util.mxPoint(wantX, wantY));
+            // And move the viewport by the same amount, so nothing appears to move. Without it
+            // the board drifts: drag a node further above the origin, the shift grows, and the
+            // whole drawing slides under a viewport that stayed where it was.
+            if (compensateViewport) {
+                java.awt.Point where = graphComponent.getViewport().getViewPosition();
+                graphComponent.getViewport().setViewPosition(new java.awt.Point(
+                        Math.max(0, where.x + shift.x), Math.max(0, where.y + shift.y)));
+            }
         }
 
         java.awt.Dimension wanted = CanvasPan.room(
                 (content == null ? 0 : content.getX() + content.getWidth()) + shift.x,
                 (content == null ? 0 : content.getY() + content.getHeight()) + shift.y,
-                visible.width, visible.height, graph.getView().getScale());
+                visible.width, visible.height, scale);
         if (wanted.width <= 0 || wanted.height <= 0) {
             return;
         }

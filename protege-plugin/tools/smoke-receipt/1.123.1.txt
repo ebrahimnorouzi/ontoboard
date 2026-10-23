@@ -1,0 +1,94 @@
+OntoBoard 1.123.1 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-10-24  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 9/9  test 11/11
+  2026-10-24  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 9/9  test 11/11
+
+
+1.123.0 BROKE THE CANVAS, AND THIS IS THE REPAIR
+
+Four symptoms were reported within a day of the release, all from the same two changes:
+
+  "i cannot move the items (classes/properties/instances/..)"
+  "select is not working"
+  "drift in canvas when clicked on sth"
+  "the upper part of canvas is not shown, even when i dragged it"
+
+DEFECT 1 - THE PANNING HANDLER ATE EVERY LONG GESTURE'S RELEASE. It recorded `pressedAt` on
+every press and consumed any release that had travelled further than the tolerance. A node drag
+and a rubberband both travel, and mxGraphHandler.mouseReleased - which is what APPLIES a move and
+a marquee selection - is guarded by !isConsumed. So a dragged node snapped back to where it
+started and a dragged selection selected nothing. Measured before the fix: a node at (100,100)
+dragged by (120,60) ended at (100,100).
+
+The handler now records a press only when isPanningEvent says that press began a pan. That is the
+library's own predicate and already answers false over a cell and false for a marquee, so it is
+exactly the set of gestures whose release this handler has any business consuming.
+
+DEFECT 2 - THE SHIFT MOVED THE PIXELS AND NOT THE HIT TESTING. 1.123.0 brought content above the
+origin back into reach with mxGraphControl.setTranslate. Measured, with the control translated by
+(340,540):
+
+  getCellAt(180,130)   the UNtranslated coordinate     -> the cell
+  getCellAt(520,670)   where the cell is actually drawn -> null
+
+So on any board with content above the origin - the boards that fix existed for - every click,
+drag and marquee landed at the wrong place. mxGraphView's translate is part of the coordinate
+transform instead: the cell state itself reports the new position, hit testing agrees, and cell
+geometry is untouched either way. Measured on the same board: state centre 520,670, getCellAt
+finds it there, geometry still (100,100).
+
+  zoomTo calls scaleAndTranslate(scale, 0, 0) and throws the translate away, so it is re-applied
+  after every zoom - measured, (-250,-175) became (0,0) on one zoom.
+  PeerCursorLayer maps a peer's board coordinate to a pixel, so it adds the translate now too.
+
+DEFECT 3 - THE BOARD DRIFTED. The shift grows when a node is dragged further above the origin,
+which slides the whole drawing under a viewport that stayed where it was. The viewport is moved
+by the same amount now, so the shift is invisible; the only thing a reader can tell is that the
+scrollbar range changed.
+
+
+WHY THE SUITE DID NOT CATCH ANY OF IT, AND WHAT CHANGED
+
+CanvasPanTest checks arithmetic. Both defects were about which events reached which handler, and
+that is only visible when a press, a drag and a release go through the real component in order.
+The component cannot be built headless at all - mxGraphHandler constructs a java.awt.dnd
+.DragSource, which throws HeadlessException - and the suite runs headless, so there was no test
+that could have failed.
+
+  CanvasGestureInteractionTest   6 tests, driving the real component: a node drag moves the node,
+                                 a click selects, a shift-drag selects a region, a drag on empty
+                                 board pans, the board does not drift when the shift grows, and a
+                                 click still lands on the term it is over after a shift.
+
+  .github/workflows/build.yml    the suite runs under `xvfb-run -a` now. Without a display that
+                                 test skips itself, which in CI means it covers nothing; two
+                                 regressions of exactly this kind reached a user in one release.
+
+Measured against the code as 1.123.0 shipped it, the new test reports:
+
+  BROKEN  drag a node moves it   (java.awt.Point[x=100,y=100] -> java.awt.Point[x=100,y=100])
+
+and against this release, all six pass.
+
+2,457 tests in a clean copy of the repository, 0 failures, 1 skipped - down from 5 skipped,
+because the gesture tests now run.
+
+
+WHAT IS STILL NOT TRUE
+
+  - Nobody has moved a node or dragged a selection in a running Protege since the repair. The
+    gestures are driven through the real component in a test, which is what was missing; the host
+    smoke still only reaches "SchemaCanvasView built without throwing".
+  - Overlapping nodes are not fixed. A derived node - a datatype, a class expression - has no
+    saved geometry and is laid out afresh on every render, which is where the stacking comes
+    from. docs/superpowers/NEXT-SESSION.md carries it as job 2.
+  - Six axiom types are still undrawn: disjointness, inverse pairs, property characteristics,
+    property chains, property assertions between individuals, HasKey and SWRL. Counts for MWO are
+    in docs/canvas.md; the work is job 1 in the same file.
+  - Collaboration still has no concurrency control, and the advisory editing claim still never
+    fires.
+  - Everything 1.123.0 listed as outstanding still is.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>

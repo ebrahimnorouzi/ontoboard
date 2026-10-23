@@ -34,7 +34,17 @@ jobs:
         working-directory: protege-plugin
         # Not -o. Offline is right locally, where the repository is warm; in CI it would fail on a
         # cold cache and say nothing useful about the code.
-        run: mvn -B clean test
+        #
+        # UNDER A VIRTUAL DISPLAY, because the canvas component cannot be built without one:
+        # mxGraphHandler constructs a java.awt.dnd.DragSource, which throws HeadlessException.
+        # CanvasGestureInteractionTest skips itself when there is no display, and 1.123.0
+        # shipped two regressions it would have caught - a node that snapped back when
+        # dragged, and a click that landed nowhere once the board carried a translate. A
+        # suite that can only run headless cannot see either, and both reached a user.
+        #
+        # xvfb-run is preinstalled on ubuntu-latest. -a picks a free display number so two
+        # concurrent jobs do not collide.
+        run: xvfb-run -a mvn -B clean test
 
       - name: Package
         working-directory: protege-plugin
