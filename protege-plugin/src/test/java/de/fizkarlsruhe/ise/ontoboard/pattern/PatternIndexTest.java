@@ -64,6 +64,20 @@ class PatternIndexTest {
         assertTrue(patterns.isDirectory(), "no patterns directory at " + patterns);
 
         String rebuilt = PatternIndex.buildFrom(patterns);
+
+        // Regenerating it was documented only as "use PatternIndex.buildFrom", which is a Java
+        // method and not something a maintainer can run. It is a command now, matching the one
+        // PatternSoundnessTest already offers:
+        //   mvn -o test -Dtest=PatternIndexTest -Dontoboard.writeIndex=true
+        // Deliberately not automatic: a rebuild on a day when a cited server is unreachable
+        // writes a SMALLER terms column for the 97 patterns whose terms come from an import, and
+        // committing that would quietly shrink what the library says those patterns contain.
+        if (Boolean.getBoolean("ontoboard.writeIndex")) {
+            Files.write(new File(patterns, "index.tsv").toPath(),
+                    rebuilt.getBytes(StandardCharsets.UTF_8));
+            return;
+        }
+
         String shipped = new String(Files.readAllBytes(new File(patterns, "index.tsv").toPath()),
                 StandardCharsets.UTF_8).replace("\r\n", "\n");
         if (shipped.equals(rebuilt)) {

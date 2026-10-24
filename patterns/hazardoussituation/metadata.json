@@ -5,10 +5,11 @@
   "category": "structural",
   "domain": "safety",
   "scenarios": "",
-  "competency_questions": "",
+  "competency_questions": "Who or what took part in a given dangerous incident, and which hazard was each of them exposed to?; What led up to a dangerous incident, and what followed from it as a consequence?; What exposure is recorded for a given dangerous incident, and over what time span did the incident run?",
   "pattern_iri": "http://semantic.cs.put.poznan.pl/ontologies/oshdo/HazardousSituation",
   "source": "https://ontologydesignpatterns.org/wiki/Submissions:HazardousSituation",
   "references": "https://ontologydesignpatterns.org/wiki/Submissions:HazardousSituation",
   "class_count": 8,
-  "property_count": 7
+  "property_count": 7,
+  "competency_questions_source": "derived from the pattern's own axioms during the OntoBoard 1.127.0 review and checked against them; the upstream submission states none"
 }

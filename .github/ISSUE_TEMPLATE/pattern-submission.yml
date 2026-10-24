@@ -1,0 +1,134 @@
+name: Propose a pattern for the library
+description: Offer an ontology design pattern for the bundled library, or report a problem with one already in it
+title: "[pattern] "
+labels: ["pattern-submission"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you. Two things worth knowing before you fill this in:
+
+        **You do not need us to use your pattern.** Put the file in a folder and point
+        OntoBoard at it — *ROBOT → Pattern library… → contributed patterns folder* — and it
+        appears beside the bundled ones immediately, searchable and importable. This form is for
+        getting a pattern into the library **everyone** gets.
+
+        **The review is published in advance.** Every check we run is listed in
+        [Contributing a pattern](https://ise-fizkarlsruhe.github.io/ontoboard/contributing-a-pattern/),
+        and you can run them yourself with `robot` before submitting. Nothing here is a judgement
+        about your modelling style.
+
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What is this about?
+      options:
+        - A new pattern I would like added to the library
+        - A problem with a pattern already in the library
+    validations:
+      required: true
+
+  - type: input
+    id: name
+    attributes:
+      label: Pattern name
+      description: What a curator should see in the library list.
+      placeholder: Sample Preparation
+    validations:
+      required: true
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What is it for?
+      description: >
+        A sentence or two on what it models. This becomes the description on its page, so write
+        it for somebody deciding whether to adopt it.
+      placeholder: >
+        How a specimen is prepared before a measurement, and by whom - the steps, their order,
+        and the agent responsible for each.
+    validations:
+      required: true
+
+  - type: textarea
+    id: competency-questions
+    attributes:
+      label: Competency questions
+      description: >
+        One per line. These matter more than they look: the library's search reads them, and they
+        are the field phrased in the words somebody will actually search for. A pattern without
+        them cannot be found and nobody can tell what it is for.
+      placeholder: |
+        Which preparation steps produced this specimen?
+        Who performed a given preparation step, and in what order?
+    validations:
+      required: true
+
+  - type: textarea
+    id: ontology
+    attributes:
+      label: The ontology file
+      description: >
+        Paste the Turtle or RDF/XML, or give a stable URL - a w3id or a tagged release, not a
+        branch that will move. If you attach a file instead, say so here.
+      render: turtle
+    validations:
+      required: true
+
+  - type: textarea
+    id: example
+    attributes:
+      label: A worked example
+      description: >
+        A few individuals that instantiate the pattern's classes and are connected by its
+        properties. We check that the example is consistent WITH the pattern, merged - so please
+        use the pattern's own IRIs.
+      render: turtle
+    validations:
+      required: false
+
+  - type: input
+    id: source
+    attributes:
+      label: Source to cite
+      description: >
+        Where the pattern is published, and who published it. If it is yours, say so. Every
+        pattern page carries this as a link a reader can follow.
+      placeholder: https://ontologydesignpatterns.org/wiki/Submissions:YourPattern
+    validations:
+      required: true
+
+  - type: input
+    id: licence
+    attributes:
+      label: Licence
+      description: >
+        The library ships inside the plugin jar, so we can only include a pattern we are allowed
+        to redistribute.
+      placeholder: CC BY 4.0
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks you have run
+      description: >
+        Optional, and honest answers help more than complete ones. We run all of these anyway and
+        report the results on this issue.
+      options:
+        - label: "`robot convert` reads it - so the OWL API can parse it, which Protégé needs"
+        - label: "`robot validate-profile --profile DL` passes - it is OWL 2 DL"
+        - label: "`robot reason --reasoner hermit` finds it consistent, with no unsatisfiable class"
+        - label: "The pattern merged with its example is consistent"
+        - label: "It is not already in the library under another name"
+
+  - type: textarea
+    id: anything-else
+    attributes:
+      label: Anything else
+      description: >
+        Known limitations, an upstream issue, a paper to cite, or - if you are reporting a problem
+        with an existing pattern - which pattern and what is wrong with it.
+    validations:
+      required: false

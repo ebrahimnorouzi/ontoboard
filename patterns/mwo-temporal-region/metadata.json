@@ -4,12 +4,13 @@
   "description": "Represents temporal regions in BFO terms, distinguishing a zero-dimensional temporal region (an instant such as the start or end of an event) from a one-dimensional temporal region (an interval with a duration), related by occupies_temporal_region, has_first_instance and has_last_instance. Data about those regions - start date, end date, duration, frequency - is carried by specification datum individuals linked to their values with nfdicore:hasValue.",
   "category": "temporal",
   "domain": "general",
-  "competency_questions": "",
+  "competency_questions": "What are the start and end dates of a given process, and which first and last moment of its overall time span does each date belong to?; Which shorter periods fall inside a longer one, and when does each of those shorter periods begin and end?; How often does a given recurring process happen, and what frequency is stated for it?",
   "pattern_iri": "https://ontoboard.org/patterns/mwo-temporal-region.owl",
   "source": "https://ise-fizkarlsruhe.github.io/mwo/docs/patterns/",
   "collection": "mwo",
   "publisher": "ise-fizkarlsruhe.github.io",
   "extracted_from": "mwo",
   "class_count": 18,
-  "property_count": 9
+  "property_count": 9,
+  "competency_questions_source": "derived from the pattern's own axioms during the OntoBoard 1.127.0 review and checked against them; the upstream submission states none"
 }

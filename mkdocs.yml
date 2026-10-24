@@ -139,6 +139,8 @@ nav:
   - Using it:
       - Getting started: getting-started.md
       - Pattern library: patterns/index.md
+      - Choosing a pattern: choosing-a-pattern.md
+      - Contributing a pattern: contributing-a-pattern.md
       - 'Patterns: graphs and examples': pattern-examples.md
       - Working with ODK: odk-workflow.md
       - What the canvas draws: canvas.md

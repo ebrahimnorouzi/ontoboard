@@ -5,10 +5,11 @@
   "category": "structural",
   "domain": "iot",
   "scenarios": "",
-  "competency_questions": "",
+  "competency_questions": "Which physical quantity does a given device change, and what effect does it have on its surroundings?; Which commands has a device received, what value did each command carry, and when was it issued?; How quickly does a device react after a command arrives, and what range of commands can it accept without damaging itself?",
   "pattern_iri": "http://www.irit.fr/recherches/MELODI/ontologies/SAN",
   "source": "https://ontologydesignpatterns.org/wiki/Submissions:Actuation-Actuator-Effect",
   "references": "https://ontologydesignpatterns.org/wiki/Submissions:Actuation-Actuator-Effect",
   "class_count": 36,
-  "property_count": 25
+  "property_count": 25,
+  "competency_questions_source": "derived from the pattern's own axioms during the OntoBoard 1.127.0 review and checked against them; the upstream submission states none"
 }

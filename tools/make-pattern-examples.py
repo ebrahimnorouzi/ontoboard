@@ -143,6 +143,7 @@ def shape_of(path, library=None, depth=2):
     """
     import rdflib
     from rdflib import OWL, RDF, RDFS
+    from rdflib.collection import Collection
 
     graph = rdflib.Graph()
     graph.parse(path, format="turtle")
@@ -194,6 +195,26 @@ def shape_of(path, library=None, depth=2):
         return [v for v in graph.objects(subject, predicate)
                 if isinstance(v, rdflib.URIRef) and not is_built_in(v)]
 
+    # WHICH CLASSES THE PATTERN SAYS NOTHING CAN BE IN BOTH OF. Needed because several domain
+    # axioms on one property are a conjunction, and a conjunction of disjoint classes is empty:
+    # see the guard in example_for. Both spellings are read - owl:disjointWith for a pair, and
+    # owl:AllDisjointClasses with an owl:members list for a group, which is what
+    # spatial-graph-adapter-sga uses.
+    disjoint = set()
+    for one, _, other in graph.triples((None, OWL.disjointWith, None)):
+        if isinstance(one, rdflib.URIRef) and isinstance(other, rdflib.URIRef):
+            disjoint.add(frozenset((one, other)))
+    for axiom in graph.subjects(RDF.type, OWL.AllDisjointClasses):
+        for members in graph.objects(axiom, OWL.members):
+            try:
+                named = [m for m in Collection(graph, members)
+                         if isinstance(m, rdflib.URIRef)]
+            except Exception:                        # noqa: BLE001 - a malformed list says nothing
+                continue
+            for first in range(len(named)):
+                for second in range(first + 1, len(named)):
+                    disjoint.add(frozenset((named[first], named[second])))
+
     inverses = set()
     for one, _, other in graph.triples((None, OWL.inverseOf, None)):
         # Only the second of a pair is dropped, so one direction is always asserted.
@@ -236,7 +257,7 @@ def shape_of(path, library=None, depth=2):
             break
 
     return {"classes": sorted(classes), "links": links, "data": data, "leaves": leaves,
-            "labels": said, "namespaces": dict(graph.namespaces())}
+            "labels": said, "namespaces": dict(graph.namespaces()), "disjoint": disjoint}
 
 
 def untyped_example(pattern_id, shape, links):
@@ -315,6 +336,48 @@ def example_for(pattern_id, shape):
     # assert a type nothing defines and make the pattern look sound.
     links = [l for l in shape["links"]
              if l["domain"] in shape["classes"] and l["range"] in shape["classes"]]
+
+    # A PROPERTY WHOSE DOMAINS ARE DISJOINT HAS AN EMPTY DOMAIN, so no individual can be in it
+    # and no example can exercise it.
+    #
+    # MEASURED: spatial-graph-adapter-sga declares hasAttribute with rdfs:domain Attribute AND
+    # rdfs:domain ContextualizedRelation, and then declares those two classes disjoint in an
+    # owl:AllDisjointClasses axiom. Several domain axioms are a conjunction, so the domain is
+    # Attribute AND ContextualizedRelation, which is empty - HermiT reports both classes
+    # unsatisfiable. Asserting the individual into both, which is what every domain axiom
+    # holding means, produced an example HermiT then called INCONSISTENT. The pattern, as its
+    # authors published it, cannot have an instance here; the only honest output is to leave the
+    # property out and say why.
+    def disjoint_pair(group):
+        named = [c for c in (group or []) if c is not None]
+        for first in range(len(named)):
+            for second in range(first + 1, len(named)):
+                if frozenset((named[first], named[second])) in shape.get("disjoint", set()):
+                    return (named[first], named[second])
+        return None
+
+    empty_domains = []
+    usable = []
+    for link in links:
+        clash = disjoint_pair(link.get("domains")) or disjoint_pair(link.get("ranges"))
+        if clash:
+            empty_domains.append((link["property"], clash))
+        else:
+            usable.append(link)
+    links = usable
+
+    # Refused outright rather than worked around. Once a property's domain is empty, the classes
+    # that must take part in it are unsatisfiable too - Attribute must be the object of a
+    # hasAttribute edge that can have no subject - and an individual of an unsatisfiable class
+    # makes the whole example inconsistent however few types it is given. Writing a smaller
+    # example here would hide a broken pattern behind a graph that looks fine.
+    if empty_domains:
+        return None, ("it declares disjoint domains for "
+                      + ", ".join(sorted(local(prop) + " (" + local(one) + " and " + local(other)
+                                         + " are disjoint)"
+                                         for prop, (one, other) in empty_domains))
+                      + ", so that property's domain is empty and no individual can instantiate "
+                        "it")
 
     # A PATTERN CAN BE NOTHING BUT PROPERTIES, and three of these are: partof and constituency
     # declare hasPart/isPartOf over owl:Thing, and winstonpartwhole declares eight part-of

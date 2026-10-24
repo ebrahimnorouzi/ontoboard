@@ -4,12 +4,13 @@
   "description": "Represents the data values attached to Information Content Entities: any value from the other patterns is linked to its ICE with the nfdicore:hasValue data property. For measurement data the measured value is given with hasValue while the corresponding unit is linked to an instance of iao:MeasurementUnitLabel.",
   "category": "information",
   "domain": "general",
-  "competency_questions": "",
+  "competency_questions": "What value was measured for a given property of a sample, and in which unit is it reported?; Which recorded measurements describe one and the same property of the same object, so that their numbers can be compared?; Which recorded results are reported in a particular unit, for example in megapascals?",
   "pattern_iri": "https://ontoboard.org/patterns/mwo-value-specification.owl",
   "source": "https://ise-fizkarlsruhe.github.io/mwo/docs/patterns/",
   "collection": "mwo",
   "publisher": "ise-fizkarlsruhe.github.io",
   "extracted_from": "mwo",
   "class_count": 11,
-  "property_count": 11
+  "property_count": 11,
+  "competency_questions_source": "derived from the pattern's own axioms during the OntoBoard 1.127.0 review and checked against them; the upstream submission states none"
 }

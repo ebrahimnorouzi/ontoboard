@@ -1,0 +1,201 @@
+OntoBoard 1.127.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-10-24  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 9/9  test 11/11
+  2026-10-24  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 9/9  test 11/11
+
+
+THE PATTERN LIBRARY HAS NOW BEEN PUT TO A REASONER
+
+163 patterns have shipped as something other people should build ontologies out of, and until
+this release nothing had ever asked a reasoner whether any of it holds together. PatternSoundness
+reasons over every pattern and every example with HermiT on each build, in 22 seconds, and
+commits its verdicts to patterns/soundness.tsv. A test fails when that file and the patterns
+disagree, which is what lets each pattern's page quote what a reasoner says without the claim
+drifting away from the truth.
+
+159 OF THE 163 ARE CONSISTENT with no unsatisfiable class, and their examples are consistent with
+them. Four are not, and each page says so with the reason:
+
+  roledependentnames         outside OWL 2 DL: assumesAgentRole sits in a cyclic property
+                             hierarchy, which breaks the regularity restriction. HermiT refuses
+                             the ontology rather than answering about it.
+  winstonpartwhole           outside OWL 2 DL: the non-simple property po-feature appears in an
+                             asymmetric object property axiom.
+  spatial-graph-adapter-sga  Attribute and ContextualizedRelation are unsatisfiable: two
+                             properties declare BOTH as rdfs:domain, which OWL reads as their
+                             intersection, and the pattern then declares the two disjoint.
+  template-instance          consistent, but declares no classes or properties at all, so no
+                             example can be built for it.
+
+BEING OUTSIDE OWL 2 DL IS NOT THE SAME AS BEING INCONSISTENT, and the pages do not conflate them.
+One is a contradiction; the other is a question no DL reasoner can be asked. A test asserts that
+each exception is described in a curator's words rather than as a Java exception class.
+
+
+THE CHECK NOTHING HAD EVER RUN
+
+NOT ONE OF THE 163 EXAMPLES DECLARES owl:imports OF ITS PATTERN. Every one reuses the pattern's
+IRIs by prefix, so an example loaded on its own is a document of undeclared names - it cannot
+contradict anything, and "the example parses" was all anybody had ever established. Merging the
+two is what turns that into "the example is a model of the pattern", and it found a real defect:
+the generated example for spatial-graph-adapter-sga asserted an individual into two classes its
+pattern declares disjoint. That example has been withdrawn, because every example of that
+pattern is inconsistent.
+
+THE GENERATOR THAT PRODUCED IT IS FIXED, not just its output. tools/make-pattern-examples.py
+asserted EVERY rdfs:domain of a property, which is correct OWL - several domain axioms are a
+conjunction - but it never checked whether those classes were declared disjoint. It now reads
+owl:disjointWith and owl:AllDisjointClasses, refuses to write an example for a pattern whose
+property has an empty domain, and says which property and which pair of classes.
+
+IMPORTS ARE DELIBERATELY NOT RESOLVED WHEN REASONING. 101 patterns declare them; among the
+targets are five on a server that stopped answering, two unresolvable file:/schemas/ URIs, and a
+portal whose HTTPS endpoint does not complete a TLS handshake. Resolving them would make the gate
+depend on the weather - the same pattern verified today and unverified tomorrow - and a pattern
+that passed only because its import failed to download would be indistinguishable from one that
+passed on its own merits. The cost is stated on every page: the "Brings in" row says how much was
+left out of that pattern's own check.
+
+
+TWO PATTERNS PROTEGE COULD NOT LOAD AT ALL
+
+actuation-actuator-effect and contentops share one byte-identical pattern.ttl, and NO OWL API
+PARSER WOULD READ IT - all eighteen were tried. The cause was one malformed literal:
+
+    owl:versionInfo 2.0.0 ;
+
+which is not a valid Turtle literal. It tokenises as 2.0, then a statement-ending dot, then a
+bare 0 - "Encountered <DIGIT> 0 at line 120". rdflib accepts it leniently, inventing a triple
+whose subject is the literal 0, which is why the file looked fine to every tool except the one
+that matters. The .owl sibling carried the same defect as an invalid xsd:decimal. Both are fixed,
+both patterns now parse, and both are HermiT-clean.
+
+
+SOURCES THAT CAN ACTUALLY BE CHECKED
+
+MEASURED: ontologydesignpatterns.org, which publishes 123 of these patterns, does not complete a
+TLS handshake from here - so every stored https:// URL to it is dead - and over plain http:// its
+wiki redirects a submission page to its front page. The ontology files themselves still serve
+over http. The Internet Archive holds the submission pages.
+
+So each pattern page now carries a "Check it yourself" line with the published source, AN
+ARCHIVED COPY, and the ontology file, and says in a note why the archive link is there. A
+citation nobody can follow is not a citation. The URLs were in metadata.json all along and no
+page had ever rendered one.
+
+
+WHAT EACH PAGE NOW TELLS SOMEBODY DECIDING
+
+A "Should you use this one?" table, built only from measurements:
+
+  Size          classes, properties and axioms - a four-term pattern is a shape to copy, a
+                forty-term one is a commitment
+  Brings in     how many ontologies it imports, because adopting it adopts those too
+  Reasoning     what HermiT says, quoted from the committed verdicts
+  Duplicate of  when the library lists the same pattern twice, which it does for five pairs
+
+Plus two new guides: docs/choosing-a-pattern.md (search by the question you want answered, let
+the open ontology suggest patterns, what the recommender's two signals are and why both are
+needed, what is and is not checked) and docs/contributing-a-pattern.md (the folder route, which
+needs no rebuild, and the issue route with the review criteria published in advance as runnable
+robot commands). .github/ISSUE_TEMPLATE/pattern-submission.yml is the form.
+
+
+SEARCH NOW FINDS A PATTERN BY THE QUESTION IT ANSWERS
+
+PatternLibrary.matching read the id, name, description, category and domain - and NOT the
+competency questions, which are the one field written in the words a curator actually types.
+"working for which organization" found nothing, while actingfor, whose coversRequirements says
+almost exactly that, sat in the list under a name nobody would guess. The questions are searched
+now, and 123 of the 163 patterns carry them.
+
+AND 36 PAGES HAD BEEN SHOWING THEM AS ONE RUN-ON BULLET. The page generator split the field on a
+bar; measured, 36 metadata files separate questions with a SEMICOLON and not one uses a bar. Both
+are accepted now.
+
+22 PATTERNS GAINED COMPETENCY QUESTIONS, derived from their own axioms and then checked against
+them by a second pass told to refute anything the pattern cannot answer - which corrected 17 of
+the 22. Each carries competency_questions_source recording that they were derived here and that
+the upstream submission states none, so nobody mistakes them for the portal's own wording. Four
+pages whose description was empty after heading-stripping now show those questions instead of
+nothing.
+
+WHAT IS HONESTLY INCOMPLETE: 17 of the 40 patterns without questions still have none. Questions
+were derived for them, but the session hit its usage limit before the checking pass could reach
+them, and an unchecked question about what a pattern answers is not worth publishing. They are
+named in the list below.
+
+
+A TRAP WORTH RECORDING FOR WHOEVER TOUCHES THE REASONER
+
+DECLARING A HermiT DEPENDENCY BREAKS THIS AUDIT. robot-core already brings
+org.semanticweb.hermit:1.4.5.456, which is the build compatible with the OWL API 4.5.9 this
+project pins to match the Protege 5.5.0 host. Every newer build on Maven Central is compiled
+against an OWL API whose OWLOntologyID.getDefaultDocumentIRI() returns java.util.Optional, where
+4.5.9 returns Guava's - so clausification dies with NoSuchMethodError. A direct dependency also
+sorts AHEAD of robot-core on the classpath, so adding one silently replaces the working reasoner
+with a broken one. It cost an hour to find, twice: the first measurement run worked only because
+the explicit jar was appended LAST and robot's won. Take HermiT from robot-core and do not pin
+it. The test's javadoc says so.
+
+No dependency was added for any of this: org.semanticweb.hermit-1.4.5.456.jar is already bundled
+inside the plugin jar by robot-core, byte-identical to the copy 1.126.0 shipped. Which also means
+HermiT is available to the plugin at RUNTIME, not only to its tests - the pattern dialog could
+say what a reasoner thinks of a pattern before somebody imports it, and does not yet.
+
+
+TESTS
+
+2,522 Java, 0 failures, 1 skipped, from mvn clean package on the shipped tree.
+74 JavaScript, 0 failures - unchanged, because this release touches no JavaScript.
+
+The pattern library is read on both hosts as part of the self-check: "163 patterns
+indexed, and actingfor parsed to 2 classes, 2 properties" - so the index this
+release rewrote is one a running Protege can still read.
+
+  PatternSoundnessTest   4 new - every pattern and example holds together or is a named
+                         exception, the committed verdicts match what a reasoner says, each
+                         exception is described in a curator's words, and outside-OWL-2-DL is
+                         kept distinct from inconsistent
+  PatternLibraryTest    +1 - a pattern is found by the question it answers, and every word of a
+                         query still has to match
+
+Regenerating patterns/index.tsv is a command now rather than a Java method name in a comment:
+mvn -o test -Dtest=PatternIndexTest -Dontoboard.writeIndex=true. It is deliberately not
+automatic - a rebuild on a day when a cited server is unreachable writes a SMALLER terms column
+for the patterns whose terms come from an import, and committing that would quietly shrink what
+the library says they contain. Today's rebuild kept the committed terms for the 5 rows it could
+not re-fetch, which are the same 5 PatternIndexTest names as uncompared.
+
+
+WHAT IS STILL NOT TRUE
+
+  - 120 of the 162 examples are still generator output, labelled "an Attribute" and "a Type".
+    They are consistent with their patterns and they show the right shape; they teach nothing
+    about the domain.
+  - 17 patterns still have no competency questions, so they are hard to find by search. Questions
+    were derived for each and are NOT published, because the pass that checks a question against
+    the pattern's axioms never reached them: communities, constituency, contentops,
+    contextualizedwinstonpartwhole, controlflow, countingas, descriptionandsituation, eep,
+    ethnicgroup, food-recipe-ingredient-substitution-odp, mwo-material-entity-description,
+    mwo-process-agent-role, mwo-resource-contact-point, mwo-resource-description, mwo-service,
+    timeindexedpartof, winstonpartwhole.
+  - contentops is not a pattern at all. Its description is the text of the ODP wiki's INDEX page
+    - "Below you find the currently proposed Content OPs..." - so the harvest turned a category
+    listing into a library entry, and it shares its ontology file with
+    actuation-actuator-effect. It is left in place with its sameAs link rather than removed,
+    because removing a pattern moves eight hard-coded counts in the tests and is a decision for
+    its own commit.
+  - 49 patterns have no scenario text.
+  - A contradiction that arises only against DUL or BFO is not caught, because imports are not
+    resolved. This is a deliberate trade and it is stated on every page.
+  - Nobody has seen the new pattern pages in a browser; the strict mkdocs build passes, which
+    proves the links resolve and nothing more.
+  - Five pattern IRIs point at a server that no longer answers at all.
+  - Everything 1.126.0 listed as outstanding still is: no Zenodo DOI, no w3id PURL, not in
+    Protege's plugin registry, the paper audited and not rewritten, .xlsx read-only, no contact
+    address or ORCID in CITATION.cff.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>

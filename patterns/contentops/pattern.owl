@@ -21,7 +21,7 @@
         <terms:modified>2016-02-26</terms:modified>
         <terms:issued>2015-02-20</terms:issued>
         <foaf:primaryTopic>Actuators and actuation</foaf:primaryTopic>
-        <versionInfo rdf:datatype="http://www.w3.org/2001/XMLSchema#decimal">2.0.0</versionInfo>
+        <versionInfo>2.0.0</versionInfo>
         <cc:license rdf:resource="http://creativecommons.org/licenses/by/4.0/"/>
         <dc:creator rdf:resource="http://www.irit.fr/recherches/MELODI/ontologies/contributors#hernandez"/>
         <dc:publisher>LAAS-CNRS (https://www.laas.fr)</dc:publisher>

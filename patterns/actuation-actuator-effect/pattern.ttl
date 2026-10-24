@@ -28,7 +28,7 @@ This ontology is used as a ontological module in IoT-O ontology.""" ;
                                                        <http://purl.org/vocab/vann/preferredNamespaceURI> "http://www.irit.fr/recherches/MELODI/ontologies/SAN" ;
                                                        <http://purl.org/vocommons/voaf#reliesOn> <http://purl.oclc.org/NET/ssnx/ssn> ;
                                                        rdfs:seeAlso "http://www.irit.fr/recherches/MELODI/ontologies/IoT-O" ;
-                                                       owl:versionInfo 2.0.0 ;
+                                                       owl:versionInfo "2.0.0" ;
                                                        <http://xmlns.com/foaf/0.1/primaryTopic> "Actuators and actuation" .
 
 #################################################################

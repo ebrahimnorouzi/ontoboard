@@ -143,9 +143,16 @@ public final class PatternLibrary {
         String[] words = query.trim().toLowerCase(Locale.ROOT).split("\\s+");
         List<DesignPattern> hits = new ArrayList<DesignPattern>();
         for (DesignPattern pattern : patterns) {
+            // THE COMPETENCY QUESTIONS ARE SEARCHED TOO, because they are the one field written
+            // in the words somebody arrives with. A curator does not search for "behavioral" or
+            // for a pattern's id; they search for "who works for which organization", which is
+            // what actingfor's coversRequirements says almost verbatim. 123 of the 163 patterns
+            // carry questions, and leaving them out meant the library could not be searched by
+            // the question it exists to answer.
             String haystack = (pattern.getId() + " " + pattern.getName() + " "
                     + pattern.getDescription() + " " + pattern.getCategory() + " "
-                    + pattern.getDomain()).toLowerCase(Locale.ROOT);
+                    + pattern.getDomain() + " " + pattern.getCompetencyQuestions())
+                    .toLowerCase(Locale.ROOT);
             boolean all = true;
             for (String word : words) {
                 if (!haystack.contains(word)) {

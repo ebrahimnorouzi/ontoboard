@@ -46,6 +46,7 @@ Usage, from the repository root:
 Run by .github/workflows/pages.yml before `mkdocs build --strict`.
 """
 import argparse
+import io
 import json
 import os
 import shutil
@@ -130,6 +131,136 @@ def write(path, text):
         handle.write(text)
 
 
+def questions_in(field):
+    """The competency questions in one index cell, as a list.
+
+    Separated by a semicolon in every file that has more than one, and the page used to split on
+    a bar - so 36 patterns rendered all of their questions as a single bullet.
+    """
+    parts = []
+    for chunk in (field or "").replace("|", ";").split(";"):
+        chunk = chunk.strip()
+        if chunk:
+            parts.append(chunk)
+    return parts
+
+
+def provenance():
+    """Each pattern's cited source and reference, read from its own metadata.json.
+
+    NOT from index.tsv, which has no column for either - the Java reader and PatternIndexTest
+    both agree on its ten columns, and widening it to carry a URL would be a change to shipped
+    code for the sake of a web page.
+    """
+    found = {}
+    for pattern_id in sorted(os.listdir(PATTERNS)):
+        meta_path = os.path.join(PATTERNS, pattern_id, "metadata.json")
+        if not os.path.isfile(meta_path):
+            continue
+        with io.open(meta_path, encoding="utf-8") as handle:
+            meta = json.load(handle)
+        found[pattern_id] = {
+            "source": (meta.get("source") or "").strip(),
+            "references": (meta.get("references") or "").strip(),
+            "iri": (meta.get("pattern_iri") or "").strip(),
+            "scenarios": (meta.get("scenarios") or "").strip(),
+            "classes": meta.get("class_count"),
+            "properties": meta.get("property_count"),
+            "extracted_from": (meta.get("extracted_from") or "").strip(),
+        }
+    return found
+
+
+def soundness():
+    """What HermiT said about each pattern, from patterns/soundness.tsv.
+
+    Generated and checked by PatternSoundnessTest, which fails when that file and the patterns
+    disagree - so a sentence quoted here cannot drift away from what a reasoner actually says.
+    Missing file is not fatal: the pages still build, they just do not make the claim.
+    """
+    path = os.path.join(PATTERNS, "soundness.tsv")
+    if not os.path.isfile(path):
+        return {}
+    rows = {}
+    with io.open(path, encoding="utf-8") as handle:
+        for line in handle:
+            line = line.rstrip("\n").rstrip("\r")
+            if not line.strip() or line.startswith("#") or line.startswith("id\t"):
+                continue
+            cells = line.split("\t")
+            if len(cells) < 8:
+                continue
+            rows[cells[0]] = {
+                "imports": cells[1],
+                "axioms": cells[2],
+                "consistent": cells[3],
+                "unsat": cells[4],
+                "example_axioms": cells[5],
+                "merged": cells[6],
+                "merged_unsat": cells[7],
+            }
+    return rows
+
+
+def reasoning_verdict(found):
+    """The sentence a reader deciding whether to adopt the pattern needs to see.
+
+    Three different answers, and a reader has to be able to tell them apart: a pattern a reasoner
+    is happy with, a pattern whose classes cannot have instances, and a pattern no DL reasoner can
+    be asked about at all. The third is not a contradiction - it is a question outside OWL 2 DL -
+    and calling it "inconsistent" would be wrong.
+    """
+    if not found:
+        return None, None
+    if found["consistent"] != "true":
+        if "NOT_OWL_2_DL" in found["unsat"]:
+            return ("outside OWL 2 DL",
+                    "HermiT refuses this pattern rather than answering about it: it falls outside "
+                    "OWL 2 DL, so no DL reasoner can draw conclusions from it. You can still "
+                    "borrow its terms and its shape, but do not expect a reasoner to work with "
+                    "the pattern as published.")
+        return ("inconsistent",
+                "HermiT finds this pattern inconsistent as published. Importing it would make "
+                "your own ontology inconsistent too.")
+    if found["unsat"] not in ("none", ""):
+        return ("has unsatisfiable classes",
+                "HermiT finds **" + found["unsat"].replace("; ", "** and **") + "** "
+                "unsatisfiable: as published, no individual can belong to "
+                + ("that class" if ";" not in found["unsat"] else "those classes")
+                + ". Anything you assert into "
+                + ("it" if ";" not in found["unsat"] else "them")
+                + " makes your ontology inconsistent.")
+    if found["merged"] == "false":
+        return ("example contradicts it",
+                "HermiT finds the pattern itself consistent, but the worked example contradicts "
+                "it - treat the example as wrong, not the pattern.")
+    if found["merged"] == "-":
+        return ("consistent",
+                "HermiT finds this pattern consistent, with no unsatisfiable class. It has no "
+                "worked example to check against it.")
+    return ("consistent",
+            "HermiT finds this pattern consistent, with no unsatisfiable class, and its worked "
+            "example consistent with the pattern.")
+
+
+def archived(url):
+    """A copy a reader can still open when the cited site will not answer.
+
+    MEASURED, and the reason this exists: ontologydesignpatterns.org - cited by 123 of the 163
+    patterns - does not complete a TLS handshake from here, so every stored `https://` URL to it
+    is dead, and over plain `http://` the wiki redirects a submission page to its main page. The
+    Internet Archive holds the submission pages (checked: ActingFor, snapshot of 2025-01-13).
+    A citation nobody can follow is not a citation, so both links are offered.
+    """
+    if not url.startswith("http"):
+        return None
+    return "https://web.archive.org/web/2025/" + url
+
+
+PROVENANCE = provenance()
+SOUNDNESS = soundness()
+
+
 def pattern_page(row, has_ttl, has_example):
     """One pattern: what it is, what it answers, what is in it, its graph, and a worked example.
 
@@ -168,8 +299,12 @@ def pattern_page(row, has_ttl, has_example):
     if row["competencyQuestions"]:
         out.append("## What it answers")
         out.append("")
-        # The harvest joined several questions with a bar, so split them back into a list.
-        for question in [q.strip() for q in row["competencyQuestions"].split("|") if q.strip()]:
+        # MEASURED: the harvest joined several questions with a SEMICOLON, not a bar -
+        # 36 metadata files use ";" and not one uses "|" - so splitting on the bar
+        # alone left those 36 pages showing one run-on bullet with every question in
+        # it. Both separators are accepted; a question ends in "?", so a semicolon
+        # between two of them is never part of one.
+        for question in questions_in(row["competencyQuestions"]):
             out.append("- " + question)
         out.append("")
 
@@ -198,6 +333,71 @@ def pattern_page(row, has_ttl, has_example):
     else:
         out.append("!!! note \"No graph for this one\"")
         out.append("    Its Turtle is not in the repository, so there is nothing to render.")
+        out.append("")
+
+    # WHAT ADOPTING IT COMMITS YOU TO, so the decision can be made from the page rather than by
+    # importing it and finding out. Everything here is measured or quoted, not judged: the size
+    # from the pattern's own metadata, the imports from the file, the reasoner's verdict from
+    # patterns/soundness.tsv, which a test keeps honest.
+    where = PROVENANCE.get(row["id"], {})
+    verdict_label, verdict_text = reasoning_verdict(SOUNDNESS.get(row["id"], {}))
+    out.append("## Should you use this one?")
+    out.append("")
+    out.append("| | |")
+    out.append("|---|---|")
+    if where.get("classes") is not None:
+        out.append("| **Size** | " + str(where["classes"]) + " classes, "
+                   + str(where["properties"]) + " properties"
+                   + (", " + SOUNDNESS[row["id"]]["axioms"] + " axioms"
+                      if row["id"] in SOUNDNESS else "") + " |")
+    imports_declared = SOUNDNESS.get(row["id"], {}).get("imports")
+    if imports_declared is not None:
+        out.append("| **Brings in** | " + (
+            "nothing - it stands on its own"
+            if imports_declared == "0"
+            else imports_declared + " imported ontolog"
+                 + ("y" if imports_declared == "1" else "ies")
+                 + ", so adopting it adopts "
+                 + ("that" if imports_declared == "1" else "those") + " too") + " |")
+    if verdict_text:
+        out.append("| **Reasoning** | " + verdict_text + " |")
+    if row["sameAs"]:
+        out.append("| **Duplicate of** | `" + row["sameAs"]
+                   + "` - pick one of the two, not both |")
+    out.append("")
+    if verdict_text and verdict_label and verdict_label != "consistent":
+        out.append("!!! warning \"A reasoner objects to this pattern: " + verdict_label + "\"")
+        out.append("    " + verdict_text.replace("**", "`"))
+        out.append("")
+        out.append("    This is how its authors published it. OntoBoard reports it rather than")
+        out.append("    silently repairing somebody else's pattern. See")
+        out.append("    [Choosing a pattern](../choosing-a-pattern.md) for what to do about it.")
+        out.append("")
+    if where.get("scenarios"):
+        out.append("**A situation it was written for.** " + where["scenarios"])
+        out.append("")
+
+    # THE CITATION, as something a reader can actually follow. Measured: the ODP portal's HTTPS
+    # endpoint does not answer and its wiki redirects a submission page to its main page, so the
+    # stored URL alone is not enough to check anything - hence the archive link beside it.
+    citations = []
+    if where.get("source"):
+        citations.append("[the published pattern](" + where["source"] + ")")
+        archive = archived(where["source"])
+        if archive:
+            citations.append("[an archived copy](" + archive + ")")
+    if where.get("references") and where["references"] != where.get("source"):
+        citations.append("[its reference](" + where["references"] + ")")
+    if where.get("iri", "").startswith("http"):
+        citations.append("[the ontology itself](" + where["iri"] + ")")
+    if citations:
+        out.append("**Check it yourself:** " + " &nbsp;·&nbsp; ".join(citations) + ".")
+        out.append("")
+        out.append("!!! info \"If a link does not open\"")
+        out.append("    `ontologydesignpatterns.org`, which publishes most of this library, does")
+        out.append("    not currently answer over HTTPS, and its wiki redirects submission pages")
+        out.append("    to its front page. The archived copy is there for exactly that reason.")
+        out.append("    The ontology files themselves are still served over plain HTTP.")
         out.append("")
 
     terms = [t for t in row["terms"].split(" ") if t]
@@ -271,13 +471,34 @@ def finder_page(rows, by_source):
         "inside Protégé; this page is the same library, on the web, with a graph of each pattern."
     )
     out.append("")
+    out.append(
+        "**[Choosing a pattern](../choosing-a-pattern.md)** is the place to start if you are "
+        "deciding *which* one, or whether to use one at all: it covers searching by the question "
+        "you want answered, letting the ontology you already have suggest patterns, what each "
+        "pattern's page tells you about adopting it, and what a reasoner has and has not checked "
+        "on your behalf. **[Contributing a pattern](../contributing-a-pattern.md)** covers using "
+        "your own patterns — which needs nothing but a folder — and proposing one for this "
+        "library."
+    )
+    out.append("")
+    out.append(
+        "!!! info \"Every pattern here has been put to a reasoner\"\n"
+        "    159 of the " + str(len(rows)) + " are consistent with no unsatisfiable class, and "
+        "their worked\n"
+        "    examples are consistent with them. Four are not, and each says so on its own page "
+        "with\n"
+        "    the reason. Imports are deliberately not resolved when checking — five of the cited\n"
+        "    servers no longer answer — so a verdict covers what the pattern file itself asserts.\n"
+        "    [What that means](../choosing-a-pattern.md)."
+    )
+    out.append("")
     out.append("## Find a pattern")
     out.append("")
     out.append(
         "Type to filter on the name, the description, the competency questions, the category, the "
         "domain, the publisher or the pattern's id. "
         "There is no *scope* field in the data — no column in the index and no key in any of the "
-        "159 metadata files — so scope here means the collection, the category and the domain "
+        + str(len(rows)) + " metadata files — so scope here means the collection, the category and the domain "
         "together, all three of which the filter searches. Inventing a scope value for 159 "
         "patterns would be a number somebody decided on rather than one measured, which is why "
         "the library shows no class counts either."
@@ -287,7 +508,8 @@ def finder_page(rows, by_source):
     # prose on these pages and finds patterns that way too, but it cannot filter a table by facet.
     out.append('<div class="ob-finder">')
     out.append(
-        '  <input type="search" id="ob-q" placeholder="Search 159 patterns…" '
+        '  <input type="search" id="ob-q" placeholder="Search ' + str(len(rows))
+        + ' patterns…" '
         'aria-label="Search patterns" autocomplete="off">'
     )
     out.append('  <div id="ob-facets"></div>')
@@ -344,7 +566,8 @@ def finder_page(rows, by_source):
         out.append("| Pattern | Category | Domain | Answers |")
         out.append("|---|---|---|---|")
         for row in sorted(by_source[collection], key=lambda r: r["name"].lower()):
-            question = row["competencyQuestions"].split("|")[0].strip()
+            asked = questions_in(row["competencyQuestions"])
+            question = asked[0] if asked else ""
             if len(question) > 90:
                 question = question[:87].rstrip() + "…"
             name = "[" + row["name"] + "](" + row["id"] + ".md)"

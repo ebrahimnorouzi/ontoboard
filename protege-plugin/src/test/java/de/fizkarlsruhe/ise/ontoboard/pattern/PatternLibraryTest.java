@@ -227,4 +227,30 @@ class PatternLibraryTest {
                 () -> PatternLibrary.contentsOf(invented));
         assertTrue(failure.getMessage().contains("not-shipped"), failure.getMessage());
     }
+
+    /**
+     * A pattern is findable by the QUESTION it answers, not only by its name.
+     *
+     * <p>The competency questions are the one field written in the words somebody actually
+     * arrives with. "who works for which organization" is almost verbatim what actingfor's
+     * coversRequirements says, and before the questions were searched the library could not be
+     * searched by the thing it exists to answer: the query matched nothing, while the pattern
+     * that answers it sat in the list under a name nobody would guess.
+     */
+    @Test
+    void aPatternIsFoundByTheQuestionItAnswers() {
+        List<DesignPattern> byQuestion = PatternLibrary.matching("working for which organization");
+
+        assertFalse(byQuestion.isEmpty(),
+                "the question actingfor answers should find actingfor");
+        boolean found = false;
+        for (DesignPattern pattern : byQuestion) {
+            found = found || "actingfor".equals(pattern.getId());
+        }
+        assertTrue(found, "expected actingfor among " + byQuestion);
+
+        // And the words still have to ALL appear: a query is a filter, not a suggestion.
+        assertTrue(PatternLibrary.matching("organization aardvark").isEmpty(),
+                "every word must match, so an absent one finds nothing");
+    }
 }

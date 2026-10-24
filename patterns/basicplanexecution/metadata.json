@@ -5,10 +5,11 @@
   "category": "structural",
   "domain": "general",
   "scenarios": "",
-  "competency_questions": "",
+  "competency_questions": "Which actions make up a given run of a plan, and which run does a particular action belong to?; Who was involved in a given run of a plan, and which runs has a given person been involved in?; Which objects took part in a particular action, and in which actions has a given object taken part?",
   "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/basicplanexecution.owl",
   "source": "https://ontologydesignpatterns.org/wiki/Submissions:BasicPlanExecution",
   "references": "https://ontologydesignpatterns.org/wiki/Submissions:BasicPlanExecution",
   "class_count": 8,
-  "property_count": 14
+  "property_count": 14,
+  "competency_questions_source": "derived from the pattern's own axioms during the OntoBoard 1.127.0 review and checked against them; the upstream submission states none"
 }

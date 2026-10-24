@@ -5,10 +5,11 @@
   "category": "conceptual",
   "domain": "biology",
   "scenarios": "",
-  "competency_questions": "",
+  "competency_questions": "Which family does a given genus belong to, and which species sit directly under that genus?; For a given species, what is the whole chain of groups it belongs to, from its genus up to its kingdom?; For a given family, which genus sits immediately below it, and which species fall under it further down?",
   "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/linnaeantaxonomy.owl",
   "source": "https://ontologydesignpatterns.org/wiki/Submissions:LinnaeanTaxonomy",
   "references": "https://ontologydesignpatterns.org/wiki/Submissions:LinnaeanTaxonomy",
   "class_count": 8,
-  "property_count": 4
+  "property_count": 4,
+  "competency_questions_source": "derived from the pattern's own axioms during the OntoBoard 1.127.0 review and checked against them; the upstream submission states none"
 }

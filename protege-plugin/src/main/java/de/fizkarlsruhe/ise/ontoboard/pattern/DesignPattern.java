@@ -77,11 +77,11 @@ public final class DesignPattern {
      * Where OntoBoard got the pattern - the collection it was harvested from.
      *
      * <p>Separate from {@link #getPublisher()} because they are different facts and the library
-     * currently makes them look like one. All 123 patterns were harvested from the ODP portal,
-     * so every {@code collection} is {@code odp}; but the portal is a catalogue of submissions,
-     * and the patterns in it were published by thirteen different places. Grouping by the
-     * harvest would put everything in one bucket; grouping by the publisher is the division that
-     * carries information.
+     * currently makes them look like one. 123 of the 163 patterns were harvested from the ODP
+     * portal, so their {@code collection} is {@code odp} - the other 40 come from BFO, MWO,
+     * NFDIcore and PMDco - but the portal is a catalogue of submissions, and the patterns in it
+     * were published by thirteen different places. Grouping by the harvest would put most of
+     * them in one bucket; grouping by the publisher is the division that carries information.
      */
     public String getCollection() {
         return collection;

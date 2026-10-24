@@ -18,7 +18,7 @@ import org.semanticweb.owlapi.model.parameters.Imports;
 /**
  * Which bundled patterns are worth looking at for the ontology that is open.
  *
- * <p>123 patterns is too many to browse when you want one. The question somebody actually has is
+ * <p>163 patterns is too many to browse when you want one. The question somebody actually has is
  * "is there a pattern for what I am modelling", and the ontology in front of them is the best
  * available evidence of what that is.
  *
