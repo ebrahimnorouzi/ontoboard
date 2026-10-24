@@ -3086,6 +3086,20 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         }
 
         @Override
+        public void onNotApplied(int count, String exampleReason) {
+            // Said on the board line rather than beside the unshareable count, because it is
+            // the opposite problem and the remedy is the opposite too: committing does not
+            // help, and the thing to do is ask the colleague what they changed. Said once per
+            // change, not accumulated into a badge, because unlike an unshared edit of your
+            // own there is nothing here you can fix later from this machine.
+            setStatus("A change from another editor was not applied here"
+                    + (exampleReason == null || exampleReason.trim().isEmpty()
+                            ? "" : " - " + exampleReason)
+                    + ". The two copies are out of step; " + count
+                    + " so far this session.");
+        }
+
+        @Override
         public void onPeerGeometry(String iri, java.util.Map<String, Object> data) {
             // The rule is PeerGeometry's: take a colleague's position only for a term this board has
             // no position for, and treat the origin as "no hint" rather than as a coordinate.

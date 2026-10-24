@@ -63,6 +63,15 @@ public final class CollabSession implements CollabClient.Listener {
         void onUnshareable(int count, String exampleReason);
 
         /**
+         * A change from somebody else that this plugin could not apply.
+         *
+         * <p>The mirror of {@link #onUnshareable}, and a different thing: that one is "your
+         * edit did not reach them", this is "their edit did not reach you". Conflating the two
+         * would tell a user to commit when committing would not help.
+         */
+        void onNotApplied(int count, String exampleReason);
+
+        /**
          * A peer's geometry for a term, so an arriving node can be drawn where they have it.
          *
          * <p>Every operation carries this and the receiving side used to discard it, so a class a
@@ -240,7 +249,7 @@ public final class CollabSession implements CollabClient.Listener {
                 // Observed, not declared: the term somebody is editing is the term they just
                 // changed an axiom on, which is exactly what has been mapped here. Nothing to
                 // switch on, and no claim on a term that was merely clicked.
-                client.noteEdited(editedTerm(mapped.getOperation()));
+                client.noteEdited(mapped.getSubjectIri());
                 published++;
             } else {
                 unshareable++;
@@ -267,6 +276,16 @@ public final class CollabSession implements CollabClient.Listener {
     }
 
     /** How many local changes have not been shareable this session, for a status line. */
+    /** How many changes from peers this session could not apply. */
+    public int getNotAppliedCount() {
+        synchronized (lock) {
+            return notAppliedCount;
+        }
+    }
+
+    private int notAppliedCount;
+    private String lastNotAppliedReason = "";
+
     public int getUnshareableCount() {
         synchronized (lock) {
             return unshareableCount;
@@ -318,7 +337,21 @@ public final class CollabSession implements CollabClient.Listener {
             return;
         }
         if (!inbound.isUnderstood()) {
+            // TOLD, NOT ONLY LOGGED. This was an INFO line and nothing else, so a change a
+            // colleague made and this plugin could not apply left the two copies out of step
+            // with nobody aware of it - the sender saw their edit published, the receiver saw
+            // nothing at all, and the log is not somewhere a curator looks.
+            //
+            // The sender still is not told; that needs a NACK in the protocol, which the
+            // bridge has no message for. This is the half that can be delivered without one.
             LOGGER.info("OntoBoard: ignoring {} - {}", operation, inbound.getSkippedReason());
+            int notApplied;
+            synchronized (lock) {
+                notAppliedCount++;
+                notApplied = notAppliedCount;
+                lastNotAppliedReason = inbound.getSkippedReason();
+            }
+            host.onNotApplied(notApplied, inbound.getSkippedReason());
             return;
         }
         // Before the early return below: a term can already be in the requested state - a peer
@@ -409,26 +442,9 @@ public final class CollabSession implements CollabClient.Listener {
         description.put("dropped while offline",
                 String.valueOf(client.getDroppedWhileOfflineCount()));
         description.put("changes that could not be shared", String.valueOf(getUnshareableCount()));
+        description.put("changes from peers that could not be applied",
+                String.valueOf(getNotAppliedCount()));
         return description;
-    }
-
-    /**
-     * The term an operation is about, or null.
-     *
-     * <p>An operation's id is the entity IRI for everything that concerns one term. The canvas
-     * also writes pipe-separated ids for an edge - {@code subprop|a|b} and the like - and those
-     * name a relation rather than a term, so they claim nothing: a badge on one end of an edge
-     * would be as likely to mislead as to help.
-     */
-    static String editedTerm(OntologyOperation operation) {
-        if (operation == null) {
-            return null;
-        }
-        String id = operation.getId();
-        if (id == null || id.indexOf('|') >= 0) {
-            return null;
-        }
-        return id.startsWith("http://") || id.startsWith("https://") ? id : null;
     }
 
 }

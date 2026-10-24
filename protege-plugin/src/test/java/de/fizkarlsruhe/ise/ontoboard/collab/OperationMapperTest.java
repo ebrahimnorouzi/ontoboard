@@ -111,6 +111,74 @@ class OperationMapperTest {
 
     // ================================================================ outbound
 
+    // ---------- which term is being edited ----------
+
+    /**
+     * A change about one term carries that term, so the editing badge has something to show.
+     *
+     * <p><b>This is the test that was missing.</b> Until 1.125.0 the session asked the operation
+     * for its id and took that as the term - but {@code OntologyOperation.local} mints a
+     * {@code UUID.randomUUID()}, so the check for an {@code http} prefix failed every time and
+     * no claim was ever made. The advisory badge, which is the only thing this plugin offers
+     * against two people editing one term, had never once appeared. Nothing failed, because
+     * nothing asked.
+     */
+    @Test
+    void aChangeAboutOneTermSaysWhichTerm() {
+        OperationMapper.Outbound result =
+                out(new AddAxiom(ontology, factory.getOWLDeclarationAxiom(cls("Person"))));
+
+        assertEquals(NS + "Person", result.getSubjectIri());
+    }
+
+    /** A subclass edit claims the child: saying "Pizza is a Food" is editing Pizza. */
+    @Test
+    void aSubClassOfEditClaimsTheChild() {
+        OperationMapper.Outbound result = out(new AddAxiom(ontology,
+                factory.getOWLSubClassOfAxiom(cls("Pizza"), cls("Food"))));
+
+        assertEquals(NS + "Pizza", result.getSubjectIri());
+    }
+
+    /** An annotation edit claims the term it is on, not the annotation property. */
+    @Test
+    void anAnnotationEditClaimsItsSubject() {
+        // Declared first: a label on a term that is neither a declared class nor a declared
+        // individual is unmappable, so there would be no operation to carry a subject at all.
+        manager.addAxiom(ontology, factory.getOWLDeclarationAxiom(cls("Person")));
+
+        OperationMapper.Outbound result = out(new AddAxiom(ontology,
+                factory.getOWLAnnotationAssertionAxiom(factory.getRDFSLabel(),
+                        cls("Person").getIRI(), factory.getOWLLiteral("Human being", "en"))));
+
+        assertTrue(result.isMapped(), result.getUnmappableReason());
+        assertEquals(NS + "Person", result.getSubjectIri(),
+                "data[\"iri\"] holds the subject here, but it holds the PROPERTY on a property "
+                        + "edge - which is why each mapping says for itself rather than the "
+                        + "session reading one key blind");
+    }
+
+    /**
+     * An edge claims nothing, because it names a relation rather than a term.
+     *
+     * <p>A badge on one end of an arrow would be as likely to mislead as to help, and claiming
+     * the property - which is what {@code data["iri"]} holds for this shape - would tell a
+     * colleague that nobody is editing the class they are about to edit.
+     */
+    @Test
+    void aPropertyEdgeClaimsNothing() {
+        manager.addAxiom(ontology, factory.getOWLDeclarationAxiom(property("hasTopping")));
+
+        OperationMapper.Outbound result = out(new AddAxiom(ontology,
+                factory.getOWLSubClassOfAxiom(cls("Pizza"),
+                        factory.getOWLObjectSomeValuesFrom(
+                                property("hasTopping"), cls("Topping")))));
+
+        assertTrue(result.isMapped(), result.getUnmappableReason());
+        assertNull(result.getSubjectIri(), "an edge is not a term");
+    }
+
+
     @Test
     void aNewClassBecomesAddClassCarryingItsLabel() {
         manager.addAxiom(ontology, factory.getOWLAnnotationAssertionAxiom(

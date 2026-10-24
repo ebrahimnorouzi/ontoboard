@@ -135,10 +135,37 @@ public final class OperationMapper {
     public static final class Outbound {
         private final OntologyOperation operation;
         private final String unmappableReason;
+        private final String subjectIri;
 
-        private Outbound(OntologyOperation operation, String unmappableReason) {
+        private Outbound(OntologyOperation operation, String unmappableReason,
+                String subjectIri) {
             this.operation = operation;
             this.unmappableReason = unmappableReason;
+            this.subjectIri = subjectIri;
+        }
+
+        /**
+         * The one term this change is about, or null when there is not exactly one.
+         *
+         * <p><b>Why it is carried rather than read back out of the operation.</b> The session
+         * used to ask the operation for its id and take that as the term, which cannot work:
+         * {@code OntologyOperation.local} mints a {@code UUID.randomUUID()}, so the test for
+         * an {@code http} prefix failed every single time and no editing claim was ever made.
+         * The advisory badge - the only thing this plugin offers against two people editing
+         * one term - has never appeared.
+         *
+         * <p>And {@code data["iri"]} is not the answer either: it holds the SUBJECT for a
+         * class, an individual and an annotation, the PROPERTY for a property edge, and the
+         * literal {@code "rdf:type"} for a class assertion. Reading it blind would claim the
+         * wrong term on two of the five shapes, and a claim on the wrong term is worse than
+         * none: it tells a colleague nobody is editing what they are about to edit.
+         *
+         * <p>So each mapping says for itself whether it has a single subject. An edge names a
+         * relation rather than a term and claims nothing - a badge on one end of an arrow
+         * would be as likely to mislead as to help.
+         */
+        public String getSubjectIri() {
+            return subjectIri;
         }
 
         /** The operation to publish, or null when {@link #getUnmappableReason()} is set. */
@@ -244,14 +271,14 @@ public final class OperationMapper {
 
         if (entity.isOWLClass()) {
             if (!adding) {
-                return mapped("removeClass", userId, single("iri", iri));
+                return mapped("removeClass", userId, single("iri", iri), iri);
             }
             Map<String, Object> data = new LinkedHashMap<String, Object>();
             data.put("id", iri);
             data.put("iri", iri);
             data.put("label", DisplayLabels.forEntity(ontology, entity));
             putGeometry(data, hints.hintFor(iri), 160, 60);
-            return mapped("addClass", userId, data);
+            return mapped("addClass", userId, data, iri);
         }
         if (entity.isOWLNamedIndividual()) {
             if (!adding) {
@@ -270,7 +297,7 @@ public final class OperationMapper {
             NodeHint hint = hints.hintFor(iri);
             data.put("x", hint == null ? 0.0 : hint.getX());
             data.put("y", hint == null ? 0.0 : hint.getY());
-            return mapped("addIndividual", userId, data);
+            return mapped("addIndividual", userId, data, iri);
         }
         // Object, data and annotation properties, and datatypes. The web application has no
         // notion of a standalone property - its "property" is an edge between two nodes - so a
@@ -297,7 +324,8 @@ public final class OperationMapper {
                 Map<String, Object> data = new LinkedHashMap<String, Object>();
                 data.put("childIri", childIri);
                 data.put("parentIri", parentIri);
-                return mapped("addSubClassOf", userId, data);
+                // The child: an author who says "Pizza is a Food" is editing Pizza.
+                return mapped("addSubClassOf", userId, data, childIri);
             }
             // No removeSubClassOf exists, but addSubClassOf stores the edge as a property whose
             // id the web client derives, so removeProperty addressed to that id retracts it.
@@ -414,7 +442,7 @@ public final class OperationMapper {
         Map<String, Object> data = new LinkedHashMap<String, Object>();
         data.put("iri", subject.toString());
         data.put("updates", updates);
-        return mapped(type, userId, data);
+        return mapped(type, userId, data, subject.toString());
     }
 
     /**
@@ -501,7 +529,7 @@ public final class OperationMapper {
         if (language != null && !language.isEmpty()) {
             data.put("lang", language);
         }
-        return mapped("updateAnnotation", userId, data);
+        return mapped("updateAnnotation", userId, data, subject.toString());
     }
 
     // ------------------------------------------------------------------ inbound
@@ -1013,12 +1041,19 @@ public final class OperationMapper {
                 : String.valueOf(value);
     }
 
+    /** A change with no single subject - an edge, which claims nothing. */
     private static Outbound mapped(String type, String userId, Map<String, Object> data) {
-        return new Outbound(OntologyOperation.local(type, userId, data), null);
+        return mapped(type, userId, data, null);
+    }
+
+    /** A change about exactly one term, which is the term its author is editing. */
+    private static Outbound mapped(String type, String userId, Map<String, Object> data,
+            String subjectIri) {
+        return new Outbound(OntologyOperation.local(type, userId, data), null, subjectIri);
     }
 
     private static Outbound unmappable(String reason) {
-        return new Outbound(null, reason);
+        return new Outbound(null, reason, null);
     }
 
     private static Inbound understood(List<OWLOntologyChange> changes) {

@@ -125,8 +125,9 @@ function client(port) {
     send(message) {
       socket.send(JSON.stringify(message));
     },
-    async hello(board, user, colour) {
-      this.send({ t: "hello", board, token: jwt.sign({ sub: user }, SECRET), colour });
+    async hello(board, user, colour, role) {
+      const claims = role ? { sub: user, role } : { sub: user };
+      this.send({ t: "hello", board, token: jwt.sign(claims, SECRET), colour });
       return waitFor(() => received.find((m) => m.t === "welcome" || m.t === "error"),
           `welcome for ${user}`);
     },
@@ -195,6 +196,50 @@ describe("the shared-array encoding", () => {
 
   it("tolerates an object written directly, so an older client is read rather than dropped", () => {
     expect(decodeOperation(operation("addClass", "amy", { iri: "y" })).userId).toBe("amy");
+  });
+});
+
+
+describe("a viewer", () => {
+  it("cannot write to the shared document", async () => {
+    const doc = new Y.Doc();
+    const port = await bridgeOn(doc);
+    const reviewer = await client(port).open();
+    await reviewer.hello("b1", "reviewer", undefined, "viewer");
+
+    reviewer.send({ t: "op", op: operation("addClass", "reviewer",
+        { iri: "http://example.org/o#Sneaked" }) });
+
+    const refusal = await reviewer.waitFor((m) => m.t === "error", "the refusal");
+    expect(refusal.message).toMatch(/viewer/i);
+    expect(readAsWebClient(doc)).toHaveLength(0);
+  });
+
+  it("is told why, rather than watching the change vanish", async () => {
+    const doc = new Y.Doc();
+    const port = await bridgeOn(doc);
+    const reviewer = await client(port).open();
+    await reviewer.hello("b1", "reviewer", undefined, "viewer");
+
+    reviewer.send({ t: "op", op: operation("addClass", "reviewer", { iri: "x" }) });
+
+    const refusal = await reviewer.waitFor((m) => m.t === "error", "the refusal");
+    expect(refusal.message).toMatch(/not shared/i);
+  });
+
+  it("still receives what everybody else writes", async () => {
+    const doc = new Y.Doc();
+    const port = await bridgeOn(doc);
+    const author = await client(port).open();
+    await author.hello("b1", "alice");
+    const reviewer = await client(port).open();
+    await reviewer.hello("b1", "reviewer", undefined, "viewer");
+
+    author.send({ t: "op", op: operation("addClass", "alice",
+        { iri: "http://example.org/o#Pizza" }) });
+
+    const seen = await reviewer.waitFor((m) => m.t === "op", "the author's operation");
+    expect(seen.op.data.iri).toBe("http://example.org/o#Pizza");
   });
 });
 

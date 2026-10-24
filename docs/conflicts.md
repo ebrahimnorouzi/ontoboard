@@ -11,10 +11,18 @@
   operations. Not characters, not files. (`OperationMapper`, `OntologyOperation.TYPES`)
 - **Transport is an append-only shared log** (a Yjs array over a WebSocket bridge). The bridge
   relays and authenticates; it does not arbitrate.
-- **Resolution is last-writer-wins by arrival order.** No lock, no version check, no server
-  authority, no vector clocks.
+- **Resolution is last-writer-wins by arrival order.** No lock, no version check, no vector
+  clocks. The bridge does enforce one thing since 1.125.0: a `viewer` token cannot write.
+- **A change that cannot be applied is now reported**, with a running count, to the person whose
+  copy is behind. The sender is still not told — that needs a NACK the protocol lacks.
 - **Deliberately no entity locking.** A plugin learns of an edit only after Protégé applied it,
-  so a lock it could not enforce would be a promise it could not keep.
+  so a lock it could not enforce would be a promise it could not keep. What there *is* is an
+  advisory claim: publishing a change says which term you are editing, and peers show a badge.
+  **That claim never fired before 1.125.0** — it read the operation's random UUID where it
+  expected an IRI, so no claim was ever made and the badge never appeared.
+- **A conflicted pull request says so.** `gh` is asked for `mergeable` now, and the listing marks
+  a PR that cannot be merged — for an `.owl` that matters, because a file full of conflict
+  markers does not parse, so GitHub's web editor is the wrong place to resolve one.
 - **Git conflicts are refused, not committed.** Since 1.123.0 an unmerged file (`UU`, `AA`, `DD`,
   `AU`, `UA`, `DU`, `UD`) is its own state, and a commit while one exists is declined. Before
   that, `git add -A` + `commit` recorded the conflict markers and reported success — which
@@ -75,17 +83,19 @@ only, and a hand-driven side-by-side diff for git history.
 
 ## What is still missing, cheapest first
 
-1. **The editing claim never fires.** `editedTerm` expects an IRI but gets the operation's random
-   UUID, so the advisory "someone is editing this" badge is dead. (~half a day)
-2. **PR mergeability.** Add `mergeable,mergeStateStatus` to the PR listing so a curator learns of
-   a conflict without leaving Protégé. (under an hour)
-3. **Tell the sender when an operation is dropped.** `skipped()` logs at INFO; there is no NACK
-   in the protocol. (2–3 days)
-4. **Role enforcement.** `role` is parsed and discarded — anyone who can connect can write.
-   (1–2 days)
+1. ~~The editing claim never fires.~~ **Done in 1.125.0.** Each mapping now says whether it has a
+   single subject; an edge claims nothing, because `data["iri"]` holds the *property* there and a
+   claim on the wrong term is worse than none.
+2. ~~PR mergeability.~~ **Done in 1.125.0.**
+3. **Tell the *sender* when an operation is dropped.** Half done in 1.125.0: the **receiver** is
+   now told, with a running count, instead of the drop being an INFO line nobody reads. The
+   sender still is not — that needs a NACK the protocol has no message for. (1–2 days for the
+   remaining half)
+4. ~~Role enforcement.~~ **Done in 1.125.0.** A `viewer` token receives everything, writes
+   nothing, and its holder is told why rather than watching a change vanish.
 5. **A read-only conflict report.** Reuse the six `ReleaseDiff` change kinds to name the collision
    in curator language ("both sides redefined X"). Needs a base version and axioms rather than
    strings. (2–3 days — best value per unit of work)
-6. **Applicable diff objects.** Neither diff returns `List<OWLOntologyChange>`; everything below
-   depends on that. (2–3 days)
+6. **Applicable diff objects.** Neither diff returns `List<OWLOntologyChange>`; everything above 5
+   depends on this. (2–3 days)
 7. **A base version per session**, so a three-way merge is possible at all. (1–2 weeks)

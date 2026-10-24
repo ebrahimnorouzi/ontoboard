@@ -1,0 +1,84 @@
+OntoBoard 1.125.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-10-24  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 9/9  test 11/11
+  2026-10-24  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 9/9  test 11/11
+
+
+FOUR THINGS THE COLLABORATION LAYER SAID IT DID AND DID NOT
+
+docs/conflicts.md was written for 1.123.0 by reading the code rather than the comments, and it
+found that the one mitigation this plugin offers against two people editing the same term had
+never worked. Three of the four items below are from that list; the fourth came out of fixing
+the first.
+
+1. THE EDITING CLAIM HAD NEVER FIRED, IN ANY RELEASE. CollabSession.editedTerm took the
+   operation's id and required an http(s) prefix - but OntologyOperation.local mints a
+   UUID.randomUUID(), so the test failed every single time and noteEdited was called with null on
+   every publish. The advisory badge a peer shows for "somebody is editing this" has never
+   appeared. It had NO TEST, which is how it stayed dead through sixteen releases of the collab
+   package.
+
+   THE OBVIOUS FIX WOULD HAVE BEEN WRONG. data["iri"] holds the subject for a class, an
+   individual and an annotation - and the PROPERTY for a property edge, and the literal
+   "rdf:type" for a class assertion. Reading it blind claims the wrong term on two of the five
+   shapes, and a claim on the wrong term is worse than no claim: it tells a colleague that nobody
+   is editing the class they are about to edit. So Outbound carries a subjectIri that each
+   mapping sets for itself, and an edge sets none - it names a relation rather than a term.
+
+2. A CONFLICTED PULL REQUEST NOW SAYS SO. gh was never asked for `mergeable`, so the first
+   anybody heard of a conflict was the red box on the pull request page. For an .owl that is the
+   wrong place to deal with it: a file full of conflict markers does not parse, so GitHub's web
+   editor cannot resolve one. The listing marks it and says where to resolve it instead.
+
+3. A VIEWER TOKEN IS READ-ONLY. role was parsed in bridge.mjs and discarded - the file's own
+   comment said so - so anyone who could connect could write and a read-only reviewer could not
+   be expressed at all. The bridge refuses a write from a viewer, TELLS THE SENDER WHY rather
+   than letting the change vanish, and still delivers everything others write. mint-token.mjs's
+   help no longer says the role is unenforced.
+
+4. A CHANGE THAT CANNOT BE APPLIED IS REPORTED. It was an INFO line and nothing else, so a
+   colleague's edit that this plugin could not read left the two copies out of step with nobody
+   aware of it: the sender saw their change published, the receiver saw nothing, and a log file
+   is not somewhere a curator looks. The receiver is told now, with a running count.
+
+   THE SENDER IS STILL NOT TOLD. That needs a NACK, and the protocol has no message for one -
+   bridge.mjs's envelope list is hello, welcome, op, presence, peers, error. Half of the item is
+   delivered and the receipt says which half.
+
+
+TESTS
+
+2,482 Java in a clean copy of the repository, 0 failures, 1 skipped. 74 JavaScript, 0 failures.
+
+  OperationMapperTest   4 new - a class, a subclass edit and an annotation each claim the right
+                        term, and a property edge claims nothing
+  CollabSessionTest     3 new - an unapplicable change is reported, the count rises, an ordinary
+                        change says nothing
+  PullRequestTest       3 new - a conflicting PR is recognised, output without the field is not
+                        read as a conflict, and the command asks for it
+  bridge-interop        3 new - a viewer cannot write, is told why, and still receives
+
+TWO TESTS I HAD TO CORRECT, both because the code was right:
+  - A label on a term that is neither a declared class nor a declared individual is unmappable,
+    so there is no operation to carry a subject. The test declares the class first.
+  - An invented operation TYPE cannot be used to exercise the skipped path: OntologyOperation
+    refuses one at construction, deliberately. The realistic case is a real type with a field
+    missing, which is what a peer on a different version sends.
+
+
+WHAT IS STILL NOT TRUE
+
+  - Resolution is still last-writer-wins by arrival. No version check, no vector clocks, no
+    three-way merge, no common ancestor anywhere in the live path.
+  - The sender of a dropped operation is still not told.
+  - Nobody has seen the editing badge, the viewer refusal or the PR conflict marker in a running
+    Protege. They are measured through the session, the bridge and the parser.
+  - AxiomDiff and ReleaseDiff still return rendered strings rather than applicable changes, so
+    nothing can resolve a conflict even when it can describe one. docs/conflicts.md items 5-7.
+  - Everything 1.124.0 listed as outstanding still is: no Zenodo DOI, no w3id PURL, not in
+    Protege's plugin registry, the paper audited and not rewritten, .xlsx read-only, 39 thin
+    patterns, no contact address or ORCID in CITATION.cff.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>

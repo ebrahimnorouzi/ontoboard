@@ -35,6 +35,53 @@ class PullRequestTest {
 
     // ---------------------------------------------------------------- parsing
 
+    /** gh prints mergeable beside the rest; a curator has to learn of a conflict from here. */
+    private static final String WITH_MERGEABILITY = "[{\"author\":{\"login\":\"ebrahim\"},"
+            + "\"headRefName\":\"issue-12\",\"isDraft\":false,\"mergeable\":\"CONFLICTING\","
+            + "\"mergeStateStatus\":\"DIRTY\",\"number\":7,\"state\":\"OPEN\","
+            + "\"title\":\"Add the material entity pattern\","
+            + "\"url\":\"https://github.com/x/y/pull/7\"},"
+            + "{\"author\":{\"login\":\"ebrahim\"},\"headRefName\":\"issue-13\","
+            + "\"isDraft\":false,\"mergeable\":\"MERGEABLE\",\"mergeStateStatus\":\"CLEAN\","
+            + "\"number\":8,\"state\":\"OPEN\",\"title\":\"Fix a label\","
+            + "\"url\":\"https://github.com/x/y/pull/8\"}]";
+
+    /**
+     * A conflicted pull request says so.
+     *
+     * <p>Until 1.125.0 the field was not even asked for, so the first anybody heard of a conflict
+     * was the red box on the pull request page - and for an .owl that is the wrong place to deal
+     * with it, because a file full of conflict markers does not parse.
+     */
+    @Test
+    void aConflictingPullRequestIsRecognised() {
+        List<PullRequest.Summary> open = PullRequest.parseList(WITH_MERGEABILITY);
+
+        assertEquals(2, open.size());
+        assertEquals("CONFLICTING", open.get(0).getMergeable());
+        assertTrue(open.get(0).isConflicting(), "#7 conflicts and must say so");
+        assertFalse(open.get(1).isConflicting(), "#8 is clean");
+    }
+
+    /** Output from a gh that was not asked for the field parses, and claims no conflict. */
+    @Test
+    void outputWithoutMergeabilityIsNotReadAsAConflict() {
+        List<PullRequest.Summary> open = PullRequest.parseList(REAL);
+
+        assertEquals("", open.get(0).getMergeable());
+        assertFalse(open.get(0).isConflicting(),
+                "silence is not a conflict - an older gh, or a field GitHub has not computed yet");
+    }
+
+    /** The field has to be asked for, or gh does not print it. */
+    @Test
+    void theListCommandAsksForMergeability() {
+        assertTrue(PullRequest.LIST_FIELDS.contains("mergeable"), PullRequest.LIST_FIELDS);
+        assertTrue(PullRequest.listCommand().contains(PullRequest.LIST_FIELDS),
+                PullRequest.listCommand().toString());
+    }
+
+
     @Test
     void itReadsWhatGhActuallyPrinted() {
         List<PullRequest.Summary> open = PullRequest.parseList(REAL);

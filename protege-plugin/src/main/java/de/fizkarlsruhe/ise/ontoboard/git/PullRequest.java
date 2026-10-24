@@ -42,8 +42,15 @@ public final class PullRequest {
     public static final int MOST_LISTED = 25;
 
     /** The fields {@link #parseList} reads, in the order {@code gh} is asked for them. */
+    /**
+     * mergeable and mergeStateStatus are here so a curator learns of a conflict from inside
+     * Prot&eacute;g&eacute;. Without them the first anybody hears of one is the red box on the
+     * pull request page - and for an .owl, a conflict is not something to resolve in a web
+     * diff, because a file full of conflict markers does not parse.
+     */
     public static final String LIST_FIELDS =
-            "number,title,state,headRefName,baseRefName,isDraft,url,author";
+            "number,title,state,headRefName,baseRefName,isDraft,url,author,"
+                    + "mergeable,mergeStateStatus";
 
     // ---------------------------------------------------------------- commands
 
@@ -142,9 +149,16 @@ public final class PullRequest {
         private final boolean draft;
         private final String url;
         private final String author;
+        private final String mergeable;
 
         Summary(int number, String title, String state, String head, String base, boolean draft,
                 String url, String author) {
+            this(number, title, state, head, base, draft, url, author, "");
+        }
+
+        Summary(int number, String title, String state, String head, String base, boolean draft,
+                String url, String author, String mergeable) {
+            this.mergeable = mergeable == null ? "" : mergeable;
             this.number = number;
             this.title = title;
             this.state = state;
@@ -153,6 +167,20 @@ public final class PullRequest {
             this.draft = draft;
             this.url = url;
             this.author = author;
+        }
+
+        /**
+         * {@code CONFLICTING} when this pull request cannot be merged as it stands, or
+         * {@code MERGEABLE}, or {@code UNKNOWN} while GitHub is still working it out. Empty
+         * when the field was not asked for or not answered.
+         */
+        public String getMergeable() {
+            return mergeable;
+        }
+
+        /** Whether GitHub says this one conflicts with its base branch. */
+        public boolean isConflicting() {
+            return "CONFLICTING".equalsIgnoreCase(mergeable);
         }
 
         public int getNumber() {
@@ -238,7 +266,8 @@ public final class PullRequest {
                     stringField(object, "baseRefName"),
                     Boolean.parseBoolean(rawField(object, "isDraft")),
                     stringField(object, "url"),
-                    stringField(object, "login")));
+                    stringField(object, "login"),
+                    stringField(object, "mergeable")));
         }
         return found;
     }

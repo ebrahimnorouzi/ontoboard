@@ -128,6 +128,13 @@ class CollabSessionTest {
         public void onUnshareable(int count, String exampleReason) {
             unshareable.add(count + ": " + exampleReason);
         }
+
+        final List<String> notApplied = new ArrayList<String>();
+
+        @Override
+        public void onNotApplied(int count, String exampleReason) {
+            notApplied.add(count + ": " + exampleReason);
+        }
     }
 
     /**
@@ -213,6 +220,55 @@ class CollabSessionTest {
     }
 
     // ---------- presence, geometry and the end of a session ----------
+
+    /**
+     * A change this plugin cannot apply is reported, not only logged.
+     *
+     * <p>It was an INFO line and nothing else, so a colleague's edit that did not land left the
+     * two copies out of step with nobody aware of it: the sender saw their change published, the
+     * receiver saw nothing, and a log file is not somewhere a curator looks. The sender still is
+     * not told - that needs a NACK the protocol does not have - but the person whose copy is now
+     * behind is.
+     */
+    @Test
+    void aChangeThatCannotBeAppliedIsReportedToTheHost() {
+        EchoingHost host = new EchoingHost();
+        CollabSession session = sessionWith(host);
+
+        // A real operation type, with the field the mapper needs missing - which is what a
+        // peer running a different version actually sends. An invented TYPE cannot be used:
+        // OntologyOperation refuses one at construction, on purpose.
+        session.onOperation(operation("addClass", "label", "no iri here"));
+
+        assertFalse(host.notApplied.isEmpty(),
+                "the host was never told: " + host.notApplied);
+        assertTrue(host.notApplied.get(0).startsWith("1: "), host.notApplied.toString());
+    }
+
+    /** The count rises, so a session that keeps dropping changes says how many. */
+    @Test
+    void theCountOfUnappliedChangesRises() {
+        EchoingHost host = new EchoingHost();
+        CollabSession session = sessionWith(host);
+
+        session.onOperation(operation("addClass", "label", "no iri here"));
+        session.onOperation(operation("addIndividual", "label", "nor here"));
+
+        assertEquals(2, host.notApplied.size(), host.notApplied.toString());
+        assertTrue(host.notApplied.get(1).startsWith("2: "), host.notApplied.toString());
+        assertEquals(2, session.getNotAppliedCount());
+    }
+
+    /** A change that IS applied says nothing, or the warning would mean nothing. */
+    @Test
+    void anOrdinaryChangeIsNotReportedAsUnapplied() {
+        EchoingHost host = new EchoingHost();
+        CollabSession session = sessionWith(host);
+
+        session.onOperation(operation("addClass", "iri", NS + "Person"));
+
+        assertTrue(host.notApplied.isEmpty(), host.notApplied.toString());
+    }
 
     /**
      * A peer's geometry reaches the host instead of being dropped.

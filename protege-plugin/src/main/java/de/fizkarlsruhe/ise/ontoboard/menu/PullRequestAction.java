@@ -180,12 +180,28 @@ public class PullRequestAction extends OntoBoardAction {
                         + lastLine(outcome.getOutput())).build();
             }
             List<PullRequest.Summary> open = PullRequest.parseList(join(outcome.getOutput()));
+            int conflicting = 0;
             for (PullRequest.Summary one : open) {
-                result.row("#" + one.getNumber(), one.describeState(), one.getTitle(),
-                        one.getHead(), one.getAuthor());
+                // The state column says "conflicts" where it would otherwise say "open",
+                // because for an .owl that is not a detail: a conflicted file does not
+                // parse, so the usual advice - resolve it in the web diff - produces an
+                // ontology nobody can open.
+                result.row("#" + one.getNumber(),
+                        one.isConflicting() ? one.describeState() + ", conflicts"
+                                : one.describeState(),
+                        one.getTitle(), one.getHead(), one.getAuthor());
+                if (one.isConflicting()) {
+                    conflicting++;
+                }
             }
             if (open.isEmpty()) {
                 return result.summary("Nothing is open on this repository.").build();
+            }
+            if (conflicting > 0) {
+                result.warn(conflicting + " of these cannot be merged as they stand. An "
+                        + "ontology full of conflict markers does not parse, so resolve "
+                        + "them in Protege or with git mergetool rather than in GitHub's "
+                        + "web editor.");
             }
             for (PullRequest.Summary one : open) {
                 result.note("#" + one.getNumber() + "  " + one.getUrl());

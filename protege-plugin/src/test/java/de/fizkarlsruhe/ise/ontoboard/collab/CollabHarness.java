@@ -189,6 +189,11 @@ public final class CollabHarness implements Closeable {
                 }
 
                 @Override
+                public void onNotApplied(int count, String exampleReason) {
+                    status.add("not applied " + count + ": " + exampleReason);
+                }
+
+                @Override
                 public void onPeerGeometry(String iri, java.util.Map<String, Object> data) {
                     geometry.put(iri, data);
                 }

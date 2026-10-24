@@ -266,6 +266,7 @@ export function startBridge({ port, secret, getDoc }) {
   wss.on("connection", (socket) => {
     let board = null;
     let user = null;
+    let role = "user";
     let ops = null;
     let observer = null;
     /** Ids this connection sent, so the observer does not hand them straight back. */
@@ -295,6 +296,11 @@ export function startBridge({ port, secret, getDoc }) {
         }
         board = message.board;
         user = auth.user;
+        // KEPT, AND NOW ACTED ON. The role was parsed and thrown away, so "viewer" bought
+        // nothing and anyone who could connect could write. A read-only reviewer - somebody
+        // invited to look at a session without being able to change the ontology - was not
+        // expressible at all.
+        role = auth.role;
 
         let doc;
         try {
@@ -396,6 +402,17 @@ export function startBridge({ port, secret, getDoc }) {
       }
 
       if (message.t === "op") {
+        if (role === "viewer") {
+          // Refused here rather than in the client, because a client is the thing being
+          // guarded against. The sender is told, so a reviewer who tries to edit learns why
+          // nothing happened instead of watching their change vanish.
+          socket.send(JSON.stringify({
+            t: "error",
+            message: "This session was joined as a viewer, so the change was not shared. "
+              + "Ask for a token with a writing role to take part.",
+          }));
+          return;
+        }
         // Recorded before the push, because the observer fires synchronously inside it.
         sentFromHere.add(message.op.id);
         if (sentFromHere.size > SENT_ID_MEMORY) {

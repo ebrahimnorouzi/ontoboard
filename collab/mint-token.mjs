@@ -18,8 +18,9 @@
  * server" and "my colleagues can connect".
  *
  * The `sub` claim is the only one that matters: the bridge reads it and that is the name that
- * appears on the cursor. `role` is carried because the protocol has a slot for it and defaults to
- * "user"; nothing enforces it yet, which is said out loud rather than implied.
+ * appears on the cursor. `role` is enforced by the bridge since 1.125.0: a "viewer" token
+ * receives everything and writes nothing, and its holder is told why rather than watching
+ * a change vanish. It defaults to "user", which writes.
  */
 import jwt from "jsonwebtoken";
 
@@ -30,7 +31,8 @@ const USAGE = [
   "            person their own - two people sharing a token are two cursors with one name.",
   "  --days N  how long it lasts. Default 30. The plugin stops rather than retrying when a",
   "            token expires, and says 'invalid token: jwt expired'.",
-  "  --role R  carried in the token and not yet enforced anywhere. Default 'user'.",
+  "  --role R  'viewer' joins read-only: the session is received, and anything the holder",
+  "            changes is refused by the bridge and not shared. Default 'user'.",
 ].join("\n");
 
 /** Reads the arguments, or explains what is wrong with them. */
