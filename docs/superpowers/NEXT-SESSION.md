@@ -34,11 +34,15 @@ That is the whole prompt. Everything below is in the file, so the session starts
   -Version <v> -SelfTest`; quote every `-D` argument or PowerShell splits it.
 - Don't drive the user's desktop with synthetic clicks. They are usually at the keyboard.
 
-## State as of 1.123.1
+## State as of 1.124.0
 
 Released, green, both hosts smoked. Recent work: the pattern library (163 patterns, a worked
 example each), canvas panning, click-to-navigate, one-hop = adjacency in the drawn graph,
 anonymous class expressions, an editable entity pane, git conflict refusal.
+
+**Jobs 1 and 2 below are DONE** (1.124.0): all six remaining axiom types are drawn, and
+unpositioned nodes find free space instead of landing on an arranged term. `docs/canvas.md` is
+the current truth about what the canvas draws. Job 3 is what is left.
 
 **Two regressions shipped in 1.123.0 and were fixed in 1.123.1.** Both were invisible to the
 suite because the canvas component cannot be built headless. The fix added
@@ -46,38 +50,23 @@ suite because the canvas component cannot be built headless. The fix added
 `xvfb-run`. **Before changing anything in `canvas/` or `views/SchemaCanvasView.java`, run that
 test class with a display and make sure it still passes.**
 
-## Job 1 — everything the canvas cannot draw yet
+## Jobs 1 and 2 — done in 1.124.0, kept here for context
 
-`docs/canvas.md` has the table. Not drawn today, with MWO 3.0.1 counts:
+All six axiom types that were hover text are drawn: `DisjointClasses` (29 lines from 15 axioms on
+MWO), `InverseObjectProperties` (38), property characteristics (25, as a label suffix),
+`SubPropertyChainOf` (3, as a chain node), `ObjectPropertyAssertion` (5), `HasKey`. MWO's full
+board is 556 nodes / 730 edges. **SWRL rules are deliberately not drawn** — a horn clause over
+variables has no honest node-and-edge form; `docs/canvas.md` says so.
 
-| Axiom | MWO | Note |
-|---|---|---|
-| `DisjointClasses` | 15 | hover text only |
-| `InverseObjectProperties` | 38 | hover text only |
-| Property characteristics (transitive, functional, …) | 25 | a badge, not an edge |
-| `SubPropertyChainOf` | 3 | no two-ended shape fits |
-| `ObjectPropertyAssertion` | 5 | individual-to-individual |
-| `HasKey`, SWRL rules | 0 / 4 | no visual form attempted |
+Overlapping is fixed by `canvas/CanvasPlacement.java`: an unpositioned node searches for the
+first free slot rather than stepping right from (40,40) blind to the saved positions.
 
-Start from `model/OntologyProjection.java`. The pattern to follow is 1.123.0's: **add only where
-nothing was drawn before**, so no existing board changes. A new `CanvasEdge.Kind` or `NodeKind`
-must be added in the same commit to: the enum, `canvas/SchemaStyles.java`,
-`canvas/SchemaGraph.java` (`baseStyleFor`/`styleFor`), `canvas/CanvasLegend.java` (switch **and**
-an `Entry` — the legend has a completeness guard with no catch-all), `canvas/CanvasTooltips.java`,
-`canvas/DotExport.java`. `DotExportTest` asserts one DOT shape per `NodeKind`.
+If you add another node or edge kind, it must land in the same commit in: the enum,
+`canvas/SchemaStyles.java`, `canvas/SchemaGraph.java`, `canvas/CanvasLegend.java` (switch **and**
+an `Entry` — the completeness guard has no catch-all), `canvas/CanvasTooltips.java`,
+`canvas/DotExport.java`.
 
-Decide per axiom whether an edge, a badge or a node is honest. Disjointness as an edge would
-double the edge count on a taxonomy — consider a badge or a toggle, and measure before choosing.
-
-## Job 2 — overlapping nodes
-
-Reported: terms land on top of each other. Look at `canvas/CanvasLayouts.java` (the ring
-placement for expanded neighbours) and `SchemaGraph.render`'s `nextX` row for unpositioned nodes
-— a derived node (datatype, class expression) gets no saved geometry and is laid out afresh every
-render, which is where overlap comes from. `autoArrangeIfUnpositioned` in the view is the hook.
-Wanted: new nodes find free space instead of stacking.
-
-## Job 3 — merge-conflict resolution (the "Mergely" item)
+## Job 3 — merge-conflict resolution (the "Mergely" item). THIS IS THE JOB.
 
 `docs/compared-with-ontoeditor.md` §(d) has the design; `docs/conflicts.md` has the survey and a
 ranked list. The first piece already exists: `GitRepo.Status.getConflicted()` parses all seven
