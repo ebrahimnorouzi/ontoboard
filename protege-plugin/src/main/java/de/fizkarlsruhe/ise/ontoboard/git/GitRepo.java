@@ -6,6 +6,8 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
+import java.util.TreeSet;
 
 /**
  * The everyday git commands, for a project this plugin opened.
@@ -37,6 +39,102 @@ public final class GitRepo {
     /** {@code --porcelain} because the human-readable format changes between git versions. */
     public static List<String> statusCommand() {
         return Arrays.asList("git", "status", "--porcelain=v1", "--branch");
+    }
+
+    /**
+     * The three versions git keeps while a merge is unresolved.
+     *
+     * <p>A conflicted file is not one file. Git holds three: stage 1 is the common ancestor,
+     * stage 2 is what this branch says, stage 3 is what the other one says. The working copy is a
+     * fourth thing, and the only one with conflict markers in it - which is why reading the
+     * working copy is the wrong way to find out what two people disagreed about, and why
+     * resolving an {@code .owl} in a text diff is a losing game: the markers make it unparseable,
+     * so the moment a conflict exists the file stops being an ontology.
+     *
+     * <p>These three are each a clean, parseable blob. Compare them as ontologies and the
+     * question becomes "which terms did both sides change", which is a question a curator can
+     * answer.
+     *
+     * @param stage 1 for the ancestor, 2 for ours, 3 for theirs
+     */
+    public static List<String> stageCommand(int stage, String path) {
+        if (stage < 1 || stage > 3) {
+            throw new IllegalArgumentException(
+                    "a conflicted file has stages 1 (ancestor), 2 (ours) and 3 (theirs), not "
+                            + stage);
+        }
+        if (path == null || path.trim().isEmpty()) {
+            throw new IllegalArgumentException("which file?");
+        }
+        return Arrays.asList("git", "show", ":" + stage + ":" + path.trim());
+    }
+
+    /** What each stage is called where a person will read it. */
+    public static String stageName(int stage) {
+        switch (stage) {
+            case 1:
+                return "the common ancestor";
+            case 2:
+                return "this branch";
+            case 3:
+                return "the other branch";
+            default:
+                return "stage " + stage;
+        }
+    }
+
+    /**
+     * Asks which versions git kept of one conflicted file: {@code git ls-files -u}.
+     *
+     * <p>MEASURED on real merges, because which stages exist IS the shape of the conflict: an
+     * ordinary content clash keeps 1, 2 and 3 ({@code UU}); a file one side deleted keeps 1 and 3
+     * or 1 and 2 ({@code DU}, {@code UD}); a file both sides created keeps 2 and 3 and has no
+     * ancestor at all ({@code AA}). A file both sides deleted never arrives - git resolves that
+     * silently and the file is absent from the status entirely.
+     *
+     * <p>Worth one extra git call, because the alternative is inferring the shape from which
+     * versions could be PARSED - and a stage git has but the OWL API cannot read is not a
+     * deletion. Reporting it as one would be a lie about the repository, told confidently.
+     */
+    public static List<String> unmergedStagesCommand(String path) {
+        if (path == null || path.trim().isEmpty()) {
+            throw new IllegalArgumentException("which file?");
+        }
+        return Arrays.asList("git", "ls-files", "-u", "--", path.trim());
+    }
+
+    /**
+     * The stage numbers {@code git ls-files -u} listed.
+     *
+     * <p>Each line is {@code <mode> <sha> <stage>} then a tab then the path, so the stage is read
+     * as the last field before that tab. Not by splitting the whole line on whitespace: a path
+     * may contain spaces, and a reader that wandered into the path would answer with nonsense.
+     */
+    public static Set<Integer> parseUnmergedStages(List<String> output) {
+        Set<Integer> stages = new TreeSet<Integer>();
+        if (output == null) {
+            return stages;
+        }
+        for (String line : output) {
+            int tab = line.indexOf(9);
+            if (tab < 1) {
+                continue;
+            }
+            String fields = line.substring(0, tab).trim();
+            int lastSpace = fields.lastIndexOf(32);
+            if (lastSpace < 0) {
+                continue;
+            }
+            try {
+                int stage = Integer.parseInt(fields.substring(lastSpace + 1));
+                if (stage >= 1 && stage <= 3) {
+                    stages.add(Integer.valueOf(stage));
+                }
+            } catch (NumberFormatException notAStage) {   // NOPMD - git said something else
+                continue;
+            }
+        }
+        return stages;
     }
 
     /**
@@ -214,7 +312,7 @@ public final class GitRepo {
                 continue;
             }
             String code = line.substring(0, 2);
-            String path = line.substring(3).trim();
+            String path = unquotePath(line.substring(3).trim());
             if ("??".equals(code)) {
                 untracked.add(path);
             } else if (isUnmerged(code)) {
@@ -224,6 +322,73 @@ public final class GitRepo {
             }
         }
         return new Status(branch, ahead, behind, changed, untracked, conflicted, hasUpstream);
+    }
+
+    /**
+     * The real path, when {@code git status --porcelain} quoted it.
+     *
+     * <p>MEASURED: a conflicted {@code src/my ontology.owl} is printed as
+     * {@code UU "src/my ontology.owl"} - quoted for nothing more exotic than the space - while
+     * {@code git ls-files -u} prints the same path bare. Keeping the quotes was not a cosmetic
+     * slip: the quoted form ends in {@code "} rather than {@code .owl}, so the conflict report
+     * decided the file was not an ontology and said NOTHING about it, and {@code git show} was
+     * handed a path with quotes in it. A project whose directories have spaces in them, or a
+     * German or Turkish term in a filename, got silence.
+     *
+     * <p>git's quoting is C-style: the path is wrapped in double quotes, backslash escapes the
+     * usual characters, and a non-ASCII byte becomes a three-digit octal escape. The octal
+     * escapes are bytes of UTF-8, so they are collected and decoded together rather than one at
+     * a time - decoding each separately would turn a German umlaut into two broken characters.
+     */
+    public static String unquotePath(String path) {
+        if (path == null || path.length() < 2 || path.charAt(0) != '"'
+                || path.charAt(path.length() - 1) != '"') {
+            return path;
+        }
+        String inside = path.substring(1, path.length() - 1);
+        StringBuilder out = new StringBuilder();
+        java.io.ByteArrayOutputStream bytes = new java.io.ByteArrayOutputStream();
+        for (int at = 0; at < inside.length(); at++) {
+            char here = inside.charAt(at);
+            if (here == '\\' && at + 1 < inside.length()) {
+                char next = inside.charAt(at + 1);
+                if (next >= '0' && next <= '7' && at + 3 < inside.length()) {
+                    try {
+                        bytes.write(Integer.parseInt(inside.substring(at + 1, at + 4), 8));
+                        at += 3;
+                        continue;
+                    } catch (NumberFormatException notOctal) {   // NOPMD - then it is literal
+                        // falls through to the single-character escapes
+                    }
+                }
+                flush(bytes, out);
+                at++;
+                switch (next) {
+                    case 't': out.append('\t'); break;
+                    case 'n': out.append('\n'); break;
+                    case 'r': out.append('\r'); break;
+                    default: out.append(next); break;
+                }
+                continue;
+            }
+            flush(bytes, out);
+            out.append(here);
+        }
+        flush(bytes, out);
+        return out.toString();
+    }
+
+    /** Decodes the octal bytes gathered so far as the UTF-8 they are. */
+    private static void flush(java.io.ByteArrayOutputStream bytes, StringBuilder out) {
+        if (bytes.size() == 0) {
+            return;
+        }
+        try {
+            out.append(new String(bytes.toByteArray(), "UTF-8"));
+        } catch (java.io.UnsupportedEncodingException everyJvmHasUtf8) {
+            out.append(new String(bytes.toByteArray()));
+        }
+        bytes.reset();
     }
 
     /**

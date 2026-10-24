@@ -1,6 +1,7 @@
 package de.fizkarlsruhe.ise.ontoboard.menu;
 
 import de.fizkarlsruhe.ise.ontoboard.git.GitRepo;
+import de.fizkarlsruhe.ise.ontoboard.odk.ConflictReview;
 import de.fizkarlsruhe.ise.ontoboard.proc.ProcessRunner;
 import java.io.File;
 import java.io.IOException;
@@ -118,6 +119,14 @@ public class GitAction extends OntoBoardAction {
         describe(status, result);
 
         if (STATUS.equals(what)) {
+            // Asked here too, not only when a commit is refused. "Show me what has changed" is
+            // where somebody looks first after a pull went badly, and a list of conflicted
+            // filenames does not tell them what the disagreement is. Three `git show`s per
+            // conflicted ontology is affordable because this action is invoked from a menu, not
+            // on a timer.
+            if (status.hasConflicts()) {
+                describeConflicts(runner, repository, status, result);
+            }
             return result.summary(summaryOf(status)).build();
         }
         if (BackgroundRun.abandoned()) {
@@ -171,6 +180,7 @@ public class GitAction extends OntoBoardAction {
             // Refused rather than resolved: which of two definitions of a class is right is not
             // a tool's decision, and the plugin has no three-way merge to offer. What it can do
             // is not destroy the file while the question is open.
+            describeConflicts(runner, repository, status, result);
             return result.failed("This repository is in the middle of a merge, and "
                     + status.getConflicted().size() + " file"
                     + (status.getConflicted().size() == 1 ? " is" : "s are")
@@ -242,6 +252,10 @@ public class GitAction extends OntoBoardAction {
         }
         result.columns("State", "File");
         List<String> rows = new ArrayList<String>();
+        for (String path : status.getConflicted()) {
+            result.row("conflicted", path);
+            rows.add(path);
+        }
         for (String path : status.getChanged()) {
             result.row("changed", path);
             rows.add(path);
@@ -252,10 +266,32 @@ public class GitAction extends OntoBoardAction {
         }
     }
 
+    /**
+     * Says which TERMS two people disagreed about, for each conflicted ontology.
+     *
+     * <p>The reading of git's three stages and the judgement about what disagrees are in
+     * {@link ConflictReview}, which is checkable without a running Protege; this is the wiring.
+     * Every failure there is soft and arrives as a line, because the commit is being refused
+     * either way and a report that could not be produced must not turn a clear refusal into an
+     * error about something else.
+     */
+    private void describeConflicts(ProcessRunner.Runner runner, File repository,
+            GitRepo.Status status, OperationResult.Builder result) {
+        for (String line : ConflictReview.of(runner, repository, status.getConflicted())) {
+            result.note(line);
+        }
+    }
+
     private static String summaryOf(GitRepo.Status status) {
         if (status.isClean()) {
             return "Nothing has changed since the last commit, on branch " + status.getBranch()
                     + ".";
+        }
+        if (status.hasConflicts()) {
+            return status.getConflicted().size() + " file"
+                    + (status.getConflicted().size() == 1 ? " is" : "s are")
+                    + " still conflicted on branch " + status.getBranch()
+                    + ". Nothing can be committed until they are resolved.";
         }
         return status.getChanged().size() + " changed and " + status.getUntracked().size()
                 + " new file" + (status.getUntracked().size() == 1 ? "" : "s") + " on branch "

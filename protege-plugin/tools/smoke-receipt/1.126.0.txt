@@ -1,0 +1,229 @@
+OntoBoard 1.126.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-10-24  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 9/9  test 11/11
+  2026-10-24  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 9/9  test 11/11
+
+Both hosts report "OntoBoard 1.126.0 resolved and started", so the version that ran is the
+version in pom.xml rather than a stale bundle out of Felix's cache.
+
+
+A REFUSED COMMIT NOW SAYS WHAT THE DISAGREEMENT IS
+
+docs/conflicts.md item 5 - "a read-only conflict report, best value per unit of work" - is done,
+for git conflicts. Since 1.123.0 a commit on a conflicted tree has been refused, which stopped
+the plugin recording conflict markers into an ontology and reporting success. What it left the
+user with was a list of filenames and no way to find out what the two sides disagreed about,
+because the one file they can open - the working copy - is the one version that is no longer an
+ontology.
+
+Both the refusal and "Show me what has changed" now carry lines like:
+
+  src/ontology/mwo-edit.owl: 1 term changed on both sides, differently, out of 1 and 1. Each
+  needs somebody to choose.
+      Both sides relabelled Material, differently: this branch has "Material Entity", the other
+      branch has "Material Thing".
+
+It reports; it does not resolve. Which of two definitions of a class is right is not a tool's
+decision, and there is still no three-way merge here to offer.
+
+AGREEMENT IS REPORTED APART FROM DISAGREEMENT. Two people who made the SAME edit have not
+conflicted, even though git says they have. Counting those as decisions would teach a curator to
+skim the report, and the next one they skim will be real.
+
+
+THE ESTIMATE'S PREMISE WAS WRONG, IN A USEFUL DIRECTION
+
+Item 5 was listed as blocked behind items 6 and 7 - applicable diff objects, and a base version
+per session - on the grounds that naming a disagreement needs a common ancestor and real change
+objects rather than rendered strings.
+
+For a GIT conflict git has kept a common ancestor all along: stage 1 IS the common version, and
+no session, lock, vector clock or version counter was needed to obtain it. Rendered strings turn
+out to be enough to NAME a disagreement; they are only insufficient to RESOLVE one. The thing
+that genuinely needs a base version is the live collaboration path, which has none - and that is
+item 7, still open.
+
+
+MEASURED, NOT REASONED: SEVEN REAL CONFLICTED REPOSITORIES
+
+Each shape was created with real git and run through the shipped function with the real process
+runner - not a fake, and not a reimplementation of the production path:
+
+  UU  content clash on one term      stages 1 2 3   names the term and both labels
+  DU  deleted here, changed there    stages 1 3     "this branch no longer has this file ..."
+  AA  created on both sides          stages 2 3     "both branches created this file
+                                                     independently - 2 axioms here, 2 there ..."
+  UU  markers committed in one side  stages 1 2 3   "... this branch will not parse ..."
+  UU  path with a space in it        stages 1 2 3   reported at all, which it was not before
+  AU  renamed differently on both    stage 2 only   "only this branch has this file, and there is
+  UA                                 stage 3 only    no common version of it"
+  DD  the old name of that rename    stage 1 only   "neither branch has this file any more"
+  DD  deleted on both sides          NEVER ARRIVES  git resolves it silently and the file is
+                                                    absent from the status entirely
+
+A German umlaut in a path was confirmed by accident: a refuter checking finding 5 left
+`src/ontology/Begriffsübersicht.ttl` conflicted in one of these repositories, and the shipped
+code reads it correctly through git's per-byte octal escaping.
+
+And the measurement that justifies the whole feature: on the conflicted repository all three
+stages parse cleanly as ontologies and THE MERGED WORKING COPY DOES NOT PARSE AT ALL - "Content
+is not allowed in prolog", because git has written <<<<<<< into it. A side-by-side text view of
+a conflicted .owl is a view of something that has stopped being an ontology, which is why this
+compares git's three stages instead of the file on disk.
+
+
+A BUG THE MEASUREMENTS FOUND IN MY OWN FIRST VERSION
+
+The first version inferred the shape of the conflict from which versions the OWL API could read:
+no stage 2 meant "this branch deleted it". That is wrong exactly when git HAS the stage and it
+will not parse - a file somebody committed with conflict markers still in it, which is the thing
+docs/conflicts.md says happens today. It reported a broken file as a deletion, confidently, and
+a user's next move after reading that would have been the wrong one.
+
+Fixed by asking git which stages it kept (git ls-files -u) and reporting a parse failure as a
+parse failure. Proven on a real repository with markers committed into stage 2, and guarded by
+ConflictReviewTest.aStageThatWillNotParseIsNotReportedAsADeletion.
+
+TWO MORE THINGS THE MEASUREMENTS CORRECTED:
+
+  - The OWL API's Turtle parser is LENIENT. A file with a missing period and an undeclared prefix
+    still parsed - into an ontology missing the class the broken line carried - so the report
+    said "this branch removed Material", which is a true statement about the ontology that file
+    actually describes. Genuinely unparseable stages are rarer than assumed; committed conflict
+    markers are the realistic cause.
+  - Delete/delete does not produce a DD status from a plain merge. GitRepo.isUnmerged admits DD,
+    so the path is reachable and is covered, but it took a real merge to learn that the ordinary
+    case never reaches it.
+
+
+NINE DEFECTS AN ADVERSARIAL REVIEW FOUND IN THIS RELEASE, BEFORE IT SHIPPED
+
+Four reviewers read the change along different dimensions and raised 16 findings; each was then
+handed to refuters told to DISPROVE it. The ones below survived, were reproduced against real git
+or measured directly, and are fixed here. The review cost about 2.5 million tokens across 30
+agents and was worth it: eight of these were wrong output a user would have acted on.
+
+1. A RENAME ON BOTH SIDES WAS REPORTED AS A DELETION. The one-sided branches tested for a missing
+   stage 2 or 3 BEFORE asking whether git kept an ancestor. MEASURED on git 2.38.1: ours renames
+   a.ttl to b.ttl, theirs to c.ttl, and the merge leaves `DD a.ttl`, `AU b.ttl`, `UA c.ttl` -
+   single-stage sets. The report said "the other branch no longer has b.ttl" about a path that
+   branch never had. A curator restoring it loses one of the two renames. Worse, it is the same
+   confident lie that asking git for the stage list was added to prevent. No test could reach it:
+   a single-stage set needs a null ancestor AND a null side, and no case passed both.
+
+2. AN UNREACHABLE IMPORT MADE A READABLE FILE "UNPARSEABLE", IN 13.6 SECONDS. Each stage was
+   loaded through a default-configured manager, which fetches owl:imports. MEASURED: an ontology
+   importing two unreachable IRIs threw UnloadableImportException after 13.6s - per stage, three
+   stages per file. An ODK edit file imports its modules by IRI, so this was the ordinary case,
+   not a corner. The guarded configuration answers in 2.5s with the ontology intact, and nothing
+   is lost because only each version's OWN axioms are compared.
+
+3. TWO INDEPENDENT ADDITIONS OF ONE TERM WERE CALLED AGREEMENT. ReleaseDiff records an ADDED
+   change with the term's rdfs:label as its only value, so two people who each introduced the
+   same IRI with the same label were reported as agreeing while their definitions, parents and
+   restrictions went uncompared.
+
+4. A SECOND CHANGE TO A TERM COULD HIDE A DISAGREEMENT ABOUT IT. Only the last change per term
+   was kept, so two sides that each relabelled Material differently AND moved it under the same
+   parent reduced to one identical MOVED entry per side, compared equal, and were announced as
+   agreement - with the label disagreement absent from the report altogether.
+
+5. A CONFLICTED PATH WITH A SPACE IN IT GOT NO REPORT AT ALL. `git status --porcelain` quotes
+   such a path - MEASURED: `UU "src/my ontology.owl"` - and the quotes were kept, so the path
+   ended in `"` rather than `.owl`, the file was judged not an ontology, and nothing was said.
+   Non-ASCII paths are octal-escaped per BYTE, so they are now gathered and decoded as the UTF-8
+   they are rather than one escape at a time.
+
+6. DURING A REBASE THE TWO SIDES WERE NAMED BACKWARDS. In a merge, stage 2 is this branch; in a
+   rebase, cherry-pick or revert it is what is already on the new base and stage 3 is the change
+   being replayed. MEASURED: during `git rebase` the status still prints UU and says nothing.
+   Telling a curator their own edit is "the other branch" invites them to discard their own work.
+   MERGE_HEAD is asked for once per report, and the sides are named neutrally when it is absent.
+
+7. "NOTHING DISAGREES" WAS SAID ABOUT A FILE GIT HAD JUST REFUSED. MEASURED on a real conflict
+   where both sides edited only the ontology's own rdfs:label: "Both sides changed 0 and 0 terms,
+   and nothing they both touched disagrees" - while the commit was being refused, which invites
+   the reader to conclude the refusal is a bug. The report now says plainly that it compares
+   terms and not ontology-level annotations, comments or synonyms.
+
+8. AN EMPTIED VERSION WAS CALLED UNREADABLE. git exits 0 with no output for an empty blob, which
+   was read as a parse failure rather than as the empty ontology it is.
+
+9. LinkageError escaped the soft-failure guarantee, which is the throwable this codebase
+   documents as the realistic one when a class the host was expected to provide is absent.
+
+WHAT THE REVIEW DID NOT COVER: the workflow verified at most four findings per dimension, so
+three of the sixteen were never put to a refuter. Of the rest, four were judged house style or
+cosmetic and are not fixed: the short-form duplication of ReleaseDiff.shortForm, MOVED agreement
+compared on short parent names rather than IRIs, the indentation of collision lines surviving
+OperationResult.note, and a weak assertion in gitFailingOutrightDoesNotThrow.
+
+
+TESTS
+
+2,517 Java, 0 failures, 1 skipped, from mvn clean package on the shipped tree. 74 JavaScript, 0
+failures - unchanged, because this release touches no JavaScript.
+
+  ConflictReportTest   11 - two sides relabelling one term, obsoleting what somebody else is
+                        editing, the same change on both sides as agreement, a one-sided change
+                        as no conflict, three versions required, one term as one decision however
+                        many ways it changed, and three for the review: two additions of one term
+                        are never agreement even with one label, a second change cannot mask a
+                        disagreement, one agreement counts in the singular
+  ConflictReviewTest   17 - the git shapes above, a non-ontology conflicted file passed over,
+                        every unreadable version named, git failing without throwing, one block
+                        per file, the same edit on both sides leaving nothing to choose, and five
+                        for the review: a rename on both sides is not a deletion, an emptied
+                        version is read rather than called unparseable, an unreachable import
+                        does not stop the report, and the sides are named for the operation in
+                        progress - rebase and merge each with a case
+  GitRepoTest          +7 - the stage listing parsed from real ls-files output, a path with a
+                        space in it, junk and out-of-range stages ignored, one path per call, a
+                        quoted conflicted path unquoted, octal escapes decoded as UTF-8, and an
+                        unquoted path left alone
+
+ONE TEST I HAD TO CORRECT BECAUSE THE TEST WAS WRONG, NOT THE CODE: the octal-escape fixture was
+first written as a Java string literal, and Java reads `\\303` in source as an octal escape of
+its own - so the fixture silently held the DECODED character and the test failed against a
+function that was measured to be correct. It builds its input from explicit characters now.
+
+NON-VACUOUS BY CONSTRUCTION: the two deletion branches were swapped in the shipped code and
+ConflictReviewTest.oneSideDeletingTheFileIsSaidOutLoud failed. Reverted and re-run green.
+
+THREE RUNS THAT RECONCILE: a clean-room copy of the repository ran 2,499 / 0 failures early in
+the cycle, before 7 cases were written (+4 GitRepoTest, +3 ConflictReviewTest), giving 2,506; the
+review's nine fixes then added 11 more (+5 ConflictReviewTest, +3 ConflictReportTest, +3
+GitRepoTest). 2,499 + 7 + 11 = 2,517.
+
+THE JAR WAS REBUILT AND BOTH HOSTS RE-SMOKED AFTER THOSE FIXES. The first pair of smoke runs
+described a jar that no longer existed once the review's findings were fixed, and a receipt whose
+host lines describe a different binary from the one being committed is the thing this file exists
+to prevent.
+
+A MEASUREMENT CAVEAT WORTH RECORDING: that clean room excluded collab/node_modules, which makes
+CollabHarness.isAvailable() false, and 12 CollabLiveTest cases SKIP without failing - a run that
+reports "2,499 run, 13 skipped" looks just as green as one that exercises the live bridge. The
+2,506 figure above includes them, because it was built in a tree that has node_modules.
+
+
+WHAT IS STILL NOT TRUE
+
+  - Resolution is still last-writer-wins by arrival in the live path. No version check, no vector
+    clocks, no three-way merge, no common ancestor anywhere in it.
+  - Nothing can APPLY a decision. AxiomDiff and ReleaseDiff still return rendered strings rather
+    than List<OWLOntologyChange>, so the report can name a disagreement and not settle one.
+    docs/conflicts.md items 6 and 7.
+  - The sender of a dropped operation is still not told; that needs a NACK the protocol lacks.
+  - GitAction still has no test class of its own - no release has given it one. What it used to
+    hold has moved into ConflictReview, which is covered; what is left in GitAction is the
+    wiring, and it is exercised only by the host smoke starting without throwing.
+  - Nobody has seen this report in a running Protege. It is measured through the shipped function
+    against five real repositories, and the smoke proves the bundle starts - not that the dialog
+    lays these lines out well.
+  - Everything 1.125.0 listed as outstanding still is: no Zenodo DOI, no w3id PURL, not in
+    Protege's plugin registry, the paper audited and not rewritten, .xlsx read-only, 39 thin
+    patterns, no contact address or ORCID in CITATION.cff.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>

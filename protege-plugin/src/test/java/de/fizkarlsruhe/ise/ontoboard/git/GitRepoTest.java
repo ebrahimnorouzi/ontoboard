@@ -12,6 +12,7 @@ import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.TreeSet;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -332,5 +333,133 @@ class GitRepoTest {
                         command + " contains " + dangerous);
             }
         }
+    }
+
+    /**
+     * Which stages git kept, read from real {@code git ls-files -u} output.
+     *
+     * <p>The lines below are copied from actual merges: three stages for a content conflict, two
+     * for a file one side deleted, two with no ancestor for a file both sides created.
+     *
+     * <p>THE FIXTURES CONTAIN REAL TAB CHARACTERS, because git's output does and the parser finds
+     * the stage number by looking for one. An editor that converts them to spaces will make these
+     * tests fail rather than pass quietly, which is the right way round.
+     */
+    @Test
+    void theStagesGitKeptAreReadFromItsOwnListing() {
+        assertEquals(new TreeSet<Integer>(Arrays.asList(1, 2, 3)),
+                GitRepo.parseUnmergedStages(Arrays.asList(
+                        "100644 043efd375c53041a03d2fbd1254a1a649442240d 1	o.ttl",
+                        "100644 dbbc0484228369cb328b384a774fd237898c7b08 2	o.ttl",
+                        "100644 4636212c1b44ed84d2db0fb81a66811f1822854c 3	o.ttl")));
+
+        assertEquals(new TreeSet<Integer>(Arrays.asList(1, 3)),
+                GitRepo.parseUnmergedStages(Arrays.asList(
+                        "100644 043efd375c53041a03d2fbd1254a1a649442240d 1	o.ttl",
+                        "100644 4636212c1b44ed84d2db0fb81a66811f1822854c 3	o.ttl")),
+                "a file this branch deleted keeps the ancestor and theirs, and no stage 2");
+
+        assertEquals(new TreeSet<Integer>(Arrays.asList(2, 3)),
+                GitRepo.parseUnmergedStages(Arrays.asList(
+                        "100644 dbbc0484228369cb328b384a774fd237898c7b08 2	o.ttl",
+                        "100644 4636212c1b44ed84d2db0fb81a66811f1822854c 3	o.ttl")),
+                "a file both sides created has no common ancestor to keep");
+
+        assertTrue(GitRepo.parseUnmergedStages(Collections.<String>emptyList()).isEmpty(),
+                "a file git does not consider conflicted keeps nothing");
+    }
+
+    /**
+     * A path with a space in it is still read correctly.
+     *
+     * <p>The stage is the last field BEFORE the tab. A reader that split the whole line on
+     * whitespace would take a word of the path for a stage number on exactly the projects where
+     * a wrong answer is hardest to notice.
+     */
+    @Test
+    void aPathWithSpacesDoesNotConfuseTheStageNumber() {
+        assertEquals(new TreeSet<Integer>(Arrays.asList(1, 2)),
+                GitRepo.parseUnmergedStages(Arrays.asList(
+                        "100644 043efd375c53041a03d2fbd1254a1a649442240d 1	src/my ontology.owl",
+                        "100644 dbbc0484228369cb328b384a774fd237898c7b08 2	src/my ontology.owl")));
+    }
+
+    /** Anything that is not a stage line is ignored rather than guessed at. */
+    @Test
+    void outputThatIsNotAStageListingIsIgnored() {
+        assertTrue(GitRepo.parseUnmergedStages(Arrays.asList(
+                "fatal: not a git repository",
+                "",
+                "100644 043efd375c53041a03d2fbd1254a1a649442240d 9	o.ttl",
+                "100644 043efd375c53041a03d2fbd1254a1a649442240d x	o.ttl",
+                "no tab at all here")).isEmpty(),
+                "9 is not a stage, x is not a number, and neither is an error message");
+    }
+
+    /** The listing is asked for one path, quoted past any option that looks like a flag. */
+    @Test
+    void theStageListingIsAskedForOnePathOnly() {
+        List<String> command = GitRepo.unmergedStagesCommand("src/ontology/mwo-edit.owl");
+
+        assertEquals(Arrays.asList("git", "ls-files", "-u", "--",
+                "src/ontology/mwo-edit.owl"), command);
+        assertThrows(IllegalArgumentException.class, () -> GitRepo.unmergedStagesCommand(" "));
+    }
+
+    /**
+     * A conflicted path git quoted is unquoted, so the report is not silently skipped.
+     *
+     * <p>MEASURED on a real merge: a conflicted {@code src/my ontology.owl} comes back as
+     * {@code UU "src/my ontology.owl"}, quoted for nothing but the space. Left quoted, the path
+     * ends in a double quote rather than {@code .owl}, so ConflictReview decided it was not an
+     * ontology and reported nothing at all - a silent failure on any project whose folders have
+     * spaces in them.
+     */
+    @Test
+    void aQuotedConflictedPathIsUnquoted() {
+        GitRepo.Status status = GitRepo.parseStatus(Arrays.asList(
+                "## master", "UU \"src/my ontology.owl\""));
+
+        assertEquals(Arrays.asList("src/my ontology.owl"), status.getConflicted());
+    }
+
+    /**
+     * The octal escapes git writes for a non-ASCII path are decoded as the UTF-8 they are.
+     *
+     * <p>git prints each byte of a UTF-8 character as its own octal escape, so a path has to be
+     * decoded byte by byte and converted once. Decoding each escape separately turns the umlaut
+     * in a German term into two broken characters - and a wrong path is a path `git show` cannot
+     * find, which is the silent-skip failure again by another route.
+     *
+     * <p>THE FIXTURE IS BUILT FROM EXPLICIT CHARACTERS rather than written as a string literal.
+     * Java reads {@code \\303} in source as an octal escape of its own, so a literal spelling of
+     * git's output silently becomes the DECODED character and the test stops testing anything.
+     * That is not hypothetical: the first version of this test was written that way and failed
+     * against a function measured to be correct.
+     */
+    @Test
+    void anOctalEscapedPathIsDecodedAsUtf8() {
+        String slash = String.valueOf((char) 92);
+        String quote = String.valueOf((char) 34);
+
+        assertEquals("src/Gr" + ((char) 0xF6) + ((char) 0xDF) + "e.owl",
+                GitRepo.unquotePath(quote + "src/Gr" + slash + "303" + slash + "266"
+                        + slash + "303" + slash + "237" + "e.owl" + quote),
+                "the four octal escapes are two characters of UTF-8, not four of Latin-1");
+
+        assertEquals("a" + ((char) 9) + "b.owl",
+                GitRepo.unquotePath(quote + "a" + slash + "t" + "b.owl" + quote));
+        assertEquals("say " + quote + "hello" + quote + ".owl",
+                GitRepo.unquotePath(quote + "say " + slash + quote + "hello" + slash + quote
+                        + ".owl" + quote));
+    }
+
+    /** A path git did not quote is returned untouched, quotes and all if it really has them. */
+    @Test
+    void anUnquotedPathIsLeftAlone() {
+        assertEquals("src/ontology/mwo-edit.owl",
+                GitRepo.unquotePath("src/ontology/mwo-edit.owl"));
+        assertEquals("", GitRepo.unquotePath(""));
+        assertNull(GitRepo.unquotePath(null));
     }
 }

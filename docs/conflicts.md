@@ -27,6 +27,16 @@
   `AU`, `UA`, `DU`, `UD`) is its own state, and a commit while one exists is declined. Before
   that, `git add -A` + `commit` recorded the conflict markers and reported success — which
   destroys the ontology, because an `.owl` full of markers does not parse.
+- **A refused commit, and "show me what has changed", say which terms disagree.** Since 1.126.0
+  the three versions git keeps of a conflicted file (`git show :1:`, `:2:`, `:3:`) are each parsed and compared as ontologies, and
+  the refusal carries lines like *"Both sides relabelled Material, differently: this branch has
+  "Material Entity", the other branch has "Material Thing""*. Measured on a real conflicted
+  repository: all three stages parse cleanly and the merged working copy does not parse at all
+  (`Content is not allowed in prolog`) — which is the whole case against a side-by-side text view
+  of a conflicted `.owl`. One side deleting the file, both sides creating it, and a stage git has
+  that will not parse are each named as what they are rather than guessed at — the shape of the
+  conflict is read from `git ls-files -u`, because inferring it from which versions *parse*
+  reports a file somebody committed with markers still in it as a deletion.
 - **Axiom-level diff exists and is descriptive**: `AxiomDiff` and `ReleaseDiff` with six typed
   change kinds. They render a report; they do not produce applicable changes.
 
@@ -93,9 +103,18 @@ only, and a hand-driven side-by-side diff for git history.
    remaining half)
 4. ~~Role enforcement.~~ **Done in 1.125.0.** A `viewer` token receives everything, writes
    nothing, and its holder is told why rather than watching a change vanish.
-5. **A read-only conflict report.** Reuse the six `ReleaseDiff` change kinds to name the collision
-   in curator language ("both sides redefined X"). Needs a base version and axioms rather than
-   strings. (2–3 days — best value per unit of work)
-6. **Applicable diff objects.** Neither diff returns `List<OWLOntologyChange>`; everything above 5
-   depends on this. (2–3 days)
+5. ~~A read-only conflict report.~~ **Done in 1.126.0, for git conflicts.** `ConflictReview`
+   reads git's three stages, `ConflictReport` names the collisions in curator language, and
+   agreement — the same edit on both sides — is reported apart from it, so the list somebody has
+   to decide about holds only real disagreements.
+
+   **This item's premise was wrong.** It was estimated as needing a base version and applicable
+   changes, which put it behind 6 and 7. For a *git* conflict git has kept a base version all
+   along: stage 1 *is* the common ancestor, and no session, lock or vector clock was needed to
+   obtain it. Rendered strings turned out to be enough to *name* a disagreement; they are only
+   insufficient to *resolve* one. What is still unreported is the live collaboration path, which
+   genuinely has no ancestor — that is item 7, not this one.
+6. **Applicable diff objects.** Neither diff returns `List<OWLOntologyChange>`, so nothing can
+   apply a decision once a person has made one — resolution depends on this, where naming did
+   not. (2–3 days)
 7. **A base version per session**, so a three-way merge is possible at all. (1–2 weeks)
