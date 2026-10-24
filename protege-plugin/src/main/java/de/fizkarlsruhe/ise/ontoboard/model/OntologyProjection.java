@@ -242,9 +242,14 @@ public final class OntologyProjection {
         for (OWLObjectProperty property
                 : ontology.getObjectPropertiesInSignature(Imports.INCLUDED)) {
             if (isOn(onCanvasIris, property.getIRI())) {
+                // The characteristics ride on the label: transitive, functional and the rest
+                // are facts about the property itself, so there is no second term for an edge
+                // to reach and an edge would misstate the arity. 25 such axioms on MWO 3.0.1
+                // were hover text, which is to say invisible.
                 nodes.add(marked(local, noted(ontology, property.getIRI(),
                         NodeKind.OBJECT_PROPERTY,
-                        DisplayLabels.forEntity(ontology, property))));
+                        DisplayLabels.forEntity(ontology, property)
+                                + characteristicsOf(ontology, property.getIRI()))));
             }
         }
         for (OWLDataProperty property : ontology.getDataPropertiesInSignature(Imports.INCLUDED)) {
@@ -259,6 +264,7 @@ public final class OntologyProjection {
         collectSubPropertyEdges(ontology, onCanvasIris, edges);
         collectLegacyDomainRangeEdges(ontology, onCanvasIris, edges);
         collectTypeEdges(ontology, onCanvasIris, edges);
+        collectTheRest(ontology, onCanvasIris, nodes, edges);
 
         // One cell per id. An import closure restates axioms across modules - on a real ODK
         // project's board ten ids arrive two to four times - and SchemaGraph.render inserts an
@@ -533,6 +539,193 @@ public final class OntologyProjection {
             }
         }
         edges.add(edge);
+    }
+
+    // ---------- the relations that used to be hover text only ----------
+
+    /**
+     * Disjointness, inverse pairs, property assertions, property chains and keys.
+     *
+     * <p>Five axiom types that said something about two terms on the board and drew nothing.
+     * Measured on MWO 3.0.1 before this: 15 DisjointClasses, 38 InverseObjectProperties, 3
+     * SubPropertyChainOf, 5 ObjectPropertyAssertion and 0 HasKey, every one of them invisible.
+     *
+     * <p><b>All of them obey the board's opt-in rule</b>: both ends must already be on the
+     * canvas. That is what keeps disjointness from doubling the edge count of a taxonomy - a
+     * class is disjoint from a great many things it is never drawn beside.
+     */
+    private static void collectTheRest(OWLOntology ontology, Set<String> on,
+            List<CanvasNode> nodes, List<CanvasEdge> edges) {
+        for (org.semanticweb.owlapi.model.OWLDisjointClassesAxiom axiom
+                : ontology.getAxioms(AxiomType.DISJOINT_CLASSES, Imports.INCLUDED)) {
+            List<IRI> named = new ArrayList<IRI>();
+            for (OWLClassExpression operand : axiom.getClassExpressions()) {
+                if (!operand.isAnonymous() && isOn(on, operand.asOWLClass().getIRI())) {
+                    named.add(operand.asOWLClass().getIRI());
+                }
+            }
+            // Pairwise. An n-ary DisjointClasses means every pair is disjoint, and drawing a hub
+            // would invent a node the ontology does not have; n is 2 for all 15 of MWO's.
+            for (int first = 0; first < named.size(); first++) {
+                for (int second = first + 1; second < named.size(); second++) {
+                    IRI left = named.get(first);
+                    IRI right = named.get(second);
+                    // One edge per pair, in a fixed order, so the same axiom does not draw two
+                    // lines on top of each other when it is stated from both sides.
+                    IRI from = left.toString().compareTo(right.toString()) <= 0 ? left : right;
+                    IRI to = from.equals(left) ? right : left;
+                    addUnlessAlreadyThere(edges, new CanvasEdge(
+                            "disj|" + from + "|" + to, iri(from), iri(to), "",
+                            CanvasEdge.Kind.DISJOINT));
+                }
+            }
+        }
+
+        for (org.semanticweb.owlapi.model.OWLInverseObjectPropertiesAxiom axiom
+                : ontology.getAxioms(AxiomType.INVERSE_OBJECT_PROPERTIES, Imports.INCLUDED)) {
+            if (axiom.getFirstProperty().isAnonymous() || axiom.getSecondProperty().isAnonymous()) {
+                continue;
+            }
+            IRI first = axiom.getFirstProperty().asOWLObjectProperty().getIRI();
+            IRI second = axiom.getSecondProperty().asOWLObjectProperty().getIRI();
+            if (!isOn(on, first) || !isOn(on, second) || first.equals(second)) {
+                continue;
+            }
+            IRI from = first.toString().compareTo(second.toString()) <= 0 ? first : second;
+            IRI to = from.equals(first) ? second : first;
+            addUnlessAlreadyThere(edges, new CanvasEdge(
+                    "inv|" + from + "|" + to, iri(from), iri(to), "", CanvasEdge.Kind.INVERSE));
+        }
+
+        for (org.semanticweb.owlapi.model.OWLObjectPropertyAssertionAxiom axiom
+                : ontology.getAxioms(AxiomType.OBJECT_PROPERTY_ASSERTION, Imports.INCLUDED)) {
+            if (axiom.getSubject().isAnonymous() || axiom.getObject().isAnonymous()
+                    || axiom.getProperty().isAnonymous()) {
+                continue;
+            }
+            IRI subject = axiom.getSubject().asOWLNamedIndividual().getIRI();
+            IRI object = axiom.getObject().asOWLNamedIndividual().getIRI();
+            IRI property = axiom.getProperty().asOWLObjectProperty().getIRI();
+            if (!isOn(on, subject) || !isOn(on, object)) {
+                continue;
+            }
+            // A fact between two individuals, not a restriction on a class - so it carries the
+            // property's name and nothing about quantification.
+            addUnlessAlreadyThere(edges, new CanvasEdge(
+                    "opa|" + subject + "|" + property + "|" + object,
+                    iri(subject), iri(object), localName(property),
+                    CanvasEdge.Kind.OBJECT_PROPERTY));
+        }
+
+        for (org.semanticweb.owlapi.model.OWLSubPropertyChainOfAxiom axiom
+                : ontology.getAxioms(AxiomType.SUB_PROPERTY_CHAIN_OF, Imports.INCLUDED)) {
+            if (axiom.getSuperProperty().isAnonymous()) {
+                continue;
+            }
+            IRI superProperty = axiom.getSuperProperty().asOWLObjectProperty().getIRI();
+            if (!isOn(on, superProperty)) {
+                continue;
+            }
+            // A CHAIN IS NOT A TWO-ENDED SHAPE, which is why it was never drawn: hasPart o
+            // hasPart -> hasPart has three terms and an order. It reuses the node that already
+            // stands for "something the ontology says that is not a term" - the one anonymous
+            // class expressions get - with the links numbered so the order survives.
+            StringBuilder reads = new StringBuilder("chain: ");
+            List<IRI> links = new ArrayList<IRI>();
+            boolean drawable = true;
+            for (org.semanticweb.owlapi.model.OWLObjectPropertyExpression link
+                    : axiom.getPropertyChain()) {
+                if (link.isAnonymous()) {
+                    drawable = false;
+                    break;
+                }
+                links.add(link.asOWLObjectProperty().getIRI());
+                reads.append(links.size() > 1 ? " o " : "").append(
+                        localName(link.asOWLObjectProperty().getIRI()));
+            }
+            if (!drawable || links.isEmpty()) {
+                continue;
+            }
+            String chainId = EXPRESSION_PREFIX + digestOf(axiom.toString());
+            CanvasNode chain = new CanvasNode(chainId, NodeKind.EXPRESSION, reads.toString());
+            if (!nodes.contains(chain)) {
+                nodes.add(chain);
+            }
+            addUnlessAlreadyThere(edges, new CanvasEdge("chain|" + chainId + "|" + superProperty,
+                    chainId, iri(superProperty), "", CanvasEdge.Kind.SUB_PROPERTY));
+            for (int at = 0; at < links.size(); at++) {
+                if (!isOn(on, links.get(at))) {
+                    continue;
+                }
+                addUnlessAlreadyThere(edges, new CanvasEdge(
+                        "chain|" + chainId + "|" + at + "|" + links.get(at),
+                        iri(links.get(at)), chainId, String.valueOf(at + 1),
+                        CanvasEdge.Kind.SUB_PROPERTY));
+            }
+        }
+
+        for (org.semanticweb.owlapi.model.OWLHasKeyAxiom axiom
+                : ontology.getAxioms(AxiomType.HAS_KEY, Imports.INCLUDED)) {
+            if (axiom.getClassExpression().isAnonymous()) {
+                continue;
+            }
+            IRI owner = axiom.getClassExpression().asOWLClass().getIRI();
+            if (!isOn(on, owner)) {
+                continue;
+            }
+            for (org.semanticweb.owlapi.model.OWLObjectPropertyExpression key
+                    : axiom.getObjectPropertyExpressions()) {
+                if (key.isAnonymous() || !isOn(on, key.asOWLObjectProperty().getIRI())) {
+                    continue;
+                }
+                IRI property = key.asOWLObjectProperty().getIRI();
+                addUnlessAlreadyThere(edges, new CanvasEdge("key|" + owner + "|" + property,
+                        iri(owner), iri(property), "key", CanvasEdge.Kind.OBJECT_PROPERTY));
+            }
+        }
+    }
+
+    /**
+     * The characteristics of a property, as a suffix on its label.
+     *
+     * <p>Transitive, functional, symmetric and the rest are properties OF a property - there is
+     * no second term for an edge to reach, so an edge would be a lie about arity. They were
+     * hover text, which means invisible: 25 such axioms on MWO 3.0.1. On the label they are
+     * visible at a glance and cost no edges.
+     */
+    static String characteristicsOf(OWLOntology ontology, IRI property) {
+        org.semanticweb.owlapi.model.OWLObjectProperty owl = ontology.getOWLOntologyManager()
+                .getOWLDataFactory().getOWLObjectProperty(property);
+        List<String> found = new ArrayList<String>();
+        if (!ontology.getTransitiveObjectPropertyAxioms(owl).isEmpty()) {
+            found.add("transitive");
+        }
+        if (!ontology.getSymmetricObjectPropertyAxioms(owl).isEmpty()) {
+            found.add("symmetric");
+        }
+        if (!ontology.getAsymmetricObjectPropertyAxioms(owl).isEmpty()) {
+            found.add("asymmetric");
+        }
+        if (!ontology.getReflexiveObjectPropertyAxioms(owl).isEmpty()) {
+            found.add("reflexive");
+        }
+        if (!ontology.getIrreflexiveObjectPropertyAxioms(owl).isEmpty()) {
+            found.add("irreflexive");
+        }
+        if (!ontology.getFunctionalObjectPropertyAxioms(owl).isEmpty()) {
+            found.add("functional");
+        }
+        if (!ontology.getInverseFunctionalObjectPropertyAxioms(owl).isEmpty()) {
+            found.add("inverse functional");
+        }
+        if (found.isEmpty()) {
+            return "";
+        }
+        StringBuilder joined = new StringBuilder(" (");
+        for (int at = 0; at < found.size(); at++) {
+            joined.append(at > 0 ? ", " : "").append(found.get(at));
+        }
+        return joined.append(")").toString();
     }
 
     // ---------- anonymous class expressions ----------

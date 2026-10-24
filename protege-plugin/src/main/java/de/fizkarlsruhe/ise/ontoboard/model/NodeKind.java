@@ -12,7 +12,11 @@ public enum NodeKind {
     CLASS, INDIVIDUAL, DATATYPE, LITERAL, OBJECT_PROPERTY, DATA_PROPERTY,
 
     /**
-     * An anonymous class expression: a restriction, a union, a complement, an enumeration.
+     * Something the ontology says that is not a term.
+     *
+     * <p>An anonymous class expression - a restriction, a union, a complement, an enumeration
+     * - or a property chain, which has three terms and an order and so fits no two-ended
+     * shape either.
      *
      * <p><b>Why this had to exist.</b> An arrow needs a box at each end, and an anonymous
      * expression has no IRI to be a box. So until 1.123.0 every shape whose filler was itself

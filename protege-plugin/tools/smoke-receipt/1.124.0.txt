@@ -1,0 +1,94 @@
+OntoBoard 1.124.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-10-24  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 9/9  test 11/11
+  2026-10-24  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 9/9  test 11/11
+
+
+EVERYTHING THE ONTOLOGY SAYS IS NOW ON THE BOARD
+
+Six axiom types reached 1.123.1 as hover text, which on a diagram means invisible: a class could
+be constrained six ways and look unconstrained. Measured on MWO 3.0.1, every one of them now
+draws.
+
+  DisjointClasses              15 axioms -> 29 lines   dashed red, no arrowheads, one per pair
+  InverseObjectProperties      38        -> 38 lines   dashed, arrowheads both ends
+  Property characteristics     25        -> a label suffix
+  SubPropertyChainOf            3        -> a chain node with numbered links
+  ObjectPropertyAssertion       5        -> an arrow between two individuals
+  HasKey                        0 here, 1 on DUL -> an arrow labelled "key"
+
+  MWO 3.0.1 whole board    524 nodes / 489 edges at 1.122.1
+                           553 / 652 at 1.123.0 (class expressions)
+                           556 / 730 now
+  DUL (patterns/eep)       196 / 374  ->  207 / 475
+
+WHY EACH IS THE SHAPE IT IS
+
+  - DISJOINTNESS HAS NO DIRECTION, so no arrowhead at either end; an arrow would have a reader
+    looking for one. Pairwise rather than through a hub, because an n-ary DisjointClasses means
+    every pair is disjoint and a hub node would be a term the ontology does not contain. One line
+    per pair in a fixed order, so an axiom stated from both sides does not draw two lines on top
+    of each other.
+  - A CHARACTERISTIC IS A FACT ABOUT ONE PROPERTY. Transitive has no second term for an arrow to
+    reach, so an edge would misstate the arity. It rides on the property's label, where it is
+    visible at a glance and costs no edges.
+  - A CHAIN HAS THREE TERMS AND AN ORDER, so no two-ended shape fits. It reuses the node that
+    already stands for "something the ontology says that is not a term" - the one anonymous class
+    expressions get - with the links numbered so the order survives.
+  - EVERY ONE OBEYS THE OPT-IN RULE: both ends must already be on the board. That is what stops
+    disjointness from filling a taxonomy with red lines, and it is why the 38 inverse pairs appear
+    only on a board where somebody has put the properties themselves.
+
+AND ONE THING DELIBERATELY NOT DRAWN. SWRL rules - 4 on MWO. A rule is a horn clause over
+variables; any node-and-edge shape for it would be an invented notation, and a picture that
+misleads is worse than a gap that is written down. Protege's own rule tab shows them.
+
+
+TERMS NO LONGER LAND ON TOP OF EACH OTHER
+
+Reported: overlapping nodes. The cause was not the arrange algorithms - it was that
+SchemaGraph.render placed every unpositioned node by a counter stepping right from (40,40) that
+never looked at the stored positions. On a board anybody had arranged, the first saved node is
+usually near the origin, so a newly added term went exactly on top of it. Worse, it is not a
+once-per-term problem: every derived node the projection mints - a datatype, a class expression,
+a property chain - arrives unpositioned on EVERY render.
+
+CanvasPlacement.freeSlot searches a lattice for the first slot that touches nothing already
+placed, claims it before the next node is asked for, and wraps after ten columns so thirty new
+terms form a block instead of a line four thousand pixels long. Deterministic: the same board
+gives the same arrangement every time, which matters because a render follows every edit
+anywhere in Protege and a board that reshuffled itself would be unusable.
+
+Six tests, including the one that matters - twenty-five nodes placed in sequence, every pair
+checked for overlap.
+
+
+TESTS
+
+2,472 in a clean copy of the repository, 0 failures, 1 skipped.
+
+  RemainingAxiomsTest       9 new - one per relation, each also asserting the opt-in rule
+  CanvasPlacementTest       6 new - including determinism and the no-overlap sweep
+  CanvasLegendTest         14 - the completeness guard forced both new edge kinds to be
+                           documented in this commit; it has no catch-all, which is the point
+  DotExportTest            11 - one DOT style per edge kind
+
+
+WHAT IS STILL NOT TRUE
+
+  - Nobody has seen the new relations in a running Protege. They are measured through the
+    projection and the host smoke reaches only "SchemaCanvasView built without throwing".
+  - A board with every term of MWO on it now carries 730 edges. That is readable at a fitted
+    zoom and dense at 100%; no edge bundling or filtering has been attempted.
+  - An expression or chain node still has no saved position, so it is laid out afresh on every
+    render - now into free space rather than onto another node, but not in the same place twice
+    if the board around it changed.
+  - Collaboration still has no concurrency control, and the advisory editing claim still never
+    fires - docs/conflicts.md has the ranked list.
+  - Everything 1.123.1 listed as outstanding still is: no Zenodo DOI, no w3id PURL, not in
+    Protege's plugin registry, the paper audited and not rewritten, .xlsx read-only, 39 thin
+    patterns, no contact address or ORCID in CITATION.cff.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>

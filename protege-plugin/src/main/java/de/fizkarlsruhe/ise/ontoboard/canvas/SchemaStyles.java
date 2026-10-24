@@ -42,6 +42,12 @@ public final class SchemaStyles {
     public static final String DATA_PROPERTY = "obDataProperty";
     public static final String TYPE = "obType";
     public static final String SUB_PROPERTY = "obSubProperty";
+
+    /** DisjointClasses: dashed, no arrowheads, because the relation has no direction. */
+    public static final String DISJOINT = "obDisjoint";
+
+    /** InverseObjectProperties: arrowheads at both ends, because it runs both ways. */
+    public static final String INVERSE = "obInverse";
     public static final String INFERRED_SUBCLASS = "obInferredSubClass";
 
     /** A type the reasoner worked out for an individual, rather than one that was stated. */
@@ -288,6 +294,23 @@ public final class SchemaStyles {
         // it, so subPropertyOf takes the same hollow head as subClassOf in the property colour.
         sheet.putCellStyle(SUB_PROPERTY,
                 edge("#B35C00", null, mxConstants.ARROW_BLOCK, 1.6f, 13, false));
+
+        // Disjointness in the one colour nothing else uses, and dashed, because it is the only
+        // relation on this canvas that says two terms do NOT meet. No arrowhead at either end:
+        // DisjointClasses is symmetric, and an arrow would have a reader looking for a
+        // direction. mxGraph needs the start arrow turned off explicitly; the default is none
+        // for the start and a classic head for the end, so only the end has to be cleared.
+        Map<String, Object> disjoint =
+                edge("#B3261E", "4 4", mxConstants.ARROW_BLOCK, 1.2f, 11, false);
+        disjoint.put(mxConstants.STYLE_ENDARROW, mxConstants.NONE);
+        disjoint.put(mxConstants.STYLE_STARTARROW, mxConstants.NONE);
+        sheet.putCellStyle(DISJOINT, disjoint);
+
+        // An inverse pair, in the object-property orange because both ends ARE properties.
+        Map<String, Object> inverse =
+                edge("#B35C00", "6 3", mxConstants.ARROW_OPEN, 1.2f, 11, true);
+        inverse.put(mxConstants.STYLE_STARTARROW, mxConstants.ARROW_OPEN);
+        sheet.putCellStyle(INVERSE, inverse);
 
         // Inferred edges are dotted and grey: present, clearly derived, and never mistaken for
         // something the ontology actually asserts. A reasoner's conclusion drawn identically to an

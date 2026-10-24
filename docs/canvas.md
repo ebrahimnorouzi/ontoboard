@@ -28,25 +28,40 @@ Before 1.123.0 the last row drew **nothing at all** — 39 of MWO's 116 restrict
 
 Cost of having it on, whole of MWO: 524 → 553 nodes, 525 → 652 edges, render 70 ms → 123 ms.
 
+## Drawn since 1.124.0
+
+| Axiom | Drawn as | On MWO |
+|---|---|---|
+| `DisjointClasses` | dashed red line, no arrowheads, one per pair | 29 from 15 axioms |
+| `InverseObjectProperties` | dashed line with arrowheads both ends, between the two property nodes | 38 |
+| Property characteristics (transitive, functional, symmetric, …) | a suffix on the property's label | 25 |
+| `SubPropertyChainOf` | a `chain: R o S` node with numbered links | 3 |
+| `ObjectPropertyAssertion` | an arrow between two individuals, labelled with the property | 5 |
+| `HasKey` | an arrow to each key property, labelled `key` | 0 on MWO, 1 on DUL |
+
+Whole-of-MWO totals: **556 nodes, 730 edges** (was 524 / 489 before 1.123.0).
+
+Every one of these obeys the board's opt-in rule — both ends must already be on the canvas. That
+is what stops disjointness from filling a taxonomy with red lines.
+
 ## Not drawn
 
-| Axiom | On MWO | Why |
-|---|---|---|
-| `DisjointClasses` | 15 | In the hover text. An edge for it would double the edge count on a taxonomy. |
-| `InverseObjectProperties` | 38 | Hover text. |
-| `TransitiveObjectProperty` and the other characteristics | 25 | A property of one property — a badge, not an edge. |
-| `SubPropertyChainOf` | 3 | No two-ended shape fits a chain. |
-| `ObjectPropertyAssertion` | 5 | Individual-to-individual; the canvas is a schema diagram. |
-| `HasKey`, SWRL rules | 0 / 4 | No visual form attempted. |
-| Literals | — | A value is not a term; `rdfs:label` is already the node's name. |
+| | Why |
+|---|---|
+| SWRL rules (4 on MWO) | A rule is a horn clause over variables. There is no two-ended or node shape for it that would not be an invented notation, and a picture that misleads is worse than a gap. Protégé's own rule tab shows them. |
+| Literals | A value is not a term; `rdfs:label` is already the node's name. |
+| Annotations | On the hover and in the left panel's editable frames. |
 
 ## Consequences worth knowing
 
-- A term with **no edges** may still be constrained — by disjointness or a characteristic, both
-  of which are hover-only.
+- A term with **no edges** is now genuinely unconstrained as far as the canvas can tell: the six
+  relations that used to be hover-only are drawn.
 - **One hop** means "the other end of an edge the canvas would draw", plus the property an arrow
-  stands for. So a term related only by disjointness is not a neighbour.
+  stands for — so disjoint classes and inverse pairs are neighbours now that they are edges.
 - An **expression node is not a term**: it has no IRI, clicking it selects nothing in Protégé,
   and an arrow ending on one cannot be retracted from the canvas — edit the class's definition in
   the description view instead.
-- The **DOT export** carries every node kind, expression nodes included.
+- The **DOT export** carries every node and edge kind, expression nodes included.
+- A node with **no saved position** — a newly added term, or a derived node such as a datatype, a
+  class expression or a chain — is placed in the first free slot rather than at a fixed offset,
+  so it no longer lands on top of a term you arranged.

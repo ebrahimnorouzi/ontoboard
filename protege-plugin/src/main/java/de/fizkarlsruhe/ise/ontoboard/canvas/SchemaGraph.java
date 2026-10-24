@@ -95,15 +95,36 @@ public class SchemaGraph extends mxGraph {
                 tooltipsById.put(frame.id, CanvasTooltips.forFrame(frame.label));
             }
 
-            double nextX = 40;
+            // EVERY BOX ALREADY SPOKEN FOR, so an unpositioned node can be put somewhere else.
+            // This used to be a counter stepping right from (40,40) that never looked at the
+            // saved positions, so a new term landed on top of whatever the reader had arranged
+            // near the origin - and every derived node the projection mints (a datatype, a class
+            // expression, a property chain) arrives unpositioned on every single render.
+            java.util.List<java.awt.Rectangle> taken = new java.util.ArrayList<java.awt.Rectangle>();
             for (CanvasNode node : projection.getNodes()) {
                 CanvasLayout.NodeLayout stored = layout.nodes.get(node.getId());
-                double x = stored != null ? stored.x : nextX;
-                double y = stored != null ? stored.y : 40;
+                if (stored != null) {
+                    taken.add(new java.awt.Rectangle((int) stored.x, (int) stored.y,
+                            (int) (stored.w <= 0 ? DEFAULT_W : stored.w),
+                            (int) (stored.h <= 0 ? DEFAULT_H : stored.h)));
+                }
+            }
+            for (CanvasNode node : projection.getNodes()) {
+                CanvasLayout.NodeLayout stored = layout.nodes.get(node.getId());
                 double w = stored != null ? stored.w : DEFAULT_W;
                 double h = stored != null ? stored.h : DEFAULT_H;
-                if (stored == null) {
-                    nextX += DEFAULT_W + 40;
+                double x;
+                double y;
+                if (stored != null) {
+                    x = stored.x;
+                    y = stored.y;
+                } else {
+                    java.awt.Point free = CanvasPlacement.freeSlot(taken, (int) w, (int) h);
+                    x = free.x;
+                    y = free.y;
+                    // Claimed before the next one is asked for, or they would all be offered the
+                    // same slot and stack exactly as before.
+                    taken.add(new java.awt.Rectangle(free.x, free.y, (int) w, (int) h));
                 }
                 Object cell = insertVertex(getDefaultParent(), node.getId(),
                         de.fizkarlsruhe.ise.ontoboard.model.Curies.displayLabel(
@@ -328,6 +349,8 @@ public class SchemaGraph extends mxGraph {
             case DATA_PROPERTY:   return SchemaStyles.DATA_PROPERTY;
             case TYPE:            return SchemaStyles.TYPE;
             case SUB_PROPERTY:    return SchemaStyles.SUB_PROPERTY;
+            case DISJOINT:        return SchemaStyles.DISJOINT;
+            case INVERSE:         return SchemaStyles.INVERSE;
             case INFERRED_SUBCLASS: return SchemaStyles.INFERRED_SUBCLASS;
             case INFERRED_TYPE:   return SchemaStyles.INFERRED_TYPE;
             case OBJECT_PROPERTY:

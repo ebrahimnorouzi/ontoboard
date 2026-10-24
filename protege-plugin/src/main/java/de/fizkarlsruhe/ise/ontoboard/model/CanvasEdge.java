@@ -7,7 +7,24 @@ public final class CanvasEdge {
 
     public enum Kind {
         SUBCLASS, OBJECT_PROPERTY, DATA_PROPERTY, TYPE, SUB_PROPERTY, INFERRED_SUBCLASS,
-        INFERRED_TYPE
+        INFERRED_TYPE,
+
+        /**
+         * {@code DisjointClasses} - these two cannot share an instance.
+         *
+         * <p>Drawn with no arrowhead at either end, because the relation is symmetric and an
+         * arrow would invite a reader to look for a direction that is not there.
+         */
+        DISJOINT,
+
+        /**
+         * {@code InverseObjectProperties} - one property read backwards is the other.
+         *
+         * <p>Between two PROPERTY nodes, so it appears only on a board where somebody put the
+         * properties themselves. Arrowheads at both ends, for the same reason DISJOINT has
+         * none: the relation really does run both ways.
+         */
+        INVERSE
     }
 
     private final String id;

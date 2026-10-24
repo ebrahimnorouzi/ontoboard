@@ -176,6 +176,10 @@ public final class CanvasTooltips {
                 return "rdf:type";
             case SUB_PROPERTY:
                 return "rdfs:subPropertyOf";
+            case DISJOINT:
+                return "owl:disjointWith";
+            case INVERSE:
+                return "owl:inverseOf";
             case DATA_PROPERTY:
                 return "A data property restriction or range";
             case OBJECT_PROPERTY:

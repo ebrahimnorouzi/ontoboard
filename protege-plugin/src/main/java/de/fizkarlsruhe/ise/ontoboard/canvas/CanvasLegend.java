@@ -246,12 +246,12 @@ public final class CanvasLegend {
                 "#E6F2F4", "#0E6E78", null));
 
         entries.add(new Entry(Form.NODE, SchemaStyles.EXPRESSION, "Class expression",
-                "An anonymous class expression - a restriction, a union, a complement "
-                        + "or an enumeration - standing in for a class with no name. An "
-                        + "arrow needs a box at each end, so these are what let the "
-                        + "canvas draw A subClassOf (R some (B or C)) at all. Not a "
-                        + "term: it is not in the ontology signature, and clicking it "
-                        + "selects nothing in Protege.",
+                "Something the ontology says that is not a term: an anonymous class "
+                        + "expression - a restriction, a union, a complement, an enumeration "
+                        + "- or a property chain. An arrow needs a box at each end, so these "
+                        + "are what let the canvas draw A subClassOf (R some (B or C)) and "
+                        + "hasPart o hasPart -> hasPart at all. Not a term: not in the "
+                        + "ontology signature, and clicking it selects nothing in Protege.",
                 "#F2F2F4", "#6B6B76", null));
 
         entries.add(new Entry(Form.EDGE, SchemaStyles.SUBCLASS, "rdfs:subClassOf",
@@ -288,6 +288,18 @@ public final class CanvasLegend {
                         + "conditions the individual happens to meet. Grey and dotted like any "
                         + "other conclusion.",
                 null, "#707B89", "1 5"));
+        entries.add(new Entry(Form.EDGE, SchemaStyles.DISJOINT, "owl:disjointWith",
+                "These two classes cannot share an instance. Dashed, red, and with no "
+                        + "arrowhead at either end, because the relation is symmetric - "
+                        + "it is the one line on this canvas that says two terms do not "
+                        + "meet.",
+                null, "#B3261E", "4 4"));
+        entries.add(new Entry(Form.EDGE, SchemaStyles.INVERSE, "owl:inverseOf",
+                "One property read backwards is the other - hasPart and partOf. Between "
+                        + "two property nodes, so it appears only once you have put the "
+                        + "properties themselves on the board. Arrowheads both ends.",
+                null, "#B35C00", "6 3"));
+
         entries.add(new Entry(Form.MODIFIER, SchemaStyles.UNSATISFIABLE, "Cannot have instances",
                 "A reasoner has found this class unsatisfiable - two of its axioms cannot both "
                         + "hold, so nothing can ever be one. Shown only while inferences are on.",
@@ -378,6 +390,10 @@ public final class CanvasLegend {
                 return SchemaStyles.TYPE;
             case SUB_PROPERTY:
                 return SchemaStyles.SUB_PROPERTY;
+            case DISJOINT:
+                return SchemaStyles.DISJOINT;
+            case INVERSE:
+                return SchemaStyles.INVERSE;
             case INFERRED_SUBCLASS:
                 return SchemaStyles.INFERRED_SUBCLASS;
             case INFERRED_TYPE:

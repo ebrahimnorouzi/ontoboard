@@ -138,6 +138,11 @@ public final class DotExport {
                 return "style=dashed";
             case SUB_PROPERTY:
                 return "arrowhead=empty, color=\"#B45309\"";
+            case DISJOINT:
+                return "arrowhead=none, style=dashed, color=\"#B3261E\"";
+            case INVERSE:
+                return "dir=both, arrowhead=vee, arrowtail=vee, style=dashed, "
+                        + "color=\"#B45309\"";
             case DATA_PROPERTY:
                 return "color=\"#0F766E\"";
             case OBJECT_PROPERTY:
