@@ -5,10 +5,11 @@
   "category": "structural",
   "domain": "general",
   "scenarios": "",
-  "competency_questions": "",
+  "competency_questions": "In what way is one thing part of another - as a component of it, one of its members, a portion of it, the stuff it is made of, a feature of it, or a place within it?; Is a component of a component also a component of the whole thing, and does the same carry over for a member of a member of a collection, a portion of a portion, or the material that a thing's material is made of?; Which larger area is a given thing located in, once you follow the chain of wholes it belongs to?",
   "pattern_iri": "http://daselab.org/WinstonPartWhole",
   "source": "https://ontologydesignpatterns.org/wiki/Submissions:WinstonPartWhole",
   "references": "https://ontologydesignpatterns.org/wiki/Submissions:WinstonPartWhole",
   "class_count": 0,
-  "property_count": 8
+  "property_count": 8,
+  "competency_questions_source": "derived from the pattern's own axioms during the OntoBoard review and checked against them; the upstream submission states none"
 }

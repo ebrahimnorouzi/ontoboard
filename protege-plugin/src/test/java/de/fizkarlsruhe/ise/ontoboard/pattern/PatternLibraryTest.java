@@ -31,7 +31,7 @@ class PatternLibraryTest {
         PatternLibrary.forget();
         List<DesignPattern> all = PatternLibrary.all();
 
-        assertEquals(163, all.size(), "the bundled collection");
+        assertEquals(162, all.size(), "the bundled collection");
         assertNotNull(PatternLibrary.find("componency"));
         assertNull(PatternLibrary.find("no-such-pattern"));
     }
@@ -104,7 +104,11 @@ class PatternLibraryTest {
         // axiom brings the classes it names into the signature. Against that, thirteen
         // owl-api error placeholders were removed from three patterns. Only regenerating or
         // correcting the library should move this number.
-        assertEquals(1556, classes, "the measured total across the collection");
+        //
+        // 1,556 until 1.128.0, when contentops was removed - it was never a pattern, but the
+        // text of the ODP wiki's INDEX page with the SAN ontology attached by mistake, and the
+        // 36 classes it contributed were actuation-actuator-effect's counted a second time.
+        assertEquals(1520, classes, "the measured total across the collection");
     }
 
     /**
@@ -148,7 +152,7 @@ class PatternLibraryTest {
         for (List<DesignPattern> group : groups.values()) {
             total += group.size();
         }
-        assertEquals(163, total, "every pattern lands in exactly one group");
+        assertEquals(162, total, "every pattern lands in exactly one group");
     }
 
     /** And by category, for the other way people look. */
@@ -161,7 +165,7 @@ class PatternLibraryTest {
         for (List<DesignPattern> group : groups.values()) {
             total += group.size();
         }
-        assertEquals(163, total);
+        assertEquals(162, total);
     }
 
     /** Ten patterns are another one under a second name, and say so. */
@@ -178,7 +182,9 @@ class PatternLibraryTest {
                         "a duplicate must not point at another duplicate");
             }
         }
-        assertEquals(10, duplicates);
+        // Nine since contentops was removed in 1.128.0; it was the tenth, pointing at
+        // actuation-actuator-effect, whose ontology file it had been given by mistake.
+        assertEquals(9, duplicates);
         assertEquals("agent-role", PatternLibrary.find("agentrole").getSameAs());
     }
 
@@ -192,8 +198,8 @@ class PatternLibraryTest {
 
         assertTrue(justTime > 0);
         assertTrue(timeAndPart < justTime, justTime + " then " + timeAndPart);
-        assertEquals(163, PatternLibrary.matching("").size());
-        assertEquals(163, PatternLibrary.matching(null).size());
+        assertEquals(162, PatternLibrary.matching("").size());
+        assertEquals(162, PatternLibrary.matching(null).size());
     }
 
     /** Case does not matter, and the id is searched as well as the name. */

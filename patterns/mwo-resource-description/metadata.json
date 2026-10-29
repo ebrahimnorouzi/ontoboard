@@ -4,12 +4,13 @@
   "description": "Describes an NFDI resource (software, ontology, document, publication or service) by attaching multiple Information Content Entities through object properties that are refinements of iao:is_about. The ICEs cover title, abbreviation, subject area, file format, specification, version, license, citation, standard, repository, external identifiers and textual entities such as keywords, requirements and affiliations.",
   "category": "information",
   "domain": "research-data",
-  "competency_questions": "",
+  "competency_questions": "What is the title and DOI of a given resource, and which abbreviation stands for that title?; Which version number, licence and code repository are recorded for a given piece of software?; Which document describes a given resource, and which part of that document is the one that covers it?",
   "pattern_iri": "https://ontoboard.org/patterns/mwo-resource-description.owl",
   "source": "https://ise-fizkarlsruhe.github.io/mwo/docs/patterns/",
   "collection": "mwo",
   "publisher": "ise-fizkarlsruhe.github.io",
   "extracted_from": "mwo",
   "class_count": 32,
-  "property_count": 5
+  "property_count": 5,
+  "competency_questions_source": "derived from the pattern's own axioms during the OntoBoard review and checked against them; the upstream submission states none"
 }

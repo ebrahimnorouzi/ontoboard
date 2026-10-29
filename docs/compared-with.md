@@ -20,7 +20,7 @@ against the papers' claims.
 | ODK project scaffolding | yes | no | no | no | no | by hand |
 | ROBOT in-process | yes | no | no | no | no | as a CLI |
 | Spreadsheet (ROBOT template) editing | yes | no | no | no | no | in a spreadsheet app |
-| Pattern library | 163 patterns | no | no | no | no | no |
+| Pattern library | 162 patterns | no | no | no | no | no |
 | Reasoner | Protégé's | none | Protégé's | none | yes | by CLI |
 | Needs a server | no | yes | no | no | yes | no |
 
@@ -46,7 +46,7 @@ against the papers' claims.
   is saved beside the ontology.
 - Collaboration is **axiom-level**, so two people editing different axioms never interleave into
   a third axiom neither wrote. See [Conflicts and concurrent editing](conflicts.md).
-- A **pattern library** of 163 design patterns with a worked example each.
+- A **pattern library** of 162 design patterns, each reasoned over and all but one with a worked example.
 
 ## Where it is behind
 

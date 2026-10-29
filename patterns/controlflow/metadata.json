@@ -5,10 +5,11 @@
   "category": "behavioral",
   "domain": "general",
   "scenarios": "",
-  "competency_questions": "",
+  "competency_questions": "Which steps come directly after a given step in a procedure, and are those steps alternatives to one another or steps that run at the same time?; Where in a procedure is a choice made, which options does it choose between, and where do the parallel branches have to wait for each other before the work continues?; Which activity made the choice at a given choice point in a procedure, and which of the available decisions did it settle on?",
   "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/controlflow.owl",
   "source": "https://ontologydesignpatterns.org/wiki/Submissions:Controlflow",
   "references": "https://ontologydesignpatterns.org/wiki/Submissions:Controlflow",
   "class_count": 18,
-  "property_count": 6
+  "property_count": 6,
+  "competency_questions_source": "derived from the pattern's own axioms during the OntoBoard review and checked against them; the upstream submission states none"
 }

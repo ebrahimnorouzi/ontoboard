@@ -6,7 +6,7 @@
 
   <groupId>de.fizkarlsruhe.ise</groupId>
   <artifactId>ontoboard</artifactId>
-  <version>1.127.0</version>
+  <version>1.128.0</version>
   <packaging>bundle</packaging>
 
   <name>OntoBoard</name>
@@ -178,6 +178,12 @@
         <filtering>false</filtering>
         <includes>
           <include>index.tsv</include>
+          <!--
+            What a reasoner found in each pattern, so the chooser can warn somebody BEFORE they
+            import one whose class cannot have an instance. Generated and checked by
+            PatternSoundnessTest. 16 KB.
+          -->
+          <include>soundness.tsv</include>
           <include>*/pattern.owl</include>
           <!--
             The Turtle beside each one. The plugin loads the RDF/XML; this is for a person -

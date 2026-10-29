@@ -515,7 +515,7 @@ groupings are offered, with category and a search box as the other ways in.
 
 ### Suggestions for the ontology you have open — new in 1.87.0
 
-159 patterns is too many to browse when you want one, so the browser's first ordering is
+162 patterns is too many to browse when you want one, so the browser's first ordering is
 **Suggested for this ontology**: the patterns whose vocabulary your ontology already speaks,
 best first, each with the reason.
 

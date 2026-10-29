@@ -51,7 +51,7 @@ licence.
 ### What the review checks
 
 These are not opinions about modelling style — they are the gates the library already runs
-against all 163 patterns on every build, and a new pattern has to pass the same ones. You can run
+against all 162 patterns on every build, and a new pattern has to pass the same ones. You can run
 most of them yourself before submitting.
 
 | check | why it is there |

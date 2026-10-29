@@ -14,7 +14,7 @@ remember, no switching windows to find out whether your ontology is sound.
 <div class="ob-buttons" markdown>
 [:material-download: Download the plugin](https://github.com/ebrahimnorouzi/ontoboard/releases/latest/download/ontoboard.jar){ .md-button .md-button--primary }
 [Getting started](getting-started.md){ .md-button }
-[Browse 159 patterns](patterns/index.md){ .md-button }
+[Browse 162 patterns](patterns/index.md){ .md-button }
 </div>
 
 <p class="ob-sub">One jar. Protégé 5.6.x or 5.5.0. Nothing else to install.</p>
@@ -118,7 +118,7 @@ height: 460px
 | | |
 |---|---|
 | [Getting started](getting-started.md) | Install, and a first session end to end |
-| [Pattern library](patterns/index.md) | All 159 patterns, grouped by source, with a graph each |
+| [Pattern library](patterns/index.md) | All 162 patterns, grouped by source, with a graph each |
 | [Working with ODK](odk-workflow.md) | The ODK workflow step by step, and which steps OntoBoard does for you |
 | [Collaboration](collaboration.md) | Live sessions, and how to run the server |
 | [Testing collaboration locally](testing-collaboration-locally.md) | Two Protégé instances on one machine |

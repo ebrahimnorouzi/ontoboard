@@ -5,10 +5,11 @@
   "category": "structural",
   "domain": "general",
   "scenarios": "",
-  "competency_questions": "",
+  "competency_questions": "Which parts did a given object have during a particular period?; Over which stretch of time was one object a part of another?; Has a given part belonged to more than one whole over time, and during which period did it belong to each?",
   "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/timeindexedpartof.owl",
   "source": "https://ontologydesignpatterns.org/wiki/Submissions:TimeIndexedPartOf",
   "references": "https://ontologydesignpatterns.org/wiki/Submissions:TimeIndexedPartOf",
   "class_count": 5,
-  "property_count": 8
+  "property_count": 8,
+  "competency_questions_source": "derived from the pattern's own axioms during the OntoBoard review and checked against them; the upstream submission states none"
 }

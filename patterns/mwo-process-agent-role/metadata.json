@@ -4,12 +4,13 @@
   "description": "Shows how roles are assigned to agents participating in processes while staying aligned with BFO: bfo:Process is an Occurrent, nfdicore:Agent is an Independent Continuant that participates in the process, and bfo:Role is a Specifically Dependent Continuant borne by the agent. The object properties has_participant, realizes and bearer_of tie the three together.",
   "category": "structural",
   "domain": "research-data",
-  "competency_questions": "",
+  "competency_questions": "Who took part in a given activity, and in what capacity did each of them take part?; In which activities was a given role actually carried out, rather than only held?; Which activities has a given person or organization taken part in, and which of their roles did each of those activities put to use?",
   "pattern_iri": "https://ontoboard.org/patterns/mwo-process-agent-role.owl",
   "source": "https://ise-fizkarlsruhe.github.io/mwo/docs/patterns/",
   "collection": "mwo",
   "publisher": "ise-fizkarlsruhe.github.io",
   "extracted_from": "nfdi",
   "class_count": 12,
-  "property_count": 6
+  "property_count": 6,
+  "competency_questions_source": "derived from the pattern's own axioms during the OntoBoard review and checked against them; the upstream submission states none"
 }

@@ -4,12 +4,13 @@
   "description": "Identifies the contact point of an NFDI resource: the resource is linked to a contact-point agent, who participates in a contacting process and realizes a contact point role, which is denoted by concrete contact details such as a name, email address and website. The aim is a transparent, responsible communication channel for every resource.",
   "category": "conceptual",
   "domain": "research-data",
-  "competency_questions": "",
+  "competency_questions": "Who should be contacted about a given resource, and what is their name, e-mail address and website?; Which resources is a given person or organization the contact point for?; Which contacting activities has a resource been involved in, and who acted as its contact point there?",
   "pattern_iri": "https://ontoboard.org/patterns/mwo-resource-contact-point.owl",
   "source": "https://ise-fizkarlsruhe.github.io/mwo/docs/patterns/",
   "collection": "mwo",
   "publisher": "ise-fizkarlsruhe.github.io",
   "extracted_from": "nfdi",
   "class_count": 24,
-  "property_count": 9
+  "property_count": 9,
+  "competency_questions_source": "derived from the pattern's own axioms during the OntoBoard review and checked against them; the upstream submission states none"
 }

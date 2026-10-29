@@ -111,7 +111,7 @@ The steps below are the ODK workflow as it was given to OntoBoard, in order.
 
 | Asked for | Status | Where |
 |---|---|---|
-| A library of design patterns | Yes | **Pattern library…** — 163 patterns, in the main menu |
+| A library of design patterns | Yes | **Pattern library…** — 162 patterns, in the main menu |
 | Patterns from MWO, PMDco, NFDIcore | Yes | Included, each labelled with its source |
 | Search and browse | Partly | Search covers name, description and source; a few fields are not searched |
 | Recommend patterns for this ontology | Partly | A recommender ranks them; on a large ontology its scores saturate and the ranking becomes less useful |

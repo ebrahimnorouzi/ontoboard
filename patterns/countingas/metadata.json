@@ -5,10 +5,11 @@
   "category": "information",
   "domain": "general",
   "scenarios": "",
-  "competency_questions": "",
+  "competency_questions": "What does a thing count as in a given setting - for example, what does a signed sheet of paper count as at the turnstile?; Besides the thing being counted and the status it is given, what else takes part in the same setting?; Does the same object count as different things in different settings, and which setting gives it which status?",
   "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/countingas.owl",
   "source": "https://ontologydesignpatterns.org/wiki/Submissions:CountingAs",
   "references": "https://ontologydesignpatterns.org/wiki/Submissions:CountingAs",
   "class_count": 4,
-  "property_count": 2
+  "property_count": 2,
+  "competency_questions_source": "derived from the pattern's own axioms during the OntoBoard review and checked against them; the upstream submission states none"
 }

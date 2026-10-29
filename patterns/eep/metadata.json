@@ -5,10 +5,11 @@
   "category": "structural",
   "domain": "iot",
   "scenarios": "",
-  "competency_questions": "",
+  "competency_questions": "Which steps of a plan did a particular run actually carry out, and who or what took part in each step?; What role does a person or thing play in a given plan or procedure, and what duties come with that role?; Which things took part in a given event, when did it take place, and which events came before and after it?",
   "pattern_iri": "http://www.ontologydesignpatterns.org/ont/dul/DUL.owl",
   "source": "https://ontologydesignpatterns.org/wiki/Submissions:EEP",
   "references": "https://ontologydesignpatterns.org/wiki/Submissions:EEP",
   "class_count": 79,
-  "property_count": 117
+  "property_count": 117,
+  "competency_questions_source": "derived from the pattern's own axioms during the OntoBoard review and checked against them; the upstream submission states none"
 }

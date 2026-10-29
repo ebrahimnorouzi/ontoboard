@@ -1,11 +1,11 @@
 <!--
-  Written for: an ontology engineer deciding whether to adopt one of the 163 bundled patterns,
+  Written for: an ontology engineer deciding whether to adopt one of the 162 bundled patterns,
   and a reviewer asking what "checked" means here. Says what is measured and what is not.
 -->
 
 # Choosing a pattern
 
-163 patterns is too many to read. This page is about deciding which one — or whether to use one
+162 patterns is too many to read. This page is about deciding which one — or whether to use one
 at all — and about what OntoBoard has actually checked on your behalf.
 
 ## Start from the question, not the catalogue
@@ -80,7 +80,13 @@ Every pattern and every worked example is reasoned over by HermiT on each build.
 recorded in `patterns/soundness.tsv` and quoted on each page, and a test fails if the two ever
 disagree — so a page cannot claim something a reasoner would not say today.
 
-**159 of the 163 patterns are consistent with no unsatisfiable class, and their examples are
+!!! warning "You do not have to read this page to be warned"
+    The same verdicts ship inside the plugin. Select one of the flagged patterns in
+    **OntoBoard → ROBOT → Pattern library…** and the chooser says so in red before you import it,
+    with the reason. A pattern a reasoner is happy with says nothing — a box on all 162 would be
+    a box nobody reads, and it would make the four that matter harder to notice.
+
+**159 of the 162 patterns are consistent with no unsatisfiable class, and their examples are
 consistent with them.** Four are not, and each page says so:
 
 | pattern | what a reasoner says |
@@ -95,7 +101,7 @@ consistent with them.** Four are not, and each page says so:
 1. **Is the pattern consistent on its own?** A class that cannot have an instance is one nobody
    can use, and every ontology importing the pattern inherits it.
 2. **Is the example consistent with the pattern?** Nothing checked this until recently, and the
-   reason is worth knowing: **not one of the 163 examples imports its pattern.** They reuse the
+   reason is worth knowing: **not one of the examples imports its pattern.** They reuse the
    pattern's IRIs by prefix, so an example loaded on its own is a document of undeclared names
    that cannot contradict anything. Merging the two found a real defect — the generated example
    for `spatial-graph-adapter-sga` put an individual into two classes its pattern declares
@@ -103,7 +109,7 @@ consistent with them.** Four are not, and each page says so:
 
 ### What is NOT checked, and why
 
-**Imports are not resolved.** 101 of the 163 patterns declare `owl:imports`. Among those targets
+**Imports are not resolved.** 101 of the 162 patterns declare `owl:imports`. Among those targets
 are five on a server that stopped answering, two unresolvable `file:/schemas/` URIs, and a portal
 whose HTTPS endpoint does not respond. Resolving them would make the check depend on the weather:
 the same pattern would be verified today and unverified tomorrow, and a pattern that passed only

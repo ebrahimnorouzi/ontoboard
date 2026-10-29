@@ -158,7 +158,7 @@ It holds because: the ODK authors write that the ODK "is not aimed at the actual
 ### Week 1 — make the claims true and citable (5 d)
 
 1. **Fix `docs/limitations.md`'s collaboration table** — add `ObjectPropertyAssertion`, `DataPropertyAssertion`, domain and range; recount against NFDIcore/MWO/PMDco. **1 d.** First, because it is the only item currently *wrong in public*.
-2. **Reconcile the pattern count.** `patterns/` holds 163 `.owl` files; `docs/patterns/index.md` says "163 … 153 of them distinct"; `README.md` and `docs/index.md` say 159 in six places. Pick one number, state the definition, fix all of them. **0.5 d.** A reviewer who counts will.
+2. ~~**Reconcile the pattern count.**~~ **Done in 1.128.0.** One number everywhere: **162 bundled patterns, 152 of them distinct** — ten rows are another pattern under a second name and carry a `sameAs`. The number moved from 163 in the same release, because `contentops` was removed: it was never a pattern but the text of the ODP wiki's *index* page, with the SAN ontology attached by mistake and shared byte-for-byte with `actuation-actuator-effect`. The reader-facing counts in `README.md`, `docs/index.md`, the library page, `compared-with.md`, `persistent-identifiers.md`, `requirements-status.md` and `odk-workflow.md` are now generated from, or agree with, `patterns/index.tsv`. A reviewer who counts gets 162.
 3. **Zenodo DOI + `w3id.org/ontoboard` PURL + `CITATION.cff` + a Resource Availability paragraph.** **1 d.**
 4. **Join-by-link** — `collab/CollabSettings.java`, `collab/CollabDialog.java`, `collab/mint-token.mjs`. **2 d.** Study blocker.
 5. **`collab/Dockerfile` + `collab/compose.yml`.** **0.5 d.**

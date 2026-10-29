@@ -570,7 +570,7 @@ class ContributedPatternsTest {
 
         ContributedPatterns.scan(root, nothingTaken());
 
-        assertEquals(163, PatternLibrary.all().size(),
+        assertEquals(162, PatternLibrary.all().size(),
                 "all() means the jar; a folder on this machine must not change it");
         assertNull(PatternLibrary.find("mine-sample"));
     }

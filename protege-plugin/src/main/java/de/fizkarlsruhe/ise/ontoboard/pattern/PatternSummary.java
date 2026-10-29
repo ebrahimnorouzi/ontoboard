@@ -50,6 +50,28 @@ public final class PatternSummary {
                     + "name. Importing both would import the same terms twice."));
         }
 
+        // WHAT A REASONER FOUND, before the import rather than after. Four of the bundled
+        // patterns are ones HermiT objects to, and that was measured, written to
+        // patterns/soundness.tsv and published on the web pages - which is the one place a
+        // curator working inside Protege is not looking. Importing a pattern whose class cannot
+        // have an instance makes their own ontology unsatisfiable, and the first they would hear
+        // of it is their own reasoner refusing to classify something unrelated.
+        //
+        // Said in red, and only when there is something to say: a box on every pattern saying
+        // "a reasoner is happy with this" is a box nobody reads, and it would make the four that
+        // matter harder to notice rather than easier.
+        ReasonerVerdict verdict = ReasonerVerdict.forPattern(pattern.getId());
+        if (verdict.isWorthSaying()) {
+            html.append("<div style='background:#FBE9E7;padding:6px;margin:6px 0'>"
+                    + "<b style='color:#B3261E'>A reasoner objects: ")
+                .append(escape(verdict.getShortLabel()))
+                .append("</b><br>")
+                .append(escape(verdict.describe()))
+                .append("<br><span style='color:#777777'>This is how its authors published it. "
+                        + "OntoBoard reports it rather than silently repairing somebody else's "
+                        + "pattern.</span></div>");
+        }
+
         // Where a contributed pattern came from, said out loud. Everything else here is a
         // published pattern somebody can look up; this one is a file on this machine, and a
         // chooser that showed the two identically would be claiming a provenance it has not got.

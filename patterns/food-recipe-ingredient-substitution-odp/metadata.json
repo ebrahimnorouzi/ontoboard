@@ -5,10 +5,11 @@
   "category": "information",
   "domain": "food-science",
   "scenarios": "",
-  "competency_questions": "",
+  "competency_questions": "Which recipe does a given ingredient substitution apply to, and does the substitution change the ingredient list, the preparation steps, or both?; What requirement does a given ingredient substitution have to satisfy - a diet, a cultural restriction, or a limit on how the food can be prepared - and what is the substitution meant to achieve?; How much of which food does a recipe call for, and which qualities of that food are recorded: how it tastes, how it fits a diet, or how it behaves when cooked?",
   "pattern_iri": "http://semantic.cs.put.poznan.pl/ontologies/food_ingredient_substitutes",
   "source": "https://ontologydesignpatterns.org/wiki/Submissions:Food_Recipe_Ingredient_Substitution_ODP",
   "references": "https://ontologydesignpatterns.org/wiki/Submissions:Food_Recipe_Ingredient_Substitution_ODP",
   "class_count": 24,
-  "property_count": 8
+  "property_count": 8,
+  "competency_questions_source": "derived from the pattern's own axioms during the OntoBoard review and checked against them; the upstream submission states none"
 }

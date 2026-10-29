@@ -1,17 +1,17 @@
-# An example of the actingfor pattern in use.
-#
-# Ada Lovelace acts for the Analytical Engine project. Only actsFor is asserted: the pattern
-# declares actsThrough as its inverse, so a reasoner adds the other direction and asserting it
-# here as well would be stating twice what the pattern already says once.
+# The actingfor pattern in use, on the pattern's own scenario: Matteo Sanvitale is working as
+# an officer for CEMA s.r.l. The company is the social agent - it exists and can act only
+# through people - and he is the agent who acts for it.
 
 @prefix actingfor: <http://www.ontologydesignpatterns.org/cp/owl/actingfor.owl#> .
 @prefix ex:        <https://w3id.org/ontoboard/example/actingfor#> .
 @prefix owl:       <http://www.w3.org/2002/07/owl#> .
 @prefix rdfs:      <http://www.w3.org/2000/01/rdf-schema#> .
 
-ex:AdaLovelace a owl:NamedIndividual , actingfor:Agent ;
-    rdfs:label "Ada Lovelace" ;
-    actingfor:actsFor ex:AnalyticalEngineProject .
+ex:MatteoSanvitale a owl:NamedIndividual , actingfor:Agent ;
+    rdfs:label "Matteo Sanvitale, shipping officer" ;
+    actingfor:actsFor ex:CemaSrl .
 
-ex:AnalyticalEngineProject a owl:NamedIndividual , actingfor:SocialAgent ;
-    rdfs:label "the Analytical Engine project" .
+ex:CemaSrl a owl:NamedIndividual , actingfor:SocialAgent ;
+    rdfs:label "CEMA s.r.l." .
+
+# Only one direction of each inverse pair is asserted: actsFor/actsThrough. A reasoner adds the other.

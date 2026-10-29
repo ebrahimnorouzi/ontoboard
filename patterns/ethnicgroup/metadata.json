@@ -5,10 +5,11 @@
   "category": "conceptual",
   "domain": "social",
   "scenarios": "",
-  "competency_questions": "",
+  "competency_questions": "Which countries, continents, regions, cities, towns, islands and rivers is a given people associated with, and which languages does it speak?; Which other peoples is a given group related to, and which groups share a region or a language with it?; Which military conflicts, and which writers, musicians, presidents and office holders, is a given people associated with?",
   "pattern_iri": "file:///C:/Users/eno/Documents/Git_repo/ebrahimnorouzi_github/ISE-FIZKarlsruhe/ontoboard/patterns-repository/EthnicGroup/EthnicGroup.owl",
   "source": "https://ontologydesignpatterns.org/wiki/Submissions:EthnicGroup",
   "references": "https://ontologydesignpatterns.org/wiki/Submissions:EthnicGroup",
   "class_count": 14,
-  "property_count": 20
+  "property_count": 20,
+  "competency_questions_source": "derived from the pattern's own axioms during the OntoBoard review and checked against them; the upstream submission states none"
 }

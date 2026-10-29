@@ -1,0 +1,165 @@
+OntoBoard 1.128.0 - host smoke receipt
+
+Produced by tools/smoke.ps1 -SelfTest.
+
+  2026-10-25  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx500M  PASS  check 9/9  test 11/11
+  2026-10-25  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx500M  PASS  check 9/9  test 11/11
+
+
+THE FOUR THINGS 1.127.0 ADMITTED IT HAD NOT FINISHED
+
+Its receipt listed them under "what is still not true". All four are done here, and the list of
+what remains is shorter and different.
+
+
+1. A PATTERN THAT WAS NEVER A PATTERN IS GONE
+
+contentops is removed, and the library is 162 patterns rather than 163. Its description was the
+text of the ODP wiki's INDEX page - "Below you find the currently proposed Content OPs (CPs). New
+proposals of CPs are very welcome. Please post a..." - so the harvest had turned a category
+listing into a library entry, and the ontology it was given was the SAN file belonging to
+actuation-actuator-effect, byte for byte.
+
+Removing a pattern is not deleting a directory. It moved seven count assertions, the measured
+class total (1,556 to 1,520 - the 36 classes it contributed were actuation-actuator-effect's
+counted a second time) and the duplicate count (10 to 9). Each now carries the reason in a
+comment rather than only a new number.
+
+AND IT CLOSED A DEBT THIS REPOSITORY HAD LOGGED AGAINST ITSELF. docs/compared-with-ontoeditor.md
+asked somebody to "pick one number, state the definition, fix all of them": the count was 163 in
+some files and 159 in six others. It is 162 bundled, 152 distinct, everywhere - README, docs/index,
+the library page, compared-with, persistent-identifiers, requirements-status, odk-workflow - and
+that item is marked done.
+
+
+2. THE REASONER'S VERDICT IS NOW INSIDE PROTEGE, NOT ONLY ON THE WEB
+
+The four findings were measured, written to patterns/soundness.tsv and published on the pattern
+pages - and the pages are the one place a curator working inside Protege is not looking. Select
+one of the flagged patterns in ROBOT > Pattern library... and the chooser says so in red, with
+the reason, BEFORE the import. Importing a pattern whose class cannot have an instance makes the
+user's own ontology unsatisfiable, and the first they would otherwise hear of it is their own
+reasoner refusing to classify something that looks unrelated.
+
+A pattern a reasoner is happy with says nothing. A box on all 162 is a box nobody reads, and it
+would make the three that matter harder to notice rather than easier.
+
+READ, NOT COMPUTED: the verdicts come from the table PatternSoundnessTest generates and checks on
+every build. Running a reasoner over 162 patterns to open a dialog would take twenty seconds and
+answer a question already answered. Absence is not a finding either - a contributed pattern from
+the user's own folder has no row and gets no claim made about it.
+
+MY OWN TEST PASSED VACUOUSLY FIRST, AND THAT IS THE INTERESTING PART. It asserted
+forPattern("actingfor").isClean(), which is true when the table is MISSING, because an unknown
+pattern is reported clean by design. The table WAS missing: patterns/soundness.tsv was not in the
+pom's resource include list, so nothing was bundled, every verdict came back unknown, and the
+test went green. Only the three assertions naming a specific finding failed. The test now asserts
+that a flagged pattern is flagged, so it can tell "checked and fine" from "never read".
+
+
+3. EVERY PATTERN THAT CAN ANSWER A QUESTION NOW SAYS WHICH
+
+161 of the 162 patterns carry competency questions, up from 123. The one that does not is
+template-instance, and that is correct rather than outstanding: it declares no classes and no
+properties, so there is nothing a question could be about - verified, not assumed.
+
+The questions were derived from each pattern's own axioms and then put to a second pass told to
+REFUTE anything the pattern cannot answer, which corrected 17 of the first 22 and rewrote most of
+the rest. Every one records competency_questions_source, saying it was derived here and that the
+upstream submission states none, so nobody comparing a page with the portal finds questions the
+portal never published.
+
+This matters more than documentation: since 1.127.0 the library's search reads the competency
+questions, so a pattern without them is close to unfindable by the question it answers.
+
+
+4. THE EXAMPLES SHOW A DOMAIN INSTEAD OF SHOWING THEIR OWN CLASS NAMES
+
+ALL 160 EXAMPLES IN THE LIBRARY ARE CURATED. None carries the generator's "replace the generic
+names with real ones" header any more, which is an instruction that had stood unread on 119 of
+them. The two patterns without an example will not get one: template-instance declares no classes
+or properties, and every example of spatial-graph-adapter-sga is inconsistent because the pattern
+is.
+
+A generated example was correct in shape and taught nothing: every individual named after its
+class and labelled "an Attribute", "a Type", "the whole". What is there now is a domain:
+
+  actingfor      Matteo Sanvitale, a shipping officer, acting for CEMA s.r.l. - the pattern's own
+                 stated scenario, with the company acting only through a person
+  countingas     Searle's own case: at a faculty board meeting, a raised hand counts as a vote
+  controlflow    the scope screening of a journal submission, with the case task branching into
+                 exactly the two deliberation tasks its cardinality restriction requires
+  mwo-value-     the lattice parameter of nickel, with its measured value and unit
+  specification
+  eep            the 2024 energy audit of a Karlsruhe school against DIN V 18599
+
+TWO GATES, INDEPENDENT OF EACH OTHER, PASS ON ALL OF THEM:
+  - tools/check-pattern-examples.py: every class and property used is one the PATTERN declares,
+    and every object-property assertion respects its rdfs:domain and rdfs:range. This is the
+    check that catches a property used backwards.
+  - PatternSoundnessTest: each example MERGED with its pattern is consistent under HermiT. Merged,
+    because no example imports its pattern - they reuse its IRIs by prefix - so an example read
+    on its own cannot contradict anything.
+
+THREE THINGS THE CURATION FOUND, rather than only improved:
+  - aquaticresourceobservation asserted the plain string "a value" against a property whose
+    declared range is xsd:int, on both of its year properties. They are typed literals now.
+  - climaticzone held an untyped string where its pattern declares xsd:gYear.
+  - eventcore's generated example was three individuals with NO EDGES AT ALL, because the pattern
+    declares neither rdfs:domain nor rdfs:range and the generator could derive no shape from it.
+    That one was extended rather than renamed, which is why its axiom count moves from 9 to 37.
+
+ONE I HAD TO CORRECT BY HAND: the agent curating aquaticresources left out the canOccurIn link -
+the relation the pattern is actually about - reasoning that adding a triple would disagree with
+the count in patterns/soundness.tsv. That file is generated; protecting it is backwards. The
+example now shows both of the pattern's relations.
+
+
+A PROCESS MISTAKE OF MINE, RECORDED BECAUSE IT COST REAL WORK
+
+The first curation run was given a list of pattern ids I TYPED FROM MEMORY instead of reading the
+file I had just written them to. 48 of the 119 ids do not exist - bfo-continuant-parthood,
+pmdco-sample-and-specimen, nfdi-publication-and-citation and 45 more - so roughly 40% of that
+run went looking for directories that were never there, while 58 real generic examples were not
+assigned to anybody. The agents behaved correctly throughout: they invented nothing for a missing
+id, and they declined to overwrite the eight examples that were already curated. The second run
+was given the list read from disk.
+
+
+TESTS
+
+2,530 Java, 0 failures, 1 skipped, from mvn clean package on the shipped tree.
+74 JavaScript, 0 failures - unchanged, because this release touches no JavaScript.
+
+Both hosts read the library as part of the self-check: "162 patterns indexed, and
+actingfor parsed to 2 classes, 2 properties" - so the index and the removal of a
+pattern from it are things a running Protege agrees with.
+
+  ReasonerVerdictTest    8 new - the shipped table is on the classpath, outside OWL 2 DL is not
+                         called inconsistent, an unsatisfiable class is named with its
+                         consequence, a pattern with no row says nothing, the parser skips a
+                         short row, the wording agrees with the number of classes, and the
+                         warning reaches the chooser's HTML for a flagged pattern and not for a
+                         clean one
+
+Counts that moved with contentops, each with its reason in the test: PatternLibraryTest (the
+bundled collection, the group totals, the empty and null queries, the class total, the duplicate
+count), PatternOrderTest, ContributedPatternsTest.
+
+
+WHAT IS STILL NOT TRUE
+
+  - A contradiction that arises only against DUL or BFO is still not caught, because imports are
+    deliberately not resolved - five of the cited servers no longer answer. Every pattern page
+    says how many ontologies it imports, so a reader can see how much its verdict leaves out.
+  - 49 patterns have no scenario text. The competency questions now cover 161 of 162, which is
+    the field that matters for finding one.
+  - Nobody has seen the curated examples rendered as graphs. The strict mkdocs build passes and
+    both gates pass, which proves the links resolve and the RDF is sound - not that any particular
+    diagram reads well.
+  - The ODP portal still does not answer over HTTPS, and five pattern IRIs point at a server that
+    no longer answers at all. Each page offers an archived copy for that reason.
+  - No Zenodo DOI, no w3id PURL, not in Protege's plugin registry, the paper audited and not
+    rewritten, .xlsx read-only, no contact address or ORCID in CITATION.cff.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>

@@ -85,7 +85,9 @@ an inverse pair is asserted, since the other is inferred; and that the graph is 
 
 It has caught, in the generator alone: two files that did not parse, 119 examples full of
 unconnected individuals, a string written where an `xsd:integer` was declared, and a self-loop on
-an asymmetric property. It separates **a wrong example** from **a pattern too thin to have one**,
+an asymmetric property. The curation pass added two more: `aquaticresourceobservation` asserted
+the plain string `"a value"` against two properties declared `xsd:int`, and `climaticzone` held
+an untyped string against a declared `xsd:gYear`. It separates **a wrong example** from **a pattern too thin to have one**,
 and only the first fails the build.
 
 ### Adding a curated example
@@ -101,12 +103,14 @@ Material Entity". A curated one uses a real case, and is much better:
 3. Keep the shape the pattern dictates. Use concrete names and readable `rdfs:label`s.
 4. Run `python -I tools/check-pattern-examples.py --only <id>` and keep it green.
 
-`patterns/actingfor/example.ttl` and the four `bfo-*` ones are curated; the rest are derived.
+**Every example in the library is curated now.** All 160 of them were rewritten with real domain content in 1.128.0 - a raised hand counting as a vote at a faculty board, the lattice parameter of nickel, the scope screening of a journal submission - replacing individuals named after their own class and labelled "an Attribute". Two patterns have no example and will not get one: `template-instance` declares no classes or properties, and every example of `spatial-graph-adapter-sga` is inconsistent because the pattern is.
 
 ## What the audit found, and what is still wrong
 
-Measured over all 163 patterns — the library is 163, not 164; the extra entry under `patterns/`
-is `index.tsv`.
+Measured over all the patterns in the library. It held 163 when this audit was taken and holds
+162 now: `contentops` was removed in 1.128.0, having never been a pattern at all but the text of
+the ODP wiki's index page with another pattern's ontology attached. The extra entries under
+`patterns/` are `index.tsv` and `soundness.tsv`.
 
 | Finding | At harvest | Now |
 |---|---|---|
@@ -129,8 +133,9 @@ of its 90 property declarations and the harvested files had lost at least one on
 > An earlier version of the checker asked the question of the *example* instead - "does any
 > individual stand alone?" - and a curator who connects everything with properties that have no
 > declared domain or range makes a thin pattern look sound. It undercounted, and the figures in
-> an earlier draft of this page came from it. The rule now is: 163 patterns compared against
-> their own form at HEAD, 63 thin then, 39 thin now, 24 made connectable.
+> an earlier draft of this page came from it. The rule now is: the whole library compared against
+> its own form at HEAD - 163 patterns when that was measured - 63 thin then, 39 thin now, 24 made
+> connectable.
 
 The last row is left alone deliberately. The Turtle is not a superset of the OWL: `bag`'s `.owl`
 carries an `owl:cardinality` restriction its `.ttl` does not, and the two assert opposite

@@ -5,10 +5,11 @@
   "category": "structural",
   "domain": "general",
   "scenarios": "",
-  "competency_questions": "",
+  "competency_questions": "What is a given object made up of at a finer level of description - which cells make up a tissue, or which molecules make up a person?; What do a given set of people, molecules or atoms make up at a coarser level of description - for example, which social system do these people constitute?",
   "pattern_iri": "http://www.ontologydesignpatterns.org/cp/owl/constituency.owl",
   "source": "https://ontologydesignpatterns.org/wiki/Submissions:Constituency",
   "references": "https://ontologydesignpatterns.org/wiki/Submissions:Constituency",
   "class_count": 1,
-  "property_count": 2
+  "property_count": 2,
+  "competency_questions_source": "derived from the pattern's own axioms during the OntoBoard review and checked against them; the upstream submission states none"
 }
