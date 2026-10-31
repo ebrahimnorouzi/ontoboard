@@ -748,7 +748,7 @@ a refresh did before — reading the declaration must not take a working rebuild
 records the pattern's own IRI as the term list's `# Source:`, adds a `# Pattern: <id>` line, and
 declares no product. The module is cut from the copy the library ships, which the pattern's IRI
 need not serve, and that portal is often down — so nothing downloads it. *Refresh imports* lists it
-as `pattern library` and leaves it alone; to change it, import the pattern again. Until 1.129.0
+as `pattern library` and leaves it alone; to change it, import the pattern again. Until 1.130.0
 the source recorded, and the `mirror_from` declared, was the library's working copy: a `file:`
 path on the importing machine, committed with the project and resolvable on no other.
 
