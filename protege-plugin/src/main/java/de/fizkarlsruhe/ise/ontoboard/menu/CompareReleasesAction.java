@@ -161,8 +161,10 @@ public class CompareReleasesAction extends OntoBoardAction {
         // asymmetric, so every term added since the older release came back as REMOVED, and the
         // deliberate data-loss warning fired: "N terms were removed rather than obsoleted.
         // Anything that imported them now references nothing." A false alarm of exactly the kind
-        // that teaches people to ignore real ones. Release names are ISO dates, so they compare.
-        if (!WORKING_COPY.equals(to) && from.compareTo(to) >= 0) {
+        // that teaches people to ignore real ones. Compared as versions, not as text: as text
+        // 0.10.0 sorts before 0.9.0, so a semantic project's tenth minor release was refused as
+        // "earlier" than its ninth.
+        if (!WORKING_COPY.equals(to) && !isEarlier(from, to)) {
             return result.failed("'From' must be an earlier release than 'To'. You picked From="
                     + from + " and To=" + to + ", which would report everything added since "
                     + to + " as having been removed. Both lists are newest-first, so the earlier "
@@ -304,6 +306,16 @@ public class CompareReleasesAction extends OntoBoardAction {
         }
         return OntologySource.load(OWLManager.createOWLOntologyManager(),
                 org.semanticweb.owlapi.model.IRI.create(release.toURI()));
+    }
+
+    /** Whether release {@code one} came before {@code other}: by version, or else by name. */
+    static boolean isEarlier(String one, String other) {
+        de.fizkarlsruhe.ise.ontoboard.odk.OntologyVersion first =
+                de.fizkarlsruhe.ise.ontoboard.odk.OntologyVersion.parseOrNull(one);
+        de.fizkarlsruhe.ise.ontoboard.odk.OntologyVersion second =
+                de.fizkarlsruhe.ise.ontoboard.odk.OntologyVersion.parseOrNull(other);
+        return first != null && second != null ? first.compareTo(second) < 0
+                : one.compareTo(other) < 0;
     }
 
     /** The dated releases this project has kept, newest first. */

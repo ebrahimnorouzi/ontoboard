@@ -235,6 +235,15 @@
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
+  <extension id="menu.OntoBoard.project.history"
+             point="org.protege.editor.core.application.EditorKitMenuAction">
+    <name value="History..."/>
+    <toolTip value="Every version the project kept, what each holds and what changed from one to the next - and any of them opened in a new window"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.menu.HistoryAction"/>
+    <path value="ontoboard.menu.OntoBoard.project/SlotD-D"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
+
   <!-- = ROBOT = -->
 
   <extension id="menu.OntoBoard.robot" name="Robot"
