@@ -717,6 +717,11 @@ public final class OdkScaffold {
                 + "  ?entity a owl:Class .\n"
                 + "  FILTER NOT EXISTS { ?entity rdfs:label ?label }\n"
                 + "  FILTER (!isBlank(?entity))\n"
+                // owl:Thing and the rest of OWL's own vocabulary are nobody's terms to label. A
+                // module extracted from a library pattern can declare owl:Thing a class - the
+                // Price pattern's does - and this check then failed a project's build over a
+                // term the project does not own. Found building the pizza walkthrough.
+                + "  FILTER (!STRSTARTS(STR(?entity), \"http://www.w3.org/2002/07/owl#\"))\n"
                 + "}\n";
     }
 

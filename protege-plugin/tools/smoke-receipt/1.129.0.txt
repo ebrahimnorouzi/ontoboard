@@ -56,3 +56,13 @@ WHAT IS STILL NOT TRUE
   are tested (SchemaGraphTest, PatternArrivalTest); the event ordering that consumed the note is
   inferred from the reporter's log, not reproduced in a host.
 - Windows was not smoked for this release.
+
+
+AFTER THE SMOKE
+
+One change landed after both host runs, found by building the pizza walkthrough with this jar:
+the scaffold's check_labels.rq now ignores OWL's own vocabulary, because a module extracted from
+the Price pattern declares owl:Thing a class and the check failed the build over it. It changes the
+text of one seeded SPARQL file and nothing the host loads; InProcessTargetsTest covers it, and the
+unit suites over the scaffold and the build were rerun (InProcessTargets 22, OdkScaffold 35,
+NeutralExamples 4, BuildsWithNothingInstalled 1 - all pass).

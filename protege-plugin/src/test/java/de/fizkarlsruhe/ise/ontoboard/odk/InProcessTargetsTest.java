@@ -423,4 +423,24 @@ class InProcessTargetsTest {
         Files.write(query.toPath(), "SELECT ?x WHERE {}\n".getBytes("UTF-8"));
         assertNull(InProcessTargets.ruleOf(query));
     }
+
+    /**
+     * A module extracted from a library pattern may declare owl:Thing a class, and the scaffold's
+     * check_labels.rq failed the build over it - a term no project owns or can label.
+     */
+    @Test
+    void owlThingIsNotATermTheLabelCheckAsksFor(@TempDir File where) throws Exception {
+        File edit = scaffold(where, "demo");
+        org.semanticweb.owlapi.model.OWLOntologyManager manager =
+                OWLManager.createOWLOntologyManager();
+        OWLOntology ontology = manager.loadOntologyFromOntologyDocument(IRI.create(edit.toURI()));
+        manager.addAxiom(ontology, manager.getOWLDataFactory().getOWLDeclarationAxiom(
+                manager.getOWLDataFactory().getOWLThing()));
+
+        InProcessTargets.Outcome outcome = InProcessTargets.run(edit, ontology,
+                de.fizkarlsruhe.ise.ontoboard.robot.Reasoners.Choice.ELK.newFactory(),
+                "sparql_test");
+
+        assertTrue(outcome.isOk(), String.valueOf(outcome.getFailure()));
+    }
 }
