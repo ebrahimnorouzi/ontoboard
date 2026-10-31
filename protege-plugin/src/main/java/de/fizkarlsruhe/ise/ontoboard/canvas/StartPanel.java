@@ -78,6 +78,15 @@ public final class StartPanel extends JPanel {
      */
     public StartPanel(Runnable onNewProject, Runnable onOpenProject, Runnable onAddSelected,
             Runnable onAddAll) {
+        this(null, onNewProject, onOpenProject, onAddSelected, onAddAll);
+    }
+
+    /**
+     * With the guide offered first, for somebody who does not yet know which of the others they
+     * want - the case the guide was asked for.
+     */
+    public StartPanel(Runnable onGuide, Runnable onNewProject, Runnable onOpenProject,
+            Runnable onAddSelected, Runnable onAddAll) {
         super(new GridBagLayout());
         // The IDE's panel colour, not the canvas colour. This card stands in FRONT of the board -
         // showAppropriateCard swaps the whole component out - so painting it the canvas's near-white
@@ -98,6 +107,11 @@ public final class StartPanel extends JPanel {
         card.add(body("tens of thousands of classes, so you choose what to draw."));
         card.add(Box.createVerticalStrut(18));
 
+        if (onGuide != null) {
+            card.add(action("New to this? Start the guide…",
+                    "The steps from an idea to a released ontology, one at a time", onGuide));
+            card.add(Box.createVerticalStrut(8));
+        }
         card.add(action("New ODK project…",
                 "Scaffold a repository and start a new ontology", onNewProject));
         card.add(Box.createVerticalStrut(8));

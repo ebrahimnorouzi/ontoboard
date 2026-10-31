@@ -357,8 +357,9 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         cards = new CardLayout();
         centre = new JPanel(cards);
         centre.add(buildBoardLayers(), "canvas");
-        centre.add(new StartPanel(this::runNewProjectWizard, this::openExistingProject,
-                this::addSelectedEntityToCanvas, this::addEverythingToCanvas), "start");
+        centre.add(new StartPanel(this::openTheGuide, this::runNewProjectWizard,
+                this::openExistingProject, this::addSelectedEntityToCanvas,
+                this::addEverythingToCanvas), "start");
         add(centre, BorderLayout.CENTER);
         // Before the toolbar, because the status bar owns collabStatus and the toolbar used to.
         add(buildStatusBar(), BorderLayout.SOUTH);
@@ -2938,6 +2939,20 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                 bringIntoViewIfOffScreen(java.util.Collections.singletonList(first));
             }
         }
+    }
+
+    /** OntoBoard &gt; Start here: the guide..., offered on the empty board as well. */
+    private void openTheGuide() {
+        de.fizkarlsruhe.ise.ontoboard.menu.GuideAction guide =
+                new de.fizkarlsruhe.ise.ontoboard.menu.GuideAction();
+        guide.setEditorKit(getOWLEditorKit());
+        try {
+            guide.initialise();
+        } catch (Exception cannot) {
+            LOGGER.warn("OntoBoard: the guide could not start", cannot);
+            return;
+        }
+        guide.actionPerformed(null);
     }
 
     /** The space between the row of pattern frames and the rest of the board. */

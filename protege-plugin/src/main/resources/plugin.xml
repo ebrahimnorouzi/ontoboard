@@ -235,6 +235,15 @@
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
+  <extension id="menu.OntoBoard.guide"
+             point="org.protege.editor.core.application.EditorKitMenuAction">
+    <name value="Start here: the guide..."/>
+    <toolTip value="The steps from an idea to a released ontology, where your project is along them, and a button for each"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.menu.GuideAction"/>
+    <path value="ontoboard.menu.OntoBoard/SlotA-0"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
+
   <extension id="menu.OntoBoard.findterms"
              point="org.protege.editor.core.application.EditorKitMenuAction">
     <name value="Find terms in another ontology..."/>

@@ -1,5 +1,8 @@
 # Getting Started
 
+New to ODK, ROBOT or eXtreme Design? After installing, open **OntoBoard → Start here: the
+guide...** — or read [the guide](guide.md) — for the steps from an idea to a released ontology.
+
 ## Protégé plugin
 
 ### Install
