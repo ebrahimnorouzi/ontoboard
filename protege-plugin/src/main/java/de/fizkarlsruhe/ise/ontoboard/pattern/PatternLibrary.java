@@ -277,16 +277,28 @@ public final class PatternLibrary {
         OWLOntology ontology = load(pattern);
         List<OWLEntity> classes = new ArrayList<OWLEntity>();
         List<OWLEntity> properties = new ArrayList<OWLEntity>();
+        // NO BUILT-INS. owl:Thing is in the class signature of 47 of the 162 patterns, and
+        // owl:Nothing in one, and neither is a term of any of them. Listed, owl:Thing was offered
+        // for import and boxed inside the pattern's frame, where a Mac smoke of 1.129.0 showed it
+        // as one of Componency's "2 terms" with two edge labels drawn over it, and as the
+        // "1 already on the board" in Price's. PatternIndex.termsOf already skipped built-ins, so
+        // the index and the dialog disagreed about what a pattern's terms are.
         for (OWLEntity entity : sorted(ontology.getClassesInSignature(Imports.EXCLUDED))) {
-            classes.add(entity);
+            if (!entity.isBuiltIn()) {
+                classes.add(entity);
+            }
         }
         for (OWLObjectProperty property
                 : sorted(ontology.getObjectPropertiesInSignature(Imports.EXCLUDED))) {
-            properties.add(property);
+            if (!property.isBuiltIn()) {
+                properties.add(property);
+            }
         }
         for (OWLDataProperty property
                 : sorted(ontology.getDataPropertiesInSignature(Imports.EXCLUDED))) {
-            properties.add(property);
+            if (!property.isBuiltIn()) {
+                properties.add(property);
+            }
         }
         List<IRI> imports = new ArrayList<IRI>();
         for (OWLImportsDeclaration declaration : ontology.getImportsDeclarations()) {
