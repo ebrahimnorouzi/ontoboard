@@ -539,4 +539,32 @@ class MakeRunTest {
         assertTrue(MakeRun.targetsFor(ontology).isEmpty());
         assertTrue(MakeRun.targetsFor(null).isEmpty());
     }
+
+    /**
+     * macOS ships /usr/bin/make with the Command Line Tools, so a project OntoBoard scaffolded
+     * whose Makefile is not the one this version renders fell through to the host make and died
+     * on the first robot call. With no robot to run its recipes it is not runnable, and the
+     * advice is to update the project files, after which it builds in-process again.
+     */
+    @Test
+    void anOntoBoardMakefileThisVersionDoesNotRenderIsNotHandedToAHostMake(@TempDir File where)
+            throws Exception {
+        OdkProjectConfig config = new OdkProjectConfig("demo", "Demo", "A demo",
+                "http://purl.obolibrary.org/obo/demo.owl",
+                "https://creativecommons.org/licenses/by/4.0/", where);
+        OdkScaffold.create(config);
+        File ontology = new File(new File(config.getProjectRoot(), "src"), "ontology");
+        File edit = new File(ontology, "demo-edit.owl");
+        java.nio.file.Files.write(new File(ontology, "Makefile").toPath(),
+                "\n# an older version wrote one more line\n".getBytes("UTF-8"),
+                java.nio.file.StandardOpenOption.APPEND);
+
+        assertEquals(MakeRun.Route.NOT_RUNNABLE, MakeRun.routeFor(edit, runnerWith("make")));
+        String why = MakeRun.whyNotRunnable(edit, runnerWith("make"));
+        assertTrue(why.contains("Update project files"), why);
+
+        // With robot on the PATH the Makefile can genuinely run, so it is still offered.
+        assertEquals(MakeRun.Route.MAKE_ON_PATH,
+                MakeRun.routeFor(edit, runnerWith("make", "robot")));
+    }
 }

@@ -366,4 +366,81 @@ class InProcessTargetsTest {
         assertEquals("a &amp; b", RequirementsPanel.escape("a & b"));
         assertEquals("", RequirementsPanel.escape(null));
     }
+
+    // ---------- a failure says what failed ----------
+
+    /**
+     * The first edit anybody makes - a class added with Protege's defaults, so no rdfs:label -
+     * failed 'test' on a Mac with only "sparql_test found 1 violation(s) across 1 check(s)",
+     * naming neither the rule nor the term. Reproduced exactly: a fresh project plus
+     * {@code <ontology>#mmm}.
+     */
+    @Test
+    void anUnlabelledClassFailsTestNamingTheRuleAndTheTerm(@TempDir File where) throws Exception {
+        File edit = scaffold(where, "mm");
+        org.semanticweb.owlapi.model.OWLOntologyManager manager =
+                OWLManager.createOWLOntologyManager();
+        OWLOntology ontology = manager.loadOntologyFromOntologyDocument(IRI.create(edit.toURI()));
+        String term = "http://purl.obolibrary.org/obo/mm.owl#mmm";
+        manager.addAxiom(ontology, manager.getOWLDataFactory().getOWLDeclarationAxiom(
+                manager.getOWLDataFactory().getOWLClass(IRI.create(term))));
+
+        InProcessTargets.Outcome test = InProcessTargets.run(edit, ontology,
+                de.fizkarlsruhe.ise.ontoboard.robot.Reasoners.Choice.ELK.newFactory(), "test");
+
+        assertFalse(test.isOk());
+        assertTrue(test.getFailure().contains("check_labels.rq"), test.getFailure());
+        assertTrue(test.getFailure().contains("Every class should carry an rdfs:label"),
+                test.getFailure());
+        assertTrue(test.getFailure().contains("mmm"), test.getFailure());
+        assertTrue(String.join("\n", test.getTranscript()).contains("mmm"),
+                "the transcript names the term too");
+    }
+
+    /** A query with a syntax error used to count as zero violations, and so passed. */
+    @Test
+    void aCheckThatCannotRunFailsTheBuild(@TempDir File where) throws Exception {
+        File edit = scaffold(where, "demo");
+        File broken = new File(new File(InProcessTargets.projectRoot(edit), "src"),
+                "sparql" + File.separator + "broken.rq");
+        Files.write(broken.toPath(), "SELECT ?x WHERE { this is not sparql".getBytes("UTF-8"));
+
+        InProcessTargets.Outcome outcome = InProcessTargets.run(edit, load(edit),
+                de.fizkarlsruhe.ise.ontoboard.robot.Reasoners.Choice.ELK.newFactory(),
+                "sparql_test");
+
+        assertFalse(outcome.isOk(), "a check that cannot run must not pass");
+        assertTrue(outcome.getFailure().contains("broken.rq could not run"),
+                outcome.getFailure());
+    }
+
+    @Test
+    void theRuleIsReadFromTheQuerysLeadingComment(@TempDir File where) throws Exception {
+        File query = new File(where, "q.rq");
+        Files.write(query.toPath(), "# Every class needs a label.\n#\n# Second line.\nSELECT ?x WHERE {}\n"
+                .getBytes("UTF-8"));
+        assertEquals("Every class needs a label. Second line.", InProcessTargets.ruleOf(query));
+        Files.write(query.toPath(), "SELECT ?x WHERE {}\n".getBytes("UTF-8"));
+        assertNull(InProcessTargets.ruleOf(query));
+    }
+
+    /**
+     * A module extracted from a library pattern may declare owl:Thing a class, and the scaffold's
+     * check_labels.rq failed the build over it - a term no project owns or can label.
+     */
+    @Test
+    void owlThingIsNotATermTheLabelCheckAsksFor(@TempDir File where) throws Exception {
+        File edit = scaffold(where, "demo");
+        org.semanticweb.owlapi.model.OWLOntologyManager manager =
+                OWLManager.createOWLOntologyManager();
+        OWLOntology ontology = manager.loadOntologyFromOntologyDocument(IRI.create(edit.toURI()));
+        manager.addAxiom(ontology, manager.getOWLDataFactory().getOWLDeclarationAxiom(
+                manager.getOWLDataFactory().getOWLThing()));
+
+        InProcessTargets.Outcome outcome = InProcessTargets.run(edit, ontology,
+                de.fizkarlsruhe.ise.ontoboard.robot.Reasoners.Choice.ELK.newFactory(),
+                "sparql_test");
+
+        assertTrue(outcome.isOk(), String.valueOf(outcome.getFailure()));
+    }
 }

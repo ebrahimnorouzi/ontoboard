@@ -87,7 +87,7 @@ public class ObsoleteAction extends OntoBoardAction {
                                 + "somebody reads when they find the term years later and want to "
                                 + "know whether their use of it was wrong or merely renamed - so "
                                 + "'duplicate' costs them an afternoon and 'duplicates "
-                                + "CHEBI:60027, which has the fuller definition' does not.")
+                                + "MYONT:0000123, which has the fuller definition' does not.")
                         .build());
 
         Map<String, String> chosen = ParameterDialog.show(getOWLWorkspace(),

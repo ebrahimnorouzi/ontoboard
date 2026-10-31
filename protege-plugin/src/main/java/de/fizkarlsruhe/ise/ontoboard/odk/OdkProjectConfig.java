@@ -36,7 +36,7 @@ public final class OdkProjectConfig {
      */
     public void validate() {
         if (ontologyId.isEmpty()) {
-            throw new IllegalArgumentException("Ontology ID is required, e.g. 'mwo'.");
+            throw new IllegalArgumentException("Ontology ID is required, e.g. 'myont'.");
         }
         // ODK uses the id in file names, Makefile variables and IRIs, so keep it to the
         // lowercase-alphanumeric shape OBO ontologies use.

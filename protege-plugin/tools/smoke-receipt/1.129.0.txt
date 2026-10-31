@@ -1,0 +1,110 @@
+OntoBoard 1.129.0 - host smoke receipt
+
+Produced on macOS 15.8.1 (Intel x86_64), the first receipt from a Mac. tools/smoke.ps1 is
+PowerShell and this machine has none, so the same launch was done by hand: a throwaway copy of each
+install, the jar under test as the only ontoboard-*.jar in its plugins, -Dontoboard.selftest=true,
+and the verdict read from the slice of ~/.Protege/logs/protege.log written after launch.
+
+  2026-10-31  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx2G  PASS  check 9/9  test 12/12
+  2026-10-31  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx2G  PASS  check 9/9  test 12/12
+
+Both again with the final jar, after the three changes under AFTER THE SMOKE: PASS, check 9/9,
+test 12/12 on each.
+
+5.6.9 was a copy of /Applications/Protégé.app with append=-Dontoboard.selftest=true in its own
+conf/jvm.conf. 5.5.0 was the official Protege-5.5.0-os-x.zip; its app bundle is code-signed and
+macOS refuses writes into it, so its Contents/Java was copied out and started with the bundle's own
+JRE and the JVM options from its Info.plist.
+
+-Xmx2G, not 500M: the 500M of earlier receipts is Windows' Protege.l4j.ini default. The Mac app's
+launcher sizes the heap itself, so 2G is closer to what a Mac user runs.
+
+The twelfth test is new in this release, and it is the reason for it:
+
+  Project > Build (nothing installed) | ok | test (reason, report, sparql_test, validate_profile)
+  ran inside Protege in 170 ms without starting any program; on this PATH: robot absent,
+  make /usr/bin/make (not used), docker absent, podman absent, odk absent
+
+(214 ms on 5.5.0.) The first host run of it FAILED, which the unit test had not: it reused the
+self-test's scratch project, whose edit file the checks before it had written unlabelled classes
+into, and report rejected them with missing_label. It now scaffolds a project of its own.
+
+
+WHAT THIS RELEASE FIXES
+
+- Build on a Mac with nothing installed. A fresh project plus one class added with Protege's
+  defaults failed 'test' with "sparql_test found 1 violation(s) across 1 check(s)" and nothing
+  else; the failure now names the rule and the terms. A check that cannot run fails the build
+  instead of passing it. macOS ships /usr/bin/make, so an OntoBoard Makefile this version does not
+  render fell through to it and died on robot; it is now refused with "Update project files".
+- The source build on a Mac. 1 error in 2530 tests (CanvasGestureInteractionTest, via macOS's
+  drag-gesture recognizer) failed mvn package; now 2549 run, 0 failures, 0 errors, 27 skipped.
+- Imported patterns: framed only once their terms are in the ontology; nothing unpositioned is
+  placed on a frame any more; every pattern imported while the board is closed is framed when it
+  opens; and owl:Thing is no longer offered, imported or framed as one of a pattern's terms. See
+  FRAMES IN THE HOST.
+- Instructions name no particular ontology; the pattern issue form is split and its link resolves.
+
+
+SEEN, NOT OURS
+
+- 5.5.0: "An error occurred whilst creating the view content for the 'Class hierarchy' view",
+  a NullPointerException in Protege's OWLCellRenderer.prepareRenderer, while the self-test builds
+  the tab's views. Inside Protege's renderer; the self-test reports the tab built.
+- Both: "Error building menu: null" from Felix's ServiceTracker after the process was killed -
+  the shutdown, not the plugin.
+
+
+FRAMES IN THE HOST
+
+Driven in both hosts the way a user does it. A probe hook, added to a scratch copy of the jar and
+never shipped, opened pizza-edit.owl as the pizza walkthrough has it at v0.1.0, then for each
+pattern clicked OntoBoard > ROBOT > Pattern library..., chose it, Import terms..., OK and Close,
+and read the board's cells: every frame, every box inside it, and every pair of boxes that
+overlap. The same probe ran against the 1.128.0 jar.
+
+  Board open, importing Componency, Classification, Price and Agentrole in turn:
+    1.128.0  4 frames, 0 overlapping boxes; a class expression placed across Componency's corner,
+             hiding the frame's name; Componency framed "2 terms", Object and owl:Thing, with edge
+             labels over owl:Thing and over Classification's Entity; Price reported owl:Thing
+             "already on the board" (5.6.9)
+    1.129.0  4 frames, 0 overlapping boxes, the expression clear of every frame, no owl:Thing
+             (5.6.9 and 5.5.0 alike)
+
+  Board closed, importing Componency then Classification, then opening the OntoBoard tab:
+    1.128.0  1 frame: Classification. Componency was not on the board at all. (5.6.9)
+    1.129.0  2 frames: both (5.6.9 and 5.5.0 alike)
+
+The closed board is the one failure the host reproduced. The note the library leaves for the
+board was one slot, and the second import replaced the first. With the board open, 1.128.0 framed
+every import in this host as well, so the reporter's Mac case - two patterns, no frame - is not
+reproduced as such; the closed board is the likeliest way to it.
+
+
+WHAT IS STILL NOT TRUE
+
+- The early refresh that consumed the arrival note before the terms existed is guarded against
+  (PatternArrivalTest, and the board waits for the terms) but was not caught happening in a host.
+- Edges are straight lines and cross whatever is between their ends: the edge from Price to a
+  class expression runs through the Agentrole frame, over two of its labels.
+- A pattern imported through the library records the absolute path of the local mirror copy, as
+  mirror_from in import_group.products and as the term list's # Source. Both files are
+  committed, so they carry the importer's home directory and resolve on no other machine. How a
+  pattern import should record where it came from is a decision still to be made.
+- Windows was not smoked for this release.
+
+
+AFTER THE SMOKE
+
+Three changes landed after the first host runs, and both hosts were run again with the final jar
+(the table above):
+
+- The scaffold's check_labels.rq ignores OWL's own vocabulary, found by building the pizza
+  walkthrough: a module extracted from the Price pattern declares owl:Thing a class, and the check
+  failed the build over it. InProcessTargetsTest covers it.
+- A pattern's terms leave out owl:Thing and owl:Nothing (47 patterns and 1), found by the frame
+  probe. Of the four modules the probe extracted, Componency's lost one axiom - the declaration
+  of owl:Thing as a class that seeding it had added - and the other three are byte-identical.
+- The arrival note is a queue, found by the frame probe with the board closed.
+
+Unit tests on macOS with the final jar: 2555 run, 0 failures, 0 errors, 26 skipped.

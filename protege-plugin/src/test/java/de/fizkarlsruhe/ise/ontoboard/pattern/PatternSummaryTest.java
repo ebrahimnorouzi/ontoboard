@@ -19,7 +19,8 @@ class PatternSummaryTest {
 
         String html = PatternSummary.asHtml(affordance, contents);
 
-        assertTrue(html.contains("8 classes"), "metadata.json says 2: " + html);
+        // Seven: eight in its signature, one of which is owl:Nothing.
+        assertTrue(html.contains("7 classes"), "metadata.json says 2: " + html);
         assertFalse(html.contains("2 classes"));
     }
 

@@ -101,6 +101,20 @@ public class SchemaGraph extends mxGraph {
             // near the origin - and every derived node the projection mints (a datatype, a class
             // expression, a property chain) arrives unpositioned on every single render.
             java.util.List<java.awt.Rectangle> taken = new java.util.ArrayList<java.awt.Rectangle>();
+            // FRAMES ARE SPOKEN FOR TOO. Only node boxes used to be, so a frame was free space:
+            // an imported pattern's frame sits at (60,60) on a new board, and the first slots
+            // this offers - (40,40), (240,40), ... - lie across its label band and border. Every
+            // derived node arrives unpositioned on every render, and the library's patterns are
+            // full of restrictions, so a pattern framed on Windows came back with boxes piled on
+            // top of it: "every item inside a frame was overlapped". A box that is not in a frame
+            // has no business inside one.
+            for (CanvasLayout.FrameLayout frame : layout.frames) {
+                if (frame != null && frame.id != null) {
+                    taken.add(new java.awt.Rectangle((int) frame.x, (int) frame.y,
+                            (int) (frame.w <= 0 ? 320 : frame.w),
+                            (int) (frame.h <= 0 ? 220 : frame.h)));
+                }
+            }
             for (CanvasNode node : projection.getNodes()) {
                 CanvasLayout.NodeLayout stored = layout.nodes.get(node.getId());
                 if (stored != null) {

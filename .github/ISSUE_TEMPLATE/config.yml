@@ -1,0 +1,14 @@
+# The issue chooser (github.com/ebrahimnorouzi/ontoboard/issues/new/choose).
+#
+# It lists the two pattern forms, alphabetically by file name - the problem form, then the
+# proposal - then the contact link below, then a blank issue.
+#
+# blank_issues_enabled stays TRUE, deliberately. Both forms are about the pattern library, and most
+# of what gets reported against this repository is about the plugin itself: the canvas, a ROBOT
+# operation, a build. With blank issues off, GitHub shows somebody without write access only the
+# configured forms, so a canvas bug could only be filed by misusing a pattern form.
+blank_issues_enabled: true
+contact_links:
+  - name: Contributing a pattern - read this first
+    url: https://ebrahimnorouzi.github.io/ontoboard/contributing-a-pattern/
+    about: Using a pattern of your own needs no issue at all, just a folder. Proposing one for the library? Every check it will go through is listed there in advance.

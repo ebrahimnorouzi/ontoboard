@@ -164,7 +164,7 @@ class SemanticReleaseTest {
 
         assertEquals(1, problems.size());
         assertTrue(problems.get(0).contains("2026-10-12"), problems.get(0));
-        assertTrue(problems.get(0).contains("3.0.2"), problems.get(0));
+        assertTrue(problems.get(0).contains("1.2.0"), problems.get(0));
     }
 
     @Test

@@ -112,7 +112,7 @@ public final class ProjectWizard {
         fields.add(folderRow);
 
         JLabel hint = new JLabel("<html><i>ID becomes file names and IRIs - lowercase, "
-                + "no spaces, e.g. <b>mwo</b>. The Base IRI is filled in with OBO's "
+                + "no spaces, e.g. <b>myont</b>. The Base IRI is filled in with OBO's "
                 + "namespace, which is right only if this ontology is being registered with "
                 + "OBO Foundry - otherwise change it to one you own, because it becomes part "
                 + "of every term IRI and cannot be changed afterwards.</i></html>");

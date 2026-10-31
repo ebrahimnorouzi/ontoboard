@@ -40,18 +40,19 @@ class PatternLibraryTest {
      * The counts come from the file, not from the metadata that ships beside it.
      *
      * <p>The reason the index carries no counts. {@code affordance} declares two classes in its
-     * metadata and has eight; {@code vesselspecies} declares zero and has five.
+     * metadata and has seven - eight in its signature, one of them owl:Nothing;
+     * {@code vesselspecies} declares zero and has four - five, one of them owl:Thing.
      */
     @Test
     void theCountsAreTheFilesOwn() throws Exception {
         PatternLibrary.Contents affordance =
                 PatternLibrary.contentsOf(PatternLibrary.find("affordance"));
-        assertEquals(8, affordance.getClasses().size(),
+        assertEquals(7, affordance.getClasses().size(),
                 "metadata.json says 2; the ontology is what counts");
 
         PatternLibrary.Contents vessel =
                 PatternLibrary.contentsOf(PatternLibrary.find("vesselspecies"));
-        assertEquals(5, vessel.getClasses().size(), "metadata.json says 0");
+        assertEquals(4, vessel.getClasses().size(), "metadata.json says 0");
     }
 
     /** Terms are classes then properties, and that is what would be imported. */
@@ -108,7 +109,10 @@ class PatternLibraryTest {
         // 1,556 until 1.128.0, when contentops was removed - it was never a pattern, but the
         // text of the ODP wiki's INDEX page with the SAN ontology attached by mistake, and the
         // 36 classes it contributed were actuation-actuator-effect's counted a second time.
-        assertEquals(1520, classes, "the measured total across the collection");
+        //
+        // 1,520 until 1.129.0, when OWL's built-in classes stopped being counted: owl:Thing in 47
+        // patterns and owl:Nothing in affordance, a term of none of them. No pattern changed.
+        assertEquals(1472, classes, "the measured total across the collection");
     }
 
     /**
@@ -135,6 +139,34 @@ class PatternLibraryTest {
         assertFalse(contents.getImports().isEmpty(), "the import is still reported");
         assertTrue(PatternLibrary.baseFor(PatternLibrary.find("airline")).toString()
                 .startsWith("file:/"), "the base has to be a scheme with a factory");
+    }
+
+    /**
+     * owl:Thing is no term of a pattern, though most of the ones that say "only Thing" have it in
+     * their signature.
+     *
+     * <p>Seen in a Mac smoke: importing Componency framed "2 terms", Object and owl:Thing, with
+     * two edges' labels drawn over the second; importing Price then reported owl:Thing as the one
+     * term "already on the board". Neither pattern defines owl:Thing.
+     */
+    @Test
+    void owlThingIsNoTermOfAPattern() throws Exception {
+        IRI thing = IRI.create("http://www.w3.org/2002/07/owl#Thing");
+        PatternLibrary.Contents componency =
+                PatternLibrary.contentsOf(PatternLibrary.find("componency"));
+        assertFalse(componency.getTerms().contains(thing), componency.getTerms().toString());
+        assertEquals("[http://www.ontologydesignpatterns.org/cp/owl/componency.owl#Object]",
+                componency.getTerms().subList(0, componency.getClasses().size()).toString());
+
+        List<String> withBuiltIns = new ArrayList<String>();
+        for (DesignPattern pattern : PatternLibrary.all()) {
+            for (IRI term : PatternLibrary.contentsOf(pattern).getTerms()) {
+                if (term.toString().startsWith("http://www.w3.org/2002/07/owl#")) {
+                    withBuiltIns.add(pattern.getId() + " " + term);
+                }
+            }
+        }
+        assertEquals("[]", withBuiltIns.toString());
     }
 
     // ---------- grouping, which is what was asked for ----------

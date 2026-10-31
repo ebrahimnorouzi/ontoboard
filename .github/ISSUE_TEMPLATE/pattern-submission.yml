@@ -1,32 +1,44 @@
-name: Propose a pattern for the library
-description: Offer an ontology design pattern for the bundled library, or report a problem with one already in it
+# Propose a NEW pattern for the library that ships inside the plugin.
+#
+# This form used to serve "a problem with a pattern already in the library" too, through a
+# required "What is this about?" dropdown - and then required, for a problem report as much as for
+# a proposal, the name, the description, the competency questions, the ontology file, the source
+# and the licence. A problem report has none of those. Problems now have their own form,
+# pattern-problem.yml, which requires a title and a description; the dropdown went with them,
+# since a required choice with one option is a click that says nothing.
+#
+# The file name stays: ?template=pattern-submission.yml is linked from the documentation site, and
+# GitHub resolves the template by file name.
+#
+# The link to the contributing page pointed at ise-fizkarlsruhe.github.io/ontoboard, which is a
+# 404 (measured with curl, as is the site root there). The site is published at
+# ebrahimnorouzi.github.io/ontoboard, as mkdocs.yml's site_url says.
+#
+# The label only applies once a label of that name exists in the repository; GitHub does not
+# create it. The title prefix identifies these either way.
+name: Propose a new pattern for the library
+description: Offer an ontology design pattern for the library that ships inside OntoBoard, for everyone who installs it
 title: "[pattern] "
 labels: ["pattern-submission"]
 body:
   - type: markdown
     attributes:
       value: |
-        Thank you. Two things worth knowing before you fill this in:
+        Thank you. Three things worth knowing before you fill this in:
 
         **You do not need us to use your pattern.** Put the file in a folder and point
-        OntoBoard at it — *ROBOT → Pattern library… → contributed patterns folder* — and it
-        appears beside the bundled ones immediately, searchable and importable. This form is for
-        getting a pattern into the library **everyone** gets.
+        OntoBoard at it — *OntoBoard → Pattern library… → Your patterns…* — and it appears beside
+        the bundled ones immediately, searchable and importable. This form is for getting a
+        pattern into the library **everyone** gets.
 
         **The review is published in advance.** Every check we run is listed in
-        [Contributing a pattern](https://ise-fizkarlsruhe.github.io/ontoboard/contributing-a-pattern/),
+        [Contributing a pattern](https://ebrahimnorouzi.github.io/ontoboard/contributing-a-pattern/),
         and you can run them yourself with `robot` before submitting. Nothing here is a judgement
         about your modelling style.
 
-  - type: dropdown
-    id: kind
-    attributes:
-      label: What is this about?
-      options:
-        - A new pattern I would like added to the library
-        - A problem with a pattern already in the library
-    validations:
-      required: true
+        **Found a problem with a pattern that is already in the library?** Use
+        [Report a problem with a pattern in the library](https://github.com/ebrahimnorouzi/ontoboard/issues/new?template=pattern-problem.yml)
+        instead. It asks for a title and a sentence, not for any of what follows.
 
   - type: input
     id: name
@@ -128,7 +140,6 @@ body:
     attributes:
       label: Anything else
       description: >
-        Known limitations, an upstream issue, a paper to cite, or - if you are reporting a problem
-        with an existing pattern - which pattern and what is wrong with it.
+        Known limitations, an upstream issue, or a paper to cite.
     validations:
       required: false

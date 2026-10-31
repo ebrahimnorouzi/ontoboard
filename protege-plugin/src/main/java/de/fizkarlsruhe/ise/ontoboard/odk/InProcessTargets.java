@@ -274,13 +274,54 @@ public final class InProcessTargets {
         written.add(output);
         log.add("report: " + findings.size() + " findings, " + errors + " of them errors; wrote "
                 + output.getName());
-        // The recipe passes --fail-on ERROR, so this does too.
+        // The recipe passes --fail-on ERROR, so this does too. The errors are named here and in
+        // the failure, for the same reason sparql_test names its terms: "listed in report.tsv"
+        // is a file the result dialog cannot show.
+        List<String> named = new ArrayList<String>();
+        for (QualityFinding finding : findings) {
+            if (finding.getSeverity() != QualityFinding.Severity.ERROR) {
+                continue;
+            }
+            if (named.size() >= ROWS_SHOWN) {
+                log.add("report:   ... and " + (errors - named.size()) + " more in "
+                        + output.getName());
+                break;
+            }
+            String one = finding.getRule() + " " + finding.getSubject() + ": "
+                    + finding.getMessage();
+            named.add(one);
+            log.add("report:   ERROR " + one);
+        }
         return errors == 0 ? null
-                : "report found " + errors + " error-level violations (--fail-on ERROR). "
-                        + "They are listed in " + output.getName() + ".";
+                : "report found " + errors + " error-level violation(s) (--fail-on ERROR): "
+                        + join(named.subList(0, Math.min(3, named.size())), "; ")
+                        + (errors > 3 ? "; ..." : "") + ". All of them are in "
+                        + output.getName() + ", and OntoBoard > ROBOT > Quality report shows "
+                        + "them one by one.";
     }
 
-    /** {@code robot verify} over the project's own {@code src/sparql/*.rq}. */
+    /**
+     * How many offending rows of one check are named, in the transcript and in the failure.
+     *
+     * <p>Enough to act on without opening anything; a check that matches hundreds of terms is
+     * usually one systematic mistake, and the first ten show which.
+     */
+    static final int ROWS_SHOWN = 10;
+
+    /**
+     * {@code robot verify} over the project's own {@code src/sparql/*.rq}.
+     *
+     * <p><b>It names the terms.</b> This said only "sparql_test found 1 violation(s) across 1
+     * check(s)", and that is what a user on a Mac with nothing installed saw for the most ordinary
+     * first edit there is: a class added with Protege's defaults has no rdfs:label, and the
+     * scaffold's own check_labels.rq rejects exactly that. Reproduced with a fresh 1.128.0
+     * project plus one class - every other target passed. A failure that names neither the rule
+     * nor the term sends somebody to a terminal to find out, which is what this build exists to
+     * avoid; so the rule (the query's leading comment) and the first rows are said here.
+     *
+     * <p><b>A check that cannot run fails.</b> It used to count as zero violations, so a query
+     * with a syntax error passed the build - a test that cannot fail is not a test.
+     */
     private static String sparqlTest(File root, OWLOntology ontology, List<String> log) {
         List<File> checks = SparqlQuery.checksIn(root);
         if (checks.isEmpty()) {
@@ -288,15 +329,96 @@ public final class InProcessTargets {
                     + ", nothing to check");
             return null;
         }
-        int violations = 0;
+        java.util.Map<String, File> byName = new java.util.HashMap<String, File>();
+        for (File check : checks) {
+            byName.put(check.getName(), check);
+        }
+        List<String> failed = new ArrayList<String>();
         for (SparqlQuery.Check check : SparqlQuery.verify(ontology, checks)) {
+            if (check.getFailure() != null) {
+                log.add("sparql_test: ERROR " + check.getName() + " could not run: "
+                        + check.getFailure());
+                failed.add(check.getName() + " could not run (" + check.getFailure() + ")");
+                continue;
+            }
             log.add("sparql_test: " + (check.isPassed() ? "PASS " : "FAIL ") + check.getName()
                     + ": " + check.getViolations() + " violation(s)");
-            violations += check.getViolations();
+            if (check.isPassed()) {
+                continue;
+            }
+            String rule = ruleOf(byName.get(check.getName()));
+            if (rule != null) {
+                log.add("sparql_test:   rule: " + rule);
+            }
+            List<String> offenders = new ArrayList<String>();
+            for (List<String> row : check.getAnswer().getRows()) {
+                if (offenders.size() >= ROWS_SHOWN) {
+                    break;
+                }
+                String shown = join(row);
+                offenders.add(shown);
+                log.add("sparql_test:   " + shown);
+            }
+            if (check.getViolations() > offenders.size()) {
+                log.add("sparql_test:   ... and " + (check.getViolations() - offenders.size())
+                        + " more");
+            }
+            failed.add(check.getName() + (rule == null ? "" : " (" + rule + ")") + ": "
+                    + join(offenders)
+                    + (check.getViolations() > offenders.size() ? ", ..." : ""));
         }
-        return violations == 0 ? null
-                : "sparql_test found " + violations + " violation(s) across "
-                        + checks.size() + " check(s).";
+        if (failed.isEmpty()) {
+            return null;
+        }
+        return "sparql_test failed - " + join(failed, "; ") + ". Each listed term breaks the "
+                + "rule beside it: fix the term (a missing label is added in Protege under "
+                + "Annotations), or edit the check in " + SparqlQuery.CHECKS_DIRECTORY
+                + " if the rule does not apply to this project.";
+    }
+
+    /**
+     * What a check is for, from the comment lines it opens with, or null.
+     *
+     * <p>The scaffold writes each query with one ({@code # Every class should carry an
+     * rdfs:label.}), and a hand-written one usually has the same; reading it is what turns
+     * "check_labels.rq failed" into a sentence somebody can act on.
+     */
+    static String ruleOf(File query) {
+        if (query == null) {
+            return null;
+        }
+        StringBuilder rule = new StringBuilder();
+        try {
+            for (String line : java.nio.file.Files.readAllLines(query.toPath(),
+                    java.nio.charset.StandardCharsets.UTF_8)) {
+                String trimmed = line.trim();
+                if (!trimmed.startsWith("#")) {
+                    break;
+                }
+                String text = trimmed.replaceFirst("^#+\\s*", "");
+                if (!text.isEmpty()) {
+                    rule.append(rule.length() == 0 ? "" : " ").append(text);
+                }
+            }
+        } catch (java.io.IOException unreadable) {
+            return null;
+        }
+        return rule.length() == 0 ? null : rule.toString();
+    }
+
+    private static String join(List<String> parts) {
+        return join(parts, ", ");
+    }
+
+    private static String join(List<String> parts, String separator) {
+        StringBuilder joined = new StringBuilder();
+        for (String part : parts) {
+            if (joined.length() > 0) {
+                joined.append(separator);
+            }
+            joined.append(part);
+        }
+        return joined.toString();
     }
 
     /** {@code robot merge | convert | validate-profile --profile DL}, read from the model. */

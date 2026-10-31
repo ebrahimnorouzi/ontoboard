@@ -176,8 +176,8 @@ public class ReleaseAction extends OntoBoardAction {
                                 + "IRI rather than only the text. Dated publishes OBO's "
                                 + ".../releases/" + today + "/<id>.owl, which is what the "
                                 + "generated Makefile does (VERSION = $(TODAY)). Semantic "
-                                + "publishes .../<id>/3.0.2, which is what MatWerk's own "
-                                + "release.sh does and what its published mwo.owl carries. "
+                                + "publishes .../<id>/1.2.0, numbered MAJOR.MINOR.PATCH as "
+                                + "semver.org defines it. "
                                 + history)
                         .build(),
                 Parameter.of(OPTION_DATE, "Version", Parameter.Kind.TEXT)

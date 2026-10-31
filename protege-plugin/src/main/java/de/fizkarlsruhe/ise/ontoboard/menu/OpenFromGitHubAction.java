@@ -64,7 +64,7 @@ public class OpenFromGitHubAction extends OntoBoardAction {
                                 + "remote, or just owner/repo. A link to a particular file on a "
                                 + "particular branch is taken as meaning that file on that "
                                 + "branch. For example "
-                                + "https://github.com/ISE-FIZKarlsruhe/mwo")
+                                + "https://github.com/<owner>/<repository>")
                         .build(),
                 Parameter.of(OPTION_INTO, "Clone into", Parameter.Kind.FILE)
                         .required()
