@@ -265,11 +265,26 @@ class CanvasGestureInteractionTest {
         if (id == MouseEvent.MOUSE_DRAGGED) {
             for (java.awt.event.MouseMotionListener listener
                     : control.getMouseMotionListeners()) {
+                // AWT's own drag-gesture recognizer is skipped, on every platform. It is a listener
+                // like any other, and these events reach it from the test thread rather than the
+                // event queue. On Linux it ignores them - they carry no button mask - but macOS's
+                // CMouseDragGestureRecognizer does not check, starts JGraphX's DnD export, and that
+                // renders the selection through the component's shared canvas off the event
+                // thread: NullPointerException in mxBasicShape.configureGraphics, the one test that
+                // failed on a Mac (2530 run). What this test is about - that a press, drags and a
+                // release reach mxGraphHandler and move the node - is the path Linux CI exercised
+                // all along; this makes the Mac exercise the same one.
+                if (listener instanceof java.awt.dnd.DragGestureRecognizer) {
+                    continue;
+                }
                 listener.mouseDragged(event);
             }
             return;
         }
         for (java.awt.event.MouseListener listener : control.getMouseListeners()) {
+            if (listener instanceof java.awt.dnd.DragGestureRecognizer) {
+                continue;
+            }
             if (id == MouseEvent.MOUSE_PRESSED) {
                 listener.mousePressed(event);
             } else if (id == MouseEvent.MOUSE_RELEASED) {
