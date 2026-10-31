@@ -402,6 +402,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         installUndo();
         installBoardShortcuts();
         installWheelZoom();
+        installPinchZoom();
         installZoomReadout();
         installKeyboardShortcuts();
         // After the toolbar, which owns the two buttons this sets.
@@ -2487,14 +2488,43 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         double target = CanvasZoom.clamp(in
                 ? scale * graphComponent.getZoomFactor()
                 : scale / graphComponent.getZoomFactor());
+        javax.swing.JViewport port = graphComponent.getViewport();
+        zoomAround(target, event == null
+                ? new java.awt.Point(port.getWidth() / 2, port.getHeight() / 2)
+                : javax.swing.SwingUtilities.convertPoint(
+                        (java.awt.Component) event.getSource(), event.getPoint(), port));
+    }
+
+    /**
+     * Pinch to zoom on a Mac trackpad, about the pointer, by as much as the fingers moved.
+     *
+     * <p>A pinch reaches Java as macOS's own magnification gesture rather than as a wheel event,
+     * so the wheel zoom never heard it; {@link PinchZoom} says why it is reached the way it is.
+     * Continuous rather than in the wheel's steps, because a pinch is: each report is a small
+     * fraction, and stepping a fifth at a time on each of them would leap.
+     */
+    private void installPinchZoom() {
+        String why = PinchZoom.install(graphComponent, magnification -> {
+            javax.swing.JViewport port = graphComponent.getViewport();
+            java.awt.Point pointer = port.getMousePosition();
+            zoomAround(CanvasZoom.clamp(graph.getView().getScale() * (1 + magnification)),
+                    pointer != null ? pointer
+                            : new java.awt.Point(port.getWidth() / 2, port.getHeight() / 2));
+        });
+        if (why == null) {
+            LOGGER.info("OntoBoard: pinch to zoom installed on the canvas");
+        } else if (!"not a Mac".equals(why)) {
+            LOGGER.info("OntoBoard: pinch to zoom not available - {}", why);
+        }
+    }
+
+    /** Zooms to {@code target}, keeping the point at {@code inPort} where it is on screen. */
+    private void zoomAround(double target, final java.awt.Point inPort) {
+        double scale = graph.getView().getScale();
         if (target == scale) {
             return;
         }
         final javax.swing.JViewport port = graphComponent.getViewport();
-        final java.awt.Point inPort = event == null
-                ? new java.awt.Point(port.getWidth() / 2, port.getHeight() / 2)
-                : javax.swing.SwingUtilities.convertPoint(
-                        (java.awt.Component) event.getSource(), event.getPoint(), port);
         final java.awt.Point origin = port.getViewPosition();
         final double ratio = target / scale;
 
@@ -2867,6 +2897,8 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                 added++;
             }
         }
+        java.util.List<de.fizkarlsruhe.ise.ontoboard.pattern.ImportedPatterns.Found> patterns =
+                de.fizkarlsruhe.ise.ontoboard.pattern.ImportedPatterns.in(ontology);
         if (added > 0) {
             // Cleared so autoArrangeIfUnpositioned lays the whole board out rather than leaving
             // the new arrivals stacked on the origin, which is what "should not overlap" means.
@@ -2874,8 +2906,143 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             refresh();
             CanvasLayouts.apply(graph, CanvasLayouts.Algorithm.HIERARCHICAL);
             capturePositions();
-            saveLayoutTo(layoutFile);
+            // The layout just moved every term, the framed ones included, so an imported
+            // pattern's frame would be left behind empty. Each is drawn again below.
+            java.util.Set<String> imported = new java.util.HashSet<String>();
+            for (de.fizkarlsruhe.ise.ontoboard.pattern.ImportedPatterns.Found pattern
+                    : patterns) {
+                imported.add(pattern.getLabel());
+            }
+            java.util.Iterator<CanvasLayout.FrameLayout> frames = layout.frames.iterator();
+            while (frames.hasNext()) {
+                CanvasLayout.FrameLayout frame = frames.next();
+                if (frame != null && imported.contains(frame.label)) {
+                    frames.remove();
+                }
+            }
         }
+        java.util.List<CanvasLayout.FrameLayout> framed = frameImportedPatterns(patterns);
+        if (added > 0 || !framed.isEmpty()) {
+            saveLayoutTo(layoutFile);
+            refresh();
+        }
+        if (!framed.isEmpty()) {
+            StringBuilder said = new StringBuilder("Framed " + framed.size() + " design pattern"
+                    + (framed.size() == 1 ? "" : "s") + ": ");
+            for (int at = 0; at < framed.size(); at++) {
+                said.append(at == 0 ? "" : ", ").append(framed.get(at).label);
+            }
+            setStatus(said.append('.').toString());
+            Object first = graph.getCellForId(framed.get(0).id);
+            if (first != null) {
+                bringIntoViewIfOffScreen(java.util.Collections.singletonList(first));
+            }
+        }
+    }
+
+    /** The space between the row of pattern frames and the rest of the board. */
+    private static final int BELOW_THE_PATTERNS = 80;
+
+    /**
+     * Frames each imported pattern that has no frame on the board, in a row along the top.
+     *
+     * <p>Asked for: an ontology opened and put on the board with Add all showed no frames, though
+     * it imports three patterns - frames were only drawn as a pattern was imported, in that
+     * session. Its classes move into the frame, unlike when a pattern is imported, because that is
+     * what Add all was pressed for: on a board where they are already, pressing it again frames
+     * them.
+     *
+     * <p><b>Along the top, and the board moved down to make room.</b> The first version placed the
+     * frames where FramedGroup finds space, which after Add all on the pizza ontology was beyond
+     * an 80-term layout, 7000 pixels to the right of where the board opens: framed, and nowhere a
+     * reader would look. Everything else moves down as one block, so its arrangement is kept.
+     *
+     * @return the frames added, in order; empty when there was nothing to frame
+     */
+    private java.util.List<CanvasLayout.FrameLayout> frameImportedPatterns(
+            java.util.List<de.fizkarlsruhe.ise.ontoboard.pattern.ImportedPatterns.Found> patterns) {
+        java.util.Set<String> alreadyFramed = new java.util.HashSet<String>();
+        for (CanvasLayout.FrameLayout frame : layout.frames) {
+            if (frame != null && frame.label != null) {
+                alreadyFramed.add(frame.label);
+            }
+        }
+        // Planned on an empty board, so the frames come out in a row from the corner and their
+        // size is known before anything is moved to make room for them.
+        CanvasLayout row = new CanvasLayout();
+        java.util.List<de.fizkarlsruhe.ise.ontoboard.layout.FramedGroup.Placement> planned =
+                new java.util.ArrayList<de.fizkarlsruhe.ise.ontoboard.layout.FramedGroup.Placement>();
+        for (de.fizkarlsruhe.ise.ontoboard.pattern.ImportedPatterns.Found pattern : patterns) {
+            if (alreadyFramed.contains(pattern.getLabel())) {
+                continue;
+            }
+            de.fizkarlsruhe.ise.ontoboard.layout.FramedGroup.Placement placement =
+                    de.fizkarlsruhe.ise.ontoboard.layout.FramedGroup.plan(
+                            pattern.getLabel(), pattern.getClasses(), row);
+            if (placement.isEmpty()) {
+                continue;
+            }
+            de.fizkarlsruhe.ise.ontoboard.layout.FramedGroup.withId(placement.getFrame(),
+                    SchemaGraph.FRAME_ID_PREFIX + nextAnnotationSuffix());
+            row.frames.add(placement.getFrame());
+            row.nodes.putAll(placement.getNodes());
+            planned.add(placement);
+        }
+        java.util.List<CanvasLayout.FrameLayout> added =
+                new java.util.ArrayList<CanvasLayout.FrameLayout>();
+        if (planned.isEmpty()) {
+            return added;
+        }
+
+        for (String iri : row.nodes.keySet()) {
+            layout.nodes.remove(iri);
+        }
+        double bottom = 0;
+        for (CanvasLayout.FrameLayout frame : row.frames) {
+            bottom = Math.max(bottom, frame.y + (frame.h <= 0 ? 220 : frame.h));
+        }
+        double top = Double.MAX_VALUE;
+        for (CanvasLayout.NodeLayout node : layout.nodes.values()) {
+            top = Math.min(top, node.y);
+        }
+        for (CanvasLayout.FrameLayout frame : layout.frames) {
+            if (frame != null) {
+                top = Math.min(top, frame.y);
+            }
+        }
+        for (CanvasLayout.NoteLayout note : layout.notes) {
+            if (note != null) {
+                top = Math.min(top, note.y);
+            }
+        }
+        double down = top == Double.MAX_VALUE ? 0
+                : Math.max(0, bottom + BELOW_THE_PATTERNS - top);
+        if (down > 0) {
+            for (CanvasLayout.NodeLayout node : layout.nodes.values()) {
+                node.y += down;
+            }
+            for (CanvasLayout.FrameLayout frame : layout.frames) {
+                if (frame != null) {
+                    frame.y += down;
+                }
+            }
+            for (CanvasLayout.NoteLayout note : layout.notes) {
+                if (note != null) {
+                    note.y += down;
+                }
+            }
+        }
+
+        for (de.fizkarlsruhe.ise.ontoboard.layout.FramedGroup.Placement placement : planned) {
+            layout.frames.add(placement.getFrame());
+            added.add(placement.getFrame());
+            for (java.util.Map.Entry<String, CanvasLayout.NodeLayout> entry
+                    : placement.getNodes().entrySet()) {
+                layout.nodes.put(entry.getKey(), entry.getValue());
+                membership.add(entry.getKey());
+            }
+        }
+        return added;
     }
 
     // ------------------------------------------------------------------ collaboration

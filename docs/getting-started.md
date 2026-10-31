@@ -35,7 +35,12 @@ the OBO convention. It writes a full ODK repository and opens the edit file.
 ontologies with 100,000+ classes and drawing all of them would hang. Double-click empty
 canvas to create a class there; drag existing terms in from the entity trees on the left;
 select one and press *Add selected*; or press *Add all* for a small ontology, which brings
-in every class, individual, object property and data property.
+in every class, individual, object property and data property. Each design pattern the ontology
+imports from OntoBoard's library — or has merged in, as a release does — arrives in a frame named
+after it. On a board that is already full, pressing *Add all* again frames the patterns that have
+no frame yet.
+
+**Zoom.** The mouse wheel zooms about the pointer; on a Mac trackpad, so does a pinch.
 
 **Grow the diagram.** Right-click a node and *Expand neighbours (1 hop)* to pull in what it
 is directly related to. Drag nodes to arrange them, or use the toolbar's layout algorithms.
