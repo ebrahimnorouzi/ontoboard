@@ -75,6 +75,17 @@ public final class PatternArrival {
         return held;
     }
 
+    /**
+     * The waiting arrival, left in place. Null when there is none.
+     *
+     * <p>So the canvas can wait for the terms to exist before consuming the note: the import that
+     * puts them there runs after a dialog and on a worker thread, and any refresh in between - an
+     * imports-closure change, a module being loaded - used to take the note with nothing to frame.
+     */
+    public static Arrival peek() {
+        return waiting;
+    }
+
     /** Whether anything is waiting, without consuming it. For tests. */
     public static boolean isWaiting() {
         return waiting != null;

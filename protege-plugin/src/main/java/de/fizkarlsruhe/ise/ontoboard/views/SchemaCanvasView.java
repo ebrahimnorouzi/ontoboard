@@ -3956,13 +3956,33 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
      */
     private void frameAnyArrivedPattern() {
         de.fizkarlsruhe.ise.ontoboard.pattern.PatternArrival.Arrival arrival =
-                de.fizkarlsruhe.ise.ontoboard.pattern.PatternArrival.take();
+                de.fizkarlsruhe.ise.ontoboard.pattern.PatternArrival.peek();
         if (arrival == null) {
             return;
         }
+        // NOT CONSUMED UNTIL THE TERMS ARE THERE. The note is left before the import runs, and
+        // the import runs after its own dialog, on a worker thread, loading a module and then
+        // adding an owl:imports - each of which can refresh this board first. Taking the note on
+        // such a refresh framed terms the ontology did not have yet: positions for nothing, which
+        // the next reload pruned, leaving no frame. Reported from a Mac, where two imported
+        // patterns never appeared framed. Only the terms present are framed, so a term the
+        // module extraction did not bring in leaves no hole in the grid.
+        java.util.Set<String> present = OntologyProjection.termIdentifiers(
+                getOWLModelManager().getActiveOntology(),
+                org.semanticweb.owlapi.model.parameters.Imports.INCLUDED);
+        java.util.List<String> arrived = new java.util.ArrayList<String>();
+        for (String iri : arrival.getIris()) {
+            if (present.contains(iri)) {
+                arrived.add(iri);
+            }
+        }
+        if (arrived.isEmpty()) {
+            return;
+        }
+        de.fizkarlsruhe.ise.ontoboard.pattern.PatternArrival.take();
         de.fizkarlsruhe.ise.ontoboard.layout.FramedGroup.Placement placement =
                 de.fizkarlsruhe.ise.ontoboard.layout.FramedGroup.plan(
-                        arrival.getLabel(), arrival.getIris(), layout);
+                        arrival.getLabel(), arrived, layout);
         if (placement.isEmpty()) {
             if (!placement.getAlreadyOnTheBoard().isEmpty()) {
                 setStatus("Every term of " + arrival.getLabel() + " was already on the board.");

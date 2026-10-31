@@ -315,4 +315,32 @@ class SchemaGraphTest {
         assertFalse(SchemaGraph.FRAME_ID_PREFIX.startsWith(SchemaGraph.NOTE_ID_PREFIX));
     }
 
+    /**
+     * An unpositioned box must not land on a frame. Only node boxes counted as taken, so the first
+     * free slot on a board holding an imported pattern's frame at (60,60) was (40,40) - across the
+     * frame's label band - and every derived node of the pattern piled on top of it.
+     */
+    @Test
+    void anUnpositionedNodeIsNotPlacedOnAFrame() {
+        CanvasLayout layout = new CanvasLayout();
+        CanvasLayout.FrameLayout frame = new CanvasLayout.FrameLayout();
+        frame.id = SchemaGraph.FRAME_ID_PREFIX + "1";
+        frame.label = "Imported pattern";
+        frame.x = 60;
+        frame.y = 60;
+        frame.w = 640;
+        frame.h = 280;
+        layout.frames.add(frame);
+        layout.nodes.put(AGENT, new CanvasLayout.NodeLayout(100, 140));
+
+        SchemaGraph graph = new SchemaGraph();
+        graph.render(twoClassesWithSubClassEdge(), layout);
+
+        mxCell person = (mxCell) graph.getCellForId(PERSON);
+        java.awt.geom.Rectangle2D box = new java.awt.geom.Rectangle2D.Double(
+                person.getGeometry().getX(), person.getGeometry().getY(),
+                person.getGeometry().getWidth(), person.getGeometry().getHeight());
+        assertFalse(box.intersects(frame.x, frame.y, frame.w, frame.h),
+                "an unpositioned node was put on the frame at " + box);
+    }
 }
