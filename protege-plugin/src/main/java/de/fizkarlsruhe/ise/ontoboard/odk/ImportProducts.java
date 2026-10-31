@@ -572,7 +572,7 @@ public final class ImportProducts {
                     + "this was declared as module_type: custom - ODK's own word for a rule that "
                     + "is written by hand. `make refresh-imports` will stop on it until you add "
                     + "an extract command for " + id + " to the project's own Makefile, which is "
-                    + "what NFDIcore does for the same reason. The module, its term list and the "
+                    + "what other ODK projects do for the same reason. The module, its term list and the "
                     + "catalog entry are all on disk and working.");
         }
         fields.put("module_type", DEFAULT_MODULE_TYPE);

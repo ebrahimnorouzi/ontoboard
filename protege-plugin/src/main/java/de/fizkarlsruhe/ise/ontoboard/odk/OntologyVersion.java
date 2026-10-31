@@ -49,8 +49,8 @@ public final class OntologyVersion implements Comparable<OntologyVersion> {
     public enum Scheme {
         /** {@code 2026-10-12}, as OBO publishes and as the generated Makefile defaults to. */
         DATE("Dated, the way OBO publishes", "2026-10-12"),
-        /** {@code 3.0.2}, as MatWerk's release.sh publishes. */
-        SEMANTIC("Semantic version, the way MatWerk publishes", "3.0.2");
+        /** {@code 1.2.0}: MAJOR.MINOR.PATCH, as semver.org defines it. */
+        SEMANTIC("Semantic version (MAJOR.MINOR.PATCH)", "1.2.0");
 
         private final String label;
         private final String example;
@@ -124,7 +124,7 @@ public final class OntologyVersion implements Comparable<OntologyVersion> {
         OntologyVersion parsed = parseOrNull(text);
         if (parsed == null) {
             throw new IllegalArgumentException("a release version must be a date (YYYY-MM-DD) or "
-                    + "a semantic version (3.0.2), not '" + text + "' - release directories are "
+                    + "a semantic version (1.2.0), not '" + text + "' - release directories are "
                     + "sorted and parsed by one of those two shapes");
         }
         return parsed;

@@ -65,7 +65,8 @@ class OntologyVersionTest {
             IllegalArgumentException refused = assertThrows(IllegalArgumentException.class,
                     () -> OntologyVersion.of(bad), "accepted " + bad);
             assertTrue(refused.getMessage().contains("YYYY-MM-DD"), refused.getMessage());
-            assertTrue(refused.getMessage().contains("3.0.2"), refused.getMessage());
+            // The semantic example the message offers, which names no project's real version.
+            assertTrue(refused.getMessage().contains("1.2.0"), refused.getMessage());
         }
     }
 

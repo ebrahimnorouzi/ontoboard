@@ -308,7 +308,7 @@ Still ignored, including keys you are likely to want to change:
 > No longer on this list: `export_formats`, which *Release…* honours since 1.98.0, and
 > `import_group.products`, which *Refresh imports* reads since 1.99.0.
 
-Two consequences worth stating plainly. On a real ODK repository such as MWO, exactly **one** key
+Two consequences worth stating plainly. On a real ODK repository, exactly **one** key
 (`title`) is ever read — the ontology id comes from the edit file's name instead. And five of the
 keys OntoBoard's *own* scaffold writes are read by nothing, including `uribase`, which is
 decorative: the base IRI is recovered from the edit file, because `uribase` is lossy.
@@ -337,13 +337,13 @@ project could only get a corrected Makefile by being created again.
 
 The refusal is the safety property. Regeneration rewrites the Makefile, the CI workflow, the
 README and the ignore files from OntoBoard's templates; on a real ODK repository that is
-destruction, not an update — MWO's `src/ontology/Makefile` is over 750 lines of ODK's own
+destruction, not an update — a real ODK `src/ontology/Makefile` is commonly over 750 lines of ODK's own
 build, and replacing it with the eight-target one this plugin generates would remove every import
 rule, every release artefact and every quality target the project has. Two signals decide it,
 either one conclusive: `src/ontology/run.sh`, which only ODK writes, and
 `ODK_VERSION_MAKEFILE`, which ODK's generated Makefile declares and OntoBoard's does not.
-Measured against both: MWO's Makefile declares `ODK_VERSION_MAKEFILE` and has a `run.sh` beside
-it; a scaffolded project has neither.
+An ODK-seeded project's Makefile declares `ODK_VERSION_MAKEFILE` and has a `run.sh` beside it; a
+project OntoBoard scaffolded has neither.
 
 One difference worth knowing: **`imports/` is not part of this.** ODK's `update_repo` regenerates
 the import scaffolding; in OntoBoard that is *Project → Refresh imports*, which audits every
@@ -795,17 +795,17 @@ vanished.
 are not a formatting preference — they publish different IRIs, and a version IRI cannot be taken
 back once anybody has imported it:
 
-| | Dated (OBO) | Semantic (MatWerk) |
+| | Dated (OBO) | Semantic (semver) |
 |---|---|---|
-| version | `2026-10-12` | `3.0.2` |
-| `owl:versionIRI` | `<base>/releases/2026-10-12/<id>.owl` | `<base>/3.0.2` |
-| kept at | `releases/2026-10-12/<id>.owl` | `releases/3.0.2/<id>.owl` |
+| version | `2026-10-12` | `1.2.0` |
+| `owl:versionIRI` | `<base>/releases/2026-10-12/<id>.owl` | `<base>/1.2.0` |
+| kept at | `releases/2026-10-12/<id>.owl` | `releases/1.2.0/<id>.owl` |
 | next one | whatever day it is | a decision: patch, minor or major |
 
 The dated form is what OBO publishes and what the generated Makefile defaults to
-(`VERSION = $(TODAY)`). The semantic form is what MatWerk publishes: its
-`src/ontology/release.sh` sets `VERSION=3.0.2` and its `mwo.owl` carries
-`owl:versionIRI http://purls.helmholtz-metadaten.de/mwo/3.0.2`.
+(`VERSION = $(TODAY)`). The semantic form numbers releases `MAJOR.MINOR.PATCH` as
+[semver.org](https://semver.org/) defines it: a project at `1.2.0` publishes
+`owl:versionIRI <base>/1.2.0` and `owl:versionInfo "1.2.0"`.
 
 **The default is read from what the ontology already declares**, so releasing a project you did
 not create continues its history instead of starting a second one beside it. A semantic release
@@ -815,7 +815,7 @@ also links `owl:priorVersion` to the one before it, so a consumer can walk the c
 overrides, which is how `release.sh` drives it:
 
 ```sh
-make VERSION=3.0.2 VERSION_IRI=http://purls.helmholtz-metadaten.de/mwo/3.0.2 prepare_release
+make VERSION=1.2.0 VERSION_IRI=http://purl.obolibrary.org/obo/myont/1.2.0 prepare_release
 ```
 
 And if the project keeps a `release.sh` whose `VERSION` disagrees with what you are about to

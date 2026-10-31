@@ -110,7 +110,7 @@ public final class GitHubUrl {
         }
         throw new IllegalArgumentException("'" + text.trim() + "' is not a GitHub repository. "
                 + "Paste the address of the repository, for example "
-                + "https://github.com/ISE-FIZKarlsruhe/mwo");
+                + "https://github.com/<owner>/<repository>");
     }
 
     /**

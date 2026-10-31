@@ -788,7 +788,7 @@ public final class OdkScaffold {
                 + "# nobody else has.\n"
                 + "#\n"
                 + "# src/ontology/mirror/ IS ignored, unlike imports/. A mirror is a\n"
-                + "# downloaded copy of an upstream ontology - CHEBI alone is hundreds of\n"
+                + "# downloaded copy of an upstream ontology - a large one is hundreds of\n"
                 + "# megabytes - and it is reproducible from the source each term list\n"
                 + "# records. Project > Refresh imports... rebuilds it. The modules under\n"
                 + "# imports/ are NOT reproducible that way, which is why those are\n"
