@@ -107,8 +107,45 @@ public class ImportTermsAction extends OntoBoardAction {
         this.seededTerms = terms == null ? "" : terms;
     }
 
+    /**
+     * Seeds the dialog as {@link #seedWith} does, for a pattern from OntoBoard's library.
+     *
+     * <p>Which changes what is recorded, not what is extracted: the term list names the pattern's
+     * own IRI and the pattern, and no product is declared - see
+     * {@link ImportModules#writeTerms(File, String, java.util.List, String, String)}. If the
+     * source is changed in the dialog, it is no longer the pattern that is being imported, and the
+     * import is recorded like any other.
+     */
+    void seedWithPattern(String source, String terms, String pattern) {
+        seedWith(source, terms);
+        this.seededPattern = pattern;
+    }
+
     private volatile String seededSource = "";
     private volatile String seededTerms = "";
+    private volatile String seededPattern = null;
+
+    /** The library pattern being imported, or null when the import is not one. */
+    private String patternBeingImported() {
+        return seededPattern != null && seededSource.equals(sourceText) ? seededPattern : null;
+    }
+
+    /**
+     * What a term list records as its source: the IRI the terms were taken from, or for a
+     * pattern, the pattern's own IRI - not the working copy the library made on this machine,
+     * whose {@code file:} path means nothing anywhere else. Null for a pattern that has no IRI;
+     * its {@code # Pattern:} line says where it came from.
+     */
+    static String recordedSource(OWLOntology source, IRI sourceIri, String pattern) {
+        if (pattern == null) {
+            return sourceIri == null ? null : sourceIri.toString();
+        }
+        if (source == null) {
+            return null;
+        }
+        com.google.common.base.Optional<IRI> own = source.getOntologyID().getOntologyIRI();
+        return own.isPresent() ? own.get().toString() : null;
+    }
 
     @Override
     protected boolean configure() {
@@ -451,7 +488,16 @@ public class ImportTermsAction extends OntoBoardAction {
         // that no product declares are files `make refresh-imports` never touches - and OntoBoard
         // made exactly that state for itself, scaffolding `products: []` and then never adding to
         // it. 1.99.0 started reporting it; this stops causing it.
-        declareProduct(result, ontology, source, sourceIri);
+        //
+        // EXCEPT FOR A PATTERN, which is not refreshed from anywhere: the only mirror_from there
+        // was to give it was the library's working copy on this machine, a file: path that went
+        // into the committed configuration and resolved on no other.
+        if (patternBeingImported() == null) {
+            declareProduct(result, ontology, source, sourceIri);
+        } else {
+            result.note("Not declared in import_group.products: a pattern from the library is "
+                    + "changed by importing it again, so nothing needs to download it.");
+        }
 
         if (isOutsideTheProject(ontology, target)) {
             result.warn("The module is outside the ontology's own directory, so it will not be "
@@ -556,8 +602,9 @@ public class ImportTermsAction extends OntoBoardAction {
             return;
         }
         try {
+            String pattern = patternBeingImported();
             File written = ImportModules.writeTerms(projectRoot, TermExtract.shortNameOf(source),
-                    terms, sourceIri == null ? null : sourceIri.toString());
+                    terms, recordedSource(source, sourceIri, pattern), pattern);
             result.wrote(written);
         } catch (IOException cannotWrite) {
             result.warn("Wrote the module but could not write its term list: "

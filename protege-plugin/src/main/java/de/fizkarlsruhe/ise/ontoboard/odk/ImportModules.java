@@ -179,6 +179,9 @@ public final class ImportModules {
         return Collections.unmodifiableList(modules);
     }
 
+    /** The comment that marks a term list as a pattern's, followed by the library's id for it. */
+    public static final String PATTERN_LINE = "# Pattern:";
+
     /**
      * Writes the term list for an import.
      *
@@ -190,6 +193,23 @@ public final class ImportModules {
      */
     public static File writeTerms(File projectRoot, String name, List<IRI> terms, String source)
             throws IOException {
+        return writeTerms(projectRoot, name, terms, source, null);
+    }
+
+    /**
+     * Writes the term list for an import, marked as a pattern's when {@code pattern} is the id of
+     * one in OntoBoard's library.
+     *
+     * <p><b>Why a pattern is marked.</b> A pattern's module is not declared in
+     * {@code import_group.products} and is not refreshed: it changes when the pattern is imported
+     * again from the library, which ships the copy it was cut from. The first version recorded
+     * the library's working copy - {@code file:/Users/...} - as the source and declared that as
+     * a product's {@code mirror_from}, so two committed files carried the importer's home
+     * directory and resolved on no other machine. The source is now the pattern's own IRI, and
+     * this line is what tells a refresh not to go and download it.
+     */
+    public static File writeTerms(File projectRoot, String name, List<IRI> terms, String source,
+            String pattern) throws IOException {
         File file = termsFileFor(projectRoot, name);
         File directory = file.getParentFile();
         if (directory != null && !directory.isDirectory() && !directory.mkdirs()) {
@@ -201,8 +221,16 @@ public final class ImportModules {
         if (source != null && !source.trim().isEmpty()) {
             text.append("# Source: ").append(source.trim()).append('\n');
         }
-        text.append("# One term per line. This file is what makes the module rebuildable:\n");
-        text.append("# edit it and re-run the import to change what the module contains.\n");
+        if (pattern != null && !pattern.trim().isEmpty()) {
+            text.append(PATTERN_LINE).append(' ').append(pattern.trim()).append('\n');
+            text.append("# From OntoBoard's pattern library, so nothing downloads it and Refresh\n");
+            text.append("# imports leaves it alone. To change what the module contains, use\n");
+            text.append("# OntoBoard > ROBOT > Pattern library... and import the pattern again.\n");
+            text.append("# One term per line.\n");
+        } else {
+            text.append("# One term per line. This file is what makes the module rebuildable:\n");
+            text.append("# edit it and re-run the import to change what the module contains.\n");
+        }
         for (String iri : sortedUnique(terms)) {
             text.append(iri).append('\n');
         }
@@ -292,6 +320,26 @@ public final class ImportModules {
             if (trimmed.startsWith("# Source:")) {
                 String source = trimmed.substring("# Source:".length()).trim();
                 return source.isEmpty() ? null : source;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * The library id of the pattern a term list was written for, or null when it is not a
+     * pattern's. See {@link #writeTerms(File, String, List, String, String)}.
+     */
+    public static String patternIn(File termsFile) throws IOException {
+        if (termsFile == null || !termsFile.isFile()) {
+            return null;
+        }
+        String text = new String(Files.readAllBytes(termsFile.toPath()), StandardCharsets.UTF_8);
+        for (String line : text.split("\r?\n")) {
+            String trimmed = line.trim();
+            if (trimmed.startsWith(PATTERN_LINE)) {
+                String rest = trimmed.substring(PATTERN_LINE.length()).trim();
+                String id = rest.split("\\s+")[0];
+                return id.isEmpty() ? null : id;
             }
         }
         return null;

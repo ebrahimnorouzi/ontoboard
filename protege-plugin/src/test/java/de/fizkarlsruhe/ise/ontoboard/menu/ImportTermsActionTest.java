@@ -67,4 +67,28 @@ class ImportTermsActionTest {
         assertTrue(path.contains("iao_import.owl"), path);
         assertFalse(path.contains("\\"), path);
     }
+
+    /**
+     * A pattern import records the pattern's own IRI, not the working copy the library made.
+     *
+     * <p>The copy is what the module is cut from, and its {@code file:} path is this machine's:
+     * recorded, it went into two committed files and resolved on no other.
+     */
+    @Test
+    void aPatternRecordsItsOwnIriRatherThanTheLocalCopy() throws Exception {
+        org.semanticweb.owlapi.model.IRI own = org.semanticweb.owlapi.model.IRI.create(
+                "http://www.ontologydesignpatterns.org/cp/owl/componency.owl");
+        org.semanticweb.owlapi.model.IRI copy = org.semanticweb.owlapi.model.IRI.create(
+                "file:/Users/someone/project/src/ontology/mirror/componency.owl");
+        org.semanticweb.owlapi.model.OWLOntologyManager manager =
+                org.semanticweb.owlapi.apibinding.OWLManager.createOWLOntologyManager();
+        org.semanticweb.owlapi.model.OWLOntology pattern = manager.createOntology(own);
+
+        assertEquals(own.toString(), ImportTermsAction.recordedSource(pattern, copy, "componency"));
+        assertEquals(copy.toString(), ImportTermsAction.recordedSource(pattern, copy, null),
+                "any other import records what it was given");
+        org.junit.jupiter.api.Assertions.assertNull(ImportTermsAction.recordedSource(
+                manager.createOntology(), copy, "anonymous"),
+                "a pattern with no IRI records none; its # Pattern: line says where it came from");
+    }
 }

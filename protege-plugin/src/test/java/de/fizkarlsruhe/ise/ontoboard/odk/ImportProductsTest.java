@@ -443,6 +443,36 @@ class ImportProductsTest {
                 "no module_type to read, so the ODK default - as before");
     }
 
+    /**
+     * A pattern from OntoBoard's library is undeclared on purpose: it is not called missing from
+     * the products, and a refresh does not go and download it.
+     *
+     * <p>Its recorded source is the pattern's own IRI. Rebuilding from that would depend on a
+     * portal that is often down, and would cut the module from whatever the portal serves rather
+     * than from the copy the library repaired.
+     */
+    @Test
+    void aPatternFromTheLibraryIsLeftAlone(@TempDir File root) throws Exception {
+        File imports = new File(root, ImportModules.IMPORTS_DIRECTORY);
+        assertTrue(imports.mkdirs());
+        Files.write(new File(imports, "componency_import.owl").toPath(),
+                "<rdf:RDF/>".getBytes(StandardCharsets.UTF_8));
+        Files.write(new File(imports, "componency_terms.txt").toPath(),
+                ("# Source: http://www.ontologydesignpatterns.org/cp/owl/componency.owl\n"
+                        + "# Pattern: componency\nhttp://example.org/A\n")
+                        .getBytes(StandardCharsets.UTF_8));
+
+        ImportProducts.Row row = ImportProducts.audit(
+                ImportProducts.declaredIn("import_group:\n  products: []\n"),
+                ImportModules.modulesIn(root), root).get(0);
+
+        assertEquals(ImportProducts.Verdict.PATTERN, row.getVerdict());
+        assertFalse(row.willRebuild(), "nothing downloads a pattern");
+        assertEquals("pattern library", row.describeDeclaration());
+        assertEquals("http://www.ontologydesignpatterns.org/cp/owl/componency.owl",
+                row.getSource(), "still shown, as where it came from");
+    }
+
     /** And not rebuilt when nothing records one, which is every real project's term lists. */
     @Test
     void anUndeclaredImportWithNoRecordedSourceIsNotRebuilt(@TempDir File root) throws Exception {

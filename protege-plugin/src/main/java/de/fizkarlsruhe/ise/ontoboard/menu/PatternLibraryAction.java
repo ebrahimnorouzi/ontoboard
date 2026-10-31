@@ -486,15 +486,17 @@ public class PatternLibraryAction extends ProtegeOWLAction {
         reasons = new java.util.HashMap<String, String>();
         List<DesignPattern> matching = PatternLibrary.matching(everything, search.getText());
         String ordering = String.valueOf(grouping.getSelectedItem());
+        boolean searching = !search.getText().trim().isEmpty();
         for (DesignPattern pattern : SUGGESTED.equals(ordering)
-                ? suggested(matching) : PatternOrder.sorted(matching, ordering)) {
+                ? suggestedThenTheRest(suggested(matching), matching, searching)
+                : PatternOrder.sorted(matching, ordering)) {
             model.addElement(pattern);
         }
         if (!model.isEmpty()) {
             patterns.setSelectedIndex(0);
         } else {
             details.setText("<html><body style='font-family:sans-serif'><p>"
-                    + (SUGGESTED.equals(String.valueOf(grouping.getSelectedItem()))
+                    + (SUGGESTED.equals(String.valueOf(grouping.getSelectedItem())) && !searching
                         ? "Nothing in the library shares enough vocabulary with this ontology to "
                           + "be worth suggesting. Try another ordering and browse."
                         : "Nothing matches.")
@@ -524,6 +526,30 @@ public class PatternLibraryAction extends ProtegeOWLAction {
 
     /** Enough to choose from, few enough that the bottom of the list still means something. */
     static final int MOST_SUGGESTED = 15;
+
+    /**
+     * What "Suggested for this ontology" lists: the suggestions, then - once something is typed
+     * in the search box - every other pattern that matches it.
+     *
+     * <p>A search used to look only among the suggestions: at most fifteen, and none for an
+     * ontology with little in it yet. Replaying the pizza walkthrough in Protege, each of its
+     * three searches - components, classifies, cost - listed nothing in a new project until the
+     * ordering was changed, though the three patterns are in the library. The dialog opens on this
+     * ordering, so that was the first thing a reader following the steps would have met.
+     */
+    static List<DesignPattern> suggestedThenTheRest(List<DesignPattern> suggestions,
+            List<DesignPattern> matching, boolean searching) {
+        if (!searching) {
+            return suggestions;
+        }
+        List<DesignPattern> shown = new ArrayList<DesignPattern>(suggestions);
+        for (DesignPattern pattern : PatternOrder.sorted(matching, PatternOrder.BY_PUBLISHER)) {
+            if (!shown.contains(pattern)) {
+                shown.add(pattern);
+            }
+        }
+        return shown;
+    }
 
     /** Reads the selected pattern's file and shows what is really in it. */
     private void showSelected() {
@@ -623,7 +649,8 @@ public class PatternLibraryAction extends ProtegeOWLAction {
         ImportTermsAction importer = new ImportTermsAction();
         importer.setEditorKit(getOWLEditorKit());
         importer.initialise();
-        importer.seedWith(copied.toURI().toString(), termText.toString().trim());
+        importer.seedWithPattern(copied.toURI().toString(), termText.toString().trim(),
+                chosen.getId());
         importer.actionPerformed(null);
     }
 

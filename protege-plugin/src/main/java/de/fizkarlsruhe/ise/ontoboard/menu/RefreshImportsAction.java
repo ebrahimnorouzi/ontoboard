@@ -162,6 +162,7 @@ public class RefreshImportsAction extends OntoBoardAction {
         int rebuildable = 0;
         int noTermList = 0;
         int undeclared = 0;
+        int patterns = 0;
         for (ImportProducts.Row row : rows) {
             ImportModules.Module module = row.getModule();
             result.row(row.getName(),
@@ -198,6 +199,12 @@ public class RefreshImportsAction extends OntoBoardAction {
                             + "Project > Project configuration..., \"Add to a list...\" - or "
                             + "delete the file.");
                     break;
+                case PATTERN:
+                    patterns++;
+                    result.note(row.getName() + " is a pattern from OntoBoard's library, so it is "
+                            + "left as it is: nothing downloads it. To change it, use ROBOT > "
+                            + "Pattern library... and import the pattern again.");
+                    break;
                 default:
                     break;
             }
@@ -216,7 +223,9 @@ public class RefreshImportsAction extends OntoBoardAction {
                     + "imports/ layout exists to provide, and it is what makes a clone "
                     + "buildable.");
         }
-        if (declared.isEmpty() && !onDisk.isEmpty()) {
+        // Undeclared modules only: a pattern's is undeclared on purpose, and a project whose
+        // imports are all patterns has nothing missing from import_group.products.
+        if (declared.isEmpty() && undeclared > 0) {
             // Said plainly because OntoBoard causes it. Its scaffold writes `products: []` into
             // every project it generates, and ROBOT > Import terms... writes the module, the term
             // list and the catalog entry without adding the product - so a repository built
@@ -231,7 +240,8 @@ public class RefreshImportsAction extends OntoBoardAction {
         }
 
         String counted = declared.size() + " declared" + (undeclared == 0 ? ""
-                : ", " + undeclared + " on disk and undeclared");
+                : ", " + undeclared + " on disk and undeclared")
+                + (patterns == 0 ? "" : ", " + patterns + " from the pattern library");
         if (!rebuild) {
             result.note(ImportModules.hasMirror(root)
                     ? "This project has a mirror, so a rebuild would work offline."

@@ -737,13 +737,20 @@ Reading the declaration also makes two states visible that a directory scan cann
   one to the list leaves you.
 - **On disk and undeclared** — a module in `imports/` that no product names. ODK builds its
   `IMPORTS` list from `import_group.products`, so `make refresh-imports` never touches that file
-  and nothing regenerates it. Three of the four projects have one, and **so does every project
-  OntoBoard makes**: the scaffold writes `products: []` and *Import terms…* does not add to it.
-  OntoBoard says so about itself now; making *Import terms…* declare the product is the next piece
-  of work.
+  and nothing regenerates it. Three of the four projects had one, and so did every project
+  OntoBoard made, because *Import terms…* did not add to the scaffold's `products: []`. It now
+  declares the product it builds — except for a pattern from the library, below.
 
 Such a module is still rebuilt from its `# Source:` comment when it has one, because that is what
 a refresh did before — reading the declaration must not take a working rebuild away.
+
+**A pattern from OntoBoard's library is the exception.** *Pattern library… → Import terms…*
+records the pattern's own IRI as the term list's `# Source:`, adds a `# Pattern: <id>` line, and
+declares no product. The module is cut from the copy the library ships, which the pattern's IRI
+need not serve, and that portal is often down — so nothing downloads it. *Refresh imports* lists it
+as `pattern library` and leaves it alone; to change it, import the pattern again. Until 1.129.0
+the source recorded, and the `mirror_from` declared, was the library's working copy: a `file:`
+path on the importing machine, committed with the project and resolvable on no other.
 
 ---
 
