@@ -1,12 +1,18 @@
 <!--
   Written for: somebody who has a pattern of their own and wants to use it in OntoBoard, or wants
-  it in the shipped library. Two routes, and the second has a review they can read in advance.
+  it in the shipped library, or has found something wrong with one already in it. Two routes for
+  a pattern of your own, the second with a review they can read in advance - and a separate, short
+  form for a problem, because a problem report has none of what a proposal needs.
 -->
 
 # Contributing a pattern
 
 There are two routes, and they answer different needs. Use the first today; use the second when
 the pattern should be in the library everyone gets.
+
+!!! tip "Found a problem with a pattern that is already in the library?"
+    That is neither route: **[report it with the short form][problem]**. It needs a title and a
+    sentence on what is wrong, nothing else. See [the last section](#reporting-a-problem-with-a-pattern-already-in-the-library).
 
 ## Route 1 — use it now, in your own copy
 
@@ -15,9 +21,8 @@ the pattern should be in the library everyone gets.
 1. Make a folder anywhere — say `~/my-patterns/`. A subfolder inside it becomes a *collection*
    name, so `~/my-patterns/our-group/thing.ttl` appears under the collection `our-group`.
 2. Put your pattern in it as `.ttl`, `.owl`, `.rdf`, `.omn`, `.ofn` or `.owx`.
-3. In Protégé: **OntoBoard → ROBOT → Pattern library…**, and point the *contributed patterns
-   folder* at it. Your patterns appear beside the bundled ones, searchable and importable the
-   same way.
+3. In Protégé: **OntoBoard → Pattern library…**, press **Your patterns…**, and set its *Folder*
+   to it. Your patterns appear beside the bundled ones, searchable and importable the same way.
 
 !!! tip "The pattern describes itself — no form to fill in"
     The name, the description and the competency questions are read out of the file. Measured
@@ -42,11 +47,12 @@ resolves to a `bundle:` URL that answers nothing.)
 
 ## Route 2 — propose it for the shipped library
 
-Open an issue: **[Propose a pattern for the library][new-issue]**. The form asks for the ontology
-file or a URL, what the pattern is for, its competency questions, the source to cite, and the
-licence.
+Open an issue: **[Propose a new pattern for the library][propose]**. The form asks for the
+ontology file or a URL, what the pattern is for, its competency questions, the source to cite,
+and the licence - all of them required, because the review below cannot run without them.
 
-[new-issue]: https://github.com/ebrahimnorouzi/ontoboard/issues/new?template=pattern-submission.yml
+[propose]: https://github.com/ebrahimnorouzi/ontoboard/issues/new?template=pattern-submission.yml
+[problem]: https://github.com/ebrahimnorouzi/ontoboard/issues/new?template=pattern-problem.yml
 
 ### What the review checks
 
@@ -104,6 +110,23 @@ so adding one is visible as a diff.
 
 ## Reporting a problem with a pattern already in the library
 
-Also an issue — the same form, saying which pattern and what is wrong with it. Worth doing even
-when the defect is upstream: the page can carry a note about it while the authors decide, which
-is better for the next reader than silence.
+A different, shorter form: **[Report a problem with a pattern in the library][problem]**. It
+requires a title and a description of what is wrong, and nothing else - which pattern, where the
+problem is and how to see it are all optional. The proposal form's competency questions,
+ontology file, source and licence are what somebody offering a pattern has, not somebody who
+found a wrong axiom in one we ship.
+
+Two ways in that fill the form for you:
+
+- **Every pattern's page** on this site ends with a *Report a problem with this pattern* link.
+- **In Protégé**, **OntoBoard → Pattern library…**, select the pattern, and press **Report a
+  problem with this pattern…** under its description. It opens the form in your browser. It is
+  greyed out for your own patterns: they are not in the library, so there is nobody else to tell.
+
+Either way the title and the pattern arrive already filled in; add a sentence and submit.
+
+Worth doing even when the defect is upstream: the page can carry a note about it while the
+authors decide, which is better for the next reader than silence.
+
+Both forms, and a blank issue for anything that is not about a pattern, are listed on
+[the repository's new-issue page](https://github.com/ebrahimnorouzi/ontoboard/issues/new/choose).

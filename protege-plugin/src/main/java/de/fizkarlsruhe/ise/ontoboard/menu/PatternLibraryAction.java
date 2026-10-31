@@ -196,7 +196,50 @@ public class PatternLibraryAction extends ProtegeOWLAction {
         JPanel right = new JPanel(new BorderLayout());
         JScrollPane detailsPane = new JScrollPane(details);
         detailsPane.setPreferredSize(new Dimension(420, 260));
-        right.add(detailsPane, BorderLayout.CENTER);
+
+        // REPORTING A PROBLEM FROM WHERE IT IS SEEN. Asked for: "if the pattern is already
+        // available, then the user may only have the title and description of the issue" - the one
+        // issue form there was demanded competency questions, the ontology file, a source and a
+        // licence of somebody reporting a wrong axiom. This opens the short problem form instead,
+        // with the title and the pattern already filled in from the selection.
+        //
+        // Under the details rather than in the row along the bottom: it is about the pattern those
+        // details describe, and that row already has a "N problems..." button about something else
+        // entirely - the user's own files that would not load.
+        //
+        // Disabled, with the reason as its tooltip, for one of the user's own patterns: it is not
+        // in the library, so there is nobody else to tell. PatternProblemReport builds the address,
+        // and the same address is on every pattern's page on the documentation site.
+        final JButton report = new JButton("Report a problem with this pattern...");
+        report.setEnabled(false);
+        report.setToolTipText(
+                de.fizkarlsruhe.ise.ontoboard.pattern.PatternProblemReport.whyNot(null));
+        report.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent event) {
+                reportProblem(patterns.getSelectedValue());
+            }
+        });
+        // Its own listener, on every event rather than only settled ones: it only reads the
+        // selection, so there is nothing to save by waiting, and it keeps this button out of
+        // showSelected(), whose early returns would each need to remember it.
+        patterns.addListSelectionListener(new ListSelectionListener() {
+            @Override
+            public void valueChanged(ListSelectionEvent event) {
+                String why = de.fizkarlsruhe.ise.ontoboard.pattern.PatternProblemReport
+                        .whyNot(patterns.getSelectedValue());
+                report.setEnabled(why == null);
+                report.setToolTipText(why != null ? why
+                        : "Opens the issue form in your browser with this pattern filled in. A "
+                                + "title and a sentence on what is wrong are all it asks for.");
+            }
+        });
+        JPanel reportRow = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.RIGHT, 0, 4));
+        reportRow.add(report);
+        JPanel detailsColumn = new JPanel(new BorderLayout());
+        detailsColumn.add(detailsPane, BorderLayout.CENTER);
+        detailsColumn.add(reportRow, BorderLayout.SOUTH);
+        right.add(detailsColumn, BorderLayout.CENTER);
         JPanel termsPanel = new JPanel(new BorderLayout());
         termsPanel.setBorder(BorderFactory.createTitledBorder(
                 "Terms to import - all of them unless you select some"));
@@ -289,6 +332,40 @@ public class PatternLibraryAction extends ProtegeOWLAction {
         dialog.pack();
         dialog.setLocationRelativeTo(getOWLWorkspace());
         dialog.setVisible(true);
+    }
+
+    /**
+     * Opens the problem form for one of the library's patterns, or shows its address.
+     *
+     * <p>The guard {@code TrackerItemAction} and {@code WidocoAction} use: {@code Desktop} is
+     * missing on some Linux desktops, and a button that appears to do nothing is the worst outcome,
+     * so when no browser opens the address is put in front of the user, selected, to copy.
+     */
+    private void reportProblem(DesignPattern chosen) {
+        String url = de.fizkarlsruhe.ise.ontoboard.pattern.PatternProblemReport.urlFor(chosen);
+        if (url == null) {
+            // The button is disabled whenever this would be null; a click that races a refill of
+            // the list is the only way here, and there is nothing to report on.
+            return;
+        }
+        String why = "This desktop cannot open a browser from Protege.";
+        try {
+            if (java.awt.Desktop.isDesktopSupported() && java.awt.Desktop.getDesktop()
+                    .isSupported(java.awt.Desktop.Action.BROWSE)) {
+                java.awt.Desktop.getDesktop().browse(new java.net.URI(url));
+                return;
+            }
+        } catch (Exception cannotOpen) {
+            // Some of these carry no message at all, and "null" in a dialog explains nothing.
+            why = "Could not open a browser (" + (cannotOpen.getMessage() == null
+                    ? cannotOpen.getClass().getSimpleName() : cannotOpen.getMessage()) + ").";
+        }
+        JTextField address = new JTextField(url, 48);
+        address.setEditable(false);
+        address.selectAll();
+        JOptionPane.showMessageDialog(dialog,
+                new Object[] {why + " The form is at this address - copy it:", address},
+                "Report a problem with this pattern", JOptionPane.INFORMATION_MESSAGE);
     }
 
     /** Whether there is an ontology with enough in it for a suggestion to mean anything. */

@@ -49,14 +49,72 @@ import argparse
 import io
 import json
 import os
+import re
 import shutil
 import sys
+from urllib.parse import quote
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 PATTERNS = os.path.join(ROOT, "patterns")
 INDEX = os.path.join(PATTERNS, "index.tsv")
 OUT = os.path.join(ROOT, "docs", "patterns")
+POM = os.path.join(ROOT, "protege-plugin", "pom.xml")
+
+# THE "REPORT A PROBLEM" FORM, which every page links to with the pattern filled in. Asked for:
+# "for creating issue, if the pattern is already available, then the user may only have the title
+# and description of the issue, but not asking for all the required field like cqs". The one form
+# there was demanded competency questions, the ontology file, a source and a licence of somebody
+# reporting a wrong axiom; .github/ISSUE_TEMPLATE/pattern-problem.yml requires a title and a
+# description. These three values are that form's file name, its default title and the id of its
+# pattern field, and the plugin's "Report a problem with this pattern..." sends the identical
+# address - PatternProblemReportTest checks this file still names all three, so the web page and
+# the dialog cannot drift into opening two different forms.
+PROBLEM_FORM = "pattern-problem.yml"
+PROBLEM_TITLE = "[pattern problem] "
+
+# IRIs this project minted as names and has never served. tools/extract-bfo-patterns.py gives each
+# pattern it extracts the IRI https://ontoboard.org/patterns/<id>.owl, and ontoboard.org does not
+# resolve - measured: curl "Could not resolve host", `host` says NXDOMAIN. Linked as "the ontology
+# itself", that put a dead link on the published page of all 40 extracted patterns
+# (bfo-specific-dependence-and-inherence among them). The IRI is still the pattern's name, so it
+# is shown; it is just not offered as somewhere to go. The file it names is the download link.
+UNSERVED = ("https://ontoboard.org/",)
+
+
+def github_repo():
+    """`owner/name` on GitHub, from <github.repo> in protege-plugin/pom.xml.
+
+    The pom rather than a literal here, because the plugin reads the same property - Maven
+    filters it into ontoboard-build.properties - and an address typed out twice is one that can
+    be typed out wrong once: this repository's old issue form linked the contributing page at
+    ise-fizkarlsruhe.github.io/ontoboard, a 404, while the site is published elsewhere.
+    """
+    with io.open(POM, encoding="utf-8-sig") as handle:
+        found = re.search(r"<github\.repo>\s*([^<\s]+)\s*</github\.repo>", handle.read())
+    if not found:
+        raise SystemExit("no <github.repo> in " + POM + "; the problem links need it")
+    return found.group(1)
+
+
+GITHUB_REPO = github_repo()
+
+
+def problem_report_url(row):
+    """The problem form, with the title and the pattern field already filled in for this pattern.
+
+    Encoded as RFC 3986 says and as PatternProblemReport.encode does, byte for byte: quote() with
+    nothing marked safe passes only the unreserved characters, so a space is %20, never +. For
+    spatial-graph-adapter-sga the result is the exact string PatternProblemReportTest pins.
+    The name and the id both go in the title - the name is what a reader recognises, the id is
+    what is unique - except when they are the same text.
+    """
+    name = (row["name"] or "").strip()
+    title = PROBLEM_TITLE + (row["id"] if not name or name == row["id"]
+                             else name + " (" + row["id"] + ")")
+    return ("https://github.com/" + GITHUB_REPO + "/issues/new?template=" + PROBLEM_FORM
+            + "&title=" + quote(title, safe="")
+            + "&pattern=" + quote(row["id"], safe=""))
 
 COLUMNS = [
     "id", "name", "collection", "publisher", "category", "domain",
@@ -388,8 +446,12 @@ def pattern_page(row, has_ttl, has_example):
             citations.append("[an archived copy](" + archive + ")")
     if where.get("references") and where["references"] != where.get("source"):
         citations.append("[its reference](" + where["references"] + ")")
-    if where.get("iri", "").startswith("http"):
+    if where.get("iri", "").startswith("http") and not where["iri"].startswith(UNSERVED):
         citations.append("[the ontology itself](" + where["iri"] + ")")
+    if where.get("iri", "").startswith(UNSERVED):
+        out.append("**Its IRI** is `" + where["iri"] + "` - a name rather than an address: "
+                   "nothing answers there, so the download link above is the file.")
+        out.append("")
     if citations:
         out.append("**Check it yourself:** " + " &nbsp;·&nbsp; ".join(citations) + ".")
         out.append("")
@@ -445,7 +507,11 @@ def pattern_page(row, has_ttl, has_example):
     out.append("---")
     out.append("")
     out.append(
-        "Import this pattern into your own ontology from inside Protégé: **OntoBoard → ROBOT → "
+        # The menu path as plugin.xml registers it: Pattern library sits directly under the
+        # OntoBoard menu (ontoboard.menu.OntoBoard/SlotBU-B), beside Knowledge graph, and has
+        # since it moved out from under ROBOT. Every page said "OntoBoard → ROBOT → Pattern
+        # library…", which sends a reader to a submenu where it is not.
+        "Import this pattern into your own ontology from inside Protégé: **OntoBoard → "
         "Pattern library…**, which hands it to *Import terms…* and writes the term list, the "
         "module, the import and the catalog entry the way ODK expects. See "
         # Linked without a fragment on purpose. The heading it pointed at carries the release
@@ -453,6 +519,15 @@ def pattern_page(row, has_ttl, has_example):
         # and mkdocs reports a dangling anchor as INFO, not a warning, so --strict stays green
         # while 159 pages link to nothing.
         "[Working with ODK](../odk-workflow.md)."
+    )
+    out.append("")
+    # Last on the page, where somebody who has just read all of it and found something wrong
+    # arrives. The form opens with the title and the pattern filled in, so a sentence is all the
+    # reader has to add.
+    out.append(
+        "Something wrong with this pattern, its example or this page? "
+        "**[Report a problem with this pattern](" + problem_report_url(row) + ")** - the form "
+        "opens with the pattern filled in, and a title and a sentence are all it needs."
     )
     out.append("")
     return "\n".join(out)
@@ -467,7 +542,7 @@ def finder_page(rows, by_source):
     out.append(
         str(len(rows)) + " ontology design patterns ship inside the OntoBoard plugin, "
         + str(distinct) + " of them distinct — ten are another pattern under a second name and say "
-        "so. Every one is browsable and importable from **OntoBoard → ROBOT → Pattern library…** "
+        "so. Every one is browsable and importable from **OntoBoard → Pattern library…** "
         "inside Protégé; this page is the same library, on the web, with a graph of each pattern."
     )
     out.append("")

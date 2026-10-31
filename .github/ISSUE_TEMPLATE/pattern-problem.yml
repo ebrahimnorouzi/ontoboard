@@ -1,0 +1,88 @@
+# Report a problem with a pattern that is ALREADY in the library.
+#
+# Split out of pattern-submission.yml, which served both cases and required, for both, a name, a
+# description, competency questions, the ontology file, a source and a licence. Those are what
+# somebody proposing a pattern has. Somebody who found a wrong axiom in a shipped one has a title
+# and a sentence - reported as "if the pattern is already available, then the user may only have
+# the title and description of the issue". So GitHub's own title and one description are the only
+# required inputs here; everything else is optional.
+#
+# Opened, prefilled, from two places that build the same address:
+#   - every pattern's page on the documentation site (tools/generate-pattern-pages.py), and
+#   - "Report a problem with this pattern..." in the plugin's pattern library
+#     (protege-plugin/.../pattern/PatternProblemReport.java).
+# Both send ?template=pattern-problem.yml&title=...&pattern=<id>. So this file's name, the default
+# title below and the id "pattern" are referred to from outside, and PatternProblemReportTest fails
+# if they and the two callers disagree. GitHub documents a field's id as "the canonical identifier
+# for the field in URL query parameter prefills" - rename it and the prefill is silently dropped.
+#
+# The label only applies once a label of that name exists in the repository; GitHub does not
+# create it. The title prefix identifies these reports either way.
+name: Report a problem with a pattern in the library
+description: Something is wrong with a pattern OntoBoard already ships - its axioms, its example, its page or its citation. A title and a description are all it needs.
+title: "[pattern problem] "
+labels: ["pattern-problem"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **A title and a sentence on what is wrong are all this needs.** Everything after the
+        description is optional - fill in what you happen to have.
+
+        Came here from a pattern's page, or from **Report a problem with this pattern…** in
+        OntoBoard's pattern library? Then the title and the pattern are already filled in.
+
+        Worth reporting even when the defect is upstream, in the pattern as its authors published
+        it: the pattern's page can carry a note about it while they decide, which is better for
+        the next reader than silence.
+
+        Proposing a new pattern instead? That is
+        [the other form](https://github.com/ebrahimnorouzi/ontoboard/issues/new?template=pattern-submission.yml).
+
+  - type: input
+    id: pattern
+    attributes:
+      label: Which pattern
+      description: >
+        Its id or its name, as the library or the pattern's page shows it. Optional - the title or
+        the description will do.
+      placeholder: agent-role
+    validations:
+      required: false
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What is wrong
+      description: What you saw, and what you expected instead if you know. A sentence is enough.
+      placeholder: >
+        The worked example puts one individual into two classes that the pattern declares
+        disjoint.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where the problem is
+      description: Optional, and a guess is fine.
+      multiple: true
+      options:
+        - The pattern itself - an axiom, a term, a class that cannot have instances
+        - Its worked example
+        - Its page or its description - wording, competency questions, a broken link
+        - Its citation, its source or its licence
+        - Importing it with OntoBoard
+        - Something else
+    validations:
+      required: false
+
+  - type: textarea
+    id: details
+    attributes:
+      label: Anything that helps us see it
+      description: >
+        Optional. A `robot` command and what it printed, a reasoner's message, the OntoBoard and
+        Protégé versions if it is about importing, or the fix you would make.
+    validations:
+      required: false

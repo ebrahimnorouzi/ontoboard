@@ -13,7 +13,7 @@ at all — and about what OntoBoard has actually checked on your behalf.
 A pattern exists to answer a question about your domain. So search for the question:
 
 !!! tip "Search the library by what you want to ask"
-    **OntoBoard → ROBOT → Pattern library…** opens the library with a search box. Type
+    **OntoBoard → Pattern library…** opens the library with a search box. Type
     `working for which organization` and you get the pattern that answers it. The search looks
     at each pattern's id, name, description, category, domain **and its competency questions** —
     that last field is the one written in the words you would use, so it is usually the one that
@@ -82,7 +82,7 @@ disagree — so a page cannot claim something a reasoner would not say today.
 
 !!! warning "You do not have to read this page to be warned"
     The same verdicts ship inside the plugin. Select one of the flagged patterns in
-    **OntoBoard → ROBOT → Pattern library…** and the chooser says so in red before you import it,
+    **OntoBoard → Pattern library…** and the chooser says so in red before you import it,
     with the reason. A pattern a reasoner is happy with says nothing — a box on all 162 would be
     a box nobody reads, and it would make the four that matter harder to notice.
 
@@ -138,7 +138,11 @@ be a different pattern wearing its citation.
   `spatial-graph-adapter-sga` the cause is a pair of `rdfs:domain` axioms read as an
   intersection; keeping one of the two domains makes the pattern usable again.
 - **Either way**, raise it upstream with the pattern's authors, and
-  [tell us](contributing-a-pattern.md) so the note on the page can be corrected when they fix it.
+  [tell us](https://github.com/ebrahimnorouzi/ontoboard/issues/new?template=pattern-problem.yml)
+  so the note on the page can be corrected when they fix it. That form needs a title and a
+  sentence, nothing more; the *Report a problem with this pattern* link at the foot of every
+  pattern's page, and the button of that name in the plugin's pattern library, open it with the
+  pattern already filled in.
 
 ## Honest caveats about the sources
 
@@ -153,9 +157,12 @@ reasoning here deliberately does not depend on any of them.
 
 ## Using one, once you have chosen
 
-**OntoBoard → ROBOT → Pattern library…** hands the pattern to *Import terms…*, which writes the
+**OntoBoard → Pattern library…** hands the pattern to *Import terms…*, which writes the
 term list, the module, the `owl:imports` and the catalog entry the way ODK expects. See
 [Working with ODK](odk-workflow.md).
 
 Your own patterns can sit beside the bundled ones — see
-[Contributing a pattern](contributing-a-pattern.md).
+[Contributing a pattern](contributing-a-pattern.md). To offer one for the library everyone gets,
+use [Propose a new pattern for the library](https://github.com/ebrahimnorouzi/ontoboard/issues/new?template=pattern-submission.yml);
+for something wrong with one already in it,
+[Report a problem with a pattern in the library](https://github.com/ebrahimnorouzi/ontoboard/issues/new?template=pattern-problem.yml).
