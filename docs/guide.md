@@ -77,7 +77,10 @@ all* frames every pattern an ontology uses, including in a release, where the im
 **What you do.** *OntoBoard → Find terms in another ontology...*: give its web address or a file,
 **Load**, then type part of a label. Tick the terms you want — the ticks stay while you search for
 more — and **Import**. Terms already in your ontology are marked, and obsolete ones are hidden
-unless asked for.
+unless asked for. A term the ontology only refers to, rather than defines, comes after its own
+terms and says where it is from — `schema.org/Person` beside a vocabulary's own *Person* — and
+the whole address is in its tooltip. If one of the ontology's imports cannot be fetched, the rest
+still loads and the missing import is named.
 
 **Why.** Shared terms make your data join up with everyone else's, and spare you defining what
 has been defined well before.

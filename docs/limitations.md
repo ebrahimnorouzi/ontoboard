@@ -160,6 +160,14 @@ Profile, Imports, Refresh imports, All notes. A person can run the same thing fr
 Run self-test*; both go through one implementation, because a self-test with two implementations
 grows a version nobody runs.
 
+**On Windows, on every push, since 1.131.0.** A receipt is a run on somebody's machine, and for
+1.129.0 and 1.130.0 that machine was a Mac - while the two defects users had just reported, frames
+piled on top of each other and a build that would not run, were found on Windows. CI's Windows
+jobs now run the unit tests on a Windows file system, and `smoke.ps1 -SelfTest` itself in
+Protégé 5.6.9's and 5.5.0's own Windows downloads, keeping `protege.log` as that job's receipt.
+A Windows runner has what the smoke needs and a Linux one does not: Protégé's Windows download
+carries its JRE, and the runner has a desktop. The Mac receipt stays a local command.
+
 A real project rather than an ontology in memory, because half the menu is project-aware — it
 looks for `src/ontology`, a catalog, `imports/`. What unlocked that was removing seven private
 copies of `fileOf(OWLOntology)`, each of which asked the *model manager's* manager for the document

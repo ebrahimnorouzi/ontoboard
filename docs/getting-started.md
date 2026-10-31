@@ -41,7 +41,8 @@ select one and press *Add selected*; or press *Add all* for a small ontology, wh
 in every class, individual, object property and data property. Each design pattern the ontology
 imports from OntoBoard's library — or has merged in, as a release does — arrives in a frame named
 after it. On a board that is already full, pressing *Add all* again frames the patterns that have
-no frame yet.
+no frame yet. An edge between terms in two frames goes around any frame in between, so a pattern
+is never drawn as part of a link it has nothing to do with.
 
 **Zoom.** The mouse wheel zooms about the pointer; on a Mac trackpad, so does a pinch.
 

@@ -2,6 +2,7 @@ package de.fizkarlsruhe.ise.ontoboard.canvas;
 
 import com.mxgraph.util.mxConstants;
 import com.mxgraph.view.mxGraph;
+import com.mxgraph.view.mxStyleRegistry;
 import com.mxgraph.view.mxStylesheet;
 import java.awt.Color;
 import java.awt.Font;
@@ -173,6 +174,10 @@ public final class SchemaStyles {
             // A headless or font-less JRE. The logical family below always exists.
         }
         return Font.SANS_SERIF;
+    }
+
+    static {
+        mxStyleRegistry.putValue(AroundFrames.NAME, AroundFrames.INSTANCE);
     }
 
     private SchemaStyles() {
@@ -409,8 +414,12 @@ public final class SchemaStyles {
         }
         // Orthogonal routing keeps a dense diagram readable; free-form curves cross more. Asked for
         // since the first version and never actually applied until 1.64.0, because the hierarchical
-        // layout stamped noEdgeStyle=1 onto every edge it touched.
-        style.put(mxConstants.STYLE_EDGE, mxConstants.EDGESTYLE_ORTHOGONAL);
+        // layout stamped noEdgeStyle=1 onto every edge it touched. Since 1.131.0 the orthogonal
+        // route goes around a frame neither end is in - see AroundFrames. ORTHOGONAL is said
+        // outright because JGraphX otherwise decides it by comparing the function with its own
+        // connectors, and an edge it took for a curve would meet its nodes at the wrong points.
+        style.put(mxConstants.STYLE_EDGE, AroundFrames.NAME);
+        style.put(mxConstants.STYLE_ORTHOGONAL, true);
         style.put(mxConstants.STYLE_ROUNDED, true);
         // White, with a hairline. The old #F7F8FA backing was the canvas colour, which meant every
         // exported PNG carried grey chips on a white page; white reads as a raised chip on the

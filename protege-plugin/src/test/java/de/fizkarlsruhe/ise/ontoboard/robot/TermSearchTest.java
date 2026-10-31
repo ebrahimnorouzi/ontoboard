@@ -55,6 +55,40 @@ class TermSearchTest {
                 heat.getDefinition());
     }
 
+    /**
+     * Three terms called Person are not three identical rows.
+     *
+     * <p>Seen loading FOAF from its web address: FOAF's own Person, and schema.org's and another
+     * vocabulary's Person, which FOAF only mentions in an axiom and says nothing else about. All
+     * three showed as "Person | Class | Person".
+     */
+    @Test
+    void aTermTheOntologyOnlyMentionsComesLastAndSaysWhereItIsFrom() throws Exception {
+        OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
+        OWLDataFactory df = manager.getOWLDataFactory();
+        OWLOntology vocabulary = manager.createOntology(IRI.create("http://example.org/v"));
+        org.semanticweb.owlapi.model.OWLClass own = df.getOWLClass(
+                IRI.create("http://example.org/v/Person"));
+        org.semanticweb.owlapi.model.OWLClass elsewhere = df.getOWLClass(
+                IRI.create("https://www.example.com/other#Person"));
+        manager.addAxiom(vocabulary, df.getOWLDeclarationAxiom(own));
+        manager.addAxiom(vocabulary, df.getOWLAnnotationAssertionAxiom(df.getRDFSLabel(),
+                own.getIRI(), df.getOWLLiteral("Person")));
+        manager.addAxiom(vocabulary, df.getOWLEquivalentClassesAxiom(own, elsewhere));
+        manager.addAxiom(vocabulary, df.getOWLDeclarationAxiom(
+                df.getOWLClass(IRI.create("http://example.org/v/Agent"))));
+
+        List<TermSearch.Term> found = TermSearch.of(vocabulary).find("person", 10, false);
+
+        assertEquals(2, found.size());
+        assertEquals("http://example.org/v/Person", found.get(0).getIri(), "its own first");
+        assertEquals("Person", found.get(0).getShortIri());
+        assertTrue(found.get(0).isDescribed());
+        assertEquals("example.com/other#Person", found.get(1).getShortIri(),
+                "where the other is from, without the scheme");
+        assertTrue(!found.get(1).isDescribed());
+    }
+
     private static OWLOntology source() throws Exception {
         OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
         OWLDataFactory df = manager.getOWLDataFactory();

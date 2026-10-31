@@ -69,6 +69,8 @@ public class FindTermsAction extends ProtegeOWLAction {
     private TermSearch index;
     private OWLOntology loaded;
     private String loadedFrom;
+    /** Which of the loaded ontology's imports could not be fetched; hidden when none. */
+    private JLabel missingImports;
     private Set<String> alreadyYours = new java.util.HashSet<String>();
 
     @Override
@@ -116,6 +118,9 @@ public class FindTermsAction extends ProtegeOWLAction {
         source.add(load);
 
         status = new JLabel("Nothing loaded yet.");
+        missingImports = new JLabel();
+        missingImports.setForeground(new java.awt.Color(0xA0, 0x4A, 0x00));
+        missingImports.setVisible(false);
         status.setBorder(BorderFactory.createEmptyBorder(6, 2, 6, 2));
 
         search = new JTextField(30);
@@ -146,13 +151,21 @@ public class FindTermsAction extends ProtegeOWLAction {
 
         JPanel top = new JPanel();
         top.setLayout(new BoxLayout(top, BoxLayout.Y_AXIS));
-        for (JPanel row : new JPanel[] {wrap(intro), source, wrap(status), finder}) {
+        for (JPanel row : new JPanel[] {wrap(intro), source, wrap(status),
+            wrap(missingImports), finder}) {
             row.setAlignmentX(0f);
             top.add(row);
         }
 
         found = new FoundModel();
-        JTable table = new JTable(found);
+        JTable table = new JTable(found) {
+            /** The whole IRI, which the table shortens. */
+            @Override
+            public String getToolTipText(java.awt.event.MouseEvent event) {
+                int row = rowAtPoint(event.getPoint());
+                return row < 0 ? null : found.termAt(convertRowIndexToModel(row)).getIri();
+            }
+        };
         table.setRowHeight(22);
         table.getColumnModel().getColumn(0).setMaxWidth(34);
         table.getColumnModel().getColumn(1).setPreferredWidth(220);
@@ -230,9 +243,11 @@ public class FindTermsAction extends ProtegeOWLAction {
         new SwingWorker<Object[], Void>() {
             @Override
             protected Object[] doInBackground() {
-                OWLOntology ontology = OntologySource.load(OWLManager.createOWLOntologyManager(),
-                        OntologySource.toIri(text));
-                return new Object[] {ontology, TermSearch.of(ontology)};
+                OWLOntology ontology = OntologySource.loadLeavingOutMissingImports(
+                        OWLManager.createOWLOntologyManager(), OntologySource.toIri(text));
+                return new Object[] {ontology, TermSearch.of(ontology),
+                    OntologySource.describeMissingImports(
+                            OntologySource.missingImportsOf(ontology))};
             }
 
             @Override
@@ -242,6 +257,8 @@ public class FindTermsAction extends ProtegeOWLAction {
                     Object[] result = get();
                     loaded = (OWLOntology) result[0];
                     index = (TermSearch) result[1];
+                    missingImports.setText(result[2] == null ? "" : result[2] + ".");
+                    missingImports.setVisible(result[2] != null);
                     loadedFrom = text;
                 } catch (Exception failed) {
                     Throwable cause = failed.getCause() != null ? failed.getCause() : failed;
@@ -279,8 +296,7 @@ public class FindTermsAction extends ProtegeOWLAction {
     private void chosenChanged() {
         chosenList.clear();
         for (TermSearch.Term term : chosen.values()) {
-            chosenList.addElement(term.getLabel() + "  (" + TermSearch.localName(term.getIri())
-                    + ")");
+            chosenList.addElement(chosenText(term));
         }
         importButton.setEnabled(!chosen.isEmpty());
         importButton.setText(chosen.isEmpty() ? "Import the chosen terms..."
@@ -288,10 +304,13 @@ public class FindTermsAction extends ProtegeOWLAction {
         found.fireTableDataChanged();
     }
 
+    private static String chosenText(TermSearch.Term term) {
+        return term.getLabel() + "  (" + term.getShortIri() + ")";
+    }
+
     private String iriOfChosen(String shown) {
         for (TermSearch.Term term : chosen.values()) {
-            if (shown.equals(term.getLabel() + "  (" + TermSearch.localName(term.getIri())
-                    + ")")) {
+            if (shown.equals(chosenText(term))) {
                 return term.getIri();
             }
         }
@@ -355,6 +374,10 @@ public class FindTermsAction extends ProtegeOWLAction {
             return column == 0 && !alreadyYours.contains(rows.get(row).getIri());
         }
 
+        TermSearch.Term termAt(int row) {
+            return rows.get(row);
+        }
+
         @Override
         public Object getValueAt(int row, int column) {
             TermSearch.Term term = rows.get(row);
@@ -367,7 +390,7 @@ public class FindTermsAction extends ProtegeOWLAction {
                 case 2:
                     return term.getKind();
                 case 3:
-                    return TermSearch.localName(term.getIri());
+                    return term.getShortIri();
                 default:
                     return term.getDefinition();
             }

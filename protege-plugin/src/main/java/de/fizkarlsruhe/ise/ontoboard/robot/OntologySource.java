@@ -1,8 +1,12 @@
 package de.fizkarlsruhe.ise.ontoboard.robot;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import org.semanticweb.owlapi.model.IRI;
+import org.semanticweb.owlapi.model.MissingImportHandlingStrategy;
+import org.semanticweb.owlapi.model.OWLImportsDeclaration;
 import org.semanticweb.owlapi.model.OWLOntology;
 import org.semanticweb.owlapi.model.OWLOntologyManager;
 
@@ -112,5 +116,49 @@ public final class OntologySource {
                     + (failed.getMessage() == null ? failed.getClass().getSimpleName()
                             : failed.getMessage()), failed);
         }
+    }
+
+    /**
+     * {@link #load}, except that an import which cannot be fetched is left out instead of failing
+     * the whole load. {@link #missingImportsOf} then says which were left out.
+     *
+     * <p>For reading terms from: one unreachable import - a server gone, a PURL that was never
+     * registered - otherwise makes an ontology whose own terms are all there impossible to search
+     * or take a term from, and the message names the import, not the ontology the user asked for.
+     */
+    public static OWLOntology loadLeavingOutMissingImports(OWLOntologyManager manager, IRI iri) {
+        manager.setOntologyLoaderConfiguration(manager.getOntologyLoaderConfiguration()
+                .setMissingImportHandlingStrategy(MissingImportHandlingStrategy.SILENT));
+        return load(manager, iri);
+    }
+
+    /** The imports declared anywhere in {@code ontology}'s closure that are not loaded. */
+    public static List<IRI> missingImportsOf(OWLOntology ontology) {
+        List<IRI> missing = new ArrayList<IRI>();
+        OWLOntologyManager manager = ontology.getOWLOntologyManager();
+        for (OWLOntology part : ontology.getImportsClosure()) {
+            for (OWLImportsDeclaration declaration : part.getImportsDeclarations()) {
+                if (manager.getImportedOntology(declaration) == null
+                        && !missing.contains(declaration.getIRI())) {
+                    missing.add(declaration.getIRI());
+                }
+            }
+        }
+        return missing;
+    }
+
+    /** "1 of its imports could not be loaded: ..." for a status line, or null for none. */
+    public static String describeMissingImports(List<IRI> missing) {
+        if (missing.isEmpty()) {
+            return null;
+        }
+        StringBuilder text = new StringBuilder(missing.size() == 1
+                ? "1 of its imports could not be loaded, so its terms are not here: "
+                : missing.size() + " of its imports could not be loaded, so their terms are not"
+                        + " here: ");
+        for (int i = 0; i < missing.size(); i++) {
+            text.append(i == 0 ? "" : ", ").append(missing.get(i));
+        }
+        return text.toString();
     }
 }

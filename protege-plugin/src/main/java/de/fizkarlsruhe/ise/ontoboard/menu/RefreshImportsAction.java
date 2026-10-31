@@ -327,8 +327,13 @@ public class RefreshImportsAction extends OntoBoardAction {
             }
         }
 
-        OWLOntology downloaded = OntologySource.load(OWLManager.createOWLOntologyManager(),
-                IRI.create(source));
+        OWLOntology downloaded = OntologySource.loadLeavingOutMissingImports(
+                OWLManager.createOWLOntologyManager(), IRI.create(source));
+        String missing = OntologySource.describeMissingImports(
+                OntologySource.missingImportsOf(downloaded));
+        if (missing != null) {
+            result.warn(module.getName() + ": " + source + " - " + missing + ".");
+        }
         try {
             if (!mirrorDirectory.isDirectory() && !mirrorDirectory.mkdirs()) {
                 throw new java.io.IOException("could not create " + mirrorDirectory);

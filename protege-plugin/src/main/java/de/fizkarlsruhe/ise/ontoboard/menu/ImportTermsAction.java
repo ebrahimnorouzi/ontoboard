@@ -311,8 +311,14 @@ public class ImportTermsAction extends OntoBoardAction {
         } else if (source != null) {
             result.note("Source: " + sourceIri + " (already open)");
         } else {
-            source = OntologySource.load(OWLManager.createOWLOntologyManager(), sourceIri);
+            source = OntologySource.loadLeavingOutMissingImports(
+                    OWLManager.createOWLOntologyManager(), sourceIri);
             result.note("Source: " + sourceIri);
+        }
+        String missingImports = OntologySource.describeMissingImports(
+                OntologySource.missingImportsOf(source));
+        if (missingImports != null) {
+            result.warn("The source: " + missingImports + ".");
         }
 
         TermList terms = readTerms(ontology);

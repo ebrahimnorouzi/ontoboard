@@ -3,9 +3,11 @@ package de.fizkarlsruhe.ise.ontoboard.robot;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import org.semanticweb.owlapi.model.IRI;
 import org.semanticweb.owlapi.model.OWLAnnotationAssertionAxiom;
@@ -53,15 +55,19 @@ public final class TermSearch {
         private final String definition;
         private final List<String> synonyms;
         private final boolean obsolete;
+        private final boolean described;
+        private String shortIri;
 
         Term(String iri, String label, String kind, String definition, List<String> synonyms,
-                boolean obsolete) {
+                boolean obsolete, boolean described) {
             this.iri = iri;
             this.label = label;
             this.kind = kind;
             this.definition = definition;
             this.synonyms = synonyms;
             this.obsolete = obsolete;
+            this.described = described;
+            this.shortIri = localName(iri);
         }
 
         public String getIri() {
@@ -91,6 +97,23 @@ public final class TermSearch {
         public boolean isObsolete() {
             return obsolete;
         }
+
+        /**
+         * Declared or annotated in the ontology, rather than only used in one of its axioms - as
+         * FOAF uses schema.org's Person, which it says nothing else about.
+         */
+        public boolean isDescribed() {
+            return described;
+        }
+
+        /**
+         * The local name for a term in the ontology's own namespace, and otherwise enough of the
+         * IRI to tell where it is from - {@code schema.org/Person} - so three terms called Person
+         * are not three identical rows.
+         */
+        public String getShortIri() {
+            return shortIri;
+        }
     }
 
     private final List<Term> terms;
@@ -103,16 +126,39 @@ public final class TermSearch {
     public static TermSearch of(OWLOntology source) {
         List<Term> terms = new ArrayList<Term>();
         Set<IRI> seen = new java.util.HashSet<IRI>();
+        Map<String, Integer> namespaces = new HashMap<String, Integer>();
         for (OWLEntity entity : source.getSignature(Imports.INCLUDED)) {
             String kind = kindOf(entity);
             if (kind == null || entity.isBuiltIn() || !seen.add(entity.getIRI())) {
                 continue;
             }
-            terms.add(termFor(source, entity, kind));
+            Term term = termFor(source, entity, kind);
+            terms.add(term);
+            if (term.described) {
+                String namespace = namespaceOf(term.iri);
+                Integer count = namespaces.get(namespace);
+                namespaces.put(namespace, count == null ? 1 : count + 1);
+            }
         }
+        String home = null;
+        for (Map.Entry<String, Integer> namespace : namespaces.entrySet()) {
+            if (home == null || namespace.getValue() > namespaces.get(home)) {
+                home = namespace.getKey();
+            }
+        }
+        for (Term term : terms) {
+            if (home != null && !home.equals(namespaceOf(term.iri))) {
+                term.shortIri = withoutScheme(term.iri);
+            }
+        }
+        // What the ontology describes before what it only mentions, each alphabetically: the
+        // order an empty search lists them in, and the order within each kind of match.
         Collections.sort(terms, new Comparator<Term>() {
             @Override
             public int compare(Term one, Term other) {
+                if (one.described != other.described) {
+                    return one.described ? -1 : 1;
+                }
                 return one.label.compareToIgnoreCase(other.label);
             }
         });
@@ -205,10 +251,13 @@ public final class TermSearch {
         String definition = "";
         List<String> synonyms = new ArrayList<String>();
         boolean obsolete = false;
+        boolean described = false;
         int definitionRank = Integer.MAX_VALUE;
         for (OWLOntology part : source.getImportsClosure()) {
+            described |= !part.getDeclarationAxioms(entity).isEmpty();
             for (OWLAnnotationAssertionAxiom axiom
                     : part.getAnnotationAssertionAxioms(entity.getIRI())) {
+                described = true;
                 if (!(axiom.getValue() instanceof OWLLiteral)) {
                     continue;
                 }
@@ -237,7 +286,18 @@ public final class TermSearch {
         String shown = englishLabel != null ? englishLabel
                 : label != null ? label : localName(entity.getIRI().toString());
         return new Term(entity.getIRI().toString(), shown, kind, definition,
-                Collections.unmodifiableList(synonyms), obsolete);
+                Collections.unmodifiableList(synonyms), obsolete, described);
+    }
+
+    /** The IRI up to and including its last {@code #} or {@code /}. */
+    static String namespaceOf(String iri) {
+        return iri.substring(0, Math.max(iri.lastIndexOf('#'), iri.lastIndexOf('/')) + 1);
+    }
+
+    /** {@code https://www.example.org/x#Y} as {@code example.org/x#Y}. */
+    static String withoutScheme(String iri) {
+        String shown = iri.replaceFirst("^[A-Za-z][A-Za-z0-9+.-]*://", "");
+        return shown.startsWith("www.") ? shown.substring(4) : shown;
     }
 
     /** The part of an IRI after its last {@code #} or {@code /}. */
