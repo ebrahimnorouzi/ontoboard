@@ -49,12 +49,27 @@ dialog explains each alternative.
 Protégé's undo reverses them. The canvas layout is saved beside the ontology in
 `<ontology>.ontoboard.json`; the ontology file itself is untouched by the diagram.
 
-**Build it.** From `src/ontology`, with `make` and ROBOT on your PATH:
+**Build it.** *OntoBoard → Project → Build...* and pick a target: `test` runs `reason`, `report`,
+`sparql_test` and `validate_profile`. For a project OntoBoard created, every target runs inside
+Protégé against the embedded ROBOT. When one fails, the result names the rule and the terms that
+break it - for example a class created without an `rdfs:label`, which the generated
+`src/sparql/check_labels.rq` rejects. The same Makefile also runs from a terminal
+(`make test`) wherever `make` and `robot` are installed, which is what the generated CI does.
 
-```bash
-make reason    # classify with ELK
-make report    # ROBOT quality report -> report.tsv
-```
+### What works with nothing installed
+
+Only Protégé is needed - it brings its own Java. No ROBOT, no ODK, no Docker, no `make`:
+
+| Works with nothing installed | Needs something else |
+|---|---|
+| New ODK project, Build (`all`, `test`, `reason`, `report`, `sparql_test`, `validate_profile`, `clean`), Release with dated or semantic versions | Building a repository created by ODK's own seed (`run.sh` beside the Makefile): Docker, Podman or a native ODK install, because its recipes call tools that exist only in the ODK image |
+| Every *ROBOT* menu item, the pattern library, the canvas, sheets, notes and provenance | Git: the `git` command (on macOS it comes with the Command Line Tools, on Windows with Git for Windows), plus the network for Open from GitHub, pull and push |
+| | Imports fetched from their URLs, which need the network |
+| | WIDOCO and Konclude, which OntoBoard downloads on first use |
+
+*OntoBoard → Run self-test* checks this on your machine: it builds a throwaway project with the
+`test` target and lists whether `robot`, `make`, `docker`, `podman` and `odk` are on the PATH -
+none of them is used. *OntoBoard → Project → Check requirements...* lists the rest.
 
 ## Web application
 

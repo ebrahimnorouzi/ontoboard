@@ -396,6 +396,18 @@ public class SelfTestAction extends OntoBoardAction {
         // This asks for it. Opening the tab constructs SchemaCanvasView - 2,114 lines and the
         // largest class in the plugin, covered until now only by tests that construct no view - so
         // this is also the first check that the canvas can be built at all under Felix.
+        // The question a PASS has to answer on a machine with nothing installed - asked from a Mac
+        // with no robot, no ODK and no Docker, where every line above said ok and Build was the
+        // thing that did not work.
+        String build = buildsWithNothingInstalled(projectRoot);
+        boolean buildOk = build.startsWith("ok:");
+        if (!buildOk) {
+            failed++;
+            result.warn(BUILD_ROW + " failed: " + build);
+        }
+        result.row(BUILD_ROW, buildOk ? "ok" : "FAILED",
+                buildOk ? build.substring(3).trim() : build);
+
         for (String[] tab : TABS) {
             String tabOutcome = openTheTabOnce(tab[0], tab[1], tab[2]);
             boolean tabOk = tabOutcome.startsWith("ok:");
@@ -418,7 +430,7 @@ public class SelfTestAction extends OntoBoardAction {
         // only the map said "9 of 9" on a run that had in fact checked ten things - a summary that
         // undercounts its own work is the kind of small lie that makes the rest of it less
         // believable, and the receipts quote this line verbatim.
-        int checks = underTest.size() + TABS.length;
+        int checks = underTest.size() + 1 + TABS.length;
         if (failed > 0) {
             return result.failed(failed + " of " + checks
                     + " checks failed. This is a defect in the plugin, not in your "
@@ -489,6 +501,74 @@ public class SelfTestAction extends OntoBoardAction {
      * <p>Scaffolded with {@link OdkScaffold} rather than assembled here, so what is tested against
      * is the layout the wizard really produces. If the scaffold changes, this follows it.
      */
+    private static final String BUILD_ROW = "Project > Build (nothing installed)";
+
+    /**
+     * Builds the scratch project the way Build does for a project OntoBoard scaffolded, and says
+     * what this machine has on its PATH.
+     *
+     * <p>The edit file is read fresh from disk rather than reusing the scratch ontology above,
+     * whose classes carry no labels and would fail the scaffold's own check_labels.rq - which is
+     * the scaffold doing its job, not the build failing.
+     *
+     * <p>The PATH is looked at, never run: executing robot or docker to see whether they answer
+     * is the very dependency this check exists to rule out. A Protege started from the Finder on
+     * macOS inherits a launchd PATH of /usr/bin:/bin:/usr/sbin:/sbin, so a robot installed with a
+     * package manager is invisible to it anyway - which is why the build must not need one.
+     */
+    static String buildsWithNothingInstalled(File projectRoot) {
+        File editFile = new File(new File(new File(projectRoot, "src"), "ontology"),
+                "selftest-edit.owl");
+        String ineligible = de.fizkarlsruhe.ise.ontoboard.odk.InProcessTargets
+                .whyNotEligible(editFile);
+        if (ineligible != null) {
+            return "a project OntoBoard just scaffolded does not build in-process: " + ineligible;
+        }
+        long started = System.currentTimeMillis();
+        de.fizkarlsruhe.ise.ontoboard.odk.InProcessTargets.Outcome outcome;
+        try {
+            OWLOntology fresh = OWLManager.createOWLOntologyManager()
+                    .loadOntologyFromOntologyDocument(editFile);
+            outcome = de.fizkarlsruhe.ise.ontoboard.odk.InProcessTargets.run(editFile, fresh,
+                    de.fizkarlsruhe.ise.ontoboard.robot.Reasoners.Choice.ELK.newFactory(), "test");
+        } catch (Exception cannotRun) {
+            return "the in-process build threw " + cannotRun;
+        }
+        if (!outcome.isOk()) {
+            return "make test, run inside Protege, failed: " + outcome.getFailure();
+        }
+        StringBuilder tools = new StringBuilder();
+        for (String tool : new String[] {"robot", "make", "docker", "podman", "odk"}) {
+            String found = onPath(tool);
+            tools.append(tools.length() == 0 ? "" : ", ").append(tool).append(' ')
+                    .append(found == null ? "absent" : found + " (not used)");
+        }
+        return "ok: test (reason, report, sparql_test, validate_profile) ran inside Protege in "
+                + (System.currentTimeMillis() - started) + " ms without starting any program; "
+                + "on this PATH: " + tools;
+    }
+
+    /** Where a program is on the PATH, or null - found by looking, not by running it. */
+    static String onPath(String tool) {
+        String path = System.getenv("PATH");
+        if (path == null) {
+            return null;
+        }
+        String os = System.getProperty("os.name", "").toLowerCase(java.util.Locale.ROOT);
+        String[] names = os.contains("win")
+                ? new String[] {tool + ".exe", tool + ".bat", tool + ".cmd"}
+                : new String[] {tool};
+        for (String directory : path.split(java.util.regex.Pattern.quote(File.pathSeparator))) {
+            for (String name : names) {
+                File candidate = new File(directory, name);
+                if (candidate.isFile() && candidate.canExecute()) {
+                    return candidate.getAbsolutePath();
+                }
+            }
+        }
+        return null;
+    }
+
     private File scratchProject() throws Exception {
         File into = java.nio.file.Files.createTempDirectory("ontoboard-selftest").toFile();
         de.fizkarlsruhe.ise.ontoboard.odk.OdkProjectConfig config =
