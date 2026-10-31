@@ -235,6 +235,15 @@
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
+  <extension id="menu.OntoBoard.findterms"
+             point="org.protege.editor.core.application.EditorKitMenuAction">
+    <name value="Find terms in another ontology..."/>
+    <toolTip value="Search an ontology by its labels, tick the terms you want and import them - no IRIs needed"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.menu.FindTermsAction"/>
+    <path value="ontoboard.menu.OntoBoard/SlotBU-C"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
+
   <extension id="menu.OntoBoard.project.history"
              point="org.protege.editor.core.application.EditorKitMenuAction">
     <name value="History..."/>

@@ -121,9 +121,20 @@ public class ImportTermsAction extends OntoBoardAction {
         this.seededPattern = pattern;
     }
 
+    /**
+     * Seeds the dialog as {@link #seedWith} does, with the source already loaded - by Find terms,
+     * which had to read the whole ontology to search its labels. Reading it a second time to
+     * extract the module would download a large ontology twice.
+     */
+    void seedWithLoaded(String source, String terms, OWLOntology loaded) {
+        seedWith(source, terms);
+        this.seededOntology = loaded;
+    }
+
     private volatile String seededSource = "";
     private volatile String seededTerms = "";
     private volatile String seededPattern = null;
+    private volatile OWLOntology seededOntology = null;
 
     /** The library pattern being imported, or null when the import is not one. */
     private String patternBeingImported() {
@@ -292,9 +303,12 @@ public class ImportTermsAction extends OntoBoardAction {
         // edited imports it - is not downloaded a second time. Otherwise a throwaway manager, so
         // a 700MB ontology fetched to take four terms out of it does not stay in Protege's
         // ontology list and in memory for the rest of the session.
-        OWLOntology source = OntologySource.findAlreadyLoaded(
-                getOWLModelManager().getOWLOntologyManager(), sourceIri);
-        if (source != null) {
+        OWLOntology source = seededOntology != null && seededSource.equals(sourceText)
+                ? seededOntology : OntologySource.findAlreadyLoaded(
+                        getOWLModelManager().getOWLOntologyManager(), sourceIri);
+        if (source != null && source == seededOntology) {
+            result.note("Source: " + sourceIri + " (as loaded to search it)");
+        } else if (source != null) {
             result.note("Source: " + sourceIri + " (already open)");
         } else {
             source = OntologySource.load(OWLManager.createOWLOntologyManager(), sourceIri);

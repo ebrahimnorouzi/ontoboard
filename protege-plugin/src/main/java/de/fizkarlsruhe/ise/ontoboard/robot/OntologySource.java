@@ -48,8 +48,8 @@ public final class OntologySource {
         File file = new File(trimmed);
         if (!file.isFile()) {
             throw new RobotException("There is no file at " + file.getAbsolutePath()
-                    + ". Give a path to an ontology file, or a URL such as "
-                    + "http://purl.obolibrary.org/obo/iao.owl");
+                    + ". Give a path to an ontology file, or its web address - "
+                    + "https://example.org/ontology.owl, for instance.");
         }
         return IRI.create(file.toURI());
     }

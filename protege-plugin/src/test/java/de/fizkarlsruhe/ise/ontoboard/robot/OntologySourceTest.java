@@ -67,7 +67,8 @@ class OntologySourceTest {
 
         assertTrue(refused.getMessage().contains("definitely-not-here.owl"),
                 refused.getMessage());
-        assertTrue(refused.getMessage().contains("purl.obolibrary.org"),
+        // A neutral address since 1.130.0: the example named one particular ontology.
+        assertTrue(refused.getMessage().contains("https://example.org/"),
                 "showing what a URL looks like is most of the help: " + refused.getMessage());
     }
 
