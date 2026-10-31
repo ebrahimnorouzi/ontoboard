@@ -3932,7 +3932,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
     }
 
     /**
-     * Puts a just-imported pattern on the board as a named group.
+     * Puts each just-imported pattern on the board as a named group.
      *
      * <p>Asked for: the terms of an imported pattern should appear inside a frame, together, with
      * the frame named after the pattern. Before this they went wherever {@code SchemaGraph} puts a
@@ -3949,64 +3949,86 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
      *       explained rather than puzzling.
      *   <li><b>It is one undo step.</b> Through {@code rememberBoard}, like every other board
      *       change, so a pattern that landed somewhere unhelpful is one Ctrl+Z away.
-     *   <li><b>The note is consumed, not read.</b> {@code PatternArrival.take} clears it, so a
-     *       refresh for any other reason - an edit, a reasoner run, changing tab - cannot re-frame
-     *       a pattern that is already framed and drag the user's arrangement back into a box.
+     *   <li><b>A note is removed once its pattern is framed.</b> So a refresh for any other
+     *       reason - an edit, a reasoner run, changing tab - cannot re-frame a pattern that is
+     *       already framed and drag the user's arrangement back into a box.
+     *   <li><b>Every pattern waiting is framed, not only the last.</b> With the board closed,
+     *       each import leaves a note and none is collected until the board opens; the board then
+     *       frames them in the order they were imported, each in its own frame and undo step.
      * </ul>
      */
     private void frameAnyArrivedPattern() {
-        de.fizkarlsruhe.ise.ontoboard.pattern.PatternArrival.Arrival arrival =
-                de.fizkarlsruhe.ise.ontoboard.pattern.PatternArrival.peek();
-        if (arrival == null) {
+        java.util.List<de.fizkarlsruhe.ise.ontoboard.pattern.PatternArrival.Arrival> arrivals =
+                de.fizkarlsruhe.ise.ontoboard.pattern.PatternArrival.waiting();
+        if (arrivals.isEmpty()) {
             return;
         }
-        // NOT CONSUMED UNTIL THE TERMS ARE THERE. The note is left before the import runs, and
-        // the import runs after its own dialog, on a worker thread, loading a module and then
-        // adding an owl:imports - each of which can refresh this board first. Taking the note on
-        // such a refresh framed terms the ontology did not have yet: positions for nothing, which
-        // the next reload pruned, leaving no frame. Reported from a Mac, where two imported
-        // patterns never appeared framed. Only the terms present are framed, so a term the
-        // module extraction did not bring in leaves no hole in the grid.
-        java.util.Set<String> present = OntologyProjection.termIdentifiers(
-                getOWLModelManager().getActiveOntology(),
-                org.semanticweb.owlapi.model.parameters.Imports.INCLUDED);
-        java.util.List<String> arrived = new java.util.ArrayList<String>();
-        for (String iri : arrival.getIris()) {
-            if (present.contains(iri)) {
-                arrived.add(iri);
+        org.semanticweb.owlapi.model.OWLOntology active = getOWLModelManager().getActiveOntology();
+        String board = de.fizkarlsruhe.ise.ontoboard.pattern.PatternArrival.idOf(active);
+        java.util.Set<String> present = null;
+        StringBuilder said = new StringBuilder();
+        boolean framedAny = false;
+        for (de.fizkarlsruhe.ise.ontoboard.pattern.PatternArrival.Arrival arrival : arrivals) {
+            if (!arrival.isFor(board)) {
+                continue;
             }
-        }
-        if (arrived.isEmpty()) {
-            return;
-        }
-        de.fizkarlsruhe.ise.ontoboard.pattern.PatternArrival.take();
-        de.fizkarlsruhe.ise.ontoboard.layout.FramedGroup.Placement placement =
-                de.fizkarlsruhe.ise.ontoboard.layout.FramedGroup.plan(
-                        arrival.getLabel(), arrived, layout);
-        if (placement.isEmpty()) {
-            if (!placement.getAlreadyOnTheBoard().isEmpty()) {
-                setStatus("Every term of " + arrival.getLabel() + " was already on the board.");
+            // NOT REMOVED UNTIL THE TERMS ARE THERE. The note is left before the import runs, and
+            // the import runs after its own dialog, on a worker thread, loading a module and then
+            // adding an owl:imports - each of which can refresh this board first. Taking the note
+            // on such a refresh framed terms the ontology did not have yet: positions for nothing,
+            // which the next reload pruned, leaving no frame. Only the terms present are framed,
+            // so a term the module extraction did not bring in leaves no hole in the grid.
+            if (present == null) {
+                present = OntologyProjection.termIdentifiers(active,
+                        org.semanticweb.owlapi.model.parameters.Imports.INCLUDED);
             }
-            return;
+            java.util.List<String> arrived = new java.util.ArrayList<String>();
+            for (String iri : arrival.getIris()) {
+                if (present.contains(iri)) {
+                    arrived.add(iri);
+                }
+            }
+            if (arrived.isEmpty()) {
+                continue;
+            }
+            de.fizkarlsruhe.ise.ontoboard.pattern.PatternArrival.take(arrival);
+            de.fizkarlsruhe.ise.ontoboard.layout.FramedGroup.Placement placement =
+                    de.fizkarlsruhe.ise.ontoboard.layout.FramedGroup.plan(
+                            arrival.getLabel(), arrived, layout);
+            if (placement.isEmpty()) {
+                if (!placement.getAlreadyOnTheBoard().isEmpty()) {
+                    said.append(said.length() == 0 ? "" : " ").append("Every term of ")
+                            .append(arrival.getLabel()).append(" was already on the board.");
+                }
+                continue;
+            }
+            rememberBoard("importing " + arrival.getLabel());
+            de.fizkarlsruhe.ise.ontoboard.layout.FramedGroup.withId(placement.getFrame(),
+                    SchemaGraph.FRAME_ID_PREFIX + nextAnnotationSuffix());
+            layout.frames.add(placement.getFrame());
+            for (java.util.Map.Entry<String, CanvasLayout.NodeLayout> entry
+                    : placement.getNodes().entrySet()) {
+                layout.nodes.put(entry.getKey(), entry.getValue());
+                // Positioned AND on the board: a position for a term the canvas is not showing
+                // draws nothing, and this is the step that makes the pattern visible at all.
+                membership.add(entry.getKey());
+            }
+            int placed = placement.getNodes().size();
+            int kept = placement.getAlreadyOnTheBoard().size();
+            said.append(said.length() == 0 ? "" : " ").append("Framed ")
+                    .append(arrival.getLabel()).append(": ").append(placed).append(" term")
+                    .append(placed == 1 ? "" : "s")
+                    .append(kept == 0 ? "" : ", " + kept + " already on the board and left where "
+                            + (kept == 1 ? "it was" : "they were"))
+                    .append('.');
+            framedAny = true;
         }
-        rememberBoard("importing " + arrival.getLabel());
-        de.fizkarlsruhe.ise.ontoboard.layout.FramedGroup.withId(placement.getFrame(),
-                SchemaGraph.FRAME_ID_PREFIX + nextAnnotationSuffix());
-        layout.frames.add(placement.getFrame());
-        for (java.util.Map.Entry<String, CanvasLayout.NodeLayout> entry
-                : placement.getNodes().entrySet()) {
-            layout.nodes.put(entry.getKey(), entry.getValue());
-            // Positioned AND on the board: a position for a term the canvas is not showing draws
-            // nothing, and this is the step that makes the pattern visible at all.
-            membership.add(entry.getKey());
+        if (said.length() > 0) {
+            setStatus(said.toString());
         }
-        int placed = placement.getNodes().size();
-        int kept = placement.getAlreadyOnTheBoard().size();
-        setStatus("Framed " + arrival.getLabel() + ": " + placed + " term"
-                + (placed == 1 ? "" : "s")
-                + (kept == 0 ? "" : ", " + kept + " already on the board and left where "
-                        + (kept == 1 ? "it was" : "they were")));
-        saveLayoutTo(layoutFile);
+        if (framedAny) {
+            saveLayoutTo(layoutFile);
+        }
     }
 
     /** Copies live cell geometry back into the layout so it survives the next save. */

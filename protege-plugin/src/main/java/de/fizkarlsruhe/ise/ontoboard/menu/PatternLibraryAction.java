@@ -597,8 +597,8 @@ public class PatternLibraryAction extends ProtegeOWLAction {
 
         // Told before the import runs, because the import is what fires the ontology change the
         // canvas refreshes on - leaving the note afterwards would be a race the canvas usually
-        // wins. It is a single slot that the canvas consumes, so nothing accumulates when the
-        // canvas is not open, which is the common case.
+        // wins. The canvas removes the note once it has framed the pattern; with the board
+        // closed it waits, beside any other pattern imported meanwhile, for the board to open.
         //
         // ONLY THE CLASSES ARE FRAMED, THOUGH EVERY SELECTED TERM IS IMPORTED. Reported as the
         // frame being "so compact and lots of concepts are packed", and measuring the 163 shipped
@@ -614,7 +614,10 @@ public class PatternLibraryAction extends ProtegeOWLAction {
         for (IRI term : framed(chosen, wanted)) {
             iris.add(term.toString());
         }
-        de.fizkarlsruhe.ise.ontoboard.pattern.PatternArrival.imported(chosen.getName(), iris);
+        de.fizkarlsruhe.ise.ontoboard.pattern.PatternArrival.imported(
+                de.fizkarlsruhe.ise.ontoboard.pattern.PatternArrival.idOf(
+                        getOWLModelManager().getActiveOntology()),
+                chosen.getName(), iris);
 
         dialog.dispose();
         ImportTermsAction importer = new ImportTermsAction();
