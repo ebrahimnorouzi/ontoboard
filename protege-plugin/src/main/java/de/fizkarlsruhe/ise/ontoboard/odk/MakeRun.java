@@ -90,6 +90,16 @@ public final class MakeRun {
         if (InProcessTargets.whyNotEligible(editFile) == null) {
             return Route.IN_PROCESS;
         }
+        // A Makefile OntoBoard wrote but this version does not render byte for byte - an older
+        // scaffold, or one edited by hand - is NOT handed to a host make when there is no robot
+        // for its recipes to call. macOS ships /usr/bin/make with the Command Line Tools (GNU
+        // Make 3.81 on the Mac that reported "build is not working"), so this used to fall
+        // through to MAKE_ON_PATH and die on the first robot call, which reads as a broken
+        // project. whyNotRunnable says what to do instead.
+        if (writtenByOntoBoard(directory)
+                && !ProcessRunner.isAvailable(runner, "robot", "--version")) {
+            return Route.NOT_RUNNABLE;
+        }
         if (odkRunner(directory) != null) {
             // An ODK project is never run with a bare host make. That would be the old defect
             // wearing a new coat: make parses the Makefile happily and then dies partway through
@@ -302,10 +312,41 @@ public final class MakeRun {
         if (routeFor(editFile, runner) != Route.NOT_RUNNABLE) {
             return null;
         }
+        if (writtenByOntoBoard(directory)) {
+            String why = InProcessTargets.whyNotEligible(editFile);
+            return (why == null ? "" : why + " ")
+                    + "Use OntoBoard > Project > Update project files... to bring it up to date: "
+                    + "after that, Build runs inside Protege with nothing installed. (Running "
+                    + "this Makefile with make instead would need robot on the PATH.)";
+        }
         return toolingAdvice(odkRunner(directory) != null,
                 ProcessRunner.isAvailable(runner, "docker", "--version"),
                 ProcessRunner.isAvailable(runner, "sh", "--version"),
                 isWindows());
+    }
+
+    /**
+     * Whether the Makefile beside the edit file opens with the line every OntoBoard scaffold has
+     * written since the first one, whichever version wrote it.
+     */
+    static boolean writtenByOntoBoard(File directory) {
+        File makefile = directory == null ? null : new File(directory, "Makefile");
+        if (makefile == null || !makefile.isFile()) {
+            return false;
+        }
+        try {
+            java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.InputStreamReader(
+                    new java.io.FileInputStream(makefile), java.nio.charset.StandardCharsets.UTF_8));
+            try {
+                String first = reader.readLine();
+                return first != null
+                        && first.trim().equals(OdkScaffold.GENERATED_MAKEFILE_HEADER);
+            } finally {
+                reader.close();
+            }
+        } catch (IOException unreadable) {
+            return false;
+        }
     }
 
     /** True on Windows, where "install make" is not by itself a complete instruction. */
