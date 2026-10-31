@@ -399,7 +399,19 @@ public class SelfTestAction extends OntoBoardAction {
         // The question a PASS has to answer on a machine with nothing installed - asked from a Mac
         // with no robot, no ODK and no Docker, where every line above said ok and Build was the
         // thing that did not work.
-        String build = buildsWithNothingInstalled(projectRoot);
+        String build;
+        File buildInto = null;
+        try {
+            buildInto = java.nio.file.Files.createTempDirectory("ontoboard-selftest-build")
+                    .toFile();
+            build = buildsWithNothingInstalled(buildInto);
+        } catch (Exception cannotBuild) {
+            build = "could not scaffold a project to build: " + cannotBuild;
+        } finally {
+            if (buildInto != null) {
+                deleteTree(buildInto);
+            }
+        }
         boolean buildOk = build.startsWith("ok:");
         if (!buildOk) {
             failed++;
@@ -437,8 +449,8 @@ public class SelfTestAction extends OntoBoardAction {
                     + "ontology.").build();
         }
         return result.summary(checks + " of " + checks
-                + " checks ran - " + underTest.size() + " menu items and " + TABS.length
-                + " tabs. "
+                + " checks ran - " + underTest.size() + " menu items, the in-process build and "
+                + TABS.length + " tabs. "
                 + skippedWithReasons().size()
                 + " others are not covered here - see the notes.").build();
     }
@@ -507,17 +519,24 @@ public class SelfTestAction extends OntoBoardAction {
      * Builds the scratch project the way Build does for a project OntoBoard scaffolded, and says
      * what this machine has on its PATH.
      *
-     * <p>The edit file is read fresh from disk rather than reusing the scratch ontology above,
-     * whose classes carry no labels and would fail the scaffold's own check_labels.rq - which is
-     * the scaffold doing its job, not the build failing.
+     * <p>In a project of its own, freshly scaffolded into {@code into}. The first version reused
+     * the scratch project above and failed in the host: the checks before it save their unlabelled
+     * test classes into that edit file, and report rejected them with missing_label - the build
+     * doing its job on an ontology this check never meant to hand it.
      *
      * <p>The PATH is looked at, never run: executing robot or docker to see whether they answer
      * is the very dependency this check exists to rule out. A Protege started from the Finder on
      * macOS inherits a launchd PATH of /usr/bin:/bin:/usr/sbin:/sbin, so a robot installed with a
      * package manager is invisible to it anyway - which is why the build must not need one.
      */
-    static String buildsWithNothingInstalled(File projectRoot) {
-        File editFile = new File(new File(new File(projectRoot, "src"), "ontology"),
+    static String buildsWithNothingInstalled(File into) {
+        de.fizkarlsruhe.ise.ontoboard.odk.OdkProjectConfig config =
+                new de.fizkarlsruhe.ise.ontoboard.odk.OdkProjectConfig("selftest",
+                        "OntoBoard self-test", "A throwaway project the self-test builds.",
+                        "http://www.ontoboard.org/selftest.owl",
+                        "https://creativecommons.org/publicdomain/zero/1.0/", into);
+        de.fizkarlsruhe.ise.ontoboard.odk.OdkScaffold.create(config);
+        File editFile = new File(new File(new File(config.getProjectRoot(), "src"), "ontology"),
                 "selftest-edit.owl");
         String ineligible = de.fizkarlsruhe.ise.ontoboard.odk.InProcessTargets
                 .whyNotEligible(editFile);

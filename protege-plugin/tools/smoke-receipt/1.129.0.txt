@@ -1,0 +1,58 @@
+OntoBoard 1.129.0 - host smoke receipt
+
+Produced on macOS 15.8.1 (Intel x86_64), the first receipt from a Mac. tools/smoke.ps1 is
+PowerShell and this machine has none, so the same launch was done by hand: a throwaway copy of each
+install, the jar under test as the only ontoboard-*.jar in its plugins, -Dontoboard.selftest=true,
+and the verdict read from the slice of ~/.Protege/logs/protege.log written after launch.
+
+  2026-10-31  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx2G  PASS  check 9/9  test 12/12
+  2026-10-31  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx2G  PASS  check 9/9  test 12/12
+
+5.6.9 was a copy of /Applications/Protégé.app with append=-Dontoboard.selftest=true in its own
+conf/jvm.conf. 5.5.0 was the official Protege-5.5.0-os-x.zip; its app bundle is code-signed and
+macOS refuses writes into it, so its Contents/Java was copied out and started with the bundle's own
+JRE and the JVM options from its Info.plist.
+
+-Xmx2G, not 500M: the 500M of earlier receipts is Windows' Protege.l4j.ini default. The Mac app's
+launcher sizes the heap itself, so 2G is closer to what a Mac user runs.
+
+The twelfth test is new in this release, and it is the reason for it:
+
+  Project > Build (nothing installed) | ok | test (reason, report, sparql_test, validate_profile)
+  ran inside Protege in 170 ms without starting any program; on this PATH: robot absent,
+  make /usr/bin/make (not used), docker absent, podman absent, odk absent
+
+(214 ms on 5.5.0.) The first host run of it FAILED, which the unit test had not: it reused the
+self-test's scratch project, whose edit file the checks before it had written unlabelled classes
+into, and report rejected them with missing_label. It now scaffolds a project of its own.
+
+
+WHAT THIS RELEASE FIXES
+
+- Build on a Mac with nothing installed. A fresh project plus one class added with Protege's
+  defaults failed 'test' with "sparql_test found 1 violation(s) across 1 check(s)" and nothing
+  else; the failure now names the rule and the terms. A check that cannot run fails the build
+  instead of passing it. macOS ships /usr/bin/make, so an OntoBoard Makefile this version does not
+  render fell through to it and died on robot; it is now refused with "Update project files".
+- The source build on a Mac. 1 error in 2530 tests (CanvasGestureInteractionTest, via macOS's
+  drag-gesture recognizer) failed mvn package; now 2549 run, 0 failures, 0 errors, 27 skipped.
+- Imported patterns: framed only once their terms are in the ontology, and nothing unpositioned
+  is placed on a frame any more.
+- Instructions name no particular ontology; the pattern issue form is split and its link resolves.
+
+
+SEEN, NOT OURS
+
+- 5.5.0: "An error occurred whilst creating the view content for the 'Class hierarchy' view",
+  a NullPointerException in Protege's OWLCellRenderer.prepareRenderer, while the self-test builds
+  the tab's views. Inside Protege's renderer; the self-test reports the tab built.
+- Both: "Error building menu: null" from Felix's ServiceTracker after the process was killed -
+  the shutdown, not the plugin.
+
+
+WHAT IS STILL NOT TRUE
+
+- Nobody has looked at a framed pattern in a real Mac Protege since the fix. The two causes found
+  are tested (SchemaGraphTest, PatternArrivalTest); the event ordering that consumed the note is
+  inferred from the reporter's log, not reproduced in a host.
+- Windows was not smoked for this release.

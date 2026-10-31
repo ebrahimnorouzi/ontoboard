@@ -2,8 +2,6 @@ package de.fizkarlsruhe.ise.ontoboard.menu;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import de.fizkarlsruhe.ise.ontoboard.odk.OdkProjectConfig;
-import de.fizkarlsruhe.ise.ontoboard.odk.OdkScaffold;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
@@ -47,11 +45,7 @@ class BuildsWithNothingInstalledTest {
         });
         String outcome;
         try {
-            OdkProjectConfig config = new OdkProjectConfig("selftest", "Self-test",
-                    "A throwaway project", "http://www.ontoboard.org/selftest.owl",
-                    "https://creativecommons.org/publicdomain/zero/1.0/", where);
-            OdkScaffold.create(config);
-            outcome = SelfTestAction.buildsWithNothingInstalled(config.getProjectRoot());
+            outcome = SelfTestAction.buildsWithNothingInstalled(where);
         } finally {
             System.setSecurityManager(previous);
         }
