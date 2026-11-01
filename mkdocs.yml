@@ -145,6 +145,7 @@ nav:
       - Contributing a pattern: contributing-a-pattern.md
       - 'Patterns: graphs and examples': pattern-examples.md
       - Working with ODK: odk-workflow.md
+      - 'From spreadsheets to a knowledge graph': knowledge-graph.md
       - What the canvas draws: canvas.md
       - Collaboration: collaboration.md
       - Conflicts and concurrent editing: conflicts.md

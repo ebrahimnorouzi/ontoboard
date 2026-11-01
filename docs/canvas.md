@@ -55,6 +55,17 @@ Every logical axiom in both ontologies - 921 of 921 in MWO, 529 of 529 in NFDIco
 | `ObjectPropertyAssertion` | arrow between two individuals, labelled with the property | 5 |
 | `HasKey` | an arrow to each key property, labelled `key` | 0 |
 | SWRL rule | a node reading the rule - `rule: a(?x) ∧ b(?x, ?y) → c(?x)` - with a dotted `if` line from each term its body uses and a `then` line to each term it concludes | 4 |
+| `SubClassOf(R some B, A)` - a scoped domain | an arrow from A to B labelled `R (scoped domain)` | - |
+| Any other `SubClassOf` whose subclass is an expression | the expression as its node, a hollow arrow from it | - |
+| `DisjointUnion(A B C)` | hollow arrows from B and C to A, and a disjointness line between B and C | - |
+| `DisjointObjectProperties` / `DisjointDataProperties` | a disjointness line between the property nodes | - |
+| `SameIndividual` / `DifferentIndividuals` | a line labelled `same as` / `different from`, one per pair | - |
+| `ObjectPropertyAssertion` that is negative | an arrow labelled `not R` | - |
+| `DataPropertyAssertion` | a box holding the value, and an arrow to it from the individual, labelled with the property; `not R` for a negative one | - |
+
+Every arrow of the first kinds - subclass, type, and an existential restriction - says something
+the ontology entails: a test turns each back into the axiom it claims and checks it with HermiT,
+on every version of the pizza example and on the shapes that were once drawn wrongly.
 
 Whole of MWO: **749 nodes and 1,252 edges**. Class expressions can be switched off under
 *More → Show class expressions*; then the 47 axioms whose shape needs an expression node are not
@@ -72,16 +83,28 @@ board that size:
 - selecting a term brings it and everything it is connected to forward and fades the rest
   (*Focus* on the toolbar turns this off).
 
-*More → Show on the board* switches object properties, data properties, individuals and imported
-terms off and on. A class can be folded - right-click, *Collapse subclasses* - and then shows how
-many terms it holds.
+*More → Show on the board* switches object properties, data properties, individuals, imported
+terms and rules off and on. A class can be folded - right-click, *Collapse subclasses* - and then
+shows how many terms it holds.
+
+## Working on the board
+
+- **A defined class** - one with an equivalence, so the reasoner can find its members - has `≡`
+  before its name. The legend (*?* on the toolbar) has it.
+- **Show only this and its neighbours**: right-click a term. Everything else leaves the board until
+  *Escape*, or *More → Show the whole board*.
+- **Fold** a class with right-click → *Collapse subclasses*; *More → Expand every folded class*
+  opens them all again.
+- **Rules**: double-click a rule's node to read it set out - *If*, each condition on a line,
+  *then*, each conclusion. *More → Show on the board → Rules* takes them off a board that has many.
+- **Keys**, as in a mind map: **Tab** makes a subclass of the selected class, **Enter** a sibling;
+  double-click empty board for a new class. *?* → *Keyboard shortcuts* lists them all.
 
 ## Not drawn
 
 | | Why |
 |---|---|
-| Literals | A value is not a term; `rdfs:label` is already the node's name. |
-| Annotations | On the hover and in the left panel's editable frames. |
+| Annotations | On the hover and in the left panel's editable frames; `rdfs:label` is already the node's name. |
 
 ## Consequences worth knowing
 

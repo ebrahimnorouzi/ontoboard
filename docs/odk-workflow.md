@@ -299,10 +299,11 @@ ODK project…* reads `title` and nothing else.
 | `robot_java_args` | The heap a containerised build gives ROBOT. Previously hardcoded to `-Xmx8G` and passed with `docker run -e`, which **overrides the environment** — so a project asking for `-Xmx16G` got 8G in silence, and the plugin's own out-of-memory advice told you to set `ROBOT_JAVA_ARGS`, the very variable it was overriding. Both fixed |
 | `robot_report.fail_on` | Which severity *ROBOT → Quality report…* treats as a failure |
 | `robot_report.use_labels` | Whether that report shows labels or IRIs |
+| `robot_report.use_base_iris`, `namespaces`, `uribase` | What the report is about. As in ODK, only the project's own terms - the `namespaces` listed, or else `<uribase>/<ID>_` and `<uribase>/<id>` - unless `use_base_iris` is `false`. *Build... → test* says how many findings were about imported terms and left out. Since 1.132.0 |
 
 Still ignored, including keys you are likely to want to change:
 
-> `uribase` · `github_org` · `repo` · `git_main_branch` · `release_artefacts` · `primary_release`
+> `github_org` · `repo` · `git_main_branch` · `release_artefacts` · `primary_release`
 > · `documentation` · `robot_report.custom_profile` and `report_on`
 >
 > No longer on this list: `export_formats`, which *Release…* honours since 1.98.0, and
@@ -403,7 +404,7 @@ yours to commit or ignore.
 ### `catalog-v001.xml` 🔶
 
 Read by *Project → Imports…*, which shows what each import maps to and why an unresolved one
-failed. Written by *ROBOT → Import terms…*, which adds a `<uri>` entry for each module it saves.
+failed. Written by *ROBOT → Import terms from a list…*, which adds a `<uri>` entry for each module it saves.
 
 **Since 1.83.0, *Project → Imports graph…* draws the same structure as a picture** — the whole
 closure rather than the direct imports, with unresolved ones dashed and red, and a *Copy as DOT*
@@ -425,9 +426,9 @@ ODK's own walkthrough is six steps. Four of them OntoBoard does for you, in one 
 
 | ODK's step | | In OntoBoard |
 |---|---|---|
-| **1.** Declare it under `import_group` in the YAML | ✅ | *ROBOT → Import terms…* writes the product itself, since 1.100.0. *Project configuration…* also edits every scalar in the block and adds or removes list entries |
+| **1.** Declare it under `import_group` in the YAML | ✅ | *ROBOT → Import terms from a list…* writes the product itself, since 1.100.0. *Project configuration…* also edits every scalar in the block and adds or removes list entries |
 | **2.** Check the Makefile picked it up | 🔶 | *Project → Build…* lists the targets, following `include` into `<ontology>.Makefile`. Nothing shows you the generated import *rules* |
-| **3.** Add term IRIs to `<import>_terms.txt`, then `make refresh-imports` | ✅ | *Import terms…* writes the list from the terms you picked; *Project → Term lists…* edits it afterwards; *Project → Refresh imports* is the refresh |
+| **3.** Add term IRIs to `<import>_terms.txt`, then `make refresh-imports` | ✅ | *Find terms…* or *Import terms from a list…* writes the list from the terms you picked, and adds to it when the import already exists; *Imported terms…* adds and takes out terms by label and rebuilds the module at once; *Project → Refresh imports* is the refresh |
 | **4.** Copy the import URI into `<ontology>-edit.owl` and `catalog-v001.xml` | ✅ | *Import terms…* writes both, so the import resolves offline. *Pattern library…* feeds the same operation |
 | **5.** Copy the generated import schema into `<ontology>.Makefile` | ❌ | By hand. Only needed for a `custom` module, which is the case ODK's own generated rule refuses to build too |
 | **6.** Set `module_type`, then `update_repo`, `clean`, `make` | 🔶 | *Import terms…* writes the `module_type` it actually used. Changing it later is a scalar edit in *Project configuration…*; regenerating is *Update project files…* on a scaffolded project or `sh run.sh make update_repo` on an ODK one; `clean` and `make` are targets in *Build…* |
@@ -541,7 +542,7 @@ Two things the measurements overturned:
   the index instead, which is generated from the files and checked against them by a test, so
   the stored list cannot quietly disagree. 24 seconds became 0.3.
 
-**Importing a pattern is importing terms.** Choosing one hands it to *ROBOT → Import terms…*,
+**Importing a pattern is importing terms.** Choosing one hands it to *ROBOT → Import terms from a list…*,
 which is the ODK path: it extracts a module, writes `<import>_terms.txt`, saves the module,
 adds the import statement and adds the catalog entry. Nothing here re-implements those five
 steps.
@@ -642,12 +643,21 @@ ontology already contains all of that pattern, which is a statement that you hav
 rather than advice to adopt it. A contributed pattern gets no category or domain, because nothing
 can infer one — it is grouped by its folder and its publisher instead.
 
-### Editing a term list — new in 1.90.0
+### Editing an import's terms — *Imported terms…*, since 1.132.0
 
-*Project → Term lists…* shows each import's `<import>_terms.txt`, with every term, every
-comment, and the label your ontology gives it. Add the term selected in Protégé, remove a line,
-save. The module itself does not change — run *Refresh imports…* to rebuild it from the list,
-which is the ODK order.
+*OntoBoard → Imported terms…* (also *Project → Imported terms…*, which replaced *Term lists…*)
+lists each import with every term it brings, by label: the ones on its term list, the ones that
+came along because a listed term needs them, and how often your own axioms use each. **Add terms
+from …** opens *Find terms* on the import's own source; **Take out of the import** removes listed
+terms; **Rebuild from the source** cuts it again when upstream has released. Each writes the term
+list, re-extracts the module by the project's declared method, keeps the IRI the module already
+has, and changes the copy Protégé has open — then saves it, so the board and the class tree show
+the change at once.
+
+Two things this fixed on the way. Re-importing terms from an ontology that was already imported
+replaced its module and term list with the new terms alone; they are now added to it. And
+*Refresh imports* gave a rebuilt module the address of its own file as its IRI, so the edit
+file's import no longer named it; a module now keeps the IRI it declares.
 
 **Comments survive, because the file is spliced rather than rewritten.** This is not a detail.
 OntoBoard has been able to write a term list from scratch since 1.38.0, which is right for a

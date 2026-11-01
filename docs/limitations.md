@@ -12,6 +12,29 @@ What the plugin does not do today. The pattern library (1.82.0, extensible since
 SPARQL panel (1.33.0) used to be on this list and are now features - they are described in
 [working with ODK](odk-workflow.md) and the [pattern library](patterns/index.md).
 
+- **What five testers asked for in 1.132.0, and is not built yet** - a student, a domain expert,
+  an ontology engineer, a reviewer and somebody new to ODK, each using the plugin on their own
+  task. Built in 1.132.0: starting a project from the open ontology, *Show only this and its
+  neighbours*, `≡` on defined classes, *Imported terms…*, *Write a test from a question…*, the
+  Rules layer and Enter for a sibling. Still open, roughly in the order they were asked for:
+    - *Check this ontology* without a project - the reasoner, the quality report and a label
+      check on a loose `.owl` file. Today Build needs a project.
+    - Help beside each key in *Project configuration…*, and a button there for *Update project
+      files…*.
+    - An ODK release with `base`, `full` and `simple` files under one version IRI; *Release…*
+      writes one file (merged or not).
+    - *History* and *Compare releases* for properties and individuals as they are for classes
+      (relabelled, redefined); and against any file, address or git tag, not only `releases/`.
+    - *Obsolete…* offering to move a term's subclasses to its parents and point references at its
+      replacement, instead of only listing what will change.
+    - A button on each warning that applies its fix - an undeclared import, imports not merged.
+    - A mode for adding terms to somebody else's ontology (a contributor's view), putting a
+      project on GitHub and tagging releases without a terminal, ODK's filter and minimal import
+      types, and a beginner mode with menus grouped by job.
+    - Bring to front and send to back for frames and notes on the board.
+- **Find terms reads what a server sends.** A server that never answers is given up on after
+  30 seconds, and one that is down cannot be read at all: load a copy instead - a downloaded file,
+  or the one in the ontology's repository, whose documentation page usually links to it.
 - **Live collaboration carries four kinds of axiom.** Built as of 1.9.0, with a vocabulary of
   eighteen operation types — but `OperationMapper` reaches an operation for exactly four axiom
   classes: declarations, `SubClassOf`, class assertions and annotation assertions. Everything

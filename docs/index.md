@@ -27,7 +27,7 @@ whether your ontology is sound.
 <div class="ob-figure"><strong>162</strong><span>design patterns, ready to import</span></div>
 <div class="ob-figure"><strong>100%</strong><span>of the logical axioms of two published ontologies drawn on the board</span></div>
 <div class="ob-figure"><strong>2</strong><span>Protégé versions, both smoke-tested every release</span></div>
-<div class="ob-figure"><strong>@@TESTS@@</strong><span>tests behind it</span></div>
+<div class="ob-figure"><strong>2,660</strong><span>tests behind it</span></div>
 </div>
 
 ## Where do you start?
@@ -62,6 +62,28 @@ Click the answer that fits; each opens the next step. The same steps are in Prot
         **Project → Open existing ODK project...** - or **Open from GitHub...** to clone one
         first. Then **Build...** checks it, **Release...** publishes a version, and
         **History...** shows every release and what changed in each.
+
+???+ question "Do you need terms another ontology already has?"
+
+    ??? success "Yes - I know which ontology"
+
+        **OntoBoard → Find terms in another ontology...** - give its web address, a file, or the
+        address of a page about it; search by label, tick, and **Add them**. Nothing to look up
+        by IRI. [Step 4 of the guide](guide.md#4-reuse-terms-from-other-ontologies-optional)
+
+    ??? info "I imported some before and want to change them"
+
+        **OntoBoard → Imported terms...** shows each import and every term it brings, by
+        label - and adds more, or takes some out, rebuilding the import at once.
+
+???+ question "Do you have data - lists of things - in spreadsheets?"
+
+    ??? success "Yes"
+
+        Keep it in a graph file of its own that imports your ontology, one sheet per kind of
+        thing: the **Sheet editor** gives new rows identifiers, **Check sheets...** finds names
+        that point at nothing, **Template...** turns each sheet into individuals.
+        [From spreadsheets to a knowledge graph](knowledge-graph.md)
 
 ???+ question "Do you know ODK, ROBOT or eXtreme Design?"
 
@@ -134,8 +156,21 @@ term - added, removed, relabelled, moved, made obsolete. Open any of them in a w
 
 <div class="ob-card" markdown>
 ### :material-magnify: Terms from other ontologies
-Load an ontology from its web address, search its labels, tick the terms you want, import them -
-no IRIs to look up. [How](guide.md#4-reuse-terms-from-other-ontologies-optional)
+Load an ontology from its web address - or the page about it - search its labels, tick the terms
+you want, add them. *Imported terms* then shows what came from where, by label, and adds or takes
+out terms. [How](guide.md#4-reuse-terms-from-other-ontologies-optional)
+</div>
+
+<div class="ob-card" markdown>
+### :material-table: A knowledge graph from spreadsheets
+One sheet per kind of thing, identifiers generated, names checked across sheets, each sheet turned
+into individuals in a graph that imports your ontology. [How](knowledge-graph.md)
+</div>
+
+<div class="ob-card" markdown>
+### :material-help-circle: Questions become tests
+Pick a rule and the terms - every pizza has a base, nothing is both vegetarian and meaty - and
+OntoBoard writes the test and runs it. No SPARQL. [Step 6](guide.md#6-turn-your-questions-into-tests)
 </div>
 
 <div class="ob-card" markdown>
@@ -190,6 +225,8 @@ height: 460px
 | [What the board draws](canvas.md) | Every kind of axiom, how it is drawn, and where things go |
 | [Pattern library](patterns/index.md) | All 162 patterns, grouped by source, with a graph each |
 | [Working with ODK](odk-workflow.md) | The ODK workflow step by step, and which steps OntoBoard does for you |
+| [From spreadsheets to a knowledge graph](knowledge-graph.md) | Data in sheets, as individuals that use your ontology |
+| [Glossary](glossary.md) | The words the menus and docs use, in plain terms |
 | [Collaboration](collaboration.md) | Live sessions, and how to run the server |
 | [Limitations and roadmap](limitations.md) | What it does not do, specifically, and why |
 | [Feature parity](feature-parity.md) | The feature inventory, measured |

@@ -81,19 +81,34 @@ imports are merged.
 
 ### 4. Reuse terms from other ontologies *(optional)*
 
-**What you do.** *OntoBoard → Find terms in another ontology...*: give its web address or a file,
-**Load**, then type part of a label. Tick the terms you want — the ticks stay while you search for
-more — and **Import**. Terms already in your ontology are marked, and obsolete ones are hidden
-unless asked for. A term the ontology only refers to, rather than defines, comes after its own
-terms and says where it is from — `schema.org/Person` beside a vocabulary's own *Person* — and
-the whole address is in its tooltip. If one of the ontology's imports cannot be fetched, the rest
-still loads and the missing import is named.
+**What you do.** *OntoBoard → Find terms in another ontology...*: give its web address or a file
+- or pick one from the list, which has your own imports' sources and a few widely used
+ontologies - **Load**, then type part of a label. Tick the terms you want — the ticks stay while
+you search for more — and **Import**: one confirmation names the files it writes, and **Add them**
+does it (*Advanced...* chooses how much comes with the terms, and where the module goes). Terms
+already in your ontology are marked, and obsolete ones are hidden unless asked for. A term the
+ontology only refers to, rather than defines, comes after its own terms and says where it is from
+— `schema.org/Person` beside a vocabulary's own *Person* — and the whole address is in its
+tooltip.
+
+The address of a *page about* an ontology works too: OntoBoard follows the page's link to the
+ontology's file and says which one it read. A server that accepts the connection and then sends
+nothing is given up on after 30 seconds, with the reason; **Stop** ends any load at once. If one
+of the ontology's own imports cannot be fetched, the rest still loads and the missing import is
+named.
+
+*OntoBoard → Imported terms...* shows what came from where: each import, every term it brings by
+label — the ones you chose, and the ones that came along because a chosen term needs them — and
+how often your own axioms use each. **Add terms from ...** opens Find terms on that import's
+source; **Take out of the import** removes chosen terms. Either way the import is rebuilt at once,
+and Protégé shows the change straight away. A term that more than one import brings is marked
+under *Also in*, and so is a pair that word it differently.
 
 **Why.** Shared terms make your data join up with everyone else's, and spare you defining what
 has been defined well before.
 
 **Instead of.** ROBOT's `extract`, which needs the terms' IRIs. OntoBoard keeps the module, its
-term list and the import in step.
+term list and the import in step, and adding terms to an import keeps the terms it already had.
 
 ### 5. Model it
 
@@ -102,8 +117,9 @@ the OntoBoard board or in Protégé's usual tabs. Give every term a label; a def
 next reader.
 
 On the board: double-click empty space for a class; select a class and press **Tab** for a
-subclass beside it; right-click a class for *New subclass...* or *New individual of this
-class...*; drag from a box's edge to another box to relate them. Names may have spaces - the label
+subclass beside it, or **Enter** for a sibling below it; right-click a class for *New
+subclass...* or *New individual of this class...*; drag from a box's edge to another box to
+relate them. Names may have spaces - the label
 is what you type. Select a term to see what it is connected to; the **?** on the toolbar has the
 legend and every shortcut.
 
@@ -116,8 +132,11 @@ with your team.
 
 **What you do.** Write each competency question as a SPARQL query in `src/sparql/` that lists
 what *breaks* the rule — "every pizza has a base" becomes "the pizzas with no base". An empty
-answer passes. The guide's **Write a test** button starts you off with a test that explains its
-own shape and passes until you write your rule into it.
+answer passes. You do not have to write the SPARQL: the guide's **Write a test** button - also
+*Project → Write a test from a question...* - offers the rules a first ontology tends to need
+(every kind of pizza has some base; every pizza in the data has a price; nothing is both vegetarian
+and meaty; everything has a label; no pizza has more than N bases), lets you pick the terms by
+their labels, saves the test in `src/sparql/` and runs it at once, naming whatever breaks the rule.
 
 **Why.** A test catches next month's mistake before a user does, and passing tests are how you
 know the ontology answers what it was built for.

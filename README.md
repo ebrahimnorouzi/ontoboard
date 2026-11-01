@@ -44,8 +44,17 @@ Protégé Desktop **5.6.x or 5.5.0**, both smoke-tested in the real host on ever
 
 ## What it does
 
-**Project** — scaffold a new ODK project from a wizard, or open an existing one. Check what
-tooling you have. Edit ID ranges. Audit and refresh imports. Clone a project from GitHub.
+**Project** — scaffold a new ODK project from a wizard - empty, or from the ontology you have
+open - or open an existing one. Check what tooling you have. Edit ID ranges. Audit and refresh
+imports. Clone a project from GitHub. Turn a competency question into a test by picking the terms.
+
+**Terms from other ontologies** — find terms by label in an ontology given by its web address, a
+file, or the page about it, and add them as an import. *Imported terms* shows which term came from
+where, with its label, and adds or takes out terms, rebuilding the import at once.
+
+**A knowledge graph from spreadsheets** — one ROBOT template per kind of thing, identifiers
+generated, names checked across sheets, and each sheet turned into individuals in a graph that
+imports your ontology. [How](docs/knowledge-graph.md)
 
 **Build and release** — run the project's build targets, in-process where possible, in its own
 container or a native ODK environment where not. Compare two releases axiom by axiom. Stamp
@@ -95,7 +104,7 @@ documentation site. The same pages are readable here in [`docs/`](docs/):
 
 ## Status
 
-Early and actively developed, but held to a standard: @@TESTS@@ unit tests, every release
+Early and actively developed, but held to a standard: 2,660 unit tests, every release
 smoke-tested in both Protégé versions, Windows checked in CI, the plugin self-checks on startup,
 and each release ships a receipt in
 [`protege-plugin/tools/smoke-receipt/`](protege-plugin/tools/smoke-receipt/) recording what was
