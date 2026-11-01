@@ -186,12 +186,6 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
     private Timer positionSaveTimer;
     private mxIEventListener cellsMovedListener;
     /**
-     * Enabled only while Protege has an entity selected. The entity tabs sit in the same
-     * OntoBoard tab as the canvas, so the intended gesture is select-then-add; a button that
-     * is always enabled and silently does nothing on an empty selection reads as broken.
-     */
-    private JButton addSelectedButton;
-    /**
      * Whether the reasoner's conclusions are drawn alongside the asserted axioms. Off by default:
      * reasoning costs time on a large ontology, and a diagram should show what the ontology says
      * until someone asks what it means.
@@ -549,7 +543,6 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             OWLEntity selected = getOWLEditorKit().getOWLWorkspace()
                     .getOWLSelectionModel().getSelectedEntity();
             selectionBridge.selectOnCanvas(selected == null ? null : selected.getIRI().toString());
-            describeSelectionOnButton(selected);
         };
         getOWLEditorKit().getOWLWorkspace().getOWLSelectionModel()
                 .addListener(selectionListener);
@@ -616,38 +609,6 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
     }
 
     /**
-     * Adds whatever is selected in Protege's entity tabs to the canvas.
-     *
-     * <p>Both dead ends are answered rather than ignored. With nothing selected the user is told
-     * where to select something, since the tabs that drive this are in the same OntoBoard tab
-     * and easy to overlook. An entity already on the board is selected there instead, because a
-     * board holding fifty nodes gives no clue whether the one you asked for is among them, and
-     * doing nothing at all is indistinguishable from a failure.
-     */
-    public void addSelectedEntityToCanvas() {
-        OWLEntity selected = getOWLEditorKit().getOWLWorkspace()
-                .getOWLSelectionModel().getSelectedEntity();
-        if (selected == null) {
-            JOptionPane.showMessageDialog(this,
-                    "Select a class, property or individual in the tabs on the left first.",
-                    "Nothing selected", JOptionPane.INFORMATION_MESSAGE);
-            return;
-        }
-        String iri = selected.getIRI().toString();
-        rememberBoard("adding " + getOWLModelManager().getRendering(selected));
-        if (membership.add(iri)) {
-            refresh();
-        }
-        if (selectionBridge != null) {
-            selectionBridge.selectOnCanvas(iri);
-        }
-    }
-
-    /**
-     * Puts the selected entity's name on the Add button, so the button says what it will add
-     * rather than leaving the user to check the tree and the board for agreement.
-     */
-    /**
      * A label cut to fit, ending in an ellipsis.
      *
      * <p>Package-private and pure so the rule can be tested at the boundary rather than eyeballed on
@@ -663,29 +624,6 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             return trimmed;
         }
         return trimmed.substring(0, Math.max(1, limit - 1)).trim() + "\u2026";
-    }
-
-    private void describeSelectionOnButton(OWLEntity selected) {
-        if (addSelectedButton == null) {
-            return;
-        }
-        if (addSelectedButton == null) {
-            return;
-        }
-        addSelectedButton.setEnabled(selected != null);
-        if (selected == null) {
-            addSelectedButton.setText("Add selected");
-            addSelectedButton.setToolTipText(
-                    "Select a class, property or individual in the tabs on the left");
-            return;
-        }
-        String label =
-                DisplayLabels.forEntity(getOWLModelManager().getActiveOntology(), selected);
-        // Elided rather than allowed to grow: the button's width is pinned in buildToolBar, so a
-        // long label would otherwise be clipped mid-word by the layout instead of ending in a
-        // character that says there is more. The tooltip carries the whole IRI either way.
-        addSelectedButton.setText("Add " + elide(label, 14));
-        addSelectedButton.setToolTipText("Add " + selected.getIRI() + " to the canvas");
     }
 
     /**
