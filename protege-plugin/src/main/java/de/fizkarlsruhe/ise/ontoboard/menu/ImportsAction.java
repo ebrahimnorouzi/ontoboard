@@ -101,9 +101,11 @@ public class ImportsAction extends OntoBoardAction {
         }
         if (untraceable > 0) {
             result.note(untraceable + " import" + (untraceable == 1 ? " records" : "s record")
-                    + " nothing about which upstream release it holds. Modules extracted with "
-                    + "ROBOT > Import terms record it from now on; an older one has to be "
-                    + "re-extracted before anybody can say what is in it.");
+                    + " nothing about which upstream release it holds. Modules made with "
+                    + "OntoBoard > Find terms in another ontology... "
+                    + "or ROBOT > Import terms from a list... record it; an older one has to be "
+                    + "re-extracted before anybody can say what is in it - "
+                    + "OntoBoard > Imported terms... does that with Rebuild from the source.");
         }
 
         if (!missing.isEmpty()) {

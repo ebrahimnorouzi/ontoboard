@@ -7,6 +7,8 @@ import de.fizkarlsruhe.ise.ontoboard.robot.OntologySource;
 import de.fizkarlsruhe.ise.ontoboard.robot.RobotException;
 import de.fizkarlsruhe.ise.ontoboard.odk.ImportModules;
 import de.fizkarlsruhe.ise.ontoboard.odk.ImportProducts;
+import de.fizkarlsruhe.ise.ontoboard.odk.ImportedTerms;
+import de.fizkarlsruhe.ise.ontoboard.odk.ModuleRebuild;
 import de.fizkarlsruhe.ise.ontoboard.odk.OdkBuildSettings;
 import de.fizkarlsruhe.ise.ontoboard.odk.OdkYaml;
 import de.fizkarlsruhe.ise.ontoboard.robot.TermExtract;
@@ -158,8 +160,28 @@ public class ImportTermsAction extends OntoBoardAction {
         return own.isPresent() ? own.get().toString() : null;
     }
 
+    /**
+     * Runs with what it was seeded with and the usual choices - BOT, saved and imported, in the
+     * ODK place - without the dialog. Find terms' one-step "Add them", which names the files it
+     * will write before it is pressed; its "Advanced..." opens the dialog instead.
+     */
+    void withoutAsking() {
+        this.askNothing = true;
+    }
+
+    private volatile boolean askNothing = false;
+
     @Override
     protected boolean configure() {
+        if (askNothing) {
+            sourceText = seededSource;
+            termsText = seededTerms;
+            termFileText = "";
+            method = TermExtract.DEFAULT_METHOD;
+            outcome = Outcome.SAVE_AND_IMPORT;
+            moduleFileText = "";
+            return true;
+        }
         Map<String, String> values = new LinkedHashMap<String, String>();
         values.put(OPTION_SOURCE, seededSource);
         values.put(OPTION_TERMS, seededTerms);
@@ -334,8 +356,18 @@ public class ImportTermsAction extends OntoBoardAction {
         IRI moduleIri = TermExtract.moduleIriIn(
                 ontology.getOntologyID().getOntologyIRI().isPresent()
                         ? ontology.getOntologyID().getOntologyIRI().get() : null, source);
+        // A module already on disk keeps the IRI it declares: the one its import statement and
+        // catalog entry already use. A newly made-up IRI would name neither.
+        if (outcome != Outcome.ADD_AXIOMS) {
+            IRI declared = ModuleRebuild.declaredIriOf(moduleFileFor(ontology, source));
+            if (declared != null) {
+                moduleIri = declared;
+            }
+        }
+        java.util.List<IRI> extracting = withWhatWasImportedBefore(ontology, source,
+                terms.getIris(), result);
         TermExtract.Result extracted =
-                TermExtract.run(source, terms.getIris(), method, moduleIri);
+                TermExtract.run(source, extracting, method, moduleIri);
         // Which release this module was cut from, recorded in the module itself. Without it a
         // module in src/ontology/imports/ says nothing about where it came from: nobody dares
         // regenerate it, because regenerating means guessing, and nobody can tell whether the
@@ -383,12 +415,53 @@ public class ImportTermsAction extends OntoBoardAction {
                 return copyIn(ontology, extracted, result);
             case SAVE_ONLY:
                 return save(extracted, result, false, ontology, moduleIri, source,
-                        terms.getIris(), sourceIri);
+                        extracting, sourceIri);
             case SAVE_AND_IMPORT:
             default:
                 return save(extracted, result, true, ontology, moduleIri, source,
-                        terms.getIris(), sourceIri);
+                        extracting, sourceIri);
         }
+    }
+
+    /**
+     * The terms to extract: these, together with every term this source's import already has.
+     *
+     * <p>Importing more terms from an ontology that is already imported used to replace its
+     * module and term list with the new terms alone, so everything imported from it before
+     * disappeared - and with it every axiom of yours that used one of those terms lost its
+     * label and its parents. Terms are now only added here; taking one out is what
+     * OntoBoard &gt; Imported terms... is for.
+     */
+    private java.util.List<IRI> withWhatWasImportedBefore(OWLOntology ontology,
+            OWLOntology source, java.util.List<IRI> requested, OperationResult.Builder result) {
+        File projectRoot = projectRootFor(ontology);
+        if (outcome == Outcome.ADD_AXIOMS || projectRoot == null
+                || patternBeingImported() != null) {
+            return requested;
+        }
+        File list = ImportModules.termsFileFor(projectRoot, TermExtract.shortNameOf(source));
+        java.util.List<IRI> before;
+        try {
+            before = list.isFile() ? ImportModules.readTerms(list)
+                    : java.util.Collections.<IRI>emptyList();
+        } catch (IOException unreadable) {
+            result.warn("Could not read " + list.getAbsolutePath() + " (" + unreadable.getMessage()
+                    + "), so only the terms given here are in the module.");
+            return requested;
+        }
+        if (before.isEmpty()) {
+            return requested;
+        }
+        java.util.LinkedHashSet<IRI> all = new java.util.LinkedHashSet<IRI>(before);
+        all.addAll(requested);
+        int joining = all.size() - before.size();
+        result.note(TermExtract.shortNameOf(source) + " was imported before, with " + before.size()
+                + (before.size() == 1 ? " term. " : " terms. ")
+                + (joining == 0 ? "These are all among them, so the module is rebuilt as it was."
+                        : joining + (joining == 1 ? " joins" : " join") + " them; nothing "
+                                + "imported before is taken out. To take terms out, use "
+                                + "OntoBoard > Imported terms..."));
+        return new ArrayList<IRI>(all);
     }
 
     /** Both boxes, combined, with this ontology's prefixes so its own CURIEs resolve. */
@@ -623,6 +696,24 @@ public class ImportTermsAction extends OntoBoardAction {
         }
         try {
             String pattern = patternBeingImported();
+            File existing = ImportModules.termsFileFor(projectRoot,
+                    TermExtract.shortNameOf(source));
+            if (existing.isFile() && pattern == null) {
+                // Spliced, not rewritten, so its comments and its order stay as they were.
+                String before = new String(java.nio.file.Files.readAllBytes(existing.toPath()),
+                        java.nio.charset.StandardCharsets.UTF_8);
+                Map<IRI, String> labels = new LinkedHashMap<IRI, String>();
+                for (IRI term : terms) {
+                    labels.put(term, labelIn(source, term));
+                }
+                String after = ImportedTerms.withTerms(before, labels);
+                if (!after.equals(before)) {
+                    java.nio.file.Files.write(existing.toPath(),
+                            after.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                    result.wrote(existing);
+                }
+                return;
+            }
             File written = ImportModules.writeTerms(projectRoot, TermExtract.shortNameOf(source),
                     terms, recordedSource(source, sourceIri, pattern), pattern);
             result.wrote(written);
@@ -631,6 +722,19 @@ public class ImportTermsAction extends OntoBoardAction {
                     + cannotWrite.getMessage() + ". Without it nobody can rebuild "
                     + moduleFile.getName() + ".");
         }
+    }
+
+    /** A term's label in the ontology it is taken from, or null. */
+    private static String labelIn(OWLOntology source, IRI term) {
+        for (org.semanticweb.owlapi.model.OWLEntity entity : source.getEntitiesInSignature(term,
+                org.semanticweb.owlapi.model.parameters.Imports.INCLUDED)) {
+            String label = de.fizkarlsruhe.ise.ontoboard.model.DisplayLabels.forEntity(source,
+                    entity);
+            if (label != null && !label.trim().isEmpty() && !label.equals(term.toString())) {
+                return label;
+            }
+        }
+        return null;
     }
 
     /**

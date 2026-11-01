@@ -208,12 +208,12 @@
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
-  <extension id="menu.OntoBoard.project.termLists"
+  <extension id="menu.OntoBoard.project.importedTerms"
              point="org.protege.editor.core.application.EditorKitMenuAction">
-    <name value="Term lists..."/>
+    <name value="Imported terms..."/>
     <path value="ontoboard.menu.OntoBoard.project/SlotC-D"/>
-    <toolTip value="View and edit the &lt;import&gt;_terms.txt files an import is rebuilt from"/>
-    <class value="de.fizkarlsruhe.ise.ontoboard.odk.TermListAction"/>
+    <toolTip value="Which terms come from which ontology, with their labels - add more, or take some out"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.menu.ImportedTermsAction"/>
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
@@ -241,6 +241,15 @@
     <toolTip value="The steps from an idea to a released ontology, where your project is along them, and a button for each"/>
     <class value="de.fizkarlsruhe.ise.ontoboard.menu.GuideAction"/>
     <path value="ontoboard.menu.OntoBoard/SlotA-0"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
+
+  <extension id="menu.OntoBoard.importedterms"
+             point="org.protege.editor.core.application.EditorKitMenuAction">
+    <name value="Imported terms..."/>
+    <toolTip value="Which terms come from which ontology, with their labels - add more, or take some out"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.menu.ImportedTermsAction"/>
+    <path value="ontoboard.menu.OntoBoard/SlotBU-D"/>
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
@@ -385,8 +394,8 @@
 
   <extension id="menu.OntoBoard.robot.importTerms"
              point="org.protege.editor.core.application.EditorKitMenuAction">
-    <name value="Import terms..."/>
-    <toolTip value="Extract a module from another ontology and import it, catalog entry and all"/>
+    <name value="Import terms from a list..."/>
+    <toolTip value="Extract a module from another ontology for terms you already have the IRIs of, and import it - catalog entry and all"/>
     <class value="de.fizkarlsruhe.ise.ontoboard.menu.ImportTermsAction"/>
     <path value="ontoboard.menu.OntoBoard.robot/SlotB-B"/>
     <editorKitId value="OWLEditorKit"/>

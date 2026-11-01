@@ -247,8 +247,8 @@ public final class TermCreation {
             // textual entity" - so saying the right thing here matters more than the count.
             return Proposal.refused(label, "\"" + label + "\" is the kind of thing this row is, "
                     + "so it has to be a class in the ontology rather than a row in a sheet. "
-                    + "Bring it in with Import terms..., or write its IRI here if it is already "
-                    + "in an import.");
+                    + "Bring it in with OntoBoard > Find terms in another ontology..., or write "
+                    + "its IRI here if it is already in an import.");
         }
 
         String target = targetFor(book, sheetName, column, spec);

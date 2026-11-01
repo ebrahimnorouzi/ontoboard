@@ -207,7 +207,8 @@ class TermCreationTest {
         assertFalse(proposal.isPossible());
         assertTrue(proposal.getRefusal().contains("class in the ontology"),
                 proposal.getRefusal());
-        assertTrue(proposal.getRefusal().contains("Import terms"), proposal.getRefusal());
+        assertTrue(proposal.getRefusal().contains("Find terms in another ontology"),
+                proposal.getRefusal());
     }
 
     @Test

@@ -102,9 +102,27 @@ public final class OntologySource {
      *     a malformed file need different responses from a user
      */
     public static OWLOntology load(OWLOntologyManager manager, IRI iri) {
+        return load(manager, iri, null, null, null);
+    }
+
+    /**
+     * {@link #load}, with a way to stop it and to watch it. Sentences worth showing the user -
+     * that the address was a page about the ontology, that an import could not be read - are
+     * added to {@code notes} when it is not null.
+     *
+     * <p>A web address is read by {@link WebOntology}, which gives up on a silent server after
+     * {@link WebOntology#SILENT_SECONDS} instead of the OWL API's minutes - unless the manager
+     * maps that address to somewhere else, a catalog's local copy say, which is then what loads.
+     */
+    public static OWLOntology load(OWLOntologyManager manager, IRI iri,
+            WebOntology.Attempt attempt, WebOntology.Progress progress, List<String> notes) {
         OWLOntology alreadyOpen = findAlreadyLoaded(manager, iri);
         if (alreadyOpen != null) {
             return alreadyOpen;
+        }
+        if (WebOntology.isWebAddress(iri) && !isMappedElsewhere(manager, iri)) {
+            return WebOntology.load(manager, iri, attempt, progress,
+                    notes == null ? new ArrayList<String>() : notes);
         }
         try {
             return manager.loadOntology(iri);
@@ -127,9 +145,26 @@ public final class OntologySource {
      * or take a term from, and the message names the import, not the ontology the user asked for.
      */
     public static OWLOntology loadLeavingOutMissingImports(OWLOntologyManager manager, IRI iri) {
+        return loadLeavingOutMissingImports(manager, iri, null, null, null);
+    }
+
+    /** {@link #loadLeavingOutMissingImports}, stoppable and watchable as {@link #load} is. */
+    public static OWLOntology loadLeavingOutMissingImports(OWLOntologyManager manager, IRI iri,
+            WebOntology.Attempt attempt, WebOntology.Progress progress, List<String> notes) {
         manager.setOntologyLoaderConfiguration(manager.getOntologyLoaderConfiguration()
                 .setMissingImportHandlingStrategy(MissingImportHandlingStrategy.SILENT));
-        return load(manager, iri);
+        return load(manager, iri, attempt, progress, notes);
+    }
+
+    /** Whether one of the manager's IRI mappers sends this address somewhere else. */
+    private static boolean isMappedElsewhere(OWLOntologyManager manager, IRI iri) {
+        for (org.semanticweb.owlapi.model.OWLOntologyIRIMapper mapper : manager.getIRIMappers()) {
+            IRI document = mapper.getDocumentIRI(iri);
+            if (document != null && !document.equals(iri)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** The imports declared anywhere in {@code ontology}'s closure that are not loaded. */

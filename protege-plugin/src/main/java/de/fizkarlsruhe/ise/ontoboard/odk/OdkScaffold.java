@@ -633,7 +633,7 @@ public final class OdkScaffold {
         return "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
                 + "<catalog prefer=\"public\" xmlns=\"urn:oasis:names:tc:entity:xmlns:xml:catalog\">\n"
                 + "    <!-- Map import IRIs to local files in imports/ as you add them.\n"
-                + "         ROBOT > Import terms... adds an entry here for every module it saves,\n"
+                + "         Find terms and Import terms add an entry here for every module they save,\n"
                 // No double hyphen anywhere in here: "--" is illegal inside an XML comment, and a
                 // catalog that does not parse fails every robot call in the generated build. An
                 // earlier wording of this comment named the catalog command-line flag literally and

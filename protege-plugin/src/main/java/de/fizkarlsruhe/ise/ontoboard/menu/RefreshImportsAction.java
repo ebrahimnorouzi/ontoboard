@@ -1,6 +1,7 @@
 package de.fizkarlsruhe.ise.ontoboard.menu;
 
 import de.fizkarlsruhe.ise.ontoboard.odk.ImportModules;
+import de.fizkarlsruhe.ise.ontoboard.odk.ModuleRebuild;
 import de.fizkarlsruhe.ise.ontoboard.odk.ImportProducts;
 import de.fizkarlsruhe.ise.ontoboard.robot.OntologySource;
 import de.fizkarlsruhe.ise.ontoboard.robot.TermExtract;
@@ -177,8 +178,8 @@ public class RefreshImportsAction extends OntoBoardAction {
                     noTermList++;
                     result.warn(row.getName() + " is declared as " + row.describeDeclaration()
                             + " but has no term list, so neither this nor "
-                            + "`make refresh-imports` can build it. Run ROBOT > Import terms... "
-                            + "for it to write one.");
+                            + "`make refresh-imports` can build it. Run "
+                            + "ROBOT > Import terms from a list... for it to write one.");
                     break;
                 case REFUSED:
                     // Named rather than rebuilt approximately. Each reason is ODK's own rule for
@@ -195,9 +196,9 @@ public class RefreshImportsAction extends OntoBoardAction {
                     result.warn(row.getName() + " is in " + ImportModules.IMPORTS_DIRECTORY
                             + " but the project settings do not list it (import_group.products),"
                             + " so a build made with ODK itself would never update it. To list"
-                            + " it, run ROBOT > Import terms... once more for the same source and"
-                            + " terms - that records it. If the module is no longer used, delete"
-                            + " the file.");
+                            + " it, run ROBOT > Import terms from a list... once more for the same"
+                            + " source and terms - that records it. If the module is no longer"
+                            + " used, delete the file.");
                     break;
                 case PATTERN:
                     patterns++;
@@ -211,8 +212,8 @@ public class RefreshImportsAction extends OntoBoardAction {
             if (row.willRebuild()) {
                 rebuildable++;
                 if (rebuild) {
-                    rebuilt += rebuildOne(module, row.getSource(), row.getMethod(), root, result)
-                            ? 1 : 0;
+                    rebuilt += rebuildOne(ontology, module, row.getSource(), row.getMethod(),
+                            root, result) ? 1 : 0;
                 }
             }
         }
@@ -233,9 +234,10 @@ public class RefreshImportsAction extends OntoBoardAction {
             result.warn("The project settings list no imports (import_group.products is "
                     + "empty), so a build made with ODK itself would update none of the modules "
                     + "in " + ImportModules.IMPORTS_DIRECTORY + ". Modules made by earlier "
-                    + "versions of OntoBoard were not listed; running ROBOT > Import terms... "
-                    + "again for each one lists it, which is what makes the project build for "
-                    + "anyone else.");
+                    + "versions of OntoBoard were not listed; running "
+                    + "ROBOT > Import terms from a list... "
+                    + "again for each one lists it, which is what makes the project "
+                    + "build for anyone else.");
         }
 
         String counted = declared.size() + " declared" + (undeclared == 0 ? ""
@@ -264,7 +266,7 @@ public class RefreshImportsAction extends OntoBoardAction {
      * {@code module_type_slme: STAR} and getting BOT back would have its module quietly replaced
      * by a larger one that no longer matches what its own CI builds.
      */
-    private boolean rebuildOne(ImportModules.Module module, String source,
+    private boolean rebuildOne(OWLOntology ontology, ImportModules.Module module, String source,
             TermExtract.Method method, File root, OperationResult.Builder result) {
         try {
             List<IRI> terms = ImportModules.readTerms(module.getTermsFile());
@@ -279,12 +281,35 @@ public class RefreshImportsAction extends OntoBoardAction {
             }
 
             OWLOntology upstream = upstreamFor(module, source, root, result);
-            IRI moduleIri = IRI.create(module.getModuleFile().toURI());
-            TermExtract.Result extracted = TermExtract.run(upstream, terms, method, moduleIri);
+            // The IRI the module already declares, which its import statement and catalog entry
+            // use. This was the module file's own address, file:/..., so a refresh left the edit
+            // file importing an IRI no module answered to, and put a path on this machine into
+            // the next release.
+            IRI moduleIri = ModuleRebuild.declaredIriOf(module.getModuleFile());
+            if (moduleIri == null) {
+                moduleIri = TermExtract.moduleIriIn(
+                        ontology.getOntologyID().getOntologyIRI().isPresent()
+                                ? ontology.getOntologyID().getOntologyIRI().get() : null,
+                        upstream);
+            }
+            TermExtract.Result extracted = ModuleRebuild.extract(upstream, terms, method,
+                    moduleIri, de.fizkarlsruhe.ise.ontoboard.prov.Provenance.today());
 
             extracted.getModule().getOWLOntologyManager().saveOntology(extracted.getModule(),
                     IRI.create(module.getModuleFile().toURI()));
             result.wrote(module.getModuleFile());
+            // And the copy Protege has open, so the session sees the rebuilt module now rather
+            // than after the project is reopened.
+            OWLOntology open = ModuleRebuild.openFrom(ontology, module.getModuleFile());
+            if (open != null) {
+                List<org.semanticweb.owlapi.model.OWLOntologyChange> changes =
+                        ModuleRebuild.changesToMatch(open, extracted.getModule());
+                if (!changes.isEmpty()) {
+                    applyOnEventThread(changes);
+                    javax.swing.SwingUtilities.invokeLater(
+                            () -> getOWLModelManager().setClean(open));
+                }
+            }
             for (IRI missing : extracted.getMissing()) {
                 result.warn(module.getName() + ": " + missing + " is in the term list but not in "
                         + source + " any more. The upstream ontology may have obsoleted it.");
@@ -315,8 +340,14 @@ public class RefreshImportsAction extends OntoBoardAction {
                 // AutoIRIMapper scans the directory and maps each ontology's own IRI to its file,
                 // so loading the source IRI resolves locally with no network at all.
                 OWLOntologyManager offline = OWLManager.createOWLOntologyManager();
-                offline.getIRIMappers().add(
-                        new org.semanticweb.owlapi.util.AutoIRIMapper(mirrorDirectory, true));
+                org.semanticweb.owlapi.util.AutoIRIMapper mirror =
+                        new org.semanticweb.owlapi.util.AutoIRIMapper(mirrorDirectory, true);
+                if (mirror.getDocumentIRI(IRI.create(source)) == null) {
+                    // Asked first: loading an address the mirror lacks falls through to the OWL
+                    // API's own download, which waits minutes on a server that does not answer.
+                    throw new IllegalStateException("the mirror has no copy of it");
+                }
+                offline.getIRIMappers().add(mirror);
                 OWLOntology fromMirror = offline.loadOntology(IRI.create(source));
                 result.note(module.getName() + ": read " + source + " from the mirror.");
                 return fromMirror;

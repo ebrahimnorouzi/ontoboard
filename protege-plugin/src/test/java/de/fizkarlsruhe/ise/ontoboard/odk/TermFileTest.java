@@ -228,4 +228,24 @@ class TermFileTest {
     void noTermIsRefused() {
         assertThrows(IllegalArgumentException.class, () -> TermFile.with(REAL, null, "x"));
     }
+
+    /**
+     * An IRI with a fragment: its {@code #} is part of the term, and only a {@code #} after a
+     * space starts the comment. The first {@code #} on the line used to be taken as the comment,
+     * which read this term as {@code http://example.org/pizza}.
+     */
+    @Test
+    void aTermWhoseIriHasAFragmentIsReadWhole() {
+        String text = "# Terms\nhttp://example.org/pizza#Margherita # margherita\n"
+                + "http://www.w3.org/ns/prov#Agent\n";
+
+        List<TermFile.Line> lines = TermFile.linesIn(text);
+
+        assertEquals(IRI.create("http://example.org/pizza#Margherita"), lines.get(1).getTerm());
+        assertEquals("margherita", lines.get(1).getComment());
+        assertEquals(IRI.create("http://www.w3.org/ns/prov#Agent"), lines.get(2).getTerm());
+        assertEquals("", lines.get(2).getComment());
+        assertThrows(IllegalArgumentException.class, () -> TermFile.with(text,
+                IRI.create("http://example.org/pizza#Margherita"), null), "already on the list");
+    }
 }
