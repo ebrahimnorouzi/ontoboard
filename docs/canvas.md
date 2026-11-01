@@ -21,14 +21,36 @@ The board is laid out as an outline (*Arrange → Outline*):
 | | Where |
 |---|---|
 | Design patterns the ontology imports, or has merged in | a frame each, named after the pattern, along the top |
-| Classes | a tree read left to right: a class, then its subclasses stacked in the next column |
-| Individuals | in the column right of their class |
-| A class's restrictions, unions, enumerations | a grey node in the column right of the class |
-| Object properties, data properties | each a frame of its own, as its property hierarchy |
-| A subtree too tall for a screen | a block of its own; blocks stand in columns |
+| Classes - the TBox | trees read top down: a class above its subclasses, centred over them; many leaves under one class in a grid below it; trees side by side, wrapping at about a screen's width |
+| A class's restrictions, unions, enumerations | a grey node below the class, with its subclasses |
+| Individuals - the ABox | a band below all the classes: each class's individuals under that class, in a column; an individual's values right below it |
+| Object properties, data properties | each a frame of its own, right of the classes, as its property hierarchy |
 
-MWO 3.0.2 under the layered layout every board used to get: 32,335 × 10,078 px. As an outline:
-18,003 × 5,541 px, no two boxes overlapping.
+On pizza (86 terms) and MWO (660), measured in Protégé 5.6.9: no two boxes overlap, and no line
+passes through a frame neither of its ends is in.
+
+
+## Description logic
+
+Arrows and grey nodes are written in description logic:
+
+| On the board | Means | Line |
+|---|---|---|
+| `∃ R` | some: every A relates by R to some B | solid blue |
+| `∀ R` | only: whatever an A relates to by R is a B | dashed, diamond head |
+| `≥ n R`, `≤ n R`, `= n R` | at least, at most, exactly n | dotted, round head |
+| `∃ R.{…}` | has the value: the arrow points at the individual | solid blue |
+| `¬ R` | a negative assertion between two individuals | grey, dashed |
+| `⊓`, `⊔`, `¬`, `{ … }` | and, or, not, one of - a grey node, its parts hanging off it | |
+| `R⁻` | the inverse of R | |
+| `≡` before a name | a defined class | |
+
+A subclass arrow (⊑) is a hollow-headed solid line; an equivalence is two of them. The legend,
+*?* on the toolbar, has every line.
+
+**From the description view to the board.** Select a line in Protégé's description of a class -
+*SubClass Of: ∃ hasTopping.Cheese* - and the board selects the arrows that draw it, with the terms
+at their ends, and scrolls to them.
 
 ## Drawn
 
@@ -37,7 +59,7 @@ Every logical axiom in both ontologies - 921 of 921 in MWO, 529 of 529 in NFDIco
 | Axiom | Drawn as | On MWO |
 |---|---|---|
 | `SubClassOf(A B)` | hollow-headed arrow | 391 |
-| `SubClassOf(A, R some/only/min/max/exactly B)` | arrow labelled `R`, with the qualifier unless it is `some` | 86 |
+| `SubClassOf(A, R some/only/min/max/exactly B)` | arrow labelled `∃ R`, `∀ R`, `≥ n R`, `≤ n R` or `= n R`, each with its own line | 86 |
 | `SubClassOf(A, B ⊓ …)` | an arrow to each named conjunct, the rest as below | 36 |
 | `EquivalentClasses(A B)` | two hollow arrows | - |
 | `EquivalentClasses(A, R some B)` and other definitions | as `SubClassOf`, both ways | 51 |
