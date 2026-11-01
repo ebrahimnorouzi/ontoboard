@@ -67,3 +67,7 @@ build/bfo-notime.owl
 # opens in the plugin - mwo301.ttl grew a 3,164-line one the first time all 524 of its terms
 # went on a board - and it is per-person board furniture, not shared state.
 *.ontoboard.json
+
+# Test projects built with OntoBoard (test/pizza, test/pizza-bfo). Each is a git repository of
+# its own, with a tag for every release, so it is not part of this one.
+/test/

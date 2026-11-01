@@ -437,8 +437,12 @@ public final class ImportedTerms {
                 terms);
     }
 
-    /** The terms an imported ontology brings: its own signature, OWL's built-ins left out. */
-    static List<OWLEntity> termsOf(OWLOntology part) {
+    /**
+     * The terms an imported ontology brings: its own signature, with OWL's built-ins and the
+     * OWL, RDF, RDFS and XSD vocabularies left out - a module that records the date it was cut
+     * declares {@code xsd:date}, which is not a term anybody imported.
+     */
+    public static List<OWLEntity> termsOf(OWLOntology part) {
         List<OWLEntity> terms = new ArrayList<OWLEntity>();
         for (OWLEntity entity : part.getSignature(Imports.EXCLUDED)) {
             if (entity.isBuiltIn() || isStandardVocabulary(entity.getIRI())) {

@@ -569,18 +569,8 @@ public class ImportedTermsAction extends ProtegeOWLAction {
         }
         getOWLModelManager().applyChanges(changes);
         getOWLModelManager().save(open);
-        return "The module now has " + ImportedTermsCount.of(open) + " terms, and is saved.";
-    }
-
-    /** A term count for the status line, OWL's built-ins left out. */
-    private static final class ImportedTermsCount {
-        static int of(OWLOntology module) {
-            int count = 0;
-            for (OWLEntity entity : module.getSignature(Imports.EXCLUDED)) {
-                count += entity.isBuiltIn() ? 0 : 1;
-            }
-            return count;
-        }
+        return "The module now has " + ImportedTerms.termsOf(open).size()
+                + " terms, and is saved.";
     }
 
     private void showInProtege() {

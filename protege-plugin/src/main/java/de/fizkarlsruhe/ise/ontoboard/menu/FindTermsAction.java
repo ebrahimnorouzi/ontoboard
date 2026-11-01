@@ -319,17 +319,31 @@ public class FindTermsAction extends ProtegeOWLAction {
         OWLOntology yours = getOWLModelManager() == null ? null
                 : getOWLModelManager().getActiveOntology();
         if (yours != null) {
-            for (OWLOntology part : yours.getImportsClosure()) {
-                if (part.equals(yours)) {
-                    continue;
-                }
-                IRI from = de.fizkarlsruhe.ise.ontoboard.robot.ImportProvenance.sourceOf(part);
-                if (from == null && part.getOntologyID().getOntologyIRI().isPresent()
-                        && WebOntology.isWebAddress(part.getOntologyID().getOntologyIRI().get())) {
-                    from = part.getOntologyID().getOntologyIRI().get();
-                }
-                if (from != null && WebOntology.isWebAddress(from)) {
-                    sources.put(from.toString(), "already imported by your ontology");
+            // Where each import says it was read from - the address its term list records, as
+            // Imported terms shows it - rather than the upstream's ontology IRI, which for BFO 2020
+            // is the unversioned bfo.owl. A pattern's module is left out: the pattern library
+            // brings those, and their IRIs are not addresses anything answers at.
+            java.io.File editFile = null;
+            try {
+                java.net.URI document = getOWLModelManager().getOWLOntologyManager()
+                        .getOntologyDocumentIRI(yours).toURI();
+                editFile = "file".equalsIgnoreCase(document.getScheme())
+                        ? new java.io.File(document) : null;
+            } catch (RuntimeException notAFile) {
+                editFile = null;
+            }
+            java.io.File root = editFile == null ? null : ReleaseAction.projectRootOf(editFile);
+            for (de.fizkarlsruhe.ise.ontoboard.odk.ImportedTerms.Source source
+                    : de.fizkarlsruhe.ise.ontoboard.odk.ImportedTerms.of(yours, root,
+                            editFile == null ? null : editFile.getParentFile())) {
+                String from = source.getFrom();
+                boolean fromTheWeb = from != null && (from.startsWith("http://")
+                        || from.startsWith("https://"));
+                if (fromTheWeb && source.getPattern() == null
+                        && (source.getModule() != null || isFetchable(from))) {
+                    sources.put(from, source.getModule() != null
+                            ? "already imported: " + source.getName()
+                            : "imported whole by your ontology");
                 }
             }
         }
@@ -344,6 +358,12 @@ public class FindTermsAction extends ProtegeOWLAction {
         sources.putIfAbsent("http://www.w3.org/2004/02/skos/core",
                 "SKOS - concepts and vocabularies");
         return sources;
+    }
+
+    /** Not one of OntoBoard's own pattern IRIs, which name no address on the web. */
+    private static boolean isFetchable(String address) {
+        return !address.startsWith("https://ontoboard.org/patterns/")
+                && !address.startsWith("http://www.ontoboard.org/");
     }
 
     private static String escape(String text) {
