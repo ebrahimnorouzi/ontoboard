@@ -513,7 +513,12 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                 sayOnceThatMovesStayHere();
             }
             capturePositions();
-            positionSaveTimer.restart();
+            // A board being laid out is saved, or not, by whatever laid it out. The outline drawn
+            // when a board first opens is deliberately not saved, and restarting the timer here
+            // saved it 800ms later all the same - so opening a tab left a file beside the ontology.
+            if (!arranging) {
+                positionSaveTimer.restart();
+            }
         };
         graph.addListener(mxEvent.CELLS_MOVED, cellsMovedListener);
         installFrameDragging();
@@ -613,14 +618,33 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         if (cellsMovedListener != null) {
             graph.removeListener(cellsMovedListener);
         }
+        saveOnTheWayOut();
+    }
+
+    /**
+     * Saves the board on its way out - the view closing, or another ontology becoming active - if
+     * there is anything to keep.
+     *
+     * <p>The debounce timer is stopped first so it cannot fire afterwards, and the save it would
+     * have done is done here: a drag just before closing must not be lost because the 800ms quiet
+     * period never elapsed. Otherwise only a board saved before is written. Every change saves as
+     * it happens, so a board with no file was opened and left untouched - and both ways out used to
+     * write one regardless: Protégé makes the ontology active again while it builds its menus, so
+     * merely opening a file left {@code .ontoboard.json} beside it in somebody's repository, and
+     * froze an outline that is otherwise drawn afresh, so a pattern recognised later never got its
+     * frame.
+     */
+    private void saveOnTheWayOut() {
+        boolean moveWaiting = positionSaveTimer != null && positionSaveTimer.isRunning();
         if (positionSaveTimer != null) {
-            // Stop the debounce timer so it cannot fire after this view is gone, then do
-            // the save it would have done - a drag immediately before closing must not be
-            // lost just because the 800ms quiet period never elapsed.
             positionSaveTimer.stop();
         }
-        capturePositions();
-        saveLayoutTo(layoutFile);
+        if (moveWaiting || (layoutFile != null
+                && de.fizkarlsruhe.ise.ontoboard.layout.CanvasLayoutStore.sidecarFor(layoutFile)
+                        .isFile())) {
+            capturePositions();
+            saveLayoutTo(layoutFile);
+        }
     }
 
     /**
@@ -4401,7 +4425,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
      *
      * <ol>
      *   <li>Capture live node positions from the still-on-screen outgoing diagram into
-     *       {@link #layout}.
+     *       {@link #layout}, if there is anything to keep - see {@link #saveOnTheWayOut}.
      *   <li>Save that {@link #layout} to {@link #currentOntologyFile} - the file recorded
      *       when it was loaded, i.e. the OUTGOING ontology's sidecar. Recomputing the file
      *       here via {@code getActiveOntology()} would resolve to the incoming ontology's
@@ -4415,8 +4439,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
      * </ol>
      */
     private void switchToActiveOntology() {
-        capturePositions();
-        saveLayoutTo(layoutFile);
+        saveOnTheWayOut();
 
         stopCollaborationIfTheOntologyChanged();
         loadLayoutForActiveOntology();

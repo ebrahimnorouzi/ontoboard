@@ -82,7 +82,7 @@ individual views in a tabbed column beside the canvas, so none of this needs a t
 | Labels from `rdfs:label`, namespace colours | 🔶 | ✅ | Plugin colours by namespace and prefers labels |
 | Selection synced with the editor | ➖ | ✅ | **New capability** — impossible in the web app |
 | Live redraw on external edits | ➖ | ✅ | Canvas is a view over Protégé's model |
-| Layout persistence | ✅ | ✅ | Plugin keeps it in a sidecar, so the ontology stays byte-clean |
+| Layout persistence | ✅ | ✅ | Plugin keeps it in a sidecar, so the ontology stays byte-clean. Since 1.133.0 the sidecar is written from the first change to the board, so opening an ontology leaves no file beside it |
 | Frames and sticky notes | ✅ | ✅ | Right-click the canvas; kept in the sidecar, so they never reach a release |
 | Editorial notes on the canvas | ❌ | ✅ | **New capability.** Right-click a term for its `IAO:0000116` editor note, read and written in place. The same note *Terms → Note on the selected term…* writes - an axiom, not a diagram annotation, so it travels with the ontology and reaches a live peer |
 | Undo/redo, axioms | ✅ | ✅ | Protégé's own undo, which is stronger than the web app's 50-snapshot stack |

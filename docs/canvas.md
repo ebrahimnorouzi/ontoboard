@@ -14,6 +14,11 @@ anywhere in Protégé appears beside its superclass. *Hide from board* takes one
 *More → Show every term* brings them back. A board saved by OntoBoard before 1.131.0 keeps the terms
 chosen then, and says so.
 
+The board is written to `<ontology file>.ontoboard.json`, beside the ontology, from your first change
+to it - a move, a hidden term, a note - and not before: an ontology opened and closed leaves no file.
+Until 1.133.0 one was written anyway, as Protégé closed or made the ontology active again, and that
+file then kept the outline of the day it was written.
+
 ## Where things go
 
 The board is laid out as an outline (*Arrange → Outline*):
