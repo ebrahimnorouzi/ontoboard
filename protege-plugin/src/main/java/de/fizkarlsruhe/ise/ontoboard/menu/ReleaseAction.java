@@ -384,14 +384,18 @@ public class ReleaseAction extends OntoBoardAction {
         // was then written over it: inferences materialised as asserted axioms, editorial notes
         // stripped if that box was ticked, a dated versionIRI stamped in - while the dialog said
         // the edit file would not be modified.
+        // An ontology saved by hand, not in a project folder: its published copy would be the
+        // file itself. That used to refuse the release and tell the user to move their files;
+        // the dated copy under releases/ is safe wherever the file is, so it is made, and only
+        // the copy at the top - the one that would overwrite the edit file - is left out.
+        boolean publishAtTop = true;
         try {
             if (published.getCanonicalFile().equals(editFile.getCanonicalFile())) {
-                return result.failed("The release would be written over " + editFile.getName()
-                        + ", which is the file you have open. That happens when the ontology is "
-                        + "not in an ODK layout: the published copy is named after the ontology "
-                        + "and lands beside it. Move the ontology into src/ontology/ (or rename "
-                        + "it <id>-edit.owl) so the release has somewhere of its own to go.")
-                        .build();
+                publishAtTop = false;
+                result.note("Not in a project folder, so the release is kept under releases/"
+                        + " beside " + editFile.getName() + ", and no copy is written over the"
+                        + " file you edit. OntoBoard > Project > New ODK project... makes a"
+                        + " project whose releases also get a published copy of their own.");
             }
         } catch (java.io.IOException cannotCompare) {
             return result.failed("Could not work out where the release would go relative to "
@@ -408,8 +412,10 @@ public class ReleaseAction extends OntoBoardAction {
                     : formats.getWritable()) {
                 manager.saveOntology(release, format.newWriter(),
                         IRI.create(ExportFormats.named(dated, format).toURI()));
-                manager.saveOntology(release, format.newWriter(),
-                        IRI.create(ExportFormats.named(published, format).toURI()));
+                if (publishAtTop) {
+                    manager.saveOntology(release, format.newWriter(),
+                            IRI.create(ExportFormats.named(published, format).toURI()));
+                }
             }
         } catch (Exception cannotWrite) {
             return result.failed("Could not write the release: " + cannotWrite.getMessage())
@@ -418,7 +424,9 @@ public class ReleaseAction extends OntoBoardAction {
         for (de.fizkarlsruhe.ise.ontoboard.odk.ExportFormats.Format format
                 : formats.getWritable()) {
             result.wrote(ExportFormats.named(dated, format));
-            result.wrote(ExportFormats.named(published, format));
+            if (publishAtTop) {
+                result.wrote(ExportFormats.named(published, format));
+            }
         }
         // What the project asked for and did not get. A release missing a file somebody's
         // pipeline consumes is worse when nothing said it was missing.
@@ -461,9 +469,9 @@ public class ReleaseAction extends OntoBoardAction {
                     + "its own.");
         }
         return result.summary("Released " + id + " " + version.getText() + ": "
-                + release.getAxiomCount()
-                + " axioms, written to " + published.getName() + " and kept as "
-                + relative(projectRoot, dated) + ".").build();
+                + release.getAxiomCount() + " axioms, "
+                + (publishAtTop ? "written to " + published.getName() + " and " : "")
+                + "kept as " + relative(projectRoot, dated) + ".").build();
     }
 
     /**

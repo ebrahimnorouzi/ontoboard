@@ -193,11 +193,11 @@ public class RefreshImportsAction extends OntoBoardAction {
                 case UNDECLARED:
                     undeclared++;
                     result.warn(row.getName() + " is in " + ImportModules.IMPORTS_DIRECTORY
-                            + " but is not in this project's import_group.products. ODK builds "
-                            + "its IMPORTS list from that key, so `make refresh-imports` leaves "
-                            + "this file alone and nothing regenerates it. Add it as a product - "
-                            + "Project > Project configuration..., \"Add to a list...\" - or "
-                            + "delete the file.");
+                            + " but the project settings do not list it (import_group.products),"
+                            + " so a build made with ODK itself would never update it. To list"
+                            + " it, run ROBOT > Import terms... once more for the same source and"
+                            + " terms - that records it. If the module is no longer used, delete"
+                            + " the file.");
                     break;
                 case PATTERN:
                     patterns++;
@@ -230,12 +230,11 @@ public class RefreshImportsAction extends OntoBoardAction {
             // every project it generates, and ROBOT > Import terms... writes the module, the term
             // list and the catalog entry without adding the product - so a repository built
             // entirely with this plugin has imports that ODK's own build does not know about.
-            result.warn("This project declares no imports in import_group.products, so ODK's "
-                    + "IMPORTS list is empty: `make refresh-imports` and `make all_imports` "
-                    + "build nothing, whatever is in " + ImportModules.IMPORTS_DIRECTORY + ". If "
-                    + "OntoBoard made this project, that is OntoBoard's doing - its scaffold "
-                    + "writes an empty products list and Import terms... does not add to it. "
-                    + "Adding each import as a product is what makes the repository build for "
+            result.warn("The project settings list no imports (import_group.products is "
+                    + "empty), so a build made with ODK itself would update none of the modules "
+                    + "in " + ImportModules.IMPORTS_DIRECTORY + ". Modules made by earlier "
+                    + "versions of OntoBoard were not listed; running ROBOT > Import terms... "
+                    + "again for each one lists it, which is what makes the project build for "
                     + "anyone else.");
         }
 

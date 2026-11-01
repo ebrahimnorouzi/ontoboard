@@ -6,6 +6,8 @@ with nothing else installed — no Docker, no command line.
 
 In Protégé, **OntoBoard → Start here: the guide...** shows the steps below, ticks the ones your
 project has done, marks the next one, and has a button for each. The empty board offers it too.
+A word you have not met is in the [glossary](glossary.md). What needs nothing installed and what
+needs git or Docker is listed under [What works with nothing installed](getting-started.md#what-works-with-nothing-installed).
 
 ## Where are you starting?
 
@@ -15,6 +17,10 @@ project has done, marks the next one, and has a button for each. The empty board
 | An ontology file | Create a project, then bring your file into its edit file | *Project → New ODK project...*, then Protégé's *Refactor → Merge ontologies...* |
 | An ODK project on this computer | Open its edit file, `src/ontology/<id>-edit.owl` | *Project → Open existing ODK project...* |
 | A project on GitHub | Clone it and open it | *Project → Open from GitHub...* |
+| Terms to add to somebody else's ontology | Fork it on GitHub, open your fork, get an ID range if its terms are numbered, add your terms, build, and propose them | *Project → Open from GitHub...*, *Project → ID ranges...*, *Build...*, *Project → Pull request...* |
+
+Only want to look at an ontology and draw on it? Open the file in Protégé and go to the
+**OntoBoard** tab - no project needed. The project is what builds, tests and releases need.
 
 ## The path
 
@@ -94,6 +100,12 @@ term list and the import in step.
 **What you do.** Specialise the patterns and add your own classes, relations and examples — on
 the OntoBoard board or in Protégé's usual tabs. Give every term a label; a definition helps the
 next reader.
+
+On the board: double-click empty space for a class; select a class and press **Tab** for a
+subclass beside it; right-click a class for *New subclass...* or *New individual of this
+class...*; drag from a box's edge to another box to relate them. Names may have spaces - the label
+is what you type. Select a term to see what it is connected to; the **?** on the toolbar has the
+legend and every shortcut.
 
 **Why.** Drawing the model makes gaps and odd relations obvious, and the board can be shared live
 with your team.

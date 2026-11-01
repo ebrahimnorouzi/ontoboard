@@ -431,6 +431,8 @@ public final class Guide {
     public static String testTemplate(String namespace) {
         return "# CQ1: <the rule, in one line - Build reports this line when the test fails>\n"
                 + "#\n"
+                + "# Run it: OntoBoard > Project > Build..., choose test. It runs with every build.\n"
+                + "#\n"
                 + "# A test lists what BREAKS its rule, so an empty answer passes. This one lists\n"
                 + "# nothing until its WHERE clause is replaced. For \"every pizza has a base\":\n"
                 + "#\n"

@@ -2,6 +2,12 @@
 
 New to ODK, ROBOT or eXtreme Design? After installing, open **OntoBoard → Start here: the
 guide...** — or read [the guide](guide.md) — for the steps from an idea to a released ontology.
+The [glossary](glossary.md) says what each word on the way means.
+
+!!! tip "Only want the board?"
+    Open your `.owl` file in Protégé and go to the **OntoBoard** tab: the whole ontology is on it,
+    and you can draw, edit and arrange straight away. A project - below - is only needed for builds,
+    tests and versioned releases.
 
 ## Protégé plugin
 
@@ -30,9 +36,15 @@ see [Known constraints](limitations.md#known-constraints).
 
 ### A first session
 
-**Start a project.** *Tools → New ODK Project…*. Give it an ontology ID (lowercase, no
-spaces — it becomes file names and IRIs), a title, and a folder. Leave Base IRI empty to get
-the OBO convention. It writes a full ODK repository and opens the edit file.
+**Start a project.** *OntoBoard → Project → New ODK project…* (also under *Tools*). Give it an
+ontology ID - a lowercase letter first, then lowercase letters, digits or underscores; it names
+the files - a title, and a folder. The **Base IRI** is the web address your ontology and its terms
+are named under, and it ends in the ID: OBO's address is filled in, which is right only for an
+ontology registered with the OBO Foundry; otherwise use an address on a domain you or your group
+control, such as `https://w3id.org/<id>/<id>.owl`. It writes a project folder in ODK's layout -
+which OntoBoard builds itself, so nothing else is needed - and opens the edit file, the file you
+work in. If your team already uses ODK, open its repository instead (*Open existing ODK
+project…*).
 
 **The board shows the whole ontology.** Open the OntoBoard tab and every class, object property,
 data property and individual is on the board, laid out as an outline:
@@ -102,17 +114,7 @@ Only Protégé is needed - it brings its own Java. No ROBOT, no ODK, no Docker, 
 `test` target and lists whether `robot`, `make`, `docker`, `podman` and `odk` are on the PATH -
 none of them is used. *OntoBoard → Project → Check requirements...* lists the rest.
 
-## Web application
+## The web application, archived
 
-```bash
-git clone <this repo>
-cd ontoboard
-./run.sh
-```
-
-Open [http://localhost:3000](http://localhost:3000), log in with `admin` / `admin`. Requires
-Docker and Docker Compose.
-
-Create a board from scratch, an uploaded OWL file, or a GitHub repository. Invite others and
-you will see their cursors and edits live, comment on entities, and track work on the Kanban
-board.
+OntoBoard began as a browser application. It is no longer developed or shipped; its last state
+is kept at the tag [`web-app-final`](https://github.com/ebrahimnorouzi/ontoboard/tree/web-app-final).

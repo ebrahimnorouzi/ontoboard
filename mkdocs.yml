@@ -138,6 +138,7 @@ nav:
   - Home: index.md
   - Using it:
       - 'Start here: the guide': guide.md
+      - Glossary: glossary.md
       - Getting started: getting-started.md
       - Pattern library: patterns/index.md
       - Choosing a pattern: choosing-a-pattern.md

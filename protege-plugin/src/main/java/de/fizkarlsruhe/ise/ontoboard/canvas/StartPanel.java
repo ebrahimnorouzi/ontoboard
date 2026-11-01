@@ -87,6 +87,12 @@ public final class StartPanel extends JPanel {
      */
     public StartPanel(Runnable onGuide, Runnable onNewProject, Runnable onOpenProject,
             Runnable onAddSelected, Runnable onAddAll) {
+        this(onGuide, null, onNewProject, onOpenProject, onAddSelected, onAddAll);
+    }
+
+    /** With "Create the first class" too - the one thing an empty ontology needs most. */
+    public StartPanel(Runnable onGuide, Runnable onCreateClass, Runnable onNewProject,
+            Runnable onOpenProject, Runnable onAddSelected, Runnable onAddAll) {
         super(new GridBagLayout());
         // The IDE's panel colour, not the canvas colour. This card stands in FRONT of the board -
         // showAppropriateCard swaps the whole component out - so painting it the canvas's near-white
@@ -114,11 +120,17 @@ public final class StartPanel extends JPanel {
                     "The steps from an idea to a released ontology, one at a time", onGuide));
             card.add(Box.createVerticalStrut(8));
         }
+        if (onCreateClass != null) {
+            card.add(action("Create the first class…",
+                    "Name it, and it is on the board - then Tab gives it a subclass",
+                    onCreateClass));
+            card.add(Box.createVerticalStrut(8));
+        }
         card.add(action("New ODK project…",
-                "Scaffold a repository and start a new ontology", onNewProject));
+                "Make a project folder for a new ontology: tests, imports, releases", onNewProject));
         card.add(Box.createVerticalStrut(8));
         card.add(action("Open existing ODK project…",
-                "Point at a repository you already have", onOpenProject));
+                "Open a project folder you already have", onOpenProject));
         card.add(Box.createVerticalStrut(8));
         if (onAddSelected != null) {
             card.add(action("Add the selected entity",

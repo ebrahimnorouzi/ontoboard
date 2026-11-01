@@ -111,11 +111,17 @@ public final class ProjectWizard {
         fields.add(new JLabel("Create in folder:"));
         fields.add(folderRow);
 
-        JLabel hint = new JLabel("<html><i>ID becomes file names and IRIs - lowercase, "
-                + "no spaces, e.g. <b>myont</b>. The Base IRI is filled in with OBO's "
-                + "namespace, which is right only if this ontology is being registered with "
-                + "OBO Foundry - otherwise change it to one you own, because it becomes part "
-                + "of every term IRI and cannot be changed afterwards.</i></html>");
+        // The rules said exactly, and the Base IRI said in a sentence: "one you own" meant nothing
+        // to somebody who had never published an ontology, and the ID rule was learnt from the
+        // error after the first try.
+        JLabel hint = new JLabel("<html><i><b>ID</b>: a short name for file names - a lowercase "
+                + "letter first, then lowercase letters, digits or underscores, e.g. <b>myont</b>"
+                + " or <b>shop_ontology</b>.<br><b>Base IRI</b>: the web address your ontology "
+                + "and its terms will be named under; it must end in the ID followed by .owl. "
+                + "OBO's address is filled in, which is right only for an ontology registered "
+                + "with the OBO Foundry. Otherwise use an address on a domain you or your "
+                + "group control, e.g. <b>https://w3id.org/myont/myont.owl</b> - every term "
+                + "is named under it, so it is hard to change later.</i></html>");
         hint.setBorder(BorderFactory.createEmptyBorder(8, 0, 0, 0));
 
         // Where a rejected value is explained, in the dialog rather than on top of it. Hidden

@@ -383,7 +383,8 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         cards = new CardLayout();
         centre = new JPanel(cards);
         centre.add(buildBoardLayers(), "canvas");
-        centre.add(new StartPanel(this::openTheGuide, this::runNewProjectWizard,
+        centre.add(new StartPanel(this::openTheGuide,
+                () -> createEntityAt(EntityFactory.Kind.CLASS, 80, 80), this::runNewProjectWizard,
                 this::openExistingProject, null, this::showEverything), "start");
         add(centre, BorderLayout.CENTER);
         // Before the toolbar, because the status bar owns collabStatus and the toolbar used to.
@@ -2913,6 +2914,32 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         return drawn;
     }
 
+    /**
+     * Why no term can be made, and the way out: an ID range. The refusal said what was wrong and
+     * not what to do, so a new contributor stopped at it.
+     */
+    private void explainNoRange(String why) {
+        Object[] options = {"Open ID ranges...", "Close"};
+        int choice = JOptionPane.showOptionDialog(this, why + "\n\nAn ID range is a block of term"
+                        + " numbers kept for one editor, so two people never give two terms the"
+                        + " same identifier. Add one for yourself under OntoBoard > Project >"
+                        + " ID ranges...; in a shared project a maintainer usually approves it in"
+                        + " the pull request.",
+                "No identifiers for you yet", JOptionPane.DEFAULT_OPTION,
+                JOptionPane.INFORMATION_MESSAGE, null, options, options[0]);
+        if (choice == 0) {
+            de.fizkarlsruhe.ise.ontoboard.menu.IdRangesAction ranges =
+                    new de.fizkarlsruhe.ise.ontoboard.menu.IdRangesAction();
+            ranges.setEditorKit(getOWLEditorKit());
+            try {
+                ranges.initialise();
+                ranges.actionPerformed(null);
+            } catch (Exception cannot) {
+                LOGGER.warn("OntoBoard: ID ranges could not open", cannot);
+            }
+        }
+    }
+
     /** The frames on the board, to jump to one - the way a board of many regions is read. */
     private void showFramesMenu(java.awt.Component from) {
         JPopupMenu menu = new JPopupMenu();
@@ -4942,8 +4969,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             // Deliberately not falling back to a name-derived IRI. That would put the term
             // outside the project's own identifier scheme without saying so, and the whole point
             // of the ranges is that nobody mints outside their block.
-            JOptionPane.showMessageDialog(this, cannotMint.getMessage(),
-                    "Cannot mint an identifier", JOptionPane.WARNING_MESSAGE);
+            explainNoRange(cannotMint.getMessage());
             return;
         }
         List<OWLOntologyChange> changes = minter.declare(ontology, iri, kind, name);
@@ -5223,8 +5249,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                         "Cannot use that name", JOptionPane.WARNING_MESSAGE);
                 return;
             } catch (IdRanges.NoRangeException cannotMint) {
-                JOptionPane.showMessageDialog(this, cannotMint.getMessage(),
-                        "Cannot mint an identifier", JOptionPane.WARNING_MESSAGE);
+                explainNoRange(cannotMint.getMessage());
                 return;
             }
             // declare, not EntityFactory.declare: in numeric mode the typed text becomes the
