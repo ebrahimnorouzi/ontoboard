@@ -439,6 +439,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         installPinchZoom();
         installZoomReadout();
         installKeyboardShortcuts();
+        followTheDescriptionView();
         // After the toolbar, which owns the two buttons this sets.
         applyGestureMode(CanvasGesture.byName(java.util.prefs.Preferences
                 .userNodeForPackage(SchemaCanvasView.class)
@@ -587,6 +588,9 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
 
     @Override
     protected void disposeOWLView() {
+        if (descriptionWatcher != null) {
+            descriptionWatcher.stop();
+        }
         if (changeListener != null) {
             getOWLModelManager().removeOntologyChangeListener(changeListener);
         }
@@ -3062,6 +3066,95 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         double[] spot = OntologyProjection.besideItsParentAt(layout, at.getX() + at.getWidth()
                 + 70, at.getY());
         createEntityAt(EntityFactory.Kind.CLASS, (int) spot[0], (int) spot[1], IRI.create(parent));
+    }
+
+    private javax.swing.Timer descriptionWatcher;
+    private final java.util.Set<Object> followedLists = java.util.Collections.newSetFromMap(
+            new java.util.WeakHashMap<Object, Boolean>());
+
+    /**
+     * Clicking an axiom's line in Protégé's description view - "SubClass Of: hasTopping some
+     * Cheese" - selects the arrows that draw it on the board, with the terms at their ends, and
+     * brings them into view. Asked for, so that the logic in the left panel and the picture on
+     * the board are one thing rather than two to match up by eye.
+     *
+     * <p>Protégé's frame lists tell nobody what is clicked in them, so the board looks for them:
+     * every two seconds it adds itself to any it has not seen, which also catches a view opened
+     * later. A weak set, so a closed view is not kept alive by it.
+     */
+    private void followTheDescriptionView() {
+        descriptionWatcher = new javax.swing.Timer(2000, event -> {
+            if (!isShowing()) {
+                return;
+            }
+            java.awt.Window window = javax.swing.SwingUtilities.getWindowAncestor(this);
+            if (window == null) {
+                return;
+            }
+            java.util.List<java.awt.Component> todo = new java.util.ArrayList<java.awt.Component>();
+            todo.add(window);
+            while (!todo.isEmpty()) {
+                java.awt.Component next = todo.remove(todo.size() - 1);
+                if (next instanceof org.protege.editor.owl.ui.framelist.OWLFrameList
+                        && followedLists.add(next)) {
+                    final javax.swing.JList<?> list = (javax.swing.JList<?>) next;
+                    list.addListSelectionListener(change -> {
+                        if (!change.getValueIsAdjusting()) {
+                            showAxiomOnBoard(list.getSelectedValue());
+                        }
+                    });
+                }
+                if (next instanceof java.awt.Container) {
+                    todo.addAll(java.util.Arrays.asList(
+                            ((java.awt.Container) next).getComponents()));
+                }
+            }
+        });
+        descriptionWatcher.start();
+    }
+
+    private void showAxiomOnBoard(Object row) {
+        if (!(row instanceof org.protege.editor.owl.ui.frame.OWLFrameSectionRow) || !isShowing()) {
+            return;
+        }
+        Object axiom = ((org.protege.editor.owl.ui.frame.OWLFrameSectionRow<?, ?, ?>) row)
+                .getAxiom();
+        if (!(axiom instanceof org.semanticweb.owlapi.model.OWLAxiom)) {
+            return;
+        }
+        java.util.List<de.fizkarlsruhe.ise.ontoboard.model.AxiomOnBoard.Arrow> arrows =
+                new java.util.ArrayList<de.fizkarlsruhe.ise.ontoboard.model.AxiomOnBoard.Arrow>();
+        java.util.Map<String, Object> byId = new java.util.HashMap<String, Object>();
+        for (Object edge : graph.getChildEdges(graph.getDefaultParent())) {
+            Object source = graph.getModel().getTerminal(edge, true);
+            Object target = graph.getModel().getTerminal(edge, false);
+            String id = graph.getIdForCell(edge);
+            if (id == null || source == null || target == null) {
+                continue;
+            }
+            byId.put(id, edge);
+            arrows.add(new de.fizkarlsruhe.ise.ontoboard.model.AxiomOnBoard.Arrow(id,
+                    graph.getIdForCell(source), graph.getIdForCell(target),
+                    String.valueOf(graph.getModel().getValue(edge))));
+        }
+        java.util.List<String> found = de.fizkarlsruhe.ise.ontoboard.model.AxiomOnBoard.arrowsFor(
+                (org.semanticweb.owlapi.model.OWLAxiom) axiom,
+                getOWLModelManager().getActiveOntology(), arrows);
+        if (found.isEmpty()) {
+            setStatus("That axiom is not drawn on the board as it is now.");
+            return;
+        }
+        java.util.List<Object> cells = new java.util.ArrayList<Object>();
+        for (String id : found) {
+            Object edge = byId.get(id);
+            cells.add(edge);
+            cells.add(graph.getModel().getTerminal(edge, true));
+            cells.add(graph.getModel().getTerminal(edge, false));
+        }
+        graph.setSelectionCells(cells.toArray());
+        graphComponent.scrollCellToVisible(cells.get(0), true);
+        setStatus("On the board: " + found.size() + (found.size() == 1 ? " arrow" : " arrows")
+                + " for the axiom selected in the description.");
     }
 
     /**

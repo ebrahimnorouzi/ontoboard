@@ -146,10 +146,10 @@ class DrawnEdgesAreEntailedTest {
                 }
                 return null;
             case OBJECT_PROPERTY:
-                // A plain existential: "A --R--> B" with no qualifier, read from its id.
+                // A plain existential: "A --∃ R--> B", read from its id.
                 String property = PropertyEdgeId.propertyIn(edge.getId());
-                boolean plainSome = property != null && !edge.getLabel().contains("(")
-                        && !edge.getLabel().startsWith("not ")
+                boolean plainSome = property != null && edge.getLabel().startsWith("\u2203 ")
+                        && !edge.getLabel().contains("(") && !edge.getLabel().contains(".")
                         && ontology.containsClassInSignature(from, Imports.INCLUDED)
                         && ontology.containsClassInSignature(to, Imports.INCLUDED);
                 return plainSome ? df.getOWLSubClassOfAxiom(df.getOWLClass(from),

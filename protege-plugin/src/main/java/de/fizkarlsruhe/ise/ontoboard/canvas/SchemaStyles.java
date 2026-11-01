@@ -40,6 +40,15 @@ public final class SchemaStyles {
 
     public static final String SUBCLASS = "obSubClass";
     public static final String OBJECT_PROPERTY = "obObjectProperty";
+
+    /** A universal restriction, {@code ∀ R}: dashed, a diamond head, in its own colour. */
+    public static final String ONLY = "obOnly";
+
+    /** A cardinality restriction, {@code ≥ n R}, {@code ≤ n R}, {@code = n R}: dotted. */
+    public static final String COUNT = "obCount";
+
+    /** A negative assertion, {@code ¬ R}: grey and dashed, it says what is not so. */
+    public static final String NOT = "obNot";
     public static final String DATA_PROPERTY = "obDataProperty";
     public static final String TYPE = "obType";
     public static final String SUB_PROPERTY = "obSubProperty";
@@ -296,6 +305,15 @@ public final class SchemaStyles {
                 edge("#3B4756", null, mxConstants.ARROW_BLOCK, 1.6f, 13, false));
         sheet.putCellStyle(OBJECT_PROPERTY,
                 edge("#2D6FBF", null, mxConstants.ARROW_CLASSIC, 1.4f, 10, true));
+        // The restriction kinds a reader has to tell apart at a glance - asked for: "some,
+        // exactly, only - existential, universal, everything should be distinguished". Each
+        // has its own line as well as its own symbol on the label.
+        sheet.putCellStyle(ONLY,
+                edge("#8E2D6B", "8 4", mxConstants.ARROW_DIAMOND, 1.4f, 10, true));
+        sheet.putCellStyle(COUNT,
+                edge("#1F7A3A", "2 3", mxConstants.ARROW_OVAL, 1.6f, 8, true));
+        sheet.putCellStyle(NOT,
+                edge("#7A7A7A", "3 3", mxConstants.ARROW_CLASSIC, 1.2f, 10, true));
         sheet.putCellStyle(DATA_PROPERTY,
                 edge("#0E6E78", null, mxConstants.ARROW_OPEN, 1.1f, 10, true));
         sheet.putCellStyle(TYPE,

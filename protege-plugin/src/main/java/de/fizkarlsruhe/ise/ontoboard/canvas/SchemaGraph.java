@@ -529,7 +529,8 @@ public class SchemaGraph extends mxGraph {
             }
             String kind = baseStyleOf(cell);
             return dense && (SchemaStyles.OBJECT_PROPERTY.equals(kind)
-                    || SchemaStyles.DATA_PROPERTY.equals(kind)
+                    || SchemaStyles.ONLY.equals(kind) || SchemaStyles.COUNT.equals(kind)
+                    || SchemaStyles.NOT.equals(kind) || SchemaStyles.DATA_PROPERTY.equals(kind)
                     || SchemaStyles.INVERSE.equals(kind) || lengthOf(cell) > LONG) ? QUIET : 100;
         }
         return focused.isEmpty() || lit.contains(id) ? 100 : FADED;
@@ -743,7 +744,22 @@ public class SchemaGraph extends mxGraph {
             case INFERRED_SUBCLASS: return SchemaStyles.INFERRED_SUBCLASS;
             case INFERRED_TYPE:   return SchemaStyles.INFERRED_TYPE;
             case OBJECT_PROPERTY:
-            default:              return SchemaStyles.OBJECT_PROPERTY;
+            default:              return restrictionStyle(edge.getLabel());
         }
+    }
+
+    /** By the symbol its label starts with: {@code ∀}, a count, {@code ¬}, or existential. */
+    static String restrictionStyle(String label) {
+        String text = label == null ? "" : label.trim();
+        if (text.startsWith("\u2200")) {
+            return SchemaStyles.ONLY;
+        }
+        if (text.startsWith("\u2265") || text.startsWith("\u2264") || text.startsWith("= ")) {
+            return SchemaStyles.COUNT;
+        }
+        if (text.startsWith("\u00AC")) {
+            return SchemaStyles.NOT;
+        }
+        return SchemaStyles.OBJECT_PROPERTY;
     }
 }

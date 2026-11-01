@@ -339,7 +339,7 @@ class DomainRangeProjectionTest {
                 ifs.add(edge.getSourceId());
             }
         }
-        assertTrue(reads != null && reads.contains("hasParticipant some Process")
+        assertTrue(reads != null && reads.contains("\u2203 hasParticipant.Process")
                 && !reads.contains("ObjectSomeValuesFrom"), reads);
         assertEquals(new HashSet<String>(Arrays.asList(NS + "hasParticipant", NS + "Process")),
                 ifs);
@@ -383,7 +383,7 @@ class DomainRangeProjectionTest {
         assertTrue(said.contains("disj "), "and disjoint: " + said);
         assertTrue(said.contains("diff different from"), said.toString());
         assertTrue(said.contains("dpa age"), said.toString());
-        assertTrue(said.contains("nopa not hasParticipant"), said.toString());
+        assertTrue(said.contains("nopa \u00AC hasParticipant"), said.toString());
         assertTrue(said.contains("pdisj "), said.toString());
         assertTrue(said.contains("gci "), said.toString());
         boolean value = false;

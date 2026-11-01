@@ -97,7 +97,7 @@ class ExpressionNodesTest {
                 "with expressions off, a union is still not drawn");
 
         Projection drawn = OntologyProjection.project(ontology, on, true);
-        assertEquals(Arrays.asList("or"), labelsOfExpressionsIn(drawn));
+        assertEquals(Arrays.asList("\u2294"), labelsOfExpressionsIn(drawn));
         assertEquals(3, drawn.getEdges().size(),
                 "A to the union, and the union to each of B and C: " + idsOf(drawn));
     }
@@ -112,7 +112,7 @@ class ExpressionNodesTest {
         assertEquals(0, expressionsIn(OntologyProjection.project(ontology, on)).size());
 
         Projection drawn = OntologyProjection.project(ontology, on, true);
-        assertEquals(Arrays.asList("not"), labelsOfExpressionsIn(drawn));
+        assertEquals(Arrays.asList("\u00AC"), labelsOfExpressionsIn(drawn));
         assertEquals(2, drawn.getEdges().size(), idsOf(drawn).toString());
     }
 
@@ -133,7 +133,7 @@ class ExpressionNodesTest {
         assertEquals(0, expressionsIn(OntologyProjection.project(ontology, on)).size());
 
         Projection drawn = OntologyProjection.project(ontology, on, true);
-        assertEquals(Arrays.asList("one of"), labelsOfExpressionsIn(drawn));
+        assertEquals(Arrays.asList("{ \u2026 }"), labelsOfExpressionsIn(drawn));
         int types = 0;
         for (CanvasEdge edge : drawn.getEdges()) {
             if (edge.getKind() == CanvasEdge.Kind.TYPE) {
@@ -161,7 +161,7 @@ class ExpressionNodesTest {
                 "with expressions off this axiom draws nothing at all, as it always did");
 
         Projection drawn = OntologyProjection.project(ontology, on, true);
-        assertEquals(Arrays.asList("or"), labelsOfExpressionsIn(drawn));
+        assertEquals(Arrays.asList("\u2294"), labelsOfExpressionsIn(drawn));
         CanvasEdge arrow = null;
         for (CanvasEdge edge : drawn.getEdges()) {
             if (edge.getKind() == CanvasEdge.Kind.OBJECT_PROPERTY) {
@@ -169,7 +169,7 @@ class ExpressionNodesTest {
             }
         }
         assertNotNull(arrow, "the restriction's own arrow: " + idsOf(drawn));
-        assertEquals("R some", arrow.getLabel());
+        assertEquals("\u2203 R", arrow.getLabel());
         assertTrue(arrow.getTargetId().startsWith(OntologyProjection.EXPRESSION_PREFIX),
                 "it points at the expression node: " + arrow.getTargetId());
     }
@@ -189,7 +189,7 @@ class ExpressionNodesTest {
 
         Projection drawn = OntologyProjection.project(ontology, on, true);
         assertEquals(1, drawn.getEdges().size(), idsOf(drawn).toString());
-        assertEquals("inverse R some", drawn.getEdges().get(0).getLabel(),
+        assertEquals("\u2203 R\u207B", drawn.getEdges().get(0).getLabel(),
                 "a reader has to be able to tell which way round it is");
         assertEquals(0, expressionsIn(drawn).size(),
                 "the filler is named, so no scaffolding node is needed for it");

@@ -22,15 +22,14 @@ import java.util.Set;
  * <p>Here only the hierarchy decides where a term goes:
  *
  * <ul>
- *   <li><b>Classes are a tree read left to right</b>, as in Protege's own class hierarchy:
- *       a class, then its subclasses stacked in the next column. Every edge from a child to its
- *       parent leaves the child's side, so siblings share one line back to their parent and no
- *       line runs through a box.
- *   <li><b>What hangs off a class goes beside it</b> - its individuals, the restrictions it is
- *       drawn with, a datatype - in the column after it.
- *   <li><b>A subtree too tall for a screen is a block of its own</b>, and blocks are stacked in
- *       columns, so a deep hierarchy is a few screens wide rather than one screen high and
- *       twenty long.
+ *   <li><b>The classes - the TBox - are trees read top down</b>: a class above its subclasses,
+ *       centred over them, each level of the hierarchy one row. Many leaves under one class
+ *       stand in a grid below it. Trees are packed onto shelves about a screen wide.
+ *   <li><b>The individuals - the ABox - are a band below the classes</b>, each class's
+ *       individuals under that class, and an individual's values right below it. Asked for:
+ *       "separate TBox from ABox, ABox below TBox, instances below the class they are typed".
+ *   <li><b>What hangs off a class</b> - a restriction it is drawn with, a datatype - is placed
+ *       below it with its subclasses.
  *   <li><b>Object and data properties are sections of their own</b>, to the right, each its
  *       property hierarchy laid out the same way.
  * </ul>
@@ -127,6 +126,7 @@ public final class BoardSections {
         Plan plan = new Plan();
 
         List<Term> classes = new ArrayList<Term>();
+        List<Term> individuals = new ArrayList<Term>();
         List<Term> objectProperties = new ArrayList<Term>();
         List<Term> dataProperties = new ArrayList<Term>();
         for (Term term : terms) {
@@ -135,12 +135,25 @@ public final class BoardSections {
                 objectProperties.add(term);
             } else if (section == Kind.DATA_PROPERTY) {
                 dataProperties.add(term);
+            } else if (isAbox(term, parent, byId)) {
+                individuals.add(term);
             } else {
                 classes.add(term);
             }
         }
-        double[] classBox = place(classes, parent, left, top, plan);
-        double x = classes.isEmpty() ? left : classBox[2] + APART * 2;
+        double area = 0;
+        for (Term term : classes) {
+            area += (term.w + ACROSS) * (term.h + BELOW);
+        }
+        double width = Math.max(1600, Math.sqrt(area * 1.6) * 1.2);
+        double[] tbox = forest(classes, parent, left, top, width, plan);
+        double right = tbox[2];
+        if (!individuals.isEmpty()) {
+            double aboxTop = (classes.isEmpty() ? top : tbox[3]) + APART * 2;
+            right = Math.max(right, placeIndividuals(individuals, parent, byId, plan, left,
+                    aboxTop));
+        }
+        double x = (classes.isEmpty() && individuals.isEmpty() ? left : right) + APART * 2;
         double y = top;
         for (Object[] section : new Object[][] {
             {"Object properties", objectProperties}, {"Data properties", dataProperties}}) {
@@ -149,13 +162,29 @@ public final class BoardSections {
             if (members.isEmpty()) {
                 continue;
             }
-            double[] box = place(members, parent, x + APART / 2, y + TITLE, plan);
+            double[] box = forest(members, parent, x + APART / 2, y + TITLE, 1200, plan);
             double w = box[2] - x + APART / 2;
             double h = box[3] - y + APART / 2;
             plan.sections.add(new Section((String) section[0], x, y, w, h));
             y += h + APART;
         }
         return plan;
+    }
+
+    /** An individual, or what hangs off one - the ABox, which goes below the classes. */
+    private static boolean isAbox(Term term, Map<String, String> parent, Map<String, Term> byId) {
+        Term at = term;
+        Set<String> seen = new HashSet<String>();
+        while (at != null && seen.add(at.id)) {
+            if (at.kind == Kind.INDIVIDUAL) {
+                return true;
+            }
+            if (at.kind == Kind.CLASS) {
+                return false;
+            }
+            at = parent.containsKey(at.id) ? byId.get(parent.get(at.id)) : null;
+        }
+        return term.kind == Kind.VALUE;
     }
 
     /**
@@ -219,11 +248,13 @@ public final class BoardSections {
     }
 
     /**
-     * Lays out one section's forest from ({@code left}, {@code top}); returns its bounds as
-     * {minX, minY, maxX, maxY}.
+     * One forest laid out top down from ({@code left}, {@code top}): each class above its
+     * subclasses, centred over them, siblings side by side. Roots are packed onto shelves about
+     * {@code width} wide, so a wide ontology wraps instead of running off to the right. Returns
+     * the bounds {minX, minY, maxX, maxY}.
      */
-    private static double[] place(List<Term> members, Map<String, String> allParents,
-            double left, double top, Plan plan) {
+    private static double[] forest(List<Term> members, Map<String, String> allParents,
+            double left, double top, double width, Plan plan) {
         Map<String, Term> here = new LinkedHashMap<String, Term>();
         for (Term term : members) {
             here.put(term.id, term);
@@ -232,7 +263,7 @@ public final class BoardSections {
         List<Term> roots = new ArrayList<Term>();
         for (Term term : members) {
             String up = allParents.get(term.id);
-            if (up != null && here.containsKey(up)) {
+            if (up != null && here.containsKey(up) && !up.equals(term.id)) {
                 List<Term> siblings = children.get(up);
                 if (siblings == null) {
                     siblings = new ArrayList<Term>();
@@ -247,225 +278,185 @@ public final class BoardSections {
             Collections.sort(siblings, ORDER);
         }
         Collections.sort(roots, ORDER);
-
-        // Every term's subtree height, then blocks: a subtree taller than a screen or two is
-        // cut off its parent and laid out as a block of its own.
-        Map<String, Double> height = new HashMap<String, Double>();
+        // Trees first, biggest first; terms with nothing under them after, together.
+        Map<String, double[]> size = new HashMap<String, double[]>();
         for (Term root : roots) {
-            measure(root, children, height);
+            measure(root, children, size, width);
         }
-        double total = 0;
-        for (Term term : members) {
-            total += (term.w + ACROSS) * (term.h + DOWN);
-        }
-        double tallest = Math.max(900, Math.sqrt(total / 1.6) * 1.15);
-        List<Term> blocks = new ArrayList<Term>();
-        Set<String> cut = new HashSet<String>();
+        List<Term> trees = new ArrayList<Term>();
         List<Term> loose = new ArrayList<Term>();
         for (Term root : roots) {
-            if (!children.containsKey(root.id)) {
-                loose.add(root);
-            } else {
-                cutBlocks(root, children, height, tallest, blocks, cut);
-            }
+            (children.containsKey(root.id) ? trees : loose).add(root);
         }
-
-        // Every block laid out, then stacked in columns as tall as makes the whole board about
-        // as wide as a screen is, relative to its height: a column per block, which is what the
-        // cut threshold alone gives, made a board eight times wider than tall.
-        List<Map<String, double[]>> laid = new ArrayList<Map<String, double[]>>();
-        List<double[]> sizes = new ArrayList<double[]>();
-        double area = 0;
-        double highest = 0;
-        for (Term block : blocks) {
-            Map<String, double[]> at = new HashMap<String, double[]>();
-            double h = layoutBlock(block, children, cut, at, tallest);
-            double w = widthOf(at, block, children, cut);
-            laid.add(at);
-            sizes.add(new double[] {w, h});
-            area += (w + APART) * (h + APART);
-            highest = Math.max(highest, h);
-        }
-        for (Term term : loose) {
-            area += (term.w + ACROSS) * (term.h + DOWN);
-        }
-        double column = Math.max(highest, Math.sqrt(area / 1.6));
+        Collections.sort(trees, (one, other) -> Double.compare(
+                size.get(other.id)[0] * size.get(other.id)[1],
+                size.get(one.id)[0] * size.get(one.id)[1]));
         double x = left;
         double y = top;
-        double columnRight = left;
+        double shelf = 0;
         double maxX = left;
         double maxY = top;
-        List<double[]> boxes = new ArrayList<double[]>();
-        for (int b = 0; b < blocks.size(); b++) {
-            Map<String, double[]> at = laid.get(b);
-            double w = sizes.get(b)[0];
-            double h = sizes.get(b)[1];
-            if (y > top && y + h > top + column) {
-                x = columnRight + APART;
-                y = top;
+        for (Term root : trees) {
+            double[] box = size.get(root.id);
+            if (x > left && x + box[0] > left + width) {
+                x = left;
+                y += shelf + APART;
+                shelf = 0;
             }
-            for (Map.Entry<String, double[]> placed : at.entrySet()) {
-                plan.positions.put(placed.getKey(),
-                        new double[] {x + placed.getValue()[0], y + placed.getValue()[1]});
-            }
-            boxes.add(new double[] {x, y, x + w, y + h});
-            columnRight = Math.max(columnRight, x + w);
-            maxX = Math.max(maxX, x + w);
-            maxY = Math.max(maxY, y + h);
-            y += h + APART;
+            put(root, x, y, children, size, plan, width);
+            x += box[0] + APART;
+            shelf = Math.max(shelf, box[1]);
+            maxX = Math.max(maxX, x - APART);
+            maxY = Math.max(maxY, y + box[1]);
         }
-        // Terms with no hierarchy to place them by, in columns after the rest.
         if (!loose.isEmpty()) {
-            x = blocks.isEmpty() ? left : columnRight + APART;
-            y = top;
-            double widest = 0;
-            for (Term term : loose) {
-                if (y > top && y + term.h > top + column) {
-                    x += widest + ACROSS;
-                    y = top;
-                    widest = 0;
-                }
-                plan.positions.put(term.id, new double[] {x, y});
-                widest = Math.max(widest, term.w);
-                maxX = Math.max(maxX, x + term.w);
-                maxY = Math.max(maxY, y + term.h);
-                y += term.h + DOWN;
-            }
+            double[] grid = grid(loose, trees.isEmpty() ? left : left, trees.isEmpty() ? top
+                    : maxY + APART, Math.max(width, widestOf(loose)), plan);
+            maxX = Math.max(maxX, grid[0]);
+            maxY = Math.max(maxY, grid[1]);
         }
         return new double[] {left, top, maxX, maxY};
     }
 
-    /** Height of a term's subtree laid out left to right. */
-    private static double measure(Term term, Map<String, List<Term>> children,
-            Map<String, Double> height) {
+    /** More leaves than this under one class stand in a grid below it rather than in a row. */
+    static final int ROW_OF_LEAVES = 6;
+
+    /** Between a class and the row of its subclasses: room for the lines down. */
+    static final double BELOW = 60;
+
+    /** {width, height} of a term's subtree laid out top down. */
+    private static double[] measure(Term term, Map<String, List<Term>> children,
+            Map<String, double[]> size, double limit) {
         List<Term> below = children.get(term.id);
-        double span = 0;
-        if (below != null) {
-            for (Term child : below) {
-                span += measure(child, children, height) + DOWN;
-            }
-            span -= DOWN;
-        }
-        double h = Math.max(term.h, span);
-        height.put(term.id, h);
-        return h;
-    }
-
-    /** Cuts subtrees taller than {@code tallest} into blocks of their own, depth first. */
-    private static void cutBlocks(Term root, Map<String, List<Term>> children,
-            Map<String, Double> height, double tallest, List<Term> blocks, Set<String> cut) {
-        blocks.add(root);
-        List<Term> later = new ArrayList<Term>();
-        collectCuts(root, children, height, tallest, later, cut, true);
-        for (Term next : later) {
-            cutBlocks(next, children, height, tallest, blocks, cut);
-        }
-    }
-
-    private static void collectCuts(Term term, Map<String, List<Term>> children,
-            Map<String, Double> height, double tallest, List<Term> later, Set<String> cut,
-            boolean isBlockRoot) {
-        List<Term> below = children.get(term.id);
-        if (below == null) {
-            return;
-        }
-        if (!isBlockRoot && height.get(term.id) > tallest) {
-            cut.add(term.id);
-            later.add(term);
-            return;
-        }
-        for (Term child : below) {
-            collectCuts(child, children, height, tallest, later, cut, false);
-        }
-        remeasure(term, below, height, cut);
-        // Still too tall, though no branch is on its own: twelve branches of thirty leaves
-        // each fit a screen, and one under another they made a strip 27,000px long. The
-        // biggest go to blocks of their own until what is left fits.
-        List<Term> branches = new ArrayList<Term>();
-        for (Term child : below) {
-            if (!cut.contains(child.id) && children.containsKey(child.id)) {
-                branches.add(child);
-            }
-        }
-        Collections.sort(branches, new Comparator<Term>() {
-            @Override
-            public int compare(Term one, Term other) {
-                return Double.compare(height.get(other.id), height.get(one.id));
-            }
-        });
-        for (Term branch : branches) {
-            if (height.get(term.id) <= tallest) {
-                break;
-            }
-            cut.add(branch.id);
-            later.add(branch);
-            remeasure(term, below, height, cut);
-        }
-    }
-
-    /** A term's height counting only what is still under it. */
-    private static void remeasure(Term term, List<Term> below, Map<String, Double> height,
-            Set<String> cut) {
-        double span = 0;
-        for (Term child : below) {
-            if (!cut.contains(child.id)) {
-                span += height.get(child.id) + DOWN;
-            }
-        }
-        height.put(term.id, Math.max(term.h, span - DOWN));
-    }
-
-    /** Positions relative to the block's top-left; returns the block's height. */
-    private static double layoutBlock(Term root, Map<String, List<Term>> children,
-            Set<String> cut, Map<String, double[]> at, double tallest) {
-        Map<Integer, Double> widest = new HashMap<Integer, Double>();
-        depths(root, 0, children, cut, widest, tallest);
-        Map<Integer, Double> column = new HashMap<Integer, Double>();
-        double x = 0;
-        for (int depth = 0; widest.containsKey(depth); depth++) {
-            column.put(depth, x);
-            x += widest.get(depth) + ACROSS;
-        }
-        return stack(root, 0, 0, children, cut, column, at, tallest);
-    }
-
-    /** The children of {@code term} still under it in this block. */
-    private static List<Term> drawnUnder(Term term, Map<String, List<Term>> children,
-            Set<String> cut) {
-        List<Term> below = new ArrayList<Term>();
-        if (children.containsKey(term.id)) {
-            for (Term child : children.get(term.id)) {
-                if (!cut.contains(child.id)) {
-                    below.add(child);
+        double[] own;
+        if (below == null || below.isEmpty()) {
+            own = new double[] {term.w, term.h};
+        } else if (allLeaves(below, children) && below.size() > ROW_OF_LEAVES) {
+            int columns = columnsFor(below.size());
+            double cellW = widestOf(below) + ACROSS / 2;
+            double cellH = tallestOf(below) + DOWN;
+            int rows = (below.size() + columns - 1) / columns;
+            own = new double[] {Math.max(term.w, columns * cellW - ACROSS / 2),
+                term.h + BELOW + rows * cellH - DOWN};
+        } else {
+            double w = 0;
+            double h = 0;
+            for (List<Term> row : rows(below, children, size, limit)) {
+                double rowW = 0;
+                double rowH = 0;
+                for (Term child : row) {
+                    double[] c = size.get(child.id);
+                    rowW += c[0] + ACROSS;
+                    rowH = Math.max(rowH, c[1]);
                 }
+                w = Math.max(w, rowW - ACROSS);
+                h += rowH + BELOW;
             }
+            own = new double[] {Math.max(term.w, w), term.h + h};
         }
-        return below;
+        size.put(term.id, own);
+        return own;
     }
 
-    /** The children with nothing under them - the ones a grid can hold. */
-    private static List<Term> leavesOf(List<Term> below, Map<String, List<Term>> children,
-            Set<String> cut) {
-        List<Term> leaves = new ArrayList<Term>();
-        for (Term child : below) {
-            if (drawnUnder(child, children, cut).isEmpty()) {
-                leaves.add(child);
-            }
+    /** Places a measured subtree with its top-left at ({@code x}, {@code y}). */
+    private static void put(Term term, double x, double y, Map<String, List<Term>> children,
+            Map<String, double[]> size, Plan plan, double limit) {
+        double[] box = size.get(term.id);
+        plan.positions.put(term.id, new double[] {x + (box[0] - term.w) / 2, y});
+        List<Term> below = children.get(term.id);
+        if (below == null || below.isEmpty()) {
+            return;
         }
-        return leaves;
+        double rowTop = y + term.h + BELOW;
+        if (allLeaves(below, children) && below.size() > ROW_OF_LEAVES) {
+            int columns = columnsFor(below.size());
+            double cellW = widestOf(below) + ACROSS / 2;
+            double cellH = tallestOf(below) + DOWN;
+            double gridW = columns * cellW - ACROSS / 2;
+            double start = x + (box[0] - gridW) / 2;
+            for (int at = 0; at < below.size(); at++) {
+                plan.positions.put(below.get(at).id, new double[] {
+                    start + (at % columns) * cellW, rowTop + (at / columns) * cellH});
+            }
+            return;
+        }
+        for (List<Term> row : rows(below, children, size, limit)) {
+            double used = 0;
+            double rowH = 0;
+            for (Term child : row) {
+                used += size.get(child.id)[0] + ACROSS;
+                rowH = Math.max(rowH, size.get(child.id)[1]);
+            }
+            double cx = x + (box[0] - (used - ACROSS)) / 2;
+            for (Term child : row) {
+                put(child, cx, rowTop, children, size, plan, limit);
+                cx += size.get(child.id)[0] + ACROSS;
+            }
+            rowTop += rowH + BELOW;
+        }
     }
 
     /**
-     * How many columns a term's leaves take: one, unless one column of them would be taller
-     * than a screen - a class with 300 individuals was one column 22,800px tall, and every other
-     * column of the board grew to match it.
+     * A class's children in rows: side by side while they fit in {@code limit}, the width of a shelf, then on
+     * the next row down - so one class with twelve large subtrees is not twenty screens wide.
      */
-    private static int gridColumns(List<Term> leaves, double tallest) {
-        double span = -DOWN;
-        for (Term leaf : leaves) {
-            span += leaf.h + DOWN;
+    private static List<List<Term>> rows(List<Term> below, Map<String, List<Term>> children,
+            Map<String, double[]> size, double limit) {
+        List<List<Term>> rows = new ArrayList<List<Term>>();
+        List<Term> row = new ArrayList<Term>();
+        double w = 0;
+        for (Term child : below) {
+            double[] c = size.containsKey(child.id) ? size.get(child.id)
+                    : measure(child, children, size, limit);
+            if (!row.isEmpty() && w + c[0] > limit) {
+                rows.add(row);
+                row = new ArrayList<Term>();
+                w = 0;
+            }
+            row.add(child);
+            w += c[0] + ACROSS;
         }
-        return leaves.size() > 1 && span > tallest ? (int) Math.ceil(span / tallest) : 1;
+        if (!row.isEmpty()) {
+            rows.add(row);
+        }
+        return rows;
+    }
+
+    /** Terms laid out in rows no wider than {@code width}; returns {maxX, maxY}. */
+    private static double[] grid(List<Term> terms, double left, double top, double width,
+            Plan plan) {
+        double x = left;
+        double y = top;
+        double row = 0;
+        double maxX = left;
+        double maxY = top;
+        for (Term term : terms) {
+            if (x > left && x + term.w > left + width) {
+                x = left;
+                y += row + DOWN;
+                row = 0;
+            }
+            plan.positions.put(term.id, new double[] {x, y});
+            x += term.w + ACROSS / 2;
+            row = Math.max(row, term.h);
+            maxX = Math.max(maxX, x - ACROSS / 2);
+            maxY = Math.max(maxY, y + term.h);
+        }
+        return new double[] {maxX, maxY};
+    }
+
+    private static boolean allLeaves(List<Term> terms, Map<String, List<Term>> children) {
+        for (Term term : terms) {
+            if (children.containsKey(term.id)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /** About twice as wide as tall, for a grid of {@code n} leaves. */
+    private static int columnsFor(int n) {
+        return Math.max(ROW_OF_LEAVES, (int) Math.ceil(Math.sqrt(n * 2.0)));
     }
 
     private static double widestOf(List<Term> terms) {
@@ -476,100 +467,88 @@ public final class BoardSections {
         return widest;
     }
 
-    private static void depths(Term term, int depth, Map<String, List<Term>> children,
-            Set<String> cut, Map<Integer, Double> widest, double tallest) {
-        Double known = widest.get(depth);
-        widest.put(depth, known == null ? term.w : Math.max(known, term.w));
-        List<Term> below = drawnUnder(term, children, cut);
-        List<Term> leaves = leavesOf(below, children, cut);
-        int grid = gridColumns(leaves, tallest);
-        if (grid > 1) {
-            double across = grid * widestOf(leaves) + (grid - 1) * ACROSS / 2;
-            Double next = widest.get(depth + 1);
-            widest.put(depth + 1, next == null ? across : Math.max(next, across));
+    private static double tallestOf(List<Term> terms) {
+        double tallest = 0;
+        for (Term term : terms) {
+            tallest = Math.max(tallest, term.h);
         }
-        for (Term child : below) {
-            depths(child, depth + 1, children, cut, widest, tallest);
-        }
+        return tallest;
     }
 
-    /** Places a subtree with its top at {@code y}; the term centred on its children. */
-    private static double stack(Term term, int depth, double y, Map<String, List<Term>> children,
-            Set<String> cut, Map<Integer, Double> column, Map<String, double[]> at,
-            double tallest) {
-        List<Term> below = drawnUnder(term, children, cut);
-        if (below.isEmpty()) {
-            at.put(term.id, new double[] {column.get(depth), y});
-            return term.h;
-        }
-        double next = y;
-        List<Term> leaves = leavesOf(below, children, cut);
-        int grid = gridColumns(leaves, tallest);
-        List<Term> stacked = below;
-        if (grid > 1) {
-            // The leaves first, in columns side by side; the branches below them.
-            int perColumn = (int) Math.ceil(leaves.size() / (double) grid);
-            double pitch = widestOf(leaves) + ACROSS / 2;
-            double bottom = y;
-            double[] down = new double[grid];
-            java.util.Arrays.fill(down, y);
-            for (int i = 0; i < leaves.size(); i++) {
-                int col = i / perColumn;
-                Term leaf = leaves.get(i);
-                at.put(leaf.id, new double[] {column.get(depth + 1) + col * pitch, down[col]});
-                down[col] += leaf.h + DOWN;
-                bottom = Math.max(bottom, down[col]);
-            }
-            next = bottom;
-            stacked = new ArrayList<Term>(below);
-            stacked.removeAll(leaves);
-        }
-        for (Term child : stacked) {
-            next += stack(child, depth + 1, next, children, cut, column, at, tallest) + DOWN;
-        }
-        double span = next - DOWN - y;
-        double h = Math.max(term.h, span);
-        at.put(term.id, new double[] {column.get(depth), y + (span - term.h) / 2});
-        if (term.h > span) {
-            // A term taller than everything under it: its children centred on it instead.
-            double shift = (term.h - span) / 2;
-            at.get(term.id)[1] = y;
-            for (Term child : below) {
-                shiftSubtree(child, shift, children, cut, at);
-            }
-        }
-        return h;
-    }
-
-    private static void shiftSubtree(Term term, double dy, Map<String, List<Term>> children,
-            Set<String> cut, Map<String, double[]> at) {
-        at.get(term.id)[1] += dy;
-        if (children.containsKey(term.id)) {
-            for (Term child : children.get(term.id)) {
-                if (!cut.contains(child.id)) {
-                    shiftSubtree(child, dy, children, cut, at);
+    /**
+     * The individuals, in a band below the classes: each class's individuals under that class,
+     * in a column - or several, for many - starting at the class's left edge, never overlapping
+     * the group before. What hangs off an individual, a value, stands right below it.
+     */
+    private static double placeIndividuals(List<Term> individuals, Map<String, String> parent,
+            Map<String, Term> byId, Plan plan, double left, double top) {
+        Map<String, List<Term>> byClass = new LinkedHashMap<String, List<Term>>();
+        Map<String, List<Term>> hanging = new HashMap<String, List<Term>>();
+        for (Term term : individuals) {
+            String up = parent.get(term.id);
+            Term above = up == null ? null : byId.get(up);
+            if (term.kind != Kind.INDIVIDUAL && above != null
+                    && above.kind == Kind.INDIVIDUAL) {
+                List<Term> values = hanging.get(up);
+                if (values == null) {
+                    values = new ArrayList<Term>();
+                    hanging.put(up, values);
                 }
+                values.add(term);
+                continue;
             }
+            String key = above != null && plan.positions.containsKey(up) ? up : "";
+            List<Term> group = byClass.get(key);
+            if (group == null) {
+                group = new ArrayList<Term>();
+                byClass.put(key, group);
+            }
+            group.add(term);
         }
-    }
-
-    private static double widthOf(Map<String, double[]> at, Term root,
-            Map<String, List<Term>> children, Set<String> cut) {
-        double[] right = {0};
-        widthWalk(root, at, children, cut, right);
-        return right[0];
-    }
-
-    private static void widthWalk(Term term, Map<String, double[]> at,
-            Map<String, List<Term>> children, Set<String> cut, double[] right) {
-        right[0] = Math.max(right[0], at.get(term.id)[0] + term.w);
-        if (children.containsKey(term.id)) {
-            for (Term child : children.get(term.id)) {
-                if (!cut.contains(child.id)) {
-                    widthWalk(child, at, children, cut, right);
+        List<String> classes = new ArrayList<String>(byClass.keySet());
+        Collections.sort(classes, (one, other) -> Double.compare(xOf(plan, one, left),
+                xOf(plan, other, left)));
+        double cursor = left;
+        double bottom = top;
+        for (String cls : classes) {
+            List<Term> group = byClass.get(cls);
+            Collections.sort(group, ORDER);
+            double colW = 0;
+            for (Term term : group) {
+                colW = Math.max(colW, term.w);
+            }
+            int perColumn = 12;
+            // Individuals of no class on the board go after the others, not at "no position".
+            double x = plan.positions.containsKey(cls) ? Math.max(cursor, xOf(plan, cls, left))
+                    : cursor;
+            double y = top;
+            int inColumn = 0;
+            for (Term term : group) {
+                if (inColumn == perColumn) {
+                    x += colW + ACROSS / 2;
+                    y = top;
+                    inColumn = 0;
                 }
+                plan.positions.put(term.id, new double[] {x, y});
+                y += term.h + DOWN;
+                List<Term> values = hanging.get(term.id);
+                if (values != null) {
+                    for (Term value : values) {
+                        plan.positions.put(value.id, new double[] {x + 20, y});
+                        y += value.h + DOWN;
+                    }
+                }
+                bottom = Math.max(bottom, y);
+                inColumn++;
             }
+            cursor = x + colW + ACROSS;
         }
+        return Math.max(cursor - ACROSS, left);
+    }
+
+    private static double xOf(Plan plan, String id, double left) {
+        double[] at = plan.positions.get(id);
+        return at == null ? Double.MAX_VALUE / 4 : at[0];
     }
 
     /** Classes first, then what hangs off them; alphabetically within each. */

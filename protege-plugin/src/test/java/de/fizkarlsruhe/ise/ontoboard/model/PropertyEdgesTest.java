@@ -128,7 +128,7 @@ class PropertyEdgesTest {
 
         assertEquals("rest|only|" + NS + "Pizza|" + NS + "hasTopping|" + NS + "Topping",
                 edges.get(0).getId());
-        assertTrue(edges.get(0).getLabel().endsWith("(only)"), edges.get(0).getLabel());
+        assertTrue(edges.get(0).getLabel().startsWith("\u2200 "), edges.get(0).getLabel());
     }
 
     // ---------- the shapes that were invisible ----------
@@ -149,9 +149,9 @@ class PropertyEdgesTest {
         List<CanvasEdge> edges = propertyEdges(board("Pizza", "Food", "Topping", "Base"));
 
         assertEquals(2, edges.size(), described(edges).toString());
-        assertTrue(described(edges).contains("Pizza --hasTopping--> Topping"), described(edges)
+        assertTrue(described(edges).contains("Pizza --\u2203 hasTopping--> Topping"), described(edges)
                 .toString());
-        assertTrue(described(edges).contains("Pizza --hasBase--> Base"), described(edges)
+        assertTrue(described(edges).contains("Pizza --\u2203 hasBase--> Base"), described(edges)
                 .toString());
     }
 
@@ -172,7 +172,7 @@ class PropertyEdgesTest {
                 propertyEdges(board("VegetarianPizza", "Pizza", "VegetarianTopping"));
 
         assertEquals(1, edges.size(), described(edges).toString());
-        assertEquals("VegetarianPizza --hasTopping (only)--> VegetarianTopping",
+        assertEquals("VegetarianPizza --\u2200 hasTopping--> VegetarianTopping",
                 describe(edges.get(0)));
         assertEquals(PropertyEdgeId.Origin.EQUIVALENCE,
                 PropertyEdgeId.parse(edges.get(0).getId()).getOrigin());
@@ -189,9 +189,9 @@ class PropertyEdgesTest {
         List<CanvasEdge> edges = propertyEdges(board("Pizza", "Base", "Topping"));
 
         assertEquals(2, edges.size(), described(edges).toString());
-        assertTrue(described(edges).contains("Pizza --hasBase (max 1)--> Base"),
+        assertTrue(described(edges).contains("Pizza --\u2264 1 hasBase--> Base"),
                 described(edges).toString());
-        assertTrue(described(edges).contains("Pizza --hasTopping (min 2)--> Topping"),
+        assertTrue(described(edges).contains("Pizza --\u2265 2 hasTopping--> Topping"),
                 described(edges).toString());
     }
 
@@ -204,7 +204,7 @@ class PropertyEdgesTest {
         List<CanvasEdge> edges = propertyEdges(board("ItalianPizza", "italy"));
 
         assertEquals(1, edges.size(), described(edges).toString());
-        assertEquals("ItalianPizza --hasCountry (value)--> italy", describe(edges.get(0)));
+        assertEquals("ItalianPizza --\u2203 hasCountry.{\u2026}--> italy", describe(edges.get(0)));
     }
 
     /**
@@ -224,7 +224,7 @@ class PropertyEdgesTest {
         List<CanvasEdge> edges = propertyEdges(board("Pizza", "Topping"));
 
         assertEquals(1, edges.size(), described(edges).toString());
-        assertEquals("Pizza --hasTopping (scoped domain)--> Topping", describe(edges.get(0)),
+        assertEquals("Pizza --\u2203 hasTopping (scoped domain)--> Topping", describe(edges.get(0)),
                 "the arrow points the way the user drew it, not the way the axiom reads");
         assertEquals(PropertyEdgeId.Origin.SCOPED_DOMAIN,
                 PropertyEdgeId.parse(edges.get(0).getId()).getOrigin());
@@ -310,7 +310,7 @@ class PropertyEdgesTest {
 
         List<CanvasEdge> edges = propertyEdges(board("Adult", "Larva"));
 
-        assertEquals("develops from", edges.get(0).getLabel());
+        assertEquals("\u2203 develops from", edges.get(0).getLabel());
     }
 
     /**
@@ -351,8 +351,8 @@ class PropertyEdgesTest {
 
         assertEquals(2, edges.size(), described(edges).toString());
         assertEquals(new LinkedHashSet<String>(Arrays.asList(
-                        "Pizza --hasTopping--> Topping",
-                        "Pizza --hasTopping (only)--> Topping")),
+                        "Pizza --\u2203 hasTopping--> Topping",
+                        "Pizza --\u2200 hasTopping--> Topping")),
                 new LinkedHashSet<String>(described(edges)));
     }
 }

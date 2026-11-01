@@ -260,11 +260,21 @@ public final class CanvasLegend {
                         + "expects for is-a. Solid, because a dash now means the reasoner derived "
                         + "it rather than the ontology stating it.",
                 null, "#3B4756", null));
-        entries.add(new Entry(Form.EDGE, SchemaStyles.OBJECT_PROPERTY, "Object property",
-                "A restriction on an object property - by default SubClassOf(A "
-                        + "ObjectSomeValuesFrom(R B)), read as 'every A relates to some B'. The "
-                        + "arrow's label names the property and its reading.",
+        entries.add(new Entry(Form.EDGE, SchemaStyles.OBJECT_PROPERTY, "\u2203 R - some",
+                "Existential: A \u2291 \u2203R.B, every A relates by R to some B. Also an "
+                        + "assertion between two individuals.",
                 null, "#2D6FBF", null));
+        entries.add(new Entry(Form.EDGE, SchemaStyles.ONLY, "\u2200 R - only",
+                "Universal: A \u2291 \u2200R.B, whatever an A relates to by R is a B - which "
+                        + "says nothing about there being one. Dashed, with a diamond head.",
+                null, "#8E2D6B", "8 4"));
+        entries.add(new Entry(Form.EDGE, SchemaStyles.COUNT, "\u2265 n R, \u2264 n R, = n R",
+                "A count: A \u2291 \u2265nR.B - at least, at most or exactly n Bs by R. Dotted, "
+                        + "with a round head.",
+                null, "#1F7A3A", "2 3"));
+        entries.add(new Entry(Form.EDGE, SchemaStyles.NOT, "\u00AC R - not",
+                "A negative assertion: this individual is not related by R to that one.",
+                null, "#7A7A7A", "3 3"));
         entries.add(new Entry(Form.EDGE, SchemaStyles.DATA_PROPERTY, "Data property",
                 "A restriction on a data property, pointing at a datatype.",
                 null, "#0E6E78", null));

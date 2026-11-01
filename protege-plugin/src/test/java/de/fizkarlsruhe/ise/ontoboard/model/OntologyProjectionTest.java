@@ -124,7 +124,7 @@ class OntologyProjectionTest {
         assertEquals(CanvasEdge.Kind.OBJECT_PROPERTY, edge.getKind());
         assertEquals(NS2 + "Person", edge.getSourceId());
         assertEquals(NS2 + "Organization", edge.getTargetId());
-        assertEquals("worksFor", edge.getLabel());
+        assertEquals("\u2203 worksFor", edge.getLabel());
     }
 
     @Test
@@ -137,7 +137,7 @@ class OntologyProjectionTest {
         assertEquals(CanvasEdge.Kind.OBJECT_PROPERTY, edge.getKind());
         assertEquals(NS2 + "Manager", edge.getSourceId());
         assertEquals(NS2 + "Person", edge.getTargetId());
-        assertEquals("manages (only)", edge.getLabel());
+        assertEquals("\u2200 manages", edge.getLabel());
     }
 
     @Test
@@ -156,7 +156,7 @@ class OntologyProjectionTest {
         assertEquals(CanvasEdge.Kind.DATA_PROPERTY, edge.getKind());
         assertEquals(NS2 + "Student", edge.getSourceId());
         assertEquals(XSD_STRING, edge.getTargetId());
-        assertEquals("hasName", edge.getLabel());
+        assertEquals("\u2203 hasName", edge.getLabel());
     }
 
     @Test

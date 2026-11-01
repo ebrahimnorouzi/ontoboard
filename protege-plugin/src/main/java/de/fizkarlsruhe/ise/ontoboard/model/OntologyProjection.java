@@ -702,7 +702,8 @@ public final class OntologyProjection {
                                 : iri(property.asOWLObjectProperty().getIRI()),
                         fillerId),
                 iri(subject), fillerId,
-                propertyLabel(property) + " " + qualifier, CanvasEdge.Kind.OBJECT_PROPERTY));
+                inDescriptionLogic(propertyLabel(property), qualifier),
+                CanvasEdge.Kind.OBJECT_PROPERTY));
     }
 
     /**
@@ -1006,27 +1007,30 @@ public final class OntologyProjection {
      */
     private static String operatorOf(OWLClassExpression expression) {
         if (expression instanceof org.semanticweb.owlapi.model.OWLObjectUnionOf) {
-            return "or";
+            return "\u2294";
         }
         if (expression instanceof org.semanticweb.owlapi.model.OWLObjectIntersectionOf) {
-            return "and";
+            return "\u2293";
         }
         if (expression instanceof org.semanticweb.owlapi.model.OWLObjectComplementOf) {
-            return "not";
+            return "\u00AC";
         }
         if (expression instanceof org.semanticweb.owlapi.model.OWLObjectOneOf) {
-            return "one of";
+            return "{ \u2026 }";
         }
         if (expression instanceof org.semanticweb.owlapi.model.OWLObjectHasSelf) {
-            return "Self";
+            return inDescriptionLogic(propertyLabel(
+                    ((org.semanticweb.owlapi.model.OWLObjectHasSelf) expression).getProperty()),
+                    "self");
         }
         if (expression instanceof org.semanticweb.owlapi.model.OWLQuantifiedObjectRestriction) {
             org.semanticweb.owlapi.model.OWLQuantifiedObjectRestriction restriction =
                     (org.semanticweb.owlapi.model.OWLQuantifiedObjectRestriction) expression;
-            return propertyLabel(restriction.getProperty()) + " " + qualifierOf(expression);
+            return inDescriptionLogic(propertyLabel(restriction.getProperty()),
+                    qualifierOf(expression));
         }
         if (expression instanceof OWLDataSomeValuesFrom) {
-            return "data restriction";
+            return SOME + "data";
         }
         return "expression";
     }
@@ -1037,7 +1041,7 @@ public final class OntologyProjection {
         if (!property.isAnonymous()) {
             return localName(property.asOWLObjectProperty().getIRI());
         }
-        return "inverse " + localName(property.getNamedProperty().getIRI());
+        return localName(property.getNamedProperty().getIRI()) + "\u207B";
     }
 
     /**
@@ -1217,16 +1221,47 @@ public final class OntologyProjection {
         String name = DisplayLabels.forEntity(ontology,
                 ontology.getOWLOntologyManager().getOWLDataFactory()
                         .getOWLObjectProperty(property));
-        if ("some".equals(qualifier)) {
-            return name;
+        return inDescriptionLogic(name, qualifier);
+    }
+
+    /** Existential: {@code ∃ R}. */
+    public static final String SOME = "\u2203 ";
+
+    /** Universal: {@code ∀ R}. */
+    public static final String ONLY = "\u2200 ";
+
+    /**
+     * A restriction's arrow label in description logic, as asked for: {@code ∃ R} for some,
+     * {@code ∀ R} for only, {@code ≥ 2 R}, {@code ≤ 2 R} and {@code = 2 R} for the counts,
+     * {@code ∃ R.{…}} for a value. The word labels before this - "R", "R (only)", "R (min 2)" -
+     * left the commonest one, some, unmarked, so a reader could not tell it from a plain
+     * relation, and the others read as asides.
+     */
+    public static String inDescriptionLogic(String property, String qualifier) {
+        if (qualifier == null || "some".equals(qualifier)) {
+            return SOME + property;
         }
-        if (qualifier.startsWith("min") || qualifier.startsWith("max")
-                || qualifier.startsWith("exactly")) {
-            String shape = qualifier.replaceAll("[0-9]+$", "");
-            String count = qualifier.substring(shape.length());
-            return name + " (" + shape + " " + count + ")";
+        if ("only".equals(qualifier)) {
+            return ONLY + property;
         }
-        return name + " (" + qualifier + ")";
+        if ("value".equals(qualifier)) {
+            return SOME + property + ".{\u2026}";
+        }
+        if ("self".equals(qualifier)) {
+            return SOME + property + ".Self";
+        }
+        String shape = qualifier.replaceAll("[0-9]+$", "");
+        String count = qualifier.substring(shape.length());
+        if ("min".equals(shape)) {
+            return "\u2265 " + count + " " + property;
+        }
+        if ("max".equals(shape)) {
+            return "\u2264 " + count + " " + property;
+        }
+        if ("exactly".equals(shape)) {
+            return "= " + count + " " + property;
+        }
+        return property + " " + qualifier;
     }
 
     /**
@@ -1496,7 +1531,7 @@ public final class OntologyProjection {
             if (isOn(on, subject) && isOn(on, object)) {
                 addUnlessAlreadyThere(edges, new CanvasEdge("nopa|" + subject + "|" + property
                         + "|" + object, iri(subject), iri(object),
-                        "not " + arrowLabel(ontology, property, "some"),
+                        "\u00AC " + arrowLabel(ontology, property, "some").substring(SOME.length()),
                         CanvasEdge.Kind.OBJECT_PROPERTY));
             }
         }
@@ -1510,7 +1545,7 @@ public final class OntologyProjection {
                 : ontology.getAxioms(AxiomType.NEGATIVE_DATA_PROPERTY_ASSERTION,
                         Imports.INCLUDED)) {
             valueEdge(ontology, on, axiom.getSubject(), axiom.getProperty(), axiom.getObject(),
-                    "not ", nodes, edges, df);
+                    "\u00AC ", nodes, edges, df);
         }
     }
 
@@ -1620,9 +1655,10 @@ public final class OntologyProjection {
     /** An OWL object in Manchester syntax, each term by the label the board shows it with. */
     private static String manchester(final OWLOntology ontology,
             org.semanticweb.owlapi.model.OWLObject object) {
-        org.semanticweb.owlapi.manchestersyntax.renderer.ManchesterOWLSyntaxOWLObjectRendererImpl
-                renderer = new org.semanticweb.owlapi.manchestersyntax.renderer
-                        .ManchesterOWLSyntaxOWLObjectRendererImpl();
+        // Description logic, as the rest of the board now is: ∃ hasPart.Fibre rather than
+        // hasPart some Fibre.
+        org.semanticweb.owlapi.dlsyntax.renderer.DLSyntaxObjectRenderer renderer =
+                new org.semanticweb.owlapi.dlsyntax.renderer.DLSyntaxObjectRenderer();
         renderer.setShortFormProvider(new org.semanticweb.owlapi.util.ShortFormProvider() {
             @Override
             public String getShortForm(org.semanticweb.owlapi.model.OWLEntity entity) {
@@ -1790,7 +1826,7 @@ public final class OntologyProjection {
                             "dr|" + domainIri + "|" + property.getIRI() + "|" + rangeIri,
                             iri(domainIri), iri(rangeIri),
                             arrowLabel(ontology, property.getIRI(), "some")
-                                    + " (domain \u2192 range)",
+                                    .substring(SOME.length()) + " (domain \u2192 range)",
                             CanvasEdge.Kind.DOMAIN_RANGE));
                 }
             }

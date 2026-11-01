@@ -24,7 +24,7 @@ class BoardSectionsTest {
     }
 
     @Test
-    void subclassesStackInTheColumnRightOfTheirSuperclass() {
+    void subclassesStandInTheRowBelowTheirSuperclassCentredUnderIt() {
         List<BoardSections.Term> terms = Arrays.asList(term("Thing", BoardSections.Kind.CLASS),
                 term("A", BoardSections.Kind.CLASS), term("B", BoardSections.Kind.CLASS),
                 term("C", BoardSections.Kind.CLASS));
@@ -35,15 +35,48 @@ class BoardSectionsTest {
 
         Map<String, double[]> at = BoardSections.plan(terms, edges, 40, 40).positions;
 
-        assertEquals(40, at.get("Thing")[0], 0.001);
+        assertEquals(40, at.get("Thing")[1], 0.001);
         for (String child : new String[] {"A", "B", "C"}) {
-            assertEquals(40 + 160 + BoardSections.ACROSS, at.get(child)[0], 0.001,
-                    child + " in the next column");
+            assertEquals(40 + 60 + BoardSections.BELOW, at.get(child)[1], 0.001,
+                    child + " in the row below");
         }
-        assertTrue(at.get("A")[1] < at.get("B")[1] && at.get("B")[1] < at.get("C")[1],
-                "alphabetically, one under another");
-        double middle = (at.get("A")[1] + at.get("C")[1]) / 2;
-        assertEquals(middle, at.get("Thing")[1], 0.001, "the superclass centred on them");
+        assertTrue(at.get("A")[0] < at.get("B")[0] && at.get("B")[0] < at.get("C")[0],
+                "alphabetically, side by side");
+        assertEquals(at.get("B")[0], at.get("Thing")[0], 0.001, "the superclass centred above");
+    }
+
+    /** Asked for: the ABox below the TBox, each individual under the class it is typed with. */
+    @Test
+    void individualsAreABandBelowEveryClassUnderTheirOwnClass() {
+        List<BoardSections.Term> terms = Arrays.asList(term("Pizza", BoardSections.Kind.CLASS),
+                term("Margherita", BoardSections.Kind.CLASS),
+                term("Diavola", BoardSections.Kind.CLASS),
+                term("m1", BoardSections.Kind.INDIVIDUAL),
+                term("d1", BoardSections.Kind.INDIVIDUAL),
+                term("d2", BoardSections.Kind.INDIVIDUAL),
+                term("lit|1", BoardSections.Kind.VALUE));
+        List<BoardSections.Edge> edges = Arrays.asList(
+                new BoardSections.Edge("Margherita", "Pizza", BoardSections.Link.SUBCLASS),
+                new BoardSections.Edge("Diavola", "Pizza", BoardSections.Link.SUBCLASS),
+                new BoardSections.Edge("m1", "Margherita", BoardSections.Link.TYPE),
+                new BoardSections.Edge("d1", "Diavola", BoardSections.Link.TYPE),
+                new BoardSections.Edge("d2", "Diavola", BoardSections.Link.TYPE),
+                new BoardSections.Edge("d1", "lit|1", BoardSections.Link.OTHER));
+
+        Map<String, double[]> at = BoardSections.plan(terms, edges, 0, 0).positions;
+
+        double classesBottom = 0;
+        for (String cls : new String[] {"Pizza", "Margherita", "Diavola"}) {
+            classesBottom = Math.max(classesBottom, at.get(cls)[1] + 60);
+        }
+        for (String individual : new String[] {"m1", "d1", "d2", "lit|1"}) {
+            assertTrue(at.get(individual)[1] > classesBottom, individual + " below the classes");
+        }
+        assertEquals(at.get("Margherita")[0], at.get("m1")[0], 0.001, "under its class");
+        assertEquals(at.get("Diavola")[0], at.get("d1")[0], 0.001, "under its class");
+        assertTrue(at.get("d2")[1] > at.get("d1")[1], "a column under the class");
+        assertTrue(at.get("lit|1")[1] > at.get("d1")[1] && at.get("lit|1")[1] < at.get("d2")[1],
+                "a value right below its individual");
     }
 
     @Test
@@ -62,9 +95,10 @@ class BoardSectionsTest {
 
         BoardSections.Plan plan = BoardSections.plan(terms, edges, 40, 40);
 
-        double column = 40 + 160 + BoardSections.ACROSS;
-        assertEquals(column, plan.positions.get("alice")[0], 0.001);
-        assertEquals(column, plan.positions.get("exp|1")[0], 0.001);
+        assertTrue(plan.positions.get("exp|1")[1] > plan.positions.get("Person")[1],
+                "the restriction below its class");
+        assertTrue(plan.positions.get("alice")[1] > plan.positions.get("exp|1")[1],
+                "the individual below the classes and what hangs off them");
         assertEquals(2, plan.sections.size(), "object and data properties, framed apart");
         assertEquals("Object properties", plan.sections.get(0).label);
         BoardSections.Section objects = plan.sections.get(0);
@@ -74,8 +108,12 @@ class BoardSectionsTest {
                     && objects.y < p[1] && p[1] + 60 < objects.y + objects.h,
                     property + " inside its section");
         }
-        assertTrue(plan.positions.get("knowsWell")[0] > plan.positions.get("knows")[0],
-                "a sub-property right of its super-property");
+        assertTrue(plan.positions.get("knowsWell")[1] > plan.positions.get("knows")[1],
+                "a sub-property below its super-property");
+        for (String outside : new String[] {"Person", "alice", "exp|1"}) {
+            assertTrue(plan.positions.get(outside)[0] + 160 < objects.x,
+                    outside + " is not under a section");
+        }
     }
 
     /** Hundreds of terms: no two boxes overlap, and the board is not one long strip. */
@@ -154,6 +192,20 @@ class BoardSectionsTest {
             right = Math.max(right, p[0] + 160);
         }
         assertTrue(bottom < 300 * 76 / 3, "no longer one column: " + right + "x" + bottom);
-        assertTrue(at.get("s0")[0] > at.get("Specimen")[0], "the individuals right of the class");
+        assertTrue(at.get("s0")[1] > at.get("Specimen")[1], "the individuals below the class");
+    }
+
+    /** An individual whose class is not on the board went to x = 2^31, and the sections after. */
+    @Test
+    void anIndividualOfNoClassOnTheBoardStaysOnTheBoard() {
+        List<BoardSections.Term> terms = Arrays.asList(term("Pizza", BoardSections.Kind.CLASS),
+                term("orphan", BoardSections.Kind.INDIVIDUAL),
+                term("knows", BoardSections.Kind.OBJECT_PROPERTY));
+
+        BoardSections.Plan plan = BoardSections.plan(terms,
+                java.util.Collections.<BoardSections.Edge>emptyList(), 0, 0);
+
+        assertTrue(plan.positions.get("orphan")[0] < 1000, "" + plan.positions.get("orphan")[0]);
+        assertTrue(plan.sections.get(0).x < 2000, "" + plan.sections.get(0).x);
     }
 }
