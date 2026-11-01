@@ -155,6 +155,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
     static final String SHOW_DATA_PROPERTIES = "ontoboard.canvas.show.dataProperties";
     static final String SHOW_INDIVIDUALS = "ontoboard.canvas.show.individuals";
     static final String SHOW_IMPORTED = "ontoboard.canvas.show.imported";
+    static final String SHOW_RULES = "ontoboard.canvas.show.rules";
     static final String FOCUS_PREFERENCE = "ontoboard.canvas.focus";
 
     /** Whether selecting a term brings it and its neighbours forward and fades the rest. */
@@ -2578,6 +2579,18 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                         newSubclassOfSelection();
                     }
                 });
+        // Enter, also as in a mind map: a sibling of the selected class.
+        keys.put(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_ENTER, 0),
+                "ontoboard.newSibling");
+        graphComponent.getActionMap().put("ontoboard.newSibling",
+                new javax.swing.AbstractAction() {
+                    private static final long serialVersionUID = 1L;
+
+                    @Override
+                    public void actionPerformed(java.awt.event.ActionEvent event) {
+                        newSiblingOfSelection();
+                    }
+                });
         keys.put(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_DELETE, 0),
                 "ontoboard.removeFromCanvas");
         keys.put(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_BACK_SPACE, 0),
@@ -3049,6 +3062,40 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         double[] spot = OntologyProjection.besideItsParentAt(layout, at.getX() + at.getWidth()
                 + 70, at.getY());
         createEntityAt(EntityFactory.Kind.CLASS, (int) spot[0], (int) spot[1], IRI.create(parent));
+    }
+
+    /**
+     * A sibling of the selected class - Enter, as in a mind map: a new class under the same
+     * parent, named in one dialog and placed below it. A class with no named parent gets a
+     * sibling with none either. Nothing happens unless exactly one class is selected.
+     */
+    private void newSiblingOfSelection() {
+        Object[] selected = graph.getSelectionCells();
+        String sibling = selected != null && selected.length == 1
+                ? graph.getIdForCell(selected[0]) : null;
+        OWLOntology ontology = getOWLModelManager().getActiveOntology();
+        if (sibling == null || SchemaGraph.isAnnotationId(sibling) || ontology == null
+                || !ontology.containsClassInSignature(IRI.create(sibling),
+                        org.semanticweb.owlapi.model.parameters.Imports.INCLUDED)) {
+            setStatus("Select one class on the board, then press Enter to give it a sibling.");
+            return;
+        }
+        IRI parent = null;
+        org.semanticweb.owlapi.model.OWLClass cls =
+                getOWLModelManager().getOWLDataFactory().getOWLClass(IRI.create(sibling));
+        for (OWLOntology part : ontology.getImportsClosure()) {
+            for (org.semanticweb.owlapi.model.OWLSubClassOfAxiom axiom
+                    : part.getSubClassAxiomsForSubClass(cls)) {
+                if (parent == null && !axiom.getSuperClass().isAnonymous()
+                        && !axiom.getSuperClass().isOWLThing()) {
+                    parent = axiom.getSuperClass().asOWLClass().getIRI();
+                }
+            }
+        }
+        com.mxgraph.model.mxGeometry at = graph.getModel().getGeometry(selected[0]);
+        double[] spot = OntologyProjection.besideItsParentAt(layout, at.getX(),
+                at.getY() + at.getHeight() + 30);
+        createEntityAt(EntityFactory.Kind.CLASS, (int) spot[0], (int) spot[1], parent);
     }
 
     /**
@@ -3639,6 +3686,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             layers.add(layerSwitch("Data properties", SHOW_DATA_PROPERTIES));
             layers.add(layerSwitch("Individuals", SHOW_INDIVIDUALS));
             layers.add(layerSwitch("Imported terms", SHOW_IMPORTED));
+            layers.add(layerSwitch("Rules", SHOW_RULES));
             menu.add(layers);
             if (isolated != null) {
                 JMenuItem whole = new JMenuItem("Show the whole board");
@@ -4363,6 +4411,10 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                 getOWLModelManager().getActiveOntology(),
                 drawnMembers(getOWLModelManager().getActiveOntology()), showExpressions);
         projection = withInferences(projection);
+        if (!java.util.prefs.Preferences.userNodeForPackage(SchemaCanvasView.class)
+                .getBoolean(SHOW_RULES, true)) {
+            projection = projection.withoutRules();
+        }
         if (!folded.isEmpty()) {
             java.util.List<de.fizkarlsruhe.ise.ontoboard.model.CanvasNode> relabelled =
                     new java.util.ArrayList<de.fizkarlsruhe.ise.ontoboard.model.CanvasNode>();
@@ -5764,6 +5816,19 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                     // frame mxGraph starts an in-place edit, which isCellEditable allows for
                     // exactly those two.
                     String onIt = graph.getIdForCell(cell);
+                    String rule = OntologyProjection.readableRule(
+                            String.valueOf(graph.getModel().getValue(cell)));
+                    if (rule != null) {
+                        // A rule's node reads the whole rule on one line; set out, it can be read.
+                        javax.swing.JTextArea text = new javax.swing.JTextArea(rule);
+                        text.setEditable(false);
+                        text.setFont(new java.awt.Font(java.awt.Font.MONOSPACED,
+                                java.awt.Font.PLAIN, 13));
+                        JOptionPane.showMessageDialog(SchemaCanvasView.this,
+                                new javax.swing.JScrollPane(text), "Rule",
+                                JOptionPane.PLAIN_MESSAGE);
+                        return;
+                    }
                     if (onIt != null && !SchemaGraph.isAnnotationId(onIt)
                             && membership.contains(onIt)) {
                         expandNeighbours(onIt);

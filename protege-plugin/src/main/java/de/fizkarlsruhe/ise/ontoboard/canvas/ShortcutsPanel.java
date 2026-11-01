@@ -38,6 +38,7 @@ public final class ShortcutsPanel extends JPanel {
         {"Ctrl+Enter", "Add a match that is in the ontology but not yet on the board"},
         {"Double-click", "On empty board: a new class. On a term: expand its neighbours."},
         {"Tab", "A new subclass of the selected class, beside it"},
+        {"Enter on a class", "A new sibling of the selected class, below it"},
         {"Ctrl+Tab", "Move the keyboard focus off the board; Ctrl+Shift+Tab back"},
         {"Drag", "On empty board: move the board. From a node's handle: draw an axiom."},
         {"Shift-drag", "Select a region instead. Ctrl-drag does the same."},

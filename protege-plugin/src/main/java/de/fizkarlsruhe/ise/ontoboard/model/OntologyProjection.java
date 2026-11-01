@@ -1350,6 +1350,32 @@ public final class OntologyProjection {
                 some.getFiller().asOWLClass().getIRI(), edges);
     }
 
+    /** What a rule's node starts with: {@code rule: body → head}. */
+    public static final String RULE_LABEL = "rule: ";
+
+    /**
+     * A rule's node label as a reader would set it out - "If", each atom of the body on a line,
+     * "then", each atom of the head - or null for a label that is not a rule's.
+     */
+    public static String readableRule(String label) {
+        if (label == null || !label.startsWith(RULE_LABEL)) {
+            return null;
+        }
+        String rule = label.substring(RULE_LABEL.length());
+        int arrow = rule.indexOf(" \u2192 ");
+        String body = arrow < 0 ? rule : rule.substring(0, arrow);
+        String head = arrow < 0 ? "" : rule.substring(arrow + 3);
+        StringBuilder text = new StringBuilder("If\n");
+        for (String atom : body.split(" \u2227 ")) {
+            text.append("    ").append(atom.trim()).append('\n');
+        }
+        text.append("then\n");
+        for (String atom : head.split(" \u2227 ")) {
+            text.append("    ").append(atom.trim()).append('\n');
+        }
+        return text.toString().trim();
+    }
+
     /**
      * SWRL rules, each as a node reading the rule - "rule: person(?x) ∧ has age(?x, ?a) →
      * adult(?x)" - with a line from each term its body uses ("if") and to each term its head
@@ -1366,7 +1392,7 @@ public final class OntologyProjection {
                 : ontology.getAxioms(AxiomType.SWRL_RULE, Imports.INCLUDED)) {
             Set<IRI> body = new java.util.LinkedHashSet<IRI>();
             Set<IRI> head = new java.util.LinkedHashSet<IRI>();
-            String reads = "rule: " + atoms(ontology, rule.getBody(), body) + " \u2192 "
+            String reads = RULE_LABEL + atoms(ontology, rule.getBody(), body) + " \u2192 "
                     + atoms(ontology, rule.getHead(), head);
             boolean touchesBoard = false;
             for (IRI term : body) {

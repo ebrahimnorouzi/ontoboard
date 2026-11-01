@@ -278,6 +278,42 @@ class DomainRangeProjectionTest {
                 "then " + NS + "Process")), parts);
     }
 
+    /**
+     * The Rules layer switched off takes each rule's node and its lines away and nothing else;
+     * double-clicking a rule sets it out to be read.
+     */
+    @Test
+    void theRulesLayerTakesOnlyRulesAwayAndARuleReadsSetOut() throws Exception {
+        OWLOntology o = ontology();
+        org.semanticweb.owlapi.model.SWRLVariable x = df.getSWRLVariable(IRI.create(NS + "x"));
+        manager.addAxiom(o, df.getSWRLRule(
+                Collections.<org.semanticweb.owlapi.model.SWRLAtom>singleton(
+                        df.getSWRLClassAtom(agent, x)),
+                Collections.<org.semanticweb.owlapi.model.SWRLAtom>singleton(
+                        df.getSWRLClassAtom(process, x))));
+        Projection drawn = OntologyProjection.project(o, all(o), true);
+
+        Projection without = drawn.withoutRules();
+
+        assertEquals(drawn.getNodes().size() - 1, without.getNodes().size(), "one rule node");
+        for (CanvasEdge edge : without.getEdges()) {
+            assertTrue(edge.getKind() != CanvasEdge.Kind.RULE_PART, edge.getId());
+        }
+        assertEquals(drawn.getEdges().size() - 2, without.getEdges().size(), "its if and then");
+        String label = null;
+        for (CanvasNode node : drawn.getNodes()) {
+            label = node.getLabel().startsWith(OntologyProjection.RULE_LABEL) ? node.getLabel()
+                    : label;
+        }
+        String readable = OntologyProjection.readableRule(label);
+        assertTrue(readable.startsWith("If\n    ") && readable.contains("\nthen\n    "),
+                readable);
+        assertEquals(null, OntologyProjection.readableRule("pizza"));
+        assertTrue(new Projection(drawn.getNodes(), java.util.Collections.<CanvasEdge>emptyList())
+                .withoutRules().getNodes().size() == drawn.getNodes().size(),
+                "a board with no rule lines loses nothing");
+    }
+
     /** "(hasPart some Fibre)(?x)" read as functional syntax with whole IRIs, and had no lines. */
     @Test
     void aRuleAtomOnAnAnonymousClassReadsAsManchesterAndLinksItsTerms() throws Exception {
