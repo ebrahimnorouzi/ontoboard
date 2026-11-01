@@ -91,7 +91,7 @@ class AxiomRemovalTest {
     @Test
     void removesBothGlobalAxiomsButKeepsThePropertyDeclaration() {
         String id = edgeIdOfKind(onCanvas("Person", "Organization"),
-                CanvasEdge.Kind.OBJECT_PROPERTY);
+                CanvasEdge.Kind.DOMAIN_RANGE);
         assertTrue(AxiomRemoval.isGlobalDomainRange(id),
                 "the fixture's worksFor edge is the legacy domain/range form");
 

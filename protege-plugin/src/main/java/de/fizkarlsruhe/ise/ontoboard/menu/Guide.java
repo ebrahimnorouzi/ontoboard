@@ -299,13 +299,16 @@ public final class Guide {
         File root = ReleaseAction.projectRootOf(editFile);
         facts.inProject = editFile.getName().endsWith("-edit.owl") && ontologyDirectory != null
                 && "ontology".equals(ontologyDirectory.getName());
-        facts.hasRequirements = new File(root, "docs/requirements.md").isFile()
-                || new File(root, "docs/xd/requirements.md").isFile();
+        // Written, not merely present: the guide's own button writes the template, and ticking
+        // the step for an empty table told a newcomer the work was done when it had not begun.
+        facts.hasRequirements = hasAQuestion(new File(root, "docs/requirements.md"))
+                || hasAQuestion(new File(root, "docs/xd/requirements.md"));
         facts.importModules = ImportModules.modulesIn(root).size();
         File[] sparql = new File(root, "src/sparql").listFiles();
         if (sparql != null) {
             for (File query : sparql) {
-                if (query.getName().endsWith(".rq") && !query.getName().equals("check_labels.rq")) {
+                if (query.getName().endsWith(".rq") && !query.getName().equals("check_labels.rq")
+                        && !isTheTemplate(query)) {
                     facts.ownTests++;
                 }
             }
@@ -392,7 +395,40 @@ public final class Guide {
      * <p>It passes until it is edited. A starter that failed would fail the build the moment the
      * guide wrote it, before anybody had written a rule into it.
      */
+    /** Whether a requirements document has a competency question with words in it. */
+    static boolean hasAQuestion(File document) {
+        if (!document.isFile()) {
+            return false;
+        }
+        try {
+            for (String line : java.nio.file.Files.readAllLines(document.toPath(),
+                    java.nio.charset.StandardCharsets.UTF_8)) {
+                if (line.matches("\\s*\\|\\s*CQ\\d+\\s*\\|\\s*[^|\\s][^|]*\\|.*")) {
+                    return true;
+                }
+            }
+        } catch (java.io.IOException unreadable) {
+            return false;
+        }
+        return false;
+    }
+
+    /** Whether a test is still the guide's template, its rule not yet written. */
+    static boolean isTheTemplate(File query) {
+        try {
+            return new String(java.nio.file.Files.readAllBytes(query.toPath()),
+                    java.nio.charset.StandardCharsets.UTF_8).contains(":ReplaceThisWithYourRule");
+        } catch (java.io.IOException unreadable) {
+            return false;
+        }
+    }
+
     public static String testTemplate() {
+        return testTemplate("https://example.org/your-ontology#");
+    }
+
+    /** The template, with {@code :} standing for the namespace this ontology's terms are in. */
+    public static String testTemplate(String namespace) {
         return "# CQ1: <the rule, in one line - Build reports this line when the test fails>\n"
                 + "#\n"
                 + "# A test lists what BREAKS its rule, so an empty answer passes. This one lists\n"
@@ -403,7 +439,7 @@ public final class Guide {
                 + "#                       ?named rdfs:subClassOf [ owl:onProperty :hasBase ] }\n"
                 + "PREFIX owl: <http://www.w3.org/2002/07/owl#>\n"
                 + "PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\n"
-                + "PREFIX : <https://example.org/your-ontology#>\n\n"
+                + "PREFIX : <" + namespace + ">\n\n"
                 + "SELECT ?term WHERE {\n"
                 + "  ?term a :ReplaceThisWithYourRule .\n"
                 + "}\n";

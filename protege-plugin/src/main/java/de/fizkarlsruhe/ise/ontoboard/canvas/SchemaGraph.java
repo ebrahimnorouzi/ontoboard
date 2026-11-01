@@ -175,7 +175,10 @@ public class SchemaGraph extends mxGraph {
             }
 
             // Frames behind everything else - mxGraph paints in model order, and a frame drawn
-            // after the boxes in it would cover them.
+            // after the boxes in it would cover them. In the order the board keeps them, so a
+            // frame drawn inside another stays above it and can still be clicked.
+            java.util.List<Object> frameCells = new java.util.ArrayList<Object>();
+            boolean insertedFrame = false;
             for (CanvasLayout.FrameLayout frame : layout.frames) {
                 if (frame == null || frame.id == null) {
                     continue;
@@ -189,12 +192,18 @@ public class SchemaGraph extends mxGraph {
                 if (cell == null) {
                     cell = insertVertex(getDefaultParent(), frame.id, label, frame.x, frame.y,
                             w, h, style);
-                    orderCells(true, new Object[] {cell});
                     cellsById.put(frame.id, cell);
+                    insertedFrame = true;
                 } else if (update(cell, label, style, frame.x, frame.y, w, h)) {
                     moved.add(cell);
                 }
+                frameCells.add(cell);
                 tooltipsById.put(frame.id, CanvasTooltips.forFrame(frame.label));
+            }
+            if (insertedFrame) {
+                // One call for all of them: sending cells to the back keeps the order they are
+                // given in, where one frame at a time reversed it.
+                orderCells(true, frameCells.toArray());
             }
 
             // EVERY BOX ALREADY SPOKEN FOR, so a term with no position goes somewhere free: the
@@ -230,12 +239,18 @@ public class SchemaGraph extends mxGraph {
                 Object cell = cellsById.get(node.getId());
                 if (cell != null) {
                     com.mxgraph.model.mxGeometry at = getModel().getGeometry(cell);
+                    double w = stored != null && stored.w > 0 ? stored.w : at.getWidth();
+                    double h = stored != null && stored.h > 0 ? stored.h : at.getHeight();
+                    if (!label.equals(getModel().getValue(cell))) {
+                        // A new label - renamed, or a folded class's count - gets a box it fits,
+                        // never smaller than one somebody sized by hand.
+                        double[] fits = fittedSize(label, style);
+                        w = Math.max(w, fits[0]);
+                        h = Math.max(h, fits[1]);
+                    }
                     boolean changed = stored == null
-                            ? update(cell, label, style, at.getX(), at.getY(), at.getWidth(),
-                                    at.getHeight())
-                            : update(cell, label, style, stored.x, stored.y,
-                                    stored.w > 0 ? stored.w : at.getWidth(),
-                                    stored.h > 0 ? stored.h : at.getHeight());
+                            ? update(cell, label, style, at.getX(), at.getY(), w, h)
+                            : update(cell, label, style, stored.x, stored.y, w, h);
                     if (changed) {
                         moved.add(cell);
                     }
@@ -385,7 +400,11 @@ public class SchemaGraph extends mxGraph {
         // Generous: JGraphX wraps a few pixels inside the box and measures with fractional
         // metrics where these are whole pixels, so a label measured to fit exactly broke its
         // last character onto a line of its own.
-        double padding = 2 * mxUtils.getDouble(resolved, mxConstants.STYLE_SPACING, 6) + 30;
+        // The hexagon a property is drawn in keeps 22px on either side for its slanted edges,
+        // and counting only the plain spacing put obo:BFO_0000050 on two lines in it.
+        double padding = 2 * mxUtils.getDouble(resolved, mxConstants.STYLE_SPACING, 6)
+                + mxUtils.getDouble(resolved, mxConstants.STYLE_SPACING_LEFT, 0)
+                + mxUtils.getDouble(resolved, mxConstants.STYLE_SPACING_RIGHT, 0) + 30;
         String[] lines = (label == null ? "" : label).split("\n");
         double longest = 0;
         for (String line : lines) {

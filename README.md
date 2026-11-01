@@ -5,6 +5,10 @@
 A Protégé Desktop plugin for people who maintain OBO-style ontologies: scaffold an ODK project,
 build it, run ROBOT's report, explain what the reasoner concluded, refresh your imports and cut a
 release — all from the editor you already have open, against the ontology already in front of you.
+And a board that draws the whole ontology, the way a whiteboard would.
+
+New to ontologies, ODK or both? *OntoBoard → Start here: the guide...* walks you from an idea to a
+released ontology, one step at a time — or read [the guide](docs/guide.md) first.
 
 [![Download](https://img.shields.io/badge/download-latest%20release-blue)](https://github.com/ebrahimnorouzi/ontoboard/releases/latest)
 
@@ -31,7 +35,7 @@ you can do right now and what to install for the rest.
 2. **Delete any older `ontoboard-*.jar` from Protégé's `plugins/` folder.** Two copies will not
    resolve.
 3. Drop the jar into `plugins/` and restart Protégé.
-4. Open the board with *Window → Tabs → OntoBoard*.
+4. Open the board with *Window → Tabs → OntoBoard*: every term of the open ontology is on it.
 
 Protégé Desktop **5.6.x or 5.5.0**, both smoke-tested in the real host on every release. Java 8+
 (Protégé bundles its own). The jar is large because ROBOT and its dependencies are inside it.
@@ -50,10 +54,17 @@ rename IRIs, extract import modules. Nine of these are driven end to end in the 
 on every release, and nine have been compared against the real `robot` command to make sure the
 answers match.
 
-**A canvas that reads your axioms** — classes, individuals and the relations between them, drawn
-from the axioms you actually wrote: restrictions inside `EquivalentClasses` and conjunctions, not
-only the three shapes most tools read. Switch on the reasoner's conclusions, then right-click a
-dotted edge and ask **why** — it answers with the axioms that force it.
+**A board of the whole ontology** — every class, property and individual as soon as the tab opens,
+laid out as an outline: design patterns framed along the top, classes as a tree, properties in
+sections of their own. Drawn from the axioms you actually wrote — restrictions, unions, domains and
+ranges, disjointness, property chains, SWRL rules: every logical axiom of two published BFO-based
+ontologies. Select a term and its relations come forward while the rest fades; fold a class; jump
+between frames; press Tab for a new subclass. Switch on the reasoner's conclusions, then right-click
+a dotted edge and ask **why** — it answers with the axioms that force it.
+
+**History and reuse** — every release of the project, what changed in each term by term, any of
+them opened in a window of its own. Find terms in another ontology by their labels and import
+them without looking up an IRI.
 
 **162 design patterns, built in** — 122 from the ODP portal plus 40 extracted from MWO, PMDco
 and NFDI MatWerk, each as OWL and Turtle. Browse by collection or publisher, or let the plugin
@@ -71,7 +82,9 @@ branch, without leaving the editor.
 **[ebrahimnorouzi.github.io/ontoboard](https://ebrahimnorouzi.github.io/ontoboard/)** — the full
 documentation site. The same pages are readable here in [`docs/`](docs/):
 
+- [Start here: the guide](docs/guide.md) — from an idea to a released ontology, for newcomers
 - [Getting started](docs/getting-started.md)
+- [What the board draws](docs/canvas.md)
 - [Working with ODK](docs/odk-workflow.md) — the ODK workflow step by step, and exactly which
   steps OntoBoard does for you
 - [Collaboration](docs/collaboration.md)
@@ -80,8 +93,9 @@ documentation site. The same pages are readable here in [`docs/`](docs/):
 
 ## Status
 
-Early and actively developed, but held to a standard: every release is smoke-tested in both
-Protégé versions, the plugin self-checks on startup, and each release ships a receipt in
+Early and actively developed, but held to a standard: @@TESTS@@ unit tests, every release
+smoke-tested in both Protégé versions, Windows checked in CI, the plugin self-checks on startup,
+and each release ships a receipt in
 [`protege-plugin/tools/smoke-receipt/`](protege-plugin/tools/smoke-receipt/) recording what was
 verified and what was not.
 

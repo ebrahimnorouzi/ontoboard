@@ -46,6 +46,9 @@ public class CompareReleasesAction extends OntoBoardAction {
     /** What the later side is when somebody wants to compare a release against their edits. */
     private static final String WORKING_COPY = "what I have open now";
 
+    /** The From side when the project has no releases: what is given below takes its place. */
+    private static final String GIVEN_BELOW = "a web address or file, given below";
+
     private volatile String from = "";
     private volatile String to = WORKING_COPY;
     private volatile boolean writeNotes;
@@ -62,14 +65,11 @@ public class CompareReleasesAction extends OntoBoardAction {
     protected boolean configure() {
         File editFile = fileOf(getOWLModelManager().getActiveOntology());
         List<String> releases = releasesOf(editFile);
-        if (releases.isEmpty()) {
-            javax.swing.JOptionPane.showMessageDialog(getOWLWorkspace(),
-                    "This project has no releases to compare against yet.\n\nOntoBoard > Project "
-                            + "> Release keeps a dated copy under releases/, and from the second "
-                            + "one onwards this can tell you what changed.",
-                    "Nothing to compare", javax.swing.JOptionPane.INFORMATION_MESSAGE);
-            return false;
-        }
+        // No releases of its own is no reason to refuse: a contributor's question is usually
+        // "what have I changed against the published version", and the address of that was the
+        // option this dialog offered - after the refusal that kept anybody from reaching it.
+        List<String> fromChoices = releases.isEmpty()
+                ? java.util.Collections.singletonList(GIVEN_BELOW) : releases;
 
         List<String> laterChoices = new ArrayList<String>();
         laterChoices.add(WORKING_COPY);
@@ -77,8 +77,8 @@ public class CompareReleasesAction extends OntoBoardAction {
 
         List<Parameter> parameters = Arrays.asList(
                 Parameter.of(OPTION_FROM, "From", Parameter.Kind.CHOICE)
-                        .choices(releases.toArray(new String[0]))
-                        .defaultValue(releases.get(0))
+                        .choices(fromChoices.toArray(new String[0]))
+                        .defaultValue(fromChoices.get(0))
                         .required()
                         .help("The earlier version. Releases are listed newest first, read from "
                                 + "the dated copies under releases/ - which is why keeping those "
@@ -92,7 +92,8 @@ public class CompareReleasesAction extends OntoBoardAction {
                                 + "against your unreleased edits, which is the question to ask "
                                 + "before cutting the next one.")
                         .build(),
-                Parameter.of(OPTION_PUBLISHED, "Or compare against a published release (URL)",
+                Parameter.of(OPTION_PUBLISHED,
+                        "Or compare against a published release (web address or file)",
                         Parameter.Kind.TEXT)
                         .help("Fill this in and it replaces the 'From' side: the release is "
                                 + "downloaded from this address and compared against the later "
@@ -164,7 +165,13 @@ public class CompareReleasesAction extends OntoBoardAction {
         // that teaches people to ignore real ones. Compared as versions, not as text: as text
         // 0.10.0 sorts before 0.9.0, so a semantic project's tenth minor release was refused as
         // "earlier" than its ninth.
-        if (!WORKING_COPY.equals(to) && !isEarlier(from, to)) {
+        if (GIVEN_BELOW.equals(from) && publishedUrl.isEmpty()) {
+            return result.failed("This project has no releases of its own yet. Give the web "
+                    + "address or the file of the version to compare against, under 'Or compare "
+                    + "against a published release'. OntoBoard > Project > Release keeps a dated "
+                    + "copy of each release from now on.").build();
+        }
+        if (!GIVEN_BELOW.equals(from) && !WORKING_COPY.equals(to) && !isEarlier(from, to)) {
             return result.failed("'From' must be an earlier release than 'To'. You picked From="
                     + from + " and To=" + to + ", which would report everything added since "
                     + to + " as having been removed. Both lists are newest-first, so the earlier "
@@ -291,8 +298,9 @@ public class CompareReleasesAction extends OntoBoardAction {
     private OWLOntology loadPublished(String url, OperationResult.Builder result) {
         result.note("From: " + url + " (downloaded)");
         try {
+            // toIri, so a file path works as well as a web address.
             return OntologySource.load(OWLManager.createOWLOntologyManager(),
-                    org.semanticweb.owlapi.model.IRI.create(url));
+                    OntologySource.toIri(url));
         } catch (RuntimeException cannotLoad) {
             throw new RobotException("Could not download the published release from " + url
                     + ": " + cannotLoad.getMessage() + ". A PURL that has never been published "

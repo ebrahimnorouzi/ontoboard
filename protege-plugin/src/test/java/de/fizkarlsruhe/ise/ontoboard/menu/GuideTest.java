@@ -71,7 +71,8 @@ class GuideTest {
     void progressIsReadFromTheProject(@TempDir File root) throws Exception {
         File edit = new File(root, "src/ontology/menu-edit.owl");
         assertTrue(edit.getParentFile().mkdirs());
-        write(new File(root, "docs/requirements.md"), "# Requirements");
+        write(new File(root, "docs/requirements.md"), "# Requirements\n\n| CQ | Question |\n|---|---|\n"
+                + "| CQ1 | Which customer placed a given order? |\n");
         write(new File(root, "src/sparql/check_labels.rq"), "SELECT * WHERE { }");
         write(new File(root, "src/sparql/cq1_every_order_has_a_customer.rq"), "SELECT * {}");
         assertTrue(new File(root, "releases/1.0.0").mkdirs());
@@ -113,5 +114,22 @@ class GuideTest {
     private static void write(File file, String text) throws Exception {
         file.getParentFile().mkdirs();
         Files.write(file.toPath(), text.getBytes(StandardCharsets.UTF_8));
+    }
+
+    /**
+     * The guide's own buttons write a requirements template and a test template. Ticking the
+     * steps for those told a newcomer the work was done when it had not begun.
+     */
+    @Test
+    void aStubIsNotWork(@org.junit.jupiter.api.io.TempDir File root) throws Exception {
+        File edit = new File(root, "src/ontology/shop-edit.owl");
+        assertTrue(edit.getParentFile().mkdirs());
+        write(new File(root, "docs/requirements.md"), Guide.requirementsTemplate("Shop"));
+        write(new File(root, "src/sparql/cq1_your_first_question.rq"), Guide.testTemplate());
+
+        Guide.Facts facts = Guide.factsOf(edit, null);
+
+        assertTrue(!facts.hasRequirements, "an empty question table is not requirements");
+        assertEquals(0, facts.ownTests, "the template is not a test");
     }
 }

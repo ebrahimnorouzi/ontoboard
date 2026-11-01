@@ -50,7 +50,10 @@ public final class EdgeAxioms {
                         + "property narrows the range to the intersection."),
 
         /** {@code SubClassOf(A ObjectMaxCardinality(1 R B))} - at most one B per A. */
-        FUNCTIONALITY("Functionality", "A ⊑ ≤1 R.B",
+        // Not "Functionality": that word names FunctionalObjectProperty(R), which holds for every
+        // use of R, and this is a restriction on A alone - a curator who picked it reasonably
+        // believed R had become functional.
+        FUNCTIONALITY("At most one", "A ⊑ ≤1 R.B",
                 "A {source} relates to at most one {target} via R.");
 
         /**

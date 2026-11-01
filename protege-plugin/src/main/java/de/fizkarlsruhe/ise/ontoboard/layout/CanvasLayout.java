@@ -143,7 +143,7 @@ public class CanvasLayout {
      * dropped, so every drawing put each restriction's node back into the first free slot.
      */
     public static boolean isDerived(String id) {
-        return id != null && (id.startsWith("exp|")
+        return id != null && (id.startsWith("exp|") || id.startsWith("lit|")
                 || id.startsWith("http://www.w3.org/2001/XMLSchema#")
                 || id.startsWith("http://www.w3.org/1999/02/22-rdf-syntax-ns#")
                 || id.startsWith("http://www.w3.org/2000/01/rdf-schema#"));

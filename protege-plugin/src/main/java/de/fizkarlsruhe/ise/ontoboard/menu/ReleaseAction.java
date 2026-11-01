@@ -79,7 +79,11 @@ public class ReleaseAction extends OntoBoardAction {
         values.put(OPTION_CHECK, "true");
         values.put(OPTION_REASON, "true");
         values.put(OPTION_REASONER, Reasoners.DEFAULT.getLabel());
-        values.put(OPTION_MERGE, "false");
+        // On when there is something to merge: the guide promises the release is the merged,
+        // reasoned file people use, and with it off a first release that imports anything warned
+        // about a catalog nobody who reads the guide has heard of.
+        values.put(OPTION_MERGE, String.valueOf(!getOWLModelManager().getActiveOntology()
+                .getImportsDeclarations().isEmpty()));
         values.put(OPTION_STRIP, "false");
 
         // A loop, because the rule spans two fields - the version has to be written in the
@@ -216,7 +220,8 @@ public class ReleaseAction extends OntoBoardAction {
                         .defaultValue(values.get(OPTION_REASONER))
                         .help(Reasoners.help())
                         .build(),
-                Parameter.of(OPTION_MERGE, "Merge the imports in", Parameter.Kind.FLAG)
+                Parameter.of(OPTION_MERGE, "One self-contained file (merge the imports in)",
+                        Parameter.Kind.FLAG)
                         .defaultValue(values.get(OPTION_MERGE))
                         .help("Copies every imported axiom into the release and drops the import "
                                 + "statements, giving one self-contained file. OBO projects "
@@ -452,7 +457,7 @@ public class ReleaseAction extends OntoBoardAction {
                     + (release.getImportsDeclarations().size() == 1 ? "" : "s")
                     + ", and the dated copy sits outside the directory catalog-v001.xml covers - "
                     + "so opening it will try to fetch them over the network. That is what OBO "
-                    + "publishes; tick 'Merge the imports in' if you want a file that stands on "
+                    + "publishes; tick 'One self-contained file' if you want a file that stands on "
                     + "its own.");
         }
         return result.summary("Released " + id + " " + version.getText() + ": "

@@ -123,4 +123,37 @@ class BoardSectionsTest {
 
         assertEquals(2, BoardSections.plan(terms, edges, 0, 0).positions.size());
     }
+
+    /**
+     * A class with 300 individuals was one column 22,800px tall, and every other column of the
+     * board grew to match it. The leaves now stand in columns side by side.
+     */
+    @Test
+    void manyLeavesUnderOneClassStandInColumnsSideBySide() {
+        List<BoardSections.Term> terms = new ArrayList<BoardSections.Term>();
+        List<BoardSections.Edge> edges = new ArrayList<BoardSections.Edge>();
+        terms.add(term("Specimen", BoardSections.Kind.CLASS));
+        for (int i = 0; i < 300; i++) {
+            terms.add(term("s" + i, BoardSections.Kind.INDIVIDUAL));
+            edges.add(new BoardSections.Edge("s" + i, "Specimen", BoardSections.Link.TYPE));
+        }
+
+        Map<String, double[]> at = BoardSections.plan(terms, edges, 0, 0).positions;
+
+        assertEquals(301, at.size());
+        List<Rectangle2D> boxes = new ArrayList<Rectangle2D>();
+        double bottom = 0;
+        double right = 0;
+        for (double[] p : at.values()) {
+            Rectangle2D box = new Rectangle2D.Double(p[0], p[1], 160, 60);
+            for (Rectangle2D other : boxes) {
+                assertFalse(box.intersects(other), box + " overlaps " + other);
+            }
+            boxes.add(box);
+            bottom = Math.max(bottom, p[1] + 60);
+            right = Math.max(right, p[0] + 160);
+        }
+        assertTrue(bottom < 300 * 76 / 3, "no longer one column: " + right + "x" + bottom);
+        assertTrue(at.get("s0")[0] > at.get("Specimen")[0], "the individuals right of the class");
+    }
 }

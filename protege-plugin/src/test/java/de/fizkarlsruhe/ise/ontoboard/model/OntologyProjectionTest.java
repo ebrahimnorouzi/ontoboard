@@ -90,10 +90,12 @@ class OntologyProjectionTest {
         assertEquals(1, p.getEdges().size());
 
         CanvasEdge edge = p.getEdges().get(0);
-        assertEquals(CanvasEdge.Kind.OBJECT_PROPERTY, edge.getKind());
+        // Since 1.132.0 in the domain-and-range style, saying so: drawn as a restriction it
+        // read as "every Person works for some Organization", which a domain and range do not say.
+        assertEquals(CanvasEdge.Kind.DOMAIN_RANGE, edge.getKind());
         assertEquals(NS + "Person", edge.getSourceId());
         assertEquals(NS + "Organization", edge.getTargetId());
-        assertEquals("worksFor", edge.getLabel());
+        assertEquals("worksFor (domain \u2192 range)", edge.getLabel());
     }
 
     @Test

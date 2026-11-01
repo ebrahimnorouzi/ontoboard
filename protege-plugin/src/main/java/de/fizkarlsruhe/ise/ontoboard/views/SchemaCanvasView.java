@@ -2901,6 +2901,18 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                 : "Expanded: everything under it is drawn again.");
     }
 
+    /** How many terms under {@code iri} are drawn on the board now - what folding it would hide. */
+    private int drawnUnder(String iri) {
+        int drawn = 0;
+        for (String under : OntologyProjection.everythingUnder(
+                getOWLModelManager().getActiveOntology(), iri)) {
+            if (!under.equals(iri) && graph.getCellForId(under) != null) {
+                drawn++;
+            }
+        }
+        return drawn;
+    }
+
     /** The frames on the board, to jump to one - the way a board of many regions is read. */
     private void showFramesMenu(java.awt.Component from) {
         JPopupMenu menu = new JPopupMenu();
@@ -3472,6 +3484,26 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         bar.add(framesButton);
         bar.add(inferencesButton);
         bar.add(javax.swing.Box.createHorizontalGlue());
+        // HELP IN SIGHT. The legend lived only in the menu behind the three dots, whose tooltip
+        // says "More" - a newcomer looking at a board of coloured shapes had no way to learn
+        // what they meant without already knowing where to look.
+        final JButton help = new JButton("?");
+        help.setToolTipText("What the shapes and lines mean, and the keyboard shortcuts");
+        help.addActionListener(a -> {
+            JPopupMenu menu = new JPopupMenu();
+            JMenuItem legend = new JMenuItem("Legend - what the shapes and lines mean\u2026",
+                    new CanvasIcons.Key());
+            legend.addActionListener(b -> showLegend());
+            menu.add(legend);
+            JMenuItem keys = new JMenuItem("Keyboard shortcuts\u2026");
+            keys.addActionListener(b -> showShortcuts());
+            menu.add(keys);
+            JMenuItem guide = new JMenuItem("Start here: the guide\u2026");
+            guide.addActionListener(b -> openTheGuide());
+            menu.add(guide);
+            menu.show(help, 0, help.getHeight());
+        });
+        bar.add(help);
         bar.add(buildOverflowButton());
         return bar;
     }
@@ -3921,14 +3953,35 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                     menu.add(edit);
                     menu.add(colourMenuFor(iri));
                 }
+                if (onTerm && getOWLModelManager().getActiveOntology().containsClassInSignature(
+                        IRI.create(iri), org.semanticweb.owlapi.model.parameters.Imports.INCLUDED)) {
+                    final com.mxgraph.model.mxGeometry box = graph.getModel().getGeometry(cell);
+                    JMenuItem subclass = new JMenuItem("New subclass\u2026");
+                    subclass.setToolTipText("A class under this one, placed beside it (Tab)");
+                    subclass.addActionListener(a -> {
+                        double[] spot = OntologyProjection.besideItsParentAt(layout,
+                                box.getX() + box.getWidth() + 70, box.getY());
+                        createEntityAt(EntityFactory.Kind.CLASS, (int) spot[0], (int) spot[1],
+                                IRI.create(iri));
+                    });
+                    menu.add(subclass);
+                    JMenuItem member = new JMenuItem("New individual of this class\u2026");
+                    member.setToolTipText("An instance of this class, placed beside it");
+                    member.addActionListener(a -> {
+                        double[] spot = OntologyProjection.besideItsParentAt(layout,
+                                box.getX() + box.getWidth() + 70, box.getY());
+                        createEntityAt(EntityFactory.Kind.INDIVIDUAL, (int) spot[0],
+                                (int) spot[1], IRI.create(iri));
+                    });
+                    menu.add(member);
+                }
                 if (onTerm && layout.collapsed.contains(iri)) {
                     JMenuItem open = new JMenuItem("Expand subclasses ("
                             + folded.getOrDefault(iri, 0) + ")");
                     open.setToolTipText("Draw again everything under this class");
                     open.addActionListener(a -> fold(iri, false));
                     menu.add(open);
-                } else if (onTerm && OntologyProjection.everythingUnder(
-                        getOWLModelManager().getActiveOntology(), iri).size() > 1) {
+                } else if (onTerm && drawnUnder(iri) > 0) {
                     JMenuItem close = new JMenuItem("Collapse subclasses");
                     close.setToolTipText("Fold away everything under this class - its subclasses"
                             + " and their individuals - until it is expanded again");
@@ -4196,6 +4249,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         // rather than scattered along the top of the board among everything else.
         frameAnyArrivedPattern();
         stale = false;
+        hideWhatFoldedClassesHeld(getOWLModelManager().getActiveOntology());
         includeNewTerms();
 
         Projection projection = OntologyProjection.project(
@@ -4410,18 +4464,6 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
     private java.util.Set<String> drawnMembers(OWLOntology ontology) {
         java.util.Set<String> members = membership.asSet();
         folded.clear();
-        if (ontology != null) {
-            for (String root : layout.collapsed) {
-                if (!members.contains(root)) {
-                    continue;
-                }
-                java.util.Set<String> under = OntologyProjection.everythingUnder(ontology, root);
-                under.retainAll(members);
-                under.remove(root);
-                folded.put(root, under.size());
-                members.removeAll(under);
-            }
-        }
         java.util.prefs.Preferences preferences =
                 java.util.prefs.Preferences.userNodeForPackage(SchemaCanvasView.class);
         boolean objectProperties = preferences.getBoolean(SHOW_OBJECT_PROPERTIES, true);
@@ -4429,7 +4471,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         boolean individuals = preferences.getBoolean(SHOW_INDIVIDUALS, true);
         boolean imported = preferences.getBoolean(SHOW_IMPORTED, true);
         if (ontology == null || (objectProperties && dataProperties && individuals && imported)) {
-            return members;
+            return fold(ontology, members);
         }
         java.util.Set<String> local = imported ? null
                 : OntologyProjection.termIdentifiers(ontology,
@@ -4453,7 +4495,50 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                 each.remove();
             }
         }
+        return fold(ontology, members);
+    }
+
+    /**
+     * What folded classes leave out of {@code members}, each counted - after the layer
+     * switches, so the count is what Expand would really bring back.
+     */
+    private java.util.Set<String> fold(OWLOntology ontology, java.util.Set<String> members) {
+        folded.clear();
+        if (ontology == null) {
+            return members;
+        }
+        for (String root : layout.collapsed) {
+            if (!members.contains(root)) {
+                continue;
+            }
+            java.util.Set<String> under = OntologyProjection.everythingUnder(ontology, root);
+            under.retainAll(members);
+            under.remove(root);
+            folded.put(root, under.size());
+            members.removeAll(under);
+        }
         return members;
+    }
+
+    /**
+     * A folded class taken off the board takes what it folds with it: the box stood for all of
+     * it, and its subtree used to come back, every term of it, the moment the box was hidden.
+     */
+    private void hideWhatFoldedClassesHeld(OWLOntology ontology) {
+        if (ontology == null) {
+            return;
+        }
+        for (String root : new java.util.ArrayList<String>(layout.collapsed)) {
+            if (membership.contains(root)) {
+                continue;
+            }
+            for (String under : OntologyProjection.everythingUnder(ontology, root)) {
+                if (!under.equals(root)) {
+                    membership.remove(under);
+                }
+            }
+            layout.collapsed.remove(root);
+        }
     }
 
     /**
@@ -4567,6 +4652,11 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                 placed.add(id);
             }
         }
+        // A restriction's or a rule's node is named by a digest of its text, so every edit to
+        // one leaves the old name behind. Those positions went on piling up in the sidecar and
+        // pushed every new box down past obstacles nobody could see.
+        layout.nodes.keySet().removeIf(id -> CanvasLayout.isDerived(id)
+                && graph.getCellForId(id) == null);
         captureInto(layout, placed, new Bounds() {
             @Override
             public double[] of(String id) {
@@ -4831,11 +4921,13 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         // a user expecting #Person who gets MWO_0001000 will think something has broken.
         TermMinter minter = TermMinter.forOntologyFile(currentOntologyFile, editorName());
         String name = JOptionPane.showInputDialog(this,
-                "Name for the new " + what + (parent == null ? "" : " - a subclass of "
-                        + DisplayLabels.forEntity(ontology, getOWLModelManager()
-                                .getOWLDataFactory().getOWLClass(parent)))
+                "Name for the new " + what + (parent == null ? ""
+                        : (kind == EntityFactory.Kind.INDIVIDUAL ? " - an individual of "
+                                : " - a subclass of ") + DisplayLabels.forEntity(ontology,
+                                        getOWLModelManager().getOWLDataFactory().getOWLClass(parent)))
                         + ":\n\n" + minter.describe(),
-                parent == null ? "New " + what : "New subclass", JOptionPane.PLAIN_MESSAGE);
+                parent == null ? "New " + what : kind == EntityFactory.Kind.INDIVIDUAL
+                        ? "New individual" : "New subclass", JOptionPane.PLAIN_MESSAGE);
         if (name == null) {
             return;
         }
@@ -4856,10 +4948,24 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         }
         List<OWLOntologyChange> changes = minter.declare(ontology, iri, kind, name);
         if (parent != null) {
+            org.semanticweb.owlapi.model.OWLDataFactory df =
+                    getOWLModelManager().getOWLDataFactory();
+            // An individual made from a class's menu is of that class: made from empty space it
+            // had no class at all, and a specimen nobody can tell is a specimen is not much use.
             changes.add(new org.semanticweb.owlapi.model.AddAxiom(ontology,
-                    getOWLModelManager().getOWLDataFactory().getOWLSubClassOfAxiom(
-                            getOWLModelManager().getOWLDataFactory().getOWLClass(iri),
-                            getOWLModelManager().getOWLDataFactory().getOWLClass(parent))));
+                    kind == EntityFactory.Kind.INDIVIDUAL
+                            ? df.getOWLClassAssertionAxiom(df.getOWLClass(parent),
+                                    df.getOWLNamedIndividual(iri))
+                            : df.getOWLSubClassOfAxiom(df.getOWLClass(iri),
+                                    df.getOWLClass(parent))));
+            // Made under a folded class it would be folded out of sight the moment it exists,
+            // and a user who sees nothing tries again and makes two. The fold opens instead.
+            for (String root : new java.util.ArrayList<String>(layout.collapsed)) {
+                if (OntologyProjection.everythingUnder(ontology, root)
+                        .contains(parent.toString())) {
+                    layout.collapsed.remove(root);
+                }
+            }
         }
         changes.addAll(provenanceFor(ontology, iri, minter.isNumeric()));
         if (!changes.isEmpty()) {

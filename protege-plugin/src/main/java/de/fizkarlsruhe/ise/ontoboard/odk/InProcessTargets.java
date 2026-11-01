@@ -132,8 +132,10 @@ public final class InProcessTargets {
                 return null;
             }
             return "This project's Makefile is not the one OntoBoard generates - it has been "
-                    + "edited, or was written by a different version. Running it here would run "
-                    + "something other than what it says, so it is left to make.";
+                    + "edited, or was written by an earlier version. Running it here would run "
+                    + "something other than what it says. If an earlier OntoBoard wrote it, "
+                    + "OntoBoard > Project > Update project files... brings it up to date and this "
+                    + "runs again; a Makefile edited by hand runs with Docker, Podman or ODK.";
         }
         return "This project has no Makefile OntoBoard recognises.";
     }

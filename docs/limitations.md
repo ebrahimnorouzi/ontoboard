@@ -56,13 +56,18 @@ SPARQL panel (1.33.0) used to be on this list and are now features - they are de
 ### Known constraints
 
 - **What the board draws of an ontology, measured.** On two published ontologies built on BFO,
-  with every term shown and class expressions drawn (the default): 917 of 921 logical axioms in
-  one and 525 of 529 in the other appear as a box, a line or a word in a box's label. What does
-  not is the SWRL rules, four in each - a rule is a pattern of variables, not a relation between
-  two terms, and a line would misstate it. On a board with more than 150 relations,
-  disjointness, domains and ranges are drawn for the term in focus rather than all at once, and
-  the other relations faintly until one of their ends is selected. A board shows up to 1,500
-  terms, the ontology's own first.
+  with every term shown and class expressions drawn (the default): every logical axiom - 921 of
+  921 in one, 529 of 529 in the other - appears as a box, a line or a word in a box's label;
+  [What the board draws](canvas.md) lists how. Literals and annotations are not drawn. On a board
+  with more than 150 relations, disjointness, domains and ranges are drawn for the term in focus
+  rather than all at once, and the other relations faintly until one of their ends is selected.
+  A board shows up to 1,500 terms, the ontology's own first.
+- **Protégé 6 is not supported, measured.** Protégé 6.0.0-alpha-1 refuses to start OntoBoard:
+  *missing requirement `org.protege.editor.owl.ui` version ≥ 5.5.0, < 6.0.0*. Widening that range
+  would move the failure, not fix it: Protégé 6 ships OWL API 5.5.1, OntoBoard is built against
+  OWL API 4.5's interfaces (Guava's `Optional` among them), and the ROBOT library inside it has no
+  OWL API 5 build. Supporting Protégé 6 is a port to OWL API 5 and a replacement for ROBOT's
+  in-process operations - worth doing when Protégé 6 is released, not against an alpha.
 - **The plugin's OWL 2 DL check and `robot validate-profile` disagree, on purpose.** The OWL API
   adds a missing annotation-property declaration while parsing. So an ontology that is outside DL
   for exactly that reason — a curator typed a property name into Protégé and never declared it — is

@@ -57,6 +57,15 @@ it off. *More → Show on the board* switches object properties, data properties
 imported terms on and off, and *Arrange → Outline* lays the board out again. An edge between
 terms in two frames goes around any frame in between.
 
+**Work on it like a whiteboard.** Right-click a class and *Collapse subclasses* to fold away
+everything under it - the class then says how many terms it holds - and *Expand subclasses* to
+bring them back. *Frames* on the toolbar lists every frame on the board and jumps to the one you
+pick. Select a class and press **Tab** for a new subclass beside it, named in one dialog, as in a
+mind map; Ctrl+Tab moves the focus off the board. Double-click empty space for a new class there.
+
+Everything the ontology says is drawn - restrictions, unions, domains and ranges, disjointness,
+property chains, SWRL rules - and [What the board draws](canvas.md) lists each, with how it looks.
+
 **Zoom.** The mouse wheel zooms about the pointer; on a Mac trackpad, so does a pinch.
 
 **Grow the diagram.** Right-click a node and *Expand neighbours (1 hop)* to pull in what it

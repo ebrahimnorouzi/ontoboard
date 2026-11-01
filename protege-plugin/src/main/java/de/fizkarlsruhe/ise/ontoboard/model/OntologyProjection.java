@@ -399,6 +399,7 @@ public final class OntologyProjection {
         collectTypeEdges(ontology, onCanvasIris, edges);
         collectTheRest(ontology, onCanvasIris, nodes, edges, drawExpressions);
         collectRules(ontology, onCanvasIris, nodes, edges);
+        collectTheLast(ontology, onCanvasIris, nodes, edges);
 
         // One cell per id. An import closure restates axioms across modules - on a real ODK
         // project's board ten ids arrive two to four times - and SchemaGraph.render inserts an
@@ -599,9 +600,14 @@ public final class OntologyProjection {
                             .getOperands()) {
                 // A conjunct of a SubClassOf is no longer the whole superclass, so it stops being
                 // retractable - see PropertyEdgeId.Origin. Inside an equivalence it was never
-                // retractable, so the origin stays as it is.
+                // retractable, so the origin stays as it is - except for a NAMED conjunct, the
+                // genus of a definition: CheesyPizza = Pizza and (hasTopping some Cheese) makes
+                // CheesyPizza a kind of Pizza and not the other way round, and the equivalence
+                // origin drew both arrows - "pizza is a kind of cheesy pizza", 46 times on MWO.
                 walk(ontology, on, subject, operand,
                         origin == PropertyEdgeId.Origin.SUBCLASS
+                                || (origin == PropertyEdgeId.Origin.EQUIVALENCE
+                                        && !operand.isAnonymous())
                                 ? PropertyEdgeId.Origin.CONJUNCT
                                 : origin,
                         nodes, edges, drawExpressions);
@@ -845,8 +851,10 @@ public final class OntologyProjection {
                     break;
                 }
                 links.add(link.asOWLObjectProperty().getIRI());
+                // By label: "chain: BFO_0000051 o RO_0000057" said nothing to anybody without
+                // the identifiers by heart.
                 reads.append(links.size() > 1 ? " o " : "").append(
-                        localName(link.asOWLObjectProperty().getIRI()));
+                        DisplayLabels.forEntity(ontology, link.asOWLObjectProperty()));
             }
             if (!drawable || links.isEmpty()) {
                 continue;
@@ -1162,8 +1170,14 @@ public final class OntologyProjection {
         String id = legacy
                 ? "rest|" + qualifier + "|" + subject + "|" + property + "|" + filler
                 : PropertyEdgeId.of(origin, qualifier, iri(subject), iri(property), iri(filler));
-        edges.add(new CanvasEdge(id, iri(subject), iri(filler),
-                arrowLabel(ontology, property, qualifier), CanvasEdge.Kind.OBJECT_PROPERTY));
+        // A scoped domain - anything with an R to a B is an A - drew exactly like the
+        // restriction A subClassOf R some B, which says something else entirely. Same arrow,
+        // since it is the one the user drew to make it; a label that says which.
+        String label = origin == PropertyEdgeId.Origin.SCOPED_DOMAIN
+                ? arrowLabel(ontology, property, "some") + " (scoped domain)"
+                : arrowLabel(ontology, property, qualifier);
+        edges.add(new CanvasEdge(id, iri(subject), iri(filler), label,
+                CanvasEdge.Kind.OBJECT_PROPERTY));
     }
 
     /** A data restriction, which also puts its datatype on the board as a leaf. */
@@ -1249,8 +1263,25 @@ public final class OntologyProjection {
             OWLClassExpression sup = axiom.getSuperClass();
 
             if (sub.isAnonymous()) {
-                if (!sup.isAnonymous()) {
+                if (!sup.isAnonymous() && isScopedDomain(sub)) {
                     scopedDomain(ontology, on, sub, sup.asOWLClass().getIRI(), edges);
+                } else if (drawExpressions) {
+                    // ANY OTHER GENERAL CLASS AXIOM - "anything that is both A and B is a C" -
+                    // was dropped without a word. Its subclass side is its node, the arrow runs
+                    // from there.
+                    String from = expressionNode(sub, nodes);
+                    expand(on, from, sub, 1, nodes, edges);
+                    String to;
+                    if (sup.isAnonymous()) {
+                        to = expressionNode(sup, nodes);
+                        expand(on, to, sup, 1, nodes, edges);
+                    } else if (isOn(on, sup.asOWLClass().getIRI())) {
+                        to = iri(sup.asOWLClass().getIRI());
+                    } else {
+                        continue;
+                    }
+                    addUnlessAlreadyThere(edges, new CanvasEdge("gci|" + from + "|" + to, from,
+                            to, "", CanvasEdge.Kind.SUBCLASS));
                 }
                 continue;
             }
@@ -1269,6 +1300,13 @@ public final class OntologyProjection {
             walk(ontology, on, subIri, sup, PropertyEdgeId.Origin.SUBCLASS, nodes, edges,
                     drawExpressions);
         }
+    }
+
+    /** The shape {@link #scopedDomain} draws: some of a named property to a named class. */
+    private static boolean isScopedDomain(OWLClassExpression anonymousSubclass) {
+        return anonymousSubclass instanceof OWLObjectSomeValuesFrom
+                && !((OWLObjectSomeValuesFrom) anonymousSubclass).getProperty().isAnonymous()
+                && !((OWLObjectSomeValuesFrom) anonymousSubclass).getFiller().isAnonymous();
     }
 
     /**
@@ -1341,6 +1379,145 @@ public final class OntologyProjection {
         }
     }
 
+    /**
+     * The axioms the board drew nothing for, and said nothing about: a disjoint union, same and
+     * different individuals, a data value, a negative assertion, disjoint properties. None is in
+     * the two ontologies measured, so each is drawn with a shape the board already has.
+     */
+    private static void collectTheLast(OWLOntology ontology, Set<String> on,
+            List<CanvasNode> nodes, List<CanvasEdge> edges) {
+        org.semanticweb.owlapi.model.OWLDataFactory df =
+                ontology.getOWLOntologyManager().getOWLDataFactory();
+        // DisjointUnion(A B C): B and C are kinds of A, and no B is a C.
+        for (org.semanticweb.owlapi.model.OWLDisjointUnionAxiom axiom
+                : ontology.getAxioms(AxiomType.DISJOINT_UNION, Imports.INCLUDED)) {
+            IRI whole = axiom.getOWLClass().getIRI();
+            List<IRI> parts = new ArrayList<IRI>();
+            for (OWLClassExpression part : axiom.getClassExpressions()) {
+                if (!part.isAnonymous() && isOn(on, part.asOWLClass().getIRI())) {
+                    parts.add(part.asOWLClass().getIRI());
+                }
+            }
+            for (IRI part : parts) {
+                if (isOn(on, whole)) {
+                    addUnlessAlreadyThere(edges, new CanvasEdge("sub|" + part + "|" + whole,
+                            iri(part), iri(whole), "", CanvasEdge.Kind.SUBCLASS));
+                }
+            }
+            pairwise(parts, "disj|", "", CanvasEdge.Kind.DISJOINT, edges);
+        }
+        for (org.semanticweb.owlapi.model.OWLSameIndividualAxiom axiom
+                : ontology.getAxioms(AxiomType.SAME_INDIVIDUAL, Imports.INCLUDED)) {
+            pairwise(namedIndividuals(axiom.getIndividuals(), on), "same|", "same as",
+                    CanvasEdge.Kind.OBJECT_PROPERTY, edges);
+        }
+        for (org.semanticweb.owlapi.model.OWLDifferentIndividualsAxiom axiom
+                : ontology.getAxioms(AxiomType.DIFFERENT_INDIVIDUALS, Imports.INCLUDED)) {
+            pairwise(namedIndividuals(axiom.getIndividuals(), on), "diff|", "different from",
+                    CanvasEdge.Kind.OBJECT_PROPERTY, edges);
+        }
+        for (org.semanticweb.owlapi.model.OWLDisjointObjectPropertiesAxiom axiom
+                : ontology.getAxioms(AxiomType.DISJOINT_OBJECT_PROPERTIES, Imports.INCLUDED)) {
+            List<IRI> named = new ArrayList<IRI>();
+            for (org.semanticweb.owlapi.model.OWLObjectPropertyExpression property
+                    : axiom.getProperties()) {
+                if (!property.isAnonymous() && isOn(on, property.asOWLObjectProperty().getIRI())) {
+                    named.add(property.asOWLObjectProperty().getIRI());
+                }
+            }
+            pairwise(named, "pdisj|", "", CanvasEdge.Kind.DISJOINT, edges);
+        }
+        for (org.semanticweb.owlapi.model.OWLDisjointDataPropertiesAxiom axiom
+                : ontology.getAxioms(AxiomType.DISJOINT_DATA_PROPERTIES, Imports.INCLUDED)) {
+            List<IRI> named = new ArrayList<IRI>();
+            for (org.semanticweb.owlapi.model.OWLDataPropertyExpression property
+                    : axiom.getProperties()) {
+                if (isOn(on, property.asOWLDataProperty().getIRI())) {
+                    named.add(property.asOWLDataProperty().getIRI());
+                }
+            }
+            pairwise(named, "pdisj|", "", CanvasEdge.Kind.DISJOINT, edges);
+        }
+        for (org.semanticweb.owlapi.model.OWLNegativeObjectPropertyAssertionAxiom axiom
+                : ontology.getAxioms(AxiomType.NEGATIVE_OBJECT_PROPERTY_ASSERTION,
+                        Imports.INCLUDED)) {
+            if (axiom.getSubject().isAnonymous() || axiom.getObject().isAnonymous()
+                    || axiom.getProperty().isAnonymous()) {
+                continue;
+            }
+            IRI subject = axiom.getSubject().asOWLNamedIndividual().getIRI();
+            IRI object = axiom.getObject().asOWLNamedIndividual().getIRI();
+            IRI property = axiom.getProperty().asOWLObjectProperty().getIRI();
+            if (isOn(on, subject) && isOn(on, object)) {
+                addUnlessAlreadyThere(edges, new CanvasEdge("nopa|" + subject + "|" + property
+                        + "|" + object, iri(subject), iri(object),
+                        "not " + arrowLabel(ontology, property, "some"),
+                        CanvasEdge.Kind.OBJECT_PROPERTY));
+            }
+        }
+        // A data value: a box with the value in it, off the individual it belongs to.
+        for (org.semanticweb.owlapi.model.OWLDataPropertyAssertionAxiom axiom
+                : ontology.getAxioms(AxiomType.DATA_PROPERTY_ASSERTION, Imports.INCLUDED)) {
+            valueEdge(ontology, on, axiom.getSubject(), axiom.getProperty(), axiom.getObject(),
+                    "", nodes, edges, df);
+        }
+        for (org.semanticweb.owlapi.model.OWLNegativeDataPropertyAssertionAxiom axiom
+                : ontology.getAxioms(AxiomType.NEGATIVE_DATA_PROPERTY_ASSERTION,
+                        Imports.INCLUDED)) {
+            valueEdge(ontology, on, axiom.getSubject(), axiom.getProperty(), axiom.getObject(),
+                    "not ", nodes, edges, df);
+        }
+    }
+
+    private static void valueEdge(OWLOntology ontology, Set<String> on,
+            org.semanticweb.owlapi.model.OWLIndividual subject,
+            org.semanticweb.owlapi.model.OWLDataPropertyExpression property,
+            org.semanticweb.owlapi.model.OWLLiteral value, String not, List<CanvasNode> nodes,
+            List<CanvasEdge> edges, org.semanticweb.owlapi.model.OWLDataFactory df) {
+        if (subject.isAnonymous() || !isOn(on, subject.asOWLNamedIndividual().getIRI())) {
+            return;
+        }
+        IRI who = subject.asOWLNamedIndividual().getIRI();
+        IRI what = property.asOWLDataProperty().getIRI();
+        String text = value.getLiteral();
+        String id = "lit|" + digestOf(who + "|" + what + "|" + value);
+        CanvasNode box = new CanvasNode(id, NodeKind.LITERAL,
+                text.length() > 60 ? text.substring(0, 59) + "\u2026" : text);
+        if (!nodes.contains(box)) {
+            nodes.add(box);
+        }
+        addUnlessAlreadyThere(edges, new CanvasEdge("dpa|" + id, iri(who), id,
+                not + DisplayLabels.forEntity(ontology, df.getOWLDataProperty(what)),
+                CanvasEdge.Kind.DATA_PROPERTY));
+    }
+
+    private static List<IRI> namedIndividuals(
+            Collection<org.semanticweb.owlapi.model.OWLIndividual> individuals, Set<String> on) {
+        List<IRI> named = new ArrayList<IRI>();
+        for (org.semanticweb.owlapi.model.OWLIndividual individual : individuals) {
+            if (!individual.isAnonymous()
+                    && isOn(on, individual.asOWLNamedIndividual().getIRI())) {
+                named.add(individual.asOWLNamedIndividual().getIRI());
+            }
+        }
+        return named;
+    }
+
+    /** One edge per pair, in a fixed order, so an axiom stated twice is one line. */
+    private static void pairwise(List<IRI> terms, String prefix, String label,
+            CanvasEdge.Kind kind, List<CanvasEdge> edges) {
+        for (int first = 0; first < terms.size(); first++) {
+            for (int second = first + 1; second < terms.size(); second++) {
+                IRI left = terms.get(first);
+                IRI right = terms.get(second);
+                IRI from = left.toString().compareTo(right.toString()) <= 0 ? left : right;
+                IRI to = from.equals(left) ? right : left;
+                addUnlessAlreadyThere(edges, new CanvasEdge(prefix + from + "|" + to, iri(from),
+                        iri(to), label, kind));
+            }
+        }
+    }
+
     /** "a(?x) ∧ b(?x, ?y)", collecting the named terms the atoms use into {@code terms}. */
     private static String atoms(OWLOntology ontology,
             Set<org.semanticweb.owlapi.model.SWRLAtom> atoms, Set<IRI> terms) {
@@ -1357,8 +1534,19 @@ public final class OntologyProjection {
                 terms.add(entity.getIRI());
                 name = DisplayLabels.forEntity(ontology, entity);
             } else if (predicate instanceof IRI) {
-                // A built-in: swrlb:greaterThan and the like.
-                name = "swrlb:" + localName((IRI) predicate);
+                name = builtIn((IRI) predicate);
+            } else if (predicate instanceof org.semanticweb.owlapi.model.OWLObject) {
+                // An anonymous class, an inverse property, a data range: in Manchester syntax with
+                // labels, and its terms joined to the rule - it used to read as functional syntax
+                // with whole IRIs, and nothing in it had a line.
+                org.semanticweb.owlapi.model.OWLObject anonymous =
+                        (org.semanticweb.owlapi.model.OWLObject) predicate;
+                for (org.semanticweb.owlapi.model.OWLEntity entity : anonymous.getSignature()) {
+                    if (!entity.isBuiltIn()) {
+                        terms.add(entity.getIRI());
+                    }
+                }
+                name = "(" + manchester(ontology, anonymous) + ")";
             } else {
                 name = String.valueOf(predicate);
             }
@@ -1370,6 +1558,37 @@ public final class OntologyProjection {
             reads.append(name).append('(').append(arguments).append(')');
         }
         return reads.toString();
+    }
+
+    /** A SWRL built-in by its usual prefix: swrlb:greaterThan, swrlx:makeOWLThing. */
+    private static String builtIn(IRI builtIn) {
+        String text = builtIn.toString();
+        if (text.startsWith("http://www.w3.org/2003/11/swrlb#")) {
+            return "swrlb:" + localName(builtIn);
+        }
+        if (text.startsWith("http://www.w3.org/2003/11/swrlx#")) {
+            return "swrlx:" + localName(builtIn);
+        }
+        return localName(builtIn);
+    }
+
+    /** An OWL object in Manchester syntax, each term by the label the board shows it with. */
+    private static String manchester(final OWLOntology ontology,
+            org.semanticweb.owlapi.model.OWLObject object) {
+        org.semanticweb.owlapi.manchestersyntax.renderer.ManchesterOWLSyntaxOWLObjectRendererImpl
+                renderer = new org.semanticweb.owlapi.manchestersyntax.renderer
+                        .ManchesterOWLSyntaxOWLObjectRendererImpl();
+        renderer.setShortFormProvider(new org.semanticweb.owlapi.util.ShortFormProvider() {
+            @Override
+            public String getShortForm(org.semanticweb.owlapi.model.OWLEntity entity) {
+                return DisplayLabels.forEntity(ontology, entity);
+            }
+
+            @Override
+            public void dispose() {
+            }
+        });
+        return renderer.render(object);
     }
 
     private static String argument(OWLOntology ontology,
@@ -1520,11 +1739,14 @@ public final class OntologyProjection {
                     if (!isOn(on, rangeIri)) {
                         continue;
                     }
+                    // In the domain-and-range style and saying so: drawn as a restriction it read
+                    // as "every D has an R to some Rg", which a domain and a range do not say.
                     edges.add(new CanvasEdge(
                             "dr|" + domainIri + "|" + property.getIRI() + "|" + rangeIri,
                             iri(domainIri), iri(rangeIri),
-                            arrowLabel(ontology, property.getIRI(), "some"),
-                            CanvasEdge.Kind.OBJECT_PROPERTY));
+                            arrowLabel(ontology, property.getIRI(), "some")
+                                    + " (domain \u2192 range)",
+                            CanvasEdge.Kind.DOMAIN_RANGE));
                 }
             }
         }

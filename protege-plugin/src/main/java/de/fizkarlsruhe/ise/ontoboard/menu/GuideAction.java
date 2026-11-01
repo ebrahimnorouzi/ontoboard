@@ -271,7 +271,9 @@ public class GuideAction extends ProtegeOWLAction {
         File first = new File(sparql, "cq1_your_first_question.rq");
         if (Guide.factsOf(editFile(), activeOntology()).ownTests == 0 && !first.isFile()) {
             sparql.mkdirs();
-            Files.write(first.toPath(), Guide.testTemplate().getBytes(StandardCharsets.UTF_8));
+            Files.write(first.toPath(), Guide.testTemplate(
+                    de.fizkarlsruhe.ise.ontoboard.odk.TermMinter.namespaceForNewTerms(
+                            activeOntology())).getBytes(StandardCharsets.UTF_8));
         }
         open(first.isFile() ? first : sparql);
     }

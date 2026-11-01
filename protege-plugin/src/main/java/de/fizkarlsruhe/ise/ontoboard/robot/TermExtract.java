@@ -95,6 +95,24 @@ public final class TermExtract {
             return label;
         }
 
+        /**
+         * What a dialog offers it as: what it brings, then ROBOT's name in brackets. The bare
+         * names were the whole choice, and their explanation began "the names are misleading".
+         */
+        public String getDisplayName() {
+            switch (this) {
+                case BOT:
+                    return "Terms and everything above them (BOT)";
+                case TOP:
+                    return "Terms and everything below them (TOP)";
+                case STAR:
+                    return "Smallest piece that keeps their meaning (STAR)";
+                case MIREOT:
+                default:
+                    return "Terms and their parents, labels only (MIREOT)";
+            }
+        }
+
         /** What this method does differently, for the parameter dialog's "?". */
         public String getHelp() {
             return help;

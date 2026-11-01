@@ -8,11 +8,13 @@ hide:
 # Build an ontology without leaving Protégé
 
 OntoBoard runs the **ODK** and **ROBOT** pipeline inside Protégé Desktop - building, reasoning,
-reporting, releasing, and a canvas you can actually draw on. No terminal, no Docker command to
-remember, no switching windows to find out whether your ontology is sound.
+reporting, releasing - and draws your **whole ontology on a board** you can work on the way you
+work on a whiteboard. No terminal, no Docker command to remember, no switching windows to find out
+whether your ontology is sound.
 
 <div class="ob-buttons" markdown>
 [:material-download: Download the plugin](https://github.com/ebrahimnorouzi/ontoboard/releases/latest/download/ontoboard.jar){ .md-button .md-button--primary }
+[:material-map-marker-path: Start here: the guide](guide.md){ .md-button }
 [Getting started](getting-started.md){ .md-button }
 [Browse 162 patterns](patterns/index.md){ .md-button }
 </div>
@@ -22,10 +24,58 @@ remember, no switching windows to find out whether your ontology is sound.
 </div>
 
 <div class="ob-figures ob-reveal" markdown>
-<div class="ob-figure"><strong>159</strong><span>design patterns, ready to import</span></div>
-<div class="ob-figure"><strong>30+</strong><span>ROBOT and ODK operations in the menu</span></div>
+<div class="ob-figure"><strong>162</strong><span>design patterns, ready to import</span></div>
+<div class="ob-figure"><strong>100%</strong><span>of the logical axioms of two published ontologies drawn on the board</span></div>
 <div class="ob-figure"><strong>2</strong><span>Protégé versions, both smoke-tested every release</span></div>
-<div class="ob-figure"><strong>1744</strong><span>tests behind it</span></div>
+<div class="ob-figure"><strong>@@TESTS@@</strong><span>tests behind it</span></div>
+</div>
+
+## Where do you start?
+
+<div class="ob-reveal" markdown>
+
+Click the answer that fits; each opens the next step. The same steps are in Protégé under
+**OntoBoard → Start here: the guide...**, ticked as your project does them.
+
+???+ question "Do you already have an ontology?"
+
+    ??? success "No - I am starting from an idea"
+
+        1. **OntoBoard → Start here: the guide...** - ten steps from an idea to a released
+           ontology, each with what it does, why, and a button that does it.
+        2. **Project → New ODK project...** writes a project: the file you edit, a place for
+           tests, imports and releases. You only give it a short name and a title.
+        3. **Pattern library...** - start from a tried design pattern for what you want to say,
+           instead of a blank page. [How to choose one](choosing-a-pattern.md)
+
+    ??? info "Yes - one .owl file"
+
+        Open it in Protégé and go to the **OntoBoard** tab: the whole ontology is on the board,
+        laid out as an outline. That is all you need to look, edit and draw.
+
+        When you want builds, tests and versioned releases, create a project with
+        **Project → New ODK project...** and bring your file into its edit file with Protégé's
+        *Refactor → Merge ontologies...*. [Step 1 of the guide](guide.md#1-set-up-a-project)
+
+    ??? info "Yes - a project folder (an ODK repository)"
+
+        **Project → Open existing ODK project...** - or **Open from GitHub...** to clone one
+        first. Then **Build...** checks it, **Release...** publishes a version, and
+        **History...** shows every release and what changed in each.
+
+???+ question "Do you know ODK, ROBOT or eXtreme Design?"
+
+    ??? success "No"
+
+        You do not need to. Every step is a menu item, and the guide says what each one does
+        and why it matters, in plain words. Nothing to install, nothing to type.
+        [Start here: the guide](guide.md)
+
+    ??? info "Yes"
+
+        [Working with ODK](odk-workflow.md) maps each ODK step to the menu item that runs it in
+        Protégé, and says which parts of a project OntoBoard reads, writes, or leaves alone.
+
 </div>
 
 ## Why you would want it
@@ -38,7 +88,7 @@ remember, no switching windows to find out whether your ontology is sound.
 - `docker run` with the right mounts, every time
 - A quality report you read as text in a console
 - Find a design pattern by reading somebody's web page and retyping its terms
-- Discover the release is broken after you tagged it
+- A class hierarchy as a tree of names; relations, domains and rules out of sight
 </div>
 
 <div class="ob-with" markdown>
@@ -47,7 +97,7 @@ remember, no switching windows to find out whether your ontology is sound.
 - The project's own `<id>-odk.yaml` read and honoured
 - Findings in a sortable table, by *your* project's `profile.txt`
 - Pick a pattern, and its terms are extracted and imported the ODK way
-- A release that refuses to publish without a host smoke receipt
+- Every class, property, individual, restriction and rule on one board
 </div>
 
 </div>
@@ -57,17 +107,35 @@ remember, no switching windows to find out whether your ontology is sound.
 <div class="ob-grid ob-reveal" markdown>
 
 <div class="ob-card" markdown>
-### :material-draw: A canvas you can draw on
-Classes, properties, individuals and restrictions as a diagram you arrange by hand - with frames,
-sticky notes, six layouts, and an arrangement that survives the next edit. Draw a class by
-double-clicking empty space.
+### :material-draw: Your whole ontology on a board
+Every term, as soon as the tab opens: patterns framed along the top, classes as a tree, properties
+in sections. Select a term and its relations come forward; fold a class; jump between frames;
+press Tab for a new subclass. [What the board draws](canvas.md)
+</div>
+
+<div class="ob-card" markdown>
+### :material-map-marker-path: A guide for the way
+Ten steps from an idea to a released ontology, ticked against your project, each explained and
+one click away - for people who have never heard of ODK. [Start here](guide.md)
 </div>
 
 <div class="ob-card" markdown>
 ### :material-cog-play: ODK without the terminal
 Create a project, run the build, edit every key in the ODK YAML at any depth, manage ID ranges,
-run the project's own scripts, refresh imports, compare releases.
+run the project's own scripts, refresh imports, release, compare releases.
 [See the workflow](odk-workflow.md)
+</div>
+
+<div class="ob-card" markdown>
+### :material-history: History of every release
+Every release in the project, what each holds and what changed from one to the next, term by
+term - added, removed, relabelled, moved, made obsolete. Open any of them in a window of its own.
+</div>
+
+<div class="ob-card" markdown>
+### :material-magnify: Terms from other ontologies
+Load an ontology from its web address, search its labels, tick the terms you want, import them -
+no IRIs to look up. [How](guide.md#4-reuse-terms-from-other-ontologies-optional)
 </div>
 
 <div class="ob-card" markdown>
@@ -78,7 +146,7 @@ template, SPARQL, profile. No external binary, no temporary files.
 
 <div class="ob-card" markdown>
 ### :material-shape: Patterns you can import
-159 ontology design patterns from the ODP portal, MWO, PMDco and NFDI MatWerk - ranked against
+162 ontology design patterns from the ODP portal, MWO, PMDco and NFDI MatWerk - ranked against
 *your* ontology, with the reason shown. [Browse them](patterns/index.md)
 </div>
 
@@ -101,7 +169,7 @@ Every gap is written down, measured, with the defects found along the way.
 <div class="ob-reveal" markdown>
 
 This is the **Componency** pattern as it ships in the plugin - the same graph you get on any of the
-[159 pattern pages](patterns/index.md). Drag a node, scroll to zoom, search inside it. In Protégé,
+[162 pattern pages](patterns/index.md). Drag a node, scroll to zoom, search inside it. In Protégé,
 choosing this pattern extracts its terms into your own ontology the way ODK expects.
 
 ```ontoink
@@ -117,11 +185,12 @@ height: 460px
 
 | | |
 |---|---|
+| [Start here: the guide](guide.md) | The steps from an idea to a released ontology, for newcomers |
 | [Getting started](getting-started.md) | Install, and a first session end to end |
+| [What the board draws](canvas.md) | Every kind of axiom, how it is drawn, and where things go |
 | [Pattern library](patterns/index.md) | All 162 patterns, grouped by source, with a graph each |
 | [Working with ODK](odk-workflow.md) | The ODK workflow step by step, and which steps OntoBoard does for you |
 | [Collaboration](collaboration.md) | Live sessions, and how to run the server |
-| [Testing collaboration locally](testing-collaboration-locally.md) | Two Protégé instances on one machine |
 | [Limitations and roadmap](limitations.md) | What it does not do, specifically, and why |
 | [Feature parity](feature-parity.md) | The feature inventory, measured |
 | [Compared with OntoGraf](compared-with-ontograf.md) | What Protégé's own visualisation does that this canvas does not |

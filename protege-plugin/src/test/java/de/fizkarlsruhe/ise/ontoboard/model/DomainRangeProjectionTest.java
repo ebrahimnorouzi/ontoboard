@@ -277,4 +277,83 @@ class DomainRangeProjectionTest {
         assertEquals(new HashSet<String>(Arrays.asList("if " + NS + "Agent", "if " + NS + "age",
                 "then " + NS + "Process")), parts);
     }
+
+    /** "(hasPart some Fibre)(?x)" read as functional syntax with whole IRIs, and had no lines. */
+    @Test
+    void aRuleAtomOnAnAnonymousClassReadsAsManchesterAndLinksItsTerms() throws Exception {
+        OWLOntology o = ontology();
+        org.semanticweb.owlapi.model.SWRLVariable x = df.getSWRLVariable(IRI.create(NS + "x"));
+        manager.addAxiom(o, df.getSWRLRule(
+                Collections.<org.semanticweb.owlapi.model.SWRLAtom>singleton(df.getSWRLClassAtom(
+                        df.getOWLObjectSomeValuesFrom(hasParticipant, process), x)),
+                Collections.<org.semanticweb.owlapi.model.SWRLAtom>singleton(
+                        df.getSWRLClassAtom(agent, x))));
+
+        Projection drawn = OntologyProjection.project(o, all(o), true);
+
+        String reads = null;
+        Set<String> ifs = new HashSet<String>();
+        for (CanvasNode node : drawn.getNodes()) {
+            if (node.getLabel().startsWith("rule: ")) {
+                reads = node.getLabel();
+            }
+        }
+        for (CanvasEdge edge : drawn.getEdges()) {
+            if (edge.getKind() == CanvasEdge.Kind.RULE_PART && "if".equals(edge.getLabel())) {
+                ifs.add(edge.getSourceId());
+            }
+        }
+        assertTrue(reads != null && reads.contains("hasParticipant some Process")
+                && !reads.contains("ObjectSomeValuesFrom"), reads);
+        assertEquals(new HashSet<String>(Arrays.asList(NS + "hasParticipant", NS + "Process")),
+                ifs);
+    }
+
+    /**
+     * The axioms the board drew nothing for and said nothing about: none is in the two
+     * ontologies measured, all are in others.
+     */
+    @Test
+    void theLastKindsOfAxiomAreDrawnWithShapesTheBoardAlreadyHas() throws Exception {
+        OWLOntology o = ontology();
+        org.semanticweb.owlapi.model.OWLNamedIndividual alice =
+                df.getOWLNamedIndividual(IRI.create(NS + "alice"));
+        org.semanticweb.owlapi.model.OWLNamedIndividual bob =
+                df.getOWLNamedIndividual(IRI.create(NS + "bob"));
+        OWLDataProperty age = df.getOWLDataProperty(IRI.create(NS + "age"));
+        OWLObjectProperty partOf = df.getOWLObjectProperty(IRI.create(NS + "partOf"));
+        for (org.semanticweb.owlapi.model.OWLEntity entity
+                : Arrays.<org.semanticweb.owlapi.model.OWLEntity>asList(alice, bob, age, partOf)) {
+            manager.addAxiom(o, df.getOWLDeclarationAxiom(entity));
+        }
+        manager.addAxiom(o, df.getOWLDisjointUnionAxiom(agent,
+                new HashSet<org.semanticweb.owlapi.model.OWLClassExpression>(
+                        Arrays.asList(process, event))));
+        manager.addAxiom(o, df.getOWLDifferentIndividualsAxiom(alice, bob));
+        manager.addAxiom(o, df.getOWLDataPropertyAssertionAxiom(age, alice, 42));
+        manager.addAxiom(o, df.getOWLNegativeObjectPropertyAssertionAxiom(hasParticipant,
+                alice, bob));
+        manager.addAxiom(o, df.getOWLDisjointObjectPropertiesAxiom(hasParticipant, partOf));
+        manager.addAxiom(o, df.getOWLSubClassOfAxiom(
+                df.getOWLObjectIntersectionOf(process, event), agent));
+
+        Projection drawn = OntologyProjection.project(o, all(o), true);
+
+        Set<String> said = new HashSet<String>();
+        for (CanvasEdge edge : drawn.getEdges()) {
+            said.add(edge.getId().substring(0, edge.getId().indexOf('|')) + " " + edge.getLabel());
+        }
+        assertTrue(said.contains("sub "), "the union's parts are kinds of it: " + said);
+        assertTrue(said.contains("disj "), "and disjoint: " + said);
+        assertTrue(said.contains("diff different from"), said.toString());
+        assertTrue(said.contains("dpa age"), said.toString());
+        assertTrue(said.contains("nopa not hasParticipant"), said.toString());
+        assertTrue(said.contains("pdisj "), said.toString());
+        assertTrue(said.contains("gci "), said.toString());
+        boolean value = false;
+        for (CanvasNode node : drawn.getNodes()) {
+            value |= node.getKind() == NodeKind.LITERAL && "42".equals(node.getLabel());
+        }
+        assertTrue(value, "the value in a box of its own");
+    }
 }

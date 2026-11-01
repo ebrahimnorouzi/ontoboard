@@ -80,14 +80,17 @@ public class BuildAction extends OntoBoardAction {
         List<Parameter> parameters = Arrays.asList(
                 Parameter.of(OPTION_TARGET, "Target", Parameter.Kind.CHOICE)
                         .choices(targets.toArray(new String[0]))
-                        .defaultValue(targets.get(0))
+                        // test, which the guide and the docs say to run: it is the one that runs
+                        // your own tests as well. all came first in the list and was preselected.
+                        .defaultValue(targets.contains("test") ? "test" : targets.get(0))
                         .required()
                         .help(helpFor())
                         .build());
 
         Map<String, String> chosen = ParameterDialog.show(getOWLWorkspace(), "Build",
-                "Runs one of this project's make targets and keeps the whole transcript, which "
-                        + "you can save from the result.",
+                "Checks the ontology. test runs the reasoner, the quality report, your own tests "
+                        + "and the OWL profile check, inside Protege - nothing else needs "
+                        + "installing. The whole log is kept, and can be saved from the result.",
                 parameters);
         if (chosen == null) {
             return false;

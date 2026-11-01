@@ -224,7 +224,7 @@ class PropertyEdgesTest {
         List<CanvasEdge> edges = propertyEdges(board("Pizza", "Topping"));
 
         assertEquals(1, edges.size(), described(edges).toString());
-        assertEquals("Pizza --hasTopping--> Topping", describe(edges.get(0)),
+        assertEquals("Pizza --hasTopping (scoped domain)--> Topping", describe(edges.get(0)),
                 "the arrow points the way the user drew it, not the way the axiom reads");
         assertEquals(PropertyEdgeId.Origin.SCOPED_DOMAIN,
                 PropertyEdgeId.parse(edges.get(0).getId()).getOrigin());

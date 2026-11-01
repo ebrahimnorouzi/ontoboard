@@ -164,7 +164,7 @@ public class ImportTermsAction extends OntoBoardAction {
         values.put(OPTION_SOURCE, seededSource);
         values.put(OPTION_TERMS, seededTerms);
         values.put(OPTION_TERM_FILE, "");
-        values.put(OPTION_METHOD, TermExtract.DEFAULT_METHOD.getLabel());
+        values.put(OPTION_METHOD, TermExtract.DEFAULT_METHOD.getDisplayName());
         values.put(OPTION_OUTCOME, Outcome.SAVE_AND_IMPORT.label);
         values.put(OPTION_MODULE_FILE, "");
 
@@ -225,7 +225,7 @@ public class ImportTermsAction extends OntoBoardAction {
                         + "and the descriptions below were checked against what the operations "
                         + "actually return.\n");
         for (TermExtract.Method available : TermExtract.Method.values()) {
-            methods.add(available.getLabel());
+            methods.add(available.getDisplayName());
             methodHelp.append('\n').append(available.getLabel()).append(": ")
                     .append(available.getHelp()).append('\n');
         }
@@ -776,9 +776,12 @@ public class ImportTermsAction extends OntoBoardAction {
     /** The ontology's own file, or null when it has never been saved. */
 
     private static TermExtract.Method methodByLabel(String label) {
+        String chosen = label == null ? "" : label.trim();
         for (TermExtract.Method available : TermExtract.Method.values()) {
-            if (available.getLabel().equalsIgnoreCase(
-                    label == null ? "" : label.trim().toUpperCase(Locale.ROOT))) {
+            // Either spelling: the dialog offers the plain name, and a saved value or a
+            // pattern seed may still carry ROBOT's.
+            if (available.getLabel().equalsIgnoreCase(chosen.toUpperCase(Locale.ROOT))
+                    || available.getDisplayName().equals(chosen)) {
                 return available;
             }
         }

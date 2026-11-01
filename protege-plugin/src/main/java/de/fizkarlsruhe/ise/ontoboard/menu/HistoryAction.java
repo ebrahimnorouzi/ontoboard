@@ -282,7 +282,7 @@ public class HistoryAction extends ProtegeOWLAction {
         StringBuilder text = new StringBuilder();
         text.append("<p><b>").append(escape(after.getName())).append("</b>")
                 .append(after.getVersionInfo().isEmpty() || after.isWorkingCopy() ? ""
-                        : " &middot; versionInfo " + escape(after.getVersionInfo()))
+                        : " &middot; version label " + escape(after.getVersionInfo()))
                 .append(" &middot; ").append(counts.getClasses()).append(" classes, ")
                 .append(counts.getProperties()).append(" properties, ")
                 .append(counts.getIndividuals()).append(" individuals, ")
@@ -313,9 +313,10 @@ public class HistoryAction extends ProtegeOWLAction {
             if (diff.count(ReleaseDiff.Change.REMOVED) > 0) {
                 text.append("<p style='color:#B06C00'><b>")
                         .append(diff.count(ReleaseDiff.Change.REMOVED))
-                        .append(" class(es) were removed rather than obsoleted.</b> Anything "
-                                + "that imported them now refers to nothing; obsoleting keeps "
-                                + "the term and tells its users.</p>");
+                        .append(" class(es) were removed rather than made obsolete.</b> "
+                                + "Anything that imported them now refers to nothing. Making a "
+                                + "term obsolete keeps it, marked deprecated, and tells its "
+                                + "users what to use instead.</p>");
             }
             for (ReleaseDiff.TermChange change : diff.getChanges()) {
                 rows.add(new String[] {change.getChange().getLabel(),

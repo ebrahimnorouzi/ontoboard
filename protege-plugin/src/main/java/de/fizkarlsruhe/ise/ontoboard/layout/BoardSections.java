@@ -279,7 +279,7 @@ public final class BoardSections {
         double highest = 0;
         for (Term block : blocks) {
             Map<String, double[]> at = new HashMap<String, double[]>();
-            double h = layoutBlock(block, children, cut, at);
+            double h = layoutBlock(block, children, cut, at, tallest);
             double w = widthOf(at, block, children, cut);
             laid.add(at);
             sizes.add(new double[] {w, h});
@@ -417,37 +417,21 @@ public final class BoardSections {
 
     /** Positions relative to the block's top-left; returns the block's height. */
     private static double layoutBlock(Term root, Map<String, List<Term>> children,
-            Set<String> cut, Map<String, double[]> at) {
+            Set<String> cut, Map<String, double[]> at, double tallest) {
         Map<Integer, Double> widest = new HashMap<Integer, Double>();
-        depths(root, 0, children, cut, widest, true);
+        depths(root, 0, children, cut, widest, tallest);
         Map<Integer, Double> column = new HashMap<Integer, Double>();
         double x = 0;
         for (int depth = 0; widest.containsKey(depth); depth++) {
             column.put(depth, x);
             x += widest.get(depth) + ACROSS;
         }
-        return stack(root, 0, 0, children, cut, column, at, true);
+        return stack(root, 0, 0, children, cut, column, at, tallest);
     }
 
-    private static void depths(Term term, int depth, Map<String, List<Term>> children,
-            Set<String> cut, Map<Integer, Double> widest, boolean isBlockRoot) {
-        Double known = widest.get(depth);
-        widest.put(depth, known == null ? term.w : Math.max(known, term.w));
-        List<Term> below = children.get(term.id);
-        if (below == null) {
-            return;
-        }
-        for (Term child : below) {
-            if (!cut.contains(child.id)) {
-                depths(child, depth + 1, children, cut, widest, false);
-            }
-        }
-    }
-
-    /** Places a subtree with its top at {@code y}; the term centred on its children. */
-    private static double stack(Term term, int depth, double y, Map<String, List<Term>> children,
-            Set<String> cut, Map<Integer, Double> column, Map<String, double[]> at,
-            boolean isBlockRoot) {
+    /** The children of {@code term} still under it in this block. */
+    private static List<Term> drawnUnder(Term term, Map<String, List<Term>> children,
+            Set<String> cut) {
         List<Term> below = new ArrayList<Term>();
         if (children.containsKey(term.id)) {
             for (Term child : children.get(term.id)) {
@@ -456,13 +440,92 @@ public final class BoardSections {
                 }
             }
         }
+        return below;
+    }
+
+    /** The children with nothing under them - the ones a grid can hold. */
+    private static List<Term> leavesOf(List<Term> below, Map<String, List<Term>> children,
+            Set<String> cut) {
+        List<Term> leaves = new ArrayList<Term>();
+        for (Term child : below) {
+            if (drawnUnder(child, children, cut).isEmpty()) {
+                leaves.add(child);
+            }
+        }
+        return leaves;
+    }
+
+    /**
+     * How many columns a term's leaves take: one, unless one column of them would be taller
+     * than a screen - a class with 300 individuals was one column 22,800px tall, and every other
+     * column of the board grew to match it.
+     */
+    private static int gridColumns(List<Term> leaves, double tallest) {
+        double span = -DOWN;
+        for (Term leaf : leaves) {
+            span += leaf.h + DOWN;
+        }
+        return leaves.size() > 1 && span > tallest ? (int) Math.ceil(span / tallest) : 1;
+    }
+
+    private static double widestOf(List<Term> terms) {
+        double widest = 0;
+        for (Term term : terms) {
+            widest = Math.max(widest, term.w);
+        }
+        return widest;
+    }
+
+    private static void depths(Term term, int depth, Map<String, List<Term>> children,
+            Set<String> cut, Map<Integer, Double> widest, double tallest) {
+        Double known = widest.get(depth);
+        widest.put(depth, known == null ? term.w : Math.max(known, term.w));
+        List<Term> below = drawnUnder(term, children, cut);
+        List<Term> leaves = leavesOf(below, children, cut);
+        int grid = gridColumns(leaves, tallest);
+        if (grid > 1) {
+            double across = grid * widestOf(leaves) + (grid - 1) * ACROSS / 2;
+            Double next = widest.get(depth + 1);
+            widest.put(depth + 1, next == null ? across : Math.max(next, across));
+        }
+        for (Term child : below) {
+            depths(child, depth + 1, children, cut, widest, tallest);
+        }
+    }
+
+    /** Places a subtree with its top at {@code y}; the term centred on its children. */
+    private static double stack(Term term, int depth, double y, Map<String, List<Term>> children,
+            Set<String> cut, Map<Integer, Double> column, Map<String, double[]> at,
+            double tallest) {
+        List<Term> below = drawnUnder(term, children, cut);
         if (below.isEmpty()) {
             at.put(term.id, new double[] {column.get(depth), y});
             return term.h;
         }
         double next = y;
-        for (Term child : below) {
-            next += stack(child, depth + 1, next, children, cut, column, at, false) + DOWN;
+        List<Term> leaves = leavesOf(below, children, cut);
+        int grid = gridColumns(leaves, tallest);
+        List<Term> stacked = below;
+        if (grid > 1) {
+            // The leaves first, in columns side by side; the branches below them.
+            int perColumn = (int) Math.ceil(leaves.size() / (double) grid);
+            double pitch = widestOf(leaves) + ACROSS / 2;
+            double bottom = y;
+            double[] down = new double[grid];
+            java.util.Arrays.fill(down, y);
+            for (int i = 0; i < leaves.size(); i++) {
+                int col = i / perColumn;
+                Term leaf = leaves.get(i);
+                at.put(leaf.id, new double[] {column.get(depth + 1) + col * pitch, down[col]});
+                down[col] += leaf.h + DOWN;
+                bottom = Math.max(bottom, down[col]);
+            }
+            next = bottom;
+            stacked = new ArrayList<Term>(below);
+            stacked.removeAll(leaves);
+        }
+        for (Term child : stacked) {
+            next += stack(child, depth + 1, next, children, cut, column, at, tallest) + DOWN;
         }
         double span = next - DOWN - y;
         double h = Math.max(term.h, span);
