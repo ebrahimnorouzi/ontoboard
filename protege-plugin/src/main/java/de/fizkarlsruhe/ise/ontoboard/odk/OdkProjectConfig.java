@@ -21,6 +21,9 @@ public final class OdkProjectConfig {
     private final String license;
     private final File targetDirectory;
 
+    /** Made from an ontology that already exists: its IRI is kept as it is. */
+    private boolean adopted;
+
     public OdkProjectConfig(String ontologyId, String title, String description,
             String baseIri, String license, File targetDirectory) {
         this.ontologyId = ontologyId == null ? "" : ontologyId.trim();
@@ -34,6 +37,19 @@ public final class OdkProjectConfig {
     /**
      * @throws IllegalArgumentException naming the first problem, in words a user can act on
      */
+    /**
+     * This project starts from an ontology somebody already has, so its IRI is theirs and is kept
+     * whether or not it ends in the ID - changing it would rename every term in it.
+     */
+    public OdkProjectConfig adopting() {
+        adopted = true;
+        return this;
+    }
+
+    public boolean isAdopted() {
+        return adopted;
+    }
+
     public void validate() {
         if (ontologyId.isEmpty()) {
             throw new IllegalArgumentException("Ontology ID is required, e.g. 'myont'.");
@@ -72,7 +88,7 @@ public final class OdkProjectConfig {
         // fails; the artefacts are simply inconsistent forever. Caught here because a version IRI
         // cannot be taken back once anybody has imported it.
         String iriName = ProjectIri.nameOf(baseIri);
-        if (iriName != null && !iriName.equals(ontologyId)) {
+        if (!adopted && iriName != null && !iriName.equals(ontologyId)) {
             throw new IllegalArgumentException(
                     "Base IRI must end in the ontology ID. '" + baseIri + "' ends in '" + iriName
                             + "' but the ID is '" + ontologyId + "', and ODK uses the ID for file "

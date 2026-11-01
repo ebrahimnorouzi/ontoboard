@@ -130,11 +130,33 @@ public final class ProjectWizard {
         problem.setBorder(BorderFactory.createEmptyBorder(0, 0, 8, 0));
         problem.setVisible(false);
 
+        // START FROM WHAT IS OPEN. The likeliest start - an ontology somebody already has - had no
+        // way in: the guide said to make an empty project and merge the file into it by hand,
+        // and the IRI rule then refused the IRI they already had.
+        final org.semanticweb.owlapi.model.OWLOntology open = modelManager.getActiveOntology();
+        final File openFile = adoptable(modelManager, open);
+        final javax.swing.JCheckBox adopt = new javax.swing.JCheckBox(openFile == null ? ""
+                : "Start from " + openFile.getName() + " - keep its address and everything in it");
+        adopt.setVisible(openFile != null);
+        adopt.addActionListener(a -> {
+            if (adopt.isSelected()) {
+                String address = open.getOntologyID().getOntologyIRI().get().toString();
+                id.setText(idFrom(address));
+                iri.setText(address);
+                if (title.getText().trim().isEmpty()) {
+                    title.setText(titleOf(open, openFile));
+                }
+            }
+        });
+
+        JPanel north = new JPanel(new BorderLayout());
+        north.add(problem, BorderLayout.NORTH);
+        north.add(adopt, BorderLayout.SOUTH);
         JPanel panel = new JPanel(new BorderLayout());
-        panel.add(problem, BorderLayout.NORTH);
+        panel.add(north, BorderLayout.NORTH);
         panel.add(fields, BorderLayout.CENTER);
         panel.add(hint, BorderLayout.SOUTH);
-        panel.setPreferredSize(new Dimension(560, 260));
+        panel.setPreferredSize(new Dimension(560, openFile == null ? 260 : 290));
 
         // Until it is accepted or abandoned. Every field this form collects is rejectable -
         // OdkProjectConfig.validate has eight rules, and two of them ("base IRI must end in the
@@ -157,6 +179,9 @@ public final class ProjectWizard {
             OdkProjectConfig config = new OdkProjectConfig(id.getText(), title.getText(),
                     description.getText(), iri.getText(), license.getText(),
                     folder.getText().trim().isEmpty() ? null : new File(folder.getText().trim()));
+            if (adopt.isSelected()) {
+                config.adopting();
+            }
 
             List<File> written;
             try {
@@ -172,8 +197,82 @@ public final class ProjectWizard {
                 return;
             }
 
-            openGenerated(parent, modelManager, config, written.size());
+            if (config.isAdopted()) {
+                adoptInto(parent, modelManager, open, openFile, config, written.size());
+            } else {
+                openGenerated(parent, modelManager, config, written.size());
+            }
             return;
+        }
+    }
+
+    /** The open ontology, if it has an IRI and a file and is not a project's edit file already. */
+    static File adoptable(OWLModelManager modelManager,
+            org.semanticweb.owlapi.model.OWLOntology open) {
+        if (open == null || !open.getOntologyID().getOntologyIRI().isPresent()) {
+            return null;
+        }
+        IRI document = modelManager.getOWLOntologyManager().getOntologyDocumentIRI(open);
+        if (document == null || !"file".equals(document.getScheme())) {
+            return null;
+        }
+        File file = new File(document.toURI());
+        return file.getName().endsWith("-edit.owl") ? null : file;
+    }
+
+    /** "https://example.org/Shop-Ontology.owl" as an ID: shop_ontology. */
+    static String idFrom(String address) {
+        String name = address.replaceAll("[#/]+$", "");
+        name = name.substring(Math.max(name.lastIndexOf('/'), name.lastIndexOf('#')) + 1)
+                .replaceAll("\\.(owl|ttl|rdf|ofn|omn|owx)$", "")
+                .toLowerCase(java.util.Locale.ROOT).replaceAll("[^a-z0-9_]+", "_")
+                .replaceAll("^_+|_+$", "");
+        if (name.isEmpty() || !Character.isLetter(name.charAt(0))) {
+            name = "o" + name;
+        }
+        return name;
+    }
+
+    private static String titleOf(org.semanticweb.owlapi.model.OWLOntology open, File file) {
+        for (org.semanticweb.owlapi.model.OWLAnnotation annotation : open.getAnnotations()) {
+            String property = annotation.getProperty().getIRI().toString();
+            if ((property.endsWith("/title") || property.endsWith("#label"))
+                    && annotation.getValue() instanceof org.semanticweb.owlapi.model.OWLLiteral) {
+                return ((org.semanticweb.owlapi.model.OWLLiteral) annotation.getValue())
+                        .getLiteral();
+            }
+        }
+        return file.getName().replaceAll("\\.[^.]+$", "");
+    }
+
+    /**
+     * The open ontology becomes the project's edit file: saved there, kept open, its IRI and
+     * every axiom as they were. The file it came from is left as it is.
+     */
+    private static void adoptInto(Component parent, OWLModelManager modelManager,
+            org.semanticweb.owlapi.model.OWLOntology open, File from, OdkProjectConfig config,
+            int fileCount) {
+        try {
+            modelManager.getOWLOntologyManager().setOntologyDocumentIRI(open,
+                    IRI.create(config.getEditFile()));
+            modelManager.save(open);
+            JOptionPane.showMessageDialog(parent,
+                    "Created " + fileCount + " files in\n"
+                            + config.getProjectRoot().getAbsolutePath()
+                            + "\n\nYour ontology is now the project's edit file, "
+                            + config.getEditFile().getName() + " - the file you work in from now"
+                            + " on, with its address and every term as they were. "
+                            + from.getName() + " is left as it was."
+                            + "\n\nNext: OntoBoard > Start here: the guide... walks you through"
+                            + " the rest. Nothing else needs installing.",
+                    "Project created", JOptionPane.INFORMATION_MESSAGE);
+        } catch (Exception cannotSave) {
+            JOptionPane.showMessageDialog(parent,
+                    "The project was created in " + config.getProjectRoot().getAbsolutePath()
+                            + ", but your ontology could not be saved into it: "
+                            + cannotSave.getMessage() + "\n\nSave it there yourself as "
+                            + config.getEditFile().getName() + ".",
+                    "Project created", JOptionPane.WARNING_MESSAGE);
         }
     }
 

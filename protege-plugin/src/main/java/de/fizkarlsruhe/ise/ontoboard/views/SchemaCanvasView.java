@@ -172,6 +172,12 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
     /** Several change events from one edit are one drawing. */
     private Timer refreshTimer;
 
+    /**
+     * When not null, the board shows only these terms: the selection the reader isolated and
+     * everything an edge joins it to. Not saved - a way of reading, not a change to the board.
+     */
+    private java.util.Set<String> isolated;
+
     /** How many terms each folded class holds out of sight, for its label. */
     private final java.util.Map<String, Integer> folded = new java.util.HashMap<String, Integer>();
 
@@ -2643,6 +2649,10 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
 
                     @Override
                     public void actionPerformed(java.awt.event.ActionEvent event) {
+                        // Escape again, with nothing selected, leaves Show only this.
+                        if (graph.isSelectionEmpty()) {
+                            showWholeBoard();
+                        }
                         graph.clearSelection();
                     }
                 });
@@ -2883,6 +2893,51 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
      * choosing them one at a time is absurd - so this exists, with a confirmation whose threshold
      * is about when the layout stops being readable rather than when it stops being possible.
      */
+    /**
+     * Shows only the selected terms and everything an edge joins them to - a board of 660 terms
+     * read one neighbourhood at a time. Asked for by a domain expert who could find a concept
+     * but not read its surroundings among a thousand lines.
+     */
+    private void isolateSelection() {
+        java.util.Set<String> keep = new java.util.HashSet<String>();
+        for (Object cell : graph.getSelectionCells()) {
+            String id = graph.getIdForCell(cell);
+            if (id != null && graph.getModel().isVertex(cell) && !SchemaGraph.isAnnotationId(id)) {
+                keep.add(id);
+            }
+        }
+        if (keep.isEmpty()) {
+            setStatus("Select a term first - then Show only this shows it and its neighbours.");
+            return;
+        }
+        java.util.Set<String> around = new java.util.HashSet<String>(keep);
+        for (Object edge : graph.getChildEdges(graph.getDefaultParent())) {
+            String source = graph.getIdForCell(graph.getModel().getTerminal(edge, true));
+            String target = graph.getIdForCell(graph.getModel().getTerminal(edge, false));
+            if (keep.contains(source) || keep.contains(target)) {
+                around.add(source);
+                around.add(target);
+            }
+        }
+        // Derived nodes - a restriction's - are drawn from their class's axioms, so they come
+        // with it; their own ids need not be listed.
+        isolated = around;
+        refresh();
+        fitToWindow();
+        setStatus("Showing " + rendered.getNodes().size() + " terms: the selection and what it is"
+                + " connected to. More > Show the whole board again, or press Escape twice.");
+    }
+
+    /** Back to the whole board after Show only this. */
+    private void showWholeBoard() {
+        if (isolated == null) {
+            return;
+        }
+        isolated = null;
+        refresh();
+        setStatus("The whole board again.");
+    }
+
     /**
      * Folds a class away, or opens it again: what is under it - subclasses, transitively, and
      * their individuals - is not drawn while it is folded, and the class says how many terms it
@@ -3585,6 +3640,22 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             layers.add(layerSwitch("Individuals", SHOW_INDIVIDUALS));
             layers.add(layerSwitch("Imported terms", SHOW_IMPORTED));
             menu.add(layers);
+            if (isolated != null) {
+                JMenuItem whole = new JMenuItem("Show the whole board");
+                whole.addActionListener(b -> showWholeBoard());
+                menu.add(whole);
+            }
+            if (!layout.collapsed.isEmpty()) {
+                JMenuItem unfold = new JMenuItem("Expand every folded class ("
+                        + layout.collapsed.size() + ")");
+                unfold.addActionListener(b -> {
+                    rememberBoard("expanding every folded class");
+                    layout.collapsed.clear();
+                    refresh();
+                    saveLayoutTo(layoutFile);
+                });
+                menu.add(unfold);
+            }
             if (!Boolean.TRUE.equals(layout.showsEverything) || !layout.hidden.isEmpty()) {
                 JMenuItem everything = new JMenuItem(layout.hidden.isEmpty()
                         ? "Show every term" : "Show every term (" + layout.hidden.size()
@@ -4016,6 +4087,15 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                     menu.add(close);
                 }
                 if (onTerm) {
+                    JMenuItem only = new JMenuItem("Show only this and its neighbours");
+                    only.setToolTipText("Hide everything else until More > Show the whole board");
+                    only.addActionListener(a -> {
+                        if (!graph.isCellSelected(cell)) {
+                            graph.setSelectionCell(cell);
+                        }
+                        isolateSelection();
+                    });
+                    menu.add(only);
                     JMenuItem expand = new JMenuItem("Expand neighbours (1 hop)");
                     expand.setToolTipText("Put everything directly related to this term on the "
                             + "board, in a ring around it");
@@ -4530,6 +4610,9 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
      * switches, so the count is what Expand would really bring back.
      */
     private java.util.Set<String> fold(OWLOntology ontology, java.util.Set<String> members) {
+        if (isolated != null) {
+            members.retainAll(isolated);
+        }
         folded.clear();
         if (ontology == null) {
             return members;

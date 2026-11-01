@@ -355,8 +355,12 @@ public final class OntologyProjection {
             if (isOn(onCanvasIris, cls.getIRI())) {
                 // The summary is for classes only: superclasses, equivalents and disjoints
                 // are class notions, and an individual's types are already drawn as edges.
+                // ≡ before a defined class's name, as Protégé's class tree marks one: its arrows
+                // are necessary AND sufficient, and drawn alike they looked like a class that
+                // only had necessary conditions.
                 nodes.add(marked(local, new CanvasNode(iri(cls.getIRI()), NodeKind.CLASS,
-                        DisplayLabels.forEntity(ontology, cls),
+                        (isDefined(ontology, cls) ? "\u2261 " : "")
+                                + DisplayLabels.forEntity(ontology, cls),
                         EditorNotes.allNotesOn(ontology, cls.getIRI()))
                         .withCurie(Curies.curieFor(ontology, cls.getIRI()))
                         .withSummary(TermSummary.of(ontology, cls))));
@@ -1300,6 +1304,21 @@ public final class OntologyProjection {
             walk(ontology, on, subIri, sup, PropertyEdgeId.Origin.SUBCLASS, nodes, edges,
                     drawExpressions);
         }
+    }
+
+    /** Whether a class is equivalent to a class expression - defined, not only described. */
+    static boolean isDefined(OWLOntology ontology, OWLClass cls) {
+        for (OWLOntology part : ontology.getImportsClosure()) {
+            for (org.semanticweb.owlapi.model.OWLEquivalentClassesAxiom axiom
+                    : part.getEquivalentClassesAxioms(cls)) {
+                for (OWLClassExpression side : axiom.getClassExpressions()) {
+                    if (side.isAnonymous()) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
     }
 
     /** The shape {@link #scopedDomain} draws: some of a named property to a named class. */

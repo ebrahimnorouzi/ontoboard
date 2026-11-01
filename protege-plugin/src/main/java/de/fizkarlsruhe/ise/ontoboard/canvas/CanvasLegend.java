@@ -314,6 +314,11 @@ public final class CanvasLegend {
                 "A reasoner has found this class unsatisfiable - two of its axioms cannot both "
                         + "hold, so nothing can ever be one. Shown only while inferences are on.",
                 "#FDF0EE", SchemaStyles.UNSATISFIABLE_STROKE, null));
+        entries.add(new Entry(Form.MODIFIER, SchemaStyles.CLASS, "\u2261 before a name: defined",
+                "A defined class: it is equivalent to the expression its arrows draw, so those "
+                        + "conditions are sufficient as well as necessary - anything meeting them "
+                        + "is one. Without the mark, a class's arrows are necessary only.",
+                "#FFFFFF", "#2D6FBF", null));
         entries.add(new Entry(Form.MODIFIER, SchemaStyles.NOTED, "Has an editorial note",
                 "A heavier border. Somebody has written an editor or curator note on this term - "
                         + "read them all with OntoBoard > Notes > All notes.",
