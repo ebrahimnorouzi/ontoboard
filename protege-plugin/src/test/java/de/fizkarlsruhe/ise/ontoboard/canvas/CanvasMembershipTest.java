@@ -52,11 +52,12 @@ class CanvasMembershipTest {
         membership.add(NS + "Person");
         java.util.List<String> added = membership.expandOneHop(ontology, NS + "Person");
 
-        // Agent via SubClassOf, Organization via the worksFor domain/range pair, alice via
-        // rdf:type - and worksFor itself, which is the fourth and was missing until 1.122.0.
-        assertEquals(4, added.size(), added.toString());
+        // Agent via SubClassOf, alice via rdf:type, and worksFor - its domain, drawn from the
+        // property's own node since 1.131.0. Organization was the fourth while a domain and range
+        // were one arrow between the two classes; it is worksFor's neighbour now, one hop on.
+        assertEquals(3, added.size(), added.toString());
         assertTrue(membership.contains(NS + "Agent"));
-        assertTrue(membership.contains(NS + "Organization"));
+        assertFalse(membership.contains(NS + "Organization"));
         assertTrue(membership.contains(NS + "alice"));
         assertTrue(membership.contains(NS + "worksFor"),
                 "the property the arrow stands for is a neighbour of both its ends. The hop used "
@@ -137,7 +138,7 @@ class CanvasMembershipTest {
         java.util.List<String> added = membership.expandOneHop(ontology, NS + "Person");
 
         assertTrue(added.contains(NS + "Agent"), added.toString());
-        assertTrue(added.contains(NS + "Organization"), added.toString());
+        assertTrue(added.contains(NS + "worksFor"), added.toString());
         assertTrue(added.contains(NS + "alice"), added.toString());
         assertFalse(added.contains(NS + "Person"), "the term expanded is not its own neighbour");
     }
@@ -156,7 +157,7 @@ class CanvasMembershipTest {
         membership.add(NS + "Person");
         membership.add(NS + "Agent");
 
-        // Organization, alice and worksFor: the four neighbours less the one already there.
-        assertEquals(3, membership.expandOneHop(ontology, NS + "Person").size());
+        // alice and worksFor: the three neighbours less the one already there.
+        assertEquals(2, membership.expandOneHop(ontology, NS + "Person").size());
     }
 }

@@ -156,4 +156,23 @@ class CanvasLayoutHygieneTest {
         assertEquals(1, layout.notes.size());
         assertEquals(1, layout.frames.size());
     }
+
+    /**
+     * A restriction's node and a datatype are drawn, not declared, and keep their place - they
+     * used to be pruned with the stale terms, so every drawing put them back in the first free
+     * slot, above the patterns' frames.
+     */
+    @Test
+    void theNodeOfAClassExpressionOrADatatypeKeepsItsPlace() {
+        CanvasLayout layout = new CanvasLayout();
+        layout.nodes.put("exp|abc", new CanvasLayout.NodeLayout(10, 10));
+        layout.nodes.put("http://www.w3.org/2001/XMLSchema#string",
+                new CanvasLayout.NodeLayout(20, 20));
+        layout.nodes.put("http://example.org/o#Gone", new CanvasLayout.NodeLayout(30, 30));
+
+        layout.pruneMissing(Collections.<String>emptySet());
+
+        assertEquals(new HashSet<String>(Arrays.asList("exp|abc",
+                "http://www.w3.org/2001/XMLSchema#string")), layout.nodes.keySet());
+    }
 }

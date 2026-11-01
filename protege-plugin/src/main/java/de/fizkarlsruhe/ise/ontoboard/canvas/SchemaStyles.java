@@ -49,6 +49,9 @@ public final class SchemaStyles {
 
     /** InverseObjectProperties: arrowheads at both ends, because it runs both ways. */
     public static final String INVERSE = "obInverse";
+
+    /** A property's domain or range, from its node. */
+    public static final String DOMAIN_RANGE = "obDomainRange";
     public static final String INFERRED_SUBCLASS = "obInferredSubClass";
 
     /** A type the reasoner worked out for an individual, rather than one that was stated. */
@@ -316,6 +319,12 @@ public final class SchemaStyles {
                 edge("#B35C00", "6 3", mxConstants.ARROW_OPEN, 1.2f, 11, true);
         inverse.put(mxConstants.STYLE_STARTARROW, mxConstants.ARROW_OPEN);
         sheet.putCellStyle(INVERSE, inverse);
+
+        // A property's domain or range: thin, grey-orange and long-dashed, so it reads as a
+        // property's reach rather than a relation between the two things it connects - which is
+        // what a restriction arrow is, and why this is not drawn like one.
+        sheet.putCellStyle(DOMAIN_RANGE,
+                edge("#C08A4B", "8 4", mxConstants.ARROW_OPEN, 1.0f, 9, true));
 
         // Inferred edges are dotted and grey: present, clearly derived, and never mistaken for
         // something the ontology actually asserts. A reasoner's conclusion drawn identically to an

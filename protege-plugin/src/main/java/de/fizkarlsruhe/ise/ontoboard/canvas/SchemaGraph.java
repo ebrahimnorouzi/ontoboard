@@ -2,19 +2,55 @@ package de.fizkarlsruhe.ise.ontoboard.canvas;
 
 import com.mxgraph.model.mxCell;
 import com.mxgraph.model.mxGraphModel;
+import com.mxgraph.util.mxConstants;
+import com.mxgraph.util.mxUtils;
 import com.mxgraph.view.mxGraph;
 import de.fizkarlsruhe.ise.ontoboard.layout.CanvasLayout;
 import de.fizkarlsruhe.ise.ontoboard.model.CanvasEdge;
 import de.fizkarlsruhe.ise.ontoboard.model.CanvasNode;
 import de.fizkarlsruhe.ise.ontoboard.model.Projection;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 /** Renders a {@link Projection}. Holds no ontology state of its own. */
 public class SchemaGraph extends mxGraph {
 
     private static final double DEFAULT_W = 160;
     private static final double DEFAULT_H = 60;
+
+    /** As wide as a box gets to fit its label on one line; past this it wraps and grows down. */
+    private static final double WIDEST = 280;
+
+    /**
+     * More relations than a board can draw as lines and still be read. Measured on two published
+     * ontologies with every term shown: 528 and 1,139 edges, and the relations between classes,
+     * drawn at full strength, were a mesh across the whole board.
+     */
+    static final int DENSE = 150;
+
+    /** How strongly what is not in focus is drawn, in percent. */
+    static final int FADED = 22;
+
+    /** How strongly a relation on a dense board is drawn until one of its ends is in focus. */
+    static final int QUIET = 30;
+
+    /**
+     * Longer than this, an edge on a dense board is drawn quietly whatever it is: a second
+     * superclass far away, a subtree's way back to the block its parent is in. The structure is
+     * in the short ones.
+     */
+    static final double LONG = 1600;
+
+    /** The terms selected; empty when nothing is. */
+    private final Set<String> focused = new HashSet<String>();
+
+    /** The selected terms and everything an edge joins them to. */
+    private final Set<String> lit = new HashSet<String>();
+
+    private boolean dense;
 
     private final Map<String, Object> cellsById = new HashMap<>();
 
@@ -34,6 +70,9 @@ public class SchemaGraph extends mxGraph {
         // projection invariant is gone. Duplicating board furniture is Ctrl+D; duplicating an axiom
         // is not a gesture.
         setCellsCloneable(false);
+        // Lines behind boxes: on a board of any size a relation passes other terms on its way,
+        // and drawn on top it ran through their labels.
+        setKeepEdgesInBackground(true);
         // Snapping has been on since the first version and invisible with it: mxGraph defaults
         // gridSize to 10 and gridEnabled to true, and mxGraphHandler already snaps every drag delta.
         // Ten pixels gives sixteen candidate columns across a 160px node, which is not alignment.
@@ -123,10 +162,15 @@ public class SchemaGraph extends mxGraph {
                             (int) (stored.h <= 0 ? DEFAULT_H : stored.h)));
                 }
             }
+            dense = projection.getEdges().size() > DENSE;
             for (CanvasNode node : projection.getNodes()) {
                 CanvasLayout.NodeLayout stored = layout.nodes.get(node.getId());
-                double w = stored != null ? stored.w : DEFAULT_W;
-                double h = stored != null ? stored.h : DEFAULT_H;
+                double[] fitted = stored != null && stored.w > 0 && stored.h > 0 ? null
+                        : fittedSize(
+                        de.fizkarlsruhe.ise.ontoboard.model.Curies.displayLabel(
+                                node.getCurie(), node.getLabel()), styleFor(node, colours));
+                double w = fitted == null ? stored.w : fitted[0];
+                double h = fitted == null ? stored.h : fitted[1];
                 double x;
                 double y;
                 if (stored != null) {
@@ -179,6 +223,165 @@ public class SchemaGraph extends mxGraph {
         } finally {
             getModel().endUpdate();
         }
+    }
+
+    /**
+     * A box its label fits in without a word broken across two lines.
+     *
+     * <p>Every new box was 160 by 60, so {@code classification:Concept} came out as
+     * "classification:Conce" over "pt", and a prefixed name over a two-word label ran out of the
+     * bottom of its box. Wider up to {@link #WIDEST}, then taller.
+     */
+    public double[] fittedSize(String label, String style) {
+        Map<String, Object> resolved = getStylesheet().getCellStyle(style,
+                getStylesheet().getDefaultVertexStyle());
+        java.awt.Font font = mxUtils.getFont(resolved);
+        java.awt.FontMetrics metrics = mxUtils.getFontMetrics(font);
+        // Generous: JGraphX wraps a few pixels inside the box and measures with fractional
+        // metrics where these are whole pixels, so a label measured to fit exactly broke its
+        // last character onto a line of its own.
+        double padding = 2 * mxUtils.getDouble(resolved, mxConstants.STYLE_SPACING, 6) + 30;
+        String[] lines = (label == null ? "" : label).split("\n");
+        double longest = 0;
+        for (String line : lines) {
+            longest = Math.max(longest, metrics.stringWidth(line) * 1.08);
+        }
+        double w = Math.max(DEFAULT_W, Math.min(WIDEST, longest + padding));
+        int rows = 0;
+        for (String line : lines) {
+            rows += Math.max(1, (int) Math.ceil(metrics.stringWidth(line) * 1.08 / (w - padding)));
+        }
+        double h = Math.max(DEFAULT_H, rows * metrics.getHeight() + padding);
+        return new double[] {Math.ceil(w), Math.ceil(h)};
+    }
+
+    /**
+     * What is in focus: these terms, and everything an edge joins them to. The rest of the board
+     * fades, and on a dense board their quiet relations come forward. Empty for none.
+     *
+     * <p>Drawing only - nothing in the model changes, so focusing is never an undo step, never
+     * saved, and never sent to a collaborator.
+     */
+    public void setFocus(Collection<String> ids) {
+        focused.clear();
+        lit.clear();
+        if (ids != null) {
+            for (String id : ids) {
+                if (id != null && !isAnnotationId(id)) {
+                    focused.add(id);
+                }
+            }
+        }
+        if (!focused.isEmpty()) {
+            lit.addAll(focused);
+            for (Object edge : mxGraphModel.getChildCells(getModel(), getDefaultParent(), false,
+                    true)) {
+                String source = getIdForCell(getModel().getTerminal(edge, true));
+                String target = getIdForCell(getModel().getTerminal(edge, false));
+                if (focused.contains(source) || focused.contains(target)) {
+                    lit.add(source);
+                    lit.add(target);
+                }
+            }
+        }
+        refresh();
+    }
+
+    public boolean isDense() {
+        return dense;
+    }
+
+    /**
+     * Lines behind boxes in a picture too. The board's own component honours
+     * {@link #isKeepEdgesInBackground}; the renderer behind Export image draws in model order, and
+     * edges are inserted after the nodes they join - so every exported line ran over the labels it
+     * passed.
+     */
+    @Override
+    public void drawCell(com.mxgraph.canvas.mxICanvas canvas, Object cell) {
+        if (cell != getDefaultParent() || !isKeepEdgesInBackground()) {
+            super.drawCell(canvas, cell);
+            return;
+        }
+        drawState(canvas, getView().getState(cell), true);
+        int count = getModel().getChildCount(cell);
+        for (int pass = 0; pass < 2; pass++) {
+            for (int i = 0; i < count; i++) {
+                Object child = getModel().getChildAt(cell, i);
+                if (getModel().isEdge(child) == (pass == 0)) {
+                    super.drawCell(canvas, child);
+                }
+            }
+        }
+    }
+
+    @Override
+    public Map<String, Object> getCellStyle(Object cell) {
+        Map<String, Object> style = super.getCellStyle(cell);
+        int strength = strengthOf(cell);
+        if (strength >= 100) {
+            return style;
+        }
+        Map<String, Object> drawn = new HashMap<String, Object>(style);
+        drawn.put(mxConstants.STYLE_OPACITY, Math.min(strength,
+                mxUtils.getInt(style, mxConstants.STYLE_OPACITY, 100)));
+        drawn.put(mxConstants.STYLE_TEXT_OPACITY, strength);
+        return drawn;
+    }
+
+    /**
+     * Disjointness, domains and ranges wait on a dense board until one of their ends is in
+     * focus: on the larger of the two ontologies measured they were 104 and 112 lines, crossing
+     * the board in every direction, and each says something only about the term it touches.
+     */
+    @Override
+    public boolean isCellVisible(Object cell) {
+        if (!super.isCellVisible(cell)) {
+            return false;
+        }
+        if (focused == null || !dense || !getModel().isEdge(cell)) {
+            return true;
+        }
+        String kind = baseStyleOf(cell);
+        return !(SchemaStyles.DISJOINT.equals(kind) || SchemaStyles.DOMAIN_RANGE.equals(kind))
+                || touchesFocus(cell);
+    }
+
+    private int strengthOf(Object cell) {
+        String id = getIdForCell(cell);
+        // Null while mxGraph's constructor builds the view, before this class's fields exist.
+        if (focused == null || id == null || isAnnotationId(id)) {
+            return 100;
+        }
+        if (getModel().isEdge(cell)) {
+            if (!focused.isEmpty()) {
+                return touchesFocus(cell) ? 100 : FADED;
+            }
+            String kind = baseStyleOf(cell);
+            return dense && (SchemaStyles.OBJECT_PROPERTY.equals(kind)
+                    || SchemaStyles.DATA_PROPERTY.equals(kind)
+                    || SchemaStyles.INVERSE.equals(kind) || lengthOf(cell) > LONG) ? QUIET : 100;
+        }
+        return focused.isEmpty() || lit.contains(id) ? 100 : FADED;
+    }
+
+    private double lengthOf(Object edge) {
+        com.mxgraph.model.mxGeometry from = getModel().getGeometry(getModel().getTerminal(edge,
+                true));
+        com.mxgraph.model.mxGeometry to = getModel().getGeometry(getModel().getTerminal(edge,
+                false));
+        return from == null || to == null ? 0 : Math.hypot(from.getCenterX() - to.getCenterX(),
+                from.getCenterY() - to.getCenterY());
+    }
+
+    private boolean touchesFocus(Object edge) {
+        return focused.contains(getIdForCell(getModel().getTerminal(edge, true)))
+                || focused.contains(getIdForCell(getModel().getTerminal(edge, false)));
+    }
+
+    private String baseStyleOf(Object cell) {
+        String style = getModel().getStyle(cell);
+        return style == null ? "" : style.split(";", 2)[0];
     }
 
     /**
@@ -365,6 +568,7 @@ public class SchemaGraph extends mxGraph {
             case SUB_PROPERTY:    return SchemaStyles.SUB_PROPERTY;
             case DISJOINT:        return SchemaStyles.DISJOINT;
             case INVERSE:         return SchemaStyles.INVERSE;
+            case DOMAIN_RANGE:    return SchemaStyles.DOMAIN_RANGE;
             case INFERRED_SUBCLASS: return SchemaStyles.INFERRED_SUBCLASS;
             case INFERRED_TYPE:   return SchemaStyles.INFERRED_TYPE;
             case OBJECT_PROPERTY:

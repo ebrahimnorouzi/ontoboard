@@ -119,6 +119,17 @@ public final class FramedGroup {
      * @param existing the board as it is now; not modified
      */
     public static Placement plan(String label, List<String> iris, CanvasLayout existing) {
+        return plan(label, iris, existing, Collections.<String, double[]>emptyMap());
+    }
+
+    /**
+     * The same, each box as big as {@code sizes} says - {w, h} by IRI, the size its label fits
+     * in - and {@link #NODE_W} by {@link #NODE_H} for any it does not mention. Columns are as
+     * wide as their widest box: a fixed 160px put {@code classification:Concept} on two lines,
+     * broken inside the word.
+     */
+    public static Placement plan(String label, List<String> iris, CanvasLayout existing,
+            Map<String, double[]> sizes) {
         Map<String, CanvasLayout.NodeLayout> placed =
                 new LinkedHashMap<String, CanvasLayout.NodeLayout>();
         List<String> already = new ArrayList<String>();
@@ -139,8 +150,24 @@ public final class FramedGroup {
 
         int columns = columnsFor(fresh.size());
         int rows = (fresh.size() + columns - 1) / columns;
-        double innerW = columns * NODE_W + (columns - 1) * GAP;
-        double innerH = rows * NODE_H + (rows - 1) * GAP;
+        double[] columnW = new double[columns];
+        double[] rowH = new double[rows];
+        for (int at = 0; at < fresh.size(); at++) {
+            double[] size = sizes.get(fresh.get(at));
+            // Rounded up to the 20px snap grid, so every box still starts on it.
+            columnW[at % columns] = Math.max(columnW[at % columns],
+                    Math.ceil((size == null ? NODE_W : size[0]) / 20) * 20);
+            rowH[at / columns] = Math.max(rowH[at / columns],
+                    Math.ceil((size == null ? NODE_H : size[1]) / 20) * 20);
+        }
+        double innerW = (columns - 1) * GAP;
+        for (double w : columnW) {
+            innerW += w;
+        }
+        double innerH = (rows - 1) * GAP;
+        for (double h : rowH) {
+            innerH += h;
+        }
 
         double[] origin = freeSpotFor(existing, innerW + 2 * PADDING,
                 innerH + 2 * PADDING + LABEL_BAND);
@@ -155,11 +182,18 @@ public final class FramedGroup {
         for (int at = 0; at < fresh.size(); at++) {
             int column = at % columns;
             int row = at / columns;
-            CanvasLayout.NodeLayout node = new CanvasLayout.NodeLayout(
-                    frame.x + PADDING + column * (NODE_W + GAP),
-                    frame.y + PADDING + LABEL_BAND + row * (NODE_H + GAP));
-            node.w = NODE_W;
-            node.h = NODE_H;
+            double x = frame.x + PADDING;
+            for (int before = 0; before < column; before++) {
+                x += columnW[before] + GAP;
+            }
+            double y = frame.y + PADDING + LABEL_BAND;
+            for (int before = 0; before < row; before++) {
+                y += rowH[before] + GAP;
+            }
+            double[] size = sizes.get(fresh.get(at));
+            CanvasLayout.NodeLayout node = new CanvasLayout.NodeLayout(x, y);
+            node.w = size == null ? NODE_W : size[0];
+            node.h = size == null ? NODE_H : size[1];
             placed.put(fresh.get(at), node);
         }
         return new Placement(frame, placed, already);

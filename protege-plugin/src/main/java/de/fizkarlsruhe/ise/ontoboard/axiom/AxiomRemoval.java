@@ -153,6 +153,36 @@ public final class AxiomRemoval {
             require(parts, 4, edgeId);
             return domainAndRange(ontology, parts[1], parts[2], parts[3]);
         }
+        if ("domain-or".equals(parts[0]) || "range-or".equals(parts[0])
+                || (("domain".equals(parts[0]) || "range".equals(parts[0])) && parts.length == 4
+                        && "exp".equals(parts[2]))) {
+            throw new UnknownEdgeException(edgeId, "a domain or range that is a union or another"
+                    + " class expression - change it on the property in Protege");
+        }
+        if ("domain".equals(parts[0]) || "range".equals(parts[0])) {
+            require(parts, 3, edgeId);
+            IRI property = IRI.create(parts[1]);
+            IRI scope = IRI.create(parts[2]);
+            // Object or data property: not readable off the id, so both forms, as for subprop.
+            OWLAxiom[] forms = "domain".equals(parts[0])
+                    ? new OWLAxiom[] {
+                        f.getOWLObjectPropertyDomainAxiom(f.getOWLObjectProperty(property),
+                                f.getOWLClass(scope)),
+                        f.getOWLDataPropertyDomainAxiom(f.getOWLDataProperty(property),
+                                f.getOWLClass(scope))}
+                    : new OWLAxiom[] {
+                        f.getOWLObjectPropertyRangeAxiom(f.getOWLObjectProperty(property),
+                                f.getOWLClass(scope)),
+                        f.getOWLDataPropertyRangeAxiom(f.getOWLDataProperty(property),
+                                f.getOWLDatatype(scope))};
+            List<OWLOntologyChange> changes = new ArrayList<OWLOntologyChange>();
+            for (OWLAxiom form : forms) {
+                if (ontology.containsAxiom(form)) {
+                    changes.add(new RemoveAxiom(ontology, form));
+                }
+            }
+            return changes;
+        }
         if (de.fizkarlsruhe.ise.ontoboard.model.PropertyEdgeId.is(edgeId)) {
             return propertyEdge(ontology, edgeId);
         }

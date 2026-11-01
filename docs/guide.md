@@ -67,8 +67,9 @@ parts and wholes, roles, classifications, prices. You start from a design others
 not a blank page.
 
 **What OntoBoard does.** It extracts the pattern's terms as a module of your project, records
-where it came from, and shows its classes on the board in a frame named after the pattern. *Add
-all* frames every pattern an ontology uses, including in a release, where the imports are merged.
+where it came from, and shows its classes on the board in a frame named after the pattern. A
+board opened on an ontology frames every pattern it uses, including in a release, where the
+imports are merged.
 
 **Done when** the ontology imports a pattern from the library.
 

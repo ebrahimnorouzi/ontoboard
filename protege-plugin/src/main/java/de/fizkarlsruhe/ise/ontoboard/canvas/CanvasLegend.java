@@ -299,6 +299,11 @@ public final class CanvasLegend {
                         + "two property nodes, so it appears only once you have put the "
                         + "properties themselves on the board. Arrowheads both ends.",
                 null, "#B35C00", "6 3"));
+        entries.add(new Entry(Form.EDGE, SchemaStyles.DOMAIN_RANGE, "rdfs:domain / rdfs:range",
+                "From a property to the class its subjects or values belong to; the label "
+                        + "says which. A union is drawn as its own node, because two domains "
+                        + "mean both, and 'either' is a different claim.",
+                null, "#C08A4B", "8 4"));
 
         entries.add(new Entry(Form.MODIFIER, SchemaStyles.UNSATISFIABLE, "Cannot have instances",
                 "A reasoner has found this class unsatisfiable - two of its axioms cannot both "
@@ -394,6 +399,8 @@ public final class CanvasLegend {
                 return SchemaStyles.DISJOINT;
             case INVERSE:
                 return SchemaStyles.INVERSE;
+            case DOMAIN_RANGE:
+                return SchemaStyles.DOMAIN_RANGE;
             case INFERRED_SUBCLASS:
                 return SchemaStyles.INFERRED_SUBCLASS;
             case INFERRED_TYPE:

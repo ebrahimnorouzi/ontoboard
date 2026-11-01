@@ -330,4 +330,23 @@ class FramedGroupTest {
                     "y inset off the 20px grid: " + (node.y - frame.y));
         }
     }
+
+    /** A fixed 160px put classification:Concept on two lines, broken inside the word. */
+    @Test
+    void aBoxIsAsWideAsItsLabelNeedsAndItsColumnMakesRoom() {
+        java.util.Map<String, double[]> sizes = new java.util.HashMap<String, double[]>();
+        sizes.put("http://example.org/o#Wide", new double[] {231, 60});
+
+        FramedGroup.Placement placement = FramedGroup.plan("P",
+                Arrays.asList("http://example.org/o#Wide", "http://example.org/o#Small"),
+                new CanvasLayout(), sizes);
+
+        CanvasLayout.NodeLayout wide = placement.getNodes().get("http://example.org/o#Wide");
+        CanvasLayout.NodeLayout small = placement.getNodes().get("http://example.org/o#Small");
+        assertEquals(231, wide.w, 0.001);
+        assertEquals(FramedGroup.NODE_W, small.w, 0.001);
+        assertTrue(small.x >= wide.x + 231 + FramedGroup.GAP || small.y >= wide.y + 60,
+                "no overlap: " + wide.x + " " + small.x);
+        assertEquals(0.0, (small.x - placement.getFrame().x) % 20, 0.001, "still on the grid");
+    }
 }

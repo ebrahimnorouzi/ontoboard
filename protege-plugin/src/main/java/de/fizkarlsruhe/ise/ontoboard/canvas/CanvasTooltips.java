@@ -180,6 +180,8 @@ public final class CanvasTooltips {
                 return "owl:disjointWith";
             case INVERSE:
                 return "owl:inverseOf";
+            case DOMAIN_RANGE:
+                return "rdfs:domain or rdfs:range of a property";
             case DATA_PROPERTY:
                 return "A data property restriction or range";
             case OBJECT_PROPERTY:

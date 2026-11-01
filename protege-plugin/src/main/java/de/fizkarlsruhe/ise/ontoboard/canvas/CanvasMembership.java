@@ -24,6 +24,8 @@ public class CanvasMembership {
     }
 
     public boolean add(String iri) {
+        // Put back by hand, so no longer hidden.
+        layout.hidden.remove(iri);
         if (layout.onCanvas.contains(iri)) {
             return false;
         }
@@ -31,9 +33,18 @@ public class CanvasMembership {
         return true;
     }
 
+    /**
+     * Takes a term off the board. On a board that shows everything it is also remembered as
+     * hidden, or the next drawing would put it straight back.
+     */
     public boolean remove(String iri) {
         layout.nodes.remove(iri);
-        return layout.onCanvas.remove(iri);
+        boolean removed = layout.onCanvas.remove(iri);
+        if (removed && Boolean.TRUE.equals(layout.showsEverything)
+                && !layout.hidden.contains(iri)) {
+            layout.hidden.add(iri);
+        }
+        return removed;
     }
 
     public boolean contains(String iri) {

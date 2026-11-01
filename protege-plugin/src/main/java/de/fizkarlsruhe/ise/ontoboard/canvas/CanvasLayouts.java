@@ -42,6 +42,7 @@ public final class CanvasLayouts {
 
     /** Names match the web app's menu so existing users recognise them. */
     public enum Algorithm {
+        SECTIONS("Outline - classes as a tree, properties apart"),
         HIERARCHICAL("Hierarchical (SubClassOf tree)"),
         ORGANIC("Organic (force-directed)"),
         CIRCLE("Circle"),
@@ -144,6 +145,10 @@ public final class CanvasLayouts {
      * relative to the class it comments on.
      */
     public static void apply(SchemaGraph graph, Algorithm algorithm) {
+        if (algorithm == Algorithm.SECTIONS) {
+            applySections(graph);
+            return;
+        }
         graph.getModel().beginUpdate();
         try {
             Map<Object, mxGeometry> annotations = annotationGeometries(graph);
@@ -174,6 +179,133 @@ public final class CanvasLayouts {
         } finally {
             graph.getModel().endUpdate();
         }
+    }
+
+    /** The id every section frame starts with, so arranging again replaces rather than adds. */
+    public static final String SECTION_PREFIX = SchemaGraph.FRAME_ID_PREFIX + "section-";
+
+    /** The space between the lowest frame and the arrangement under it. */
+    private static final double BELOW_FRAMES = 80;
+
+    /**
+     * The whole board as an outline - see {@link de.fizkarlsruhe.ise.ontoboard.layout.BoardSections}.
+     *
+     * <p>A term inside a frame stays in it: a pattern's frame, or one somebody drew, says where
+     * those terms belong, and every other arrangement here moved them out and left the frame
+     * empty. The rest goes below the lowest frame. Returns the sections the caller should frame;
+     * a section frame from an earlier arrangement is not a frame to stay in.
+     */
+    public static List<de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Section> applySections(
+            SchemaGraph graph) {
+        List<de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Section> sections;
+        graph.getModel().beginUpdate();
+        try {
+            List<mxGeometry> frames = new ArrayList<mxGeometry>();
+            double top = MARGIN;
+            for (Object vertex : graph.getChildVertices(graph.getDefaultParent())) {
+                String id = graph.getIdForCell(vertex);
+                if (id != null && id.startsWith(SchemaGraph.FRAME_ID_PREFIX)
+                        && !id.startsWith(SECTION_PREFIX)) {
+                    mxGeometry frame = graph.getModel().getGeometry(vertex);
+                    frames.add(frame);
+                    top = Math.max(top, frame.getY() + frame.getHeight() + BELOW_FRAMES);
+                }
+            }
+            List<de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Term> terms =
+                    new ArrayList<de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Term>();
+            Map<String, Object> cells = new LinkedHashMap<String, Object>();
+            for (Object vertex : graph.getChildVertices(graph.getDefaultParent())) {
+                mxGeometry geometry = graph.getModel().getGeometry(vertex);
+                if (isAnnotation(graph, vertex) || geometry == null || insideAny(frames, geometry)) {
+                    continue;
+                }
+                String id = graph.getIdForCell(vertex);
+                cells.put(id, vertex);
+                terms.add(new de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Term(id,
+                        kindOf(graph.getModel().getStyle(vertex)),
+                        String.valueOf(graph.getModel().getValue(vertex)),
+                        geometry.getWidth(), geometry.getHeight()));
+            }
+            List<de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Edge> edges =
+                    new ArrayList<de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Edge>();
+            for (Object edge : graph.getChildEdges(graph.getDefaultParent())) {
+                Object source = graph.getModel().getTerminal(edge, true);
+                Object target = graph.getModel().getTerminal(edge, false);
+                if (source != null && target != null) {
+                    edges.add(new de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Edge(
+                            graph.getIdForCell(source), graph.getIdForCell(target),
+                            linkOf(graph.getModel().getStyle(edge))));
+                }
+            }
+            de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Plan plan =
+                    de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.plan(terms, edges, MARGIN,
+                            top);
+            for (Map.Entry<String, double[]> placed : plan.positions.entrySet()) {
+                Object cell = cells.get(placed.getKey());
+                mxGeometry moved = (mxGeometry) graph.getModel().getGeometry(cell).clone();
+                moved.setX(placed.getValue()[0]);
+                moved.setY(placed.getValue()[1]);
+                graph.getModel().setGeometry(cell, moved);
+            }
+            sections = plan.sections;
+        } finally {
+            graph.getModel().endUpdate();
+        }
+        graph.getView().revalidate();
+        graph.getModel().beginUpdate();
+        try {
+            new mxEdgeLabelLayout(graph).execute(graph.getDefaultParent());
+        } finally {
+            graph.getModel().endUpdate();
+        }
+        return sections;
+    }
+
+    private static boolean insideAny(List<mxGeometry> frames, mxGeometry box) {
+        for (mxGeometry frame : frames) {
+            if (box.getX() >= frame.getX() && box.getY() >= frame.getY()
+                    && box.getX() + box.getWidth() <= frame.getX() + frame.getWidth()
+                    && box.getY() + box.getHeight() <= frame.getY() + frame.getHeight()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** A cell's kind of term, read off the style it was drawn with. */
+    static de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Kind kindOf(String style) {
+        String base = style == null ? "" : style.split(";", 2)[0];
+        if (SchemaStyles.INDIVIDUAL.equals(base)) {
+            return de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Kind.INDIVIDUAL;
+        }
+        if (SchemaStyles.EXPRESSION.equals(base)) {
+            return de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Kind.EXPRESSION;
+        }
+        if (SchemaStyles.DATATYPE.equals(base) || SchemaStyles.LITERAL.equals(base)) {
+            return de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Kind.VALUE;
+        }
+        if (SchemaStyles.OBJECT_PROPERTY_NODE.equals(base)) {
+            return de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Kind.OBJECT_PROPERTY;
+        }
+        if (SchemaStyles.DATA_PROPERTY_NODE.equals(base)) {
+            return de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Kind.DATA_PROPERTY;
+        }
+        return de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Kind.CLASS;
+    }
+
+    /** Which edges decide the outline: the hierarchies and class membership. */
+    static de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Link linkOf(String style) {
+        String base = style == null ? "" : style.split(";", 2)[0];
+        if (SchemaStyles.SUBCLASS.equals(base)) {
+            return de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Link.SUBCLASS;
+        }
+        if (SchemaStyles.TYPE.equals(base)) {
+            return de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Link.TYPE;
+        }
+        if (SchemaStyles.SUB_PROPERTY.equals(base)) {
+            return de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Link.SUB_PROPERTY;
+        }
+        return de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Link.OTHER;
     }
 
     /** Where every note and frame sits now, so a layout cannot move it. */

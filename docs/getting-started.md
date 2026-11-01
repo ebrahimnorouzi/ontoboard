@@ -34,15 +34,28 @@ see [Known constraints](limitations.md#known-constraints).
 spaces — it becomes file names and IRIs), a title, and a folder. Leave Base IRI empty to get
 the OBO convention. It writes a full ODK repository and opens the edit file.
 
-**Put something on the canvas.** The canvas starts empty on purpose — Protégé opens
-ontologies with 100,000+ classes and drawing all of them would hang. Double-click empty
-canvas to create a class there; drag existing terms in from the entity trees on the left;
-select one and press *Add selected*; or press *Add all* for a small ontology, which brings
-in every class, individual, object property and data property. Each design pattern the ontology
-imports from OntoBoard's library — or has merged in, as a release does — arrives in a frame named
-after it. On a board that is already full, pressing *Add all* again frames the patterns that have
-no frame yet. An edge between terms in two frames goes around any frame in between, so a pattern
-is never drawn as part of a link it has nothing to do with.
+**The board shows the whole ontology.** Open the OntoBoard tab and every class, object property,
+data property and individual is on the board, laid out as an outline:
+
+- each design pattern the ontology imports from OntoBoard's library — or has merged in, as a
+  release does — in a frame named after it, along the top;
+- the classes below, as a tree read left to right — a class, then its subclasses stacked in the
+  next column — with each class's individuals and the restrictions it is defined with beside it;
+- the object and data properties in frames of their own, each as its property hierarchy.
+
+A term made anywhere in Protégé appears next to its superclass as soon as it exists. Right-click
+a term and *Hide from board* to take it off; it stays off until *More → Show every term*. A
+board saved by an OntoBoard before 1.131.0 keeps the terms chosen then, and says so; *More → Show
+every term* switches it over. Above 1,500 terms the board shows the ontology's own first, and
+the entity trees on the left drag any other in.
+
+**Focus.** Select a term and it comes forward with everything it is connected to; the rest fades.
+On a large board — more than 150 relations — the lines that would cross it in every direction
+wait for this: disjointness, domains and ranges appear for the term in focus, and the other
+relations are drawn faintly until one of their ends is selected. *Focus* on the toolbar turns
+it off. *More → Show on the board* switches object properties, data properties, individuals and
+imported terms on and off, and *Arrange → Outline* lays the board out again. An edge between
+terms in two frames goes around any frame in between.
 
 **Zoom.** The mouse wheel zooms about the pointer; on a Mac trackpad, so does a pinch.
 

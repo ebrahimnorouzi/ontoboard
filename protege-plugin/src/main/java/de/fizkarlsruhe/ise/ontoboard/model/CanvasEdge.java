@@ -24,7 +24,18 @@ public final class CanvasEdge {
          * properties themselves. Arrowheads at both ends, for the same reason DISJOINT has
          * none: the relation really does run both ways.
          */
-        INVERSE
+        INVERSE,
+
+        /**
+         * A property's {@code rdfs:domain} or {@code rdfs:range}, from the property's own node to
+         * the class - or, for a data property's range, the datatype. The label says which.
+         *
+         * <p>Its own kind because neither existing reading fits: it is not a restriction - a
+         * domain says nothing about every member of the class having the property - and drawing
+         * it as one, which is what the class-to-class arrow did, puts a claim on the board that
+         * the ontology does not make.
+         */
+        DOMAIN_RANGE
     }
 
     private final String id;
