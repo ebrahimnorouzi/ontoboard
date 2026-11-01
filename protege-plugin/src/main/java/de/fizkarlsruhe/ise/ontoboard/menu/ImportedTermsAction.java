@@ -197,6 +197,10 @@ public class ImportedTermsAction extends ProtegeOWLAction {
                 if (!term.getNeededBy().isEmpty()) {
                     tip += " - brought along for " + String.join(", ", term.getNeededBy());
                 }
+                if (term.isSaidDifferently()) {
+                    tip += " - " + String.join(", ", term.getAlsoIn()) + " gives it a different "
+                            + "label or definition, so your ontology has both";
+                }
                 return tip;
             }
         };
@@ -206,8 +210,9 @@ public class ImportedTermsAction extends ProtegeOWLAction {
         table.getColumnModel().getColumn(0).setPreferredWidth(260);
         table.getColumnModel().getColumn(1).setPreferredWidth(110);
         table.getColumnModel().getColumn(2).setPreferredWidth(170);
-        table.getColumnModel().getColumn(3).setPreferredWidth(190);
-        table.getColumnModel().getColumn(4).setPreferredWidth(90);
+        table.getColumnModel().getColumn(3).setPreferredWidth(170);
+        table.getColumnModel().getColumn(4).setPreferredWidth(200);
+        table.getColumnModel().getColumn(5).setPreferredWidth(80);
         table.getSelectionModel().addListSelectionListener(e -> enableButtons());
 
         add = new JButton("Add terms...");
@@ -640,7 +645,7 @@ public class ImportedTermsAction extends ProtegeOWLAction {
     private static final class TermsModel extends AbstractTableModel {
         private static final long serialVersionUID = 1L;
         private final String[] columns = {"Label", "Kind", "Term", "How it came in",
-            "Used by you"};
+            "Also in", "Used by you"};
         private List<ImportedTerms.Term> rows = new ArrayList<ImportedTerms.Term>();
 
         void show(List<ImportedTerms.Term> shown) {
@@ -669,7 +674,7 @@ public class ImportedTermsAction extends ProtegeOWLAction {
 
         @Override
         public Class<?> getColumnClass(int column) {
-            return column == 4 ? Integer.class : String.class;
+            return column == 5 ? Integer.class : String.class;
         }
 
         @Override
@@ -685,6 +690,9 @@ public class ImportedTermsAction extends ProtegeOWLAction {
                 case 3:
                     return term.getHow().getWords() + (term.getNeededBy().isEmpty() ? ""
                             : " (for " + String.join(", ", term.getNeededBy()) + ")");
+                case 4:
+                    return String.join(", ", term.getAlsoIn()) + (term.isSaidDifferently()
+                            ? " - worded differently there" : "");
                 default:
                     return term.getUsedByYou();
             }

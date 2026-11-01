@@ -247,8 +247,16 @@ public final class InProcessTargets {
     private static String report(File editFile, OWLOntology ontology, List<String> log,
             List<File> written) {
         List<QualityFinding> findings;
+        int aboutImports;
         try {
-            findings = QualityReport.run(ontology, QualityReport.optionsFor(editFile));
+            // Run on everything and then scoped, as ROBOT's --base-iri scopes it, so the log can
+            // say how many findings belong to imported terms rather than dropping them unsaid.
+            java.util.Map<String, String> options = QualityReport.optionsFor(editFile);
+            List<String> bases = QualityReport.baseIrisIn(options);
+            options.remove(QualityReport.OPTION_BASE_IRI);
+            List<QualityFinding> all = QualityReport.run(ontology, options);
+            findings = QualityReport.aboutOwnTerms(all, bases);
+            aboutImports = all.size() - findings.size();
         } catch (RuntimeException cannotReport) {
             return "The quality report could not run: " + cannotReport.getMessage();
         }
@@ -275,7 +283,9 @@ public final class InProcessTargets {
         }
         written.add(output);
         log.add("report: " + findings.size() + " findings, " + errors + " of them errors; wrote "
-                + output.getName());
+                + output.getName() + (aboutImports == 0 ? "" : " - and " + aboutImports
+                        + " about imported terms, not counted: those belong to the ontologies "
+                        + "they come from (robot_report.use_base_iris)"));
         // The recipe passes --fail-on ERROR, so this does too. The errors are named here and in
         // the failure, for the same reason sparql_test names its terms: "listed in report.tsv"
         // is a file the result dialog cannot show.

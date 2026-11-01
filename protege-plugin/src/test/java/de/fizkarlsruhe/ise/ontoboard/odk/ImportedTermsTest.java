@@ -148,6 +148,41 @@ class ImportedTermsTest {
         assertEquals(ImportedTerms.How.WHOLE, term(units, "gram").getHow());
     }
 
+    /**
+     * A term two imports bring is listed under both, each naming the other - and saying so when
+     * they word it differently, which the quality report counts as two labels on one term.
+     */
+    @Test
+    void aTermTwoImportsBringSaysWhereElseItComesFromAndWhetherTheyAgree() throws Exception {
+        File more = new File(root, "more.ttl");
+        Files.write(more.toPath(), ("@prefix owl: <http://www.w3.org/2002/07/owl#> .\n"
+                + "@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .\n"
+                + "<http://example.org/more> a owl:Ontology ; rdfs:label \"more\" .\n"
+                + "<" + UPPER + "object> a owl:Class ; rdfs:label \"physical object\" .\n")
+                .getBytes(StandardCharsets.UTF_8));
+        OWLOntologyManager manager = edit.getOWLOntologyManager();
+        manager.getIRIMappers().add(new SimpleIRIMapper(IRI.create("http://example.org/more"),
+                IRI.create(more)));
+        manager.applyChange(new org.semanticweb.owlapi.model.AddImport(edit,
+                manager.getOWLDataFactory().getOWLImportsDeclaration(
+                        IRI.create("http://example.org/more"))));
+        manager.loadOntology(IRI.create("http://example.org/more"));
+
+        List<ImportedTerms.Source> sources = ImportedTerms.of(edit, root,
+                new File(root, "src/ontology"));
+
+        ImportedTerms.Term inModule = term(sources.get(0), "object");
+        assertEquals(Arrays.asList("more"), inModule.getAlsoIn());
+        assertTrue(inModule.isSaidDifferently(), "object here, physical object there");
+        ImportedTerms.Source moreSource = null;
+        for (ImportedTerms.Source source : sources) {
+            moreSource = source.getName().equals("more") ? source : moreSource;
+        }
+        assertNotNull(moreSource);
+        assertEquals(Arrays.asList("upper"), moreSource.getTerms().get(0).getAlsoIn());
+        assertTrue(term(sources.get(0), "continuant").getAlsoIn().isEmpty());
+    }
+
     @Test
     void aTermOnTheListButNotInTheModuleSaysSo() throws Exception {
         Files.write(termsFile.toPath(), (new String(Files.readAllBytes(termsFile.toPath()),

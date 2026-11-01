@@ -91,7 +91,56 @@ public final class QualityReport {
         if (labels != null) {
             options.put(OPTION_LABELS, labels.booleanValue() ? "true" : "false");
         }
+        java.util.List<String> bases = de.fizkarlsruhe.ise.ontoboard.odk.OdkBuildSettings
+                .reportBaseIris(ontologyDirectory);
+        if (!bases.isEmpty()) {
+            options.put(OPTION_BASE_IRI, String.join(" ", bases));
+        }
         return options;
+    }
+
+    /**
+     * ROBOT's {@code --base-iri}: only findings about terms in these namespaces count, space
+     * separated. Set by {@link #optionsFor} from the project's configuration, as ODK sets it.
+     */
+    public static final String OPTION_BASE_IRI = "base-iri";
+
+    /** The namespaces {@code options} limits the report to; empty for none. */
+    public static java.util.List<String> baseIrisIn(Map<String, String> options) {
+        String bases = options == null ? null : options.get(OPTION_BASE_IRI);
+        java.util.List<String> found = new java.util.ArrayList<String>();
+        if (bases != null) {
+            for (String base : bases.trim().split("\\s+")) {
+                if (!base.isEmpty()) {
+                    found.add(base);
+                }
+            }
+        }
+        return found;
+    }
+
+    /**
+     * The findings about the ontology's own terms: those whose subject is in one of
+     * {@code bases}, and those with no subject - about the ontology as a whole. All of them when
+     * {@code bases} is empty.
+     */
+    public static List<QualityFinding> aboutOwnTerms(List<QualityFinding> findings,
+            java.util.List<String> bases) {
+        if (bases == null || bases.isEmpty()) {
+            return findings;
+        }
+        List<QualityFinding> own = new ArrayList<QualityFinding>();
+        for (QualityFinding finding : findings) {
+            String subject = finding.getSubject();
+            boolean ours = subject == null || subject.trim().isEmpty();
+            for (String base : bases) {
+                ours = ours || subject.startsWith(base);
+            }
+            if (ours) {
+                own.add(finding);
+            }
+        }
+        return own;
     }
 
     /** Every violation ROBOT's default profile finds, most severe first. */
@@ -128,8 +177,8 @@ public final class QualityReport {
                     : new java.util.LinkedHashMap<String, String>(options);
             // A copy, because RuleRunner hands back an unmodifiable list and the order it comes
             // in is the profile's, not the one this report presents.
-            List<QualityFinding> findings = new ArrayList<QualityFinding>(
-                    RuleRunner.run(ontology, severitiesFor(effective)));
+            List<QualityFinding> findings = new ArrayList<QualityFinding>(aboutOwnTerms(
+                    RuleRunner.run(ontology, severitiesFor(effective)), baseIrisIn(effective)));
             sortMostSevereFirst(findings);
             return findings;
         } catch (RobotException cannotRun) {

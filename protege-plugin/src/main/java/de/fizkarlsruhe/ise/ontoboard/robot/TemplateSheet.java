@@ -121,6 +121,7 @@ public final class TemplateSheet {
         private final List<Problem> problems;
         private final int dataRows;
         private final boolean templateUnusable;
+        private List<Problem> warnings = Collections.<Problem>emptyList();
 
         Result(OWLOntology ontology, List<Problem> problems, int dataRows,
                 boolean templateUnusable) {
@@ -128,6 +129,20 @@ public final class TemplateSheet {
             this.problems = Collections.unmodifiableList(problems);
             this.dataRows = dataRows;
             this.templateUnusable = templateUnusable;
+        }
+
+        Result withWarnings(List<Problem> found) {
+            this.warnings = Collections.unmodifiableList(found);
+            return this;
+        }
+
+        /**
+         * Cells that were read, and read differently from what was probably meant - a date
+         * written as plain text for a property whose values are dates. Nothing failed, so these
+         * are not {@link #getProblems() problems}.
+         */
+        public List<Problem> getWarnings() {
+            return warnings;
         }
 
         /** The axioms, or null when the template row itself could not be read. */
@@ -286,8 +301,9 @@ public final class TemplateSheet {
             // first one, which is all ROBOT would tell us.
             strict = null;
         }
+        List<Problem> warnings = untypedValues(rows, context, io);
         if (strict != null) {
-            return new Result(strict, problems, dataRows, false);
+            return new Result(strict, problems, dataRows, false).withWarnings(warnings);
         }
 
         OWLOntology salvaged;
@@ -301,7 +317,83 @@ public final class TemplateSheet {
         }
 
         problems.addAll(problemsPerRow(name, rows, contextIncluding(context, salvaged), io, iri));
-        return new Result(salvaged, problems, dataRows, false);
+        return new Result(salvaged, problems, dataRows, false).withWarnings(warnings);
+    }
+
+    /**
+     * Values written as plain text in a column whose data property says its values are of some
+     * other datatype - a date, a number.
+     *
+     * <p>ROBOT does not apply a property's range: measured on robot-core 1.9.8, a column
+     * {@code I ex:at} over a property with range {@code xsd:dateTime} turns the cell
+     * {@code 2026-11-01T18:00:00} into {@code "2026-11-01T18:00:00"^^xsd:string}. It reports
+     * nothing, the graph builds, and a SPARQL query comparing dates then finds nothing. The
+     * spelling that gives a typed value is the datatype in the cell:
+     * {@code 2026-11-01T18:00:00^^xsd:dateTime}.
+     */
+    static List<Problem> untypedValues(List<List<String>> rows, OWLOntology context,
+            IOHelper io) {
+        List<Problem> warnings = new ArrayList<Problem>();
+        if (context == null || rows.size() <= FIRST_DATA_ROW) {
+            return warnings;
+        }
+        for (TemplateColumns.Column column : TemplateColumns.of(rows).getColumns()) {
+            if (column.getKind() != TemplateColumns.Kind.INDIVIDUAL) {
+                continue;
+            }
+            IRI property;
+            try {
+                property = io.createIRI(column.getProperty().trim());
+            } catch (RuntimeException unresolvable) {
+                continue;
+            }
+            if (property == null || !context.containsDataPropertyInSignature(property,
+                    org.semanticweb.owlapi.model.parameters.Imports.INCLUDED)) {
+                continue;
+            }
+            org.semanticweb.owlapi.model.OWLDatatype range = typedRangeOf(context, property);
+            if (range == null) {
+                continue;
+            }
+            String shortName = range.getIRI().toString()
+                    .replace("http://www.w3.org/2001/XMLSchema#", "xsd:");
+            for (int index = FIRST_DATA_ROW; index < rows.size(); index++) {
+                List<String> row = rows.get(index);
+                int at = column.getNumber() - 1;
+                String cell = at < row.size() ? row.get(at).trim() : "";
+                if (cell.isEmpty() || cell.contains("^^")) {
+                    continue;
+                }
+                warnings.add(new Problem(index + 1, column.getNumber(), column.getHeading(),
+                        cell, "Built as plain text, but " + column.getProperty().trim()
+                                + " says its values are " + shortName + ". ROBOT does not "
+                                + "apply a property's range, so write the type in the cell: "
+                                + cell + "^^" + shortName));
+            }
+        }
+        return warnings;
+    }
+
+    /** A declared range of the data property that is a datatype other than plain text. */
+    private static org.semanticweb.owlapi.model.OWLDatatype typedRangeOf(OWLOntology context,
+            IRI property) {
+        org.semanticweb.owlapi.model.OWLDataProperty data = context.getOWLOntologyManager()
+                .getOWLDataFactory().getOWLDataProperty(property);
+        for (OWLOntology part : context.getImportsClosure()) {
+            for (org.semanticweb.owlapi.model.OWLDataPropertyRangeAxiom axiom
+                    : part.getDataPropertyRangeAxioms(data)) {
+                if (axiom.getRange().isDatatype()) {
+                    org.semanticweb.owlapi.model.OWLDatatype range =
+                            axiom.getRange().asOWLDatatype();
+                    String iri = range.getIRI().toString();
+                    if (!iri.endsWith("#string") && !iri.endsWith("#Literal")
+                            && !iri.endsWith("#PlainLiteral") && !iri.endsWith("#langString")) {
+                        return range;
+                    }
+                }
+            }
+        }
+        return null;
     }
 
     /**

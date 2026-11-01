@@ -435,6 +435,7 @@ public final class OdkScaffold {
                 + "# Put custom targets in " + id + ".Makefile, which is included below.\n\n"
                 + "ONT_ID := " + id + "\n"
                 + "ONT := $(ONT_ID)\n"
+                + "URIBASE := " + uriBase(c) + "\n"
                 + "TODAY := $(shell date +%Y-%m-%d)\n"
                 // Overridable, because both release conventions are legitimate and a project
                 // has to be able to build under the one it publishes. Dated is the default, as
@@ -511,6 +512,10 @@ public final class OdkScaffold {
                 + "report:\n"
                 + "\t$(ROBOT) report -i $(ONT)-edit.owl --profile profile.txt \\\n"
                 + "\t  --fail-on ERROR --labels true \\\n"
+                // The project's own terms, as ODK's --base-iri has them: a finding about an
+                // imported term belongs to the ontology it comes from.
+                + "\t  --base-iri $(URIBASE)/" + id.toUpperCase(java.util.Locale.ROOT)
+                + "_ --base-iri $(URIBASE)/$(ONT) \\\n"
                 + "\t  --output report.tsv --format tsv\n\n"
                 // robot verify exits non-zero when a query returns rows, which is what makes a
                 // SPARQL file a check rather than a decoration.

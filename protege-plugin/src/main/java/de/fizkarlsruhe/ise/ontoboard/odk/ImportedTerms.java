@@ -86,14 +86,38 @@ public final class ImportedTerms {
         private final How how;
         private final int usedByYou;
         private final List<String> neededBy;
+        private final List<String> alsoIn;
+        private final boolean saidDifferently;
 
         Term(IRI iri, String label, String kind, How how, int usedByYou, List<String> neededBy) {
+            this(iri, label, kind, how, usedByYou, neededBy, Collections.<String>emptyList(),
+                    false);
+        }
+
+        Term(IRI iri, String label, String kind, How how, int usedByYou, List<String> neededBy,
+                List<String> alsoIn, boolean saidDifferently) {
             this.iri = iri;
             this.label = label;
             this.kind = kind;
             this.how = how;
             this.usedByYou = usedByYou;
             this.neededBy = neededBy;
+            this.alsoIn = alsoIn;
+            this.saidDifferently = saidDifferently;
+        }
+
+        /** The other imports this term also comes from, by name. */
+        public List<String> getAlsoIn() {
+            return alsoIn;
+        }
+
+        /**
+         * Whether those other imports give it a different label or definition - two copies of
+         * one term that disagree, which the quality report counts as two labels or two
+         * definitions on it.
+         */
+        public boolean isSaidDifferently() {
+            return saidDifferently;
         }
 
         public IRI getIri() {
@@ -255,7 +279,75 @@ public final class ImportedTerms {
         Collections.sort(whole, (a, b) -> a.getName().compareToIgnoreCase(b.getName()));
         List<Source> all = new ArrayList<Source>(modules);
         all.addAll(whole);
+        markSharedTerms(all);
         return all;
+    }
+
+    /**
+     * Notes, on every term that more than one import brings, which others bring it and whether
+     * they word it differently.
+     *
+     * <p>Common, and invisible before: a project built from library patterns had BFO's
+     * {@code bearer of} from three imports and IAO's {@code information content entity} from
+     * three, two of them with different definitions - which the quality report then counted as
+     * two definitions on one term.
+     */
+    private static void markSharedTerms(List<Source> sources) {
+        Map<IRI, List<Source>> bringing = new HashMap<IRI, List<Source>>();
+        for (Source source : sources) {
+            for (Term term : source.getTerms()) {
+                if (term.getHow() == How.NOT_IN_MODULE) {
+                    continue;
+                }
+                List<Source> by = bringing.get(term.getIri());
+                if (by == null) {
+                    by = new ArrayList<Source>();
+                    bringing.put(term.getIri(), by);
+                }
+                by.add(source);
+            }
+        }
+        for (Source source : sources) {
+            List<Term> terms = source.getTerms();
+            for (int at = 0; at < terms.size(); at++) {
+                Term term = terms.get(at);
+                List<Source> by = bringing.get(term.getIri());
+                if (by == null || by.size() < 2) {
+                    continue;
+                }
+                List<String> others = new ArrayList<String>();
+                Set<String> wordings = new HashSet<String>();
+                for (Source other : by) {
+                    wordings.add(wordingIn(other.getOntology(), term.getIri()));
+                    if (other != source) {
+                        others.add(other.getName());
+                    }
+                }
+                terms.set(at, new Term(term.getIri(), term.getLabel(), term.getKind(),
+                        term.getHow(), term.getUsedByYou(), term.getNeededBy(), others,
+                        wordings.size() > 1));
+            }
+        }
+    }
+
+    /** A term's labels and definitions as one ontology states them, for comparing copies. */
+    private static String wordingIn(OWLOntology part, IRI iri) {
+        if (part == null) {
+            return "";
+        }
+        java.util.TreeSet<String> said = new java.util.TreeSet<String>();
+        for (org.semanticweb.owlapi.model.OWLAnnotationAssertionAxiom axiom
+                : part.getAnnotationAssertionAxioms(iri)) {
+            String property = axiom.getProperty().getIRI().toString();
+            if (axiom.getProperty().isLabel()
+                    || property.equals("http://purl.obolibrary.org/obo/IAO_0000115")
+                    || property.equals("http://www.w3.org/2004/02/skos/core#definition")) {
+                said.add(property + "=" + (axiom.getValue().asLiteral().isPresent()
+                        ? axiom.getValue().asLiteral().get().getLiteral().trim()
+                        : axiom.getValue().toString()));
+            }
+        }
+        return said.toString();
     }
 
     /** The module whose file this open ontology was read from, or null. */

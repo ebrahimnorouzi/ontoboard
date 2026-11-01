@@ -129,6 +129,9 @@ public class TemplateAction extends OntoBoardAction {
         result.note("Template: " + file.getAbsolutePath());
         result.note("Rows of terms: " + sheet.getDataRows());
         reportProblems(sheet, result);
+        for (TemplateSheet.Problem warning : sheet.getWarnings()) {
+            result.warn(warning.where() + ": " + warning.getMessage());
+        }
 
         if (sheet.isTemplateUnusable()) {
             return result.failed("The row saying what the columns mean could not be read, so "

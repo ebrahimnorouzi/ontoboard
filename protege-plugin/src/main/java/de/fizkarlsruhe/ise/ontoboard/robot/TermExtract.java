@@ -310,14 +310,45 @@ public final class TermExtract {
      * IRI, so a source IRI ending in {@code /} produced a module called after the whole IRI.
      */
     public static String shortNameOf(OWLOntology source) {
-        if (source == null || !source.getOntologyID().getOntologyIRI().isPresent()) {
+        if (source == null) {
             return "extract";
+        }
+        if (!source.getOntologyID().getOntologyIRI().isPresent()) {
+            String fromFile = nameOfDocument(source);
+            return fromFile == null ? "extract" : fromFile;
         }
         // ProjectIri.nameOf strips a trailing / or # and then the .owl, which is what this did by
         // hand for the extension and not at all for the delimiters.
         String name = de.fizkarlsruhe.ise.ontoboard.odk.ProjectIri.nameOf(
                 source.getOntologyID().getOntologyIRI().get().toString());
         return name == null || name.isEmpty() ? "extract" : name;
+    }
+
+    /**
+     * For a source with no ontology IRI, the name of the file it was read from, as a name ODK
+     * accepts: {@code bfo-specific-dependence-and-inherence.owl} gives
+     * {@code bfo_specific_dependence_and_inherence}. Null when it was not read from a file.
+     *
+     * <p>Every such source used to be called {@code extract}. Two of them - two patterns from the
+     * library whose files carry no ontology IRI, imported one after the other - then shared
+     * {@code imports/extract_import.owl} and its term list, and the second silently replaced the
+     * first.
+     */
+    static String nameOfDocument(OWLOntology source) {
+        try {
+            IRI document = source.getOWLOntologyManager().getOntologyDocumentIRI(source);
+            String path = document == null ? null : document.toURI().getPath();
+            if (path == null || path.isEmpty()) {
+                return null;
+            }
+            String file = path.substring(path.lastIndexOf('/') + 1);
+            int dot = file.lastIndexOf('.');
+            String stem = (dot > 0 ? file.substring(0, dot) : file).toLowerCase(Locale.ROOT)
+                    .replaceAll("[^a-z0-9]+", "_").replaceAll("^_+|_+$", "");
+            return stem.isEmpty() ? null : stem;
+        } catch (RuntimeException noDocument) {
+            return null;
+        }
     }
 
     /**
@@ -338,6 +369,9 @@ public final class TermExtract {
         }
         if (name.toLowerCase().endsWith(".owl")) {
             name = name.substring(0, name.length() - ".owl".length());
+        }
+        if (!source.getOntologyID().getOntologyIRI().isPresent()) {
+            name = shortNameOf(source);
         }
         if (name.isEmpty()) {
             name = "extract";

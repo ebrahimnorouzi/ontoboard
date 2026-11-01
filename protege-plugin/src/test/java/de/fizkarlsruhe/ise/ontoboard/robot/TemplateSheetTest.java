@@ -637,4 +637,36 @@ class TemplateSheetTest {
         assertTrue(starter.contains("SC %"), "a parent");
         assertTrue(starter.startsWith("ID\t"), starter.substring(0, 20));
     }
+
+    /**
+     * ROBOT does not apply a data property's range: a date written plainly in a column over a
+     * property whose values are dates is built as text, silently. Said, with the spelling that
+     * works, and the typed spelling gives a typed value.
+     */
+    @Test
+    void aDateWrittenAsPlainTextForADatePropertyIsSaid() throws Exception {
+        OWLDataFactory factory = context.getOWLOntologyManager().getOWLDataFactory();
+        org.semanticweb.owlapi.model.OWLDataProperty at =
+                factory.getOWLDataProperty(IRI.create(NS + "at"));
+        context.getOWLOntologyManager().addAxiom(context, factory.getOWLDeclarationAxiom(at));
+        context.getOWLOntologyManager().addAxiom(context, factory.getOWLDataPropertyRangeAxiom(at,
+                factory.getOWLDatatype(IRI.create("http://www.w3.org/2001/XMLSchema#dateTime"))));
+        context.getOWLOntologyManager().addAxiom(context, factory.getOWLDeclarationAxiom(
+                factory.getOWLClass(IRI.create(NS + "Event"))));
+
+        TemplateSheet.Result result = run(tabs("#", "TYPE", "When"),
+                tabs("ID", "TYPE", "I ex:at"),
+                tabs("ex:e1", "ex:Event", "2026-11-01T18:00:00"),
+                tabs("ex:e2", "ex:Event", "2026-11-01T19:00:00^^xsd:dateTime"));
+
+        assertTrue(result.getProblems().isEmpty(), result.getProblems().toString());
+        assertEquals(1, result.getWarnings().size(), result.getWarnings().toString());
+        assertEquals(3, result.getWarnings().get(0).getRow());
+        assertTrue(result.getWarnings().get(0).getMessage().contains(
+                "2026-11-01T18:00:00^^xsd:dateTime"), result.getWarnings().get(0).getMessage());
+        assertTrue(result.getOntology().containsAxiom(factory.getOWLDataPropertyAssertionAxiom(at,
+                factory.getOWLNamedIndividual(IRI.create(NS + "e2")),
+                factory.getOWLLiteral("2026-11-01T19:00:00", factory.getOWLDatatype(
+                        IRI.create("http://www.w3.org/2001/XMLSchema#dateTime"))))));
+    }
 }

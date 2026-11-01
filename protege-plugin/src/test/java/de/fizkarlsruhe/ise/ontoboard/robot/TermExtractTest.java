@@ -307,6 +307,35 @@ class TermExtractTest {
     }
 
     /**
+     * Two sources with no ontology IRI - two library patterns whose files carry none - were both
+     * called "extract", so the second import replaced the first one's module and term list.
+     * Each is now named after its file.
+     */
+    @Test
+    void twoSourcesWithNoIriAreNamedAfterTheirFilesAndDoNotCollide(
+            @org.junit.jupiter.api.io.TempDir java.io.File folder) throws Exception {
+        String body = "@prefix owl: <http://www.w3.org/2002/07/owl#> .\n"
+                + "<http://example.org/x#A> a owl:Class .\n";
+        java.io.File first = new java.io.File(folder, "bfo-specific-dependence-and-inherence.owl");
+        java.io.File second = new java.io.File(folder, "bfo-process-site-and-history.owl");
+        java.nio.file.Files.write(first.toPath(), body.getBytes("UTF-8"));
+        java.nio.file.Files.write(second.toPath(), body.getBytes("UTF-8"));
+        OWLOntology one = OWLManager.createOWLOntologyManager()
+                .loadOntologyFromOntologyDocument(first);
+        OWLOntology two = OWLManager.createOWLOntologyManager()
+                .loadOntologyFromOntologyDocument(second);
+        IRI project = IRI.create("https://example.org/pizza.owl");
+
+        assertEquals("bfo_specific_dependence_and_inherence", TermExtract.shortNameOf(one));
+        assertEquals("bfo_process_site_and_history", TermExtract.shortNameOf(two));
+        assertEquals(IRI.create("https://example.org/pizza/imports/"
+                + "bfo_specific_dependence_and_inherence_import.owl"),
+                TermExtract.moduleIriIn(project, one));
+        assertNotEquals(TermExtract.moduleIriIn(project, one),
+                TermExtract.moduleIriIn(project, two));
+    }
+
+    /**
      * MireotOperation takes no output IRI, so the module came back carrying the SOURCE ontology's
      * identity. Saved and imported under that IRI it claims to be the whole of the ontology it was
      * cut from: the import IRI the catalog maps belongs to no ontology at all, so the import never
