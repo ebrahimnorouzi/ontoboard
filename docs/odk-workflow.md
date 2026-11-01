@@ -35,7 +35,7 @@ ODK's seven steps, and what each one is inside Protégé:
 | 4 | `docker pull obolibrary/odkfull` | ➖ | Not needed for the wizard. OntoBoard never pulls — but `docker run` fetches a missing image itself, so the first build of a real ODK repo is slow rather than broken |
 | 5 | `./seed-via-docker.sh <ontology>` | 🔶 | The wizard writes 17 files and opens the edit file — **a different repository**, see below |
 | 6 | Configure `<id>-odk.yaml` | ✅ | *Project → Project configuration…* since 1.80.0. Every key visible, and since 1.89.0 every scalar editable at any depth — [measured table below](#step-6-the-odk-yaml-key-by-key) |
-| 7 | `git init`, create the remote, push | 🔶 | Commit, pull, push, branch, checkout and clone work; `git init` and creating the remote do not |
+| 7 | `git init`, create the remote, push | 🔶 | Commit, pull, push, branch, checkout and clone work. *Turn an ontology into an ODK repository…* runs `git init` and records the history; creating the remote is left to you |
 
 ### What the wizard produces
 
@@ -52,6 +52,58 @@ src/sparql/     check_labels.rq
 
 The repository is created at `<chosen folder>/<ontology id>`, and creation is refused if that
 directory already exists — there is no "seed into the folder I already made".
+
+### From an ontology you already have — *Turn an ontology into an ODK repository…*, since 1.133.0
+
+*Project → Turn an ontology into an ODK repository…* makes the same project as the wizard from
+an ontology you already have, and turns its earlier versions into the project's history. You
+give:
+
+- **the ontology** — a file in any format the OWL API reads (RDF/XML, Turtle, OWL/XML,
+  functional syntax, Manchester, JSON-LD…), or a web address; the open ontology is offered;
+- **its earlier versions**, if you have them — files or web addresses, in any order and any mix
+  of formats. Each is placed by the version it says it is: its `owl:versionInfo`, else its
+  version IRI, else a version in its file name or address;
+- **the folder** to make the project in — a new folder named after the project id;
+- the **id** and **title**, filled in from the ontology: its preferred prefix
+  (`vann:preferredNamespacePrefix`), else the end of its IRI, else its file name, skipping words
+  such as `ontology` or `core` that say nothing about which ontology it is;
+- whether to **turn imports into modules** and whether to **record the history in git**.
+
+A window then shows nine steps, each marked when it starts (▶), and when it ends (✓, or **!**
+when something needs your attention), with every line it writes below them:
+
+| # | Step | What it does |
+|---|---|---|
+| 1 | Read the ontology | Reads it with its imports, and says its format, IRI, version, size and any import that could not be read |
+| 2 | Read the earlier versions | Each on its own — what it imported is history, not something to fetch. Oldest first; a version given twice, or one not older than the ontology's own, is left out with a note |
+| 3 | Make the project | The files *New ODK project…* writes |
+| 4 | Record the earlier versions | Oldest first, each as it was published: the edit file, `releases/<version>/<id>.owl`, and with git a commit dated as the version says and a tag `v<version>` |
+| 5 | Turn imports into modules | For each import, the terms your ontology uses are extracted into `imports/<name>_import.owl` and listed with their labels in `imports/<name>_terms.txt`, and the import names the module. A title, description and licence are added if the ontology has none, because the quality report asks for them |
+| 6 | Build and test | As *Build… → test*. A failure is shown, and the project is made all the same |
+| 7 | Release the current version | Merged with its modules, reasoned with ELK, stamped with its version IRI and the version before it: `releases/<version>/`, `<id>.owl` and `<id>.ttl` |
+| 8 | Record it in git | A *History* table in the README, then a commit and a tag |
+| 9 | Ready to publish | The commands that push it to GitHub with every tag |
+
+**Stop** ends it after the step it is in; what is written so far stays. **Open the project**
+opens the edit file in Protégé. The commits are signed with the name and e-mail git knows you
+by, or *OntoBoard* if git has none.
+
+**Converting again gives the same repository.** The same files, apart from dates the files
+record; the same tree at every tag; and, for every earlier version that says when it was made
+(`dcterms:date`, `issued`, `created` or `modified`, or a dated version), the same commit. A
+version that says no date is committed at the time of the conversion, so its commit differs
+while its files do not.
+
+**What it leaves to you.**
+
+- Earlier versions are recorded as they were published. They are not rebuilt and their imports
+  are not turned into modules.
+- An import that cannot be read stays an import of the whole ontology. Once it can be read,
+  *Imported terms…* turns it into a module.
+- Creating the repository on GitHub and pushing are the two commands step 9 prints.
+- Without git, the versions are still written under `releases/`, and step 9 says how to start a
+  history from them.
 
 ### The thing to decide before you start
 
@@ -299,7 +351,7 @@ ODK project…* reads `title` and nothing else.
 | `robot_java_args` | The heap a containerised build gives ROBOT. Previously hardcoded to `-Xmx8G` and passed with `docker run -e`, which **overrides the environment** — so a project asking for `-Xmx16G` got 8G in silence, and the plugin's own out-of-memory advice told you to set `ROBOT_JAVA_ARGS`, the very variable it was overriding. Both fixed |
 | `robot_report.fail_on` | Which severity *ROBOT → Quality report…* treats as a failure |
 | `robot_report.use_labels` | Whether that report shows labels or IRIs |
-| `robot_report.use_base_iris`, `namespaces`, `uribase` | What the report is about. As in ODK, only the project's own terms - the `namespaces` listed, or else `<uribase>/<ID>_` and `<uribase>/<id>` - unless `use_base_iris` is `false`. *Build... → test* says how many findings were about imported terms and left out. Since 1.132.0 |
+| `robot_report.use_base_iris`, `namespaces`, `uribase` | What the report is about. As in ODK, only the project's own terms - the `namespaces` listed, or else `<uribase>/<ID>_` and `<uribase>/<id>` - unless `use_base_iris` is `false`. *Build... → test* says how many findings were about other ontologies' terms, imported or merged in, and left out. Since 1.132.0 |
 
 Still ignored, including keys you are likely to want to change:
 

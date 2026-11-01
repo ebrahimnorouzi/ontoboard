@@ -53,9 +53,10 @@ Click the answer that fits; each opens the next step. The same steps are in Prot
         Open it in Protégé and go to the **OntoBoard** tab: the whole ontology is on the board,
         laid out as an outline. That is all you need to look, edit and draw.
 
-        When you want builds, tests and versioned releases, create a project with
-        **Project → New ODK project...** and bring your file into its edit file with Protégé's
-        *Refactor → Merge ontologies...*. [Step 1 of the guide](guide.md#1-set-up-a-project)
+        When you want builds, tests and versioned releases, **Project → Turn an ontology into
+        an ODK repository...** makes a project from the file - and from its earlier versions,
+        if you have them, as releases and git tags - ready to push to GitHub. Each step is shown
+        as it runs. [How it works](odk-workflow.md#from-an-ontology-you-already-have-turn-an-ontology-into-an-odk-repository-since-11330)
 
     ??? info "Yes - a project folder (an ODK repository)"
 
@@ -152,6 +153,13 @@ run the project's own scripts, refresh imports, release, compare releases.
 ### :material-history: History of every release
 Every release in the project, what each holds and what changed from one to the next, term by
 term - added, removed, relabelled, moved, made obsolete. Open any of them in a window of its own.
+</div>
+
+<div class="ob-card" markdown>
+### :material-source-repository: An ontology becomes a repository
+An ontology in any format, with its earlier versions, becomes an ODK project: each version a
+release and a git tag, imports turned into modules, built and released, every step shown as it
+runs. Ready to push to GitHub. [How](odk-workflow.md#from-an-ontology-you-already-have-turn-an-ontology-into-an-odk-repository-since-11330)
 </div>
 
 <div class="ob-card" markdown>

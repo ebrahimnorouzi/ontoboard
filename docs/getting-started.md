@@ -105,8 +105,8 @@ Only Protégé is needed - it brings its own Java. No ROBOT, no ODK, no Docker, 
 
 | Works with nothing installed | Needs something else |
 |---|---|
-| New ODK project, Build (`all`, `test`, `reason`, `report`, `sparql_test`, `validate_profile`, `clean`), Release with dated or semantic versions | Building a repository created by ODK's own seed (`run.sh` beside the Makefile): Docker, Podman or a native ODK install, because its recipes call tools that exist only in the ODK image |
-| Every *ROBOT* menu item, the pattern library, the canvas, sheets, notes and provenance | Git: the `git` command (on macOS it comes with the Command Line Tools, on Windows with Git for Windows), plus the network for Open from GitHub, pull and push |
+| New ODK project, Turn an ontology into an ODK repository, Build (`all`, `test`, `reason`, `report`, `sparql_test`, `validate_profile`, `clean`), Release with dated or semantic versions | Building a repository created by ODK's own seed (`run.sh` beside the Makefile): Docker, Podman or a native ODK install, because its recipes call tools that exist only in the ODK image |
+| Every *ROBOT* menu item, the pattern library, the canvas, sheets, notes and provenance | Git: the `git` command (on macOS it comes with the Command Line Tools, on Windows with Git for Windows), plus the network for Open from GitHub, pull and push. Without it, *Turn an ontology into an ODK repository* writes the releases but no commits or tags |
 | | Imports fetched from their URLs, which need the network |
 | | WIDOCO and Konclude, which OntoBoard downloads on first use |
 

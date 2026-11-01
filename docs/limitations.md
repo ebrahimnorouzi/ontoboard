@@ -28,10 +28,17 @@ SPARQL panel (1.33.0) used to be on this list and are now features - they are de
     - *Obsolete…* offering to move a term's subclasses to its parents and point references at its
       replacement, instead of only listing what will change.
     - A button on each warning that applies its fix - an undeclared import, imports not merged.
-    - A mode for adding terms to somebody else's ontology (a contributor's view), putting a
-      project on GitHub and tagging releases without a terminal, ODK's filter and minimal import
-      types, and a beginner mode with menus grouped by job.
+    - A mode for adding terms to somebody else's ontology (a contributor's view), creating the
+      repository on GitHub and pushing without a terminal, ODK's filter and minimal import
+      types, and a beginner mode with menus grouped by job. Since 1.133.0, *Turn an ontology
+      into an ODK repository…* runs `git init`, commits and tags every version, and prints the
+      two commands that publish it.
     - Bring to front and send to back for frames and notes on the board.
+- **Turning an ontology into an ODK repository records earlier versions as they were
+  published.** They are not rebuilt, and their imports are not turned into modules. A version
+  that says no date is committed at the time of the conversion, so converting again gives a
+  different commit for it, though the same files. The project is OntoBoard's kind, the same as
+  *New ODK project…* writes - see [the thing to decide before you start](odk-workflow.md#the-thing-to-decide-before-you-start).
 - **Find terms reads what a server sends.** A server that never answers is given up on after
   30 seconds, and one that is down cannot be read at all: load a copy instead - a downloaded file,
   or the one in the ontology's repository, whose documentation page usually links to it.

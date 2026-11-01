@@ -117,6 +117,7 @@ individual views in a tabbed column beside the canvas, so none of this needs a t
 | Podman instead of Docker | ❌ | ✅ | Since 1.71.0, wherever Docker would be used. Its command line is Docker's, so it costs a binary name rather than a code path - and Docker Desktop's licence is usually what "independent of Docker" is about |
 | Check requirements | ❌ | ✅ | Since 1.71.0. *OntoBoard › Project › Check requirements* lists what you can do and what is installed, each with what to install or start. Docker is probed with `docker info`, not `--version`, because the CLI answers without the daemon |
 | Documentation site (GitHub Pages) | ❓ | ✅ | Since 1.71.0 the scaffold writes `mkdocs.yaml`, three seeded pages under `docs/` and a Pages workflow, the same layout a real ODK repository uses. Before that it wrote no site at all |
+| An ontology and its history as an ODK repository | ❌ | ✅ | *Project → Turn an ontology into an ODK repository…*: any format; earlier versions become releases, and commits and tags dated as each version says; imports become modules of the terms used; built, tested and released, every step shown as it runs. Converting again gives the same repository. Since 1.133.0 |
 | Open an existing ODK repo | ✅ | ✅ | Detects the repo, refuses to guess between edit files |
 | `odk.yaml` editing | ✅ | ❌ | **Build.** Small |
 | Makefile target execution | ✅ | ✅ | *Project → Build…*; the transcript is shown afterwards, not streamed live |

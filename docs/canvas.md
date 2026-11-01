@@ -29,6 +29,14 @@ The board is laid out as an outline (*Arrange → Outline*):
 On pizza (86 terms) and MWO (660), measured in Protégé 5.6.9: no two boxes overlap, and no line
 passes through a frame neither of its ends is in.
 
+**A pattern is found by its terms, too.** An ontology that has a library pattern merged into its
+own file - by Protégé, ROBOT or by hand, with no import and no note left by OntoBoard - gets the
+pattern's frame when it declares at least two of the pattern's own terms, and they are at least
+60% of them. Terms many patterns share, such as an upper ontology's, do not count. Each class is in
+one frame. Measured in Protégé 5.6.9 since 1.133.0: the pizza ontology as a single file shows 3
+patterns, NFDIcore 14 and MWO 19, with no overlaps. A board saved before 1.133.0 gets them with
+*Arrange → Outline*.
+
 
 ## Description logic
 

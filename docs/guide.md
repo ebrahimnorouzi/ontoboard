@@ -14,7 +14,7 @@ needs git or Docker is listed under [What works with nothing installed](getting-
 | You have... | Your first step | In OntoBoard |
 |---|---|---|
 | Nothing yet | Create a project | *Project → New ODK project...* |
-| An ontology file | Create a project, then bring your file into its edit file | *Project → New ODK project...*, then Protégé's *Refactor → Merge ontologies...* |
+| An ontology file, and perhaps its earlier versions | Turn it into a project, its earlier versions becoming the project's history | *Project → Turn an ontology into an ODK repository...* |
 | An ODK project on this computer | Open its edit file, `src/ontology/<id>-edit.owl` | *Project → Open existing ODK project...* |
 | A project on GitHub | Clone it and open it | *Project → Open from GitHub...* |
 | Terms to add to somebody else's ontology | Fork it on GitHub, open your fork, get an ID range if its terms are numbered, add your terms, build, and propose them | *Project → Open from GitHub...*, *Project → ID ranges...*, *Build...*, *Project → Pull request...* |
@@ -48,6 +48,11 @@ build, the same tests and the same releases — you next year included.
 
 **Instead of.** ODK's `seed` command, which needs Docker. The layout is ODK's, so other ontology
 developers recognise it.
+
+**Already have an ontology?** *Project → Turn an ontology into an ODK repository...* makes the
+project from it, in any format. Give it the earlier versions too, if you have them: each becomes
+a release and a git tag, oldest first, so the project starts with its history. Imports become
+modules of the terms you use. Every step is shown as it runs, with what it wrote.
 
 **Done when** the ontology you have open is `src/ontology/<id>-edit.owl`.
 

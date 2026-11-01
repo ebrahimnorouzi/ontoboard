@@ -45,7 +45,9 @@ Protégé Desktop **5.6.x or 5.5.0**, both smoke-tested in the real host on ever
 ## What it does
 
 **Project** — scaffold a new ODK project from a wizard - empty, or from the ontology you have
-open - or open an existing one. Check what tooling you have. Edit ID ranges. Audit and refresh
+open - or open an existing one. Turn an ontology in any format, with its earlier versions, into an
+ODK repository whose git history has a release and a tag for each version, ready to push to
+GitHub. Check what tooling you have. Edit ID ranges. Audit and refresh
 imports. Clone a project from GitHub. Turn a competency question into a test by picking the terms.
 
 **Terms from other ontologies** — find terms by label in an ontology given by its web address, a
@@ -66,7 +68,8 @@ on every release, and nine have been compared against the real `robot` command t
 answers match.
 
 **A board of the whole ontology** — every class, property and individual as soon as the tab opens,
-laid out as an outline: design patterns framed along the top, classes as a tree, properties in
+laid out as an outline: design patterns framed along the top - imported, or merged in and
+recognised by their terms - classes as a tree, properties in
 sections of their own. Drawn from the axioms you actually wrote — restrictions, unions, domains and
 ranges, disjointness, property chains, SWRL rules: every logical axiom of two published BFO-based
 ontologies. Select a term and its relations come forward while the rest fades; fold a class; jump
