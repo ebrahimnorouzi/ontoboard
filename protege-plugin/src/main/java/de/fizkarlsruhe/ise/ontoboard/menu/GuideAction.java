@@ -231,7 +231,10 @@ public class GuideAction extends ProtegeOWLAction {
             } else if ("board".equals(step.getAction())) {
                 openTheBoard();
             } else if ("tests".equals(step.getAction())) {
-                openATest();
+                // The question picked from lists, rather than a stub to fill with SPARQL.
+                QuestionTestAction write = new QuestionTestAction();
+                write.setEditorKit(getOWLEditorKit());
+                write.actionPerformed(null);
             } else {
                 ProtegeOWLAction action = (ProtegeOWLAction) Class.forName(step.getAction())
                         .newInstance();
@@ -260,22 +263,6 @@ public class GuideAction extends ProtegeOWLAction {
                     .getBytes(StandardCharsets.UTF_8));
         }
         open(document);
-    }
-
-    private void openATest() throws java.io.IOException {
-        File root = projectRoot();
-        if (root == null) {
-            return;
-        }
-        File sparql = new File(root, "src/sparql");
-        File first = new File(sparql, "cq1_your_first_question.rq");
-        if (Guide.factsOf(editFile(), activeOntology()).ownTests == 0 && !first.isFile()) {
-            sparql.mkdirs();
-            Files.write(first.toPath(), Guide.testTemplate(
-                    de.fizkarlsruhe.ise.ontoboard.odk.TermMinter.namespaceForNewTerms(
-                            activeOntology())).getBytes(StandardCharsets.UTF_8));
-        }
-        open(first.isFile() ? first : sparql);
     }
 
     /** Opens a file in the program the system uses for it, or says where it is. */

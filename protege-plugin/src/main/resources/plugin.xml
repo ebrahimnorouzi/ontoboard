@@ -208,6 +208,15 @@
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
+  <extension id="menu.OntoBoard.project.questionTest"
+             point="org.protege.editor.core.application.EditorKitMenuAction">
+    <name value="Write a test from a question..."/>
+    <path value="ontoboard.menu.OntoBoard.project/SlotE-C"/>
+    <toolTip value="Turn a competency question into a test by picking the terms - no SPARQL to write"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.menu.QuestionTestAction"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
+
   <extension id="menu.OntoBoard.project.importedTerms"
              point="org.protege.editor.core.application.EditorKitMenuAction">
     <name value="Imported terms..."/>
