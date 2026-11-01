@@ -284,8 +284,9 @@ public final class InProcessTargets {
         written.add(output);
         log.add("report: " + findings.size() + " findings, " + errors + " of them errors; wrote "
                 + output.getName() + (aboutImports == 0 ? "" : " - and " + aboutImports
-                        + " about imported terms, not counted: those belong to the ontologies "
-                        + "they come from (robot_report.use_base_iris)"));
+                        + " about other ontologies' terms, imported or merged in, not counted: "
+                        + "those belong to the ontologies they come from "
+                        + "(robot_report.use_base_iris)"));
         // The recipe passes --fail-on ERROR, so this does too. The errors are named here and in
         // the failure, for the same reason sparql_test names its terms: "listed in report.tsv"
         // is a file the result dialog cannot show.

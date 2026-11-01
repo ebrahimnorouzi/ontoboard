@@ -208,6 +208,15 @@
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
+  <extension id="menu.OntoBoard.project.convert"
+             point="org.protege.editor.core.application.EditorKitMenuAction">
+    <name value="Turn an ontology into an ODK repository..."/>
+    <path value="ontoboard.menu.OntoBoard.project/SlotA-D"/>
+    <toolTip value="An ontology in any format, with its earlier versions, made an ODK project ready for GitHub - every step shown"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.menu.ConvertToOdkAction"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
+
   <extension id="menu.OntoBoard.project.questionTest"
              point="org.protege.editor.core.application.EditorKitMenuAction">
     <name value="Write a test from a question..."/>
