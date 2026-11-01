@@ -200,6 +200,54 @@ public final class FramedGroup {
     }
 
     /**
+     * Frames planned in one row, folded into rows about as wide as a board of their size would be,
+     * each frame taking its terms along. Order is kept: left to right, then the next row down.
+     *
+     * <p>Nineteen patterns recognised in one ontology made a row fifteen thousand pixels wide over
+     * an outline seven thousand wide. The property sections, placed right of the outline, then
+     * stood under the row's far half, and 141 of 982 lines between classes crossed them.
+     *
+     * @return the width the rows were folded at
+     */
+    public static double wrap(List<Placement> placements) {
+        double area = 0;
+        double widest = 0;
+        for (Placement placement : placements) {
+            CanvasLayout.FrameLayout frame = placement.getFrame();
+            if (frame != null) {
+                area += frame.w * frame.h;
+                widest = Math.max(widest, frame.w);
+            }
+        }
+        double width = Math.max(widest, Math.max(1600, Math.sqrt(area * 1.6) * 1.2));
+        double x = MARGIN;
+        double y = MARGIN;
+        double rowHeight = 0;
+        for (Placement placement : placements) {
+            CanvasLayout.FrameLayout frame = placement.getFrame();
+            if (frame == null) {
+                continue;
+            }
+            if (x > MARGIN && x + frame.w > MARGIN + width) {
+                x = MARGIN;
+                y += rowHeight + MARGIN;
+                rowHeight = 0;
+            }
+            double dx = x - frame.x;
+            double dy = y - frame.y;
+            frame.x += dx;
+            frame.y += dy;
+            for (CanvasLayout.NodeLayout node : placement.getNodes().values()) {
+                node.x += dx;
+                node.y += dy;
+            }
+            x += frame.w + MARGIN;
+            rowHeight = Math.max(rowHeight, frame.h);
+        }
+        return width;
+    }
+
+    /**
      * How many columns a group of this size gets.
      *
      * <p>Roughly square, capped at five. A pattern of twenty-six terms in one row is a frame

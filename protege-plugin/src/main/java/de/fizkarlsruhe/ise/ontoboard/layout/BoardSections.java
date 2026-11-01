@@ -118,6 +118,16 @@ public final class BoardSections {
 
     /** Every term placed, the top-left of the board at ({@code left}, {@code top}). */
     public static Plan plan(List<Term> terms, List<Edge> edges, double left, double top) {
+        return plan(terms, edges, left, top, Double.NEGATIVE_INFINITY);
+    }
+
+    /**
+     * The same, the property sections kept right of {@code framesRight} too - the right edge of
+     * the frames above the outline. A section standing under a frame is crossed by every line
+     * from the outline up to a class in that frame.
+     */
+    public static Plan plan(List<Term> terms, List<Edge> edges, double left, double top,
+            double framesRight) {
         Map<String, Term> byId = new LinkedHashMap<String, Term>();
         for (Term term : terms) {
             byId.put(term.id, term);
@@ -153,7 +163,8 @@ public final class BoardSections {
             right = Math.max(right, placeIndividuals(individuals, parent, byId, plan, left,
                     aboxTop));
         }
-        double x = (classes.isEmpty() && individuals.isEmpty() ? left : right) + APART * 2;
+        double x = Math.max((classes.isEmpty() && individuals.isEmpty() ? left : right),
+                framesRight) + APART * 2;
         double y = top;
         for (Object[] section : new Object[][] {
             {"Object properties", objectProperties}, {"Data properties", dataProperties}}) {

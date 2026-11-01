@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.awt.geom.Rectangle2D;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -207,5 +208,20 @@ class BoardSectionsTest {
 
         assertTrue(plan.positions.get("orphan")[0] < 1000, "" + plan.positions.get("orphan")[0]);
         assertTrue(plan.sections.get(0).x < 2000, "" + plan.sections.get(0).x);
+    }
+
+    /** A section under a frame is crossed by every line from the outline up into that frame. */
+    @Test
+    void thePropertySectionsStartRightOfTheFramesAboveTheOutline() {
+        List<BoardSections.Term> terms = Arrays.asList(term("Thing", BoardSections.Kind.CLASS),
+                term("knows", BoardSections.Kind.OBJECT_PROPERTY));
+        List<BoardSections.Edge> edges = Collections.<BoardSections.Edge>emptyList();
+
+        BoardSections.Plan beside = BoardSections.plan(terms, edges, 40, 40);
+        BoardSections.Plan pastTheFrames = BoardSections.plan(terms, edges, 40, 40, 6000);
+
+        assertTrue(beside.sections.get(0).x < 1000, "beside the outline: " + beside.sections.get(0).x);
+        assertTrue(pastTheFrames.sections.get(0).x >= 6000 + BoardSections.APART * 2,
+                "past the frames: " + pastTheFrames.sections.get(0).x);
     }
 }

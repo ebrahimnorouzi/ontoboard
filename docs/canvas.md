@@ -25,14 +25,14 @@ The board is laid out as an outline (*Arrange → Outline*):
 
 | | Where |
 |---|---|
-| Design patterns the ontology imports, or has merged in | a frame each, named after the pattern, along the top |
+| Design patterns the ontology imports, or has merged in | a frame each, named after the pattern, in rows along the top |
 | Classes - the TBox | trees read top down: a class above its subclasses, centred over them; many leaves under one class in a grid below it; trees side by side, wrapping at about a screen's width |
 | A class's restrictions, unions, enumerations | a grey node below the class, with its subclasses |
 | Individuals - the ABox | a band below all the classes: each class's individuals under that class, in a column; an individual's values right below it |
 | Object properties, data properties | each a frame of its own, right of the classes, as its property hierarchy |
 
-On pizza (86 terms) and MWO (660), measured in Protégé 5.6.9: no two boxes overlap, and no line
-passes through a frame neither of its ends is in.
+On pizza (86 terms) and MWO (660, with 21 frames), measured in Protégé 5.6.9: no two boxes
+overlap, and no line passes through a frame neither of its ends is in.
 
 **A pattern is found by its terms, too.** An ontology that has a library pattern merged into its
 own file - by Protégé, ROBOT or by hand, with no import and no note left by OntoBoard - gets the

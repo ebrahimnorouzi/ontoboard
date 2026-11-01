@@ -3285,6 +3285,9 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
      * what Add all was pressed for: on a board where they are already, pressing it again frames
      * them.
      *
+     * <p><b>Along the top, in rows</b> about as wide as a board of their size would be, so a long
+     * row of them does not reach over the property sections.
+     *
      * <p><b>Along the top, and the board moved down to make room.</b> The first version placed the
      * frames where FramedGroup finds space, which after Add all on the pizza ontology was beyond
      * an 80-term layout, 7000 pixels to the right of where the board opens: framed, and nowhere a
@@ -3327,6 +3330,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         if (planned.isEmpty()) {
             return added;
         }
+        de.fizkarlsruhe.ise.ontoboard.layout.FramedGroup.wrap(planned);
 
         for (String iri : row.nodes.keySet()) {
             layout.nodes.remove(iri);

@@ -349,4 +349,60 @@ class FramedGroupTest {
                 "no overlap: " + wide.x + " " + small.x);
         assertEquals(0.0, (small.x - placement.getFrame().x) % 20, 0.001, "still on the grid");
     }
+
+    /**
+     * Nineteen patterns in one ontology made a row fifteen thousand pixels wide, reaching over the
+     * property sections. Folded into rows, each frame keeps its terms and nothing overlaps.
+     */
+    @Test
+    void aLongRowOfFramesIsFoldedIntoRowsEachFrameTakingItsTermsAlong() {
+        CanvasLayout row = new CanvasLayout();
+        List<FramedGroup.Placement> planned = new ArrayList<FramedGroup.Placement>();
+        for (int pattern = 0; pattern < 19; pattern++) {
+            List<String> terms = new ArrayList<String>();
+            for (int at = 0; at < 4 + pattern % 5; at++) {
+                terms.add("http://example.org/p" + pattern + "#T" + at);
+            }
+            FramedGroup.Placement placement = FramedGroup.plan("P" + pattern, terms, row);
+            row.frames.add(placement.getFrame());
+            row.nodes.putAll(placement.getNodes());
+            planned.add(placement);
+        }
+        double before = 0;
+        for (FramedGroup.Placement placement : planned) {
+            before = Math.max(before, placement.getFrame().x + placement.getFrame().w);
+        }
+
+        double width = FramedGroup.wrap(planned);
+
+        double right = 0;
+        double lastY = -1;
+        int rows = 0;
+        for (FramedGroup.Placement placement : planned) {
+            CanvasLayout.FrameLayout frame = placement.getFrame();
+            right = Math.max(right, frame.x + frame.w);
+            if (frame.y != lastY) {
+                rows++;
+                lastY = frame.y;
+            }
+            for (CanvasLayout.NodeLayout node : placement.getNodes().values()) {
+                assertTrue(node.x >= frame.x && node.x + node.w <= frame.x + frame.w
+                        && node.y >= frame.y && node.y + node.h <= frame.y + frame.h,
+                        "a term stays inside its own frame");
+            }
+        }
+        assertTrue(rows > 1, "folded: " + rows + " rows");
+        assertTrue(right <= FramedGroup.MARGIN + width + 0.001, right + " within " + width);
+        assertTrue(right < before / 2, "much narrower than the row it was: " + right + " < " + before);
+        for (FramedGroup.Placement one : planned) {
+            for (FramedGroup.Placement other : planned) {
+                CanvasLayout.FrameLayout a = one.getFrame();
+                CanvasLayout.FrameLayout b = other.getFrame();
+                if (a != b) {
+                    assertFalse(a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h
+                            && b.y < a.y + a.h, a.label + " overlaps " + b.label);
+                }
+            }
+        }
+    }
 }

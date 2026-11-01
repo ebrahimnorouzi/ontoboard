@@ -202,6 +202,7 @@ public final class CanvasLayouts {
         try {
             List<mxGeometry> frames = new ArrayList<mxGeometry>();
             double top = MARGIN;
+            double framesRight = Double.NEGATIVE_INFINITY;
             for (Object vertex : graph.getChildVertices(graph.getDefaultParent())) {
                 String id = graph.getIdForCell(vertex);
                 if (id != null && id.startsWith(SchemaGraph.FRAME_ID_PREFIX)
@@ -209,6 +210,7 @@ public final class CanvasLayouts {
                     mxGeometry frame = graph.getModel().getGeometry(vertex);
                     frames.add(frame);
                     top = Math.max(top, frame.getY() + frame.getHeight() + BELOW_FRAMES);
+                    framesRight = Math.max(framesRight, frame.getX() + frame.getWidth());
                 }
             }
             List<de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Term> terms =
@@ -239,7 +241,7 @@ public final class CanvasLayouts {
             }
             de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Plan plan =
                     de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.plan(terms, edges, MARGIN,
-                            top);
+                            top, framesRight);
             for (Map.Entry<String, double[]> placed : plan.positions.entrySet()) {
                 Object cell = cells.get(placed.getKey());
                 mxGeometry moved = (mxGeometry) graph.getModel().getGeometry(cell).clone();
