@@ -117,6 +117,10 @@ public final class ImportedPatterns {
             placed.add(iri);
         }
 
+        // Merged in by content: a pattern written in the ontology's own terms - as the patterns
+        // harvested from published ontologies are - has no namespace of its own to be found by.
+        reusedByContent(ontology, patterns, byPattern, placed);
+
         for (java.util.Map.Entry<String, List<String>> entry : byPattern.entrySet()) {
             DesignPattern pattern = patterns.get(entry.getKey());
             found.add(new Found(pattern, inPatternOrder(pattern, entry.getValue())));
@@ -128,6 +132,90 @@ public final class ImportedPatterns {
             }
         });
         return found;
+    }
+
+    /** A term in more library patterns than this is upper-level, not a sign of one pattern. */
+    static final int COMMON = 4;
+
+    /** How much of a pattern's distinctive vocabulary an ontology must use to be reusing it. */
+    static final double SHARE = 0.6;
+
+    private static java.util.Map<String, Integer> patternsPerTerm;
+
+    /** For each term, how many library patterns use it. Counted once. */
+    private static synchronized java.util.Map<String, Integer> patternsPerTerm() {
+        if (patternsPerTerm == null) {
+            java.util.Map<String, Integer> counts = new java.util.HashMap<String, Integer>();
+            for (DesignPattern pattern : PatternLibrary.all()) {
+                for (String term : new java.util.HashSet<String>(pattern.getTermIris())) {
+                    Integer was = counts.get(term);
+                    counts.put(term, was == null ? 1 : was + 1);
+                }
+            }
+            patternsPerTerm = counts;
+        }
+        return patternsPerTerm;
+    }
+
+    /**
+     * Patterns the ontology reuses with their terms merged in: those whose distinctive terms -
+     * the ones at most {@link #COMMON} library patterns use, so BFO's entity and continuant do
+     * not count - the ontology mostly declares: at least two, and {@link #SHARE} of them. The
+     * pattern that matches most is framed first, and a class is in one frame only.
+     *
+     * <p>Asked for: "if the ontology reuses the patterns, the board should show them" - and the
+     * NFDIcore and MWO patterns in the library are written in those ontologies' own IRIs, so
+     * opening NFDIcore or MWO showed none of the patterns taken from them.
+     */
+    private static void reusedByContent(OWLOntology ontology,
+            java.util.Map<String, DesignPattern> patterns,
+            java.util.Map<String, List<String>> byPattern, Set<String> placed) {
+        Set<String> declared = new java.util.HashSet<String>();
+        Set<String> classes = new java.util.HashSet<String>();
+        for (OWLEntity entity : ontology.getSignature(Imports.INCLUDED)) {
+            declared.add(entity.getIRI().toString());
+            if (entity.isOWLClass()) {
+                classes.add(entity.getIRI().toString());
+            }
+        }
+        java.util.Map<String, Integer> common = patternsPerTerm();
+        List<Object[]> matches = new ArrayList<Object[]>();
+        for (DesignPattern pattern : PatternLibrary.all()) {
+            if (patterns.containsKey(pattern.getId())) {
+                continue;
+            }
+            int distinctive = 0;
+            int present = 0;
+            for (String term : new java.util.HashSet<String>(pattern.getTermIris())) {
+                Integer shared = common.get(term);
+                if (shared != null && shared > COMMON) {
+                    continue;
+                }
+                distinctive++;
+                present += declared.contains(term) ? 1 : 0;
+            }
+            if (present >= 2 && present >= SHARE * distinctive) {
+                matches.add(new Object[] {pattern, present});
+            }
+        }
+        Collections.sort(matches, (a, b) -> Integer.compare((Integer) b[1], (Integer) a[1]));
+        for (Object[] match : matches) {
+            DesignPattern pattern = (DesignPattern) match[0];
+            List<String> mine = new ArrayList<String>();
+            for (String term : pattern.getTermIris()) {
+                Integer shared = common.get(term);
+                if (classes.contains(term) && !placed.contains(term)
+                        && (shared == null || shared <= COMMON) && !mine.contains(term)) {
+                    mine.add(term);
+                }
+            }
+            if (mine.size() < 2) {
+                continue;
+            }
+            patterns.put(pattern.getId(), pattern);
+            byPattern.put(pattern.getId(), mine);
+            placed.addAll(mine);
+        }
     }
 
     /** The library pattern a module was cut from, or null when it is not one. */

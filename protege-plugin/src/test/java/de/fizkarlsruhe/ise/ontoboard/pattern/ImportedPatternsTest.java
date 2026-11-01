@@ -115,4 +115,28 @@ class ImportedPatternsTest {
         manager.applyChange(new AddImport(edit, factory.getOWLImportsDeclaration(moduleIri)));
         return edit;
     }
+
+    /**
+     * A pattern written in an ontology's own terms and merged into it - as the patterns taken
+     * from published ontologies are - is recognised by what the ontology declares, with no
+     * import and no namespace of its own to go by.
+     */
+    @Test
+    void aPatternMergedInIsRecognisedByItsTerms() throws Exception {
+        DesignPattern pattern = PatternLibrary.find("nfdi-organization-identified-located");
+        OWLOntology merged = org.semanticweb.owlapi.apibinding.OWLManager
+                .createOWLOntologyManager().createOntology(
+                        org.semanticweb.owlapi.model.IRI.create("https://example.org/merged"));
+        merged.getOWLOntologyManager().addAxioms(merged, PatternLibrary.load(pattern).getAxioms());
+
+        java.util.List<String> found = new java.util.ArrayList<String>();
+        for (ImportedPatterns.Found each : ImportedPatterns.in(merged)) {
+            found.add(each.getLabel());
+        }
+
+        assertTrue(found.contains(pattern.getName()), found.toString());
+        OWLOntology empty = org.semanticweb.owlapi.apibinding.OWLManager
+                .createOWLOntologyManager().createOntology();
+        assertTrue(ImportedPatterns.in(empty).isEmpty());
+    }
 }

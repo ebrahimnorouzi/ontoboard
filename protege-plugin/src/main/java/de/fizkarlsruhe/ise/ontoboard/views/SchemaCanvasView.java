@@ -4001,23 +4001,32 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         // discarded an arrangement somebody had spent an afternoon on, and the only way back was to do
         // it again by hand.
         rememberBoard("arranging the board");
-        movingProgrammatically = true;
-        java.util.List<de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Section> sections = null;
-        try {
-            if (algorithm == CanvasLayouts.Algorithm.SECTIONS) {
-                sections = CanvasLayouts.applySections(graph);
-            } else {
-                CanvasLayouts.apply(graph, algorithm);
+        OWLOntology ontology = getOWLModelManager().getActiveOntology();
+        if (algorithm == CanvasLayouts.Algorithm.SECTIONS
+                && Boolean.TRUE.equals(layout.showsEverything) && ontology != null) {
+            // The outline the board opened with, patterns found again: a board saved before a
+            // pattern could be recognised by its terms gets its frame here.
+            arrangeEverything(ontology, true);
+        } else {
+            movingProgrammatically = true;
+            java.util.List<de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Section> sections =
+                    null;
+            try {
+                if (algorithm == CanvasLayouts.Algorithm.SECTIONS) {
+                    sections = CanvasLayouts.applySections(graph);
+                } else {
+                    CanvasLayouts.apply(graph, algorithm);
+                }
+            } finally {
+                movingProgrammatically = false;
             }
-        } finally {
-            movingProgrammatically = false;
+            capturePositions();
+            if (sections != null) {
+                frameSections(sections);
+                refresh();
+            }
+            saveLayoutTo(layoutFile);
         }
-        capturePositions();
-        if (sections != null) {
-            frameSections(sections);
-            refresh();
-        }
-        saveLayoutTo(layoutFile);
         // Fit afterwards, because even a well-shaped tree is bigger than the viewport: a corrected
         // 31-term hierarchy is 3694px wide, so on a 1200px panel the user saw six terms of thirty-one
         // and no evidence that Arrange had done anything at all.
