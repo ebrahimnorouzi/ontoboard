@@ -645,7 +645,7 @@ public final class TemplateSheet {
         if (absoluteIri || knownCurie) {
             return "This names a term properly, and the term is not here: nothing in this "
                     + "ontology or its imports is \"" + value + "\". Either bring it in with "
-                    + "OntoBoard > Find terms in another ontology..., or - if it is meant to come "
+                    + "OntoBoard > Reuse > Find terms in another ontology..., or - if it is meant to come "
                     + "from another sheet - build that sheet first, because a sheet can only "
                     + "point at terms that already exist when it runs.";
         }

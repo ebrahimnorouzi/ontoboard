@@ -168,7 +168,7 @@ public class CompareReleasesAction extends OntoBoardAction {
         if (GIVEN_BELOW.equals(from) && publishedUrl.isEmpty()) {
             return result.failed("This project has no releases of its own yet. Give the web "
                     + "address or the file of the version to compare against, under 'Or compare "
-                    + "against a published release'. OntoBoard > Project > Release keeps a dated "
+                    + "against a published release'. OntoBoard > Build and release > Release keeps a dated "
                     + "copy of each release from now on.").build();
         }
         if (!GIVEN_BELOW.equals(from) && !WORKING_COPY.equals(to) && !isEarlier(from, to)) {

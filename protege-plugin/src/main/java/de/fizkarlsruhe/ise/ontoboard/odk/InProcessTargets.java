@@ -48,12 +48,12 @@ public final class InProcessTargets {
      * {@code prepare_release} is deliberately not here.
      *
      * <p>It exists in the generated Makefile, and the plugin can already do it - but through
-     * {@code Project > Release}, which asks about the date, refuses to overwrite an existing
+     * {@code Build and release > Release}, which asks about the date, refuses to overwrite an existing
      * release, writes the dated and published copies together and reports what it wrote. A second
      * implementation of that behind a target name would be the same operation with fewer guards.
      */
     public static final String RELEASE_INSTEAD =
-            "prepare_release is not run here. Use OntoBoard > Project > Release..., which does "
+            "prepare_release is not run here. Use OntoBoard > Build and release > Release..., which does "
                     + "the same work and additionally refuses to overwrite a release that "
                     + "already exists.";
 
@@ -309,7 +309,7 @@ public final class InProcessTargets {
                 : "report found " + errors + " error-level violation(s) (--fail-on ERROR): "
                         + join(named.subList(0, Math.min(3, named.size())), "; ")
                         + (errors > 3 ? "; ..." : "") + ". All of them are in "
-                        + output.getName() + ", and OntoBoard > ROBOT > Quality report shows "
+                        + output.getName() + ", and OntoBoard > Check and test > Quality report shows "
                         + "them one by one.";
     }
 

@@ -123,7 +123,7 @@ public final class CanvasTooltips {
         return "<html><b>Sticky note</b><br>"
                 + escape(noteText == null || noteText.trim().isEmpty() ? "(empty)" : noteText)
                 + "<br><font size=\"-2\">On the diagram only - not in the ontology, and not in a "
-                + "release. OntoBoard &gt; Notes writes one that is.</font></html>";
+                + "release. OntoBoard &gt; Terms &gt; Note on the selected term writes one that is.</font></html>";
     }
 
     /** A frame: its label, and the same reminder. */
@@ -263,7 +263,7 @@ public final class CanvasTooltips {
         if (notes.size() > 1) {
             text.append("<br><font size=\"-2\">and ").append(notes.size() - 1)
                     .append(notes.size() == 2 ? " more note" : " more notes")
-                    .append(" - OntoBoard &gt; Notes shows them all</font>");
+                    .append(" - OntoBoard &gt; Terms &gt; All notes shows them all</font>");
         }
     }
 

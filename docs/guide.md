@@ -17,7 +17,7 @@ needs git or Docker is listed under [What works with nothing installed](getting-
 | An ontology file, and perhaps its earlier versions | Turn it into a project, its earlier versions becoming the project's history | *Project → Turn an ontology into an ODK repository...* |
 | An ODK project on this computer | Open its edit file, `src/ontology/<id>-edit.owl` | *Project → Open existing ODK project...* |
 | A project on GitHub | Clone it and open it | *Project → Open from GitHub...* |
-| Terms to add to somebody else's ontology | Fork it on GitHub, open your fork, get an ID range if its terms are numbered, add your terms, build, and propose them | *Project → Open from GitHub...*, *Project → ID ranges...*, *Build...*, *Project → Pull request...* |
+| Terms to add to somebody else's ontology | Fork it on GitHub, open your fork, get an ID range if its terms are numbered, add your terms, build, and propose them | *Project → Open from GitHub...*, *Project → ID ranges...*, *Build...*, *Share → Pull request...* |
 
 Only want to look at an ontology and draw on it? Open the file in Protégé and go to the
 **OntoBoard** tab - no project needed. The project is what builds, tests and releases need.
@@ -70,8 +70,8 @@ that tell you the ontology does its job.
 
 ### 3. Start from a design pattern
 
-**What you do.** *OntoBoard → Pattern library...*, search with the words of your questions, pick
-a pattern, *Import terms...*, OK.
+**What you do.** *OntoBoard → Reuse → Pattern library...*, search with the words of your questions,
+pick a pattern, *Import terms...*, OK.
 
 **Why.** A pattern is a small, proven piece of ontology for a problem many people have had —
 parts and wholes, roles, classifications, prices. You start from a design others have tested,
@@ -86,7 +86,8 @@ imports are merged.
 
 ### 4. Reuse terms from other ontologies *(optional)*
 
-**What you do.** *OntoBoard → Find terms in another ontology...*: give its web address or a file
+**What you do.** *OntoBoard → Reuse → Find terms in another ontology...*: give its web address or a
+file
 - or pick one from the list, which has your own imports' sources and a few widely used
 ontologies - **Load**, then type part of a label. Tick the terms you want — the ticks stay while
 you search for more — and **Import**: one confirmation names the files it writes, and **Add them**
@@ -102,9 +103,9 @@ nothing is given up on after 30 seconds, with the reason; **Stop** ends any load
 of the ontology's own imports cannot be fetched, the rest still loads and the missing import is
 named.
 
-*OntoBoard → Imported terms...* shows what came from where: each import, every term it brings by
-label — the ones you chose, and the ones that came along because a chosen term needs them — and
-how often your own axioms use each. **Add terms from ...** opens Find terms on that import's
+*OntoBoard → Reuse → Imported terms...* shows what came from where: each import, every term it
+brings by label — the ones you chose, and the ones that came along because a chosen term needs them
+— and how often your own axioms use each. **Add terms from ...** opens Find terms on that import's
 source; **Take out of the import** removes chosen terms. Either way the import is rebuilt at once,
 and Protégé shows the change straight away. A term that more than one import brings is marked
 under *Also in*, and so is a pair that word it differently.
@@ -138,7 +139,7 @@ with your team.
 **What you do.** Write each competency question as a SPARQL query in `src/sparql/` that lists
 what *breaks* the rule — "every pizza has a base" becomes "the pizzas with no base". An empty
 answer passes. You do not have to write the SPARQL: the guide's **Write a test** button - also
-*Project → Write a test from a question...* - offers the rules a first ontology tends to need
+*Check and test → Write a test from a question...* - offers the rules a first ontology tends to need
 (every kind of pizza has some base; every pizza in the data has a price; nothing is both vegetarian
 and meaty; everything has a label; no pizza has more than N bases), lets you pick the terms by
 their labels, saves the test in `src/sparql/` and runs it at once, naming whatever breaks the rule.
@@ -151,16 +152,16 @@ starts with.
 
 ### 7. Build and test *(every time)*
 
-**What you do.** *OntoBoard → Project → Build...* → `test`. It reasons, runs the quality report,
-runs your tests and checks the OWL profile, and names the terms that break a rule.
+**What you do.** *OntoBoard → Build and release → Build...* → `test`. It reasons, runs the quality
+report, runs your tests and checks the OWL profile, and names the terms that break a rule.
 
 **Instead of.** ODK's `make test` — here, inside Protégé, in seconds.
 
 ### 8. Release a version
 
-**What you do.** *OntoBoard → Project → Release...*, and choose a version — `1.0.0`. OntoBoard
-stamps it in, keeps a copy under `releases/1.0.0/`, and writes the merged, reasoned files people
-use.
+**What you do.** *OntoBoard → Build and release → Release...*, and choose a version — `1.0.0`.
+OntoBoard stamps it in, keeps a copy under `releases/1.0.0/`, and writes the merged, reasoned files
+people use.
 
 **Why.** A released version never changes under the people who depend on it, and its number tells
 them what kind of change to expect: a patch for a fix, a minor version for new terms, a major one
@@ -172,8 +173,8 @@ for anything removed or redefined.
 
 ### 9. See how it evolved
 
-**What you do.** *OntoBoard → Project → History...* lists every release, newest first, with your
-working copy above them: how many classes, properties and individuals each holds, and what
+**What you do.** *OntoBoard → Build and release → History...* lists every release, newest first,
+with your working copy above them: how many classes, properties and individuals each holds, and what
 changed since the one before — "+3 classes, +4 properties, 1 obsoleted". Choose one to see every
 change, term by term; compare any two with **Compare with**; open any version in a window of its
 own with **Open in a new window**.
@@ -188,8 +189,8 @@ your users changed.
 
 ### 10. Share it
 
-**What you do.** *OntoBoard → Git...* to commit and push, *Pull request...* to propose a change
-for review — or *Collaboration...* to edit the board together, live.
+**What you do.** *OntoBoard → Share → Git...* to commit and push, *Pull request...* to propose a
+change for review — or *Collaboration...* to edit the board together, live.
 
 **Done when** the project is a git repository.
 

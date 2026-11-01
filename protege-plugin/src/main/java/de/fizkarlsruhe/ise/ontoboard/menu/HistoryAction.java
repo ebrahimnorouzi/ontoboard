@@ -188,7 +188,7 @@ public class HistoryAction extends ProtegeOWLAction {
                 }
                 int releases = versions.size() - 1;
                 status.setText(releases <= 0
-                        ? "No releases kept yet. Project > Release... keeps each one in "
+                        ? "No releases kept yet. Build and release > Release... keeps each one in "
                                 + "releases/<version>/, and they will be listed here."
                         : releases + " release" + (releases == 1 ? "" : "s") + ", newest first, "
                                 + "and the working copy above them. Choose one to see what "

@@ -1,7 +1,8 @@
 # Getting Started
 
-New to ODK, ROBOT or eXtreme Design? After installing, open **OntoBoard → Start here: the
-guide...** — or read [the guide](guide.md) — for the steps from an idea to a released ontology.
+New to ODK, ROBOT or eXtreme Design? After installing, open
+**OntoBoard → Start here: the guide...** — or read [the guide](guide.md) — for the steps from an
+idea to a released ontology.
 The [glossary](glossary.md) says what each word on the way means.
 
 !!! tip "Only want the board?"
@@ -92,12 +93,35 @@ dialog explains each alternative.
 Protégé's undo reverses them. The canvas layout is saved beside the ontology in
 `<ontology>.ontoboard.json`; the ontology file itself is untouched by the diagram.
 
-**Build it.** *OntoBoard → Project → Build...* and pick a target: `test` runs `reason`, `report`,
-`sparql_test` and `validate_profile`. For a project OntoBoard created, every target runs inside
-Protégé against the embedded ROBOT. When one fails, the result names the rule and the terms that
-break it - for example a class created without an `rdfs:label`, which the generated
+**Build it.** *OntoBoard → Build and release → Build...* and pick a target: `test` runs
+`reason`, `report`, `sparql_test` and `validate_profile`. For a project OntoBoard created, every
+target runs inside Protégé against the embedded ROBOT. When one fails, the result names the rule and
+the terms that break it - for example a class created without an `rdfs:label`, which the generated
 `src/sparql/check_labels.rq` rejects. The same Makefile also runs from a terminal
 (`make test`) wherever `make` and `robot` are installed, which is what the generated CI does.
+
+### The OntoBoard menu
+
+Grouped by what you came to do, in the order the [guide](guide.md) does it:
+
+| | What is in it |
+|---|---|
+| *Start here: the guide...* | The steps from an idea to a released ontology, ticked as your project does them |
+| *Project* | Start a project, open one from this computer or GitHub, or turn an ontology you have into one; its configuration, ID ranges and scripts |
+| *Reuse* | Design patterns; terms from other ontologies, by label or from a list; what each import brings |
+| *Terms* | Notes and discussion links on a term; obsoleting, renaming and transforming; exporting terms |
+| *Spreadsheets* | Sheets of terms or data: edit them, check them, turn them into terms or a knowledge graph |
+| *Check and test* | Tests written from your questions, the quality report, explanations, profiles, measures, SPARQL, Konclude, project metadata |
+| *Build and release* | Build, release, every release's history, comparing two, the documentation page |
+| *Share* | Git, pull requests, editing live together |
+| *Record who edits terms...* | Your ORCID, recorded with the date on each term you add or change |
+| *Check requirements...*, *Run self-test* | What this computer can do, and proof that the plugin works on it |
+
+**Moved in 1.133.0**, when the menu stopped being grouped by tool: *ROBOT* is split between
+*Reuse*, *Terms* and *Check and test*; *Notes* is part of *Terms*; *Knowledge graph* is
+*Spreadsheets*; *Provenance...* is *Record who edits terms...*; *Build...*, *Release...*,
+*History...*, *Compare releases...* and *Documentation...* moved from *Project* to *Build and
+release*; *Imports* is *Reuse → Check imports*.
 
 ### What works with nothing installed
 
@@ -106,13 +130,13 @@ Only Protégé is needed - it brings its own Java. No ROBOT, no ODK, no Docker, 
 | Works with nothing installed | Needs something else |
 |---|---|
 | New ODK project, Turn an ontology into an ODK repository, Build (`all`, `test`, `reason`, `report`, `sparql_test`, `validate_profile`, `clean`), Release with dated or semantic versions | Building a repository created by ODK's own seed (`run.sh` beside the Makefile): Docker, Podman or a native ODK install, because its recipes call tools that exist only in the ODK image |
-| Every *ROBOT* menu item, the pattern library, the canvas, sheets, notes and provenance | Git: the `git` command (on macOS it comes with the Command Line Tools, on Windows with Git for Windows), plus the network for Open from GitHub, pull and push. Without it, *Turn an ontology into an ODK repository* writes the releases but no commits or tags |
+| Everything under *Reuse*, *Terms*, *Spreadsheets* and *Check and test*, the canvas, and *Record who edits terms* | Git: the `git` command (on macOS it comes with the Command Line Tools, on Windows with Git for Windows), plus the network for Open from GitHub, pull and push. Without it, *Turn an ontology into an ODK repository* writes the releases but no commits or tags |
 | | Imports fetched from their URLs, which need the network |
 | | WIDOCO and Konclude, which OntoBoard downloads on first use |
 
 *OntoBoard → Run self-test* checks this on your machine: it builds a throwaway project with the
 `test` target and lists whether `robot`, `make`, `docker`, `podman` and `odk` are on the PATH -
-none of them is used. *OntoBoard → Project → Check requirements...* lists the rest.
+none of them is used. *OntoBoard → Check requirements...* lists the rest.
 
 ## The web application, archived
 

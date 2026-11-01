@@ -53,10 +53,11 @@ Click the answer that fits; each opens the next step. The same steps are in Prot
         Open it in Protégé and go to the **OntoBoard** tab: the whole ontology is on the board,
         laid out as an outline. That is all you need to look, edit and draw.
 
-        When you want builds, tests and versioned releases, **Project → Turn an ontology into
-        an ODK repository...** makes a project from the file - and from its earlier versions,
-        if you have them, as releases and git tags - ready to push to GitHub. Each step is shown
-        as it runs. [How it works](odk-workflow.md#from-an-ontology-you-already-have-turn-an-ontology-into-an-odk-repository-since-11330)
+        When you want builds, tests and versioned releases,
+        **Project → Turn an ontology into an ODK repository...** makes a project from the file - and
+        from its earlier versions, if you have them, as releases and git tags - ready to push to
+        GitHub. Each step is shown as it runs.
+        [How it works](odk-workflow.md#from-an-ontology-you-already-have-turn-an-ontology-into-an-odk-repository-since-11330)
 
     ??? info "Yes - a project folder (an ODK repository)"
 
@@ -68,13 +69,13 @@ Click the answer that fits; each opens the next step. The same steps are in Prot
 
     ??? success "Yes - I know which ontology"
 
-        **OntoBoard → Find terms in another ontology...** - give its web address, a file, or the
-        address of a page about it; search by label, tick, and **Add them**. Nothing to look up
+        **OntoBoard → Reuse → Find terms in another ontology...** - give its web address, a file, or
+        the address of a page about it; search by label, tick, and **Add them**. Nothing to look up
         by IRI. [Step 4 of the guide](guide.md#4-reuse-terms-from-other-ontologies-optional)
 
     ??? info "I imported some before and want to change them"
 
-        **OntoBoard → Imported terms...** shows each import and every term it brings, by
+        **OntoBoard → Reuse → Imported terms...** shows each import and every term it brings, by
         label - and adds more, or takes some out, rebuilding the import at once.
 
 ???+ question "Do you have data - lists of things - in spreadsheets?"

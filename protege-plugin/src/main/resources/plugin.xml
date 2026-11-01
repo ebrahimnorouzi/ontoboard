@@ -59,8 +59,15 @@
        the same thing with a path under a parent. Children reference their parent by
        <bundleSymbolicName>.<extensionId>, which is why every path below starts "ontoboard.".
 
-       Slot letters order the entries, and a CHANGE of the first letter draws a separator -
-       so SlotA-*, SlotB-* and so on are groups, not arbitrary names.
+       Slot names order the entries, and a change of the part before the dash draws a
+       separator: SlotA-*, SlotB-* and so on are groups, not arbitrary names. Protege splits
+       at the dash, so SlotBU and SlotBX are two groups as well.
+
+       Grouped by the job somebody comes to do, in the order the guide does them: set up a
+       project, reuse what exists, edit terms, bring in spreadsheets - then, past a
+       separator, check, build and release, share. Submenus named after a tool (ROBOT) or a vocabulary (Provenance) asked
+       people to know where a feature came from before they could find it, and the testers
+       asked for menus grouped by job. What is about you and this computer comes last.
 
        /SlotGZ-A puts OntoBoard immediately after Tools (/SlotG-A) and before Refactor
        (/SlotH-A), which is where a user looks for project-level tooling.
@@ -73,12 +80,23 @@
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
-  <!-- = Project = -->
+  <!-- = Start here = -->
+
+  <extension id="menu.OntoBoard.guide"
+             point="org.protege.editor.core.application.EditorKitMenuAction">
+    <name value="Start here: the guide..."/>
+    <toolTip value="The steps from an idea to a released ontology, where your project is along them, and a button for each"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.menu.GuideAction"/>
+    <path value="ontoboard.menu.OntoBoard/SlotA-0"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
+
+  <!-- = Project: start one, open one, set it up = -->
 
   <extension id="menu.OntoBoard.project" name="Project"
              point="org.protege.editor.core.application.EditorKitMenuAction">
     <name value="Project"/>
-    <path value="ontoboard.menu.OntoBoard/SlotA-A"/>
+    <path value="ontoboard.menu.OntoBoard/SlotB-A"/>
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
@@ -100,111 +118,12 @@
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
-  <extension id="menu.OntoBoard.project.documentation"
-             point="org.protege.editor.core.application.EditorKitMenuAction">
-    <name value="Documentation..."/>
-    <toolTip value="Generate the ontology's HTML page with Widoco and open it"/>
-    <class value="de.fizkarlsruhe.ise.ontoboard.menu.WidocoAction"/>
-    <path value="ontoboard.menu.OntoBoard.project/SlotF-A"/>
-    <editorKitId value="OWLEditorKit"/>
-  </extension>
-
-  <extension id="menu.OntoBoard.project.metadata"
-             point="org.protege.editor.core.application.EditorKitMenuAction">
-    <name value="Check project metadata"/>
-    <toolTip value="Where this project's ontology, its ODK YAML and its registry entry disagree"/>
-    <class value="de.fizkarlsruhe.ise.ontoboard.menu.MetadataCheckAction"/>
-    <path value="ontoboard.menu.OntoBoard.project/SlotE-B"/>
-    <editorKitId value="OWLEditorKit"/>
-  </extension>
-
-  <extension id="menu.OntoBoard.project.scripts"
-             point="org.protege.editor.core.application.EditorKitMenuAction">
-    <name value="Run a project script..."/>
-    <toolTip value="Run one of the scripts in the project's src/scripts directory"/>
-    <class value="de.fizkarlsruhe.ise.ontoboard.odk.RunScriptAction"/>
-    <path value="ontoboard.menu.OntoBoard.project/SlotF-C"/>
-    <editorKitId value="OWLEditorKit"/>
-  </extension>
-
-  <extension id="menu.OntoBoard.project.config"
-             point="org.protege.editor.core.application.EditorKitMenuAction">
-    <name value="Project configuration..."/>
-    <toolTip value="Show and edit this project's &lt;id&gt;-odk.yaml"/>
-    <class value="de.fizkarlsruhe.ise.ontoboard.odk.ProjectConfigAction"/>
-    <path value="ontoboard.menu.OntoBoard.project/SlotB-A"/>
-    <editorKitId value="OWLEditorKit"/>
-  </extension>
-
-  <extension id="menu.OntoBoard.requirements"
-             point="org.protege.editor.core.application.EditorKitMenuAction">
-    <name value="Check requirements..."/>
-    <toolTip value="What this machine can do, what is missing, and what to install"/>
-    <class value="de.fizkarlsruhe.ise.ontoboard.odk.RequirementsAction"/>
-    <path value="ontoboard.menu.OntoBoard.project/SlotE-A"/>
-    <editorKitId value="OWLEditorKit"/>
-  </extension>
-
-  <extension id="menu.OntoBoard.project.idranges"
-             point="org.protege.editor.core.application.EditorKitMenuAction">
-    <name value="ID ranges..."/>
-    <toolTip value="Who may mint which identifiers, and give a block to a new editor"/>
-    <class value="de.fizkarlsruhe.ise.ontoboard.menu.IdRangesAction"/>
-    <path value="ontoboard.menu.OntoBoard.project/SlotB-B"/>
-    <editorKitId value="OWLEditorKit"/>
-  </extension>
-
   <extension id="menu.OntoBoard.project.github"
              point="org.protege.editor.core.application.EditorKitMenuAction">
     <name value="Open from GitHub..."/>
     <toolTip value="Clone an ontology repository with git and open the file you are meant to edit"/>
     <class value="de.fizkarlsruhe.ise.ontoboard.menu.OpenFromGitHubAction"/>
     <path value="ontoboard.menu.OntoBoard.project/SlotA-C"/>
-    <editorKitId value="OWLEditorKit"/>
-  </extension>
-
-  <extension id="menu.OntoBoard.project.release"
-             point="org.protege.editor.core.application.EditorKitMenuAction">
-    <name value="Release..."/>
-    <toolTip value="Produce the published version: check it, classify it, stamp a dated version IRI"/>
-    <class value="de.fizkarlsruhe.ise.ontoboard.menu.ReleaseAction"/>
-    <path value="ontoboard.menu.OntoBoard.project/SlotD-B"/>
-    <editorKitId value="OWLEditorKit"/>
-  </extension>
-
-  <extension id="menu.OntoBoard.project.build"
-             point="org.protege.editor.core.application.EditorKitMenuAction">
-    <name value="Build..."/>
-    <toolTip value="Run one of this project's make targets and keep the whole transcript"/>
-    <class value="de.fizkarlsruhe.ise.ontoboard.menu.BuildAction"/>
-    <path value="ontoboard.menu.OntoBoard.project/SlotD-A"/>
-    <editorKitId value="OWLEditorKit"/>
-  </extension>
-
-  <extension id="menu.OntoBoard.project.imports"
-             point="org.protege.editor.core.application.EditorKitMenuAction">
-    <name value="Imports"/>
-    <toolTip value="What this ontology imports and whether any of it actually arrived"/>
-    <class value="de.fizkarlsruhe.ise.ontoboard.menu.ImportsAction"/>
-    <path value="ontoboard.menu.OntoBoard.project/SlotC-A"/>
-    <editorKitId value="OWLEditorKit"/>
-  </extension>
-
-  <extension id="menu.OntoBoard.project.update"
-             point="org.protege.editor.core.application.EditorKitMenuAction">
-    <name value="Update project files..."/>
-    <path value="ontoboard.menu.OntoBoard.project/SlotF-B"/>
-    <toolTip value="Re-render this project's generated files from its own -odk.yaml, previewed first"/>
-    <class value="de.fizkarlsruhe.ise.ontoboard.menu.UpdateProjectAction"/>
-    <editorKitId value="OWLEditorKit"/>
-  </extension>
-
-  <extension id="menu.OntoBoard.project.refreshImports"
-             point="org.protege.editor.core.application.EditorKitMenuAction">
-    <name value="Refresh imports..."/>
-    <path value="ontoboard.menu.OntoBoard.project/SlotC-C"/>
-    <toolTip value="Can this project's import modules be rebuilt from its own term lists - and rebuild them"/>
-    <class value="de.fizkarlsruhe.ise.ontoboard.menu.RefreshImportsAction"/>
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
@@ -217,57 +136,57 @@
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
-  <extension id="menu.OntoBoard.project.questionTest"
+  <extension id="menu.OntoBoard.project.config"
              point="org.protege.editor.core.application.EditorKitMenuAction">
-    <name value="Write a test from a question..."/>
-    <path value="ontoboard.menu.OntoBoard.project/SlotE-C"/>
-    <toolTip value="Turn a competency question into a test by picking the terms - no SPARQL to write"/>
-    <class value="de.fizkarlsruhe.ise.ontoboard.menu.QuestionTestAction"/>
+    <name value="Project configuration..."/>
+    <toolTip value="Show and edit this project's &lt;id&gt;-odk.yaml"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.odk.ProjectConfigAction"/>
+    <path value="ontoboard.menu.OntoBoard.project/SlotB-A"/>
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
-  <extension id="menu.OntoBoard.project.importedTerms"
+  <extension id="menu.OntoBoard.project.idranges"
              point="org.protege.editor.core.application.EditorKitMenuAction">
-    <name value="Imported terms..."/>
-    <path value="ontoboard.menu.OntoBoard.project/SlotC-D"/>
-    <toolTip value="Which terms come from which ontology, with their labels - add more, or take some out"/>
-    <class value="de.fizkarlsruhe.ise.ontoboard.menu.ImportedTermsAction"/>
+    <name value="ID ranges..."/>
+    <toolTip value="Who may mint which identifiers, and give a block to a new editor"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.menu.IdRangesAction"/>
+    <path value="ontoboard.menu.OntoBoard.project/SlotB-B"/>
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
-  <extension id="menu.OntoBoard.project.importsGraph"
+  <extension id="menu.OntoBoard.project.update"
              point="org.protege.editor.core.application.EditorKitMenuAction">
-    <name value="Imports graph..."/>
+    <name value="Update project files..."/>
+    <path value="ontoboard.menu.OntoBoard.project/SlotC-A"/>
+    <toolTip value="Re-render this project's generated files from its own -odk.yaml, previewed first"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.menu.UpdateProjectAction"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
+
+  <extension id="menu.OntoBoard.project.scripts"
+             point="org.protege.editor.core.application.EditorKitMenuAction">
+    <name value="Run a project script..."/>
+    <toolTip value="Run one of the scripts in the project's src/scripts directory"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.odk.RunScriptAction"/>
     <path value="ontoboard.menu.OntoBoard.project/SlotC-B"/>
-    <toolTip value="The owl:imports structure as a picture, including which modules are shared"/>
-    <class value="de.fizkarlsruhe.ise.ontoboard.menu.ImportsGraphAction"/>
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
-  <extension id="menu.OntoBoard.project.compare"
+  <!-- = Reuse: design patterns and other ontologies' terms, and the imports they make = -->
+
+  <extension id="menu.OntoBoard.reuse" name="Reuse"
              point="org.protege.editor.core.application.EditorKitMenuAction">
-    <name value="Compare releases..."/>
-    <toolTip value="What changed between two versions, term by term - added, obsoleted, redefined, moved"/>
-    <class value="de.fizkarlsruhe.ise.ontoboard.menu.CompareReleasesAction"/>
-    <path value="ontoboard.menu.OntoBoard.project/SlotD-C"/>
+    <name value="Reuse"/>
+    <path value="ontoboard.menu.OntoBoard/SlotB-B"/>
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
-  <extension id="menu.OntoBoard.guide"
+  <extension id="menu.OntoBoard.robot.patterns"
              point="org.protege.editor.core.application.EditorKitMenuAction">
-    <name value="Start here: the guide..."/>
-    <toolTip value="The steps from an idea to a released ontology, where your project is along them, and a button for each"/>
-    <class value="de.fizkarlsruhe.ise.ontoboard.menu.GuideAction"/>
-    <path value="ontoboard.menu.OntoBoard/SlotA-0"/>
-    <editorKitId value="OWLEditorKit"/>
-  </extension>
-
-  <extension id="menu.OntoBoard.importedterms"
-             point="org.protege.editor.core.application.EditorKitMenuAction">
-    <name value="Imported terms..."/>
-    <toolTip value="Which terms come from which ontology, with their labels - add more, or take some out"/>
-    <class value="de.fizkarlsruhe.ise.ontoboard.menu.ImportedTermsAction"/>
-    <path value="ontoboard.menu.OntoBoard/SlotBU-D"/>
+    <name value="Pattern library..."/>
+    <toolTip value="Browse the 159 bundled ontology design patterns, and your own, and import terms from one"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.menu.PatternLibraryAction"/>
+    <path value="ontoboard.menu.OntoBoard.reuse/SlotA-A"/>
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
@@ -276,81 +195,106 @@
     <name value="Find terms in another ontology..."/>
     <toolTip value="Search an ontology by its labels, tick the terms you want and import them - no IRIs needed"/>
     <class value="de.fizkarlsruhe.ise.ontoboard.menu.FindTermsAction"/>
-    <path value="ontoboard.menu.OntoBoard/SlotBU-C"/>
+    <path value="ontoboard.menu.OntoBoard.reuse/SlotA-B"/>
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
-  <extension id="menu.OntoBoard.project.history"
+  <extension id="menu.OntoBoard.robot.importTerms"
              point="org.protege.editor.core.application.EditorKitMenuAction">
-    <name value="History..."/>
-    <toolTip value="Every version the project kept, what each holds and what changed from one to the next - and any of them opened in a new window"/>
-    <class value="de.fizkarlsruhe.ise.ontoboard.menu.HistoryAction"/>
-    <path value="ontoboard.menu.OntoBoard.project/SlotD-D"/>
+    <name value="Import terms from a list..."/>
+    <toolTip value="Extract a module from another ontology for terms you already have the IRIs of, and import it - catalog entry and all"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.menu.ImportTermsAction"/>
+    <path value="ontoboard.menu.OntoBoard.reuse/SlotA-C"/>
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
-  <!-- = ROBOT = -->
-
-  <extension id="menu.OntoBoard.robot" name="Robot"
+  <extension id="menu.OntoBoard.importedterms"
              point="org.protege.editor.core.application.EditorKitMenuAction">
-    <name value="ROBOT"/>
-    <path value="ontoboard.menu.OntoBoard/SlotB-A"/>
+    <name value="Imported terms..."/>
+    <toolTip value="Which terms come from which ontology, with their labels - add more, or take some out"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.menu.ImportedTermsAction"/>
+    <path value="ontoboard.menu.OntoBoard.reuse/SlotA-D"/>
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
-  <!-- Building a knowledge graph from spreadsheets is a thing somebody sets out to do, not a
-       ROBOT utility they reach for in passing, so it is a menu of its own rather than two
-       entries buried under ROBOT. Pattern library sits beside it for the same reason: both are
-       ways of getting content in, and neither is about running a command. -->
-  <extension id="menu.OntoBoard.kg" name="KnowledgeGraph"
+  <extension id="menu.OntoBoard.project.imports"
              point="org.protege.editor.core.application.EditorKitMenuAction">
-    <name value="Knowledge graph"/>
-    <path value="ontoboard.menu.OntoBoard/SlotBU-A"/>
+    <name value="Check imports"/>
+    <toolTip value="What this ontology imports and whether any of it actually arrived"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.menu.ImportsAction"/>
+    <path value="ontoboard.menu.OntoBoard.reuse/SlotB-A"/>
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
-  <extension id="menu.OntoBoard.robot.measure"
+  <extension id="menu.OntoBoard.project.importsGraph"
              point="org.protege.editor.core.application.EditorKitMenuAction">
-    <name value="Measure..."/>
-    <toolTip value="Size, expressivity and shape of this ontology"/>
-    <class value="de.fizkarlsruhe.ise.ontoboard.menu.MeasureAction"/>
-    <path value="ontoboard.menu.OntoBoard.robot/SlotA-A"/>
+    <name value="Imports graph..."/>
+    <path value="ontoboard.menu.OntoBoard.reuse/SlotB-B"/>
+    <toolTip value="The owl:imports structure as a picture, including which modules are shared"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.menu.ImportsGraphAction"/>
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
-  <extension id="menu.OntoBoard.robot.report"
+  <extension id="menu.OntoBoard.project.refreshImports"
              point="org.protege.editor.core.application.EditorKitMenuAction">
-    <name value="Quality report..."/>
-    <toolTip value="Every violation ROBOT's 32 rules find, or your project's own profile.txt"/>
-    <class value="de.fizkarlsruhe.ise.ontoboard.menu.QualityReportAction"/>
-    <path value="ontoboard.menu.OntoBoard.robot/SlotA-B"/>
+    <name value="Refresh imports..."/>
+    <path value="ontoboard.menu.OntoBoard.reuse/SlotB-C"/>
+    <toolTip value="Can this project's import modules be rebuilt from its own term lists - and rebuild them"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.menu.RefreshImportsAction"/>
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
-  <extension id="menu.OntoBoard.robot.profile"
+  <!-- = Terms: notes on a term, retiring and renaming terms, exporting them = -->
+
+  <extension id="menu.OntoBoard.terms" name="Terms"
              point="org.protege.editor.core.application.EditorKitMenuAction">
-    <name value="Profile..."/>
-    <toolTip value="Which OWL 2 profile this ontology is in, and which axioms take it out"/>
-    <class value="de.fizkarlsruhe.ise.ontoboard.menu.ProfileAction"/>
-    <path value="ontoboard.menu.OntoBoard.robot/SlotA-C"/>
+    <name value="Terms"/>
+    <path value="ontoboard.menu.OntoBoard/SlotB-C"/>
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
-  <extension id="menu.OntoBoard.robot.explain"
+  <extension id="menu.OntoBoard.notes.edit"
              point="org.protege.editor.core.application.EditorKitMenuAction">
-    <name value="Explain..."/>
-    <path value="ontoboard.menu.OntoBoard.robot/SlotA-D"/>
-    <toolTip value="Which axioms make a class unsatisfiable, or the ontology inconsistent"/>
-    <class value="de.fizkarlsruhe.ise.ontoboard.menu.ExplainAction"/>
+    <name value="Note on the selected term..."/>
+    <toolTip value="Write an IAO editor note that travels with the ontology and its releases"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.menu.EditorNoteAction"/>
+    <path value="ontoboard.menu.OntoBoard.terms/SlotA-A"/>
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
-  <extension id="menu.OntoBoard.robot.sparql"
+  <extension id="menu.OntoBoard.notes.tracker"
              point="org.protege.editor.core.application.EditorKitMenuAction">
-    <name value="SPARQL..."/>
-    <path value="ontoboard.menu.OntoBoard.robot/SlotA-E"/>
-    <toolTip value="Run a SPARQL query, or the project's own checks in src/sparql"/>
-    <class value="de.fizkarlsruhe.ise.ontoboard.menu.SparqlAction"/>
+    <name value="Discussion link..."/>
+    <toolTip value="Point a term at the issue where it is argued about - IAO:0000233"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.menu.TrackerItemAction"/>
+    <path value="ontoboard.menu.OntoBoard.terms/SlotA-B"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
+
+  <extension id="menu.OntoBoard.notes.all"
+             point="org.protege.editor.core.application.EditorKitMenuAction">
+    <name value="All notes"/>
+    <toolTip value="Every editorial note in the ontology - Protege offers no other way to find them"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.menu.AllNotesAction"/>
+    <path value="ontoboard.menu.OntoBoard.terms/SlotA-C"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
+
+  <extension id="menu.OntoBoard.obsolete"
+             point="org.protege.editor.core.application.EditorKitMenuAction">
+    <name value="Obsolete the selected term..."/>
+    <toolTip value="Retire a term the OBO way, so everything that referenced it still resolves"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.menu.ObsoleteAction"/>
+    <path value="ontoboard.menu.OntoBoard.terms/SlotB-A"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
+
+  <extension id="menu.OntoBoard.robot.rename"
+             point="org.protege.editor.core.application.EditorKitMenuAction">
+    <name value="Rename IRIs..."/>
+    <path value="ontoboard.menu.OntoBoard.terms/SlotB-B"/>
+    <toolTip value="Move terms to new IRIs, or a whole namespace at once - previewed before it applies"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.menu.RenameAction"/>
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
@@ -359,33 +303,35 @@
     <name value="Transform..."/>
     <toolTip value="Relax, reduce, repair or merge imports - applied so Protege can undo it"/>
     <class value="de.fizkarlsruhe.ise.ontoboard.menu.TransformAction"/>
-    <path value="ontoboard.menu.OntoBoard.robot/SlotC-A"/>
+    <path value="ontoboard.menu.OntoBoard.terms/SlotB-C"/>
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
   <extension id="menu.OntoBoard.robot.export"
              point="org.protege.editor.core.application.EditorKitMenuAction">
     <name value="Export terms..."/>
-    <path value="ontoboard.menu.OntoBoard.robot/SlotB-EX"/>
+    <path value="ontoboard.menu.OntoBoard.terms/SlotC-A"/>
     <toolTip value="Write every term and the columns you choose to a TSV, CSV, JSON, YAML or HTML file"/>
     <class value="de.fizkarlsruhe.ise.ontoboard.menu.ExportAction"/>
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
-  <extension id="menu.OntoBoard.robot.rename"
+  <!-- = Spreadsheets: a sheet per kind of thing, turned into terms or a knowledge graph.
+       Named after what somebody has in hand, not after ROBOT's template command. = -->
+
+  <extension id="menu.OntoBoard.kg" name="Spreadsheets"
              point="org.protege.editor.core.application.EditorKitMenuAction">
-    <name value="Rename IRIs..."/>
-    <path value="ontoboard.menu.OntoBoard.robot/SlotC-B"/>
-    <toolTip value="Move terms to new IRIs, or a whole namespace at once - previewed before it applies"/>
-    <class value="de.fizkarlsruhe.ise.ontoboard.menu.RenameAction"/>
+    <name value="Spreadsheets"/>
+    <path value="ontoboard.menu.OntoBoard/SlotB-D"/>
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
-  <extension id="menu.OntoBoard.robot.template"
+  <!-- The way to the tab for anybody who has not noticed it in Window > Tabs. -->
+  <extension id="menu.OntoBoard.kg.sheets"
              point="org.protege.editor.core.application.EditorKitMenuAction">
-    <name value="Template..."/>
-    <toolTip value="Turn a spreadsheet of terms into axioms - every problem reported at once"/>
-    <class value="de.fizkarlsruhe.ise.ontoboard.menu.TemplateAction"/>
+    <name value="Sheet editor"/>
+    <toolTip value="Open the spreadsheet editor, in a tab of its own - edit, clean, complete and mint identifiers"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.menu.SheetEditorAction"/>
     <path value="ontoboard.menu.OntoBoard.kg/SlotA-A"/>
     <editorKitId value="OWLEditorKit"/>
   </extension>
@@ -399,32 +345,75 @@
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
-  <!-- The way to the tab for anybody who has not noticed it in Window > Tabs. A feature behind
-       a tab nobody opens is one nobody has, and the menu is where this plugin's other work is. -->
-  <extension id="menu.OntoBoard.kg.sheets"
+  <extension id="menu.OntoBoard.robot.template"
              point="org.protege.editor.core.application.EditorKitMenuAction">
-    <name value="Sheet editor"/>
-    <toolTip value="Open the spreadsheet editor, in a tab of its own - edit, clean, complete and mint identifiers"/>
-    <class value="de.fizkarlsruhe.ise.ontoboard.menu.SheetEditorAction"/>
+    <name value="Template..."/>
+    <toolTip value="Turn a spreadsheet of terms into axioms - every problem reported at once"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.menu.TemplateAction"/>
     <path value="ontoboard.menu.OntoBoard.kg/SlotA-C"/>
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
-  <extension id="menu.OntoBoard.robot.importTerms"
+  <!-- = Check and test: is the ontology right, and does it answer its questions = -->
+
+  <extension id="menu.OntoBoard.check" name="Check"
              point="org.protege.editor.core.application.EditorKitMenuAction">
-    <name value="Import terms from a list..."/>
-    <toolTip value="Extract a module from another ontology for terms you already have the IRIs of, and import it - catalog entry and all"/>
-    <class value="de.fizkarlsruhe.ise.ontoboard.menu.ImportTermsAction"/>
-    <path value="ontoboard.menu.OntoBoard.robot/SlotB-B"/>
+    <name value="Check and test"/>
+    <path value="ontoboard.menu.OntoBoard/SlotC-A"/>
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
-  <extension id="menu.OntoBoard.robot.patterns"
+  <extension id="menu.OntoBoard.project.questionTest"
              point="org.protege.editor.core.application.EditorKitMenuAction">
-    <name value="Pattern library..."/>
-    <toolTip value="Browse the 159 bundled ontology design patterns, and your own, and import terms from one"/>
-    <class value="de.fizkarlsruhe.ise.ontoboard.menu.PatternLibraryAction"/>
-    <path value="ontoboard.menu.OntoBoard/SlotBU-B"/>
+    <name value="Write a test from a question..."/>
+    <path value="ontoboard.menu.OntoBoard.check/SlotA-A"/>
+    <toolTip value="Turn a competency question into a test by picking the terms - no SPARQL to write"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.menu.QuestionTestAction"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
+
+  <extension id="menu.OntoBoard.robot.report"
+             point="org.protege.editor.core.application.EditorKitMenuAction">
+    <name value="Quality report..."/>
+    <toolTip value="Every violation ROBOT's 32 rules find, or your project's own profile.txt"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.menu.QualityReportAction"/>
+    <path value="ontoboard.menu.OntoBoard.check/SlotB-A"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
+
+  <extension id="menu.OntoBoard.robot.explain"
+             point="org.protege.editor.core.application.EditorKitMenuAction">
+    <name value="Explain..."/>
+    <path value="ontoboard.menu.OntoBoard.check/SlotB-B"/>
+    <toolTip value="Which axioms make a class unsatisfiable, or the ontology inconsistent"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.menu.ExplainAction"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
+
+  <extension id="menu.OntoBoard.robot.profile"
+             point="org.protege.editor.core.application.EditorKitMenuAction">
+    <name value="Profile..."/>
+    <toolTip value="Which OWL 2 profile this ontology is in, and which axioms take it out"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.menu.ProfileAction"/>
+    <path value="ontoboard.menu.OntoBoard.check/SlotB-C"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
+
+  <extension id="menu.OntoBoard.robot.measure"
+             point="org.protege.editor.core.application.EditorKitMenuAction">
+    <name value="Measure..."/>
+    <toolTip value="Size, expressivity and shape of this ontology"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.menu.MeasureAction"/>
+    <path value="ontoboard.menu.OntoBoard.check/SlotB-D"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
+
+  <extension id="menu.OntoBoard.robot.sparql"
+             point="org.protege.editor.core.application.EditorKitMenuAction">
+    <name value="SPARQL..."/>
+    <path value="ontoboard.menu.OntoBoard.check/SlotB-E"/>
+    <toolTip value="Run a SPARQL query, or the project's own checks in src/sparql"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.menu.SparqlAction"/>
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
@@ -433,27 +422,88 @@
     <name value="Reason with Konclude..."/>
     <toolTip value="Classify, realize or check consistency with the Konclude reasoner, if you have it installed"/>
     <class value="de.fizkarlsruhe.ise.ontoboard.menu.KoncludeAction"/>
-    <path value="ontoboard.menu.OntoBoard.robot/SlotA-F"/>
+    <path value="ontoboard.menu.OntoBoard.check/SlotB-F"/>
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
-  <extension id="menu.OntoBoard.obsolete"
+  <extension id="menu.OntoBoard.project.metadata"
              point="org.protege.editor.core.application.EditorKitMenuAction">
-    <name value="Obsolete the selected term..."/>
-    <toolTip value="Retire a term the OBO way, so everything that referenced it still resolves"/>
-    <class value="de.fizkarlsruhe.ise.ontoboard.menu.ObsoleteAction"/>
-    <path value="ontoboard.menu.OntoBoard/SlotBX-A"/>
+    <name value="Check project metadata"/>
+    <toolTip value="Where this project's ontology, its ODK YAML and its registry entry disagree"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.menu.MetadataCheckAction"/>
+    <path value="ontoboard.menu.OntoBoard.check/SlotC-A"/>
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
-  <!-- = Git = -->
+  <!-- = Build and release: build, publish a version, look back over the versions = -->
+
+  <extension id="menu.OntoBoard.release" name="Release"
+             point="org.protege.editor.core.application.EditorKitMenuAction">
+    <name value="Build and release"/>
+    <path value="ontoboard.menu.OntoBoard/SlotC-B"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
+
+  <extension id="menu.OntoBoard.project.build"
+             point="org.protege.editor.core.application.EditorKitMenuAction">
+    <name value="Build..."/>
+    <toolTip value="Run one of this project's make targets and keep the whole transcript"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.menu.BuildAction"/>
+    <path value="ontoboard.menu.OntoBoard.release/SlotA-A"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
+
+  <extension id="menu.OntoBoard.project.release"
+             point="org.protege.editor.core.application.EditorKitMenuAction">
+    <name value="Release..."/>
+    <toolTip value="Produce the published version: check it, classify it, stamp a dated version IRI"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.menu.ReleaseAction"/>
+    <path value="ontoboard.menu.OntoBoard.release/SlotA-B"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
+
+  <extension id="menu.OntoBoard.project.history"
+             point="org.protege.editor.core.application.EditorKitMenuAction">
+    <name value="History..."/>
+    <toolTip value="Every version the project kept, what each holds and what changed from one to the next - and any of them opened in a new window"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.menu.HistoryAction"/>
+    <path value="ontoboard.menu.OntoBoard.release/SlotB-A"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
+
+  <extension id="menu.OntoBoard.project.compare"
+             point="org.protege.editor.core.application.EditorKitMenuAction">
+    <name value="Compare releases..."/>
+    <toolTip value="What changed between two versions, term by term - added, obsoleted, redefined, moved"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.menu.CompareReleasesAction"/>
+    <path value="ontoboard.menu.OntoBoard.release/SlotB-B"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
+
+  <extension id="menu.OntoBoard.project.documentation"
+             point="org.protege.editor.core.application.EditorKitMenuAction">
+    <name value="Documentation..."/>
+    <toolTip value="Generate the ontology's HTML page with Widoco and open it"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.menu.WidocoAction"/>
+    <path value="ontoboard.menu.OntoBoard.release/SlotC-A"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
+
+  <!-- = Share: git, pull requests and editing live with others = -->
+
+  <extension id="menu.OntoBoard.share" name="Share"
+             point="org.protege.editor.core.application.EditorKitMenuAction">
+    <name value="Share"/>
+    <path value="ontoboard.menu.OntoBoard/SlotC-C"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
 
   <extension id="menu.OntoBoard.git"
              point="org.protege.editor.core.application.EditorKitMenuAction">
     <name value="Git..."/>
     <toolTip value="Status, commit, pull and push for the project you have open"/>
     <class value="de.fizkarlsruhe.ise.ontoboard.menu.GitAction"/>
-    <path value="ontoboard.menu.OntoBoard/SlotBY-A"/>
+    <path value="ontoboard.menu.OntoBoard.share/SlotA-A"/>
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
@@ -462,65 +512,7 @@
     <name value="Pull request..."/>
     <toolTip value="Propose the branch you are on, or see what is already open"/>
     <class value="de.fizkarlsruhe.ise.ontoboard.menu.PullRequestAction"/>
-    <path value="ontoboard.menu.OntoBoard/SlotBY-B"/>
-    <editorKitId value="OWLEditorKit"/>
-  </extension>
-
-  <!-- = Notes = -->
-
-  <extension id="menu.OntoBoard.notes" name="Notes"
-             point="org.protege.editor.core.application.EditorKitMenuAction">
-    <name value="Notes"/>
-    <path value="ontoboard.menu.OntoBoard/SlotBZ-A"/>
-    <editorKitId value="OWLEditorKit"/>
-  </extension>
-
-  <extension id="menu.OntoBoard.notes.edit"
-             point="org.protege.editor.core.application.EditorKitMenuAction">
-    <name value="Note on the selected term..."/>
-    <toolTip value="Write an IAO editor note that travels with the ontology and its releases"/>
-    <class value="de.fizkarlsruhe.ise.ontoboard.menu.EditorNoteAction"/>
-    <path value="ontoboard.menu.OntoBoard.notes/SlotA-A"/>
-    <editorKitId value="OWLEditorKit"/>
-  </extension>
-
-  <extension id="menu.OntoBoard.notes.all"
-             point="org.protege.editor.core.application.EditorKitMenuAction">
-    <name value="All notes"/>
-    <toolTip value="Every editorial note in the ontology - Protege offers no other way to find them"/>
-    <class value="de.fizkarlsruhe.ise.ontoboard.menu.AllNotesAction"/>
-    <path value="ontoboard.menu.OntoBoard.notes/SlotA-B"/>
-    <editorKitId value="OWLEditorKit"/>
-  </extension>
-
-  <extension id="menu.OntoBoard.notes.tracker"
-             point="org.protege.editor.core.application.EditorKitMenuAction">
-    <name value="Discussion link..."/>
-    <toolTip value="Point a term at the issue where it is argued about - IAO:0000233"/>
-    <class value="de.fizkarlsruhe.ise.ontoboard.menu.TrackerItemAction"/>
-    <path value="ontoboard.menu.OntoBoard.notes/SlotA-C"/>
-    <editorKitId value="OWLEditorKit"/>
-  </extension>
-
-  <!-- = Provenance = -->
-
-  <extension id="menu.OntoBoard.provenance"
-             point="org.protege.editor.core.application.EditorKitMenuAction">
-    <name value="Provenance..."/>
-    <toolTip value="Who to record as the author of new terms"/>
-    <class value="de.fizkarlsruhe.ise.ontoboard.menu.ProvenanceAction"/>
-    <path value="ontoboard.menu.OntoBoard/SlotC-A"/>
-    <editorKitId value="OWLEditorKit"/>
-  </extension>
-
-  <!-- = Collaboration = -->
-
-  <extension id="menu.OntoBoard.selftest"
-             point="org.protege.editor.core.application.EditorKitMenuAction">
-    <name value="Run self-test"/>
-    <path value="ontoboard.menu.OntoBoard/SlotZ-Z"/>
-    <toolTip value="Actually runs the read-only ROBOT menu items against a scratch ontology and reports"/>
-    <class value="de.fizkarlsruhe.ise.ontoboard.menu.SelfTestAction"/>
+    <path value="ontoboard.menu.OntoBoard.share/SlotA-B"/>
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
@@ -529,7 +521,36 @@
     <name value="Collaboration..."/>
     <toolTip value="Server, board and access token for live editing"/>
     <class value="de.fizkarlsruhe.ise.ontoboard.menu.CollaborationAction"/>
-    <path value="ontoboard.menu.OntoBoard/SlotC-B"/>
+    <path value="ontoboard.menu.OntoBoard.share/SlotB-A"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
+
+  <!-- = About you and this computer = -->
+
+  <extension id="menu.OntoBoard.provenance"
+             point="org.protege.editor.core.application.EditorKitMenuAction">
+    <name value="Record who edits terms..."/>
+    <toolTip value="Your ORCID, recorded with the date on each term you add or change (dcterms:contributor, created, date) - and whether to record it at all"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.menu.ProvenanceAction"/>
+    <path value="ontoboard.menu.OntoBoard/SlotD-A"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
+
+  <extension id="menu.OntoBoard.requirements"
+             point="org.protege.editor.core.application.EditorKitMenuAction">
+    <name value="Check requirements..."/>
+    <toolTip value="What this machine can do, what is missing, and what to install"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.odk.RequirementsAction"/>
+    <path value="ontoboard.menu.OntoBoard/SlotD-B"/>
+    <editorKitId value="OWLEditorKit"/>
+  </extension>
+
+  <extension id="menu.OntoBoard.selftest"
+             point="org.protege.editor.core.application.EditorKitMenuAction">
+    <name value="Run self-test"/>
+    <path value="ontoboard.menu.OntoBoard/SlotD-C"/>
+    <toolTip value="Actually runs the read-only ROBOT menu items against a scratch ontology and reports"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.menu.SelfTestAction"/>
     <editorKitId value="OWLEditorKit"/>
   </extension>
 
@@ -541,5 +562,4 @@
     <class value="de.fizkarlsruhe.ise.ontoboard.odk.NewProjectAction"/>
     <editorKitId value="OWLEditorKit"/>
   </extension>
-
 </plugin>

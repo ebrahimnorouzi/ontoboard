@@ -84,7 +84,7 @@ individual views in a tabbed column beside the canvas, so none of this needs a t
 | Live redraw on external edits | ➖ | ✅ | Canvas is a view over Protégé's model |
 | Layout persistence | ✅ | ✅ | Plugin keeps it in a sidecar, so the ontology stays byte-clean |
 | Frames and sticky notes | ✅ | ✅ | Right-click the canvas; kept in the sidecar, so they never reach a release |
-| Editorial notes on the canvas | ❌ | ✅ | **New capability.** Right-click a term for its `IAO:0000116` editor note, read and written in place. The same note the Notes menu writes - an axiom, not a diagram annotation, so it travels with the ontology and reaches a live peer |
+| Editorial notes on the canvas | ❌ | ✅ | **New capability.** Right-click a term for its `IAO:0000116` editor note, read and written in place. The same note *Terms → Note on the selected term…* writes - an axiom, not a diagram annotation, so it travels with the ontology and reaches a live peer |
 | Undo/redo, axioms | ✅ | ✅ | Protégé's own undo, which is stronger than the web app's 50-snapshot stack |
 | Undo/redo, the board itself | ✅ | ❌ | **Build.** Arrangement, board membership, notes and frames are not axioms, so Protégé has nothing to undo. Removing twelve arranged nodes is final. Until 1.52.0 the row above covered for this |
 
@@ -93,10 +93,10 @@ individual views in a tabbed column beside the canvas, so none of this needs a t
 | Feature | Web app | Plugin | Assessment |
 |---|---|---|---|
 | ELK, HermiT, JFact, Pellet | ✅ | 🧩 | Bundled reasoner plugins, with incremental and background reasoning the web app lacked |
-| Konclude | ➖ | ✅ | *ROBOT → Reason with Konclude…* since 1.94.0. A native OWL 2 DL reasoner that won five of six ORE 2014 disciplines. Not bundled — LGPLv3 against an Apache-2.0 plugin, and x86-64 only — so the dialog detects it, names the release asset for your platform, and looks in your Downloads folder. Classification, both property classifications, realization, consistency and satisfiability |
+| Konclude | ➖ | ✅ | *Check and test → Reason with Konclude…* since 1.94.0. A native OWL 2 DL reasoner that won five of six ORE 2014 disciplines. Not bundled — LGPLv3 against an Apache-2.0 plugin, and x86-64 only — so the dialog detects it, names the release asset for your platform, and looks in your Downloads folder. Classification, both property classifications, realization, consistency and satisfiability |
 | Explanation / justification | ✅ | 🧩 | `explanation-workbench`, bundled |
 | Consistency checking | ✅ | 🧩 | Protégé |
-| ROBOT report | ✅ | ✅ | *ROBOT → Quality report…*, all 32 of ROBOT's rules, on both hosts. Checked against real ROBOT in `obolibrary/odkfull` and by a startup self-check in the host |
+| ROBOT report | ✅ | ✅ | *Check and test → Quality report…*, all 32 of ROBOT's rules, on both hosts. Checked against real ROBOT in `obolibrary/odkfull` and by a startup self-check in the host |
 | Agreement with the `robot` command | n/a | ✅ | Nine operations — reason, measure, export, extract, diff, verify, explain, template and the report — are run both in the plugin and as the `robot` command inside `obolibrary/odkfull` and required to give the same answer. Only the report was checked this way before 1.48.0 |
 | ROBOT commands | 🔶 7 of 24 | 🔶 6 as menu commands | measure, report, profile, transform (relax/reduce/repair/merge), extract, template |
 | OOPS! pitfall check | ✅ | ❌ | **Build.** An HTTP call to the OOPS! service |
@@ -115,14 +115,14 @@ individual views in a tabbed column beside the canvas, so none of this needs a t
 | Build with nothing installed | ❌ | ✅ | Since 1.71.0 a project OntoBoard scaffolded runs seven of its eight generated targets inside Protégé against the embedded robot-core - no make, no robot, no shell, no container, on any platform. Only for Makefiles the plugin wrote: the check is byte equality, and an edited or foreign Makefile is refused |
 | Native ODK environment | ❓ | ✅ | Since 1.71.0. Point OntoBoard at the directory `odk install` produced and ODK builds run with no container at all. Linux and macOS only - that is ODK's limit, not the plugin's. Built to the documented layout but not yet executed end to end |
 | Podman instead of Docker | ❌ | ✅ | Since 1.71.0, wherever Docker would be used. Its command line is Docker's, so it costs a binary name rather than a code path - and Docker Desktop's licence is usually what "independent of Docker" is about |
-| Check requirements | ❌ | ✅ | Since 1.71.0. *OntoBoard › Project › Check requirements* lists what you can do and what is installed, each with what to install or start. Docker is probed with `docker info`, not `--version`, because the CLI answers without the daemon |
+| Check requirements | ❌ | ✅ | Since 1.71.0. *OntoBoard › Check requirements* lists what you can do and what is installed, each with what to install or start. Docker is probed with `docker info`, not `--version`, because the CLI answers without the daemon |
 | Documentation site (GitHub Pages) | ❓ | ✅ | Since 1.71.0 the scaffold writes `mkdocs.yaml`, three seeded pages under `docs/` and a Pages workflow, the same layout a real ODK repository uses. Before that it wrote no site at all |
 | An ontology and its history as an ODK repository | ❌ | ✅ | *Project → Turn an ontology into an ODK repository…*: any format; earlier versions become releases, and commits and tags dated as each version says; imports become modules of the terms used; built, tested and released, every step shown as it runs. Converting again gives the same repository. Since 1.133.0 |
 | Open an existing ODK repo | ✅ | ✅ | Detects the repo, refuses to guess between edit files |
 | `odk.yaml` editing | ✅ | ❌ | **Build.** Small |
-| Makefile target execution | ✅ | ✅ | *Project → Build…*; the transcript is shown afterwards, not streamed live |
+| Makefile target execution | ✅ | ✅ | *Build and release → Build…*; the transcript is shown afterwards, not streamed live |
 | Build error explanations | ✅ | ✅ | `MakeRun.explain` names the cause for missing rules, missing robot, OOM and report violations |
-| Import resolution + catalog | ✅ | ✅ | *Project → Imports* reports what did not resolve; *ROBOT → Import terms…* writes module, catalog entry and import together |
+| Import resolution + catalog | ✅ | ✅ | *Reuse → Check imports* reports what did not resolve; *Reuse → Import terms from a list…* writes module, catalog entry and import together |
 | ID range management | ✅ | ✅ | *Project → ID ranges…* allocates a range and rewrites the file |
 | Multi-file / file switcher | ✅ | ➖ | Protégé's own ontology switcher |
 
@@ -131,7 +131,7 @@ individual views in a tabbed column beside the canvas, so none of this needs a t
 | Feature | Web app | Plugin | Assessment |
 |---|---|---|---|
 | ODP pattern library | ✅ 13 patterns | ✅ **159 patterns, plus your own** | Shipped 1.82.0; MWO, PMDco and NFDI MatWerk patterns added 1.87.0; 1.92.0 made the ranking against the open ontology reachable, which it had not been, and made the library extensible by dropping a file in a folder |
-| CSV → ROBOT template wizard | ✅ | ✅ | *ROBOT → Template…*, TSV or CSV, every bad row reported at once. robot-core 1.9.8 reads no XLSX templates at all, so this is not a gap against ROBOT |
+| CSV → ROBOT template wizard | ✅ | ✅ | *Spreadsheets → Template…*, TSV or CSV, every bad row reported at once. robot-core 1.9.8 reads no XLSX templates at all, so this is not a gap against ROBOT |
 | SPARQL query panel | ✅ | 🧩 | `sparql-query-plugin`, bundled |
 | GitHub import | ✅ | ✅ | *Project → Open from GitHub…* clones and opens the edit file |
 | Export formats | ✅ | 🔶 | Protégé exports OWL formats; ROBOT `convert` would add OBO/JSON-LD |
@@ -140,20 +140,20 @@ individual views in a tabbed column beside the canvas, so none of this needs a t
 | In-host self-test | ➖ | ✅ | *OntoBoard → Run self-test*, and `smoke.ps1 -SelfTest`, actually run nine menu items in Protégé against a throwaway scaffolded ODK project and assert what each reported |
 | Diff against the published release | ➖ | ✅ | *Compare releases…* takes a URL for the 'From' side and writes ROBOT's markdown diff to a file — ODK's `release_diff`, which answers what consumers will see change |
 | Mirrored upstream ontologies | ➖ | ✅ | *Refresh imports…* keeps downloaded copies under `src/ontology/mirror/` (ODK's layout, gitignored because CHEBI alone is hundreds of MB) so a later rebuild works offline and records what it actually built from |
-| Rebuildable import modules | ➖ | ✅ | *Import terms…* now writes `imports/<name>_terms.txt` beside the module, and *Project → Refresh imports…* reports whether every import can be rebuilt from the repository's own lists, then rebuilds them — ODK's `all_imports`/`refresh-imports` |
+| Rebuildable import modules | ➖ | ✅ | *Import terms…* now writes `imports/<name>_terms.txt` beside the module, and *Reuse → Refresh imports…* reports whether every import can be rebuilt from the repository's own lists, then rebuilds them — ODK's `all_imports`/`refresh-imports` |
 | Terms from another ontology, by label | ❓ | ✅ | *Find terms in another ontology…*: a web address, a file, or a page about the ontology (its link to the file is followed); a silent server is given up on after 30 seconds and *Stop* ends any load. One confirmation adds the terms. Since 1.130.0, reworked in 1.132.0 |
 | Which terms came from where | ❌ | ✅ | *Imported terms…*: each import with every term it brings by label, chosen or brought along, how often your axioms use it, and which other imports bring it too. Add and take out terms; the module is rebuilt and the open copy changed at once. Since 1.132.0 |
-| A competency question as a test | ❌ | ✅ | *Project → Write a test from a question…*: five rules, the terms picked by label, written to `src/sparql/` and run at once. Since 1.132.0 |
-| Bulk IRI rename | ➖ | ✅ | *ROBOT → Rename IRIs…* moves whole IRIs or a whole namespace, previewed before it applies and undoable in one step. Protégé renames one entity at a time |
-| Materialize inferred relations | ➖ | ✅ | *ROBOT → Transform… → Materialize relations*. Where Reason asserts inferred subclass axioms, this asserts inferred existential relations, so a consumer that cannot reason still sees them |
+| A competency question as a test | ❌ | ✅ | *Check and test → Write a test from a question…*: five rules, the terms picked by label, written to `src/sparql/` and run at once. Since 1.132.0 |
+| Bulk IRI rename | ➖ | ✅ | *Terms → Rename IRIs…* moves whole IRIs or a whole namespace, previewed before it applies and undoable in one step. Protégé renames one entity at a time |
+| Materialize inferred relations | ➖ | ✅ | *Terms → Transform… → Materialize relations*. Where Reason asserts inferred subclass axioms, this asserts inferred existential relations, so a consumer that cannot reason still sees them |
 | Why is this inferred? | ➖ | ✅ | Since 1.73.0. Right-click a dotted edge on the canvas for the axioms that force it - a real justification, computed with the reasoner Protégé is running, not a walk up the hierarchy. Protégé's own explanation workbench answers the same question for an entailment you have already found and selected; this answers it for the edge in front of you |
-| Axiom-level release diff | ➖ | ✅ | *Project → Compare releases…*, opt-in alongside the term-level table. ROBOT's own `diff`, with labels on, because the two answer different questions |
-| SPARQL over the open ontology | ✅ | ✅ | *ROBOT → SPARQL…* runs a query you write, or the project's own `src/sparql/*.rq` checks with the pass/fail convention `make sparql_test` uses. SELECT and ASK only |
+| Axiom-level release diff | ➖ | ✅ | *Build and release → Compare releases…*, opt-in alongside the term-level table. ROBOT's own `diff`, with labels on, because the two answer different questions |
+| SPARQL over the open ontology | ✅ | ✅ | *Check and test → SPARQL…* runs a query you write, or the project's own `src/sparql/*.rq` checks with the pass/fail convention `make sparql_test` uses. SELECT and ASK only |
 | SPARQL results as TSV | ➖ | ✅ | The same dialog writes results to a file — what ODK's `custom_reports` target produces — and one TSV per failing check, as `robot verify --output-dir` does |
-| Explanation of unsatisfiability | ➖ | ✅ | *ROBOT → Explain…* names every unsatisfiable class, the axioms behind each, and which single axiom appears in the most justifications. Protégé's explanation workbench explains one entailment you have already selected; this starts from "the reasoner went red" |
-| Term table export | ➖ | ✅ | *ROBOT → Export terms…* writes one row per term and the columns you choose, as TSV, CSV, JSON, YAML or HTML. Not in the web application. `xlsx` is the one format the bundle cannot write — see Known constraints |
+| Explanation of unsatisfiability | ➖ | ✅ | *Check and test → Explain…* names every unsatisfiable class, the axioms behind each, and which single axiom appears in the most justifications. Protégé's explanation workbench explains one entailment you have already selected; this starts from "the reasoner went red" |
+| Term table export | ➖ | ✅ | *Terms → Export terms…* writes one row per term and the columns you choose, as TSV, CSV, JSON, YAML or HTML. Not in the web application. `xlsx` is the one format the bundle cannot write — see Known constraints |
 | ZIP export | ✅ | ➖ | It is a folder on disk |
-| Widoco HTML docs | ✅ | ✅ | *Project → Documentation…* since 1.103.0. The 39 MB jar is installed rather than embedded — it carries its own OWL API and Guava — and needs Java 11, which 5.6.9 has and 5.5.0 does not |
+| Widoco HTML docs | ✅ | ✅ | *Build and release → Documentation…* since 1.103.0. The 39 MB jar is installed rather than embedded — it carries its own OWL API and Guava — and needs Java 11, which 5.6.9 has and 5.5.0 does not |
 | Prefix management | ✅ | 🔶 | Colouring done; editing prefixes not |
 | Provenance (Dublin Core) | ✅ | ✅ | `dcterms:contributor`/`created`/`date`, stamped for edits made anywhere in Protégé, not only on the canvas |
 
@@ -168,8 +168,8 @@ individual views in a tabbed column beside the canvas, so none of this needs a t
 | Warning when peers edit different ontologies | ➖ | ✅ | Two people whose board id collides otherwise apply each other's axioms in silence. The warning names the peer. It could never fire before 1.50.0 |
 | Semantic merge engine | ✅ | ✅* | *Reused server-side rather than reimplemented in Java — deliberate |
 | Entity locking | ✅ | ❌ | **Build.** Advisory in both |
-| Comments, @mentions | ✅ | 🔶 | Attributed editor and curator notes ship, and *Notes → Discussion link…* points at the issue. No reply threads, no @mentions |
-| Git-based collaboration | ❌ | ✅ | *Git…* does status, stage, commit, pull, push and branch; *Pull request…* opens one and lists what is open, through the GitHub CLI; *Project → Compare releases…* diffs two versions term by term. Reviewing a pull request is still the browser's job |
+| Comments, @mentions | ✅ | 🔶 | Attributed editor and curator notes ship, and *Terms → Discussion link…* points at the issue. No reply threads, no @mentions |
+| Git-based collaboration | ❌ | ✅ | *Git…* does status, stage, commit, pull, push and branch; *Pull request…* opens one and lists what is open, through the GitHub CLI; *Build and release → Compare releases…* diffs two versions term by term. Reviewing a pull request is still the browser's job |
 | Task board (Kanban) | ✅ | ➖ | Belongs in the web app; a desktop plugin is the wrong home |
 
 ## 7. Web-application machinery

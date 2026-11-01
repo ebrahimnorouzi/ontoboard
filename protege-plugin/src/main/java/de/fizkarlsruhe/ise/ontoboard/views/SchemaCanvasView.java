@@ -2994,9 +2994,9 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         Object[] options = {"Open ID ranges...", "Close"};
         int choice = JOptionPane.showOptionDialog(this, why + "\n\nAn ID range is a block of term"
                         + " numbers kept for one editor, so two people never give two terms the"
-                        + " same identifier. Add one for yourself under OntoBoard > Project >"
-                        + " ID ranges...; in a shared project a maintainer usually approves it in"
-                        + " the pull request.",
+                        + " same identifier. Add one for yourself under"
+                        + " OntoBoard > Project > ID ranges...; in a shared project a maintainer"
+                        + " usually approves it in the pull request.",
                 "No identifiers for you yet", JOptionPane.DEFAULT_OPTION,
                 JOptionPane.INFORMATION_MESSAGE, null, options, options[0]);
         if (choice == 0) {
@@ -4329,7 +4329,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
 
                 JMenuItem addNote = new JMenuItem("Sticky note here\u2026");
                 addNote.setToolTipText("A note on the diagram. It is not in the ontology and "
-                        + "never appears in a release - see OntoBoard > Notes for one that does.");
+                        + "never appears in a release - see OntoBoard > Terms > Note on the selected term... for one that does.");
                 addNote.addActionListener(a -> createStickyNote(where));
                 menu.add(addNote);
 

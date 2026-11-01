@@ -109,7 +109,8 @@ through the file.
 
 ## 4. Connect both
 
-In each window: **Window → Tabs → OntoBoard → Collaborate…**
+In each window, on the OntoBoard tab (**Window → Tabs → OntoBoard**), press **Collaborate…** on
+the board's toolbar.
 
 | Field | Window A | Window B |
 |---|---|---|
@@ -175,7 +176,7 @@ for which axiom kind it was.
 These are in the plan, not in the build. Testing them will find nothing:
 
 - **Threaded comments and @mentions** — no reply threads and no comment operation in the shared
-  vocabulary. *Notes → Discussion link…* points at an issue tracker instead, which is where an OBO
+  vocabulary. *Terms → Discussion link…* points at an issue tracker instead, which is where an OBO
   project's discussion usually lives anyway.
 - **Sticky notes and frames, *live*** — they are built and drawn: right-click the canvas for
   *Add note* or *Add frame*, and both are editable in place. What they do not do is travel through
@@ -187,13 +188,13 @@ These are in the plan, not in the build. Testing them will find nothing:
 
 Three items that used to be on this list now ship, and testing them *will* find something:
 
-- **Editorial notes** — *Notes → Note on the selected term…* and *Notes → All notes…* write and list
+- **Editorial notes** — *Terms → Note on the selected term…* and *Terms → All notes…* write and list
   `IAO:0000116` editor notes and `IAO:0000232` curator notes. They travel live, as
   `updateAnnotation`.
-- **Provenance** — *Project → Provenance…* stamps `dcterms:contributor` and a date; `EditWatcher`
-  attributes what you change.
-- **Release** — *Project → Release…* runs the build and stamps `owl:versionIRI`, and
-  *Project → Compare releases…* diffs two of them term by term.
+- **Provenance** — *OntoBoard → Record who edits terms…* stamps `dcterms:contributor` and a date;
+  `EditWatcher` attributes what you change.
+- **Release** — *Build and release → Release…* runs the build and stamps `owl:versionIRI`, and
+  *Build and release → Compare releases…* diffs two of them term by term.
 
 See the [requirements analysis](superpowers/specs/2026-08-26-provenance-and-release-requirements.md)
 for what the remaining ones need.

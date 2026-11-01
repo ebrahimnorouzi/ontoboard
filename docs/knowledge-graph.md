@@ -53,12 +53,12 @@ column is, and every row after that is one thing.
   does not take it from the property, so a date typed plainly becomes text; *Template...* warns
   when the property says its values are dates.
 
-*Knowledge graph → Template...* → *Write me a template to start from* writes a sheet with the
+*Spreadsheets → Template...* → *Write me a template to start from* writes a sheet with the
 columns most terms need, to copy.
 
 ## 2. Give every row an identifier
 
-Leave the ID blank on new rows. *Knowledge graph → Sheet editor* opens the sheets beside the open
+Leave the ID blank on new rows. *Spreadsheets → Sheet editor* opens the sheets beside the open
 file (`templates/`, or `src/templates/` in a project) - select a sheet's tab and press
 **Generate IRIs...**. It offers the project's ID ranges, *Continue the numbering in these sheets*,
 a timestamp, a UUID or the label itself, previews what it will write, and never mints an
@@ -66,14 +66,14 @@ identifier that is already used in a sheet or in the ontology. **Save** writes t
 
 ## 3. Check the sheets
 
-*Knowledge graph → Check sheets...* reads the whole folder against the open ontology and lists, cell
+*Spreadsheets → Check sheets...* reads the whole folder against the open ontology and lists, cell
 by cell: names that point at nothing or at two things, a template placeholder left in a cell,
 pasted whitespace, a curly quote where a plain one was meant - each with the correction where there
 is an obvious one. Nothing is changed. The sheet editor marks the same problems where you type.
 
 ## 4. Build the graph
 
-Open the graph file in Protégé. *Knowledge graph → Template...*, choose the first sheet and
+Open the graph file in Protégé. *Spreadsheets → Template...*, choose the first sheet and
 *Add the axioms to this ontology*; then the next sheet. Each sheet is one step for *Edit → Undo*.
 A row that cannot be read is listed with its row and column, and the other rows are still built.
 *File → Save*.
@@ -83,8 +83,8 @@ A row that cannot be read is listed with its row and column, and the other rows 
 - *Reasoner → HermiT → Start reasoner*: whether the graph is consistent with the ontology, and
   what each thing turns out to be - a pizza with a hot topping is a *spicy pizza* when the ontology
   defines one, without anybody saying so.
-- *ROBOT → SPARQL...*: questions - which pizzas each pizzeria baked on a day, who baked them, in
-  which oven.
+- *Check and test → SPARQL...*: questions - which pizzas each pizzeria baked on a day, who baked
+  them, in which oven.
 
 ## 6. Version it
 

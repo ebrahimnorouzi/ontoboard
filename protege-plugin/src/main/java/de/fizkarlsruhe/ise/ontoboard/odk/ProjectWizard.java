@@ -327,8 +327,9 @@ public final class ProjectWizard {
                             + "\n\nEditing " + config.getEditFile().getName()
                             + " - the file you work in. It is on the OntoBoard tab now."
                             + "\n\nNext: OntoBoard > Start here: the guide... walks you through"
-                            + " the rest. To check the ontology at any time, OntoBoard > Project"
-                            + " > Build... and choose test. Nothing else needs installing.",
+                            + " the rest. To check the ontology at any time,"
+                            + " OntoBoard > Build and release > Build... and choose test."
+                            + " Nothing else needs installing.",
                     "Project created", JOptionPane.INFORMATION_MESSAGE);
         } catch (Exception couldNotOpen) {
             JOptionPane.showMessageDialog(parent,

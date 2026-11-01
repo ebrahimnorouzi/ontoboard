@@ -65,16 +65,16 @@ SPARQL panel (1.33.0) used to be on this list and are now features - they are de
     weight — as this entry did until 1.102.0 — misdirects whoever reads it next, including
     whoever decides what to implement.
 - **Threaded comments and discussion** — a term can be linked to its issue with
-  *Notes → Discussion link…*, which writes `IAO:0000233 term tracker item`, and editorial
+  *Terms → Discussion link…*, which writes `IAO:0000233 term tracker item`, and editorial
   notes (`IAO:0000116`/`IAO:0000232`) carry an author and date. But the argument itself
   lives in the tracker: there is no reply thread inside the ontology, deliberately, because
   an unbounded mutable conversation would appear in every release and every diff.
 - **Reviewing a pull request** — *Pull request…* opens one and lists what is open, since
   1.101.0. Reading a diff, leaving review comments and merging are still the browser's job, and
   are a larger piece of work than opening one: a review needs the diff rendered, and an OWL diff
-  that means anything is *ROBOT → Compare releases…*, not a line diff of RDF/XML.
-- **A multi-version documentation site.** *Project → Documentation…* generates the page for
-  one ontology and opens it, since 1.103.0. Widoco's own multi-language and versioned-site
+  that means anything is *Build and release → Compare releases…*, not a line diff of RDF/XML.
+- **A multi-version documentation site.** *Build and release → Documentation…* generates the page
+  for one ontology and opens it, since 1.103.0. Widoco's own multi-language and versioned-site
   features are not driven from here, and the generated CI workflow does not publish the page —
   the three real projects that publish one do it with a hand-written job.
 - **Nothing prevents two people editing one term** — and nothing in OntoBoard can.
@@ -202,9 +202,9 @@ The other half arrived in 1.40.0 and grew in 1.44.0. `tools/smoke.ps1 -SelfTest`
 `-Dontoboard.selftest=true`, and the startup hook then drives **nine** menu items against a
 throwaway ODK project — scaffolded by the wizard's own code into a temp directory and deleted
 afterwards — logging what each reported: Measure, Quality report, Explain, SPARQL, Export terms,
-Profile, Imports, Refresh imports, All notes. A person can run the same thing from *OntoBoard →
-Run self-test*; both go through one implementation, because a self-test with two implementations
-grows a version nobody runs.
+Profile, Check imports, Refresh imports, All notes. A person can run the same thing from
+*OntoBoard → Run self-test*; both go through one implementation, because a self-test with two
+implementations grows a version nobody runs.
 
 **On Windows, on every push, since 1.131.0.** A receipt is a run on somebody's machine, and for
 1.129.0 and 1.130.0 that machine was a Mac - while the two defects users had just reported, frames
@@ -282,12 +282,12 @@ report for nine versions.
 
 Ordered by what is being worked on:
 
-1. ~~**Pull requests**~~ — **opening one shipped in 1.101.0.** *Project → Pull request…* runs
+1. ~~**Pull requests**~~ — **opening one shipped in 1.101.0.** *Share → Pull request…* runs
    the GitHub CLI: it lists what is open and proposes the branch you are on, after `gh`'s own
    `--dry-run` has checked it and you have approved the exact command. Reviewing one is still the
    browser's job — see above.
-2. ~~**Widoco**~~ — **shipped in 1.103.0.** *Project → Documentation…* runs it on the release
-   product and opens the page.
+2. ~~**Widoco**~~ — **shipped in 1.103.0.** *Build and release → Documentation…* runs it on the
+   release product and opens the page.
 
     It is installed rather than embedded, and that was measured: Widoco is not on Maven Central
     at all, and its only published form is a 40,858,575-byte shaded jar carrying 1,533 OWL API
@@ -324,7 +324,7 @@ Ordered by what is being worked on:
     putting all three back after a maintainer deleted them. An editor would have made editing a
     dead file feel productive.
 
-    **What shipped instead** is *Project → Check project metadata*, which reports where a
+    **What shipped instead** is *Check and test → Check project metadata*, which reports where a
     project's statements about itself disagree. Every check in it fires on a real project: all
     three registry entries declare CC-BY while their ontologies annotate CC0, three of four
     disagree on the title between the ontology and the ODK YAML, and all four annotate a licence

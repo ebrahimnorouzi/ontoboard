@@ -130,7 +130,7 @@ public class QuestionTestAction extends ProtegeOWLAction {
         row(form, 6, "", new JLabel("<html>The test lists what <i>breaks</i> the rule; an empty "
                 + "answer passes.<br>" + (root == null ? "This ontology is not in a project, so "
                 + "the test is shown to copy rather than saved." : "It is saved in src/sparql/, "
-                + "and Project > Build... runs it from then on.") + "</html>"));
+                + "and Build and release > Build... runs it from then on.") + "</html>"));
         if (JOptionPane.showConfirmDialog(getOWLWorkspace(), form, "Write a test from a question",
                 JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE)
                 != JOptionPane.OK_OPTION) {

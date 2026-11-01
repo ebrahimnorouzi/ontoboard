@@ -333,7 +333,7 @@ public final class Konclude {
                     + "equivalent data properties, and ClassAssertion.",
             "It cannot emit inferred property assertions, SameIndividual, DifferentIndividuals, "
                     + "disjointness or property characteristics - there is no code path for them.",
-            "It offers no explanations. Use ROBOT > Explain... for those, which runs in process.",
+            "It offers no explanations. Use Check and test > Explain... for those, which runs in process.",
             "It is x86-64 only. There is no arm64 build, so on Apple silicon it runs under "
                     + "Rosetta 2.",
             "Its last release was 2021-06-19."));

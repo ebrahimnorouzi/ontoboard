@@ -171,7 +171,7 @@ public final class ScriptRun {
                         + "runtime, no native ODK environment, and no " + script.getInterpreter()
                         + " on PATH. A real ODK project's scripts usually need the ODK image "
                         + "itself - start Docker or Podman, or point OntoBoard at a native ODK "
-                        + "environment under Project > Check requirements.");
+                        + "environment under OntoBoard > Check requirements.");
     }
 
     /**

@@ -179,7 +179,7 @@ public class RefreshImportsAction extends OntoBoardAction {
                     result.warn(row.getName() + " is declared as " + row.describeDeclaration()
                             + " but has no term list, so neither this nor "
                             + "`make refresh-imports` can build it. Run "
-                            + "ROBOT > Import terms from a list... for it to write one.");
+                            + "Reuse > Import terms from a list... for it to write one.");
                     break;
                 case REFUSED:
                     // Named rather than rebuilt approximately. Each reason is ODK's own rule for
@@ -196,15 +196,16 @@ public class RefreshImportsAction extends OntoBoardAction {
                     result.warn(row.getName() + " is in " + ImportModules.IMPORTS_DIRECTORY
                             + " but the project settings do not list it (import_group.products),"
                             + " so a build made with ODK itself would never update it. To list"
-                            + " it, run ROBOT > Import terms from a list... once more for the same"
+                            + " it, run Reuse > Import terms from a list... once more for the same"
                             + " source and terms - that records it. If the module is no longer"
                             + " used, delete the file.");
                     break;
                 case PATTERN:
                     patterns++;
                     result.note(row.getName() + " is a pattern from OntoBoard's library, so it is "
-                            + "left as it is: nothing downloads it. To change it, use ROBOT > "
-                            + "Pattern library... and import the pattern again.");
+                            + "left as it is: nothing downloads it. To change it, use "
+                            + "OntoBoard > Reuse > Pattern library... and import the pattern "
+                            + "again.");
                     break;
                 default:
                     break;
@@ -235,7 +236,7 @@ public class RefreshImportsAction extends OntoBoardAction {
                     + "empty), so a build made with ODK itself would update none of the modules "
                     + "in " + ImportModules.IMPORTS_DIRECTORY + ". Modules made by earlier "
                     + "versions of OntoBoard were not listed; running "
-                    + "ROBOT > Import terms from a list... "
+                    + "Reuse > Import terms from a list... "
                     + "again for each one lists it, which is what makes the project "
                     + "build for anyone else.");
         }

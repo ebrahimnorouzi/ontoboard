@@ -460,7 +460,7 @@ public class ImportTermsAction extends OntoBoardAction {
                 + (joining == 0 ? "These are all among them, so the module is rebuilt as it was."
                         : joining + (joining == 1 ? " joins" : " join") + " them; nothing "
                                 + "imported before is taken out. To take terms out, use "
-                                + "OntoBoard > Imported terms..."));
+                                + "OntoBoard > Reuse > Imported terms..."));
         return new ArrayList<IRI>(all);
     }
 

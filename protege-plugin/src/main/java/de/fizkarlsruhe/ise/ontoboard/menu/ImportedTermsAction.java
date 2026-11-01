@@ -334,7 +334,7 @@ public class ImportedTermsAction extends ProtegeOWLAction {
             text.append(" (").append(source.getMethod().getLabel()).append(").");
             if (source.getPattern() != null) {
                 text.append(" From OntoBoard's pattern library: it changes when the pattern is "
-                        + "imported again (ROBOT &gt; Pattern library...).");
+                        + "imported again (OntoBoard &gt; Reuse &gt; Pattern library...).");
             } else if (source.getFrom() == null) {
                 text.append(" Its term list does not say where it comes from, so it cannot be "
                         + "rebuilt here.");

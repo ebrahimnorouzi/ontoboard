@@ -47,7 +47,7 @@ that term used to be.
 ### 3. A graph of the imports · *built in 1.83.0*
 
 `OntoGrafImportView` and `ImportsGraphModel` draw the `owl:imports` structure as a graph.
-OntoBoard has the same information in a table (*Project → Imports…*) and it is a better table
+OntoBoard has the same information in a table (*Reuse → Check imports*) and it is a better table
 than OntoGraf's graph is a graph — it says what each import resolved to and why an unresolved one
 failed. But an ODK project's import structure is a shape, and a shape is easier to see than to
 read: five modules importing a mirror that imports upstream is one picture and twelve table rows.
@@ -97,7 +97,7 @@ several of these are the reason the canvas exists.
 2. **Export as DOT** (1.79.0). A serialiser over the projection the canvas already holds.
 3. **Pinned tooltips** (1.83.0). Select a term and press <kbd>P</kbd>; Shift+P clears them. Up
    to four at once — enough to compare, few enough to still see the diagram.
-4. **An imports graph** (1.83.0). *Project → Imports graph…*, with a Copy as DOT button.
+4. **An imports graph** (1.83.0). *Reuse → Imports graph…*, with a Copy as DOT button.
 
 One honest note on the fourth. Measured on the real ODK project this plugin is built against,
 the imports graph is a star: the edit file and four modules, nothing nested, nothing shared. For

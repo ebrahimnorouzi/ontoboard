@@ -37,7 +37,7 @@ import org.protege.editor.owl.ui.action.ProtegeOWLAction;
 import org.semanticweb.owlapi.model.IRI;
 
 /**
- * OntoBoard &gt; ROBOT &gt; Pattern library... - the 159 design patterns shipped in the plugin,
+ * OntoBoard &gt; Reuse &gt; Pattern library... - the 159 design patterns shipped in the plugin,
  * and any of the user's own.
  *
  * <p><b>Your own patterns, from a folder, with no rebuild.</b> The library used to be exactly

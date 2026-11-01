@@ -149,7 +149,12 @@ It holds because: the ODK authors write that the ODK "is not aimed at the actual
 1. **The loop, timed.** The claim is about iteration cost, so give a number: wall-clock for `edit → robot report → read finding → fix → report again`, container versus in-process, on NFDIcore 3.0.4, MWO 3.0.2, PMDco 3.0.0-rc2 and ECTO — all already on this machine under `data/`. `robot/QualityReport` is the in-process arm, `proc/ProcessRunner` plus the pattern in `RobotCliParityTest` is the container arm. **3 d.** It is the only results table in your paper, and **OntoEditor has no results table at all.**
 2. **Agreement with ROBOT, as a figure.** You have `RobotParityTest` and `RobotCliParityTest` comparing nine operations against the real binary. Report the count, and report the one principled disagreement that `docs/limitations.md` already documents (the OWL 2 DL check versus `robot validate-profile`). **1 d** — reporting, not code.
 
-**And the adopter must be written up as a deployment, not a mention.** OntoEditor's §8 Adoption is 61 words about *potential* integration with VoCoREG and establishes zero third-party use — remarkable for an In-Use paper. You have one real adopter. Quantify it: which ontologies, how many terms and axioms through the sheet chain (30,972 is already measured), how many releases cut via `Project → Release…`, over what period. **2 d of writing, 0 of code**, and it is where you clear the bar outright.
+**And the adopter must be written up as a deployment, not a mention.** OntoEditor's §8 Adoption is
+61 words about *potential* integration with VoCoREG and establishes zero third-party use —
+remarkable for an In-Use paper. You have one real adopter. Quantify it: which ontologies, how many
+terms and axioms through the sheet chain (30,972 is already measured), how many releases cut via
+`Build and release → Release…`, over what period. **2 d of writing, 0 of code**, and it is where you
+clear the bar outright.
 
 ---
 

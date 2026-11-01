@@ -13,7 +13,7 @@ at all — and about what OntoBoard has actually checked on your behalf.
 A pattern exists to answer a question about your domain. So search for the question:
 
 !!! tip "Search the library by what you want to ask"
-    **OntoBoard → Pattern library…** opens the library with a search box. Type
+    **OntoBoard → Reuse → Pattern library…** opens the library with a search box. Type
     `working for which organization` and you get the pattern that answers it. The search looks
     at each pattern's id, name, description, category, domain **and its competency questions** —
     that last field is the one written in the words you would use, so it is usually the one that
@@ -82,7 +82,7 @@ disagree — so a page cannot claim something a reasoner would not say today.
 
 !!! warning "You do not have to read this page to be warned"
     The same verdicts ship inside the plugin. Select one of the flagged patterns in
-    **OntoBoard → Pattern library…** and the chooser says so in red before you import it,
+    **OntoBoard → Reuse → Pattern library…** and the chooser says so in red before you import it,
     with the reason. A pattern a reasoner is happy with says nothing — a box on all 162 would be
     a box nobody reads, and it would make the four that matter harder to notice.
 
@@ -157,7 +157,7 @@ reasoning here deliberately does not depend on any of them.
 
 ## Using one, once you have chosen
 
-**OntoBoard → Pattern library…** hands the pattern to *Import terms…*, which writes the
+**OntoBoard → Reuse → Pattern library…** hands the pattern to *Import terms…*, which writes the
 term list, the module, the `owl:imports` and the catalog entry the way ODK expects. See
 [Working with ODK](odk-workflow.md).
 

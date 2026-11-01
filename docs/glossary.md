@@ -26,11 +26,12 @@ start - the [guide](guide.md) uses each one only when it gets to it.
 
 **ROBOT**
 :   The tool ODK uses to check, convert and extract parts of ontologies. OntoBoard has it built in,
-    so its menu items (under *ROBOT*) run inside Protégé - nothing to install.
+    so what OntoBoard does with it - the checks under *Check and test*, importing and exporting
+    terms, templates - runs inside Protégé, with nothing to install.
 
 **Build**
-:   Checking the ontology: *Project → Build...*, and choose `test`. It runs the reasoner, the
-    quality report, your tests and the OWL profile check, and lists what is wrong.
+:   Checking the ontology: *Build and release → Build...*, and choose `test`. It runs the reasoner,
+    the quality report, your tests and the OWL profile check, and lists what is wrong.
 
 **ID range**
 :   A block of term numbers kept for one editor, so two people never give two terms the same
@@ -42,8 +43,8 @@ start - the [guide](guide.md) uses each one only when it gets to it.
 ## Releases
 
 **Release**
-:   A finished version of the ontology that others can use: *Project → Release...*. It is the edit
-    file, reasoned, with its version recorded, kept under `releases/<version>/`.
+:   A finished version of the ontology that others can use: *Build and release → Release...*. It is
+    the edit file, reasoned, with its version recorded, kept under `releases/<version>/`.
 
 **Version**
 :   The number of a release. With semantic versions, `1.4.0` then `1.5.0` means terms were added;
@@ -80,9 +81,9 @@ start - the [guide](guide.md) uses each one only when it gets to it.
 :   The list of terms a module is made from, one per line, next to the module.
 
 **Imported terms**
-:   *OntoBoard → Imported terms...*: every import and the terms it brings, by label - the ones you
-    chose and the ones that came along because a chosen term needs them. Terms are added and
-    taken out there, and the module is rebuilt at once.
+:   *OntoBoard → Reuse → Imported terms...*: every import and the terms it brings, by label - the
+    ones you chose and the ones that came along because a chosen term needs them. Terms are added
+    and taken out there, and the module is rebuilt at once.
 
 **Catalog**
 :   A file (`catalog-v001.xml`) telling Protégé where to find each imported file on disk, so it
@@ -141,8 +142,8 @@ start - the [guide](guide.md) uses each one only when it gets to it.
 **ROBOT template**
 :   A spreadsheet whose first row is your headings and whose second row says what each column is
     (`ID`, `TYPE`, `AL rdfs:label@en`, `I <property>`); every row after that becomes a term or an
-    individual. *Knowledge graph → Template...*.
+    individual. *Spreadsheets → Template...*.
 
 **Sheet editor**
-:   *Knowledge graph → Sheet editor*: the templates of a folder, open for editing inside Protégé,
+:   *Spreadsheets → Sheet editor*: the templates of a folder, open for editing inside Protégé,
     with the problems marked where you type and identifiers generated for new rows.

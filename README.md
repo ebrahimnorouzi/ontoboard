@@ -28,7 +28,7 @@ and save. A project OntoBoard scaffolded runs seven of its eight generated build
 **nothing installed at all**: no make, no robot, no shell, no container, on any platform.
 
 Where a container genuinely is needed, OntoBoard uses the one your project declares — or Podman,
-or a native `odk install` environment. *OntoBoard → Project → Check requirements* tells you what
+or a native `odk install` environment. *OntoBoard → Check requirements* tells you what
 you can do right now and what to install for the rest.
 
 ## Install

@@ -331,7 +331,7 @@ public final class CanvasLegend {
                 "#FFFFFF", "#2D6FBF", null));
         entries.add(new Entry(Form.MODIFIER, SchemaStyles.NOTED, "Has an editorial note",
                 "A heavier border. Somebody has written an editor or curator note on this term - "
-                        + "read them all with OntoBoard > Notes > All notes.",
+                        + "read them all with OntoBoard > Terms > All notes.",
                 "#FFFFFF", "#2D6FBF", null));
         entries.add(new Entry(Form.MODIFIER, SchemaStyles.IMPORTED, "Imported term",
                 "Faded. This term is defined in an ontology your file imports, not in your file - so "

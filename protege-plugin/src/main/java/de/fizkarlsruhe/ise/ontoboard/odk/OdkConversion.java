@@ -331,7 +331,7 @@ public final class OdkConversion {
         log.done(4, warn.clean());
         stopIfAsked(attempt, 4, result);
 
-        // 6. Build and test, as Project > Build... > test does.
+        // 6. Build and test, as Build and release > Build... > test does.
         log.step(5);
         try {
             OWLOntologyManager building = OWLManager.createOWLOntologyManager();
@@ -346,7 +346,7 @@ public final class OdkConversion {
             result.buildPassed = outcome.isOk();
             if (!outcome.isOk()) {
                 warn.warn("The build found problems: " + outcome.getFailure() + " The project is "
-                        + "made all the same; Project > Build... shows them in Protégé.");
+                        + "made all the same; Build and release > Build... shows them in Protégé.");
             }
         } catch (Exception cannot) {
             warn.warn("The build could not run: " + cannot.getMessage());
@@ -587,7 +587,7 @@ public final class OdkConversion {
             if (imported == null) {
                 warn.warn(declaration.getIRI() + " could not be read, so it stays an import of "
                         + "the whole ontology. Turn it into a module later with "
-                        + "OntoBoard > Imported terms... once it can be read.");
+                        + "OntoBoard > Reuse > Imported terms... once it can be read.");
                 continue;
             }
             List<IRI> terms = new ArrayList<IRI>();

@@ -13,7 +13,10 @@ import javax.swing.JTextField;
 import org.semanticweb.owlapi.model.OWLOntology;
 
 /**
- * Provenance &gt; Who to record - the ORCID or name new terms are attributed to.
+ * Record who edits terms - the ORCID or name the terms you add or change are attributed to.
+ *
+ * <p>It was called Provenance..., which is the right word for an ontology engineer and no help to
+ * anybody else looking for where to put their ORCID: the menu says what it does instead.
  *
  * <p>Separate from the collaboration display name on purpose, and the dialog says so: a cursor
  * label is a nickname, while an author recorded in a published ontology should be an ORCID, which
@@ -32,7 +35,7 @@ public class ProvenanceAction extends OntoBoardAction {
 
     @Override
     protected String operationName() {
-        return "Provenance";
+        return "Record who edits terms";
     }
 
     @Override
@@ -54,7 +57,7 @@ public class ProvenanceAction extends OntoBoardAction {
                 + "does not start because you opened it here."
                 + "</body></html>"));
 
-        if (JOptionPane.showConfirmDialog(getOWLWorkspace(), form, "Provenance",
+        if (JOptionPane.showConfirmDialog(getOWLWorkspace(), form, "Record who edits terms",
                 JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE)
                 != JOptionPane.OK_OPTION) {
             return null;

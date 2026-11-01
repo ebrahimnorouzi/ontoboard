@@ -33,7 +33,7 @@ public class AllNotesAction extends OntoBoardAction {
         if (notes.isEmpty()) {
             return result.summary("No editorial notes in this ontology. They are stored as "
                     + "IAO:0000116 editor notes and IAO:0000232 curator notes; add one with "
-                    + "OntoBoard > Notes > Note on the selected term.").build();
+                    + "OntoBoard > Terms > Note on the selected term.").build();
         }
 
         int editor = 0;

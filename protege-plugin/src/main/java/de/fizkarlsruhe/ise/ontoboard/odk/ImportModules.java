@@ -225,7 +225,7 @@ public final class ImportModules {
             text.append(PATTERN_LINE).append(' ').append(pattern.trim()).append('\n');
             text.append("# From OntoBoard's pattern library, so nothing downloads it and Refresh\n");
             text.append("# imports leaves it alone. To change what the module contains, use\n");
-            text.append("# OntoBoard > ROBOT > Pattern library... and import the pattern again.\n");
+            text.append("# OntoBoard > Reuse > Pattern library... and import the pattern again.\n");
             text.append("# One term per line.\n");
         } else {
             text.append("# One term per line. This file is what makes the module rebuildable:\n");

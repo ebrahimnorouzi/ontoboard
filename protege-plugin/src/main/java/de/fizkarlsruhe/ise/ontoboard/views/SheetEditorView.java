@@ -160,7 +160,7 @@ public class SheetEditorView extends AbstractOWLViewComponent {
         if (SheetLocation.sheetsIn(templates) == 0) {
             folder = templates;
             say("No templates yet. They belong in " + templates.getAbsolutePath()
-                    + " - write one with ROBOT > Template... and it will open here, or use "
+                    + " - write one with Spreadsheets > Template... and it will open here, or use "
                     + "Open folder... for somewhere else.");
             return;
         }
@@ -466,7 +466,7 @@ public class SheetEditorView extends AbstractOWLViewComponent {
      *
      * <p>A knowledge graph is many sheets - the one this was built against is twenty-six - so
      * adding the second is not an unusual thing to want. The new sheet gets the same starter
-     * columns {@code ROBOT > Template...} writes, with identifiers taken from the project's
+     * columns {@code Spreadsheets > Template...} writes, with identifiers taken from the project's
      * own id ranges, because a new sheet full of examples that produce nothing is how the old
      * starter wasted people's time.
      */
@@ -1103,7 +1103,7 @@ public class SheetEditorView extends AbstractOWLViewComponent {
         ProvenanceSettings settings = ProvenanceSettings.load();
         String agent = settings.canonicalAgent();
         if (agent == null || agent.trim().isEmpty()) {
-            say("Nobody to record. Set who you are in OntoBoard > Provenance... first.");
+            say("Nobody to record. Set who you are in OntoBoard > Record who edits terms... first.");
             return;
         }
         int added = SheetProvenance.ensureColumns(book, name, settings.hasOrcid());

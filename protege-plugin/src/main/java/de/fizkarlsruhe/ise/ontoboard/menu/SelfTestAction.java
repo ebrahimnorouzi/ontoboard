@@ -361,18 +361,18 @@ public class SelfTestAction extends OntoBoardAction {
         }
 
         Map<String, OntoBoardAction> underTest = new LinkedHashMap<String, OntoBoardAction>();
-        underTest.put("ROBOT > Measure...", new MeasureAction());
-        underTest.put("ROBOT > Quality report...", new QualityReportAction());
-        underTest.put("ROBOT > Explain...", new ExplainAction());
-        underTest.put("ROBOT > SPARQL...", new SparqlAction());
-        underTest.put("ROBOT > Export terms...", new ExportAction());
-        underTest.put("ROBOT > Profile...", new ProfileAction());
+        underTest.put("Check and test > Measure...", new MeasureAction());
+        underTest.put("Check and test > Quality report...", new QualityReportAction());
+        underTest.put("Check and test > Explain...", new ExplainAction());
+        underTest.put("Check and test > SPARQL...", new SparqlAction());
+        underTest.put("Terms > Export terms...", new ExportAction());
+        underTest.put("Check and test > Profile...", new ProfileAction());
         // These three need a project on disk, which is why the subject is a scaffolded one rather
         // than an ontology held in memory. They report and change nothing: Refresh imports...
         // audits unless asked to rebuild, and the other two only read.
-        underTest.put("Project > Imports...", new ImportsAction());
-        underTest.put("Project > Refresh imports...", new RefreshImportsAction());
-        underTest.put("Notes > All notes...", new AllNotesAction());
+        underTest.put("Reuse > Check imports", new ImportsAction());
+        underTest.put("Reuse > Refresh imports...", new RefreshImportsAction());
+        underTest.put("Terms > All notes", new AllNotesAction());
 
         int failed = 0;
         for (Map.Entry<String, OntoBoardAction> entry : underTest.entrySet()) {
@@ -513,7 +513,7 @@ public class SelfTestAction extends OntoBoardAction {
      * <p>Scaffolded with {@link OdkScaffold} rather than assembled here, so what is tested against
      * is the layout the wizard really produces. If the scaffold changes, this follows it.
      */
-    private static final String BUILD_ROW = "Project > Build (nothing installed)";
+    private static final String BUILD_ROW = "Build and release > Build (nothing installed)";
 
     /**
      * Builds the scratch project the way Build does for a project OntoBoard scaffolded, and says

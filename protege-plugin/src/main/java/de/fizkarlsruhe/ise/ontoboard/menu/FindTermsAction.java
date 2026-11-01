@@ -588,7 +588,7 @@ public class FindTermsAction extends ProtegeOWLAction {
                         + "they need, into\n      ")
                 .append(new java.io.File(imports, name + "_import.owl").getPath()).append('\n')
                 .append("  - list them in ").append(list.getName()).append(", so the import can "
-                        + "be rebuilt and changed later\n      (OntoBoard > Imported terms...)\n")
+                        + "be rebuilt and changed later\n      (OntoBoard > Reuse > Imported terms...)\n")
                 .append("  - import that module into your ontology, with a catalog entry "
                         + "beside it\n");
         if (list.isFile()) {
