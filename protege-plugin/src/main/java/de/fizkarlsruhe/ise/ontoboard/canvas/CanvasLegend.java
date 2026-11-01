@@ -304,6 +304,11 @@ public final class CanvasLegend {
                         + "says which. A union is drawn as its own node, because two domains "
                         + "mean both, and 'either' is a different claim.",
                 null, "#C08A4B", "8 4"));
+        entries.add(new Entry(Form.EDGE, SchemaStyles.RULE_PART, "SWRL rule",
+                "A rule is drawn as a box reading it - rule: a(?x) and b(?x, ?y) then c(?x). A "
+                        + "dotted line runs from each term its body uses (if) to the box, and "
+                        + "from the box to each term it concludes (then).",
+                null, "#5B6B8C", "2 3"));
 
         entries.add(new Entry(Form.MODIFIER, SchemaStyles.UNSATISFIABLE, "Cannot have instances",
                 "A reasoner has found this class unsatisfiable - two of its axioms cannot both "
@@ -401,6 +406,8 @@ public final class CanvasLegend {
                 return SchemaStyles.INVERSE;
             case DOMAIN_RANGE:
                 return SchemaStyles.DOMAIN_RANGE;
+            case RULE_PART:
+                return SchemaStyles.RULE_PART;
             case INFERRED_SUBCLASS:
                 return SchemaStyles.INFERRED_SUBCLASS;
             case INFERRED_TYPE:

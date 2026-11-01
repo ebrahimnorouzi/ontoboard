@@ -137,6 +137,50 @@ public final class OntologyProjection {
         return null;
     }
 
+    /** The first free spot at or below ({@code x}, {@code y}) - for a box placed beside another. */
+    public static double[] besideItsParentAt(
+            de.fizkarlsruhe.ise.ontoboard.layout.CanvasLayout layout, double x, double y) {
+        double down = y;
+        for (int tries = 0; tries < 400 && taken(layout, x, down); tries++) {
+            down += 76;
+        }
+        return new double[] {x, down};
+    }
+
+    /**
+     * {@code root} and everything under it: its subclasses, theirs, and so on, and the
+     * individuals of any of them - what folding a class on the board puts out of sight.
+     */
+    public static Set<String> everythingUnder(OWLOntology ontology, String root) {
+        Set<String> found = new java.util.LinkedHashSet<String>();
+        if (ontology == null || root == null) {
+            return found;
+        }
+        org.semanticweb.owlapi.model.OWLDataFactory df =
+                ontology.getOWLOntologyManager().getOWLDataFactory();
+        java.util.Deque<IRI> waiting = new java.util.ArrayDeque<IRI>();
+        waiting.add(IRI.create(root));
+        found.add(root);
+        while (!waiting.isEmpty()) {
+            OWLClass at = df.getOWLClass(waiting.poll());
+            for (OWLOntology part : ontology.getImportsClosure()) {
+                for (OWLSubClassOfAxiom axiom : part.getSubClassAxiomsForSuperClass(at)) {
+                    if (!axiom.getSubClass().isAnonymous()
+                            && found.add(axiom.getSubClass().asOWLClass().getIRI().toString())) {
+                        waiting.add(axiom.getSubClass().asOWLClass().getIRI());
+                    }
+                }
+                for (OWLClassAssertionAxiom axiom : part.getClassAssertionAxioms(at)) {
+                    if (!axiom.getIndividual().isAnonymous()) {
+                        found.add(axiom.getIndividual().asOWLNamedIndividual().getIRI()
+                                .toString());
+                    }
+                }
+            }
+        }
+        return found;
+    }
+
     private static boolean taken(de.fizkarlsruhe.ise.ontoboard.layout.CanvasLayout layout,
             double x, double y) {
         java.awt.geom.Rectangle2D wanted = new java.awt.geom.Rectangle2D.Double(x, y, 180, 60);
@@ -354,6 +398,7 @@ public final class OntologyProjection {
         collectLegacyDomainRangeEdges(ontology, onCanvasIris, edges);
         collectTypeEdges(ontology, onCanvasIris, edges);
         collectTheRest(ontology, onCanvasIris, nodes, edges, drawExpressions);
+        collectRules(ontology, onCanvasIris, nodes, edges);
 
         // One cell per id. An import closure restates axioms across modules - on a real ODK
         // project's board ten ids arrive two to four times - and SchemaGraph.render inserts an
@@ -1246,6 +1291,105 @@ public final class OntologyProjection {
         addObjectEdge(ontology, on, superClass, PropertyEdgeId.Origin.SCOPED_DOMAIN, "some",
                 some.getProperty().asOWLObjectProperty().getIRI(),
                 some.getFiller().asOWLClass().getIRI(), edges);
+    }
+
+    /**
+     * SWRL rules, each as a node reading the rule - "rule: person(?x) ∧ has age(?x, ?a) →
+     * adult(?x)" - with a line from each term its body uses ("if") and to each term its head
+     * concludes ("then").
+     *
+     * <p>The last kind of logical axiom the board did not draw: on two published ontologies
+     * built on BFO, every other one was drawn and four rules in each were not. A rule has no two
+     * ends to draw a line between, so it takes the node property chains already use - something
+     * the ontology says that is not a term.
+     */
+    private static void collectRules(OWLOntology ontology, Set<String> on,
+            List<CanvasNode> nodes, List<CanvasEdge> edges) {
+        for (org.semanticweb.owlapi.model.SWRLRule rule
+                : ontology.getAxioms(AxiomType.SWRL_RULE, Imports.INCLUDED)) {
+            Set<IRI> body = new java.util.LinkedHashSet<IRI>();
+            Set<IRI> head = new java.util.LinkedHashSet<IRI>();
+            String reads = "rule: " + atoms(ontology, rule.getBody(), body) + " \u2192 "
+                    + atoms(ontology, rule.getHead(), head);
+            boolean touchesBoard = false;
+            for (IRI term : body) {
+                touchesBoard |= isOn(on, term);
+            }
+            for (IRI term : head) {
+                touchesBoard |= isOn(on, term);
+            }
+            if (!touchesBoard) {
+                continue;
+            }
+            String ruleId = EXPRESSION_PREFIX + digestOf(rule.toString());
+            CanvasNode node = new CanvasNode(ruleId, NodeKind.EXPRESSION, reads);
+            if (!nodes.contains(node)) {
+                nodes.add(node);
+            }
+            for (IRI term : body) {
+                if (isOn(on, term)) {
+                    addUnlessAlreadyThere(edges, new CanvasEdge("rule|" + ruleId + "|if|" + term,
+                            iri(term), ruleId, "if", CanvasEdge.Kind.RULE_PART));
+                }
+            }
+            for (IRI term : head) {
+                if (isOn(on, term)) {
+                    addUnlessAlreadyThere(edges, new CanvasEdge("rule|" + ruleId + "|then|" + term,
+                            ruleId, iri(term), "then", CanvasEdge.Kind.RULE_PART));
+                }
+            }
+        }
+    }
+
+    /** "a(?x) ∧ b(?x, ?y)", collecting the named terms the atoms use into {@code terms}. */
+    private static String atoms(OWLOntology ontology,
+            Set<org.semanticweb.owlapi.model.SWRLAtom> atoms, Set<IRI> terms) {
+        StringBuilder reads = new StringBuilder();
+        for (org.semanticweb.owlapi.model.SWRLAtom atom : atoms) {
+            if (reads.length() > 0) {
+                reads.append(" \u2227 ");
+            }
+            Object predicate = atom.getPredicate();
+            String name;
+            if (predicate instanceof org.semanticweb.owlapi.model.OWLEntity) {
+                org.semanticweb.owlapi.model.OWLEntity entity =
+                        (org.semanticweb.owlapi.model.OWLEntity) predicate;
+                terms.add(entity.getIRI());
+                name = DisplayLabels.forEntity(ontology, entity);
+            } else if (predicate instanceof IRI) {
+                // A built-in: swrlb:greaterThan and the like.
+                name = "swrlb:" + localName((IRI) predicate);
+            } else {
+                name = String.valueOf(predicate);
+            }
+            StringBuilder arguments = new StringBuilder();
+            for (org.semanticweb.owlapi.model.SWRLArgument argument : atom.getAllArguments()) {
+                arguments.append(arguments.length() == 0 ? "" : ", ").append(argument(ontology,
+                        argument));
+            }
+            reads.append(name).append('(').append(arguments).append(')');
+        }
+        return reads.toString();
+    }
+
+    private static String argument(OWLOntology ontology,
+            org.semanticweb.owlapi.model.SWRLArgument argument) {
+        if (argument instanceof org.semanticweb.owlapi.model.SWRLVariable) {
+            return "?" + localName(((org.semanticweb.owlapi.model.SWRLVariable) argument)
+                    .getIRI());
+        }
+        if (argument instanceof org.semanticweb.owlapi.model.SWRLIndividualArgument) {
+            org.semanticweb.owlapi.model.OWLIndividual individual =
+                    ((org.semanticweb.owlapi.model.SWRLIndividualArgument) argument)
+                            .getIndividual();
+            return individual.isAnonymous() ? individual.toString()
+                    : DisplayLabels.forEntity(ontology, individual.asOWLNamedIndividual());
+        }
+        if (argument instanceof org.semanticweb.owlapi.model.SWRLLiteralArgument) {
+            return ((org.semanticweb.owlapi.model.SWRLLiteralArgument) argument).getLiteral()
+                    .getLiteral();
+        }
+        return String.valueOf(argument);
     }
 
     /**

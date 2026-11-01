@@ -105,6 +105,11 @@ public final class CanvasNode {
     }
 
     /** The same node, marked as one the reasoner found unsatisfiable. */
+    /** The same node with another label - a folded class's count of what it holds. */
+    public CanvasNode withLabel(String text) {
+        return carrying(new CanvasNode(id, kind, text, notes, unsatisfiable, imported, curie));
+    }
+
     public CanvasNode asUnsatisfiable() {
         return carrying(new CanvasNode(id, kind, label, notes, true, imported, curie));
     }

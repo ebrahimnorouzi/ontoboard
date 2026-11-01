@@ -35,7 +35,15 @@ public final class CanvasEdge {
          * it as one, which is what the class-to-class arrow did, puts a claim on the board that
          * the ontology does not make.
          */
-        DOMAIN_RANGE
+        DOMAIN_RANGE,
+
+        /**
+         * A term's part in a SWRL rule: from a term the rule's body uses to the rule's node
+         * ("if"), and from the rule's node to a term its head concludes ("then"). A rule is a
+         * pattern over variables, not a relation between two terms, so it has a node of its own
+         * and this line says only that the term takes part.
+         */
+        RULE_PART
     }
 
     private final String id;

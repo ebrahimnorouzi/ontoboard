@@ -76,8 +76,10 @@ class SelectionBridgeTest {
                 new CanvasNode(PERSON, NodeKind.CLASS, "Person"),
                 new CanvasNode(AGENT, NodeKind.CLASS, "Agent")),
                 Collections.emptyList()), new CanvasLayout());
-        assertNull(bridge.currentCanvasSelection(),
-                "render() recreates every cell, so the old selection object must be gone");
+        // Since 1.131.0 a drawing keeps the cells that did not change, so the selection survives
+        // it on its own; resync must still not report it outward as if it were new.
+        assertEquals(PERSON, bridge.currentCanvasSelection(),
+                "the cell is kept, and with it the selection");
 
         bridge.resyncAfterRender(selectedBeforeRender);
 

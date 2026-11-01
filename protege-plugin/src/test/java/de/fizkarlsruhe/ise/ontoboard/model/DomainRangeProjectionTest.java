@@ -241,4 +241,40 @@ class DomainRangeProjectionTest {
         }
         throw new AssertionError("age is not on the board");
     }
+
+    /** The last logical axiom the board did not draw: four in each ontology measured. */
+    @Test
+    void aSwrlRuleIsANodeThatReadsTheRuleWithItsTermsJoinedIfAndThen() throws Exception {
+        OWLOntology o = ontology();
+        OWLDataProperty age = df.getOWLDataProperty(IRI.create(NS + "age"));
+        manager.addAxiom(o, df.getOWLDeclarationAxiom(age));
+        org.semanticweb.owlapi.model.SWRLVariable x = df.getSWRLVariable(IRI.create(NS + "x"));
+        org.semanticweb.owlapi.model.SWRLVariable a = df.getSWRLVariable(IRI.create(NS + "a"));
+        manager.addAxiom(o, df.getSWRLRule(
+                new HashSet<org.semanticweb.owlapi.model.SWRLAtom>(Arrays.asList(
+                        df.getSWRLClassAtom(agent, x), df.getSWRLDataPropertyAtom(age, x, a))),
+                Collections.<org.semanticweb.owlapi.model.SWRLAtom>singleton(
+                        df.getSWRLClassAtom(process, x))));
+
+        Projection drawn = OntologyProjection.project(o, all(o), true);
+
+        CanvasNode rule = null;
+        for (CanvasNode node : drawn.getNodes()) {
+            if (node.getLabel().startsWith("rule: ")) {
+                rule = node;
+            }
+        }
+        assertTrue(rule != null, "a node for the rule");
+        assertTrue(rule.getLabel().contains("?x") && rule.getLabel().contains("\u2192"),
+                rule.getLabel());
+        Set<String> parts = new HashSet<String>();
+        for (CanvasEdge edge : drawn.getEdges()) {
+            if (edge.getKind() == CanvasEdge.Kind.RULE_PART) {
+                parts.add(edge.getLabel() + " " + (edge.getLabel().equals("if")
+                        ? edge.getSourceId() : edge.getTargetId()));
+            }
+        }
+        assertEquals(new HashSet<String>(Arrays.asList("if " + NS + "Agent", "if " + NS + "age",
+                "then " + NS + "Process")), parts);
+    }
 }

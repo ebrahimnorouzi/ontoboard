@@ -343,4 +343,71 @@ class SchemaGraphTest {
         assertFalse(box.intersects(frame.x, frame.y, frame.w, frame.h),
                 "an unpositioned node was put on the frame at " + box);
     }
+
+    // ---------- drawing again changes only what changed (1.131.0) ----------
+
+    /**
+     * Every cell was removed and inserted again on every drawing: 1.2 seconds after each edit on
+     * a board of 660 terms. What did not change keeps its cell now.
+     */
+    @Test
+    void drawingTheSameAgainKeepsEveryCell() {
+        SchemaGraph graph = new SchemaGraph();
+        graph.render(twoClassesWithSubClassEdge(), new CanvasLayout());
+        Object person = graph.getCellForId(PERSON);
+        Object edge = graph.getCellForId("sub|1");
+
+        graph.render(twoClassesWithSubClassEdge(), new CanvasLayout());
+
+        assertTrue(person == graph.getCellForId(PERSON), "the same cell, not a new one");
+        assertTrue(edge == graph.getCellForId("sub|1"));
+        assertEquals(3, graph.getModel().getChildCount(graph.getDefaultParent()));
+    }
+
+    @Test
+    void aRenamedTermKeepsItsCellAndShowsTheNewLabel() {
+        SchemaGraph graph = new SchemaGraph();
+        graph.render(twoClassesWithSubClassEdge(), new CanvasLayout());
+        Object person = graph.getCellForId(PERSON);
+
+        graph.render(new Projection(
+                Arrays.asList(new CanvasNode(PERSON, NodeKind.CLASS, "Human"),
+                        new CanvasNode(AGENT, NodeKind.CLASS, "Agent")),
+                Collections.singletonList(
+                        new CanvasEdge("sub|1", PERSON, AGENT, "", CanvasEdge.Kind.SUBCLASS))),
+                new CanvasLayout());
+
+        assertTrue(person == graph.getCellForId(PERSON));
+        assertEquals("Human", ((mxCell) person).getValue());
+    }
+
+    @Test
+    void aTermThatIsGoneTakesItsLinesWithIt() {
+        SchemaGraph graph = new SchemaGraph();
+        graph.render(twoClassesWithSubClassEdge(), new CanvasLayout());
+
+        graph.render(new Projection(
+                Collections.singletonList(new CanvasNode(PERSON, NodeKind.CLASS, "Person")),
+                Collections.<CanvasEdge>emptyList()), new CanvasLayout());
+
+        assertNull(graph.getCellForId(AGENT));
+        assertNull(graph.getCellForId("sub|1"));
+        assertEquals(1, graph.getModel().getChildCount(graph.getDefaultParent()));
+    }
+
+    /** A box nothing placed was given a new free slot on every drawing, so it wandered. */
+    @Test
+    void aBoxNothingPlacedKeepsThePlaceItWasGiven() {
+        SchemaGraph graph = new SchemaGraph();
+        graph.render(twoClassesWithSubClassEdge(), new CanvasLayout());
+        com.mxgraph.model.mxGeometry first =
+                ((mxCell) graph.getCellForId(AGENT)).getGeometry();
+        graph.getModel().setGeometry(graph.getCellForId(AGENT),
+                new com.mxgraph.model.mxGeometry(900, 700, first.getWidth(), first.getHeight()));
+
+        graph.render(twoClassesWithSubClassEdge(), new CanvasLayout());
+
+        assertEquals(900.0, ((mxCell) graph.getCellForId(AGENT)).getGeometry().getX());
+        assertEquals(700.0, ((mxCell) graph.getCellForId(AGENT)).getGeometry().getY());
+    }
 }

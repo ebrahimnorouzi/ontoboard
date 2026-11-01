@@ -34,6 +34,9 @@ public class CanvasLayout {
     /** Terms taken off a board that shows everything, so they do not come back on their own. */
     public List<String> hidden = new ArrayList<>();
 
+    /** Classes folded on the board: what is under them is not drawn until they are opened. */
+    public List<String> collapsed = new ArrayList<>();
+
     /**
      * A copy that shares nothing with this one.
      *
@@ -68,6 +71,7 @@ public class CanvasLayout {
         copy.prefixColors = new LinkedHashMap<>(prefixColors);
         copy.showsEverything = showsEverything;
         copy.hidden = new ArrayList<>(hidden);
+        copy.collapsed = new ArrayList<>(collapsed);
         return copy;
     }
 
@@ -99,6 +103,8 @@ public class CanvasLayout {
         showsEverything = snapshot.showsEverything;
         hidden.clear();
         hidden.addAll(snapshot.hidden);
+        collapsed.clear();
+        collapsed.addAll(snapshot.collapsed);
     }
 
     /**
@@ -152,6 +158,7 @@ public class CanvasLayout {
             }
         }
         hidden.retainAll(declaredIris);
+        collapsed.retainAll(declaredIris);
         // Positions are pruned against the same set rather than against onCanvas, so a position
         // orphaned without a membership entry is cleaned up too.
         for (String iri : new ArrayList<>(nodes.keySet())) {

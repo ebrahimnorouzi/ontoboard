@@ -172,6 +172,9 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
     /** Several change events from one edit are one drawing. */
     private Timer refreshTimer;
 
+    /** How many terms each folded class holds out of sight, for its label. */
+    private final java.util.Map<String, Integer> folded = new java.util.HashMap<String, Integer>();
+
     private SelectionBridge selectionBridge;
     private OWLSelectionModelListener selectionListener;
     /**
@@ -2546,6 +2549,28 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
     private void installKeyboardShortcuts() {
         javax.swing.InputMap keys =
                 graphComponent.getInputMap(javax.swing.JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
+        // TAB, as in a mind map: a subclass of the selected class. Swing spends Tab on moving the
+        // focus before any binding sees it, so on the board itself focus moves with Ctrl+Tab.
+        graphComponent.getGraphControl().setFocusTraversalKeys(
+                java.awt.KeyboardFocusManager.FORWARD_TRAVERSAL_KEYS,
+                java.util.Collections.singleton(javax.swing.KeyStroke.getKeyStroke(
+                        java.awt.event.KeyEvent.VK_TAB, java.awt.event.InputEvent.CTRL_DOWN_MASK)));
+        graphComponent.getGraphControl().setFocusTraversalKeys(
+                java.awt.KeyboardFocusManager.BACKWARD_TRAVERSAL_KEYS,
+                java.util.Collections.singleton(javax.swing.KeyStroke.getKeyStroke(
+                        java.awt.event.KeyEvent.VK_TAB, java.awt.event.InputEvent.CTRL_DOWN_MASK
+                                | java.awt.event.InputEvent.SHIFT_DOWN_MASK)));
+        keys.put(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_TAB, 0),
+                "ontoboard.newSubclass");
+        graphComponent.getActionMap().put("ontoboard.newSubclass",
+                new javax.swing.AbstractAction() {
+                    private static final long serialVersionUID = 1L;
+
+                    @Override
+                    public void actionPerformed(java.awt.event.ActionEvent event) {
+                        newSubclassOfSelection();
+                    }
+                });
         keys.put(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_DELETE, 0),
                 "ontoboard.removeFromCanvas");
         keys.put(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_BACK_SPACE, 0),
@@ -2857,6 +2882,81 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
      * choosing them one at a time is absurd - so this exists, with a confirmation whose threshold
      * is about when the layout stops being readable rather than when it stops being possible.
      */
+    /**
+     * Folds a class away, or opens it again: what is under it - subclasses, transitively, and
+     * their individuals - is not drawn while it is folded, and the class says how many terms it
+     * holds. One undo step; kept with the board.
+     */
+    private void fold(String iri, boolean close) {
+        rememberBoard(close ? "collapsing a class" : "expanding a class");
+        layout.collapsed.remove(iri);
+        if (close) {
+            layout.collapsed.add(iri);
+        }
+        refresh();
+        saveLayoutTo(layoutFile);
+        Integer under = folded.get(iri);
+        setStatus(close ? "Collapsed: " + (under == null ? 0 : under) + " terms under it are not"
+                + " drawn. Right-click it and Expand subclasses to draw them again."
+                : "Expanded: everything under it is drawn again.");
+    }
+
+    /** The frames on the board, to jump to one - the way a board of many regions is read. */
+    private void showFramesMenu(java.awt.Component from) {
+        JPopupMenu menu = new JPopupMenu();
+        java.util.List<CanvasLayout.FrameLayout> frames =
+                new java.util.ArrayList<CanvasLayout.FrameLayout>();
+        for (CanvasLayout.FrameLayout frame : layout.frames) {
+            if (frame != null && frame.id != null && graph.getCellForId(frame.id) != null) {
+                frames.add(frame);
+            }
+        }
+        if (frames.isEmpty()) {
+            JMenuItem none = new JMenuItem("No frames on this board yet");
+            none.setEnabled(false);
+            menu.add(none);
+        }
+        for (final CanvasLayout.FrameLayout frame : frames) {
+            JMenuItem item = new JMenuItem(frame.label == null || frame.label.trim().isEmpty()
+                    ? "(a frame with no name)" : frame.label);
+            item.addActionListener(a -> {
+                Object cell = graph.getCellForId(frame.id);
+                if (cell != null) {
+                    graph.setSelectionCell(cell);
+                    fitTo(graph.getView().getBoundingBox(new Object[] {cell}), true,
+                            "the frame " + frame.label);
+                }
+            });
+            menu.add(item);
+        }
+        JMenuItem all = new JMenuItem("The whole board");
+        all.addActionListener(a -> fitToWindow());
+        menu.addSeparator();
+        menu.add(all);
+        menu.show(from, 0, from.getHeight());
+    }
+
+    /**
+     * A subclass of the selected class, named in one dialog and placed just right of it - Tab, as
+     * in a mind map. Nothing happens unless exactly one class is selected on the board.
+     */
+    private void newSubclassOfSelection() {
+        Object[] selected = graph.getSelectionCells();
+        String parent = selected != null && selected.length == 1
+                ? graph.getIdForCell(selected[0]) : null;
+        OWLOntology ontology = getOWLModelManager().getActiveOntology();
+        if (parent == null || SchemaGraph.isAnnotationId(parent) || ontology == null
+                || !ontology.containsClassInSignature(IRI.create(parent),
+                        org.semanticweb.owlapi.model.parameters.Imports.INCLUDED)) {
+            setStatus("Select one class on the board, then press Tab to give it a subclass.");
+            return;
+        }
+        com.mxgraph.model.mxGeometry at = graph.getModel().getGeometry(selected[0]);
+        double[] spot = OntologyProjection.besideItsParentAt(layout, at.getX() + at.getWidth()
+                + 70, at.getY());
+        createEntityAt(EntityFactory.Kind.CLASS, (int) spot[0], (int) spot[1], IRI.create(parent));
+    }
+
     /**
      * Every term of the ontology on the board from now on: for a board chosen term by term before
      * 1.131.0, or one whose terms were hidden. Arranged afresh, as one undo step.
@@ -3366,6 +3466,10 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         bar.add(buildFindBox());
         bar.addSeparator();
         bar.add(arrangeButton);
+        final JButton framesButton = new JButton("Frames");
+        framesButton.setToolTipText("Jump to a frame - a pattern, the properties, or one you drew");
+        framesButton.addActionListener(a -> showFramesMenu(framesButton));
+        bar.add(framesButton);
         bar.add(inferencesButton);
         bar.add(javax.swing.Box.createHorizontalGlue());
         bar.add(buildOverflowButton());
@@ -3817,6 +3921,20 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                     menu.add(edit);
                     menu.add(colourMenuFor(iri));
                 }
+                if (onTerm && layout.collapsed.contains(iri)) {
+                    JMenuItem open = new JMenuItem("Expand subclasses ("
+                            + folded.getOrDefault(iri, 0) + ")");
+                    open.setToolTipText("Draw again everything under this class");
+                    open.addActionListener(a -> fold(iri, false));
+                    menu.add(open);
+                } else if (onTerm && OntologyProjection.everythingUnder(
+                        getOWLModelManager().getActiveOntology(), iri).size() > 1) {
+                    JMenuItem close = new JMenuItem("Collapse subclasses");
+                    close.setToolTipText("Fold away everything under this class - its subclasses"
+                            + " and their individuals - until it is expanded again");
+                    close.addActionListener(a -> fold(iri, true));
+                    menu.add(close);
+                }
                 if (onTerm) {
                     JMenuItem expand = new JMenuItem("Expand neighbours (1 hop)");
                     expand.setToolTipText("Put everything directly related to this term on the "
@@ -4084,6 +4202,16 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                 getOWLModelManager().getActiveOntology(),
                 drawnMembers(getOWLModelManager().getActiveOntology()), showExpressions);
         projection = withInferences(projection);
+        if (!folded.isEmpty()) {
+            java.util.List<de.fizkarlsruhe.ise.ontoboard.model.CanvasNode> relabelled =
+                    new java.util.ArrayList<de.fizkarlsruhe.ise.ontoboard.model.CanvasNode>();
+            for (de.fizkarlsruhe.ise.ontoboard.model.CanvasNode node : projection.getNodes()) {
+                Integer under = folded.get(node.getId());
+                relabelled.add(under == null ? node
+                        : node.withLabel(node.getLabel() + "  \u25B8 " + under));
+            }
+            projection = new Projection(relabelled, projection.getEdges());
+        }
         // Kept because the DOT export needs the model rather than the rendered picture, and
         // recomputing it at export time could disagree with what is on screen.
         lastProjection = projection;
@@ -4278,9 +4406,22 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         }
     }
 
-    /** The members the layer switches let through. */
+    /** The members the layer switches and folded classes let through. */
     private java.util.Set<String> drawnMembers(OWLOntology ontology) {
         java.util.Set<String> members = membership.asSet();
+        folded.clear();
+        if (ontology != null) {
+            for (String root : layout.collapsed) {
+                if (!members.contains(root)) {
+                    continue;
+                }
+                java.util.Set<String> under = OntologyProjection.everythingUnder(ontology, root);
+                under.retainAll(members);
+                under.remove(root);
+                folded.put(root, under.size());
+                members.removeAll(under);
+            }
+        }
         java.util.prefs.Preferences preferences =
                 java.util.prefs.Preferences.userNodeForPackage(SchemaCanvasView.class);
         boolean objectProperties = preferences.getBoolean(SHOW_OBJECT_PROPERTIES, true);
@@ -4677,6 +4818,11 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
      * the default position rather than under the cursor.
      */
     private void createEntityAt(EntityFactory.Kind kind, int x, int y) {
+        createEntityAt(kind, x, y, null);
+    }
+
+    /** The same, as a subclass of {@code parent} when one is given. */
+    private void createEntityAt(EntityFactory.Kind kind, int x, int y, IRI parent) {
         OWLOntology ontology = getOWLModelManager().getActiveOntology();
         String what = kind == EntityFactory.Kind.INDIVIDUAL ? "individual" : "class";
         // The policy comes from the project, not from a setting: an ODK project mints numeric
@@ -4685,8 +4831,11 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         // a user expecting #Person who gets MWO_0001000 will think something has broken.
         TermMinter minter = TermMinter.forOntologyFile(currentOntologyFile, editorName());
         String name = JOptionPane.showInputDialog(this,
-                "Name for the new " + what + ":\n\n" + minter.describe(),
-                "New " + what, JOptionPane.PLAIN_MESSAGE);
+                "Name for the new " + what + (parent == null ? "" : " - a subclass of "
+                        + DisplayLabels.forEntity(ontology, getOWLModelManager()
+                                .getOWLDataFactory().getOWLClass(parent)))
+                        + ":\n\n" + minter.describe(),
+                parent == null ? "New " + what : "New subclass", JOptionPane.PLAIN_MESSAGE);
         if (name == null) {
             return;
         }
@@ -4706,6 +4855,12 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             return;
         }
         List<OWLOntologyChange> changes = minter.declare(ontology, iri, kind, name);
+        if (parent != null) {
+            changes.add(new org.semanticweb.owlapi.model.AddAxiom(ontology,
+                    getOWLModelManager().getOWLDataFactory().getOWLSubClassOfAxiom(
+                            getOWLModelManager().getOWLDataFactory().getOWLClass(iri),
+                            getOWLModelManager().getOWLDataFactory().getOWLClass(parent))));
+        }
         changes.addAll(provenanceFor(ontology, iri, minter.isNumeric()));
         if (!changes.isEmpty()) {
             getOWLModelManager().applyChanges(changes);

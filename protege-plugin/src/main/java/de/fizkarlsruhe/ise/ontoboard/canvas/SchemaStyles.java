@@ -52,6 +52,9 @@ public final class SchemaStyles {
 
     /** A property's domain or range, from its node. */
     public static final String DOMAIN_RANGE = "obDomainRange";
+
+    /** A term's part in a SWRL rule. */
+    public static final String RULE_PART = "obRulePart";
     public static final String INFERRED_SUBCLASS = "obInferredSubClass";
 
     /** A type the reasoner worked out for an individual, rather than one that was stated. */
@@ -325,6 +328,12 @@ public final class SchemaStyles {
         // what a restriction arrow is, and why this is not drawn like one.
         sheet.putCellStyle(DOMAIN_RANGE,
                 edge("#C08A4B", "8 4", mxConstants.ARROW_OPEN, 1.0f, 9, true));
+
+        // A term's part in a rule: dotted slate, an open arrowhead from the "if" side to the
+        // "then" side. Not the inferred grey - a rule is asserted, and the reasoner overlay's
+        // dotted lines mean something else.
+        sheet.putCellStyle(RULE_PART,
+                edge("#5B6B8C", "2 3", mxConstants.ARROW_OPEN, 1.1f, 9, true));
 
         // Inferred edges are dotted and grey: present, clearly derived, and never mistaken for
         // something the ontology actually asserts. A reasoner's conclusion drawn identically to an
