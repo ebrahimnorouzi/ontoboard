@@ -1,13 +1,19 @@
 package de.fizkarlsruhe.ise.ontoboard.robot;
 
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import org.semanticweb.owlapi.io.StreamDocumentSource;
 import org.semanticweb.owlapi.model.IRI;
 import org.semanticweb.owlapi.model.MissingImportHandlingStrategy;
 import org.semanticweb.owlapi.model.OWLImportsDeclaration;
 import org.semanticweb.owlapi.model.OWLOntology;
+import org.semanticweb.owlapi.model.OWLOntologyAlreadyExistsException;
+import org.semanticweb.owlapi.model.OWLOntologyCreationException;
 import org.semanticweb.owlapi.model.OWLOntologyManager;
 
 /**
@@ -125,7 +131,8 @@ public final class OntologySource {
                     notes == null ? new ArrayList<String>() : notes);
         }
         try {
-            return manager.loadOntology(iri);
+            File local = localFileFor(manager, iri);
+            return local != null ? loadFile(manager, local) : manager.loadOntology(iri);
         } catch (LinkageError incompatible) {
             throw new RobotException("Could not load " + iri
                     + " with this Protege's OWL API.", incompatible);
@@ -154,6 +161,69 @@ public final class OntologySource {
         manager.setOntologyLoaderConfiguration(manager.getOntologyLoaderConfiguration()
                 .setMissingImportHandlingStrategy(MissingImportHandlingStrategy.SILENT));
         return load(manager, iri, attempt, progress, notes);
+    }
+
+    /**
+     * An ontology document read from a file, without the file being held open afterwards.
+     *
+     * <p>{@code loadOntologyFromOntologyDocument(File)}, and {@code loadOntology} on an address a
+     * mapper sends to a file, leave a handle on the file whenever the OWL API has to guess the
+     * format and a parser fails before one succeeds - Turtle, functional syntax, OWL/XML, all but
+     * RDF/XML. Measured with lsof: one handle left on a Turtle file read either way, none when
+     * the format is named or the file is RDF/XML; only the garbage collector closes it. On
+     * Windows an open file cannot be deleted or replaced, so a Turtle file OntoBoard had read
+     * stayed locked until then, and seven tests failed on Windows CI in 1.133.0 because JUnit
+     * could not remove their temporary folders.
+     *
+     * <p>The way out is the one {@code PatternIndex.load} measured: a stream this method closes,
+     * under a document IRI that is not the file's, so that when the OWL API falls back to opening
+     * the document IRI itself after a parser fails, there is nothing there to hold. The file is
+     * then recorded as the ontology's document, which is what OntoBoard and Protege ask for later.
+     * A relative IRI inside the file resolves against the stand-in rather than the file's path;
+     * an IRI that depends on where a file happens to sit names nothing anyone can find anyway.
+     */
+    public static OWLOntology loadFile(OWLOntologyManager manager, File file)
+            throws IOException, OWLOntologyCreationException {
+        try (InputStream stream = Files.newInputStream(file.toPath())) {
+            OWLOntology ontology;
+            try {
+                ontology = manager.loadOntologyFromOntologyDocument(
+                        new StreamDocumentSource(stream, standInFor(file)));
+            } catch (OWLOntologyAlreadyExistsException already) {
+                return manager.getOntology(already.getOntologyID());
+            }
+            manager.setOntologyDocumentIRI(ontology, IRI.create(file));
+            return ontology;
+        }
+    }
+
+    /** A file: IRI with the file's name, in a folder that does not exist. */
+    static IRI standInFor(File file) {
+        return IRI.create(new File("/ontoboard-reading", file.getName()).toURI());
+    }
+
+    /**
+     * The local file this address is read from: the file a mapper sends it to, or the address
+     * itself when it is a file: IRI - null when it is neither, or the file is not there.
+     */
+    static File localFileFor(OWLOntologyManager manager, IRI iri) {
+        IRI document = iri;
+        for (org.semanticweb.owlapi.model.OWLOntologyIRIMapper mapper : manager.getIRIMappers()) {
+            IRI mapped = mapper.getDocumentIRI(iri);
+            if (mapped != null) {
+                document = mapped;
+                break;
+            }
+        }
+        if (!"file".equalsIgnoreCase(document.getScheme())) {
+            return null;
+        }
+        try {
+            File file = new File(document.toURI());
+            return file.isFile() ? file : null;
+        } catch (IllegalArgumentException notAPlainFile) {
+            return null;
+        }
     }
 
     /** Whether one of the manager's IRI mappers sends this address somewhere else. */
