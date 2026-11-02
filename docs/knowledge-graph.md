@@ -44,9 +44,13 @@ column is, and every row after that is one thing.
 | | pizzeria | Pizzeria Napoli Centrale | Naples |
 
 - `TYPE` names the class each row is an individual of - by its label, as the ontology writes it.
-- `I <property>` relates the row to another individual - also by its label. *Karlsruhe* above is
-  a row of the cities sheet. A sheet can name only what exists when it is built, so build the
-  sheets in order: cities before pizzerias, pizzerias before what happens in them.
+- `I <property>` relates the row to another individual - by its label or by its ID. *Karlsruhe*
+  above is a row of the cities sheet: a sheet can name the rows of every other sheet in the same
+  folder, in any order, and two sheets may name each other. ROBOT's command line and ODK read
+  sheets one after another and find a label only in a sheet already read, so there a sheet can
+  name by label only the sheets given before it - *Check sheets...* says in which order, and
+  which sheets have none. A row named by its ID, without quotes, works in any order: ROBOT
+  expands the ID itself.
 - `AL rdfs:label@en` gives the row its name in English. (`A rdfs:label@en` looks the same and gives
   no name at all - *Template...* says so.)
 - **Dates and numbers**: write the type in the cell - `2026-11-01T18:00:00^^xsd:dateTime`. ROBOT
@@ -73,10 +77,12 @@ is an obvious one. Nothing is changed. The sheet editor marks the same problems 
 
 ## 4. Build the graph
 
-Open the graph file in Protégé. *Spreadsheets → Template...*, choose the first sheet and
-*Add the axioms to this ontology*; then the next sheet. Each sheet is one step for *Edit → Undo*.
-A row that cannot be read is listed with its row and column, and the other rows are still built.
-*File → Save*.
+Open the graph file in Protégé. *Spreadsheets → Template...*, choose any sheet of the folder and
+*Add every sheet in its folder*: the sheets are read together, so their order does not matter,
+and *Edit → Undo* removes the lot in one step. *Add the axioms to this ontology* adds the one
+sheet - which can still name the rows of the others.
+A row that cannot be read is listed with its sheet, row and column, and the other rows are still
+built. *File → Save*.
 
 ## 5. Ask it
 

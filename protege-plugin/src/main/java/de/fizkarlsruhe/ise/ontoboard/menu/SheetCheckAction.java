@@ -3,6 +3,7 @@ package de.fizkarlsruhe.ise.ontoboard.menu;
 import de.fizkarlsruhe.ise.ontoboard.robot.TemplateSheet;
 import de.fizkarlsruhe.ise.ontoboard.sheet.LabelIndex;
 import de.fizkarlsruhe.ise.ontoboard.sheet.SheetAudit;
+import de.fizkarlsruhe.ise.ontoboard.sheet.SheetOrder;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -124,6 +125,25 @@ public class SheetCheckAction extends OntoBoardAction {
         result.note("Sheets: " + sheets.size());
         result.note("Names indexed: " + index.size()
                 + (ontology == null ? "" : ", including the open ontology's"));
+
+        // Template... reads every sheet before it builds one, so any order works there. ROBOT's
+        // own command line, and ODK, read them one after another - so say in which order.
+        SheetOrder order = SheetOrder.of(sheets, index);
+        if (order.hasReferences()) {
+            result.note("Sheets name rows of other sheets by label. Spreadsheets > Template... "
+                    + "builds them in any order. ROBOT's command line - and ODK, for a component "
+                    + "that lists several templates - reads them one after another and finds a "
+                    + "label only in a sheet it has already read, so give it them in this order: "
+                    + String.join(", ", order.getOrder()) + ". A row named by its ID, without "
+                    + "quotes, needs no order: ROBOT expands the ID itself.");
+            for (List<String> cycle : order.getCycles()) {
+                result.warn(String.join(" and ", cycle) + " name each other's rows by label, so "
+                        + "no order works for ROBOT's command line or ODK: each needs the other "
+                        + "first. Template... builds them together. For a ROBOT or ODK build, "
+                        + "name the rows by ID, without quotes, in one direction - such an ID needs no "
+                        + "order.");
+            }
+        }
 
         List<LabelIndex.Ambiguity> ambiguous = index.ambiguous();
         if (!ambiguous.isEmpty()) {

@@ -8,6 +8,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.util.Collections;
@@ -668,5 +670,288 @@ class TemplateSheetTest {
                 factory.getOWLNamedIndividual(IRI.create(NS + "e2")),
                 factory.getOWLLiteral("2026-11-01T19:00:00", factory.getOWLDatatype(
                         IRI.create("http://www.w3.org/2001/XMLSchema#dateTime"))))));
+    }
+
+    // ---------- names from the other sheets in the folder ----------
+
+    private void anOntologyOfPortalsPeopleAndOrganisations() {
+        OWLDataFactory factory = context.getOWLOntologyManager().getOWLDataFactory();
+        for (String property : new String[] {"hostedBy", "memberOf", "headedBy"}) {
+            context.getOWLOntologyManager().addAxiom(context, factory.getOWLDeclarationAxiom(
+                    factory.getOWLObjectProperty(IRI.create(NS + property))));
+        }
+        for (String type : new String[] {"Portal", "Organisation", "Person"}) {
+            context.getOWLOntologyManager().addAxiom(context, factory.getOWLDeclarationAxiom(
+                    factory.getOWLClass(IRI.create(NS + type))));
+        }
+    }
+
+    private static List<List<String>> rows(String... lines) {
+        List<List<String>> rows = new ArrayList<List<String>>();
+        for (String line : lines) {
+            rows.add(new ArrayList<String>(Arrays.asList(line.split("\t", -1))));
+        }
+        return rows;
+    }
+
+    private static boolean asserts(OWLOntology out, String property, String subject,
+            String object) {
+        OWLDataFactory factory = out.getOWLOntologyManager().getOWLDataFactory();
+        return out.containsAxiom(factory.getOWLObjectPropertyAssertionAxiom(
+                factory.getOWLObjectProperty(IRI.create(NS + property)),
+                factory.getOWLNamedIndividual(IRI.create(NS + subject)),
+                factory.getOWLNamedIndividual(IRI.create(NS + object))));
+    }
+
+    private static List<List<String>> organisations() {
+        return rows(
+                tabs("#", "TYPE", "Name"),
+                tabs("ID", "TYPE", "A rdfs:label"),
+                tabs("ex:org1", "ex:Organisation", "Fraunhofer-Gesellschaft"));
+    }
+
+    /**
+     * What Template... failed on: a row of another sheet, named by its label. The sheet editor
+     * offered the name and Check sheets... accepted it, and the build alone did not know it,
+     * because ROBOT knows only the rows of the templates it is given. A row named by its ID
+     * never needed the other sheet - ROBOT expands an ID by its prefix - and still does not.
+     */
+    @Test
+    void aSheetNamesTheRowsOfAnotherSheetByLabelOrById() {
+        anOntologyOfPortalsPeopleAndOrganisations();
+        List<List<String>> portals = rows(
+                tabs("#", "TYPE", "Name", "Host institute"),
+                tabs("ID", "TYPE", "A rdfs:label", "I ex:hostedBy"),
+                tabs("ex:p1", "ex:Portal", "portal one", "Fraunhofer-Gesellschaft"),
+                tabs("ex:p2", "ex:Portal", "portal two", "ex:org1"));
+        Map<String, List<List<String>>> folder = new LinkedHashMap<String, List<List<String>>>();
+        // Portals first: it names a sheet that is read after it.
+        folder.put("portals.tsv", portals);
+        folder.put("organisations.tsv", organisations());
+
+        TemplateSheet.Result alone = TemplateSheet.run("portals.tsv", portals, context, prefixes,
+                null);
+        TemplateSheet.Result inTheFolder = TemplateSheet.run("portals.tsv", portals, context,
+                prefixes, null, TemplateSheet.namesOf(folder, context, prefixes));
+
+        assertEquals(1, alone.getProblems().size(),
+                "on its own the sheet cannot know a label another sheet defines: "
+                        + alone.getProblems());
+        assertTrue(asserts(alone.getOntology(), "hostedBy", "p2", "org1"),
+                "by ID it never needed the folder");
+        assertTrue(inTheFolder.getProblems().isEmpty(), inTheFolder.getProblems().toString());
+        assertTrue(asserts(inTheFolder.getOntology(), "hostedBy", "p1", "org1"), "by label");
+        assertTrue(asserts(inTheFolder.getOntology(), "hostedBy", "p2", "org1"), "by ID");
+    }
+
+    /** Two sheets that name each other: no order of building one after the other can work. */
+    @Test
+    void twoSheetsThatNameEachOtherAreBuiltTogether() {
+        anOntologyOfPortalsPeopleAndOrganisations();
+        Map<String, List<List<String>>> folder = new LinkedHashMap<String, List<List<String>>>();
+        folder.put("people.tsv", rows(
+                tabs("#", "TYPE", "Name", "Member of"),
+                tabs("ID", "TYPE", "A rdfs:label", "I ex:memberOf"),
+                tabs("ex:alice", "ex:Person", "Alice", "Fraunhofer-Gesellschaft")));
+        folder.put("organisations.tsv", rows(
+                tabs("#", "TYPE", "Name", "Headed by"),
+                tabs("ID", "TYPE", "A rdfs:label", "I ex:headedBy"),
+                tabs("ex:org1", "ex:Organisation", "Fraunhofer-Gesellschaft", "Alice")));
+
+        Map<String, TemplateSheet.Result> built =
+                TemplateSheet.runAll(folder, context, prefixes, null);
+
+        TemplateSheet.Result people = built.get("people.tsv");
+        TemplateSheet.Result organisations = built.get("organisations.tsv");
+        assertTrue(people.getProblems().isEmpty(), people.getProblems().toString());
+        assertTrue(organisations.getProblems().isEmpty(), organisations.getProblems().toString());
+        assertTrue(asserts(people.getOntology(), "memberOf", "alice", "org1"));
+        assertTrue(asserts(organisations.getOntology(), "headedBy", "org1", "alice"));
+    }
+
+    /** The folder's names make more cells right, not every cell: a typo is still a typo. */
+    @Test
+    void aNameNoSheetDefinesIsStillReportedAtItsCell() {
+        anOntologyOfPortalsPeopleAndOrganisations();
+        Map<String, List<List<String>>> folder = new LinkedHashMap<String, List<List<String>>>();
+        folder.put("organisations.tsv", organisations());
+        folder.put("portals.tsv", rows(
+                tabs("#", "TYPE", "Name", "Host institute"),
+                tabs("ID", "TYPE", "A rdfs:label", "I ex:hostedBy"),
+                tabs("ex:pX", "ex:Portal", "a portal", "Fraunhofer-Gesellschafft")));
+
+        TemplateSheet.Result portals =
+                TemplateSheet.runAll(folder, context, prefixes, null).get("portals.tsv");
+
+        assertEquals(1, portals.getProblems().size(), portals.getProblems().toString());
+        TemplateSheet.Problem problem = portals.getProblems().get(0);
+        assertEquals(3, problem.getRow());
+        assertEquals(4, problem.getColumn());
+        assertTrue(problem.getMessage().contains("other sheets in this folder"),
+                problem.getMessage());
+    }
+
+    /** A sheet ROBOT cannot read lends no names, says so, and the others still build. */
+    @Test
+    void aSheetRobotCannotReadLendsNoNamesAndSaysSo() {
+        anOntologyOfPortalsPeopleAndOrganisations();
+        Map<String, List<List<String>>> folder = new LinkedHashMap<String, List<List<String>>>();
+        folder.put("broken.tsv", rows(
+                tabs("#", "Name"),
+                tabs("ID", "NOT A TEMPLATE STRING"),
+                tabs("ex:x1", "something")));
+        folder.put("organisations.tsv", organisations());
+
+        TemplateSheet.Names names = TemplateSheet.namesOf(folder, context, prefixes);
+        Map<String, TemplateSheet.Result> built =
+                TemplateSheet.runAll(folder, context, prefixes, null);
+
+        assertEquals(Arrays.asList("organisations.tsv"), names.getSheets());
+        assertEquals(1, names.getUnavailable().size(), names.getUnavailable().toString());
+        assertTrue(names.getUnavailable().get(0).startsWith("broken.tsv: none of its rows"),
+                names.getUnavailable().get(0));
+        assertTrue(built.get("organisations.tsv").getProblems().isEmpty(),
+                built.get("organisations.tsv").getProblems().toString());
+        assertEquals(1, built.get("organisations.tsv").getOntology()
+                .getIndividualsInSignature().size(), "the readable sheet still builds");
+    }
+
+    /**
+     * A row whose ID uses a prefix nothing defines is refused when its own sheet is built. Lent to
+     * other sheets anyway, ROBOT would register it under the unexpanded ID, and they would link to
+     * an IRI the row itself never gets - with no problem reported anywhere.
+     */
+    @Test
+    void aRowWhoseIdCannotBeExpandedLendsNoNameAndIsNamed() {
+        anOntologyOfPortalsPeopleAndOrganisations();
+        Map<String, List<List<String>>> folder = new LinkedHashMap<String, List<List<String>>>();
+        folder.put("datasets.tsv", rows(
+                tabs("#", "TYPE", "Name"),
+                tabs("ID", "TYPE", "A rdfs:label"),
+                tabs("zz:0000123", "ex:Portal", "Dataset A")));
+        List<List<String>> portals = rows(
+                tabs("#", "TYPE", "Name", "Host"),
+                tabs("ID", "TYPE", "A rdfs:label", "I ex:hostedBy"),
+                tabs("ex:p1", "ex:Portal", "portal one", "Dataset A"));
+        folder.put("portals.tsv", portals);
+
+        TemplateSheet.Names names = TemplateSheet.namesOf(folder, context, prefixes);
+        TemplateSheet.Result built = TemplateSheet.run("portals.tsv", portals, context, prefixes,
+                null, names);
+
+        assertEquals(1, names.getUnavailable().size(), names.getUnavailable().toString());
+        assertTrue(names.getUnavailable().get(0).contains("zz:0000123"),
+                names.getUnavailable().get(0));
+        assertEquals(1, built.getProblems().size(), "the reference is reported, not linked to "
+                + "<zz:0000123>: " + built.getProblems());
+    }
+
+    /** ROBOT takes a sheet's last rdfs:label column only; the sheet editor offers every one. */
+    @Test
+    void everyLabelColumnOfASheetCanBeNamed() {
+        anOntologyOfPortalsPeopleAndOrganisations();
+        Map<String, List<List<String>>> folder = new LinkedHashMap<String, List<List<String>>>();
+        folder.put("organisations.tsv", rows(
+                tabs("#", "TYPE", "English", "German"),
+                tabs("ID", "TYPE", "AL rdfs:label@en", "AL rdfs:label@de"),
+                tabs("ex:org1", "ex:Organisation", "Fraunhofer Society",
+                        "Fraunhofer-Gesellschaft")));
+        folder.put("portals.tsv", rows(
+                tabs("#", "TYPE", "Name", "Host"),
+                tabs("ID", "TYPE", "A rdfs:label", "I ex:hostedBy"),
+                tabs("ex:p1", "ex:Portal", "portal one", "Fraunhofer Society"),
+                tabs("ex:p2", "ex:Portal", "portal two", "Fraunhofer-Gesellschaft")));
+
+        TemplateSheet.Result portals =
+                TemplateSheet.runAll(folder, context, prefixes, null).get("portals.tsv");
+
+        assertTrue(portals.getProblems().isEmpty(), portals.getProblems().toString());
+        assertTrue(asserts(portals.getOntology(), "hostedBy", "p1", "org1"), "the English one");
+        assertTrue(asserts(portals.getOntology(), "hostedBy", "p2", "org1"), "the German one");
+    }
+
+    /**
+     * ROBOT binds a blank label too, and an empty part of a SPLIT cell would then name that row.
+     * Across a folder that turned "Acme||Beta" into a link to whichever row had no label.
+     */
+    @Test
+    void aRowWithoutALabelIsNotWhatAnEmptyPartOfACellNames() {
+        anOntologyOfPortalsPeopleAndOrganisations();
+        Map<String, List<List<String>>> folder = new LinkedHashMap<String, List<List<String>>>();
+        folder.put("organisations.tsv", rows(
+                tabs("#", "TYPE", "Name"),
+                tabs("ID", "TYPE", "A rdfs:label"),
+                tabs("ex:acme", "ex:Organisation", "Acme"),
+                tabs("ex:beta", "ex:Organisation", "Beta"),
+                tabs("ex:o9", "ex:Organisation", "")));
+        folder.put("people.tsv", rows(
+                tabs("#", "TYPE", "Name", "Member of"),
+                tabs("ID", "TYPE", "A rdfs:label", "I ex:memberOf SPLIT=|"),
+                tabs("ex:alice", "ex:Person", "Alice", "Acme||Beta")));
+
+        TemplateSheet.Result people =
+                TemplateSheet.runAll(folder, context, prefixes, null).get("people.tsv");
+
+        OWLOntology out = people.getOntology();
+        assertFalse(out != null && asserts(out, "memberOf", "alice", "o9"),
+                "the empty part named the row without a label: " + people.getProblems());
+    }
+
+    /** A file beside the sheets that is not a template is set aside after one try. */
+    @Test
+    void aFileThatIsNotATemplateIsSetAsideAtOnce() {
+        anOntologyOfPortalsPeopleAndOrganisations();
+        Map<String, List<List<String>>> folder = new LinkedHashMap<String, List<List<String>>>();
+        List<List<String>> export = new ArrayList<List<String>>();
+        export.add(Arrays.asList("date", "value"));
+        export.add(Arrays.asList("2026-01-01", "not a template string"));
+        for (int i = 0; i < 2000; i++) {
+            export.add(Arrays.asList("2026-01-02", String.valueOf(i)));
+        }
+        folder.put("export.csv", export);
+        folder.put("organisations.tsv", organisations());
+
+        long started = System.nanoTime();
+        TemplateSheet.Names names = TemplateSheet.namesOf(folder, context, prefixes);
+        long millis = (System.nanoTime() - started) / 1000000;
+
+        assertEquals(Arrays.asList("organisations.tsv"), names.getSheets());
+        assertTrue(names.getUnavailable().get(0).startsWith("export.csv: none of its rows"),
+                names.getUnavailable().toString());
+        assertTrue(millis < 5000, "one try, not one per row: " + millis + " ms");
+    }
+
+    /**
+     * ROBOT decides what a row without TYPE is by what its label already names. A class row
+     * "Margherita" next to another sheet's menu item "Margherita" was built as that item - and
+     * failed - once the other sheet's names were lent; the sheet's own rows answer to its labels.
+     */
+    @Test
+    void aClassRowWithoutTypeStaysAClassBesideAnIndividualOfTheSameName() {
+        OWLDataFactory factory = context.getOWLOntologyManager().getOWLDataFactory();
+        context.getOWLOntologyManager().addAxiom(context, factory.getOWLDeclarationAxiom(
+                factory.getOWLClass(IRI.create(NS + "Pizza"))));
+        context.getOWLOntologyManager().addAxiom(context, factory.getOWLDeclarationAxiom(
+                factory.getOWLClass(IRI.create(NS + "MenuItem"))));
+        Map<String, List<List<String>>> folder = new LinkedHashMap<String, List<List<String>>>();
+        folder.put("classes.tsv", rows(
+                tabs("ID", "Label", "Parent"),
+                tabs("ID", "LABEL", "SC %"),
+                tabs("ex:Margherita", "Margherita", "ex:Pizza")));
+        folder.put("menu.tsv", rows(
+                tabs("ID", "Type", "Name"),
+                tabs("ID", "TYPE", "A rdfs:label"),
+                tabs("ex:item7", "ex:MenuItem", "Margherita")));
+
+        Map<String, TemplateSheet.Result> built =
+                TemplateSheet.runAll(folder, context, prefixes, null);
+
+        TemplateSheet.Result classes = built.get("classes.tsv");
+        assertTrue(classes.getProblems().isEmpty(), classes.getProblems().toString());
+        assertTrue(classes.getOntology().containsAxiom(factory.getOWLSubClassOfAxiom(
+                factory.getOWLClass(IRI.create(NS + "Margherita")),
+                factory.getOWLClass(IRI.create(NS + "Pizza")))), "built as a class");
+        assertTrue(built.get("menu.tsv").getProblems().isEmpty(),
+                built.get("menu.tsv").getProblems().toString());
     }
 }
