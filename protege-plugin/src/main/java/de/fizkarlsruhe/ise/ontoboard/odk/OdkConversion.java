@@ -459,7 +459,12 @@ public final class OdkConversion {
         }
         manager.getIRIMappers().add(iri -> iri.equals(address) ? null : IRI.create(nowhere));
         try {
-            return manager.loadOntology(address);
+            // A file read through OntologySource.loadFile is let go of afterwards; handed to
+            // loadOntology, an earlier version in any format but RDF/XML stayed open until the
+            // garbage collector closed it, and Windows will not delete or replace an open file.
+            File local = OntologySource.localFileFor(manager, address);
+            return local != null ? OntologySource.loadFile(manager, local)
+                    : manager.loadOntology(address);
         } catch (Exception cannot) {
             throw new IllegalStateException(cannot.getMessage(), cannot);
         }

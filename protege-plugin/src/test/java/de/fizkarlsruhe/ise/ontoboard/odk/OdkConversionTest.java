@@ -37,24 +37,6 @@ class OdkConversionTest {
             + "@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .\n"
             + "@prefix dcterms: <http://purl.org/dc/terms/> .\n";
 
-    /**
-     * On Windows a file still open cannot be deleted, so JUnit could not remove this test's folder
-     * when a read had left one open - measured on Windows CI, where the same commit passed once and
-     * failed once on upper.ttl. Two reads here still leave a file open when the OWL API has to
-     * guess its format: the import upper.ttl, which the OWL API loads by itself, and the OWL/XML
-     * earlier version, which OdkConversion.loadAlone hands to the OWL API's loadOntology. Only the
-     * garbage collector closes those, so it is asked to run before the folder is removed. Moving
-     * both reads onto OntologySource.loadFile, as the current version's already is, is what takes
-     * this away.
-     */
-    @org.junit.jupiter.api.AfterEach
-    void letGoOfFilesTheOwlApiLeftOpen() throws InterruptedException {
-        for (int round = 0; round < 5; round++) {
-            System.gc();
-            Thread.sleep(40);
-        }
-    }
-
     /** An upper ontology to import, the current version, and two earlier ones. */
     private static String[] inputs(File folder) throws Exception {
         File upper = new File(folder, "upper.ttl");
