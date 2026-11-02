@@ -25,12 +25,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Java 11: the bundle targets the Java 8 API surface deliberately
+      # Java 25 is the current LTS: the bundle targets the Java 8 API surface deliberately
       # (maven.compiler.release=8, asserted by BundleConfigurationTest), but the build itself and
       # robot-core's dependencies need a newer JDK to compile.
       - uses: actions/setup-java@v4
         with:
-          java-version: '11'
+          java-version: '25'
           distribution: 'temurin'
           cache: maven
 
@@ -93,7 +93,7 @@ jobs:
 
       - uses: actions/setup-java@v4
         with:
-          java-version: '11'
+          java-version: '25'
           distribution: 'temurin'
           cache: maven
 
@@ -126,7 +126,7 @@ jobs:
 
       - uses: actions/setup-java@v4
         with:
-          java-version: '11'
+          java-version: '25'
           distribution: 'temurin'
           cache: maven
 
