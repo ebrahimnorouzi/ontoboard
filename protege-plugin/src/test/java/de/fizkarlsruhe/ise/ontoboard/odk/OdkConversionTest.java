@@ -162,6 +162,60 @@ class OdkConversionTest {
                 "--date=short", "v0.1.0"));
     }
 
+    /**
+     * The line Linux CI wrote the first time and the line it wrote the second, for the same
+     * dcterms:date of the same version: the OWL API returns either form of an equal string
+     * literal, whichever its shared cache holds. Written canonically they are one line.
+     */
+    @Test
+    void aStringLiteralIsWrittenOneWayWhicheverFormTheOwlApiHandsBack() {
+        String typed = "<terms:date rdf:datatype=\"http://www.w3.org/2001/XMLSchema#string\">"
+                + "2026-03-01</terms:date>";
+        String simple = "<terms:date>2026-03-01</terms:date>";
+
+        assertEquals(simple, OdkConversion.simpleStrings(typed));
+        assertEquals(simple, OdkConversion.simpleStrings(simple));
+        assertEquals("ex:a ex:p \"x\", \"\"\"two\nlines\"\"\" .", OdkConversion.simpleStrings(
+                "ex:a ex:p \"x\"^^xsd:string, \"\"\"two\nlines\"\"\"^^"
+                        + "<http://www.w3.org/2001/XMLSchema#string> ."));
+        assertEquals("\"a\\\"b\"", OdkConversion.simpleStrings("\"a\\\"b\"^^xsd:string"),
+                "an escaped quote inside the literal");
+        assertEquals("\"5\"^^xsd:integer", OdkConversion.simpleStrings("\"5\"^^xsd:integer"),
+                "every other datatype stays");
+    }
+
+    /** Through the OWL API, both formats: no explicit xsd:string, and read back the same. */
+    @Test
+    void aReleaseIsWrittenInTheSimpleFormAndReadsBackTheSame(@TempDir File folder)
+            throws Exception {
+        OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
+        org.semanticweb.owlapi.model.OWLDataFactory df = manager.getOWLDataFactory();
+        OWLOntology ontology = manager.createOntology(IRI.create("https://example.org/shop.owl"));
+        manager.applyChange(new org.semanticweb.owlapi.model.AddOntologyAnnotation(ontology,
+                df.getOWLAnnotation(df.getOWLAnnotationProperty(
+                        IRI.create("http://purl.org/dc/terms/date")), df.getOWLLiteral(
+                                "2026-03-01", df.getOWLDatatype(
+                                        org.semanticweb.owlapi.vocab.XSDVocabulary.STRING
+                                                .getIRI())))));
+        File rdfXml = new File(folder, "shop.owl");
+        File turtle = new File(folder, "shop.ttl");
+
+        OdkConversion.writeCanonically(ontology, new RDFXMLDocumentFormat(), rdfXml);
+        OdkConversion.writeCanonically(ontology,
+                new org.semanticweb.owlapi.formats.TurtleDocumentFormat(), turtle);
+
+        String written = new String(Files.readAllBytes(rdfXml.toPath()), StandardCharsets.UTF_8)
+                + new String(Files.readAllBytes(turtle.toPath()), StandardCharsets.UTF_8);
+        assertTrue(written.contains("2026-03-01"), written);
+        assertTrue(!written.contains("XMLSchema#string") && !written.contains("xsd:string"),
+                written);
+        // RDF/XML, which the OWL API's first parser reads, so no handle is left on Windows.
+        OWLOntology back = OWLManager.createOWLOntologyManager()
+                .loadOntologyFromOntologyDocument(rdfXml);
+        assertEquals(ontology.getAnnotations(), back.getAnnotations(),
+                "the same literal: RDF 1.1 and the OWL API both say so");
+    }
+
     /** Every file but git's own, its text with any date taken out. */
     private static Map<String, String> files(File root) throws Exception {
         Map<String, String> files = new TreeMap<String, String>();

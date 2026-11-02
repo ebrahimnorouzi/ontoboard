@@ -265,23 +265,28 @@ class OntologySourceTest {
     void aTurtleFileIsReadAndLetGo(@TempDir File folder) throws Exception {
         File turtle = new File(folder, "turtle.owl");
         Files.write(turtle.toPath(), TURTLE.getBytes("UTF-8"));
-        File control = new File(folder, "control.owl");
-        Files.write(control.toPath(), TURTLE.getBytes("UTF-8"));
 
         OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
         OWLOntology read = OntologySource.loadFile(manager, turtle);
-        OWLManager.createOWLOntologyManager().loadOntologyFromOntologyDocument(control);
 
         assertEquals(IRI.create("http://example.org/turtle"),
                 read.getOntologyID().getOntologyIRI().get());
         assertEquals(IRI.create(turtle), manager.getOntologyDocumentIRI(read),
                 "the file is its document, not the stand-in it was read under");
         int held = handlesOn(turtle);
-        org.junit.jupiter.api.Assumptions.assumeTrue(held >= 0,
-                "this platform cannot list open files; removing the folder checks it instead");
+        if (held < 0) {
+            // Windows: no list of open files, and JUnit removing the folder is the check.
+            return;
+        }
+        assertEquals(0, held, "loadFile left the file open");
+
+        // The control, only where handles can be counted - and an open file can still be
+        // deleted, which on Windows it cannot: this control is what failed there first.
+        File control = new File(folder, "control.owl");
+        Files.write(control.toPath(), TURTLE.getBytes("UTF-8"));
+        OWLManager.createOWLOntologyManager().loadOntologyFromOntologyDocument(control);
         assertEquals(1, handlesOn(control), "the OWL API's own File load leaves Turtle open - if"
                 + " it no longer does, loadFile's stand-in IRI may no longer be needed");
-        assertEquals(0, held, "loadFile left the file open");
     }
 
     @Test

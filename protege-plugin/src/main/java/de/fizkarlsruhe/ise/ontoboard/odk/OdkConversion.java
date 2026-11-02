@@ -546,9 +546,47 @@ public final class OdkConversion {
         }
         org.semanticweb.owlapi.model.OWLDocumentFormat format =
                 ontology.getOWLOntologyManager().getOntologyFormat(ontology);
-        ontology.getOWLOntologyManager().saveOntology(ontology,
-                format instanceof RDFXMLDocumentFormat ? format : new RDFXMLDocumentFormat(),
-                IRI.create(file.toURI()));
+        writeCanonically(ontology,
+                format instanceof RDFXMLDocumentFormat ? format : new RDFXMLDocumentFormat(), file);
+    }
+
+    /**
+     * Writes the ontology as the OWL API would, except that a string literal is always written in
+     * its simple form - "x", never "x"^^xsd:string.
+     *
+     * <p>RDF 1.1 makes the two the same literal, and the OWL API agrees: they are equal, with one
+     * hash code. So its data factory - one per process, shared by every manager - hands back
+     * whichever of the two it has cached, annotations included: asked for dcterms:date
+     * "2026-03-01", it returns the "2026-03-01"^^xsd:string an earlier load created, until a
+     * background eviction drops it. Which form a release file shows then depends on what else the
+     * process did and on when the cache last cleared. Measured on Linux CI: one version converted
+     * twice in one run was written with rdf:datatype the first time and without it the second, so
+     * the conversion was not reproducible; on the Mac it never happened. Writing the simple form
+     * always makes it so, and nothing that reads the file can tell the difference.
+     */
+    static void writeCanonically(OWLOntology ontology,
+            org.semanticweb.owlapi.model.OWLDocumentFormat format, File file) throws Exception {
+        java.io.ByteArrayOutputStream written = new java.io.ByteArrayOutputStream();
+        ontology.getOWLOntologyManager().saveOntology(ontology, format, written);
+        Files.write(file.toPath(), simpleStrings(
+                new String(written.toByteArray(), StandardCharsets.UTF_8))
+                .getBytes(StandardCharsets.UTF_8));
+    }
+
+    /** A quoted Turtle literal - long or short - followed by an explicit xsd:string. */
+    private static final Pattern TYPED_STRING = Pattern.compile("(\"\"\"[\\s\\S]*?\"\"\""
+            + "|\"(?:[^\"\\\\\\n]|\\\\.)*\")\\^\\^(?:xsd:string|<http://www\\.w3\\.org/2001/"
+            + "XMLSchema#string>)");
+
+    /**
+     * "x"^^xsd:string as "x", in RDF/XML and in Turtle; nothing else changes. Only the datatype is
+     * ever removed, so a match in an unexpected place still changes nothing but that.
+     */
+    static String simpleStrings(String written) {
+        String rdfXml = written
+                .replace(" rdf:datatype=\"http://www.w3.org/2001/XMLSchema#string\"", "")
+                .replace(" rdf:datatype=\"&xsd;string\"", "");
+        return TYPED_STRING.matcher(rdfXml).replaceAll("$1");
     }
 
     /**
@@ -715,11 +753,9 @@ public final class OdkConversion {
                         : null));
         File kept = Release.releaseFile(root, id, version.getText());
         kept.getParentFile().mkdirs();
-        manager.saveOntology(release, new RDFXMLDocumentFormat(), IRI.create(kept.toURI()));
-        manager.saveOntology(release, new RDFXMLDocumentFormat(),
-                IRI.create(new File(root, id + ".owl").toURI()));
-        manager.saveOntology(release, new TurtleDocumentFormat(),
-                IRI.create(new File(root, id + ".ttl").toURI()));
+        writeCanonically(release, new RDFXMLDocumentFormat(), kept);
+        writeCanonically(release, new RDFXMLDocumentFormat(), new File(root, id + ".owl"));
+        writeCanonically(release, new TurtleDocumentFormat(), new File(root, id + ".ttl"));
         log.line(version.getText() + ": releases/" + version.getText() + "/" + id + ".owl, "
                 + id + ".owl and " + id + ".ttl - " + release.getAxiomCount() + " axioms, "
                 + inferred.getAdded() + " inferred, version IRI " + Release.versionIriOf(release));
