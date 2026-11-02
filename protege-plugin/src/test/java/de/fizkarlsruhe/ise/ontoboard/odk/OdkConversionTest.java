@@ -13,7 +13,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
@@ -147,7 +149,8 @@ class OdkConversionTest {
 
         // Again, into another folder: the same repository.
         OdkConversion.Result two = convert(in, new File(folder, "two"), new ArrayList<String>());
-        assertEquals(files(root), files(two.getRoot()), "the same files, dates aside");
+        Map<String, String> differences = differences(files(root), files(two.getRoot()));
+        assertTrue(differences.isEmpty(), "the same files, dates aside: " + differences);
         for (String tag : one.getTags()) {
             assertEquals(git(root, "rev-parse", tag + "^{tree}"),
                     git(two.getRoot(), "rev-parse", tag + "^{tree}"), tag + ": the same tree");
@@ -173,6 +176,37 @@ class OdkConversionTest {
             }
         }
         return files;
+    }
+
+    /**
+     * Each path whose text differs, with the first line where it does - not two whole
+     * repositories side by side, which is what a failure on Linux CI printed, cut off long
+     * before the difference.
+     */
+    private static Map<String, String> differences(Map<String, String> one,
+            Map<String, String> two) {
+        Map<String, String> differ = new TreeMap<String, String>();
+        Set<String> paths = new TreeSet<String>(one.keySet());
+        paths.addAll(two.keySet());
+        for (String path : paths) {
+            String a = one.get(path);
+            String b = two.get(path);
+            if (a == null || b == null) {
+                differ.put(path, a == null ? "only in the second" : "only in the first");
+            } else if (!a.equals(b)) {
+                String[] linesA = a.split("\n", -1);
+                String[] linesB = b.split("\n", -1);
+                int line = 0;
+                while (line < linesA.length && line < linesB.length
+                        && linesA[line].equals(linesB[line])) {
+                    line++;
+                }
+                differ.put(path, "line " + (line + 1) + ": ["
+                        + (line < linesA.length ? linesA[line] : "(end)") + "] then ["
+                        + (line < linesB.length ? linesB[line] : "(end)") + "]");
+            }
+        }
+        return differ;
     }
 
     private static List<String> git(File root, String... arguments) throws Exception {
