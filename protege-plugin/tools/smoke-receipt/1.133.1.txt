@@ -1,0 +1,107 @@
+OntoBoard 1.133.1 - host smoke receipt
+
+Produced on macOS 15.8.1 (Intel x86_64) as 1.133.0's was: a throwaway copy of each install, the
+jar under test as the only ontoboard-*.jar in its plugins, -Dontoboard.selftest=true, and the
+verdict read from what Protege logged - Protege stopped only once its own startup had finished
+as well.
+
+  2026-11-02  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx2G  PASS  check 9/9  test 12/12
+  2026-11-02  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx2G  PASS  check 9/9  test 12/12
+
+The jar: sha256 9a14b0b1d03bb51b..., built by javac from a clean export of commit ee27dad
+(mvn clean package), not from the working tree's target/. The unit suite: 2,679 tests, 0
+failures, 28 skipped - one of them the manifest check, which a clean build reaches before the jar
+exists; run against this jar afterwards, it passed.
+The four NullPointerExceptions logged on each host are Protege's own OWLCellRenderer, as before.
+
+WHY THERE IS NO 1.133.0 RELEASE
+
+1.133.0 was committed, pushed and tagged (v1.133.0, 5d1d9b3), and the release workflow failed in
+its Test step - `mvn -B clean test`, run on the tagged commit before anything is packaged,
+because the jar a user downloads has to be the jar that was tested. Nobody can download 1.133.0.
+The tag stays, as v1.122.0's did.
+
+Two failures, neither visible on the Mac 1.133.0's receipt was produced on, and neither said by
+the run to anyone not signed in to GitHub, whose page showed "Process completed with exit code
+1". The tests now print an annotation for each failure under GitHub Actions (GitHubAnnotations),
+which is how both were found.
+
+- Windows, failing on every push since d607d05: seven tests whose assertions passed, and then
+  JUnit could not remove their temporary folders, because a Turtle file was still open. The OWL
+  API leaves a handle on a file whenever it has to guess the format and a parser fails before
+  one succeeds - measured with lsof: one handle on a Turtle file read by File or through an
+  address mapped to it, none when the format is named or the file is RDF/XML. Windows will not
+  delete, rename or replace an open file, so this held a user's file as well as a test's.
+  OntologySource.loadFile now reads a file the way PatternIndex already did - through a stream it
+  closes, under a stand-in document IRI - and OntologySource.load uses it for any address that
+  resolves to a local file. OntologySourceTest counts the handles on Linux and macOS.
+
+- Linux, intermittently since b2c386a: the second conversion of the same history wrote a
+  different release file from the first - <terms:date rdf:datatype="...#string"> once and
+  <terms:date> the next. "x" and "x"^^xsd:string are one literal, equal to the OWL API too, and
+  its data factory, shared by every manager in a process, caches annotations and hands back
+  whichever form it holds until a background eviction drops it. On a CI runner the cache
+  sometimes cleared between the two conversions; on the Mac it never did. The conversion now
+  writes every ontology with explicit xsd:string removed, so a converted repository is the same
+  bytes whatever the cache did.
+
+CI on ee27dad: the Test step passed on Linux and on Windows, and both Windows smoke runs passed.
+
+Also driven in Protege 5.6.9, on this jar, by a probe pressing the real buttons:
+- Turn an ontology into an ODK repository: NFDIcore 3.0.5 from a file, with 3.0.4 and 3.0.3 read
+  from GitHub. The nine steps ticked in order in 15.9 s; three releases and tags v3.0.3, v3.0.4,
+  v3.0.5; build passing; no warnings.
+- The OntoBoard menu as Protege built it: 45 items in seven submenus, with 13 separators - the
+  same tree, line for line, as 1.133.0's.
+- An ontology opened and closed without touching the board, twice: no .ontoboard.json beside it.
+- The board, opened with nothing saved: pizza (86 terms, 5 frames) and MWO 3.0.2 (660 terms, 21
+  frames) - no two boxes overlap, and no line passes through a frame neither of its ends is in
+  (0 of 146, 0 of 982). The pizza board the same in Protege 5.5.0, focused as well as opened.
+  The MWO run's focused-board step did not finish: the machine was swapping, starved by four
+  Protege 5.5.0 instances that earlier self-test runs had left running - the run script had
+  stopped a subshell rather than Protege, and now stops Protege - and the run was ended by hand.
+- Run self-test, then the workspace closed: Protege names no listener as never removed.
+
+Windows: CI runs the unit tests and the self-test in Protege's Windows downloads on every push.
+
+
+WHAT THIS RELEASE ADDS (over 1.132.0, the last release before it)
+
+- Project > Turn an ontology into an ODK repository...: an ontology in any format, or a web
+  address, with its earlier versions; each earlier version a release, a commit dated as it says
+  and a tag; imports turned into modules of the terms used; built, tested, released, recorded in
+  git, and the commands that push it to GitHub. Every step shown as it runs, with Stop.
+- The board frames a design pattern merged into the ontology, found by its terms: the pizza
+  ontology as one file shows 3 patterns, NFDIcore 14, MWO 19. Arrange > Outline finds them again
+  on a board saved before.
+- The OntoBoard menu grouped by job, in the order the guide works: Project, Reuse, Terms,
+  Spreadsheets | Check and test, Build and release, Share | Record who edits terms..., Check
+  requirements..., Run self-test. ROBOT, Notes and Knowledge graph are gone as menus;
+  Provenance... is Record who edits terms...; each entry is in one place.
+
+FIXED
+
+- A file OntoBoard read was held open on Windows until the garbage collector ran, when the OWL
+  API had to guess its format - see above.
+- A converted repository was not always the same bytes twice - see above.
+- Opening an ontology left <file>.ontoboard.json beside it, and that file froze the outline:
+  a board is now written from its first change only.
+- A long row of pattern frames reached over the property sections, so lines from the outline into
+  a pattern crossed them: the frames are folded into rows, and the sections start right of them.
+- Messages and documentation pages named menu places that had moved, about 15 of them before the
+  regrouping (ROBOT > Template..., Project > Pull request...). A test now follows every path,
+  submenu by submenu, in the plugin's messages and on the pages.
+- The build's report said "imported terms" for other ontologies' terms merged into the file.
+- Run self-test left every view it built registered with Protege: it took the tabs it opened off
+  the screen and never disposed them, so each run added listeners that stayed until Protege
+  closed - 72 named when one workspace closed. The tabs are now closed as Protege's own close
+  button closes one, and a tab check that fails names what was thrown.
+- A jar could carry a class VS Code's Eclipse compiler had written for code javac rejects - its
+  method replaced by a throw of "Unresolved compilation problem" - which Maven tested and packaged
+  because it was newer than its source. The suite now fails on such a class (CompiledClassesTest),
+  and this jar was built from a clean export of the commit.
+
+NOT DONE (on the roadmap in docs/limitations.md): Check this ontology without a project; greying
+out entries that cannot run yet; help for each project configuration key; base/full/simple
+release artefacts; History for properties and individuals; Obsolete offering to move children;
+bring to front and send to back.
