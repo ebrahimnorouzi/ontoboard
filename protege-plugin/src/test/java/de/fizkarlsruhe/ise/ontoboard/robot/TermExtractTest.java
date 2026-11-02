@@ -320,10 +320,10 @@ class TermExtractTest {
         java.io.File second = new java.io.File(folder, "bfo-process-site-and-history.owl");
         java.nio.file.Files.write(first.toPath(), body.getBytes("UTF-8"));
         java.nio.file.Files.write(second.toPath(), body.getBytes("UTF-8"));
-        OWLOntology one = OWLManager.createOWLOntologyManager()
-                .loadOntologyFromOntologyDocument(first);
-        OWLOntology two = OWLManager.createOWLOntologyManager()
-                .loadOntologyFromOntologyDocument(second);
+        // Turtle in a .owl file: read through OntologySource.loadFile, because the OWL API's own
+        // loadOntologyFromOntologyDocument(File) leaves it open and Windows then cannot remove it.
+        OWLOntology one = OntologySource.loadFile(OWLManager.createOWLOntologyManager(), first);
+        OWLOntology two = OntologySource.loadFile(OWLManager.createOWLOntologyManager(), second);
         IRI project = IRI.create("https://example.org/pizza.owl");
 
         assertEquals("bfo_specific_dependence_and_inherence", TermExtract.shortNameOf(one));

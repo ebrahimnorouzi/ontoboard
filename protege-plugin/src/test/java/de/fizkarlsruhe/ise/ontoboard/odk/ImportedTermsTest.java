@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.fizkarlsruhe.ise.ontoboard.robot.OntologySource;
 import de.fizkarlsruhe.ise.ontoboard.robot.TermExtract;
 import java.io.File;
 import java.nio.charset.StandardCharsets;
@@ -101,8 +102,10 @@ class ImportedTermsTest {
                 pdf.getOWLImportsDeclaration(MODULE_IRI)));
         protege.applyChange(new org.semanticweb.owlapi.model.AddImport(edit,
                 pdf.getOWLImportsDeclaration(IRI.create("http://example.org/units"))));
-        protege.loadOntology(MODULE_IRI);
-        protege.loadOntology(IRI.create("http://example.org/units"));
+        // Through OntologySource, as OntoBoard reads a local copy: the OWL API's own loadOntology
+        // leaves a Turtle file open, and Windows then cannot remove the temporary folder.
+        OntologySource.load(protege, MODULE_IRI);
+        OntologySource.load(protege, IRI.create("http://example.org/units"));
         protege.addAxiom(edit, pdf.getOWLSubClassOfAxiom(
                 pdf.getOWLClass(IRI.create("http://example.org/pizza#Pizza")),
                 pdf.getOWLClass(IRI.create(UPPER + "object"))));
@@ -166,7 +169,7 @@ class ImportedTermsTest {
         manager.applyChange(new org.semanticweb.owlapi.model.AddImport(edit,
                 manager.getOWLDataFactory().getOWLImportsDeclaration(
                         IRI.create("http://example.org/more"))));
-        manager.loadOntology(IRI.create("http://example.org/more"));
+        OntologySource.load(manager, IRI.create("http://example.org/more"));
 
         List<ImportedTerms.Source> sources = ImportedTerms.of(edit, root,
                 new File(root, "src/ontology"));

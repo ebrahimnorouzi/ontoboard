@@ -209,4 +209,98 @@ class OntologySourceTest {
         assertEquals(IRI.create("http://example.org/small.owl"),
                 loaded.getOntologyID().getOntologyIRI().get());
     }
+
+    // ---------- a file, read and let go ----------
+
+    private static final String TURTLE = "@prefix owl: <http://www.w3.org/2002/07/owl#> .\n"
+            + "<http://example.org/turtle> a owl:Ontology .\n"
+            + "<http://example.org/turtle#A> a owl:Class .\n";
+
+    /**
+     * Handles this process holds on {@code file}: from /proc/self/fd on Linux, from lsof on
+     * macOS; -1 where neither can say, Windows among them - where JUnit failing to remove the
+     * temporary folder is the same check, made by the operating system.
+     */
+    private static int handlesOn(File file) throws Exception {
+        String path = file.getCanonicalPath();
+        java.nio.file.Path fds = java.nio.file.Paths.get("/proc/self/fd");
+        if (Files.isDirectory(fds)) {
+            int held = 0;
+            try (java.util.stream.Stream<java.nio.file.Path> each = Files.list(fds)) {
+                for (java.nio.file.Path fd : (Iterable<java.nio.file.Path>) each::iterator) {
+                    try {
+                        if (Files.readSymbolicLink(fd).toString().equals(path)) {
+                            held++;
+                        }
+                    } catch (java.io.IOException closedMeanwhile) {
+                        // The listing's own descriptor, gone by the time it is read.
+                    }
+                }
+            }
+            return held;
+        }
+        File lsof = new File("/usr/sbin/lsof");
+        if (!lsof.canExecute()) {
+            return -1;
+        }
+        String pid = java.lang.management.ManagementFactory.getRuntimeMXBean().getName()
+                .split("@")[0];
+        Process process = new ProcessBuilder(lsof.getPath(), "-p", pid)
+                .redirectErrorStream(true).start();
+        int held = 0;
+        try (java.io.BufferedReader lines = new java.io.BufferedReader(
+                new java.io.InputStreamReader(process.getInputStream(), "UTF-8"))) {
+            String line;
+            while ((line = lines.readLine()) != null) {
+                if (line.endsWith(path)) {
+                    held++;
+                }
+            }
+        }
+        process.waitFor();
+        return held;
+    }
+
+    @Test
+    void aTurtleFileIsReadAndLetGo(@TempDir File folder) throws Exception {
+        File turtle = new File(folder, "turtle.owl");
+        Files.write(turtle.toPath(), TURTLE.getBytes("UTF-8"));
+        File control = new File(folder, "control.owl");
+        Files.write(control.toPath(), TURTLE.getBytes("UTF-8"));
+
+        OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
+        OWLOntology read = OntologySource.loadFile(manager, turtle);
+        OWLManager.createOWLOntologyManager().loadOntologyFromOntologyDocument(control);
+
+        assertEquals(IRI.create("http://example.org/turtle"),
+                read.getOntologyID().getOntologyIRI().get());
+        assertEquals(IRI.create(turtle), manager.getOntologyDocumentIRI(read),
+                "the file is its document, not the stand-in it was read under");
+        int held = handlesOn(turtle);
+        org.junit.jupiter.api.Assumptions.assumeTrue(held >= 0,
+                "this platform cannot list open files; removing the folder checks it instead");
+        assertEquals(1, handlesOn(control), "the OWL API's own File load leaves Turtle open - if"
+                + " it no longer does, loadFile's stand-in IRI may no longer be needed");
+        assertEquals(0, held, "loadFile left the file open");
+    }
+
+    @Test
+    void anAddressMappedToALocalFileIsReadFromItAndLetGo(@TempDir File folder) throws Exception {
+        File copy = new File(folder, "copy.ttl");
+        Files.write(copy.toPath(), TURTLE.getBytes("UTF-8"));
+        OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
+        IRI published = IRI.create("http://example.org/turtle");
+        manager.getIRIMappers().add(
+                new org.semanticweb.owlapi.util.SimpleIRIMapper(published, IRI.create(copy)));
+
+        OWLOntology read = OntologySource.load(manager, published);
+
+        assertEquals(1, read.getClassesInSignature().size());
+        assertEquals(IRI.create(copy), manager.getOntologyDocumentIRI(read));
+        assertSame(read, OntologySource.load(manager, published), "read once");
+        int held = handlesOn(copy);
+        if (held >= 0) {
+            assertEquals(0, held, "the local copy was left open");
+        }
+    }
 }
