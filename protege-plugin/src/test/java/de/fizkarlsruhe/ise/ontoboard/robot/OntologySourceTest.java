@@ -265,23 +265,28 @@ class OntologySourceTest {
     void aTurtleFileIsReadAndLetGo(@TempDir File folder) throws Exception {
         File turtle = new File(folder, "turtle.owl");
         Files.write(turtle.toPath(), TURTLE.getBytes("UTF-8"));
-        File control = new File(folder, "control.owl");
-        Files.write(control.toPath(), TURTLE.getBytes("UTF-8"));
 
         OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
         OWLOntology read = OntologySource.loadFile(manager, turtle);
-        OWLManager.createOWLOntologyManager().loadOntologyFromOntologyDocument(control);
 
         assertEquals(IRI.create("http://example.org/turtle"),
                 read.getOntologyID().getOntologyIRI().get());
         assertEquals(IRI.create(turtle), manager.getOntologyDocumentIRI(read),
                 "the file is its document, not the stand-in it was read under");
         int held = handlesOn(turtle);
-        org.junit.jupiter.api.Assumptions.assumeTrue(held >= 0,
-                "this platform cannot list open files; removing the folder checks it instead");
+        if (held < 0) {
+            // Windows: no list of open files, and JUnit removing the folder is the check.
+            return;
+        }
+        assertEquals(0, held, "loadFile left the file open");
+
+        // The control, only where handles can be counted - and an open file can still be
+        // deleted, which on Windows it cannot: this control is what failed there first.
+        File control = new File(folder, "control.owl");
+        Files.write(control.toPath(), TURTLE.getBytes("UTF-8"));
+        OWLManager.createOWLOntologyManager().loadOntologyFromOntologyDocument(control);
         assertEquals(1, handlesOn(control), "the OWL API's own File load leaves Turtle open - if"
                 + " it no longer does, loadFile's stand-in IRI may no longer be needed");
-        assertEquals(0, held, "loadFile left the file open");
     }
 
     @Test
@@ -302,5 +307,75 @@ class OntologySourceTest {
         if (held >= 0) {
             assertEquals(0, held, "the local copy was left open");
         }
+    }
+
+    private static File turtle(File folder, String name, String body) throws Exception {
+        File file = new File(folder, name);
+        Files.write(file.toPath(), ("@prefix owl: <http://www.w3.org/2002/07/owl#> .\n" + body)
+                .getBytes("UTF-8"));
+        return file;
+    }
+
+    /**
+     * The import the OWL API loads by itself was the last file still held open on Windows - a
+     * converted ontology's Turtle import - so loadFile reads imports as well.
+     */
+    @Test
+    void anImportThatIsALocalFileIsReadAndLetGoToo(@TempDir File folder) throws Exception {
+        File upper = turtle(folder, "upper.ttl", "<http://example.org/upper> a owl:Ontology .\n"
+                + "<http://example.org/upper#Thing> a owl:Class .\n");
+        File main = turtle(folder, "main.ttl", "<http://example.org/main> a owl:Ontology ;\n"
+                + "  owl:imports <" + upper.toURI() + "> .\n"
+                + "<http://example.org/main#A> a owl:Class .\n");
+        OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
+
+        OWLOntology read = OntologySource.loadFile(manager, main);
+
+        assertEquals(2, read.getImportsClosure().size(), "the import is in the closure");
+        assertTrue(OntologySource.missingImportsOf(read).isEmpty());
+        assertEquals(IRI.create(upper), manager.getOntologyDocumentIRI(
+                manager.getOntology(IRI.create("http://example.org/upper"))));
+        int held = handlesOn(upper);
+        if (held >= 0) {
+            assertEquals(0, held, "the import was left open");
+        }
+    }
+
+    /** An import by its published address, which a mapper - a catalog - sends to a local copy. */
+    @Test
+    void anImportMappedToALocalCopyIsReadFromIt(@TempDir File folder) throws Exception {
+        File copy = turtle(folder, "upper-copy.ttl", "<http://example.org/upper> a owl:Ontology .\n"
+                + "<http://example.org/upper#Thing> a owl:Class .\n");
+        File main = turtle(folder, "main.ttl", "<http://example.org/main> a owl:Ontology ;\n"
+                + "  owl:imports <http://example.org/upper> .\n");
+        OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
+        manager.getIRIMappers().add(new org.semanticweb.owlapi.util.SimpleIRIMapper(
+                IRI.create("http://example.org/upper"), IRI.create(copy)));
+
+        OWLOntology read = OntologySource.loadFile(manager, main);
+
+        assertEquals(2, read.getImportsClosure().size(), read.getImportsClosure().toString());
+        assertEquals(1, manager.getIRIMappers().size(), "the caller's mapper is back, and alone");
+        int held = handlesOn(copy);
+        if (held >= 0) {
+            assertEquals(0, held, "the local copy was left open");
+        }
+    }
+
+    /** One that cannot be read is left out when the caller says so, and named as missing. */
+    @Test
+    void anImportThatCannotBeReadIsLeftOutAndNamedWhenTheCallerSaysSo(@TempDir File folder)
+            throws Exception {
+        File main = turtle(folder, "main.ttl", "<http://example.org/main> a owl:Ontology ;\n"
+                + "  owl:imports <" + new File(folder, "not-there.ttl").toURI() + "> .\n");
+        OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
+        manager.setOntologyLoaderConfiguration(manager.getOntologyLoaderConfiguration()
+                .setMissingImportHandlingStrategy(
+                        org.semanticweb.owlapi.model.MissingImportHandlingStrategy.SILENT));
+
+        OWLOntology read = OntologySource.loadFile(manager, main);
+
+        assertEquals(1, OntologySource.missingImportsOf(read).size(),
+                OntologySource.missingImportsOf(read).toString());
     }
 }

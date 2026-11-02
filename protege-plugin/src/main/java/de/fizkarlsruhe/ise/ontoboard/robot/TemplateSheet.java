@@ -8,6 +8,7 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -16,6 +17,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.obolibrary.robot.IOHelper;
+import org.obolibrary.robot.QuotedEntityChecker;
 import org.obolibrary.robot.Template;
 import org.obolibrary.robot.exceptions.RowParseException;
 import org.semanticweb.owlapi.apibinding.OWLManager;
@@ -176,6 +178,221 @@ public final class TemplateSheet {
         }
     }
 
+    /**
+     * Every name the sheets of one folder introduce, for each of them to use.
+     *
+     * <p>A knowledge graph kept in sheets is mostly references from a row of one sheet to a row of
+     * another, by label or by ID - every reference in the MatWerk workbook's dataportal sheet names
+     * a row that another sheet defines. Building one sheet against the ontology alone, as
+     * Template... did, made each of those an error, although the sheet editor had offered the name
+     * and Check sheets... had accepted it: ROBOT only knows the rows of the templates it was given.
+     *
+     * <p>ROBOT reads a template's names when it constructs it and resolves references when it
+     * generates, both through a QuotedEntityChecker. Handed one checker, every sheet of the folder
+     * is constructed first and generated after, so any sheet can name a row of any other - in any
+     * order, two sheets that name each other included. ROBOT's own command line constructs and
+     * generates one template after the other, so there, and in an ODK component listing several
+     * templates, a sheet can name only rows of the sheets listed before it.
+     */
+    public static final class Names {
+        private final IOHelper io;
+        private final QuotedEntityChecker checker;
+        private final List<String> sheets = new ArrayList<String>();
+        private final List<String> unavailable = new ArrayList<String>();
+
+        private Names(IOHelper io, QuotedEntityChecker checker) {
+            this.io = io;
+            this.checker = checker;
+        }
+
+        /** The sheets whose rows can be named, in the order they were read. */
+        public List<String> getSheets() {
+            return Collections.unmodifiableList(sheets);
+        }
+
+        /** Sheets, or rows of them, whose names could not be taken in - each saying why. */
+        public List<String> getUnavailable() {
+            return Collections.unmodifiableList(unavailable);
+        }
+    }
+
+    /**
+     * The names {@code sheets} introduce - name of each sheet to its rows - with the ontology's.
+     *
+     * <p>Each sheet's two header rows are tried first, so a file beside the sheets that is not a
+     * template - a data export - is set aside after one try rather than read row by row.
+     */
+    public static Names namesOf(Map<String, List<List<String>>> sheets, OWLOntology context,
+            Map<String, String> prefixes) {
+        return namesOf(sheets, context, prefixes, null);
+    }
+
+    /**
+     * {@link #namesOf(Map, OWLOntology, Map)} for building the sheet called {@code self}: a row of
+     * another sheet that carries one of its labels is not lent. ROBOT decides what a row without
+     * TYPE is - class, individual, property - by what its label already names, so a class row
+     * "Margherita" became the menu item "Margherita" of another sheet, and failed. The sheet's own
+     * rows answer to its own labels, as they did when it was built alone.
+     */
+    public static Names namesOf(Map<String, List<List<String>>> sheets, OWLOntology context,
+            Map<String, String> prefixes, String self) {
+        IOHelper io = ioHelper(prefixes);
+        java.util.Set<String> ownLabels = labelsOf(self == null ? null : sheets.get(self));
+        // Set up as ROBOT's Template sets up its own checker when it is not handed one.
+        QuotedEntityChecker checker = new QuotedEntityChecker();
+        checker.setIOHelper(io);
+        checker.addProvider(new org.semanticweb.owlapi.util.SimpleShortFormProvider());
+        checker.addProperty(OWLManager.getOWLDataFactory().getRDFSLabel());
+        if (context != null) {
+            checker.addAll(context);
+        }
+        Names names = new Names(io, checker);
+        // Not the context again for every sheet: it is in the checker once already.
+        OWLOntology nothing = emptyOntology();
+        for (Map.Entry<String, List<List<String>>> sheet : sheets.entrySet()) {
+            List<List<String>> rows = sheet.getValue();
+            if (rows == null || rows.size() < 2) {
+                continue;
+            }
+            try {
+                new Template(sheet.getKey(), rows.subList(0, 2), nothing, io, checker);
+            } catch (Exception notATemplate) {
+                names.unavailable.add(sheet.getKey() + ": none of its rows can be named from "
+                        + "other sheets - " + explain(notATemplate));
+                continue;
+            }
+            List<String> refused = lend(sheet.getKey(), rows, io, checker, nothing,
+                    sheet.getKey().equals(self) ? java.util.Collections.<String>emptySet()
+                            : ownLabels);
+            names.sheets.add(sheet.getKey());
+            if (!refused.isEmpty()) {
+                names.unavailable.add(sheet.getKey() + ": " + refused.size() + " row"
+                        + (refused.size() == 1 ? "" : "s") + " cannot be named from other sheets "
+                        + "- the ID uses a prefix nothing defines, so ROBOT will not build the row "
+                        + "either: " + String.join(", ", refused));
+            }
+        }
+        return names;
+    }
+
+    /**
+     * Puts a sheet's rows into the checker by every name other sheets may use for them.
+     *
+     * <p>Through ROBOT itself - a table of the row's ID, its TYPE and one label column, which is
+     * what ROBOT reads to register a row - once for each label column, because ROBOT takes only
+     * the last rdfs:label column of a sheet while the sheet editor offers every one. A row is lent
+     * only with an ID ROBOT can expand: one it cannot is refused when its own sheet is built, and
+     * lent it would bind its label to an IRI that row never gets. Only a label that is not blank:
+     * ROBOT binds a blank one too, and an empty part of a SPLIT cell would then name that row.
+     *
+     * @return the rows refused for their ID, as "row N (ID)"
+     */
+    private static List<String> lend(String name, List<List<String>> rows, IOHelper io,
+            QuotedEntityChecker checker, OWLOntology nothing, java.util.Set<String> masked) {
+        List<String> refused = new ArrayList<String>();
+        TemplateColumns columns = TemplateColumns.of(rows);
+        TemplateColumns.Column id = columns.firstOf(TemplateColumns.Kind.ID);
+        if (id == null) {
+            return refused;
+        }
+        TemplateColumns.Column type = columns.firstOf(TemplateColumns.Kind.TYPE);
+        boolean first = true;
+        for (TemplateColumns.Column label : columns.labelColumns()) {
+            if (!namesARow(label)) {
+                continue;
+            }
+            List<List<String>> table = new ArrayList<List<String>>();
+            table.add(type == null ? Arrays.asList("ID", "Label")
+                    : Arrays.asList("ID", "Type", "Label"));
+            table.add(type == null ? Arrays.asList(id.getSpec(), label.getSpec())
+                    : Arrays.asList(id.getSpec(), type.getSpec(), label.getSpec()));
+            for (int index = FIRST_DATA_ROW; index < rows.size(); index++) {
+                List<String> row = rows.get(index);
+                // The cells as written, as ROBOT reads them: it expands the ID untrimmed and
+                // registers the label untrimmed, so " ex:x1" is refused by its own sheet and
+                // must not be lent here as ex:x1.
+                String identifier = rawAt(row, id.getNumber());
+                String text = rawAt(row, label.getNumber());
+                if (identifier.trim().isEmpty() || text.trim().isEmpty()
+                        || masked.contains(text.trim())) {
+                    continue;
+                }
+                if (io.createIRI(identifier) == null) {
+                    if (first) {
+                        refused.add("row " + (index + 1) + " (" + identifier.trim() + ")");
+                    }
+                    continue;
+                }
+                table.add(type == null ? Arrays.asList(identifier, text)
+                        : Arrays.asList(identifier, rawAt(row, type.getNumber()), text));
+            }
+            first = false;
+            if (table.size() > 2) {
+                try {
+                    new Template(name, table, nothing, io, checker);
+                } catch (Exception cannotLend) {
+                    // A label column ROBOT cannot read lends nothing; the sheet's own build
+                    // reports the column.
+                }
+            }
+        }
+        return refused;
+    }
+
+    /** Every label a sheet gives its rows, trimmed; empty for no sheet. */
+    private static java.util.Set<String> labelsOf(List<List<String>> rows) {
+        java.util.Set<String> labels = new java.util.HashSet<String>();
+        if (rows == null || rows.size() < 2) {
+            return labels;
+        }
+        for (TemplateColumns.Column label : TemplateColumns.of(rows).labelColumns()) {
+            if (!namesARow(label)) {
+                continue;
+            }
+            for (int index = FIRST_DATA_ROW; index < rows.size(); index++) {
+                String text = rawAt(rows.get(index), label.getNumber()).trim();
+                if (!text.isEmpty()) {
+                    labels.add(text);
+                }
+            }
+        }
+        return labels;
+    }
+
+    /** A label column ROBOT resolves names by: LABEL, or an annotation with rdfs:label. */
+    private static boolean namesARow(TemplateColumns.Column column) {
+        if (column.getKind() == TemplateColumns.Kind.LABEL) {
+            return true;
+        }
+        String property = column.getProperty() == null ? "" : column.getProperty().trim();
+        return property.equals("rdfs:label")
+                || property.equals("http://www.w3.org/2000/01/rdf-schema#label");
+    }
+
+    /** The cell in a 1-based column as written; empty when the row is shorter. */
+    private static String rawAt(List<String> row, int number) {
+        int at = number - 1;
+        String cell = at >= 0 && at < row.size() ? row.get(at) : null;
+        return cell == null ? "" : cell;
+    }
+
+    /**
+     * Every sheet of a folder, each built against the names of all of them - in the order given,
+     * so any of them may name a row of any other. Each sheet gets the names fresh, as a single
+     * sheet built on its own would: a build writes into the checker it is given.
+     */
+    public static Map<String, Result> runAll(Map<String, List<List<String>>> sheets,
+            OWLOntology context, Map<String, String> prefixes, String iriBase) {
+        Map<String, Result> results = new LinkedHashMap<String, Result>();
+        for (Map.Entry<String, List<List<String>>> sheet : sheets.entrySet()) {
+            results.put(sheet.getKey(), run(sheet.getKey(), sheet.getValue(), context, prefixes,
+                    IRI.create((iriBase == null ? "http://www.ontoboard.org/template/" : iriBase)
+                            + sheet.getKey()), namesOf(sheets, context, prefixes,
+                                    sheet.getKey())));
+        }
+        return results;
+    }
+
     private TemplateSheet() {
     }
 
@@ -260,6 +477,16 @@ public final class TemplateSheet {
      */
     public static Result run(String name, List<List<String>> rows, OWLOntology context,
             Map<String, String> prefixes, IRI outputIri) {
+        return run(name, rows, context, prefixes, outputIri, null);
+    }
+
+    /**
+     * {@link #run(String, List, OWLOntology, Map, IRI)}, with the rows of other sheets nameable
+     * as well: {@code names} is what {@link #namesOf} read from the folder the sheet is in, or
+     * null for the ontology alone.
+     */
+    public static Result run(String name, List<List<String>> rows, OWLOntology context,
+            Map<String, String> prefixes, IRI outputIri, Names names) {
         List<Problem> problems = new ArrayList<Problem>();
         if (rows == null || rows.size() < 2) {
             problems.add(new Problem(0, 0, "", "",
@@ -268,7 +495,7 @@ public final class TemplateSheet {
             return new Result(null, problems, 0, true);
         }
         int dataRows = rows.size() - 2;
-        IOHelper io = ioHelper(prefixes);
+        IOHelper io = names != null ? names.io : ioHelper(prefixes);
         String iri = outputIri == null ? "http://www.ontoboard.org/template" : outputIri.toString();
 
         // Faults in the template row itself, found before ROBOT is asked anything. These are the
@@ -287,7 +514,8 @@ public final class TemplateSheet {
         // produced and no row is salvageable - so it must not be reported as though one row were
         // at fault.
         try {
-            template(name, rows.subList(0, 2), context, io).generateOutputOntology(iri, false);
+            template(name, rows.subList(0, 2), context, io, names)
+                    .generateOutputOntology(iri, false);
         } catch (Exception badTemplate) {
             problems.add(new Problem(0, 0, "", "", explain(badTemplate)));
             return new Result(null, problems, dataRows, true);
@@ -295,7 +523,7 @@ public final class TemplateSheet {
 
         OWLOntology strict = null;
         try {
-            strict = template(name, rows, context, io).generateOutputOntology(iri, false);
+            strict = template(name, rows, context, io, names).generateOutputOntology(iri, false);
         } catch (Exception someRowFailed) {
             // Expected. Which row is worked out below, along with every other one - not just this
             // first one, which is all ROBOT would tell us.
@@ -308,15 +536,17 @@ public final class TemplateSheet {
 
         OWLOntology salvaged;
         try {
-            salvaged = template(name, rows, context, io).generateOutputOntology(iri, true);
+            salvaged = template(name, rows, context, io, names).generateOutputOntology(iri, true);
         } catch (Exception nothingSalvageable) {
             // ROBOT's own salvage gave up, so there is no partial ontology to report against.
             // Building from the rows that do work is the only way to keep the two promises this
             // class exists for - every problem placed, and the good rows surviving the bad ones.
-            return fromRowsThatWork(name, rows, context, io, iri, dataRows, templateFaults);
+            return fromRowsThatWork(name, rows, context, io, iri, dataRows, templateFaults,
+                    names);
         }
 
-        problems.addAll(problemsPerRow(name, rows, contextIncluding(context, salvaged), io, iri));
+        problems.addAll(problemsPerRow(name, rows, contextIncluding(context, salvaged), io, iri,
+                names));
         return new Result(salvaged, problems, dataRows, false).withWarnings(warnings);
     }
 
@@ -405,7 +635,7 @@ public final class TemplateSheet {
      * than about tooling.
      */
     private static List<Problem> problemsPerRow(String name, List<List<String>> rows,
-            OWLOntology context, IOHelper io, String iri) {
+            OWLOntology context, IOHelper io, String iri, Names names) {
         List<Problem> problems = new ArrayList<Problem>();
         List<String> headings = rows.get(0);
         for (int index = FIRST_DATA_ROW; index < rows.size(); index++) {
@@ -416,7 +646,7 @@ public final class TemplateSheet {
             List<List<String>> oneRow = new ArrayList<List<String>>(rows.subList(0, 2));
             oneRow.add(row);
             try {
-                template(name, oneRow, context, io).generateOutputOntology(iri, false);
+                template(name, oneRow, context, io, names).generateOutputOntology(iri, false);
             } catch (RowParseException failed) {
                 int column = failed.colNum;
                 problems.add(new Problem(index + 1, column,
@@ -449,7 +679,7 @@ public final class TemplateSheet {
      */
     private static Result fromRowsThatWork(String name, List<List<String>> rows,
             OWLOntology context, IOHelper io, String iri, int dataRows,
-            List<Problem> templateFaults) {
+            List<Problem> templateFaults, Names names) {
         List<Problem> problems = new ArrayList<Problem>(templateFaults);
         List<String> headings = rows.get(0);
         List<String> templateRow = rows.get(1);
@@ -472,7 +702,7 @@ public final class TemplateSheet {
             for (Iterator<Integer> each = pending.iterator(); each.hasNext();) {
                 int index = each.next();
                 try {
-                    OWLOntology produced = oneRow(name, rows, index, scope, io, iri);
+                    OWLOntology produced = oneRow(name, rows, index, scope, io, iri, names);
                     built.getOWLOntologyManager().addAxioms(built, produced.getAxioms());
                     each.remove();
                     progressed = true;
@@ -487,17 +717,17 @@ public final class TemplateSheet {
 
         for (Integer index : pending) {
             problems.add(blame(name, rows, index, headings, templateRow, scope, io, iri,
-                    failures.get(index)));
+                    failures.get(index), names));
         }
         return new Result(built, problems, dataRows, false);
     }
 
     /** One data row, with the two header rows above it, as ROBOT needs to be handed it. */
     private static OWLOntology oneRow(String name, List<List<String>> rows, int index,
-            OWLOntology scope, IOHelper io, String iri) throws Exception {
+            OWLOntology scope, IOHelper io, String iri, Names names) throws Exception {
         List<List<String>> justThisRow = new ArrayList<List<String>>(rows.subList(0, 2));
         justThisRow.add(rows.get(index));
-        return template(name, justThisRow, scope, io).generateOutputOntology(iri, false);
+        return template(name, justThisRow, scope, io, names).generateOutputOntology(iri, false);
     }
 
     /**
@@ -524,7 +754,7 @@ public final class TemplateSheet {
      */
     private static Problem blame(String name, List<List<String>> rows, int index,
             List<String> headings, List<String> templateRow, OWLOntology scope, IOHelper io,
-            String iri, Exception failure) {
+            String iri, Exception failure, Names names) {
         if (failure instanceof RowParseException) {
             RowParseException parsed = (RowParseException) failure;
             return new Problem(index + 1, parsed.colNum, headingAt(headings, parsed.colNum),
@@ -539,12 +769,12 @@ public final class TemplateSheet {
                 continue;
             }
             boolean failsAlone = !builds(name, rows, index,
-                    onlyThisColumn(row, templateRow, column, width), scope, io, iri);
+                    onlyThisColumn(row, templateRow, column, width), scope, io, iri, names);
             boolean buildsWithout = builds(name, rows, index,
-                    withoutThisColumn(row, column), scope, io, iri);
+                    withoutThisColumn(row, column), scope, io, iri, names);
             if (failsAlone && buildsWithout) {
                 return new Problem(index + 1, column + 1, headingAt(headings, column + 1), cell,
-                        whyNot(cell, templateRow.get(column), io));
+                        whyNot(cell, templateRow.get(column), io, names));
             }
         }
 
@@ -557,9 +787,10 @@ public final class TemplateSheet {
                     || !"TYPE".equalsIgnoreCase(templateRow.get(column).trim())) {
                 continue;
             }
-            if (builds(name, rows, index, withoutThisColumn(row, column), scope, io, iri)) {
+            if (builds(name, rows, index, withoutThisColumn(row, column), scope, io, iri,
+                    names)) {
                 return new Problem(index + 1, column + 1, headingAt(headings, column + 1), cell,
-                        whyNot(cell, templateRow.get(column), io));
+                        whyNot(cell, templateRow.get(column), io, names));
             }
         }
 
@@ -587,11 +818,11 @@ public final class TemplateSheet {
 
     /** Whether the row builds with the given cells in place of its own. */
     private static boolean builds(String name, List<List<String>> rows, int index,
-            List<String> replacement, OWLOntology scope, IOHelper io, String iri) {
+            List<String> replacement, OWLOntology scope, IOHelper io, String iri, Names names) {
         List<List<String>> altered = new ArrayList<List<String>>(rows);
         altered.set(index, replacement);
         try {
-            oneRow(name, altered, index, scope, io, iri);
+            oneRow(name, altered, index, scope, io, iri, names);
             return true;
         } catch (Exception stillBroken) {
             return false;
@@ -608,8 +839,17 @@ public final class TemplateSheet {
     private static boolean isStructural(String templateCell) {
         String spec = templateCell == null ? "" : templateCell.trim();
         return spec.equalsIgnoreCase("ID") || spec.equalsIgnoreCase("LABEL")
-                || spec.equalsIgnoreCase("TYPE");
+                || spec.equalsIgnoreCase("TYPE") || LABEL_ANNOTATION.matcher(spec).matches();
     }
+
+    /**
+     * An rdfs:label column written as an annotation - A, AL, AT or AI. Held constant like LABEL:
+     * cleared in an experiment, ROBOT registers the row under an empty name, and with one checker
+     * for a folder an empty part of a SPLIT cell in another row would then name it.
+     */
+    private static final java.util.regex.Pattern LABEL_ANNOTATION = java.util.regex.Pattern
+            .compile("(?i)A[LTI]?\\s+(rdfs:label|<?http://www\\.w3\\.org/2000/01/rdf-schema#label>?)"
+                    + "([@^\\s].*)?");
 
     /**
      * Why a cell that points at a term did not work, in terms its author can act on.
@@ -618,7 +858,8 @@ public final class TemplateSheet {
      * rather than a spreadsheet. What the person needs to know is that this column holds a
      * reference to a term, and that this text is not one.
      */
-    private static String whyNot(String cell, String templateCell, IOHelper io) {
+    private static String whyNot(String cell, String templateCell, IOHelper io, Names names) {
+        boolean otherSheets = names != null && names.sheets.size() > 1;
         String value = cell.trim();
         String spec = templateCell == null ? "" : templateCell.trim();
         int colon = value.indexOf(':');
@@ -643,17 +884,25 @@ public final class TemplateSheet {
         boolean knownCurie = looksLikeCurie && io.getPrefixes().get(
                 value.substring(0, colon)) != null;
         if (absoluteIri || knownCurie) {
+            if (otherSheets) {
+                return "This names a term properly, and the term is not here: nothing in this "
+                        + "ontology, its imports or the other sheets in this folder is \""
+                        + value + "\". Bring it in with "
+                        + "OntoBoard > Reuse > Find terms in another ontology..., "
+                        + "or add the row that defines it to one of the sheets.";
+            }
             return "This names a term properly, and the term is not here: nothing in this "
                     + "ontology or its imports is \"" + value + "\". Either bring it in with "
-                    + "OntoBoard > Reuse > Find terms in another ontology..., or - if it is meant to come "
-                    + "from another sheet - build that sheet first, because a sheet can only "
-                    + "point at terms that already exist when it runs.";
+                    + "OntoBoard > Reuse > Find terms in another ontology..., or - if another sheet "
+                    + "defines it - keep that sheet in the same folder as this one, where every "
+                    + "sheet can name the rows of the others.";
         }
-        return "Nothing in this ontology is called \"" + value + "\", so there is no term for "
-                + "this column to point at. The column is \"" + spec + "\", which holds a "
-                + "reference to a term: an IRI, a CURIE such as obo:BFO_0000001, or the exact "
-                + "label of a term that already exists - here, in an import, or in another row "
-                + "of this sheet.";
+        return "Nothing in this ontology" + (otherSheets ? " or in the other sheets in this folder"
+                : "") + " is called \"" + value + "\", so there is no term for this column to point "
+                + "at. The column is \"" + spec + "\", which holds a reference to a term: an IRI, a "
+                + "CURIE such as obo:BFO_0000001, or the exact label of a term that already exists "
+                + "- here, in an import, in another row of this sheet, or in another sheet in the "
+                + "same folder.";
     }
 
     /** Somewhere to accumulate the rows that work. */
@@ -697,7 +946,13 @@ public final class TemplateSheet {
     }
 
     private static Template template(String name, List<List<String>> rows, OWLOntology context,
-            IOHelper io) throws Exception {
+            IOHelper io, Names names) throws Exception {
+        if (names != null) {
+            // The folder's checker: every sheet's rows are in it already, and this sheet's own
+            // go in again, which changes nothing.
+            return new Template(name, rows, context == null ? emptyOntology() : context, io,
+                    names.checker);
+        }
         return context == null ? new Template(name, rows, io)
                 : new Template(name, rows, context, io);
     }

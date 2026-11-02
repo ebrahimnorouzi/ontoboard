@@ -181,20 +181,72 @@ public final class OntologySource {
      * then recorded as the ontology's document, which is what OntoBoard and Protege ask for later.
      * A relative IRI inside the file resolves against the stand-in rather than the file's path;
      * an IRI that depends on where a file happens to sit names nothing anyone can find anyway.
+     *
+     * <p>Its imports too. The OWL API loads an ontology's imports by itself, guessing their format
+     * the same way - a Turtle import of a converted ontology was what still held a file open on
+     * Windows after the ontology itself no longer did. So while the file is read every import is
+     * sent nowhere and left out; then each is read as it would have been, a local file through
+     * this method and anything else through loadOntology, and the closure is whole again: the OWL
+     * API resolves an import against the ontologies already loaded, by IRI and by document IRI.
+     * The mappers are swapped for the moment the file is read, so the manager must be the
+     * caller's own - every caller creates one - and never Protege's.
      */
     public static OWLOntology loadFile(OWLOntologyManager manager, File file)
             throws IOException, OWLOntologyCreationException {
+        return loadFile(manager, file, new java.util.HashSet<String>());
+    }
+
+    private static OWLOntology loadFile(OWLOntologyManager manager, File file,
+            java.util.Set<String> reading) throws IOException, OWLOntologyCreationException {
+        org.semanticweb.owlapi.model.OWLOntologyLoaderConfiguration configured =
+                manager.getOntologyLoaderConfiguration();
+        List<org.semanticweb.owlapi.model.OWLOntologyIRIMapper> mappers =
+                new ArrayList<org.semanticweb.owlapi.model.OWLOntologyIRIMapper>();
+        for (org.semanticweb.owlapi.model.OWLOntologyIRIMapper mapper : manager.getIRIMappers()) {
+            mappers.add(mapper);
+        }
+        final IRI nowhere = standInFor(new File("an-import-read-afterwards.owl"));
+        org.semanticweb.owlapi.model.OWLOntologyIRIMapper toNowhere = iri -> nowhere;
+        OWLOntology ontology;
         try (InputStream stream = Files.newInputStream(file.toPath())) {
-            OWLOntology ontology;
+            manager.getIRIMappers().set(toNowhere);
+            manager.setOntologyLoaderConfiguration(configured
+                    .setMissingImportHandlingStrategy(MissingImportHandlingStrategy.SILENT));
             try {
                 ontology = manager.loadOntologyFromOntologyDocument(
                         new StreamDocumentSource(stream, standInFor(file)));
             } catch (OWLOntologyAlreadyExistsException already) {
                 return manager.getOntology(already.getOntologyID());
+            } finally {
+                manager.getIRIMappers().set(mappers);
+                manager.setOntologyLoaderConfiguration(configured);
             }
-            manager.setOntologyDocumentIRI(ontology, IRI.create(file));
-            return ontology;
         }
+        manager.setOntologyDocumentIRI(ontology, IRI.create(file));
+        reading.add(IRI.create(file).toString());
+        for (OWLImportsDeclaration declaration : ontology.getImportsDeclarations()) {
+            if (manager.getImportedOntology(declaration) != null) {
+                continue;
+            }
+            try {
+                File local = localFileFor(manager, declaration.getIRI());
+                if (local == null) {
+                    manager.loadOntology(declaration.getIRI());
+                } else if (reading.add(IRI.create(local).toString())) {
+                    loadFile(manager, local, reading);
+                }
+            } catch (IOException | OWLOntologyCreationException | RuntimeException unreadable) {
+                // As the OWL API would have treated it: left out when the caller said missing
+                // imports are to be left out, a failure otherwise.
+                if (configured.getMissingImportHandlingStrategy()
+                        != MissingImportHandlingStrategy.SILENT) {
+                    throw new OWLOntologyCreationException("The import "
+                            + declaration.getIRI() + " could not be read: "
+                            + unreadable.getMessage(), unreadable);
+                }
+            }
+        }
+        return ontology;
     }
 
     /** A file: IRI with the file's name, in a folder that does not exist. */
@@ -206,7 +258,7 @@ public final class OntologySource {
      * The local file this address is read from: the file a mapper sends it to, or the address
      * itself when it is a file: IRI - null when it is neither, or the file is not there.
      */
-    static File localFileFor(OWLOntologyManager manager, IRI iri) {
+    public static File localFileFor(OWLOntologyManager manager, IRI iri) {
         IRI document = iri;
         for (org.semanticweb.owlapi.model.OWLOntologyIRIMapper mapper : manager.getIRIMappers()) {
             IRI mapped = mapper.getDocumentIRI(iri);

@@ -8,6 +8,11 @@ collaboration.
 
 ## Protégé plugin
 
+The build and test runtime is **Temurin 25**, the current Java LTS release. The generated
+plugin remains Java 8-compatible for Protégé 5.5.0 and 5.6.x because `pom.xml` sets
+`maven.compiler.release` to `8`; upgrading the build JDK does not change the plugin's
+runtime compatibility.
+
 ```bash
 cd protege-plugin
 mvn clean test        # 1648 tests (some need Docker or node, and skip without them)

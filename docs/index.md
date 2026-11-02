@@ -84,7 +84,8 @@ Click the answer that fits; each opens the next step. The same steps are in Prot
 
         Keep it in a graph file of its own that imports your ontology, one sheet per kind of
         thing: the **Sheet editor** gives new rows identifiers, **Check sheets...** finds names
-        that point at nothing, **Template...** turns each sheet into individuals.
+        that point at nothing, **Template...** turns the sheets into individuals - each sheet
+        naming the rows of the others, by label or ID, in any order.
         [From spreadsheets to a knowledge graph](knowledge-graph.md)
 
 ???+ question "Do you know ODK, ROBOT or eXtreme Design?"
