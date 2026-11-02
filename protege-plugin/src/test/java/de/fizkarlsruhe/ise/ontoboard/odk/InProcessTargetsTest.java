@@ -108,7 +108,7 @@ class InProcessTargetsTest {
                 InProcessTargets.run(edit, ontology, null, "prepare_release");
 
         assertFalse(outcome.isOk());
-        assertTrue(outcome.getFailure().contains("Project > Release"), outcome.getFailure());
+        assertTrue(outcome.getFailure().contains("Build and release > Release"), outcome.getFailure());
     }
 
     // ---------- it actually builds ----------

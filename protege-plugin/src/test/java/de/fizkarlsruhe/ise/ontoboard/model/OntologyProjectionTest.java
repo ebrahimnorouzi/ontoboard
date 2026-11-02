@@ -90,10 +90,12 @@ class OntologyProjectionTest {
         assertEquals(1, p.getEdges().size());
 
         CanvasEdge edge = p.getEdges().get(0);
-        assertEquals(CanvasEdge.Kind.OBJECT_PROPERTY, edge.getKind());
+        // Since 1.132.0 in the domain-and-range style, saying so: drawn as a restriction it
+        // read as "every Person works for some Organization", which a domain and range do not say.
+        assertEquals(CanvasEdge.Kind.DOMAIN_RANGE, edge.getKind());
         assertEquals(NS + "Person", edge.getSourceId());
         assertEquals(NS + "Organization", edge.getTargetId());
-        assertEquals("worksFor", edge.getLabel());
+        assertEquals("worksFor (domain \u2192 range)", edge.getLabel());
     }
 
     @Test
@@ -122,7 +124,7 @@ class OntologyProjectionTest {
         assertEquals(CanvasEdge.Kind.OBJECT_PROPERTY, edge.getKind());
         assertEquals(NS2 + "Person", edge.getSourceId());
         assertEquals(NS2 + "Organization", edge.getTargetId());
-        assertEquals("worksFor", edge.getLabel());
+        assertEquals("\u2203 worksFor", edge.getLabel());
     }
 
     @Test
@@ -135,7 +137,7 @@ class OntologyProjectionTest {
         assertEquals(CanvasEdge.Kind.OBJECT_PROPERTY, edge.getKind());
         assertEquals(NS2 + "Manager", edge.getSourceId());
         assertEquals(NS2 + "Person", edge.getTargetId());
-        assertEquals("manages (only)", edge.getLabel());
+        assertEquals("\u2200 manages", edge.getLabel());
     }
 
     @Test
@@ -154,7 +156,7 @@ class OntologyProjectionTest {
         assertEquals(CanvasEdge.Kind.DATA_PROPERTY, edge.getKind());
         assertEquals(NS2 + "Student", edge.getSourceId());
         assertEquals(XSD_STRING, edge.getTargetId());
-        assertEquals("hasName", edge.getLabel());
+        assertEquals("\u2203 hasName", edge.getLabel());
     }
 
     @Test

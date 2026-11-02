@@ -438,7 +438,7 @@ public final class IriGenerator {
             return refused(source, book, inTheOntology, editor, "This identifier is supposed to "
                     + "carry who made the row, and nobody has said who that is - the name falls "
                     + "back to \"" + ANONYMOUS + "\", which every editor would share. Set a "
-                    + "display name in OntoBoard > Collaboration..., or choose a different "
+                    + "display name in OntoBoard > Share > Collaboration..., or choose a different "
                     + "source.", moment);
         }
         return new IriGenerator(source, book, inTheOntology, null, editor, namespace, 0, 0, 0,

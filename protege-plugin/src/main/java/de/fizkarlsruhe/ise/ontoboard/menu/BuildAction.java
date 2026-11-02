@@ -56,6 +56,29 @@ public class BuildAction extends OntoBoardAction {
     @Override
     protected boolean configure() {
         File editFile = fileOf(getOWLModelManager().getActiveOntology());
+        // A build reads the file, not the window. Unsaved edits were silently left out of it -
+        // a test that should have failed passed, and nothing said why.
+        if (getOWLModelManager().getDirtyOntologies()
+                .contains(getOWLModelManager().getActiveOntology())) {
+            Object[] options = {"Save and build", "Build the saved file", "Cancel"};
+            int choice = javax.swing.JOptionPane.showOptionDialog(getOWLWorkspace(),
+                    "The ontology has changes that are not saved yet. A build checks the file on "
+                            + "disk, so it would not see them.",
+                    "Save first?", javax.swing.JOptionPane.DEFAULT_OPTION,
+                    javax.swing.JOptionPane.QUESTION_MESSAGE, null, options, options[0]);
+            if (choice == 0) {
+                try {
+                    getOWLModelManager().save(getOWLModelManager().getActiveOntology());
+                } catch (Exception cannotSave) {
+                    javax.swing.JOptionPane.showMessageDialog(getOWLWorkspace(),
+                            "Could not save: " + cannotSave.getMessage(), "Cannot build",
+                            javax.swing.JOptionPane.WARNING_MESSAGE);
+                    return false;
+                }
+            } else if (choice != 1) {
+                return false;
+            }
+        }
         route = MakeRun.routeFor(editFile, ProcessRunner.real());
         image = MakeRun.imageFor(MakeRun.workingDirectory(editFile));
         String found = MakeRun.containerRuntime(ProcessRunner.real());
@@ -80,14 +103,17 @@ public class BuildAction extends OntoBoardAction {
         List<Parameter> parameters = Arrays.asList(
                 Parameter.of(OPTION_TARGET, "Target", Parameter.Kind.CHOICE)
                         .choices(targets.toArray(new String[0]))
-                        .defaultValue(targets.get(0))
+                        // test, which the guide and the docs say to run: it is the one that runs
+                        // your own tests as well. all came first in the list and was preselected.
+                        .defaultValue(targets.contains("test") ? "test" : targets.get(0))
                         .required()
                         .help(helpFor())
                         .build());
 
         Map<String, String> chosen = ParameterDialog.show(getOWLWorkspace(), "Build",
-                "Runs one of this project's make targets and keeps the whole transcript, which "
-                        + "you can save from the result.",
+                "Checks the ontology. test runs the reasoner, the quality report, your own tests "
+                        + "and the OWL profile check, inside Protege - nothing else needs "
+                        + "installing. The whole log is kept, and can be saved from the result.",
                 parameters);
         if (chosen == null) {
             return false;

@@ -21,8 +21,9 @@ the pattern should be in the library everyone gets.
 1. Make a folder anywhere — say `~/my-patterns/`. A subfolder inside it becomes a *collection*
    name, so `~/my-patterns/our-group/thing.ttl` appears under the collection `our-group`.
 2. Put your pattern in it as `.ttl`, `.owl`, `.rdf`, `.omn`, `.ofn` or `.owx`.
-3. In Protégé: **OntoBoard → Pattern library…**, press **Your patterns…**, and set its *Folder*
-   to it. Your patterns appear beside the bundled ones, searchable and importable the same way.
+3. In Protégé: **OntoBoard → Reuse → Pattern library…**, press **Your patterns…**, and set its
+   *Folder* to it. Your patterns appear beside the bundled ones, searchable and importable the same
+   way.
 
 !!! tip "The pattern describes itself — no form to fill in"
     The name, the description and the competency questions are read out of the file. Measured
@@ -119,7 +120,7 @@ found a wrong axiom in one we ship.
 Two ways in that fill the form for you:
 
 - **Every pattern's page** on this site ends with a *Report a problem with this pattern* link.
-- **In Protégé**, **OntoBoard → Pattern library…**, select the pattern, and press **Report a
+- **In Protégé**, **OntoBoard → Reuse → Pattern library…**, select the pattern, and press **Report a
   problem with this pattern…** under its description. It opens the form in your browser. It is
   greyed out for your own patterns: they are not in the library, so there is nobody else to tell.
 

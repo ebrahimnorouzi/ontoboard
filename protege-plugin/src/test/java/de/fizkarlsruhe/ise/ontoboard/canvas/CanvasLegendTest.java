@@ -56,6 +56,11 @@ class CanvasLegendTest {
         for (CanvasEdge.Kind kind : CanvasEdge.Kind.values()) {
             real.add(CanvasLegend.styleFor(kind));
         }
+        // A restriction's arrow takes the style of its kind of restriction - see
+        // SchemaGraph.restrictionStyle - so these three are drawn too.
+        real.add(de.fizkarlsruhe.ise.ontoboard.canvas.SchemaStyles.ONLY);
+        real.add(de.fizkarlsruhe.ise.ontoboard.canvas.SchemaStyles.COUNT);
+        real.add(de.fizkarlsruhe.ise.ontoboard.canvas.SchemaStyles.NOT);
 
         assertEquals(real, CanvasLegend.styleNamesMentioned(),
                 "the legend mentions a style the canvas never draws, or misses one it does");

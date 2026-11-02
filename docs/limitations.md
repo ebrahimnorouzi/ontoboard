@@ -12,6 +12,36 @@ What the plugin does not do today. The pattern library (1.82.0, extensible since
 SPARQL panel (1.33.0) used to be on this list and are now features - they are described in
 [working with ODK](odk-workflow.md) and the [pattern library](patterns/index.md).
 
+- **What five testers asked for in 1.132.0, and is not built yet** - a student, a domain expert,
+  an ontology engineer, a reviewer and somebody new to ODK, each using the plugin on their own
+  task. Built in 1.132.0: starting a project from the open ontology, *Show only this and its
+  neighbours*, `≡` on defined classes, *Imported terms…*, *Write a test from a question…*, the
+  Rules layer and Enter for a sibling. Still open, roughly in the order they were asked for:
+    - *Check this ontology* without a project - the reasoner, the quality report and a label
+      check on a loose `.owl` file. Today Build needs a project.
+    - Help beside each key in *Project configuration…*, and a button there for *Update project
+      files…*.
+    - An ODK release with `base`, `full` and `simple` files under one version IRI; *Release…*
+      writes one file (merged or not).
+    - *History* and *Compare releases* for properties and individuals as they are for classes
+      (relabelled, redefined); and against any file, address or git tag, not only `releases/`.
+    - *Obsolete…* offering to move a term's subclasses to its parents and point references at its
+      replacement, instead of only listing what will change.
+    - A button on each warning that applies its fix - an undeclared import, imports not merged.
+    - A mode for adding terms to somebody else's ontology (a contributor's view), creating the
+      repository on GitHub and pushing without a terminal, ODK's filter and minimal import
+      types, and a beginner mode with menus grouped by job. Since 1.133.0, *Turn an ontology
+      into an ODK repository…* runs `git init`, commits and tags every version, and prints the
+      two commands that publish it.
+    - Bring to front and send to back for frames and notes on the board.
+- **Turning an ontology into an ODK repository records earlier versions as they were
+  published.** They are not rebuilt, and their imports are not turned into modules. A version
+  that says no date is committed at the time of the conversion, so converting again gives a
+  different commit for it, though the same files. The project is OntoBoard's kind, the same as
+  *New ODK project…* writes - see [the thing to decide before you start](odk-workflow.md#the-thing-to-decide-before-you-start).
+- **Find terms reads what a server sends.** A server that never answers is given up on after
+  30 seconds, and one that is down cannot be read at all: load a copy instead - a downloaded file,
+  or the one in the ontology's repository, whose documentation page usually links to it.
 - **Live collaboration carries four kinds of axiom.** Built as of 1.9.0, with a vocabulary of
   eighteen operation types — but `OperationMapper` reaches an operation for exactly four axiom
   classes: declarations, `SubClassOf`, class assertions and annotation assertions. Everything
@@ -35,16 +65,16 @@ SPARQL panel (1.33.0) used to be on this list and are now features - they are de
     weight — as this entry did until 1.102.0 — misdirects whoever reads it next, including
     whoever decides what to implement.
 - **Threaded comments and discussion** — a term can be linked to its issue with
-  *Notes → Discussion link…*, which writes `IAO:0000233 term tracker item`, and editorial
+  *Terms → Discussion link…*, which writes `IAO:0000233 term tracker item`, and editorial
   notes (`IAO:0000116`/`IAO:0000232`) carry an author and date. But the argument itself
   lives in the tracker: there is no reply thread inside the ontology, deliberately, because
   an unbounded mutable conversation would appear in every release and every diff.
 - **Reviewing a pull request** — *Pull request…* opens one and lists what is open, since
   1.101.0. Reading a diff, leaving review comments and merging are still the browser's job, and
   are a larger piece of work than opening one: a review needs the diff rendered, and an OWL diff
-  that means anything is *ROBOT → Compare releases…*, not a line diff of RDF/XML.
-- **A multi-version documentation site.** *Project → Documentation…* generates the page for
-  one ontology and opens it, since 1.103.0. Widoco's own multi-language and versioned-site
+  that means anything is *Build and release → Compare releases…*, not a line diff of RDF/XML.
+- **A multi-version documentation site.** *Build and release → Documentation…* generates the page
+  for one ontology and opens it, since 1.103.0. Widoco's own multi-language and versioned-site
   features are not driven from here, and the generated CI workflow does not publish the page —
   the three real projects that publish one do it with a hand-written job.
 - **Nothing prevents two people editing one term** — and nothing in OntoBoard can.
@@ -55,6 +85,19 @@ SPARQL panel (1.33.0) used to be on this list and are now features - they are de
 
 ### Known constraints
 
+- **What the board draws of an ontology, measured.** On two published ontologies built on BFO,
+  with every term shown and class expressions drawn (the default): every logical axiom - 921 of
+  921 in one, 529 of 529 in the other - appears as a box, a line or a word in a box's label;
+  [What the board draws](canvas.md) lists how. Literals and annotations are not drawn. On a board
+  with more than 150 relations, disjointness, domains and ranges are drawn for the term in focus
+  rather than all at once, and the other relations faintly until one of their ends is selected.
+  A board shows up to 1,500 terms, the ontology's own first.
+- **Protégé 6 is not supported, measured.** Protégé 6.0.0-alpha-1 refuses to start OntoBoard:
+  *missing requirement `org.protege.editor.owl.ui` version ≥ 5.5.0, < 6.0.0*. Widening that range
+  would move the failure, not fix it: Protégé 6 ships OWL API 5.5.1, OntoBoard is built against
+  OWL API 4.5's interfaces (Guava's `Optional` among them), and the ROBOT library inside it has no
+  OWL API 5 build. Supporting Protégé 6 is a port to OWL API 5 and a replacement for ROBOT's
+  in-process operations - worth doing when Protégé 6 is released, not against an alpha.
 - **The plugin's OWL 2 DL check and `robot validate-profile` disagree, on purpose.** The OWL API
   adds a missing annotation-property declaration while parsing. So an ontology that is outside DL
   for exactly that reason — a curator typed a property name into Protégé and never declared it — is
@@ -104,12 +147,15 @@ SPARQL panel (1.33.0) used to be on this list and are now features - they are de
   ontology.
 - **A punned IRI** (declared as both a class and an individual) resolves
   non-deterministically for canvas selection.
-- **Canvas scale.** The canvas is opt-in precisely because rendering a 100,000-class
-  ontology is not viable; expect to work with tens of entities at a time, not thousands.
+- **Canvas scale.** A board shows up to 1,500 terms, the ontology's own first; past that, the
+  others are dragged in from the entity trees. Measured on a release of 660 terms: the board is
+  built in 1.9 s and redrawn in 44 ms after an edit, focus takes 0.2 s. A 100,000-class ontology is
+  not drawn whole.
 - **The bundle is ~64 MB**, because ROBOT and its dependencies are embedded to run
   in-process.
-- **`make` targets need `make` and ROBOT on PATH.** The ODK wizard creates a project without
-  Docker, but building it is a normal ODK build.
+- **A repository generated by ODK itself builds outside Protégé.** A project OntoBoard made builds
+  inside Protégé with nothing installed; one whose Makefile ODK generated calls tools that exist
+  only in the ODK image, so its build runs through Docker, Podman or a native ODK install.
 
 ### What used to be here
 
@@ -156,9 +202,17 @@ The other half arrived in 1.40.0 and grew in 1.44.0. `tools/smoke.ps1 -SelfTest`
 `-Dontoboard.selftest=true`, and the startup hook then drives **nine** menu items against a
 throwaway ODK project — scaffolded by the wizard's own code into a temp directory and deleted
 afterwards — logging what each reported: Measure, Quality report, Explain, SPARQL, Export terms,
-Profile, Imports, Refresh imports, All notes. A person can run the same thing from *OntoBoard →
-Run self-test*; both go through one implementation, because a self-test with two implementations
-grows a version nobody runs.
+Profile, Check imports, Refresh imports, All notes. A person can run the same thing from
+*OntoBoard → Run self-test*; both go through one implementation, because a self-test with two
+implementations grows a version nobody runs.
+
+**On Windows, on every push, since 1.131.0.** A receipt is a run on somebody's machine, and for
+1.129.0 and 1.130.0 that machine was a Mac - while the two defects users had just reported, frames
+piled on top of each other and a build that would not run, were found on Windows. CI's Windows
+jobs now run the unit tests on a Windows file system, and `smoke.ps1 -SelfTest` itself in
+Protégé 5.6.9's and 5.5.0's own Windows downloads, keeping `protege.log` as that job's receipt.
+A Windows runner has what the smoke needs and a Linux one does not: Protégé's Windows download
+carries its JRE, and the runner has a desktop. The Mac receipt stays a local command.
 
 A real project rather than an ontology in memory, because half the menu is project-aware — it
 looks for `src/ontology`, a catalog, `imports/`. What unlocked that was removing seven private
@@ -228,12 +282,12 @@ report for nine versions.
 
 Ordered by what is being worked on:
 
-1. ~~**Pull requests**~~ — **opening one shipped in 1.101.0.** *Project → Pull request…* runs
+1. ~~**Pull requests**~~ — **opening one shipped in 1.101.0.** *Share → Pull request…* runs
    the GitHub CLI: it lists what is open and proposes the branch you are on, after `gh`'s own
    `--dry-run` has checked it and you have approved the exact command. Reviewing one is still the
    browser's job — see above.
-2. ~~**Widoco**~~ — **shipped in 1.103.0.** *Project → Documentation…* runs it on the release
-   product and opens the page.
+2. ~~**Widoco**~~ — **shipped in 1.103.0.** *Build and release → Documentation…* runs it on the
+   release product and opens the page.
 
     It is installed rather than embedded, and that was measured: Widoco is not on Maven Central
     at all, and its only published form is a 40,858,575-byte shaded jar carrying 1,533 OWL API
@@ -270,7 +324,7 @@ Ordered by what is being worked on:
     putting all three back after a maintainer deleted them. An editor would have made editing a
     dead file feel productive.
 
-    **What shipped instead** is *Project → Check project metadata*, which reports where a
+    **What shipped instead** is *Check and test → Check project metadata*, which reports where a
     project's statements about itself disagree. Every check in it fires on a real project: all
     three registry entries declare CC-BY while their ontologies annotate CC0, three of four
     disagree on the title between the ontology and the ODK YAML, and all four annotate a licence

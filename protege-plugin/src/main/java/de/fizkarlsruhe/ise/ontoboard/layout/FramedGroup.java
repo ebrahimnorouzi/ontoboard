@@ -119,6 +119,17 @@ public final class FramedGroup {
      * @param existing the board as it is now; not modified
      */
     public static Placement plan(String label, List<String> iris, CanvasLayout existing) {
+        return plan(label, iris, existing, Collections.<String, double[]>emptyMap());
+    }
+
+    /**
+     * The same, each box as big as {@code sizes} says - {w, h} by IRI, the size its label fits
+     * in - and {@link #NODE_W} by {@link #NODE_H} for any it does not mention. Columns are as
+     * wide as their widest box: a fixed 160px put {@code classification:Concept} on two lines,
+     * broken inside the word.
+     */
+    public static Placement plan(String label, List<String> iris, CanvasLayout existing,
+            Map<String, double[]> sizes) {
         Map<String, CanvasLayout.NodeLayout> placed =
                 new LinkedHashMap<String, CanvasLayout.NodeLayout>();
         List<String> already = new ArrayList<String>();
@@ -139,8 +150,24 @@ public final class FramedGroup {
 
         int columns = columnsFor(fresh.size());
         int rows = (fresh.size() + columns - 1) / columns;
-        double innerW = columns * NODE_W + (columns - 1) * GAP;
-        double innerH = rows * NODE_H + (rows - 1) * GAP;
+        double[] columnW = new double[columns];
+        double[] rowH = new double[rows];
+        for (int at = 0; at < fresh.size(); at++) {
+            double[] size = sizes.get(fresh.get(at));
+            // Rounded up to the 20px snap grid, so every box still starts on it.
+            columnW[at % columns] = Math.max(columnW[at % columns],
+                    Math.ceil((size == null ? NODE_W : size[0]) / 20) * 20);
+            rowH[at / columns] = Math.max(rowH[at / columns],
+                    Math.ceil((size == null ? NODE_H : size[1]) / 20) * 20);
+        }
+        double innerW = (columns - 1) * GAP;
+        for (double w : columnW) {
+            innerW += w;
+        }
+        double innerH = (rows - 1) * GAP;
+        for (double h : rowH) {
+            innerH += h;
+        }
 
         double[] origin = freeSpotFor(existing, innerW + 2 * PADDING,
                 innerH + 2 * PADDING + LABEL_BAND);
@@ -155,14 +182,69 @@ public final class FramedGroup {
         for (int at = 0; at < fresh.size(); at++) {
             int column = at % columns;
             int row = at / columns;
-            CanvasLayout.NodeLayout node = new CanvasLayout.NodeLayout(
-                    frame.x + PADDING + column * (NODE_W + GAP),
-                    frame.y + PADDING + LABEL_BAND + row * (NODE_H + GAP));
-            node.w = NODE_W;
-            node.h = NODE_H;
+            double x = frame.x + PADDING;
+            for (int before = 0; before < column; before++) {
+                x += columnW[before] + GAP;
+            }
+            double y = frame.y + PADDING + LABEL_BAND;
+            for (int before = 0; before < row; before++) {
+                y += rowH[before] + GAP;
+            }
+            double[] size = sizes.get(fresh.get(at));
+            CanvasLayout.NodeLayout node = new CanvasLayout.NodeLayout(x, y);
+            node.w = size == null ? NODE_W : size[0];
+            node.h = size == null ? NODE_H : size[1];
             placed.put(fresh.get(at), node);
         }
         return new Placement(frame, placed, already);
+    }
+
+    /**
+     * Frames planned in one row, folded into rows about as wide as a board of their size would be,
+     * each frame taking its terms along. Order is kept: left to right, then the next row down.
+     *
+     * <p>Nineteen patterns recognised in one ontology made a row fifteen thousand pixels wide over
+     * an outline seven thousand wide. The property sections, placed right of the outline, then
+     * stood under the row's far half, and 141 of 982 lines between classes crossed them.
+     *
+     * @return the width the rows were folded at
+     */
+    public static double wrap(List<Placement> placements) {
+        double area = 0;
+        double widest = 0;
+        for (Placement placement : placements) {
+            CanvasLayout.FrameLayout frame = placement.getFrame();
+            if (frame != null) {
+                area += frame.w * frame.h;
+                widest = Math.max(widest, frame.w);
+            }
+        }
+        double width = Math.max(widest, Math.max(1600, Math.sqrt(area * 1.6) * 1.2));
+        double x = MARGIN;
+        double y = MARGIN;
+        double rowHeight = 0;
+        for (Placement placement : placements) {
+            CanvasLayout.FrameLayout frame = placement.getFrame();
+            if (frame == null) {
+                continue;
+            }
+            if (x > MARGIN && x + frame.w > MARGIN + width) {
+                x = MARGIN;
+                y += rowHeight + MARGIN;
+                rowHeight = 0;
+            }
+            double dx = x - frame.x;
+            double dy = y - frame.y;
+            frame.x += dx;
+            frame.y += dy;
+            for (CanvasLayout.NodeLayout node : placement.getNodes().values()) {
+                node.x += dx;
+                node.y += dy;
+            }
+            x += frame.w + MARGIN;
+            rowHeight = Math.max(rowHeight, frame.h);
+        }
+        return width;
     }
 
     /**

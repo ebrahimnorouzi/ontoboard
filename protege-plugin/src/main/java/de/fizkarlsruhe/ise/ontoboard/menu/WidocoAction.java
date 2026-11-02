@@ -187,7 +187,7 @@ public class WidocoAction extends OntoBoardAction {
             result.warn("Documenting the edit file. It imports its modules rather than "
                     + "containing them, so the page will cover the terms this project wrote and "
                     + "not the ones it reuses - and the version IRI that Release... stamps is "
-                    + "not in it yet. Run Project > Release... first for the page a reader "
+                    + "not in it yet. Run Build and release > Release... first for the page a reader "
                     + "would see.");
         }
         result.note("Documenting " + input.getName());

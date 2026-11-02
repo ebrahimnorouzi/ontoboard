@@ -146,7 +146,7 @@ public class ImportsGraphAction extends ProtegeOWLAction {
     static String unresolvedSentence(ImportsGraph imports) {
         int count = imports.getUnresolved().size();
         return "<html><b>" + count + (count == 1 ? " import did" : " imports did")
-                + " not resolve</b>, drawn dashed and red. Project → Imports… says why."
+                + " not resolve</b>, drawn dashed and red. Reuse → Check imports says why."
                 + "</html>";
     }
 

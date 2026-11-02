@@ -501,7 +501,7 @@ public final class MakeRun {
         }
         if (transcript.contains("violation") && transcript.contains("report")) {
             return "The quality report found violations the project treats as failures. Run "
-                    + "OntoBoard > ROBOT > Quality report to see them one by one.";
+                    + "OntoBoard > Check and test > Quality report to see them one by one.";
         }
         String tail = outcome.lastMeaningfulLine();
         return "make " + target + " failed (exit " + outcome.getExitCode() + ")"

@@ -140,7 +140,8 @@ public final class TermMinter {
      */
     public String describe() {
         if (!isNumeric()) {
-            return "New terms are named from what you type, under this ontology's namespace.";
+            return "New terms are named from what you type - 'tensile test' becomes TensileTest,"
+                    + " labelled 'tensile test' - in the namespace this ontology's terms use.";
         }
         IdRanges.Range mine = ranges.rangeFor(editor);
         if (mine == null) {
@@ -162,13 +163,79 @@ public final class TermMinter {
      */
     public IRI mintFor(OWLOntology ontology, String label) {
         if (!isNumeric()) {
-            return EntityFactory.iriFor(ontology, label);
+            return IRI.create(namespaceForNewTerms(ontology) + localNameFor(label));
         }
         Set<String> taken = new HashSet<String>();
         for (OWLEntity entity : ontology.getSignature()) {
             taken.add(entity.getIRI().toString());
         }
         return IRI.create(ranges.mint(editor, taken));
+    }
+
+    /**
+     * What a typed name becomes in an IRI: as typed when it already is a name, and otherwise
+     * its words joined - "tensile test" is TensileTest. It used to refuse anything with a space,
+     * so the term a materials scientist meant could not be made without being renamed by hand,
+     * and then had no label.
+     */
+    public static String localNameFor(String typed) {
+        String trimmed = typed == null ? "" : typed.trim();
+        if (trimmed.isEmpty()) {
+            throw new IllegalArgumentException("Give the new term a name.");
+        }
+        if (trimmed.matches("[A-Za-z_][A-Za-z0-9_.-]*")) {
+            return trimmed;
+        }
+        StringBuilder name = new StringBuilder();
+        for (String word : trimmed.split("[^\\p{L}\\p{N}]+")) {
+            if (!word.isEmpty()) {
+                name.append(Character.toUpperCase(word.charAt(0))).append(word.substring(1));
+            }
+        }
+        if (name.length() == 0) {
+            throw new IllegalArgumentException("'" + trimmed + "' has no letters or digits to "
+                    + "name a term after.");
+        }
+        if (Character.isDigit(name.charAt(0))) {
+            name.insert(0, '_');
+        }
+        return name.toString();
+    }
+
+    /**
+     * The namespace this ontology's own named terms are in, so a new one sits beside them; the
+     * ontology's IRI and {@code #} when it has none - and when its terms are numbered
+     * ({@code PREFIX_0001001}), because a name there breaks the convention everyone else follows.
+     */
+    public static String namespaceForNewTerms(OWLOntology ontology) {
+        java.util.Map<String, Integer> named = new java.util.HashMap<String, Integer>();
+        int numbered = 0;
+        for (OWLEntity entity : ontology.getSignature(
+                org.semanticweb.owlapi.model.parameters.Imports.EXCLUDED)) {
+            if (entity.isBuiltIn() || entity.isOWLDatatype()) {
+                continue;
+            }
+            String iri = entity.getIRI().toString();
+            int cut = Math.max(iri.lastIndexOf('#'), iri.lastIndexOf('/')) + 1;
+            if (cut <= 0 || cut >= iri.length()) {
+                continue;
+            }
+            if (iri.substring(cut).matches("[A-Za-z]+_[0-9]+")) {
+                numbered++;
+                continue;
+            }
+            String namespace = iri.substring(0, cut);
+            Integer seen = named.get(namespace);
+            named.put(namespace, seen == null ? 1 : seen + 1);
+        }
+        String best = null;
+        for (java.util.Map.Entry<String, Integer> namespace : named.entrySet()) {
+            if (best == null || namespace.getValue() > named.get(best)) {
+                best = namespace.getKey();
+            }
+        }
+        return best != null && named.get(best) > numbered ? best
+                : EntityFactory.namespaceOf(ontology);
     }
 
     /**
@@ -182,7 +249,10 @@ public final class TermMinter {
             String label) {
         List<OWLOntologyChange> changes =
                 new ArrayList<OWLOntologyChange>(EntityFactory.declare(ontology, iri, kind));
-        if (isNumeric() && label != null && !label.trim().isEmpty()) {
+        // A name typed with spaces is the label: the IRI carries only "TensileTest".
+        boolean renamed = label != null && !label.trim().isEmpty()
+                && !iri.toString().endsWith(label.trim());
+        if ((isNumeric() || renamed) && label != null && !label.trim().isEmpty()) {
             OWLDataFactory factory = ontology.getOWLOntologyManager().getOWLDataFactory();
             changes.add(new AddAxiom(ontology, factory.getOWLAnnotationAssertionAxiom(
                     factory.getRDFSLabel(), iri, factory.getOWLLiteral(label.trim(), "en"))));

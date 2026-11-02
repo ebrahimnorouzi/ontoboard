@@ -354,7 +354,17 @@ public final class ImportProducts {
          * regenerates this file. It is still rebuilt when its term list records a source, because
          * that is what a refresh did before it read the declaration.
          */
-        UNDECLARED
+        UNDECLARED,
+
+        /**
+         * On disk, in no product, and a pattern from OntoBoard's library - which is how a pattern
+         * is meant to be.
+         *
+         * <p>Never rebuilt. Its source is the pattern's own IRI, often on a portal that is down,
+         * and the copy that IRI serves need not be the one the library repaired and the module
+         * was cut from. Importing the pattern again from the library is what changes it.
+         */
+        PATTERN
     }
 
     /** One import, as a refresh sees it: what the project says and what is on disk. */
@@ -405,7 +415,10 @@ public final class ImportProducts {
 
         /** How to describe the declaration in a column. */
         public String describeDeclaration() {
-            return product == null ? "NOT DECLARED" : product.describeModuleType();
+            if (product != null) {
+                return product.describeModuleType();
+            }
+            return verdict == Verdict.PATTERN ? "pattern library" : "NOT DECLARED";
         }
 
         /**
@@ -475,7 +488,7 @@ public final class ImportProducts {
                 continue;
             }
             rows.add(new Row(module.getName(), null, module, recordedSourceIn(module),
-                    Verdict.UNDECLARED));
+                    recordedPatternIn(module) != null ? Verdict.PATTERN : Verdict.UNDECLARED));
         }
         return rows;
     }
@@ -499,6 +512,15 @@ public final class ImportProducts {
     private static String recordedSourceIn(ImportModules.Module module) {
         try {
             return ImportModules.sourceIn(module.getTermsFile());
+        } catch (java.io.IOException cannotRead) {
+            return null;
+        }
+    }
+
+    /** The {@code # Pattern:} line a pattern import writes into its term list, or null. */
+    private static String recordedPatternIn(ImportModules.Module module) {
+        try {
+            return ImportModules.patternIn(module.getTermsFile());
         } catch (java.io.IOException cannotRead) {
             return null;
         }

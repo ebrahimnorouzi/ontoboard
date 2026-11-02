@@ -120,7 +120,7 @@ than retrying — retrying a rejected token would only loop against your server.
 
 ### 4. Configure each person's plugin
 
-Settings live at **OntoBoard → Collaboration…** in Protégé's menu bar. Connecting is
+Settings live at **OntoBoard → Share → Collaboration…** in Protégé's menu bar. Connecting is
 separate: open the OntoBoard tab and choose **Collaborate** from the **⋮** menu at the right of
 the board's toolbar. It is in that menu rather than on the bar because the bar did not fit —
 measured at 1261px wanted against 857 available, at which the button was laid out past the

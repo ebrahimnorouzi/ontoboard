@@ -25,6 +25,19 @@ public class CanvasLayout {
     public Map<String, String> prefixColors = new LinkedHashMap<>();
 
     /**
+     * Whether the board shows the whole ontology, new terms included as they are made. True for
+     * every board created since 1.131.0; absent - null - on a board saved before, which was
+     * chosen term by term and keeps what it shows.
+     */
+    public Boolean showsEverything;
+
+    /** Terms taken off a board that shows everything, so they do not come back on their own. */
+    public List<String> hidden = new ArrayList<>();
+
+    /** Classes folded on the board: what is under them is not drawn until they are opened. */
+    public List<String> collapsed = new ArrayList<>();
+
+    /**
      * A copy that shares nothing with this one.
      *
      * <p>For {@link BoardHistory}, which holds the board as it was before each action. Every collection
@@ -56,6 +69,9 @@ public class CanvasLayout {
             copy.notes.add(note == null ? null : note.copy());
         }
         copy.prefixColors = new LinkedHashMap<>(prefixColors);
+        copy.showsEverything = showsEverything;
+        copy.hidden = new ArrayList<>(hidden);
+        copy.collapsed = new ArrayList<>(collapsed);
         return copy;
     }
 
@@ -84,6 +100,11 @@ public class CanvasLayout {
         notes.addAll(snapshot.notes);
         prefixColors.clear();
         prefixColors.putAll(snapshot.prefixColors);
+        showsEverything = snapshot.showsEverything;
+        hidden.clear();
+        hidden.addAll(snapshot.hidden);
+        collapsed.clear();
+        collapsed.addAll(snapshot.collapsed);
     }
 
     /**
@@ -116,6 +137,18 @@ public class CanvasLayout {
      * @return the IRIs removed, so the caller can say what it cleaned up rather than doing it
      *     silently
      */
+    /**
+     * Whether an id names a node the board draws but the ontology does not declare: a class
+     * expression's node, or a datatype. Its position is kept like a term's - it used to be
+     * dropped, so every drawing put each restriction's node back into the first free slot.
+     */
+    public static boolean isDerived(String id) {
+        return id != null && (id.startsWith("exp|") || id.startsWith("lit|")
+                || id.startsWith("http://www.w3.org/2001/XMLSchema#")
+                || id.startsWith("http://www.w3.org/1999/02/22-rdf-syntax-ns#")
+                || id.startsWith("http://www.w3.org/2000/01/rdf-schema#"));
+    }
+
     public List<String> pruneMissing(java.util.Set<String> declaredIris) {
         List<String> removed = new ArrayList<>();
         for (String iri : new ArrayList<>(onCanvas)) {
@@ -124,10 +157,12 @@ public class CanvasLayout {
                 removed.add(iri);
             }
         }
+        hidden.retainAll(declaredIris);
+        collapsed.retainAll(declaredIris);
         // Positions are pruned against the same set rather than against onCanvas, so a position
         // orphaned without a membership entry is cleaned up too.
         for (String iri : new ArrayList<>(nodes.keySet())) {
-            if (!declaredIris.contains(iri)) {
+            if (!declaredIris.contains(iri) && !isDerived(iri)) {
                 nodes.remove(iri);
                 if (!removed.contains(iri)) {
                     removed.add(iri);

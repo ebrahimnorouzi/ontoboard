@@ -284,6 +284,10 @@ class OdkScaffoldTest {
         assertTrue(makefile.contains("--version-iri \"$(VERSION_IRI)\""),
                 "the release target has to use the overridable one: " + makefile);
         assertTrue(makefile.contains("owl:versionInfo \"$(VERSION)\""), makefile);
+        // The report is about the project's own terms, as ODK scopes it.
+        assertTrue(makefile.contains("URIBASE := http://purls.helmholtz-metadaten.de"), makefile);
+        assertTrue(makefile.contains("--base-iri $(URIBASE)/MWO_ --base-iri $(URIBASE)/$(ONT)"),
+                makefile);
         // And the default is still the dated OBO shape, with the ontology id in it.
         assertTrue(makefile.contains(
                 "VERSION_IRI ?= http://purls.helmholtz-metadaten.de/mwo/releases/$(VERSION)/"

@@ -70,6 +70,47 @@ public final class OdkBuildSettings {
                 ? null : declared.trim().toUpperCase(Locale.ROOT);
     }
 
+    /**
+     * Where the project's own terms live, which is what the quality report is about: ODK's
+     * {@code --base-iri} values. The {@code namespaces} the configuration lists, or else
+     * {@code <uribase>/<ID>_} and {@code <uribase>/<id>}, as ODK's own Makefile has them. Empty -
+     * report on everything - when the project turns this off ({@code robot_report.use_base_iris:
+     * false}) or has no configuration to say.
+     *
+     * <p>Without it the report judged imported terms too. Measured on a project built on BFO
+     * 2020, which writes its definitions as {@code skos:definition}: every build listed 33 BFO
+     * terms as having no definition. And one that imported two library patterns carrying
+     * different copies of an IAO term failed its build on that term - an error in nothing the
+     * project wrote or could change, which ODK leaves to the ontology the term comes from.
+     */
+    public static java.util.List<String> reportBaseIris(File ontologyDirectory) {
+        java.util.List<String> bases = new java.util.ArrayList<String>();
+        if (Boolean.FALSE.equals(flagAt(ontologyDirectory, "robot_report.use_base_iris"))) {
+            return bases;
+        }
+        for (int at = 0; ; at++) {
+            String namespace = scalarAt(ontologyDirectory, "namespaces[" + at + "]");
+            if (namespace == null) {
+                break;
+            }
+            if (!namespace.trim().isEmpty()) {
+                bases.add(namespace.trim());
+            }
+        }
+        if (!bases.isEmpty()) {
+            return bases;
+        }
+        String uribase = scalarAt(ontologyDirectory, "uribase");
+        String id = scalarAt(ontologyDirectory, "id");
+        if (uribase == null || uribase.trim().isEmpty() || id == null || id.trim().isEmpty()) {
+            return bases;
+        }
+        String base = uribase.trim().replaceAll("/+$", "");
+        bases.add(base + "/" + id.trim().toUpperCase(Locale.ROOT) + "_");
+        bases.add(base + "/" + id.trim());
+        return bases;
+    }
+
     /** Whether the project declares it ships its own report profile. */
     public static Boolean reportHasCustomProfile(File ontologyDirectory) {
         return flagAt(ontologyDirectory, "robot_report.custom_profile");

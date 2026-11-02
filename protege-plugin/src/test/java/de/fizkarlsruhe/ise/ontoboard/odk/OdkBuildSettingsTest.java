@@ -198,4 +198,60 @@ class OdkBuildSettingsTest {
         assertTrue(advice.contains("no effect"),
                 "it has to say that setting the variable does nothing: " + advice);
     }
+
+    // ---------- what the report is about ----------
+
+    /**
+     * ODK's --base-iri: the project's own namespace, so a finding about an imported term - BFO's
+     * skos:definition, two patterns' copies of one IAO term - is not the project's failure.
+     */
+    @Test
+    void theReportIsAboutTheProjectsOwnTerms(@TempDir File root) throws Exception {
+        File ontology = projectWith(root, "id: pizzabfo\n"
+                + "uribase: https://example.org/pizza-bfo/\n");
+
+        assertEquals(java.util.Arrays.asList("https://example.org/pizza-bfo/PIZZABFO_",
+                "https://example.org/pizza-bfo/pizzabfo"),
+                OdkBuildSettings.reportBaseIris(ontology));
+        assertEquals("https://example.org/pizza-bfo/PIZZABFO_ https://example.org/pizza-bfo/pizzabfo",
+                de.fizkarlsruhe.ise.ontoboard.robot.QualityReport.optionsFor(
+                        new File(ontology, "pizzabfo-edit.owl")).get(
+                        de.fizkarlsruhe.ise.ontoboard.robot.QualityReport.OPTION_BASE_IRI));
+    }
+
+    @Test
+    void declaredNamespacesWinAndTheScopeCanBeTurnedOff(@TempDir File root) throws Exception {
+        File listed = projectWith(new File(root, "a"), "id: mwo\nuribase: https://example.org\n"
+                + "namespaces:\n  - https://example.org/mwo/\n  - https://example.org/ext/\n");
+        File off = projectWith(new File(root, "b"), "id: mwo\nuribase: https://example.org\n"
+                + "robot_report:\n  use_base_iris: false\n");
+
+        assertEquals(java.util.Arrays.asList("https://example.org/mwo/",
+                "https://example.org/ext/"), OdkBuildSettings.reportBaseIris(listed));
+        assertTrue(OdkBuildSettings.reportBaseIris(off).isEmpty(), "everything is reported");
+        assertTrue(OdkBuildSettings.reportBaseIris(new File(root, "nowhere")).isEmpty());
+    }
+
+    @Test
+    void findingsAboutImportedTermsAreLeftOut() {
+        java.util.List<de.fizkarlsruhe.ise.ontoboard.robot.QualityFinding> all =
+                java.util.Arrays.asList(
+                        finding("https://example.org/pizza-bfo/PIZZABFO_0001003"),
+                        finding("http://purl.obolibrary.org/obo/BFO_0000001"),
+                        finding(""));
+
+        java.util.List<de.fizkarlsruhe.ise.ontoboard.robot.QualityFinding> own =
+                de.fizkarlsruhe.ise.ontoboard.robot.QualityReport.aboutOwnTerms(all,
+                        java.util.Arrays.asList("https://example.org/pizza-bfo/PIZZABFO_"));
+
+        assertEquals(2, own.size(), "its own term, and the finding about no term in particular");
+        assertEquals(3, de.fizkarlsruhe.ise.ontoboard.robot.QualityReport.aboutOwnTerms(all,
+                java.util.Collections.<String>emptyList()).size());
+    }
+
+    private static de.fizkarlsruhe.ise.ontoboard.robot.QualityFinding finding(String subject) {
+        return new de.fizkarlsruhe.ise.ontoboard.robot.QualityFinding(
+                de.fizkarlsruhe.ise.ontoboard.robot.QualityFinding.Severity.WARN,
+                "missing_definition", subject, "");
+    }
 }

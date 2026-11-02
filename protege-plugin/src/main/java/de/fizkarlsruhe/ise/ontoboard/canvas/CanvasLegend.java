@@ -260,11 +260,21 @@ public final class CanvasLegend {
                         + "expects for is-a. Solid, because a dash now means the reasoner derived "
                         + "it rather than the ontology stating it.",
                 null, "#3B4756", null));
-        entries.add(new Entry(Form.EDGE, SchemaStyles.OBJECT_PROPERTY, "Object property",
-                "A restriction on an object property - by default SubClassOf(A "
-                        + "ObjectSomeValuesFrom(R B)), read as 'every A relates to some B'. The "
-                        + "arrow's label names the property and its reading.",
+        entries.add(new Entry(Form.EDGE, SchemaStyles.OBJECT_PROPERTY, "\u2203 R - some",
+                "Existential: A \u2291 \u2203R.B, every A relates by R to some B. Also an "
+                        + "assertion between two individuals.",
                 null, "#2D6FBF", null));
+        entries.add(new Entry(Form.EDGE, SchemaStyles.ONLY, "\u2200 R - only",
+                "Universal: A \u2291 \u2200R.B, whatever an A relates to by R is a B - which "
+                        + "says nothing about there being one. Dashed, with a diamond head.",
+                null, "#8E2D6B", "8 4"));
+        entries.add(new Entry(Form.EDGE, SchemaStyles.COUNT, "\u2265 n R, \u2264 n R, = n R",
+                "A count: A \u2291 \u2265nR.B - at least, at most or exactly n Bs by R. Dotted, "
+                        + "with a round head.",
+                null, "#1F7A3A", "2 3"));
+        entries.add(new Entry(Form.EDGE, SchemaStyles.NOT, "\u00AC R - not",
+                "A negative assertion: this individual is not related by R to that one.",
+                null, "#7A7A7A", "3 3"));
         entries.add(new Entry(Form.EDGE, SchemaStyles.DATA_PROPERTY, "Data property",
                 "A restriction on a data property, pointing at a datatype.",
                 null, "#0E6E78", null));
@@ -299,14 +309,29 @@ public final class CanvasLegend {
                         + "two property nodes, so it appears only once you have put the "
                         + "properties themselves on the board. Arrowheads both ends.",
                 null, "#B35C00", "6 3"));
+        entries.add(new Entry(Form.EDGE, SchemaStyles.DOMAIN_RANGE, "rdfs:domain / rdfs:range",
+                "From a property to the class its subjects or values belong to; the label "
+                        + "says which. A union is drawn as its own node, because two domains "
+                        + "mean both, and 'either' is a different claim.",
+                null, "#C08A4B", "8 4"));
+        entries.add(new Entry(Form.EDGE, SchemaStyles.RULE_PART, "SWRL rule",
+                "A rule is drawn as a box reading it - rule: a(?x) and b(?x, ?y) then c(?x). A "
+                        + "dotted line runs from each term its body uses (if) to the box, and "
+                        + "from the box to each term it concludes (then).",
+                null, "#5B6B8C", "2 3"));
 
         entries.add(new Entry(Form.MODIFIER, SchemaStyles.UNSATISFIABLE, "Cannot have instances",
                 "A reasoner has found this class unsatisfiable - two of its axioms cannot both "
                         + "hold, so nothing can ever be one. Shown only while inferences are on.",
                 "#FDF0EE", SchemaStyles.UNSATISFIABLE_STROKE, null));
+        entries.add(new Entry(Form.MODIFIER, SchemaStyles.CLASS, "\u2261 before a name: defined",
+                "A defined class: it is equivalent to the expression its arrows draw, so those "
+                        + "conditions are sufficient as well as necessary - anything meeting them "
+                        + "is one. Without the mark, a class's arrows are necessary only.",
+                "#FFFFFF", "#2D6FBF", null));
         entries.add(new Entry(Form.MODIFIER, SchemaStyles.NOTED, "Has an editorial note",
                 "A heavier border. Somebody has written an editor or curator note on this term - "
-                        + "read them all with OntoBoard > Notes > All notes.",
+                        + "read them all with OntoBoard > Terms > All notes.",
                 "#FFFFFF", "#2D6FBF", null));
         entries.add(new Entry(Form.MODIFIER, SchemaStyles.IMPORTED, "Imported term",
                 "Faded. This term is defined in an ontology your file imports, not in your file - so "
@@ -394,6 +419,10 @@ public final class CanvasLegend {
                 return SchemaStyles.DISJOINT;
             case INVERSE:
                 return SchemaStyles.INVERSE;
+            case DOMAIN_RANGE:
+                return SchemaStyles.DOMAIN_RANGE;
+            case RULE_PART:
+                return SchemaStyles.RULE_PART;
             case INFERRED_SUBCLASS:
                 return SchemaStyles.INFERRED_SUBCLASS;
             case INFERRED_TYPE:

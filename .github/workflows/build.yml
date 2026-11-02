@@ -4,11 +4,15 @@
 # found 70 defects in code that passed those tests every time they were run - which is an argument
 # for running them without being asked, not against the tests.
 #
-# What this cannot do: the smoke test. It needs a Protege install, a bundled JRE and a desktop, and
-# GitHub's runners have none of the three. Host verification stays a local command
-# (protege-plugin/tools/smoke.ps1) whose result is committed as a receipt under
-# protege-plugin/tools/smoke-receipt/. This job checks the receipt exists for the version being
-# built - so a release cannot reach main without somebody having run it in a host.
+# The smoke test needs a Protege install, a bundled JRE and a desktop. A Linux runner has none of
+# the three, so on Linux host verification stays a local command (protege-plugin/tools/smoke.ps1)
+# whose result is committed as a receipt under protege-plugin/tools/smoke-receipt/, and the test
+# job checks the receipt exists for the version being built - so a release cannot reach main
+# without somebody having run it in a host.
+#
+# A Windows runner has all three: Protege publishes a Windows download with its JRE, and the
+# runner has a desktop session. So since 1.131.0 the Windows jobs below run the unit tests on a
+# Windows file system and smoke.ps1 itself, in both supported Protege versions, on every push.
 name: build
 
 on:
@@ -78,4 +82,87 @@ jobs:
         with:
           name: surefire-reports
           path: protege-plugin/target/surefire-reports/
+          if-no-files-found: ignore
+
+  # Windows was where users found what this machine's tests had not - frames piled on top of each
+  # other, a build that would not run - and until 1.131.0 nothing here ever ran on it.
+  test-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '11'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Test
+        working-directory: protege-plugin
+        run: mvn -B clean test
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: surefire-reports-windows
+          path: protege-plugin/target/surefire-reports/
+          if-no-files-found: ignore
+
+  # The receipt's own command, on Protege's own Windows downloads: the jar just built as the only
+  # OntoBoard in plugins\, -SelfTest, and the verdict read from protege.log. The log is kept as an
+  # artifact - it is this job's receipt.
+  smoke-windows:
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - protege: '5.6.9'
+            url: https://github.com/protegeproject/protege-distribution/releases/download/protege-5.6.9/Protege-5.6.9-win.zip
+          - protege: '5.5.0'
+            url: https://github.com/protegeproject/protege-distribution/releases/download/v5.5.0/Protege-5.5.0-win.zip
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '11'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Package
+        working-directory: protege-plugin
+        run: mvn -B -DskipTests package
+
+      - name: Install Protege ${{ matrix.protege }} for Windows, with this jar
+        shell: pwsh
+        run: |
+          $zip = Join-Path $env:RUNNER_TEMP 'protege.zip'
+          $into = Join-Path $env:RUNNER_TEMP 'protege'
+          Invoke-WebRequest -Uri '${{ matrix.url }}' -OutFile $zip
+          Expand-Archive -LiteralPath $zip -DestinationPath $into
+          $install = (Get-ChildItem $into -Recurse -Filter run.bat | Select-Object -First 1).DirectoryName
+          $jar = Get-ChildItem protege-plugin/target -Filter 'ontoboard-*.jar'
+          Copy-Item $jar.FullName (Join-Path $install 'plugins')
+          "PROTEGE_INSTALL=$install" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          Write-Host "Protege at $install, with $($jar.Name)"
+
+      - name: Smoke
+        shell: pwsh
+        working-directory: protege-plugin
+        # A runner is slower than a laptop, and the self-test starts a reasoner.
+        run: |
+          ./tools/smoke.ps1 -Install $env:PROTEGE_INSTALL -SelfTest -Heap 2G -WaitSeconds 300
+          exit $LASTEXITCODE
+
+      - name: Keep protege.log
+        if: always()
+        shell: pwsh
+        run: Copy-Item (Join-Path $HOME '.Protege\logs\protege.log') protege-plugin/target/ -ErrorAction SilentlyContinue
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: protege-log-windows-${{ matrix.protege }}
+          path: protege-plugin/target/protege.log
           if-no-files-found: ignore

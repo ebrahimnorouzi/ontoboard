@@ -2,6 +2,7 @@ package de.fizkarlsruhe.ise.ontoboard.odk;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
@@ -175,5 +176,34 @@ class ImportModulesTest {
         assertEquals("ontology", ImportModules.mirrorDirectoryIn(dir).getParentFile().getName());
         assertEquals(ImportModules.importsDirectoryIn(dir).getParentFile(),
                 ImportModules.mirrorDirectoryIn(dir).getParentFile());
+    }
+
+    /**
+     * A pattern's term list names the pattern, and its source is the pattern's own IRI.
+     *
+     * <p>Measured on a Mac before this: the library's import recorded its working copy,
+     * {@code file:/Users/...}, here and as the product's mirror_from - both committed, both the
+     * importer's home directory, neither resolvable anywhere else.
+     */
+    @Test
+    void aPatternsTermListNamesThePattern(@TempDir File dir) throws Exception {
+        String own = "http://www.ontologydesignpatterns.org/cp/owl/componency.owl";
+        File written = ImportModules.writeTerms(dir, "componency", iris(IAO_1), own,
+                "componency");
+
+        String text = new String(Files.readAllBytes(written.toPath()), StandardCharsets.UTF_8);
+        assertTrue(text.contains("# Source: " + own + "\n# Pattern: componency\n"), text);
+        assertEquals("componency", ImportModules.patternIn(written));
+        assertEquals(own, ImportModules.sourceIn(written));
+        assertEquals(iris(IAO_1), ImportModules.readTerms(written), "the comments are not terms");
+    }
+
+    /** Any other import's term list names no pattern. */
+    @Test
+    void anotherImportsTermListNamesNoPattern(@TempDir File dir) throws Exception {
+        File written = ImportModules.writeTerms(dir, "iao", iris(IAO_1), "http://x.org/iao.owl");
+
+        assertNull(ImportModules.patternIn(written));
+        assertNull(ImportModules.patternIn(new File(dir, "nothing_terms.txt")));
     }
 }

@@ -143,6 +143,10 @@ public final class DotExport {
             case INVERSE:
                 return "dir=both, arrowhead=vee, arrowtail=vee, style=dashed, "
                         + "color=\"#B45309\"";
+            case DOMAIN_RANGE:
+                return "arrowhead=vee, style=dashed, color=\"#C08A4B\"";
+            case RULE_PART:
+                return "arrowhead=vee, style=dotted, color=\"#5B6B8C\"";
             case DATA_PROPERTY:
                 return "color=\"#0F766E\"";
             case OBJECT_PROPERTY:

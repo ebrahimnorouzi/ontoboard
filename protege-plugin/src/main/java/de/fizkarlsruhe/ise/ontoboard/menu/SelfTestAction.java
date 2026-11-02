@@ -128,7 +128,13 @@ public class SelfTestAction extends OntoBoardAction {
         } catch (InterruptedException interrupted) {
             Thread.currentThread().interrupt();
             return "interrupted before the event thread could open the tab";
-        } catch (java.lang.reflect.InvocationTargetException | RuntimeException | Error broke) {
+        } catch (java.lang.reflect.InvocationTargetException wrapped) {
+            // What the check threw, not the wrapper invokeAndWait puts round it: "could not run
+            // on the event thread: java.lang.reflect.InvocationTargetException" names nothing,
+            // and was all a broken tab check ever said.
+            Throwable broke = wrapped.getCause() == null ? wrapped : wrapped.getCause();
+            return "could not run on the event thread: " + describe(broke);
+        } catch (RuntimeException | Error broke) {
             return "could not run on the event thread: " + describe(broke);
         }
         return outcome.get();
@@ -252,13 +258,34 @@ public class SelfTestAction extends OntoBoardAction {
                 }
                 return "ok: opened, " + built + " built without throwing, and closed again";
             } finally {
+                // Closed the way Protege's own close button closes a tab: removeTab only takes it
+                // off the screen, and it is dispose that has each view take back the listeners it
+                // added. Without it every view built above stayed registered with the model
+                // manager - 72 listeners Protege named as never removed when the workspace was
+                // closed after one self-test, in 1.133.0's smoke run.
                 workspace.removeTab(tab);
+                close(tab);
             }
         } catch (RuntimeException | Error broke) {
             // Error included deliberately: a view that references a Protege type the bundle never
             // imported fails with NoClassDefFoundError, which is exactly the class of failure this
             // whole self-test exists to catch, and it is not a RuntimeException.
-            return "opening the tab threw " + describe(broke);
+            return "opening or closing the tab threw " + describe(broke);
+        }
+    }
+
+    /**
+     * Disposes a tab already taken off the screen. {@code Disposable.dispose} declares Exception;
+     * a view that cannot be disposed fails this check as one that cannot be built does, so the
+     * exception is passed on unchecked, to be reported with the rest.
+     */
+    static void close(org.protege.editor.core.ui.workspace.WorkspaceTab tab) {
+        try {
+            tab.dispose();
+        } catch (RuntimeException unchecked) {
+            throw unchecked;
+        } catch (Exception checked) {
+            throw new IllegalStateException("closing it: " + describe(checked), checked);
         }
     }
 
@@ -361,18 +388,18 @@ public class SelfTestAction extends OntoBoardAction {
         }
 
         Map<String, OntoBoardAction> underTest = new LinkedHashMap<String, OntoBoardAction>();
-        underTest.put("ROBOT > Measure...", new MeasureAction());
-        underTest.put("ROBOT > Quality report...", new QualityReportAction());
-        underTest.put("ROBOT > Explain...", new ExplainAction());
-        underTest.put("ROBOT > SPARQL...", new SparqlAction());
-        underTest.put("ROBOT > Export terms...", new ExportAction());
-        underTest.put("ROBOT > Profile...", new ProfileAction());
+        underTest.put("Check and test > Measure...", new MeasureAction());
+        underTest.put("Check and test > Quality report...", new QualityReportAction());
+        underTest.put("Check and test > Explain...", new ExplainAction());
+        underTest.put("Check and test > SPARQL...", new SparqlAction());
+        underTest.put("Terms > Export terms...", new ExportAction());
+        underTest.put("Check and test > Profile...", new ProfileAction());
         // These three need a project on disk, which is why the subject is a scaffolded one rather
         // than an ontology held in memory. They report and change nothing: Refresh imports...
         // audits unless asked to rebuild, and the other two only read.
-        underTest.put("Project > Imports...", new ImportsAction());
-        underTest.put("Project > Refresh imports...", new RefreshImportsAction());
-        underTest.put("Notes > All notes...", new AllNotesAction());
+        underTest.put("Reuse > Check imports", new ImportsAction());
+        underTest.put("Reuse > Refresh imports...", new RefreshImportsAction());
+        underTest.put("Terms > All notes", new AllNotesAction());
 
         int failed = 0;
         for (Map.Entry<String, OntoBoardAction> entry : underTest.entrySet()) {
@@ -513,7 +540,7 @@ public class SelfTestAction extends OntoBoardAction {
      * <p>Scaffolded with {@link OdkScaffold} rather than assembled here, so what is tested against
      * is the layout the wizard really produces. If the scaffold changes, this follows it.
      */
-    private static final String BUILD_ROW = "Project > Build (nothing installed)";
+    private static final String BUILD_ROW = "Build and release > Build (nothing installed)";
 
     /**
      * Builds the scratch project the way Build does for a project OntoBoard scaffolded, and says

@@ -2,6 +2,7 @@ package de.fizkarlsruhe.ise.ontoboard.canvas;
 
 import com.mxgraph.util.mxConstants;
 import com.mxgraph.view.mxGraph;
+import com.mxgraph.view.mxStyleRegistry;
 import com.mxgraph.view.mxStylesheet;
 import java.awt.Color;
 import java.awt.Font;
@@ -39,6 +40,15 @@ public final class SchemaStyles {
 
     public static final String SUBCLASS = "obSubClass";
     public static final String OBJECT_PROPERTY = "obObjectProperty";
+
+    /** A universal restriction, {@code ∀ R}: dashed, a diamond head, in its own colour. */
+    public static final String ONLY = "obOnly";
+
+    /** A cardinality restriction, {@code ≥ n R}, {@code ≤ n R}, {@code = n R}: dotted. */
+    public static final String COUNT = "obCount";
+
+    /** A negative assertion, {@code ¬ R}: grey and dashed, it says what is not so. */
+    public static final String NOT = "obNot";
     public static final String DATA_PROPERTY = "obDataProperty";
     public static final String TYPE = "obType";
     public static final String SUB_PROPERTY = "obSubProperty";
@@ -48,6 +58,12 @@ public final class SchemaStyles {
 
     /** InverseObjectProperties: arrowheads at both ends, because it runs both ways. */
     public static final String INVERSE = "obInverse";
+
+    /** A property's domain or range, from its node. */
+    public static final String DOMAIN_RANGE = "obDomainRange";
+
+    /** A term's part in a SWRL rule. */
+    public static final String RULE_PART = "obRulePart";
     public static final String INFERRED_SUBCLASS = "obInferredSubClass";
 
     /** A type the reasoner worked out for an individual, rather than one that was stated. */
@@ -175,6 +191,10 @@ public final class SchemaStyles {
         return Font.SANS_SERIF;
     }
 
+    static {
+        mxStyleRegistry.putValue(AroundFrames.NAME, AroundFrames.INSTANCE);
+    }
+
     private SchemaStyles() {
     }
 
@@ -285,6 +305,15 @@ public final class SchemaStyles {
                 edge("#3B4756", null, mxConstants.ARROW_BLOCK, 1.6f, 13, false));
         sheet.putCellStyle(OBJECT_PROPERTY,
                 edge("#2D6FBF", null, mxConstants.ARROW_CLASSIC, 1.4f, 10, true));
+        // The restriction kinds a reader has to tell apart at a glance - asked for: "some,
+        // exactly, only - existential, universal, everything should be distinguished". Each
+        // has its own line as well as its own symbol on the label.
+        sheet.putCellStyle(ONLY,
+                edge("#8E2D6B", "8 4", mxConstants.ARROW_DIAMOND, 1.4f, 10, true));
+        sheet.putCellStyle(COUNT,
+                edge("#1F7A3A", "2 3", mxConstants.ARROW_OVAL, 1.6f, 8, true));
+        sheet.putCellStyle(NOT,
+                edge("#7A7A7A", "3 3", mxConstants.ARROW_CLASSIC, 1.2f, 10, true));
         sheet.putCellStyle(DATA_PROPERTY,
                 edge("#0E6E78", null, mxConstants.ARROW_OPEN, 1.1f, 10, true));
         sheet.putCellStyle(TYPE,
@@ -311,6 +340,18 @@ public final class SchemaStyles {
                 edge("#B35C00", "6 3", mxConstants.ARROW_OPEN, 1.2f, 11, true);
         inverse.put(mxConstants.STYLE_STARTARROW, mxConstants.ARROW_OPEN);
         sheet.putCellStyle(INVERSE, inverse);
+
+        // A property's domain or range: thin, grey-orange and long-dashed, so it reads as a
+        // property's reach rather than a relation between the two things it connects - which is
+        // what a restriction arrow is, and why this is not drawn like one.
+        sheet.putCellStyle(DOMAIN_RANGE,
+                edge("#C08A4B", "8 4", mxConstants.ARROW_OPEN, 1.0f, 9, true));
+
+        // A term's part in a rule: dotted slate, an open arrowhead from the "if" side to the
+        // "then" side. Not the inferred grey - a rule is asserted, and the reasoner overlay's
+        // dotted lines mean something else.
+        sheet.putCellStyle(RULE_PART,
+                edge("#5B6B8C", "2 3", mxConstants.ARROW_OPEN, 1.1f, 9, true));
 
         // Inferred edges are dotted and grey: present, clearly derived, and never mistaken for
         // something the ontology actually asserts. A reasoner's conclusion drawn identically to an
@@ -409,8 +450,12 @@ public final class SchemaStyles {
         }
         // Orthogonal routing keeps a dense diagram readable; free-form curves cross more. Asked for
         // since the first version and never actually applied until 1.64.0, because the hierarchical
-        // layout stamped noEdgeStyle=1 onto every edge it touched.
-        style.put(mxConstants.STYLE_EDGE, mxConstants.EDGESTYLE_ORTHOGONAL);
+        // layout stamped noEdgeStyle=1 onto every edge it touched. Since 1.131.0 the orthogonal
+        // route goes around a frame neither end is in - see AroundFrames. ORTHOGONAL is said
+        // outright because JGraphX otherwise decides it by comparing the function with its own
+        // connectors, and an edge it took for a curve would meet its nodes at the wrong points.
+        style.put(mxConstants.STYLE_EDGE, AroundFrames.NAME);
+        style.put(mxConstants.STYLE_ORTHOGONAL, true);
         style.put(mxConstants.STYLE_ROUNDED, true);
         // White, with a hairline. The old #F7F8FA backing was the canvas colour, which meant every
         // exported PNG carried grey chips on a white page; white reads as a raised chip on the

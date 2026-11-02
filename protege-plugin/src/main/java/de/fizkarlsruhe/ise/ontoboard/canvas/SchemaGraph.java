@@ -2,19 +2,55 @@ package de.fizkarlsruhe.ise.ontoboard.canvas;
 
 import com.mxgraph.model.mxCell;
 import com.mxgraph.model.mxGraphModel;
+import com.mxgraph.util.mxConstants;
+import com.mxgraph.util.mxUtils;
 import com.mxgraph.view.mxGraph;
 import de.fizkarlsruhe.ise.ontoboard.layout.CanvasLayout;
 import de.fizkarlsruhe.ise.ontoboard.model.CanvasEdge;
 import de.fizkarlsruhe.ise.ontoboard.model.CanvasNode;
 import de.fizkarlsruhe.ise.ontoboard.model.Projection;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 /** Renders a {@link Projection}. Holds no ontology state of its own. */
 public class SchemaGraph extends mxGraph {
 
     private static final double DEFAULT_W = 160;
     private static final double DEFAULT_H = 60;
+
+    /** As wide as a box gets to fit its label on one line; past this it wraps and grows down. */
+    private static final double WIDEST = 280;
+
+    /**
+     * More relations than a board can draw as lines and still be read. Measured on two published
+     * ontologies with every term shown: 528 and 1,139 edges, and the relations between classes,
+     * drawn at full strength, were a mesh across the whole board.
+     */
+    static final int DENSE = 150;
+
+    /** How strongly what is not in focus is drawn, in percent. */
+    static final int FADED = 22;
+
+    /** How strongly a relation on a dense board is drawn until one of its ends is in focus. */
+    static final int QUIET = 30;
+
+    /**
+     * Longer than this, an edge on a dense board is drawn quietly whatever it is: a second
+     * superclass far away, a subtree's way back to the block its parent is in. The structure is
+     * in the short ones.
+     */
+    static final double LONG = 1600;
+
+    /** The terms selected; empty when nothing is. */
+    private final Set<String> focused = new HashSet<String>();
+
+    /** The selected terms and everything an edge joins them to. */
+    private final Set<String> lit = new HashSet<String>();
+
+    private boolean dense;
 
     private final Map<String, Object> cellsById = new HashMap<>();
 
@@ -34,6 +70,9 @@ public class SchemaGraph extends mxGraph {
         // projection invariant is gone. Duplicating board furniture is Ctrl+D; duplicating an axiom
         // is not a gesture.
         setCellsCloneable(false);
+        // Lines behind boxes: on a board of any size a relation passes other terms on its way,
+        // and drawn on top it ran through their labels.
+        setKeepEdgesInBackground(true);
         // Snapping has been on since the first version and invisible with it: mxGraph defaults
         // gridSize to 10 and gridEnabled to true, and mxGraphHandler already snaps every drag delta.
         // Ten pixels gives sixteen candidate columns across a 160px node, which is not alignment.
@@ -62,52 +101,116 @@ public class SchemaGraph extends mxGraph {
         setSplitEnabled(false);
     }
 
+    /**
+     * Draws the projection, changing only what changed.
+     *
+     * <p>It used to remove every cell and insert them all again: on a board of 660 terms, 1.2
+     * seconds after every edit anywhere in Protege, with every route recomputed and every cell's
+     * identity lost. Cells are kept by id now. A term, line, frame or note still wanted keeps its
+     * cell and has its label, style and box updated where they differ; only what is new is
+     * inserted, only what is gone is removed. A box nothing has placed keeps the place it was
+     * given, where it used to be given a new one on every drawing.
+     */
     public void render(Projection projection, CanvasLayout layout) {
         PrefixColours colours = new PrefixColours(layout.prefixColors);
+        boolean wasDense = dense;
+        dense = projection.getEdges().size() > DENSE;
+        java.util.List<Object> moved = new java.util.ArrayList<Object>();
+        boolean insertedBox = false;
         getModel().beginUpdate();
         try {
-            removeCells(mxGraphModel.getChildren(getModel(), getDefaultParent()), true);
-            cellsById.clear();
             tooltipsById.clear();
             notedIds.clear();
 
             // Node labels, so an edge's tooltip can name its two ends the way they are drawn
-            // rather than by IRI. Built before the edges are inserted because an edge tooltip
-            // needs both endpoints and the insertion order puts frames first.
+            // rather than by IRI.
             Map<String, String> labels = new HashMap<String, String>();
             for (CanvasNode node : projection.getNodes()) {
                 labels.put(node.getId(), node.getLabel());
             }
 
-            // Frames first, so they sit behind the nodes they group. mxGraph paints in insertion
-            // order and a frame drawn afterwards would cover everything inside it.
+            // WHAT IS WANTED, so that what is not can go first: lines before boxes, because
+            // removing a box takes its lines with it and the map would go on pointing at them.
+            Set<String> boxes = new HashSet<String>();
+            for (CanvasLayout.FrameLayout frame : layout.frames) {
+                if (frame != null && frame.id != null) {
+                    boxes.add(frame.id);
+                }
+            }
+            for (CanvasNode node : projection.getNodes()) {
+                boxes.add(node.getId());
+            }
+            for (CanvasLayout.NoteLayout note : layout.notes) {
+                if (note != null && note.id != null) {
+                    boxes.add(note.id);
+                }
+            }
+            Set<String> lines = new HashSet<String>();
+            for (CanvasEdge edge : projection.getEdges()) {
+                if (boxes.contains(edge.getSourceId()) && boxes.contains(edge.getTargetId())) {
+                    lines.add(edge.getId());
+                }
+            }
+            java.util.List<Object> goneLines = new java.util.ArrayList<Object>();
+            java.util.List<Object> goneBoxes = new java.util.ArrayList<Object>();
+            for (java.util.Iterator<Map.Entry<String, Object>> each =
+                    cellsById.entrySet().iterator(); each.hasNext();) {
+                Map.Entry<String, Object> entry = each.next();
+                Object cell = entry.getValue();
+                boolean line = getModel().isEdge(cell);
+                if (!getModel().contains(cell)) {
+                    each.remove();
+                } else if (!(line ? lines : boxes).contains(entry.getKey())) {
+                    (line ? goneLines : goneBoxes).add(cell);
+                    each.remove();
+                }
+            }
+            removeCells(goneLines.toArray(), false);
+            removeCells(goneBoxes.toArray(), true);
+            for (java.util.Iterator<Map.Entry<String, Object>> each =
+                    cellsById.entrySet().iterator(); each.hasNext();) {
+                if (!getModel().contains(each.next().getValue())) {
+                    each.remove();
+                }
+            }
+
+            // Frames behind everything else - mxGraph paints in model order, and a frame drawn
+            // after the boxes in it would cover them. In the order the board keeps them, so a
+            // frame drawn inside another stays above it and can still be clicked.
+            java.util.List<Object> frameCells = new java.util.ArrayList<Object>();
+            boolean insertedFrame = false;
             for (CanvasLayout.FrameLayout frame : layout.frames) {
                 if (frame == null || frame.id == null) {
                     continue;
                 }
-                Object cell = insertVertex(getDefaultParent(), frame.id,
-                        frame.label == null ? "" : frame.label,
-                        frame.x, frame.y, frame.w <= 0 ? 320 : frame.w,
-                        frame.h <= 0 ? 220 : frame.h,
-                        SchemaStyles.FRAME + ";strokeColor="
-                                + (frame.stroke == null ? "#2D6FBF" : frame.stroke));
-                cellsById.put(frame.id, cell);
+                String style = SchemaStyles.FRAME + ";strokeColor="
+                        + (frame.stroke == null ? "#2D6FBF" : frame.stroke);
+                String label = frame.label == null ? "" : frame.label;
+                double w = frame.w <= 0 ? 320 : frame.w;
+                double h = frame.h <= 0 ? 220 : frame.h;
+                Object cell = cellsById.get(frame.id);
+                if (cell == null) {
+                    cell = insertVertex(getDefaultParent(), frame.id, label, frame.x, frame.y,
+                            w, h, style);
+                    cellsById.put(frame.id, cell);
+                    insertedFrame = true;
+                } else if (update(cell, label, style, frame.x, frame.y, w, h)) {
+                    moved.add(cell);
+                }
+                frameCells.add(cell);
                 tooltipsById.put(frame.id, CanvasTooltips.forFrame(frame.label));
             }
+            if (insertedFrame) {
+                // One call for all of them: sending cells to the back keeps the order they are
+                // given in, where one frame at a time reversed it.
+                orderCells(true, frameCells.toArray());
+            }
 
-            // EVERY BOX ALREADY SPOKEN FOR, so an unpositioned node can be put somewhere else.
-            // This used to be a counter stepping right from (40,40) that never looked at the
-            // saved positions, so a new term landed on top of whatever the reader had arranged
-            // near the origin - and every derived node the projection mints (a datatype, a class
-            // expression, a property chain) arrives unpositioned on every single render.
+            // EVERY BOX ALREADY SPOKEN FOR, so a term with no position goes somewhere free: the
+            // frames, the stored positions, and the boxes already on the board. Frames count - a
+            // box that is not in a frame has no business inside one, and on Windows a pattern's
+            // frame came back with boxes piled on it when frames were free space.
             java.util.List<java.awt.Rectangle> taken = new java.util.ArrayList<java.awt.Rectangle>();
-            // FRAMES ARE SPOKEN FOR TOO. Only node boxes used to be, so a frame was free space:
-            // an imported pattern's frame sits at (60,60) on a new board, and the first slots
-            // this offers - (40,40), (240,40), ... - lie across its label band and border. Every
-            // derived node arrives unpositioned on every render, and the library's patterns are
-            // full of restrictions, so a pattern framed on Windows came back with boxes piled on
-            // top of it: "every item inside a frame was overlapped". A box that is not in a frame
-            // has no business inside one.
             for (CanvasLayout.FrameLayout frame : layout.frames) {
                 if (frame != null && frame.id != null) {
                     taken.add(new java.awt.Rectangle((int) frame.x, (int) frame.y,
@@ -117,34 +220,62 @@ public class SchemaGraph extends mxGraph {
             }
             for (CanvasNode node : projection.getNodes()) {
                 CanvasLayout.NodeLayout stored = layout.nodes.get(node.getId());
+                Object cell = cellsById.get(node.getId());
                 if (stored != null) {
                     taken.add(new java.awt.Rectangle((int) stored.x, (int) stored.y,
                             (int) (stored.w <= 0 ? DEFAULT_W : stored.w),
                             (int) (stored.h <= 0 ? DEFAULT_H : stored.h)));
+                } else if (cell != null && getModel().getGeometry(cell) != null) {
+                    com.mxgraph.model.mxGeometry at = getModel().getGeometry(cell);
+                    taken.add(new java.awt.Rectangle((int) at.getX(), (int) at.getY(),
+                            (int) at.getWidth(), (int) at.getHeight()));
                 }
             }
             for (CanvasNode node : projection.getNodes()) {
                 CanvasLayout.NodeLayout stored = layout.nodes.get(node.getId());
-                double w = stored != null ? stored.w : DEFAULT_W;
-                double h = stored != null ? stored.h : DEFAULT_H;
-                double x;
-                double y;
-                if (stored != null) {
-                    x = stored.x;
-                    y = stored.y;
+                String label = de.fizkarlsruhe.ise.ontoboard.model.Curies.displayLabel(
+                        node.getCurie(), node.getLabel());
+                String style = styleFor(node, colours);
+                Object cell = cellsById.get(node.getId());
+                if (cell != null) {
+                    com.mxgraph.model.mxGeometry at = getModel().getGeometry(cell);
+                    double w = stored != null && stored.w > 0 ? stored.w : at.getWidth();
+                    double h = stored != null && stored.h > 0 ? stored.h : at.getHeight();
+                    if (!label.equals(getModel().getValue(cell))) {
+                        // A new label - renamed, or a folded class's count - gets a box it fits,
+                        // never smaller than one somebody sized by hand.
+                        double[] fits = fittedSize(label, style);
+                        w = Math.max(w, fits[0]);
+                        h = Math.max(h, fits[1]);
+                    }
+                    boolean changed = stored == null
+                            ? update(cell, label, style, at.getX(), at.getY(), w, h)
+                            : update(cell, label, style, stored.x, stored.y, w, h);
+                    if (changed) {
+                        moved.add(cell);
+                    }
                 } else {
-                    java.awt.Point free = CanvasPlacement.freeSlot(taken, (int) w, (int) h);
-                    x = free.x;
-                    y = free.y;
-                    // Claimed before the next one is asked for, or they would all be offered the
-                    // same slot and stack exactly as before.
-                    taken.add(new java.awt.Rectangle(free.x, free.y, (int) w, (int) h));
+                    double[] fitted = stored != null && stored.w > 0 && stored.h > 0 ? null
+                            : fittedSize(label, style);
+                    double w = fitted == null ? stored.w : fitted[0];
+                    double h = fitted == null ? stored.h : fitted[1];
+                    double x;
+                    double y;
+                    if (stored != null) {
+                        x = stored.x;
+                        y = stored.y;
+                    } else {
+                        java.awt.Point free = CanvasPlacement.freeSlot(taken, (int) w, (int) h);
+                        x = free.x;
+                        y = free.y;
+                        // Claimed before the next one is asked for, or they would all be offered
+                        // the same slot and stack.
+                        taken.add(new java.awt.Rectangle(free.x, free.y, (int) w, (int) h));
+                    }
+                    cell = insertVertex(getDefaultParent(), node.getId(), label, x, y, w, h, style);
+                    cellsById.put(node.getId(), cell);
+                    insertedBox = true;
                 }
-                Object cell = insertVertex(getDefaultParent(), node.getId(),
-                        de.fizkarlsruhe.ise.ontoboard.model.Curies.displayLabel(
-                                node.getCurie(), node.getLabel()),
-                        x, y, w, h, styleFor(node, colours));
-                cellsById.put(node.getId(), cell);
                 tooltipsById.put(node.getId(), CanvasTooltips.forNode(node));
                 if (node.hasNote()) {
                     notedIds.add(node.getId());
@@ -157,28 +288,271 @@ public class SchemaGraph extends mxGraph {
                 if (source == null || target == null) {
                     continue; // spec section 5.1: both endpoints must be on the canvas
                 }
-                Object cell = insertEdge(getDefaultParent(), edge.getId(), edge.getLabel(),
-                        source, target, styleFor(edge));
-                cellsById.put(edge.getId(), cell);
+                String style = styleFor(edge);
+                Object cell = cellsById.get(edge.getId());
+                if (cell != null && (getModel().getTerminal(cell, true) != source
+                        || getModel().getTerminal(cell, false) != target)) {
+                    removeCells(new Object[] {cell}, false);
+                    cellsById.remove(edge.getId());
+                    cell = null;
+                }
+                if (cell == null) {
+                    cell = insertEdge(getDefaultParent(), edge.getId(), edge.getLabel(), source,
+                            target, style);
+                    cellsById.put(edge.getId(), cell);
+                } else {
+                    if (!edge.getLabel().equals(getModel().getValue(cell))) {
+                        getModel().setValue(cell, edge.getLabel());
+                    }
+                    if (!style.equals(getModel().getStyle(cell))) {
+                        getModel().setStyle(cell, style);
+                    }
+                }
                 tooltipsById.put(edge.getId(), CanvasTooltips.forEdge(edge, labels));
             }
-            // Sticky notes last, so they are never hidden behind a node - the whole point of one
-            // is that somebody reads it.
+
+            // Sticky notes on top, so they are never hidden behind a node - the whole point of
+            // one is that somebody reads it.
+            java.util.List<Object> notes = new java.util.ArrayList<Object>();
             for (CanvasLayout.NoteLayout note : layout.notes) {
                 if (note == null || note.id == null) {
                     continue;
                 }
-                Object cell = insertVertex(getDefaultParent(), note.id,
-                        note.text == null ? "" : note.text,
-                        note.x, note.y, note.w <= 0 ? 180 : note.w, note.h <= 0 ? 120 : note.h,
-                        SchemaStyles.STICKY_NOTE + ";fillColor="
-                                + (note.color == null ? "#FFF3B0" : note.color));
-                cellsById.put(note.id, cell);
+                String style = SchemaStyles.STICKY_NOTE + ";fillColor="
+                        + (note.color == null ? "#FFF3B0" : note.color);
+                String text = note.text == null ? "" : note.text;
+                double w = note.w <= 0 ? 180 : note.w;
+                double h = note.h <= 0 ? 120 : note.h;
+                Object cell = cellsById.get(note.id);
+                if (cell == null) {
+                    cell = insertVertex(getDefaultParent(), note.id, text, note.x, note.y, w, h,
+                            style);
+                    cellsById.put(note.id, cell);
+                    insertedBox = true;
+                } else {
+                    update(cell, text, style, note.x, note.y, w, h);
+                }
+                notes.add(cell);
                 tooltipsById.put(note.id, CanvasTooltips.forNote(note.text));
+            }
+            if (insertedBox && !notes.isEmpty()) {
+                orderCells(false, notes.toArray());
             }
         } finally {
             getModel().endUpdate();
         }
+        if (dense != wasDense) {
+            refresh();
+            return;
+        }
+        // A line's strength on a dense board depends on how long it is, and a style is worked
+        // out when a cell is first drawn - so the lines of a box that moved are asked again.
+        for (Object box : moved) {
+            for (Object line : getEdges(box)) {
+                com.mxgraph.view.mxCellState state = getView().getState(line);
+                if (state != null) {
+                    state.setStyle(getCellStyle(line));
+                }
+            }
+        }
+    }
+
+    /**
+     * Sets a cell's label, style and box, each only where it differs, so an unchanged cell is
+     * not touched at all. Returns whether the box moved or changed size.
+     */
+    private boolean update(Object cell, String value, String style, double x, double y,
+            double w, double h) {
+        if (!java.util.Objects.equals(value, getModel().getValue(cell))) {
+            getModel().setValue(cell, value);
+        }
+        if (!java.util.Objects.equals(style, getModel().getStyle(cell))) {
+            getModel().setStyle(cell, style);
+        }
+        com.mxgraph.model.mxGeometry geometry = getModel().getGeometry(cell);
+        if (geometry != null && geometry.getX() == x && geometry.getY() == y
+                && geometry.getWidth() == w && geometry.getHeight() == h) {
+            return false;
+        }
+        com.mxgraph.model.mxGeometry box = geometry == null
+                ? new com.mxgraph.model.mxGeometry(x, y, w, h)
+                : (com.mxgraph.model.mxGeometry) geometry.clone();
+        box.setX(x);
+        box.setY(y);
+        box.setWidth(w);
+        box.setHeight(h);
+        getModel().setGeometry(cell, box);
+        return true;
+    }
+
+    /**
+     * A box its label fits in without a word broken across two lines.
+     *
+     * <p>Every new box was 160 by 60, so {@code classification:Concept} came out as
+     * "classification:Conce" over "pt", and a prefixed name over a two-word label ran out of the
+     * bottom of its box. Wider up to {@link #WIDEST}, then taller.
+     */
+    public double[] fittedSize(String label, String style) {
+        Map<String, Object> resolved = getStylesheet().getCellStyle(style,
+                getStylesheet().getDefaultVertexStyle());
+        java.awt.Font font = mxUtils.getFont(resolved);
+        java.awt.FontMetrics metrics = mxUtils.getFontMetrics(font);
+        // Generous: JGraphX wraps a few pixels inside the box and measures with fractional
+        // metrics where these are whole pixels, so a label measured to fit exactly broke its
+        // last character onto a line of its own.
+        // The hexagon a property is drawn in keeps 22px on either side for its slanted edges,
+        // and counting only the plain spacing put obo:BFO_0000050 on two lines in it.
+        double padding = 2 * mxUtils.getDouble(resolved, mxConstants.STYLE_SPACING, 6)
+                + mxUtils.getDouble(resolved, mxConstants.STYLE_SPACING_LEFT, 0)
+                + mxUtils.getDouble(resolved, mxConstants.STYLE_SPACING_RIGHT, 0) + 30;
+        String[] lines = (label == null ? "" : label).split("\n");
+        double longest = 0;
+        for (String line : lines) {
+            longest = Math.max(longest, metrics.stringWidth(line) * 1.08);
+        }
+        double w = Math.max(DEFAULT_W, Math.min(WIDEST, longest + padding));
+        int rows = 0;
+        for (String line : lines) {
+            rows += Math.max(1, (int) Math.ceil(metrics.stringWidth(line) * 1.08 / (w - padding)));
+        }
+        double h = Math.max(DEFAULT_H, rows * metrics.getHeight() + padding);
+        return new double[] {Math.ceil(w), Math.ceil(h)};
+    }
+
+    /**
+     * What is in focus: these terms, and everything an edge joins them to. The rest of the board
+     * fades, and on a dense board their quiet relations come forward. Empty for none.
+     *
+     * <p>Drawing only - nothing in the model changes, so focusing is never an undo step, never
+     * saved, and never sent to a collaborator.
+     */
+    public void setFocus(Collection<String> ids) {
+        boolean none = ids == null || ids.isEmpty();
+        if (none && focused.isEmpty()) {
+            // Nothing in focus before or after: the board is drawn as it is. It used to be
+            // reloaded anyway, after every drawing - 180ms each time on a board of 660 terms.
+            return;
+        }
+        focused.clear();
+        lit.clear();
+        if (ids != null) {
+            for (String id : ids) {
+                if (id != null && !isAnnotationId(id)) {
+                    focused.add(id);
+                }
+            }
+        }
+        if (!focused.isEmpty()) {
+            lit.addAll(focused);
+            for (Object edge : mxGraphModel.getChildCells(getModel(), getDefaultParent(), false,
+                    true)) {
+                String source = getIdForCell(getModel().getTerminal(edge, true));
+                String target = getIdForCell(getModel().getTerminal(edge, false));
+                if (focused.contains(source) || focused.contains(target)) {
+                    lit.add(source);
+                    lit.add(target);
+                }
+            }
+        }
+        refresh();
+    }
+
+    public boolean isDense() {
+        return dense;
+    }
+
+    /**
+     * Lines behind boxes in a picture too. The board's own component honours
+     * {@link #isKeepEdgesInBackground}; the renderer behind Export image draws in model order, and
+     * edges are inserted after the nodes they join - so every exported line ran over the labels it
+     * passed.
+     */
+    @Override
+    public void drawCell(com.mxgraph.canvas.mxICanvas canvas, Object cell) {
+        if (cell != getDefaultParent() || !isKeepEdgesInBackground()) {
+            super.drawCell(canvas, cell);
+            return;
+        }
+        drawState(canvas, getView().getState(cell), true);
+        int count = getModel().getChildCount(cell);
+        for (int pass = 0; pass < 2; pass++) {
+            for (int i = 0; i < count; i++) {
+                Object child = getModel().getChildAt(cell, i);
+                if (getModel().isEdge(child) == (pass == 0)) {
+                    super.drawCell(canvas, child);
+                }
+            }
+        }
+    }
+
+    @Override
+    public Map<String, Object> getCellStyle(Object cell) {
+        Map<String, Object> style = super.getCellStyle(cell);
+        int strength = strengthOf(cell);
+        if (strength >= 100) {
+            return style;
+        }
+        Map<String, Object> drawn = new HashMap<String, Object>(style);
+        drawn.put(mxConstants.STYLE_OPACITY, Math.min(strength,
+                mxUtils.getInt(style, mxConstants.STYLE_OPACITY, 100)));
+        drawn.put(mxConstants.STYLE_TEXT_OPACITY, strength);
+        return drawn;
+    }
+
+    /**
+     * Disjointness, domains and ranges wait on a dense board until one of their ends is in
+     * focus: on the larger of the two ontologies measured they were 104 and 112 lines, crossing
+     * the board in every direction, and each says something only about the term it touches.
+     */
+    @Override
+    public boolean isCellVisible(Object cell) {
+        if (!super.isCellVisible(cell)) {
+            return false;
+        }
+        if (focused == null || !dense || !getModel().isEdge(cell)) {
+            return true;
+        }
+        String kind = baseStyleOf(cell);
+        return !(SchemaStyles.DISJOINT.equals(kind) || SchemaStyles.DOMAIN_RANGE.equals(kind))
+                || touchesFocus(cell);
+    }
+
+    private int strengthOf(Object cell) {
+        String id = getIdForCell(cell);
+        // Null while mxGraph's constructor builds the view, before this class's fields exist.
+        if (focused == null || id == null || isAnnotationId(id)) {
+            return 100;
+        }
+        if (getModel().isEdge(cell)) {
+            if (!focused.isEmpty()) {
+                return touchesFocus(cell) ? 100 : FADED;
+            }
+            String kind = baseStyleOf(cell);
+            return dense && (SchemaStyles.OBJECT_PROPERTY.equals(kind)
+                    || SchemaStyles.ONLY.equals(kind) || SchemaStyles.COUNT.equals(kind)
+                    || SchemaStyles.NOT.equals(kind) || SchemaStyles.DATA_PROPERTY.equals(kind)
+                    || SchemaStyles.INVERSE.equals(kind) || lengthOf(cell) > LONG) ? QUIET : 100;
+        }
+        return focused.isEmpty() || lit.contains(id) ? 100 : FADED;
+    }
+
+    private double lengthOf(Object edge) {
+        com.mxgraph.model.mxGeometry from = getModel().getGeometry(getModel().getTerminal(edge,
+                true));
+        com.mxgraph.model.mxGeometry to = getModel().getGeometry(getModel().getTerminal(edge,
+                false));
+        return from == null || to == null ? 0 : Math.hypot(from.getCenterX() - to.getCenterX(),
+                from.getCenterY() - to.getCenterY());
+    }
+
+    private boolean touchesFocus(Object edge) {
+        return focused.contains(getIdForCell(getModel().getTerminal(edge, true)))
+                || focused.contains(getIdForCell(getModel().getTerminal(edge, false)));
+    }
+
+    private String baseStyleOf(Object cell) {
+        String style = getModel().getStyle(cell);
+        return style == null ? "" : style.split(";", 2)[0];
     }
 
     /**
@@ -365,10 +739,27 @@ public class SchemaGraph extends mxGraph {
             case SUB_PROPERTY:    return SchemaStyles.SUB_PROPERTY;
             case DISJOINT:        return SchemaStyles.DISJOINT;
             case INVERSE:         return SchemaStyles.INVERSE;
+            case DOMAIN_RANGE:    return SchemaStyles.DOMAIN_RANGE;
+            case RULE_PART:       return SchemaStyles.RULE_PART;
             case INFERRED_SUBCLASS: return SchemaStyles.INFERRED_SUBCLASS;
             case INFERRED_TYPE:   return SchemaStyles.INFERRED_TYPE;
             case OBJECT_PROPERTY:
-            default:              return SchemaStyles.OBJECT_PROPERTY;
+            default:              return restrictionStyle(edge.getLabel());
         }
+    }
+
+    /** By the symbol its label starts with: {@code ∀}, a count, {@code ¬}, or existential. */
+    static String restrictionStyle(String label) {
+        String text = label == null ? "" : label.trim();
+        if (text.startsWith("\u2200")) {
+            return SchemaStyles.ONLY;
+        }
+        if (text.startsWith("\u2265") || text.startsWith("\u2264") || text.startsWith("= ")) {
+            return SchemaStyles.COUNT;
+        }
+        if (text.startsWith("\u00AC")) {
+            return SchemaStyles.NOT;
+        }
+        return SchemaStyles.OBJECT_PROPERTY;
     }
 }

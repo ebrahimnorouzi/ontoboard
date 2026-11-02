@@ -123,7 +123,7 @@ public final class TermFile {
             return new Line(number, Kind.COMMENT, line, null,
                     trimmed.substring(1).trim());
         }
-        int hash = trimmed.indexOf('#');
+        int hash = commentStart(trimmed);
         String comment = hash < 0 ? "" : trimmed.substring(hash + 1).trim();
         String candidate = hash < 0 ? trimmed : trimmed.substring(0, hash).trim();
         // The same rule ImportModules uses: the first whitespace-delimited token is the term,
@@ -137,6 +137,24 @@ public final class TermFile {
         } catch (RuntimeException notAnIri) {
             return new Line(number, Kind.MALFORMED, line, null, comment);
         }
+    }
+
+    /**
+     * Where a line's comment starts: a {@code #} at the start or after a space, or -1.
+     *
+     * <p>Not simply the first {@code #}: in {@code http://example.org/pizza#Margherita # pizza}
+     * that one is inside the IRI. Cutting there read the term as {@code http://example.org/pizza}
+     * - for every ontology whose IRIs end in a fragment, which OBO's slash IRIs had hidden. The
+     * rebuild itself was not affected; {@link ImportModules#readTerms} takes the first word.
+     */
+    static int commentStart(String line) {
+        for (int at = 0; at < line.length(); at++) {
+            boolean afterSpace = at == 0 || Character.isWhitespace(line.charAt(at - 1));
+            if (line.charAt(at) == '#' && afterSpace) {
+                return at;
+            }
+        }
+        return -1;
     }
 
     /** The readable terms, in file order. */

@@ -1,67 +1,158 @@
 <!--
-  Written for: somebody looking at a board and asking "is that everything the ontology says?".
-  Points and numbers only. Measured on MWO 3.0.1 (524 terms), DUL and NFDIcore.
+  Written for: somebody looking at a board and asking "is that everything the ontology says, and
+  where is it?". Points and numbers only. Measured on MWO 3.0.2 (660 terms with its imports) and
+  NFDIcore 3.0.5 (399 terms), every term on the board, class expressions drawn.
 -->
 
 # What the canvas draws
 
-Every number here is measured on **MWO 3.0.1** with all 524 terms on the board.
+## What is on a board
+
+Every class, object property, data property and individual of the open ontology, imports included,
+as soon as the OntoBoard tab opens - up to 1,500 terms, the ontology's own first. A term made
+anywhere in Protégé appears beside its superclass. *Hide from board* takes one off and keeps it off;
+*More → Show every term* brings them back. A board saved by OntoBoard before 1.131.0 keeps the terms
+chosen then, and says so.
+
+The board is written to `<ontology file>.ontoboard.json`, beside the ontology, from your first change
+to it - a move, a hidden term, a note - and not before: an ontology opened and closed leaves no file.
+Until 1.133.0 one was written anyway, as Protégé closed or made the ontology active again, and that
+file then kept the outline of the day it was written.
+
+## Where things go
+
+The board is laid out as an outline (*Arrange → Outline*):
+
+| | Where |
+|---|---|
+| Design patterns the ontology imports, or has merged in | a frame each, named after the pattern, in rows along the top |
+| Classes - the TBox | trees read top down: a class above its subclasses, centred over them; many leaves under one class in a grid below it; trees side by side, wrapping at about a screen's width |
+| A class's restrictions, unions, enumerations | a grey node below the class, with its subclasses |
+| Individuals - the ABox | a band below all the classes: each class's individuals under that class, in a column; an individual's values right below it |
+| Object properties, data properties | each a frame of its own, right of the classes, as its property hierarchy |
+
+On pizza (86 terms) and MWO (660, with 21 frames), measured in Protégé 5.6.9: no two boxes
+overlap, and no line passes through a frame neither of its ends is in.
+
+**A pattern is found by its terms, too.** An ontology that has a library pattern merged into its
+own file - by Protégé, ROBOT or by hand, with no import and no note left by OntoBoard - gets the
+pattern's frame when it declares at least two of the pattern's own terms, and they are at least
+60% of them. Terms many patterns share, such as an upper ontology's, do not count. Each class is in
+one frame. Measured in Protégé 5.6.9 since 1.133.0: the pizza ontology as a single file shows 3
+patterns, NFDIcore 14 and MWO 19, with no overlaps. A board saved before 1.133.0 gets them with
+*Arrange → Outline*.
+
+
+## Description logic
+
+Arrows and grey nodes are written in description logic:
+
+| On the board | Means | Line |
+|---|---|---|
+| `∃ R` | some: every A relates by R to some B | solid blue |
+| `∀ R` | only: whatever an A relates to by R is a B | dashed, diamond head |
+| `≥ n R`, `≤ n R`, `= n R` | at least, at most, exactly n | dotted, round head |
+| `∃ R.{…}` | has the value: the arrow points at the individual | solid blue |
+| `¬ R` | a negative assertion between two individuals | grey, dashed |
+| `⊓`, `⊔`, `¬`, `{ … }` | and, or, not, one of - a grey node, its parts hanging off it | |
+| `R⁻` | the inverse of R | |
+| `≡` before a name | a defined class | |
+
+A subclass arrow (⊑) is a hollow-headed solid line; an equivalence is two of them. The legend,
+*?* on the toolbar, has every line.
+
+**From the description view to the board.** Select a line in Protégé's description of a class -
+*SubClass Of: ∃ hasTopping.Cheese* - and the board selects the arrows that draw it, with the terms
+at their ends, and scrolls to them.
 
 ## Drawn
 
+Every logical axiom in both ontologies - 921 of 921 in MWO, 529 of 529 in NFDIcore.
+
 | Axiom | Drawn as | On MWO |
 |---|---|---|
-| `SubClassOf(A B)` | hollow-headed arrow | 285 |
-| `SubClassOf(A, R some/only/min/max/exactly B)` | arrow labelled `R some` | 69 |
-| `SubClassOf(A, B ⊓ …)` — the **named** conjunct | hollow-headed arrow | 36 (new in 1.123.0) |
-| `EquivalentClasses(A B)` | two hollow arrows | new in 1.123.0 |
-| `EquivalentClasses(A, R some B)` | arrow labelled `R some` | 8 |
-| `SubObjectPropertyOf` / `SubDataPropertyOf` | arrow between property nodes | 45 |
+| `SubClassOf(A B)` | hollow-headed arrow | 391 |
+| `SubClassOf(A, R some/only/min/max/exactly B)` | arrow labelled `∃ R`, `∀ R`, `≥ n R`, `≤ n R` or `= n R`, each with its own line | 86 |
+| `SubClassOf(A, B ⊓ …)` | an arrow to each named conjunct, the rest as below | 36 |
+| `EquivalentClasses(A B)` | two hollow arrows | - |
+| `EquivalentClasses(A, R some B)` and other definitions | as `SubClassOf`, both ways | 51 |
+| An equivalence between two restrictions | two expression nodes joined both ways | 1 |
+| Union, complement, enumeration, nested filler, inverse-property restriction | a grey node for the expression, its operands hanging off it | 77 nodes |
+| `ObjectPropertyDomain` / `ObjectPropertyRange` | from the property's node, long-dashed, labelled `domain` / `range`; a union as its own node | 57 / 55 |
+| `DataPropertyDomain` / `DataPropertyRange` | the same, the range to its datatype | 3 / 3 |
+| `DisjointClasses` | dashed red line, no arrowheads, one per pair; a restriction as its node | 17 axioms |
+| `SubObjectPropertyOf` / `SubDataPropertyOf` | arrow between property nodes | 49 |
+| `EquivalentObjectProperties` | two sub-property arrows - or an inverse line, for `p ≡ inverse(q)` | 1 |
+| `InverseObjectProperties` | dashed line, arrowheads both ends | 41 |
+| Property characteristics | a suffix on the property's label - `(transitive)`, `(functional)` … | 27 |
+| `SubPropertyChainOf` | a `chain: R o S` node with numbered links | 5 |
 | `ClassAssertion` | `rdf:type` arrow | 50 |
-| domain + range pair | class-to-class arrow labelled with the property | 32 |
-| `DataSomeValuesFrom` | arrow to a datatype node | — |
-| `ObjectHasValue` | arrow to the individual | — |
-| **Union, complement, enumeration, nested filler, inverse-property restriction** | **a grey node for the expression, operands hanging off it** | **29 nodes, new in 1.123.0** |
+| `ObjectPropertyAssertion` | arrow between two individuals, labelled with the property | 5 |
+| `HasKey` | an arrow to each key property, labelled `key` | 0 |
+| SWRL rule | a node reading the rule - `rule: a(?x) ∧ b(?x, ?y) → c(?x)` - with a dotted `if` line from each term its body uses and a `then` line to each term it concludes | 4 |
+| `SubClassOf(R some B, A)` - a scoped domain | an arrow from A to B labelled `R (scoped domain)` | - |
+| Any other `SubClassOf` whose subclass is an expression | the expression as its node, a hollow arrow from it | - |
+| `DisjointUnion(A B C)` | hollow arrows from B and C to A, and a disjointness line between B and C | - |
+| `DisjointObjectProperties` / `DisjointDataProperties` | a disjointness line between the property nodes | - |
+| `SameIndividual` / `DifferentIndividuals` | a line labelled `same as` / `different from`, one per pair | - |
+| `ObjectPropertyAssertion` that is negative | an arrow labelled `not R` | - |
+| `DataPropertyAssertion` | a box holding the value, and an arrow to it from the individual, labelled with the property; `not R` for a negative one | - |
 
-Before 1.123.0 the last row drew **nothing at all** — 39 of MWO's 116 restriction occurrences,
-34%, were invisible, with no message saying so. Turn it off under **⋮ → Show class expressions**.
+Every arrow of the first kinds - subclass, type, and an existential restriction - says something
+the ontology entails: a test turns each back into the axiom it claims and checks it with HermiT,
+on every version of the pizza example and on the shapes that were once drawn wrongly.
 
-Cost of having it on, whole of MWO: 524 → 553 nodes, 525 → 652 edges, render 70 ms → 123 ms.
+Whole of MWO: **749 nodes and 1,252 edges**. Class expressions can be switched off under
+*More → Show class expressions*; then the 47 axioms whose shape needs an expression node are not
+drawn.
 
-## Drawn since 1.124.0
+## On a large board
 
-| Axiom | Drawn as | On MWO |
-|---|---|---|
-| `DisjointClasses` | dashed red line, no arrowheads, one per pair | 29 from 15 axioms |
-| `InverseObjectProperties` | dashed line with arrowheads both ends, between the two property nodes | 38 |
-| Property characteristics (transitive, functional, symmetric, …) | a suffix on the property's label | 25 |
-| `SubPropertyChainOf` | a `chain: R o S` node with numbered links | 3 |
-| `ObjectPropertyAssertion` | an arrow between two individuals, labelled with the property | 5 |
-| `HasKey` | an arrow to each key property, labelled `key` | 0 on MWO, 1 on DUL |
+More than 150 relations, and lines drawn alike become a mesh across the whole board. So on a
+board that size:
 
-Whole-of-MWO totals: **556 nodes, 730 edges** (was 524 / 489 before 1.123.0).
+- disjointness, domains and ranges are drawn for the term in focus - select it - rather than all
+  at once (106 and 118 lines on MWO);
+- the other relations, and any line longer than 1,600 px, are drawn faintly until one of their
+  ends is selected;
+- selecting a term brings it and everything it is connected to forward and fades the rest
+  (*Focus* on the toolbar turns this off).
 
-Every one of these obeys the board's opt-in rule — both ends must already be on the canvas. That
-is what stops disjointness from filling a taxonomy with red lines.
+*More → Show on the board* switches object properties, data properties, individuals, imported
+terms and rules off and on. A class can be folded - right-click, *Collapse subclasses* - and then
+shows how many terms it holds.
+
+## Working on the board
+
+- **A defined class** - one with an equivalence, so the reasoner can find its members - has `≡`
+  before its name. The legend (*?* on the toolbar) has it.
+- **Show only this and its neighbours**: right-click a term. Everything else leaves the board until
+  *Escape*, or *More → Show the whole board*.
+- **Fold** a class with right-click → *Collapse subclasses*; *More → Expand every folded class*
+  opens them all again.
+- **Rules**: double-click a rule's node to read it set out - *If*, each condition on a line,
+  *then*, each conclusion. *More → Show on the board → Rules* takes them off a board that has many.
+- **Keys**, as in a mind map: **Tab** makes a subclass of the selected class, **Enter** a sibling;
+  double-click empty board for a new class. *?* → *Keyboard shortcuts* lists them all.
 
 ## Not drawn
 
 | | Why |
 |---|---|
-| SWRL rules (4 on MWO) | A rule is a horn clause over variables. There is no two-ended or node shape for it that would not be an invented notation, and a picture that misleads is worse than a gap. Protégé's own rule tab shows them. |
-| Literals | A value is not a term; `rdfs:label` is already the node's name. |
-| Annotations | On the hover and in the left panel's editable frames. |
+| Annotations | On the hover and in the left panel's editable frames; `rdfs:label` is already the node's name. |
 
 ## Consequences worth knowing
 
-- A term with **no edges** is now genuinely unconstrained as far as the canvas can tell: the six
-  relations that used to be hover-only are drawn.
 - **One hop** means "the other end of an edge the canvas would draw", plus the property an arrow
-  stands for — so disjoint classes and inverse pairs are neighbours now that they are edges.
+  stands for. A domain and a range are drawn from the property's own node, so a class reaches
+  the classes at the property's other end through the property.
 - An **expression node is not a term**: it has no IRI, clicking it selects nothing in Protégé,
-  and an arrow ending on one cannot be retracted from the canvas — edit the class's definition in
-  the description view instead.
-- The **DOT export** carries every node and edge kind, expression nodes included.
-- A node with **no saved position** — a newly added term, or a derived node such as a datatype, a
-  class expression or a chain — is placed in the first free slot rather than at a fixed offset,
-  so it no longer lands on top of a term you arranged.
+  and an arrow ending on one cannot be retracted from the canvas - edit the class's definition in
+  the description view instead. The same holds for a rule's node and for a domain that is a union.
+- The **DOT export** carries every node and edge kind, expression and rule nodes included.
+- A **node with no saved position** - a new term, or a derived node such as a datatype, a class
+  expression or a rule - is placed beside its parent or in the first free slot, and keeps that
+  place from then on.
+- **Redrawing** after an edit changes only what changed: on MWO, 12 ms when nothing did, and
+  110 ms to project and redraw after a class is added. The board is not redrawn while it is not
+  on screen; it catches up when it is shown.

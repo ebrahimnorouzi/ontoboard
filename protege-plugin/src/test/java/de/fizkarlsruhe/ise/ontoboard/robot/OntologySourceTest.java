@@ -67,7 +67,8 @@ class OntologySourceTest {
 
         assertTrue(refused.getMessage().contains("definitely-not-here.owl"),
                 refused.getMessage());
-        assertTrue(refused.getMessage().contains("purl.obolibrary.org"),
+        // A neutral address since 1.130.0: the example named one particular ontology.
+        assertTrue(refused.getMessage().contains("https://example.org/"),
                 "showing what a URL looks like is most of the help: " + refused.getMessage());
     }
 
@@ -159,6 +160,40 @@ class OntologySourceTest {
                         IRI.create(notAnOntology.toURI())));
 
         assertTrue(refused.getMessage().contains(notAnOntology.getName()), refused.getMessage());
+    }
+
+    /**
+     * One import that cannot be fetched does not take the ontology's own terms with it, and the
+     * import is named.
+     *
+     * <p>Strictly, the load fails - which is what an extraction that must not silently lose terms
+     * wants. Reading terms from an ontology to search or take them is the other case: the import
+     * is left out and said so.
+     */
+    @Test
+    void anImportThatCannotBeFetchedIsLeftOutAndNamed(@TempDir File directory) throws Exception {
+        File file = new File(directory, "with-missing.owl");
+        IRI missing = IRI.create(new File(directory, "not-there.owl").toURI());
+        OWLOntologyManager writing = OWLManager.createOWLOntologyManager();
+        OWLOntology written = writing.createOntology(IRI.create("http://example.org/w.owl"));
+        writing.applyChange(new org.semanticweb.owlapi.model.AddImport(written,
+                writing.getOWLDataFactory().getOWLImportsDeclaration(missing)));
+        writing.addAxiom(written, writing.getOWLDataFactory().getOWLDeclarationAxiom(
+                writing.getOWLDataFactory().getOWLClass(IRI.create("http://example.org/w#A"))));
+        writing.saveOntology(written, IRI.create(file.toURI()));
+
+        assertThrows(RobotException.class, () -> OntologySource.load(
+                OWLManager.createOWLOntologyManager(), IRI.create(file.toURI())));
+
+        OWLOntology loaded = OntologySource.loadLeavingOutMissingImports(
+                OWLManager.createOWLOntologyManager(), IRI.create(file.toURI()));
+
+        assertEquals(1, loaded.getClassesInSignature().size());
+        assertEquals(java.util.Collections.singletonList(missing),
+                OntologySource.missingImportsOf(loaded));
+        assertEquals("1 of its imports could not be loaded, so its terms are not here: " + missing,
+                OntologySource.describeMissingImports(OntologySource.missingImportsOf(loaded)));
+        assertNull(OntologySource.describeMissingImports(new java.util.ArrayList<IRI>()));
     }
 
     @Test

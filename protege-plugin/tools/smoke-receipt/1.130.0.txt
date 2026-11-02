@@ -1,0 +1,69 @@
+OntoBoard 1.130.0 - host smoke receipt
+
+Produced on macOS 15.8.1 (Intel x86_64) the way 1.129.0's was: a throwaway copy of each install,
+the jar under test as the only ontoboard-*.jar in its plugins, -Dontoboard.selftest=true, and the
+verdict read from what Protege logged.
+
+  2026-10-31  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx2G  PASS  check 9/9  test 12/12
+  2026-10-31  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx2G  PASS  check 9/9  test 12/12
+
+The self-check loaded 48/48 classes named in plugin.xml, the three new menu items' among them.
+
+
+WHAT THIS RELEASE ADDS
+
+- Project > History...: every release kept in releases/, what each holds and what changed from
+  one to the next, term by term; any two compared; any release opened in a window of its own.
+- Find terms in another ontology...: load an ontology from a web address or a file, search its
+  labels, tick terms, import them - no IRIs needed.
+- Start here: the guide...: the steps from an idea to a released ontology, ticked against the
+  open project, each with what it does, why, and a button that does it. Also on the empty board.
+- Add all frames each design pattern an ontology imports or has merged in, in a row along the
+  top of the board. A pinch on a Mac trackpad zooms.
+- A pattern imported from the library records the pattern's IRI, not this machine's path, and
+  is not declared as an ODK product; Refresh imports leaves it alone. A search in the library
+  finds patterns that are not among the suggestions.
+
+
+DRIVEN IN THE HOST
+
+Protege 5.6.9, on the pizza walkthrough's repository, by a probe hook added to a scratch copy of
+the jar - never shipped - that opens each window from its menu class and reads it back.
+
+  History      6 rows: the working copy and 1.0.0 to 0.1.0, 0.2.0 "+30 classes, +6 properties,
+               +27 individuals". 1.0.0 compared with 0.1.0: 85 changes. 0.2.0 opened in a second
+               window with its own version IRI and 30 classes. The working copy, reasoned as a
+               release is, read "+1 class, +2 properties" after Find terms had imported exactly
+               that - before the reasoning, an unchanged working copy read "7 moved".
+  Find terms   the Place pattern's file: 3 terms; "place" found all three; two ticked became
+               "Wrote a module of 20 axioms for 2 terms, and imported it", and the ontology
+               imported 4 modules where it had imported 3.
+  Guide        eight steps done for the finished walkthrough, the optional one and Build marked
+               as such; its first button is New ODK project....
+  Add all      a board saved by 1.128.0's Add all, with no frames, came back from 1.130.0's
+               with Classification, Componency and Price framed at (60,60), (560,60), (860,60)
+               and no box overlapping another; the release pizza.owl, which imports nothing,
+               came back the same.
+  Pinch        delivered through GestureHandler.handleGestureFromNative, macOS's own entry
+               point for a trackpad gesture: the board went 100% -> 150% -> 112.5%.
+  Patterns     the walkthrough's three imports replayed through the library dialog, with its
+               README's searches typed under the ordering the dialog opens on - components,
+               classifies, cost each listed its pattern there, where before this release they
+               listed nothing - against the repository rebuilt with this release: term lists
+               byte-identical, products: [] as it was, and modules differing only in the two
+               lines Protege 5.6's newer OWL API writes, which the README names.
+
+
+SEEN, NOT OURS
+
+- 5.5.0: four NullPointerExceptions in Protege's OWLCellRenderer.prepareRenderer while the
+  self-test builds the Class hierarchy view, as in 1.129.0's receipt.
+
+
+WHAT IS STILL NOT TRUE
+
+- No finger pinched a trackpad: the gesture went in where macOS hands one to Java.
+- Find terms loaded a file in the host, not a web address. Both go through the loader Import
+  terms has always used.
+- Edges are straight lines and still cross other frames.
+- Windows was not smoked for this release.

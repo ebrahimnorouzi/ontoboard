@@ -273,7 +273,7 @@ public final class OdkScaffold {
                 + "## With Protege and OntoBoard\n\n"
                 + "1. Open `src/ontology/" + id + "-edit.owl`.\n"
                 + "2. Work on the OntoBoard tab, or in Protege's own views.\n"
-                + "3. Run **OntoBoard > Project > Build...** and choose `test` before you\n"
+                + "3. Run **OntoBoard > Build and release > Build...** and choose `test` before you\n"
                 + "   commit. It runs the same checks the repository's CI runs.\n\n"
                 + "## Identifiers\n\n"
                 + "New terms are minted from the range allocated to you in\n"
@@ -297,7 +297,7 @@ public final class OdkScaffold {
                 + "A release is a dated, frozen copy that other ontologies can import and that\n"
                 + "will not change under them.\n\n"
                 + "1. Make sure `test` passes.\n"
-                + "2. **OntoBoard > Project > Release...**, which stamps a version IRI of the\n"
+                + "2. **OntoBoard > Build and release > Release...**, which stamps a version IRI of the\n"
                 + "   form `" + c.getBaseIri().replace(".owl", "")
                 + "/releases/YYYY-MM-DD/" + id + ".owl`\n"
                 + "   and writes both the dated copy and the published `" + id + ".owl`.\n"
@@ -435,6 +435,7 @@ public final class OdkScaffold {
                 + "# Put custom targets in " + id + ".Makefile, which is included below.\n\n"
                 + "ONT_ID := " + id + "\n"
                 + "ONT := $(ONT_ID)\n"
+                + "URIBASE := " + uriBase(c) + "\n"
                 + "TODAY := $(shell date +%Y-%m-%d)\n"
                 // Overridable, because both release conventions are legitimate and a project
                 // has to be able to build under the one it publishes. Dated is the default, as
@@ -511,6 +512,10 @@ public final class OdkScaffold {
                 + "report:\n"
                 + "\t$(ROBOT) report -i $(ONT)-edit.owl --profile profile.txt \\\n"
                 + "\t  --fail-on ERROR --labels true \\\n"
+                // The project's own terms, as ODK's --base-iri has them: a finding about an
+                // imported term belongs to the ontology it comes from.
+                + "\t  --base-iri $(URIBASE)/" + id.toUpperCase(java.util.Locale.ROOT)
+                + "_ --base-iri $(URIBASE)/$(ONT) \\\n"
                 + "\t  --output report.tsv --format tsv\n\n"
                 // robot verify exits non-zero when a query returns rows, which is what makes a
                 // SPARQL file a check rather than a decoration.
@@ -633,7 +638,7 @@ public final class OdkScaffold {
         return "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n"
                 + "<catalog prefer=\"public\" xmlns=\"urn:oasis:names:tc:entity:xmlns:xml:catalog\">\n"
                 + "    <!-- Map import IRIs to local files in imports/ as you add them.\n"
-                + "         ROBOT > Import terms... adds an entry here for every module it saves,\n"
+                + "         Find terms and Import terms add an entry here for every module they save,\n"
                 // No double hyphen anywhere in here: "--" is illegal inside an XML comment, and a
                 // catalog that does not parse fails every robot call in the generated build. An
                 // earlier wording of this comment named the catalog command-line flag literally and
@@ -795,7 +800,7 @@ public final class OdkScaffold {
                 + "# src/ontology/mirror/ IS ignored, unlike imports/. A mirror is a\n"
                 + "# downloaded copy of an upstream ontology - a large one is hundreds of\n"
                 + "# megabytes - and it is reproducible from the source each term list\n"
-                + "# records. Project > Refresh imports... rebuilds it. The modules under\n"
+                + "# records. Reuse > Refresh imports... rebuilds it. The modules under\n"
                 + "# imports/ are NOT reproducible that way, which is why those are\n"
                 + "# committed and this is not.\n"
                 + "src/ontology/mirror/\n"

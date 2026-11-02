@@ -93,7 +93,7 @@ public class KoncludeAction extends OntoBoardAction {
             explanation.append("Konclude is a native OWL 2 DL reasoner. It writes the DIRECT "
                     + "hierarchy only, and cannot infer property assertions, sameAs, "
                     + "differentFrom or disjointness - for those, and for explanations, use the "
-                    + "in-process reasoners under ROBOT > Explain... and ROBOT > Transform...");
+                    + "in-process reasoners under Check and test > Explain... and Terms > Transform...");
         } else if (found.getBinary() != null) {
             explanation.append(found.getProblem());
         } else {
@@ -364,13 +364,13 @@ public class KoncludeAction extends OntoBoardAction {
                     ? result.summary("Konclude says this ontology is consistent.").build()
                     : result.warn("Konclude says this ontology is INCONSISTENT. Every class is "
                             + "entailed to be unsatisfiable, so no other result from it means "
-                            + "anything until this is fixed. ROBOT > Explain... will say why.")
+                            + "anything until this is fixed. Check and test > Explain... will say why.")
                             .summary("Inconsistent.").build();
         }
         return yes.booleanValue()
                 ? result.summary("Konclude says " + entityIri + " is satisfiable.").build()
                 : result.warn("Konclude says " + entityIri + " cannot have any instance. "
-                        + "ROBOT > Explain... will give the justification.")
+                        + "Check and test > Explain... will give the justification.")
                         .summary("Unsatisfiable.").build();
     }
 

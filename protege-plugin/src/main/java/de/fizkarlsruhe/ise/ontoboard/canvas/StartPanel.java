@@ -78,6 +78,21 @@ public final class StartPanel extends JPanel {
      */
     public StartPanel(Runnable onNewProject, Runnable onOpenProject, Runnable onAddSelected,
             Runnable onAddAll) {
+        this(null, onNewProject, onOpenProject, onAddSelected, onAddAll);
+    }
+
+    /**
+     * With the guide offered first, for somebody who does not yet know which of the others they
+     * want - the case the guide was asked for.
+     */
+    public StartPanel(Runnable onGuide, Runnable onNewProject, Runnable onOpenProject,
+            Runnable onAddSelected, Runnable onAddAll) {
+        this(onGuide, null, onNewProject, onOpenProject, onAddSelected, onAddAll);
+    }
+
+    /** With "Create the first class" too - the one thing an empty ontology needs most. */
+    public StartPanel(Runnable onGuide, Runnable onCreateClass, Runnable onNewProject,
+            Runnable onOpenProject, Runnable onAddSelected, Runnable onAddAll) {
         super(new GridBagLayout());
         // The IDE's panel colour, not the canvas colour. This card stands in FRONT of the board -
         // showAppropriateCard swaps the whole component out - so painting it the canvas's near-white
@@ -94,29 +109,46 @@ public final class StartPanel extends JPanel {
 
         card.add(heading("Nothing on the board yet"));
         card.add(Box.createVerticalStrut(6));
-        card.add(body("The canvas starts empty on purpose — ontologies often hold"));
-        card.add(body("tens of thousands of classes, so you choose what to draw."));
+        // Since 1.131.0 the board shows every term of the open ontology, so this card is what an
+        // ontology with no terms yet looks like - or a board whose terms were all hidden.
+        card.add(body("The board shows every class, property and individual of the open"));
+        card.add(body("ontology - and there are none yet, or all of them are hidden."));
         card.add(Box.createVerticalStrut(18));
 
+        if (onGuide != null) {
+            card.add(action("New to this? Start the guide…",
+                    "The steps from an idea to a released ontology, one at a time", onGuide));
+            card.add(Box.createVerticalStrut(8));
+        }
+        if (onCreateClass != null) {
+            card.add(action("Create the first class…",
+                    "Name it, and it is on the board - then Tab gives it a subclass",
+                    onCreateClass));
+            card.add(Box.createVerticalStrut(8));
+        }
         card.add(action("New ODK project…",
-                "Scaffold a repository and start a new ontology", onNewProject));
+                "Make a project folder for a new ontology: tests, imports, releases", onNewProject));
         card.add(Box.createVerticalStrut(8));
         card.add(action("Open existing ODK project…",
-                "Point at a repository you already have", onOpenProject));
+                "Open a project folder you already have", onOpenProject));
         card.add(Box.createVerticalStrut(8));
-        card.add(action("Add the selected entity",
-                "Put whatever is selected in the class hierarchy on the board", onAddSelected));
-
-        card.add(Box.createVerticalStrut(16));
-        card.add(action("Add every term",
-                "Puts all the classes, properties and individuals on the board",
-                onAddAll));
+        if (onAddSelected != null) {
+            card.add(action("Add the selected entity",
+                    "Put whatever is selected in the class hierarchy on the board",
+                    onAddSelected));
+        }
+        if (onAddAll != null) {
+            card.add(Box.createVerticalStrut(16));
+            card.add(action("Show every term",
+                    "Every class, property and individual of the ontology, from now on",
+                    onAddAll));
+        }
         card.add(javax.swing.Box.createVerticalStrut(14));
         // Two corrections. This used to say "double-click the board", which cannot be done while
         // this card is covering it, and "the palette on the left", which is not the name of
         // anything: the left column of the OntoBoard tab is Protege's own entity views, the first
         // labelled Classes.
-        card.add(body("Or pick a term in the Classes tab on the left and press Add selected."));
+        card.add(body("Create a class in the Classes tab on the left, and it appears here."));
         card.add(javax.swing.Box.createVerticalStrut(10));
         // Said here because it is the single most consequential thing about this canvas, and
         // nothing anywhere else says it until somebody presses Delete and reads the status bar.

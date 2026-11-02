@@ -1,0 +1,59 @@
+OntoBoard 1.132.0 - host smoke receipt
+
+Produced on macOS 15.8.1 (Intel x86_64) as 1.131.0's was: a throwaway copy of each install, the
+jar under test as the only ontoboard-*.jar in its plugins, -Dontoboard.selftest=true, and the
+verdict read from what Protege logged.
+
+  2026-11-01  Protege 5.6.9  OWL API 4.5.29  JRE Temurin 11.0.25  -Xmx2G  PASS  check 9/9  test 12/12
+  2026-11-01  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121        -Xmx2G  PASS  check 9/9  test 12/12
+
+The jar: sha256 42bfc4d1bb13fb93... The unit suite: 2,662 tests, 0 failures, 27 skipped.
+The four NullPointerExceptions logged on 5.5.0 are Protege's own OWLCellRenderer, as before.
+
+Also driven in Protege 5.6.9, by a probe pressing the real buttons:
+- The board, opened with nothing saved: pizza (86 terms) and MWO 3.0.2 (660) - no two boxes
+  overlap, and no line passes through a frame neither of its ends is in.
+- Find terms: https://nfdi.fiz-karlsruhe.de/ontology/3.0.5, whose server accepted the
+  connection and sent nothing, given up on in 30.3 s with the reason (before: over nine minutes,
+  then "could not load"); Stop ended a load in 0.3 s; NFDIcore's documentation page followed to
+  its ontology.owl and loaded in 1.5 s.
+- Imported terms, on a project of seven imports: a BFO 2020 term added through Find terms on the
+  import's own source, rebuilt and usable in 0.4 s, and taken out again in 0.6 s.
+- A knowledge graph: Sheet editor (9 sheets, 136 names, 0 findings), Check sheets (nothing to
+  report), Template > Add for each sheet (105 axioms, 25 individuals), saved; HermiT consistent.
+
+Windows: CI runs the unit tests and the self-test in Protege's Windows downloads on every push.
+
+
+WHAT THIS RELEASE ADDS
+
+- Find terms reads web addresses itself: 30 seconds of silence and it says so, Stop, redirects
+  between http and https, the page about an ontology followed to its file, imports read the same
+  way and an unreadable one named. Suggested sources; one confirmation adds the terms.
+  ROBOT > Import terms... is now Import terms from a list...
+- OntoBoard > Imported terms... (and Project > Imported terms..., replacing Term lists...): each
+  import with every term it brings, by label - chosen or brought along - how often your axioms use
+  it, and which other imports bring it too. Add terms, take them out, rebuild; the open copy
+  changes at once.
+- Project > Write a test from a question...: five rules, the terms picked by label, written to
+  src/sparql/ and run at once. The guide's Write a test opens it.
+- The board: the classes as trees read top down, the individuals in a band below them under
+  their own class; description logic on every arrow and node (∃ ∀ ≥ ≤ = ¬ ⊓ ⊔ R⁻), each kind of
+  restriction with its own line; selecting an axiom in Protege's description view selects its
+  arrows on the board. A Rules layer, a rule set out to be read, Enter for a sibling, Show only
+  this and its neighbours, Expand every folded class, ≡ on defined classes.
+- New ODK project can start from the open ontology.
+- Template warns when a value is written as text for a property whose values are dates or numbers.
+
+FIXED
+
+- Re-importing terms from an ontology already imported replaced its module with the new terms.
+- Refresh imports gave a rebuilt module its own file address as its IRI.
+- A pattern without an ontology IRI was imported as extract_import.owl, so the next replaced it.
+- A term list read http://example.org/x#Term # label as the term http://example.org/x.
+- The quality report counted imported terms: Build and the scaffold's Makefile now report on the
+  project's own terms, as ODK does (robot_report.use_base_iris), and say how many were left out.
+
+NOT DONE (on the roadmap in docs/limitations.md): Check this ontology without a project; help
+for each project configuration key; base/full/simple release artefacts; History for properties
+and individuals; Obsolete offering to move children; bring to front and send to back.

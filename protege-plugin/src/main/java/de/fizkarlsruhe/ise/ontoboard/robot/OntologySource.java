@@ -1,8 +1,12 @@
 package de.fizkarlsruhe.ise.ontoboard.robot;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import org.semanticweb.owlapi.model.IRI;
+import org.semanticweb.owlapi.model.MissingImportHandlingStrategy;
+import org.semanticweb.owlapi.model.OWLImportsDeclaration;
 import org.semanticweb.owlapi.model.OWLOntology;
 import org.semanticweb.owlapi.model.OWLOntologyManager;
 
@@ -48,8 +52,8 @@ public final class OntologySource {
         File file = new File(trimmed);
         if (!file.isFile()) {
             throw new RobotException("There is no file at " + file.getAbsolutePath()
-                    + ". Give a path to an ontology file, or a URL such as "
-                    + "http://purl.obolibrary.org/obo/iao.owl");
+                    + ". Give a path to an ontology file, or its web address - "
+                    + "https://example.org/ontology.owl, for instance.");
         }
         return IRI.create(file.toURI());
     }
@@ -98,9 +102,27 @@ public final class OntologySource {
      *     a malformed file need different responses from a user
      */
     public static OWLOntology load(OWLOntologyManager manager, IRI iri) {
+        return load(manager, iri, null, null, null);
+    }
+
+    /**
+     * {@link #load}, with a way to stop it and to watch it. Sentences worth showing the user -
+     * that the address was a page about the ontology, that an import could not be read - are
+     * added to {@code notes} when it is not null.
+     *
+     * <p>A web address is read by {@link WebOntology}, which gives up on a silent server after
+     * {@link WebOntology#SILENT_SECONDS} instead of the OWL API's minutes - unless the manager
+     * maps that address to somewhere else, a catalog's local copy say, which is then what loads.
+     */
+    public static OWLOntology load(OWLOntologyManager manager, IRI iri,
+            WebOntology.Attempt attempt, WebOntology.Progress progress, List<String> notes) {
         OWLOntology alreadyOpen = findAlreadyLoaded(manager, iri);
         if (alreadyOpen != null) {
             return alreadyOpen;
+        }
+        if (WebOntology.isWebAddress(iri) && !isMappedElsewhere(manager, iri)) {
+            return WebOntology.load(manager, iri, attempt, progress,
+                    notes == null ? new ArrayList<String>() : notes);
         }
         try {
             return manager.loadOntology(iri);
@@ -112,5 +134,66 @@ public final class OntologySource {
                     + (failed.getMessage() == null ? failed.getClass().getSimpleName()
                             : failed.getMessage()), failed);
         }
+    }
+
+    /**
+     * {@link #load}, except that an import which cannot be fetched is left out instead of failing
+     * the whole load. {@link #missingImportsOf} then says which were left out.
+     *
+     * <p>For reading terms from: one unreachable import - a server gone, a PURL that was never
+     * registered - otherwise makes an ontology whose own terms are all there impossible to search
+     * or take a term from, and the message names the import, not the ontology the user asked for.
+     */
+    public static OWLOntology loadLeavingOutMissingImports(OWLOntologyManager manager, IRI iri) {
+        return loadLeavingOutMissingImports(manager, iri, null, null, null);
+    }
+
+    /** {@link #loadLeavingOutMissingImports}, stoppable and watchable as {@link #load} is. */
+    public static OWLOntology loadLeavingOutMissingImports(OWLOntologyManager manager, IRI iri,
+            WebOntology.Attempt attempt, WebOntology.Progress progress, List<String> notes) {
+        manager.setOntologyLoaderConfiguration(manager.getOntologyLoaderConfiguration()
+                .setMissingImportHandlingStrategy(MissingImportHandlingStrategy.SILENT));
+        return load(manager, iri, attempt, progress, notes);
+    }
+
+    /** Whether one of the manager's IRI mappers sends this address somewhere else. */
+    private static boolean isMappedElsewhere(OWLOntologyManager manager, IRI iri) {
+        for (org.semanticweb.owlapi.model.OWLOntologyIRIMapper mapper : manager.getIRIMappers()) {
+            IRI document = mapper.getDocumentIRI(iri);
+            if (document != null && !document.equals(iri)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** The imports declared anywhere in {@code ontology}'s closure that are not loaded. */
+    public static List<IRI> missingImportsOf(OWLOntology ontology) {
+        List<IRI> missing = new ArrayList<IRI>();
+        OWLOntologyManager manager = ontology.getOWLOntologyManager();
+        for (OWLOntology part : ontology.getImportsClosure()) {
+            for (OWLImportsDeclaration declaration : part.getImportsDeclarations()) {
+                if (manager.getImportedOntology(declaration) == null
+                        && !missing.contains(declaration.getIRI())) {
+                    missing.add(declaration.getIRI());
+                }
+            }
+        }
+        return missing;
+    }
+
+    /** "1 of its imports could not be loaded: ..." for a status line, or null for none. */
+    public static String describeMissingImports(List<IRI> missing) {
+        if (missing.isEmpty()) {
+            return null;
+        }
+        StringBuilder text = new StringBuilder(missing.size() == 1
+                ? "1 of its imports could not be loaded, so its terms are not here: "
+                : missing.size() + " of its imports could not be loaded, so their terms are not"
+                        + " here: ");
+        for (int i = 0; i < missing.size(); i++) {
+            text.append(i == 0 ? "" : ", ").append(missing.get(i));
+        }
+        return text.toString();
     }
 }

@@ -441,6 +441,6 @@ class CanvasLayoutsTest {
         for (CanvasLayouts.Algorithm algorithm : CanvasLayouts.Algorithm.values()) {
             CanvasLayouts.apply(new SchemaGraph(), algorithm);
         }
-        assertEquals(4, CanvasLayouts.Algorithm.values().length);
+        assertEquals(5, CanvasLayouts.Algorithm.values().length, "the outline was added in 1.131.0");
     }
 }
