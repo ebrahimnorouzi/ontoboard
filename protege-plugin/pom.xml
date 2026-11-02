@@ -153,6 +153,16 @@
       <version>${junit.version}</version>
       <scope>test</scope>
     </dependency>
+
+    <!-- The launcher's listener interface, for GitHubAnnotations, which names a failing test in
+         the summary of a GitHub Actions run. Surefire runs this launcher anyway; declaring it only
+         makes the interface visible to the test sources. Its version goes with junit.version. -->
+    <dependency>
+      <groupId>org.junit.platform</groupId>
+      <artifactId>junit-platform-launcher</artifactId>
+      <version>1.10.2</version>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 
   <build>
