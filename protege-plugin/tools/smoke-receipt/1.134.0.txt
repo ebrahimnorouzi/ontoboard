@@ -13,8 +13,10 @@ the clone's git status was clean afterwards - nothing written beside the ontolog
 
 The -Xmx500M run is what Protege.exe gives a user who double-clicks it.
 
-The jar: sha256 20eeabb337646f70..., built by mvn -o clean package from the working tree this
-receipt is committed with. The unit suite in that build: 2,757 tests, 0 failures, 0 errors, 2
+The jar: sha256 20eeabb337646f70..., built by mvn -o clean package from the tree of 69ee3a7,
+the commit that brought this receipt; the commits after it change the citation metadata and
+one test (below), not the plugin. The unit suite in that build, on Java 11: 2,757 tests,
+0 failures, 0 errors, 2
 skipped - PinchZoomTest, as before, and BundleConfigurationTest, the manifest check, which a clean
 build reaches before the jar exists; run against this jar afterwards, its 18 tests passed.
 CompiledClassesTest passed, so no class in it was written by another compiler.
@@ -32,7 +34,15 @@ self-test constructs the two tabs and drives nine read-only menu items. What the
 does - the folder it opens from each kind of file, following the active ontology, keeping unsaved
 edits - is covered by 29 unit tests and was checked headless on pizza-bfo's real files, not
 clicked through in Protege. The Release... and Template... fixes below are covered by unit tests,
-not driven in the host. CI runs on the tagged commit; this receipt was written before it.
+not driven in the host.
+
+CI on the release branch failed first, on Linux and on Windows, in one test, and had failed
+since CI moved to Java 25 (09a8123): BuildsWithNothingInstalledTest installed a SecurityManager
+to refuse every exec, and from Java 24 none can be installed (JEP 486). The plugin was not at
+fault; the test could not run. It now keeps the SecurityManager where Java still allows one and
+otherwise records the build with Java Flight Recorder's jdk.ProcessStart event, after showing
+the recorder a start it must see. Checked on Java 11, 17 and 25 - and on 25 it fails, naming
+the program, when one is started during the build. No plugin code changed.
 
 
 FIXED IN 1.134.0 (each in docs/fixed.md, with how it was found)
