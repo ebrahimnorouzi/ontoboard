@@ -266,10 +266,18 @@ public final class TemplateSheet {
                             : ownLabels);
             names.sheets.add(sheet.getKey());
             if (!refused.isEmpty()) {
+                String first = refused.get(0);
+                int open = first.indexOf('(');
+                int close = first.lastIndexOf(')');
+                String advice = open >= 0 && close > open
+                        ? prefixAdvice(first.substring(open + 1, close), prefixes,
+                                io.getPrefixes().keySet())
+                        : "";
                 names.unavailable.add(sheet.getKey() + ": " + refused.size() + " row"
                         + (refused.size() == 1 ? "" : "s") + " cannot be named from other sheets "
                         + "- the ID uses a prefix nothing defines, so ROBOT will not build the row "
-                        + "either: " + String.join(", ", refused));
+                        + "either: " + String.join(", ", refused)
+                        + (advice.isEmpty() ? "" : ". " + advice));
             }
         }
         return names;
@@ -486,6 +494,117 @@ public final class TemplateSheet {
      * null for the ontology alone.
      */
     public static Result run(String name, List<List<String>> rows, OWLOntology context,
+            Map<String, String> prefixes, IRI outputIri, Names names) {
+        Result built = build(name, rows, context, prefixes, outputIri, names);
+        IOHelper io = names != null ? names.io : ioHelper(prefixes);
+        return withPrefixAdvice(built, prefixes, io.getPrefixes().keySet());
+    }
+
+    /**
+     * Each problem whose cell is a CURIE with an undeclared prefix, with what to do about it.
+     *
+     * <p>Applied once, here, rather than at each of the places a problem is made: ROBOT reports
+     * the same mistake as "could not interpret" in the ID column, as an unknown entity in a
+     * reference column, and as a row it cannot place at all, and all three have one cure.
+     */
+    private static Result withPrefixAdvice(Result built, Map<String, String> prefixes,
+            java.util.Set<String> builtIn) {
+        List<Problem> advised = new ArrayList<Problem>();
+        boolean changed = false;
+        for (Problem problem : built.getProblems()) {
+            String advice = prefixAdvice(problem.getCell(), prefixes, builtIn);
+            if (!advice.isEmpty() && !problem.getMessage().contains(advice)) {
+                advised.add(new Problem(problem.getRow(), problem.getColumn(),
+                        problem.getColumnName(), problem.getCell(),
+                        problem.getMessage() + " " + advice));
+                changed = true;
+            } else {
+                advised.add(problem);
+            }
+        }
+        if (!changed) {
+            return built;
+        }
+        return new Result(built.getOntology(), advised, built.getDataRows(),
+                built.isTemplateUnusable()).withWarnings(built.getWarnings());
+    }
+
+    /**
+     * What to do about a CURIE whose prefix this ontology does not declare, or "" when that is
+     * not what is wrong with the value.
+     *
+     * <p>A declared prefix whose address ends in the same name - {@code :} for
+     * {@code https://.../kg/} when the sheet writes {@code kg:} - is named as the likely one, and
+     * never assumed: two prefixes for one address is a decision about somebody's identifiers.
+     *
+     * @param declared the ontology's own prefixes, as Prot&eacute;g&eacute; spells them
+     *     ({@code "kg:"}, {@code ":"}) or as ROBOT does ({@code "kg"})
+     * @param builtIn prefixes ROBOT knows without being told, which are not undeclared
+     */
+    public static String prefixAdvice(String value, Map<String, String> declared,
+            java.util.Set<String> builtIn) {
+        if (value == null) {
+            return "";
+        }
+        String text = value.trim();
+        int colon = text.indexOf(':');
+        if (colon <= 0 || text.indexOf(' ') >= 0 || text.indexOf('/') >= 0
+                || text.startsWith("http")) {
+            return "";
+        }
+        String name = text.substring(0, colon);
+        Map<String, String> byName = new LinkedHashMap<String, String>();
+        if (declared != null) {
+            for (Map.Entry<String, String> each : declared.entrySet()) {
+                if (each.getKey() != null && each.getValue() != null) {
+                    String key = each.getKey().endsWith(":")
+                            ? each.getKey().substring(0, each.getKey().length() - 1)
+                            : each.getKey();
+                    byName.put(key, each.getValue());
+                }
+            }
+        }
+        if (byName.containsKey(name) || (builtIn != null && builtIn.contains(name))) {
+            return "";
+        }
+        String how = "In Protege: the Active ontology tab, Ontology Prefixes, add it there, save "
+                + "the ontology and run this again - or write the identifiers out in full.";
+        for (Map.Entry<String, String> each : byName.entrySet()) {
+            String address = each.getValue();
+            String trimmed = address.replaceAll("[/#]+$", "");
+            int cut = Math.max(trimmed.lastIndexOf('/'), trimmed.lastIndexOf('#'));
+            String last = cut >= 0 ? trimmed.substring(cut + 1) : trimmed;
+            if (last.equalsIgnoreCase(name)) {
+                return "\"" + name + ":\" is not a prefix of this ontology, but \""
+                        + each.getKey() + ":\" stands for " + address + " - if that is the "
+                        + "address meant, declare " + name + ": for it as well. " + how;
+            }
+        }
+        return "\"" + name + ":\" is not a prefix of this ontology: declare it with the address "
+                + "these identifiers should have. " + how;
+    }
+
+    /**
+     * The prefixes ROBOT expands without being told - {@code obo}, {@code rdfs}, {@code owl} and
+     * the rest of its default context - by their names without the colon. Read once.
+     */
+    public static synchronized Map<String, String> builtInPrefixes() {
+        if (builtIn == null) {
+            Map<String, String> found = new LinkedHashMap<String, String>();
+            try {
+                found.putAll(new IOHelper().getPrefixes());
+            } catch (IOException | RuntimeException unreadable) {
+                // An empty map only means fewer CURIEs are recognised; nothing is guessed.
+            }
+            builtIn = Collections.unmodifiableMap(found);
+        }
+        return builtIn;
+    }
+
+    private static Map<String, String> builtIn;
+
+    /** The build itself; {@link #run} adds the advice. */
+    private static Result build(String name, List<List<String>> rows, OWLOntology context,
             Map<String, String> prefixes, IRI outputIri, Names names) {
         List<Problem> problems = new ArrayList<Problem>();
         if (rows == null || rows.size() < 2) {
@@ -869,8 +988,7 @@ public final class TemplateSheet {
             String prefix = value.substring(0, colon);
             if (io.getPrefixes().get(prefix) == null) {
                 return "\"" + value + "\" looks like a CURIE, but nothing defines the prefix \""
-                        + prefix + ":\" - so there is no way to tell which IRI it means. Add the "
-                        + "prefix to the project, or write the IRI out in full.";
+                        + prefix + ":\" - so there is no way to tell which IRI it means.";
             }
         }
         // THE CELL MAY ALREADY BE WHAT THE ADVICE ASKS FOR. Telling somebody whose cell holds

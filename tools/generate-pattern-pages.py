@@ -507,11 +507,12 @@ def pattern_page(row, has_ttl, has_example):
     out.append("---")
     out.append("")
     out.append(
-        # The menu path as plugin.xml registers it: Pattern library sits directly under the
-        # OntoBoard menu (ontoboard.menu.OntoBoard/SlotBU-B), beside Knowledge graph, and has
-        # since it moved out from under ROBOT. Every page said "OntoBoard → ROBOT → Pattern
-        # library…", which sends a reader to a submenu where it is not.
-        "Import this pattern into your own ontology from inside Protégé: **OntoBoard → "
+        # The menu path as plugin.xml registers it: Pattern library sits under OntoBoard's Reuse
+        # submenu (path ontoboard.menu.OntoBoard.reuse/SlotA-A). Every page said "OntoBoard →
+        # ROBOT → Pattern library…" and then "OntoBoard → Pattern library…" - each right once and
+        # wrong after the next menu move. MenuPathsInMessagesTest reads the generated pages when
+        # they are present, which is how the second was caught.
+        "Import this pattern into your own ontology from inside Protégé: **OntoBoard → Reuse → "
         "Pattern library…**, which hands it to *Import terms…* and writes the term list, the "
         "module, the import and the catalog entry the way ODK expects. See "
         # Linked without a fragment on purpose. The heading it pointed at carries the release
@@ -542,7 +543,8 @@ def finder_page(rows, by_source):
     out.append(
         str(len(rows)) + " ontology design patterns ship inside the OntoBoard plugin, "
         + str(distinct) + " of them distinct — ten are another pattern under a second name and say "
-        "so. Every one is browsable and importable from **OntoBoard → Pattern library…** "
+        "so. Every one is browsable and importable from **OntoBoard → Reuse → Pattern "
+        "library…** "
         "inside Protégé; this page is the same library, on the web, with a graph of each pattern."
     )
     out.append("")

@@ -57,6 +57,7 @@ public final class Parameter {
     private final Kind kind;
     private final String help;
     private final String defaultValue;
+    private final String startIn;
     private final List<String> choices;
     private final boolean required;
 
@@ -66,6 +67,7 @@ public final class Parameter {
         this.kind = builder.kind;
         this.help = builder.help;
         this.defaultValue = builder.defaultValue;
+        this.startIn = builder.startIn;
         this.choices = Collections.unmodifiableList(new ArrayList<String>(builder.choices));
         this.required = builder.required;
     }
@@ -93,6 +95,14 @@ public final class Parameter {
 
     public String getDefaultValue() {
         return defaultValue;
+    }
+
+    /**
+     * For a file or folder: where <i>Browse...</i> begins when nothing is typed yet. Empty when
+     * the parameter suggests nowhere. Unlike a default it fills nothing in.
+     */
+    public String getStartIn() {
+        return startIn;
     }
 
     /** The permitted values for a {@link Kind#CHOICE}; empty otherwise. */
@@ -150,6 +160,7 @@ public final class Parameter {
         private final List<String> choices = new ArrayList<String>();
         private String help = "";
         private String defaultValue = "";
+        private String startIn = "";
         private boolean required;
 
         private Builder(String key, String label, Kind kind) {
@@ -187,6 +198,12 @@ public final class Parameter {
 
         public Builder defaultValue(String value) {
             this.defaultValue = value == null ? "" : value;
+            return this;
+        }
+
+        /** Where <i>Browse...</i> begins for a file or folder when nothing is typed yet. */
+        public Builder startIn(String folder) {
+            this.startIn = folder == null ? "" : folder;
             return this;
         }
 

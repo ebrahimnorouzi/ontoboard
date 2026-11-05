@@ -27,7 +27,6 @@ import de.fizkarlsruhe.ise.ontoboard.collab.BoardId;
 import de.fizkarlsruhe.ise.ontoboard.collab.CollabDialog;
 import de.fizkarlsruhe.ise.ontoboard.collab.CollabSession;
 import de.fizkarlsruhe.ise.ontoboard.collab.CollabSettings;
-import de.fizkarlsruhe.ise.ontoboard.collab.CollabSettingsStore;
 import de.fizkarlsruhe.ise.ontoboard.collab.OperationMapper;
 import de.fizkarlsruhe.ise.ontoboard.collab.PeerGeometry;
 import de.fizkarlsruhe.ise.ontoboard.layout.BoardHistory;
@@ -5400,17 +5399,9 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
      * which is what the scaffold allocates the first range to.
      */
     private String editorName() {
-        try {
-            String configured = CollabSettingsStore.load().getDisplayName();
-            if (configured != null && !configured.trim().isEmpty()) {
-                return configured.trim();
-            }
-        } catch (RuntimeException noPreferences) {
-            LOGGER.debug("OntoBoard: no collaboration settings; using the OS account name",
-                    noPreferences);
-        }
-        String account = System.getProperty("user.name", "");
-        return account.trim().isEmpty() ? "FirstEditor" : account.trim();
+        // One rule for every place that mints or allocates: the sheet editor and ID ranges...
+        // call the same function, so a block allocated there is the block the board mints from.
+        return de.fizkarlsruhe.ise.ontoboard.sheet.IriGenerator.editorName();
     }
 
     /**

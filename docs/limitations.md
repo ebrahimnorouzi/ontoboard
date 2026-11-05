@@ -1,6 +1,6 @@
 # Limitations and Roadmap
 
-Honest inventory of what each OntoBoard client does not do. Kept specific rather than
+Honest inventory of what OntoBoard does not do. Kept specific rather than
 reassuring, because a quality tool that overstates itself is worse than one that admits
 gaps.
 
@@ -24,16 +24,21 @@ SPARQL panel (1.33.0) used to be on this list and are now features - they are de
     - An ODK release with `base`, `full` and `simple` files under one version IRI; *Release…*
       writes one file (merged or not).
     - *History* and *Compare releases* for properties and individuals as they are for classes
-      (relabelled, redefined); and against any file, address or git tag, not only `releases/`.
+      (relabelled, redefined); and against a git tag. *History* lists only `releases/`.
     - *Obsolete…* offering to move a term's subclasses to its parents and point references at its
       replacement, instead of only listing what will change.
     - A button on each warning that applies its fix - an undeclared import, imports not merged.
     - A mode for adding terms to somebody else's ontology (a contributor's view), creating the
       repository on GitHub and pushing without a terminal, ODK's filter and minimal import
-      types, and a beginner mode with menus grouped by job. Since 1.133.0, *Turn an ontology
+      types, and a beginner mode. (The menus have been grouped by job since 1.133.0.) Since
+      1.133.0, *Turn an ontology
       into an ODK repository…* runs `git init`, commits and tags every version, and prints the
       two commands that publish it.
     - Bring to front and send to back for frames and notes on the board.
+- **Mappings, DOSDP patterns, pattern mining and an assistant are not built.** There is no SSSOM
+  support: a mapping can be written only as an annotation - in Protégé's annotation editor, or
+  as an `AI skos:exactMatch` column of a sheet. DOSDP pattern files are neither read nor written.
+  Nothing extracts design patterns across ontologies, and there is no LLM assistant.
 - **Turning an ontology into an ODK repository records earlier versions as they were
   published.** They are not rebuilt, and their imports are not turned into modules. A version
   that says no date is committed at the time of the conversion, so converting again gives a
@@ -84,6 +89,67 @@ SPARQL panel (1.33.0) used to be on this list and are now features - they are de
   the last five minutes is shown as *editing* it. See [collaboration](collaboration.md).
 
 ### Known constraints
+
+- **Spreadsheets and the knowledge graph do not round-trip.** *Spreadsheets → Template...* adds the
+  axioms a sheet produces to the ontology open in Protégé and never removes or updates any: run it
+  again after changing a label and the graph holds both labels. Nothing links an individual back to
+  its row, and nothing keeps the two in step. Rebuild by undoing the earlier run in the same
+  session or by building into a fresh copy of the graph file -
+  [how](knowledge-graph.md#4-build-the-graph).
+- **The identifiers' prefix has to be declared in the graph file.** A sheet whose IDs say
+  `kg:PB_0000001` builds nothing - every row fails with ROBOT's *could not interpret* - until the
+  ontology the axioms go into declares `kg:` (*Active ontology → Ontology Prefixes*). Since
+  1.134.0 *Template...* names the prefix and, where another prefix already stands for a matching
+  address, which one. *Check sheets...* catches it only once the graph already holds the rows:
+  then each row's name is reported as naming two different things, with the prefix to declare.
+  On a graph without the rows, only *Template...* finds it. OntoBoard names a *missing* prefix,
+  not a *wrong* address: declare it exactly, final slash included.
+- ***SPARQL...* queries what is asserted.** It runs over the open ontology and its imports, not
+  over the reasoner's conclusions: a question about a defined class - "which baked pizzas are
+  spicy pizzas?" - returns nothing until the inferred types are written down. Ask such
+  questions in Protégé's own *DL Query* tab while a reasoner runs. (The board's *Inferences*
+  draws inferred subclass relations between classes, dotted.)
+- **The sheet editor looks in four places.** `templates/` beside the open file, the project's
+  `src/templates/`, `kg/templates/` and `templates/` at the project root - the first holding a
+  sheet is opened, and *Project templates ▾* offers the others. Templates anywhere else are opened
+  with *Open folder...*, and that choice lasts while the view is open, not across sessions.
+- **A new project is not a git repository.** *Project → New ODK project...* writes the project and
+  does not run `git init`, so *Share → Git...* refuses it and asks for `git init` - the guide's
+  last step needs that one command. *Project → Turn an ontology into an ODK repository...* does
+  initialise one, with a commit and a tag per version.
+- **What *Check requirements...* checks.** Docker, Podman, GNU make, a POSIX shell, ODK and Java.
+  Not git, the GitHub CLI, Widoco or Konclude, which *Git...*, *Pull request...*, *Documentation...*
+  and *Reason with Konclude...* need.
+- **Documentation has no changelog until the previous release is published.** Widoco builds the
+  changelog by downloading the release the ontology names as `owl:priorVersion`; when nothing
+  answers there it writes the rest of the page and leaves the word `null` in the changelog
+  section. Since 1.134.0 *Documentation...* says so in one sentence instead of showing Widoco's
+  ERROR lines.
+- **Authorship of edits made outside the board is stamped by the board.** The listener that stamps
+  `dcterms:contributor` and dates on edits made in Protégé's own editors belongs to the Schema
+  Canvas view, so edits made before the OntoBoard tab has been shown in a session are not stamped.
+  Read from the code (`SchemaCanvasView`), not yet observed in the host. The stamp is a second
+  change after the edit, so *Edit → Undo* removes the stamp first and a second *Undo* the edit
+  (also read from the code).
+- **The board creates a term only from your own identifier block**, in a project with an
+  `*-idranges.owl`. Your name is the collaboration display name (*Share → Collaboration...*), or
+  your login when none is set. Anybody without a block gets *No identifiers for you yet* until
+  *Project → ID ranges...* allocates one.
+- ***Build...* runs in Protégé only when the project's Makefile is the one this OntoBoard
+  writes.** A project made by an earlier version is refused, with a message pointing to
+  *Project → Update project files...* (tick *Write the changes*), which also rewrites the other
+  generated files.
+- ***Build...* checks consistency with ELK, and so does *Release...* unless another reasoner is
+  chosen.** ELK does not reason over data ranges, cardinalities or negation, so an ontology only
+  a DL reasoner finds inconsistent passes both. Run HermiT, or *Check and test → Explain...*,
+  before releasing an ontology that uses them.
+- ***Template...* types a value only when the cell says so** (`2026-11-01T18:00:00^^xsd:dateTime`).
+  It warns about an untyped value only when the property declares a datatype range, so a date
+  typed without its datatype becomes a plain string, silently, under a property with no range -
+  NFDIcore's *has value* among them.
+- ***Share → Git... → Commit everything* commits every file.** The `.gitignore` OntoBoard writes
+  ignores neither `build/`, where *Documentation...* writes the page, nor the board's layout file,
+  so a commit after *Documentation...* includes the generated site.
 
 - **What the board draws of an ontology, measured.** On two published ontologies built on BFO,
   with every term shown and class expressions drawn (the default): every logical axiom - 921 of
@@ -167,8 +233,8 @@ Limitations should answer what the tool cannot do today.
 
 ### Not covered by tests
 
-1207 tests cover projection, axiom construction, layout persistence, ODK scaffolding, the
-report's rule execution and the OSGi configuration. Fourteen of them reach outside the JVM:
+The unit tests cover projection, axiom construction, layout persistence, ODK scaffolding, the
+report's rule execution and the OSGi configuration. Some of them reach outside the JVM:
 `RobotParityTest` compares the report against real ROBOT in `obolibrary/odkfull`,
 `RobotCliParityTest` compares nine more operations against the same image's `robot` command, and
 `OdkBuildTest` runs a freshly scaffolded project's own `make test` and `make prepare_release` in
@@ -180,9 +246,9 @@ this plugin agrees with ROBOT.
 test class and were found the first time anyone executed it — a `--` inside an XML comment in the
 catalog, which made `make` die on the first robot call; no robot invocation passing the catalog at
 all; and a release gate weaker than the CI gate. Asserting what a generated file *says* is not the
-same as running it. They do **not** cover any Swing UI:
-dialogs, toolbar, minimap, drop handling, and every visual choice need a display and are
-verified by hand. Treat visual behaviour as unverified after each change.
+same as running it. They cover little of the Swing UI: the toolbar, the minimap, drop handling,
+the views as Protégé hosts them and every visual choice need a display and are verified by hand.
+Treat visual behaviour as unverified after each change.
 
 Behaviour *inside the bundle* is a third category, and the one that has cost the most. No test
 can see it, because Maven's classpath is not Felix's. `OntoBoardStartup` now runs `SelfCheck`
@@ -265,18 +331,8 @@ report for nine versions.
 
 ## Web application
 
-- **No offline support.** The operation log is ephemeral; edits made while disconnected are
-  not queued for replay.
-- **Tested to roughly 10–15 concurrent users.** Beyond that, network overhead and
-  `Y.Array` growth are unvalidated.
-- **Entity locking is advisory**, not enforced at the API level.
-- **Position conflicts use last-write-wins**, which can cause a brief visual jump.
-- **Consistency checking is manual** — reasoning must be triggered explicitly.
-- **7 of 24 ROBOT commands** are fully implemented and tested.
-- **No SHACL validation**, no OAuth/OIDC, no 2FA, no self-service password reset.
-- **SQLite in development**; PostgreSQL is untested.
-- OWL constructs not supported: custom datatypes, `owl:hasKey`, negative property
-  assertions, annotations on axioms.
+The web application is no longer in this repository; its last state is the tag `web-app-final`
+(see [feature parity](feature-parity.md)).
 
 ## Roadmap
 
@@ -361,14 +417,13 @@ Those middle releases all shipped under one unchanged version number, which is w
 above names versions at all — see the note in [development](development.md) about what that
 cost.
 
-Specs and plans live in [superpowers/](https://github.com/ebrahimnorouzi/ontoboard/tree/main/docs/superpowers/), including the reasoning behind
-decisions that were reversed — the plugin was briefly intended to replace the web
-application, and does not.
+The specs and plans, including the reasoning behind decisions that were reversed, are internal
+and not part of the repository — the plugin was briefly intended to replace the web
+application, and then did, when the repository became plugin-only.
 
-The longest single list of things this tool does not do well is
-[the expert evaluation of 2026-10-08](https://github.com/ebrahimnorouzi/ontoboard/blob/main/docs/superpowers/specs/2026-10-08-expert-evaluation-triage.md),
-in which six personas were walked through the plugin against NFDIcore, MWO, PMDco, ECTO and a
-real 26-sheet knowledge-graph spreadsheet. 72 findings survived an adversarial pass and 49
-claims were thrown out. It is kept out of this page deliberately: it is a triage list rather
-than an account of the shipped tool, and two of its findings were fixed in 1.106.0 and 1.107.0
-before it was written down.
+An expert evaluation on 2026-10-08 walked six personas through the plugin against NFDIcore, MWO,
+PMDco, ECTO and a real 26-sheet knowledge-graph spreadsheet; 72 findings survived an adversarial
+pass and 49 claims were thrown out. Its triage list is internal working material and is no longer
+published (earlier versions remain in the repository's history). It is not a substitute for this page, which describes the tool as shipped: the
+findings that still describe it belong here, as limitations, and the fixed ones in
+[what was fixed](fixed.md).

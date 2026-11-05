@@ -306,4 +306,68 @@ class LabelIndexTest {
         assertEquals(IRI.create(MW + "1"), index.resolve("Fraunhofer-Gesellschaft"),
                 "a pasted cell with spaces around it must still resolve, as ROBOT resolves it");
     }
+
+    // ---------- a sheet's CURIE and the ontology's IRI for the same thing ----------
+
+    private static final String KG = "https://example.org/pizza/kg/";
+
+    /**
+     * The graph the sheets were built into, with one city in it, its Turtle prefixes as Protégé
+     * holds them.
+     */
+    private static OWLOntology aGraphWithKarlsruhe(String... prefixNameThenAddress)
+            throws Exception {
+        OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
+        OWLOntology graph = manager.createOntology(IRI.create("https://example.org/pizza/kg.owl"));
+        OWLDataFactory factory = manager.getOWLDataFactory();
+        manager.addAxiom(graph, factory.getOWLAnnotationAssertionAxiom(factory.getRDFSLabel(),
+                IRI.create(KG + "PB_0000001"), factory.getOWLLiteral("Karlsruhe", "en")));
+        org.semanticweb.owlapi.formats.TurtleDocumentFormat format =
+                new org.semanticweb.owlapi.formats.TurtleDocumentFormat();
+        for (int at = 0; at + 1 < prefixNameThenAddress.length; at += 2) {
+            format.setPrefix(prefixNameThenAddress[at], prefixNameThenAddress[at + 1]);
+        }
+        manager.setOntologyFormat(graph, format);
+        return graph;
+    }
+
+    /**
+     * Found by running pizza-bfo's knowledge-graph exercise: once the graph held the 25
+     * individuals the sheets had made, every one of their names was reported as naming "2
+     * different things" - the sheet's kg:PB_0000001 and the graph's own IRI for it - because the
+     * index compared the CURIE as written with the IRI it expands to.
+     */
+    @Test
+    void aSheetRowAndTheIndividualItBuiltAreOneThing() throws Exception {
+        LabelIndex index = LabelIndex.empty()
+                .plus(aGraphWithKarlsruhe("kg:", KG), "the open ontology")
+                .plus("01_cities.tsv", organisations("kg:PB_0000001", "Karlsruhe"));
+
+        assertTrue(index.ambiguous().isEmpty(), index.ambiguous().toString());
+    }
+
+    @Test
+    void twoThingsWithOneNameAreStillTwoThings() throws Exception {
+        LabelIndex index = LabelIndex.empty()
+                .plus(aGraphWithKarlsruhe("kg:", KG), "the open ontology")
+                .plus("01_cities.tsv", organisations("kg:PB_0000999", "Karlsruhe"));
+
+        assertEquals(1, index.ambiguous().size(), "a different identifier is a different "
+                + "thing, however the label agrees");
+    }
+
+    /**
+     * With the prefix undeclared - pizza-bfo's graph spells that address ":" - the two cannot be
+     * told to be the same, so the finding stays, and says the one thing that would settle it.
+     */
+    @Test
+    void anUndeclaredPrefixIsNamedInTheFinding() throws Exception {
+        LabelIndex index = LabelIndex.empty()
+                .plus(aGraphWithKarlsruhe(":", KG), "the open ontology")
+                .plus("01_cities.tsv", organisations("kg:PB_0000001", "Karlsruhe"));
+
+        assertEquals(1, index.ambiguous().size());
+        String said = index.ambiguous().get(0).describe();
+        assertTrue(said.contains("Ontology Prefixes") && said.contains(KG), said);
+    }
 }

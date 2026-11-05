@@ -250,9 +250,8 @@ height: 460px
 Each release ships a receipt under
 [`protege-plugin/tools/smoke-receipt/`](https://github.com/ebrahimnorouzi/ontoboard/tree/main/protege-plugin/tools/smoke-receipt/)
 recording what was verified in a real Protégé, on which hosts, and what was not - it is also the
-release notes. [`docs/superpowers/`](https://github.com/ebrahimnorouzi/ontoboard/tree/main/docs/superpowers/)
-holds the specs and plans, including the platform evaluation that chose Protégé over a Miro app,
-and decisions that were later reversed.
+release notes. The specs and plans - including the platform evaluation that chose Protégé over
+a Miro app, and decisions that were later reversed - are internal and not part of the repository.
 
 > **A note on the web application.** OntoBoard began as a browser application with a Python
 > backend, and this repository used to carry both. It is now the plugin alone. The web

@@ -106,9 +106,14 @@ public final class LabelIndex {
         private final String label;
         private final List<Entry> entries;
 
-        Ambiguity(String label, List<Entry> entries) {
+        private final Set<IRI> candidates;
+        private final String advice;
+
+        Ambiguity(String label, List<Entry> entries, Set<IRI> candidates, String advice) {
             this.label = label;
             this.entries = Collections.unmodifiableList(entries);
+            this.candidates = Collections.unmodifiableSet(candidates);
+            this.advice = advice == null ? "" : advice;
         }
 
         public String getLabel() {
@@ -120,13 +125,12 @@ public final class LabelIndex {
             return entries;
         }
 
-        /** The distinct IRIs it could mean. Always more than one. */
+        /**
+         * The distinct things it could mean, a CURIE counted as the IRI it expands to under the
+         * ontology's own prefixes. Always more than one.
+         */
         public Set<IRI> getCandidates() {
-            Set<IRI> found = new LinkedHashSet<IRI>();
-            for (Entry entry : entries) {
-                found.add(entry.getIri());
-            }
-            return found;
+            return candidates;
         }
 
         /** What to tell somebody, naming every candidate and where it came from. */
@@ -144,6 +148,11 @@ public final class LabelIndex {
             }
             text.append(". A reference to it resolves to whichever one the builder picks, so "
                     + "write the IRI instead, or give the things different labels.");
+            if (!advice.isEmpty()) {
+                // The commonest cause on a graph that has been built: the sheet's IDs use a
+                // prefix the graph does not declare, so they cannot be seen to be its own IRIs.
+                text.append(" ").append(advice);
+            }
             return text.toString();
         }
 
@@ -156,6 +165,14 @@ public final class LabelIndex {
     private final Map<String, List<Entry>> byLabel = new LinkedHashMap<String, List<Entry>>();
     private final Map<String, List<Entry>> byLoose = new LinkedHashMap<String, List<Entry>>();
     private final Map<IRI, List<Entry>> byIri = new LinkedHashMap<IRI, List<Entry>>();
+
+    /**
+     * The prefixes the indexed ontology declares, as its document format holds them
+     * ({@code "kg:"}, {@code ":"}), so a sheet's {@code kg:PB_0000001} and the ontology's own IRI
+     * for the same individual are not reported as two things. Used for that comparison only:
+     * what is looked up, completed and written keeps the spelling it was given.
+     */
+    private final Map<String, String> declared = new LinkedHashMap<String, String>();
 
     private LabelIndex() {
     }
@@ -176,6 +193,15 @@ public final class LabelIndex {
             return this;
         }
         String source = name == null || name.trim().isEmpty() ? "this ontology" : name.trim();
+        try {
+            org.semanticweb.owlapi.model.OWLDocumentFormat format =
+                    ontology.getOWLOntologyManager().getOntologyFormat(ontology);
+            if (format != null && format.isPrefixOWLOntologyFormat()) {
+                declared.putAll(format.asPrefixOWLOntologyFormat().getPrefixName2PrefixMap());
+            }
+        } catch (RuntimeException noFormat) {
+            // An ontology held in memory only has no format; its IRIs are compared as written.
+        }
         for (OWLAnnotationAssertionAxiom axiom
                 : ontology.getAxioms(
                         org.semanticweb.owlapi.model.AxiomType.ANNOTATION_ASSERTION,
@@ -323,6 +349,30 @@ public final class LabelIndex {
     }
 
     /** Everywhere this IRI was given a name. */
+    /**
+     * The IRI a sheet's CURIE stands for under a prefix the ontology declares or ROBOT knows, or
+     * the IRI unchanged. Never a guess: an undeclared prefix stays as written.
+     */
+    private IRI identityOf(IRI iri) {
+        String text = iri.toString();
+        int colon = text.indexOf(':');
+        if (colon <= 0 || text.startsWith("http://") || text.startsWith("https://")
+                || text.startsWith("://", colon)) {
+            return iri;
+        }
+        String name = text.substring(0, colon);
+        String address = declared.get(name + ":");
+        if (address == null) {
+            address = de.fizkarlsruhe.ise.ontoboard.robot.TemplateSheet.builtInPrefixes()
+                    .get(name);
+        }
+        return address == null ? iri : IRI.create(address + text.substring(colon + 1));
+    }
+
+    private static Set<String> builtInNames() {
+        return de.fizkarlsruhe.ise.ontoboard.robot.TemplateSheet.builtInPrefixes().keySet();
+    }
+
     public List<Entry> forIri(IRI iri) {
         List<Entry> found = byIri.get(iri);
         return found == null ? Collections.<Entry>emptyList()
@@ -334,11 +384,16 @@ public final class LabelIndex {
         List<Ambiguity> found = new ArrayList<Ambiguity>();
         for (Map.Entry<String, List<Entry>> each : byLabel.entrySet()) {
             Set<IRI> candidates = new LinkedHashSet<IRI>();
+            String advice = "";
             for (Entry entry : each.getValue()) {
-                candidates.add(entry.getIri());
+                candidates.add(identityOf(entry.getIri()));
+                if (advice.isEmpty()) {
+                    advice = de.fizkarlsruhe.ise.ontoboard.robot.TemplateSheet.prefixAdvice(
+                            entry.getIri().toString(), declared, builtInNames());
+                }
             }
             if (candidates.size() > 1) {
-                found.add(new Ambiguity(each.getKey(), each.getValue()));
+                found.add(new Ambiguity(each.getKey(), each.getValue(), candidates, advice));
             }
         }
         Collections.sort(found, new Comparator<Ambiguity>() {

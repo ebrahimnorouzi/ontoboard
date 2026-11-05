@@ -211,4 +211,17 @@ class ParameterTest {
         assertEquals(1, Parameter.rejections(parameters,
                 new LinkedHashMap<String, String>()).size());
     }
+
+    @Test
+    void aFileParameterCanSuggestWhereToBrowseFrom() {
+        Parameter file = Parameter.of("file", "Template file", Parameter.Kind.FILE)
+                .help("The spreadsheet, saved as .tsv or .csv, that becomes terms.")
+                .startIn("/projects/pizza/kg/templates")
+                .build();
+
+        assertEquals("/projects/pizza/kg/templates", file.getStartIn());
+        assertEquals("", file.getDefaultValue(), "suggesting a folder fills in nothing");
+        assertEquals("", reasoner().help("ELK is fast and handles most OBO ontologies.")
+                .build().getStartIn());
+    }
 }

@@ -17,6 +17,11 @@ repo_name: ebrahimnorouzi/ontoboard
 edit_uri: edit/main/docs/
 
 docs_dir: docs
+# docs/superpowers/ is where design specs and plans are written while working. It is internal, kept
+# out of git by .gitignore, and kept out of the site here too: mkdocs builds every page under
+# docs_dir, so a local build would otherwise publish whatever happens to be in it.
+exclude_docs: |
+  superpowers/
 
 theme:
   name: material
@@ -157,21 +162,16 @@ nav:
       - Feature parity: feature-parity.md
       - Measurements: measurements.md
       - Compared with other tools: compared-with.md
-      - Compared with OntoEditor: compared-with-ontoeditor.md
       - Compared with OntoGraf: compared-with-ontograf.md
   - Going deeper:
       - Development: development.md
       - Persistent identifiers: persistent-identifiers.md
       - Protege plugin registry: protege-registry.md
-      - Evaluation plan: evaluation-plan.md
-      - 'User study':
-          - Session protocol: study/protocol.md
-          - Consent and information: study/consent.md
-          - Questionnaires: study/questionnaires.md
-      - Paper claims audit: paper-claims-audit.md
-      # The specs and plans under docs/superpowers/ are the design record. They are published
-      # with the site - every link to them still resolves - but they are not in the nav any more.
-      # Ten internal planning documents in the sidebar made the site look like a planning archive
-      # that happened to contain a plugin, and a reader deciding whether to install OntoBoard has
-      # no use for 'Plan: retirement'. limitations.md links the directory for anybody who wants it.
-      - Design record: superpowers/specs/2026-08-14-ontoboard-protege-plugin-design.md
+      # The evaluation plan, the user-study protocol, consent text and questionnaires, the paper
+      # claims audit, the OntoEditor build plan and the expert-evaluation triage used to be pages
+      # here. They are internal working material and are kept out of the repository (/private/ in
+      # .gitignore) rather than merely out of the nav: mkdocs builds and indexes every page under
+      # docs_dir whether the nav names it or not, so an unlisted page is still published, still in
+      # the search index and still in the sitemap.
+      # The specs and plans that were under docs/superpowers/ - the design record - left the
+      # repository in 1.134.0 for the same reason; earlier versions remain in the history.

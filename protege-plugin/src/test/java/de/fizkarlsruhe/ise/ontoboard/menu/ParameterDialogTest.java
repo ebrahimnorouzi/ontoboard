@@ -5,7 +5,10 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import de.fizkarlsruhe.ise.ontoboard.robot.Reasoners;
+import java.io.File;
+import java.nio.file.Files;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * The one piece of the parameter dialog that is not Swing: turning help into something readable.
@@ -91,5 +94,47 @@ class ParameterDialogTest {
         for (Reasoners.Choice choice : Reasoners.Choice.values()) {
             assertTrue(html.contains(choice.getLabel()), choice + " missing from the rendering");
         }
+    }
+
+    // ------------------------------------------------------------------ where Browse starts
+
+    @TempDir
+    File dir;
+
+    /**
+     * Browse for a template file began in the home folder every time, so the knowledge-graph
+     * walkthrough started with six levels of clicking down to kg/templates.
+     */
+    @Test
+    void browsingForAFileStartsWhereTheParameterSuggests() throws Exception {
+        File templates = new File(dir, "kg/templates");
+        assertTrue(templates.mkdirs());
+
+        assertEquals(templates, ParameterDialog.startingDirectory("", templates.getPath()));
+    }
+
+    @Test
+    void browsingStartsBesideWhatIsAlreadyTyped() throws Exception {
+        File templates = new File(dir, "kg/templates");
+        assertTrue(templates.mkdirs());
+        File sheet = new File(templates, "01_cities.tsv");
+        Files.write(sheet.toPath(), "x".getBytes("UTF-8"));
+        File other = new File(dir, "other");
+        assertTrue(other.mkdirs());
+
+        assertEquals(templates, ParameterDialog.startingDirectory(sheet.getPath(),
+                other.getPath()), "what is typed wins over the suggestion");
+        assertEquals(templates, ParameterDialog.startingDirectory(
+                new File(templates, "not-yet.tsv").getPath(), ""),
+                "a file that does not exist yet still names its folder");
+        assertEquals(other, ParameterDialog.startingDirectory(other.getPath(), ""));
+    }
+
+    @Test
+    void withNothingToGoOnBrowsingStartsWhereSwingWould() {
+        assertEquals(null, ParameterDialog.startingDirectory("", ""));
+        assertEquals(null, ParameterDialog.startingDirectory(null, null));
+        assertEquals(null, ParameterDialog.startingDirectory("",
+                new File(dir, "missing").getPath()));
     }
 }

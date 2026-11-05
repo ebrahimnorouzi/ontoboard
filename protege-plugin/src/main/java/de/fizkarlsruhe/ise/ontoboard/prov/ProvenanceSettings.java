@@ -21,14 +21,35 @@ import org.semanticweb.owlapi.model.OWLOntology;
  */
 public final class ProvenanceSettings {
 
-    /** When to stamp. */
+    /**
+     * When to stamp.
+     *
+     * <p>Each has words for the dialog: the combo box shows {@code toString()}, which until
+     * 1.134.0 was the constant itself - FOLLOW_THE_ONTOLOGY in a list a person had to choose from.
+     * What is saved is still {@code name()}, so a saved preference reads back unchanged.
+     */
     public enum Mode {
         /** Stamp if the ontology already does, or if it is an ODK project. */
-        FOLLOW_THE_ONTOLOGY,
+        FOLLOW_THE_ONTOLOGY("When this ontology already records it, or is an ODK project"),
         /** Always stamp. */
-        ALWAYS,
+        ALWAYS("Always"),
         /** Never stamp. */
-        NEVER
+        NEVER("Never");
+
+        private final String label;
+
+        Mode(String label) {
+            this.label = label;
+        }
+
+        public String getLabel() {
+            return label;
+        }
+
+        @Override
+        public String toString() {
+            return label;
+        }
     }
 
     static final String PREFERENCE_SET = "de.fizkarlsruhe.ise.ontoboard";

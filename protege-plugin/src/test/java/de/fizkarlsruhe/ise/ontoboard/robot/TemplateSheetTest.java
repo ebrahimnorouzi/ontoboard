@@ -448,6 +448,72 @@ class TemplateSheetTest {
                 "ROBOT's internal message reached the user: " + message);
     }
 
+    // ---------- a prefix the ontology does not declare ----------
+
+    /**
+     * Found by rebuilding pizza-bfo's knowledge graph: its nine sheets write IDs as kg:PB_0000001,
+     * while kg/pizzabfo-kg.ttl declares that address only as the empty prefix ":". Every row of
+     * every sheet failed with ROBOT's "could not interpret 'kg:PB_0000001'", and nothing said that
+     * one prefix declaration would fix all 25 of them, or which address it should have.
+     */
+    @Test
+    void anUndeclaredIdPrefixSaysWhereToDeclareItAndWhichAddressFits() throws Exception {
+        prefixes.put(":", "https://example.org/pizza/kg/");
+
+        TemplateSheet.Result result = run(
+                tabs("ID", "TYPE", "Name"),
+                tabs("ID", "TYPE", "A rdfs:label"),
+                tabs("kg:PB_0000001", "owl:NamedIndividual", "Karlsruhe"));
+
+        assertEquals(1, result.getProblems().size(), result.getProblems().toString());
+        String message = result.getProblems().get(0).getMessage();
+        assertTrue(message.contains("Ontology Prefixes"),
+                "says where in Protege a prefix is declared: " + message);
+        assertTrue(message.contains("https://example.org/pizza/kg/"),
+                "names the address the empty prefix already stands for: " + message);
+        assertTrue(message.contains("\"kg:\""), "names the prefix: " + message);
+    }
+
+    @Test
+    void theSheetWarningCarriesTheSameAdvice() {
+        prefixes.put(":", "https://example.org/pizza/kg/");
+        Map<String, List<List<String>>> folder = new LinkedHashMap<String, List<List<String>>>();
+        folder.put("01_cities.tsv", rows(
+                tabs("ID", "TYPE", "Name"),
+                tabs("ID", "TYPE", "A rdfs:label"),
+                tabs("kg:PB_0000001", "owl:NamedIndividual", "Karlsruhe")));
+
+        List<String> unavailable = TemplateSheet.namesOf(folder, context, prefixes)
+                .getUnavailable();
+
+        assertEquals(1, unavailable.size(), unavailable.toString());
+        assertTrue(unavailable.get(0).contains("Ontology Prefixes")
+                        && unavailable.get(0).contains("https://example.org/pizza/kg/"),
+                unavailable.get(0));
+    }
+
+    @Test
+    void withNoAddressThatFitsTheAdviceDoesNotGuess() {
+        String advice = TemplateSheet.prefixAdvice("zz:0001", prefixes,
+                java.util.Collections.<String>emptySet());
+
+        assertTrue(advice.contains("Ontology Prefixes"), advice);
+        assertFalse(advice.contains("stands for"), "nothing fits, so nothing is suggested: "
+                + advice);
+    }
+
+    @Test
+    void aDeclaredOrBuiltInPrefixGetsNoPrefixAdvice() {
+        java.util.Set<String> builtIn = new java.util.HashSet<String>(Arrays.asList("obo"));
+
+        assertEquals("", TemplateSheet.prefixAdvice("ex:thing", prefixes, builtIn));
+        assertEquals("", TemplateSheet.prefixAdvice("obo:BFO_0000030", prefixes, builtIn));
+        assertEquals("", TemplateSheet.prefixAdvice("https://example.org/x", prefixes, builtIn));
+        assertEquals("", TemplateSheet.prefixAdvice("order 1, a margherita", prefixes, builtIn));
+        assertEquals("", TemplateSheet.prefixAdvice("", prefixes, builtIn));
+        assertEquals("", TemplateSheet.prefixAdvice(null, prefixes, builtIn));
+    }
+
     /** A CURIE whose prefix nothing defines is a different mistake, and gets a different answer. */
     @Test
     void anUndefinedPrefixInAReferenceColumnNamesThePrefix() throws Exception {

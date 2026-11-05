@@ -115,6 +115,62 @@ class WidocoTest {
                 "the configuration warning is the actionable one: " + kept);
     }
 
+    /**
+     * The log a user pasted back from documenting pizza-bfo, line for line. The page was
+     * written - 218 KB, with WebVOWL - but the dialog showed two ERROR lines and four about a
+     * missing configuration, and read as a failure. Each kind of line is said once, in words that
+     * say what happened to the page.
+     */
+    @Test
+    void theKnownErrorsAreExplainedOnceEach() {
+        List<String> log = Arrays.asList(
+                "[main] WARN widoco.Configuration - Error while reading configuration properties"
+                        + " from [C:\\Users\\eno\\Downloads\\config\\config.properties]: "
+                        + "C:\\Users\\eno\\Downloads\\config\\config.properties (The system "
+                        + "cannot find the path specified)",
+                "[main] WARN widoco.Configuration - Error while loading the default property "
+                        + "file: C:\\Users\\eno\\Downloads\\config\\config.properties (The "
+                        + "system cannot find the path specified)",
+                "[main] WARN widoco.Configuration - Error while reading configuration properties"
+                        + " from []:",
+                "[main] WARN widoco.Configuration - Error while reading configuration properties"
+                        + " from []:",
+                "[main] ERROR widoco.WidocoUtils - Failed to download vocabulary in RDF format "
+                        + "[application/rdf+xml]: java.io.FileNotFoundException: "
+                        + "https://ebrahimnorouzi.github.io/pizza-bfo/pizzabfo/0.4.0",
+                "[main] ERROR widoco.CreateResources - Could not generate changelog: Failed to "
+                        + "download vocabulary in RDF format [application/rdf+xml]:",
+                "ERROR StatusLogger Log4j2 could not find a logging implementation. Please add "
+                        + "log4j-core to the classpath. Using SimpleLogger to log to the "
+                        + "console...");
+
+        List<String> kept = Widoco.worthReading(log);
+
+        assertEquals(2, kept.size(), kept.toString());
+        assertTrue(kept.get(0).contains("config.properties")
+                        && kept.get(0).contains("from the ontology"),
+                "the configuration lines become one sentence saying where the metadata came "
+                        + "from: " + kept.get(0));
+        assertTrue(kept.get(1).contains("changelog")
+                        && kept.get(1).contains(
+                                "https://ebrahimnorouzi.github.io/pizza-bfo/pizzabfo/0.4.0"),
+                "the changelog failure names the address that did not answer: " + kept.get(1));
+        for (String line : kept) {
+            assertTrue(!line.startsWith("[main] ERROR"), "explained, not echoed: " + line);
+            assertTrue(!line.contains("Log4j2"), "logging-framework noise is not shown: " + line);
+        }
+    }
+
+    /** An error nobody has explained yet is still shown as it was printed. */
+    @Test
+    void anUnknownErrorIsShownAsItIs() {
+        List<String> kept = Widoco.worthReading(Arrays.asList(
+                "[main] ERROR widoco.LODEParser - Something new went wrong"));
+
+        assertEquals(Arrays.asList("[main] ERROR widoco.LODEParser - Something new went wrong"),
+                kept);
+    }
+
     /** A clean run leaves nothing to report. */
     @Test
     void aCleanLogSaysNothing() {

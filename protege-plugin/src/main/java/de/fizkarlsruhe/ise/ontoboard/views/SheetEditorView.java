@@ -10,6 +10,7 @@ import de.fizkarlsruhe.ise.ontoboard.sheet.SheetFix;
 import de.fizkarlsruhe.ise.ontoboard.sheet.SheetLocation;
 import de.fizkarlsruhe.ise.ontoboard.sheet.SheetProvenance;
 import de.fizkarlsruhe.ise.ontoboard.sheet.SheetTableModel;
+import de.fizkarlsruhe.ise.ontoboard.sheet.TemplateDiscovery;
 import de.fizkarlsruhe.ise.ontoboard.sheet.TermCreation;
 import java.awt.BorderLayout;
 import java.awt.Component;
@@ -36,8 +37,13 @@ import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
 import javax.swing.JTextField;
 import javax.swing.JToolBar;
+import javax.swing.SwingUtilities;
+import org.protege.editor.owl.model.event.EventType;
+import org.protege.editor.owl.model.event.OWLModelManagerListener;
 import org.protege.editor.owl.ui.view.AbstractOWLViewComponent;
 import org.semanticweb.owlapi.model.OWLOntology;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A folder of spreadsheets, open for editing, inside Prot&eacute;g&eacute;.
@@ -86,8 +92,46 @@ public class SheetEditorView extends AbstractOWLViewComponent {
      */
     private IriGenerator.Source lastChosen;
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(SheetEditorView.class);
+
     private SheetBook book = SheetBook.empty();
     private File folder;
+
+    /**
+     * Which folder is open and why, always visible.
+     *
+     * <p>The status line is overwritten by every check and every paste, so it cannot be the only
+     * place that says which folder these sheets came from. Until 1.134.0 nothing else did, and a
+     * project whose templates were one folder away from where the editor looked said "No
+     * templates yet" with no way to tell where it had looked.
+     */
+    private final JLabel where = new JLabel(" ");
+
+    /** What was worked out for the active ontology when the open folder was chosen. */
+    private TemplateDiscovery discovery = TemplateDiscovery.of(null);
+
+    /** The project the open folder belongs to, so switching to another file of it is not news. */
+    private File shownKey;
+
+    /** Whether somebody picked the open folder; an ontology switch never takes that away. */
+    private boolean chosenByHand;
+
+    /**
+     * Hears the active ontology change.
+     *
+     * <p>The folder used to be worked out once, when the view was built. Protege restores the
+     * last tab at startup, before any ontology is open, so the sheet editor was often built
+     * against nothing and stayed that way for the session.
+     */
+    private final OWLModelManagerListener ontologyListener = event -> {
+        if (event.isType(EventType.ACTIVE_ONTOLOGY_CHANGED)) {
+            if (SwingUtilities.isEventDispatchThread()) {
+                activeOntologyChanged();
+            } else {
+                SwingUtilities.invokeLater(this::activeOntologyChanged);
+            }
+        }
+    };
 
     /** Where the last search landed, so the next press moves on rather than finding it again. */
     private SheetBook.Match lastFound;
@@ -110,6 +154,7 @@ public class SheetEditorView extends AbstractOWLViewComponent {
     protected void initialiseOWLView() {
         try {
             buildView();
+            getOWLModelManager().addListener(ontologyListener);
         } catch (RuntimeException | Error broke) {
             ViewHealth.failed(getClass().getSimpleName(), broke);
             throw broke;
@@ -134,45 +179,185 @@ public class SheetEditorView extends AbstractOWLViewComponent {
                 new java.awt.Color(0xC8, 0xC8, 0xC8)));
         add(bottom, BorderLayout.SOUTH);
 
-        openTheProjectsOwnTemplates();
+        showDiscovered(TemplateDiscovery.of(ontologyFileOrNull()));
     }
 
     /**
-     * Opens the templates of whatever ontology is already loaded, without being asked.
+     * Opens the templates that belong to the active ontology, without being asked.
      *
-     * <p>A project has one obvious place for them and the editor knows where it is, so
-     * beginning with an empty grid and a file chooser puts a question to somebody whose answer
-     * was already determined. If the folder is there with sheets in it, they are open before
-     * anybody clicks anything; if it is empty or absent, the status line says where it would
-     * be rather than making them guess.
+     * <p>A project has an obvious place for them and the editor knows the short list of places
+     * to look - {@link TemplateDiscovery} - so beginning with an empty grid and a file chooser
+     * puts a question to somebody whose answer was already determined. If one of those places
+     * holds sheets they are open before anybody clicks anything; if none does, the status line
+     * names every place it looked rather than making them guess.
      *
-     * <p>Nothing is created here. An editor that puts a directory into a repository just by
-     * being opened would be a surprise in somebody's next {@code git status}.
+     * <p>Called only when nothing unsaved is open: at construction, and when the active ontology
+     * moves to another project with nothing unsaved. Nothing is created here. An editor that puts
+     * a directory into a repository just by being opened would be a surprise in somebody's next
+     * {@code git status}.
      */
-    private void openTheProjectsOwnTemplates() {
-        File ontologyFile = ontologyFileOrNull();
-        File templates = SheetLocation.forOntologyFile(ontologyFile);
-        if (templates == null) {
-            say("Open a folder of .tsv or .csv templates to begin. In an ODK project that is "
-                    + "usually src/templates.");
+    private void showDiscovered(TemplateDiscovery found) {
+        discovery = found;
+        shownKey = found.getKey();
+        chosenByHand = false;
+        TemplateDiscovery.Candidate chosen = found.getChosen();
+        if (chosen == null) {
+            folder = found.getFolderForNewSheets();
+            if (book.size() > 0) {
+                open(SheetBook.empty());
+            }
+            showWhere();
+            say(found.describe());
             return;
         }
-        if (SheetLocation.sheetsIn(templates) == 0) {
-            folder = templates;
-            say("No templates yet. They belong in " + templates.getAbsolutePath()
-                    + " - write one with Spreadsheets > Template... and it will open here, or use "
-                    + "Open folder... for somewhere else.");
+        folder = chosen.getFolder();
+        open(SheetBook.open(folder).against(ontologyOrNull(), "the open ontology"));
+        say(found.describe() + "  " + status.getText());
+    }
+
+    /**
+     * The active ontology changed: another file of the same project changes nothing, another
+     * project opens its own templates - unless that would replace unsaved edits or a folder
+     * somebody chose, in which case it says where the new one's templates are and waits.
+     */
+    private void activeOntologyChanged() {
+        try {
+            TemplateDiscovery now = TemplateDiscovery.of(ontologyFileOrNull());
+            switch (TemplateDiscovery.onActiveOntologyChanged(now, shownKey, book.isUnsaved(),
+                    chosenByHand)) {
+                case OPEN:
+                    showDiscovered(now);
+                    break;
+                case HOLD:
+                    TemplateDiscovery.Candidate theirs = now.getChosen();
+                    say("The active ontology is now "
+                            + (now.getOntologyFile() == null ? "another one"
+                                    : now.getOntologyFile().getName())
+                            + (theirs == null ? ", which has no templates yet."
+                                    : ", whose templates are in "
+                                            + theirs.getFolder().getAbsolutePath() + ".")
+                            + (book.isUnsaved()
+                                    ? " Your unsaved edits are kept here - Save, then Project "
+                                            + "templates to switch."
+                                    : " The folder you chose stays open - Project templates "
+                                            + "switches."));
+                    break;
+                default:
+                    break;
+            }
+        } catch (RuntimeException broke) {
+            // A listener that throws breaks Protege's event dispatch for every other view.
+            LOGGER.warn("OntoBoard: the sheet editor could not follow the active ontology", broke);
+        }
+    }
+
+    /**
+     * The places this project's templates may be, to choose from.
+     *
+     * <p>Every place on the list is offered, including one that is not there yet: choosing it
+     * empties the editor and makes it the folder <i>New sheet...</i> writes into, which is the
+     * only way to start a {@code kg/templates} in a project that has {@code src/templates}.
+     * Choosing creates nothing.
+     */
+    private void chooseProjectTemplates(Component invoker) {
+        final TemplateDiscovery found = TemplateDiscovery.of(ontologyFileOrNull());
+        JPopupMenu menu = new JPopupMenu();
+        if (found.getCandidates().isEmpty()) {
+            JMenuItem none = new JMenuItem("The active ontology is not saved in a file");
+            none.setEnabled(false);
+            menu.add(none);
+        }
+        TemplateDiscovery.Candidate first = found.getChosen();
+        for (final TemplateDiscovery.Candidate each : found.getCandidates()) {
+            String state = each.getSheets() > 0
+                    ? each.getSheets() + (each.getSheets() == 1 ? " sheet" : " sheets")
+                    : each.exists() ? "empty" : "not there yet";
+            JMenuItem entry = item(TemplateDiscovery.shortName(each.getFolder(),
+                    found.getProjectRoot()) + "  -  " + state
+                    + (each == first ? "  (found first)" : ""),
+                    new ActionListener() {
+                        @Override
+                        public void actionPerformed(ActionEvent event) {
+                            openCandidate(found, each);
+                        }
+                    });
+            entry.setToolTipText(each.getFolder().getAbsolutePath() + " - "
+                    + each.getReason().says());
+            menu.add(entry);
+        }
+        menu.addSeparator();
+        JMenuItem reload = item("Reload this folder from disk", new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent event) {
+                reload();
+            }
+        });
+        reload.setEnabled(folder != null && folder.isDirectory());
+        menu.add(reload);
+        menu.add(item("Another folder...", new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent event) {
+                openFolder();
+            }
+        }));
+        menu.show(invoker, 0, invoker.getHeight());
+    }
+
+    private void openCandidate(TemplateDiscovery found, TemplateDiscovery.Candidate chosen) {
+        String name = TemplateDiscovery.shortName(chosen.getFolder(), found.getProjectRoot());
+        if (decideAboutUnsaved("Opening " + name + " would replace them.") == Unsaved.CANCEL) {
             return;
         }
-        if (decideAboutUnsaved("Opening this project's own templates would replace them.")
+        discovery = found;
+        shownKey = found.getKey();
+        chosenByHand = chosen != found.getChosen();
+        folder = chosen.getFolder();
+        if (chosen.getSheets() == 0) {
+            open(SheetBook.empty());
+            showWhere();
+            say(name + (chosen.exists() ? " has no .tsv or .csv in it yet."
+                    : " is not there yet.")
+                    + " New sheet... starts one there; nothing is created until then.");
+            return;
+        }
+        open(SheetBook.open(folder).against(ontologyOrNull(), "the open ontology"));
+    }
+
+    /** Reads the open folder again, for files changed outside Protege - a pull, an export. */
+    private void reload() {
+        if (folder == null || !folder.isDirectory()) {
+            say("There is no folder open to reload.");
+            return;
+        }
+        if (decideAboutUnsaved("Reloading reads the files again, which would replace them.")
                 == Unsaved.CANCEL) {
             return;
         }
-        folder = templates;
-        open(SheetBook.open(templates).against(ontologyOrNull(), "the open ontology"));
+        open(SheetBook.open(folder).against(ontologyOrNull(), "the open ontology"));
     }
 
-    /** Where the open ontology was loaded from, or null. */
+    /** The always-visible line saying which folder these sheets are from. */
+    private void showWhere() {
+        if (folder == null) {
+            where.setText(" No folder open ");
+            where.setToolTipText(wrap(discovery.describe()));
+            return;
+        }
+        String state = book.size() > 0
+                ? book.size() + (book.size() == 1 ? " sheet" : " sheets")
+                : folder.isDirectory() ? "empty" : "not created yet";
+        where.setText(" Folder: " + TemplateDiscovery.shortName(folder,
+                discovery.getProjectRoot()) + " (" + state + (chosenByHand ? ", chosen by you" : "")
+                + ") ");
+        where.setToolTipText(wrap(folder.getAbsolutePath() + "\n\n" + discovery.describe()));
+    }
+
+    /**
+     * Where the open ontology was loaded from, or null.
+     *
+     * <p>Through {@link TemplateDiscovery#fileOf}, which reads a Windows network share and
+     * matches the scheme without regard to case; {@code new File(URI)} did neither.
+     */
     private File ontologyFileOrNull() {
         OWLOntology ontology = ontologyOrNull();
         if (ontology == null) {
@@ -181,8 +366,7 @@ public class SheetEditorView extends AbstractOWLViewComponent {
         try {
             org.semanticweb.owlapi.model.IRI document = getOWLModelManager()
                     .getOWLOntologyManager().getOntologyDocumentIRI(ontology);
-            return document == null || !"file".equals(document.getScheme()) ? null
-                    : new File(document.toURI());
+            return document == null ? null : TemplateDiscovery.fileOf(document.toURI());
         } catch (RuntimeException notAFile) {
             return null;
         }
@@ -190,7 +374,7 @@ public class SheetEditorView extends AbstractOWLViewComponent {
 
     @Override
     protected void disposeOWLView() {
-        // Nothing is registered with the model manager, so there is nothing to unregister.
+        getOWLModelManager().removeListener(ontologyListener);
         // Unsaved edits are deliberately not written here: closing a view is not consent.
     }
 
@@ -198,13 +382,16 @@ public class SheetEditorView extends AbstractOWLViewComponent {
     private JComponent toolbar() {
         JToolBar bar = new JToolBar();
         bar.setFloatable(false);
-        bar.add(button("Project templates", "Open this project's own src/templates",
-                new ActionListener() {
-                    @Override
-                    public void actionPerformed(ActionEvent event) {
-                        openTheProjectsOwnTemplates();
-                    }
-                }));
+        final JButton project = button("Project templates ▾",
+                "Every place this project's templates may be, with how many sheets each holds - "
+                        + "choose one, reload the open folder, or open another", null);
+        project.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent event) {
+                chooseProjectTemplates(project);
+            }
+        });
+        bar.add(project);
         bar.add(button("Open folder...", "Read every .tsv and .csv in some other folder",
                 new ActionListener() {
                     @Override
@@ -254,6 +441,8 @@ public class SheetEditorView extends AbstractOWLViewComponent {
                         recheck();
                     }
                 }));
+        bar.addSeparator();
+        bar.add(where);
         return bar;
     }
 
@@ -364,6 +553,11 @@ public class SheetEditorView extends AbstractOWLViewComponent {
             return;
         }
         folder = chooser.getSelectedFile();
+        // Chosen by hand: switching the active ontology names its own templates from now on
+        // rather than taking this folder away.
+        discovery = TemplateDiscovery.of(ontologyFileOrNull());
+        shownKey = discovery.getKey();
+        chosenByHand = true;
         open(SheetBook.open(folder).against(ontologyOrNull(), "the open ontology"));
     }
 
@@ -449,6 +643,7 @@ public class SheetEditorView extends AbstractOWLViewComponent {
                     });
             sheets.addTab(name, scrolled);
         }
+        showWhere();
         if (book.size() == 0) {
             say(book.getUnreadable().isEmpty()
                     ? "No .tsv or .csv files there, so there is nothing to edit."

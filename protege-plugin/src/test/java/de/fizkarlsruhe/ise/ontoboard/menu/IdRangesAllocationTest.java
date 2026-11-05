@@ -189,4 +189,17 @@ class IdRangesAllocationTest {
         assertNotNull(ranges.rangeFor(any.getAllocatedTo().toUpperCase()));
         assertNotNull(ranges.rangeFor(any.getAllocatedTo().toLowerCase()));
     }
+
+    /**
+     * The block ID ranges... offers to allocate has to belong to the name the canvas and the
+     * sheet editor mint under, or it answers nothing. It used to pre-fill the provenance name,
+     * while minting used the collaboration display name and then the login: somebody who had set
+     * a plain name under Record who edits terms... got a block and still "No identifiers for you
+     * yet".
+     */
+    @Test
+    void theOfferedEditorIsTheNameTermsAreMintedUnder() {
+        assertEquals(de.fizkarlsruhe.ise.ontoboard.sheet.IriGenerator.editorName(),
+                IdRangesAction.defaultEditorName());
+    }
 }

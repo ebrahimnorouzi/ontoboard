@@ -2,7 +2,6 @@ package de.fizkarlsruhe.ise.ontoboard.menu;
 
 import de.fizkarlsruhe.ise.ontoboard.odk.IdRanges;
 import de.fizkarlsruhe.ise.ontoboard.odk.TermMinter;
-import de.fizkarlsruhe.ise.ontoboard.prov.ProvenanceSettings;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
@@ -74,9 +73,10 @@ public class IdRangesAction extends OntoBoardAction {
                         .defaultValue(defaultEditorName())
                         .help("Who the block belongs to. ODK conventionally uses a person's name "
                                 + "or their email address, and it has to match the name this "
-                                + "plugin mints under - which is the provenance agent if you have "
-                                + "set one, and your login name otherwise. A block allocated to a "
-                                + "name nobody edits under helps nobody.")
+                                + "plugin mints under - which is your display name under "
+                                + "OntoBoard > Share > Collaboration... if you have set one, and "
+                                + "your login name otherwise. That is the name filled in here. A "
+                                + "block allocated to a name nobody edits under helps nobody.")
                         .build(),
                 Parameter.of(OPTION_SIZE, "How many identifiers", Parameter.Kind.NUMBER)
                         .defaultValue(String.valueOf(suggestedBlockSize(rangesFile)))
@@ -253,17 +253,17 @@ public class IdRangesAction extends OntoBoardAction {
     }
 
     /**
-     * The name this plugin would mint under.
+     * The name this plugin mints under - the one the canvas and the sheet editor hand to
+     * {@code TermMinter} - because a block allocated to anything else is a block that does not
+     * answer the question the user came here with.
      *
-     * <p>The same name {@code TermMinter} uses, because a block allocated to anything else is a
-     * block that does not answer the question the user came here with.
+     * <p>Until 1.134.0 this offered the provenance name instead, while minting used the
+     * collaboration display name and then the login: a participant who had typed a plain name
+     * under <i>Record who edits terms...</i> was given a block under it and still told "No
+     * identifiers for you yet". One function now answers for all three.
      */
-    private String defaultEditorName() {
-        String agent = ProvenanceSettings.load().canonicalAgent();
-        if (agent != null && !agent.trim().isEmpty() && !agent.startsWith("http")) {
-            return agent.trim();
-        }
-        return System.getProperty("user.name", "");
+    static String defaultEditorName() {
+        return de.fizkarlsruhe.ise.ontoboard.sheet.IriGenerator.editorName();
     }
 
     /** The size of the blocks this project already uses, so everybody gets the same allowance. */
