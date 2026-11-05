@@ -1,0 +1,70 @@
+OntoBoard 1.134.0 - host smoke receipt
+
+Produced on Windows 11 Pro (10.0.26100), with tools/smoke.ps1 and -Dontoboard.selftest=true, the
+verdict read from what Protege logged. Protege 5.6.9 is the maintainer's own install, with
+ontoboard-1.133.1.jar moved out of plugins and this jar the only ontoboard-*.jar in it; Protege
+5.5.0 is a throwaway copy of the install, the same way. Every run opened pizzabfo-edit.owl from
+a fresh clone of the pizza-bfo test project (7ff2db9): its seven imports resolved from disk, and
+the clone's git status was clean afterwards - nothing written beside the ontology.
+
+  2026-11-05  Protege 5.6.9  OWL API 4.5.29  JRE 11.0.25+9    -Xmx2G    PASS  check 9/9  test 12/12
+  2026-11-05  Protege 5.6.9  OWL API 4.5.29  JRE 11.0.25+9    -Xmx500M  PASS  check 9/9
+  2026-11-05  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121    -Xmx2G    PASS  check 9/9  test 12/12
+
+The -Xmx500M run is what Protege.exe gives a user who double-clicks it.
+
+The jar: sha256 20eeabb337646f70..., built by mvn -o clean package from the working tree this
+receipt is committed with. The unit suite in that build: 2,757 tests, 0 failures, 0 errors, 2
+skipped - PinchZoomTest, as before, and BundleConfigurationTest, the manifest check, which a clean
+build reaches before the jar exists; run against this jar afterwards, its 18 tests passed.
+CompiledClassesTest passed, so no class in it was written by another compiler.
+The four NullPointerExceptions logged on 5.5.0 are Protege's own OWLCellRenderer building the
+class hierarchy view, as before; none on 5.6.9. Two other plugins of that 5.5.0 install,
+cellfie 2.2.4 and swrltab 2.1.3, failed to install there; not ours.
+
+The self-test builds the sheet editor's view on both hosts (Window > Tabs > OntoBoard Sheets:
+SheetEditorView built without throwing, and closed again) - the view this release changed most.
+
+WHAT THIS RECEIPT DOES NOT COVER
+
+Nothing here looks at a pixel or presses a button in the sheet editor, the board or a dialog: the
+self-test constructs the two tabs and drives nine read-only menu items. What the sheet editor now
+does - the folder it opens from each kind of file, following the active ontology, keeping unsaved
+edits - is covered by 29 unit tests and was checked headless on pizza-bfo's real files, not
+clicked through in Protege. The Release... and Template... fixes below are covered by unit tests,
+not driven in the host. CI runs on the tagged commit; this receipt was written before it.
+
+
+FIXED IN 1.134.0 (each in docs/fixed.md, with how it was found)
+
+- The sheet editor said "No templates yet" over nine templates one folder away. Opened from
+  pizza-bfo's edit file it looked only in src/templates; its sheets are in kg/templates. It now
+  tries four places in a fixed order - templates/ beside the file (src/templates instead, for an
+  ODK edit file), then the project's src/templates, kg/templates and templates/ - with the
+  project root found at most four levels up. It follows the active ontology, never replaces
+  unsaved edits or a folder chosen by hand, creates nothing, and its toolbar names the folder.
+  Check sheets... starts with that folder filled in, and Template...'s Browse opens in it.
+- Every row of a sheet failed with "could not interpret" when its ID prefix (kg:) was not
+  declared, and nothing said why: Template... now names the prefix, and the declared one that
+  would settle it.
+- Every row of a built graph "names 2 different things" in Check sheets... and the sheet
+  editor's marks: a CURIE was compared with the IRI it expands to.
+- ID ranges... offered a block under a name nothing mints with. The board, the sheet editor and
+  the dialog now use one function for the editor's name.
+- Template... recorded the person running it as the author of other people's terms, with
+  provenance recording on: a class only an import declares, rdfs:label, a datatype. A term is new
+  now only when neither the ontology nor anything it imports has it.
+- Release... proposed 0.1.1 over a published 1.0.0, from an owl:versionInfo a release never
+  updates, and would have released it, or 1.0.0 again over the published copy. It proposes the
+  version after the newest release now, and refuses a semantic version at or below it.
+- Record who edits terms... offered FOLLOW_THE_ONTOLOGY, ALWAYS and NEVER. Words now.
+- Documentation... showed Widoco's ERROR lines over a page it had written: each known line is
+  explained once.
+
+DOCUMENTATION
+
+- docs/limitations.md audited claim by claim against the source: what a user meets in 1.134.0
+  is there, the retired web application is not.
+- Internal material is no longer in the repository: the evaluation plan, the user-study
+  material, the paper-claims audit, the expert-evaluation triage, and the design specs and plans
+  of docs/superpowers/. Earlier versions remain in the history.

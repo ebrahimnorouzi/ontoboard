@@ -52,9 +52,9 @@ public class ProvenanceAction extends OntoBoardAction {
         form.add(new JLabel("When to record it:"));
         form.add(mode);
         form.add(new JLabel("<html><body style=\'width:420px\'><br>"
-                + "Following the ontology means: record provenance if this ontology already does, "
-                + "or if it is an ODK project. An ontology that has never recorded provenance "
-                + "does not start because you opened it here."
+                + "The first choice records provenance if this ontology already does, or if it "
+                + "is an ODK project. An ontology that has never recorded provenance does not "
+                + "start because you opened it here."
                 + "</body></html>"));
 
         if (JOptionPane.showConfirmDialog(getOWLWorkspace(), form, "Record who edits terms",

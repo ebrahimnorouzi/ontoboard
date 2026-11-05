@@ -4,6 +4,7 @@ import de.fizkarlsruhe.ise.ontoboard.robot.TemplateSheet;
 import de.fizkarlsruhe.ise.ontoboard.sheet.LabelIndex;
 import de.fizkarlsruhe.ise.ontoboard.sheet.SheetAudit;
 import de.fizkarlsruhe.ise.ontoboard.sheet.SheetOrder;
+import de.fizkarlsruhe.ise.ontoboard.sheet.TemplateDiscovery;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -76,8 +77,12 @@ public class SheetCheckAction extends OntoBoardAction {
                         Parameter.of(OPTION_FOLDER, "Folder of sheets",
                                         Parameter.Kind.DIRECTORY)
                                 .required()
-                                .help("Where the sheets live. In an ODK project that is usually "
-                                        + "src/templates.")
+                                .defaultValue(startingFolder())
+                                .help("Where the sheets live. Filled in with the folder the "
+                                        + "sheet editor would open for the active ontology - "
+                                        + "the first of templates/ beside it, src/templates, "
+                                        + "kg/templates and templates/ in its project that holds "
+                                        + "a sheet - or the folder checked last time.")
                                 .build(),
                         Parameter.of(OPTION_KINDS, "Report", Parameter.Kind.CHOICE)
                                 .choices(EVERYTHING, FIXABLE, REFERENCES)
@@ -97,6 +102,25 @@ public class SheetCheckAction extends OntoBoardAction {
         folder = path == null || path.trim().isEmpty() ? null : new File(path.trim());
         kinds = chosen.get(OPTION_KINDS);
         return true;
+    }
+
+    /**
+     * The folder to offer: the one checked last, or else the one the sheet editor finds for the
+     * active ontology. Typing the path to {@code kg/templates} by hand was step four of the test
+     * project's own walkthrough, and the only step that needed a file chooser.
+     */
+    private String startingFolder() {
+        if (folder != null && folder.isDirectory()) {
+            return folder.getAbsolutePath();
+        }
+        try {
+            OWLOntology active = getOWLModelManager() == null ? null
+                    : getOWLModelManager().getActiveOntology();
+            TemplateDiscovery.Candidate found = TemplateDiscovery.of(fileOf(active)).getChosen();
+            return found == null ? "" : found.getFolder().getAbsolutePath();
+        } catch (RuntimeException noOntology) {
+            return "";
+        }
     }
 
     @Override

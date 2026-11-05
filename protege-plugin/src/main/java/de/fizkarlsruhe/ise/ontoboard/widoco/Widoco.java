@@ -185,6 +185,8 @@ public final class Widoco {
         if (log == null) {
             return keep;
         }
+        boolean configurationSaid = false;
+        boolean changelogSaid = false;
         for (String line : log) {
             if (line == null || line.trim().isEmpty()) {
                 continue;
@@ -195,12 +197,84 @@ public final class Widoco {
                 // every run of every ontology and means nothing to the person reading.
                 continue;
             }
+            if (lower.contains("log4j2 could not find a logging implementation")) {
+                // Widoco's own logging set-up talking about itself, on every run.
+                continue;
+            }
+            if (lower.contains("configuration properties")
+                    || lower.contains("default property file")) {
+                // Up to four lines - two naming the file, two naming nothing - for one fact.
+                if (!configurationSaid) {
+                    keep.add(configurationExplained(firstConfigurationPath(log)));
+                    configurationSaid = true;
+                }
+                continue;
+            }
+            if (lower.contains("failed to download vocabulary")
+                    || lower.contains("could not generate changelog")) {
+                // Two ERROR lines for one missing section. Reported from pizza-bfo, where the
+                // page was complete and the dialog read as a failure.
+                if (!changelogSaid) {
+                    keep.add(changelogExplained(firstAddressIn(log)));
+                    changelogSaid = true;
+                }
+                continue;
+            }
             if (lower.contains("error") || lower.contains("exception")
                     || lower.contains("severe") || lower.contains("warn")) {
                 keep.add(line.trim());
             }
         }
         return keep;
+    }
+
+    private static String configurationExplained(String path) {
+        return "Widoco found no settings file of its own"
+                + (path == null ? " (config/config.properties beside its jar)" : " at " + path)
+                + ", so it took the title, licence and authors from the ontology instead - "
+                + "which is what OntoBoard asks it to do. Nothing to fix unless you wrote that "
+                + "file.";
+    }
+
+    private static String changelogExplained(String address) {
+        // Measured on pizza-bfo's page: the section is there and holds the word "null".
+        return "The changelog section of the page is empty (Widoco leaves the word null there). "
+                + "Widoco builds it by downloading the previous release the ontology names "
+                + "(owl:priorVersion" + (address == null ? "" : ", " + address)
+                + "), and nothing answered at that address - usually because that release has not "
+                + "been published there yet. The rest of the page does not depend on it.";
+    }
+
+    /** The config.properties path a configuration warning names, or null. */
+    private static String firstConfigurationPath(List<String> log) {
+        java.util.regex.Pattern path = java.util.regex.Pattern.compile(
+                "((?:[A-Za-z]:)?[^\\s\\[\\]:]*config[\\\\/]config\\.properties)");
+        for (String line : log) {
+            if (line == null) {
+                continue;
+            }
+            java.util.regex.Matcher found = path.matcher(line);
+            if (found.find()) {
+                return found.group(1);
+            }
+        }
+        return null;
+    }
+
+    /** The address a failed download names, or null. */
+    private static String firstAddressIn(List<String> log) {
+        java.util.regex.Pattern address =
+                java.util.regex.Pattern.compile("(https?://[^\\s\\]\\)\"']+)");
+        for (String line : log) {
+            if (line == null || !line.toLowerCase(Locale.ROOT).contains("download")) {
+                continue;
+            }
+            java.util.regex.Matcher found = address.matcher(line);
+            if (found.find()) {
+                return found.group(1);
+            }
+        }
+        return null;
     }
 
     /**

@@ -217,12 +217,13 @@ public final class ParameterDialog {
                     JFileChooser chooser = new JFileChooser();
                     if (folders) {
                         chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
-                        // The folder shown when it opens, so "Browse" starts where the value
-                        // points rather than in the user's home directory every time.
-                        File starting = new File(path.getText().trim());
-                        if (starting.isDirectory()) {
-                            chooser.setCurrentDirectory(starting);
-                        }
+                    }
+                    // The folder shown when it opens, so "Browse" starts where the value
+                    // points - or where the parameter suggests - rather than in the user's
+                    // home directory every time.
+                    File starting = startingDirectory(path.getText(), parameter.getStartIn());
+                    if (starting != null) {
+                        chooser.setCurrentDirectory(starting);
                     }
                     if (chooser.showOpenDialog(parent) == JFileChooser.APPROVE_OPTION) {
                         File chosen = chooser.getSelectedFile();
@@ -251,6 +252,30 @@ public final class ParameterDialog {
                 return field;
             }
         }
+    }
+
+    /**
+     * Where a file chooser should open: the folder of what is typed, else the suggested folder,
+     * else null for Swing's own default. A typed file that does not exist yet still names its
+     * folder - that is how a new template is named.
+     */
+    static File startingDirectory(String typed, String suggested) {
+        String text = typed == null ? "" : typed.trim();
+        if (!text.isEmpty()) {
+            File at = new File(text);
+            if (at.isDirectory()) {
+                return at;
+            }
+            File parent = at.getParentFile();
+            if (parent != null && parent.isDirectory()) {
+                return parent;
+            }
+        }
+        String hint = suggested == null ? "" : suggested.trim();
+        if (!hint.isEmpty() && new File(hint).isDirectory()) {
+            return new File(hint);
+        }
+        return null;
     }
 
     private static Map<String, String> readValues(List<Parameter> parameters,

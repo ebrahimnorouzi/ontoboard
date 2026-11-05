@@ -78,12 +78,14 @@ class MenuPathsInMessagesTest {
             Pattern.compile("\"((?:[^\"\\\\\\n]|\\\\.)*)\"");
 
     /**
-     * Pages that record what was, not what to do: the fixes made, audits, measurements and the
-     * study material keep the menu names of their day.
+     * Pages that record what was, not what to do: the fixes made and the measurements keep the
+     * menu names of their day. (The paper audit and the evaluation plan were here too; they are
+     * internal material now and no longer under docs/. requirements-status.md was here as well,
+     * and still sent readers to "ROBOT > Quality report..." six menu moves later - it is the
+     * site's "What is supported" page, so it is checked like any other since 1.134.0.)
      */
     private static final Set<String> HISTORY = new HashSet<String>(Arrays.asList(
-            "fixed.md", "paper-claims-audit.md", "requirements-status.md", "measurements.md",
-            "evaluation-plan.md"));
+            "fixed.md", "measurements.md"));
 
     /** The OntoBoard menu as plugin.xml declares it, and Protégé's Tools menu beside it. */
     static Place[] menus() throws Exception {

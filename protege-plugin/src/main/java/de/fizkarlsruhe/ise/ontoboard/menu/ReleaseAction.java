@@ -70,8 +70,15 @@ public class ReleaseAction extends OntoBoardAction {
     protected boolean configure() {
         String today = LocalDate.now().toString();
         OntologyVersion declared = Release.declaredVersionOf(openOntologyOrNull());
-        OntologyVersion proposed =
-                declared == null ? OntologyVersion.of(today) : declared.suggestNext(today);
+        File editFile = null;
+        try {
+            editFile = openOntologyOrNull() == null ? null : fileOf(openOntologyOrNull());
+        } catch (RuntimeException notSaved) {
+            editFile = null;
+        }
+        final File projectRoot = editFile == null ? null : projectRootOf(editFile);
+        final String ontologyId = editFile == null ? null : Release.ontologyIdFrom(editFile);
+        OntologyVersion proposed = proposedVersion(declared, projectRoot, ontologyId, today);
 
         Map<String, String> values = new java.util.LinkedHashMap<String, String>();
         values.put(OPTION_SCHEME, proposed.getScheme().getLabel());
@@ -101,6 +108,13 @@ public class ReleaseAction extends OntoBoardAction {
             }
             values = chosen;
             List<String> problems = versionProblems(chosen);
+            if (problems.isEmpty()) {
+                String clash = clashWithReleases(projectRoot, ontologyId,
+                        OntologyVersion.parseOrNull(chosen.get(OPTION_DATE).trim()));
+                if (clash != null) {
+                    problems.add(clash);
+                }
+            }
             if (problems.isEmpty()) {
                 break;
             }
@@ -164,13 +178,104 @@ public class ReleaseAction extends OntoBoardAction {
         return problems;
     }
 
+    /**
+     * What the dialog proposes: the version after the newer of what the edit file declares and
+     * the newest release in the same convention.
+     *
+     * <p>A release never writes its version back into the edit file, so an edit file can declare
+     * the scaffold's 0.1.0 for good while {@code releases/} climbs to 1.0.0. Proposing from the
+     * edit file alone offered 0.1.1 over a published 1.0.0 - found on both of OntoBoard's own test
+     * projects while preparing an expert test.
+     */
+    static OntologyVersion proposedVersion(OntologyVersion declared, File projectRoot,
+            String ontologyId, String today) {
+        OntologyVersion proposed =
+                declared == null ? OntologyVersion.of(today) : declared.suggestNext(today);
+        OntologyVersion newest = newestRelease(projectRoot, ontologyId, proposed.getScheme());
+        if (newest != null && newest.compareTo(proposed) >= 0) {
+            OntologyVersion after = newest.suggestNext(today);
+            // A dated project releasing again today: today is not after today, and that is the
+            // one case where the proposal may equal the newest release - see clashWithReleases.
+            if (after.compareTo(newest) > 0) {
+                proposed = after;
+            }
+        }
+        return proposed;
+    }
+
+    /** The newest release under releases/ in this convention that holds its file, or null. */
+    static OntologyVersion newestRelease(File projectRoot, String ontologyId,
+            OntologyVersion.Scheme scheme) {
+        if (projectRoot == null || ontologyId == null || scheme == null) {
+            return null;
+        }
+        File[] directories = new File(projectRoot, "releases").listFiles();
+        if (directories == null) {
+            return null;
+        }
+        OntologyVersion best = null;
+        for (File directory : directories) {
+            if (!directory.isDirectory()) {
+                continue;
+            }
+            OntologyVersion found = OntologyVersion.parseOrNull(directory.getName());
+            // A directory without the release file in it is not a release - the same test
+            // previousRelease applies when it picks what to compare against.
+            if (found == null || found.getScheme() != scheme
+                    || !Release.releaseFile(projectRoot, ontologyId, found.getText()).isFile()) {
+                continue;
+            }
+            if (best == null || found.compareTo(best) > 0) {
+                best = found;
+            }
+        }
+        return best;
+    }
+
+    /**
+     * Why the typed version clashes with the releases already made, or null.
+     *
+     * <p>Semantic: a version at or below the newest release is refused. The same number again
+     * writes over a release somebody may already have imported, and a lower one publishes a
+     * version that sorts before what is already out. Dated: only a date before the newest is
+     * refused, because cutting a release again on the same day is what OBO's generated Makefile
+     * does - it replaces that day's.
+     */
+    static String clashWithReleases(File projectRoot, String ontologyId,
+            OntologyVersion releasing) {
+        if (releasing == null) {
+            return null;
+        }
+        OntologyVersion newest = newestRelease(projectRoot, ontologyId, releasing.getScheme());
+        if (newest == null) {
+            return null;
+        }
+        int order = releasing.compareTo(newest);
+        boolean dated = releasing.getScheme() == OntologyVersion.Scheme.DATE;
+        if (order > 0 || (order == 0 && dated)) {
+            return null;
+        }
+        String instead = dated ? "Release with today's date, or a later one."
+                : "Type a version above it - " + newest.nextPatch().getText()
+                        + " if nothing moved, " + newest.nextMinor().getText()
+                        + " if terms were added.";
+        if (order == 0) {
+            return "releases/" + newest.getText() + " already exists, and a release is never "
+                    + "written over: somebody may already have imported it. " + instead;
+        }
+        return "releases/ already has " + newest.getText() + ", which is newer than "
+                + releasing.getText() + ", so " + releasing.getText() + " would be published "
+                + "below a version that is already out. " + instead;
+    }
+
     /** The form, with whatever was typed last time already in it. */
     private List<Parameter> parametersFrom(Map<String, String> values, OntologyVersion declared,
             String today) {
         String history = declared == null
                 ? "This ontology declares no version yet, so this is its first release."
-                : "This ontology currently declares " + declared.describe() + ", so the next one "
-                        + "is proposed in the same convention - a release that switches "
+                : "This ontology currently declares " + declared.describe() + ". The next one "
+                        + "is proposed after the newer of that and the newest release under "
+                        + "releases/, in the same convention - a release that switches "
                         + "convention starts a second version history beside the first.";
         return Arrays.asList(
                 Parameter.of(OPTION_SCHEME, "Versioning", Parameter.Kind.CHOICE)

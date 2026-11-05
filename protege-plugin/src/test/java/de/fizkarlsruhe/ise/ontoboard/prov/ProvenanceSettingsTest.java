@@ -276,4 +276,19 @@ class ProvenanceSettingsTest {
         assertTrue(ProvenanceSettings.KEY_MODE.startsWith("provenance."));
         assertTrue(ProvenanceSettings.PREFERENCE_SET.startsWith("de.fizkarlsruhe"));
     }
+
+    /**
+     * The "When to record it" list showed FOLLOW_THE_ONTOLOGY, ALWAYS and NEVER - the enum's own
+     * names, because the combo box renders toString() and nothing gave it words.
+     */
+    @Test
+    void theChoicesReadAsWordsAndAreStillSavedByName() {
+        for (ProvenanceSettings.Mode mode : ProvenanceSettings.Mode.values()) {
+            String shown = mode.toString();
+            assertFalse(shown.equals(mode.name()), "the constant reached the dialog: " + shown);
+            assertFalse(shown.contains("_"), shown);
+            assertEquals(mode, ProvenanceSettings.Mode.valueOf(mode.name()),
+                    "what is stored is still the name, so saved preferences keep working");
+        }
+    }
 }

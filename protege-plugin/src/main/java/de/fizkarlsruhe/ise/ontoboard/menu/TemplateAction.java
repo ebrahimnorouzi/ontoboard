@@ -65,6 +65,23 @@ public class TemplateAction extends OntoBoardAction {
         return "Template";
     }
 
+    /**
+     * Where Browse begins: the folder the sheet editor finds for the active ontology, so a
+     * project's templates are one click away rather than six folders down from home.
+     */
+    private String templatesFolder() {
+        try {
+            org.semanticweb.owlapi.model.OWLOntology active = getOWLModelManager() == null ? null
+                    : getOWLModelManager().getActiveOntology();
+            de.fizkarlsruhe.ise.ontoboard.sheet.TemplateDiscovery found =
+                    de.fizkarlsruhe.ise.ontoboard.sheet.TemplateDiscovery.of(fileOf(active));
+            File folder = found.getFolderForNewSheets();
+            return folder == null || !folder.isDirectory() ? "" : folder.getAbsolutePath();
+        } catch (RuntimeException noOntology) {
+            return "";
+        }
+    }
+
     @Override
     protected boolean configure() {
         Map<String, String> chosen = ParameterDialog.show(getOWLWorkspace(), "Template",
@@ -74,6 +91,8 @@ public class TemplateAction extends OntoBoardAction {
                 Arrays.asList(
                         Parameter.of(OPTION_FILE, "Template file", Parameter.Kind.FILE)
                                 .required()
+                                .defaultValue(file == null ? "" : file.getAbsolutePath())
+                                .startIn(templatesFolder())
                                 .help("The spreadsheet, saved as .tsv or .csv. Every spreadsheet "
                                         + "program exports both; which one you pick makes no "
                                         + "difference except that a definition containing a comma "
@@ -220,6 +239,12 @@ public class TemplateAction extends OntoBoardAction {
      */
     private static List<OWLOntologyChange> changesFor(OWLOntology ontology,
             List<OWLOntology> generated) {
+        return changesFor(ontology, generated, ProvenanceSettings.load());
+    }
+
+    /** As {@link #changesFor(OWLOntology, List)}, with the provenance settings given. */
+    static List<OWLOntologyChange> changesFor(OWLOntology ontology, List<OWLOntology> generated,
+            ProvenanceSettings settings) {
         List<OWLOntologyChange> changes = new ArrayList<OWLOntologyChange>();
         java.util.Set<OWLAxiom> seen = new java.util.HashSet<OWLAxiom>();
         java.util.Set<IRI> introduced = new java.util.LinkedHashSet<IRI>();
@@ -233,9 +258,16 @@ public class TemplateAction extends OntoBoardAction {
                 }
             }
             for (OWLEntity entity : each.getSignature()) {
-                if (!ontology.containsEntityInSignature(entity.getIRI())) {
-                    introduced.add(entity.getIRI());
+                // New means new to the ontology AND to everything it imports, and never OWL's own
+                // vocabulary. pizza-bfo's graph imports the ontology's release, and a row typed
+                // hawaiian - a class only the release declares - had the participant stamped as
+                // its contributor, along with rdfs:label and rdf:PlainLiteral. EditWatcher keeps
+                // the same rule: a term somebody else owns is not ours to stamp.
+                if (entity.isBuiltIn() || ontology.containsEntityInSignature(entity.getIRI(),
+                        org.semanticweb.owlapi.model.parameters.Imports.INCLUDED)) {
+                    continue;
                 }
+                introduced.add(entity.getIRI());
             }
         }
         if (changes.isEmpty()) {
@@ -243,7 +275,6 @@ public class TemplateAction extends OntoBoardAction {
         }
         // Who added these terms, on the same terms as everywhere else. A batch of forty terms
         // arriving anonymously is exactly the case where "who added this" gets asked later.
-        ProvenanceSettings settings = ProvenanceSettings.load();
         if (settings.shouldStamp(ontology, false)) {
             changes.addAll(0, Provenance.declareProperties(ontology));
             for (IRI term : introduced) {
