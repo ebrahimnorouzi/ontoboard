@@ -264,6 +264,14 @@ both sides passed.
 
 ---
 
+## Records for maintainers
+
+Pages kept for whoever works on OntoBoard, not linked from the menu:
+[what is supported](requirements-status.md), requirement by requirement;
+[feature parity](feature-parity.md) with the web application OntoBoard grew out of;
+[measurements](measurements.md) of the board and the build; and
+[compared with OntoGraf](compared-with-ontograf.md), Protégé's own visualisation.
+
 ## Specs and plans
 
 The design specs and implementation plans, including decisions that were later reversed and
