@@ -56,7 +56,7 @@ abstract: >-
   ships a built-in library of ontology design patterns; and draws a canvas of classes,
   individuals and their relations read from the asserted axioms, with reasoner
   conclusions and axiom-level explanations available on demand.
-version: "1.134.1"
+version: "1.134.2"
 date-released: "2026-11-05"
 license: Apache-2.0
 repository-code: "https://github.com/ebrahimnorouzi/ontoboard"
