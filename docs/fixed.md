@@ -13,6 +13,17 @@ release notes on
 [the releases page](https://github.com/ebrahimnorouzi/ontoboard/releases), carries the same
 record for that version.
 
+- **A sheet narrower than the window was cut off part of the way across, fixed in 1.134.1.**
+  Reported from Protégé 5.6.9 on `pizza-bfo`'s four-column sheets: the two header rows ran across
+  the whole tab, while the rows beneath them stopped inside the second column, the rest grey - Name
+  and Role of could not be seen. The panel above the grid was a plain `JPanel`, which its viewport
+  stretches to the tab's width; the header-row table in it shares the grid's columns and spread
+  that width across them, while the grid, which does not resize its columns, stayed as wide as
+  they had asked to be - and drew them clipped at its own edge. The panel is now a `Scrollable`
+  that keeps its own width, so both tables lay the columns out alike, at the widths their contents
+  asked for. `SheetGridWidthTest` lays out the real grid in a 2,000 px window: 480 px of grid under
+  1,945 px of columns before, all four columns shown after.
+
 - **The sheet editor said "No templates yet" over nine templates one folder away, fixed in
   1.134.0.** Reported from `pizza-bfo`, a test project whose knowledge-graph templates are in
   `kg/templates`. Opened from its edit file, `src/ontology/pizzabfo-edit.owl`, the editor looked

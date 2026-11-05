@@ -1,0 +1,57 @@
+OntoBoard 1.134.1 - host smoke receipt
+
+A patch for one defect in 1.134.0, found by the maintainer in Protege 5.6.9 on the day 1.134.0
+was released: a sheet narrower than the window was cut off part of the way across. See FIXED.
+
+Produced on Windows 11 Pro (10.0.26100), with tools/smoke.ps1 and -Dontoboard.selftest=true, the
+verdict read from what Protege logged. Protege 5.6.9 is the maintainer's own install, with
+ontoboard-1.134.0.jar moved out of plugins and this jar the only ontoboard-*.jar in it; Protege
+5.5.0 is a throwaway copy of the install, the same way. Each run was given pizzabfo-edit.owl
+from a fresh clone of the pizza-bfo test project (7ff2db9).
+
+  2026-11-05  Protege 5.6.9  OWL API 4.5.29  JRE 11.0.25+9    -Xmx2G    PASS  check 9/9  test 12/12
+  2026-11-05  Protege 5.6.9  OWL API 4.5.29  JRE 11.0.25+9    -Xmx500M  PASS  check 9/9
+  2026-11-05  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121    -Xmx2G    PASS  check 9/9  test 12/12
+
+The -Xmx500M run is what Protege.exe gives a user who double-clicks it. Both 5.6.9 runs finished
+loading pizza-bfo, its seven imports resolved from disk; the 5.5.0 run was stopped at its
+self-test verdict, before the ontology had finished loading.
+
+The jar: sha256 4aecee8d733cd86d..., built by mvn -o clean package from the working tree this
+release was committed from. The unit suite in that build, on Java 11: 2,761 tests, 0 failures,
+0 errors, 2 skipped - PinchZoomTest, as before, and BundleConfigurationTest, the manifest check,
+which a clean build reaches before the jar exists; run against this jar afterwards, its 18 tests
+passed. The new SheetGridWidthTest also passed on Java 25, which CI uses.
+One full build before that failed in CanvasGestureInteractionTest, a test that drives the board
+in a real window when a display is present; run alone twice it passed both times, and the next
+full build passed. Nothing on the board changed in this release.
+Eight NullPointerExceptions were logged, four on each host, all in Protege's own OWLCellRenderer
+building the class hierarchy view; none from OntoBoard.
+
+The self-test builds the sheet editor's view on both hosts (Window > Tabs > OntoBoard Sheets:
+SheetEditorView built without throwing, and closed again), but nothing here looks at a pixel.
+The fix below is covered by SheetGridWidthTest, which lays out the grid the view builds in a
+2,000 px window, and by an offscreen render of pizza-bfo's 04_baker_roles through the same code:
+all four columns, the header rows exactly as wide as the rows beneath. Seeing it in Protege's
+own window is still to be done.
+
+
+FIXED IN 1.134.1
+
+- A sheet narrower than the window was cut off part of the way across. Reported from Protege
+  5.6.9 with 1.134.0 on pizza-bfo's four-column sheets: the two header rows ran across the whole
+  tab, while the rows beneath them stopped inside the second column, the rest grey - Name and
+  Role of could not be seen. The panel above the grid was a plain JPanel, which its viewport
+  stretches to the tab's width; the header-row table in it shares the grid's columns and spread
+  that width across them, while the grid, which does not resize its columns, stayed as wide as
+  they had asked to be - and drew them clipped at its own edge. The panel is now a Scrollable
+  that keeps its own width, so both tables lay the columns out alike, at the widths their
+  contents asked for. SheetGridWidthTest: 480 px of grid under 1,945 px of columns before, all
+  four columns after.
+
+ALSO IN THIS RELEASE
+
+- The documentation site: a shorter homepage with two examples to try - a pizza ontology, and a
+  BFO pizza ontology with a knowledge graph - and a page of the ontologies made with OntoBoard.
+  The Honest accounting section of the menu is now About: limitations, what was fixed, and the
+  comparison with other tools.

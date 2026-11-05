@@ -594,6 +594,85 @@ public class SheetEditorView extends AbstractOWLViewComponent {
         return files == 1 ? "1 file" : files + " files";
     }
 
+    /**
+     * One sheet's grid as its tab shows it: the data in a scroll pane, the sheet's row numbers
+     * down the left, and above the data the column letters with the two editable header rows.
+     * Package-visible so a test can lay out exactly what the view shows.
+     */
+    static JScrollPane gridFor(SheetTable table, SheetHeaderTable header) {
+        table.autofitColumns();
+        JScrollPane scrolled = new JScrollPane(table);
+        // Row numbers down the left, as a spreadsheet has: every message about these sheets
+        // names a row, and until 1.117.0 the grid showed none, so finding the row a message
+        // named meant counting.
+        scrolled.setRowHeaderView(table.rowNumbers());
+
+        // The two header rows, editable, where the column header goes. The real
+        // JTableHeader stays above them - it is what resizes columns - and now carries the
+        // spreadsheet column letter, because the heading it used to paint is in the row
+        // immediately below and is editable there.
+        JPanel columnHeader = new ColumnHeader();
+        columnHeader.add(table.getTableHeader(), BorderLayout.NORTH);
+        columnHeader.add(header, BorderLayout.CENTER);
+        table.setCompositeColumnHeader(columnHeader);
+        scrolled.setColumnHeaderView(columnHeader);
+        scrolled.setCorner(JScrollPane.UPPER_LEFT_CORNER,
+                header.corner(table.getTableHeader().getPreferredSize().height));
+        return scrolled;
+    }
+
+    /**
+     * The panel above a grid: the column letters and the two editable header rows. Never wider
+     * than the columns.
+     *
+     * <p>As a plain {@code JPanel} it was not {@code Scrollable}, so its {@code JViewport}
+     * stretched it to the full width of the tab whenever a sheet was narrower than the window.
+     * The header-row table inside it shares the grid's column model, and a {@code JTable} spreads
+     * whatever width it is given across its columns - so every column grew to fill the tab, while
+     * the grid itself, {@code AUTO_RESIZE_OFF}, stayed as wide as its columns had asked to be. The
+     * grid then drew columns wider than itself and was cut off at its own edge: pizza-bfo's
+     * four-column sheets in Protege 5.6.9, rows visible only part of the way into the second
+     * column. A {@code Scrollable} that does not track the viewport's width is left at its
+     * preferred width - the columns' - so both tables lay the columns out alike, at the widths
+     * their contents asked for.
+     */
+    static final class ColumnHeader extends JPanel implements javax.swing.Scrollable {
+
+        private static final long serialVersionUID = 1L;
+
+        ColumnHeader() {
+            super(new BorderLayout());
+        }
+
+        @Override
+        public java.awt.Dimension getPreferredScrollableViewportSize() {
+            return getPreferredSize();
+        }
+
+        @Override
+        public int getScrollableUnitIncrement(java.awt.Rectangle visible, int orientation,
+                int direction) {
+            return 16;
+        }
+
+        @Override
+        public int getScrollableBlockIncrement(java.awt.Rectangle visible, int orientation,
+                int direction) {
+            return orientation == javax.swing.SwingConstants.HORIZONTAL ? visible.width
+                    : visible.height;
+        }
+
+        @Override
+        public boolean getScrollableTracksViewportWidth() {
+            return false;
+        }
+
+        @Override
+        public boolean getScrollableTracksViewportHeight() {
+            return false;
+        }
+    }
+
     /** Package-visible so a test can open a book without a file chooser. */
     void open(SheetBook opened) {
         book = opened;
@@ -614,26 +693,9 @@ public class SheetEditorView extends AbstractOWLViewComponent {
                     say("Pasted into " + name + ".");
                 }
             });
-            table.autofitColumns();
-            JScrollPane scrolled = new JScrollPane(table);
-            // Row numbers down the left, as a spreadsheet has: every message about these sheets
-            // names a row, and until 1.117.0 the grid showed none, so finding the row a message
-            // named meant counting.
-            scrolled.setRowHeaderView(table.rowNumbers());
-
-            // The two header rows, editable, where the column header goes. The real
-            // JTableHeader stays above them - it is what resizes columns - and now carries the
-            // spreadsheet column letter, because the heading it used to paint is in the row
-            // immediately below and is editable there.
             final SheetHeaderTable header = new SheetHeaderTable(book, name, table);
             headers.put(name, header);
-            JPanel columnHeader = new JPanel(new BorderLayout());
-            columnHeader.add(table.getTableHeader(), BorderLayout.NORTH);
-            columnHeader.add(header, BorderLayout.CENTER);
-            table.setCompositeColumnHeader(columnHeader);
-            scrolled.setColumnHeaderView(columnHeader);
-            scrolled.setCorner(JScrollPane.UPPER_LEFT_CORNER,
-                    header.corner(table.getTableHeader().getPreferredSize().height));
+            JScrollPane scrolled = gridFor(table, header);
             header.getModel().addTableModelListener(
                     new javax.swing.event.TableModelListener() {
                         @Override
