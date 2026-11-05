@@ -13,6 +13,18 @@ release notes on
 [the releases page](https://github.com/ebrahimnorouzi/ontoboard/releases), carries the same
 record for that version.
 
+- **A project that passed *Build...* in Protégé failed its QC workflow on GitHub, fixed in
+  1.134.2.** Found when the two example projects ran QC on GitHub for the first time. ROBOT 1.9.8
+  failed `pizza`'s `check_labels` on four pattern classes - `Concept`, `Object`, `Price` and
+  `Currency` - and `pizza-bfo`'s `cq5` on the four relations a baking must have, `has participant`
+  to `occupies temporal region`. Each label those checks look for is in an import. *Build...*
+  inside Protégé had passed the same checks, because it queries the ontology with its imports
+  merged; the generated Makefile's `sparql_test` ran `robot verify` on the edit file alone, which
+  sees nothing its imports say. The target now merges the imports first, as `validate_profile`
+  already did, and both projects pass `make test` under the same ROBOT. A project created before
+  1.134.2 gets the new Makefile from *Project → Update project files...*; until then *Build...*
+  says the Makefile is not the one OntoBoard generates, and names that menu item.
+
 - **A sheet narrower than the window was cut off part of the way across, fixed in 1.134.1.**
   Reported from Protégé 5.6.9 on `pizza-bfo`'s four-column sheets: the two header rows ran across
   the whole tab, while the rows beneath them stopped inside the second column, the rest grey - Name

@@ -93,14 +93,28 @@ class PatternIndexTest {
 
         List<String> stale = new ArrayList<String>();
         List<String> unreachable = new ArrayList<String>();
+        Map<String, String> secondRows = null;
         for (Map.Entry<String, String> row : shippedRows.entrySet()) {
             if (row.getValue().equals(rebuiltRows.get(row.getKey()))) {
                 continue;
             }
-            if (importsThatDidNotLoad(new File(patterns, row.getKey())).isEmpty()) {
-                stale.add(row.getKey());
-            } else {
+            if (!importsThatDidNotLoad(new File(patterns, row.getKey())).isEmpty()) {
                 unreachable.add(row.getKey());
+                continue;
+            }
+            // Every import loaded for this check - but this check is its own load, and the
+            // rebuild above was another. A server that failed one and answered the other changes a
+            // row with nothing in the repository changed: on CI, smarthome-situation lost three SSN
+            // terms when its import's own import, SmartHome_Property.owl on the same server, did
+            // not answer. So one more rebuild before the row is called stale: a row that matches it
+            // was the network, not the index.
+            if (secondRows == null) {
+                secondRows = rowsById(PatternIndex.buildFrom(patterns).replace("\r\n", "\n"));
+            }
+            if (row.getValue().equals(secondRows.get(row.getKey()))) {
+                unreachable.add(row.getKey());
+            } else {
+                stale.add(row.getKey());
             }
         }
 
@@ -131,11 +145,18 @@ class PatternIndexTest {
     }
 
     /**
-     * The imports this pattern declares that an OWL API load could not resolve.
+     * The imports this pattern declares - directly, or through one of its imports - that an OWL
+     * API load could not resolve.
      *
      * <p>Asked of the file rather than of the network: an import that resolves to a document the
      * parser rejects is as unusable as one that times out, and both are reasons the signature a
      * rebuild sees is not the signature the index was built from.
+     *
+     * <p>Through its imports as well, because that is where a terms column comes from. Found on
+     * CI: smarthome-situation's own import, SmartHome_FeatureOfInterest.owl, loaded while the
+     * SmartHome_Property.owl it imports from the same server did not, and the rebuild lost three
+     * SSN terms that file declares. Checking only the pattern's own declarations, the test
+     * called that a stale index.
      */
     private static List<String> importsThatDidNotLoad(File folder) {
         List<String> missing = new ArrayList<String>();
@@ -153,10 +174,12 @@ class PatternIndexTest {
                                     .setMissingImportHandlingStrategy(
                                             org.semanticweb.owlapi.model
                                                     .MissingImportHandlingStrategy.SILENT));
-            for (org.semanticweb.owlapi.model.OWLImportsDeclaration declared
-                    : ontology.getImportsDeclarations()) {
-                if (manager.getImportedOntology(declared) == null) {
-                    missing.add(declared.getIRI().toString());
+            for (org.semanticweb.owlapi.model.OWLOntology loaded : ontology.getImportsClosure()) {
+                for (org.semanticweb.owlapi.model.OWLImportsDeclaration declared
+                        : loaded.getImportsDeclarations()) {
+                    if (manager.getImportedOntology(declared) == null) {
+                        missing.add(declared.getIRI().toString());
+                    }
                 }
             }
         } catch (Exception couldNotRead) {        // NOPMD - the reason is the answer

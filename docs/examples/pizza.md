@@ -7,6 +7,7 @@ you can follow how it grew.
 
 [:material-github: The pizza ontology on GitHub](https://github.com/ebrahimnorouzi/pizza-ontology){ .md-button .md-button--primary }
 [:material-download: Download it as a ZIP](https://github.com/ebrahimnorouzi/pizza-ontology/archive/refs/heads/main.zip){ .md-button }
+[:material-book-open-variant: Read its documentation](https://ebrahimnorouzi.github.io/pizza-ontology/ontology/index-en.html){ .md-button }
 
 You need Protégé 5.6.x (or 5.5.0) with [the OntoBoard plugin](../getting-started.md). Unpack the
 example anywhere and open `src/ontology/pizza-edit.owl` with *File → Open...*
@@ -48,6 +49,15 @@ between `0.1.0` and `1.0.0` shows, term by term, what each iteration added.
 
 When you are happy, *File → Save*. If you cloned the example rather than downloading it,
 *OntoBoard → Share → Git...* shows what you changed.
+
+## 7. Make its documentation page
+
+*OntoBoard → Build and release → Documentation...* runs [Widoco](https://github.com/dgarijo/Widoco)
+on the release and opens the page it writes: every class and property - and, with *Include the
+WebVowl diagram* ticked, a diagram of how they connect. It needs Widoco's jar; the dialog says
+where to get it.
+[The page this example publishes](https://ebrahimnorouzi.github.io/pizza-ontology/ontology/index-en.html)
+was made that way.
 
 ## Where next
 

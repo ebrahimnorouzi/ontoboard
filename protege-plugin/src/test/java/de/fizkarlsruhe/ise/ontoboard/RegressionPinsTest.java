@@ -319,11 +319,21 @@ class RegressionPinsTest {
                 "CI must reason, or an inconsistent ontology passes: " + testLine);
         assertTrue(testLine.contains("sparql_test"),
                 "the scaffolded SPARQL check must run: " + testLine);
-        // "$(ROBOT) verify", not "robot verify": every robot call in the generated Makefile
-        // now goes through a ROBOT variable that carries --catalog, so that the catalog entries
-        // "Import terms..." writes actually resolve. The pin is about the SPARQL check really
-        // being invoked, which it still is.
-        assertTrue(makefile.contains("$(ROBOT) verify"), makefile);
+        // Through $(ROBOT), not "robot": every robot call in the generated Makefile goes through
+        // a ROBOT variable that carries --catalog, so that the catalog entries "Import terms..."
+        // writes actually resolve. The pin is about the SPARQL check really being invoked, which
+        // it still is. Read from the sparql_test recipe rather than as "$(ROBOT) verify" anywhere
+        // in the file: since 1.134.2 the recipe merges the imports first -
+        // "$(ROBOT) merge --input ... verify --queries ..." - and no longer contains that text.
+        String unix = makefile.replace("\r\n", "\n");
+        int target = unix.indexOf("\nsparql_test:\n");
+        assertTrue(target >= 0, "no sparql_test target: " + makefile);
+        int from = target + "\nsparql_test:\n".length();
+        int end = unix.indexOf("\n\n", from);
+        String sparql = unix.substring(from, end < 0 ? unix.length() : end);
+        assertTrue(sparql.startsWith("\t$(ROBOT) ")
+                        && sparql.contains("verify --queries ../sparql/*.rq"),
+                "the SPARQL check must run, through $(ROBOT): " + sparql);
         assertTrue(makefile.contains(".DEFAULT_GOAL := all"),
                 "without this the first target of an included Makefile becomes the default goal");
 

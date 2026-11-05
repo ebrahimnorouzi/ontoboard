@@ -1,0 +1,70 @@
+OntoBoard 1.134.2 - host smoke receipt
+
+A patch for one defect, found when the two example projects ran their QC workflow on GitHub for
+the first time: a project that passed Build... inside Protege failed make test on GitHub, in its
+SPARQL checks. See FIXED.
+
+Produced on Windows 11 Pro (10.0.26100), with tools/smoke.ps1 and -Dontoboard.selftest=true, the
+verdict read from what Protege logged. Protege 5.6.9 is the maintainer's own install, with
+ontoboard-1.134.1.jar moved out of plugins and this jar the only ontoboard-*.jar in it; Protege
+5.5.0 is a throwaway copy of the install, the same way. Each run was given pizzabfo-edit.owl
+from a fresh clone of the pizza-bfo test project (7ff2db9) carrying the Makefile this release
+generates.
+
+  2026-11-05  Protege 5.6.9  OWL API 4.5.29  JRE 11.0.25+9    -Xmx2G    PASS  check 9/9  test 12/12
+  2026-11-05  Protege 5.6.9  OWL API 4.5.29  JRE 11.0.25+9    -Xmx500M  PASS  check 9/9
+  2026-11-05  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121    -Xmx2G    PASS  check 9/9  test 12/12
+
+The -Xmx500M run is what Protege.exe gives a user who double-clicks it. The two -Xmx2G runs
+finished loading pizza-bfo, its seven imports resolved from disk; the -Xmx500M run was stopped at
+its self-check verdict, before the ontology had finished loading.
+
+The jar: sha256 c5ff870e9a520df3..., built by mvn -o clean package from the working tree this
+release was committed from. The unit suite in that build, on Java 11: 2,762 tests, 0 failures,
+0 errors, 2 skipped - PinchZoomTest, as before, and BundleConfigurationTest, the manifest check,
+which a clean build reaches before the jar exists; run against this jar afterwards, its 18 tests
+passed. The three test classes this release changes - OdkScaffoldTest, RegressionPinsTest and
+PatternIndexTest - also passed on Java 25, which CI uses.
+The first attempt at that build stopped in its clean step, unable to delete a directory under
+target/; the next attempt, a few minutes later, ran through.
+Eight NullPointerExceptions were logged, four in each -Xmx2G run, all in Protege's own
+OWLCellRenderer; none from OntoBoard.
+
+The self-test's in-process build scaffolds a project of its own, so it runs this release's
+Makefile but not make or ROBOT, which is where the defect was. The fix was checked there: with
+ROBOT 1.9.8, the version the generated QC workflow installs, on fresh clones of both example
+projects, running make test's recipes as the Makefile states them - through a short script
+standing in for make, which this machine does not have: it reads the variables and recipes from
+the Makefile and runs them in order, stopping at the first failure, as make does.
+
+  pizza      Makefile as committed   FAIL in sparql_test  check_labels: 4 violations
+  pizza      Makefile from 1.134.2   PASS  reason, report, sparql_test, validate_profile
+  pizza-bfo  Makefile as committed   FAIL in sparql_test  cq5: 4 violations
+  pizza-bfo  Makefile from 1.134.2   PASS  reason, report, sparql_test, validate_profile
+
+InProcessTargets.whyNotEligible, which Build... asks, refuses both Makefiles as committed and
+accepts both from 1.134.2.
+
+
+FIXED IN 1.134.2
+
+- A project that passed Build... in Protege failed its QC workflow on GitHub. Found when the two
+  example projects ran QC on GitHub for the first time. ROBOT 1.9.8 failed pizza's check_labels
+  on four pattern classes - Concept, Object, Price and Currency - and pizza-bfo's cq5 on the four
+  relations a baking must have, has participant to occupies temporal region. Each label those
+  checks look for is in an import. Build... inside Protege had passed the same checks, because it
+  queries the ontology with its imports merged; the generated Makefile's sparql_test ran robot
+  verify on the edit file alone, which sees nothing its imports say. The target now merges the
+  imports first, as validate_profile already did, and both projects pass make test under the
+  same ROBOT. A project created before 1.134.2 gets the new Makefile from Project > Update
+  project files...; until then Build... says the Makefile is not the one OntoBoard generates, and
+  names that menu item.
+
+ALSO IN THIS RELEASE
+
+- PatternIndexTest failed CI on main once 1.134.1 was merged, with nothing in the repository
+  wrong: an import of a pattern's import did not load over the network, and the test called the
+  shipped pattern index stale. It now looks for unloaded imports through the whole imports
+  closure, and rebuilds the index once more before calling a row stale.
+- The documentation site: the two examples link to their ontologies' documentation pages, and
+  each example ends with how to make that page with Build and release > Documentation....
