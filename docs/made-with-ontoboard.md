@@ -11,6 +11,7 @@ Pizzas, their bases, toppings, spiciness and prices, from three ontology design 
 (Componency, Classification, Price), following eXtreme Design. Five releases.
 
 [Repository](https://github.com/ebrahimnorouzi/pizza-ontology) ·
+[Documentation](https://ebrahimnorouzi.github.io/pizza-ontology/ontology/index-en.html) ·
 [Try it](examples/pizza.md)
 </div>
 
@@ -20,6 +21,7 @@ The same pizzas on BFO 2020, with BFO and NFDIcore patterns and a knowledge grap
 nine ROBOT templates. Six releases, the last one the graph's.
 
 [Repository](https://github.com/ebrahimnorouzi/pizza-bfo) ·
+[Documentation](https://ebrahimnorouzi.github.io/pizza-bfo/ontology/index-en.html) ·
 [Try it](examples/pizza-bfo.md)
 </div>
 

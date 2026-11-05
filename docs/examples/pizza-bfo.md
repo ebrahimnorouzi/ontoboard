@@ -6,6 +6,7 @@ spreadsheets and turned into individuals by OntoBoard.
 
 [:material-github: Pizza BFO on GitHub](https://github.com/ebrahimnorouzi/pizza-bfo){ .md-button .md-button--primary }
 [:material-download: Download it as a ZIP](https://github.com/ebrahimnorouzi/pizza-bfo/archive/refs/heads/main.zip){ .md-button }
+[:material-book-open-variant: Read its documentation](https://ebrahimnorouzi.github.io/pizza-bfo/ontology/index-en.html){ .md-button }
 
 You need Protégé 5.6.x (or 5.5.0) with [the OntoBoard plugin](../getting-started.md). Unpack the
 example anywhere and open `src/ontology/pizzabfo-edit.owl` with *File → Open...*
@@ -53,6 +54,15 @@ the whole run back.
 *Instances*. Your new order is among them - nobody said it was cheesy; the ontology says what a
 cheesy pizza is. *OntoBoard → Check and test → SPARQL...* runs the questions in `kg/cq/` over
 what the graph says.
+
+## 7. Make its documentation page
+
+Back in the ontology's window, *OntoBoard → Build and release → Documentation...* runs
+[Widoco](https://github.com/dgarijo/Widoco) on the release and opens the page it writes: every
+class and property - and, with *Include the WebVowl diagram* ticked, a diagram of how they
+connect. It needs Widoco's jar; the dialog says where to get it.
+[The page this example publishes](https://ebrahimnorouzi.github.io/pizza-bfo/ontology/index-en.html)
+was made that way.
 
 ## Where next
 
