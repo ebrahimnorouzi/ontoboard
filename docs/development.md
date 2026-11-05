@@ -266,6 +266,7 @@ both sides passed.
 
 ## Specs and plans
 
-`docs/superpowers/` holds the design specs and implementation plans, including decisions
-that were later reversed and why. Worth reading before changing architecture — several
-constraints above look removable until you read what they cost.
+The design specs and implementation plans, including decisions that were later reversed and
+why, are kept by the maintainer outside the repository since 1.134.0 (they were in
+`docs/superpowers/` before, and earlier versions remain in the history). Ask before changing
+architecture — several constraints above look removable until you read what they cost.

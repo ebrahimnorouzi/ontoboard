@@ -196,8 +196,8 @@ Three items that used to be on this list now ship, and testing them *will* find 
 - **Release** — *Build and release → Release…* runs the build and stamps `owl:versionIRI`, and
   *Build and release → Compare releases…* diffs two of them term by term.
 
-See the [requirements analysis](superpowers/specs/2026-08-26-provenance-and-release-requirements.md)
-for what the remaining ones need.
+What the remaining ones need is in the provenance and release requirements analysis, an internal
+design document.
 
 ### Resilience worth checking
 

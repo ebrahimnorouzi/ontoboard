@@ -9,7 +9,7 @@ cases measured against a real ontology — NFDIcore, MWO, PMDCO or the 26-sheet 
 graph. **Partly** means it works within a limit, and the limit is written out. **No** means it
 is not there; where it is not there on purpose, the reason is given.
 
-Current release: **1.118.0**. 2,347 tests; both supported hosts (Protégé 5.5.0 on Java 8 and
+Last full measurement: release **1.118.0**. 2,347 tests; both supported hosts (Protégé 5.5.0 on Java 8 and
 5.6.9 on Java 11) start the bundle, pass the self-check 9/9 and the self-test 11/11.
 
 ---
@@ -39,34 +39,34 @@ The steps below are the ODK workflow as it was given to OntoBoard, in order.
 | `<ontology>-odk.yaml` visible and editable inside Protégé | Yes | **Project → Project configuration…** reads and writes it; `OdkYaml` preserves what it does not model rather than rewriting the file. |
 | `id`, `title`, `github_org`, `repo` | Yes | In that editor, and used by the scaffold. |
 | `release_artefacts` / `primary_release` | Partly | `export_formats` is honoured by **Release…**; which *artefacts* (base, full, simple) are built is the project's own Makefile, not this menu. |
-| `import_group` — declaring imports | Yes | **Project → Imports**, **Import terms…**, and the YAML editor. |
-| Module type BOT / TOP / STAR / custom | Yes | **ROBOT → Import terms…** offers the extraction method and writes the catalog entry. |
-| `robot_report` settings, `custom_profile` | Yes | **ROBOT → Quality report…** uses the project's own `profile.txt` when there is one, and says which profile it used. |
-| `sh run.sh make …` targets | Partly | **Project → Build…** runs targets through `make` when it is on PATH, and a set of them in-process when it is not. `update_repo` is modelled by **Update project files…**, which regenerates the files OntoBoard generates — it is not ODK's own `update_repo`. |
+| `import_group` — declaring imports | Yes | **Reuse → Check imports**, **Reuse → Import terms from a list…**, **Reuse → Refresh imports…**, and the YAML editor. |
+| Module type BOT / TOP / STAR / custom | Yes | **Reuse → Import terms from a list…** offers the extraction method and writes the catalog entry. |
+| `robot_report` settings, `custom_profile` | Yes | **Check and test → Quality report…** uses the project's own `profile.txt` when there is one, and says which profile it used. |
+| `sh run.sh make …` targets | Partly | **Build and release → Build…** runs the targets of a project whose Makefile is the one this OntoBoard writes in-process, with nothing installed; any other Makefile needs `make` and the tools it calls. `update_repo` is modelled by **Update project files…**, which regenerates the files OntoBoard generates — it is not ODK's own `update_repo`. |
 | `src/scripts/` — run your own scripts | Yes | **Project → Run a project script…**, with arguments and the output captured. |
 | `<ontology>-idranges.owl` | Yes | **Project → ID ranges…** shows every allocation and can allocate a block. Used for minting on the canvas and, since 1.117.0, in the sheets. |
 | `profile.txt` | Yes | Generated, and read by the quality report. |
-| `catalog-v001.xml` | Yes | Generated, honoured by every `robot` call in the generated Makefile, and written to by **Import terms…**. |
+| `catalog-v001.xml` | Yes | Generated, honoured by every `robot` call in the generated Makefile, and written to by **Reuse → Import terms from a list…**. |
 | `src/metadata` for OBO Foundry submission | No | Not generated and not checked. |
 | A form that returns to itself when a value is rejected | Yes | Every parameter dialog re-opens with what was typed, including the project wizard. |
-| `make` not on PATH should not be a dead end | Yes | **Project → Check requirements…** says what is missing and how to get it; several targets run in-process without `make`. |
+| `make` not on PATH should not be a dead end | Yes | **OntoBoard → Check requirements…** says what is missing and how to get it; several targets run in-process without `make`. |
 
 ## 3. ROBOT operations
 
 | Operation | Status | Where |
 |---|---|---|
-| measure | Yes | **ROBOT → Measure…** — 60 metrics |
-| report | Yes | **ROBOT → Quality report…** — 32 rules, project profile honoured |
-| validate-profile | Yes | **ROBOT → Profile…** |
-| explain | Yes | **ROBOT → Explain…** |
-| query / SPARQL | Yes | **ROBOT → SPARQL…** |
+| measure | Yes | **Check and test → Measure…** — 60 metrics |
+| report | Yes | **Check and test → Quality report…** — 32 rules, project profile honoured |
+| validate-profile | Yes | **Check and test → Profile…** |
+| explain | Yes | **Check and test → Explain…** |
+| query / SPARQL | Yes | **Check and test → SPARQL…** |
 | reason | Yes | In **Release…**, and the Protégé reasoners on the canvas |
-| relax / reduce / materialize | Yes | **ROBOT → Transform…** |
-| export | Yes | **ROBOT → Export terms…** |
-| extract | Yes | **ROBOT → Import terms…** |
-| rename | Yes | **ROBOT → Rename IRIs…**, previewed before it applies |
-| template | Yes | **Knowledge graph → Template…** |
-| diff | Yes | **Project → Compare releases…** |
+| relax / reduce / materialize | Yes | **Terms → Transform…** |
+| export | Yes | **Terms → Export terms…** |
+| extract | Yes | **Reuse → Import terms from a list…** |
+| rename | Yes | **Terms → Rename IRIs…**, previewed before it applies |
+| template | Yes | **Spreadsheets → Template…** |
+| diff | Yes | **Build and release → Compare releases…** |
 | merge, annotate | Partly | Used inside Release and Build; not exposed as their own menu items. |
 | Parameters adjustable, logs visible | Yes | Every operation has a parameter dialog with help on each field, and the result dialog lists what it did. |
 
@@ -74,23 +74,23 @@ The steps below are the ODK workflow as it was given to OntoBoard, in order.
 
 | Asked for | Status | Where, or what is missing |
 |---|---|---|
-| A published version distinct from the edit file | Yes | **Project → Release…** |
+| A published version distinct from the edit file | Yes | **Build and release → Release…** |
 | A dated release IRI, OBO style | Yes | `…/releases/2026-10-12/mwo.owl`, with a dated copy kept. |
 | **Semantic versioning, as MWO publishes** | **Yes (1.117.0)** | Choose the convention in the dialog. Semantic publishes `…/mwo/3.0.2` with `owl:versionInfo "3.0.2"` — the exact shape MWO's own `release.sh` produces — and links `owl:priorVersion` to the release before it. |
 | The convention should be the user's choice | Yes | A *Versioning* field with both. The default is read from what the ontology already declares, so releasing somebody else's project continues their history rather than starting a second one. |
 | The build should be able to do both too | Yes | The generated Makefile takes `VERSION` and `VERSION_IRI` as overrides (`make VERSION=3.0.2 VERSION_IRI=… prepare_release`), which is how MWO's `release.sh` drives it. |
 | Refuse to publish something broken | Yes | The quality report at error level, and a check that no term the last release published has vanished. |
 | Release notes | Yes | `CHANGES.md` written beside the dated copy, generated from the diff. |
-| Compare two releases | Partly | **Project → Compare releases…** compares dated or semantic directories under `releases/`. A project that publishes by git tag and PURL without keeping a `releases/` folder — which MWO does — has nothing for it to list. |
+| Compare two releases | Partly | **Build and release → Compare releases…** compares dated or semantic directories under `releases/`. A project that publishes by git tag and PURL without keeping a `releases/` folder — which MWO does — has nothing for it to list. |
 
 ## 5. Knowledge graphs, templates and spreadsheets
 
 | Asked for | Status | Where, or what is missing |
 |---|---|---|
-| Build a graph from ROBOT templates | Yes | **Knowledge graph → Template…**. Measured on the whole 26-sheet MatWerk graph: 8,471 rows, 36,761 axioms, 6,771 individuals, 0 problems, about 7 seconds. |
+| Build a graph from ROBOT templates | Yes | **Spreadsheets → Template…**. Measured on the whole 26-sheet MatWerk graph: 8,471 rows, 36,761 axioms, 6,771 individuals, 0 problems, about 7 seconds. |
 | Every individual created and visible | Yes | They are ordinary individuals in the ontology, in Protégé's own views. |
 | Export per sheet or all together | Yes | A sheet at a time, or merged with the ontology. |
-| Open the sheets inside Protégé | Yes | **OntoBoard Sheets** tab, or **Knowledge graph → Sheet editor**. |
+| Open the sheets inside Protégé | Yes | **OntoBoard Sheets** tab, or **Spreadsheets → Sheet editor**. |
 | **Edit like a spreadsheet** | Yes | Cells, rows, fill-down, undo, cut-down keyboard behaviour. Row numbers down the side are the sheet's own numbers, which is what every message about these files quotes. |
 | Auto-completion | Yes | Columns that name another term complete from every open sheet and from the ontology. |
 | Cleaning and suggestions | Yes | Ten kinds of finding, marked in the cell; the ones with an obvious correction can be fixed in a single undoable step. 307 were applied to the MatWerk sheets with the build byte-identical afterwards. |
@@ -103,8 +103,8 @@ The steps below are the ODK workflow as it was given to OntoBoard, in order.
 | Pop-up menus | Yes | Right-click: fix, create, mint, insert/duplicate/delete a row, find this value everywhere, explain the mark. |
 | Add further sheets | Yes | *New sheet…*, with starter columns and identifiers continuing the project's numbering. |
 | **Work with an existing Excel file** | **Partly (1.117.0)** | *Import Excel…* reads a real `.xlsx` — shared strings, styles, dates, formulas, rich text — and converts each tab to a `.tsv` in the folder. Verified cell-by-cell against openpyxl on seven workbooks (11,389 cells, 19 tabs, six written by Excel itself). **It does not write `.xlsx`**: edits are saved to the `.tsv` files, which is what ROBOT reads and what git can merge. |
-| Templates in the ontology's own directory | Yes | `src/templates` is opened automatically for the project you have open. |
-| Provenance: who added what, when | Yes | *Record who* adds the contributor and date columns and stamps rows; on the ontology side **Provenance…** does the same per term. |
+| Templates in the ontology's own directory | Yes (1.134.0) | The first of `templates/` beside the open file, the project's `src/templates`, `kg/templates` and `templates/` at the project root that holds a sheet is opened automatically, and the editor says which and where else it looked. *Project templates ▾* lists all of them to choose from. Before 1.134.0 only `src/templates` or `templates/` beside the file was tried, so a project with its knowledge graph in `kg/templates` opened from its edit file showed "No templates yet". |
+| Provenance: who added what, when | Yes | *Record who* adds the contributor and date columns and stamps rows; on the ontology side **Record who edits terms…** does the same per term. |
 | Logs from ROBOT and the reasoner | Yes | Both reported in the result dialog; ELK over the built graph was measured at 3.0s for 34,773 axioms. |
 
 ## 6. Patterns
@@ -136,15 +136,15 @@ The steps below are the ODK workflow as it was given to OntoBoard, in order.
 | Asked for | Status | Where |
 |---|---|---|
 | Use Protégé's reasoners | Yes | ELK, HermiT and the rest, with inferences drawn on the canvas |
-| Konclude | Yes | **ROBOT → Reason with Konclude…** — classify, realise, consistency |
+| Konclude | Yes | **Check and test → Reason with Konclude…** — classify, realise, consistency |
 | **Koncludix `materialize`** | Partly | Offered as *Materialise everything (needs Koncludix)*, and a stock Konclude that rejects it is told apart from a missing binary. **Not verified end to end**: there is no Koncludix binary on the development machine, so the command line and the reader are tested and the round trip is not. |
-| Explain an inference | Yes | **ROBOT → Explain…**, and per-edge on the canvas |
+| Explain an inference | Yes | **Check and test → Explain…**, and per-edge on the canvas |
 
 ## 9. Documentation and the project page
 
 | Asked for | Status | Where |
 |---|---|---|
-| Generate ontology documentation | Yes | **Project → Documentation…** (Widoco) |
+| Generate ontology documentation | Yes | **Build and release → Documentation…** (Widoco) |
 | A documentation site for OntoBoard itself | Yes | MkDocs, published by GitHub Pages |
 | A fixed header and a logo on that site | Yes | In the theme overrides |
 | A multi-version, multi-language ontology site | No | Widoco can; it is not driven from here |
@@ -153,8 +153,8 @@ The steps below are the ODK workflow as it was given to OntoBoard, in order.
 
 | Asked for | Status | Notes |
 |---|---|---|
-| A menu grouping every feature | Yes | One **OntoBoard** menu with Project, ROBOT, Knowledge graph, Notes and the rest |
-| KG builder and pattern library in the main menu | Yes | Both are top-level |
+| A menu grouping every feature | Yes | One **OntoBoard** menu with seven submenus by job: Project, Reuse, Terms, Spreadsheets, Check and test, Build and release, Share |
+| KG builder and pattern library in the main menu | Yes | **Spreadsheets → Template…** and **Reuse → Pattern library…** |
 | Forms that explain themselves | Yes | Every field has a help line saying what it changes and why |
 | Dialogs that do not stretch off the screen | Yes | Tall forms scroll; there is a rendering test for it |
 | The sheet editor should have room | Yes (1.117.0) | Its own workspace tab, the whole window |

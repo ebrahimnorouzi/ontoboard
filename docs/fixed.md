@@ -13,6 +13,80 @@ release notes on
 [the releases page](https://github.com/ebrahimnorouzi/ontoboard/releases), carries the same
 record for that version.
 
+- **The sheet editor said "No templates yet" over nine templates one folder away, fixed in
+  1.134.0.** Reported from `pizza-bfo`, a test project whose knowledge-graph templates are in
+  `kg/templates`. Opened from its edit file, `src/ontology/pizzabfo-edit.owl`, the editor looked
+  only in `src/templates`, found nothing, and said so - naming only that one folder.
+
+  `SheetLocation.forOntologyFile` knew two answers: `src/templates` for an ODK edit file and
+  `templates/` beside anything else. The folder was also worked out once, when the view was
+  built; Protégé restores the last tab at startup, often before any ontology is open, so the
+  view could stay pointed at nothing for the session. And the "nothing here" branch changed the
+  folder while the previous project's sheets stayed on screen.
+
+  `TemplateDiscovery` now tries four places in a fixed order - `templates/` beside the file
+  (`src/templates` instead, for an ODK edit file), the project's `src/templates`, `kg/templates` and
+  `templates/` at the project root - where the project is the nearest folder holding `.git` or
+  `src/ontology/`, at most four levels up, so a project nested in another repository never picks
+  up its host's templates. The view follows the active ontology, never replaces unsaved edits or a
+  folder somebody chose, names the folder it opened and where else it looked, and offers every
+  candidate under *Project templates ▾*. 29 tests on synthetic layouts, including the nested
+  repository and Windows paths with spaces and drive letters.
+
+- **Every row of a sheet failed with "could not interpret" and nothing said why, improved in
+  1.134.0.** `pizza-bfo`'s sheets write their IDs as `kg:PB_0000001`; its graph file declares that
+  address only as the empty prefix `:`. *Template...* passed on ROBOT's own message for each of
+  the 25 rows. It now names the undeclared prefix, where in Protégé a prefix is declared, and -
+  when another prefix already stands for an address ending in the same name - that one. With
+  `kg:` declared, the nine sheets rebuild the committed graph exactly: 105 axioms, 25 individuals.
+
+- **Every row of a built graph "names 2 different things", fixed in 1.134.0.** Found by
+  running `pizza-bfo`'s knowledge-graph exercise end to end: once the graph held the individuals
+  the sheets had made, *Check sheets...* - and the sheet editor's marks, which come from the same
+  audit - reported all 25 names as ambiguous, the sheet's `kg:PB_0000001` against the graph's
+  own IRI for it. The index compared the CURIE as written with the IRI it expands to. It now
+  expands a CURIE under the prefixes the open ontology declares, and ROBOT's own, for that
+  comparison only - what is completed and written keeps its spelling - and when the prefix is not
+  declared the finding says so, and which prefix would settle it.
+
+- ***ID ranges...* offered a block under a name nothing mints with, fixed in 1.134.0.** It
+  pre-filled the provenance name from *Record who edits terms...*, while the board and the sheet
+  editor mint under the collaboration display name and then the login. Somebody who had typed a
+  plain name there was given a block and still told "No identifiers for you yet". All three now
+  use one function, `IriGenerator.editorName()`.
+
+- ***Template...* recorded the participant as the author of other people's terms, fixed in
+  1.134.0.** Found preparing an expert test on `pizza-bfo`'s knowledge graph, which imports the
+  ontology's 1.0.0 release. With *Record who edits terms...* set to *Always*, a sheet row typed
+  `hawaiian` - a class only the release declares - got `hawaiian` stamped with a
+  `dcterms:contributor` and a `dcterms:created` date, and so did `rdfs:label` and
+  `rdf:PlainLiteral`. The run counted a term as new when the graph's own signature lacked it. It
+  now counts a term as new only when neither the ontology nor anything it imports has it, and
+  never OWL's built-in vocabulary - the rule the plugin's edit watcher already kept. Three tests,
+  `TemplateProvenanceTest`.
+
+- ***Release...* proposed 0.1.1 over a published 1.0.0, and would have released it, fixed in
+  1.134.0.** Both of OntoBoard's own test projects declare the scaffold's `owl:versionInfo 0.1.0`
+  in their edit files, because a release never writes its version back, while `releases/` goes up
+  to `1.0.0`. The dialog proposed the next version from the edit file alone, and nothing compared
+  what was typed with what had been released: `0.1.1` would have been published below `1.0.0`, and
+  `1.0.0` again would have been written over a release somebody may have imported. It now
+  proposes the version after the newest release in the same convention (`1.0.1` there), and
+  refuses a semantic version at or below the newest release, offering the next patch and minor
+  version. A dated release may still be cut again on the same day, as OBO's Makefile does; a date
+  before the newest is refused. Ten tests, `ReleaseVersionAgainstReleasesTest`.
+
+- **"Record who edits terms..." offered FOLLOW_THE_ONTOLOGY, ALWAYS and NEVER, fixed in
+  1.134.0.** The enum's own names, because the list showed `toString()`. Saved preferences are
+  still keyed by the names, so nothing anybody saved changes.
+
+- **Documentation that worked read as a failure, fixed in 1.134.0.** A user documenting
+  `pizza-bfo` got a 218 KB page and a dialog showing three ERROR lines and four configuration
+  warnings. The errors were Widoco failing to download the previous release for the changelog -
+  `.../pizzabfo/0.4.0` is not published - and the warnings that it has no `config.properties`.
+  Each is now said once, in a sentence saying what happened to the page, and Log4j2's line
+  about having no logging implementation is dropped.
+
 - **A new row in a sheet lost the padding of the identifiers around it, fixed in 1.117.0.**
   A project whose identifiers are seven digits wide - MatWerk publishes
   `http://purls.helmholtz-metadaten.de/mwo/MWO_0001225` - got `MWO_1226` for the next row.
@@ -344,7 +418,7 @@ record for that version.
   impossible to write before are in `SchemaCanvasViewTest`. The layouts also leave notes and frames
   alone - a frame slotted into a grid encloses nothing, which destroys the only thing it is for.
 
-  What remains, and is named in [the canvas plan](superpowers/specs/2026-09-25-canvas-interface-plan.md):
+  What remains, and is named in the canvas plan (an internal design document):
   nothing. The internal-id tooltips were replaced in 1.53.0, the last of the coordinate conversions
   unified into one function in 1.54.0, search arrived in 1.58.0, and undo for board-owned state in
   1.62.0 - which closes the last item of that plan's first two sections.
@@ -1032,7 +1106,7 @@ record for that version.
 
 - **The OntoBoard tab opens and its views construct inside both Protégés, checked automatically
   since 1.57.0.** This closes the last clause of F1 in
-  [the phase plan](superpowers/specs/2026-09-24-next-phase-plan.md) and retires the first entry on
+  the phase plan (an internal design document) and retires the first entry on
   that plan's own list of what was "genuinely unverified".
 
   It was unmet for a duller reason than the smoke script gave. The script looked for

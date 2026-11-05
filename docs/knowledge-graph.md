@@ -15,7 +15,7 @@ ontology's terms. OntoBoard builds one from spreadsheets, inside Protégé.
 
 Put the graph in a file of its own that **imports** the ontology, rather than adding individuals
 to the ontology. The ontology stays reusable by anyone, the data can change every day without a
-new ontology release, and each says which version of the other it goes with.
+new ontology release, and the graph says which version of the ontology it goes with.
 
 ```turtle
 @prefix ex:  <https://example.org/pizzeria/data/> .
@@ -51,6 +51,12 @@ column is, and every row after that is one thing.
   name by label only the sheets given before it - *Check sheets...* says in which order, and
   which sheets have none. A row named by its ID, without quotes, works in any order: ROBOT
   expands the ID itself.
+- **The prefix of the IDs has to be declared in the graph file.** `ex:P_0000101` means something
+  only where `ex:` is declared: in Protégé, the *Active ontology* tab → *Ontology Prefixes*, then
+  save; in Turtle, `@prefix ex: <https://example.org/pizzeria/data/> .`. Undeclared, every row of
+  the sheet fails with ROBOT's *could not interpret 'ex:P_0000101'*. *Template...* names the prefix
+  and, when another prefix of the graph already stands for an address ending in that name - `:`
+  for `https://example.org/kg/` when the IDs say `kg:` - names it (since 1.134.0).
 - `AL rdfs:label@en` gives the row its name in English. (`A rdfs:label@en` looks the same and gives
   no name at all - *Template...* says so.)
 - **Dates and numbers**: write the type in the cell - `2026-11-01T18:00:00^^xsd:dateTime`. ROBOT
@@ -62,11 +68,16 @@ columns most terms need, to copy.
 
 ## 2. Give every row an identifier
 
-Leave the ID blank on new rows. *Spreadsheets → Sheet editor* opens the sheets beside the open
-file (`templates/`, or `src/templates/` in a project) - select a sheet's tab and press
-**Generate IRIs...**. It offers the project's ID ranges, *Continue the numbering in these sheets*,
+Leave the ID blank on new rows. *Spreadsheets → Sheet editor* opens the project's sheets by
+itself: the first of `templates/` beside the open file, `src/templates/`, `kg/templates/` and
+`templates/` at the project root that holds a sheet - [where it looks, exactly](odk-workflow.md).
+The toolbar names the folder; **Project templates ▾** offers the others. Select a sheet's tab and
+press **Generate IRIs...**. It offers the project's ID ranges, *Continue the numbering in these sheets*,
 a timestamp, a UUID or the label itself, previews what it will write, and never mints an
-identifier that is already used in a sheet or in the ontology. **Save** writes the files.
+identifier already used in a sheet of the folder, nor an IRI the ontology already uses. It
+compares identifiers as they are written: with CURIE IDs such as `kg:PB_0000101` it cannot see the
+graph's own individuals, so do not delete a built row from its sheet and then generate again.
+**Save** writes the files.
 
 ## 3. Check the sheets
 
@@ -81,8 +92,21 @@ Open the graph file in Protégé. *Spreadsheets → Template...*, choose any she
 *Add every sheet in its folder*: the sheets are read together, so their order does not matter,
 and *Edit → Undo* removes the lot in one step. *Add the axioms to this ontology* adds the one
 sheet - which can still name the rows of the others.
-A row that cannot be read is listed with its sheet, row and column, and the other rows are still
-built. *File → Save*.
+A row that cannot be read in full is listed with its sheet, row and column. The other rows are
+built, and so is what that row says outside the failing cell - usually its ID and label - so run
+*Check it, change nothing* first, or use *Edit → Undo* after. *Template...* reads the saved sheet
+files, not what the sheet editor shows: save the sheets first. *File → Save*.
+
+**What *Template...* does, and what it does not.** It turns the sheets into axioms and adds them to
+the ontology open in Protégé - in memory, until *File → Save*. It only ever adds: change a label
+in a sheet and run it again, and the graph has the old label and the new one. Nothing links the
+graph back to the sheets and nothing keeps them in step: an edit made to an individual in Protégé
+does not reach the sheet, and an edit to the sheet reaches the graph only when *Template...* is run
+again. To rebuild after changing rows, undo the earlier run (*Edit → Undo*, in the same session)
+or build into a fresh copy of the graph file - one that has its header, prefixes and imports and
+no individuals. *Build and release → Build...* builds the ontology, from the ontology's own window
+(from the graph's window it finds no Makefile), and the Makefile OntoBoard writes has no target
+for the graph: the graph is built with *Template...*.
 
 ## 5. Ask it
 
@@ -104,4 +128,5 @@ On a test project: nine sheets - cities, pizzerias, bakers, their roles, ovens, 
 intervals, pizzas, bakings - with every name across sheets by label. The generator behind
 *Generate IRIs...* filled 16 blank identifiers, each sheet continuing its own numbering; *Check sheets...* had nothing to
 report; *Template...* added the nine sheets in order, 105 axioms and 25 individuals; HermiT found
-the graph consistent and one of the three pizzas spicy, from the ontology's definitions.
+the graph consistent and one of the three pizzas spicy, from its type and the class hierarchy
+the ontology release states.

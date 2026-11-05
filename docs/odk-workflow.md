@@ -200,8 +200,7 @@ does not act on — what ODK does with it next is ODK's business, by way of `upd
 | `src/sparql/` | ✅ | *Check and test → SPARQL…* runs your committed `*.rq` with the same pass/fail convention `make sparql_test` uses, since 1.33.0. The scaffold writes one starter query rather than ODK's full set |
 | `src/scripts/` | ✅ | *Project → Run a project script…* lists what is there — honouring a `SCRIPTSDIR` the Makefile moves — and runs the one you pick, with arguments, inside the container. See below |
 | `src/metadata/` | 🔶 | Read to check it, never written. The OBO Foundry registry entry: `<id>.yml` is the PURL configuration for `purl.obolibrary.org/config`, `<id>.md` the entry for `OBOFoundry.github.io`. *Check and test → Check project metadata* compares both against the ontology; nothing edits them, because for a project not in the Foundry the file is scaffold the build never reads — [and three of four measured projects are not](limitations.md#roadmap) |
-
-| `src/templates/` | ✅ | The ROBOT templates a knowledge graph is built from. Opened automatically in the **OntoBoard Sheets** tab — see below — and built by *Spreadsheets → Template…* |
+| `src/templates/` | ✅ | ROBOT templates. Opened automatically in the **OntoBoard Sheets** tab — see below, which also covers a knowledge graph's `kg/templates/` — and built by *Spreadsheets → Template…* |
 
 Three of the five are covered, and the one that is not is only needed for an OBO Foundry
 submission. **Everything in the first three runs inside Protégé** — no terminal, no separate
@@ -214,8 +213,28 @@ same container the build uses, and SPARQL checks run against the ontology you ha
 you. A tab you have never opened is not in the tab strip until something adds it, which is what
 that menu item is for.
 
-It opens `src/templates` for whatever project you have open, with one grid per file. What is
-there that a spreadsheet program is not:
+It opens the templates of whatever you have open, with one grid per file. Where it looks, in
+this order, taking the first folder that holds a `.tsv` or `.csv` (since 1.134.0):
+
+1. `templates/` beside the open file - or, for an ODK edit file in `src/ontology/`, the
+   project's `src/templates/` instead;
+2. the project's `src/templates/`;
+3. `kg/templates/`, for a knowledge graph kept beside the ontology;
+4. `templates/` at the project root.
+
+The project is the nearest folder above the file - at most four levels up - that holds `.git` or
+`src/ontology/`, so a project nested in another repository never picks up its host's templates,
+and nothing searches subfolders. The toolbar says which folder is open and how many sheets it
+has (*Folder: kg/templates (9 sheets)*); hover it to see where it looked first and which other
+folders hold sheets. **Project templates ▾** lists every place it looks (three when two of them are
+the same folder) with what each holds, so a different one can be chosen -
+including one that does not exist yet, which then becomes the folder *New sheet...* writes into.
+Opening the view creates nothing. Switching the active ontology to another file of the same
+project changes nothing; switching to another project opens its templates, unless that would
+replace unsaved edits or a folder you chose yourself, in which case the status line says where
+the new one's templates are and waits.
+
+What is there that a spreadsheet program is not:
 
 - **The names come from the ontology.** A column that names another term completes from every
   open sheet *and* from the ontology, so a reference to something that exists is one keystroke

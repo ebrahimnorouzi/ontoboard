@@ -71,3 +71,16 @@ build/bfo-notime.owl
 # Test projects built with OntoBoard (test/pizza, test/pizza-bfo). Each is a git repository of
 # its own, with a tag for every release, so it is not part of this one.
 /test/
+
+# Internal evaluation and study material: the evaluation plan, the user-study protocol, consent
+# text, questionnaires, task generators and answer keys, expert-testing notes, participant guides
+# and decks, and research plans. Kept on the maintainer's machine and no longer published (earlier
+# versions remain in the repository's history) - the site is built from docs/, and none of this is
+# under docs/. Anchored to the root so it cannot hide a folder called private somewhere else. See
+# private/README.md (local only).
+/private/
+
+# Design specs and plans written while working (the superpowers skills write them here). Internal,
+# like private/: kept on the maintainer's machine, out of git and out of the site (mkdocs.yml
+# exclude_docs). Until 1.134.0 they were tracked; earlier versions remain in the history.
+/docs/superpowers/

@@ -1,7 +1,7 @@
 <!--
   Written for: somebody deciding whether to use OntoBoard, and for a reviewer asking what is
-  already out there. One page, all the tools, points only. The long per-tool write-ups are
-  compared-with-ontoeditor.md and compared-with-ontograf.md.
+  already out there. One page, all the tools, points only. The long per-tool write-up is
+  compared-with-ontograf.md.
 -->
 
 # Compared with other tools
@@ -57,5 +57,5 @@ against the papers' claims.
 - `.xlsx` is read-only; `.tsv`/`.csv` round-trip.
 - Not in Protégé's plugin registry yet.
 
-Longer, per-tool: [OntoEditor](compared-with-ontoeditor.md) · [OntoGraf](compared-with-ontograf.md)
+Longer, per-tool: [OntoGraf](compared-with-ontograf.md)
 · [what is supported](requirements-status.md) · [limitations](limitations.md)

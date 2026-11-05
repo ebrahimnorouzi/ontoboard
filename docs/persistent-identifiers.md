@@ -649,9 +649,9 @@ most specific first with an unconditional default last, because a browser's
    brief fixes; change it if the citable address is the KIT one. No gmail address
    appears in any file I wrote, or anywhere in the repository.
 4. **Release and tag counts in the docs are stale.**
-   `docs/compared-with-ontoeditor.md:75` says "OntoBoard has 45 tags" (now 46)
+   An internal planning document (since moved out of the repository) says "OntoBoard has 45 tags" (now 46)
    and "no DOI, no PURL, no `CITATION.cff`" - which this tier is in the middle
-   of fixing. `docs/evaluation-plan.md:215` claims "89 host smoke receipts over
+   of fixing. The internal evaluation plan (likewise moved out) claims "89 host smoke receipts over
    45 releases"; GitHub reports 34 Releases. If that sentence goes into a paper,
    the number a reviewer can check is 34.
 5. **`.zenodo.json` goes at the repository root** even though the Maven module
