@@ -518,9 +518,14 @@ public final class OdkScaffold {
                 + "_ --base-iri $(URIBASE)/$(ONT) \\\n"
                 + "\t  --output report.tsv --format tsv\n\n"
                 // robot verify exits non-zero when a query returns rows, which is what makes a
-                // SPARQL file a check rather than a decoration.
+                // SPARQL file a check rather than a decoration. Merged first, as validate_profile
+                // is and as Build... inside Protege queries it: verify on the edit file alone sees
+                // nothing the imports say. Found when the pizza examples first ran QC on GitHub -
+                // check_labels failed on pattern classes whose labels are in the imports, after
+                // Build... in Protege had passed the same checks.
                 + "sparql_test:\n"
-                + "\t$(ROBOT) verify --input $(ONT)-edit.owl --queries ../sparql/*.rq --output-dir .\n\n"
+                + "\t$(ROBOT) merge --input $(ONT)-edit.owl \\\n"
+                + "\t  verify --queries ../sparql/*.rq --output-dir .\n\n"
                 // Real ODK validates the OWL 2 DL profile as part of its own `test` target and this
                 // scaffold did not, so an ontology could drift out of DL with CI staying green.
                 // Outside DL means the guarantees every OWL reasoner relies on no longer hold: a
@@ -833,7 +838,7 @@ public final class OdkScaffold {
                 + "make all        # reason, then report - and what a bare `make` runs\n"
                 + "make reason     # classify with ELK into " + id + ".owl\n"
                 + "make report     # ROBOT quality report -> report.tsv\n"
-                + "make sparql_test  # run every check in ../sparql over the edit file\n"
+                + "make sparql_test  # run every check in ../sparql over the edit file and its imports\n"
                 + "make validate_profile  # fail if the ontology has left OWL 2 DL\n"
                 + "make test       # what CI runs: reason, report and sparql_test\n"
                 + "make prepare_release  # test, then a dated, version-stamped release\n"

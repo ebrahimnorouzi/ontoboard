@@ -256,6 +256,33 @@ class OdkScaffoldTest {
     }
 
     /**
+     * The checks in src/sparql/ see what the imports say, as Build... inside Protege does.
+     *
+     * <p>Found when the pizza and pizza-bfo examples first ran QC on GitHub: ROBOT 1.9.8 failed
+     * pizza's check_labels on four pattern classes whose labels are in its imports, and
+     * pizza-bfo's cq5 on four relations its imports declare - while Build... in Protege had
+     * passed both, because the plugin queries the ontology with its imports merged. robot verify
+     * on the edit file sees only the edit file. Merged first, as validate_profile already is,
+     * both projects pass under the same ROBOT.
+     */
+    @Test
+    void theChecksSeeTheImportsAsTheBuildInProtegeDoes(@TempDir Path dir) throws Exception {
+        OdkProjectConfig config = new OdkProjectConfig("mwo", "MWO", "",
+                "http://purl.obolibrary.org/obo/mwo.owl", CC0, dir.toFile());
+        OdkScaffold.create(config);
+
+        String makefile = read(config, "Makefile").replace("\r\n", "\n");
+        int at = makefile.indexOf("\nsparql_test:\n");
+        assertTrue(at >= 0, makefile);
+        int end = makefile.indexOf("\n\n", at + 1);
+        String recipe = makefile.substring(at + 1, end < 0 ? makefile.length() : end);
+        int merge = recipe.indexOf("merge --input $(ONT)-edit.owl");
+        int verify = recipe.indexOf("verify --queries");
+        assertTrue(merge >= 0 && verify > merge,
+                "sparql_test has to query the edit file with its imports merged: " + recipe);
+    }
+
+    /**
      * Both release conventions, from the build as well as from the menu.
      *
      * <p>MatWerk versions semantically: its {@code release.sh} runs
