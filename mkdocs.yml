@@ -141,6 +141,10 @@ plugins:
 
 nav:
   - Home: index.md
+  - Try it:
+      - 'A pizza ontology': examples/pizza.md
+      - 'BFO and a knowledge graph': examples/pizza-bfo.md
+      - Made with OntoBoard: made-with-ontoboard.md
   - Using it:
       - 'Start here: the guide': guide.md
       - Glossary: glossary.md
@@ -155,14 +159,13 @@ nav:
       - Collaboration: collaboration.md
       - Conflicts and concurrent editing: conflicts.md
       - Testing collaboration locally: testing-collaboration-locally.md
-  - Honest accounting:
-      - What is supported: requirements-status.md
-      - Limitations and roadmap: limitations.md
+  - About:
+      - Limitations: limitations.md
       - What was fixed: fixed.md
-      - Feature parity: feature-parity.md
-      - Measurements: measurements.md
       - Compared with other tools: compared-with.md
-      - Compared with OntoGraf: compared-with-ontograf.md
+      # What is supported, Feature parity, Measurements and Compared with OntoGraf are still
+      # published, and linked from Development: records for maintainers, not pages a user
+      # needs on the way to an ontology.
   - Going deeper:
       - Development: development.md
       - Persistent identifiers: persistent-identifiers.md
