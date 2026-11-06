@@ -54,8 +54,8 @@ When you are happy, *File → Save*. If you cloned the example rather than downl
 
 *OntoBoard → Build and release → Documentation...* runs [Widoco](https://github.com/dgarijo/Widoco)
 on the release and opens the page it writes: every class and property - and, with *Include the
-WebVowl diagram* ticked, a diagram of how they connect. It needs Widoco's jar; the dialog says
-where to get it.
+WebVowl diagram* ticked, a diagram of how they connect. If Widoco is not installed, the dialog
+offers to download it.
 [The page this example publishes](https://ebrahimnorouzi.github.io/pizza-ontology/ontology/index-en.html)
 was made that way.
 

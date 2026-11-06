@@ -924,7 +924,10 @@ so you can see the page without pushing and waiting for a deploy.
 all, and its only published form is a 40,858,575-byte shaded jar containing **1,533 OWL API
 entries and 2,044 Guava entries** — packages this plugin imports from Protégé. A second copy
 of those inside the bundle is how an OSGi plugin stops resolving. So OntoBoard finds the jar the
-way it finds Konclude, and tells you where to get it when it cannot:
+way it finds Konclude, and since 1.135.0 offers to get it when it cannot. *Download…* saves the
+release below into a folder you choose and keeps it only if its SHA-256 is the one OntoBoard was
+built against; *Copy link* and *Open release page* are for fetching it with your browser, after
+which *Choose file…* takes the jar:
 
 ```
 widoco-1.4.25-jar-with-dependencies_JDK-11.jar   (about 39 MB)
@@ -939,7 +942,12 @@ https://github.com/dgarijo/Widoco/releases/download/v1.4.25/
 | Protégé 5.5.0 | 1.8.0_121 | no — point the *Run it with* field at a JDK 11 |
 
 The dialog shows which Java it found and what version it reported, so a failure says *your
-Protégé's Java is too old* rather than printing a class-file error.
+Protégé's Java is too old* rather than printing a class-file error - and where to get a newer one.
+
+**Downloading from Protégé 5.5.0.** Its Java, 1.8.0_121, predates the certificate authority
+GitHub's downloads use and cannot check them. On Windows *Download…* then checks them against
+Windows' own certificate store instead, which works (measured); on Linux it tries the system's
+Java certificate store where there is one; on macOS it says so, and the browser is the way round.
 
 **The release product, not the edit file.** An edit file imports its modules rather than
 containing them, so a page made from it covers the terms you wrote and none you reuse — and the

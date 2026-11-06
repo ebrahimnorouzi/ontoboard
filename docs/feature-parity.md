@@ -93,7 +93,7 @@ individual views in a tabbed column beside the canvas, so none of this needs a t
 | Feature | Web app | Plugin | Assessment |
 |---|---|---|---|
 | ELK, HermiT, JFact, Pellet | ✅ | 🧩 | Bundled reasoner plugins, with incremental and background reasoning the web app lacked |
-| Konclude | ➖ | ✅ | *Check and test → Reason with Konclude…* since 1.94.0. A native OWL 2 DL reasoner that won five of six ORE 2014 disciplines. Not bundled — LGPLv3 against an Apache-2.0 plugin, and x86-64 only — so the dialog detects it, names the release asset for your platform, and looks in your Downloads folder. Classification, both property classifications, realization, consistency and satisfiability |
+| Konclude | ➖ | ✅ | *Check and test → Reason with Konclude…* since 1.94.0. A native OWL 2 DL reasoner that won five of six ORE 2014 disciplines. Not bundled — LGPLv3 against an Apache-2.0 plugin, and x86-64 only — so the dialog detects it, and since 1.135.0 offers to download and unpack the release for your platform, checked against its SHA-256 — or finds one you fetched yourself in your Downloads folder. Classification, both property classifications, realization, consistency and satisfiability |
 | Explanation / justification | ✅ | 🧩 | `explanation-workbench`, bundled |
 | Consistency checking | ✅ | 🧩 | Protégé |
 | ROBOT report | ✅ | ✅ | *Check and test → Quality report…*, all 32 of ROBOT's rules, on both hosts. Checked against real ROBOT in `obolibrary/odkfull` and by a startup self-check in the host |
@@ -153,7 +153,7 @@ individual views in a tabbed column beside the canvas, so none of this needs a t
 | Explanation of unsatisfiability | ➖ | ✅ | *Check and test → Explain…* names every unsatisfiable class, the axioms behind each, and which single axiom appears in the most justifications. Protégé's explanation workbench explains one entailment you have already selected; this starts from "the reasoner went red" |
 | Term table export | ➖ | ✅ | *Terms → Export terms…* writes one row per term and the columns you choose, as TSV, CSV, JSON, YAML or HTML. Not in the web application. `xlsx` is the one format the bundle cannot write — see Known constraints |
 | ZIP export | ✅ | ➖ | It is a folder on disk |
-| Widoco HTML docs | ✅ | ✅ | *Build and release → Documentation…* since 1.103.0. The 39 MB jar is installed rather than embedded — it carries its own OWL API and Guava — and needs Java 11, which 5.6.9 has and 5.5.0 does not |
+| Widoco HTML docs | ✅ | ✅ | *Build and release → Documentation…* since 1.103.0. The 39 MB jar is installed rather than embedded — it carries its own OWL API and Guava — and needs Java 11, which 5.6.9 has and 5.5.0 does not. Since 1.135.0 the dialog offers to download it, checked against its SHA-256 |
 | Prefix management | ✅ | 🔶 | Colouring done; editing prefixes not |
 | Provenance (Dublin Core) | ✅ | ✅ | `dcterms:contributor`/`created`/`date`, stamped for edits made anywhere in Protégé, not only on the canvas |
 
