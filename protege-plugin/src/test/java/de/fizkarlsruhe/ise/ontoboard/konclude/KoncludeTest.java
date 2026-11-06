@@ -7,11 +7,15 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.fizkarlsruhe.ise.ontoboard.tools.TestZips;
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -381,5 +385,92 @@ class KoncludeTest {
         assertTrue(all.contains("direct"), "the direct-hierarchy limit is the surprising one");
         assertTrue(all.contains("arm64"), "no Apple silicon build is worth saying");
         assertTrue(all.contains("explanation"), "it offers none, and Explain... does");
+    }
+
+    /**
+     * A Konclude.exe that will not start names what it is missing.
+     *
+     * <p>It imports msvcp140.dll and vcruntime140.dll - read from the binary - and the release zip
+     * does not carry them, so on a Windows without Microsoft's C++ runtime a freshly downloaded,
+     * correctly unpacked Konclude still will not start. Blaming moved DLLs there would send the
+     * user looking for a mistake they did not make.
+     */
+    @Test
+    void aKoncludeThatWillNotStartOnWindowsNamesTheMissingRuntime() {
+        String without = KoncludeInstall.notStarting("Windows 11", false);
+        String with = KoncludeInstall.notStarting("Windows 11", true);
+
+        assertTrue(without.contains(de.fizkarlsruhe.ise.ontoboard.tools.ToolSetup.VC_REDIST_URL),
+                without);
+        assertFalse(with.contains(de.fizkarlsruhe.ise.ontoboard.tools.ToolSetup.VC_REDIST_URL),
+                with);
+        assertTrue(with.contains("DLLs"), "with the runtime there, the DLLs are the suspect: "
+                + with);
+    }
+
+    // ------------------------------------------------------------- installing a downloaded zip
+
+    /** The folder this machine's release unpacks into: the asset's name without ".zip". */
+    private static String stem() {
+        String name = KoncludeInstall.asset().getName();
+        return name.substring(0, name.length() - ".zip".length());
+    }
+
+    @Test
+    void theBinaryCanBeExecutedAfterInstalling(@TempDir File dir) throws IOException {
+        Assumptions.assumeFalse(KoncludeInstall.isWindows(),
+                "Windows has no executable bit to set");
+        File zip = TestZips.write(new File(dir, KoncludeInstall.asset().getName()),
+                stem() + "/Binaries/" + KoncludeInstall.executableName(), "the program",
+                stem() + "/Konclude", "a launcher");
+
+        File binary = KoncludeInstall.install(zip, new File(dir, "tools"));
+
+        assertTrue(binary.canExecute(), binary + " has to run without a chmod by hand");
+    }
+
+    @Test
+    void aZipWithoutTheBinaryIsRefused(@TempDir File dir) throws IOException {
+        File zip = TestZips.write(new File(dir, "not-konclude.zip"), "readme.txt", "hello");
+
+        File into = new File(dir, "tools");
+        IOException refused = assertThrows(IOException.class,
+                () -> KoncludeInstall.install(zip, into));
+
+        assertTrue(refused.getMessage().contains(KoncludeInstall.executableName()),
+                refused.getMessage());
+        assertFalse(new File(into, "readme.txt").exists(),
+                "a zip without Konclude is refused before anything is unpacked from it");
+    }
+
+    /** A Konclude zip of another build is the user's choice of version: its binary is used. */
+    @Test
+    void anotherBuildsZipIsInstalledFromWhereItsBinaryIs(@TempDir File dir) throws IOException {
+        String other = "Konclude-v0.7.1-2000-Windows-x64-MSVC-Dynamic-Qt5.15.2";
+        File zip = TestZips.write(new File(dir, other + ".zip"),
+                other + "/Binaries/" + KoncludeInstall.executableName(), "another build");
+        File into = new File(dir, "tools");
+
+        File binary = KoncludeInstall.install(zip, into);
+
+        assertEquals(new File(into, other + "/Binaries/" + KoncludeInstall.executableName()),
+                binary);
+    }
+
+    /** What was just unpacked is returned, never an older Konclude already lying in the folder. */
+    @Test
+    void theBinaryJustUnpackedIsReturnedNotAnOlderOne(@TempDir File dir) throws IOException {
+        File into = new File(dir, "Downloads");
+        assertTrue(into.mkdirs());
+        Files.write(new File(into, KoncludeInstall.executableName()).toPath(),
+                "an old copy".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        String other = "Konclude-v0.7.1-2000-Windows-x64-MSVC-Dynamic-Qt5.15.2";
+        File zip = TestZips.write(new File(dir, other + ".zip"),
+                other + "/Binaries/" + KoncludeInstall.executableName(), "the new one");
+
+        File binary = KoncludeInstall.install(zip, into);
+
+        assertEquals("the new one", new String(Files.readAllBytes(binary.toPath()),
+                java.nio.charset.StandardCharsets.UTF_8));
     }
 }

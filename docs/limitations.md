@@ -350,7 +350,8 @@ Ordered by what is being worked on:
     entries and 2,044 Guava entries — packages this bundle imports from the host, where a
     second copy is how an OSGi plugin stops resolving. It also needs Java 11 (class file version
     55), so Protégé 5.6.9 runs it with its own JVM and 5.5.0, on Java 8, needs another one
-    pointed at.
+    pointed at. Since 1.135.0 *Documentation…* offers to download the jar when it is missing,
+    checked against its SHA-256.
 3. ~~**Entity locking**~~ — **answered in 1.104.0, by not building it.** A lock cannot be
    enforced from here, so what ships is an advisory claim: "Bob is editing Calzone", made by
    actually changing an axiom rather than by announcing intent, expiring five minutes after the

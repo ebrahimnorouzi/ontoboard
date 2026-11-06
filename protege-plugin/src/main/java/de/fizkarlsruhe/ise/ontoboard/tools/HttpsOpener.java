@@ -1,0 +1,265 @@
+package de.fizkarlsruhe.ise.ontoboard.tools;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.security.GeneralSecurityException;
+import java.security.KeyStore;
+import java.security.cert.CertPathBuilderException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Locale;
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSocketFactory;
+import javax.net.ssl.TrustManagerFactory;
+
+/**
+ * Opens a release download over HTTPS: GitHub's redirect followed, nothing else allowed.
+ *
+ * <p><b>Redirects are followed here, not by {@code HttpURLConnection}.</b> GitHub answers a
+ * release URL with one redirect to {@code release-assets.githubusercontent.com} (measured). Doing
+ * it by hand means no hop can leave HTTPS, and the trust store a retry uses applies to every hop
+ * rather than only the first.
+ *
+ * <p><b>Protégé 5.5.0's Java cannot check GitHub's certificate.</b> Measured on 2026-11-05: JRE
+ * 1.8.0_121, the one 5.5.0 bundles, fails both downloads with "PKIX path building failed" - its
+ * trust store predates the authority GitHub uses now - while 5.6.9's 11.0.25 succeeds. The same
+ * 1.8.0_121 succeeds with a trust manager built from Windows' own store, {@code Windows-ROOT}
+ * (93 roots on the machine measured), which Windows Update keeps current. So after a
+ * certificate-path failure, and only then, the download is tried again against the operating
+ * system's store: Windows' own, or the system Java store a Linux distribution maintains. Never
+ * against no checking at all - the pinned SHA-256 would catch altered bytes anyway, but a
+ * download that silently trusts anybody is not something to ship. macOS's Java offers no
+ * equivalent, so there the failure is reported and the user downloads the file by hand.
+ */
+public final class HttpsOpener implements Download.Opener {
+
+    /** GitHub uses one; five leaves room without allowing a loop. */
+    static final int MAX_REDIRECTS = 5;
+
+    static final String WINDOWS_TRUST = "Windows-ROOT";
+
+    /** Where Debian/Ubuntu and Fedora/RHEL keep the system's Java trust store. */
+    static final List<File> LINUX_STORES = Collections.unmodifiableList(Arrays.asList(
+            new File("/etc/ssl/certs/java/cacerts"), new File("/etc/pki/java/cacerts")));
+
+    private static final int CONNECT_MILLIS = 15_000;
+    private static final int READ_MILLIS = 60_000;
+
+    private final boolean allowLoopbackHttp;
+    private volatile boolean stopped;
+    private volatile HttpURLConnection current;
+
+    private HttpsOpener(boolean allowLoopbackHttp) {
+        this.allowLoopbackHttp = allowLoopbackHttp;
+    }
+
+    /**
+     * Stops an {@link #open} in progress, from any thread: the connection it is waiting on is
+     * closed, so even a server that has gone quiet lets go at once instead of after its timeout.
+     * The same way {@code WebOntology.Attempt.stop} lets go of a slow import.
+     */
+    public void stop() {
+        stopped = true;
+        HttpURLConnection connection = current;
+        if (connection != null) {
+            connection.disconnect();
+        }
+    }
+
+    /** HTTPS only. */
+    public static HttpsOpener real() {
+        return new HttpsOpener(false);
+    }
+
+    /** Also plain HTTP to this machine, for tests that serve files on 127.0.0.1. */
+    static HttpsOpener forLoopbackTests() {
+        return new HttpsOpener(true);
+    }
+
+    @Override
+    public Download.Opened open(String url) throws IOException {
+        URL start = new URL(url);
+        if (!allowed(start, allowLoopbackHttp)) {
+            throw new IOException("OntoBoard downloads tools over HTTPS only, and " + url
+                    + " is not an HTTPS address.");
+        }
+        try {
+            return openWith(start, null);
+        } catch (IOException first) {
+            if (!isCertificatePathFailure(first)) {
+                throw first;
+            }
+            IOException last = first;
+            for (String store : trustFallbacks(System.getProperty("os.name", ""), LINUX_STORES)) {
+                SSLSocketFactory factory;
+                try {
+                    factory = socketFactoryFrom(store);
+                } catch (GeneralSecurityException | IOException cannotLoad) {
+                    continue;
+                }
+                try {
+                    return openWith(start, factory);
+                } catch (IOException again) {
+                    if (!isCertificatePathFailure(again)) {
+                        throw again;
+                    }
+                    last = again;
+                }
+            }
+            // The certificate failure, not a later one: it is what the message has to explain.
+            throw last;
+        }
+    }
+
+    private Download.Opened openWith(URL url, SSLSocketFactory factory) throws IOException {
+        URL at = url;
+        for (int hop = 0; hop <= MAX_REDIRECTS; hop++) {
+            if (stopped) {
+                throw new IOException("The download was stopped.");
+            }
+            HttpURLConnection connection = (HttpURLConnection) at.openConnection();
+            current = connection;
+            // Checked again after publishing the connection: either stop() sees it and closes it,
+            // or this sees stop() - never neither.
+            if (stopped) {
+                connection.disconnect();
+                throw new IOException("The download was stopped.");
+            }
+            if (factory != null && connection instanceof HttpsURLConnection) {
+                ((HttpsURLConnection) connection).setSSLSocketFactory(factory);
+            }
+            connection.setInstanceFollowRedirects(false);
+            connection.setConnectTimeout(CONNECT_MILLIS);
+            connection.setReadTimeout(READ_MILLIS);
+            connection.setRequestProperty("User-Agent", "OntoBoard");
+            int code = connection.getResponseCode();
+            if (code >= 300 && code < 400 && code != 304) {
+                String location = connection.getHeaderField("Location");
+                connection.disconnect();
+                if (location == null) {
+                    throw new IOException(at + " answered " + code
+                            + " without saying where the file is.");
+                }
+                at = redirectTarget(at, location, allowLoopbackHttp);
+                continue;
+            }
+            if (code != HttpURLConnection.HTTP_OK) {
+                connection.disconnect();
+                throw new IOException(at.getHost() + " answered " + code + " for " + at + ".");
+            }
+            return new Download.Opened(connection.getInputStream(),
+                    connection.getContentLengthLong());
+        }
+        throw new IOException("More than " + MAX_REDIRECTS + " redirects from " + url
+                + ", so it was abandoned.");
+    }
+
+    /** Where a redirect leads, refusing anything that is not HTTPS. */
+    static URL redirectTarget(URL from, String location, boolean allowLoopbackHttp)
+            throws IOException {
+        URL to = new URL(from, location);
+        if (!allowed(to, allowLoopbackHttp)) {
+            throw new IOException("Did not follow the redirect from " + from + " to " + to
+                    + ": OntoBoard downloads tools over HTTPS only.");
+        }
+        return to;
+    }
+
+    private static boolean allowed(URL url, boolean allowLoopbackHttp) {
+        String protocol = url.getProtocol().toLowerCase(Locale.ROOT);
+        if ("https".equals(protocol)) {
+            return true;
+        }
+        String host = url.getHost().toLowerCase(Locale.ROOT);
+        return allowLoopbackHttp && "http".equals(protocol)
+                && ("127.0.0.1".equals(host) || "localhost".equals(host) || "[::1]".equals(host));
+    }
+
+    /**
+     * Whether a failure is the JVM not trusting the server's certificate chain - the one failure
+     * another trust store can fix.
+     */
+    public static boolean isCertificatePathFailure(Throwable failure) {
+        Throwable at = failure;
+        for (int depth = 0; at != null && depth < 20; depth++) {
+            if (at instanceof CertPathBuilderException) {
+                return true;
+            }
+            String message = at.getMessage();
+            if (message != null && (message.contains("PKIX path building failed")
+                    || message.contains("unable to find valid certification path"))) {
+                return true;
+            }
+            at = at.getCause() == at ? null : at.getCause();
+        }
+        return false;
+    }
+
+    /** The operating system's trust stores worth trying after a certificate-path failure. */
+    static List<String> trustFallbacks(String osName, List<File> linuxStores) {
+        String os = osName == null ? "" : osName.toLowerCase(Locale.ROOT);
+        if (os.contains("mac") || os.contains("darwin")) {
+            return Collections.emptyList();
+        }
+        if (os.contains("win")) {
+            return Collections.singletonList(WINDOWS_TRUST);
+        }
+        List<String> found = new ArrayList<String>();
+        for (File store : linuxStores) {
+            if (store.isFile()) {
+                found.add(store.getPath());
+            }
+        }
+        return found;
+    }
+
+    private static SSLSocketFactory socketFactoryFrom(String store)
+            throws GeneralSecurityException, IOException {
+        KeyStore trusted;
+        if (WINDOWS_TRUST.equals(store)) {
+            trusted = KeyStore.getInstance(WINDOWS_TRUST);
+            trusted.load(null, null);
+        } else {
+            trusted = KeyStore.getInstance(KeyStore.getDefaultType());
+            try (InputStream in = new FileInputStream(store)) {
+                trusted.load(in, null);
+            }
+        }
+        TrustManagerFactory trust =
+                TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+        trust.init(trusted);
+        SSLContext context = SSLContext.getInstance("TLS");
+        context.init(null, trust.getTrustManagers(), null);
+        return context.getSocketFactory();
+    }
+
+    /**
+     * What a download here would have to work with, without downloading anything.
+     *
+     * <p>For the self-check: inside Protégé the bundle imports {@code javax.net.ssl} as optional,
+     * so whether these classes load at all is a property of the host's OSGi container, and the
+     * place to find that out is a startup check rather than the first click on Download.
+     */
+    public static String selfCheck() throws GeneralSecurityException, IOException {
+        SSLContext context = SSLContext.getInstance("TLS");
+        context.init(null, null, null);
+        StringBuilder described = new StringBuilder("TLS from ")
+                .append(context.getProvider().getName()).append(" (")
+                .append(String.join(", ", context.getDefaultSSLParameters().getProtocols()))
+                .append(")");
+        if (trustFallbacks(System.getProperty("os.name", ""), LINUX_STORES)
+                .contains(WINDOWS_TRUST)) {
+            KeyStore windows = KeyStore.getInstance(WINDOWS_TRUST);
+            windows.load(null, null);
+            described.append("; Windows trust store: ").append(windows.size()).append(" roots");
+        }
+        return described.toString();
+    }
+}

@@ -317,6 +317,32 @@ class WidocoTest {
                 Arrays.asList("openjdk version \"11.0.25\"")));
     }
 
+    /**
+     * A jar under the release's name but not the release's length - a browser download stopped
+     * part-way, or still running: Firefox creates the file under its final name as it starts - is
+     * not an installed Widoco, so the offer to download it is not skipped for it.
+     */
+    @Test
+    void aCutShortReleaseIsNotTakenForWidoco(@TempDir File dir) throws Exception {
+        File cutShort = new File(dir, WidocoInstall.asset().getName());
+        Files.write(cutShort.toPath(), new byte[] {1, 2, 3});
+        File ownChoice = new File(dir, "widoco-1.4.26-jar-with-dependencies.jar");
+        Files.write(ownChoice.toPath(), new byte[] {1, 2, 3});
+
+        assertFalse(WidocoInstall.looksComplete(cutShort));
+        assertTrue(WidocoInstall.looksComplete(ownChoice), "another name is the user's own version");
+        assertFalse(WidocoInstall.looksComplete(null));
+    }
+
+    /** And says where to get one: somebody on Protege 5.5.0 may never have installed a JDK. */
+    @Test
+    void javaEightSaysWhereToGetANewerOne() {
+        String why = WidocoInstall.whyJavaWillNotDo("Protege's own Java",
+                Arrays.asList("java version \"1.8.0_121\""));
+
+        assertTrue(why.contains(de.fizkarlsruhe.ise.ontoboard.tools.ToolSetup.ADOPTIUM_URL), why);
+    }
+
     /** Protege's own JVM is tried before anything else, when it will do. */
     @Test
     void protegesOwnJavaIsTriedFirst(@TempDir File dir) {

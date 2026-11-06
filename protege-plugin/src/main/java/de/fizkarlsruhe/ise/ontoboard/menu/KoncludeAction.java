@@ -5,6 +5,7 @@ import de.fizkarlsruhe.ise.ontoboard.konclude.KoncludeInferences;
 import de.fizkarlsruhe.ise.ontoboard.konclude.KoncludeInstall;
 import de.fizkarlsruhe.ise.ontoboard.konclude.KoncludeLog;
 import de.fizkarlsruhe.ise.ontoboard.proc.ProcessRunner;
+import de.fizkarlsruhe.ise.ontoboard.tools.ToolSetup;
 import java.io.File;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.charset.StandardCharsets;
@@ -87,6 +88,19 @@ public class KoncludeAction extends OntoBoardAction {
     @Override
     protected boolean configure() {
         KoncludeInstall.Found found = locate();
+        if (!found.isUsable()) {
+            // Missing, or there and not starting: offer a fresh copy, or one fetched by hand,
+            // before the form. A binary that is there keeps its own headline and reason.
+            File got = GetToolDialog.offer(getOWLWorkspace(), ToolSetup.Tool.KONCLUDE,
+                    KoncludeInstall.asset(), found.getBinary() == null ? null
+                            : found.headline() + ". " + found.getProblem());
+            if (got == null) {
+                return false;
+            }
+            KoncludeInstall.remember(got);
+            // Probed again: what was just installed has to prove it starts, like anything found.
+            found = locate();
+        }
 
         StringBuilder explanation = new StringBuilder(found.headline()).append(".\n\n");
         if (found.isUsable()) {

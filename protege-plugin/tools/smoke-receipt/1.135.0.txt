@@ -1,0 +1,83 @@
+OntoBoard 1.135.0 - host smoke receipt
+
+When Widoco or Konclude is not installed, Documentation... and Reason with Konclude... now offer
+to download it, checked against the SHA-256 OntoBoard was built with, or to use a copy downloaded
+by hand. See WHAT THIS RELEASE ADDS.
+
+Produced on Windows 11 Pro (10.0.26100), with tools/smoke.ps1 and -Dontoboard.selftest=true, the
+verdict read from what Protege logged. Protege 5.6.9 is the maintainer's own install, with
+ontoboard-1.134.2.jar moved out of plugins and this jar the only ontoboard-*.jar in it; Protege
+5.5.0 is a throwaway copy of the install, the same way. Each run was given pizzabfo-edit.owl
+from a fresh clone of the pizza-bfo test project (a26ac31).
+
+  2026-11-06  Protege 5.6.9  OWL API 4.5.29  JRE 11.0.25+9    -Xmx2G    PASS  check 10/10  test 12/12
+  2026-11-06  Protege 5.6.9  OWL API 4.5.29  JRE 11.0.25+9    -Xmx500M  PASS  check 10/10
+  2026-11-06  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121    -Xmx2G    PASS  check 10/10  test 12/12
+
+The -Xmx500M run is what Protege.exe gives a user who double-clicks it. The 5.5.0 run finished
+loading pizza-bfo, its seven imports resolved from disk; the two 5.6.9 runs were stopped at their
+verdicts before it had.
+
+The tenth check is new: "downloads can use TLS" builds a TLS context and opens the operating
+system's certificate store, which is what Download... needs, inside Protege's own OSGi container -
+the bundle imports javax.net.ssl as optional, so only the host can say whether it is wired. It
+passed on both: TLS from SunJSSE (TLSv1.3, TLSv1.2) on 5.6.9 and (TLSv1, TLSv1.1, TLSv1.2) on
+5.5.0, Windows trust store 93 roots on each.
+
+The jar: sha256 4569ad304f073a15..., built by mvn -o clean package from the working tree this
+release was committed from. The unit suite in that build, on Java 11: 2,806 tests, 0 failures,
+0 errors, 3 skipped - PinchZoomTest, as before; BundleConfigurationTest, the manifest check, which
+a clean build reaches before the jar exists (run against this jar afterwards, its 18 tests
+passed); and KoncludeTest's executable-bit test, which needs a file system with one and runs on
+CI's Linux job. The new and changed test classes also passed on Java 25, which CI uses.
+Eight NullPointerExceptions were logged, four in each -Xmx2G run, all in Protege's own
+OWLCellRenderer; none from OntoBoard.
+
+Beyond the smoke, both downloads were run for real through the classes the Download... button
+calls - Download.fetch over HttpsOpener, KoncludeInstall.install, and the start probe Reason
+with Konclude... uses - from a harness, into empty folders, with each host's own Java:
+
+  JRE 11.0.25 (5.6.9)   Widoco 40,858,575 bytes = pin   Konclude zip = pin, unpacked, starts
+  JRE 1.8.0_121 (5.5.0) Widoco = pin                    Konclude zip = pin, unpacked, starts
+
+On 1.8.0_121 the JRE's own trust store refuses GitHub's certificate ("PKIX path building
+failed", measured); both downloads succeeded through the fallback to Windows' certificate store.
+
+
+WHAT THIS RELEASE ADDS
+
+- When Widoco or Konclude is missing - or Konclude is there and will not start - a dialog comes
+  before the action's own form, with four ways on. Download... saves the release OntoBoard was
+  built against into a folder you choose, keeps it only if its length and SHA-256 match (pinned
+  in the plugin: GitHub publishes no digest for these assets), unpacks Konclude with the
+  libraries it needs beside it, makes it executable off Windows, and fills in and remembers the
+  path; Cancel closes the connection at once. Copy link and Open release page are for a browser
+  download, after which Choose file... takes the jar, the Konclude zip (unpacked for you) or the
+  program itself. A file with the release's exact name and another hash is refused.
+- Nothing half-written ever has the release's name: bytes go to <name>.part and are renamed only
+  once checked, and every other way out deletes the part file. A jar under the release's name but
+  not its length - a browser download stopped part-way, or still running - is no longer taken
+  for an installed Widoco.
+- HTTPS only, at most five redirects, none leaving HTTPS. Certificate checking is never switched
+  off: after a certificate-path failure the download is tried again against the operating
+  system's store (Windows' own, or a Linux system Java store), and otherwise says so.
+- The dialog names what else is needed: Java 11 for Widoco on a Java 8 Protege, with where to get
+  it; Microsoft's Visual C++ runtime for Konclude on Windows when it is missing (all four
+  libraries the release imports, read from its binaries); Rosetta 2 on Apple silicon. Konclude's
+  "did not start" message names the missing runtime too, and Widoco's Java-too-old message says
+  where to get a newer one.
+
+
+WHAT THIS RECEIPT DOES NOT COVER
+
+- The dialog itself was not clicked through. It appears only when a tool is missing, and no smoke
+  run drives Protege by hand; the download, the checks, the unpacking and the start probe were
+  run for real through the same classes, and everything the dialog says or decides is tested
+  without a screen.
+- The Linux and macOS paths - the Linux trust store fallback, the executable bit, the Rosetta and
+  quarantine advice - are covered by unit tests only, the executable bit on CI's Linux job.
+- An independent review of the change found three problems, fixed before this build: the runtime
+  check missed the two "_1" libraries Qt imports; Cancel did not close a stalled connection and
+  was then reported as a failure; and a chosen zip was unpacked before its program was looked for.
+  A fourth finding, a cut-short jar taken for Widoco, was fixed with them. Nine smaller points
+  were left for later.
