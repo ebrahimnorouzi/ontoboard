@@ -1,6 +1,10 @@
 package de.fizkarlsruhe.ise.ontoboard.konclude;
 
+import de.fizkarlsruhe.ise.ontoboard.tools.ToolAsset;
+import de.fizkarlsruhe.ise.ontoboard.tools.ToolSetup;
+import de.fizkarlsruhe.ise.ontoboard.tools.Unzip;
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -87,19 +91,98 @@ public final class KoncludeInstall {
      * "bad CPU type in executable".
      */
     public static String assetForThisMachine() {
-        if (isWindows()) {
-            return "Konclude-" + Konclude.KNOWN_RELEASE + "-Windows-x64-MSVC-Dynamic-Qt5.15.2.zip";
-        }
-        if (isMac()) {
-            return "Konclude-" + Konclude.KNOWN_RELEASE + "-OSX-x64-Clang-Static-Qt5.12.10.zip";
-        }
-        return "Konclude-" + Konclude.KNOWN_RELEASE + "-Linux-x64-GCC-Static-Qt5.12.10.zip";
+        return asset().getName();
     }
 
     /** A direct download link for this machine's asset. */
     public static String downloadUrl() {
-        return "https://github.com/konclude/Konclude/releases/download/"
-                + Konclude.KNOWN_RELEASE + "/" + assetForThisMachine();
+        return asset().getUrl();
+    }
+
+    /** This machine's release asset, pinned. */
+    public static ToolAsset asset() {
+        return assetFor(System.getProperty("os.name", ""));
+    }
+
+    /**
+     * The release asset for a system, by its {@code os.name}, pinned to the bytes measured for
+     * this version.
+     *
+     * <p>Length and SHA-256 of each were computed from fresh downloads on 2026-11-05 - GitHub
+     * publishes no digest for assets this old - and the Windows zip matched a copy downloaded
+     * earlier. macOS is tested before Windows because "Darwin" contains "win".
+     */
+    public static ToolAsset assetFor(String osName) {
+        String os = osName == null ? "" : osName.toLowerCase(Locale.ROOT);
+        String name;
+        long size;
+        String sha256;
+        if (os.contains("mac") || os.contains("darwin")) {
+            name = "Konclude-" + Konclude.KNOWN_RELEASE + "-OSX-x64-Clang-Static-Qt5.12.10.zip";
+            size = 13249589L;
+            sha256 = "b14900399dd373e5af8dbf9e3941914f701fa0ad079df3455e0ce88ba8463943";
+        } else if (os.contains("win")) {
+            name = "Konclude-" + Konclude.KNOWN_RELEASE + "-Windows-x64-MSVC-Dynamic-Qt5.15.2.zip";
+            size = 18733629L;
+            sha256 = "52ea75ebac2e996cb6bdb256271d1a772ec7b2ac1cce99c6da13a7d967698f98";
+        } else {
+            name = "Konclude-" + Konclude.KNOWN_RELEASE + "-Linux-x64-GCC-Static-Qt5.12.10.zip";
+            size = 13926747L;
+            sha256 = "37216c18f45a80165aec1e76aeefd62d933d6a3f8f134c5aca0707c676fda76e";
+        }
+        return new ToolAsset(name, "https://github.com/konclude/Konclude/releases/download/"
+                + Konclude.KNOWN_RELEASE + "/" + name, size, sha256,
+                "https://github.com/konclude/Konclude/releases/tag/" + Konclude.KNOWN_RELEASE,
+                true);
+    }
+
+    /**
+     * Unpacks a downloaded release next to where it will stay, and returns the binary.
+     *
+     * <p>The program is looked for in the zip's own list of entries first, before anything is
+     * written: a zip that is not a Konclude release is refused with nothing unpacked from it, a
+     * release of another build is used from wherever its {@code Binaries} folder is, and the
+     * binary returned is the one this zip contained - never an older copy already lying in the
+     * folder.
+     *
+     * <p>Unpacked whole, never the binary on its own: on Windows it needs the Qt and Boost
+     * libraries beside it. Elsewhere a zip carries no executable bit Java can apply, so it is set
+     * here on the binary and on the release's launcher script - without that the first run would
+     * fail with "permission denied".
+     *
+     * @throws IOException when the zip has no Konclude where a release keeps it, or cannot be
+     *     unpacked
+     */
+    public static File install(File zip, File into) throws IOException {
+        String exe = executableName().toLowerCase(Locale.ROOT);
+        String inside = null;
+        for (String name : Unzip.names(zip)) {
+            String entry = name.replace('\\', '/');
+            String lower = entry.toLowerCase(Locale.ROOT);
+            if (lower.equals("binaries/" + exe) || lower.endsWith("/binaries/" + exe)) {
+                inside = entry;
+                break;
+            }
+        }
+        if (inside == null) {
+            throw new IOException(zip.getName() + " has no " + executableName() + " in a "
+                    + "Binaries folder, where a Konclude release keeps it, so nothing was "
+                    + "unpacked from it.");
+        }
+        Unzip.unzip(zip, into);
+        File binary = new File(into, inside);
+        if (!binary.isFile()) {
+            throw new IOException("Unpacking " + zip.getName() + " did not produce "
+                    + binary.getAbsolutePath() + ".");
+        }
+        if (!isWindows()) {
+            binary.setExecutable(true, false);
+            File launcher = new File(binary.getParentFile().getParentFile(), "Konclude");
+            if (launcher.isFile()) {
+                launcher.setExecutable(true, false);
+            }
+        }
+        return binary;
     }
 
     /** The user's Downloads folder, where a release zip lands and is usually unpacked. */
@@ -239,14 +322,47 @@ public final class KoncludeInstall {
         return new Found(binary, version.length() > 90 ? version.substring(0, 90) : version, "");
     }
 
+    /** Why a binary that exists did not start, on this machine. */
     private static String notStarting() {
-        if (isWindows()) {
+        return notStarting(System.getProperty("os.name", ""), vcRuntimePresent());
+    }
+
+    /**
+     * Whether this machine has what {@code Konclude.exe} imports from Microsoft's C++ runtime.
+     * Always true off Windows, where the releases are static.
+     */
+    public static boolean vcRuntimePresent() {
+        return !isWindows() || ToolSetup.vcRuntimePresent(systemRoot());
+    }
+
+    /** {@code %SystemRoot%}, where Windows keeps System32. */
+    private static File systemRoot() {
+        String root = System.getenv("SystemRoot");
+        return new File(root == null || root.trim().isEmpty() ? "C:\\Windows" : root.trim());
+    }
+
+    /**
+     * Why a binary that exists did not start.
+     *
+     * <p>On Windows the Visual C++ runtime comes first: {@code Konclude.exe} imports
+     * {@code msvcp140.dll} and {@code vcruntime140.dll} (read from the binary), the release zip
+     * does not carry them, and without them a correctly unpacked Konclude cannot start either.
+     */
+    static String notStarting(String osName, boolean vcRuntimePresent) {
+        String os = osName == null ? "" : osName.toLowerCase(Locale.ROOT);
+        boolean mac = os.contains("mac") || os.contains("darwin");
+        if (os.contains("win") && !mac && !vcRuntimePresent) {
+            return "It did not start. Konclude.exe needs Microsoft's Visual C++ runtime, which "
+                    + "this machine does not have: install the x64 Visual C++ Redistributable "
+                    + "from " + ToolSetup.VC_REDIST_URL + ", then try again.";
+        }
+        if (os.contains("win") && !mac) {
             return "It did not start. The Windows release links Qt dynamically, so Konclude.exe "
                     + "needs the DLLs that were beside it in the zip - copying the exe out on its "
                     + "own is the usual cause. Point this at the exe where you unpacked it, with "
                     + "its neighbours intact.";
         }
-        if (isMac()) {
+        if (mac) {
             return "It did not start. On Apple silicon the only build is x86-64, so it needs "
                     + "Rosetta 2; macOS may also quarantine a downloaded binary until you allow "
                     + "it in System Settings, or run: xattr -d com.apple.quarantine <path>";

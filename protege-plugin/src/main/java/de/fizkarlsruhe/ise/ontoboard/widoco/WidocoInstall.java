@@ -1,5 +1,7 @@
 package de.fizkarlsruhe.ise.ontoboard.widoco;
 
+import de.fizkarlsruhe.ise.ontoboard.tools.ToolAsset;
+import de.fizkarlsruhe.ise.ontoboard.tools.ToolSetup;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -48,8 +50,21 @@ public final class WidocoInstall {
     }
 
     public static String downloadUrl() {
-        return "https://github.com/dgarijo/Widoco/releases/download/" + KNOWN_RELEASE + "/"
-                + assetForThisMachine();
+        return asset().getUrl();
+    }
+
+    /**
+     * The jar to download, pinned to the bytes measured for this version.
+     *
+     * <p>40,858,575 bytes, SHA-256 computed from a fresh download on 2026-11-05 and matching a
+     * copy downloaded a month before. GitHub publishes no digest for an asset this old.
+     */
+    public static ToolAsset asset() {
+        String name = assetForThisMachine();
+        return new ToolAsset(name,
+                "https://github.com/dgarijo/Widoco/releases/download/" + KNOWN_RELEASE + "/" + name,
+                40858575L, "ce3071a90fe73c0860829569e79050f74c9623d6add8be3925cbdf87bedde5a5",
+                "https://github.com/dgarijo/Widoco/releases/tag/" + KNOWN_RELEASE, false);
     }
 
     /** What to tell somebody who has none of it. */
@@ -96,6 +111,23 @@ public final class WidocoInstall {
             places.add(new File(nativeEnvironment, "widoco.jar"));
         }
         return Collections.unmodifiableList(places);
+    }
+
+    /**
+     * Whether a jar that was found can be the release.
+     *
+     * <p>One under the release's own name has to be the release's length: anything shorter is a
+     * download stopped part-way, or still running - Firefox creates the file under its final name
+     * as it starts. Taking that for Widoco would skip the offer to download it and end in a run
+     * that fails on a corrupt jar. A jar with any other name is the user's own choice of version,
+     * as typing a path always was.
+     */
+    public static boolean looksComplete(File jar) {
+        if (jar == null || !jar.isFile()) {
+            return false;
+        }
+        ToolAsset release = asset();
+        return !jar.getName().equals(release.getName()) || jar.length() == release.getSize();
     }
 
     /** The first of these that exists, or null. */
@@ -204,7 +236,8 @@ public final class WidocoInstall {
             return where + " is Java " + major + ", and Widoco's published jar needs "
                     + LEAST_JAVA + " or newer - it is compiled to class file version 55. "
                     + "Protege 5.5.0 ships Java 8, so on that host OntoBoard looks for another "
-                    + "one; point the Java field at a JDK 11 if it found none.";
+                    + "one; point the Java field at a JDK 11 if it found none. Without one, "
+                    + "install it from " + ToolSetup.ADOPTIUM_URL + ".";
         }
         return null;
     }

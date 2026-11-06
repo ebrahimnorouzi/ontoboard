@@ -1,6 +1,7 @@
 package de.fizkarlsruhe.ise.ontoboard.menu;
 
 import de.fizkarlsruhe.ise.ontoboard.proc.ProcessRunner;
+import de.fizkarlsruhe.ise.ontoboard.tools.ToolSetup;
 import de.fizkarlsruhe.ise.ontoboard.widoco.Widoco;
 import de.fizkarlsruhe.ise.ontoboard.widoco.WidocoInstall;
 import java.awt.Desktop;
@@ -72,20 +73,28 @@ public class WidocoAction extends OntoBoardAction {
     protected boolean configure() {
         File found = WidocoInstall.firstPresent(WidocoInstall.candidates(
                 WidocoInstall.remembered(), downloads(), null));
+        if (!WidocoInstall.looksComplete(found)) {
+            // Absent, or under the release's name but cut short - a browser download stopped
+            // part-way, or still running. Either way the offer below is what helps.
+            found = null;
+        }
+        if (found == null) {
+            // Offered before the form, because the form's first field is a path to a file the
+            // user does not have yet: download the pinned release, or point at one fetched by hand.
+            found = GetToolDialog.offer(getOWLWorkspace(), ToolSetup.Tool.WIDOCO,
+                    WidocoInstall.asset(), null);
+            if (found == null) {
+                return false;
+            }
+            WidocoInstall.remember(found);
+        }
         File chosenJava = WidocoInstall.firstPresent(WidocoInstall.javaCandidates(
                 WidocoInstall.rememberedJava(), javaHome(), javaHomeFromEnvironment(), null));
 
         StringBuilder explanation = new StringBuilder();
-        if (found == null) {
-            explanation.append("Widoco is not installed. ");
-            for (String line : WidocoInstall.howToInstall()) {
-                explanation.append(line).append(' ');
-            }
-        } else {
-            explanation.append("Widoco found at ").append(found.getName())
-                    .append(". It generates the HTML page an ODK project publishes, from the "
-                            + "ontology's own annotations, and opens it when it is done.");
-        }
+        explanation.append("Widoco found at ").append(found.getName())
+                .append(". It generates the HTML page an ODK project publishes, from the "
+                        + "ontology's own annotations, and opens it when it is done.");
 
         Map<String, String> chosen = ParameterDialog.show(getOWLWorkspace(), "Documentation",
                 explanation.toString(),

@@ -7,6 +7,7 @@ import de.fizkarlsruhe.ise.ontoboard.robot.Reasoners;
 import de.fizkarlsruhe.ise.ontoboard.robot.ReportQueries;
 import de.fizkarlsruhe.ise.ontoboard.robot.RuleRunner;
 import de.fizkarlsruhe.ise.ontoboard.robot.TermExport;
+import de.fizkarlsruhe.ise.ontoboard.tools.HttpsOpener;
 import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -237,6 +238,16 @@ public final class SelfCheck {
 
         checks.add(menuClassesResolve());
         checks.add(patternLibraryReadable());
+
+        try {
+            // What Download... needs, loaded here rather than on the first click. The bundle
+            // imports javax.net.ssl as optional, so whether these classes load at all is a property
+            // of the host's OSGi container - the same reason every check above exists. No network:
+            // it builds a TLS context and, on Windows, opens the store the retry falls back to.
+            checks.add(new Check("downloads can use TLS", true, HttpsOpener.selfCheck()));
+        } catch (Exception | LinkageError cannot) {
+            checks.add(new Check("downloads can use TLS", false, describe(cannot)));
+        }
 
         return new Result(checks);
     }

@@ -22,7 +22,7 @@ class SelfCheckTest {
     void everyCheckPassesOnTheClasspath() {
         SelfCheck.Result result = SelfCheck.run();
 
-        assertEquals(9, result.getChecks().size(), "expected nine checks: " + result.getChecks());
+        assertEquals(10, result.getChecks().size(), "expected ten checks: " + result.getChecks());
         assertTrue(result.isPassed(), "the self-check must pass where the resources are reachable, "
                 + "otherwise it cannot distinguish a bundle problem from its own bug: "
                 + result.getChecks());
@@ -92,6 +92,22 @@ class SelfCheckTest {
     }
 
     /**
+     * The classes a download needs load, which inside Protege is a question about OSGi.
+     *
+     * <p>The bundle imports {@code javax.net.ssl} as optional, so a host that does not wire it
+     * would resolve the plugin happily and fail at the first click on Download... - in a dialog
+     * that exists for people who have just found out a tool is missing. Asked at startup instead,
+     * where the smoke test reads the answer on both hosts.
+     */
+    @Test
+    void theDownloadCheckLoadsTheTlsClasses() {
+        SelfCheck.Check tls = checkNamed("downloads can use TLS");
+
+        assertTrue(tls.isPassed(), tls.toString());
+        assertTrue(tls.getDetail().startsWith("TLS from "), tls.getDetail());
+    }
+
+    /**
      * Every view plugin.xml registers is named, so the self-test knows what to insist on.
      *
      * <p>The self-test opens the OntoBoard tab and asks {@code ViewHealth} what built. Until
@@ -137,7 +153,7 @@ class SelfCheckTest {
     void theSummaryIsTheLineTheSmokeScriptMatches() {
         SelfCheck.Result result = SelfCheck.run();
 
-        assertEquals("OntoBoard self-check: PASS 9/9", result.summary());
+        assertEquals("OntoBoard self-check: PASS 10/10", result.summary());
         assertTrue(result.summary().startsWith("OntoBoard self-check: "),
                 "tools/smoke.ps1 matches this prefix");
     }
