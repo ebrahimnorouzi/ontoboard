@@ -207,6 +207,59 @@ class TermMinterTest {
         assertThrows(IdRanges.NoRangeException.class, () -> minter.mintFor(ontology, "Person"));
     }
 
+    /**
+     * A released identifier keeps its meaning. A tester released a term as HARDTEST_0001001,
+     * deleted it, and the next new term was given HARDTEST_0001001 again - so the next release
+     * "relabelled" it, and everybody who used the identifier now meant something else.
+     */
+    @Test
+    void anIdentifierThatWasReleasedIsNotMintedAgain(@TempDir Path dir) throws Exception {
+        File edit = odkProject(dir, "alice");
+        File release = new File(dir.toFile(), "releases/1.0.0/mwo.owl");
+        assertTrue(release.getParentFile().mkdirs());
+        Files.write(release.toPath(), ("<rdf:RDF xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-"
+                + "syntax-ns#\" xmlns:owl=\"http://www.w3.org/2002/07/owl#\">\n"
+                + "  <owl:Class rdf:about=\"http://purl.obolibrary.org/obo/MWO_0001000\"/>\n"
+                + "</rdf:RDF>\n").getBytes(StandardCharsets.UTF_8));
+        // A later release written with a prefix rather than the whole IRI.
+        File later = new File(dir.toFile(), "releases/1.0.1/mwo.owl");
+        assertTrue(later.getParentFile().mkdirs());
+        Files.write(later.toPath(), ("Prefix(obo:=<http://purl.obolibrary.org/obo/>)\n"
+                + "Ontology(Declaration(Class(obo:MWO_0001001)))\n")
+                .getBytes(StandardCharsets.UTF_8));
+        TermMinter minter = TermMinter.forOntologyFile(edit, "alice");
+
+        assertEquals("http://purl.obolibrary.org/obo/MWO_0001002",
+                minter.mintFor(ontology, "aluminium plate").toString(),
+                "the open ontology no longer has the two released terms, and their identifiers "
+                        + "are still not free");
+    }
+
+    /**
+     * The releases are read when the project opens, off the Swing thread, so the first new term
+     * finds them read. A code review found the first New subclass... of a session reading every
+     * release of a long history on the event thread.
+     */
+    @Test
+    void theReleasesAreReadAheadOnAThreadOfTheirOwn(@TempDir Path dir) throws Exception {
+        File edit = odkProject(dir, "alice");
+        File release = new File(dir.toFile(), "releases/1.0.0/mwo.owl");
+        assertTrue(release.getParentFile().mkdirs());
+        Files.write(release.toPath(), ("Prefix(obo:=<http://purl.obolibrary.org/obo/>)\n"
+                + "Ontology(Declaration(Class(obo:MWO_0001000)))\n")
+                .getBytes(StandardCharsets.UTF_8));
+        int before = TermMinter.filesRemembered();
+
+        Thread reader = TermMinter.readReleasesInBackground(edit);
+        assertTrue(reader != null && reader.isDaemon()
+                && reader != Thread.currentThread(), "a daemon thread of its own");
+        reader.join(10_000);
+
+        assertEquals(before + 1, TermMinter.filesRemembered(), "the release was read and kept");
+        assertEquals(null, TermMinter.readReleasesInBackground(
+                new File(dir.toFile(), "elsewhere/plain.owl")), "nothing to read without ranges");
+    }
+
     @Test
     void anExhaustedRangeIsRefused(@TempDir Path dir) throws Exception {
         TermMinter minter = TermMinter.forOntologyFile(odkProject(dir, "alice"), "alice");

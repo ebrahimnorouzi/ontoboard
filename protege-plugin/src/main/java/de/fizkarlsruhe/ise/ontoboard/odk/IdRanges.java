@@ -358,7 +358,8 @@ public final class IdRanges {
      * would be a second source of truth that drifts the moment anyone edits the ontology outside
      * this plugin, whereas the ontology's own contents cannot drift from themselves.
      *
-     * @param takenIris every IRI already in use - pass the ontology's full signature
+     * @param takenIris every IRI already in use - pass the ontology's full signature, and what
+     *     the project's releases carried ({@link TermMinter#releasedIdentifiers})
      * @throws NoRangeException when the owner has no range, or has used all of it. Both messages
      *     say what to do, because both are things a person can fix.
      */

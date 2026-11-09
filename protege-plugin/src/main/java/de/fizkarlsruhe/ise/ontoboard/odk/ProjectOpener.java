@@ -64,17 +64,58 @@ public final class ProjectOpener {
                         "Not opened", JOptionPane.WARNING_MESSAGE);
                 return;
             }
+            // Protégé keeps an ontology it already has under the same IRI and opens nothing new,
+            // yet answers true. A tester who started the project again in another folder was told
+            // "Project opened" and went on editing the old one.
+            java.io.File open = documentOf(editorKit);
+            if (open != null && !sameFile(open, project.getEditFile())) {
+                ProjectWizard.showTheBoard(parent);
+                JOptionPane.showMessageDialog(parent,
+                        ProjectWizard.wrapped("Not opened: an ontology with the same IRI is already"
+                                + " open, from\n" + open.getAbsolutePath()
+                                + "\n\nProtege kept it, so you are still working in that file. To"
+                                + " work in " + project.getEditFile().getAbsolutePath()
+                                + ", quit Protege, start it again, and open the project from here."),
+                        "Not opened", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            // The board in front, as New ODK project... does, because the message below points at
+            // it - and Active ontology was the tab in front after opening.
+            ProjectWizard.showTheBoard(parent);
             JOptionPane.showMessageDialog(parent,
-                    "Opened " + project.getTitle() + "\n\n"
+                    ProjectWizard.wrapped("Opened " + project.getTitle() + "\n\n"
                             + project.getEditFile().getAbsolutePath()
-                            + "\n\nAdd entities from the class hierarchy, or double-click "
-                            + "the board to create one.",
+                            + "\n\nTo add a class of your own, right-click its superclass on the "
+                            + "board and choose New subclass..., or double-click empty board: it "
+                            + "is numbered from your ID range."),
                     "Project opened", JOptionPane.INFORMATION_MESSAGE);
         } catch (Exception couldNotLoad) {
             JOptionPane.showMessageDialog(parent,
                     "Found " + project.getEditFile().getName()
                             + " but Protege could not load it:\n" + couldNotLoad.getMessage(),
                     "Could not open", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    /** The file the active ontology was loaded from, or null. */
+    private static java.io.File documentOf(OWLEditorKit editorKit) {
+        try {
+            org.semanticweb.owlapi.model.OWLOntology active =
+                    editorKit.getModelManager().getActiveOntology();
+            org.semanticweb.owlapi.model.IRI document = active == null ? null
+                    : active.getOWLOntologyManager().getOntologyDocumentIRI(active);
+            return document != null && "file".equalsIgnoreCase(document.getScheme())
+                    ? new java.io.File(document.toURI()) : null;
+        } catch (RuntimeException cannotTell) {
+            return null;
+        }
+    }
+
+    static boolean sameFile(java.io.File one, java.io.File other) {
+        try {
+            return one.getCanonicalFile().equals(other.getCanonicalFile());
+        } catch (java.io.IOException cannotTell) {
+            return one.getAbsoluteFile().equals(other.getAbsoluteFile());
         }
     }
 }

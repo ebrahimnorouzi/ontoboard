@@ -85,12 +85,17 @@ public final class QuestionTests {
     public static String query(Template template, String question, IRI cls, IRI property,
             IRI second, int most) {
         String head = "# " + oneLine(question) + "\n" + PREFIXES;
+        // ?term a owl:Class beside every rdfs:subClassOf* from the class: the path's zero-length
+        // step matches the class's IRI whether or not the ontology still has the class, so a test
+        // written on a class that was then deleted listed that bare IRI as breaking the rule, and
+        // failed every build after. Gone, the class has nothing that can break it.
         switch (template) {
             case EVERY_SUBCLASS_HAS_SOME:
                 // The class itself and every class under it; a restriction stated on a class
                 // above counts, because the class inherits it.
                 return head + "SELECT DISTINCT ?term ?label WHERE {\n"
                         + "  ?term rdfs:subClassOf* <" + cls + "> .\n"
+                        + "  ?term a owl:Class .\n"
                         + "  FILTER(isIRI(?term))\n"
                         + "  FILTER NOT EXISTS {\n"
                         + "    ?term rdfs:subClassOf* ?above .\n"
@@ -113,7 +118,8 @@ public final class QuestionTests {
                         + "}\n";
             case EVERY_ONE_HAS_A_LABEL:
                 return head + "SELECT DISTINCT ?term WHERE {\n"
-                        + "  { ?term rdfs:subClassOf* <" + cls + "> . FILTER(isIRI(?term)) }\n"
+                        + "  { ?term rdfs:subClassOf* <" + cls + "> . ?term a owl:Class ."
+                        + " FILTER(isIRI(?term)) }\n"
                         + "  UNION { ?term rdf:type/rdfs:subClassOf* <" + cls + "> }\n"
                         + "  FILTER NOT EXISTS { ?term rdfs:label ?label }\n"
                         + "}\n";

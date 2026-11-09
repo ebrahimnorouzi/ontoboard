@@ -58,26 +58,12 @@ public class BuildAction extends OntoBoardAction {
         File editFile = fileOf(getOWLModelManager().getActiveOntology());
         // A build reads the file, not the window. Unsaved edits were silently left out of it -
         // a test that should have failed passed, and nothing said why.
-        if (getOWLModelManager().getDirtyOntologies()
-                .contains(getOWLModelManager().getActiveOntology())) {
-            Object[] options = {"Save and build", "Build the saved file", "Cancel"};
-            int choice = javax.swing.JOptionPane.showOptionDialog(getOWLWorkspace(),
-                    "The ontology has changes that are not saved yet. A build checks the file on "
-                            + "disk, so it would not see them.",
-                    "Save first?", javax.swing.JOptionPane.DEFAULT_OPTION,
-                    javax.swing.JOptionPane.QUESTION_MESSAGE, null, options, options[0]);
-            if (choice == 0) {
-                try {
-                    getOWLModelManager().save(getOWLModelManager().getActiveOntology());
-                } catch (Exception cannotSave) {
-                    javax.swing.JOptionPane.showMessageDialog(getOWLWorkspace(),
-                            "Could not save: " + cannotSave.getMessage(), "Cannot build",
-                            javax.swing.JOptionPane.WARNING_MESSAGE);
-                    return false;
-                }
-            } else if (choice != 1) {
-                return false;
-            }
+        if (SaveFirst.isNeeded(getOWLModelManager()) && SaveFirst.ask(getOWLWorkspace(),
+                getOWLModelManager(), "The ontology has changes that are not saved yet. A build "
+                        + "checks the file on disk, so it would not see them.",
+                "Save and build", "Build the saved file", "Cannot build")
+                == SaveFirst.Answer.CANCELLED) {
+            return false;
         }
         route = MakeRun.routeFor(editFile, ProcessRunner.real());
         image = MakeRun.imageFor(MakeRun.workingDirectory(editFile));
@@ -208,6 +194,9 @@ public class BuildAction extends OntoBoardAction {
         }
         for (File file : outcome.getWritten()) {
             result.wrote(file);
+        }
+        for (String warning : outcome.getWarnings()) {
+            result.warn(warning);
         }
         if (!outcome.isOk()) {
             return result.failed(outcome.getFailure()).build();

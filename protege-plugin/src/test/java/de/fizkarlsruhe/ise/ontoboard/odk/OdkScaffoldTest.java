@@ -803,6 +803,35 @@ class OdkScaffoldTest {
     }
 
     /**
+     * An address typed after the one filled in, not over it, is refused.
+     *
+     * <p>The field fills itself from the ID, so that is the likeliest slip on the form, and it
+     * passed every rule: it starts with http and ends in the ID. A study rehearsal made such a
+     * project, with every term it would mint named under the two addresses run together.
+     */
+    @Test
+    void aSecondAddressInTheBaseIriIsRefused(@TempDir Path dir) {
+        for (String garbled : new String[] {
+            "http://purl.obolibrary.org/obo/abc.owlhttps://example.org/abc/abc.owl",
+            "http://purl.obolibrary.org/obo/https://example.org/abc/abc.owlabc.owl"}) {
+            IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class,
+                    () -> new OdkProjectConfig("abc", "ABC", "", garbled, CC0, dir.toFile())
+                            .validate(), garbled);
+            assertTrue(thrown.getMessage().contains("second address"), thrown.getMessage());
+            assertTrue(thrown.getMessage().contains("Replace the address"), thrown.getMessage());
+        }
+    }
+
+    /** A space cannot be part of an IRI, and every term is named under this one. */
+    @Test
+    void aSpaceInTheBaseIriIsRefused(@TempDir Path dir) {
+        IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class,
+                () -> new OdkProjectConfig("abc", "ABC", "", "https://example.org/my abc/abc.owl",
+                        CC0, dir.toFile()).validate());
+        assertTrue(thrown.getMessage().contains("space"), thrown.getMessage());
+    }
+
+    /**
      * A project must not fail its own CI on its first push.
      *
      * <p>ROBOT's default profile - which this scaffold writes out in full - treats

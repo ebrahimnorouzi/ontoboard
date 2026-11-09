@@ -7,7 +7,7 @@
     xmlns:mq="http://www.ontologydesignpatterns.org/schemas/dbpediainfoboxmatchingweight.owl#"
     xmlns:cpa="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#"
     xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
-    xmlns:base="http://www.ontologydesignpatterns.org/ekp/owl/EthnicGroup.owl" > 
+    xml:base="http://www.ontologydesignpatterns.org/ekp/owl/EthnicGroup.owl" > 
   <rdf:Description rdf:nodeID="A0">
     <mq:dbpediaInfoboxMatchingWeight rdf:datatype="http://www.w3.org/2001/XMLSchema#decimal">16.67</mq:dbpediaInfoboxMatchingWeight>
     <owl:annotatedSource rdf:resource="#linksToCountry"/>

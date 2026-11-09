@@ -137,7 +137,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
      * from 70ms to 123ms. The switch is there because a reader who wants the plain class
      * hierarchy should be able to have it, not because the cost demands one.
      */
-    private boolean showExpressions = true;
+    private boolean showExpressions = false;
 
     /** Where that choice is remembered, so it survives a restart. */
     static final String EXPRESSIONS_PREFERENCE = "ontoboard.canvas.expressions";
@@ -446,7 +446,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
 
         showExpressions = java.util.prefs.Preferences
                 .userNodeForPackage(SchemaCanvasView.class)
-                .getBoolean(EXPRESSIONS_PREFERENCE, true);
+                .getBoolean(EXPRESSIONS_PREFERENCE, false);
         focusOnSelection = java.util.prefs.Preferences
                 .userNodeForPackage(SchemaCanvasView.class).getBoolean(FOCUS_PREFERENCE, true);
         if (focusButton != null) {
@@ -510,8 +510,12 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             if (!movingProgrammatically) {
                 rememberBoard("moving things on the board");
                 sayOnceThatMovesStayHere();
+                layout.arrangedByHand = Boolean.TRUE;
             }
             capturePositions();
+            if (!arranging) {
+                graph.routeEdges();
+            }
             // A board being laid out is saved, or not, by whatever laid it out. The outline drawn
             // when a board first opens is deliberately not saved, and restarting the timer here
             // saved it 800ms later all the same - so opening a tab left a file beside the ontology.
@@ -572,6 +576,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                 collab.publishLocalChanges(changes, canvasHints());
             }
             stampEditsMadeElsewhere(changes);
+            sayWhenAnImportIsTakenBack(changes);
             refreshSoon();
         };
         getOWLModelManager().addOntologyChangeListener(changeListener);
@@ -583,6 +588,8 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         modelManagerListener = event -> {
             if (event.isType(EventType.ACTIVE_ONTOLOGY_CHANGED)) {
                 switchToActiveOntology();
+            } else if (event.isType(EventType.ONTOLOGY_SAVED)) {
+                javax.swing.SwingUtilities.invokeLater(this::saidSaved);
             } else if (shouldRefreshFor(event.getType(), showInferences)) {
                 refreshSoon();
             }
@@ -1088,6 +1095,35 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
      * <p>Pre-filled with the existing note and empty-means-delete, because the alternative is a
      * separate menu item for removing one and a curator who has to know which to reach for.
      */
+    private void editDefinition(String iri) {
+        OWLOntology ontology = getOWLModelManager().getActiveOntology();
+        if (ontology == null) {
+            return;
+        }
+        IRI entity = IRI.create(iri);
+        String was = de.fizkarlsruhe.ise.ontoboard.prov.TermDefinitions.of(ontology, entity);
+        javax.swing.JTextArea area = new javax.swing.JTextArea(was, 5, 44);
+        area.setLineWrap(true);
+        area.setWrapStyleWord(true);
+        String name = nameOnTheBoard(iri);
+        if (JOptionPane.showConfirmDialog(this,
+                new Object[] {"What " + name + " means, in a sentence. It goes into the ontology "
+                        + "as its definition (IAO:0000115); clear the box to remove it.",
+                    new javax.swing.JScrollPane(area)},
+                was.isEmpty() ? "Add a definition" : "Edit the definition",
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE) != JOptionPane.OK_OPTION) {
+            return;
+        }
+        String now = area.getText() == null ? "" : area.getText().trim();
+        if (now.equals(was)) {
+            return;
+        }
+        getOWLModelManager().applyChanges(
+                de.fizkarlsruhe.ise.ontoboard.prov.TermDefinitions.set(ontology, entity, now));
+        setStatus(now.isEmpty() ? "Removed the definition of " + name + "."
+                : "Defined " + name + ". File > Save keeps it.");
+    }
+
     private void editEditorialNote(String iri) {
         OWLOntology ontology = getOWLModelManager().getActiveOntology();
         if (ontology == null) {
@@ -1255,6 +1291,18 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
     }
 
     /**
+     * After a save, a status line still asking for one no longer does: a tester read "Defined X.
+     * File > Save keeps it." after pressing File > Save.
+     */
+    private void saidSaved() {
+        if (boardStatus != null && boardStatus.getText() != null
+                && (boardStatus.getText().contains("File > Save keeps")
+                        || boardStatus.getText().contains("File > Save to keep"))) {
+            setStatus("Saved.");
+        }
+    }
+
+    /**
      * Says, once per session, that moving a node does not reach anybody.
      *
      * <p>A gap the product was silent about. Positions <em>are</em> shared, but only as a hint
@@ -1375,7 +1423,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         for (int mask : new int[] { java.awt.event.InputEvent.CTRL_DOWN_MASK,
                 java.awt.event.InputEvent.META_DOWN_MASK }) {
             bindOnCanvas("ontoboard.zoomActual", java.awt.event.KeyEvent.VK_0, mask, () -> {
-                graphComponent.zoomActual();
+                zoomToActualSize();
                 updateZoomReadout();
                 setStatus("Actual size.");
             });
@@ -1725,7 +1773,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         zoomReadout.setFocusable(false);
         zoomReadout.setRequestFocusEnabled(false);
         zoomReadout.addActionListener(a -> {
-            graphComponent.zoomActual();
+            zoomToActualSize();
             updateZoomReadout();
             graphComponent.requestFocusInWindow();
         });
@@ -2281,16 +2329,39 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         }
 
         rememberBoard("adding " + CanvasSearch.nameOf(term));
-        Point where = centreOfTheVisibleCanvas();
+        // Under its parent when that is on the board, and in free space either way: the middle of
+        // the view, where Find had just scrolled to, was often the parent's own box, and a tester
+        // found the term drawn on top of it.
+        OWLOntology ontology = getOWLModelManager().getActiveOntology();
+        double[] near = ontology == null ? null
+                : OntologyProjection.besideItsParent(ontology, term.getId(), layout);
+        if (near == null) {
+            Point where = centreOfTheVisibleCanvas();
+            near = OntologyProjection.besideItsParentAt(layout, where.x, where.y);
+        }
         CanvasLayout.NodeLayout position = new CanvasLayout.NodeLayout();
-        position.x = where.x;
-        position.y = where.y;
+        position.x = near[0];
+        position.y = near[1];
         position.w = 160;
         position.h = 60;
         layout.nodes.put(term.getId(), position);
 
-        refresh();
-        saveLayoutTo(layoutFile);
+        if (arrangesItself() && ontology != null) {
+            arrangeEverything(ontology, true);
+        } else {
+            // In its parent's frame, as New subclass... keeps a new one: a tester found a term
+            // brought back this way standing across its frame's border.
+            if (ontology != null) {
+                for (String parent : OntologyProjection.namedSuperclasses(ontology, term.getId())) {
+                    if (layout.nodes.containsKey(parent)) {
+                        keepInItsParentsFrame(parent, position);
+                        break;
+                    }
+                }
+            }
+            refresh();
+            saveLayoutTo(layoutFile);
+        }
         setStatus("Added " + CanvasSearch.nameOf(term) + " to the board.");
         // Re-run so the count, the selection and the view all describe the board as it now is.
         runSearch(true);
@@ -2465,7 +2536,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                         && CanvasGesture.leftDragSelects(board.getGestureMode(),
                                 board.isSpaceHeld(),
                                 event.isShiftDown() || event.isControlDown(),
-                                graphComponent.getCellAt(event.getX(), event.getY()) != null)) {
+                                board.isOnSomethingToDrag(event))) {
                     super.mousePressed(event);
                 }
             }
@@ -2506,7 +2577,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
      * turns it on - so the view translate is permanently (0,0) and a graph point's pixel is exactly
      * its coordinate times the scale.
      *
-     * @param event where the cursor is, or null to zoom about the centre of the view
+     * @param event where the cursor is, or null to zoom about the selection or the board's content
      */
     private void zoomAt(boolean in, java.awt.event.MouseEvent event) {
         double scale = graph.getView().getScale();
@@ -2514,10 +2585,44 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                 ? scale * graphComponent.getZoomFactor()
                 : scale / graphComponent.getZoomFactor());
         javax.swing.JViewport port = graphComponent.getViewport();
-        zoomAround(target, event == null
-                ? new java.awt.Point(port.getWidth() / 2, port.getHeight() / 2)
+        zoomAround(target, event == null ? zoomAnchor()
                 : javax.swing.SwingUtilities.convertPoint(
                         (java.awt.Component) event.getSource(), event.getPoint(), port));
+    }
+
+    /** 100%, about the selection or the board's content - Ctrl+0 and the zoom button. */
+    private void zoomToActualSize() {
+        zoomAround(1.0, zoomAnchor());
+    }
+
+    /**
+     * Where a zoom from a button or a key keeps still: the selection, when it is in view, or else
+     * the middle of the part of the board's content that is - not the middle of the window.
+     *
+     * <p>Found by a tester: after Fit the board filled the top of the window, + zoomed about the
+     * middle of the window, which was empty board, and after three presses no box was in sight;
+     * the 100% button went to the board's top-left corner rather than to the box selected.
+     */
+    private java.awt.Point zoomAnchor() {
+        javax.swing.JViewport port = graphComponent.getViewport();
+        java.awt.Rectangle view = port.getViewRect();
+        java.awt.Point middle = new java.awt.Point(port.getWidth() / 2, port.getHeight() / 2);
+        Object[] selected = graph.getSelectionCells();
+        com.mxgraph.util.mxRectangle around = selected != null && selected.length > 0
+                ? graph.getView().getBoundingBox(selected) : null;
+        if (around != null && view.contains(around.getCenterX(), around.getCenterY())) {
+            return new java.awt.Point((int) around.getCenterX() - view.x,
+                    (int) around.getCenterY() - view.y);
+        }
+        com.mxgraph.util.mxRectangle content = graph.getView().getGraphBounds();
+        if (content == null || content.getWidth() <= 0) {
+            return middle;
+        }
+        java.awt.Rectangle seen = view.intersection(content.getRectangle());
+        if (seen.isEmpty()) {
+            return middle;
+        }
+        return new java.awt.Point((int) seen.getCenterX() - view.x, (int) seen.getCenterY() - view.y);
     }
 
     /**
@@ -3071,8 +3176,8 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
     }
 
     /**
-     * A subclass of the selected class, named in one dialog and placed just right of it - Tab, as
-     * in a mind map. Nothing happens unless exactly one class is selected on the board.
+     * A subclass of the selected class, named in one dialog and placed below it - Tab, as in a mind
+     * map. Nothing happens unless exactly one class is selected on the board.
      */
     private void newSubclassOfSelection() {
         Object[] selected = graph.getSelectionCells();
@@ -3086,8 +3191,8 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             return;
         }
         com.mxgraph.model.mxGeometry at = graph.getModel().getGeometry(selected[0]);
-        double[] spot = OntologyProjection.besideItsParentAt(layout, at.getX() + at.getWidth()
-                + 70, at.getY());
+        double[] spot = OntologyProjection.belowItsParent(layout, at.getX(), at.getY(),
+                at.getHeight());
         createEntityAt(EntityFactory.Kind.CLASS, (int) spot[0], (int) spot[1], IRI.create(parent));
     }
 
@@ -3210,7 +3315,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         }
         com.mxgraph.model.mxGeometry at = graph.getModel().getGeometry(selected[0]);
         double[] spot = OntologyProjection.besideItsParentAt(layout, at.getX(),
-                at.getY() + at.getHeight() + 30);
+                at.getY() + at.getHeight() + 20);
         createEntityAt(EntityFactory.Kind.CLASS, (int) spot[0], (int) spot[1], parent);
     }
 
@@ -3295,7 +3400,9 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
      * @return the frames added, in order; empty when there was nothing to frame
      */
     private java.util.List<CanvasLayout.FrameLayout> frameImportedPatterns(
-            java.util.List<de.fizkarlsruhe.ise.ontoboard.pattern.ImportedPatterns.Found> patterns) {
+            java.util.List<de.fizkarlsruhe.ise.ontoboard.pattern.ImportedPatterns.Found> patterns,
+            java.util.Map<String, Integer> rows, java.util.Set<String> staying) {
+        lastFraming.clear();
         java.util.Set<String> alreadyFramed = new java.util.HashSet<String>();
         for (CanvasLayout.FrameLayout frame : layout.frames) {
             if (frame != null && frame.label != null) {
@@ -3305,21 +3412,95 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         // Planned on an empty board, so the frames come out in a row from the corner and their
         // size is known before anything is moved to make room for them.
         CanvasLayout row = new CanvasLayout();
-        java.util.Map<String, double[]> sizes = fittedSizesOf(patterns);
+        OWLOntology ontology = getOWLModelManager().getActiveOntology();
+        java.util.Set<String> inPatterns = new java.util.HashSet<String>();
+        for (de.fizkarlsruhe.ise.ontoboard.pattern.ImportedPatterns.Found pattern : patterns) {
+            inPatterns.addAll(pattern.getClasses());
+        }
+        // A class somebody made under a pattern's class stands under it, in that pattern's frame:
+        // extending a pattern is what it is imported for, and the hierarchy is what shows how. So
+        // does a class from elsewhere under one - found and added, or brought by an import - and
+        // first, so that a class made under that one follows it in.
+        java.util.Map<String, String> extensions = new java.util.LinkedHashMap<String, String>();
+        if (ontology != null) {
+            extensions.putAll(OntologyProjection.importedClassesUnder(ontology, inPatterns,
+                    membership.asSet(), staying));
+            java.util.Set<String> framed = new java.util.HashSet<String>(inPatterns);
+            framed.addAll(extensions.keySet());
+            extensions.putAll(OntologyProjection.ownClassesUnder(ontology, framed));
+        }
+        java.util.Map<String, java.util.List<String>> above = ontology == null
+                ? new java.util.HashMap<String, java.util.List<String>>()
+                : superclassesToFrame(ontology, patterns, extensions, staying);
+        java.util.Set<String> allOfThem = new java.util.HashSet<String>(inPatterns);
+        allOfThem.addAll(extensions.keySet());
+        for (java.util.List<String> taken : above.values()) {
+            allOfThem.addAll(taken);
+        }
+        java.util.Map<String, double[]> sizes = new java.util.HashMap<String, double[]>();
+        java.util.Map<String, String> names = new java.util.HashMap<String, String>();
+        fittedSizesOf(allOfThem, sizes, names);
+        java.util.Map<String, String> parents = ontology == null
+                ? new java.util.HashMap<String, String>()
+                : OntologyProjection.superclassesAmong(ontology, allOfThem);
         java.util.List<de.fizkarlsruhe.ise.ontoboard.layout.FramedGroup.Placement> planned =
                 new java.util.ArrayList<de.fizkarlsruhe.ise.ontoboard.layout.FramedGroup.Placement>();
+        java.util.Map<de.fizkarlsruhe.ise.ontoboard.layout.FramedGroup.Placement, String> notes =
+                new java.util.HashMap<de.fizkarlsruhe.ise.ontoboard.layout.FramedGroup.Placement,
+                        String>();
+        java.util.Map<String, String> heldBy = new java.util.HashMap<String, String>();
         for (de.fizkarlsruhe.ise.ontoboard.pattern.ImportedPatterns.Found pattern : patterns) {
             if (alreadyFramed.contains(pattern.getLabel())) {
                 continue;
             }
+            java.util.List<String> members = new java.util.ArrayList<String>(pattern.getClasses());
+            java.util.List<String> taken = above.get(pattern.getLabel());
+            if (taken != null) {
+                members.addAll(taken);
+            }
+            for (java.util.Map.Entry<String, String> extension : extensions.entrySet()) {
+                if (members.contains(extension.getValue())) {
+                    members.add(extension.getKey());
+                }
+            }
             de.fizkarlsruhe.ise.ontoboard.layout.FramedGroup.Placement placement =
                     de.fizkarlsruhe.ise.ontoboard.layout.FramedGroup.plan(
-                            pattern.getLabel(), pattern.getClasses(), row, sizes);
+                            pattern.getLabel(), members, row, sizes, parents, names);
             if (placement.isEmpty()) {
+                // No frame: every class is in an earlier one. Said so, rather than counted as in
+                // a frame that was never made.
+                java.util.Map<String, String> all = new java.util.LinkedHashMap<String, String>();
+                for (String iri : pattern.getClasses()) {
+                    if (heldBy.containsKey(iri)) {
+                        all.put(iri, heldBy.get(iri));
+                    }
+                }
+                lastFraming.put(pattern.getLabel(), new Framing(0, all));
                 continue;
             }
             de.fizkarlsruhe.ise.ontoboard.layout.FramedGroup.withId(placement.getFrame(),
                     SchemaGraph.FRAME_ID_PREFIX + nextAnnotationSuffix());
+            placement.getFrame().pattern = pattern.getPattern().getId();
+            // The pattern's classes an earlier frame holds: each class is drawn once, so the frame
+            // says where the rest of its pattern is rather than looking like all of it.
+            java.util.Map<String, String> elsewhere = new java.util.LinkedHashMap<String, String>();
+            for (String iri : placement.getAlreadyOnTheBoard()) {
+                if (pattern.getClasses().contains(iri) && heldBy.containsKey(iri)
+                        && !isUpperLevel(iri)) {
+                    elsewhere.put(iri, heldBy.get(iri));
+                }
+            }
+            int own = 0;
+            for (String iri : placement.getNodes().keySet()) {
+                heldBy.put(iri, pattern.getLabel());
+                own += pattern.getClasses().contains(iri) ? 1 : 0;
+            }
+            lastFraming.put(pattern.getLabel(), new Framing(own, elsewhere));
+            if (!elsewhere.isEmpty()) {
+                String text = whereTheRestIs(elsewhere, names);
+                makeRoomForANote(placement, text);
+                notes.put(placement, text);
+            }
             row.frames.add(placement.getFrame());
             row.nodes.putAll(placement.getNodes());
             planned.add(placement);
@@ -3329,7 +3510,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         if (planned.isEmpty()) {
             return added;
         }
-        de.fizkarlsruhe.ise.ontoboard.layout.FramedGroup.wrap(planned);
+        de.fizkarlsruhe.ise.ontoboard.layout.FramedGroup.wrap(planned, rows);
 
         for (String iri : row.nodes.keySet()) {
             layout.nodes.remove(iri);
@@ -3378,8 +3559,404 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                 layout.nodes.put(entry.getKey(), entry.getValue());
                 membership.add(entry.getKey());
             }
+            String text = notes.get(placement);
+            if (text != null) {
+                layout.notes.add(noteAtTheTopOf(placement.getFrame(), text));
+            }
         }
         return added;
+    }
+
+    /** What the last arrangement put in each pattern's frame, by label, for the status line. */
+    private final java.util.Map<String, Framing> lastFraming = new java.util.HashMap<String, Framing>();
+
+    /** A pattern's frame as the last arrangement made it. */
+    private static final class Framing {
+        /** How many of the pattern's own classes are in its frame. */
+        final int classes;
+        /** Its classes drawn in another frame, by IRI, each with that frame's label. */
+        final java.util.Map<String, String> elsewhere;
+
+        Framing(int classes, java.util.Map<String, String> elsewhere) {
+            this.classes = classes;
+            this.elsewhere = elsewhere;
+        }
+    }
+
+    /** The id every note that says where the rest of a pattern is starts with. */
+    static final String SHARED_NOTE_PREFIX = SchemaGraph.NOTE_ID_PREFIX + "pattern-also-";
+
+    /** How wide that note is at least, and the room between it and the frame's first box. */
+    private static final double SHARED_NOTE_W = 260;
+    private static final double SHARED_NOTE_GAP = 20;
+
+    /**
+     * Whether a pattern frame is for one of {@code patterns}, or was made for a pattern at all: a
+     * frame made for a pattern that is no longer imported - an import undone - goes with the rest
+     * when the board is arranged, instead of standing empty.
+     */
+    private static boolean isPatternFrame(CanvasLayout.FrameLayout frame,
+            java.util.Set<String> patterns) {
+        return frame.pattern != null || patterns.contains(frame.label);
+    }
+
+    /**
+     * Each pattern frame's row on the board, by label, in reading order: row by row, left to right.
+     *
+     * <p>Asked of the board by a tester who added subclasses one after another: the frame being
+     * worked in jumped 1,640 pixels between two of them, because every arrangement folded the
+     * frames into rows afresh and one frame growing moved where the rows broke. The rows a board
+     * already has are kept; a new pattern's frame joins the last.
+     */
+    private java.util.LinkedHashMap<String, Integer> rowsOfPatternFrames(
+            java.util.Set<String> patterns) {
+        java.util.List<CanvasLayout.FrameLayout> framed =
+                new java.util.ArrayList<CanvasLayout.FrameLayout>();
+        java.util.TreeSet<Double> tops = new java.util.TreeSet<Double>();
+        for (CanvasLayout.FrameLayout frame : layout.frames) {
+            if (frame != null && frame.label != null && isPatternFrame(frame, patterns)) {
+                framed.add(frame);
+                tops.add(Math.rint(frame.y));
+            }
+        }
+        final java.util.List<Double> rowTops = new java.util.ArrayList<Double>(tops);
+        java.util.Collections.sort(framed, (a, b) -> {
+            int byRow = Integer.compare(rowTops.indexOf(Math.rint(a.y)),
+                    rowTops.indexOf(Math.rint(b.y)));
+            return byRow != 0 ? byRow : Double.compare(a.x, b.x);
+        });
+        java.util.LinkedHashMap<String, Integer> rows = new java.util.LinkedHashMap<String, Integer>();
+        for (CanvasLayout.FrameLayout frame : framed) {
+            rows.put(frame.label, rowTops.indexOf(Math.rint(frame.y)));
+        }
+        return rows;
+    }
+
+    /**
+     * The patterns in the order their frames stand on the board, and any new one after them, in
+     * the order given.
+     *
+     * <p>The order decides more than where a frame goes: a class two patterns share is drawn in
+     * the frame planned first. It used to be alphabetical, so importing a pattern named
+     * <i>dataset</i> took two classes out of a <i>Measurement</i> pattern already on the board,
+     * and left their subclasses there without them.
+     */
+    static java.util.List<de.fizkarlsruhe.ise.ontoboard.pattern.ImportedPatterns.Found> inBoardOrder(
+            java.util.List<de.fizkarlsruhe.ise.ontoboard.pattern.ImportedPatterns.Found> patterns,
+            java.util.Map<String, Integer> rows) {
+        return inBoardOrder(patterns,
+                de.fizkarlsruhe.ise.ontoboard.pattern.ImportedPatterns.Found::getLabel, rows);
+    }
+
+    /** The same for anything with a label: what the order itself is decided by. */
+    static <T> java.util.List<T> inBoardOrder(java.util.List<T> items,
+            final java.util.function.Function<T, String> labelOf,
+            java.util.Map<String, Integer> rows) {
+        final java.util.List<String> known = new java.util.ArrayList<String>(rows.keySet());
+        java.util.List<T> ordered = new java.util.ArrayList<T>(items);
+        // Stable: the new ones keep the order they came in.
+        java.util.Collections.sort(ordered, (a, b) -> Integer.compare(
+                known.contains(labelOf.apply(a)) ? known.indexOf(labelOf.apply(a)) : Integer.MAX_VALUE,
+                known.contains(labelOf.apply(b)) ? known.indexOf(labelOf.apply(b))
+                        : Integer.MAX_VALUE));
+        return ordered;
+    }
+
+    /**
+     * The superclasses each pattern's frame takes in with its classes: those on the board, in no
+     * frame, above one of its classes - and theirs, up to the top.
+     *
+     * <p>Reported by two testers: <i>process</i>, which an import brought along as the superclass
+     * of a pattern's <i>planned process</i>, stood in the outline at the bottom of the board,
+     * 1,200 pixels below its own subclass, with the line between them running up the margin. The
+     * outline goes below the frames, so a superclass outside them was always drawn under what it
+     * is above. In its subclass's frame it stands above it.
+     *
+     * <p>Frames are served in board order, each taking its classes and then their superclasses
+     * before the next frame takes anything, so a class above several patterns is in the first
+     * one's frame - which is above or left of the others, and their lines to it go up. That holds
+     * for a class a later pattern lists too: its frame's note says where it is.
+     */
+    private java.util.Map<String, java.util.List<String>> superclassesToFrame(OWLOntology ontology,
+            java.util.List<de.fizkarlsruhe.ise.ontoboard.pattern.ImportedPatterns.Found> patterns,
+            java.util.Map<String, String> extensions, java.util.Set<String> staying) {
+        java.util.Set<String> onBoard = membership.asSet();
+        java.util.Map<String, String> frameOf = new java.util.HashMap<String, String>();
+        java.util.Map<String, java.util.List<String>> taken =
+                new java.util.LinkedHashMap<String, java.util.List<String>>();
+        for (de.fizkarlsruhe.ise.ontoboard.pattern.ImportedPatterns.Found pattern : patterns) {
+            String label = pattern.getLabel();
+            java.util.Deque<String> waiting = new java.util.ArrayDeque<String>();
+            java.util.List<String> own = new java.util.ArrayList<String>(pattern.getClasses());
+            for (java.util.Map.Entry<String, String> extension : extensions.entrySet()) {
+                if (own.contains(extension.getValue())) {
+                    own.add(extension.getKey());
+                }
+            }
+            for (String iri : own) {
+                if (!frameOf.containsKey(iri) && !staying.contains(iri)) {
+                    frameOf.put(iri, label);
+                    waiting.add(iri);
+                }
+            }
+            while (!waiting.isEmpty()) {
+                for (String up : OntologyProjection.namedSuperclasses(ontology, waiting.poll())) {
+                    if (frameOf.containsKey(up) || staying.contains(up) || !onBoard.contains(up)) {
+                        continue;
+                    }
+                    frameOf.put(up, label);
+                    java.util.List<String> list = taken.get(label);
+                    if (list == null) {
+                        list = new java.util.ArrayList<String>();
+                        taken.put(label, list);
+                    }
+                    list.add(up);
+                    waiting.add(up);
+                }
+            }
+        }
+        return taken;
+    }
+
+    /** BFO's classes, under everything: a note listing them would say nothing. */
+    private static boolean isUpperLevel(String iri) {
+        return iri.startsWith("http://purl.obolibrary.org/obo/BFO_");
+    }
+
+    /**
+     * A class made under a class in a frame, on a board somebody arranged, stays in that frame:
+     * the frame grows to hold it, and what stands below the frame moves down by as much - frames
+     * whole, with what is in them, and loose boxes. Nothing beside the frame moves.
+     *
+     * <p>Found twice before a user study: once by a tester who moved two boxes and then added a
+     * subclass, which landed under its frame's border, and once by a code review that counted 25
+     * of the 39 classes in the study's frames whose next subclass would have done the same.
+     */
+    private void keepInItsParentsFrame(String parent, CanvasLayout.NodeLayout placed) {
+        CanvasLayout.NodeLayout at = layout.nodes.get(parent);
+        if (at == null || placed == null) {
+            return;
+        }
+        CanvasLayout.FrameLayout holding = innermostFrameAt(at.x + at.w / 2, at.y + at.h / 2);
+        if (holding == null) {
+            return;
+        }
+        double padding = de.fizkarlsruhe.ise.ontoboard.layout.FramedGroup.PADDING;
+        double w = placed.w > 0 ? placed.w : 160;
+        double h = placed.h > 0 ? placed.h : 60;
+        double across = placed.x + w + padding - (holding.x + holding.w);
+        if (across > 0) {
+            // What stands beside the frame, level with it, moves along: a review found a frame
+            // grown this way covering the first column of the frame next to it.
+            double oldRight = holding.x + holding.w;
+            java.util.Set<CanvasLayout.FrameLayout> along =
+                    new java.util.HashSet<CanvasLayout.FrameLayout>();
+            for (CanvasLayout.FrameLayout frame : layout.frames) {
+                if (frame != null && frame != holding && frame.x >= oldRight - 1
+                        && frame.y < holding.y + holding.h && frame.y + frame.h > holding.y) {
+                    along.add(frame);
+                }
+            }
+            for (CanvasLayout.NodeLayout node : layout.nodes.values()) {
+                CanvasLayout.FrameLayout in = node == null ? null
+                        : innermostFrameAt(node.x + node.w / 2, node.y + node.h / 2);
+                if (node != null && node != placed && (in == null ? node.x >= oldRight - 1
+                        && node.y < holding.y + holding.h && node.y + node.h > holding.y
+                        : along.contains(in))) {
+                    node.x += across;
+                }
+            }
+            for (CanvasLayout.NoteLayout note : layout.notes) {
+                CanvasLayout.FrameLayout in = note == null ? null
+                        : innermostFrameAt(note.x + note.w / 2, note.y + note.h / 2);
+                if (note != null && (in == null ? note.x >= oldRight - 1
+                        && note.y < holding.y + holding.h && note.y + note.h > holding.y
+                        : along.contains(in))) {
+                    note.x += across;
+                }
+            }
+            for (CanvasLayout.FrameLayout frame : along) {
+                frame.x += across;
+            }
+            // Grown last, so that what stood just right of it was not taken for its own.
+            holding.w += across;
+        }
+        double down = placed.y + h + padding - (holding.y + holding.h);
+        if (down <= 0) {
+            return;
+        }
+        double oldBottom = holding.y + holding.h;
+        holding.h += down;
+        java.util.Set<CanvasLayout.FrameLayout> moving = new java.util.HashSet<CanvasLayout.FrameLayout>();
+        for (CanvasLayout.FrameLayout frame : layout.frames) {
+            if (frame != null && frame != holding && frame.y >= oldBottom - 1) {
+                moving.add(frame);
+            }
+        }
+        for (CanvasLayout.NodeLayout node : layout.nodes.values()) {
+            if (node != null && node != placed && movesWith(moving, oldBottom, node.x + node.w / 2,
+                    node.y + node.h / 2, node.y)) {
+                node.y += down;
+            }
+        }
+        for (CanvasLayout.NoteLayout note : layout.notes) {
+            if (note != null && movesWith(moving, oldBottom, note.x + note.w / 2,
+                    note.y + note.h / 2, note.y)) {
+                note.y += down;
+            }
+        }
+        for (CanvasLayout.FrameLayout frame : moving) {
+            frame.y += down;
+        }
+    }
+
+    /** Whether what stands at ({@code x}, {@code y}) goes down with the frames below a frame. */
+    private boolean movesWith(java.util.Set<CanvasLayout.FrameLayout> moving, double below,
+            double x, double y, double top) {
+        CanvasLayout.FrameLayout in = innermostFrameAt(x, y);
+        return in == null ? top >= below - 1 : moving.contains(in);
+    }
+
+    /** The smallest frame on the board holding a point, or null. */
+    private CanvasLayout.FrameLayout innermostFrameAt(double x, double y) {
+        CanvasLayout.FrameLayout best = null;
+        for (CanvasLayout.FrameLayout frame : layout.frames) {
+            if (frame != null && contains(frame, x, y)
+                    && (best == null || frame.w * frame.h < best.w * best.h)) {
+                best = frame;
+            }
+        }
+        return best;
+    }
+
+    /** The label of the frame a term stands in on the board, or "" when it is in none. */
+    private String frameHolding(String iri) {
+        CanvasLayout.NodeLayout at = layout.nodes.get(iri);
+        if (at != null) {
+            for (CanvasLayout.FrameLayout frame : layout.frames) {
+                if (frame != null && frame.label != null
+                        && contains(frame, at.x + at.w / 2, at.y + at.h / 2)) {
+                    return frame.label;
+                }
+            }
+        }
+        return "";
+    }
+
+    /** The id of the library pattern called {@code name}, or null. */
+    private static String patternIdNamed(String name) {
+        for (de.fizkarlsruhe.ise.ontoboard.pattern.DesignPattern pattern
+                : de.fizkarlsruhe.ise.ontoboard.pattern.PatternLibrary.all()) {
+            if (pattern.getName().equals(name)) {
+                return pattern.getId();
+            }
+        }
+        return null;
+    }
+
+    /**
+     * "Also part of this pattern, drawn in Measurement: scalar value specification and value
+     * specification. Type a name in Find to go there."
+     *
+     * <p>Found by every tester who took the study's last task: the second pattern's frame held two
+     * classes, the class the task was about stood in the first pattern's frame, a thousand pixels
+     * away, and the frame's title had the same words as that class.
+     */
+    static String whereTheRestIs(java.util.Map<String, String> elsewhere,
+            java.util.Map<String, String> names) {
+        java.util.Map<String, java.util.List<String>> byFrame =
+                new java.util.LinkedHashMap<String, java.util.List<String>>();
+        for (java.util.Map.Entry<String, String> entry : elsewhere.entrySet()) {
+            java.util.List<String> list = byFrame.get(entry.getValue());
+            if (list == null) {
+                list = new java.util.ArrayList<String>();
+                byFrame.put(entry.getValue(), list);
+            }
+            String name = names.containsKey(entry.getKey()) ? names.get(entry.getKey())
+                    : entry.getKey().substring(Math.max(entry.getKey().lastIndexOf('/'),
+                            entry.getKey().lastIndexOf('#')) + 1);
+            list.add(name.split("\n")[0].trim());
+        }
+        StringBuilder text = new StringBuilder("Also part of this pattern, ");
+        if (byFrame.size() == 1) {
+            java.util.Map.Entry<String, java.util.List<String>> only =
+                    byFrame.entrySet().iterator().next();
+            text.append(only.getKey().isEmpty() ? "already on the board"
+                    : "drawn in " + only.getKey()).append(": ").append(listOf(only.getValue()));
+        } else {
+            java.util.List<String> each = new java.util.ArrayList<String>();
+            for (java.util.Map.Entry<String, java.util.List<String>> entry : byFrame.entrySet()) {
+                for (String name : entry.getValue()) {
+                    each.add(entry.getKey().isEmpty() ? name
+                            : name + " (" + entry.getKey() + ")");
+                }
+            }
+            text.append("drawn elsewhere: ").append(listOf(each));
+        }
+        return text.append(". Type a name in Find to go there.").toString();
+    }
+
+    /** "a", "a and b", "a, b and c", "a, b, c, d and 3 more". */
+    private static String listOf(java.util.List<String> names) {
+        int shown = names.size() > 5 ? 4 : names.size();
+        StringBuilder text = new StringBuilder();
+        for (int at = 0; at < shown; at++) {
+            if (at > 0) {
+                text.append(at == names.size() - 1 ? " and " : ", ");
+            }
+            text.append(names.get(at));
+        }
+        if (shown < names.size()) {
+            text.append(" and ").append(names.size() - shown).append(" more");
+        }
+        return text.toString();
+    }
+
+    /** Moves a planned frame's boxes down, and widens it if need be, to fit a note at its top. */
+    private static void makeRoomForANote(
+            de.fizkarlsruhe.ise.ontoboard.layout.FramedGroup.Placement placement, String text) {
+        CanvasLayout.FrameLayout frame = placement.getFrame();
+        double[] size = noteSize(frame, text);
+        double down = size[1] + SHARED_NOTE_GAP;
+        for (CanvasLayout.NodeLayout node : placement.getNodes().values()) {
+            node.y += down;
+        }
+        frame.h += down;
+        frame.w = Math.max(frame.w, size[0] + 2 * de.fizkarlsruhe.ise.ontoboard.layout.FramedGroup.PADDING);
+    }
+
+    /** The note itself, under the frame's title, for a frame {@link #makeRoomForANote} widened. */
+    private CanvasLayout.NoteLayout noteAtTheTopOf(CanvasLayout.FrameLayout frame, String text) {
+        double[] size = noteSize(frame, text);
+        CanvasLayout.NoteLayout note = new CanvasLayout.NoteLayout();
+        note.id = SHARED_NOTE_PREFIX + nextAnnotationSuffix();
+        note.text = text;
+        note.x = frame.x + de.fizkarlsruhe.ise.ontoboard.layout.FramedGroup.PADDING;
+        note.y = frame.y + de.fizkarlsruhe.ise.ontoboard.layout.FramedGroup.LABEL_BAND;
+        note.w = size[0];
+        note.h = size[1];
+        return note;
+    }
+
+    /** {w, h}: as wide as the frame's inside, at least {@link #SHARED_NOTE_W}, and tall enough. */
+    private static double[] noteSize(CanvasLayout.FrameLayout frame, String text) {
+        double w = Math.max(SHARED_NOTE_W,
+                frame.w - 2 * de.fizkarlsruhe.ise.ontoboard.layout.FramedGroup.PADDING);
+        w = Math.min(w, 480);
+        // About 7 px a character at the notes' 12 pt, and a line of 16 px.
+        int perLine = Math.max(10, (int) ((w - 16) / 7));
+        int lines = 1;
+        int used = 0;
+        for (String word : text.split(" ")) {
+            if (used > 0 && used + 1 + word.length() > perLine) {
+                lines++;
+                used = word.length();
+            } else {
+                used += (used == 0 ? 0 : 1) + word.length();
+            }
+        }
+        double h = Math.ceil((lines * 16 + 20) / 20.0) * 20;
+        return new double[] {Math.ceil(w / 20) * 20, Math.max(60, h)};
     }
 
     // ------------------------------------------------------------------ collaboration
@@ -4028,12 +4605,16 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         // discarded an arrangement somebody had spent an afternoon on, and the only way back was to do
         // it again by hand.
         rememberBoard("arranging the board");
+        // The outline is the arrangement the board keeps by itself; anything else is a choice it
+        // must not undo the next time a class arrives.
+        layout.arrangedByHand = algorithm == CanvasLayouts.Algorithm.SECTIONS
+                ? Boolean.FALSE : Boolean.TRUE;
         OWLOntology ontology = getOWLModelManager().getActiveOntology();
         if (algorithm == CanvasLayouts.Algorithm.SECTIONS
                 && Boolean.TRUE.equals(layout.showsEverything) && ontology != null) {
             // The outline the board opened with, patterns found again: a board saved before a
             // pattern could be recognised by its terms gets its frame here.
-            arrangeEverything(ontology, true);
+            arrangeEverything(ontology, true, false);
         } else {
             movingProgrammatically = true;
             java.util.List<de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Section> sections =
@@ -4056,12 +4637,24 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         }
         // Fit afterwards, because even a well-shaped tree is bigger than the viewport: a corrected
         // 31-term hierarchy is 3694px wide, so on a 1200px panel the user saw six terms of thirty-one
-        // and no evidence that Arrange had done anything at all.
+        // and no evidence that Arrange had done anything at all. But not below a size that can be
+        // read: Outline is the guide's remedy for an untidy board, and a tester found it left a board
+        // of six patterns at 18%, where nothing could be read and their place was lost.
         fitToWindow();
-        setStatus("Arranged the board: " + algorithm.getDisplayName()
-                + " - fitted to the window at " + CanvasZoom.readout(graph.getView().getScale())
-                + ". Notes and frames kept their place among the terms.");
+        boolean fitted = graph.getView().getScale() >= LEGIBLE;
+        if (!fitted) {
+            zoomAround(LEGIBLE, zoomAnchor());
+            updateZoomReadout();
+        }
+        setStatus((fitted ? "Arranged and fitted to the window at "
+                        + CanvasZoom.readout(graph.getView().getScale())
+                        : "Arranged, at " + CanvasZoom.readout(LEGIBLE)
+                                + " so it can be read; Fit shows all of it")
+                + ": " + algorithm.getDisplayName() + ".");
     }
+
+    /** The smallest zoom Arrange leaves a board at: labels can still be read. */
+    private static final double LEGIBLE = 0.5;
 
     private void exportWithOptions() {
         JComboBox<String> format = new JComboBox<String>(new String[] {
@@ -4171,26 +4764,22 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
     private void installContextMenu() {
         graphComponent.getGraphControl().addMouseListener(new MouseAdapter() {
 
-            /** Where the button went down, to tell a click from the end of a pan. */
-            private java.awt.Point pressedAt;
+            /** Tells a right-click from the end of a pan, whichever event the platform triggers on. */
+            private final PopupGesture gesture = new PopupGesture();
 
             @Override
             public void mousePressed(MouseEvent event) {
-                pressedAt = event.getPoint();
+                gesture.pressed(event);
             }
 
             @Override
             public void mouseReleased(MouseEvent event) {
-                if (!event.isPopupTrigger()) {
-                    return;
-                }
                 // A right-drag pans this canvas, by design - isPanningEvent defers to the library
                 // for any non-left button. But on Windows the popup trigger IS the button-3
                 // release, so the documented pan gesture ended with an eleven-item menu opening
                 // wherever the user happened to drag to, every single time. The tolerance is the
                 // same threshold mxGraphComponent.isSignificant uses to tell a click from a drag.
-                if (pressedAt != null && pressedAt.distance(event.getPoint())
-                        > graphComponent.getTolerance()) {
+                if (!gesture.opensMenu(event, graphComponent.getTolerance())) {
                     return;
                 }
                 Object cell = graphComponent.getCellAt(event.getX(), event.getY());
@@ -4234,8 +4823,8 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                     JMenuItem subclass = new JMenuItem("New subclass\u2026");
                     subclass.setToolTipText("A class under this one, placed beside it (Tab)");
                     subclass.addActionListener(a -> {
-                        double[] spot = OntologyProjection.besideItsParentAt(layout,
-                                box.getX() + box.getWidth() + 70, box.getY());
+                        double[] spot = OntologyProjection.belowItsParent(layout, box.getX(),
+                                box.getY(), box.getHeight());
                         createEntityAt(EntityFactory.Kind.CLASS, (int) spot[0], (int) spot[1],
                                 IRI.create(iri));
                     });
@@ -4243,8 +4832,8 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                     JMenuItem member = new JMenuItem("New individual of this class\u2026");
                     member.setToolTipText("An instance of this class, placed beside it");
                     member.addActionListener(a -> {
-                        double[] spot = OntologyProjection.besideItsParentAt(layout,
-                                box.getX() + box.getWidth() + 70, box.getY());
+                        double[] spot = OntologyProjection.belowItsParent(layout, box.getX(),
+                                box.getY(), box.getHeight());
                         createEntityAt(EntityFactory.Kind.INDIVIDUAL, (int) spot[0],
                                 (int) spot[1], IRI.create(iri));
                     });
@@ -4306,6 +4895,19 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                             + "in the ontology and travels with it.");
                     note.addActionListener(a -> editEditorialNote(iri));
                     menu.add(note);
+                    // On the ontology's own terms: an imported term's definition is its author's.
+                    // Declared here, not merely mentioned: an imported class the file's axioms use
+                    // is in its signature too, and a tester was offered to define one.
+                    if (declaredIn(getOWLModelManager().getActiveOntology(), iri)) {
+                        boolean defined = !de.fizkarlsruhe.ise.ontoboard.prov.TermDefinitions.of(
+                                getOWLModelManager().getActiveOntology(), IRI.create(iri)).isEmpty();
+                        JMenuItem definition = new JMenuItem(
+                                defined ? "Definition (has one)\u2026" : "Definition\u2026");
+                        definition.setToolTipText("What the term means, as IAO:0000115: what a "
+                                + "quality report asks every term for.");
+                        definition.addActionListener(a -> editDefinition(iri));
+                        menu.add(definition);
+                    }
                 }
 
                 if (onEdge) {
@@ -4533,7 +5135,14 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         frameAnyArrivedPattern();
         stale = false;
         hideWhatFoldedClassesHeld(getOWLModelManager().getActiveOntology());
-        includeNewTerms();
+        boolean gained = includeNewTerms();
+        boolean lost = dropGoneTerms();
+        if ((gained || lost) && !arranging && arrangesItself()) {
+            rememberBoard("arranging the board");
+            arrangeEverything(getOWLModelManager().getActiveOntology(), true);
+            return;
+        }
+        dropEmptyPatternFrames();
 
         Projection projection = OntologyProjection.project(
                 getOWLModelManager().getActiveOntology(),
@@ -4572,7 +5181,31 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         if (selectionBridge != null) {
             selectionBridge.resyncAfterRender(selectedBeforeRender);
         }
+        // Not at the in-between positions of an arrangement, which routes once at its end.
+        if (!arranging) {
+            graph.routeEdges();
+            sayOnceIfNotAllRouted();
+        }
         applyFocus();
+    }
+
+    /** Whether this session has said that some lines could not be routed. */
+    private boolean saidNotAllRouted;
+
+    /**
+     * Says once that some lines are drawn straight, rather than leaving a line through a box to
+     * look like the board's best: on a board too large to route within the time a click may take,
+     * a tester found new relations drawn straight through three boxes, and nothing said why.
+     */
+    private void sayOnceIfNotAllRouted() {
+        if (!saidNotAllRouted && !graph.isFullyRouted()) {
+            saidNotAllRouted = true;
+            setStatus(graph.isDense()
+                    ? "This board has over 150 lines: relation arrows are drawn straight and faded"
+                            + " until you select a term."
+                    : "Some lines could not be routed around the boxes and are drawn straight."
+                            + " Select a term to bring its own lines forward.");
+        }
     }
 
     /** A redraw for a change that may have happened anywhere: soon, and only if it is seen. */
@@ -4608,7 +5241,8 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                 || !layout.onCanvas.isEmpty()) {
             return false;
         }
-        java.util.List<String> terms = OntologyProjection.termsToShow(ontology, layout.hidden);
+        java.util.List<String> terms = OntologyProjection.termsToShow(ontology, layout.hidden,
+                broughtAlongBy(ontology));
         if (terms.isEmpty()) {
             return false;
         }
@@ -4617,8 +5251,9 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         }
         // Not saved: opening a tab must not leave a file in somebody's repository. The outline is
         // the same every time for the same ontology, and the board is saved from its first change.
-        arrangeEverything(ontology, false);
+        // Said first, so that what a pattern arriving has to say comes after it.
         sayHowMuchIsShown(terms.size());
+        arrangeEverything(ontology, false);
         return true;
     }
 
@@ -4636,28 +5271,65 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
      * Positions are replaced; notes and frames a person drew stay where they are.
      */
     private void arrangeEverything(OWLOntology ontology, boolean save) {
+        arrangeEverything(ontology, save, true);
+    }
+
+    /**
+     * The same, the pattern frames kept in their rows or - for Arrange > Outline, asked for by
+     * name - folded into rows afresh: a review found frames moved by hand each came back as a row
+     * of their own, the board a tall strip.
+     */
+    private void arrangeEverything(OWLOntology ontology, boolean save, boolean keepRows) {
         java.util.List<de.fizkarlsruhe.ise.ontoboard.pattern.ImportedPatterns.Found> patterns =
                 de.fizkarlsruhe.ise.ontoboard.pattern.ImportedPatterns.in(ontology);
         java.util.Set<String> patternLabels = new java.util.HashSet<String>();
         for (de.fizkarlsruhe.ise.ontoboard.pattern.ImportedPatterns.Found pattern : patterns) {
             patternLabels.add(pattern.getLabel());
         }
-        layout.nodes.clear();
+        // The frames keep their order and their rows: the board's, before it is planned again.
+        java.util.Map<String, Integer> rows = rowsOfPatternFrames(patternLabels);
+        patterns = inBoardOrder(patterns, rows);
+        if (!keepRows) {
+            rows = new java.util.HashMap<String, Integer>();
+        }
+        // What stands in a frame somebody drew stays there, by where the board last had it.
+        java.util.Set<String> staying = new java.util.HashSet<String>();
+        for (CanvasLayout.FrameLayout frame : layout.frames) {
+            if (frame == null || isPatternFrame(frame, patternLabels) || (frame.id != null
+                    && frame.id.startsWith(CanvasLayouts.SECTION_PREFIX))) {
+                continue;
+            }
+            for (java.util.Map.Entry<String, CanvasLayout.NodeLayout> node
+                    : layout.nodes.entrySet()) {
+                CanvasLayout.NodeLayout at = node.getValue();
+                if (at != null && at.x >= frame.x && at.y >= frame.y
+                        && at.x + at.w <= frame.x + frame.w && at.y + at.h <= frame.y + frame.h) {
+                    staying.add(node.getKey());
+                }
+            }
+        }
+        // Their positions are kept, so that when the row of patterns grows and moves the frames
+        // somebody drew down to make room, what is in those frames moves down with them.
+        layout.nodes.keySet().retainAll(staying);
         java.util.Iterator<CanvasLayout.FrameLayout> frames = layout.frames.iterator();
         while (frames.hasNext()) {
             CanvasLayout.FrameLayout frame = frames.next();
-            if (frame != null && (patternLabels.contains(frame.label) || (frame.id != null
+            if (frame != null && (isPatternFrame(frame, patternLabels) || (frame.id != null
                     && frame.id.startsWith(CanvasLayouts.SECTION_PREFIX)))) {
                 frames.remove();
             }
         }
-        frameImportedPatterns(patterns);
+        layout.notes.removeIf(note -> note != null && note.id != null
+                && note.id.startsWith(SHARED_NOTE_PREFIX));
+        frameImportedPatterns(patterns, rows, staying);
+        staying.addAll(layout.nodes.keySet());
+        layout.arrangedByHand = Boolean.FALSE;
         java.util.List<de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Section> sections;
         arranging = true;
         movingProgrammatically = true;
         try {
             refresh();
-            sections = CanvasLayouts.applySections(graph);
+            sections = CanvasLayouts.applySections(graph, staying, false);
         } finally {
             movingProgrammatically = false;
             arranging = false;
@@ -4673,25 +5345,21 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
     /** Set while {@link #arrangeEverything} lays the board out, so nothing else does meanwhile. */
     private boolean arranging;
 
-    /** The size each pattern class's label fits in, as the board will draw it. */
-    private java.util.Map<String, double[]> fittedSizesOf(
-            java.util.List<de.fizkarlsruhe.ise.ontoboard.pattern.ImportedPatterns.Found> patterns) {
-        java.util.Set<String> classes = new java.util.HashSet<String>();
-        for (de.fizkarlsruhe.ise.ontoboard.pattern.ImportedPatterns.Found pattern : patterns) {
-            classes.addAll(pattern.getClasses());
-        }
-        java.util.Map<String, double[]> sizes = new java.util.HashMap<String, double[]>();
+    /** The size each class's label fits in, as the board will draw it, and what the box says. */
+    private void fittedSizesOf(java.util.Collection<String> classes,
+            java.util.Map<String, double[]> sizes, java.util.Map<String, String> names) {
         OWLOntology ontology = getOWLModelManager().getActiveOntology();
         if (ontology == null || classes.isEmpty()) {
-            return sizes;
+            return;
         }
-        for (de.fizkarlsruhe.ise.ontoboard.model.CanvasNode node
-                : OntologyProjection.project(ontology, classes, false).getNodes()) {
-            sizes.put(node.getId(), graph.fittedSize(
-                    de.fizkarlsruhe.ise.ontoboard.model.Curies.displayLabel(node.getCurie(),
-                            node.getLabel()), de.fizkarlsruhe.ise.ontoboard.canvas.SchemaStyles.CLASS));
+        for (de.fizkarlsruhe.ise.ontoboard.model.CanvasNode node : OntologyProjection.project(
+                ontology, new java.util.HashSet<String>(classes), false).getNodes()) {
+            String drawn = de.fizkarlsruhe.ise.ontoboard.model.Curies.displayLabel(node.getCurie(),
+                    node.getLabel(), node.getId());
+            sizes.put(node.getId(), graph.fittedSize(drawn,
+                    de.fizkarlsruhe.ise.ontoboard.canvas.SchemaStyles.CLASS));
+            names.put(node.getId(), drawn);
         }
-        return sizes;
     }
 
     /** The property sections' frames, replacing the last arrangement's. */
@@ -4724,19 +5392,22 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
      * when its parent is placed - a class created in the class hierarchy appears beside its
      * superclass rather than wherever there happens to be room.
      */
-    private void includeNewTerms() {
+    private boolean includeNewTerms() {
         OWLOntology ontology = getOWLModelManager().getActiveOntology();
         if (ontology == null || !Boolean.TRUE.equals(layout.showsEverything)
                 || layout.onCanvas.isEmpty()) {
-            return;
+            return false;
         }
-        java.util.List<String> terms = OntologyProjection.termsToShow(ontology, layout.hidden);
+        boolean added = false;
+        java.util.List<String> terms = OntologyProjection.termsToShow(ontology, layout.hidden,
+                broughtAlongBy(ontology));
         java.util.Set<String> on = membership.asSet();
         for (String iri : terms.subList(0, Math.min(terms.size(), EVERYTHING_LIMIT))) {
             if (on.contains(iri)) {
                 continue;
             }
             membership.add(iri);
+            added = true;
             double[] near = OntologyProjection.besideItsParent(ontology, iri, layout);
             if (near != null) {
                 CanvasLayout.NodeLayout placed = new CanvasLayout.NodeLayout(near[0], near[1]);
@@ -4745,6 +5416,79 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                 layout.nodes.put(iri, placed);
             }
         }
+        return added;
+    }
+
+    /** What {@link #broughtAlongBy} last worked out, and for which state of the imports. */
+    private String broughtAlongFor = "";
+    private java.util.Set<String> broughtAlong = new java.util.HashSet<String>();
+
+    /**
+     * What the imports hold only because a term somebody chose needs it: not the chosen terms, and
+     * not their superclasses, which are what shows where a chosen term belongs.
+     */
+    private java.util.Set<String> broughtAlongBy(OWLOntology ontology) {
+        StringBuilder state = new StringBuilder();
+        for (OWLOntology part : ontology.getImportsClosure()) {
+            if (!part.equals(ontology)) {
+                state.append(part.getOntologyID()).append(part.getAxiomCount()).append(';');
+            }
+        }
+        if (state.toString().equals(broughtAlongFor)) {
+            return broughtAlong;
+        }
+        broughtAlongFor = state.toString();
+        java.util.Set<String> brought = new java.util.HashSet<String>();
+        java.util.Set<String> chosen = new java.util.HashSet<String>();
+        try {
+            java.io.File file = currentOntologyFile;
+            java.io.File directory = file == null ? null : file.getAbsoluteFile().getParentFile();
+            java.io.File root = file == null ? null
+                    : de.fizkarlsruhe.ise.ontoboard.menu.ReleaseAction.projectRootOf(file);
+            for (de.fizkarlsruhe.ise.ontoboard.odk.ImportedTerms.Source source
+                    : de.fizkarlsruhe.ise.ontoboard.odk.ImportedTerms.of(ontology, root, directory)) {
+                for (de.fizkarlsruhe.ise.ontoboard.odk.ImportedTerms.Term term : source.getTerms()) {
+                    (term.getHow() == de.fizkarlsruhe.ise.ontoboard.odk.ImportedTerms.How.BROUGHT_ALONG
+                            ? brought : chosen).add(term.getIri().toString());
+                }
+            }
+        } catch (RuntimeException cannotTell) {
+            // Drawing too much is a nuisance; failing to draw the board would be a fault.
+            brought.clear();
+        }
+        brought.removeAll(chosen);
+        java.util.List<String> climbing = new java.util.ArrayList<String>(chosen);
+        org.semanticweb.owlapi.model.OWLDataFactory factory =
+                getOWLModelManager().getOWLDataFactory();
+        while (!climbing.isEmpty()) {
+            String iri = climbing.remove(climbing.size() - 1);
+            for (OWLOntology part : ontology.getImportsClosure()) {
+                for (org.semanticweb.owlapi.model.OWLSubClassOfAxiom axiom
+                        : part.getSubClassAxiomsForSubClass(factory.getOWLClass(IRI.create(iri)))) {
+                    if (!axiom.getSuperClass().isAnonymous()) {
+                        String up = axiom.getSuperClass().asOWLClass().getIRI().toString();
+                        if (brought.remove(up)) {
+                            climbing.add(up);
+                        }
+                    }
+                }
+            }
+        }
+        broughtAlong = brought;
+        return brought;
+    }
+
+    /** More terms than this and arranging on every new class would be felt: it waits for Arrange. */
+    private static final int MOST_ARRANGED_BY_ITSELF = 400;
+
+    /**
+     * Whether something new on the board arrives by arranging it again, which keeps the hierarchy
+     * clear: until somebody moves a box themselves, and on a board small enough not to feel it.
+     */
+    private boolean arrangesItself() {
+        return !Boolean.TRUE.equals(layout.arrangedByHand)
+                && Boolean.TRUE.equals(layout.showsEverything)
+                && membership.size() <= MOST_ARRANGED_BY_ITSELF;
     }
 
     /** The members the layer switches and folded classes let through. */
@@ -4868,6 +5612,10 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         java.util.Set<String> present = null;
         StringBuilder said = new StringBuilder();
         boolean framedAny = false;
+        if (arrangesItself()) {
+            frameArrivalsByArranging(arrivals, active, board);
+            return;
+        }
         for (de.fizkarlsruhe.ise.ontoboard.pattern.PatternArrival.Arrival arrival : arrivals) {
             if (!arrival.isFor(board)) {
                 continue;
@@ -4892,9 +5640,13 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                 continue;
             }
             de.fizkarlsruhe.ise.ontoboard.pattern.PatternArrival.take(arrival);
+            java.util.Map<String, double[]> sizes = new java.util.HashMap<String, double[]>();
+            java.util.Map<String, String> names = new java.util.HashMap<String, String>();
+            fittedSizesOf(arrived, sizes, names);
             de.fizkarlsruhe.ise.ontoboard.layout.FramedGroup.Placement placement =
                     de.fizkarlsruhe.ise.ontoboard.layout.FramedGroup.plan(
-                            arrival.getLabel(), arrived, layout);
+                            arrival.getLabel(), arrived, layout, sizes,
+                            OntologyProjection.superclassesAmong(active, arrived), names);
             if (placement.isEmpty()) {
                 if (!placement.getAlreadyOnTheBoard().isEmpty()) {
                     said.append(said.length() == 0 ? "" : " ").append("Every term of ")
@@ -4905,6 +5657,19 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             rememberBoard("importing " + arrival.getLabel());
             de.fizkarlsruhe.ise.ontoboard.layout.FramedGroup.withId(placement.getFrame(),
                     SchemaGraph.FRAME_ID_PREFIX + nextAnnotationSuffix());
+            placement.getFrame().pattern = patternIdNamed(arrival.getLabel());
+            // Its classes the board already shows stay where they are; the frame says where.
+            java.util.Map<String, String> elsewhere = new java.util.LinkedHashMap<String, String>();
+            for (String iri : placement.getAlreadyOnTheBoard()) {
+                if (!isUpperLevel(iri) && active.containsClassInSignature(IRI.create(iri),
+                        org.semanticweb.owlapi.model.parameters.Imports.INCLUDED)) {
+                    elsewhere.put(iri, frameHolding(iri));
+                }
+            }
+            String note = elsewhere.isEmpty() ? null : whereTheRestIs(elsewhere, names);
+            if (note != null) {
+                makeRoomForANote(placement, note);
+            }
             layout.frames.add(placement.getFrame());
             for (java.util.Map.Entry<String, CanvasLayout.NodeLayout> entry
                     : placement.getNodes().entrySet()) {
@@ -4912,6 +5677,9 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                 // Positioned AND on the board: a position for a term the canvas is not showing
                 // draws nothing, and this is the step that makes the pattern visible at all.
                 membership.add(entry.getKey());
+            }
+            if (note != null) {
+                layout.notes.add(noteAtTheTopOf(placement.getFrame(), note));
             }
             int placed = placement.getNodes().size();
             int kept = placement.getAlreadyOnTheBoard().size();
@@ -4929,6 +5697,219 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         if (framedAny) {
             saveLayoutTo(layoutFile);
         }
+    }
+
+    /**
+     * The patterns that have arrived, on a board nobody has moved anything on: the whole board
+     * arranged again, every pattern in its frame as a hierarchy, and the view brought to the new one.
+     * Scrolling is the point of a pattern just imported being findable: it lands wherever the
+     * arrangement puts it, and a frame nobody can see might as well not have arrived.
+     */
+    private void frameArrivalsByArranging(
+            java.util.List<de.fizkarlsruhe.ise.ontoboard.pattern.PatternArrival.Arrival> arrivals,
+            OWLOntology active, String board) {
+        java.util.Set<String> present = OntologyProjection.termIdentifiers(active,
+                org.semanticweb.owlapi.model.parameters.Imports.INCLUDED);
+        String last = null;
+        int terms = 0;
+        for (de.fizkarlsruhe.ise.ontoboard.pattern.PatternArrival.Arrival arrival : arrivals) {
+            if (!arrival.isFor(board)) {
+                continue;
+            }
+            int arrived = 0;
+            for (String iri : arrival.getIris()) {
+                if (present.contains(iri)) {
+                    arrived++;
+                }
+            }
+            // As below: the note stays until the terms are there, and the import is still running.
+            if (arrived == 0) {
+                continue;
+            }
+            de.fizkarlsruhe.ise.ontoboard.pattern.PatternArrival.take(arrival);
+            last = arrival.getLabel();
+            terms = arrived;
+        }
+        if (last == null) {
+            return;
+        }
+        rememberBoard("importing " + last);
+        // The import's terms on the board first, so the arrangement sees them: arranged without
+        // them, a superclass the import brought stood in the new pattern's frame, and moved to its
+        // subclass's frame at the next arrangement - a tester saw a frame lose three classes.
+        includeNewTerms();
+        arrangeEverything(active, true);
+        for (CanvasLayout.FrameLayout frame : layout.frames) {
+            if (frame != null && last.equals(frame.label)) {
+                bringIntoViewAtItsCorner(frame);
+            }
+        }
+        setStatus(saidOfAnImport(last, lastFraming.get(last), terms));
+    }
+
+    /**
+     * What the status line says once a pattern is in its frame: how many of its classes the frame
+     * holds - not how many arrived, which a tester found counted the classes shown elsewhere too -
+     * and where the others are.
+     */
+    private String saidOfAnImport(String pattern, Framing framing, int arrived) {
+        if (framing != null && framing.classes == 0 && !framing.elsewhere.isEmpty()) {
+            java.util.Set<String> frames =
+                    new java.util.LinkedHashSet<String>(framing.elsewhere.values());
+            return pattern + ": no frame of its own - its classes are already on the board, in "
+                    + listOf(new java.util.ArrayList<String>(frames))
+                    + ". File > Save keeps the import.";
+        }
+        int inFrame = framing == null ? arrived : framing.classes;
+        StringBuilder said = new StringBuilder("Imported ").append(pattern).append(": ")
+                .append(inFrame).append(" class").append(inFrame == 1 ? "" : "es")
+                .append(" in its frame");
+        if (framing != null && !framing.elsewhere.isEmpty()) {
+            java.util.List<String> names = new java.util.ArrayList<String>();
+            java.util.Set<String> frames = new java.util.LinkedHashSet<String>();
+            for (java.util.Map.Entry<String, String> entry : framing.elsewhere.entrySet()) {
+                names.add(nameOnTheBoard(entry.getKey()));
+                frames.add(entry.getValue());
+            }
+            said.append("; ").append(listOf(names))
+                    .append(names.size() == 1 ? " was" : " were")
+                    .append(" already on the board, in ").append(listOf(
+                            new java.util.ArrayList<String>(frames)))
+                    .append(" (the note in its frame says so)");
+        }
+        return said.append(". Right-click a class for New subclass... to extend it, and"
+                + " File > Save to keep the import.").toString();
+    }
+
+    /**
+     * Terms the ontology no longer has, off a board that shows everything: a class taken back with
+     * Edit > Undo, or deleted in Protégé. The board then arranges itself as it does when one is
+     * added - a tester found a frame stayed at the size its undone subclasses had made it.
+     */
+    private boolean dropGoneTerms() {
+        OWLOntology ontology = getOWLModelManager().getActiveOntology();
+        if (ontology == null || !Boolean.TRUE.equals(layout.showsEverything)
+                || layout.onCanvas.isEmpty()) {
+            return false;
+        }
+        java.util.Set<String> declared = OntologyProjection.termIdentifiers(ontology,
+                org.semanticweb.owlapi.model.parameters.Imports.INCLUDED);
+        java.util.List<String> gone = new java.util.ArrayList<String>();
+        for (String iri : membership.asSet()) {
+            if (!declared.contains(iri) && !SchemaGraph.isAnnotationId(iri)
+                    && !CanvasLayout.isDerived(iri)) {
+                gone.add(iri);
+            }
+        }
+        // Not membership.remove, which on this board also remembers a term as hidden: a class taken
+        // back with Undo and brought back with Redo then stayed off the board, found a tester.
+        for (String iri : gone) {
+            layout.onCanvas.remove(iri);
+            layout.nodes.remove(iri);
+        }
+        return !gone.isEmpty();
+    }
+
+    /**
+     * Says so when the active ontology stops importing something - Edit &gt; Undo of an import, as
+     * a rule - since the status line went on saying it had been imported, with no frame on the board.
+     * Found by a tester; the module's files stay in the project, and Imported terms... says the
+     * module is not imported now.
+     */
+    private void sayWhenAnImportIsTakenBack(
+            java.util.List<? extends org.semanticweb.owlapi.model.OWLOntologyChange> changes) {
+        java.util.List<String> gone = importsTakenBack(changes,
+                getOWLModelManager().getActiveOntology());
+        if (!gone.isEmpty()) {
+            setStatus(takenBackStatus(gone));
+        }
+    }
+
+    /**
+     * The imports of {@code active} these changes take away, by name. An import removed and added
+     * again in the same step - a module rebuilt, a pattern imported again - has not gone.
+     */
+    static java.util.List<String> importsTakenBack(
+            java.util.List<? extends org.semanticweb.owlapi.model.OWLOntologyChange> changes,
+            OWLOntology active) {
+        java.util.Set<String> removed = new java.util.LinkedHashSet<String>();
+        java.util.Set<String> added = new java.util.HashSet<String>();
+        for (org.semanticweb.owlapi.model.OWLOntologyChange change : changes) {
+            if (change instanceof org.semanticweb.owlapi.model.RemoveImport
+                    && change.getOntology().equals(active)) {
+                removed.add(((org.semanticweb.owlapi.model.RemoveImport) change)
+                        .getImportDeclaration().getIRI().toString());
+            } else if (change instanceof org.semanticweb.owlapi.model.AddImport
+                    && change.getOntology().equals(active)) {
+                added.add(((org.semanticweb.owlapi.model.AddImport) change)
+                        .getImportDeclaration().getIRI().toString());
+            }
+        }
+        removed.removeAll(added);
+        java.util.List<String> gone = new java.util.ArrayList<String>();
+        for (String iri : removed) {
+            gone.add(takenBackName(iri));
+        }
+        return gone;
+    }
+
+    /** {@code nfdi-dataset-description} for {@code .../imports/nfdi-dataset-description_import.owl}. */
+    static String takenBackName(String iri) {
+        String name = iri.substring(Math.max(iri.lastIndexOf('/'), iri.lastIndexOf('#')) + 1);
+        return name.replaceAll("(_import)?\\.(owl|ttl|obo|ofn|omn|owx)$", "");
+    }
+
+    static String takenBackStatus(java.util.List<String> names) {
+        return "No longer imported: " + String.join(", ", names) + ". Its terms left the board;"
+                + " its files stay in the project (see Imported terms...).";
+    }
+
+    /**
+     * A pattern's frame with no term left in it, and the note it carried: what an undone import
+     * leaves on a board somebody arranged by hand, where nothing arranges the frames again.
+     */
+    private void dropEmptyPatternFrames() {
+        java.util.Iterator<CanvasLayout.FrameLayout> frames = layout.frames.iterator();
+        while (frames.hasNext()) {
+            final CanvasLayout.FrameLayout frame = frames.next();
+            if (frame == null || frame.pattern == null) {
+                continue;
+            }
+            boolean holdsATerm = false;
+            for (java.util.Map.Entry<String, CanvasLayout.NodeLayout> node
+                    : layout.nodes.entrySet()) {
+                CanvasLayout.NodeLayout at = node.getValue();
+                if (at != null && membership.contains(node.getKey())
+                        && contains(frame, at.x + at.w / 2, at.y + at.h / 2)) {
+                    holdsATerm = true;
+                    break;
+                }
+            }
+            if (!holdsATerm) {
+                frames.remove();
+                layout.notes.removeIf(note -> note != null && note.id != null
+                        && note.id.startsWith(SHARED_NOTE_PREFIX)
+                        && contains(frame, note.x + note.w / 2, note.y + note.h / 2));
+            }
+        }
+    }
+
+    private static boolean contains(CanvasLayout.FrameLayout frame, double x, double y) {
+        return x >= frame.x && x <= frame.x + frame.w && y >= frame.y && y <= frame.y + frame.h;
+    }
+
+    /** Scrolls so a frame's top-left is on screen, as much of it showing as the view holds. */
+    private void bringIntoViewAtItsCorner(CanvasLayout.FrameLayout frame) {
+        if (graphComponent.getViewport() == null) {
+            return;
+        }
+        double scale = graph.getView().getScale();
+        java.awt.Dimension view = graphComponent.getViewport().getExtentSize();
+        com.mxgraph.util.mxPoint at = graph.getView().getTranslate();
+        graphComponent.getGraphControl().scrollRectToVisible(new java.awt.Rectangle(
+                (int) ((frame.x + at.getX()) * scale) - 20, (int) ((frame.y + at.getY()) * scale) - 20,
+                Math.min(view.width, (int) (frame.w * scale) + 40),
+                Math.min(view.height, (int) (frame.h * scale) + 40)));
     }
 
     /** Copies live cell geometry back into the layout so it survives the next save. */
@@ -5054,6 +6035,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
      */
     private void loadLayoutForActiveOntology() {
         currentOntologyFile = activeOntologyFile();
+        TermMinter.readReleasesInBackground(currentOntologyFile);
         layoutFile = currentOntologyFile;
         OWLOntology ontology = getOWLModelManager().getActiveOntology();
         layout = null;
@@ -5097,6 +6079,12 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             } else if (stored.belongsTo(ontologyIriOf(ontology))) {
                 layout = stored;
                 pruneStaleMembers(ontology, layout);
+                // Saved before 1.135.1, which did not say whether a person arranged it. One that
+                // holds positions keeps them: arranging it at its first new class would throw
+                // somebody's work away, with nothing to undo it with. Arrange > Outline opts in.
+                if (layout.arrangedByHand == null && !layout.nodes.isEmpty()) {
+                    layout.arrangedByHand = Boolean.TRUE;
+                }
                 if (layout.showsEverything == null && !layout.onCanvas.isEmpty()) {
                     setStatus("This board was saved by an earlier OntoBoard and shows the "
                             + layout.onCanvas.size() + " terms chosen then. More > Show every term"
@@ -5123,6 +6111,9 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             // A new board shows the whole ontology. Boards saved before 1.131.0 were chosen term
             // by term, so they keep what they show - the overflow menu offers the rest.
             layout.showsEverything = Boolean.TRUE;
+            // Said outright, so that a board saved before anything arranged it is not taken for a
+            // board from before 1.135.1, which never wrote this, and kept as arranged by hand.
+            layout.arrangedByHand = Boolean.FALSE;
         }
         membership = new CanvasMembership(layout);
     }
@@ -5201,6 +6192,34 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         createEntityAt(kind, x, y, null);
     }
 
+    /** Whether the ontology itself declares the term, as opposed to using one it imports. */
+    static boolean declaredIn(OWLOntology ontology, String iri) {
+        for (org.semanticweb.owlapi.model.OWLEntity entity
+                : ontology.getEntitiesInSignature(IRI.create(iri))) {
+            if (!ontology.getDeclarationAxioms(entity).isEmpty()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** The short name of a term here or in an import whose label is {@code name}, or null. */
+    static String termNamed(OWLOntology ontology, String name) {
+        String wanted = name.trim();
+        for (OWLOntology part : ontology.getImportsClosure()) {
+            for (org.semanticweb.owlapi.model.OWLAnnotationAssertionAxiom axiom
+                    : part.getAxioms(org.semanticweb.owlapi.model.AxiomType.ANNOTATION_ASSERTION)) {
+                if (axiom.getProperty().isLabel() && axiom.getValue().asLiteral().isPresent()
+                        && axiom.getValue().asLiteral().get().getLiteral().trim()
+                                .equalsIgnoreCase(wanted)
+                        && axiom.getSubject() instanceof IRI) {
+                    return ((IRI) axiom.getSubject()).getShortForm();
+                }
+            }
+        }
+        return null;
+    }
+
     /** The same, as a subclass of {@code parent} when one is given. */
     private void createEntityAt(EntityFactory.Kind kind, int x, int y, IRI parent) {
         OWLOntology ontology = getOWLModelManager().getActiveOntology();
@@ -5219,6 +6238,24 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                 parent == null ? "New " + what : kind == EntityFactory.Kind.INDIVIDUAL
                         ? "New individual" : "New subclass", JOptionPane.PLAIN_MESSAGE);
         if (name == null) {
+            return;
+        }
+        // Found by a tester: OK on an empty field made a class with no label, which the board
+        // then showed by its bare identifier.
+        if (name.trim().isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Give the new " + what + " a name.",
+                    "No name", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        name = name.trim();
+        // A second term with a name already taken is allowed - it can be meant - but asked about:
+        // until the build reported duplicate_label, nothing said two boxes now read alike.
+        String twin = ontology == null ? null : termNamed(ontology, name);
+        if (twin != null && JOptionPane.showConfirmDialog(this,
+                "\"" + name + "\" is already the name of " + twin
+                        + ".\nMake another " + what + " with the same name?",
+                "Name already used", JOptionPane.YES_NO_OPTION,
+                JOptionPane.QUESTION_MESSAGE) != JOptionPane.YES_OPTION) {
             return;
         }
         IRI iri;
@@ -5262,6 +6299,20 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         }
         layout.nodes.put(iri.toString(), new CanvasLayout.NodeLayout(x, y));
         membership.add(iri.toString());
+        if (parent != null && kind == EntityFactory.Kind.CLASS && arrangesItself()) {
+            // Under its parent, in the parent's frame, everything else making room.
+            rememberBoard("arranging the board");
+            arrangeEverything(ontology, true);
+            Object made = graph.getCellForId(iri.toString());
+            if (made != null) {
+                graphComponent.scrollCellToVisible(made);
+            }
+            return;
+        }
+        if (parent != null) {
+            rememberBoard("adding a class");
+            keepInItsParentsFrame(parent.toString(), layout.nodes.get(iri.toString()));
+        }
         refresh();
         saveLayoutTo(layoutFile);
     }
@@ -5412,13 +6463,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         OWLOntology ontology = getOWLModelManager().getActiveOntology();
         OWLDataFactory factory = getOWLModelManager().getOWLDataFactory();
 
-        List<String> targets = new ArrayList<String>();
-        for (String onCanvas : membership.asSet()) {
-            if (!onCanvas.equals(sourceIri)
-                    && ontology.containsClassInSignature(IRI.create(onCanvas))) {
-                targets.add(onCanvas);
-            }
-        }
+        List<String> targets = relationTargets(membership.asSet(), sourceIri, ontology);
         if (targets.isEmpty()) {
             JOptionPane.showMessageDialog(this,
                     "Add another class to the canvas first - a relation needs a target.",
@@ -5439,6 +6484,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             labels[i] = new Target(targets.get(i), DisplayLabels.forEntity(ontology,
                     factory.getOWLClass(IRI.create(targets.get(i)))));
         }
+        sortByWhatTheySay(labels);
         String sourceLabel = DisplayLabels.forEntity(ontology,
                 factory.getOWLClass(IRI.create(sourceIri)));
 
@@ -5449,6 +6495,41 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             return;
         }
         relateWithObjectProperty(sourceIri, ((Target) chosen).iri);
+    }
+
+    /**
+     * The classes on the board a term can be related to, the imported ones among them.
+     *
+     * <p>The board has drawn imported terms since 1.131.0, and this list went on asking for the
+     * ontology's own signature. So after importing a pattern the one thing a pattern is for - saying
+     * that your new class relates to the pattern's classes - offered only what your own axioms
+     * already mentioned, with no word about the rest. Found rehearsing a user study: "import a
+     * pattern and extend it" stopped at its first relation.
+     */
+    static List<String> relationTargets(Iterable<String> onBoard, String sourceIri,
+            OWLOntology ontology) {
+        List<String> targets = new ArrayList<String>();
+        for (String onCanvas : onBoard) {
+            if (!onCanvas.equals(sourceIri) && ontology.containsClassInSignature(
+                    IRI.create(onCanvas),
+                    org.semanticweb.owlapi.model.parameters.Imports.INCLUDED)) {
+                targets.add(onCanvas);
+            }
+        }
+        return targets;
+    }
+
+    /**
+     * Label order, for a list somebody reads: the IRI order it was in put {@code steel plate} after
+     * every BFO and IAO class, and an import can bring dozens of those.
+     */
+    static void sortByWhatTheySay(Object[] choices) {
+        java.util.Arrays.sort(choices, new java.util.Comparator<Object>() {
+            @Override
+            public int compare(Object a, Object b) {
+                return String.valueOf(a).compareToIgnoreCase(String.valueOf(b));
+            }
+        });
     }
 
     /**
@@ -5466,8 +6547,10 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         // A restriction is asserted about a class and points at a class. Reached from the canvas
         // gesture this can be untrue - somebody drags from an individual - so it is checked here
         // rather than only by the target list that the menu path filters.
-        if (!ontology.containsClassInSignature(IRI.create(sourceIri))
-                || !ontology.containsClassInSignature(IRI.create(targetIri))) {
+        org.semanticweb.owlapi.model.parameters.Imports closure =
+                org.semanticweb.owlapi.model.parameters.Imports.INCLUDED;
+        if (!ontology.containsClassInSignature(IRI.create(sourceIri), closure)
+                || !ontology.containsClassInSignature(IRI.create(targetIri), closure)) {
             JOptionPane.showMessageDialog(this,
                     "An object property restriction goes from a class to a class.\n\n"
                             + "For an individual, use its type; for a property, its parent "
@@ -5593,6 +6676,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             labels[i] = new Target(targets.get(i), getOWLModelManager().getRendering(
                     entityOnCanvas(ontology, targets.get(i))));
         }
+        sortByWhatTheySay(labels);
         HierarchyAxioms.Kind kind = HierarchyAxioms.applicableTo(source,
                 entityOnCanvas(ontology, targets.get(0))).get(0);
 
@@ -5643,6 +6727,10 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         // Applying fires the ontology-change listener, which refreshes the canvas and publishes
         // to the shared session. The edge appears only because the axiom exists.
         getOWLModelManager().applyChanges(changes);
+        if (arrangesItself()) {
+            rememberBoard("arranging the board");
+            arrangeEverything(ontology, true);
+        }
     }
 
 
@@ -5791,15 +6879,19 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         message.append("Permanently remove ")
                 .append(removals.size() == 1 ? "this axiom" : removals.size() + " axioms")
                 .append(" from the ontology?\n\n");
+        // In labels, as the board names things: a tester was shown functional syntax with full
+        // IRIs, and told to use a menu item that had been renamed.
         for (OWLOntologyChange change : removals) {
-            message.append("    ").append(change.getAxiom()).append('\n');
+            message.append("    ").append(de.fizkarlsruhe.ise.ontoboard.robot.Explanations
+                    .render(ontology, change.getAxiom())).append('\n');
         }
         if (AxiomRemoval.isGlobalDomainRange(edgeId)) {
             message.append("\nThese are GLOBAL rdfs:domain / rdfs:range axioms. Every other "
                     + "arrow drawn with this property depends on them and will disappear too.");
         }
-        message.append("\n\nTo hide the arrow without changing the ontology, use "
-                + "\"Remove from canvas\" on a node instead.");
+        message.append("\n\nTo take the arrow off the board without changing the ontology, use \""
+                + (Boolean.TRUE.equals(layout.showsEverything) ? "Hide from board" : "Remove from board")
+                + "\" on a term instead.");
 
         int answer = JOptionPane.showConfirmDialog(this, message.toString(),
                 "Delete axiom", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
@@ -5930,6 +7022,11 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                     return;
                 }
                 Object cell = graphComponent.getCellAt(event.getX(), event.getY());
+                // The empty inside of a frame is board here too: a new class, not the frame's name.
+                if (cell != null && !((CollaborativeGraphComponent) graphComponent)
+                        .isOnSomethingToDrag(event)) {
+                    cell = null;
+                }
                 if (cell != null) {
                     // Double-clicking a node is not a request for a new one. On a term it is the
                     // ordinary board gesture for "show me what this connects to"; on a note or a
@@ -5969,18 +7066,27 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
      * of, and because a punned IRI drawn as a class should link as one.
      */
     private OWLEntity entityOnCanvas(OWLOntology ontology, String iri) {
+        return entityIn(ontology, getOWLModelManager().getOWLDataFactory(), iri);
+    }
+
+    /**
+     * What an IRI on the board is, in the ontology or in what it imports - the board draws both, so
+     * a parent, a type or a drawn edge can end on either. See {@link #relationTargets}.
+     */
+    static OWLEntity entityIn(OWLOntology ontology, OWLDataFactory factory, String iri) {
         IRI subject = IRI.create(iri);
-        OWLDataFactory factory = getOWLModelManager().getOWLDataFactory();
-        if (ontology.containsClassInSignature(subject)) {
+        org.semanticweb.owlapi.model.parameters.Imports closure =
+                org.semanticweb.owlapi.model.parameters.Imports.INCLUDED;
+        if (ontology.containsClassInSignature(subject, closure)) {
             return factory.getOWLClass(subject);
         }
-        if (ontology.containsIndividualInSignature(subject)) {
+        if (ontology.containsIndividualInSignature(subject, closure)) {
             return factory.getOWLNamedIndividual(subject);
         }
-        if (ontology.containsObjectPropertyInSignature(subject)) {
+        if (ontology.containsObjectPropertyInSignature(subject, closure)) {
             return factory.getOWLObjectProperty(subject);
         }
-        if (ontology.containsDataPropertyInSignature(subject)) {
+        if (ontology.containsDataPropertyInSignature(subject, closure)) {
             return factory.getOWLDataProperty(subject);
         }
         return null;

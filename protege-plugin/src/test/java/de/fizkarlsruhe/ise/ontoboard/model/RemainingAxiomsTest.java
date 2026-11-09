@@ -144,6 +144,26 @@ class RemainingAxiomsTest {
     }
 
     /**
+     * By the property's label, as a restriction's arrow is: an imported OBO property read
+     * {@code BFO_0000051} here and "has part" on the arrow beside it.
+     */
+    @Test
+    void aFactBetweenTwoIndividualsShowsThePropertysLabel() {
+        OWLObjectProperty hasPart = factory.getOWLObjectProperty(
+                IRI.create("http://purl.obolibrary.org/obo/BFO_0000051"));
+        add(factory.getOWLAnnotationAssertionAxiom(factory.getRDFSLabel(), hasPart.getIRI(),
+                factory.getOWLLiteral("has part", "en")));
+        add(factory.getOWLObjectPropertyAssertionAxiom(
+                hasPart, individual("alice"), individual("bob")));
+
+        Projection drawn = OntologyProjection.project(ontology, board("alice", "bob"));
+
+        List<CanvasEdge> arrows = edgesOfKind(drawn, CanvasEdge.Kind.OBJECT_PROPERTY);
+        assertEquals(1, arrows.size(), idsOf(drawn).toString());
+        assertEquals("has part", arrows.get(0).getLabel());
+    }
+
+    /**
      * {@code SubPropertyChainOf} - three terms and an order, so no two-ended shape fits.
      *
      * <p>It reuses the node that already stands for "something the ontology says that is not a

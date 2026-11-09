@@ -8,8 +8,13 @@ import java.util.Locale;
 import java.util.Set;
 import org.obolibrary.robot.ExtractOperation;
 import org.obolibrary.robot.MireotOperation;
+import org.semanticweb.owlapi.model.AddAxiom;
 import org.semanticweb.owlapi.model.IRI;
+import org.semanticweb.owlapi.model.OWLAnnotationAssertionAxiom;
+import org.semanticweb.owlapi.model.OWLAnnotationProperty;
+import org.semanticweb.owlapi.model.OWLAxiom;
 import org.semanticweb.owlapi.model.OWLOntology;
+import org.semanticweb.owlapi.model.OWLOntologyChange;
 import org.semanticweb.owlapi.model.OWLOntologyID;
 import org.semanticweb.owlapi.model.SetOntologyID;
 import org.semanticweb.owlapi.model.parameters.Imports;
@@ -223,6 +228,7 @@ public final class TermExtract {
             } else {
                 module = ExtractOperation.extract(source, present, iri, moduleTypeOf(method));
             }
+            module.getOWLOntologyManager().applyChanges(annotationPropertyLabels(source, module));
             return new Result(module, missing, terms.size());
         } catch (LinkageError incompatible) {
             throw new RobotException(
@@ -232,6 +238,50 @@ public final class TermExtract {
             throw new RobotException(
                     "Extract failed: " + failed.getMessage(), failed);
         }
+    }
+
+    /**
+     * The source's {@code rdfs:label} for each annotation property the module mentions and does
+     * not name, so the module names it.
+     *
+     * <p>An extracted module declared the annotation properties its terms use and named none of
+     * them. A tester's IAO import had 22 such declarations and no label, so Imported terms listed
+     * 17 of its 80 rows by identifier - BFO_0000179, IAO_0000111 to IAO_0000119 and the rest -
+     * where the guide promised names, and the quality report showed the IRI of IAO_0000115 with
+     * Show labels ticked. Extraction keeps the annotations of the terms it brings; a property
+     * used to annotate them is not one of those terms, so its own label stayed in the source.
+     * The label only, from the source and its imports: what else it says is the source's.
+     */
+    static List<OWLOntologyChange> annotationPropertyLabels(OWLOntology source,
+            OWLOntology module) {
+        Set<OWLAxiom> labels = new LinkedHashSet<OWLAxiom>();
+        for (OWLAnnotationProperty property : module.getAnnotationPropertiesInSignature()) {
+            if (property.isBuiltIn() || hasLabel(module, property.getIRI())) {
+                continue;
+            }
+            for (OWLOntology part : source.getImportsClosure()) {
+                for (OWLAnnotationAssertionAxiom axiom
+                        : part.getAnnotationAssertionAxioms(property.getIRI())) {
+                    if (axiom.getProperty().isLabel()) {
+                        labels.add(axiom);
+                    }
+                }
+            }
+        }
+        List<OWLOntologyChange> changes = new ArrayList<OWLOntologyChange>();
+        for (OWLAxiom label : labels) {
+            changes.add(new AddAxiom(module, label));
+        }
+        return changes;
+    }
+
+    private static boolean hasLabel(OWLOntology ontology, IRI subject) {
+        for (OWLAnnotationAssertionAxiom axiom : ontology.getAnnotationAssertionAxioms(subject)) {
+            if (axiom.getProperty().isLabel()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static ModuleType moduleTypeOf(Method method) {

@@ -568,7 +568,11 @@ public final class IriGenerator {
                     + "Allocated so far: " + (who.length() == 0 ? "nobody" : who)
                     + ". Project > ID ranges... will allocate you one.", moment);
         }
-        return new IriGenerator(Source.ID_RANGES, book, inTheOntology, parsed, editor,
+        // What the releases carried is taken too, as it is for New subclass...: an identifier
+        // whose term was deleted after it went out must not be given to a new row.
+        Set<String> taken = new LinkedHashSet<String>(inTheOntology);
+        taken.addAll(TermMinter.releasedIdentifiers(rangesFile, parsed));
+        return new IriGenerator(Source.ID_RANGES, book, taken, parsed, editor,
                 parsed.getIdPrefix(), parsed.getIdDigits(), mine.getLower(), mine.getUpper(), "",
                 moment, null, ontologyFile);
     }

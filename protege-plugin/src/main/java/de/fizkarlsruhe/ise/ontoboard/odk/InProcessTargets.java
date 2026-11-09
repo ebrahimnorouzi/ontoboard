@@ -63,12 +63,24 @@ public final class InProcessTargets {
         private final String failure;
         private final List<String> transcript;
         private final List<File> written;
+        private final List<String> warnings;
 
         Outcome(boolean ok, String failure, List<String> transcript, List<File> written) {
+            this(ok, failure, transcript, written, Collections.<String>emptyList());
+        }
+
+        Outcome(boolean ok, String failure, List<String> transcript, List<File> written,
+                List<String> warnings) {
             this.ok = ok;
             this.failure = failure;
             this.transcript = transcript;
             this.written = written;
+            this.warnings = warnings;
+        }
+
+        /** What passed but should be read: said in the result, not only in the transcript. */
+        public List<String> getWarnings() {
+            return warnings;
         }
 
         public boolean isOk() {
@@ -167,13 +179,15 @@ public final class InProcessTargets {
         log.add("Running " + name + " inside Protege - no make, no robot, no container.");
         log.add("Steps: " + steps);
 
+        List<String> warnings = new ArrayList<String>();
         for (String step : steps) {
-            String failure = runStep(step, editFile, root, ontology, reasonerFactory, log, written);
+            String failure = runStep(step, editFile, root, ontology, reasonerFactory, log, written,
+                    warnings);
             if (failure != null) {
-                return new Outcome(false, failure, log, written);
+                return new Outcome(false, failure, log, written, warnings);
             }
         }
-        return new Outcome(true, null, log, written);
+        return new Outcome(true, null, log, written, warnings);
     }
 
     /** What a composite target expands to, matching the generated Makefile's dependencies. */
@@ -188,9 +202,16 @@ public final class InProcessTargets {
     }
 
     private static String runStep(String step, File editFile, File root, OWLOntology ontology,
-            OWLReasonerFactory reasonerFactory, List<String> log, List<File> written) {
+            OWLReasonerFactory reasonerFactory, List<String> log, List<File> written,
+            List<String> warnings) {
         if ("reason".equals(step)) {
-            return reason(editFile, ontology, reasonerFactory, log, written);
+            String failure = reason(editFile, ontology, reasonerFactory, log, written);
+            String second = failure == null ? secondOpinion(ontology, reasonerFactory) : null;
+            if (second != null) {
+                log.add("reason: " + second);
+                warnings.add(second);
+            }
+            return failure;
         }
         if ("report".equals(step)) {
             return report(editFile, ontology, log, written);
@@ -224,13 +245,28 @@ public final class InProcessTargets {
             return "Could not take a working copy of the ontology: " + cannotCopy.getMessage();
         }
         try {
+            // Reasoned on the open ontology, whose imports are loaded: RobotTransform puts their
+            // closure behind its copy. The working copy's imports are declarations nothing loads,
+            // so a class made unsatisfiable by an imported range passed this step and the release
+            // then refused - found by a tester running both releases through HermiT and ELK. The
+            // inferred axioms are then added to the working copy, which is what is written.
             RobotTransform.Diff inferred =
-                    RobotTransform.preview(copy, RobotTransform.Kind.REASON, reasonerFactory);
-            copy.getOWLOntologyManager().applyChanges(inferred.getChanges());
-            log.add("reason: " + inferred.getAdded() + " inferred axioms written in");
+                    RobotTransform.preview(ontology, RobotTransform.Kind.REASON, reasonerFactory);
+            for (org.semanticweb.owlapi.model.OWLOntologyChange change : inferred.getChanges()) {
+                if (change.isAddAxiom()) {
+                    copy.getOWLOntologyManager().addAxiom(copy, change.getAxiom());
+                } else if (change.isRemoveAxiom()) {
+                    copy.getOWLOntologyManager().removeAxiom(copy, change.getAxiom());
+                }
+            }
+            // A whole sentence: this read "0 inferred axioms written in" and stopped there.
+            log.add("reason: " + inferred.getAdded() + " inferred axiom"
+                    + (inferred.getAdded() == 1 ? "" : "s") + " added.");
         } catch (RuntimeException cannotReason) {
-            return "The reasoner could not finish, so nothing was written: "
-                    + cannotReason.getMessage();
+            return RobotTransform.isAboutTheModel(cannotReason)
+                    ? cannotReason.getMessage() + " Nothing was written."
+                    : "The reasoner could not finish, so nothing was written: "
+                            + cannotReason.getMessage();
         }
         File output = new File(editFile.getParentFile(), Release.ontologyIdFrom(editFile) + ".owl");
         try {
@@ -241,6 +277,92 @@ public final class InProcessTargets {
         log.add("reason: wrote " + output.getAbsolutePath());
         written.add(output);
         return null;
+    }
+
+    /** How long HermiT is given for a second opinion before the build goes on without it. */
+    static final long SECOND_OPINION_MILLIS = 10_000;
+
+    /** Beyond this many logical axioms, HermiT is not asked in passing. */
+    static final int SECOND_OPINION_AXIOMS = 20_000;
+
+    /**
+     * What HermiT finds that ELK cannot see, or null: asked only after ELK reasoned, and only
+     * when the ontology and its imports go beyond OWL 2 EL - inverse properties, universal
+     * restrictions, cardinalities - which ELK ignores without a word.
+     *
+     * <p>Found by a tester: <i>quality of</i> picked for a value's relation made the class
+     * unsatisfiable through the inverse <i>has quality</i>, whose range is a quality. HermiT said
+     * so; ELK, which the build uses as ODK's does, did not, so the test passed and the class was
+     * released. A warning, not a failure: the build keeps the verdict ODK's would give, and says
+     * what a fuller reasoner adds. Not asked for a large ontology, and given ten seconds.
+     */
+    public static String secondOpinion(OWLOntology ontology, OWLReasonerFactory used) {
+        if (ontology == null || used == null
+                || !used.getClass().getName().toLowerCase(java.util.Locale.ROOT).contains("elk")
+                || ProfileCheck.isIn(ontology, ProfileCheck.Target.EL)) {
+            return null;
+        }
+        int axioms = 0;
+        for (OWLOntology part : ontology.getImportsClosure()) {
+            axioms += part.getLogicalAxiomCount();
+        }
+        if (axioms > SECOND_OPINION_AXIOMS) {
+            return null;
+        }
+        final org.semanticweb.owlapi.reasoner.OWLReasoner hermit;
+        try {
+            hermit = new org.semanticweb.HermiT.ReasonerFactory().createNonBufferingReasoner(
+                    ontology, new org.semanticweb.owlapi.reasoner.SimpleConfiguration(
+                            SECOND_OPINION_MILLIS));
+        } catch (RuntimeException | LinkageError unavailable) {
+            return null;
+        }
+        java.util.concurrent.ExecutorService asking =
+                java.util.concurrent.Executors.newSingleThreadExecutor(work -> {
+                    Thread thread = new Thread(work, "OntoBoard: HermiT's second opinion");
+                    thread.setDaemon(true);
+                    return thread;
+                });
+        try {
+            java.util.concurrent.Future<java.util.List<String>> answer = asking.submit(() -> {
+                java.util.List<String> found = new ArrayList<String>();
+                if (!hermit.isConsistent()) {
+                    found.add(null);
+                    return found;
+                }
+                for (org.semanticweb.owlapi.model.OWLClass cls
+                        : hermit.getUnsatisfiableClasses().getEntitiesMinusBottom()) {
+                    found.add(de.fizkarlsruhe.ise.ontoboard.model.DisplayLabels.forEntity(
+                            ontology, cls));
+                }
+                return found;
+            });
+            java.util.List<String> found = answer.get(SECOND_OPINION_MILLIS + 2_000,
+                    java.util.concurrent.TimeUnit.MILLISECONDS);
+            if (found.isEmpty()) {
+                return null;
+            }
+            String what;
+            if (found.contains(null)) {
+                what = "that the ontology is inconsistent";
+            } else {
+                Collections.sort(found, String.CASE_INSENSITIVE_ORDER);
+                String names = found.size() <= 5 ? String.join(", ", found)
+                        : String.join(", ", found.subList(0, 5)) + " and " + (found.size() - 5)
+                                + " more";
+                what = "that " + names + " can have no members";
+            }
+            return "HermiT finds " + what + ". ELK, the reasoner this build uses as ODK's does,"
+                    + " does not see inverse properties and the rest of OWL beyond its EL"
+                    + " profile, so the build passes as ODK's would. The relation or parent added"
+                    + " last is the usual cause; Edit > Undo takes it back.";
+        } catch (Exception notAnswered) {
+            hermit.interrupt();
+            return null;
+        } finally {
+            asking.shutdownNow();
+            hermit.dispose();
+        }
     }
 
     /** {@code robot report}, with the project's own profile.txt, exactly as the recipe does. */
@@ -376,9 +498,17 @@ public final class InProcessTargets {
                 log.add("sparql_test:   ... and " + (check.getViolations() - offenders.size())
                         + " more");
             }
+            String gone = goneFrom(ontology, check.getAnswer().getRows());
+            if (gone != null) {
+                gone = gone + " is not in the ontology any more. If its class was deleted, the "
+                        + "test is about nothing: delete " + SparqlQuery.CHECKS_DIRECTORY + "/"
+                        + check.getName() + ".";
+                log.add("sparql_test:   " + gone);
+            }
             failed.add(check.getName() + (rule == null ? "" : " (" + rule + ")") + ": "
                     + join(offenders)
-                    + (check.getViolations() > offenders.size() ? ", ..." : ""));
+                    + (check.getViolations() > offenders.size() ? ", ..." : "")
+                    + (gone == null ? "" : " - " + gone));
         }
         if (failed.isEmpty()) {
             return null;
@@ -387,6 +517,30 @@ public final class InProcessTargets {
                 + "rule beside it: fix the term (a missing label is added in Protege under "
                 + "Annotations), or edit the check in " + SparqlQuery.CHECKS_DIRECTORY
                 + " if the rule does not apply to this project.";
+    }
+
+    /**
+     * The first term a failing check lists that the ontology does not have at all, or null.
+     *
+     * <p>A test written from a question on a class that was then deleted listed the class's bare
+     * IRI as breaking its rule - the zero-length step of {@code rdfs:subClassOf*} matches an IRI
+     * whether or not anything says it exists - and so failed every build after, naming a term
+     * that was nowhere to be found. Tests written since say {@code ?term a owl:Class} and pass
+     * instead; this is for the ones written before, and for any hand-written check that does the
+     * same.
+     */
+    static String goneFrom(OWLOntology ontology, List<List<String>> rows) {
+        for (List<String> row : rows) {
+            String first = row.isEmpty() ? "" : row.get(0);
+            if (first.startsWith("http://") || first.startsWith("https://")) {
+                if (!ontology.containsEntityInSignature(
+                        org.semanticweb.owlapi.model.IRI.create(first),
+                        org.semanticweb.owlapi.model.parameters.Imports.INCLUDED)) {
+                    return first;
+                }
+            }
+        }
+        return null;
     }
 
     /**

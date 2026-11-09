@@ -80,6 +80,22 @@ public final class OdkProjectConfig {
                             + "named after a folder on your machine and would not mean the same "
                             + "thing to anyone else.");
         }
+        // The address is filled in from the ID, so typing a new one after it - not over it - is
+        // the likeliest mistake on this form, and it passed every rule here: the OBO address with
+        // https://example.org/x/x.owl run on behind it starts with http and ends in the ID. A
+        // study rehearsal made exactly that project, with every term it would mint named under it.
+        if (baseIri.indexOf("://", baseIri.indexOf("://") + 3) >= 0) {
+            throw new IllegalArgumentException(
+                    "The Base IRI holds a second address: '" + baseIri + "'. Replace the address "
+                            + "that is filled in rather than typing after it, for example "
+                            + "'https://example.org/" + ontologyId + "/" + ontologyId + ".owl'.");
+        }
+        if (!baseIri.equals(baseIri.replaceAll("\\s", ""))) {
+            throw new IllegalArgumentException(
+                    "The Base IRI has a space in it: '" + baseIri + "'. An IRI cannot hold one, "
+                            + "and every term is named under this address. Use, for example, "
+                            + "'https://example.org/" + ontologyId + "/" + ontologyId + ".owl'.");
+        }
         // The id and the IRI's own name have to be the same word. ODK assumes it everywhere: the
         // Makefile writes $(ONT).owl, the ID-range prefix is built from the id, and the release
         // version IRI is built from the IRI. Let them differ and the same release is published as

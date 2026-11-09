@@ -255,14 +255,12 @@
                                              rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000031> ;
                                              <http://purl.obolibrary.org/obo/IAO_0000112> "Examples of information content entites include journal articles, data, graphical layouts, and graphs." ,
                                                                                           "Examples of information content entites include journal articles, data, graphical layouts, and graphs."@en ;
-                                             <http://purl.obolibrary.org/obo/IAO_0000115> "A generically dependent continuant that is about some thing."@en ,
-                                                                                          "An information content entity is an entity that is generically dependent on some artifact and stands in relation of aboutness to some entity." ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "A generically dependent continuant that is about some thing."@en ;
                                              <http://purl.obolibrary.org/obo/IAO_0000116> "2014-03-10: The use of \"thing\" is intended to be general enough to include universals and configurations (see https://groups.google.com/d/msg/information-ontology/GBxvYZCk1oc/-L6B5fSBBTQJ)."@en ,
                                                                                           """information_content_entity 'is_encoded_in' some digital_entity in obi before split (040907). information_content_entity 'is_encoded_in' some physical_document in obi before split (040907).
 
 Previous. An information content entity is a non-realizable information entity that 'is encoded in' some digital or physical entity."""@en ;
-                                             rdfs:label "information content entity" ,
-                                                        "information content entity"@en .
+                                             rdfs:label "information content entity"@en .
 
 
 ###  http://purl.obolibrary.org/obo/IAO_0000429

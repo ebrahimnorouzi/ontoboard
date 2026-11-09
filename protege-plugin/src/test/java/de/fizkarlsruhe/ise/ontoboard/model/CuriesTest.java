@@ -78,10 +78,10 @@ class CuriesTest {
 
     // ---------- what the node actually shows ----------
 
-    /** Two lines: the identifier, then the label. */
+    /** Two lines: what the term is called, then its identifier, which alone says nothing. */
     @Test
     void bothAreShownWhenBothSaySomething() {
-        assertEquals("obo:BFO_0000023\nrole",
+        assertEquals("role\nobo:BFO_0000023",
                 Curies.displayLabel("obo:BFO_0000023", "role"));
     }
 
@@ -122,5 +122,14 @@ class CuriesTest {
         assertTrue(defaults.containsKey("dcterms"));
         assertEquals("rdfs:label",
                 Curies.curieFor(defaults, "http://www.w3.org/2000/01/rdf-schema#label"));
+    }
+
+    /** The defined-class mark does not make a label look different from its name. */
+    @Test
+    void aDefinedClassNamedAsItsIriIsOneLine() {
+        assertEquals("\u2261 Place",
+                Curies.displayLabel(null, "\u2261 Place", "http://example.org/place.owl#Place"));
+        assertEquals("\u2261 Place\nPlaceType",
+                Curies.displayLabel(null, "\u2261 Place", "http://example.org/place.owl#PlaceType"));
     }
 }

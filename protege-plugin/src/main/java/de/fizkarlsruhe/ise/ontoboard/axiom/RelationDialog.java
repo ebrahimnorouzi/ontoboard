@@ -18,6 +18,7 @@ import javax.swing.JPanel;
 import javax.swing.JTextField;
 import org.semanticweb.owlapi.model.OWLObjectProperty;
 import org.semanticweb.owlapi.model.OWLOntology;
+import org.semanticweb.owlapi.model.parameters.Imports;
 
 /**
  * Asks which property an edge uses and how it should be read in OWL.
@@ -73,17 +74,7 @@ public final class RelationDialog {
     public static Choice ask(Component parent, OWLOntology ontology, String sourceLabel,
             String targetLabel) {
 
-        List<OWLObjectProperty> properties =
-                new ArrayList<OWLObjectProperty>(ontology.getObjectPropertiesInSignature());
-        // Sorted so the list does not reshuffle between invocations; OWL API returns an
-        // unordered set.
-        Collections.sort(properties, new Comparator<OWLObjectProperty>() {
-            @Override
-            public int compare(OWLObjectProperty a, OWLObjectProperty b) {
-                return DisplayLabels.forEntity(ontology, a)
-                        .compareToIgnoreCase(DisplayLabels.forEntity(ontology, b));
-            }
-        });
+        List<OWLObjectProperty> properties = propertiesOffered(ontology);
 
         List<String> propertyChoices = new ArrayList<String>();
         propertyChoices.add(CREATE_NEW);
@@ -143,6 +134,26 @@ public final class RelationDialog {
             return new Choice(null, typed, candidate);
         }
         return new Choice(properties.get(propertyBox.getSelectedIndex() - 1), null, candidate);
+    }
+
+    /**
+     * Every object property the edge could use, the imported ones among them: extending a pattern
+     * means reusing its properties, and offering only the ontology's own sent people off to mint a
+     * copy of a property they had just imported.
+     */
+    static List<OWLObjectProperty> propertiesOffered(OWLOntology ontology) {
+        List<OWLObjectProperty> properties = new ArrayList<OWLObjectProperty>(
+                ontology.getObjectPropertiesInSignature(Imports.INCLUDED));
+        // Sorted so the list does not reshuffle between invocations; OWL API returns an
+        // unordered set.
+        Collections.sort(properties, new Comparator<OWLObjectProperty>() {
+            @Override
+            public int compare(OWLObjectProperty a, OWLObjectProperty b) {
+                return DisplayLabels.forEntity(ontology, a)
+                        .compareToIgnoreCase(DisplayLabels.forEntity(ontology, b));
+            }
+        });
+        return properties;
     }
 
     private static void updateExplanation(JLabel label,

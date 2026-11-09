@@ -27,12 +27,18 @@ class PatternSummaryTest {
     /** A duplicate says so, and names what it duplicates. */
     @Test
     void aDuplicateIsCalledOut() throws Exception {
-        DesignPattern agentrole = PatternLibrary.find("agentrole");
+        DesignPattern copy = PatternLibrary.find("collectionentity");
 
-        String html = PatternSummary.asHtml(agentrole, PatternLibrary.contentsOf(agentrole));
+        String html = PatternSummary.asHtml(copy, PatternLibrary.contentsOf(copy));
 
-        assertTrue(html.contains("agent-role"), html);
+        assertTrue(html.contains("collection"), html);
         assertTrue(html.contains("second name"), html);
+
+        // Agentrole declares agent-role's IRI with twice its terms: another version, not a copy.
+        DesignPattern agentrole = PatternLibrary.find("agentrole");
+        String version = PatternSummary.asHtml(agentrole, PatternLibrary.contentsOf(agentrole));
+        assertTrue(version.contains("agent-role</b> declares the same ontology IRI with other"
+                + " terms: this one has 8, agent-role has 4"), version);
     }
 
     /** A pattern that is nobody's duplicate does not mention duplication. */
@@ -71,6 +77,25 @@ class PatternSummaryTest {
         int items = html.split("<li>", -1).length - 1;
         assertTrue(items <= PatternSummary.MOST_IMPORTS_SHOWN + 1,
                 items + " list items for four imports");
+    }
+
+    /**
+     * What is said first - already imported, found by a term - comes before what the pattern says
+     * about itself, escaped, and nothing is said when there is nothing to say.
+     */
+    @Test
+    void whatIsSaidFirstComesFirst() throws Exception {
+        DesignPattern componency = PatternLibrary.find("componency");
+        PatternLibrary.Contents contents = PatternLibrary.contentsOf(componency);
+
+        String html = PatternSummary.asHtml(componency, contents, null,
+                "Already imported into this ontology. Found by its terms: a <part>.");
+
+        assertTrue(html.contains("Already imported into this ontology."), html);
+        assertTrue(html.contains("a &lt;part&gt;"), html);
+        assertTrue(html.indexOf("Already imported") < html.indexOf("Contains:"), html);
+        assertTrue(PatternSummary.asHtml(componency, contents, null, null)
+                .equals(PatternSummary.asHtml(componency, contents)));
     }
 
     /** Markup in the data is escaped, not rendered. */

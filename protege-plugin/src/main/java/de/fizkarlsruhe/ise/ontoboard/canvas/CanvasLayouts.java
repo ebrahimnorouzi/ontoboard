@@ -197,6 +197,29 @@ public final class CanvasLayouts {
      */
     public static List<de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Section> applySections(
             SchemaGraph graph) {
+        return applySections(graph, null);
+    }
+
+    /**
+     * The same, saying which terms belong in a frame rather than working it out from where they
+     * stand. A term's old position says nothing once the frames have been planned afresh: a class
+     * that happened to stand where a frame now is counted as inside it, was left there, and lay on
+     * top of the frame's own boxes.
+     *
+     * @param staying the terms already placed in frames; null to go by where each term stands
+     */
+    public static List<de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Section> applySections(
+            SchemaGraph graph, java.util.Set<String> staying) {
+        return applySections(graph, staying, true);
+    }
+
+    /**
+     * The same, routing the lines afterwards only when {@code route}: a caller about to draw the
+     * board again routes once, then - a review measured three passes per arrangement, each up to the
+     * router's whole time budget, on the event thread.
+     */
+    public static List<de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Section> applySections(
+            SchemaGraph graph, java.util.Set<String> staying, boolean route) {
         List<de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Section> sections;
         graph.getModel().beginUpdate();
         try {
@@ -218,19 +241,33 @@ public final class CanvasLayouts {
             Map<String, Object> cells = new LinkedHashMap<String, Object>();
             for (Object vertex : graph.getChildVertices(graph.getDefaultParent())) {
                 mxGeometry geometry = graph.getModel().getGeometry(vertex);
-                if (isAnnotation(graph, vertex) || geometry == null || insideAny(frames, geometry)) {
+                String id = graph.getIdForCell(vertex);
+                if (isAnnotation(graph, vertex) || geometry == null || (staying == null
+                        ? insideAny(frames, geometry) : staying.contains(id))) {
                     continue;
                 }
-                String id = graph.getIdForCell(vertex);
                 cells.put(id, vertex);
+                String label = String.valueOf(graph.getModel().getValue(vertex));
+                // As big as the label needs and no bigger, on a board saved at older sizes too.
+                double[] fitted = graph.fittedSize(label, graph.getModel().getStyle(vertex));
+                if (fitted[0] != geometry.getWidth() || fitted[1] != geometry.getHeight()) {
+                    mxGeometry sized = (mxGeometry) geometry.clone();
+                    sized.setWidth(fitted[0]);
+                    sized.setHeight(fitted[1]);
+                    graph.getModel().setGeometry(vertex, sized);
+                }
                 terms.add(new de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Term(id,
-                        kindOf(graph.getModel().getStyle(vertex)),
-                        String.valueOf(graph.getModel().getValue(vertex)),
-                        geometry.getWidth(), geometry.getHeight()));
+                        kindOf(graph.getModel().getStyle(vertex)), label,
+                        fitted[0], fitted[1]));
             }
             List<de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Edge> edges =
                     new ArrayList<de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Edge>();
-            for (Object edge : graph.getChildEdges(graph.getDefaultParent())) {
+            // Every line, drawn or waiting for a selection: graph.getChildEdges leaves out what
+            // is not visible, and since ranges wait for a selection a datatype lost the line to
+            // its property and was laid out as a class of its own - a lone "float" in the corner
+            // of the board, found by a tester after importing a pattern with a data range.
+            for (Object edge : com.mxgraph.model.mxGraphModel.getChildCells(graph.getModel(),
+                    graph.getDefaultParent(), false, true)) {
                 Object source = graph.getModel().getTerminal(edge, true);
                 Object target = graph.getModel().getTerminal(edge, false);
                 if (source != null && target != null) {
@@ -241,7 +278,7 @@ public final class CanvasLayouts {
             }
             de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Plan plan =
                     de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.plan(terms, edges, MARGIN,
-                            top, framesRight);
+                            top, framesRight, MARGIN);
             for (Map.Entry<String, double[]> placed : plan.positions.entrySet()) {
                 Object cell = cells.get(placed.getKey());
                 mxGeometry moved = (mxGeometry) graph.getModel().getGeometry(cell).clone();
@@ -253,12 +290,8 @@ public final class CanvasLayouts {
         } finally {
             graph.getModel().endUpdate();
         }
-        graph.getView().revalidate();
-        graph.getModel().beginUpdate();
-        try {
-            new mxEdgeLabelLayout(graph).execute(graph.getDefaultParent());
-        } finally {
-            graph.getModel().endUpdate();
+        if (route) {
+            graph.routeEdges();
         }
         return sections;
     }

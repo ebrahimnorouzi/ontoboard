@@ -73,6 +73,44 @@ public class GuideGraphHandler extends mxGraphHandler {
         return guides == null ? Collections.<AlignmentGuides.Guide>emptyList() : guides;
     }
 
+    /**
+     * A press on the empty inside of a frame is left to the panning handler and the marquee, as a
+     * press on empty board is; only a frame's title takes the frame. See
+     * {@link CollaborativeGraphComponent#isOnSomethingToDrag}.
+     */
+    @Override
+    public void mousePressed(java.awt.event.MouseEvent event) {
+        if (graphComponent instanceof CollaborativeGraphComponent
+                && graphComponent.getCellAt(event.getX(), event.getY()) != null
+                && !((CollaborativeGraphComponent) graphComponent).isOnSomethingToDrag(event)) {
+            insideAFrameAt = event.getPoint();
+            return;
+        }
+        insideAFrameAt = null;
+        super.mousePressed(event);
+    }
+
+    /**
+     * Where the last press inside a frame's empty inside was, so a click there can clear the
+     * selection as a click on empty board does - a review found the focus fade stayed, because the
+     * click no longer selected the frame either. Null while there is none; a field only mouse
+     * events touch, never the superclass constructor.
+     */
+    private java.awt.Point insideAFrameAt;
+
+    @Override
+    public void mouseReleased(java.awt.event.MouseEvent event) {
+        java.awt.Point pressed = insideAFrameAt;
+        insideAFrameAt = null;
+        if (pressed != null && !event.isConsumed()
+                && javax.swing.SwingUtilities.isLeftMouseButton(event)
+                && pressed.distance(event.getPoint()) <= graphComponent.getTolerance()
+                && !graphComponent.isToggleEvent(event)) {
+            graphComponent.getGraph().clearSelection();
+        }
+        super.mouseReleased(event);
+    }
+
     @Override
     public void setPreviewBounds(Rectangle bounds) {
         super.setPreviewBounds(bounds);

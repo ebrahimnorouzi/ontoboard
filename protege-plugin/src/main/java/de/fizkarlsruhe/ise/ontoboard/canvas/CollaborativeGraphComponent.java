@@ -95,10 +95,55 @@ public final class CollaborativeGraphComponent extends mxGraphComponent {
         }
         if (javax.swing.SwingUtilities.isLeftMouseButton(event)) {
             return CanvasGesture.leftDragPans(gesture, spaceHeld,
-                    event.isShiftDown() || event.isControlDown(),
-                    getCellAt(event.getX(), event.getY()) != null);
+                    event.isShiftDown() || event.isControlDown(), isOnSomethingToDrag(event));
         }
         return super.isPanningEvent(event);
+    }
+
+    /** How much of a frame's top is its title, which is where a frame is taken to move it. */
+    static final double FRAME_TITLE_BAND = 40;
+
+    /**
+     * Whether a press here lands on something a drag would move: a term, an edge, a note, or a
+     * frame's title - and not the empty inside of a frame.
+     *
+     * <p>Found by a code review before a user study: an imported pattern's frame fills the
+     * window after the import, and the guide's next words are "drag the board to move it". The
+     * drag took the frame, every class in it went along, and the board stopped arranging itself
+     * from then on, because a move by hand had been made. The inside of a frame is board.
+     */
+    public boolean isOnSomethingToDrag(java.awt.event.MouseEvent event) {
+        Object cell = getCellAt(event.getX(), event.getY());
+        if (cell == null) {
+            return false;
+        }
+        return !isInsideAFrameBelowItsTitle(cell, event.getY());
+    }
+
+    /**
+     * A frame's name is edited from its title only. A double-click on the empty inside of a frame
+     * is a double-click on board - a new class there - as a single click and a drag there already
+     * are: a tester typed a class name into what turned out to be the frame's title.
+     */
+    @Override
+    public void startEditingAtCell(Object cell, java.util.EventObject event) {
+        if (event instanceof java.awt.event.MouseEvent
+                && isInsideAFrameBelowItsTitle(cell, ((java.awt.event.MouseEvent) event).getY())) {
+            return;
+        }
+        super.startEditingAtCell(cell, event);
+    }
+
+    private boolean isInsideAFrameBelowItsTitle(Object cell, int y) {
+        if (!(cell instanceof com.mxgraph.model.mxCell)) {
+            return false;
+        }
+        String id = ((com.mxgraph.model.mxCell) cell).getId();
+        if (id == null || !id.startsWith(SchemaGraph.FRAME_ID_PREFIX)) {
+            return false;
+        }
+        com.mxgraph.view.mxCellState state = graph.getView().getState(cell);
+        return state != null && y > state.getY() + FRAME_TITLE_BAND * graph.getView().getScale();
     }
 
     /**

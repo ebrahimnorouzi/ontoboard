@@ -23,6 +23,7 @@ public final class DesignPattern {
     private final String competencyQuestions;
     private final java.util.List<String> termIris;
     private final java.io.File file;
+    private java.util.List<String> termLabels = java.util.Collections.<String>emptyList();
 
     DesignPattern(String id, String name, String collection, String publisher, String category,
             String domain, String sameAs, String description, String competencyQuestions,
@@ -62,6 +63,27 @@ public final class DesignPattern {
      */
     public java.util.List<String> getTermIris() {
         return termIris;
+    }
+
+    /**
+     * What the pattern's own classes and properties are called, sorted; empty when that was never
+     * read. Searched after everything else - see {@link PatternLibrary#matchingByTerms}.
+     *
+     * <p>For a shipped pattern from {@code patterns/labels.tsv}, generated and checked like the
+     * index, because reading the labels out of every file to answer a search would be the 24
+     * seconds {@link #getTermIris} exists to avoid. For one of the user's own, from the file
+     * itself, which the folder scan reads anyway.
+     */
+    public java.util.List<String> getTermLabels() {
+        return termLabels;
+    }
+
+    /** This pattern, with the labels of its terms. Set once, while the library is being read. */
+    DesignPattern withTermLabels(java.util.List<String> labels) {
+        this.termLabels = labels == null || labels.isEmpty()
+                ? java.util.Collections.<String>emptyList()
+                : java.util.Collections.unmodifiableList(new java.util.ArrayList<String>(labels));
+        return this;
     }
 
     /** The directory name, which is also the resource path and the stable identifier. */

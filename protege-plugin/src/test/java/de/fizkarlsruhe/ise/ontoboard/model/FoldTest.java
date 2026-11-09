@@ -61,6 +61,8 @@ class FoldTest {
         double[] spot = OntologyProjection.besideItsParentAt(layout, 300, 100);
 
         assertEquals(300, spot[0], 0.001);
-        assertEquals(176, spot[1], 0.001);
+        // 20 px below the box, which ends at 160: since 1.135.1 a new box keeps the board's gap
+        // between siblings rather than touching the one above.
+        assertEquals(180, spot[1], 0.001);
     }
 }

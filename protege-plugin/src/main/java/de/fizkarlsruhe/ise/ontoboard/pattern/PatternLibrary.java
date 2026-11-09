@@ -84,6 +84,25 @@ public final class PatternLibrary {
     }
 
     /**
+     * How the library's list names the pattern a duplicate is marked against: "same as" when the
+     * two have exactly the same terms, "another version of" when they only declare the same
+     * ontology IRI. Empty for a pattern that is no duplicate.
+     *
+     * <p>Found by a tester: <i>Collection Entity Pattern</i> was listed as "same as collection",
+     * although it has a class, Entity, that <i>Collection Pattern</i> lacks - and an expert who
+     * took the note at its word would import the one that cannot hold what the task needs.
+     */
+    public static String twinNote(DesignPattern pattern) {
+        if (!pattern.isDuplicate()) {
+            return "";
+        }
+        DesignPattern twin = find(pattern.getSameAs());
+        boolean same = twin != null && new java.util.HashSet<String>(twin.getTermIris())
+                .equals(new java.util.HashSet<String>(pattern.getTermIris()));
+        return (same ? "same as " : "another version of ") + pattern.getSameAs();
+    }
+
+    /**
      * The patterns grouped by publisher, publishers in name order, each group in id order.
      *
      * <p>The grouping the request asked for. Grouping by {@code collection} would produce one
@@ -130,6 +149,57 @@ public final class PatternLibrary {
     }
 
     /**
+     * The same patterns, those whose name says what was searched for first: the name itself, then
+     * its words, then a word's stem - {@code measured} in {@code Measurement} - then the rest, in
+     * the order they came. Stable, so an ordering chosen in the browser still orders each group.
+     *
+     * <p>Found by three testers and two scenario builders: the list kept the library's order and
+     * the first row was selected, so a search for {@code place} offered a pattern about material
+     * entities with <i>Place Pattern</i> tenth, and {@code measured} or {@code dataset} put another
+     * pattern in front of the one the guide named - one press of Import terms... from the wrong
+     * import.
+     */
+    public static List<DesignPattern> nameMatchesFirst(List<DesignPattern> patterns,
+            String query) {
+        List<DesignPattern> ordered = new ArrayList<DesignPattern>(patterns);
+        if (query == null || query.trim().isEmpty()) {
+            return ordered;
+        }
+        final String[] words = query.trim().toLowerCase(Locale.ROOT).split("\\s+");
+        Collections.sort(ordered, (one, other) -> Integer.compare(
+                nameRank(one.getName(), words), nameRank(other.getName(), words)));
+        return ordered;
+    }
+
+    /** 0 the name is the query, 1 every word is a word of the name, 2 every stem is in it, 3 not. */
+    static int nameRank(String name, String[] words) {
+        String plain = (name == null ? "" : name).toLowerCase(Locale.ROOT)
+                .replaceFirst("^pattern \\d+:\\s*", "").replaceFirst("\\s+(odp\\s+)?pattern$", "")
+                .trim();
+        if (plain.equals(String.join(" ", words))) {
+            return 0;
+        }
+        List<String> nameWords = java.util.Arrays.asList(plain.split("[^\\p{L}\\p{N}]+"));
+        boolean allWords = true;
+        boolean allStems = true;
+        for (String word : words) {
+            allWords &= nameWords.contains(word);
+            allStems &= plain.contains(stem(word));
+        }
+        return allWords ? 1 : allStems ? 2 : 3;
+    }
+
+    /** A word without the endings English puts on it, when enough of it is left to mean much. */
+    static String stem(String word) {
+        for (String ending : new String[] {"ments", "ment", "ings", "ing", "ed", "es", "s"}) {
+            if (word.endsWith(ending) && word.length() - ending.length() >= 4) {
+                return word.substring(0, word.length() - ending.length());
+            }
+        }
+        return word;
+    }
+
+    /**
      * The same filter over a list given to it, rather than over the shipped library.
      *
      * <p>What the browser uses, because the list it shows is the shipped patterns plus whatever
@@ -167,6 +237,69 @@ public final class PatternLibrary {
         return Collections.unmodifiableList(hits);
     }
 
+    /**
+     * The patterns {@link #matching} leaves out whose terms are called what was typed: every word
+     * of the query in the labels of the pattern's own classes and properties.
+     *
+     * <p>Separate, so the browser can list these after what matched by name, description and
+     * questions: a pattern that merely contains a {@code hardness} class is a weaker answer to
+     * "hardness" than one about it. But an answer. Searching for the thing you want to model is
+     * how anybody new to a library searches it, and the patterns are mostly described in their own
+     * words - "Nothing matches." for {@code hardness}, with a pattern holding {@code hardness} and
+     * {@code indentation hardness} right there, was a dead end found in a rehearsal of the study.
+     */
+    public static List<DesignPattern> matchingByTerms(List<DesignPattern> patterns,
+            String query) {
+        if (query == null || query.trim().isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<DesignPattern> already = matching(patterns, query);
+        String[] words = query.trim().toLowerCase(Locale.ROOT).split("\\s+");
+        List<DesignPattern> hits = new ArrayList<DesignPattern>();
+        for (DesignPattern pattern : patterns) {
+            if (already.contains(pattern) || pattern.getTermLabels().isEmpty()) {
+                continue;
+            }
+            String haystack = String.join(" | ", pattern.getTermLabels()).toLowerCase(Locale.ROOT);
+            boolean all = true;
+            for (String word : words) {
+                if (!haystack.contains(word)) {
+                    all = false;
+                    break;
+                }
+            }
+            if (all) {
+                hits.add(pattern);
+            }
+        }
+        return Collections.unmodifiableList(hits);
+    }
+
+    /**
+     * The labels of the pattern's terms that hold a word of the query, at most three: what the
+     * browser says a pattern was found by when nothing else about it matched.
+     */
+    public static List<String> termsMatching(DesignPattern pattern, String query) {
+        List<String> found = new ArrayList<String>();
+        if (pattern == null || query == null || query.trim().isEmpty()) {
+            return found;
+        }
+        String[] words = query.trim().toLowerCase(Locale.ROOT).split("\\s+");
+        for (String label : pattern.getTermLabels()) {
+            String lower = label.toLowerCase(Locale.ROOT);
+            for (String word : words) {
+                if (lower.contains(word)) {
+                    found.add(label);
+                    break;
+                }
+            }
+            if (found.size() == 3) {
+                break;
+            }
+        }
+        return found;
+    }
+
     // ---------- opening one ----------
 
     /** What a pattern actually contains, read from its file rather than from its metadata. */
@@ -175,9 +308,11 @@ public final class PatternLibrary {
         private final List<OWLEntity> properties;
         private final List<IRI> imports;
         private final IRI ontologyIri;
+        private final Map<IRI, String> labels;
 
         Contents(List<OWLEntity> classes, List<OWLEntity> properties, List<IRI> imports,
-                IRI ontologyIri) {
+                IRI ontologyIri, Map<IRI, String> labels) {
+            this.labels = Collections.unmodifiableMap(labels);
             this.classes = Collections.unmodifiableList(classes);
             this.properties = Collections.unmodifiableList(properties);
             this.imports = Collections.unmodifiableList(imports);
@@ -190,6 +325,25 @@ public final class PatternLibrary {
 
         public List<OWLEntity> getProperties() {
             return properties;
+        }
+
+        /**
+         * What a term is called in the pattern, or null if nothing says. A pattern's identifiers
+         * are mostly numbers, BFO_0000004 and the like, and a list of those tells nobody what they
+         * are about to import.
+         */
+        public String labelOf(IRI term) {
+            return labels.get(term);
+        }
+
+        /** Whether a term is a class rather than a property. */
+        public boolean isClass(IRI term) {
+            for (OWLEntity entity : classes) {
+                if (entity.getIRI().equals(term)) {
+                    return true;
+                }
+            }
+            return false;
         }
 
         /** Everything the pattern declares, classes then properties. */
@@ -306,7 +460,19 @@ public final class PatternLibrary {
         }
         Collections.sort(imports);
         com.google.common.base.Optional<IRI> iri = ontology.getOntologyID().getOntologyIRI();
-        return new Contents(classes, properties, imports, iri.isPresent() ? iri.get() : null);
+        Map<IRI, String> labels = new java.util.HashMap<IRI, String>();
+        List<OWLEntity> named = new ArrayList<OWLEntity>(classes);
+        named.addAll(properties);
+        for (OWLEntity entity : named) {
+            String label = de.fizkarlsruhe.ise.ontoboard.model.DisplayLabels.forEntity(ontology,
+                    entity);
+            if (label != null && !label.trim().isEmpty()
+                    && !label.equals(entity.getIRI().getShortForm())) {
+                labels.put(entity.getIRI(), label.trim());
+            }
+        }
+        return new Contents(classes, properties, imports, iri.isPresent() ? iri.get() : null,
+                labels);
     }
 
     private static <T extends OWLEntity> List<T> sorted(java.util.Set<T> entities) {
@@ -345,6 +511,24 @@ public final class PatternLibrary {
 
     /** Loads the pattern, without chasing its imports over the network. */
     public static OWLOntology load(DesignPattern pattern) throws IOException {
+        return read(pattern, baseFor(pattern), false);
+    }
+
+    /**
+     * Reads the pattern as if from {@code documentIri}, its imports answered by nothing.
+     *
+     * <p>For saying, before anything is copied, what the import will make of the copy: a pattern
+     * that declares no ontology IRI, or a relative one, is named after the file it is read from,
+     * and the import reads it from its copy under {@code mirror/}, not from inside the jar - see
+     * {@link #copyFor}. Its imports are not asked for at all, because the question is only what
+     * the pattern calls itself, and it is asked while somebody waits for a dialog.
+     */
+    public static OWLOntology loadAs(DesignPattern pattern, IRI documentIri) throws IOException {
+        return read(pattern, documentIri, true);
+    }
+
+    private static OWLOntology read(DesignPattern pattern, IRI documentIri,
+            boolean importsNowhere) throws IOException {
         InputStream stream = openStream(pattern);
         try {
             OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
@@ -353,8 +537,12 @@ public final class PatternLibrary {
             // and would pull DUL in behind the four that import it.
             manager.setOntologyLoaderConfiguration(manager.getOntologyLoaderConfiguration()
                     .setMissingImportHandlingStrategy(MissingImportHandlingStrategy.SILENT));
+            if (importsNowhere) {
+                final IRI nowhere = IRI.create("file:/" + DIRECTORY + "no-such-import.owl");
+                manager.getIRIMappers().add(iri -> nowhere);
+            }
             return manager.loadOntologyFromOntologyDocument(
-                    new org.semanticweb.owlapi.io.StreamDocumentSource(stream, baseFor(pattern)));
+                    new org.semanticweb.owlapi.io.StreamDocumentSource(stream, documentIri));
         } catch (Exception broken) {
             throw new IOException("Cannot read " + pattern.getId() + ": " + broken.getMessage(),
                     broken);
@@ -405,7 +593,7 @@ public final class PatternLibrary {
         if (!directory.isDirectory() && !directory.mkdirs()) {
             throw new IOException("Cannot create " + directory.getAbsolutePath());
         }
-        File target = new File(directory, pattern.getId() + extensionOf(pattern));
+        File target = copyFor(pattern, directory);
         InputStream stream = openStream(pattern);
         try {
             OutputStream out = Files.newOutputStream(target.toPath());
@@ -422,6 +610,11 @@ public final class PatternLibrary {
             stream.close();
         }
         return target;
+    }
+
+    /** The file {@link #copyTo} writes in {@code directory}, whether or not it exists yet. */
+    public static File copyFor(DesignPattern pattern, File directory) {
+        return new File(directory, pattern.getId() + extensionOf(pattern));
     }
 
     /**

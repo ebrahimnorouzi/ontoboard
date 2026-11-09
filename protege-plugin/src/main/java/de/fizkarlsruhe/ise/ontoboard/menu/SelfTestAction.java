@@ -372,10 +372,24 @@ public class SelfTestAction extends OntoBoardAction {
         return run((OWLOntology) null);
     }
 
+    /**
+     * Which OntoBoard was tested, said first in the result: "OntoBoard 1.135.1".
+     *
+     * <p>A reviewer found nothing recorded it. The study invitation accepts "1.135.1 or later",
+     * and this window, the first thing a participant runs, named no version - so a fix released
+     * during the study week would have left people on different builds without anyone knowing.
+     */
+    static String whichOntoBoard() {
+        String version = de.fizkarlsruhe.ise.ontoboard.bench.Bench.version();
+        return "unknown".equals(version) ? "OntoBoard (version unknown)" : "OntoBoard " + version;
+    }
+
     @Override
     protected OperationResult run(OWLOntology ignored) {
         OperationResult.Builder result = OperationResult.of(operationName())
                 .columns("Menu item", "Result", "What it reported");
+        String ontoBoard = whichOntoBoard();
+        result.note(ontoBoard + ".");
 
         File projectRoot;
         OWLOntology scratch;
@@ -383,8 +397,8 @@ public class SelfTestAction extends OntoBoardAction {
             projectRoot = scratchProject();
             scratch = editFileOf(projectRoot);
         } catch (Exception cannotBuild) {
-            return result.failed("Could not build the scratch project to test against: "
-                    + cannotBuild.getMessage()).build();
+            return result.failed(ontoBoard + ": could not build the scratch project to test "
+                    + "against: " + cannotBuild.getMessage()).build();
         }
 
         Map<String, OntoBoardAction> underTest = new LinkedHashMap<String, OntoBoardAction>();
@@ -471,11 +485,11 @@ public class SelfTestAction extends OntoBoardAction {
         // believable, and the receipts quote this line verbatim.
         int checks = underTest.size() + 1 + TABS.length;
         if (failed > 0) {
-            return result.failed(failed + " of " + checks
+            return result.failed(ontoBoard + ": " + failed + " of " + checks
                     + " checks failed. This is a defect in the plugin, not in your "
                     + "ontology.").build();
         }
-        return result.summary(checks + " of " + checks
+        return result.summary(ontoBoard + ": " + checks + " of " + checks
                 + " checks ran - " + underTest.size() + " menu items, the in-process build and "
                 + TABS.length + " tabs. "
                 + skippedWithReasons().size()

@@ -132,6 +132,7 @@ public class HistoryAction extends ProtegeOWLAction {
         open.addActionListener(e -> openSelected());
         JButton close = new JButton("Close");
         close.addActionListener(e -> dialog.dispose());
+        DialogKeys.escapePresses(dialog.getRootPane(), close);
 
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.LEFT));
         buttons.add(open);

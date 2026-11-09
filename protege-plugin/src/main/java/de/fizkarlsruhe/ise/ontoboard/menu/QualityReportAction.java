@@ -143,10 +143,12 @@ public class QualityReportAction extends OntoBoardAction {
         result.note("Profile: " + profileDescription);
         result.note("Failing at: " + options.get(QualityReport.OPTION_FAIL_ON));
 
+        boolean labels = !"false".equalsIgnoreCase(options.get(QualityReport.OPTION_LABELS));
         int errors = 0;
         for (QualityFinding finding : findings) {
-            result.row(finding.getSeverity().name(), finding.getRule(), finding.getSubject(),
-                    finding.getMessage());
+            result.row(finding.getSeverity().name(), finding.getRule(),
+                    subjectShown(ontology, finding.getSubject(), labels),
+                    messageShown(ontology, finding.getMessage(), labels));
             if (finding.getSeverity() == QualityFinding.Severity.ERROR) {
                 errors++;
             }
@@ -166,6 +168,66 @@ public class QualityReportAction extends OntoBoardAction {
     }
 
     /** How many findings would trip the chosen gate. */
+    /**
+     * A finding's subject as <i>Show labels instead of IRIs</i> promises it: the label, then the
+     * short name, because two terms can share a label and the next step is to find this one.
+     *
+     * <p>Done here because the checkbox had stopped doing anything. The option went to ROBOT's own
+     * report, and {@code RuleRunner} took that report's place when it could not run inside an OSGi
+     * bundle; a finding has been a bare IRI since, with the box ticked.
+     */
+    static String subjectShown(OWLOntology ontology, String subject, boolean labels) {
+        if (!labels || subject == null || subject.trim().isEmpty()) {
+            return subject;
+        }
+        org.semanticweb.owlapi.model.IRI iri = org.semanticweb.owlapi.model.IRI.create(subject);
+        for (org.semanticweb.owlapi.model.OWLEntity entity : ontology.getEntitiesInSignature(iri,
+                org.semanticweb.owlapi.model.parameters.Imports.INCLUDED)) {
+            String label = de.fizkarlsruhe.ise.ontoboard.model.DisplayLabels.forEntity(ontology,
+                    entity);
+            return label.equals(iri.getShortForm()) ? subject
+                    : label + " (" + iri.getShortForm() + ")";
+        }
+        return subject;
+    }
+
+    /** An IRI in a finding's message, up to the space or end after it. */
+    private static final java.util.regex.Pattern IRI_IN_MESSAGE =
+            java.util.regex.Pattern.compile("[A-Za-z][A-Za-z0-9+.-]*://[^\\s<>\"]+");
+
+    /**
+     * A finding's message with each term's IRI in it shown as {@link #subjectShown} shows the
+     * subject, when the box is ticked.
+     *
+     * <p>A message is the property and the value the rule found, and both are often IRIs: a
+     * tester saw {@code http://purl.obolibrary.org/obo/IAO_0000115} in the Message column with
+     * Show labels ticked, beside a Subject column that did show labels. An IRI that is not a term
+     * here - a web address inside a definition - is left as it is.
+     */
+    static String messageShown(OWLOntology ontology, String message, boolean labels) {
+        if (!labels || message == null || !message.contains("://")) {
+            return message;
+        }
+        java.util.regex.Matcher iris = IRI_IN_MESSAGE.matcher(message);
+        StringBuffer shown = new StringBuffer();
+        while (iris.find()) {
+            String iri = iris.group();
+            String after = "";
+            String named = subjectShown(ontology, iri, true);
+            // "property: value" puts a colon straight after the property's IRI.
+            while (named.equals(iri) && iri.length() > 1
+                    && ":;,.)".indexOf(iri.charAt(iri.length() - 1)) >= 0) {
+                after = iri.charAt(iri.length() - 1) + after;
+                iri = iri.substring(0, iri.length() - 1);
+                named = subjectShown(ontology, iri, true);
+            }
+            iris.appendReplacement(shown, java.util.regex.Matcher.quoteReplacement(
+                    named.equals(iri) ? iris.group() : named + after));
+        }
+        iris.appendTail(shown);
+        return shown.toString();
+    }
+
     private static int countAtOrAbove(List<QualityFinding> findings, String failOn) {
         if (failOn == null || "none".equalsIgnoreCase(failOn)) {
             return 0;

@@ -150,13 +150,11 @@ for now.</ns1:IAO_0000116>
     <ns1:IAO_0000112 xml:lang="en">Examples of information content entites include journal articles, data, graphical layouts, and graphs.</ns1:IAO_0000112>
     <ns1:IAO_0000112>Examples of information content entites include journal articles, data, graphical layouts, and graphs.</ns1:IAO_0000112>
     <ns1:IAO_0000115 xml:lang="en">A generically dependent continuant that is about some thing.</ns1:IAO_0000115>
-    <ns1:IAO_0000115>An information content entity is an entity that is generically dependent on some artifact and stands in relation of aboutness to some entity.</ns1:IAO_0000115>
     <ns1:IAO_0000116 xml:lang="en">2014-03-10: The use of "thing" is intended to be general enough to include universals and configurations (see https://groups.google.com/d/msg/information-ontology/GBxvYZCk1oc/-L6B5fSBBTQJ).</ns1:IAO_0000116>
     <ns1:IAO_0000116 xml:lang="en">information_content_entity 'is_encoded_in' some digital_entity in obi before split (040907). information_content_entity 'is_encoded_in' some physical_document in obi before split (040907).
 
 Previous. An information content entity is a non-realizable information entity that 'is encoded in' some digital or physical entity.</ns1:IAO_0000116>
     <rdfs:label xml:lang="en">information content entity</rdfs:label>
-    <rdfs:label>information content entity</rdfs:label>
   </rdf:Description>
   <rdf:Description rdf:about="http://purl.obolibrary.org/obo/IAO_0020000">
     <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>

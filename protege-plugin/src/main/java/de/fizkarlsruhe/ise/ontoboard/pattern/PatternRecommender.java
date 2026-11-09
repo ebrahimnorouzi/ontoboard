@@ -144,7 +144,8 @@ public final class PatternRecommender {
         public String explain() {
             StringBuilder why = new StringBuilder();
             why.append(getSharedCount()).append(" of its ").append(terms)
-               .append(terms == 1 ? " term is" : " terms are").append(" already in your ontology");
+               .append(terms == 1 ? " term has" : " terms have")
+               .append(" the name of a term in your ontology");
             // Capped across both lists, not just the words. Pointed at the project these
             // patterns were harvested from, every term matches - one explanation listed
             // thirty-six OBO identifiers, which is a wall rather than a reason.

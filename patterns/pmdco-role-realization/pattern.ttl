@@ -35,8 +35,8 @@
 ###  http://purl.obolibrary.org/obo/BFO_0000054
 <http://purl.obolibrary.org/obo/BFO_0000054> rdf:type owl:ObjectProperty ;
                                              owl:inverseOf <http://purl.obolibrary.org/obo/BFO_0000055> ;
-                                             rdfs:label "has realization"@en ,
-                                                        "realized in"@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000118> "realized in"@en ;
+                                             rdfs:label "has realization"@en ;
                                              <http://www.w3.org/2004/02/skos/core#definition> "b has realization c =Def c realizes b"@en .
 
 
@@ -157,9 +157,9 @@ Some currently missing phenomena that should be considered \"about\" are predica
 
 ###  http://purl.obolibrary.org/obo/IAO_0000027
 <http://purl.obolibrary.org/obo/IAO_0000027> rdf:type owl:Class ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000118> "data item"@en ;
                                              <http://purl.obolibrary.org/obo/IAO_0000112> "Data items include counts of things, analyte concentrations, and statistical summaries."@en ;
-                                             <http://purl.obolibrary.org/obo/IAO_0000115> "An information content entity that is intended to be a truthful statement about something (modulo, e.g., measurement precision or other systematic errors) and is constructed/acquired by a method which reliably tends to produce (approximately) truthful statements."@en ,
-                                                                                          "An information content entity that is intended to be one or more truthful statement(s) about something (modulo, e.g., measurement precision or other systematic errors) and is constructed/acquired by a method which reliably tends to produce (approximately) truthful statements."@en ;
+                                             <http://purl.obolibrary.org/obo/IAO_0000115> "An information content entity that is intended to be one or more truthful statement(s) about something (modulo, e.g., measurement precision or other systematic errors) and is constructed/acquired by a method which reliably tends to produce (approximately) truthful statements."@en ;
                                              <http://purl.obolibrary.org/obo/IAO_0000116> "2/2/2009 Alan and Bjoern discussing FACS run output data. This is a data item because it is about the cell population. Each element records an event and is typically further composed a set of measurment data items that record the fluorescent intensity stimulated by one of the lasers."@en ,
                                                                                           "2009-03-16: data item deliberatly ambiguous: we merged data set and datum to be one entity, not knowing how to define singular versus plural. So data item is more general than datum."@en ,
                                                                                           "2009-03-16: removed datum as alternative term as datum specifically refers to singular form, and is thus not an exact synonym."@en ,
@@ -171,8 +171,7 @@ process... I would include lists, tables, sentences... I think I might
 defer to Barry, or to Brian Cantwell Smith
 
 JAR: A data item is an approximately justified approximately true approximate belief"""@en ;
-                                             rdfs:label "data entity"@en ,
-                                                        "data item"@en .
+                                             rdfs:label "data entity"@en .
 
 
 ###  http://purl.obolibrary.org/obo/IAO_0000030

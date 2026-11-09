@@ -1,7 +1,7 @@
 {
   "id": "nfdi-publication-publishing-process",
   "name": "publication",
-  "description": "A publication (nfdi:NFDI_0000190) is tied to the publishing process that produced it (nfdi:NFDI_0000014) through obo:RO_0000056, so the act of publishing is reified rather than collapsed into a date literal. Ordered authorship is an author-list individual and the DOI is a first-class identifier individual.",
+  "description": "A publication (obo:IAO_0000311) is tied to the publishing process that produced it (obo:IAO_0000444) through obo:RO_0000056, so the act of publishing is reified rather than collapsed into a date literal. Ordered authorship is an author-list individual and the DOI is a first-class identifier individual.",
   "category": "information",
   "domain": "research-data",
   "competency_questions": "Which publications resulted from a given task area or infrastructure use case?; What is the DOI of a given publication, and who are its authors in order?; Which publications describe a given software, dataset or instrument?; In which year and through which publishing process did a publication appear?",

@@ -19,10 +19,10 @@ import java.util.Set;
 public class SchemaGraph extends mxGraph {
 
     private static final double DEFAULT_W = 160;
-    private static final double DEFAULT_H = 60;
+    private static final double DEFAULT_H = 40;
 
     /** As wide as a box gets to fit its label on one line; past this it wraps and grows down. */
-    private static final double WIDEST = 280;
+    private static final double WIDEST = 320;
 
     /**
      * More relations than a board can draw as lines and still be read. Measured on two published
@@ -31,8 +31,17 @@ public class SchemaGraph extends mxGraph {
      */
     static final int DENSE = 150;
 
-    /** How strongly what is not in focus is drawn, in percent. */
-    static final int FADED = 22;
+    /**
+     * How strongly what is not in focus is drawn, in percent.
+     *
+     * <p>50 since 1.135.1, and text at {@link #FADED_TEXT}. At 22 a tester measured faded text at
+     * a contrast of 1.58:1, and New subclass selects the class it makes - so the class the guide
+     * named next was the hardest thing on the board to read.
+     */
+    static final int FADED = 50;
+
+    /** The least a label is drawn at while faded, in percent, so that it can still be read. */
+    static final int FADED_TEXT = 60;
 
     /** How strongly a relation on a dense board is drawn until one of its ends is in focus. */
     static final int QUIET = 30;
@@ -114,7 +123,16 @@ public class SchemaGraph extends mxGraph {
     public void render(Projection projection, CanvasLayout layout) {
         PrefixColours colours = new PrefixColours(layout.prefixColors);
         boolean wasDense = dense;
-        dense = projection.getEdges().size() > DENSE;
+        int drawn = 0;
+        for (CanvasEdge edge : projection.getEdges()) {
+            // What is hidden until in focus is not what makes a board a mesh.
+            if (edge.getKind() != CanvasEdge.Kind.DISJOINT
+                    && edge.getKind() != CanvasEdge.Kind.DOMAIN_RANGE
+                    && edge.getKind() != CanvasEdge.Kind.RULE_PART) {
+                drawn++;
+            }
+        }
+        dense = drawn > DENSE;
         java.util.List<Object> moved = new java.util.ArrayList<Object>();
         boolean insertedBox = false;
         getModel().beginUpdate();
@@ -234,7 +252,7 @@ public class SchemaGraph extends mxGraph {
             for (CanvasNode node : projection.getNodes()) {
                 CanvasLayout.NodeLayout stored = layout.nodes.get(node.getId());
                 String label = de.fizkarlsruhe.ise.ontoboard.model.Curies.displayLabel(
-                        node.getCurie(), node.getLabel());
+                        node.getCurie(), node.getLabel(), node.getId());
                 String style = styleFor(node, colours);
                 Object cell = cellsById.get(node.getId());
                 if (cell != null) {
@@ -402,21 +420,269 @@ public class SchemaGraph extends mxGraph {
         // last character onto a line of its own.
         // The hexagon a property is drawn in keeps 22px on either side for its slanted edges,
         // and counting only the plain spacing put obo:BFO_0000050 on two lines in it.
-        double padding = 2 * mxUtils.getDouble(resolved, mxConstants.STYLE_SPACING, 6)
+        double sides = 2 * mxUtils.getDouble(resolved, mxConstants.STYLE_SPACING, 6)
                 + mxUtils.getDouble(resolved, mxConstants.STYLE_SPACING_LEFT, 0)
-                + mxUtils.getDouble(resolved, mxConstants.STYLE_SPACING_RIGHT, 0) + 30;
+                + mxUtils.getDouble(resolved, mxConstants.STYLE_SPACING_RIGHT, 0);
+        double padding = sides + 30;
         String[] lines = (label == null ? "" : label).split("\n");
         double longest = 0;
         for (String line : lines) {
-            longest = Math.max(longest, metrics.stringWidth(line) * 1.08);
+            longest = Math.max(longest, metrics.stringWidth(line) * MEASURED_TO_DRAWN);
         }
-        double w = Math.max(DEFAULT_W, Math.min(WIDEST, longest + padding));
+        double w = Math.ceil(Math.max(DEFAULT_W, Math.min(WIDEST, longest + padding)) / 20) * 20;
         int rows = 0;
         for (String line : lines) {
-            rows += Math.max(1, (int) Math.ceil(metrics.stringWidth(line) * 1.08 / (w - padding)));
+            rows += Math.max(1, (int) Math.ceil(
+                    metrics.stringWidth(line) * MEASURED_TO_DRAWN / (w - sides - 4)));
         }
-        double h = Math.max(DEFAULT_H, rows * metrics.getHeight() + padding);
-        return new double[] {Math.ceil(w), Math.ceil(h)};
+        // Text height and a little air, on the board's 20px grid: compact enough that a pattern
+        // fits on the screen at a size its text can be read at.
+        double h = Math.max(DEFAULT_H, rows * metrics.getHeight() + 6);
+        return new double[] {w, Math.ceil(h / 20) * 20};
+    }
+
+    /**
+     * The hierarchy lines from a frame to somewhere else, drawn quietly until an end is selected:
+     * two patterns often share BFO's upper classes, each frame's own hierarchy is what a reader has
+     * come for, and these otherwise ran across all of it.
+     */
+    private final Set<String> betweenFrames = new HashSet<String>();
+
+    /**
+     * How much wider JGraphX draws text than these whole-pixel metrics say. At 1.08 a label that
+     * measured to fit one line wrapped to two, and three lines ran out of a two-line box.
+     */
+    private static final double MEASURED_TO_DRAWN = 1.15;
+
+    /** The bends of each routed line, by id, in board coordinates. */
+    private final Map<String, java.util.List<double[]>> routes =
+            new HashMap<String, java.util.List<double[]>>();
+
+    /** Where each routed line's two ends stood when it was routed: x, y, w, h, x, y, w, h. */
+    private final Map<String, double[]> routedEnds = new HashMap<String, double[]>();
+
+    /** How many lines the last routing was asked for. */
+    private int linesToRoute;
+
+    /**
+     * Whether every line drawn has a route. Not on a board with more than {@link #DENSE} relations,
+     * whose relations keep the plain connector, nor where a line found no way or the time ran out:
+     * those lines keep it too, and may run through boxes. What a status line can say when it is not.
+     */
+    public boolean isFullyRouted() {
+        return !dense && routes.size() >= linesToRoute;
+    }
+
+    /** What the routes were worked out for, so a redraw that changed nothing costs nothing. */
+    private String routedFor = "";
+
+    /**
+     * How long the last routing had, in nanoseconds, when it ran out of time before the end - less
+     * than nothing when it was called already late; {@link Long#MIN_VALUE} when it did not run out.
+     */
+    private long cutShortAfter = Long.MIN_VALUE;
+
+    /**
+     * The route of this line while it still describes where its ends are, or null - a box has moved
+     * and the line is drawn by the plain connector until {@link #routeEdges} has run again.
+     */
+    java.util.List<double[]> routeOf(Object edge) {
+        String id = getIdForCell(edge);
+        java.util.List<double[]> route = id == null ? null : routes.get(id);
+        if (route == null) {
+            return null;
+        }
+        double[] ends = routedEnds.get(id);
+        com.mxgraph.model.mxGeometry from = getModel().getGeometry(getModel().getTerminal(edge, true));
+        com.mxgraph.model.mxGeometry to = getModel().getGeometry(getModel().getTerminal(edge, false));
+        if (from == null || to == null || ends == null || ends[0] != from.getX()
+                || ends[1] != from.getY() || ends[2] != from.getWidth()
+                || ends[3] != from.getHeight() || ends[4] != to.getX() || ends[5] != to.getY()
+                || ends[6] != to.getWidth() || ends[7] != to.getHeight()) {
+            return null;
+        }
+        return route;
+    }
+
+    /**
+     * Works out where every line on the board runs - see
+     * {@link de.fizkarlsruhe.ise.ontoboard.layout.EdgeRouter}. Worked out for the board as a whole
+     * because whether a line can have a lane of its own depends on the others; nothing about it is
+     * saved, and a board with too many lines to route keeps the hierarchy's lanes only.
+     */
+    public void routeEdges() {
+        routeEdges(System.nanoTime() + de.fizkarlsruhe.ise.ontoboard.layout.EdgeRouter.MOST_TIME);
+    }
+
+    /**
+     * The same, with no line looked for after {@code deadline}, a {@link System#nanoTime()}: one
+     * moment for everything one action does, however often it routes. In 1.135.0 each routing had
+     * two seconds of its own, and a single New subclass... routed up to three times on the Swing
+     * thread: on a board of 45 classes and 139 lines, 1.3 seconds each time.
+     *
+     * <p>A board routed in full, or as far as the same time took it, is not routed again until
+     * something on it changes; one cut short is, when a later call brings more time.
+     */
+    /** How much more time a board cut short must be given before it is routed again: 250 ms. */
+    private static final long CLEARLY_MORE = 250_000_000L;
+
+    public void routeEdges(long deadline) {
+        java.util.List<de.fizkarlsruhe.ise.ontoboard.layout.EdgeRouter.Box> boxes =
+                new java.util.ArrayList<de.fizkarlsruhe.ise.ontoboard.layout.EdgeRouter.Box>();
+        java.util.List<de.fizkarlsruhe.ise.ontoboard.layout.EdgeRouter.Box> frames =
+                new java.util.ArrayList<de.fizkarlsruhe.ise.ontoboard.layout.EdgeRouter.Box>();
+        java.util.List<de.fizkarlsruhe.ise.ontoboard.layout.EdgeRouter.Link> links =
+                new java.util.ArrayList<de.fizkarlsruhe.ise.ontoboard.layout.EdgeRouter.Link>();
+        StringBuilder signature = new StringBuilder();
+        Object parent = getDefaultParent();
+        java.awt.FontMetrics label = mxUtils.getFontMetrics(mxUtils.getFont(
+                getStylesheet().getCellStyle(SchemaStyles.OBJECT_PROPERTY,
+                        getStylesheet().getDefaultEdgeStyle())));
+        for (int i = 0; i < getModel().getChildCount(parent); i++) {
+            Object cell = getModel().getChildAt(parent, i);
+            String id = getIdForCell(cell);
+            com.mxgraph.model.mxGeometry at = getModel().getGeometry(cell);
+            if (id == null || !getModel().isVertex(cell) || at == null) {
+                continue;
+            }
+            de.fizkarlsruhe.ise.ontoboard.layout.EdgeRouter.Box box =
+                    new de.fizkarlsruhe.ise.ontoboard.layout.EdgeRouter.Box(id, at.getX(), at.getY(),
+                            at.getWidth(), at.getHeight());
+            (SchemaStyles.FRAME.equals(baseStyleOf(cell)) ? frames : boxes).add(box);
+            signature.append(id).append(at.getX()).append(',').append(at.getY()).append(',')
+                    .append(at.getWidth()).append(',').append(at.getHeight()).append(';');
+        }
+        for (int i = 0; i < getModel().getChildCount(parent); i++) {
+            Object cell = getModel().getChildAt(parent, i);
+            String id = getIdForCell(cell);
+            Object from = getModel().getTerminal(cell, true);
+            Object to = getModel().getTerminal(cell, false);
+            if (id == null || !getModel().isEdge(cell) || from == null || to == null
+                    || isHiddenUntilInFocus(cell)) {
+                continue;
+            }
+            String kind = baseStyleOf(cell);
+            boolean hierarchy = SchemaStyles.SUBCLASS.equals(kind)
+                    || SchemaStyles.SUB_PROPERTY.equals(kind) || SchemaStyles.TYPE.equals(kind);
+            if (dense && !hierarchy) {
+                continue;
+            }
+            if (hierarchy && !sameFrame(at(from), at(to), frames)) {
+                betweenFrames.add(id);
+            } else {
+                betweenFrames.remove(id);
+            }
+            String[] lines = convertValueToString(cell).split("\n");
+            double wide = 0;
+            for (String line : lines) {
+                wide = Math.max(wide, label.stringWidth(line));
+            }
+            // The chip as JGraphX draws it, measured: the text, its 2px spacing and the hairline
+            // round it - 6px wider and 5.3px taller than the text. The height was 1.3px short.
+            double high = lines.length * label.getHeight();
+            links.add(new de.fizkarlsruhe.ise.ontoboard.layout.EdgeRouter.Link(id, getIdForCell(from),
+                    getIdForCell(to), hierarchy, wide <= 0 ? 0 : wide + 6, high + 6));
+            signature.append(id).append('|');
+        }
+        String now = signature.toString();
+        long budget = deadline - System.nanoTime();
+        // "More time" means clearly more: a review found that every refresh of an unchanged board
+        // the router could not finish routed it again for the whole two seconds, because one
+        // call's budget came out a few microseconds longer than the last one's.
+        if (now.equals(routedFor) && (cutShortAfter == Long.MIN_VALUE
+                || budget <= cutShortAfter + CLEARLY_MORE)) {
+            return;
+        }
+        routedFor = now;
+        routes.clear();
+        routedEnds.clear();
+        linesToRoute = links.size();
+        Map<String, de.fizkarlsruhe.ise.ontoboard.layout.EdgeRouter.Route> found =
+                de.fizkarlsruhe.ise.ontoboard.layout.EdgeRouter.route(boxes, frames, links, deadline);
+        cutShortAfter = found.size() < links.size() && System.nanoTime() > deadline ? budget
+                : Long.MIN_VALUE;
+        for (Map.Entry<String, de.fizkarlsruhe.ise.ontoboard.layout.EdgeRouter.Route> routed
+                : found.entrySet()) {
+            Object edge = cellsById.get(routed.getKey());
+            if (edge == null) {
+                continue;
+            }
+            com.mxgraph.model.mxGeometry from = getModel().getGeometry(
+                    getModel().getTerminal(edge, true));
+            com.mxgraph.model.mxGeometry to = getModel().getGeometry(
+                    getModel().getTerminal(edge, false));
+            routes.put(routed.getKey(), routed.getValue().bends);
+            routedEnds.put(routed.getKey(), new double[] {from.getX(), from.getY(), from.getWidth(),
+                from.getHeight(), to.getX(), to.getY(), to.getWidth(), to.getHeight()});
+            // Where on the line its label sits: -1 at the source to 1 at the target. Directly on
+            // the geometry and not through the model, which would be a change to undo.
+            com.mxgraph.model.mxGeometry geometry = getModel().getGeometry(edge);
+            if (geometry != null) {
+                geometry.setX(2 * routed.getValue().labelAt - 1);
+                geometry.setY(0);
+                geometry.setOffset(null);
+            }
+        }
+        refresh();
+    }
+
+    private double[] at(Object box) {
+        com.mxgraph.model.mxGeometry geometry = getModel().getGeometry(box);
+        return geometry == null ? new double[] {0, 0}
+                : new double[] {geometry.getX() + 1, geometry.getY() + 1};
+    }
+
+    /** Whether two points are in the same frame, or in none: either way the line is at home. */
+    private static boolean sameFrame(double[] one, double[] other,
+            java.util.List<de.fizkarlsruhe.ise.ontoboard.layout.EdgeRouter.Box> frames) {
+        for (de.fizkarlsruhe.ise.ontoboard.layout.EdgeRouter.Box frame : frames) {
+            boolean first = one[0] >= frame.x && one[0] <= frame.x + frame.w && one[1] >= frame.y
+                    && one[1] <= frame.y + frame.h;
+            boolean second = other[0] >= frame.x && other[0] <= frame.x + frame.w
+                    && other[1] >= frame.y && other[1] <= frame.y + frame.h;
+            if (first != second) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * An arrow's label in lines short enough to stand in the gap between two columns. Only what is
+     * drawn: the label itself, and the tooltip, stay whole.
+     */
+    @Override
+    public String convertValueToString(Object cell) {
+        String text = super.convertValueToString(cell);
+        if (!getModel().isEdge(cell)) {
+            return text;
+        }
+        // The arrowhead says it, as a subclass's does; "rdfs:subPropertyOf" on each line of a
+        // property hierarchy only sat on the boxes beside it.
+        return SchemaStyles.SUB_PROPERTY.equals(baseStyleOf(cell)) ? "" : brokenIntoLines(text);
+    }
+
+    /** The longest a line of an arrow's label gets, in characters, before it breaks at a space. */
+    private static final int LABEL_LINE = 18;
+
+    static String brokenIntoLines(String label) {
+        if (label == null || label.length() <= LABEL_LINE) {
+            return label;
+        }
+        StringBuilder lines = new StringBuilder();
+        int used = 0;
+        for (String word : label.split(" ")) {
+            if (used > 0 && used + 1 + word.length() > LABEL_LINE) {
+                lines.append('\n');
+                used = 0;
+            } else if (used > 0) {
+                lines.append(' ');
+                used++;
+            }
+            lines.append(word);
+            used += word.length();
+        }
+        return lines.toString();
     }
 
     /**
@@ -495,26 +761,37 @@ public class SchemaGraph extends mxGraph {
         Map<String, Object> drawn = new HashMap<String, Object>(style);
         drawn.put(mxConstants.STYLE_OPACITY, Math.min(strength,
                 mxUtils.getInt(style, mxConstants.STYLE_OPACITY, 100)));
-        drawn.put(mxConstants.STYLE_TEXT_OPACITY, strength);
+        drawn.put(mxConstants.STYLE_TEXT_OPACITY, getModel().isVertex(cell)
+                ? Math.max(strength, FADED_TEXT) : strength);
         return drawn;
     }
 
     /**
-     * Disjointness, domains and ranges wait on a dense board until one of their ends is in
-     * focus: on the larger of the two ontologies measured they were 104 and 112 lines, crossing
-     * the board in every direction, and each says something only about the term it touches.
+     * Disjointness, domains and ranges wait until one of their ends is in focus: on the larger of
+     * the two ontologies measured they were 104 and 112 lines, crossing the board in every
+     * direction, and each says something only about the term it touches.
      */
     @Override
     public boolean isCellVisible(Object cell) {
         if (!super.isCellVisible(cell)) {
             return false;
         }
-        if (focused == null || !dense || !getModel().isEdge(cell)) {
-            return true;
+        return !isHiddenUntilInFocus(cell);
+    }
+
+    /**
+     * Whether this is a line that waits until one of its ends is selected: on any board, since 1.135.1.
+     * A property's domain and range run from its box in the property section across the whole board,
+     * and on a pattern of forty terms those were most of what the eye met. Each says something only
+     * about the term it touches, so that is when it is drawn.
+     */
+    private boolean isHiddenUntilInFocus(Object cell) {
+        if (focused == null || !getModel().isEdge(cell)) {
+            return false;
         }
         String kind = baseStyleOf(cell);
-        return !(SchemaStyles.DISJOINT.equals(kind) || SchemaStyles.DOMAIN_RANGE.equals(kind))
-                || touchesFocus(cell);
+        return (SchemaStyles.DISJOINT.equals(kind) || SchemaStyles.DOMAIN_RANGE.equals(kind)
+                || SchemaStyles.RULE_PART.equals(kind)) && !touchesFocus(cell);
     }
 
     private int strengthOf(Object cell) {
@@ -528,6 +805,9 @@ public class SchemaGraph extends mxGraph {
                 return touchesFocus(cell) ? 100 : FADED;
             }
             String kind = baseStyleOf(cell);
+            if (betweenFrames.contains(id)) {
+                return QUIET;
+            }
             return dense && (SchemaStyles.OBJECT_PROPERTY.equals(kind)
                     || SchemaStyles.ONLY.equals(kind) || SchemaStyles.COUNT.equals(kind)
                     || SchemaStyles.NOT.equals(kind) || SchemaStyles.DATA_PROPERTY.equals(kind)
@@ -711,6 +991,11 @@ public class SchemaGraph extends mxGraph {
         String stroke = node.isUnsatisfiable()
                 ? SchemaStyles.UNSATISFIABLE_STROKE : colours.colourFor(node.getId());
         return baseStyleFor(node) + ";strokeColor=" + stroke
+                // A defined class has a badge as well as its label's ≡, which reads as = at 13 px.
+                + (node.getKind() == de.fizkarlsruhe.ise.ontoboard.model.NodeKind.CLASS
+                        && node.getLabel() != null
+                        && node.getLabel().startsWith("≡ ")
+                        ? ";shape=" + DefinedClassShape.NAME : "")
                 + (node.hasNote() || node.isUnsatisfiable()
                         ? ";strokeWidth=" + SchemaStyles.NOTED_STROKE_WIDTH : "")
                 // Opacity for an imported term - the one channel the four above leave free, and the

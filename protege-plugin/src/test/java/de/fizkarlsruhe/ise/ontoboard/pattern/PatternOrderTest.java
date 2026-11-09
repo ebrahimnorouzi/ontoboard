@@ -38,8 +38,10 @@ class PatternOrderTest {
     /**
      * The patterns with no publisher come last.
      *
-     * <p>Three of them, because their only IRI is an absolute path from the machine the harvest
-     * ran on. A bucket named for an absence should not sit between two real ones.
+     * <p>Two of them, the airline patterns, because their only IRI is an absolute path from the
+     * machine the harvest ran on. There were three until Ethnicgroup's file was given back the base
+     * it misspelt as {@code xmlns:base}. A bucket named for an absence should not sit between two
+     * real ones.
      */
     @Test
     void theUnknownPublisherSortsLast() {
@@ -57,8 +59,8 @@ class PatternOrderTest {
                         sorted.get(at).getId() + " is after an unknown-publisher pattern");
             }
         }
-        assertTrue(firstUnknown > 0, "there are three of them");
-        assertEquals(sorted.size(), firstUnknown + 3);
+        assertTrue(firstUnknown > 0, "there are two of them");
+        assertEquals(sorted.size(), firstUnknown + 2);
     }
 
     /** By name ignores case and never depends on index order. */

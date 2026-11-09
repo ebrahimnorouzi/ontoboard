@@ -56,6 +56,42 @@ class ProjectWizardTest {
     }
 
     /**
+     * "Project created" wraps at a width of its own, keeps its paragraphs, and shows a folder's name
+     * as it is.
+     *
+     * <p>Unwrapped it measured 1355 px wide, wider than a 1280 px screen - 1920x1080 at 150% - so
+     * its OK button would have been off the edge.
+     */
+    @Test
+    void theCreatedMessageWraps() {
+        String html = ProjectWizard.wrapped("Created 23 files in\n/home/me/R&D <new>"
+                + "\n\nNext: OntoBoard > Start here: the guide...");
+
+        assertTrue(html.startsWith("<html>"), html);
+        assertTrue(html.contains("width:400px"), "no width, no wrapping: " + html);
+        assertTrue(html.contains("in<br>/home/me/R&amp;D &lt;new&gt;<br><br>Next:"), html);
+        assertFalse(html.contains("\n"), html);
+    }
+
+    /**
+     * A path longer than a line is broken after a separator: a word wider than the width sets
+     * the width, and the dialog came out 1165 px wide for a project in a deep folder.
+     */
+    @Test
+    void aLongPathIsBrokenAfterASeparator() {
+        String path = "/Users/someone/Documents/projects/ontologies/2026/november/a-long-folder/"
+                + "another-long-folder/hardtest";
+        String html = ProjectWizard.wrapped("Created 17 files in\n" + path);
+
+        for (String line : html.replace("<html><body style='width:400px'>", "")
+                .replace("</body></html>", "").split("<br>")) {
+            assertTrue(line.length() <= ProjectWizard.LONGEST_WORD + "Created 17 files in".length(),
+                    line);
+        }
+        assertTrue(html.replace("<br>", "").contains(path), "nothing of the path is lost: " + html);
+    }
+
+    /**
      * A rejection with nothing to say still says something.
      *
      * <p>{@code IllegalArgumentException.getMessage()} is null for a throw with no message, and

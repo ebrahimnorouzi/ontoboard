@@ -112,7 +112,10 @@ class PatternLibraryTest {
         //
         // 1,520 until 1.129.0, when OWL's built-in classes stopped being counted: owl:Thing in 47
         // patterns and owl:Nothing in affordance, a term of none of them. No pattern changed.
-        assertEquals(1472, classes, "the measured total across the collection");
+        //
+        // 1,472 until 1.135.1, when pmdco-scalar-value-specification got back the two classes
+        // between datum label and continuant that its extraction had left out.
+        assertEquals(1474, classes, "the measured total across the collection");
     }
 
     /**

@@ -55,7 +55,11 @@ public final class Bench {
      */
     private static final String VERSION = version();
 
-    private static String version() {
+    /**
+     * This OntoBoard's version, from the same filtered properties, or "unknown". Public for the
+     * self-test window, which says which OntoBoard it tested.
+     */
+    public static String version() {
         java.io.InputStream in = Bench.class.getClassLoader()
                 .getResourceAsStream("ontoboard-build.properties");
         if (in == null) {

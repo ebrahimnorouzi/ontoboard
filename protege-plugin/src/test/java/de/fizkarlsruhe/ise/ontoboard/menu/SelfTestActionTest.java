@@ -3,6 +3,7 @@ package de.fizkarlsruhe.ise.ontoboard.menu;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import org.junit.jupiter.api.Test;
@@ -41,6 +42,17 @@ class SelfTestActionTest {
         assertEquals("closing it: java.io.IOException: the layout could not be saved",
                 reported.getMessage());
         assertSame(cause, reported.getCause());
+    }
+
+    /**
+     * The result names the OntoBoard it tested, from the jar's own build properties: a study
+     * participant is told to read the version here, and the window named none.
+     */
+    @Test
+    void theResultSaysWhichOntoBoardItTested() {
+        String which = SelfTestAction.whichOntoBoard();
+
+        assertTrue(which.matches("OntoBoard \\d+\\.\\d+\\.\\d+"), which);
     }
 
     @Test

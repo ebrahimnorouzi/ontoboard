@@ -122,6 +122,23 @@ class QuestionTestsTest {
                 hasTopping.getIRI(), null, 2).isEmpty());
     }
 
+    /**
+     * A test whose class was deleted has nothing left to break its rule.
+     *
+     * <p>It listed the deleted class's own IRI as breaking it: {@code rdfs:subClassOf*} matches
+     * its starting IRI in zero steps whether or not the ontology says anything about it. The
+     * build failed on that bare IRI from then on, and nothing in Protege removes a test.
+     */
+    @Test
+    void aTestOnADeletedClassFindsNothing() {
+        IRI deleted = IRI.create(NS + "Deleted");
+        assertEquals(java.util.Collections.<String>emptyList(), broken(
+                QuestionTests.Template.EVERY_SUBCLASS_HAS_SOME, deleted, hasBase.getIRI(),
+                null, 0));
+        assertEquals(java.util.Collections.<String>emptyList(), broken(
+                QuestionTests.Template.EVERY_ONE_HAS_A_LABEL, deleted, null, null, 0));
+    }
+
     @Test
     void theFileIsNamedAfterTheQuestion() {
         assertEquals("does_every_pizza_have_a_base.rq",

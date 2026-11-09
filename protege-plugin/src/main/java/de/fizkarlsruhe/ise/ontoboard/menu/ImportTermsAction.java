@@ -531,9 +531,9 @@ public class ImportTermsAction extends OntoBoardAction {
         result.note("Edit > Undo removes all of them in one step.");
         result.warn("These axioms are now indistinguishable from your own. If you want to keep "
                 + "track of what was borrowed, re-run with 'Save it and import it'.");
-        return result.summary("Copied " + changes.size() + " axioms for "
-                + (extracted.getRequested() - extracted.getMissing().size()) + " terms into this "
-                + "ontology.").build();
+        return result.summary("Copied " + counted(changes.size(), "axiom") + " for "
+                + counted(extracted.getRequested() - extracted.getMissing().size(), "term")
+                + " into this ontology.").build();
     }
 
     /** Writes the module, and optionally wires it up as an import. */
@@ -559,6 +559,18 @@ public class ImportTermsAction extends OntoBoardAction {
                 && !target.getParentFile().mkdirs()) {
             return result.failed("Could not create " + target.getParentFile().getAbsolutePath())
                     .build();
+        }
+        if (patternBeingImported() != null) {
+            // A pattern's term with no label gets one made from its name, marked as made here, so
+            // the board reads and the project's label check passes - see NamesAsLabels.
+            java.util.List<String> made = de.fizkarlsruhe.ise.ontoboard.pattern.NamesAsLabels
+                    .labelTheUnlabelled(extracted.getModule(), ontology);
+            if (!made.isEmpty()) {
+                result.note(counted(made.size(), "term") + " of the pattern had no label; each"
+                        + " got one made from its name, marked as made by OntoBoard: "
+                        + String.join(", ", made.subList(0, Math.min(8, made.size())))
+                        + (made.size() > 8 ? " and " + (made.size() - 8) + " more." : "."));
+            }
         }
         try {
             extracted.getModule().getOWLOntologyManager()
@@ -599,8 +611,8 @@ public class ImportTermsAction extends OntoBoardAction {
         }
 
         if (!andImport) {
-            return result.summary("Wrote a module of " + extracted.getAxiomCount()
-                    + " axioms. Nothing else was changed.").build();
+            return result.summary("Wrote a module of " + counted(extracted.getAxiomCount(), "axiom")
+                    + ". Nothing else was changed.").build();
         }
 
         // The catalog entry is not optional. Without it the import resolves only in this session,
@@ -625,29 +637,110 @@ public class ImportTermsAction extends OntoBoardAction {
 
         // Into Protege's manager so the import resolves immediately, without a reload.
         OWLOntologyManager manager = getOWLModelManager().getOWLOntologyManager();
-        OWLOntology stale = OntologySource.findAlreadyLoaded(manager, moduleIri);
-        if (stale != null) {
-            // The file was just rewritten, so anything already in the manager is by definition
-            // the previous version. Skipping the load - which is what happened before - left
-            // Protege holding the old module while reporting the new one: re-running an import
-            // with an extra term wrote the term to disk, said so, and the term appeared nowhere
-            // in the class hierarchy until Protege was restarted.
-            manager.removeOntology(stale);
-        }
+        final OWLOntology open = OntologySource.findAlreadyLoaded(manager, moduleIri);
+        OWLOntology loaded = null;
         try {
-            manager.loadOntologyFromOntologyDocument(target);
+            loaded = intoManager(manager, moduleIri, target,
+                    changes -> applyOnEventThread(changes));
         } catch (Exception cannotLoad) {
             result.warn("The module was written but Protege could not load it back: "
                     + cannotLoad.getMessage());
         }
-        applyOnEventThread(java.util.Collections.<OWLOntologyChange>singletonList(
-                new AddImport(ontology, getOWLModelManager().getOWLDataFactory()
-                        .getOWLImportsDeclaration(moduleIri))));
+        if (open != null && loaded == open) {
+            final java.net.URI written = target.toURI();
+            javax.swing.SwingUtilities.invokeLater(() -> {
+                org.protege.editor.owl.model.OWLModelManager models = getOWLModelManager();
+                models.setClean(open);
+                // The file was written behind Protege's back, so its watcher still holds the time
+                // it was loaded at, and the next time the window was activated it would offer to
+                // reload a module that is already up to date. Protege's own reload tells it the
+                // same way, after patching the ontology in place.
+                if (models instanceof org.protege.editor.owl.model.IOListenerManager) {
+                    ((org.protege.editor.owl.model.IOListenerManager) models)
+                            .fireAfterLoadEvent(open.getOntologyID(), written);
+                }
+            });
+        }
+        org.semanticweb.owlapi.model.OWLImportsDeclaration declaration = getOWLModelManager()
+                .getOWLDataFactory().getOWLImportsDeclaration(moduleIri);
+        if (!ontology.getImportsDeclarations().contains(declaration)) {
+            applyOnEventThread(java.util.Collections.<OWLOntologyChange>singletonList(
+                    new AddImport(ontology, declaration)));
+        } else if (loaded != null && loaded != open) {
+            // Declared before, but the module was not open, so it has just been loaded - and the
+            // import that is already there changes nothing, so nothing tells Protege to look at
+            // its imports again. Asked directly, which is what an applied import change makes
+            // Protege do.
+            javax.swing.SwingUtilities.invokeLater(() -> getOWLModelManager()
+                    .setActiveOntologiesStrategy(
+                            getOWLModelManager().getActiveOntologiesStrategy()));
+        }
 
         result.note("Imported as " + moduleIri);
-        return result.summary("Wrote a module of " + extracted.getAxiomCount() + " axioms for "
-                + (extracted.getRequested() - extracted.getMissing().size()) + " terms, and "
-                + "imported it.").build();
+        return result.summary(moduleSummary(extracted.getAxiomCount(),
+                extracted.getRequested() - extracted.getMissing().size())).build();
+    }
+
+    /**
+     * Puts a module that was just written into the manager Protege reads from, and returns the
+     * ontology the manager now has for it.
+     *
+     * <p><b>A module the manager already has is changed in place, never swapped.</b> It used to be
+     * removed from the OWL API manager and loaded again, and Protege was never told: its model
+     * manager keeps its own list of the ontologies in view, and the import statement added after
+     * the load was already there, so nothing made it rebuild that list. It went on holding the
+     * removed ontology, whose manager is gone, and every view that asked it anything threw
+     * IllegalStateException until Protege was restarted - on painting, on selecting a term. Found
+     * by importing the same pattern twice, and by importing a second term from one source. The
+     * same kind of changes as Refresh imports makes, so the ontology everything else holds is the
+     * one that now says what the file says.
+     *
+     * <p>What the file says, read back, rather than the module as it was extracted: written out,
+     * a module declares every term it mentions, and those declarations are what reopening the
+     * project will read.
+     *
+     * @param apply applies changes to an ontology the manager already has; for Protege's, through
+     *     its model manager, so the views and undo hear about them
+     * @throws Exception when the module just written cannot be read
+     */
+    static OWLOntology intoManager(OWLOntologyManager manager, IRI moduleIri, File written,
+            java.util.function.Consumer<List<OWLOntologyChange>> apply) throws Exception {
+        OWLOntology open = OntologySource.findAlreadyLoaded(manager, moduleIri);
+        if (open == null) {
+            return manager.loadOntologyFromOntologyDocument(written);
+        }
+        OWLOntologyManager reader = OWLManager.createOWLOntologyManager();
+        reader.setOntologyLoaderConfiguration(reader.getOntologyLoaderConfiguration()
+                .setMissingImportHandlingStrategy(
+                        org.semanticweb.owlapi.model.MissingImportHandlingStrategy.SILENT));
+        final IRI nowhere = IRI.create(new File(written.getAbsoluteFile().getParentFile(),
+                ".ontoboard-no-such-import").toURI());
+        reader.getIRIMappers().add(iri -> nowhere);
+        List<OWLOntologyChange> changes = ModuleRebuild.changesToMatch(open,
+                OntologySource.loadFile(reader, written));
+        if (!changes.isEmpty()) {
+            apply.accept(changes);
+        }
+        IRI document = IRI.create(written.toURI());
+        if (!document.equals(manager.getOntologyDocumentIRI(open))) {
+            manager.setOntologyDocumentIRI(open, document);
+        }
+        return open;
+    }
+
+    /**
+     * What an import that was saved and imported says it did: "Wrote a module of 604 axioms for
+     * 1 term, and imported it." It said "1 terms", which is the first sentence a participant reads
+     * after importing a single term.
+     */
+    static String moduleSummary(int axioms, int terms) {
+        return "Wrote a module of " + counted(axioms, "axiom") + " for " + counted(terms, "term")
+                + ", and imported it.";
+    }
+
+    /** {@code 1 term}, {@code 2 terms}. */
+    static String counted(int count, String noun) {
+        return count + " " + noun + (count == 1 ? "" : "s");
     }
 
     /**
@@ -714,8 +807,12 @@ public class ImportTermsAction extends OntoBoardAction {
                 }
                 return;
             }
+            Map<IRI, String> labels = new LinkedHashMap<IRI, String>();
+            for (IRI term : terms) {
+                labels.put(term, labelIn(source, term));
+            }
             File written = ImportModules.writeTerms(projectRoot, TermExtract.shortNameOf(source),
-                    terms, recordedSource(source, sourceIri, pattern), pattern);
+                    terms, recordedSource(source, sourceIri, pattern), pattern, labels);
             result.wrote(written);
         } catch (IOException cannotWrite) {
             result.warn("Wrote the module but could not write its term list: "

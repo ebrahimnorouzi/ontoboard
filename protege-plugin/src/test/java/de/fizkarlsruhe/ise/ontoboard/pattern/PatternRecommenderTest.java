@@ -147,7 +147,7 @@ class PatternRecommenderTest {
 
         assertNotNull(one);
         String why = one.explain();
-        assertTrue(why.contains("already in your ontology"), why);
+        assertTrue(why.contains("the name of a term in your ontology"), why);
         assertTrue(why.contains("Agent"), why);
         assertTrue(why.contains("Role"), why);
         assertTrue(why.startsWith(one.getSharedCount() + " of its "), why);

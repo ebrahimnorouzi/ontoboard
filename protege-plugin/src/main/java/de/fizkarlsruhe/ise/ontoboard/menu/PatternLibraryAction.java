@@ -105,6 +105,9 @@ public class PatternLibraryAction extends ProtegeOWLAction {
     /** Why each suggested pattern was suggested, by id. Empty in the other orderings. */
     private java.util.Map<String, String> reasons = new java.util.HashMap<String, String>();
 
+    /** For each pattern found only by what its terms are called, which terms; by id. */
+    private java.util.Map<String, String> foundBy = new java.util.HashMap<String, String>();
+
     @Override
     public void initialise() {
     }
@@ -156,6 +159,7 @@ public class PatternLibraryAction extends ProtegeOWLAction {
 
         terms = new JList<IRI>(new DefaultListModel<IRI>());
         terms.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
+        terms.setCellRenderer(new TermRenderer());
 
         details = new JEditorPane("text/html", "");
         details.setEditable(false);
@@ -269,6 +273,7 @@ public class PatternLibraryAction extends ProtegeOWLAction {
                 dialog.dispose();
             }
         });
+        DialogKeys.escapePresses(dialog.getRootPane(), close);
         JButton addYourOwn = new JButton("Your patterns...");
         addYourOwn.setToolTipText("Add an OWL or Turtle file of your own to the library, "
                 + "or change the folder they are read from");
@@ -484,13 +489,26 @@ public class PatternLibraryAction extends ProtegeOWLAction {
         // ontology the browser opens on By publisher and still asserts a suggestion about an
         // ontology that is no longer open.
         reasons = new java.util.HashMap<String, String>();
+        foundBy = new java.util.HashMap<String, String>();
         List<DesignPattern> matching = PatternLibrary.matching(everything, search.getText());
         String ordering = String.valueOf(grouping.getSelectedItem());
         boolean searching = !search.getText().trim().isEmpty();
-        for (DesignPattern pattern : SUGGESTED.equals(ordering)
+        List<DesignPattern> ordered = SUGGESTED.equals(ordering)
                 ? suggestedThenTheRest(suggested(matching), matching, searching)
-                : PatternOrder.sorted(matching, ordering)) {
+                : PatternOrder.sorted(matching, ordering);
+        // A pattern whose name is what was searched for comes first, as the row selected below.
+        for (DesignPattern pattern : searching
+                ? PatternLibrary.nameMatchesFirst(ordered, search.getText()) : ordered) {
             model.addElement(pattern);
+        }
+        // Then the patterns found only by what their terms are called, below everything found by
+        // its name or description, and each saying which of its terms it was found by.
+        for (DesignPattern pattern : PatternOrder.sorted(
+                PatternLibrary.matchingByTerms(everything, search.getText()),
+                SUGGESTED.equals(ordering) ? PatternOrder.BY_PUBLISHER : ordering)) {
+            model.addElement(pattern);
+            foundBy.put(pattern.getId(), "Found by its terms: " + String.join(", ",
+                    PatternLibrary.termsMatching(pattern, search.getText())) + ".");
         }
         if (!model.isEmpty()) {
             patterns.setSelectedIndex(0);
@@ -569,12 +587,69 @@ public class PatternLibraryAction extends ProtegeOWLAction {
             importButton.setEnabled(false);
             return;
         }
+        shownContents = contents;
         for (IRI term : contents.getTerms()) {
             termModel.addElement(term);
         }
-        details.setText(PatternSummary.asHtml(chosen, contents, reasons.get(chosen.getId())));
+        String sayFirst = foundBy.get(chosen.getId());
+        if (importedAs(getOWLModelManager().getActiveOntology(), importsDirectory(),
+                chosen.getId()) != null) {
+            sayFirst = ALREADY_IMPORTED + (sayFirst == null ? "" : " " + sayFirst);
+        }
+        details.setText(PatternSummary.asHtml(chosen, contents, reasons.get(chosen.getId()),
+                sayFirst));
         details.setCaretPosition(0);
         importButton.setEnabled(!contents.getTerms().isEmpty());
+    }
+
+    /** Said in the details of a pattern this ontology already imports. */
+    static final String ALREADY_IMPORTED = "Already imported into this ontology.";
+
+    /**
+     * The module this pattern was imported as, while the open ontology still imports it; null
+     * when it does not.
+     *
+     * <p>By the {@code # Pattern:} line the library's import writes into the term list, so a
+     * module named after the pattern's own IRI - {@code agentrole_import.owl} for
+     * {@code agent-role} - is recognised too, and by the module being open among the imports, so
+     * files an undone import left behind do not count.
+     *
+     * <p>Asked because importing a pattern twice was the way into a broken session, and nothing
+     * said the second import was a second one: with "Suggested" ordering, a pattern already
+     * imported is first in the list and selected.
+     */
+    static File importedAs(org.semanticweb.owlapi.model.OWLOntology ontology,
+            File importsDirectory, String patternId) {
+        File[] files = importsDirectory == null ? null : importsDirectory.listFiles();
+        if (ontology == null || files == null || patternId == null) {
+            return null;
+        }
+        for (File terms : files) {
+            String name = terms.getName();
+            if (!name.endsWith("_terms.txt")) {
+                continue;
+            }
+            String id;
+            try {
+                id = de.fizkarlsruhe.ise.ontoboard.odk.ImportModules.patternIn(terms);
+            } catch (IOException unreadable) {
+                continue;
+            }
+            File module = new File(importsDirectory,
+                    name.substring(0, name.length() - "_terms.txt".length()) + "_import.owl");
+            if (patternId.equals(id) && de.fizkarlsruhe.ise.ontoboard.odk.ModuleRebuild
+                    .openFrom(ontology, module) != null) {
+                return module;
+            }
+        }
+        return null;
+    }
+
+    /** {@code imports/} beside the open ontology, where the import puts modules; or null. */
+    private File importsDirectory() {
+        File editFile = editFile();
+        File beside = editFile == null ? null : editFile.getParentFile();
+        return beside == null ? null : new File(beside, "imports");
     }
 
     /**
@@ -590,14 +665,16 @@ public class PatternLibraryAction extends ProtegeOWLAction {
         if (chosen == null) {
             return;
         }
-        List<IRI> wanted = terms.getSelectedValuesList();
-        if (wanted.isEmpty()) {
-            wanted = new ArrayList<IRI>();
-            DefaultListModel<IRI> model = (DefaultListModel<IRI>) terms.getModel();
-            for (int at = 0; at < model.size(); at++) {
-                wanted.add(model.get(at));
-            }
+        List<IRI> all = new ArrayList<IRI>();
+        DefaultListModel<IRI> model = (DefaultListModel<IRI>) terms.getModel();
+        for (int at = 0; at < model.size(); at++) {
+            all.add(model.get(at));
         }
+        List<IRI> selected = terms.getSelectedValuesList();
+        // A selection narrows the import, and one click on a row is enough to make one - which a
+        // first look down the list easily is. So the question says so, and offers all of them.
+        boolean narrowed = !selected.isEmpty() && selected.size() < all.size();
+        List<IRI> wanted = narrowed ? selected : all;
 
         File mirror = mirrorDirectory();
         if (mirror == null) {
@@ -605,6 +682,35 @@ public class PatternLibraryAction extends ProtegeOWLAction {
                     "This ontology has not been saved, so there is nowhere to put the pattern "
                             + "file the import reads from. Save it first.",
                     "Nowhere to copy it", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        int classes = 0;
+        for (IRI term : wanted) {
+            if (shownContents != null && shownContents.isClass(term)) {
+                classes++;
+            }
+        }
+        boolean imported = importedAs(getOWLModelManager().getActiveOntology(),
+                importsDirectory(), chosen.getId()) != null;
+        // One confirmation, as Find terms asks, and no form: the dialog behind Advanced... is a
+        // box of IRIs and five choices, which is a lot to ask of somebody who has just picked a
+        // pattern from a list. Everything it offers is still there for whoever wants it.
+        String[] options = narrowed
+                ? new String[] {"Add the " + selected.size() + " selected",
+                    "Add all " + all.size(), "Advanced...", "Cancel"}
+                : new String[] {"Add them", "Advanced...", "Cancel"};
+        int answer = JOptionPane.showOptionDialog(dialog, whatAddingWrites(chosen.getName(),
+                        classes, wanted.size() - classes, narrowed ? all.size() : 0,
+                        moduleNameFor(chosen, mirror), imported),
+                "Add " + chosen.getName(), JOptionPane.DEFAULT_OPTION,
+                JOptionPane.QUESTION_MESSAGE, null, options, options[0]);
+        if (narrowed && answer == 1) {
+            wanted = all;
+            answer = 0;
+        } else if (narrowed && answer >= 2) {
+            answer--;
+        }
+        if (answer != 0 && answer != 1) {
             return;
         }
         File copied;
@@ -616,9 +722,16 @@ public class PatternLibraryAction extends ProtegeOWLAction {
             return;
         }
 
+        // The label after each IRI, as a comment: a term list reads " # " to the end of the line as
+        // one, so the dialog that follows says what is about to come in as well as its address.
         StringBuilder termText = new StringBuilder();
         for (IRI term : wanted) {
-            termText.append(term.toString()).append('\n');
+            termText.append(term.toString());
+            String label = shownContents == null ? null : shownContents.labelOf(term);
+            if (label != null) {
+                termText.append(" # ").append(label.replace('\n', ' '));
+            }
+            termText.append('\n');
         }
 
         // Told before the import runs, because the import is what fires the ontology change the
@@ -651,7 +764,70 @@ public class PatternLibraryAction extends ProtegeOWLAction {
         importer.initialise();
         importer.seedWithPattern(copied.toURI().toString(), termText.toString().trim(),
                 chosen.getId());
+        if (answer == 0) {
+            importer.withoutAsking();
+        }
         importer.actionPerformed(null);
+    }
+
+    /**
+     * What "Add them" will do, for the confirmation.
+     *
+     * <p>It names the files that will be written, which are named after the pattern as the import
+     * reads it - see {@link #moduleNameFor} - and said {@code imports/agent-role_import.owl} for a
+     * pattern whose module is written as {@code agentrole_import.owl}: wrong for 49 of the 157
+     * patterns a code review checked.
+     *
+     * @param all how many terms the pattern has, when only some of them are selected; 0 when all
+     *     of them are being added
+     * @param imported whether the open ontology imports this pattern already
+     */
+    static String whatAddingWrites(String name, int classes, int properties, int all,
+            String module, boolean imported) {
+        int chosen = classes + properties;
+        StringBuilder text = new StringBuilder();
+        if (imported) {
+            text.append(name).append(" is already imported. Adding it again rebuilds its module\n"
+                    + "from the terms chosen here.\n\n");
+        }
+        text.append("Add ").append(name).append(" to your ontology: ").append(classes)
+                .append(classes == 1 ? " class and " : " classes and ").append(properties)
+                .append(properties == 1 ? " property." : " properties.");
+        if (all > 0) {
+            text.append("\n\n").append(chosen == 1 ? "Only the term" : "Only the " + chosen
+                    + " terms").append(" selected in the list ").append(chosen == 1 ? "is" : "are")
+                    .append(" added. Add all ").append(all).append(" adds every term\n"
+                            + "of the pattern.");
+        }
+        return text.append("\n\nOntoBoard will:\n"
+                + "- cut them out of the pattern, with what they need, into a module of your\n"
+                + "  project: imports/").append(module).append("_import.owl\n"
+                + "- list them in ").append(module).append("_terms.txt, so the import can be"
+                + " changed\n"
+                + "  later (OntoBoard > Reuse > Imported terms...)\n"
+                + "- import that module into your ontology, with a catalog entry beside it\n\n"
+                + "They appear on the board in a frame named after the pattern, ready to extend.\n\n"
+                + "Advanced... lets you choose how much comes with them, and where the module goes.")
+                .toString();
+    }
+
+    /**
+     * What the import will call the pattern's module and term list: {@code TermExtract}'s name for
+     * the pattern as it will be read, from its copy in {@code mirror/}. Named after the IRI the
+     * pattern declares, and after the copy's file when it declares none - or one relative to the
+     * file - so it cannot be worked out from the id alone. The pattern's id when it cannot be read,
+     * which the import would then refuse anyway.
+     */
+    static String moduleNameFor(DesignPattern chosen, File mirror) {
+        try {
+            return de.fizkarlsruhe.ise.ontoboard.robot.TermExtract.shortNameOf(
+                    PatternLibrary.loadAs(chosen,
+                            IRI.create(PatternLibrary.copyFor(chosen, mirror).toURI())));
+        } catch (IOException unreadable) {
+            return chosen.getId();
+        } catch (RuntimeException unreadable) {
+            return chosen.getId();
+        }
     }
 
     /** {@code src/ontology/mirror} beside the open ontology, created if need be. */
@@ -696,6 +872,13 @@ public class PatternLibraryAction extends ProtegeOWLAction {
     }
 
     private File mirrorDirectory() {
+        File editFile = editFile();
+        File beside = editFile == null ? null : editFile.getParentFile();
+        return beside == null ? null : new File(beside, "mirror");
+    }
+
+    /** The open ontology's file, or null when it has never been saved. */
+    private File editFile() {
         org.semanticweb.owlapi.model.OWLOntology ontology =
                 getOWLModelManager().getActiveOntology();
         if (ontology == null) {
@@ -707,12 +890,37 @@ public class PatternLibraryAction extends ProtegeOWLAction {
         if (uri == null || !"file".equalsIgnoreCase(uri.getScheme())) {
             return null;
         }
-        File beside = new File(uri).getAbsoluteFile().getParentFile();
-        return beside == null ? null : new File(beside, "mirror");
+        return new File(uri).getAbsoluteFile();
     }
 
     private static String escape(String text) {
         return text == null ? "" : text.replace("&", "&amp;").replace("<", "&lt;");
+    }
+
+    /** What the selected pattern holds, for what its terms are called. */
+    private PatternLibrary.Contents shownContents;
+
+    /** A term as what it is called, then its short name and whether it is a class or a property. */
+    private final class TermRenderer extends javax.swing.DefaultListCellRenderer {
+        private static final long serialVersionUID = 1L;
+
+        @Override
+        public java.awt.Component getListCellRendererComponent(JList<?> list, Object value,
+                int index, boolean selected, boolean focused) {
+            super.getListCellRendererComponent(list, value, index, selected, focused);
+            if (value instanceof IRI) {
+                IRI term = (IRI) value;
+                String label = shownContents == null ? null : shownContents.labelOf(term);
+                String kind = shownContents != null && shownContents.isClass(term) ? "class"
+                        : "property";
+                setText("<html>" + escape(label == null ? term.getShortForm() : label)
+                        + " <font size='-2' color='#777777'>" + (label == null ? ""
+                                : escape(term.getShortForm()) + " &middot; ") + kind
+                        + "</font></html>");
+                setToolTipText(term.toString());
+            }
+            return this;
+        }
     }
 
     /** Renders a pattern as its name, with the grouping key and a duplicate note beside it. */
@@ -735,7 +943,7 @@ public class PatternLibraryAction extends ProtegeOWLAction {
                         + "<br><font size='-2' color='#777777'>"
                         + escape(pattern.getPublisher()) + " &middot; " + second
                         + (pattern.isDuplicate()
-                                ? " &middot; same as " + escape(pattern.getSameAs()) : "")
+                                ? " &middot; " + escape(PatternLibrary.twinNote(pattern)) : "")
                         + "</font></html>");
             }
             return this;

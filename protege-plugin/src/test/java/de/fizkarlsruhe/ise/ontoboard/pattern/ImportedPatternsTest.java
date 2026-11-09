@@ -94,6 +94,27 @@ class ImportedPatternsTest {
         assertTrue(ImportedPatterns.in(ontology).isEmpty());
     }
 
+    /**
+     * An ontology that imports a pattern is framed by its imports only: a class it also holds in
+     * another pattern's namespace makes no frame. Found by a tester: importing Task execution also
+     * framed Classification, by its Concept, and a frame "publication" came by content.
+     */
+    @Test
+    void anOntologyThatImportsPatternsIsFramedByItsImportsOnly(@TempDir File imports)
+            throws Exception {
+        OWLOntology edit = importing(imports, "componency", OBJECT,
+                "# Pattern: componency\n" + OBJECT + "\n");
+        edit.getOWLOntologyManager().addAxiom(edit, edit.getOWLOntologyManager()
+                .getOWLDataFactory().getOWLDeclarationAxiom(edit.getOWLOntologyManager()
+                        .getOWLDataFactory().getOWLClass(IRI.create(
+                                "http://www.ontologydesignpatterns.org/cp/owl/classification.owl#Concept"))));
+
+        List<ImportedPatterns.Found> found = ImportedPatterns.in(edit);
+
+        assertEquals(1, found.size(), found.toString());
+        assertEquals("Componency Pattern", found.get(0).getLabel());
+    }
+
     /** An ontology importing {@code name}'s module, saved in {@code imports}, holding one class. */
     private static OWLOntology importing(File imports, String name, String classIri,
             String termList) throws Exception {

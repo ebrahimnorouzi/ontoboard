@@ -307,11 +307,13 @@ public final class RobotTransform {
                     kind.getLabel() + " could not run against this Protege's OWL API. Protege 5.6 "
                             + "or newer is expected to work.", incompatible);
         } catch (RuntimeException failed) {
-            throw new RobotException(
-                    kind.getLabel() + " failed: " + failed.getMessage(), failed);
+            String why = whyItFailed(ontology, copy, failed, reasonerFactory);
+            throw new RobotException(isAboutTheModel(failed) ? why
+                    : kind.getLabel() + " failed: " + why, failed);
         } catch (Exception failed) {
-            throw new RobotException(
-                    kind.getLabel() + " failed: " + failed.getMessage(), failed);
+            String why = whyItFailed(ontology, copy, failed, reasonerFactory);
+            throw new RobotException(isAboutTheModel(failed) ? why
+                    : kind.getLabel() + " failed: " + why, failed);
         }
 
         // getAxioms(), not INCLUDED: the shadow import holds the closure, and a change aimed at
@@ -396,6 +398,73 @@ public final class RobotTransform {
             }
         }
         return unresolved;
+    }
+
+    /**
+     * What to say when an operation failed. ROBOT's {@code IncoherentTBoxException} has no message,
+     * so a reasoner that found a class that can have no members said "Reason failed: null" - a
+     * dead end found by a tester, one step before a release. The classes are named instead, by
+     * label, from the copy the operation ran on.
+     */
+    /**
+     * Whether a failure is something the reasoner found in the ontology - a class or property that
+     * can have no members, an inconsistency - rather than the operation going wrong. Its message is
+     * then a whole sentence for the user, and "could not finish" would be untrue: it finished.
+     */
+    public static boolean isAboutTheModel(Throwable failed) {
+        for (Throwable at = failed; at != null; at = at.getCause()) {
+            if (at instanceof org.obolibrary.robot.exceptions.IncoherentTBoxException
+                    || at instanceof org.obolibrary.robot.exceptions.IncoherentRBoxException
+                    || at instanceof org.obolibrary.robot.exceptions.InconsistentOntologyException) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    static String whyItFailed(OWLOntology ontology, OWLOntology copy, Exception failed,
+            org.semanticweb.owlapi.reasoner.OWLReasonerFactory reasonerFactory) {
+        String undo = " The relation or parent added last is the usual cause; Edit > Undo takes it"
+                + " back.";
+        if (failed instanceof org.obolibrary.robot.exceptions.InconsistentOntologyException) {
+            return "The ontology is inconsistent: an individual belongs to a class that can have"
+                    + " no members." + undo;
+        }
+        if (failed instanceof org.obolibrary.robot.exceptions.IncoherentTBoxException
+                && reasonerFactory != null && copy != null) {
+            List<String> names = new ArrayList<String>();
+            org.semanticweb.owlapi.reasoner.OWLReasoner reasoner = null;
+            try {
+                reasoner = reasonerFactory.createReasoner(copy);
+                for (org.semanticweb.owlapi.model.OWLClass unsatisfiable
+                        : reasoner.getUnsatisfiableClasses().getEntitiesMinusBottom()) {
+                    names.add(de.fizkarlsruhe.ise.ontoboard.model.DisplayLabels.forEntity(ontology,
+                            unsatisfiable));
+                }
+            } catch (RuntimeException cannotTell) {
+                names.clear();
+            } finally {
+                if (reasoner != null) {
+                    reasoner.dispose();
+                }
+            }
+            java.util.Collections.sort(names, String.CASE_INSENSITIVE_ORDER);
+            if (names.size() > 5) {
+                int more = names.size() - 4;
+                names = new ArrayList<String>(names.subList(0, 4));
+                names.add(more + " more");
+            }
+            return (names.isEmpty() ? "A class can have no members."
+                    : names.size() == 1 ? names.get(0) + " can have no members."
+                    : "These classes can have no members: " + String.join(", ", names) + ".")
+                    + undo;
+        }
+        if (failed instanceof org.obolibrary.robot.exceptions.IncoherentRBoxException) {
+            return "An object property can have no members. The property axiom added last is the"
+                    + " usual cause; Edit > Undo takes it back.";
+        }
+        return failed.getMessage() != null ? failed.getMessage()
+                : failed.getClass().getSimpleName();
     }
 
     /**

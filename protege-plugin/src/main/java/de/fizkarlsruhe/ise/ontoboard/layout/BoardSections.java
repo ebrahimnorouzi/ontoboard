@@ -23,8 +23,8 @@ import java.util.Set;
  *
  * <ul>
  *   <li><b>The classes - the TBox - are trees read top down</b>: a class above its subclasses,
- *       centred over them, each level of the hierarchy one row. Many leaves under one class
- *       stand in a grid below it. Trees are packed onto shelves about a screen wide.
+ *       which stand one under the other, in more columns when there are more of them - see
+ *       {@link HierarchyColumns}.
  *   <li><b>The individuals - the ABox - are a band below the classes</b>, each class's
  *       individuals under that class, and an individual's values right below it. Asked for:
  *       "separate TBox from ABox, ABox below TBox, instances below the class they are typed".
@@ -101,10 +101,10 @@ public final class BoardSections {
         public final List<Section> sections = new ArrayList<Section>();
     }
 
-    /** Between a column of the tree and the next: room for the line back to the parent. */
+    /** Between two columns of individuals. */
     static final double ACROSS = 70;
 
-    /** Between two siblings. */
+    /** Between two individuals. */
     static final double DOWN = 16;
 
     /** Between two blocks, and around a section inside its frame. */
@@ -128,6 +128,15 @@ public final class BoardSections {
      */
     public static Plan plan(List<Term> terms, List<Edge> edges, double left, double top,
             double framesRight) {
+        return plan(terms, edges, left, top, framesRight, top);
+    }
+
+    /**
+     * The same, the property sections starting at {@code sectionsTop}: beside the frames along the
+     * top of the board rather than down below them with nothing above.
+     */
+    public static Plan plan(List<Term> terms, List<Edge> edges, double left, double top,
+            double framesRight, double sectionsTop) {
         Map<String, Term> byId = new LinkedHashMap<String, Term>();
         for (Term term : terms) {
             byId.put(term.id, term);
@@ -151,21 +160,24 @@ public final class BoardSections {
                 classes.add(term);
             }
         }
-        double area = 0;
-        for (Term term : classes) {
-            area += (term.w + ACROSS) * (term.h + BELOW);
-        }
-        double width = Math.max(1600, Math.sqrt(area * 1.6) * 1.2);
-        double[] tbox = forest(classes, parent, left, top, width, plan);
+        double[] tbox = forest(classes, parent, left, top, plan);
         double right = tbox[2];
+        double bottom = classes.isEmpty() ? top : tbox[3];
         if (!individuals.isEmpty()) {
             double aboxTop = (classes.isEmpty() ? top : tbox[3]) + APART * 2;
             right = Math.max(right, placeIndividuals(individuals, parent, byId, plan, left,
                     aboxTop));
+            for (Term individual : individuals) {
+                double[] at = plan.positions.get(individual.id);
+                if (at != null) {
+                    bottom = Math.max(bottom, at[1] + individual.h);
+                }
+            }
         }
         double x = Math.max((classes.isEmpty() && individuals.isEmpty() ? left : right),
                 framesRight) + APART * 2;
-        double y = top;
+        double y = sectionsTop;
+        List<List<Term>> laidOut = new ArrayList<List<Term>>();
         for (Object[] section : new Object[][] {
             {"Object properties", objectProperties}, {"Data properties", dataProperties}}) {
             @SuppressWarnings("unchecked")
@@ -173,13 +185,68 @@ public final class BoardSections {
             if (members.isEmpty()) {
                 continue;
             }
-            double[] box = forest(members, parent, x + APART / 2, y + TITLE, 1200, plan);
+            double[] box = forest(members, parent, x + APART / 2, y + TITLE, plan);
             double w = box[2] - x + APART / 2;
             double h = box[3] - y + APART / 2;
             plan.sections.add(new Section((String) section[0], x, y, w, h));
+            laidOut.add(members);
             y += h + APART;
         }
+        if (!plan.sections.isEmpty()) {
+            putSectionsBelowIfThatFitsAScreen(plan, laidOut, left,
+                    Math.max(right, framesRight), Math.max(bottom, top));
+        }
         return plan;
+    }
+
+    /** The shape of the window a board is mostly seen in: wider than tall. */
+    private static final double SCREEN = 1.6;
+
+    /**
+     * The property sections moved from the right of the classes to below them, side by side, when
+     * the board then has more nearly a screen's shape - so that Fit shows it larger.
+     *
+     * <p>Found by a tester: one pattern imported, and the board was a strip 3,475 pixels wide and
+     * 596 tall, because the properties stood right of a frame already as wide as a screen. Fit
+     * made it 19%, at which no label can be read, and three quarters of the window was empty.
+     */
+    private static void putSectionsBelowIfThatFitsAScreen(Plan plan, List<List<Term>> members,
+            double left, double classesRight, double classesBottom) {
+        double rightW = classesRight;
+        double rightH = classesBottom;
+        double belowW = left;
+        double belowH = 0;
+        for (Section section : plan.sections) {
+            rightW = Math.max(rightW, section.x + section.w);
+            rightH = Math.max(rightH, section.y + section.h);
+            belowW += section.w + APART;
+            belowH = Math.max(belowH, section.h);
+        }
+        belowW = Math.max(classesRight, belowW - APART);
+        belowH += classesBottom + APART;
+        double asTheyAre = Math.max(rightW / SCREEN, rightH);
+        double below = Math.max(belowW / SCREEN, belowH);
+        if (below >= asTheyAre * 0.95) {
+            return;
+        }
+        List<Section> moved = new ArrayList<Section>();
+        double x = left;
+        double y = classesBottom + APART;
+        for (int at = 0; at < plan.sections.size(); at++) {
+            Section section = plan.sections.get(at);
+            double dx = x - section.x;
+            double dy = y - section.y;
+            for (Term term : members.get(at)) {
+                double[] position = plan.positions.get(term.id);
+                if (position != null) {
+                    plan.positions.put(term.id, new double[] {position[0] + dx, position[1] + dy});
+                }
+            }
+            moved.add(new Section(section.label, x, y, section.w, section.h));
+            x += section.w + APART;
+        }
+        plan.sections.clear();
+        plan.sections.addAll(moved);
     }
 
     /** An individual, or what hangs off one - the ABox, which goes below the classes. */
@@ -259,231 +326,19 @@ public final class BoardSections {
     }
 
     /**
-     * One forest laid out top down from ({@code left}, {@code top}): each class above its
-     * subclasses, centred over them, siblings side by side. Roots are packed onto shelves about
-     * {@code width} wide, so a wide ontology wraps instead of running off to the right. Returns
-     * the bounds {minX, minY, maxX, maxY}.
+     * One forest from ({@code left}, {@code top}): each class with its subclasses below it, one under
+     * the other, in more columns when there are more - see {@link HierarchyColumns}. Returns the
+     * bounds {minX, minY, maxX, maxY}.
      */
     private static double[] forest(List<Term> members, Map<String, String> allParents,
-            double left, double top, double width, Plan plan) {
-        Map<String, Term> here = new LinkedHashMap<String, Term>();
+            double left, double top, Plan plan) {
+        List<HierarchyColumns.Term> boxes = new ArrayList<HierarchyColumns.Term>();
         for (Term term : members) {
-            here.put(term.id, term);
+            boxes.add(new HierarchyColumns.Term(term.id, term.label, term.w, term.h));
         }
-        Map<String, List<Term>> children = new HashMap<String, List<Term>>();
-        List<Term> roots = new ArrayList<Term>();
-        for (Term term : members) {
-            String up = allParents.get(term.id);
-            if (up != null && here.containsKey(up) && !up.equals(term.id)) {
-                List<Term> siblings = children.get(up);
-                if (siblings == null) {
-                    siblings = new ArrayList<Term>();
-                    children.put(up, siblings);
-                }
-                siblings.add(term);
-            } else {
-                roots.add(term);
-            }
-        }
-        for (List<Term> siblings : children.values()) {
-            Collections.sort(siblings, ORDER);
-        }
-        Collections.sort(roots, ORDER);
-        // Trees first, biggest first; terms with nothing under them after, together.
-        Map<String, double[]> size = new HashMap<String, double[]>();
-        for (Term root : roots) {
-            measure(root, children, size, width);
-        }
-        List<Term> trees = new ArrayList<Term>();
-        List<Term> loose = new ArrayList<Term>();
-        for (Term root : roots) {
-            (children.containsKey(root.id) ? trees : loose).add(root);
-        }
-        Collections.sort(trees, (one, other) -> Double.compare(
-                size.get(other.id)[0] * size.get(other.id)[1],
-                size.get(one.id)[0] * size.get(one.id)[1]));
-        double x = left;
-        double y = top;
-        double shelf = 0;
-        double maxX = left;
-        double maxY = top;
-        for (Term root : trees) {
-            double[] box = size.get(root.id);
-            if (x > left && x + box[0] > left + width) {
-                x = left;
-                y += shelf + APART;
-                shelf = 0;
-            }
-            put(root, x, y, children, size, plan, width);
-            x += box[0] + APART;
-            shelf = Math.max(shelf, box[1]);
-            maxX = Math.max(maxX, x - APART);
-            maxY = Math.max(maxY, y + box[1]);
-        }
-        if (!loose.isEmpty()) {
-            double[] grid = grid(loose, trees.isEmpty() ? left : left, trees.isEmpty() ? top
-                    : maxY + APART, Math.max(width, widestOf(loose)), plan);
-            maxX = Math.max(maxX, grid[0]);
-            maxY = Math.max(maxY, grid[1]);
-        }
-        return new double[] {left, top, maxX, maxY};
-    }
-
-    /** More leaves than this under one class stand in a grid below it rather than in a row. */
-    static final int ROW_OF_LEAVES = 6;
-
-    /** Between a class and the row of its subclasses: room for the lines down. */
-    static final double BELOW = 60;
-
-    /** {width, height} of a term's subtree laid out top down. */
-    private static double[] measure(Term term, Map<String, List<Term>> children,
-            Map<String, double[]> size, double limit) {
-        List<Term> below = children.get(term.id);
-        double[] own;
-        if (below == null || below.isEmpty()) {
-            own = new double[] {term.w, term.h};
-        } else if (allLeaves(below, children) && below.size() > ROW_OF_LEAVES) {
-            int columns = columnsFor(below.size());
-            double cellW = widestOf(below) + ACROSS / 2;
-            double cellH = tallestOf(below) + DOWN;
-            int rows = (below.size() + columns - 1) / columns;
-            own = new double[] {Math.max(term.w, columns * cellW - ACROSS / 2),
-                term.h + BELOW + rows * cellH - DOWN};
-        } else {
-            double w = 0;
-            double h = 0;
-            for (List<Term> row : rows(below, children, size, limit)) {
-                double rowW = 0;
-                double rowH = 0;
-                for (Term child : row) {
-                    double[] c = size.get(child.id);
-                    rowW += c[0] + ACROSS;
-                    rowH = Math.max(rowH, c[1]);
-                }
-                w = Math.max(w, rowW - ACROSS);
-                h += rowH + BELOW;
-            }
-            own = new double[] {Math.max(term.w, w), term.h + h};
-        }
-        size.put(term.id, own);
-        return own;
-    }
-
-    /** Places a measured subtree with its top-left at ({@code x}, {@code y}). */
-    private static void put(Term term, double x, double y, Map<String, List<Term>> children,
-            Map<String, double[]> size, Plan plan, double limit) {
-        double[] box = size.get(term.id);
-        plan.positions.put(term.id, new double[] {x + (box[0] - term.w) / 2, y});
-        List<Term> below = children.get(term.id);
-        if (below == null || below.isEmpty()) {
-            return;
-        }
-        double rowTop = y + term.h + BELOW;
-        if (allLeaves(below, children) && below.size() > ROW_OF_LEAVES) {
-            int columns = columnsFor(below.size());
-            double cellW = widestOf(below) + ACROSS / 2;
-            double cellH = tallestOf(below) + DOWN;
-            double gridW = columns * cellW - ACROSS / 2;
-            double start = x + (box[0] - gridW) / 2;
-            for (int at = 0; at < below.size(); at++) {
-                plan.positions.put(below.get(at).id, new double[] {
-                    start + (at % columns) * cellW, rowTop + (at / columns) * cellH});
-            }
-            return;
-        }
-        for (List<Term> row : rows(below, children, size, limit)) {
-            double used = 0;
-            double rowH = 0;
-            for (Term child : row) {
-                used += size.get(child.id)[0] + ACROSS;
-                rowH = Math.max(rowH, size.get(child.id)[1]);
-            }
-            double cx = x + (box[0] - (used - ACROSS)) / 2;
-            for (Term child : row) {
-                put(child, cx, rowTop, children, size, plan, limit);
-                cx += size.get(child.id)[0] + ACROSS;
-            }
-            rowTop += rowH + BELOW;
-        }
-    }
-
-    /**
-     * A class's children in rows: side by side while they fit in {@code limit}, the width of a shelf, then on
-     * the next row down - so one class with twelve large subtrees is not twenty screens wide.
-     */
-    private static List<List<Term>> rows(List<Term> below, Map<String, List<Term>> children,
-            Map<String, double[]> size, double limit) {
-        List<List<Term>> rows = new ArrayList<List<Term>>();
-        List<Term> row = new ArrayList<Term>();
-        double w = 0;
-        for (Term child : below) {
-            double[] c = size.containsKey(child.id) ? size.get(child.id)
-                    : measure(child, children, size, limit);
-            if (!row.isEmpty() && w + c[0] > limit) {
-                rows.add(row);
-                row = new ArrayList<Term>();
-                w = 0;
-            }
-            row.add(child);
-            w += c[0] + ACROSS;
-        }
-        if (!row.isEmpty()) {
-            rows.add(row);
-        }
-        return rows;
-    }
-
-    /** Terms laid out in rows no wider than {@code width}; returns {maxX, maxY}. */
-    private static double[] grid(List<Term> terms, double left, double top, double width,
-            Plan plan) {
-        double x = left;
-        double y = top;
-        double row = 0;
-        double maxX = left;
-        double maxY = top;
-        for (Term term : terms) {
-            if (x > left && x + term.w > left + width) {
-                x = left;
-                y += row + DOWN;
-                row = 0;
-            }
-            plan.positions.put(term.id, new double[] {x, y});
-            x += term.w + ACROSS / 2;
-            row = Math.max(row, term.h);
-            maxX = Math.max(maxX, x - ACROSS / 2);
-            maxY = Math.max(maxY, y + term.h);
-        }
-        return new double[] {maxX, maxY};
-    }
-
-    private static boolean allLeaves(List<Term> terms, Map<String, List<Term>> children) {
-        for (Term term : terms) {
-            if (children.containsKey(term.id)) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    /** About twice as wide as tall, for a grid of {@code n} leaves. */
-    private static int columnsFor(int n) {
-        return Math.max(ROW_OF_LEAVES, (int) Math.ceil(Math.sqrt(n * 2.0)));
-    }
-
-    private static double widestOf(List<Term> terms) {
-        double widest = 0;
-        for (Term term : terms) {
-            widest = Math.max(widest, term.w);
-        }
-        return widest;
-    }
-
-    private static double tallestOf(List<Term> terms) {
-        double tallest = 0;
-        for (Term term : terms) {
-            tallest = Math.max(tallest, term.h);
-        }
-        return tallest;
+        HierarchyColumns.Placed placed = HierarchyColumns.place(boxes, allParents, left, top);
+        plan.positions.putAll(placed.positions);
+        return new double[] {left, top, placed.right, placed.bottom};
     }
 
     /**
@@ -517,8 +372,11 @@ public final class BoardSections {
             group.add(term);
         }
         List<String> classes = new ArrayList<String>(byClass.keySet());
-        Collections.sort(classes, (one, other) -> Double.compare(xOf(plan, one, left),
-                xOf(plan, other, left)));
+        // Across the board, and down it where classes stand one under the other.
+        Collections.sort(classes, (one, other) -> {
+            int across = Double.compare(xOf(plan, one, left), xOf(plan, other, left));
+            return across != 0 ? across : Double.compare(yOf(plan, one), yOf(plan, other));
+        });
         double cursor = left;
         double bottom = top;
         for (String cls : classes) {
@@ -555,6 +413,11 @@ public final class BoardSections {
             cursor = x + colW + ACROSS;
         }
         return Math.max(cursor - ACROSS, left);
+    }
+
+    private static double yOf(Plan plan, String id) {
+        double[] at = plan.positions.get(id);
+        return at == null ? Double.MAX_VALUE / 4 : at[1];
     }
 
     private static double xOf(Plan plan, String id, double left) {

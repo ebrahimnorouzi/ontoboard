@@ -188,6 +188,36 @@ class PatternIndexTest {
         return missing;
     }
 
+    /**
+     * A pattern's description names only terms the pattern holds.
+     *
+     * <p>Two cards named classes NFDIcore 3.0.5 had made obsolete: the dataset pattern's
+     * {@code nfdi:NFDI_0000009}, where the pattern holds {@code obo:IAO_0001000} data
+     * collection, and the publication pattern's {@code NFDI_0000190} and {@code NFDI_0000014}.
+     * An expert who looked for the class the card named found nothing. Checked against the
+     * index's terms column, which is what the pattern's own file holds.
+     */
+    @Test
+    void aDescriptionNamesOnlyTermsThePatternHolds() throws Exception {
+        String shipped = new String(Files.readAllBytes(new File(patternsDirectory(), "index.tsv")
+                .toPath()), StandardCharsets.UTF_8).replace("\r\n", "\n");
+        java.util.regex.Pattern named =
+                java.util.regex.Pattern.compile("\\b[a-z]+:([A-Za-z]+_[0-9]+)\\b");
+        List<String> absent = new ArrayList<String>();
+        for (Map.Entry<String, String> row : rowsById(shipped).entrySet()) {
+            String[] cells = row.getValue().split("\t", -1);
+            String terms = " " + cells[9] + " ";
+            java.util.regex.Matcher term = named.matcher(cells[7]);
+            while (term.find()) {
+                if (!terms.contains("/" + term.group(1) + " ")
+                        && !terms.contains("#" + term.group(1) + " ")) {
+                    absent.add(row.getKey() + ": " + term.group());
+                }
+            }
+        }
+        assertEquals("[]", absent.toString());
+    }
+
     /** The library loads what the index describes, out of the built classpath. */
     @Test
     void everyIndexedPatternIsInTheBuild() throws Exception {

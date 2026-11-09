@@ -135,13 +135,40 @@ public final class Curies {
         if (text.isEmpty() || sameTerm(curie, text)) {
             return curie;
         }
-        return curie + "\n" + text;
+        // The label first: it says what the term is. Asked for, because an identifier such as
+        // obo:BFO_0000004 says nothing to whoever has to decide whether this is the class they want.
+        return text + "\n" + curie;
+    }
+
+    /**
+     * The same for a term whose namespace has no prefix: its IRI's last part, when that says
+     * something the label does not. {@code PMD_0000773} under {@code hardness} is how somebody finds
+     * it again; {@code Person} under {@code Person} would be saying it twice.
+     */
+    public static String displayLabel(String curie, String label, String iri) {
+        if ((curie == null || curie.isEmpty()) && iri != null && iri.contains("://")) {
+            int cut = Math.max(iri.lastIndexOf('#'), iri.lastIndexOf('/'));
+            String local = iri.substring(cut + 1);
+            if (!local.isEmpty() && label != null && !label.trim().isEmpty()
+                    && !local.equals(unmarked(label.trim()))) {
+                return label.trim() + "\n" + local;
+            }
+        }
+        return displayLabel(curie, label);
     }
 
     /** Whether the label is just the identifier's local part, so printing both would repeat it. */
     private static boolean sameTerm(String curie, String label) {
         int colon = curie.indexOf(':');
         String local = colon < 0 ? curie : curie.substring(colon + 1);
-        return local.equals(label);
+        return local.equals(unmarked(label));
+    }
+
+    /**
+     * A label without the board's defined-class mark, {@code "≡ "}: a tester found {@code ≡ Place}
+     * drawn over {@code Place}, the mark having made the label look different from the name.
+     */
+    private static String unmarked(String label) {
+        return label.startsWith("\u2261 ") ? label.substring(2).trim() : label;
     }
 }

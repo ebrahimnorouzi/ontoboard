@@ -38,6 +38,17 @@ public class CanvasLayout {
     public List<String> collapsed = new ArrayList<>();
 
     /**
+     * Whether somebody has moved things by hand since the board was last arranged. Until then a new
+     * class or pattern arrives by arranging the board again, so the hierarchy stays clear; after,
+     * nothing is moved under them and it goes in the nearest free place.
+     *
+     * <p>False once the board has arranged itself. Null on a new board, and on every board saved
+     * before 1.135.1, which never wrote it: such a board that holds positions is taken as arranged
+     * by hand when it is opened, because the arrangement in it may well be somebody's work.
+     */
+    public Boolean arrangedByHand;
+
+    /**
      * A copy that shares nothing with this one.
      *
      * <p>For {@link BoardHistory}, which holds the board as it was before each action. Every collection
@@ -70,6 +81,7 @@ public class CanvasLayout {
         }
         copy.prefixColors = new LinkedHashMap<>(prefixColors);
         copy.showsEverything = showsEverything;
+        copy.arrangedByHand = arrangedByHand;
         copy.hidden = new ArrayList<>(hidden);
         copy.collapsed = new ArrayList<>(collapsed);
         return copy;
@@ -101,6 +113,9 @@ public class CanvasLayout {
         prefixColors.clear();
         prefixColors.putAll(snapshot.prefixColors);
         showsEverything = snapshot.showsEverything;
+        // Copied since 1.135.1: without it, Arrange > Outline and then Undo brought the hand-made
+        // arrangement back with the flag cleared, and the next new class arranged it away again.
+        arrangedByHand = snapshot.arrangedByHand;
         hidden.clear();
         hidden.addAll(snapshot.hidden);
         collapsed.clear();
@@ -204,11 +219,18 @@ public class CanvasLayout {
         public String fill = "#EEF3FA";
         public String stroke = "#4A90D9";
 
+        /**
+         * The library pattern this frame was made for, by id; null for a frame somebody drew, and
+         * for a pattern's frame saved before 1.135.1, which is known by its label instead.
+         */
+        public String pattern;
+
         /** A copy that shares nothing, for the history and for Ctrl+D. */
         public FrameLayout copy() {
             FrameLayout copy = new FrameLayout();
             copy.id = id;
             copy.label = label;
+            copy.pattern = pattern;
             copy.x = x;
             copy.y = y;
             copy.w = w;

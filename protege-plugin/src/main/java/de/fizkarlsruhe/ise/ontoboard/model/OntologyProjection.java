@@ -70,9 +70,27 @@ public final class OntologyProjection {
      * none that was hidden.
      */
     public static List<String> termsToShow(OWLOntology ontology, Collection<String> hidden) {
+        return termsToShow(ontology, hidden, java.util.Collections.<String>emptySet());
+    }
+
+    /**
+     * The same, leaving out {@code broughtAlong}: what an import holds only because a term somebody
+     * chose needs it. One class taken from IAO brings eighty terms with it, individuals among
+     * them, and a board that drew them all buried the one that was asked for. They are still in
+     * the ontology; Imported terms lists them, and Find draws any of them.
+     */
+    public static List<String> termsToShow(OWLOntology ontology, Collection<String> hidden,
+            Collection<String> broughtAlong) {
         Set<String> own = termIdentifiers(ontology, Imports.EXCLUDED);
         Set<String> skip = new java.util.HashSet<String>(hidden);
         List<String> ordered = new ArrayList<String>();
+        // Not owl:Thing or owl:Nothing: a module mentions them, and a lone box with either on it
+        // tells a reader nothing about this ontology.
+        skip.add(org.semanticweb.owlapi.vocab.OWLRDFVocabulary.OWL_THING.getIRI().toString());
+        skip.add(org.semanticweb.owlapi.vocab.OWLRDFVocabulary.OWL_NOTHING.getIRI().toString());
+        java.util.Set<String> onlyBroughtAlong = new java.util.HashSet<String>(broughtAlong);
+        onlyBroughtAlong.removeAll(own);
+        skip.addAll(onlyBroughtAlong);
         for (String iri : new java.util.TreeSet<String>(own)) {
             if (!skip.contains(iri)) {
                 ordered.add(iri);
@@ -88,9 +106,9 @@ public final class OntologyProjection {
     }
 
     /**
-     * Where a term new to a board goes: just right of its first parent already placed - a class's
-     * superclass, an individual's class, a property's super-property - and below anything already
-     * there. Null when none of its parents is placed.
+     * Where a term new to a board goes: under its first parent already placed - a class's
+     * superclass, an individual's class, a property's super-property - indented, and below anything
+     * already there. Null when none of its parents is placed.
      */
     public static double[] besideItsParent(OWLOntology ontology, String iri,
             de.fizkarlsruhe.ise.ontoboard.layout.CanvasLayout layout) {
@@ -127,22 +145,220 @@ public final class OntologyProjection {
             if (at == null) {
                 continue;
             }
-            double x = at.x + (at.w <= 0 ? 160 : at.w) + 70;
-            double y = at.y;
-            for (int tries = 0; tries < 400 && taken(layout, x, y); tries++) {
-                y += 76;
-            }
-            return new double[] {x, y};
+            return belowItsParent(layout, at.x, at.y, at.h <= 0 ? 40 : at.h);
         }
         return null;
+    }
+
+    /** Where a subclass of the box at ({@code x}, {@code y}) goes: under it, and clear of the rest. */
+    public static double[] belowItsParent(
+            de.fizkarlsruhe.ise.ontoboard.layout.CanvasLayout layout, double x, double y,
+            double height) {
+        return besideItsParentAt(layout,
+                x + de.fizkarlsruhe.ise.ontoboard.layout.HierarchyColumns.INDENT,
+                y + height + de.fizkarlsruhe.ise.ontoboard.layout.HierarchyColumns.UNDER);
+    }
+
+    /**
+     * Each of these classes' named superclass among them that the hierarchy draws it under: the
+     * deepest, so that its other superclasses, which stand higher, are all above it; the first by
+     * IRI among equally deep ones, so the same ontology is drawn the same way every time.
+     *
+     * <p>The deepest since 1.135.1. It was the first by IRI, and a tester found a pattern that
+     * says <i>value specification</i> is under both <i>continuant</i> and <i>information content
+     * entity</i>: drawn under continuant, it stood above information content entity, and the line
+     * to that superclass pointed down.
+     */
+    public static java.util.Map<String, String> superclassesAmong(OWLOntology ontology,
+            java.util.Collection<String> iris) {
+        java.util.Set<String> among = new java.util.HashSet<String>(iris);
+        java.util.Map<String, List<String>> ups = new java.util.HashMap<String, List<String>>();
+        org.semanticweb.owlapi.model.OWLDataFactory df =
+                ontology.getOWLOntologyManager().getOWLDataFactory();
+        for (String iri : among) {
+            List<String> found = new ArrayList<String>();
+            for (OWLOntology part : ontology.getImportsClosure()) {
+                for (OWLSubClassOfAxiom axiom
+                        : part.getSubClassAxiomsForSubClass(df.getOWLClass(IRI.create(iri)))) {
+                    if (axiom.getSuperClass().isAnonymous()) {
+                        continue;
+                    }
+                    String up = axiom.getSuperClass().asOWLClass().getIRI().toString();
+                    if (among.contains(up) && !up.equals(iri) && !found.contains(up)) {
+                        found.add(up);
+                    }
+                }
+            }
+            ups.put(iri, found);
+        }
+        java.util.Map<String, Integer> depths = new java.util.HashMap<String, Integer>();
+        java.util.Map<String, String> parents = new java.util.HashMap<String, String>();
+        for (String iri : among) {
+            String best = null;
+            int deepest = -1;
+            for (String up : ups.get(iri)) {
+                int depth = depthAmong(up, ups, depths, new java.util.HashSet<String>());
+                if (depth > deepest || (depth == deepest && up.compareTo(best) < 0)) {
+                    best = up;
+                    deepest = depth;
+                }
+            }
+            if (best != null) {
+                parents.put(iri, best);
+            }
+        }
+        return parents;
+    }
+
+    /** How many superclasses stand above a class, by its longest way up among {@code ups}. */
+    private static int depthAmong(String iri, java.util.Map<String, List<String>> ups,
+            java.util.Map<String, Integer> depths, java.util.Set<String> climbing) {
+        Integer known = depths.get(iri);
+        if (known != null) {
+            return known;
+        }
+        if (!climbing.add(iri)) {
+            // An equivalence, or a cycle by mistake: counted once, and climbed no further.
+            return 0;
+        }
+        int depth = 0;
+        List<String> above = ups.get(iri);
+        if (above != null) {
+            for (String up : above) {
+                depth = Math.max(depth, 1 + depthAmong(up, ups, depths, climbing));
+            }
+        }
+        climbing.remove(iri);
+        depths.put(iri, depth);
+        return depth;
+    }
+
+    /** A class's named superclasses, asserted here or in an import, by IRI; never owl:Thing. */
+    public static List<String> namedSuperclasses(OWLOntology ontology, String iri) {
+        List<String> found = new ArrayList<String>();
+        OWLClass of = ontology.getOWLOntologyManager().getOWLDataFactory()
+                .getOWLClass(IRI.create(iri));
+        for (OWLOntology part : ontology.getImportsClosure()) {
+            for (OWLSubClassOfAxiom axiom : part.getSubClassAxiomsForSubClass(of)) {
+                if (axiom.getSuperClass().isAnonymous() || axiom.getSuperClass().isOWLThing()) {
+                    continue;
+                }
+                String up = axiom.getSuperClass().asOWLClass().getIRI().toString();
+                if (!up.equals(iri) && !found.contains(up)) {
+                    found.add(up);
+                }
+            }
+        }
+        java.util.Collections.sort(found);
+        return found;
+    }
+
+    /**
+     * The classes on the board from elsewhere - an import brought them, or somebody found one and
+     * added it - whose own superclass stands in a frame, each mapped to that superclass; and theirs
+     * in turn, so that a chain follows its top into the frame. This ontology's own classes are
+     * {@link #ownClassesUnder}'s, and {@code staying} is what stands in a frame somebody drew.
+     *
+     * <p>Found by a tester: <i>disposition</i>, found and added with Enter, landed in the outline at
+     * the bottom of the board, 1,880 pixels from its superclass <i>realizable entity</i> in a
+     * pattern's frame, its line crossing the board. The study's imported IAO terms did the same,
+     * each with a line of about a thousand pixels up to <i>information content entity</i>.
+     */
+    public static java.util.Map<String, String> importedClassesUnder(OWLOntology ontology,
+            java.util.Set<String> framed, java.util.Set<String> onBoard,
+            java.util.Set<String> staying) {
+        java.util.Map<String, String> under = new java.util.LinkedHashMap<String, String>();
+        List<String> candidates = new ArrayList<String>();
+        for (String iri : onBoard) {
+            if (framed.contains(iri) || staying.contains(iri)) {
+                continue;
+            }
+            IRI named = IRI.create(iri);
+            if (!ontology.containsClassInSignature(named, Imports.INCLUDED)) {
+                continue;
+            }
+            OWLClass cls = ontology.getOWLOntologyManager().getOWLDataFactory().getOWLClass(named);
+            if (cls.isBuiltIn() || ontology.isDeclared(cls, Imports.EXCLUDED)) {
+                continue;
+            }
+            candidates.add(iri);
+        }
+        java.util.Collections.sort(candidates);
+        java.util.Set<String> reached = new java.util.HashSet<String>(framed);
+        boolean grew = true;
+        while (grew) {
+            grew = false;
+            for (String iri : candidates) {
+                if (under.containsKey(iri)) {
+                    continue;
+                }
+                for (String up : namedSuperclasses(ontology, iri)) {
+                    if (reached.contains(up)) {
+                        under.put(iri, up);
+                        reached.add(iri);
+                        grew = true;
+                        break;
+                    }
+                }
+            }
+        }
+        return under;
+    }
+
+    /**
+     * This ontology's own classes under one of {@code framed}, through nothing but its own classes:
+     * a class somebody made under a pattern's class belongs with that pattern on the board, and
+     * so does one under that. A class under something imported from elsewhere stands with that, not
+     * in whichever frame its ancestors happen to reach. Each maps to the framed class it comes under.
+     */
+    public static java.util.Map<String, String> ownClassesUnder(OWLOntology ontology,
+            java.util.Set<String> framed) {
+        java.util.Map<String, String> under = new java.util.LinkedHashMap<String, String>();
+        List<org.semanticweb.owlapi.model.OWLClass> own =
+                new ArrayList<org.semanticweb.owlapi.model.OWLClass>(
+                        ontology.getClassesInSignature(Imports.EXCLUDED));
+        java.util.Collections.sort(own);
+        for (org.semanticweb.owlapi.model.OWLClass cls : own) {
+            String iri = cls.getIRI().toString();
+            if (framed.contains(iri) || cls.isBuiltIn()
+                    || !ontology.isDeclared(cls, Imports.EXCLUDED)) {
+                continue;
+            }
+            java.util.Set<String> seen = new java.util.HashSet<String>();
+            String at = iri;
+            String found = null;
+            while (at != null && seen.add(at) && found == null) {
+                String next = null;
+                for (OWLSubClassOfAxiom axiom : ontology.getSubClassAxiomsForSubClass(
+                        ontology.getOWLOntologyManager().getOWLDataFactory()
+                                .getOWLClass(IRI.create(at)))) {
+                    if (!axiom.getSuperClass().isAnonymous()) {
+                        org.semanticweb.owlapi.model.OWLClass above =
+                                axiom.getSuperClass().asOWLClass();
+                        String up = above.getIRI().toString();
+                        if (framed.contains(up)) {
+                            found = up;
+                        } else if (ontology.isDeclared(above, Imports.EXCLUDED)
+                                && (next == null || up.compareTo(next) < 0)) {
+                            next = up;
+                        }
+                    }
+                }
+                at = next;
+            }
+            if (found != null) {
+                under.put(iri, found);
+            }
+        }
+        return under;
     }
 
     /** The first free spot at or below ({@code x}, {@code y}) - for a box placed beside another. */
     public static double[] besideItsParentAt(
             de.fizkarlsruhe.ise.ontoboard.layout.CanvasLayout layout, double x, double y) {
         double down = y;
-        for (int tries = 0; tries < 400 && taken(layout, x, down); tries++) {
-            down += 76;
+        for (int tries = 0; tries < 1200 && taken(layout, x, down); tries++) {
+            down += 20;
         }
         return new double[] {x, down};
     }
@@ -183,7 +399,9 @@ public final class OntologyProjection {
 
     private static boolean taken(de.fizkarlsruhe.ise.ontoboard.layout.CanvasLayout layout,
             double x, double y) {
-        java.awt.geom.Rectangle2D wanted = new java.awt.geom.Rectangle2D.Double(x, y, 180, 60);
+        // With 20 px clear above and below, the gap the board keeps between siblings: boxes one
+        // under the other used to touch.
+        java.awt.geom.Rectangle2D wanted = new java.awt.geom.Rectangle2D.Double(x, y - 20, 180, 100);
         for (de.fizkarlsruhe.ise.ontoboard.layout.CanvasLayout.NodeLayout node
                 : layout.nodes.values()) {
             if (node != null && wanted.intersects(node.x, node.y, node.w <= 0 ? 160 : node.w,
@@ -329,6 +547,16 @@ public final class OntologyProjection {
      * expands to 27 nodes, which renders in 38ms.
      */
     public static Projection project(OWLOntology ontology, Set<String> onCanvasIris,
+            boolean drawExpressions) {
+        LABELS_FROM.set(ontology);
+        try {
+            return projected(ontology, onCanvasIris, drawExpressions);
+        } finally {
+            LABELS_FROM.remove();
+        }
+    }
+
+    private static Projection projected(OWLOntology ontology, Set<String> onCanvasIris,
             boolean drawExpressions) {
         List<CanvasNode> nodes = new ArrayList<>();
         List<CanvasEdge> edges = new ArrayList<>();
@@ -826,10 +1054,12 @@ public final class OntologyProjection {
                 continue;
             }
             // A fact between two individuals, not a restriction on a class - so it carries the
-            // property's name and nothing about quantification.
+            // property's name and nothing about quantification. Its label, as a restriction's
+            // arrow has it: this one read BFO_0000051 where the arrow beside it read "has part".
             addUnlessAlreadyThere(edges, new CanvasEdge(
                     "opa|" + subject + "|" + property + "|" + object,
-                    iri(subject), iri(object), localName(property),
+                    iri(subject), iri(object),
+                    DisplayLabels.forEntity(ontology, axiom.getProperty().asOWLObjectProperty()),
                     CanvasEdge.Kind.OBJECT_PROPERTY));
         }
 
@@ -1038,11 +1268,16 @@ public final class OntologyProjection {
     /** {@code hasTopping}, or {@code inverse hasTopping} for an inverse property. */
     private static String propertyLabel(
             org.semanticweb.owlapi.model.OWLObjectPropertyExpression property) {
-        if (!property.isAnonymous()) {
-            return localName(property.asOWLObjectProperty().getIRI());
-        }
-        return localName(property.getNamedProperty().getIRI()) + "\u207B";
+        org.semanticweb.owlapi.model.OWLObjectProperty named = property.getNamedProperty();
+        // Its label where the ontology gives one: obo:OBI_0000293 on an arrow says nothing.
+        OWLOntology ontology = LABELS_FROM.get();
+        String name = ontology == null ? localName(named.getIRI())
+                : DisplayLabels.forEntity(ontology, named);
+        return property.isAnonymous() ? name + "\u207B" : name;
     }
+
+    /** Where the expressions of the projection being made take their properties' labels from. */
+    private static final ThreadLocal<OWLOntology> LABELS_FROM = new ThreadLocal<OWLOntology>();
 
     /**
      * Draws what an expression is made of, as edges out of its node.
@@ -1420,11 +1655,14 @@ public final class OntologyProjection {
      * built on BFO, every other one was drawn and four rules in each were not. A rule has no two
      * ends to draw a line between, so it takes the node property chains already use - something
      * the ontology says that is not a term.
+     *
+     * <p>The rules written in this file, not those of what it imports: a module cut from RO brought
+     * four rules about characteristics onto a board that had asked for one class.
      */
     private static void collectRules(OWLOntology ontology, Set<String> on,
             List<CanvasNode> nodes, List<CanvasEdge> edges) {
         for (org.semanticweb.owlapi.model.SWRLRule rule
-                : ontology.getAxioms(AxiomType.SWRL_RULE, Imports.INCLUDED)) {
+                : ontology.getAxioms(AxiomType.SWRL_RULE, Imports.EXCLUDED)) {
             Set<IRI> body = new java.util.LinkedHashSet<IRI>();
             Set<IRI> head = new java.util.LinkedHashSet<IRI>();
             String reads = RULE_LABEL + atoms(ontology, rule.getBody(), body) + " \u2192 "
