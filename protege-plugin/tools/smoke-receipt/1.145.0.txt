@@ -1,0 +1,69 @@
+OntoBoard 1.145.0 - host smoke receipt
+
+The fresh review of 1.144.0 is acted on. Four reviewers read the code, one area each. An
+independent checker then reproduced each Critical or Important finding and tried to refute it.
+Each change has a test that failed first:
+- Keys:
+  - A key replaced, forgotten or deleted in Settings stays redacted for the rest of the Protege
+    session, in conversations and roles written later. Before, the next save of a conversation
+    wrote it in clear.
+  - In the benchmark's replies.jsonl, a known key split by a line break is redacted: each text
+    is now redacted before it is encoded as JSON.
+  - A name and password are removed from every form of address: an empty user, a token used as
+    the user, a password that holds "@". GitLab tokens are recognised by their shape.
+  - "Nothing answered at ..." no longer shows the end of a password that holds "@".
+  - The benchmark refuses a models file that holds a key: in a field such as apiKey, in an
+    address's query, or where a variable's name belongs. Git ignores my-models.json and
+    results/ where the README puts them.
+- Saved conversations:
+  - A byte-order mark before a "!" line in conversations/.gitignore no longer hides that line.
+    OntoBoard refuses to save, because git would see the private conversations.
+  - A released file holds only turns said while it was being saved. What was said before
+    saving went on, or while it was off, stays private, and the first save says so.
+- Settings:
+  - The role section follows the ontology's project when the ontology gets its first file.
+  - The project part and the provenance switch are read again whenever the view is shown or
+    hidden, not only on a switch between the assistant's tabs.
+  - A focused check box shows its focus around its words. In Protege's look and feel, keyboard
+    users saw no focus on five switches.
+- Assistant:
+  - After two rows, the context chips scroll. Twelve chips left the conversation 7 px of a
+    384 x 540 column; now they leave it as much room as four chips do.
+  - On Java 13 and later, a chat that cannot connect is reported as unreachable, not as "sent
+    nothing in 5 minutes".
+  - From the 1.143.0 review: a chip you add yourself stays after the next sentence, and terms
+    left out to fit a model's context are named in a notice.
+- Benchmark:
+  - The restrictions fixture no longer lets "max" pass for "exactly", or an answer without its
+    class or datatype pass.
+  - The text-to-axiom request names min, max, exactly and value, as well as some and only.
+  - The cases were regenerated. Only the text-to-axiom requests and the restrictions fixture's
+    cases changed, and every shipped case passes with its own held-back axiom.
+
+Produced on Windows 11 Pro (10.0.26100), with tools/smoke.ps1 and -Dontoboard.selftest=true. The
+verdict was read from what Protege logged. Protege 5.6.9 is the maintainer's own install, with
+ontoboard-1.144.0.jar moved to ~/Documents/ontoboard-jar-backup; Protege 5.5.0 is the throwaway
+copy. In each, this jar was the only ontoboard-*.jar in plugins. Each run was given
+pizzabfo-edit.owl from a clean local clone of the pizza-bfo test project.
+
+  2026-11-08  Protege 5.6.9  OWL API 4.5.29  JRE 11.0.25+9    -Xmx2G    PASS  check 10/10  test 12/12
+  2026-11-08  Protege 5.6.9  OWL API 4.5.29  JRE 11.0.25+9    -Xmx500M  PASS  check 10/10
+  2026-11-08  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121    -Xmx2G    PASS  check 10/10  test 12/12
+
+On both hosts the self-test reported "opened, [SchemaCanvasView, AssistantView] built without
+throwing, and closed again".
+
+The jar is sha256 3174509252d84b158ed0e7a60a944a81bb3c1c97a5b4c8820cc10f39e0edde3f, built by
+mvn -o clean package in a copy of the tree. Its unit suite ran on Java 11:
+- 3,357 tests, 0 failures, 0 errors, 3 skipped (3,327 in 1.144.0). The three skipped are as
+  before.
+- BundleConfigurationTest, run against this jar afterwards, passed its 18 tests.
+- Import-Package is unchanged: 263 packages, none added or removed, and no new mandatory
+  import.
+
+No live benchmark was run. The host check failed. The CPU ran at 73-100 % of its clock, with
+23-43 % of it in use by other work. One real text-to-axiom request (1,529 tokens, num_ctx 8192)
+took 5 minutes 4 seconds. Its first word came close to the bench's 5-minute read timeout, so
+the larger MWO and NFDIcore requests would have timed out before theirs. That one answer said
+"exactly 1" where the sentence said "at most 1", and the scorer failed it: the answer entails
+the held-back axiom but is not equivalent to it.

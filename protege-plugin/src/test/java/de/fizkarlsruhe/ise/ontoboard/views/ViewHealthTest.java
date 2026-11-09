@@ -23,6 +23,27 @@ class ViewHealthTest {
         ViewHealth.forget();
     }
 
+    /**
+     * Every view plugin.xml registers reports both outcomes. The host self-test asks this
+     * register, not the screen, so a view that never reports reads as one that never built -
+     * which is how the assistant column failed its first host smoke in 1.136.0 while every unit
+     * test passed.
+     */
+    @Test
+    void everyRegisteredViewReportsWhetherItBuilt() throws Exception {
+        java.util.List<String> silent = new java.util.ArrayList<String>();
+        for (String name : de.fizkarlsruhe.ise.ontoboard.SelfCheck.declaredViewNames()) {
+            java.io.File source = new java.io.File(
+                    "src/main/java/de/fizkarlsruhe/ise/ontoboard/views/" + name + ".java");
+            String text = new String(java.nio.file.Files.readAllBytes(source.toPath()),
+                    java.nio.charset.StandardCharsets.UTF_8);
+            if (!text.contains("ViewHealth.constructed(") || !text.contains("ViewHealth.failed(")) {
+                silent.add(name);
+            }
+        }
+        assertTrue(silent.isEmpty(), "views that do not report to ViewHealth: " + silent);
+    }
+
     /** Nothing has happened, so nothing is claimed. */
     @Test
     void aFreshRegisterClaimsNothing() {

@@ -3661,10 +3661,19 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
      *
      * <p>Add selected, Add all, Find and Inferences stay visible. Inferences is a mode with a visible
      * consequence on the diagram, and a mode you can forget you are in must not be hidden in a menu.
+     *
+     * <p><b>Since 1.136.0 the bar wraps.</b> The assistant column took a third of the tab's width
+     * beside the board (the maintainer's choice, so a proposal's preview stays in view), and 777px
+     * in one row no longer fits a 1440px window. {@code JToolBar}'s own {@code BoxLayout} would lay
+     * the rest out past the edge, unpainted, as above; {@link
+     * de.fizkarlsruhe.ise.ontoboard.canvas.WrapLayout} moves it onto a second row and reports the
+     * height of both, so {@code BorderLayout.NORTH} makes room for them.
      */
     private JToolBar buildToolBar() {
         JToolBar bar = new JToolBar();
         bar.setFloatable(false);
+        bar.setLayout(new de.fizkarlsruhe.ise.ontoboard.canvas.WrapLayout(
+                java.awt.FlowLayout.LEFT, 4, 2));
 
         // FOCUS, where Add selected and Add all were: since 1.131.0 a board shows every term, so
         // there is nothing to add - and on a board of hundreds, what a reader needs instead is to
@@ -4306,6 +4315,20 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                             + "in the ontology and travels with it.");
                     note.addActionListener(a -> editEditorialNote(iri));
                     menu.add(note);
+
+                    // The board is where a person sees which terms a question is about, so this
+                    // is where they hand one to the assistant (1.136.0). It joins the context
+                    // chips in this window's assistant column; nothing is sent until they ask.
+                    JMenuItem toAssistant = new JMenuItem("Add to assistant context");
+                    boolean canAdd = de.fizkarlsruhe.ise.ontoboard.assistant.host
+                            .AssistantSessions.canAdd(getOWLEditorKit());
+                    toAssistant.setEnabled(canAdd);
+                    toAssistant.setToolTipText(canAdd
+                            ? "Send this term with the next questions to the assistant."
+                            : "Open the Assistant column first.");
+                    toAssistant.addActionListener(a -> de.fizkarlsruhe.ise.ontoboard.assistant
+                            .host.AssistantSessions.addTerm(getOWLEditorKit(), IRI.create(iri)));
+                    menu.add(toAssistant);
                 }
 
                 if (onEdge) {

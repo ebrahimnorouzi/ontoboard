@@ -1,0 +1,116 @@
+OntoBoard 1.136.0 - host smoke receipt
+
+The OntoBoard tab has a third column: a read-only LLM assistant that works with a cloud model or
+a local one through Ollama. It answers questions about the selected term, explains a reasoner
+problem, asks for the terms it needs, and shows exactly what it sends. It changes nothing in the
+ontology. See WHAT THIS RELEASE ADDS.
+
+Produced on Windows 11 Pro (10.0.26100), with tools/smoke.ps1 and -Dontoboard.selftest=true. The
+verdict was read from what Protege logged.
+- Protege 5.6.9 is the maintainer's own install, with ontoboard-1.135.0.jar moved out of plugins
+  (to ~/Documents/ontoboard-jar-backup) and this jar the only ontoboard-*.jar in it.
+- Protege 5.5.0 is a throwaway copy of the install, with its ontoboard-1.133.1.jar replaced by
+  this jar.
+- Each run was given pizzabfo-edit.owl from a fresh local clone of the pizza-bfo test project
+  (c0a0d49).
+
+  2026-11-06  Protege 5.6.9  OWL API 4.5.29  JRE 11.0.25+9    -Xmx2G    PASS  check 10/10  test 12/12
+  2026-11-06  Protege 5.6.9  OWL API 4.5.29  JRE 11.0.25+9    -Xmx500M  PASS  check 10/10
+  2026-11-06  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121    -Xmx2G    PASS  check 10/10  test 12/12
+
+The -Xmx500M run is what Protege.exe gives a user who double-clicks it. The OntoBoard-tab item of
+the self-test now requires both of the tab's views: on both hosts it reported
+"opened, [SchemaCanvasView, AssistantView] built without throwing, and closed again".
+
+In the 5.5.0 copy, cellfie-2.2.4 and swrltab-plugin-2.1.3 failed to install, as they do in that
+install; they are not OntoBoard's.
+
+The first two smoke runs of this version failed, and the self-test was right both times. Both
+defects were fixed, and this jar was built after the fixes:
+- Run 1: Protege built the assistant view before any ontology was active. Its initialisation
+  threw a NullPointerException; Protege's own hierarchy views threw at the same moment. The view
+  now has no session until an ontology is active, and picks one up when an ontology loads.
+- Run 2: the view did not report to ViewHealth, the register the self-test reads, so it looked
+  as if it had never been built. It now reports both outcomes, as the board does.
+  ViewHealthTest.everyRegisteredViewReportsWhetherItBuilt holds every registered view to that.
+  That test failed naming AssistantView before the fix.
+
+The jar is sha256 739c339c897a7819..., built by mvn -o clean package from the working tree this
+release is committed from. Its unit suite ran on Java 11:
+- 3,006 tests, 0 failures, 0 errors, 3 skipped (2,806 in 1.135.0).
+- The three skipped are as before: PinchZoomTest; BundleConfigurationTest, which a clean build
+  reaches before the jar exists (run against this jar afterwards, its 18 tests passed); and
+  KoncludeTest's executable-bit test.
+- The bundle's Import-Package against 1.135.0's: seven more entries, all OntoBoard's own new
+  assistant packages, all resolution:=optional. Nothing was removed, and there is no new
+  mandatory import.
+
+Beyond the smoke, the benchmark was run for real against a local model through the same clients
+the column uses: Ollama on this machine, qwen2.5:7b-instruct, one repeat.
+- All 7 calls on the then pizza cases streamed and finished, and the server reported token counts
+  for each.
+- No key-like string is in the recorded replies.
+- After the review (below), the pizza cases were regenerated without duplicate controls (3 cases)
+  and the recorded replies re-scored with the score command, without calling the model again:
+  - context-request: 1 of 1 passed. The model asked for the held-back term.
+  - the control: 0 of 1. The model asked for context it already had - the over-asking controls
+    exist to catch.
+  - explain-problem: 0 of 1. The model named the property and the range, but called the prices
+    "indeed floats" and missed the real clash: decimal values against a float range. The fail is
+    deserved.
+- A long answer took 2 to 7 minutes on this CPU-only machine.
+
+An independent review of the whole change, in a fresh context, found no critical problem and
+eight important ones, all fixed with tests before this build:
+- explaining a reasoner problem again kept the stale justification;
+- context chips were rendered on the event thread at every selection change, and the whole
+  ontology twice;
+- a key with a line break could reach an exception message;
+- consent to one cloud host carried over to another;
+- the benchmark matched a name inside other words, counted one control five times, and averaged
+  controls with held-back cases;
+- the Ollama size check left no room for the answer;
+- the term's context sent every annotation, not only labels, definitions, comments and
+  synonyms;
+- OpenAI's reasoning models take max_completion_tokens instead of max_tokens. The client now
+  retries with it, untested against the live API.
+Twelve smaller points were left for later.
+
+
+WHAT THIS RELEASE ADDS
+
+- An Assistant column to the right of the board, with a Settings tab beside it:
+  - Connections to Anthropic, any OpenAI-compatible server, or Ollama's own API, which takes a
+    context length. No vendor SDK: plain HTTPS through tools/HttpsOpener.
+  - The model is picked from the server's own list. Answers stream in, with Stop.
+- What is sent is minimal and shown before it goes:
+  - by default, the selected term and its neighbourhood;
+  - chips to add terms, the class hierarchy or the whole ontology, each with its size shown;
+  - a "What is sent" view of the exact request, with the key shown as "(your key)";
+  - a confirmation before the first cloud send of a session;
+  - a per-project "local models only" switch in assistant/project.properties;
+  - an Ollama request bigger than its context length is refused with the numbers, not cut.
+- Keys: typed for the session only (the default), from ANTHROPIC_API_KEY / OPENAI_API_KEY, or
+  remembered only when ticked. The box names the plain-text location, and unticking erases it.
+- The term's lines, each with a drawn ✦ menu: ask about the line, or explain an axiom.
+- "Explain the reasoner problem…" covers an inconsistency or a chosen unsatisfiable class, using
+  the reasoner Protege runs. The justifications are sent as a chip.
+- The model asks for missing terms in an ontoboard-need block. OntoBoard resolves the names
+  exactly and offers "Add … and ask again".
+- Three editable roles and fixed rules no role can edit. Roles are shared through
+  assistant/roles/ next to the ontology.
+- The board's right-click menu has "Add to assistant context". The toolbar wraps onto a second
+  row in the narrower column. Check requirements has an "Assistant model" row.
+- A benchmark (assistant/bench/AssistantBench, run from a checkout) compares models on the 21
+  cases in benchmarks/assistant, made from the pizza and pizza-bfo examples.
+
+
+WHAT THIS RECEIPT DOES NOT COVER
+
+- The column was not clicked through. No smoke run drives Protege by hand: the self-test proves
+  that the view builds on both hosts. The session, the panels and the settings are tested without
+  a screen, against a scripted model, but a person still has to look at the column.
+- The cloud APIs were not called: no key was available. The Anthropic and OpenAI-compatible
+  clients are tested against a local server that speaks each API.
+- Linux and macOS were not run, including the macOS limit on Protege 5.5.0 (its Java cannot
+  check the cloud APIs' certificates) that docs/assistant.md states.

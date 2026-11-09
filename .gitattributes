@@ -1,0 +1,4 @@
+# The assistant benchmark's ontology snapshots are kept byte for byte: each case records the
+# SHA-256 of the file it was generated from (line endings normalised, so a CRLF checkout still
+# matches), but the snapshot itself should be exactly the file the cases were made from.
+benchmarks/assistant/ontologies/*.owl -text

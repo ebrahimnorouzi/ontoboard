@@ -29,12 +29,20 @@ import org.w3c.dom.NodeList;
  * empty panel; the wrong splitter node produces a working tab with the panels in the wrong
  * places. Both look like a plugin that "sort of works", which is why they need asserting rather
  * than eyeballing - the orientation bug this class now pins shipped once already.
+ *
+ * <p><b>Three columns since 1.136.0.</b> The assistant has a column of its own to the right of the
+ * board, chosen by the maintainer over a tab under the trees or a separate window so that the
+ * board, and Protégé's views further left, stay in view while a proposal is discussed. The board
+ * paid for it in width, which is why its toolbar now wraps ({@code canvas/WrapLayout}) - the
+ * reason a third column was refused before (see the comment in the config). Like the canvas, the
+ * assistant is in the shipped layout, so {@code ShippedLayout} brings it back if it is closed.
  */
 class ViewConfigTest {
 
     private static final String CONFIG = "/viewconfig-ontoboardtab.xml";
     private static final String CLASS_HIERARCHY = "org.protege.editor.owl.OWLAssertedClassHierarchy";
     private static final String CANVAS_SUFFIX = ".SchemaCanvasView";
+    private static final String ASSISTANT_SUFFIX = ".AssistantView";
 
     // ---------- reading the config ----------
 
@@ -105,16 +113,20 @@ class ViewConfigTest {
     }
 
     @Test
-    void theEntityColumnIsOnTheLeftAndTheCanvasOnTheRight() throws Exception {
+    void threeColumnsTreesThenTheCanvasThenTheAssistant() throws Exception {
         List<Element> columns = children(onlyChild(layoutRoot()));
-        assertEquals(2, columns.size(), "expected an entity column and a canvas column");
+        assertEquals(3, columns.size(),
+                "expected an entity column, a canvas column and an assistant column");
 
         assertTrue(pluginIdsIn(columns.get(0)).contains(CLASS_HIERARCHY),
                 "the first column is the left one and must hold the class hierarchy: "
                         + pluginIdsIn(columns.get(0)));
-        List<String> right = pluginIdsIn(columns.get(1));
-        assertEquals(1, right.size(), "the right column is the canvas, alone: " + right);
-        assertTrue(right.get(0).endsWith(CANVAS_SUFFIX), right.get(0));
+        List<String> middle = pluginIdsIn(columns.get(1));
+        assertEquals(1, middle.size(), "the middle column is the canvas, alone: " + middle);
+        assertTrue(middle.get(0).endsWith(CANVAS_SUFFIX), middle.get(0));
+        List<String> right = pluginIdsIn(columns.get(2));
+        assertEquals(1, right.size(), "the right column is the assistant, alone: " + right);
+        assertTrue(right.get(0).endsWith(ASSISTANT_SUFFIX), right.get(0));
     }
 
     /**
@@ -132,12 +144,12 @@ class ViewConfigTest {
      * in, and {@link #theSheetEditorHasItsOwnConfigAndHasTheWholeOfIt} pins the other side.
      */
     @Test
-    void theCanvasHasTheRightColumnToItselfAndTheSheetEditorIsElsewhere() throws Exception {
-        Element right = children(onlyChild(layoutRoot())).get(1);
+    void theCanvasHasTheMiddleColumnToItselfAndTheSheetEditorIsElsewhere() throws Exception {
+        Element middle = children(onlyChild(layoutRoot())).get(1);
 
-        assertEquals("CNode", right.getTagName(),
+        assertEquals("CNode", middle.getTagName(),
                 "the canvas is alone here; a splitter would mean something was stacked back in");
-        assertEquals(1, pluginIdsIn(right).size(), pluginIdsIn(right).toString());
+        assertEquals(1, pluginIdsIn(middle).size(), pluginIdsIn(middle).toString());
         assertFalse(pluginIdsIn(layoutRoot()).toString().contains("SheetEditorView"),
                 "the sheet editor belongs to " + SHEETS_CONFIG + " now; two tabs placing the "
                         + "same view means two of it, each with its own unsaved edits");
@@ -242,15 +254,20 @@ class ViewConfigTest {
         assertTrue(named.contains(CONFIG) && named.contains(SHEETS_CONFIG), named.toString());
     }
 
-    /** A narrow tree column is the point; an even split would leave the canvas cramped. */
+    /**
+     * The board stays the widest column: the trees and the assistant flank it, and an even split
+     * would leave it too cramped to draw an ontology on.
+     */
     @Test
-    void theEntityColumnIsTheNarrowerOfTheTwo() throws Exception {
+    void theCanvasIsTheWidestColumn() throws Exception {
         String[] splits = onlyChild(layoutRoot()).getAttribute("splits").trim().split("\\s+");
-        assertEquals(2, splits.length, "one split fraction per column");
+        assertEquals(3, splits.length, "one split fraction per column");
         double left = Double.parseDouble(splits[0]);
-        double right = Double.parseDouble(splits[1]);
-        assertTrue(left < right, "the tree column should be narrower: " + left + " vs " + right);
-        assertEquals(1.0, left + right, 0.001, "the fractions should cover the tab");
+        double canvas = Double.parseDouble(splits[1]);
+        double assistant = Double.parseDouble(splits[2]);
+        assertTrue(canvas > left && canvas > assistant,
+                "the canvas should be the widest: " + left + " / " + canvas + " / " + assistant);
+        assertEquals(1.0, left + canvas + assistant, 0.001, "the fractions should cover the tab");
     }
 
     // ---------- tabs, not more panels ----------

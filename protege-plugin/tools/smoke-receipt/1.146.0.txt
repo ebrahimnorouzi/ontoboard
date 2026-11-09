@@ -1,0 +1,67 @@
+OntoBoard 1.146.0 - host smoke receipt
+
+The fresh review of 1.145.0 is acted on, and so are two privacy gaps left from 1.144.0. Four
+reviewers read the code, one area each. An independent checker reproduced each serious finding
+and tried to refute it; the findings beyond the checkers were reproduced by their own failing
+tests. Four agents made the fixes, each test-first in its own copy of the tree, on files only it
+owned. Each diff was then read line by line before it was merged. Each change has a test that
+failed first:
+- Saved conversations:
+  - What counts is how things stood when a question was asked. A question asked while nothing was
+    saved, while private or undecided, or before Release never reaches conversations/released/,
+    even if the switch or the choice changes during its answer. A question that could not be
+    saved because the rules failed counts the same.
+  - The private file is always the whole conversation. Decisions, reasoner checks and an answer
+    in flight when a conversation is released reach it.
+  - Notices are true. One is given only after its file was written. When a conversation with a
+    released part goes private, the notice names that part's file, which git still sees. A rules
+    problem names the file that is wrong, says that git may see earlier conversations, and is
+    said once.
+  - The clone's exclude rules hold for a folder with brackets in its name and for a project
+    opened through a junction. A project reached through a junction has one release choice, not
+    two.
+- Keys:
+  - A key typed or remembered goes only to the host it was given for. A preset picked over a
+    saved connection starts a new one. Test connection and Fetch the list do not send a stored
+    key to another address. Saving a connection on another host without a new key forgets the
+    old one.
+  - The benchmark never prints a models file's text: a JSON error gives only the line and
+    column, and every line on the error stream is redacted. It refuses a key under any key-like
+    field name at any depth, in an address, or in place of a variable's name, and it shows a
+    variable's name only when it is an upper-case name.
+  - Redaction no longer eats ordinary text. An address ends at a quote, comma, bracket or space,
+    and a hyphenated word such as sk-learn-compatible-... is no key.
+- Settings and the assistant:
+  - The role line follows the ontology's first save or a Save As while Settings stays open.
+    Save, Reset, Delete and New role write nothing while the line names an old place.
+  - A role text typed and not saved survives a reload.
+  - After Protege is maximised or restored, the context chips are measured at the new width.
+- Benchmark: an answer that offers more than one card - an alternative axiom or definition, a
+  removal, a comment - no longer passes. Before, only the first block was scored, so the order
+  of the blocks decided. results.csv has a new last column, proposals.
+
+Produced on Windows 11 Pro (10.0.26100), with tools/smoke.ps1 and -Dontoboard.selftest=true. The
+verdict was read from what Protege logged. Protege 5.6.9 is the maintainer's own install, with
+ontoboard-1.145.0.jar moved to ~/Documents/ontoboard-jar-backup; Protege 5.5.0 is the throwaway
+copy. In each, this jar was the only ontoboard-*.jar in plugins. Each run was given
+pizzabfo-edit.owl from a clean local clone of the pizza-bfo test project.
+
+  2026-11-08  Protege 5.6.9  OWL API 4.5.29  JRE 11.0.25+9    -Xmx2G    PASS  check 10/10  test 12/12
+  2026-11-08  Protege 5.6.9  OWL API 4.5.29  JRE 11.0.25+9    -Xmx500M  PASS  check 10/10
+  2026-11-08  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121    -Xmx2G    PASS  check 10/10  test 12/12
+
+On both hosts the self-test reported "opened, [SchemaCanvasView, AssistantView] built without
+throwing, and closed again".
+
+The jar is sha256 686d65ab63fb122b85c15bbe3231b413d670c7b15b552928a7210a0b9a440d86, built by
+mvn -o clean package in a copy of the tree. Its unit suite ran on Java 11:
+- 3,407 tests, 0 failures, 0 errors, 3 skipped (3,357 in 1.145.0). The three skipped are as
+  before.
+- BundleConfigurationTest, run against this jar afterwards, passed its 18 tests.
+- Import-Package is unchanged: 263 packages, none added or removed, and no new mandatory
+  import.
+
+No live benchmark was run. The host check failed again: the CPU ran at 90-110 % of its clock
+with 26-39 % of it in use by other work, and one real text-to-axiom request (1,529 tokens,
+num_ctx 8192) took 5 minutes 3 seconds. Its answer, "has constituent element only (exactly 1)
+'element'", was no card OntoBoard would offer, and it scored 0 proposals.

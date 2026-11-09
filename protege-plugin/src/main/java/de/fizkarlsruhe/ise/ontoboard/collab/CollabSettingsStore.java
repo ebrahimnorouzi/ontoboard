@@ -104,14 +104,8 @@ public final class CollabSettingsStore {
      * and merely clicking past a checkbox.
      */
     static String tokenStorageDescription() {
-        String os = System.getProperty("os.name", "");
-        if (os.toLowerCase().contains("win")) {
-            return "the Windows registry, under HKEY_CURRENT_USER\\SOFTWARE\\JavaSoft\\Prefs";
-        }
-        if (os.toLowerCase().contains("mac")) {
-            return "a plist under ~/Library/Preferences";
-        }
-        return "a file under ~/.java/.userPrefs";
+        // Shared with the assistant's remembered API keys since 1.136.0, so both say one thing.
+        return de.fizkarlsruhe.ise.ontoboard.tools.PreferenceStorage.where();
     }
 
     private static Preferences preferences() {

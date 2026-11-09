@@ -1,0 +1,69 @@
+OntoBoard 1.137.0 - host smoke receipt
+
+The assistant column suggests changes as cards you accept, reject or ask to revise:
+definitions and wordings (set or add an annotation), and the removal of the axiom behind a
+reasoner problem, checked first by the reasoner Protege runs, on a copy. Accept is one
+Edit > Undo and names the model as dcterms:contributor. The chat shows bubbles and a status
+line; "What is sent" sits beside Send; presets cover OpenAI and Google Gemini; conversations can
+be saved in the project with every key removed; the benchmark gains definition and repair tasks
+and four hand-written fixtures. Literals keep their type in what is sent
+("9.50"^^xsd:decimal), which is the clash a local model could not see in 1.136.0.
+
+Produced on Windows 11 Pro (10.0.26100), with tools/smoke.ps1 and -Dontoboard.selftest=true. The
+verdict was read from what Protege logged.
+- Protege 5.6.9 is the maintainer's own install, with ontoboard-1.136.0.jar moved out of plugins
+  (to ~/Documents/ontoboard-jar-backup) and this jar the only ontoboard-*.jar in it.
+- Protege 5.5.0 is a throwaway copy of the install, with its OntoBoard jar replaced by this one.
+- Each run was given pizzabfo-edit.owl from a fresh local clone of the pizza-bfo test project
+  (c0a0d49).
+
+  2026-11-06  Protege 5.6.9  OWL API 4.5.29  JRE 11.0.25+9    -Xmx2G    PASS  check 10/10  test 12/12
+  2026-11-06  Protege 5.6.9  OWL API 4.5.29  JRE 11.0.25+9    -Xmx500M  PASS  check 10/10
+  2026-11-06  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121    -Xmx2G    PASS  check 10/10  test 12/12
+
+On both hosts the self-test reported "opened, [SchemaCanvasView, AssistantView] built without
+throwing, and closed again". The 5.5.0 run started late: Protege wrote nothing to its log for
+about 55 minutes after launch, while a local model and a Maven build shared the machine; once
+started it passed as above. Protege's own hierarchy views threw at startup in 5.5.0, before an
+ontology was active, as they do without OntoBoard.
+
+The jar is sha256 dda75ec3bd12b9fa7c30e18a09f7d1599bc16eefb27638181ce5c80e7a964e32, built by
+mvn -o clean package. Its unit suite ran on Java 11:
+- 3,126 tests, 0 failures, 0 errors, 3 skipped (3,019 at the end of round 1).
+- The three skipped are as before: PinchZoomTest; BundleConfigurationTest, which a clean build
+  reaches before the jar exists (run against this jar afterwards, its 18 tests passed); and
+  KoncludeTest's executable-bit test.
+- The bundle's Import-Package against 1.136.0's: three more entries, all OntoBoard's own new
+  packages (assistant, assistant.history, assistant.proposals), all resolution:=optional.
+  Nothing was removed, and there is no new mandatory import.
+
+A fresh-context review of round 2 found no Critical issue and four Important ones, all fixed in
+1.138.0 with a test each:
+- Accept re-validated a suggestion but could replace a value the card never showed, if the
+  person had edited the term meanwhile.
+- "Set" on a term whose value lives in an import added a second value beside it.
+- The repair benchmark did not count unneeded removals as collateral for a problem the ontology
+  already had.
+- Reasoner checks shared the model's thread, had no timeout and ignored Stop.
+This version is therefore not one to release; 1.138.0 is its successor.
+
+Beyond the smoke, the benchmark ran for real against a local model through the same clients the
+column uses: Ollama on this machine, qwen2.5:7b-instruct, one repeat, on the four fixtures and
+the pizza cases (39 cases). Recorded in private/release/1.137.0/live-qwen2.5-7b/:
+
+  task              fixtures              pizza
+  explain-problem   16/16                 0/1
+  definition        10/14                 5/5    (genus named in 15 of 19)
+  repair            7/12 (solved 11/12)   0/1    (unsolved after 3 rounds)
+  context-request   0/2, controls 1/2     0/1, control 0/1
+
+- Repair: four of the solved repairs removed an axiom the ontology needed - its disjointness -
+  instead of the injected one: solved, but collateral, so not a pass.
+- The pizza repair shows the model's own gap, not OntoBoard's: in round 2 it read
+  '"11.00"^^xsd:decimal against Range: xsd:float' and said a float "should be able to
+  accommodate any floating-point value, including decimals". In OWL 2 the two value spaces are
+  disjoint. It removed one price per round and never the range. 1.139.0 adds replace-axiom and a
+  stated hint for exactly this clash.
+- The one error was a read timeout from Ollama on the pizza repair's third round.
+- No key-like string is in the recorded replies.
+Calls took 1.5 to 6 minutes each while builds and Protege shared the machine.

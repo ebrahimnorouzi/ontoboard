@@ -40,7 +40,11 @@ public class RequirementsAction extends ProtegeOWLAction {
                         de.fizkarlsruhe.ise.ontoboard.menu.OperationResult>() {
                     @Override
                     public de.fizkarlsruhe.ise.ontoboard.menu.OperationResult call() {
-                        probed = Toolchain.probe(ProcessRunner.real());
+                        // The assistant's model is checked over the network, so it is added
+                        // here rather than in probe(), which runs programs (1.136.0).
+                        probed = Toolchain.probe(ProcessRunner.real()).plus(
+                                de.fizkarlsruhe.ise.ontoboard.assistant.host.AssistantRequirement
+                                        .probe());
                         return null;
                     }
                 },

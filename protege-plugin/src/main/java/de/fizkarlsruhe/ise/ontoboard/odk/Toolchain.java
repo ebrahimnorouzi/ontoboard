@@ -51,6 +51,14 @@ public final class Toolchain {
             this.remedy = remedy;
         }
 
+        /**
+         * A row probed somewhere else and added with {@link Report#plus} - the assistant's
+         * model, which is checked over the network rather than by running a program.
+         */
+        public static Tool of(String name, State state, String detail, String remedy) {
+            return new Tool(name, state, detail, remedy);
+        }
+
         public String getName() {
             return name;
         }
@@ -112,6 +120,17 @@ public final class Toolchain {
 
         public List<Capability> getCapabilities() {
             return capabilities;
+        }
+
+        /**
+         * This report with one more tool row and the same capabilities. No capability is added
+         * for the row: someone who never sets up a model can still do everything the toolchain
+         * offers, and {@link #isEverythingAvailable} must keep saying so.
+         */
+        public Report plus(Tool tool) {
+            List<Tool> more = new ArrayList<Tool>(tools);
+            more.add(tool);
+            return new Report(more, capabilities);
         }
 
         /** True when everything the user could want to do, they can do. */

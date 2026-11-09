@@ -1,0 +1,51 @@
+OntoBoard 1.138.0 - host smoke receipt
+
+The fixes for the 1.137.0 review, and the cheap visible minors, each with a test that failed
+first:
+- Accept applies only what the card showed. If the term changed meanwhile, the card says so.
+- A value that lives in an import is not duplicated here by "set".
+- The repair benchmark counts unneeded removals as collateral for a problem the ontology already
+  had.
+- Reasoner checks run on their own thread and are skipped by Stop.
+- The footer's buttons wrap after the column narrows, and a finished answer cut inside a proposal
+  says so.
+- A Settings tick no longer stops an answer, and an Error no longer leaves the session busy.
+- Revise keeps the typed text when not sent, and a wording request names the language instead of
+  copying "(en)".
+- Benchmark output and role files are redacted, and server text in Settings is shown as text.
+
+Produced on Windows 11 Pro (10.0.26100), with tools/smoke.ps1 and -Dontoboard.selftest=true. The
+verdict was read from what Protege logged. Protege 5.6.9 is the maintainer's own install, with
+ontoboard-1.137.0.jar moved to ~/Documents/ontoboard-jar-backup and this jar the only
+ontoboard-*.jar in plugins; Protege 5.5.0 is the throwaway copy. Each run was given
+pizzabfo-edit.owl from a fresh local clone of the pizza-bfo test project (c0a0d49).
+
+  2026-11-06  Protege 5.6.9  OWL API 4.5.29  JRE 11.0.25+9    -Xmx2G    PASS  check 10/10  test 12/12
+  2026-11-06  Protege 5.6.9  OWL API 4.5.29  JRE 11.0.25+9    -Xmx500M  PASS  check 10/10
+  2026-11-06  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121    -Xmx2G    PASS  check 10/10  test 12/12
+
+On both hosts the self-test reported "opened, [SchemaCanvasView, AssistantView] built without
+throwing, and closed again". The 5.5.0 run first stalled for two hours with nothing in Protege's
+log. This was not Protege or OntoBoard: the 5.5.0 copy came from a downloaded zip, and 241 of its
+files carried Windows' "downloaded from the internet" mark. smoke.ps1's Start-Process therefore
+waited on a hidden security prompt. Once the copy was unblocked, the run took a minute. The same
+mark explains the 55-minute delay of 1.137.0's 5.5.0 run. In that copy, cellfie-2.2.4 and
+swrltab-plugin-2.1.3 failed to install, as they always do there; they are not OntoBoard's.
+
+The jar is sha256 5174f78ba9d5fe3a613497a32963f04c2a02c6f62cb52684b02325beee2c8912, built by
+mvn -o clean package. Its unit suite ran on Java 11:
+- 3,144 tests, 0 failures, 0 errors, 3 skipped (3,126 in 1.137.0).
+- The three skipped are as before; BundleConfigurationTest run against this jar afterwards passed
+  its 18 tests.
+- The bundle's Import-Package is identical to 1.137.0's (262 entries).
+
+A fresh-context review of 1.138.0 found no Critical issue. It found five Important ones, fixed in
+1.139.0 with a test each:
+- Passing a reasoner configuration made HermiT refuse xsd:date and similar datatypes, so every
+  check on such an ontology failed. It also leaked a timer thread.
+- The 60 s timeout bounded each tableau test, not the check. Stop could not interrupt a running
+  check.
+- A wording request read "(SEM)" at the end of an untagged label as a language tag.
+- A failure outside the reasoner call could leave a card "Checking..." forever.
+- Accepting a label invalidated the same answer's definition card.
+This version is therefore not one to release; 1.139.0 is its successor.

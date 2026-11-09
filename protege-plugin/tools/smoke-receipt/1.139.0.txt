@@ -1,0 +1,69 @@
+OntoBoard 1.139.0 - host smoke receipt
+
+The assistant can now suggest OWL as well as annotations and removals. Each change has a test
+that failed first:
+- add-axiom and replace-axiom proposals in Manchester syntax, read with the OWL API's parser
+  over the ontology's own names. An unknown name is reported, never declared.
+- "Write as OWL..." asks for a sentence about the term. "Suggest a better axiom" sits on a
+  semantics line.
+- The reasoner checks an addition or replacement on a copy before Accept, and says which
+  classes become unsatisfiable. An "only" with no "some" beside it gets a note.
+- A justification that puts a typed value against a range of another value space says so:
+  in OWL 2, xsd:decimal and xsd:float have disjoint value spaces.
+- What is sent quotes a name with a space, so that what the model copies parses back.
+- The fixes for the 1.138.0 review's Important findings: HermiT accepts xsd:date again, the
+  60 s limit bounds the whole check, Stop interrupts it, "(SEM)" is not read as a language, a
+  card never stays "Checking...", and accepting a label leaves the same answer's definition
+  card good.
+
+Produced on Windows 11 Pro (10.0.26100), with tools/smoke.ps1 and -Dontoboard.selftest=true. The
+verdict was read from what Protege logged. Protege 5.6.9 is the maintainer's own install, with
+ontoboard-1.138.0.jar moved to ~/Documents/ontoboard-jar-backup and this jar the only
+ontoboard-*.jar in plugins; Protege 5.5.0 is the throwaway copy, unblocked (see 1.138.0). Each
+run was given pizzabfo-edit.owl from a fresh local clone of the pizza-bfo test project.
+
+  2026-11-06  Protege 5.6.9  OWL API 4.5.29  JRE 11.0.25+9    -Xmx2G    PASS  check 10/10  test 12/12
+  2026-11-06  Protege 5.6.9  OWL API 4.5.29  JRE 11.0.25+9    -Xmx500M  PASS  check 10/10
+  2026-11-06  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121    -Xmx2G    PASS  check 10/10  test 12/12
+
+On both hosts the self-test reported "opened, [SchemaCanvasView, AssistantView] built without
+throwing, and closed again".
+
+The jar is sha256 c3d3b8dda0314e0e675477a16d05a6e53569558f53877b9518a550aef9525344, built by
+mvn -o clean package. The build ran in a copy of the tree, because the IDE's Java language server
+writes into target/ while a build runs. Its unit suite ran on Java 11:
+- 3,192 tests, 0 failures, 0 errors, 3 skipped (3,144 in 1.138.0).
+- The copy first left out collab/node_modules, which skipped CollabLiveTest's 12 tests. Run again
+  in the same copy with node_modules, they passed 12/12.
+- BundleConfigurationTest, run against this jar afterwards, passed its 18 tests.
+- The bundle's Import-Package is identical to 1.138.0's (262 entries).
+
+The repair benchmark ran again against the same local model as 1.137.0: Ollama, qwen2.5:7b-instruct,
+one repeat, on the four fixtures and pizza (13 cases):
+
+  repair            fixtures      pizza
+  1.137.0           7/12          0/1
+  1.139.0           10/12         0/1
+
+- The datatype-clash fixture is now repaired in one round.
+- One fixture case ended in an error from the model call.
+- The pizza case is the instructive failure. The model now names the clash correctly ("xsd:decimal
+  and xsd:float have disjoint value spaces") and proposes the right repair: replace
+  "has value Range: xsd:float" with "has value Range: xsd:decimal". But it wrote 'has value'
+  without the quotes the context shows, so OntoBoard matched nothing and refused it, three
+  rounds running. 1.140.0 reads such names. Re-scored offline with 1.140.0, the same recorded
+  answer solves the pizza case in round 1.
+- A slip in the run script wrote every file's tables to one folder. The verdicts above come from
+  the run's log, and the last three files' tables were kept.
+
+A fresh-context review of 1.139.0 found no Critical issue and four Important ones, fixed in
+1.140.0 with a test each:
+- A card showed the model's text, but Accept wrote the parsed axiom, and the two could differ.
+  Text after a data range was dropped, a term named twice became "DisjointWith owl:Thing", and
+  a synonym or "Thing" resolved to a term the card did not name.
+- Accepting one card of an answer, such as a label, made the same answer's axiom cards invalid.
+- Revise on an axiom card sent "Revise your proposal for null null".
+- HermiT can lose a single interrupt between two tableau tests, so neither the 60 s limit nor
+  Stop reliably ended a check.
+A fifth, re-graded to Important: each check's ontology copy stayed reachable for up to 60 s.
+This version is therefore not one to release; 1.140.0 is its successor.

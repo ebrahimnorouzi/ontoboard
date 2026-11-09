@@ -1,0 +1,41 @@
+Prefix(:=<http://example.org/ontoboard-fixtures/materials#>)
+Prefix(owl:=<http://www.w3.org/2002/07/owl#>)
+Prefix(rdf:=<http://www.w3.org/1999/02/22-rdf-syntax-ns#>)
+Prefix(rdfs:=<http://www.w3.org/2000/01/rdf-schema#>)
+Prefix(xsd:=<http://www.w3.org/2001/XMLSchema#>)
+Prefix(obo:=<http://purl.obolibrary.org/obo/>)
+Prefix(dcterms:=<http://purl.org/dc/terms/>)
+
+Ontology(<http://example.org/ontoboard-fixtures/inconsistent>
+Annotation(dcterms:title "Materials, inconsistent (OntoBoard benchmark fixture)")
+Annotation(rdfs:comment "Inconsistent: a sample is typed as both a metal and a polymer, which are disjoint - the mistake a knowledge graph makes when two sources disagree. Written for OntoBoard; CC0.")
+
+Declaration(Class(:Material))
+Declaration(Class(:Metal))
+Declaration(Class(:Polymer))
+Declaration(Class(:Ceramic))
+Declaration(NamedIndividual(:sample7))
+Declaration(NamedIndividual(:sample8))
+Declaration(AnnotationProperty(obo:IAO_0000115))
+Declaration(AnnotationProperty(dcterms:title))
+
+AnnotationAssertion(rdfs:label :Material "material"@en)
+AnnotationAssertion(rdfs:label :Metal "metal"@en)
+AnnotationAssertion(rdfs:label :Polymer "polymer"@en)
+AnnotationAssertion(rdfs:label :Ceramic "ceramic"@en)
+AnnotationAssertion(rdfs:label :sample7 "sample 7"@en)
+AnnotationAssertion(rdfs:label :sample8 "sample 8"@en)
+
+AnnotationAssertion(obo:IAO_0000115 :Metal "A material whose atoms are held together by metallic bonding.")
+AnnotationAssertion(obo:IAO_0000115 :Polymer "A material made of long chains of repeating molecular units.")
+AnnotationAssertion(obo:IAO_0000115 :Ceramic "A material that is an inorganic, non-metallic solid, usually made by firing.")
+
+SubClassOf(:Metal :Material)
+SubClassOf(:Polymer :Material)
+SubClassOf(:Ceramic :Material)
+DisjointClasses(:Metal :Polymer :Ceramic)
+
+ClassAssertion(:Metal :sample7)
+ClassAssertion(:Polymer :sample7)
+ClassAssertion(:Ceramic :sample8)
+)

@@ -184,6 +184,18 @@ were not in the editor, and nothing anywhere said so.
 
 It exits 1 if a single cell changed, so it can gate a build.
 
+## The assistant benchmark
+
+The assistant's benchmark compares models on the same cases and writes a table. It has five
+tasks: explaining a reasoner problem, asking for a missing term, writing a definition,
+repairing a problem in a loop where the reasoner checks each removal, and writing a sentence as
+an axiom that the reasoner compares with the one held back. It is run the same way,
+from this classpath, with
+`de.fizkarlsruhe.ise.ontoboard.assistant.bench.AssistantBench`. The cases, the ontology snapshots
+they were made from, what each score means and how to run it are in
+[benchmarks/assistant](https://github.com/ebrahimnorouzi/ontoboard/tree/main/benchmarks/assistant).
+Keys come only from environment variables and are never written to its output.
+
 ## The test suite
 
 ```
