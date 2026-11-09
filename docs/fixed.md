@@ -13,6 +13,240 @@ release notes on
 [the releases page](https://github.com/ebrahimnorouzi/ontoboard/releases), carries the same
 record for that version.
 
+- **A datatype stood alone in a corner of the board, fixed in 1.135.1.** Found by the tester who
+  prepared the cookbook scenario: after the Price pattern, a `float` ellipse sat at the bottom left,
+  outside every frame, with no line. Since ranges wait for a selection, the arrangement no longer saw
+  the line from the property to its datatype, because JGraphX leaves cells it does not show out of
+  the lists it hands back. The arrangement reads every line now, so a range's datatype stands with its
+  property in the *Data properties* section. `DatatypeBesideItsPropertyTest`, red first.
+
+- **Adding a subclass rearranged the frame, fixed in 1.135.1.** Two testers saw it: with each
+  *New subclass…* the siblings switched between two and three columns, and a class jumped 1,640 px.
+  Subclasses were spread over columns of equal height, so every new one moved where every column
+  broke, and the trees of a frame went biggest first, so one growing past another swapped them.
+  Subclasses now fill a column before the next starts, and trees go in label order. A subclass added
+  last moves nothing; one added between others moves those after it by one place.
+  `HierarchyColumnsTest`. Balanced columns stay for the trees themselves: measured on every pattern
+  in the library, filling those ran lines together on two of them.
+
+- **A class found and added landed far from its superclass, fixed in 1.135.1.** Found by a tester:
+  *disposition*, added with *Find* and Enter, stood 1,880 px from *realizable entity* in a pattern's
+  frame, its line crossing the board. The study's imported IAO terms did the same, with lines of about
+  a thousand pixels. A class from an import, or found and added, whose superclass stands in a frame
+  now stands under it there, and so does what is under it, own classes included.
+  `ImportedClassesUnderTest`.
+
+- **Frames appeared for patterns nobody imported, fixed in 1.135.1.** Found twice by testers: a
+  "publication" frame, because an IAO import and NFDIcore's dataset pattern between them held most of
+  that pattern's distinctive terms, and a "Classification" frame for the Concept class of *Task
+  execution*. Recognising a pattern by its namespace or its terms is for a release that merged its
+  imports, or an ontology opened as it is. An ontology that imports patterns is now framed by those
+  imports only. `ImportedPatternsTest`.
+
+- **An import taken back with *Edit > Undo* still looked imported, fixed in 1.135.1.** Found by a
+  tester: *Imported terms...* listed the pattern's module as before, and the status line still said it
+  had been imported, with no frame on the board. The list now says "not imported now", its details say
+  so first, and the status line names what is no longer imported. `ImportTakenBackTest`.
+
+- **Releases carried two labels and two definitions for some IAO and RO terms, fixed in 1.135.1.**
+  Found by a modelling tester running ROBOT's report on the study's releases: 20 errors, 12 of them
+  `multiple_labels` and 8 `multiple_definitions`. The bundled NFDIcore, MWO and PMDco patterns
+  carried older copies of IAO's and RO's text beside the current ones: *information content entity*
+  labelled with and without a language, *data entity* also labelled *data item*, superseded
+  definitions of *concretizes* and *is concretized as*. In 25 patterns they now carry what IAO says
+  today, with *data item* and *realized in* kept as alternative terms. ROBOT 1.9.8 also counts a term's
+  labels in two languages as multiple labels, so the German labels PMDco gives and the Italian ones
+  of the Place pattern are still reported on a release that carries them.
+
+- **Ethnicgroup's properties had a path on the harvesting machine for their IRIs, fixed in
+  1.135.1.** Found by a tester: its 14 *links to* properties came out as `file:/ontoboard-reading/...`,
+  and *Imported terms* listed them as chosen but not in the module. The pattern file wrote `xmlns:base`
+  where `xml:base` belongs. The properties now have the pattern's own namespace.
+
+- **The first new term of a session read every release on the Swing thread, fixed in 1.135.1.**
+  Found by a code review. Released identifiers are never minted again since this release, and finding
+  them reads the project's releases, once each until they change. The releases are now read on a
+  thread of their own when a project opens. `TermMinterTest`.
+
+- **A line ran through an is-a arrowhead, and a label sat on a frame's border, fixed in 1.135.1.**
+  Found on the cookbook board: `∃ has part` crossed the arrowhead under *data collection*, and its
+  label straddled the *dataset* frame's outline. Other testers saw lines across a frame's name. The
+  router now prices running into another class's arrowhead and through a frame's title band, and a
+  label astride a frame's outline or on its name costs what one covering a line does.
+  `EdgeRouterTest` routes the cookbook's case; `PatternBoardsTest` measures lines through arrowheads
+  and draws the cookbook's three patterns together.
+
+- ***Collection Entity Pattern* was called "same as collection", fixed in 1.135.1.** Found preparing
+  the cookbook scenario: it has the class Entity, which *Collection Pattern* lacks. Patterns that only
+  declare the same ontology IRI are now "another version of", and the summary says how many terms each
+  has. `PatternTwinNoteTest`.
+
+- **The mark of a defined class read as an equals sign, fixed in 1.135.1.** Found by a tester: at
+  100% on an ordinary screen, `≡ publication` read as `= publication`. Measured in Helvetica Neue,
+  Segoe UI and Dialog, the character is three faint bars no taller than `=` at 13 px. A defined class
+  now also has a badge on its box, a disc holding three bars drawn as strokes, as Protégé's class tree
+  marks one. `DefinedClassBadgeTest`.
+
+- **ELK missed a class made unsatisfiable through an inverse property, said since 1.135.1.** Found
+  by a tester: picking *quality of* for a value's relation made it unsatisfiable through the inverse
+  *has quality*. HermiT saw it, but ELK, which the build uses as ODK's does, ignores inverse
+  properties, so the test passed and the class was released. When the ontology goes beyond OWL 2 EL,
+  the build and *Release...* now ask HermiT too, for ten seconds at most, and warn with the classes it
+  finds. The build still passes, as ODK's would. `InProcessTargetsTest`.
+
+- **A pattern without labels failed every later build, fixed in 1.135.1.** Found preparing the
+  cookbook scenario: 58 of the library's patterns have terms without a label, and the two food recipe
+  patterns have none at all. Imported, their boxes read `food_recipe`, and the label check a project
+  starts with failed from then on. The module a pattern's import writes now labels such a term from
+  its name, marks the label as made by OntoBoard, and the result lists them. `NamesAsLabelsTest`.
+
+- **On macOS and Linux the board's right-click menu never opened, fixed in 1.135.1.** Found
+  by a scripted walkthrough of a user study in Protégé 5.6.9 on macOS, replaying each platform's
+  order of mouse events, and confirmed in the JDK's macOS event code. Swing raises the popup
+  trigger on the press on macOS and Linux, and on the release on Windows; the board asked only at
+  the release. So there it offered no *New subclass…* and no *Relate to another term…*, and said
+  nothing. The board is developed and smoke-tested on Windows, where it worked. The menu now
+  opens at the release on every platform, when either the press or the release was the trigger and
+  the mouse did not move, so a right-drag still pans. `PopupGestureTest` replays both orders.
+
+- **Extending an imported pattern stopped at its first relation, fixed in 1.135.1.** *Relate to
+  another term…*, *Set parent or type…* and the property list of *Create relation* offered only the
+  ontology's own terms, though the board has drawn imported ones since 1.131.0. After importing a
+  pattern, its classes and its properties were missing from those lists, and nothing said why. Found
+  rehearsing the same study's "import a pattern and extend it". The lists now take the imports'
+  terms too, sorted by label instead of IRI. `ExtendingAnImportedPatternTest`,
+  `RelationDialogPropertiesTest`.
+
+- **Boxes overlapped after a pattern import, fixed in 1.135.1.** Reported before the study:
+  overlaps on the board, a newly imported pattern's among them. Arranging decided which terms
+  belonged in a frame by where they stood, so a class whose old position fell where a frame was
+  now planned counted as inside it, stayed there and covered the frame's own boxes. Membership now
+  comes from the plan. In the same release a pattern is drawn as its hierarchy instead of a grid in
+  IRI order, boxes are sized to their labels, and lines are routed around boxes. `PatternBoardsTest`
+  draws every pattern in the library and finds no two boxes overlapping.
+
+- **One imported term drew eighty, fixed in 1.135.1.** Taking `report` from IAO puts some
+  eighty terms in the module, the ones it depends on, individuals among them. The board drew them
+  all and buried the one asked for. Terms an import holds only because a chosen term needs them are
+  no longer drawn. *Imported terms* lists them, and *Find* draws any of them.
+
+- **New ODK project said the board was open when it was not, fixed in 1.135.1.** On a fresh
+  Protégé the dialog after *New ODK project...* said the new file was on the OntoBoard tab, which had
+  never been opened. That was false exactly for someone reading it for the first time. The tab is
+  now added if it is missing, and brought forward before that dialog.
+
+- ***Show labels instead of IRIs* in the quality report did nothing, fixed in 1.135.1.** The option
+  went to ROBOT's own report. Since `RuleRunner` took that report's place inside the OSGi bundle,
+  every finding showed a bare IRI with the box ticked. A finding now shows the label and the short
+  name, `label (ID)`. `QualityReportSubjectTest`.
+
+- **A second pattern's frame looked like the whole pattern while its main class stood elsewhere,
+  fixed in 1.135.1.** Found by five of eight testers before a user study: after a second PMDco
+  pattern was imported, its frame held two classes, while the class the task was about stood in the
+  first pattern's frame a thousand pixels away. The status line said all six were in the new frame.
+  Which frame a shared class went to depended on the patterns' names in alphabetical order, so a
+  pattern imported later could also take classes out of a frame already on the board and leave
+  their subclasses behind. A shared class now stays with the pattern that came first. The other
+  frame gets a note naming its classes drawn elsewhere and where, and the status line counts what
+  is in the frame.
+
+- **A superclass was drawn below its own subclass, fixed in 1.135.1.** *process*, brought along by
+  an import as the superclass of a pattern's *planned process*, stood at the bottom of the board,
+  1,200 pixels below it, because the outline is drawn below the frames. A superclass that no frame
+  holds now stands in its subclass's frame, above it.
+
+- **Dragging the board inside a frame moved the frame, fixed in 1.135.1.** Found by a code review.
+  After an import the new frame fills the window, and the guide's next words were "drag the board
+  to move it". The drag took the frame and every class in it, and counted as arranging by hand, so
+  the board stopped arranging itself. Subclasses made after that could land across the frame's
+  border. The inside of a frame now pans like empty board; a frame is moved by its title. On a
+  board arranged by hand, a new subclass stays inside its parent's frame, which grows to hold it.
+
+- **Hand-made arrangements could be thrown away by the next new class, fixed in 1.135.1.** A board
+  saved before 1.135.1 did not say whether it was arranged by hand, and was arranged afresh at its
+  first new class. *Undo* after *Arrange → Outline* also lost the flag. Such boards now count as
+  arranged by hand, undo keeps the flag, and every automatic arrangement is a step undo takes back.
+
+- **The board's frames jumped when a class was added, fixed in 1.135.1.** Each arrangement folded
+  the frames into rows afresh, so one frame growing moved the frame being worked in by up to 1,640
+  pixels. Frames now keep their rows and their order.
+
+- **Lines ran on top of each other and labels sat on other lines, fixed in 1.135.1.** Measured by a
+  tester on the study's board: subclass lines between frames shared a stretch for up to 680 pixels,
+  so one class seemed to hang off another's parent, and an arrow ran 4 px beside a subclass line for
+  357 pixels. The router did not see subclass lanes at all. It now routes every line on one grid,
+  lanes included, keeps lines 12 px apart, and places labels after every line has its route. On a
+  board of 120 boxes it left a third of the lines unrouted, drawn through boxes; it now routes them
+  all, in a tenth of the time.
+
+- **Importing again from a source already imported left Protégé holding a detached module,
+  fixed in 1.135.1.** Found by a tester who imported a pattern twice, then a second term from IAO:
+  selecting a term then threw *Manager on ontology ... is null* until Protégé was restarted. The
+  module was taken out of the manager and loaded again, and the import that followed changed
+  nothing, so Protégé kept the old one in its list. The module is now changed in place. The library
+  also says when a pattern is already imported.
+
+- ***Save and build* raised a false "changed outside of Protégé", fixed in 1.135.1.** In a project
+  opened again, closing *Save first?* activated the main window while the save was still running,
+  and Protégé's own check saw a file newer than its record. The save now runs before the question
+  closes. *Release...* asks *Save first?* too: a release made with unsaved changes could not be
+  rebuilt from the edit file.
+
+- **A test on a deleted class failed the build for ever, fixed in 1.135.1.** A SPARQL path of zero
+  steps matched the class's IRI after the class was gone, and *Write a test* refused to replace the
+  test. The query now asks for a class, and a test can be replaced.
+
+- ***Definition…* deleted a term's other definitions, fixed in 1.135.1.** Found by a code review:
+  it removed every definition, in every language and with its annotations, and wrote one back in
+  English. It now edits the one it shows and keeps the rest.
+
+- **Release notes, identifiers and term lists, fixed in 1.135.1.** Release notes listed only classes
+  and could show a German label where the board showed the English one; they now cover properties,
+  in English first, and a removed property is refused like a removed class. An identifier deleted
+  after a release could be minted again for a new term; identifiers in any release are now taken. A
+  term list written with CURIEs did not count its terms as chosen, so the board left out their
+  parents, and every rebuild of the module here dropped those terms; both now read a CURIE as
+  ROBOT does. Modules now carry the labels their source gives the annotation properties they
+  declare.
+
+- **The `test` build reasoned without the imports, fixed in 1.135.1.** Found by a tester who ran
+  the study's releases through HermiT and ELK: a class that can have no members only because of an
+  imported range passed `test`, because the build reasoned on a copy whose imports nothing loaded,
+  and *Release...* then refused with "Reason failed: null". The build now reasons over the imports,
+  and both say which classes can have no members, by label, and that *Edit → Undo* takes the last
+  relation back.
+
+- ***Open existing ODK project...* said "Project opened" when it was not, fixed in 1.135.1.** With
+  an ontology of the same IRI already open - the same project started again in another folder -
+  Protégé keeps the one it has and opens nothing, and the participant went on editing the old
+  project. Both *Open existing ODK project...* and *New ODK project...* now say so, and that Protégé
+  has to be started again.
+
+- **Smaller dialog defects, fixed in 1.135.1.** The pattern library's confirmation named a module
+  file the import did not write for 49 of 157 patterns, and did not say when a term clicked in its
+  list narrowed the import to that term. It now names the right files and offers *Add all*. Its
+  search also finds a pattern by its terms' labels. Escape closes the pattern library, *Find terms*,
+  *Imported terms* and *History*. *New ODK project* refuses a Base IRI with a second address in it, as
+  typing after the address that is filled in gives. *Project created* fits a laptop screen. *Open
+  existing ODK project* brings the OntoBoard tab forward. "1 terms" reads "1 term". The self-test
+  says which OntoBoard it tested. The window with a build's or a release's result cut its message
+  off at the right, because a CSS pixel is 1.3 screen pixels to Swing. A double-click inside a
+  frame renamed the frame; it now makes a class there, as on empty board, and the frame's title is
+  where it is renamed. A search in the pattern library kept the library's order and selected its
+  first row, so a search for `place` selected a pattern about material entities with *Place Pattern*
+  tenth; a pattern whose name matches now comes first. A defined class whose label is its IRI's
+  name showed the name twice, `≡ Place` over `Place`. Two NFDIcore patterns' descriptions named classes NFDIcore has made
+  obsolete.
+
+- **Smaller board defects, fixed in 1.135.1.** A property inside a nested class expression was
+  shown by its identifier, `BFO_0000051`, not its label. Rules from an imported module were drawn
+  on the board (a module cut from RO brought four), and a property from a class to itself was drawn
+  as a dot. Long labels ran out of their boxes. *New subclass…* accepted an empty name and made a
+  class with no label; it now asks for a name, and asks before reusing one. The confirmation for
+  deleting an axiom showed it with full IRIs and named a menu item that had been renamed. After
+  *Fit*, + and 100% zoomed about empty board; they now zoom about the selection or the board's
+  content. Faded text was drawn at a contrast of 1.58:1; fading is now lighter.
+
 - **A project that passed *Build...* in Protégé failed its QC workflow on GitHub, fixed in
   1.134.2.** Found when the two example projects ran QC on GitHub for the first time. ROBOT 1.9.8
   failed `pizza`'s `check_labels` on four pattern classes - `Concept`, `Object`, `Price` and
