@@ -42,8 +42,8 @@ Each automatic arrangement is a step *Undo* on the board takes back.
 | Design patterns the ontology imports, or has merged in | a frame each, named after the pattern, in rows along the top, each frame keeping its row and place when the board is arranged again. Inside it, the pattern's classes as a hierarchy, as below, with their superclasses that no frame holds, and the classes under them: your own, and those from an import or found and added |
 | Classes - the TBox | a class, and its subclasses below it, one under the other and indented, more columns when there are more of them than a column holds (520 px), each column filled before the next, so a subclass added moves only those after it; trees side by side in label order, in a block the shape of a screen |
 | A class's restrictions, unions, enumerations | a grey node below the class, with its subclasses |
-| Individuals - the ABox | a band below all the classes: each class's individuals under that class, in a column; an individual's values right below it |
-| Object properties, data properties | each a frame of its own, as its property hierarchy: right of the classes, or below them when that gives the board more nearly a screen's shape. A data property's datatype stands under it |
+| Individuals - the ABox | a band below all the classes: each class's individuals under that class, in a column; an individual's values right below it, the column as wide as they reach |
+| Object properties, data properties | each a frame of its own, as its property hierarchy: right of the classes, or below them when that gives the board more nearly a screen's shape. Two properties that are each other's inverse stand side by side, so the line between them is short, and two hierarchies that mirror each other stand side by side with their tops level; where there is no room beside, the partner goes into a band below. The same ontology gets the same arrangement whatever order its axioms come in. A data property's datatype stands under it |
 
 Lines are routed around the boxes, at right angles, on a board of up to 150 drawn lines. No two
 lines share a stretch or run closer than 12 px, except at a box with no point left, where two lines
@@ -104,7 +104,9 @@ A subclass arrow (⊑) is a hollow-headed solid line; an equivalence is two of t
 
 **From the description view to the board.** Select a line in Protégé's description of a class -
 *SubClass Of: ∃ hasTopping.Cheese* - and the board selects the arrows that draw it, with the terms
-at their ends, and scrolls to them.
+at their ends, and scrolls to them. A property's description works the same way: *Domains*,
+*Ranges*, *SubProperty Of*, *Inverse Of*, *Equivalent To*, *Disjoint With* and *SuperProperty Of
+(Chain)* select the line at the property's box.
 
 ## Drawn
 
@@ -153,9 +155,15 @@ reasoner still uses it.
 ## On a large board
 
 On any board, disjointness, domains and ranges, and a rule's lines are drawn for the term in focus -
-select it - rather than all at once (106 and 118 lines on MWO). Selecting a term also brings it and
-everything it is connected to forward and fades the rest; a click on empty board ends that, and
-*Focus* on the toolbar turns it off.
+select it - rather than all at once (106 and 118 lines on MWO). They are routed round the boxes and
+off the frames' names when they appear, among the lines already drawn, which keep their routes; and
+one that stays shown when the selection changes - its other end clicked, a second term added - stays
+where it is. A click answers at once: on a class many lines meet, its lines appear over a moment as
+they are routed, and none is drawn through a box meanwhile; *Export image...* routes any still
+waiting before it draws, so a picture taken in that moment has them all. Resizing a term, a frame or
+a sticky note routes the board again, as moving one does, and the board keeps the new size.
+Selecting a term also brings it and everything it is connected to forward and fades the rest; a
+click on empty board ends that, and *Focus* on the toolbar turns it off.
 
 More than 150 relations, and lines drawn alike become a mesh across the whole board. So on a board
 that size, the other relations, and any line longer than 1,600 px, are drawn faintly until one of

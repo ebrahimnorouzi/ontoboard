@@ -28,7 +28,7 @@ If you do not know what to ask yet, use the grouping dropdown beside the search 
 | grouping | when it helps |
 |---|---|
 | **Suggested** | ranked against the ontology you have open — the default whenever that is possible |
-| **By publisher** | who actually published the pattern; the ODP portal is a catalogue of submissions from thirteen different places, so this is the division that carries information |
+| **By publisher** | who actually published the pattern; the ODP portal is a catalogue of submissions from twelve different places, so this is the division that carries information |
 | **By collection** | which family it came from: the ODP portal, BFO, MWO, NFDIcore or PMDco |
 | **By category** | structural, behavioral, information, conceptual, temporal, spatial, observation |
 | **By name** | when you know roughly what it is called |
@@ -110,7 +110,7 @@ consistent with them.** Four are not, and each page says so:
 ### What is NOT checked, and why
 
 **Imports are not resolved.** 101 of the 162 patterns declare `owl:imports`. Among those targets
-are five on a server that stopped answering, two unresolvable `file:/schemas/` URIs, and a portal
+are five on a server that stopped answering and a portal
 whose HTTPS endpoint does not respond. Resolving them would make the check depend on the weather:
 the same pattern would be verified today and unverified tomorrow, and a pattern that passed only
 because its import failed to download would be indistinguishable from one that passed on its own
