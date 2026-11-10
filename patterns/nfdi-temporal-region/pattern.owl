@@ -87,9 +87,7 @@
     <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Class"/>
     <rdfs:subClassOf rdf:resource="http://purl.obolibrary.org/obo/BFO_0000031"/>
     <ns1:IAO_0000115 xml:lang="en">A generically dependent continuant that is about some thing.</ns1:IAO_0000115>
-    <ns1:IAO_0000115>An information content entity is an entity that is generically dependent on some artifact and stands in relation of aboutness to some entity.</ns1:IAO_0000115>
     <rdfs:label xml:lang="en">information content entity</rdfs:label>
-    <rdfs:label>information content entity</rdfs:label>
   </rdf:Description>
   <rdf:Description rdf:about="http://purl.obolibrary.org/obo/BFO_0000222">
     <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>

@@ -122,9 +122,50 @@ class QuestionTestsTest {
                 hasTopping.getIRI(), null, 2).isEmpty());
     }
 
+    /**
+     * A test whose class was deleted has nothing left to break its rule.
+     *
+     * <p>It listed the deleted class's own IRI as breaking it: {@code rdfs:subClassOf*} matches
+     * its starting IRI in zero steps whether or not the ontology says anything about it. The
+     * build failed on that bare IRI from then on, and nothing in Protege removes a test.
+     */
+    @Test
+    void aTestOnADeletedClassFindsNothing() {
+        IRI deleted = IRI.create(NS + "Deleted");
+        assertEquals(java.util.Collections.<String>emptyList(), broken(
+                QuestionTests.Template.EVERY_SUBCLASS_HAS_SOME, deleted, hasBase.getIRI(),
+                null, 0));
+        assertEquals(java.util.Collections.<String>emptyList(), broken(
+                QuestionTests.Template.EVERY_ONE_HAS_A_LABEL, deleted, null, null, 0));
+    }
+
     @Test
     void theFileIsNamedAfterTheQuestion() {
         assertEquals("does_every_pizza_have_a_base.rq",
                 QuestionTests.fileNameFor("Does every pizza have a base?"));
+    }
+
+    /** A failed build tells a question's test from the label check by the query it wrote (1.135.1). */
+    @Test
+    void everyTemplateIsReadBackFromTheQueryItWrote() {
+        IRI cls = IRI.create("http://example.org/egg#dataset");
+        IRI property = IRI.create("http://example.org/egg#hasPart");
+        IRI second = IRI.create("http://example.org/egg#report");
+        for (QuestionTests.Template template : QuestionTests.Template.values()) {
+            String query = QuestionTests.query(template, "Q?", cls, property, second, 2);
+            for (String text : new String[] {query, query.replace("\n", "\r\n")}) {
+                assertEquals(template, QuestionTests.templateOf(text), template.name());
+                assertEquals(cls, QuestionTests.classIn(text), template.name());
+            }
+        }
+        for (QuestionTests.Template template : new QuestionTests.Template[] {
+            QuestionTests.Template.EVERY_SUBCLASS_HAS_SOME,
+            QuestionTests.Template.EVERY_INDIVIDUAL_HAS, QuestionTests.Template.NO_MORE_THAN}) {
+            assertEquals(property, QuestionTests.propertyIn(
+                    QuestionTests.query(template, "Q?", cls, property, null, 2)), template.name());
+        }
+        assertEquals(null, QuestionTests.templateOf(null));
+        assertEquals(null, QuestionTests.templateOf("# Every class should carry an rdfs:label\n"
+                + "SELECT ?term WHERE { ?term a owl:Class . FILTER NOT EXISTS { ?term rdfs:label ?l } }"));
     }
 }

@@ -199,6 +199,78 @@ class ImportedTermsTest {
         assertEquals(2, upper.countChosen());
     }
 
+    /**
+     * A term list written with CURIEs names its terms as ROBOT reads them. With the project's own
+     * prefix, {@code upper:object} is the module's object: chosen, and not a second term that
+     * is missing from the module.
+     */
+    @Test
+    void aCurieWithTheProjectsPrefixNamesTheTermItStandsFor() throws Exception {
+        edit.getOWLOntologyManager().getOntologyFormat(edit).asPrefixOWLOntologyFormat()
+                .setPrefix("upper:", UPPER);
+        Files.write(termsFile.toPath(), ("# Terms extracted into upper_import.owl\n"
+                + "# Source: http://example.org/upper\n"
+                + "upper:object # object\n").getBytes(StandardCharsets.UTF_8));
+
+        ImportedTerms.Source upper = ImportedTerms.of(edit, root,
+                new File(root, "src/ontology")).get(0);
+
+        assertEquals(ImportedTerms.How.CHOSEN, term(upper, "object").getHow());
+        assertEquals(1, upper.countChosen(), "one term on the list, not one more missing from it");
+        assertEquals(Arrays.asList("object"), term(upper, "continuant").getNeededBy());
+    }
+
+    /**
+     * And with ROBOT's own OBO prefixes, the way ODK term lists are often written. With
+     * {@code IAO:0000088 # report} nothing counted as chosen, so the board left out
+     * {@code document}, the parent report is drawn under. Taking report off finds its line.
+     */
+    @Test
+    void anOboCurieNamesItsTermAndTakingItOffFindsTheLine() throws Exception {
+        String obo = "http://purl.obolibrary.org/obo/";
+        OWLOntologyManager upper = OWLManager.createOWLOntologyManager();
+        OWLDataFactory df = upper.getOWLDataFactory();
+        OWLOntology iao = upper.createOntology(IRI.create(obo + "iao.owl"));
+        upper.addAxiom(iao, df.getOWLSubClassOfAxiom(
+                df.getOWLClass(IRI.create(obo + "IAO_0000088")),
+                df.getOWLClass(IRI.create(obo + "IAO_0000310"))));
+        for (String[] named : new String[][] {{"IAO_0000088", "report"},
+            {"IAO_0000310", "document"}}) {
+            upper.addAxiom(iao, df.getOWLAnnotationAssertionAxiom(df.getRDFSLabel(),
+                    IRI.create(obo + named[0]), df.getOWLLiteral(named[1])));
+        }
+        File imports = new File(root, "src/ontology/imports");
+        String list = "# Source: " + obo + "iao.owl\nIAO:0000088 # report\n";
+        Files.write(new File(imports, "iao_terms.txt").toPath(),
+                list.getBytes(StandardCharsets.UTF_8));
+        IRI iaoModule = IRI.create("http://example.org/pizza/imports/iao_import.owl");
+        File iaoFile = new File(imports, "iao_import.owl");
+        TermExtract.Result cut = TermExtract.run(iao,
+                Collections.singletonList(IRI.create(obo + "IAO_0000088")),
+                TermExtract.Method.BOT, iaoModule);
+        cut.getModule().getOWLOntologyManager().saveOntology(cut.getModule(),
+                IRI.create(iaoFile.toURI()));
+        OWLOntologyManager manager = edit.getOWLOntologyManager();
+        manager.getIRIMappers().add(new SimpleIRIMapper(iaoModule, IRI.create(iaoFile)));
+        manager.applyChange(new org.semanticweb.owlapi.model.AddImport(edit,
+                manager.getOWLDataFactory().getOWLImportsDeclaration(iaoModule)));
+        OntologySource.load(manager, iaoModule);
+
+        ImportedTerms.Source iaoSource = null;
+        for (ImportedTerms.Source source : ImportedTerms.of(edit, root,
+                new File(root, "src/ontology"))) {
+            iaoSource = source.getName().equals("iao") ? source : iaoSource;
+        }
+
+        assertNotNull(iaoSource);
+        assertEquals(ImportedTerms.How.CHOSEN, term(iaoSource, "report").getHow());
+        assertEquals(Arrays.asList("report"), term(iaoSource, "document").getNeededBy());
+        assertEquals(1, iaoSource.countChosen());
+        assertEquals("# Source: " + obo + "iao.owl\nIAO:0000310 # document\n",
+                ImportedTerms.withoutTerms(list + "IAO:0000310 # document\n",
+                        Collections.singleton(IRI.create(obo + "IAO_0000088"))));
+    }
+
     @Test
     void termsAreAddedAndRemovedWithoutTouchingTheOtherLines() throws Exception {
         String before = new String(Files.readAllBytes(termsFile.toPath()),

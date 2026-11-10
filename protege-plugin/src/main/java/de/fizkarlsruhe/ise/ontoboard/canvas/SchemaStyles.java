@@ -172,27 +172,44 @@ public final class SchemaStyles {
      * <p>Resolved once at class initialisation, and falling back to the logical family, which always
      * exists. Probed headless on Windows 11: 223 families available including Segoe UI, so a CI
      * render and the design-proof test resolve the same way a desktop does.
+     *
+     * <p>The family is the look, and it is never skipped for lacking a symbol. Segoe UI has no
+     * {@code ∃}, {@code ∀}, {@code ⊔}, {@code ⊓}, {@code ∧} or {@code ▸}; {@link FallbackTextShape}
+     * draws those from a font that has them, glyph by glyph (1.135.1). Choosing a family by its
+     * symbols would give Windows Arial's shorter lines, or whatever stray font has them all, and
+     * move every box.
      */
     private static String resolveFont() {
+        try {
+            return resolveFont(new HashSet<String>(Arrays.asList(
+                    GraphicsEnvironment.getLocalGraphicsEnvironment()
+                            .getAvailableFontFamilyNames(Locale.ENGLISH))));
+        } catch (Throwable noFontsAvailable) {
+            // A headless or font-less JRE. The logical family always exists.
+            return Font.SANS_SERIF;
+        }
+    }
+
+    /** The first preferred family that is installed; the logical sans-serif family if none is. */
+    static String resolveFont(Set<String> installed) {
         String[] preferred = {"Segoe UI", "Inter", "Helvetica Neue", "Roboto",
                 "DejaVu Sans", "Liberation Sans", "Arial"};
-        try {
-            Set<String> installed = new HashSet<String>(Arrays.asList(
-                    GraphicsEnvironment.getLocalGraphicsEnvironment()
-                            .getAvailableFontFamilyNames(Locale.ENGLISH)));
-            for (String family : preferred) {
-                if (installed.contains(family)) {
-                    return family;
-                }
+        for (String family : preferred) {
+            if (installed.contains(family)) {
+                return family;
             }
-        } catch (Throwable noFontsAvailable) {
-            // A headless or font-less JRE. The logical family below always exists.
         }
         return Font.SANS_SERIF;
     }
 
     static {
         mxStyleRegistry.putValue(AroundFrames.NAME, AroundFrames.INSTANCE);
+        com.mxgraph.canvas.mxGraphics2DCanvas.putShape(DefinedClassShape.NAME,
+                new DefinedClassShape());
+        // Every label on the board and in an exported PNG: the family above, with the symbols it
+        // has no glyph for drawn from a font that has them - Segoe UI has no ∃ (1.135.1).
+        com.mxgraph.canvas.mxGraphics2DCanvas.putTextShape(
+                com.mxgraph.canvas.mxGraphics2DCanvas.TEXT_SHAPE_DEFAULT, new FallbackTextShape());
     }
 
     private SchemaStyles() {
@@ -262,11 +279,13 @@ public final class SchemaStyles {
         // Behind everything, and not fillable enough to hide a node: a frame groups, it does not
         // obscure.
         Map<String, Object> frame = vertex(mxConstants.SHAPE_RECTANGLE, "none", "#2D6FBF",
-                true, false, 13, mxConstants.FONT_BOLD);
+                true, false, 16, mxConstants.FONT_BOLD);
         frame.put(mxConstants.STYLE_ALIGN, mxConstants.ALIGN_LEFT);
         frame.put(mxConstants.STYLE_VERTICAL_ALIGN, mxConstants.ALIGN_TOP);
         frame.put(mxConstants.STYLE_SPACING, 8);
         frame.put(mxConstants.STYLE_DASHED, true);
+        // JGraphX rounds a corner by a share of the box, so a frame's corners swallowed its boxes.
+        frame.put(mxConstants.STYLE_ROUNDED, false);
         frame.put(mxConstants.STYLE_FONTCOLOR, "#2D6FBF");
         sheet.putCellStyle(FRAME, frame);
 
@@ -439,7 +458,7 @@ public final class SchemaStyles {
         style.put(mxConstants.STYLE_STROKEWIDTH, width);
         style.put(mxConstants.STYLE_FONTCOLOR, EDGE_INK);
         style.put(mxConstants.STYLE_FONTFAMILY, FONT);
-        style.put(mxConstants.STYLE_FONTSIZE, 11);
+        style.put(mxConstants.STYLE_FONTSIZE, 12);
         style.put(mxConstants.STYLE_ENDARROW, endArrow);
         style.put(mxConstants.STYLE_ENDSIZE, endSize);
         if (!endFilled) {
@@ -455,6 +474,9 @@ public final class SchemaStyles {
         // outright because JGraphX otherwise decides it by comparing the function with its own
         // connectors, and an edge it took for a curve would meet its nodes at the wrong points.
         style.put(mxConstants.STYLE_EDGE, AroundFrames.NAME);
+        // A line from a term to itself is drawn by whatever this says: left out, by JGraphX's loop,
+        // which puts all of them on one spot and never asks for a route.
+        style.put(mxConstants.STYLE_LOOP, AroundFrames.NAME);
         style.put(mxConstants.STYLE_ORTHOGONAL, true);
         style.put(mxConstants.STYLE_ROUNDED, true);
         // White, with a hairline. The old #F7F8FA backing was the canvas colour, which meant every

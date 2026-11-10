@@ -1,12 +1,12 @@
-@prefix : <file:/C:/Users/eno/Documents/Git_repo/ebrahimnorouzi_github/ISE-FIZKarlsruhe/ontoboard/protege-plugin/../patterns/ethnicgroup/pattern.owl#> .
+@prefix : <http://www.ontologydesignpatterns.org/ekp/owl/EthnicGroup.owl#> .
 @prefix owl: <http://www.w3.org/2002/07/owl#> .
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix xml: <http://www.w3.org/XML/1998/namespace> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
-@base <file:/C:/Users/eno/Documents/Git_repo/ebrahimnorouzi_github/ISE-FIZKarlsruhe/ontoboard/protege-plugin/../patterns/ethnicgroup/pattern.owl> .
+@base <http://www.ontologydesignpatterns.org/ekp/owl/EthnicGroup.owl> .
 
-<file:/C:/Users/eno/Documents/Git_repo/ebrahimnorouzi_github/ISE-FIZKarlsruhe/ontoboard/protege-plugin/../patterns/ethnicgroup/pattern.owl> rdf:type owl:Ontology ;
+<http://www.ontologydesignpatterns.org/ekp/owl/EthnicGroup.owl> rdf:type owl:Ontology ;
                                                                                                                                              owl:imports <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl> ,
                                                                                                                                                          <http://www.ontologydesignpatterns.org/schemas/dbpediainfoboxmatchingweight.owl> ;
                                                                                                                                              <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#extractedFrom> <http://dbpedia.org/> ,
@@ -28,21 +28,21 @@
 #    Object Properties
 #################################################################
 
-###  file:/C:/Users/eno/Documents/Git_repo/ebrahimnorouzi_github/ISE-FIZKarlsruhe/ontoboard/protege-plugin/../patterns/ethnicgroup/pattern.owl#linksToAdministrativeRegion
+###  http://www.ontologydesignpatterns.org/ekp/owl/EthnicGroup.owl#linksToAdministrativeRegion
 :linksToAdministrativeRegion rdf:type owl:ObjectProperty ;
                              rdfs:subPropertyOf <http://dbpedia.org/ontology/Place> ;
                              rdfs:domain <http://dbpedia.org/ontology/EthnicGroup> ;
                              rdfs:range <http://dbpedia.org/ontology/AdministrativeRegion> .
 
 
-###  file:/C:/Users/eno/Documents/Git_repo/ebrahimnorouzi_github/ISE-FIZKarlsruhe/ontoboard/protege-plugin/../patterns/ethnicgroup/pattern.owl#linksToCity
+###  http://www.ontologydesignpatterns.org/ekp/owl/EthnicGroup.owl#linksToCity
 :linksToCity rdf:type owl:ObjectProperty ;
              rdfs:subPropertyOf <http://dbpedia.org/ontology/Place> ;
              rdfs:domain <http://dbpedia.org/ontology/EthnicGroup> ;
              rdfs:range <http://dbpedia.org/ontology/City> .
 
 
-###  file:/C:/Users/eno/Documents/Git_repo/ebrahimnorouzi_github/ISE-FIZKarlsruhe/ontoboard/protege-plugin/../patterns/ethnicgroup/pattern.owl#linksToContinent
+###  http://www.ontologydesignpatterns.org/ekp/owl/EthnicGroup.owl#linksToContinent
 :linksToContinent rdf:type owl:ObjectProperty ;
                   rdfs:subPropertyOf <http://dbpedia.org/ontology/Place> ;
                   rdfs:domain <http://dbpedia.org/ontology/EthnicGroup> ;
@@ -52,21 +52,21 @@
                   rdfs:label "links to Continent"@en .
 
 
-###  file:/C:/Users/eno/Documents/Git_repo/ebrahimnorouzi_github/ISE-FIZKarlsruhe/ontoboard/protege-plugin/../patterns/ethnicgroup/pattern.owl#linksToCountry
+###  http://www.ontologydesignpatterns.org/ekp/owl/EthnicGroup.owl#linksToCountry
 :linksToCountry rdf:type owl:ObjectProperty ;
                 rdfs:subPropertyOf <http://dbpedia.org/ontology/Place> ;
                 rdfs:domain <http://dbpedia.org/ontology/EthnicGroup> ;
                 rdfs:range <http://dbpedia.org/ontology/Country> .
 
 
-###  file:/C:/Users/eno/Documents/Git_repo/ebrahimnorouzi_github/ISE-FIZKarlsruhe/ontoboard/protege-plugin/../patterns/ethnicgroup/pattern.owl#linksToEthnicGroup
+###  http://www.ontologydesignpatterns.org/ekp/owl/EthnicGroup.owl#linksToEthnicGroup
 :linksToEthnicGroup rdf:type owl:ObjectProperty ;
                     rdfs:subPropertyOf <http://dbpedia.org/ontology/EthnicGroup> ;
                     rdfs:domain <http://dbpedia.org/ontology/EthnicGroup> ;
                     rdfs:range <http://dbpedia.org/ontology/EthnicGroup> .
 
 
-###  file:/C:/Users/eno/Documents/Git_repo/ebrahimnorouzi_github/ISE-FIZKarlsruhe/ontoboard/protege-plugin/../patterns/ethnicgroup/pattern.owl#linksToIsland
+###  http://www.ontologydesignpatterns.org/ekp/owl/EthnicGroup.owl#linksToIsland
 :linksToIsland rdf:type owl:ObjectProperty ;
                rdfs:subPropertyOf <http://dbpedia.org/ontology/Place> ;
                rdfs:domain <http://dbpedia.org/ontology/EthnicGroup> ;
@@ -76,14 +76,14 @@
                rdfs:label "links to Island"@en .
 
 
-###  file:/C:/Users/eno/Documents/Git_repo/ebrahimnorouzi_github/ISE-FIZKarlsruhe/ontoboard/protege-plugin/../patterns/ethnicgroup/pattern.owl#linksToLanguage
+###  http://www.ontologydesignpatterns.org/ekp/owl/EthnicGroup.owl#linksToLanguage
 :linksToLanguage rdf:type owl:ObjectProperty ;
                  rdfs:subPropertyOf <http://dbpedia.org/ontology/Language> ;
                  rdfs:domain <http://dbpedia.org/ontology/EthnicGroup> ;
                  rdfs:range <http://dbpedia.org/ontology/Language> .
 
 
-###  file:/C:/Users/eno/Documents/Git_repo/ebrahimnorouzi_github/ISE-FIZKarlsruhe/ontoboard/protege-plugin/../patterns/ethnicgroup/pattern.owl#linksToMilitaryConflict
+###  http://www.ontologydesignpatterns.org/ekp/owl/EthnicGroup.owl#linksToMilitaryConflict
 :linksToMilitaryConflict rdf:type owl:ObjectProperty ;
                          rdfs:subPropertyOf <http://dbpedia.org/ontology/Event> ;
                          rdfs:domain <http://dbpedia.org/ontology/EthnicGroup> ;
@@ -93,28 +93,28 @@
                          rdfs:label "links to Military Conflict"@en .
 
 
-###  file:/C:/Users/eno/Documents/Git_repo/ebrahimnorouzi_github/ISE-FIZKarlsruhe/ontoboard/protege-plugin/../patterns/ethnicgroup/pattern.owl#linksToMusicalArtist
+###  http://www.ontologydesignpatterns.org/ekp/owl/EthnicGroup.owl#linksToMusicalArtist
 :linksToMusicalArtist rdf:type owl:ObjectProperty ;
                       rdfs:subPropertyOf <http://dbpedia.org/ontology/Person> ;
                       rdfs:domain <http://dbpedia.org/ontology/EthnicGroup> ;
                       rdfs:range <http://dbpedia.org/ontology/MusicalArtist> .
 
 
-###  file:/C:/Users/eno/Documents/Git_repo/ebrahimnorouzi_github/ISE-FIZKarlsruhe/ontoboard/protege-plugin/../patterns/ethnicgroup/pattern.owl#linksToOfficeHolder
+###  http://www.ontologydesignpatterns.org/ekp/owl/EthnicGroup.owl#linksToOfficeHolder
 :linksToOfficeHolder rdf:type owl:ObjectProperty ;
                      rdfs:subPropertyOf <http://dbpedia.org/ontology/Person> ;
                      rdfs:domain <http://dbpedia.org/ontology/EthnicGroup> ;
                      rdfs:range <http://dbpedia.org/ontology/OfficeHolder> .
 
 
-###  file:/C:/Users/eno/Documents/Git_repo/ebrahimnorouzi_github/ISE-FIZKarlsruhe/ontoboard/protege-plugin/../patterns/ethnicgroup/pattern.owl#linksToPresident
+###  http://www.ontologydesignpatterns.org/ekp/owl/EthnicGroup.owl#linksToPresident
 :linksToPresident rdf:type owl:ObjectProperty ;
                   rdfs:subPropertyOf <http://dbpedia.org/ontology/Person> ;
                   rdfs:domain <http://dbpedia.org/ontology/EthnicGroup> ;
                   rdfs:range <http://dbpedia.org/ontology/President> .
 
 
-###  file:/C:/Users/eno/Documents/Git_repo/ebrahimnorouzi_github/ISE-FIZKarlsruhe/ontoboard/protege-plugin/../patterns/ethnicgroup/pattern.owl#linksToRiver
+###  http://www.ontologydesignpatterns.org/ekp/owl/EthnicGroup.owl#linksToRiver
 :linksToRiver rdf:type owl:ObjectProperty ;
               rdfs:subPropertyOf <http://dbpedia.org/ontology/Place> ;
               rdfs:domain <http://dbpedia.org/ontology/EthnicGroup> ;
@@ -124,7 +124,7 @@
               rdfs:label "links to River"@en .
 
 
-###  file:/C:/Users/eno/Documents/Git_repo/ebrahimnorouzi_github/ISE-FIZKarlsruhe/ontoboard/protege-plugin/../patterns/ethnicgroup/pattern.owl#linksToTown
+###  http://www.ontologydesignpatterns.org/ekp/owl/EthnicGroup.owl#linksToTown
 :linksToTown rdf:type owl:ObjectProperty ;
              rdfs:subPropertyOf <http://dbpedia.org/ontology/Place> ;
              rdfs:domain <http://dbpedia.org/ontology/EthnicGroup> ;
@@ -134,7 +134,7 @@
              rdfs:label "links to Town"@en .
 
 
-###  file:/C:/Users/eno/Documents/Git_repo/ebrahimnorouzi_github/ISE-FIZKarlsruhe/ontoboard/protege-plugin/../patterns/ethnicgroup/pattern.owl#linksToWriter
+###  http://www.ontologydesignpatterns.org/ekp/owl/EthnicGroup.owl#linksToWriter
 :linksToWriter rdf:type owl:ObjectProperty ;
                rdfs:subPropertyOf <http://dbpedia.org/ontology/Person> ;
                rdfs:domain <http://dbpedia.org/ontology/EthnicGroup> ;
@@ -292,7 +292,7 @@
 #    Individuals
 #################################################################
 
-###  file:/C:/Users/eno/Documents/Git_repo/ebrahimnorouzi_github/ISE-FIZKarlsruhe/ontoboard/protege-plugin/../patterns/ethnicgroup/pattern.owl#linksToAdministrativeRegion
+###  http://www.ontologydesignpatterns.org/ekp/owl/EthnicGroup.owl#linksToAdministrativeRegion
 :linksToAdministrativeRegion rdf:type owl:NamedIndividual ;
                              <http://www.w3.org/2004/02/skos/core#relatedMatch> <http://dbpedia.org/property/popplace> .
 
@@ -304,7 +304,7 @@
  ] .
 
 
-###  file:/C:/Users/eno/Documents/Git_repo/ebrahimnorouzi_github/ISE-FIZKarlsruhe/ontoboard/protege-plugin/../patterns/ethnicgroup/pattern.owl#linksToCity
+###  http://www.ontologydesignpatterns.org/ekp/owl/EthnicGroup.owl#linksToCity
 :linksToCity rdf:type owl:NamedIndividual ;
              <http://www.w3.org/2004/02/skos/core#relatedMatch> <http://dbpedia.org/property/popplace> ,
                                                                 <http://dbpedia.org/property/regions> ,
@@ -332,7 +332,7 @@
  ] .
 
 
-###  file:/C:/Users/eno/Documents/Git_repo/ebrahimnorouzi_github/ISE-FIZKarlsruhe/ontoboard/protege-plugin/../patterns/ethnicgroup/pattern.owl#linksToCountry
+###  http://www.ontologydesignpatterns.org/ekp/owl/EthnicGroup.owl#linksToCountry
 :linksToCountry rdf:type owl:NamedIndividual ;
                 <http://www.w3.org/2004/02/skos/core#relatedMatch> <http://dbpedia.org/property/before> ,
                                                                    <http://dbpedia.org/property/popplace> ,
@@ -376,7 +376,7 @@
  ] .
 
 
-###  file:/C:/Users/eno/Documents/Git_repo/ebrahimnorouzi_github/ISE-FIZKarlsruhe/ontoboard/protege-plugin/../patterns/ethnicgroup/pattern.owl#linksToEthnicGroup
+###  http://www.ontologydesignpatterns.org/ekp/owl/EthnicGroup.owl#linksToEthnicGroup
 :linksToEthnicGroup rdf:type owl:NamedIndividual ;
                     <http://www.w3.org/2004/02/skos/core#relatedMatch> <http://dbpedia.org/property/caption> ,
                                                                        <http://dbpedia.org/property/col> ,
@@ -420,7 +420,7 @@
  ] .
 
 
-###  file:/C:/Users/eno/Documents/Git_repo/ebrahimnorouzi_github/ISE-FIZKarlsruhe/ontoboard/protege-plugin/../patterns/ethnicgroup/pattern.owl#linksToLanguage
+###  http://www.ontologydesignpatterns.org/ekp/owl/EthnicGroup.owl#linksToLanguage
 :linksToLanguage rdf:type owl:NamedIndividual ;
                  <http://www.w3.org/2004/02/skos/core#relatedMatch> <http://dbpedia.org/property/langs> ,
                                                                     <http://dbpedia.org/property/languages> .
@@ -440,7 +440,7 @@
  ] .
 
 
-###  file:/C:/Users/eno/Documents/Git_repo/ebrahimnorouzi_github/ISE-FIZKarlsruhe/ontoboard/protege-plugin/../patterns/ethnicgroup/pattern.owl#linksToMusicalArtist
+###  http://www.ontologydesignpatterns.org/ekp/owl/EthnicGroup.owl#linksToMusicalArtist
 :linksToMusicalArtist rdf:type owl:NamedIndividual ;
                       <http://www.w3.org/2004/02/skos/core#relatedMatch> <http://dbpedia.org/property/caption> ,
                                                                          <http://dbpedia.org/property/imageCaption> .
@@ -460,7 +460,7 @@
  ] .
 
 
-###  file:/C:/Users/eno/Documents/Git_repo/ebrahimnorouzi_github/ISE-FIZKarlsruhe/ontoboard/protege-plugin/../patterns/ethnicgroup/pattern.owl#linksToOfficeHolder
+###  http://www.ontologydesignpatterns.org/ekp/owl/EthnicGroup.owl#linksToOfficeHolder
 :linksToOfficeHolder rdf:type owl:NamedIndividual ;
                      <http://www.w3.org/2004/02/skos/core#relatedMatch> <http://dbpedia.org/property/caption> ,
                                                                         <http://dbpedia.org/property/imageCaption> .
@@ -480,7 +480,7 @@
  ] .
 
 
-###  file:/C:/Users/eno/Documents/Git_repo/ebrahimnorouzi_github/ISE-FIZKarlsruhe/ontoboard/protege-plugin/../patterns/ethnicgroup/pattern.owl#linksToPresident
+###  http://www.ontologydesignpatterns.org/ekp/owl/EthnicGroup.owl#linksToPresident
 :linksToPresident rdf:type owl:NamedIndividual ;
                   <http://www.w3.org/2004/02/skos/core#relatedMatch> <http://dbpedia.org/property/caption> .
 
@@ -492,7 +492,7 @@
  ] .
 
 
-###  file:/C:/Users/eno/Documents/Git_repo/ebrahimnorouzi_github/ISE-FIZKarlsruhe/ontoboard/protege-plugin/../patterns/ethnicgroup/pattern.owl#linksToWriter
+###  http://www.ontologydesignpatterns.org/ekp/owl/EthnicGroup.owl#linksToWriter
 :linksToWriter rdf:type owl:NamedIndividual ;
                <http://www.w3.org/2004/02/skos/core#relatedMatch> <http://dbpedia.org/property/caption> ,
                                                                   <http://dbpedia.org/property/imageCaption> .

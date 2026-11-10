@@ -146,6 +146,301 @@ class InProcessTargetsTest {
         assertFalse(report.isFile());
     }
 
+    /** The build log says what reasoning did in a whole sentence; it stopped at "written in". */
+    @Test
+    void theReasonStepSaysWhatItAddedInAWholeSentence(@TempDir File where) throws Exception {
+        File edit = scaffold(where, "demo");
+
+        InProcessTargets.Outcome reason = InProcessTargets.run(edit, load(edit),
+                de.fizkarlsruhe.ise.ontoboard.robot.Reasoners.Choice.ELK.newFactory(), "reason");
+
+        assertTrue(reason.isOk(), String.valueOf(reason.getFailure()));
+        String said = null;
+        for (String line : reason.getTranscript()) {
+            said = line.contains("inferred axiom") ? line : said;
+        }
+        assertNotNull(said, reason.getTranscript().toString());
+        assertTrue(said.matches("reason: \\d+ inferred axioms? added\\."), said);
+    }
+
+    /**
+     * A class that can have no members only because of what an import says fails the build, and
+     * the failure names it. Found by a tester who ran both releases of the study's project through
+     * HermiT and ELK: the working copy's imports were declarations nothing loaded, so the reason
+     * step never saw an imported range, passed, and the release then refused with "Reason failed:
+     * null".
+     */
+    @Test
+    void aClassUnsatisfiableThroughAnImportFailsTheBuildByName(@TempDir File where)
+            throws Exception {
+        File edit = scaffold(where, "demo");
+        OWLOntology ontology = load(edit);
+        org.semanticweb.owlapi.model.OWLOntologyManager manager = ontology.getOWLOntologyManager();
+        org.semanticweb.owlapi.model.OWLDataFactory df = manager.getOWLDataFactory();
+        String ns = "http://example.org/imported#";
+        OWLOntology imported = manager.createOntology(
+                org.semanticweb.owlapi.model.IRI.create("http://example.org/imported"));
+        org.semanticweb.owlapi.model.OWLObjectProperty p =
+                df.getOWLObjectProperty(org.semanticweb.owlapi.model.IRI.create(ns + "p"));
+        org.semanticweb.owlapi.model.OWLClass range =
+                df.getOWLClass(org.semanticweb.owlapi.model.IRI.create(ns + "Range"));
+        org.semanticweb.owlapi.model.OWLClass other =
+                df.getOWLClass(org.semanticweb.owlapi.model.IRI.create(ns + "Other"));
+        manager.addAxiom(imported, df.getOWLObjectPropertyRangeAxiom(p, range));
+        manager.addAxiom(imported, df.getOWLDisjointClassesAxiom(range, other));
+        manager.applyChange(new org.semanticweb.owlapi.model.AddImport(ontology,
+                df.getOWLImportsDeclaration(
+                        org.semanticweb.owlapi.model.IRI.create("http://example.org/imported"))));
+        org.semanticweb.owlapi.model.OWLClass mine =
+                df.getOWLClass(org.semanticweb.owlapi.model.IRI.create("http://example.org/demo#C"));
+        manager.addAxiom(ontology, df.getOWLDeclarationAxiom(mine));
+        manager.addAxiom(ontology, df.getOWLAnnotationAssertionAxiom(df.getRDFSLabel(),
+                mine.getIRI(), df.getOWLLiteral("a class that cannot be")));
+        manager.addAxiom(ontology,
+                df.getOWLSubClassOfAxiom(mine, df.getOWLObjectSomeValuesFrom(p, other)));
+
+        InProcessTargets.Outcome reason = InProcessTargets.run(edit, ontology,
+                de.fizkarlsruhe.ise.ontoboard.robot.Reasoners.Choice.ELK.newFactory(), "reason");
+
+        assertFalse(reason.isOk(), "the import makes the class unsatisfiable: "
+                + reason.getTranscript());
+        assertTrue(String.valueOf(reason.getFailure()).contains("a class that cannot be"),
+                String.valueOf(reason.getFailure()));
+    }
+
+    /**
+     * The egg guide's wrong-way relation, in small: a process's output relation drawn from the egg
+     * to the boiling. An import says only a process has outputs, and that no object is a process.
+     */
+    private static org.semanticweb.owlapi.model.OWLClass wrongWayRound(OWLOntology ontology)
+            throws Exception {
+        org.semanticweb.owlapi.model.OWLOntologyManager manager = ontology.getOWLOntologyManager();
+        org.semanticweb.owlapi.model.OWLDataFactory df = manager.getOWLDataFactory();
+        String up = "http://example.org/upper#";
+        OWLOntology upper = manager.createOntology(
+                org.semanticweb.owlapi.model.IRI.create("http://example.org/upper"));
+        org.semanticweb.owlapi.model.OWLClass process =
+                df.getOWLClass(org.semanticweb.owlapi.model.IRI.create(up + "process"));
+        org.semanticweb.owlapi.model.OWLClass object =
+                df.getOWLClass(org.semanticweb.owlapi.model.IRI.create(up + "object"));
+        org.semanticweb.owlapi.model.OWLObjectProperty output =
+                df.getOWLObjectProperty(org.semanticweb.owlapi.model.IRI.create(up + "output"));
+        manager.addAxiom(upper, df.getOWLObjectPropertyDomainAxiom(output, process));
+        manager.addAxiom(upper, df.getOWLDisjointClassesAxiom(process, object));
+        manager.addAxiom(upper, df.getOWLAnnotationAssertionAxiom(df.getRDFSLabel(),
+                output.getIRI(), df.getOWLLiteral("has specified output")));
+        manager.addAxiom(upper, df.getOWLAnnotationAssertionAxiom(df.getRDFSLabel(),
+                object.getIRI(), df.getOWLLiteral("object")));
+        manager.applyChange(new org.semanticweb.owlapi.model.AddImport(ontology,
+                df.getOWLImportsDeclaration(
+                        org.semanticweb.owlapi.model.IRI.create("http://example.org/upper"))));
+        String own = "http://example.org/demo#";
+        org.semanticweb.owlapi.model.OWLClass boiling =
+                df.getOWLClass(org.semanticweb.owlapi.model.IRI.create(own + "boiling"));
+        org.semanticweb.owlapi.model.OWLClass boiled =
+                df.getOWLClass(org.semanticweb.owlapi.model.IRI.create(own + "boiled"));
+        org.semanticweb.owlapi.model.OWLClass report =
+                df.getOWLClass(org.semanticweb.owlapi.model.IRI.create(own + "report"));
+        for (Object[] named : new Object[][] {{boiling, "egg boiling"}, {boiled, "boiled egg"},
+            {report, "egg boiling report"}}) {
+            org.semanticweb.owlapi.model.OWLClass cls = (org.semanticweb.owlapi.model.OWLClass) named[0];
+            manager.addAxiom(ontology, df.getOWLDeclarationAxiom(cls));
+            manager.addAxiom(ontology, df.getOWLAnnotationAssertionAxiom(df.getRDFSLabel(),
+                    cls.getIRI(), df.getOWLLiteral((String) named[1])));
+        }
+        manager.addAxiom(ontology, df.getOWLSubClassOfAxiom(boiled, object));
+        // The wrong way round, then more work after it, so it is not the last change.
+        manager.addAxiom(ontology, df.getOWLSubClassOfAxiom(boiled,
+                df.getOWLObjectSomeValuesFrom(output, boiling)));
+        manager.addAxiom(ontology, df.getOWLSubClassOfAxiom(report, boiling));
+        return boiled;
+    }
+
+    /**
+     * The build names what makes a class empty, and how to take it out, instead of sending
+     * everybody to Edit &gt; Undo (1.135.1, Windows study rehearsal). A tester whose wrong relation
+     * was not the last change did what the message said six times: each Undo took back their
+     * latest work instead, and the build kept failing.
+     */
+    @Test
+    void aClassThatCanHaveNoMembersIsToldWhatMakesItSo(@TempDir File where) throws Exception {
+        File edit = scaffold(where, "demo");
+        OWLOntology ontology = load(edit);
+        wrongWayRound(ontology);
+
+        InProcessTargets.Outcome reason = InProcessTargets.run(edit, ontology,
+                de.fizkarlsruhe.ise.ontoboard.robot.Reasoners.Choice.ELK.newFactory(), "reason");
+
+        String failure = String.valueOf(reason.getFailure());
+        assertFalse(reason.isOk(), failure);
+        assertTrue(failure.startsWith("boiled egg can have no members"), failure);
+        assertTrue(failure.contains("the arrow ∃ has specified output from boiled egg to egg"
+                + " boiling"), failure);
+        assertTrue(failure.contains("boiled egg is a kind of object"), failure);
+        assertTrue(failure.contains("Take out the one that is wrong: right-click it on the board"
+                + " and choose Delete axiom from ontology…; Edit > Undo takes back only the"
+                + " last change."), failure);
+        assertFalse(failure.contains("Undo takes it back"), failure);
+        assertFalse(failure.contains("egg boiling report"), "not the work done since: " + failure);
+    }
+
+    /** One cause is named as the one to take out. */
+    @Test
+    void aSingleCauseIsNamedAsTheOneToTakeOut(@TempDir File where) throws Exception {
+        File edit = scaffold(where, "demo");
+        OWLOntology ontology = load(edit);
+        org.semanticweb.owlapi.model.OWLClass boiled = wrongWayRound(ontology);
+        org.semanticweb.owlapi.model.OWLDataFactory df =
+                ontology.getOWLOntologyManager().getOWLDataFactory();
+        // Its parent said by the import rather than by the project: only the arrow is its own.
+        org.semanticweb.owlapi.model.OWLAxiom parent = df.getOWLSubClassOfAxiom(boiled,
+                df.getOWLClass(org.semanticweb.owlapi.model.IRI.create(
+                        "http://example.org/upper#object")));
+        ontology.getOWLOntologyManager().removeAxiom(ontology, parent);
+        ontology.getOWLOntologyManager().addAxiom(ontology.getOWLOntologyManager().getOntology(
+                org.semanticweb.owlapi.model.IRI.create("http://example.org/upper")), parent);
+
+        InProcessTargets.Outcome reason = InProcessTargets.run(edit, ontology,
+                de.fizkarlsruhe.ise.ontoboard.robot.Reasoners.Choice.ELK.newFactory(), "reason");
+
+        String failure = String.valueOf(reason.getFailure());
+        assertFalse(reason.isOk(), failure);
+        assertTrue(failure.contains("What makes it so: the arrow ∃ has specified output from"
+                + " boiled egg to egg boiling"), failure);
+        assertTrue(failure.contains("Right-click that arrow on the board and choose Delete axiom"
+                + " from ontology"), failure);
+        assertFalse(failure.contains("is a kind of"), failure);
+        assertFalse(failure.contains("Undo takes it back"), failure);
+    }
+
+    /**
+     * A reasoner that fails while the cause is looked for costs the cause, not the diagnosis
+     * (1.135.1 review). The failure escaped from the reason step's own failure handling, and the
+     * build said "The reasoner could not finish, so nothing was written" about a class it had
+     * found empty.
+     */
+    @Test
+    void aReasonerFailingWhileTheCauseIsSoughtStillSaysWhichClassIsEmpty(@TempDir File where)
+            throws Exception {
+        File edit = scaffold(where, "demo");
+        OWLOntology ontology = load(edit);
+        wrongWayRound(ontology);
+
+        InProcessTargets.Outcome reason = InProcessTargets.run(edit, ontology,
+                de.fizkarlsruhe.ise.ontoboard.robot.CauseOfAnEmptyClassTest.failing(
+                        de.fizkarlsruhe.ise.ontoboard.robot.Reasoners.Choice.ELK.newFactory(),
+                        "dispose", 1, Integer.MAX_VALUE), "reason");
+
+        assertFalse(reason.isOk());
+        assertEquals("boiled egg can have no members. A relation or parent added to it is the"
+                + " usual cause: right-click it on the board and choose Delete axiom from"
+                + " ontology… to take it out; Edit > Undo takes back only the last change."
+                + " Nothing was written.", reason.getFailure());
+    }
+
+    /**
+     * What ELK cannot see, HermiT is asked about, and the build says so without failing.
+     *
+     * <p>Found by a tester: picking <i>quality of</i> for a value's relation made the class
+     * unsatisfiable through the inverse <i>has quality</i>, whose range is a quality. ELK ignores
+     * inverse properties, so the test passed and the class was released.
+     */
+    @Test
+    void whatOnlyHermiTSeesIsSaidAndTheBuildStillPasses(@TempDir File where) throws Exception {
+        File edit = scaffold(where, "demo");
+        OWLOntology ontology = load(edit);
+        org.semanticweb.owlapi.model.OWLOntologyManager manager = ontology.getOWLOntologyManager();
+        org.semanticweb.owlapi.model.OWLDataFactory df = manager.getOWLDataFactory();
+        String ns = "http://example.org/demo#";
+        org.semanticweb.owlapi.model.OWLClass value = df.getOWLClass(
+                org.semanticweb.owlapi.model.IRI.create(ns + "value"));
+        org.semanticweb.owlapi.model.OWLClass gdc = df.getOWLClass(
+                org.semanticweb.owlapi.model.IRI.create(ns + "gdc"));
+        org.semanticweb.owlapi.model.OWLClass sdc = df.getOWLClass(
+                org.semanticweb.owlapi.model.IRI.create(ns + "sdc"));
+        org.semanticweb.owlapi.model.OWLClass quality = df.getOWLClass(
+                org.semanticweb.owlapi.model.IRI.create(ns + "quality"));
+        org.semanticweb.owlapi.model.OWLObjectProperty qualityOf = df.getOWLObjectProperty(
+                org.semanticweb.owlapi.model.IRI.create(ns + "qualityOf"));
+        org.semanticweb.owlapi.model.OWLObjectProperty hasQuality = df.getOWLObjectProperty(
+                org.semanticweb.owlapi.model.IRI.create(ns + "hasQuality"));
+        manager.addAxiom(ontology, df.getOWLAnnotationAssertionAxiom(df.getRDFSLabel(),
+                value.getIRI(), df.getOWLLiteral("hardness value")));
+        manager.addAxiom(ontology, df.getOWLSubClassOfAxiom(value, gdc));
+        manager.addAxiom(ontology, df.getOWLSubClassOfAxiom(quality, sdc));
+        manager.addAxiom(ontology, df.getOWLDisjointClassesAxiom(gdc, sdc));
+        manager.addAxiom(ontology, df.getOWLInverseObjectPropertiesAxiom(qualityOf, hasQuality));
+        manager.addAxiom(ontology, df.getOWLObjectPropertyRangeAxiom(hasQuality, quality));
+        manager.addAxiom(ontology, df.getOWLSubClassOfAxiom(value,
+                df.getOWLObjectSomeValuesFrom(qualityOf, df.getOWLThing())));
+
+        InProcessTargets.Outcome reason = InProcessTargets.run(edit, ontology,
+                de.fizkarlsruhe.ise.ontoboard.robot.Reasoners.Choice.ELK.newFactory(), "reason");
+
+        assertTrue(reason.isOk(), "ODK's verdict, ELK's: " + reason.getFailure());
+        assertEquals(1, reason.getWarnings().size(), String.valueOf(reason.getTranscript()));
+        assertTrue(reason.getWarnings().get(0).startsWith(
+                "HermiT finds that hardness value can have no members."), reason.getWarnings()
+                        .get(0));
+        assertTrue(reason.getWarnings().get(0).contains(" A relation or parent added to it is the"
+                + " usual cause:"), reason.getWarnings().get(0));
+        assertNull(InProcessTargets.secondOpinion(ontology,
+                de.fizkarlsruhe.ise.ontoboard.robot.Reasoners.Choice.HERMIT.newFactory()),
+                "asked only after ELK");
+    }
+
+    /**
+     * Several classes HermiT finds empty are spoken of as several (1.135.1 review): "A relation or
+     * parent added to it" followed a list of them.
+     */
+    @Test
+    void whatOnlyHermiTSeesInSeveralClassesIsAddedToOneOfThem(@TempDir File where)
+            throws Exception {
+        File edit = scaffold(where, "demo");
+        OWLOntology ontology = load(edit);
+        org.semanticweb.owlapi.model.OWLOntologyManager manager = ontology.getOWLOntologyManager();
+        org.semanticweb.owlapi.model.OWLDataFactory df = manager.getOWLDataFactory();
+        String ns = "http://example.org/demo#";
+        org.semanticweb.owlapi.model.OWLClass value = df.getOWLClass(
+                org.semanticweb.owlapi.model.IRI.create(ns + "value"));
+        org.semanticweb.owlapi.model.OWLClass mass = df.getOWLClass(
+                org.semanticweb.owlapi.model.IRI.create(ns + "mass"));
+        org.semanticweb.owlapi.model.OWLClass gdc = df.getOWLClass(
+                org.semanticweb.owlapi.model.IRI.create(ns + "gdc"));
+        org.semanticweb.owlapi.model.OWLClass sdc = df.getOWLClass(
+                org.semanticweb.owlapi.model.IRI.create(ns + "sdc"));
+        org.semanticweb.owlapi.model.OWLClass quality = df.getOWLClass(
+                org.semanticweb.owlapi.model.IRI.create(ns + "quality"));
+        org.semanticweb.owlapi.model.OWLObjectProperty qualityOf = df.getOWLObjectProperty(
+                org.semanticweb.owlapi.model.IRI.create(ns + "qualityOf"));
+        org.semanticweb.owlapi.model.OWLObjectProperty hasQuality = df.getOWLObjectProperty(
+                org.semanticweb.owlapi.model.IRI.create(ns + "hasQuality"));
+        manager.addAxiom(ontology, df.getOWLAnnotationAssertionAxiom(df.getRDFSLabel(),
+                value.getIRI(), df.getOWLLiteral("hardness value")));
+        manager.addAxiom(ontology, df.getOWLAnnotationAssertionAxiom(df.getRDFSLabel(),
+                mass.getIRI(), df.getOWLLiteral("egg mass value")));
+        manager.addAxiom(ontology, df.getOWLSubClassOfAxiom(value, gdc));
+        manager.addAxiom(ontology, df.getOWLSubClassOfAxiom(mass, value));
+        manager.addAxiom(ontology, df.getOWLSubClassOfAxiom(quality, sdc));
+        manager.addAxiom(ontology, df.getOWLDisjointClassesAxiom(gdc, sdc));
+        manager.addAxiom(ontology, df.getOWLInverseObjectPropertiesAxiom(qualityOf, hasQuality));
+        manager.addAxiom(ontology, df.getOWLObjectPropertyRangeAxiom(hasQuality, quality));
+        manager.addAxiom(ontology, df.getOWLSubClassOfAxiom(value,
+                df.getOWLObjectSomeValuesFrom(qualityOf, df.getOWLThing())));
+
+        InProcessTargets.Outcome reason = InProcessTargets.run(edit, ontology,
+                de.fizkarlsruhe.ise.ontoboard.robot.Reasoners.Choice.ELK.newFactory(), "reason");
+
+        assertTrue(reason.isOk(), "ODK's verdict, ELK's: " + reason.getFailure());
+        assertEquals(1, reason.getWarnings().size(), String.valueOf(reason.getTranscript()));
+        assertEquals("HermiT finds that egg mass value, hardness value can have no members. ELK,"
+                + " the reasoner this build uses as ODK's does, does not see inverse properties and"
+                + " the rest of OWL beyond its EL profile, so the build passes as ODK's would. A"
+                + " relation or parent added to one of them is the usual cause: right-click it on"
+                + " the board and choose Delete axiom from ontology… to take it out; Edit > Undo"
+                + " takes back only the last change.", reason.getWarnings().get(0));
+    }
+
     /**
      * A new project passes its own quality gate.
      *

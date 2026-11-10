@@ -68,6 +68,16 @@ public class ReleaseAction extends OntoBoardAction {
 
     @Override
     protected boolean configure() {
+        // A release is made from what is open, so unsaved changes went into it while the edit
+        // file never had them: a release nobody could make again from the project, and one a "No"
+        // on quitting would make permanent. Build asked this; Release did not.
+        if (SaveFirst.isNeeded(getOWLModelManager()) && SaveFirst.ask(getOWLWorkspace(),
+                getOWLModelManager(), "The ontology has changes that are not saved yet. A release "
+                        + "is made from what is open, so it would have them and your edit file "
+                        + "would not.",
+                "Save and release", null, "Cannot release") != SaveFirst.Answer.SAVED) {
+            return false;
+        }
         String today = LocalDate.now().toString();
         OntologyVersion declared = Release.declaredVersionOf(openOntologyOrNull());
         File editFile = null;
@@ -398,9 +408,17 @@ public class ReleaseAction extends OntoBoardAction {
                 release.getOWLOntologyManager().applyChanges(inferred.getChanges());
                 result.note("Reasoner: " + reasoner.getLabel());
                 result.note("Inferences written: " + inferred.getAdded());
+                // What HermiT sees and ELK cannot: said before the release is written, not after.
+                String second = de.fizkarlsruhe.ise.ontoboard.odk.InProcessTargets.secondOpinion(
+                        ontology, reasoner.newFactory());
+                if (second != null) {
+                    result.warn(second);
+                }
             } catch (RobotException cannotReason) {
-                return result.failed("The reasoner could not finish, so nothing was written: "
-                        + cannotReason.getMessage()).build();
+                return result.failed(RobotTransform.isAboutTheModel(cannotReason)
+                        ? cannotReason.getMessage() + " Nothing was released."
+                        : "The reasoner could not finish, so nothing was written: "
+                                + cannotReason.getMessage()).build();
             }
         }
         if (strip) {
@@ -442,14 +460,23 @@ public class ReleaseAction extends OntoBoardAction {
                                         : " (" + removed.getBefore() + ")"));
                     }
                     if (check) {
-                        return result.failed(diff.removals().size() + " term"
-                                + (diff.removals().size() == 1 ? " that the " : "s that the ")
-                                + previous + " release published "
-                                + (diff.removals().size() == 1 ? "is" : "are")
-                                + " gone from this one, and nothing was written. Obsolete them "
-                                + "instead - mark them owl:deprecated with a replacement - so "
-                                + "everything that imported them still resolves. Turn the check "
-                                + "off if you genuinely mean to drop them.").build();
+                        boolean one = diff.removals().size() == 1;
+                        ReleaseDiff.TermChange first = diff.removals().get(0);
+                        String named = ReleaseDiff.shortForm(first.getIri())
+                                + (first.getBefore().isEmpty() ? "" : ", " + first.getBefore());
+                        return result.failed((one ? "1 term that the " + previous
+                                        + " release published is gone from this one (" + named
+                                        + "), and nothing was written. Obsolete it instead - mark"
+                                        + " it owl:deprecated with a replacement - so everything"
+                                        + " that imported it still resolves; Edit > Undo brings"
+                                        + " it back so you can. To drop it anyway, untick"
+                                : diff.removals().size() + " terms that the " + previous
+                                        + " release published are gone from this one, and nothing"
+                                        + " was written. Obsolete them instead - mark them"
+                                        + " owl:deprecated with a replacement - so everything that"
+                                        + " imported them still resolves; Edit > Undo brings them"
+                                        + " back so you can. To drop them anyway, untick")
+                                + " \"Refuse to release on an error\".").build();
                     }
                 }
             } catch (RuntimeException cannotCompare) {
@@ -747,7 +774,7 @@ public class ReleaseAction extends OntoBoardAction {
      * <p>{@code src/ontology/mwo-edit.owl} means releases belong in {@code <project>/releases},
      * not in {@code src/ontology/releases}.
      */
-    static File projectRootOf(File editFile) {
+    public static File projectRootOf(File editFile) {
         File ontologyDir = editFile.getParentFile();
         if (ontologyDir == null) {
             return new File(".");

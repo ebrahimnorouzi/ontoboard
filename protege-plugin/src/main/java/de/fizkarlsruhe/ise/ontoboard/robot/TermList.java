@@ -6,7 +6,9 @@ import java.io.UnsupportedEncodingException;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -88,6 +90,52 @@ public final class TermList {
      *     project's own CURIEs resolve alongside the 277 OBO ones ROBOT knows. May be null.
      */
     public static TermList parse(String text, Map<String, String> prefixes) {
+        IOHelper ioHelper = ioHelperWith(prefixes);
+
+        Set<IRI> seen = new LinkedHashSet<IRI>();
+        List<Entry> unresolved = new ArrayList<Entry>();
+        int duplicates = 0;
+        String[] lines = (text == null ? "" : text).split("\r?\n", -1);
+        for (int i = 0; i < lines.length; i++) {
+            for (String term : ioHelper.extractTerms(lines[i])) {
+                IRI iri = ioHelper.createIRI(term);
+                if (iri == null) {
+                    unresolved.add(new Entry(i + 1, term, null));
+                } else if (!seen.add(iri)) {
+                    // Not an error - term files are hand-maintained and gain duplicates - but
+                    // worth counting, because "40 lines, 38 terms" is otherwise alarming.
+                    duplicates++;
+                }
+            }
+        }
+        return new TermList(new ArrayList<IRI>(seen), unresolved, duplicates);
+    }
+
+    /**
+     * The full IRI each of these terms stands for, resolved as {@link #parse} resolves a line:
+     * ROBOT's OBO prefixes, and the ones given. A term nothing resolves is left out.
+     *
+     * <p>For a caller that reads a term list's lines itself, to keep their comments, and still
+     * has to know that {@code IAO:0000088} is {@code http://purl.obolibrary.org/obo/IAO_0000088}.
+     * ROBOT is started only when there is something to resolve.
+     */
+    public static Map<String, IRI> resolve(Collection<String> terms,
+            Map<String, String> prefixes) {
+        Map<String, IRI> resolved = new LinkedHashMap<String, IRI>();
+        if (terms == null || terms.isEmpty()) {
+            return resolved;
+        }
+        IOHelper ioHelper = ioHelperWith(prefixes);
+        for (String term : terms) {
+            IRI iri = term == null ? null : ioHelper.createIRI(term);
+            if (iri != null) {
+                resolved.put(term, iri);
+            }
+        }
+        return resolved;
+    }
+
+    private static IOHelper ioHelperWith(Map<String, String> prefixes) {
         IOHelper ioHelper;
         try {
             ioHelper = new IOHelper();
@@ -109,24 +157,7 @@ public final class TermList {
             throw new IllegalStateException(
                     "could not read the prefix map: " + cannotStart.getMessage(), cannotStart);
         }
-
-        Set<IRI> seen = new LinkedHashSet<IRI>();
-        List<Entry> unresolved = new ArrayList<Entry>();
-        int duplicates = 0;
-        String[] lines = (text == null ? "" : text).split("\r?\n", -1);
-        for (int i = 0; i < lines.length; i++) {
-            for (String term : ioHelper.extractTerms(lines[i])) {
-                IRI iri = ioHelper.createIRI(term);
-                if (iri == null) {
-                    unresolved.add(new Entry(i + 1, term, null));
-                } else if (!seen.add(iri)) {
-                    // Not an error - term files are hand-maintained and gain duplicates - but
-                    // worth counting, because "40 lines, 38 terms" is otherwise alarming.
-                    duplicates++;
-                }
-            }
-        }
-        return new TermList(new ArrayList<IRI>(seen), unresolved, duplicates);
+        return ioHelper;
     }
 
     /** Reads a term file, as UTF-8. */

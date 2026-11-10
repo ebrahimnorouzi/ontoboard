@@ -9,6 +9,7 @@ import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.semanticweb.owlapi.apibinding.OWLManager;
+import org.semanticweb.owlapi.model.EntityType;
 import org.semanticweb.owlapi.model.IRI;
 import org.semanticweb.owlapi.model.OWLClass;
 import org.semanticweb.owlapi.model.OWLDataFactory;
@@ -356,5 +357,129 @@ class ReleaseDiffTest {
             }
         }
         assertEquals(1, mentions, "one retirement should be one row: " + diff.getChanges());
+    }
+
+    // ---------- properties are terms too ----------
+
+    private void declareProperty(OWLOntology ontology, EntityType<?> type, String name) {
+        IRI iri = IRI.create(NS + name);
+        manager.addAxiom(ontology, factory.getOWLDeclarationAxiom(
+                type == EntityType.OBJECT_PROPERTY ? factory.getOWLObjectProperty(iri)
+                        : type == EntityType.DATA_PROPERTY ? factory.getOWLDataProperty(iri)
+                                : factory.getOWLAnnotationProperty(iri)));
+    }
+
+    /**
+     * A tester's release added the object property "specified by value" and two classes, and the
+     * notes said "2 added".
+     */
+    @Test
+    void anAddedPropertyIsReported() {
+        declareProperty(after, EntityType.OBJECT_PROPERTY, "specifiedByValue");
+        label(after, "specifiedByValue", "specified by value");
+
+        ReleaseDiff diff = ReleaseDiff.between(before, after);
+
+        assertEquals(1, diff.count(ReleaseDiff.Change.ADDED), diff.getChanges().toString());
+        ReleaseDiff.TermChange added = diff.of(ReleaseDiff.Change.ADDED).get(0);
+        assertEquals(EntityType.OBJECT_PROPERTY, added.getType());
+        assertEquals("specified by value", added.getAfter());
+    }
+
+    /**
+     * And a removed one is caught like a removed class. Deleting that property from the release
+     * said no term had been added, retired, relabelled, redefined or moved, and left the release
+     * check nothing to refuse.
+     */
+    @Test
+    void aRemovedPropertyIsCaughtLikeARemovedClass() {
+        declareProperty(before, EntityType.OBJECT_PROPERTY, "specifiedByValue");
+        declareProperty(before, EntityType.DATA_PROPERTY, "hasValue");
+        declareProperty(before, EntityType.ANNOTATION_PROPERTY, "exampleOfUse");
+
+        ReleaseDiff diff = ReleaseDiff.between(before, after);
+
+        assertEquals(3, diff.removals().size(), diff.getChanges().toString());
+        assertTrue(diff.summary().contains("3 removed"), diff.summary());
+    }
+
+    @Test
+    void theNotesSayWhichKindOfTermAPropertyIs() {
+        declareProperty(after, EntityType.OBJECT_PROPERTY, "specifiedByValue");
+        label(after, "specifiedByValue", "specified by value");
+        declare(after, "Polymer");
+        label(after, "Polymer", "polymer");
+
+        String notes = ReleaseDiff.between(before, after).asReleaseNotes("1.1.0", after);
+
+        assertTrue(notes.contains("`specifiedByValue` specified by value (object property)"),
+                notes);
+        assertTrue(notes.contains("`Polymer` polymer\n"), "a class needs no word for its kind:\n"
+                + notes);
+    }
+
+    /** OWL's own vocabulary is nobody's term: labelling a class does not add rdfs:label. */
+    @Test
+    void owlsOwnAnnotationPropertiesAreNotTerms() {
+        declare(before, "Polymer");
+        declare(after, "Polymer");
+        label(after, "Polymer", "polymer");
+        deprecate(after, "Polymer");
+
+        for (ReleaseDiff.TermChange change : ReleaseDiff.between(before, after).getChanges()) {
+            assertEquals(NS + "Polymer", change.getIri().toString(), change.toString());
+        }
+    }
+
+    /** History lists properties its own way and takes only the classes from here. */
+    @Test
+    void aDiffRestrictedToClassesLeavesThePropertiesOut() {
+        declare(after, "Polymer");
+        declareProperty(after, EntityType.OBJECT_PROPERTY, "specifiedByValue");
+
+        ReleaseDiff classes = ReleaseDiff.between(before, after).restrictedTo(EntityType.CLASS);
+
+        assertEquals(1, classes.getChanges().size(), classes.getChanges().toString());
+        assertEquals(EntityType.CLASS, classes.getChanges().get(0).getType());
+    }
+
+    // ---------- the label the board shows ----------
+
+    /**
+     * Release notes listed "Länge" and "Material" for terms the board showed as length and
+     * material: the labels were sorted, and the German one sorted first.
+     */
+    @Test
+    void theNotesUseTheEnglishLabelAsTheBoardDoes() {
+        declare(after, "Length");
+        for (String[] text : new String[][] {{"Länge", "de"}, {"length", "en"}}) {
+            manager.addAxiom(after, factory.getOWLAnnotationAssertionAxiom(factory.getRDFSLabel(),
+                    cls("Length").getIRI(), factory.getOWLLiteral(text[0], text[1])));
+        }
+
+        ReleaseDiff diff = ReleaseDiff.between(before, after);
+        String notes = diff.asReleaseNotes("1.1.0", after);
+
+        assertEquals("length", diff.of(ReleaseDiff.Change.ADDED).get(0).getAfter());
+        assertTrue(notes.contains("`Length` length"), notes);
+        assertFalse(notes.contains("Länge"), notes);
+    }
+
+    /**
+     * A property used only in the ontology's header is not a published term: a review found that
+     * changing dc:creator to dcterms:creator there refused the next release.
+     */
+    @Test
+    void aHeaderAnnotationIsNotAPublishedTerm() throws Exception {
+        OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
+        OWLDataFactory df = manager.getOWLDataFactory();
+        OWLOntology before = manager.createOntology(IRI.create("http://example.org/o/1"));
+        manager.applyChange(new org.semanticweb.owlapi.model.AddOntologyAnnotation(before,
+                df.getOWLAnnotation(df.getOWLAnnotationProperty(
+                        IRI.create("http://purl.org/dc/elements/1.1/creator")),
+                        df.getOWLLiteral("Someone"))));
+        OWLOntology after = manager.createOntology(IRI.create("http://example.org/o/2"));
+
+        assertTrue(ReleaseDiff.between(before, after).removals().isEmpty());
     }
 }

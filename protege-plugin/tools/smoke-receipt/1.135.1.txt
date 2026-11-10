@@ -1,0 +1,167 @@
+OntoBoard 1.135.1 - host smoke receipt
+
+The board for imported patterns: no overlapping boxes, a pattern's classes as a hierarchy with
+every superclass above its subclasses, each property beside the class its domain names, lines
+routed round the boxes without running together, labels clear of boxes and lines, and every
+term named by its label. Right-click on the board
+works on macOS and Linux, where it never opened. And what eight independent testers found
+rehearsing a user study, and what its guide showed on Windows, fixed. See WHAT THIS RELEASE ADDS.
+
+Produced on Windows 11 Pro (10.0.26100), with tools/smoke.ps1 and -Dontoboard.selftest=true, the
+verdict read from what Protege logged. Protege 5.6.9 is the maintainer's own install, with the
+previous ontoboard jar moved to ontoboard-replaced and this jar the only ontoboard-*.jar in
+plugins; Protege 5.5.0 is a throwaway copy of the install, the same way. smoke.ps1 ran under
+Windows PowerShell 5.1, with -WaitSeconds 300, and opened no ontology.
+
+  2026-11-10  Protege 5.6.9  OWL API 4.5.29  JRE 11.0.25+9    -Xmx2G    PASS  check 10/10  test 12/12
+  2026-11-10  Protege 5.6.9  OWL API 4.5.29  JRE 11.0.25+9    -Xmx500M  PASS  check 10/10
+  2026-11-10  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121    -Xmx2G    PASS  check 10/10  test 12/12
+
+The self-test's summary now starts with the version it tested: "OntoBoard 1.135.1: ...".
+smoke.ps1 matches "OntoBoard self-test: (PASS|FAIL)" in the log, which is unchanged.
+
+Beyond the smoke, on macOS 15 (Intel) in Protege 5.6.9 with its own Java 11.0.25, the whole
+user-study scenario - a new ODK project, two PMDco patterns and an NFDIcore one imported and
+extended, a term from IAO, a competency-question test red then green, the quality report, two
+releases - was run by a script through the real windows and menus, with each platform's order
+of mouse events, and the board measured after every task (before the Windows fixes below):
+
+  2026-11-09  macOS click order    -Xmx2G    T0-T9 PASS  board after every task: 0 overlaps,
+              0 lines through boxes, 0 lines sharing a stretch or closer than 12 px, 0 labels
+              on boxes, labels or lines, 0 superclasses below their subclass; 0 log errors
+  2026-11-09  Windows click order  -Xmx500M  T0-T9 PASS  the same, on a first run with the
+              update check on; no OutOfMemoryError or GC overhead
+
+Both with rc15, sha256 316b0d3cc6bc67c7e331263ce7d4dfd13b96e72496432aace94c2f0be7b65669.
+The project each left scored 9 of 9 tasks in its files (private/eswc2027/analysis). Two
+general scenarios, written for participants from other fields - a music festival archive (on
+ontologydesignpatterns.org's Participation and Place patterns) and a cookbook publisher (Collection
+Entity and Price) - ran the same way with rc15: T0-T9 PASS, the same board measures at 0 after
+every task, 0 log errors, 9 of 9 in their files. Their 1.1.0 releases carry no term with two
+definitions; the only terms with two labels are PMDco's and the Place pattern's, in English and in
+German or Italian, which ROBOT's report counts as multiple labels.
+
+The study runs on Windows. There, in Protege 5.6.9 with its own Java at -Xmx500M (what a
+double-clicked Protege.exe gets) and with Windows' order of mouse events, a guide for
+participants from any field - boiling eggs, on the same PMDco and NFDIcore patterns - ran the
+same way, before and after the fixes it led to:
+
+  2026-11-09  release jar 283da193  T0-T9 PASS  board measures 0 after every task, 0 log errors,
+              9 of 9 in its files; but the board drew each relation's "∃" as an empty box
+  2026-11-09  first fix 20db02cb    T0-T9 PASS  the same measures and the same board (81 boxes,
+              61 is-a lines, 18 arrows), 0 log errors, 9 of 9 in its files
+  2026-11-10  round 5 4014c338      T0-T9 PASS  0 log errors, 9 of 9 in its files; 60 is-a lines,
+              has part's loop on itself gone; every board measure 0 after every task but two:
+              after T6-T8 the label "∃ has specified input" lies on two is-a lines, and after
+              T9 the label "∃ has value specification" on a box
+  2026-11-10  this jar 4feca973     T0-T9 PASS  0 log errors, 9 of 9 in its files; after every
+              task no box on another, no line through a box, none sharing a stretch or closer
+              than 12 px, no parent below its child; a label on an is-a line after T3
+              ("∃ concretizes plan") and after T6-T8 ("∃ has specified output"), none after T9
+
+The maintainer's own pizza and pizza-bfo boards, saved by an earlier build, opened with this jar
+keep their places and their lines. After Arrange > Outline each property whose domain names one
+class stands beside it, with no box on another and no line through a box; pizza-bfo then has no
+lines sharing a stretch and no label on anything. pizza's board keeps two empty frames an earlier
+build saved, and its defined pizzas stand below everything: its lines crowd as they did before
+this release (see WHAT THIS RECEIPT DOES NOT COVER).
+
+Three testers walked the guide in real Protege on Windows through the probe (each project 9 of
+9), a fourth tried its traps, and a fifth checked the guide, its answer key and the scripts
+against the logs. Its first two tasks were also walked with a real mouse and keyboard, on the
+first fix, which found the empty board's pale help lines. What they found is fixed: see WHAT
+THIS RELEASE ADDS.
+
+The jar: sha256 4feca9732e4fbcd38ece33a7c6ed2b628d9d802fb48946fcc3b366452203b2bf, built on
+Windows by mvn -o -B clean package from this release's tree with the Windows fixes, CI's Linux
+finding and each property beside its class; it is the jar the three smoke runs above and the
+last Windows run loaded. The unit suite in that build, on Java 11: 3,142 tests, 0 failures, 0
+errors, 17 skipped - 14 that run ROBOT and the ODK build in the obolibrary/odkfull Docker image,
+which was not available on the machine at the time (RobotCliParityTest 9, RobotParityTest 3,
+OdkBuildTest 2); PinchZoomTest; BundleConfigurationTest, the manifest check, which a clean build
+reaches before the jar exists (run against this jar afterwards, its 18 tests passed, and its
+Import-Package lists the same 254 packages as before the fixes); and KoncludeTest's
+executable-bit test, which needs a file system with one and runs on CI's Linux job. With DejaVu
+Sans first in the board's font list, as CI's Linux draws, the same 3,142 tests: 0 errors and one
+failure, the font check that edit breaks. Before the fixes, the jar built from 1a0a965 (sha256
+283da193621005ea6f06cdbd463570d215f521717cb043b1db5f9178c1e18d3d) passed the same three smoke
+runs and 2,949 tests, and the rc15 build on macOS ran the same 2,949 tests: 0 failures, 0 errors,
+29 skipped. PatternIndexTest's check that the shipped index matches the patterns fetches one
+external pattern's imports over the network; it failed once in an earlier full run and passed
+when run again.
+
+
+WHAT THIS RELEASE ADDS
+
+- An imported pattern is drawn as its hierarchy, a class above its subclasses, in more columns
+  when there are many. A class two patterns share is drawn once, in the frame of the pattern that
+  came first, and the other frame says where it is. A superclass that no pattern lists stands in
+  its subclass's frame, above it.
+- Lines are routed round the boxes, at right angles, 12 px apart at least, and no two share a
+  stretch; labels are placed clear of boxes, other labels and other lines. Measured on the study's
+  board: 0 px of lines run together, where 1,280 px did; a board of 120 boxes is routed in full.
+- Every pattern term and imported term is shown by its label, with its identifier under it, in
+  the board, the import dialogs, the term lists and the quality report.
+- Right-click on the board opens its menu on macOS and Linux. Extending an imported pattern works:
+  its classes and properties are offered when relating terms and setting parents.
+- The board arranges itself when a term or pattern arrives, until somebody moves a box. Frames
+  keep their rows. Dragging inside a frame moves the board. Property sections go below the classes
+  when that gives the board a screen's shape. Disjointness, ranges and rule lines wait until a
+  term is selected, and so do domains but for a property beside its class; class expressions
+  are off by default.
+- A property whose domain names one class on the board stands beside that class, in its frame,
+  joined to it by its domain line, which is drawn always; its range waits for a selection, and so
+  does a line between two properties that stand apart. Found by the maintainer on the pizza
+  ontologies, where every property stood in a frame of its own, joined to nothing until clicked.
+  A board saved by an earlier build keeps its places until Arrange > Outline, which now says
+  "classes as a tree, properties by their class".
+- Definition... on a term's menu. Release asks Save first?. A test can be replaced. The pattern
+  library searches the labels of a pattern's terms, says when a pattern is already imported, and
+  names the files it writes. Escape closes the import dialogs.
+- The small issues testers had left open: a range's datatype stands under its property, not alone
+  in a corner; adding a subclass moves only the subclasses after it; a class found and added, or
+  brought by an import, stands under its superclass in that superclass's frame; frames only for
+  patterns the ontology imports; an import taken back is said to be gone; 25 bundled patterns carry
+  IAO's current labels and definitions; Ethnicgroup's IRIs; released identifiers read when the
+  project opens; lines keep clear of arrowheads and labels off frame outlines; "another version of"
+  for patterns sharing an IRI; a badge on defined classes; HermiT asked after ELK, with a warning;
+  labels made from names for a pattern's unlabelled terms.
+- Fixed: re-importing left Protege holding a detached module; Save and build raised a false
+  "changed outside of Protege"; a test on a deleted class failed for ever; Definition... deleted a
+  term's other definitions; released identifiers could be minted again; release notes covered
+  classes only; a garbled Base IRI was accepted. docs/fixed.md has each with how it was found.
+- Found on Windows and fixed: the board drew its logic symbols as empty boxes (Segoe UI has no
+  "∃ ∀ ⊔ ⊓ ∧ ▸", and Java gives a named font no fallback there; labels now draw with the fallback
+  behind Segoe UI, every other glyph pixel for pixel as before); the empty board's help lines were
+  near white (they took the theme's colour for disabled text); switching the board's arrangement
+  emptied the patterns' frames; taking a term out of an import broke the next build; a class with
+  no members sent everybody to Undo, where the build now names the parent or arrow that empties
+  it; the build's advice, passing tests and first warning; Find's Enter, count and zoom; the
+  relation dialog names its property, says when a relation does not fit, and shows the new arrow;
+  "Saved." after an Undo; New ODK project's squeezed refusal; an undone import's traces; Airline
+  and Airline (OWL) named after a path on a disk; a new project's pages, README and .gitignore.
+- Properties on the board: a property stated to be its own sub-property no longer draws a loop on
+  its box; two properties that are each other's inverse stand side by side, their line short and
+  inside the frame; and the domains, ranges and disjointness a selected term shows are routed round
+  the boxes, among the lines already drawn, which keep their routes; an image exported in the
+  moment after a click has all of them.
+- Found by reviews of these fixes, and fixed: a sticky note resized by its handles went back to
+  its old size at the next redraw; a long data value lay on the next column of individuals. And
+  by CI's Linux build: there DejaVu Sans makes property boxes one line tall, and an inverse
+  partner could stand on a sub-property's left, where their line went over the top of the box.
+- The documentation site draws its pattern graphs with ontoink 0.8.0, and Ethnicgroup's example
+  names the pattern's own IRIs, not a path on the machine it was harvested on - the site's check
+  that every example matches its pattern failed on it.
+
+
+WHAT THIS RECEIPT DOES NOT COVER
+
+- The scripted runs send mouse events to the components directly, so focus, hover, drag and the
+  native file dialogs were exercised only in the guide's first two tasks, walked once with a real
+  mouse and keyboard on Windows.
+- Linux: not run. The right-click fix covers it by the same code path as macOS.
+- A real window activation for the Save and build fix: emulated in Protege by calling its own
+  handler at the moment the OS would; one check by hand with Protege in front closes it.
+- Old boards: a board saved by 1.135.0 keeps the frames of patterns it no longer imports, empty,
+  and they push the outline down; a class defined by an equivalence stands apart, below the
+  frames, its lines running up the board. Seen on pizza; not fixed in this release.

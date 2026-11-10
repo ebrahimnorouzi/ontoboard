@@ -372,10 +372,24 @@ public class SelfTestAction extends OntoBoardAction {
         return run((OWLOntology) null);
     }
 
+    /**
+     * Which OntoBoard was tested, said first in the result: "OntoBoard 1.135.1".
+     *
+     * <p>A reviewer found nothing recorded it. The study invitation accepts "1.135.1 or later",
+     * and this window, the first thing a participant runs, named no version - so a fix released
+     * during the study week would have left people on different builds without anyone knowing.
+     */
+    static String whichOntoBoard() {
+        String version = de.fizkarlsruhe.ise.ontoboard.bench.Bench.version();
+        return "unknown".equals(version) ? "OntoBoard (version unknown)" : "OntoBoard " + version;
+    }
+
     @Override
     protected OperationResult run(OWLOntology ignored) {
         OperationResult.Builder result = OperationResult.of(operationName())
                 .columns("Menu item", "Result", "What it reported");
+        String ontoBoard = whichOntoBoard();
+        result.note(ontoBoard + ".");
 
         File projectRoot;
         OWLOntology scratch;
@@ -383,13 +397,13 @@ public class SelfTestAction extends OntoBoardAction {
             projectRoot = scratchProject();
             scratch = editFileOf(projectRoot);
         } catch (Exception cannotBuild) {
-            return result.failed("Could not build the scratch project to test against: "
-                    + cannotBuild.getMessage()).build();
+            return result.failed(ontoBoard + ": could not build the scratch project to test "
+                    + "against: " + cannotBuild.getMessage()).build();
         }
 
         Map<String, OntoBoardAction> underTest = new LinkedHashMap<String, OntoBoardAction>();
         underTest.put("Check and test > Measure...", new MeasureAction());
-        underTest.put("Check and test > Quality report...", new QualityReportAction());
+        underTest.put(QUALITY_ROW, new QualityReportAction());
         underTest.put("Check and test > Explain...", new ExplainAction());
         underTest.put("Check and test > SPARQL...", new SparqlAction());
         underTest.put("Terms > Export terms...", new ExportAction());
@@ -409,8 +423,14 @@ public class SelfTestAction extends OntoBoardAction {
                 failed++;
                 result.warn(entry.getKey() + " failed: " + outcome);
             }
-            result.row(entry.getKey(), ok ? "ok" : "FAILED",
-                    outcome.startsWith("ok:") ? outcome.substring(3).trim() : outcome);
+            String said = ok ? outcome.substring(3).trim() : outcome;
+            String shown = ok ? reported(entry.getKey(), said) : said;
+            result.row(entry.getKey(), ok ? "ok" : "FAILED", shown);
+            if (!shown.equals(said)) {
+                result.note(entry.getKey() + " on the self-test's sample: " + said + ". The sample"
+                        + " leaves terms without a label on purpose, so that the report has"
+                        + " something to find.");
+            }
         }
 
         // The tab, which is not an action and so is not in the map above. It is the last clause
@@ -471,15 +491,38 @@ public class SelfTestAction extends OntoBoardAction {
         // believable, and the receipts quote this line verbatim.
         int checks = underTest.size() + 1 + TABS.length;
         if (failed > 0) {
-            return result.failed(failed + " of " + checks
+            return result.failed(ontoBoard + ": " + failed + " of " + checks
                     + " checks failed. This is a defect in the plugin, not in your "
                     + "ontology.").build();
         }
-        return result.summary(checks + " of " + checks
+        return result.summary(ontoBoard + ": " + checks + " of " + checks
                 + " checks ran - " + underTest.size() + " menu items, the in-process build and "
                 + TABS.length + " tabs. "
                 + skippedWithReasons().size()
                 + " others are not covered here - see the notes.").build();
+    }
+
+    /** The quality report's row, whose findings are the sample's own. */
+    static final String QUALITY_ROW = "Check and test > Quality report...";
+
+    private static final java.util.regex.Pattern FINDINGS =
+            java.util.regex.Pattern.compile("([1-9]\\d*) findings, \\d+ of them errors");
+
+    /**
+     * What a passing row says (1.135.1, Windows study rehearsal). The quality report's own summary,
+     * "6 findings, 2 of them errors", read as a failure in a row marked ok; the findings are the
+     * sample's, which is built to have some. The whole summary goes to the log. None is not what
+     * was expected, and is said as the report says it (1.135.1 review): "the sample's 0 findings,
+     * as expected" passed a report that had stopped finding anything.
+     */
+    static String reported(String item, String said) {
+        if (QUALITY_ROW.equals(item) && said != null) {
+            java.util.regex.Matcher findings = FINDINGS.matcher(said.trim());
+            if (findings.matches()) {
+                return "the sample's " + findings.group(1) + " findings, as expected";
+            }
+        }
+        return said;
     }
 
     /**

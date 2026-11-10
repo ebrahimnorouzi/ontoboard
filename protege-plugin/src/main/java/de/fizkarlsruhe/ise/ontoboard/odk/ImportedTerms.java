@@ -3,6 +3,7 @@ package de.fizkarlsruhe.ise.ontoboard.odk;
 import de.fizkarlsruhe.ise.ontoboard.model.DisplayLabels;
 import de.fizkarlsruhe.ise.ontoboard.robot.ImportProvenance;
 import de.fizkarlsruhe.ise.ontoboard.robot.TermExtract;
+import de.fizkarlsruhe.ise.ontoboard.robot.TermList;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -374,10 +375,16 @@ public final class ImportedTerms {
     private static Source moduleSource(OWLOntology ontology, ImportModules.Module module,
             OWLOntology part, ImportProducts.Row row) {
         String listText = readOrEmpty(module.getTermsFile());
+        List<TermFile.Line> lines = TermFile.linesIn(listText);
+        Map<String, IRI> curies = curiesIn(lines, prefixesOf(ontology));
         Map<IRI, String> listed = new LinkedHashMap<IRI, String>();
-        for (TermFile.Line line : TermFile.linesIn(listText)) {
-            if (line.getKind() == TermFile.Kind.TERM && !listed.containsKey(line.getTerm())) {
-                listed.put(line.getTerm(), line.getComment());
+        for (TermFile.Line line : lines) {
+            if (line.getKind() != TermFile.Kind.TERM) {
+                continue;
+            }
+            IRI term = termOn(line, curies);
+            if (!listed.containsKey(term)) {
+                listed.put(term, line.getComment());
             }
         }
         String pattern = null;
@@ -421,6 +428,57 @@ public final class ImportedTerms {
         sortByLabel(terms);
         return new Source(module.getName(), from, module, part,
                 row == null ? null : row.getMethod(), pattern, terms);
+    }
+
+    /**
+     * What the CURIEs on a term list stand for, read the way ROBOT reads them: its OBO prefixes,
+     * and the project's own.
+     *
+     * <p>A list written {@code IAO:0000088 # report} named no term of the module, because the
+     * line was read as the IRI {@code IAO:0000088}. So nothing on it counted as chosen, and the
+     * board, which keeps a chosen term's parents, left out {@code document} above
+     * {@code report} - and dropped the listed terms the ontology itself does not use. ROBOT
+     * builds the module from that very list, and expands the CURIE. OntoBoard writes full IRIs,
+     * so this matters for lists written by hand or by other tools.
+     */
+    private static Map<String, IRI> curiesIn(List<TermFile.Line> lines,
+            Map<String, String> prefixes) {
+        Set<String> written = new LinkedHashSet<String>();
+        for (TermFile.Line line : lines) {
+            if (line.getKind() == TermFile.Kind.TERM
+                    && !line.getTerm().toString().contains("://")) {
+                written.add(line.getTerm().toString());
+            }
+        }
+        try {
+            return TermList.resolve(written, prefixes);
+        } catch (RuntimeException cannotResolve) {
+            // Read as written, as before: a list that cannot be resolved is still worth showing.
+            return Collections.<String, IRI>emptyMap();
+        }
+    }
+
+    /** The term a line names: the IRI its CURIE stands for, or what is written. */
+    private static IRI termOn(TermFile.Line line, Map<String, IRI> curies) {
+        IRI expanded = curies.get(line.getTerm().toString());
+        return expanded == null ? line.getTerm() : expanded;
+    }
+
+    /**
+     * The prefixes the ontology's own file declares, which its term lists may use as well - the
+     * ones Import terms hands ROBOT beside its OBO prefixes.
+     */
+    public static Map<String, String> prefixesOf(OWLOntology ontology) {
+        try {
+            org.semanticweb.owlapi.model.OWLDocumentFormat format = ontology == null ? null
+                    : ontology.getOWLOntologyManager().getOntologyFormat(ontology);
+            if (format != null && format.isPrefixOWLOntologyFormat()) {
+                return format.asPrefixOWLOntologyFormat().getPrefixName2PrefixMap();
+            }
+        } catch (RuntimeException noPrefixes) {
+            // A format without prefixes is not a problem; ROBOT's OBO ones are still there.
+        }
+        return Collections.<String, String>emptyMap();
     }
 
     private static Source wholeSource(OWLOntology ontology, OWLOntology part) {
@@ -642,10 +700,22 @@ public final class ImportedTerms {
 
     /** A term list's text without the lines naming these terms; every other line unchanged. */
     public static String withoutTerms(String listText, Set<IRI> terms) {
+        return withoutTerms(listText, terms, Collections.<String, String>emptyMap());
+    }
+
+    /**
+     * The same, with the project's prefixes for the CURIEs on the list: Imported terms names a
+     * term written {@code IAO:0000088} by its full IRI, and taking it out has to find that line.
+     */
+    public static String withoutTerms(String listText, Set<IRI> terms,
+            Map<String, String> prefixes) {
         String text = listText == null ? "" : listText;
+        List<TermFile.Line> all = TermFile.linesIn(text);
+        Map<String, IRI> curies = curiesIn(all, prefixes);
         List<Integer> lines = new ArrayList<Integer>();
-        for (TermFile.Line line : TermFile.linesIn(text)) {
-            if (line.getKind() == TermFile.Kind.TERM && terms.contains(line.getTerm())) {
+        for (TermFile.Line line : all) {
+            if (line.getKind() == TermFile.Kind.TERM && (terms.contains(line.getTerm())
+                    || terms.contains(termOn(line, curies)))) {
                 lines.add(line.getNumber());
             }
         }

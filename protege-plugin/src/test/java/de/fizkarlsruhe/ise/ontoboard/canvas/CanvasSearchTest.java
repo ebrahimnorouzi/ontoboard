@@ -10,6 +10,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import javax.swing.JTextField;
+import java.awt.event.FocusEvent;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -160,5 +162,97 @@ class CanvasSearchTest {
         assertEquals("AmericanHot",
                 CanvasSearch.nameOf(new CanvasNode(NS + "AmericanHot", NodeKind.CLASS, "  ")));
         assertEquals("American Hot", CanvasSearch.nameOf(term("AmericanHot", "American Hot")));
+    }
+
+    /**
+     * The first Enter after typing stays on the match typing went to (1.135.1, Windows study
+     * rehearsal). Typing "egg boiling" showed "(1 of 3) egg boiling"; Enter, which the trouble
+     * table and every user expects to confirm it, jumped to "(2 of 3) egg boiling dataset".
+     */
+    @Test
+    void enterRightAfterTypingStaysOnTheMatchTypingWentTo() {
+        assertEquals(0, CanvasSearch.step(0, 3, +1, false));
+        assertEquals(1, CanvasSearch.step(0, 3, +1, true));
+        assertEquals(0, CanvasSearch.step(2, 3, +1, true));
+    }
+
+    @Test
+    void shiftEnterStillGoesBackAndNothingToStepThroughIsHarmless() {
+        assertEquals(2, CanvasSearch.step(0, 3, -1, false));
+        assertEquals(1, CanvasSearch.step(2, 3, -1, true));
+        assertEquals(0, CanvasSearch.step(0, 0, +1, false));
+        assertEquals(0, CanvasSearch.step(7, 1, +1, true));
+    }
+
+    /** After the board is drawn again the Find box stays on the term it was on. */
+    @Test
+    void aBoardDrawnAgainKeepsTheMatchTheFindBoxWasOn() {
+        CanvasNode boiling = term("Boiling", "egg boiling");
+        CanvasNode report = term("Report", "egg boiling report");
+        CanvasNode dataset = term("Dataset", "egg boiling dataset");
+        List<CanvasNode> after = CanvasSearch.matches("egg boiling",
+                Arrays.asList(boiling, report, dataset));
+        assertEquals(Arrays.asList(boiling, dataset, report), after);
+        assertEquals(2, CanvasSearch.indexOf(after, report.getId()));
+        assertEquals(-1, CanvasSearch.indexOf(after, NS + "Gone"));
+        assertEquals(-1, CanvasSearch.indexOf(after, null));
+    }
+
+    /**
+     * A click into the Find box selects what it still says, so typing replaces it (1.135.1,
+     * Windows study rehearsal): a participant who had used Find in T3 typed `report` after
+     * `egg boiling` in T4 and got "egg boilingreport" and no match.
+     */
+    @Test
+    void comingBackToTheFindBoxSelectsWhatItStillSays() throws Exception {
+        JTextField find = new JTextField("egg boiling");
+        javax.swing.JPanel board = new javax.swing.JPanel();
+        javax.swing.JPanel view = new javax.swing.JPanel();
+        view.add(board);
+        view.add(find);
+        find.setCaretPosition(find.getText().length());
+        CanvasSearch.selectAllOnFocus(find);
+        // A click into the box from the board beside it, in the same window.
+        focusArrives(find, board);
+        assertEquals(0, find.getSelectionStart());
+        assertEquals(find.getText().length(), find.getSelectionEnd());
+        find.replaceSelection("report");
+        assertEquals("report", find.getText());
+    }
+
+    /**
+     * Coming back to Protégé from another window leaves the text and the caret as they were
+     * (1.135.1 review). A participant reads the guide in another window: "egg bo", Alt+Tab to the
+     * guide, back, "iling" - and the box held "iling", because the focus the box gets back with its
+     * window selected everything in it.
+     */
+    @Test
+    void comingBackFromAnotherWindowKeepsWhatWasTyped() throws Exception {
+        JTextField find = new JTextField("egg bo");
+        javax.swing.JPanel view = new javax.swing.JPanel();
+        view.add(find);
+        find.setCaretPosition(find.getText().length());
+        CanvasSearch.selectAllOnFocus(find);
+        // Another application's window: Java names no component the focus came from.
+        focusArrives(find, null);
+        find.replaceSelection("iling");
+        assertEquals("egg boiling", find.getText());
+
+        // Another window of this one, a dialog say: not a click within the view either. The caret
+        // after what was typed, where typing leaves it (off the event thread it does not move).
+        find.setCaretPosition(find.getText().length());
+        javax.swing.JPanel elsewhere = new javax.swing.JPanel();
+        elsewhere.add(new JTextField());
+        focusArrives(find, elsewhere.getComponent(0));
+        find.replaceSelection(" dataset");
+        assertEquals("egg boiling dataset", find.getText());
+    }
+
+    /** The focus arriving in {@code field} from {@code from}, and whatever that queued run. */
+    private static void focusArrives(JTextField field, java.awt.Component from) throws Exception {
+        for (java.awt.event.FocusListener listener : field.getFocusListeners()) {
+            listener.focusGained(new FocusEvent(field, FocusEvent.FOCUS_GAINED, false, from));
+        }
+        javax.swing.SwingUtilities.invokeAndWait(() -> { });
     }
 }

@@ -270,7 +270,10 @@ public final class ReleaseHistory {
 
     private static Version versionOf(String name, File file, OWLOntology ontology,
             OWLOntology previous) {
-        ReleaseDiff diff = previous == null ? null : ReleaseDiff.between(previous, ontology);
+        // Classes only. Properties and individuals are compared below, and since 1.135.1 the
+        // diff covers properties as well, which would count each new one twice.
+        ReleaseDiff diff = previous == null ? null : ReleaseDiff.between(previous, ontology)
+                .restrictedTo(org.semanticweb.owlapi.model.EntityType.CLASS);
         Set<String> properties = propertiesOf(ontology);
         Set<String> individuals = individualsOf(ontology);
         Set<String> propertiesBefore = previous == null ? properties : propertiesOf(previous);

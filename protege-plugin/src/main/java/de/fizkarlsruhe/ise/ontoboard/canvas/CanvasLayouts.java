@@ -8,9 +8,12 @@ import com.mxgraph.layout.mxIGraphLayout;
 import com.mxgraph.model.mxGeometry;
 import com.mxgraph.model.mxGraphModel;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import javax.swing.SwingConstants;
 
 /** Automatic arrangements, mapping the retired web app's layout menu onto JGraphX. */
@@ -40,9 +43,13 @@ public final class CanvasLayouts {
     /** Vertical pitch for that block, and how far under the diagram it starts. */
     private static final double LOOSE_PITCH_Y = 100;
 
-    /** Names match the web app's menu so existing users recognise them. */
+    /**
+     * Names match the web app's menu so existing users recognise them. Outline's name said
+     * "properties apart" until a property whose domain names one class on the board came to stand
+     * beside that class (1.135.1); its first word, by which the docs reach it, stays.
+     */
     public enum Algorithm {
-        SECTIONS("Outline - classes as a tree, properties apart"),
+        SECTIONS("Outline - classes as a tree, properties by their class"),
         HIERARCHICAL("Hierarchical (SubClassOf tree)"),
         ORGANIC("Organic (force-directed)"),
         CIRCLE("Circle"),
@@ -143,26 +150,55 @@ public final class CanvasLayouts {
      * where the real terms actually ended up; {@link #normalise} runs last, so everything - terms,
      * loose block, notes, frames and edge routing - moves together and the note keeps its position
      * relative to the class it comments on.
+     *
+     * <p>A term inside a frame stays in it, as in the outline, and the rest is arranged under the
+     * frames (1.135.1). These arrangements moved every term and put the frames back where they had
+     * been, so switching the board's layout left each pattern's frame empty and its classes
+     * scattered over the board. The outline's own frames go with the outline: this arrangement moves
+     * what they held, and a frame left behind enclosed nothing.
+     *
+     * @return how many terms stayed in their frames
      */
-    public static void apply(SchemaGraph graph, Algorithm algorithm) {
+    public static int apply(SchemaGraph graph, Algorithm algorithm) {
         if (algorithm == Algorithm.SECTIONS) {
             applySections(graph);
-            return;
+            return 0;
         }
+        final Set<Object> staying = new HashSet<Object>();
         graph.getModel().beginUpdate();
         try {
+            for (Object vertex : graph.getChildVertices(graph.getDefaultParent())) {
+                String id = graph.getIdForCell(vertex);
+                if (id != null && id.startsWith(SECTION_PREFIX)) {
+                    graph.removeAnnotation(id);
+                }
+            }
             Map<Object, mxGeometry> annotations = annotationGeometries(graph);
+            List<mxGeometry> frames = framesToStayIn(graph);
+            for (Object vertex : graph.getChildVertices(graph.getDefaultParent())) {
+                mxGeometry geometry = graph.getModel().getGeometry(vertex);
+                if (!isAnnotation(graph, vertex) && geometry != null && insideAny(frames, geometry)) {
+                    staying.add(vertex);
+                    // Put back with the notes and frames, so nothing below can move it.
+                    annotations.put(vertex, (mxGeometry) geometry.clone());
+                }
+            }
             if (algorithm == Algorithm.GRID) {
-                applyGrid(graph);
+                applyGrid(graph, staying);
             } else if (algorithm == Algorithm.CIRCLE) {
-                applyCircle(graph);
+                applyCircle(graph, staying);
             } else {
-                createLibraryLayout(graph, algorithm).execute(graph.getDefaultParent());
+                createLibraryLayout(graph, algorithm, staying).execute(graph.getDefaultParent());
             }
             for (Map.Entry<Object, mxGeometry> kept : annotations.entrySet()) {
                 graph.getModel().setGeometry(kept.getKey(), kept.getValue());
             }
-            parkUnconnected(graph);
+            dropBendsNotRoutedNow(graph, staying, algorithm == Algorithm.HIERARCHICAL);
+            double[] underFrames = underFrames(frames);
+            if (underFrames != null) {
+                moveArrangedTo(graph, staying, underFrames);
+            }
+            parkUnconnected(graph, staying, underFrames);
             normalise(graph);
         } finally {
             graph.getModel().endUpdate();
@@ -179,6 +215,160 @@ public final class CanvasLayouts {
         } finally {
             graph.getModel().endUpdate();
         }
+        return staying.size();
+    }
+
+    /** Every frame but the outline's: a pattern's, or one somebody drew. */
+    private static List<mxGeometry> framesToStayIn(SchemaGraph graph) {
+        List<mxGeometry> frames = new ArrayList<mxGeometry>();
+        for (Object vertex : graph.getChildVertices(graph.getDefaultParent())) {
+            String id = graph.getIdForCell(vertex);
+            mxGeometry geometry = graph.getModel().getGeometry(vertex);
+            if (id != null && id.startsWith(SchemaGraph.FRAME_ID_PREFIX)
+                    && !id.startsWith(SECTION_PREFIX) && geometry != null) {
+                frames.add(geometry);
+            }
+        }
+        return frames;
+    }
+
+    /** Where the arranged terms start, {@code {x, y}}: under the lowest frame; null with none. */
+    private static double[] underFrames(List<mxGeometry> frames) {
+        if (frames.isEmpty()) {
+            return null;
+        }
+        double left = Double.MAX_VALUE;
+        double top = MARGIN;
+        for (mxGeometry frame : frames) {
+            left = Math.min(left, frame.getX());
+            top = Math.max(top, frame.getY() + frame.getHeight() + BELOW_FRAMES);
+        }
+        return new double[] {left, top};
+    }
+
+    /** The arranged terms, and the lines between them, moved as one piece to start at a corner. */
+    private static void moveArrangedTo(SchemaGraph graph, Set<Object> staying, double[] corner) {
+        Set<Object> arranged = new HashSet<Object>();
+        double minX = Double.MAX_VALUE;
+        double minY = Double.MAX_VALUE;
+        for (Object vertex : graph.getChildVertices(graph.getDefaultParent())) {
+            mxGeometry geometry = graph.getModel().getGeometry(vertex);
+            if (isAnnotation(graph, vertex) || staying.contains(vertex) || geometry == null) {
+                continue;
+            }
+            arranged.add(vertex);
+            // Not from a term nothing relates to: parkUnconnected places those afterwards, and
+            // Organic and Circle leave them where they stood - a class made beside a frame at the
+            // top of the board started the arrangement at y=959 rather than 440 (1.135.1 review).
+            if (graph.getModel().getEdgeCount(vertex) == 0) {
+                continue;
+            }
+            minX = Math.min(minX, geometry.getX());
+            minY = Math.min(minY, geometry.getY());
+        }
+        if (minX == Double.MAX_VALUE) {
+            // Nothing arranged is related to anything: parkUnconnected starts them at the corner.
+            return;
+        }
+        double dx = corner[0] - minX;
+        double dy = corner[1] - minY;
+        for (Object cell : mxGraphModel.getChildren(graph.getModel(), graph.getDefaultParent())) {
+            mxGeometry geometry = graph.getModel().getGeometry(cell);
+            boolean move = graph.getModel().isEdge(cell)
+                    ? arranged.contains(graph.getModel().getTerminal(cell, true))
+                            && arranged.contains(graph.getModel().getTerminal(cell, false))
+                    : arranged.contains(cell);
+            if (move && geometry != null) {
+                mxGeometry moved = (mxGeometry) geometry.clone();
+                moved.translate(dx, dy);
+                graph.getModel().setGeometry(cell, moved);
+            }
+        }
+    }
+
+    /**
+     * Takes the bends off every line this arrangement moved an end of without routing it (1.135.1
+     * review). Hierarchical routes only the lines between the terms it arranges, and Circle and
+     * Grid route none: an arrow from a moved term into a frame kept the bends of the arrangement
+     * before and was drawn through where that term had stood - on a board of over 150 lines, whose
+     * relations are never routed, for good - and after Hierarchical then Circle or Grid every line
+     * ran along Hierarchical's lanes. Without bends a line takes the board's own connector, as
+     * every line does after an arrangement until the board routes it.
+     *
+     * @param routedBetweenArranged whether the layout routed the lines between two arranged terms
+     */
+    private static void dropBendsNotRoutedNow(SchemaGraph graph, Set<Object> staying,
+            boolean routedBetweenArranged) {
+        for (Object edge : mxGraphModel.getChildCells(graph.getModel(), graph.getDefaultParent(),
+                false, true)) {
+            Object source = graph.getModel().getTerminal(edge, true);
+            Object target = graph.getModel().getTerminal(edge, false);
+            boolean sourceMoved = source != null && !staying.contains(source);
+            boolean targetMoved = target != null && !staying.contains(target);
+            if (!sourceMoved && !targetMoved || routedBetweenArranged && sourceMoved && targetMoved) {
+                continue;
+            }
+            mxGeometry geometry = graph.getModel().getGeometry(edge);
+            if (geometry != null && geometry.getPoints() != null
+                    && !geometry.getPoints().isEmpty()) {
+                mxGeometry straight = (mxGeometry) geometry.clone();
+                straight.setPoints(null);
+                graph.getModel().setGeometry(edge, straight);
+            }
+        }
+    }
+
+    /** Where every box on the board stands, by id: {@code {x, y, w, h}}. */
+    public static Map<String, double[]> boxesOf(SchemaGraph graph) {
+        Map<String, double[]> boxes = new LinkedHashMap<String, double[]>();
+        for (Object vertex : mxGraphModel.getChildCells(graph.getModel(), graph.getDefaultParent(),
+                true, false)) {
+            mxGeometry at = graph.getModel().getGeometry(vertex);
+            String id = graph.getIdForCell(vertex);
+            if (at != null && id != null) {
+                boxes.put(id, new double[] {at.getX(), at.getY(), at.getWidth(), at.getHeight()});
+            }
+        }
+        return boxes;
+    }
+
+    /**
+     * Takes the bends off every line with an end not where {@link #boxesOf} found it (1.135.1
+     * review). Outline leaves its lines to the board's router, and a line with bends of its own is
+     * drawn through them instead: after Hierarchical then Outline every line ran along
+     * Hierarchical's lanes from where its boxes had stood. A line whose two ends did not move keeps
+     * what it has, so a board only ever laid out by Outline - whose lines have no bends - is drawn
+     * as it always was.
+     */
+    public static void dropBendsOfLinesMovedSince(SchemaGraph graph, Map<String, double[]> before) {
+        Map<String, double[]> now = boxesOf(graph);
+        graph.getModel().beginUpdate();
+        try {
+            for (Object edge : mxGraphModel.getChildCells(graph.getModel(),
+                    graph.getDefaultParent(), false, true)) {
+                mxGeometry geometry = graph.getModel().getGeometry(edge);
+                if (geometry == null || geometry.getPoints() == null
+                        || geometry.getPoints().isEmpty()) {
+                    continue;
+                }
+                String source = graph.getIdForCell(graph.getModel().getTerminal(edge, true));
+                String target = graph.getIdForCell(graph.getModel().getTerminal(edge, false));
+                if (movedSince(before, now, source) || movedSince(before, now, target)) {
+                    mxGeometry straight = (mxGeometry) geometry.clone();
+                    straight.setPoints(null);
+                    graph.getModel().setGeometry(edge, straight);
+                }
+            }
+        } finally {
+            graph.getModel().endUpdate();
+        }
+    }
+
+    private static boolean movedSince(Map<String, double[]> before, Map<String, double[]> now,
+            String id) {
+        double[] was = id == null ? null : before.get(id);
+        double[] is = id == null ? null : now.get(id);
+        return was == null || is == null || !java.util.Arrays.equals(was, is);
     }
 
     /** The id every section frame starts with, so arranging again replaces rather than adds. */
@@ -197,7 +387,34 @@ public final class CanvasLayouts {
      */
     public static List<de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Section> applySections(
             SchemaGraph graph) {
+        return applySections(graph, null);
+    }
+
+    /**
+     * The same, saying which terms belong in a frame rather than working it out from where they
+     * stand. A term's old position says nothing once the frames have been planned afresh: a class
+     * that happened to stand where a frame now is counted as inside it, was left there, and lay on
+     * top of the frame's own boxes.
+     *
+     * @param staying the terms already placed in frames; null to go by where each term stands
+     */
+    public static List<de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Section> applySections(
+            SchemaGraph graph, java.util.Set<String> staying) {
+        return applySections(graph, staying, true);
+    }
+
+    /**
+     * The same, routing the lines afterwards only when {@code route}: a caller about to draw the
+     * board again routes once, then - a review measured three passes per arrangement, each up to the
+     * router's whole time budget, on the event thread.
+     */
+    public static List<de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Section> applySections(
+            SchemaGraph graph, java.util.Set<String> staying, boolean route) {
         List<de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Section> sections;
+        Map<String, double[]> before = boxesOf(graph);
+        // Read off the whole board, the classes in frames too: a property stands beside its class
+        // wherever that class stands (1.135.1).
+        Map<String, String> beside = graph.propertiesBesideTheirClass();
         graph.getModel().beginUpdate();
         try {
             List<mxGeometry> frames = new ArrayList<mxGeometry>();
@@ -213,24 +430,39 @@ public final class CanvasLayouts {
                     framesRight = Math.max(framesRight, frame.getX() + frame.getWidth());
                 }
             }
-            List<de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Term> terms =
-                    new ArrayList<de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Term>();
+            Map<String, de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Term> terms =
+                    new LinkedHashMap<String,
+                            de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Term>();
             Map<String, Object> cells = new LinkedHashMap<String, Object>();
             for (Object vertex : graph.getChildVertices(graph.getDefaultParent())) {
                 mxGeometry geometry = graph.getModel().getGeometry(vertex);
-                if (isAnnotation(graph, vertex) || geometry == null || insideAny(frames, geometry)) {
+                String id = graph.getIdForCell(vertex);
+                if (isAnnotation(graph, vertex) || geometry == null || (staying == null
+                        ? insideAny(frames, geometry) : staying.contains(id))) {
                     continue;
                 }
-                String id = graph.getIdForCell(vertex);
                 cells.put(id, vertex);
-                terms.add(new de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Term(id,
-                        kindOf(graph.getModel().getStyle(vertex)),
-                        String.valueOf(graph.getModel().getValue(vertex)),
-                        geometry.getWidth(), geometry.getHeight()));
+                String label = String.valueOf(graph.getModel().getValue(vertex));
+                // As big as the label needs and no bigger, on a board saved at older sizes too.
+                double[] fitted = graph.fittedSize(label, graph.getModel().getStyle(vertex));
+                if (fitted[0] != geometry.getWidth() || fitted[1] != geometry.getHeight()) {
+                    mxGeometry sized = (mxGeometry) geometry.clone();
+                    sized.setWidth(fitted[0]);
+                    sized.setHeight(fitted[1]);
+                    graph.getModel().setGeometry(vertex, sized);
+                }
+                terms.put(id, new de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Term(id,
+                        kindOf(graph.getModel().getStyle(vertex)), label,
+                        fitted[0], fitted[1]));
             }
             List<de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Edge> edges =
                     new ArrayList<de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Edge>();
-            for (Object edge : graph.getChildEdges(graph.getDefaultParent())) {
+            // Every line, drawn or waiting for a selection: graph.getChildEdges leaves out what
+            // is not visible, and since ranges wait for a selection a datatype lost the line to
+            // its property and was laid out as a class of its own - a lone "float" in the corner
+            // of the board, found by a tester after importing a pattern with a data range.
+            for (Object edge : com.mxgraph.model.mxGraphModel.getChildCells(graph.getModel(),
+                    graph.getDefaultParent(), false, true)) {
                 Object source = graph.getModel().getTerminal(edge, true);
                 Object target = graph.getModel().getTerminal(edge, false);
                 if (source != null && target != null) {
@@ -239,9 +471,29 @@ public final class CanvasLayouts {
                             linkOf(graph.getModel().getStyle(edge))));
                 }
             }
+            List<de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Term> outlined =
+                    new ArrayList<de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Term>(
+                            terms.values());
+            Set<String> besideAFramedClass = besideClassesThatStay(graph, outlined, edges,
+                    beside, cells);
+            if (!besideAFramedClass.isEmpty()) {
+                terms.keySet().removeAll(besideAFramedClass);
+                // Under the frames as they are now: one may have grown to hold a property.
+                for (Object vertex : graph.getChildVertices(graph.getDefaultParent())) {
+                    String id = graph.getIdForCell(vertex);
+                    if (id != null && id.startsWith(SchemaGraph.FRAME_ID_PREFIX)
+                            && !id.startsWith(SECTION_PREFIX)) {
+                        mxGeometry frame = graph.getModel().getGeometry(vertex);
+                        top = Math.max(top, frame.getY() + frame.getHeight() + BELOW_FRAMES);
+                        framesRight = Math.max(framesRight, frame.getX() + frame.getWidth());
+                    }
+                }
+            }
             de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Plan plan =
-                    de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.plan(terms, edges, MARGIN,
-                            top, framesRight);
+                    de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.plan(
+                            new ArrayList<de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Term>(
+                                    terms.values()), edges, MARGIN, top, framesRight, MARGIN,
+                            beside);
             for (Map.Entry<String, double[]> placed : plan.positions.entrySet()) {
                 Object cell = cells.get(placed.getKey());
                 mxGeometry moved = (mxGeometry) graph.getModel().getGeometry(cell).clone();
@@ -249,18 +501,240 @@ public final class CanvasLayouts {
                 moved.setY(placed.getValue()[1]);
                 graph.getModel().setGeometry(cell, moved);
             }
+            // Before the router: a line it moved an end of keeps no bend from another arrangement.
+            dropBendsOfLinesMovedSince(graph, before);
             sections = plan.sections;
         } finally {
             graph.getModel().endUpdate();
         }
-        graph.getView().revalidate();
-        graph.getModel().beginUpdate();
-        try {
-            new mxEdgeLabelLayout(graph).execute(graph.getDefaultParent());
-        } finally {
-            graph.getModel().endUpdate();
+        if (route) {
+            graph.routeEdges();
         }
         return sections;
+    }
+
+    /**
+     * The properties whose class stays in its frame - a pattern's, or one somebody drew - put
+     * beside it there, the frame grown to hold them (1.135.1); returns what was put. Found by the
+     * maintainer on the pizza ontologies: the Outline leaves what stands in a frame where it is,
+     * and a property whose domain is such a class went to the Object properties section with the
+     * rest, joined to nothing.
+     *
+     * <p>Only where nothing that stays stands in the way - a box in the frame, a note - and the
+     * frame, grown, meets nothing it did not hold before: somebody's own arrangement is not moved
+     * to make room. A property that has no room stays in its section, its lines waiting there.
+     *
+     * @param outline the boxes the Outline places, by id: what does not stay
+     */
+    private static Set<String> besideClassesThatStay(SchemaGraph graph,
+            List<de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Term> terms,
+            List<de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Edge> edges,
+            Map<String, String> beside, Map<String, Object> outline) {
+        Set<String> put = new HashSet<String>();
+        Map<String, List<de.fizkarlsruhe.ise.ontoboard.layout.PropertiesBeside.Item>> byClass =
+                de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.itemsBeside(terms, edges,
+                        beside);
+        List<double[]> fixed = new ArrayList<double[]>();
+        List<Object> frames = new ArrayList<Object>();
+        for (Object vertex : graph.getChildVertices(graph.getDefaultParent())) {
+            String id = graph.getIdForCell(vertex);
+            mxGeometry at = graph.getModel().getGeometry(vertex);
+            if (at == null || outline.containsKey(id)
+                    || id != null && id.startsWith(SECTION_PREFIX)) {
+                continue;
+            }
+            if (id != null && id.startsWith(SchemaGraph.FRAME_ID_PREFIX)) {
+                frames.add(vertex);
+            } else {
+                fixed.add(new double[] {at.getX(), at.getY(), at.getWidth(), at.getHeight()});
+            }
+        }
+        for (Map.Entry<String, List<de.fizkarlsruhe.ise.ontoboard.layout.PropertiesBeside.Item>>
+                cls : byClass.entrySet()) {
+            Object classCell = graph.getCellForId(cls.getKey());
+            if (classCell == null || outline.containsKey(cls.getKey())) {
+                continue;
+            }
+            mxGeometry c = graph.getModel().getGeometry(classCell);
+            double[] block = new double[2];
+            Map<String, double[]> stack = de.fizkarlsruhe.ise.ontoboard.layout.PropertiesBeside
+                    .stack(c.getWidth(), c.getHeight(), cls.getValue(), block);
+            double[] room = {c.getX() + c.getWidth(), c.getY(), block[0] - c.getWidth(),
+                block[1]};
+            double[] clear = {room[0], room[1], room[2] + SIBLINGS, room[3] + SIBLINGS};
+            if (meetsAny(clear, fixed)) {
+                continue;
+            }
+            Object frame = innermostFrame(graph, frames, c);
+            mxGeometry grown = null;
+            if (frame == null && meetsAny(clear, rectsOf(graph, frames))) {
+                continue;
+            } else if (frame != null) {
+                mxGeometry was = graph.getModel().getGeometry(frame);
+                double right = Math.max(was.getX() + was.getWidth(),
+                        room[0] + room[2] + PADDING);
+                double bottom = Math.max(was.getY() + was.getHeight(),
+                        room[1] + room[3] + PADDING);
+                if (right > was.getX() + was.getWidth() || bottom > was.getY() + was.getHeight()) {
+                    grown = (mxGeometry) was.clone();
+                    grown.setWidth(right - was.getX());
+                    grown.setHeight(bottom - was.getY());
+                    if (meetsWhatItDidNot(graph, frame, was, grown, frames, fixed)) {
+                        continue;
+                    }
+                }
+            }
+            if (grown != null) {
+                graph.getModel().setGeometry(frame, grown);
+            }
+            for (Map.Entry<String, double[]> box : stack.entrySet()) {
+                Object cell = outline.get(box.getKey());
+                mxGeometry moved = (mxGeometry) graph.getModel().getGeometry(cell).clone();
+                moved.setX(c.getX() + box.getValue()[0]);
+                moved.setY(c.getY() + box.getValue()[1]);
+                graph.getModel().setGeometry(cell, moved);
+                put.add(box.getKey());
+            }
+            fixed.add(room);
+        }
+        return put;
+    }
+
+    /** Between two siblings: what a property beside a class keeps clear of what stays. */
+    private static final double SIBLINGS =
+            de.fizkarlsruhe.ise.ontoboard.layout.HierarchyColumns.SIBLINGS;
+
+    /** Between a frame's edge and what it holds. */
+    private static final double PADDING = de.fizkarlsruhe.ise.ontoboard.layout.FramedGroup.PADDING;
+
+    private static boolean meetsAny(double[] box, List<double[]> others) {
+        for (double[] other : others) {
+            if (meets(box, other)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean meets(double[] one, double[] other) {
+        return one[0] < other[0] + other[2] && other[0] < one[0] + one[2]
+                && one[1] < other[1] + other[3] && other[1] < one[1] + one[3];
+    }
+
+    private static double[] rect(mxGeometry at) {
+        return new double[] {at.getX(), at.getY(), at.getWidth(), at.getHeight()};
+    }
+
+    private static List<double[]> rectsOf(SchemaGraph graph, List<Object> cells) {
+        List<double[]> rects = new ArrayList<double[]>();
+        for (Object cell : cells) {
+            rects.add(rect(graph.getModel().getGeometry(cell)));
+        }
+        return rects;
+    }
+
+    /** The smallest of {@code frames} the box stands in; null for none. */
+    private static Object innermostFrame(SchemaGraph graph, List<Object> frames, mxGeometry box) {
+        Object found = null;
+        double area = Double.MAX_VALUE;
+        for (Object frame : frames) {
+            mxGeometry at = graph.getModel().getGeometry(frame);
+            if (insideAny(java.util.Collections.singletonList(at), box)
+                    && at.getWidth() * at.getHeight() < area) {
+                found = frame;
+                area = at.getWidth() * at.getHeight();
+            }
+        }
+        return found;
+    }
+
+    /** Whether a frame grown meets another frame, or a box, it did not meet as it was. */
+    private static boolean meetsWhatItDidNot(SchemaGraph graph, Object frame, mxGeometry was,
+            mxGeometry grown, List<Object> frames, List<double[]> boxes) {
+        for (Object other : frames) {
+            if (other != frame) {
+                double[] at = rect(graph.getModel().getGeometry(other));
+                if (meets(rect(grown), at) && !meets(rect(was), at)) {
+                    return true;
+                }
+            }
+        }
+        for (double[] box : boxes) {
+            if (meets(rect(grown), box) && !meets(rect(was), box)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * What stands beside each class on a board drawn from {@code projection}: each property its
+     * domain lines join to one class, with what hangs off it, by that class - read off the
+     * projection as {@link #applySections} reads them off the drawn board, so that a pattern's
+     * frame, planned before the board is drawn, puts each where the Outline would (1.135.1).
+     *
+     * @param sizer the board, which measures each box as it will draw it
+     */
+    public static Map<String, List<de.fizkarlsruhe.ise.ontoboard.layout.PropertiesBeside.Item>>
+            besideTheirClass(de.fizkarlsruhe.ise.ontoboard.model.Projection projection,
+                    SchemaGraph sizer) {
+        return besideTheirClass(projection, sizer, java.util.Collections.<String>emptySet());
+    }
+
+    /**
+     * The same, {@code staying} - the classes frames will hold - left out of what decides what
+     * hangs off a property, as the Outline leaves them out: a datatype a framed class's
+     * restriction also points at hangs off the property there, so here too, and goes beside the
+     * class with it rather than being left for the Outline with no parent.
+     */
+    public static Map<String, List<de.fizkarlsruhe.ise.ontoboard.layout.PropertiesBeside.Item>>
+            besideTheirClass(de.fizkarlsruhe.ise.ontoboard.model.Projection projection,
+                    SchemaGraph sizer, Set<String> staying) {
+        Map<String, String> styles = new HashMap<String, String>();
+        List<de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Term> terms =
+                new ArrayList<de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Term>();
+        for (de.fizkarlsruhe.ise.ontoboard.model.CanvasNode node : projection.getNodes()) {
+            String style = SchemaGraph.nodeStyle(node);
+            styles.put(node.getId(), style);
+            if (staying.contains(node.getId()) && SchemaStyles.CLASS.equals(style)) {
+                continue;
+            }
+            de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Kind kind = kindOf(style);
+            String label = de.fizkarlsruhe.ise.ontoboard.model.Curies.displayLabel(
+                    node.getCurie(), node.getLabel(), node.getId());
+            // Only what may stand beside a class is measured: a property, what hangs off one.
+            boolean measured =
+                    kind != de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Kind.CLASS
+                    && kind != de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Kind.INDIVIDUAL;
+            double[] size = measured ? sizer.fittedSize(label, style) : new double[2];
+            terms.add(new de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Term(node.getId(),
+                    kind, label, size[0], size[1]));
+        }
+        List<de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Edge> edges =
+                new ArrayList<de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Edge>();
+        List<String[]> domains = new ArrayList<String[]>();
+        for (de.fizkarlsruhe.ise.ontoboard.model.CanvasEdge edge : projection.getEdges()) {
+            String from = styles.get(edge.getSourceId());
+            String to = styles.get(edge.getTargetId());
+            // As the board draws it: a line whose two ends are both on it.
+            if (from == null || to == null) {
+                continue;
+            }
+            String style = SchemaGraph.lineStyle(edge);
+            edges.add(new de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Edge(
+                    edge.getSourceId(), edge.getTargetId(), linkOf(style)));
+            if (de.fizkarlsruhe.ise.ontoboard.layout.PropertiesBeside.isDomainLine(edge.getId())
+                    && isPropertyBox(from) && SchemaStyles.CLASS.equals(to)) {
+                domains.add(new String[] {edge.getSourceId(), edge.getTargetId()});
+            }
+        }
+        return de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.itemsBeside(terms, edges,
+                de.fizkarlsruhe.ise.ontoboard.layout.PropertiesBeside.classes(domains));
+    }
+
+    private static boolean isPropertyBox(String style) {
+        return SchemaStyles.OBJECT_PROPERTY_NODE.equals(style)
+                || SchemaStyles.DATA_PROPERTY_NODE.equals(style);
     }
 
     private static boolean insideAny(List<mxGeometry> frames, mxGeometry box) {
@@ -295,7 +769,7 @@ public final class CanvasLayouts {
         return de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Kind.CLASS;
     }
 
-    /** Which edges decide the outline: the hierarchies and class membership. */
+    /** Which edges decide the outline: the hierarchies, class membership and inverse pairs. */
     static de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Link linkOf(String style) {
         String base = style == null ? "" : style.split(";", 2)[0];
         if (SchemaStyles.SUBCLASS.equals(base)) {
@@ -306,6 +780,10 @@ public final class CanvasLayouts {
         }
         if (SchemaStyles.SUB_PROPERTY.equals(base)) {
             return de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Link.SUB_PROPERTY;
+        }
+        // Not part of the tree: it puts two properties side by side (1.135.1).
+        if (SchemaStyles.INVERSE.equals(base)) {
+            return de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Link.INVERSE;
         }
         return de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Link.OTHER;
     }
@@ -329,7 +807,8 @@ public final class CanvasLayouts {
         return SchemaGraph.isAnnotationId(graph.getIdForCell(vertex));
     }
 
-    private static mxIGraphLayout createLibraryLayout(SchemaGraph graph, Algorithm algorithm) {
+    private static mxIGraphLayout createLibraryLayout(SchemaGraph graph, Algorithm algorithm,
+            final Set<Object> staying) {
         // Aliased because mxGraphLayout has its own protected field called `graph`, of type mxGraph,
         // which shadows this parameter inside the anonymous subclasses below.
         final SchemaGraph board = graph;
@@ -353,7 +832,8 @@ public final class CanvasLayouts {
                 mxFastOrganicLayout organic = new mxFastOrganicLayout(graph) {
                     @Override
                     public boolean isVertexIgnored(Object vertex) {
-                        return super.isVertexIgnored(vertex) || isAnnotation(board, vertex);
+                        return super.isVertexIgnored(vertex) || isAnnotation(board, vertex)
+                                || staying.contains(vertex);
                     }
                 };
                 organic.setForceConstant(240);
@@ -374,7 +854,19 @@ public final class CanvasLayouts {
                         new mxHierarchicalLayout(graph, SwingConstants.SOUTH) {
                             @Override
                             public boolean isVertexIgnored(Object vertex) {
-                                return super.isVertexIgnored(vertex) || isAnnotation(board, vertex);
+                                return super.isVertexIgnored(vertex) || isAnnotation(board, vertex)
+                                        || staying.contains(vertex);
+                            }
+
+                            // This layout takes its terms from here and never asks isVertexIgnored,
+                            // so without this a frame's terms were ranked with the rest and notes and
+                            // frames each took a slot of their own (1.135.1).
+                            @Override
+                            public Set<Object> filterDescendants(Object cell) {
+                                Set<Object> found = super.filterDescendants(cell);
+                                found.removeIf(vertex -> isAnnotation(board, vertex)
+                                        || staying.contains(vertex));
+                                return found;
                             }
                         };
                 tree.setIntraCellSpacing(24);
@@ -403,7 +895,7 @@ public final class CanvasLayouts {
      * <p>A term with no edges is not a mistake: a class nobody has related to anything yet is the
      * normal state of a term five minutes old. It belongs near the work, not exiled off-screen.
      */
-    private static void parkUnconnected(SchemaGraph graph) {
+    private static void parkUnconnected(SchemaGraph graph, Set<Object> staying, double[] corner) {
         List<Object> loose = new ArrayList<Object>();
         double minX = Double.MAX_VALUE;
         double maxX = -Double.MAX_VALUE;
@@ -411,7 +903,8 @@ public final class CanvasLayouts {
         boolean anyConnected = false;
 
         for (Object vertex : graph.getChildVertices(graph.getDefaultParent())) {
-            if (isAnnotation(graph, vertex)) {
+            // A term in a frame is not loose, whatever its lines: it is where its frame says.
+            if (isAnnotation(graph, vertex) || staying.contains(vertex)) {
                 continue;
             }
             if (graph.getModel().getEdgeCount(vertex) == 0) {
@@ -430,7 +923,13 @@ public final class CanvasLayouts {
         if (loose.isEmpty()) {
             return;
         }
-        if (!anyConnected) {
+        if (!anyConnected && corner != null) {
+            // Every arranged term is loose, under frames: the block starts where the arrangement
+            // would have, not on the frames.
+            minX = corner[0];
+            maxX = corner[0];
+            maxY = corner[1] - 80;
+        } else if (!anyConnected) {
             // Every term is loose - a board somebody has just started. The block becomes the board.
             minX = MARGIN;
             maxX = MARGIN;
@@ -529,11 +1028,12 @@ public final class CanvasLayouts {
      * <p>{@code circle(Object[], double, double, double)} takes the cells to place, so both problems
      * go away: this picks the cells, and computes a radius from the real pitch.
      */
-    private static void applyCircle(SchemaGraph graph) {
+    private static void applyCircle(SchemaGraph graph, Set<Object> staying) {
         List<Object> terms = new ArrayList<Object>();
         double pitch = LOOSE_PITCH_X;
         for (Object vertex : graph.getChildVertices(graph.getDefaultParent())) {
-            if (isAnnotation(graph, vertex) || graph.getModel().getEdgeCount(vertex) == 0) {
+            if (isAnnotation(graph, vertex) || staying.contains(vertex)
+                    || graph.getModel().getEdgeCount(vertex) == 0) {
                 continue;
             }
             terms.add(vertex);
@@ -579,11 +1079,12 @@ public final class CanvasLayouts {
      * nodes still gets a non-overlapping grid. Column and row indices are always {@code >= 0}, so
      * every coordinate this produces is non-negative before {@link #normalise} shifts it.
      */
-    private static void applyGrid(SchemaGraph graph) {
-        // Terms only. An annotation left in this list would take a grid cell and be moved into it.
+    private static void applyGrid(SchemaGraph graph, Set<Object> staying) {
+        // Terms only, and not those in a frame. An annotation left in this list would take a grid
+        // cell and be moved into it.
         List<Object> terms = new ArrayList<Object>();
         for (Object vertex : graph.getChildVertices(graph.getDefaultParent())) {
-            if (!isAnnotation(graph, vertex)) {
+            if (!isAnnotation(graph, vertex) && !staying.contains(vertex)) {
                 terms.add(vertex);
             }
         }

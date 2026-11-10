@@ -78,8 +78,11 @@ public final class DisplayLabels {
      * <p>Deterministic on purpose, for the reason the class comment gives: several labels are
      * common, one per language, and OWL API hands them back unordered - so "the first" would
      * make the diagram's text change between runs of the same file.
+     *
+     * <p>Public so that release notes name a term the way the board does; they chose by sorting
+     * alone, and listed German labels for terms the board showed in English.
      */
-    private static String chooseFrom(Collection<OWLAnnotation> annotations) {
+    public static String chooseFrom(Collection<OWLAnnotation> annotations) {
         List<String> preferred = new ArrayList<String>();
         List<String> unlanguaged = new ArrayList<String>();
         List<String> other = new ArrayList<String>();

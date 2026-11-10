@@ -169,6 +169,79 @@ public final class CanvasSearch {
         return iri;
     }
 
+    /**
+     * Which match Enter or Shift+Enter goes to (1.135.1, Windows study rehearsal).
+     *
+     * <p>Typing already went to the best match, so the first Enter after it stays there: typing
+     * "egg boiling" showed "(1 of 3) egg boiling", and Enter - which the guide's trouble table and
+     * every user expect to confirm it - jumped to "(2 of 3) egg boiling dataset". Every later Enter
+     * goes on, and Shift+Enter goes back, as before.
+     *
+     * @param steppedAlready whether Enter was pressed since the query last changed
+     */
+    public static int step(int cursor, int size, int delta, boolean steppedAlready) {
+        if (size <= 0) {
+            return 0;
+        }
+        int from = Math.floorMod(cursor, size);
+        return !steppedAlready && delta > 0 ? from : Math.floorMod(from + delta, size);
+    }
+
+    /** Where the term with this id is among the matches, or -1. */
+    public static int indexOf(List<CanvasNode> matches, String id) {
+        if (matches == null || id == null) {
+            return -1;
+        }
+        for (int i = 0; i < matches.size(); i++) {
+            if (id.equals(matches.get(i).getId())) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    /**
+     * Coming back to the Find box selects what it still says, so typing replaces it (1.135.1,
+     * Windows study rehearsal). A participant who had used Find in T3 clicked into it in T4, typed
+     * {@code report} after {@code egg boiling}, and got "egg boilingreport" and no match. Only
+     * Ctrl+F selected the old text.
+     *
+     * <p>Only when the focus comes from the field's own window - a click from the board, a Tab
+     * from another control - and not when the window itself comes back (1.135.1 review).
+     * Participants read their guide in another window: "egg bo", Alt+Tab to the guide, back,
+     * "iling", and the box held "iling".
+     */
+    public static void selectAllOnFocus(final javax.swing.text.JTextComponent field) {
+        field.addFocusListener(new java.awt.event.FocusAdapter() {
+            @Override
+            public void focusGained(java.awt.event.FocusEvent event) {
+                if (!fromTheSameWindow(field, event.getOppositeComponent())) {
+                    return;
+                }
+                // Afterwards: a click puts the caret where it landed once focus has arrived, which
+                // would undo a selection made now.
+                javax.swing.SwingUtilities.invokeLater(field::selectAll);
+            }
+        });
+    }
+
+    /**
+     * Whether the focus came to {@code field} from a component of its own window. Java names no
+     * component when it comes from another application, and one of another window when it comes
+     * from a dialog; the top of the component tree is the window, once there is one.
+     */
+    static boolean fromTheSameWindow(java.awt.Component field, java.awt.Component from) {
+        return from != null && topOf(from) == topOf(field);
+    }
+
+    private static java.awt.Component topOf(java.awt.Component component) {
+        java.awt.Component top = component;
+        while (top.getParent() != null) {
+            top = top.getParent();
+        }
+        return top;
+    }
+
     /** What the node is called on screen, falling back to its short name. */
     public static String nameOf(CanvasNode node) {
         String label = node.getLabel();

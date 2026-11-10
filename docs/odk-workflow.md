@@ -576,10 +576,9 @@ terms, their labels and definitions, and one level of parent above each so you c
 sits without importing BFO. 6 to 26 classes each, 1.5 MB in total.
 
 **Separated by publisher as well as collection.** Within the ODP collection the portal is a
-catalogue of submissions published by thirteen different places — `ontologydesignpatterns.org`
-has 81, the eCareAtHome smart-home set has 9, Poznań has 6, and three have no publisher at all
-because their only recorded IRI is an absolute path from the machine the harvest ran on. Both
-groupings are offered, with category and a search box as the other ways in.
+catalogue of submissions published by twelve different places — `ontologydesignpatterns.org`
+has 84, the eCareAtHome smart-home set has 9, Poznań has 6. Both groupings are offered, with
+category and a search box as the other ways in.
 
 > **Corrected in 1.92.0.** Two of those ways in were not actually offered. *By collection* and
 > *Suggested for this ontology* were both written in 1.87.0, both tested, both described here —

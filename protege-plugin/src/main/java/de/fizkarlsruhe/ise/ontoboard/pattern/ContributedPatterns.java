@@ -297,7 +297,8 @@ public final class ContributedPatterns {
                 "uncategorised", "general", "",
                 PatternIndex.oneLine(firstOf(ontology, DESCRIPTIONS), ""),
                 PatternIndex.oneLine(firstOf(ontology, QUESTIONS), ""),
-                PatternIndex.termsOf(ontology), file);
+                PatternIndex.termsOf(ontology), file)
+                .withTermLabels(PatternIndex.termLabelsOf(ontology));
     }
 
     /**

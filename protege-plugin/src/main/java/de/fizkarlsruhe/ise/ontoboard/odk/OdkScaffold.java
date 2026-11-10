@@ -291,19 +291,78 @@ public final class OdkScaffold {
                 + "| `test` | All four |\n";
     }
 
+    /**
+     * The project's release page: numbered releases, as Release... proposes them (1.135.1). It
+     * described dated ones, {@code <stem>/releases/YYYY-MM-DD/<id>.owl}, which Release... has not
+     * proposed since a new project's version became 0.1.0. On GitHub Pages it also says what to
+     * copy into {@code docs/} for the IRIs to answer: Release... writes only the project's own
+     * folders. Found publishing the egg boiling example.
+     */
     private static String docsRelease(OdkProjectConfig c) {
         String id = c.getOntologyId();
+        String stem = ProjectIri.stemOf(c.getBaseIri());
+        if (stem == null) {
+            stem = c.getBaseIri().replace(".owl", "");
+        }
+        boolean pages = c.getBaseIri().contains(".github.io/");
+        // Where the copies go: where GitHub Pages serves the IRIs from. It was always docs/<id>.owl
+        // and docs/<id>/1.0.0, which answer only for https://<user>.github.io/<repo>/<id>.owl
+        // (1.135.1 review).
+        String file = pages ? underDocs(c.getBaseIri()) : null;
+        String versions = pages ? underDocs(stem) : null;
+        if (file == null || versions == null) {
+            file = id + ".owl";
+            versions = id;
+        } else if (file.equals(versions)) {
+            // An IRI without .owl cannot be a file where its versions are a folder; the file goes
+            // next to that folder, as it always did.
+            file = versions + ".owl";
+        }
         return "# Releasing " + c.getTitle() + "\n\n"
-                + "A release is a dated, frozen copy that other ontologies can import and that\n"
-                + "will not change under them.\n\n"
+                + "A release is a frozen, numbered copy - 1.0.0, then 1.1.0 and so on - that other\n"
+                + "ontologies can import and that will not change under them.\n\n"
                 + "1. Make sure `test` passes.\n"
-                + "2. **OntoBoard > Build and release > Release...**, which stamps a version IRI of the\n"
-                + "   form `" + c.getBaseIri().replace(".owl", "")
-                + "/releases/YYYY-MM-DD/" + id + ".owl`\n"
-                + "   and writes both the dated copy and the published `" + id + ".owl`.\n"
-                + "3. Commit both, tag the commit, and push.\n\n"
+                + "2. **OntoBoard > Build and release > Release...**, which proposes the next number,\n"
+                + "   stamps a version IRI of the form `" + stem + "/1.0.0`, and writes\n"
+                + "   `releases/1.0.0/" + id + ".owl` and the published `" + id + ".owl`. From the\n"
+                + "   second release on, `releases/<version>/CHANGES.md` says what changed.\n"
+                + (pages
+                        ? "3. GitHub Pages serves `docs/`, so copy the release there for its IRIs to\n"
+                                + "   answer: `" + id + ".owl` to `docs/" + file + "`, and `releases/1.0.0/"
+                                + id + ".owl`\n   to `docs/" + versions + "/1.0.0`, with no extension.\n"
+                                + "4. Commit all of it, tag the commit `v1.0.0`, and push.\n\n"
+                        : "3. Commit both, tag the commit `v1.0.0`, and push.\n\n")
                 + "A version IRI cannot be taken back once somebody has imported it, so the\n"
                 + "release step refuses to overwrite a release that already exists.\n";
+    }
+
+    /**
+     * The path under {@code docs/} that GitHub Pages serves an IRI on {@code github.io} from, or
+     * null when it has no path. A project site, {@code https://<user>.github.io/<repo>/},
+     * publishes {@code docs/X} at {@code .../<repo>/X}, so it is the path after the repository; a
+     * user site's IRI, {@code https://<user>.github.io/x.owl}, has only the one segment.
+     */
+    static String underDocs(String iri) {
+        String path;
+        try {
+            path = new java.net.URI(iri).getPath();
+        } catch (java.net.URISyntaxException notAnIri) {
+            return null;
+        }
+        if (path == null) {
+            return null;
+        }
+        while (path.startsWith("/")) {
+            path = path.substring(1);
+        }
+        while (path.endsWith("/")) {
+            path = path.substring(0, path.length() - 1);
+        }
+        if (path.isEmpty()) {
+            return null;
+        }
+        int repository = path.indexOf('/');
+        return repository < 0 ? path : path.substring(repository + 1);
     }
 
     /**
@@ -817,7 +876,10 @@ public final class OdkScaffold {
                 + "# robot verify writes one CSV per failing query into src/ontology.\n"
                 + "src/ontology/*.csv\n"
                 + "*.bak\n"
-                + "src/ontology/" + c.getOntologyId() + ".owl\n";
+                + "src/ontology/" + c.getOntologyId() + ".owl\n"
+                // Documentation... writes its page here unless told otherwise, and Share > Git's
+                // Commit everything committed it (1.135.1).
+                + "build/\n";
     }
 
     private static String readme(OdkProjectConfig c) {
@@ -840,8 +902,8 @@ public final class OdkScaffold {
                 + "make report     # ROBOT quality report -> report.tsv\n"
                 + "make sparql_test  # run every check in ../sparql over the edit file and its imports\n"
                 + "make validate_profile  # fail if the ontology has left OWL 2 DL\n"
-                + "make test       # what CI runs: reason, report and sparql_test\n"
-                + "make prepare_release  # test, then a dated, version-stamped release\n"
+                + "make test       # what CI runs: reason, report, sparql_test and validate_profile\n"
+                + "make prepare_release  # test, then a dated release (Release... in OntoBoard numbers them)\n"
                 + "make clean      # delete the generated files\n"
                 + "```\n\n"
                 + "Custom targets go in `" + id + ".Makefile`, which the build includes and\n"

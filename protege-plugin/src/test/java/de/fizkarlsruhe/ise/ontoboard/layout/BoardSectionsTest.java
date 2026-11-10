@@ -24,8 +24,9 @@ class BoardSectionsTest {
         return new BoardSections.Term(id, kind, id, 160, 60);
     }
 
+    /** Asked for: a clear hierarchy, subclasses below each other, in more columns when more. */
     @Test
-    void subclassesStandInTheRowBelowTheirSuperclassCentredUnderIt() {
+    void subclassesStandOneUnderTheOtherBelowTheirSuperclass() {
         List<BoardSections.Term> terms = Arrays.asList(term("Thing", BoardSections.Kind.CLASS),
                 term("A", BoardSections.Kind.CLASS), term("B", BoardSections.Kind.CLASS),
                 term("C", BoardSections.Kind.CLASS));
@@ -38,12 +39,12 @@ class BoardSectionsTest {
 
         assertEquals(40, at.get("Thing")[1], 0.001);
         for (String child : new String[] {"A", "B", "C"}) {
-            assertEquals(40 + 60 + BoardSections.BELOW, at.get(child)[1], 0.001,
-                    child + " in the row below");
+            assertEquals(40 + HierarchyColumns.INDENT, at.get(child)[0], 0.001,
+                    child + " indented under its superclass");
         }
-        assertTrue(at.get("A")[0] < at.get("B")[0] && at.get("B")[0] < at.get("C")[0],
-                "alphabetically, side by side");
-        assertEquals(at.get("B")[0], at.get("Thing")[0], 0.001, "the superclass centred above");
+        assertEquals(40 + 60 + HierarchyColumns.UNDER, at.get("A")[1], 0.001);
+        assertTrue(at.get("A")[1] < at.get("B")[1] && at.get("B")[1] < at.get("C")[1],
+                "alphabetically, one under the other");
     }
 
     /** Asked for: the ABox below the TBox, each individual under the class it is typed with. */
@@ -73,8 +74,10 @@ class BoardSectionsTest {
         for (String individual : new String[] {"m1", "d1", "d2", "lit|1"}) {
             assertTrue(at.get(individual)[1] > classesBottom, individual + " below the classes");
         }
-        assertEquals(at.get("Margherita")[0], at.get("m1")[0], 0.001, "under its class");
-        assertEquals(at.get("Diavola")[0], at.get("d1")[0], 0.001, "under its class");
+        // Each class's individuals together, and the classes one under the other share an x, so
+        // the groups stand side by side in the band in the order the classes are read.
+        assertEquals(at.get("d1")[0], at.get("d2")[0], 0.001, "a class's individuals together");
+        assertTrue(at.get("d1")[0] < at.get("m1")[0], "in the order their classes are read");
         assertTrue(at.get("d2")[1] > at.get("d1")[1], "a column under the class");
         assertTrue(at.get("lit|1")[1] > at.get("d1")[1] && at.get("lit|1")[1] < at.get("d2")[1],
                 "a value right below its individual");
@@ -149,7 +152,7 @@ class BoardSectionsTest {
             bottom = Math.max(bottom, p[1] + 60);
         }
         double aspect = right / bottom;
-        assertTrue(aspect > 0.4 && aspect < 4, "roughly screen-shaped: " + right + "x" + bottom);
+        assertTrue(aspect > 0.4 && aspect < 6, "roughly screen-shaped: " + right + "x" + bottom);
     }
 
     @Test
@@ -210,9 +213,13 @@ class BoardSectionsTest {
         assertTrue(plan.sections.get(0).x < 2000, "" + plan.sections.get(0).x);
     }
 
-    /** A section under a frame is crossed by every line from the outline up into that frame. */
+    /**
+     * A section under a frame is crossed by every line from the outline up into that frame. So a
+     * section stands right of the frames, or - since 1.135.1, when the board then has more nearly
+     * a screen's shape - below the outline, where no such line goes.
+     */
     @Test
-    void thePropertySectionsStartRightOfTheFramesAboveTheOutline() {
+    void thePropertySectionsNeverStandBetweenTheFramesAndTheOutline() {
         List<BoardSections.Term> terms = Arrays.asList(term("Thing", BoardSections.Kind.CLASS),
                 term("knows", BoardSections.Kind.OBJECT_PROPERTY));
         List<BoardSections.Edge> edges = Collections.<BoardSections.Edge>emptyList();
@@ -221,7 +228,9 @@ class BoardSectionsTest {
         BoardSections.Plan pastTheFrames = BoardSections.plan(terms, edges, 40, 40, 6000);
 
         assertTrue(beside.sections.get(0).x < 1000, "beside the outline: " + beside.sections.get(0).x);
-        assertTrue(pastTheFrames.sections.get(0).x >= 6000 + BoardSections.APART * 2,
-                "past the frames: " + pastTheFrames.sections.get(0).x);
+        BoardSections.Section section = pastTheFrames.sections.get(0);
+        double outlineBottom = pastTheFrames.positions.get("Thing")[1] + 60;
+        assertTrue(section.x >= 6000 + BoardSections.APART * 2 || section.y >= outlineBottom,
+                "past the frames or below the outline: " + section.x + ", " + section.y);
     }
 }

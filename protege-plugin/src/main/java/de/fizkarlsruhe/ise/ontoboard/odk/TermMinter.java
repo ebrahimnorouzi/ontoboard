@@ -1,14 +1,23 @@
 package de.fizkarlsruhe.ise.ontoboard.odk;
 
 import de.fizkarlsruhe.ise.ontoboard.axiom.EntityFactory;
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.semanticweb.owlapi.model.AddAxiom;
 import org.semanticweb.owlapi.model.IRI;
 import org.semanticweb.owlapi.model.OWLDataFactory;
@@ -92,6 +101,40 @@ public final class TermMinter {
     }
 
     /**
+     * Reads the project's releases for their identifiers on a thread of its own, so that the
+     * first New subclass... finds them read. {@link #releasedIdentifiers} remembers each file
+     * until it changes, but the first time it read every release on the Swing thread: with a long
+     * history of merged releases, the first new class of a session waited for all of them - a
+     * code review's finding. Nothing happens for an ontology without ranges.
+     *
+     * @return the thread, already started, or null when there is nothing to read
+     */
+    public static Thread readReleasesInBackground(File ontologyFile) {
+        final File found = findRangesFile(ontologyFile);
+        if (found == null) {
+            return null;
+        }
+        Thread reader = new Thread(() -> {
+            try {
+                String text = new String(Files.readAllBytes(found.toPath()),
+                        StandardCharsets.UTF_8);
+                releasedIdentifiers(found, IdRanges.parse(text));
+            } catch (IOException | RuntimeException unusable) {
+                // Then the first new term reads them, and says what is wrong, as before.
+            }
+        }, "OntoBoard: identifiers in the releases");
+        reader.setDaemon(true);
+        reader.setPriority(Thread.MIN_PRIORITY);
+        reader.start();
+        return reader;
+    }
+
+    /** How many release files have been read for identifiers and remembered. For tests. */
+    static int filesRemembered() {
+        return READ.size();
+    }
+
+    /**
      * The {@code *-idranges.owl} beside {@code ontologyFile}, or null.
      *
      * <p>Only a sibling counts: an idranges file elsewhere in the repository belongs to a
@@ -169,7 +212,118 @@ public final class TermMinter {
         for (OWLEntity entity : ontology.getSignature()) {
             taken.add(entity.getIRI().toString());
         }
+        taken.addAll(releasedIdentifiers(rangesFile, ranges));
         return IRI.create(ranges.mint(editor, taken));
+    }
+
+    /**
+     * Every identifier with these ranges' prefix that a release of this project has carried.
+     *
+     * <p>Counted as taken, because "taken" meant what the open ontology mentions, and that
+     * forgets every term deleted after it was released. A tester released {@code steel plate}
+     * as HARDTEST_0001001, deleted it and made {@code aluminium plate}, which was given
+     * HARDTEST_0001001; the next release said "Relabelled: aluminium plate, was steel plate".
+     * Whoever had used that identifier for a steel plate now meant aluminium. An identifier that
+     * has been released keeps its meaning.
+     *
+     * <p>Read as text, not parsed: a merged release can run to tens of megabytes, and New
+     * subclass... waits for this. The identifier's own part - {@code HARDTEST_0001001} - is
+     * looked for wherever it stands, because a release may write the namespace as a prefix. A
+     * match that is not really an identifier costs one unused number; a miss would hand an
+     * identifier out twice. Each file is read again only when it changes.
+     *
+     * @param rangesFile the {@code -idranges.owl} beside the edit file; the releases are under
+     *     the project root that file's directory belongs to
+     */
+    public static Set<String> releasedIdentifiers(File rangesFile, IdRanges ranges) {
+        Set<String> released = new HashSet<String>();
+        File directory = rangesFile == null ? null : rangesFile.getAbsoluteFile().getParentFile();
+        if (directory == null || ranges == null || ranges.getIdPrefix().isEmpty()) {
+            return released;
+        }
+        File[] versions = new File(projectRootAbove(directory), "releases").listFiles();
+        if (versions == null) {
+            return released;
+        }
+        String prefix = ranges.getIdPrefix();
+        int cut = Math.max(prefix.lastIndexOf('/'), prefix.lastIndexOf('#')) + 1;
+        String local = prefix.substring(cut);
+        // HARDTEST_ wherever it stands, unless the prefix ends in / or #: then only the whole
+        // namespace is distinctive enough to look for.
+        Pattern identifier = Pattern.compile(local.isEmpty()
+                ? Pattern.quote(prefix) + "([0-9]+)"
+                : "(?<![A-Za-z0-9])" + Pattern.quote(local) + "([0-9]+)");
+        for (File version : versions) {
+            File[] files = version.isDirectory() ? version.listFiles() : null;
+            if (files == null) {
+                continue;
+            }
+            for (File file : files) {
+                if (file.isFile() && file.getName().toLowerCase(Locale.ROOT).endsWith(".owl")) {
+                    for (String digits : numbersIn(file, identifier)) {
+                        released.add(prefix + digits);
+                    }
+                }
+            }
+        }
+        return released;
+    }
+
+    /**
+     * The project root releases are written under, for an edit file in {@code directory}: above
+     * {@code src/ontology}, or the directory itself - the rule {@code ReleaseAction.projectRootOf}
+     * applies when it writes one.
+     */
+    private static File projectRootAbove(File directory) {
+        File src = directory.getParentFile();
+        if ("ontology".equalsIgnoreCase(directory.getName()) && src != null
+                && "src".equalsIgnoreCase(src.getName()) && src.getParentFile() != null) {
+            return src.getParentFile();
+        }
+        return directory;
+    }
+
+    /** What a release file was found to hold, by path, size, date and what was looked for. */
+    private static final Map<String, Set<String>> READ = Collections.synchronizedMap(
+            new LinkedHashMap<String, Set<String>>(16, 0.75f, true) {
+                private static final long serialVersionUID = 1L;
+
+                @Override
+                protected boolean removeEldestEntry(Map.Entry<String, Set<String>> eldest) {
+                    // Room for every release a project is likely to have: at 64 a review found a
+                    // history of 70 releases evicted each file before its next use, so every New
+                    // subclass... read them all again.
+                    return size() > 4096;
+                }
+            });
+
+    private static Set<String> numbersIn(File file, Pattern identifier) {
+        String key = file.getAbsolutePath() + '|' + file.length() + '|' + file.lastModified()
+                + '|' + identifier.pattern();
+        Set<String> found = READ.get(key);
+        if (found != null) {
+            return found;
+        }
+        found = new HashSet<String>();
+        // A byte that is not UTF-8 is replaced rather than thrown on: one stray character in a
+        // comment must not make a whole release's identifiers look free.
+        java.nio.charset.CharsetDecoder decoder = StandardCharsets.UTF_8.newDecoder()
+                .onMalformedInput(java.nio.charset.CodingErrorAction.REPLACE)
+                .onUnmappableCharacter(java.nio.charset.CodingErrorAction.REPLACE);
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(
+                new FileInputStream(file), decoder))) {
+            for (String line = reader.readLine(); line != null; line = reader.readLine()) {
+                Matcher match = identifier.matcher(line);
+                while (match.find()) {
+                    found.add(match.group(1));
+                }
+            }
+        } catch (IOException unreadable) {
+            // Not remembered, so the next new term tries again.
+            return found;
+        }
+        READ.put(key, Collections.unmodifiableSet(found));
+        return found;
     }
 
     /**

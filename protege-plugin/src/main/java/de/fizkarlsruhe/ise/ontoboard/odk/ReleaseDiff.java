@@ -1,6 +1,8 @@
 package de.fizkarlsruhe.ise.ontoboard.odk;
 
+import de.fizkarlsruhe.ise.ontoboard.model.DisplayLabels;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -8,9 +10,12 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.semanticweb.owlapi.model.EntityType;
 import org.semanticweb.owlapi.model.IRI;
+import org.semanticweb.owlapi.model.OWLAnnotation;
 import org.semanticweb.owlapi.model.OWLAnnotationAssertionAxiom;
 import org.semanticweb.owlapi.model.OWLClass;
+import org.semanticweb.owlapi.model.OWLEntity;
 import org.semanticweb.owlapi.model.OWLLiteral;
 import org.semanticweb.owlapi.model.OWLOntology;
 import org.semanticweb.owlapi.model.OWLSubClassOfAxiom;
@@ -40,6 +45,19 @@ public final class ReleaseDiff {
     /** {@code IAO:0000115 definition}, the one OBO ontologies use. */
     public static final IRI DEFINITION =
             IRI.create("http://purl.obolibrary.org/obo/IAO_0000115");
+
+    /**
+     * The kinds of term compared, in the order the notes list them.
+     *
+     * <p>Classes alone until 1.135.1, and a tester found what that cost. A release that added the
+     * object property {@code specified by value} was summed up as "2 added", the two classes. The
+     * same release with that property deleted said no term had been added, retired, relabelled,
+     * redefined or moved, and Release's check for a removed term let it through. A property is
+     * as much a published term as a class: an ontology that used it now points at nothing.
+     */
+    private static final List<EntityType<?>> TERM_TYPES = Collections.unmodifiableList(
+            Arrays.<EntityType<?>>asList(EntityType.CLASS, EntityType.OBJECT_PROPERTY,
+                    EntityType.DATA_PROPERTY, EntityType.ANNOTATION_PROPERTY));
 
     /** What happened to one term. */
     public enum Change {
@@ -75,12 +93,14 @@ public final class ReleaseDiff {
     /** One term, and what happened to it. */
     public static final class TermChange {
         private final IRI iri;
+        private final EntityType<?> type;
         private final Change change;
         private final String before;
         private final String after;
 
-        TermChange(IRI iri, Change change, String before, String after) {
+        TermChange(IRI iri, EntityType<?> type, Change change, String before, String after) {
             this.iri = iri;
+            this.type = type;
             this.change = change;
             this.before = before == null ? "" : before;
             this.after = after == null ? "" : after;
@@ -88,6 +108,11 @@ public final class ReleaseDiff {
 
         public IRI getIri() {
             return iri;
+        }
+
+        /** A class, or an object, data or annotation property. */
+        public EntityType<?> getType() {
+            return type;
         }
 
         public Change getChange() {
@@ -133,20 +158,28 @@ public final class ReleaseDiff {
             throw new IllegalArgumentException("two ontologies are needed to compare them");
         }
         List<TermChange> changes = new ArrayList<TermChange>();
+        for (EntityType<?> type : TERM_TYPES) {
+            compare(before, after, type, changes);
+        }
+        return new ReleaseDiff(changes, before.getAxiomCount(), after.getAxiomCount());
+    }
 
-        Set<IRI> beforeTerms = classIrisOf(before);
-        Set<IRI> afterTerms = classIrisOf(after);
+    /** The terms of one kind, compared; what changed is added to {@code changes}. */
+    private static void compare(OWLOntology before, OWLOntology after, EntityType<?> type,
+            List<TermChange> changes) {
+        Set<IRI> beforeTerms = termIrisOf(before, type);
+        Set<IRI> afterTerms = termIrisOf(after, type);
 
         for (IRI iri : afterTerms) {
             if (!beforeTerms.contains(iri)) {
-                changes.add(new TermChange(iri, Change.ADDED, "", labelOf(after, iri)));
+                changes.add(new TermChange(iri, type, Change.ADDED, "", labelOf(after, iri)));
             }
         }
         for (IRI iri : beforeTerms) {
             if (!afterTerms.contains(iri)) {
                 // Gone entirely, not merely deprecated. Everything that referenced it now points
                 // at nothing.
-                changes.add(new TermChange(iri, Change.REMOVED, labelOf(before, iri), ""));
+                changes.add(new TermChange(iri, type, Change.REMOVED, labelOf(before, iri), ""));
             }
         }
 
@@ -155,7 +188,7 @@ public final class ReleaseDiff {
                 continue;
             }
             if (!isObsolete(before, iri) && isObsolete(after, iri)) {
-                changes.add(new TermChange(iri, Change.OBSOLETED, labelOf(before, iri),
+                changes.add(new TermChange(iri, type, Change.OBSOLETED, labelOf(before, iri),
                         replacedBy(after, iri)));
                 // Nothing else about a retirement is news. Obsoleting a term the OBO way always
                 // prefixes its label with "obsolete " and always takes it out of the hierarchy,
@@ -168,22 +201,26 @@ public final class ReleaseDiff {
             String labelBefore = labelOf(before, iri);
             String labelAfter = labelOf(after, iri);
             if (!labelBefore.equals(labelAfter)) {
-                changes.add(new TermChange(iri, Change.RELABELLED, labelBefore, labelAfter));
+                changes.add(new TermChange(iri, type, Change.RELABELLED, labelBefore,
+                        labelAfter));
             }
             String definitionBefore = definitionOf(before, iri);
             String definitionAfter = definitionOf(after, iri);
             if (!definitionBefore.equals(definitionAfter)) {
-                changes.add(new TermChange(iri, Change.REDEFINED, definitionBefore,
+                changes.add(new TermChange(iri, type, Change.REDEFINED, definitionBefore,
                         definitionAfter));
+            }
+            if (type != EntityType.CLASS) {
+                // A place in the class hierarchy is what MOVED means, and only a class has one.
+                continue;
             }
             Set<String> parentsBefore = parentsOf(before, iri);
             Set<String> parentsAfter = parentsOf(after, iri);
             if (!parentsBefore.equals(parentsAfter)) {
-                changes.add(new TermChange(iri, Change.MOVED, join(parentsBefore),
+                changes.add(new TermChange(iri, type, Change.MOVED, join(parentsBefore),
                         join(parentsAfter)));
             }
         }
-        return new ReleaseDiff(changes, before.getAxiomCount(), after.getAxiomCount());
     }
 
     /** Everything that changed, in the order found. */
@@ -204,6 +241,23 @@ public final class ReleaseDiff {
 
     public int count(Change change) {
         return of(change).size();
+    }
+
+    /**
+     * The same comparison, for one kind of term only.
+     *
+     * <p>For Project &gt; History, which counts a release's classes from this comparison and
+     * lists its properties and individuals from its own. Given every kind, a new property would
+     * be counted twice there, once of them as a class.
+     */
+    public ReleaseDiff restrictedTo(EntityType<?> type) {
+        List<TermChange> kept = new ArrayList<TermChange>();
+        for (TermChange one : changes) {
+            if (one.getType().equals(type)) {
+                kept.add(one);
+            }
+        }
+        return new ReleaseDiff(kept, axiomsBefore, axiomsAfter);
     }
 
     public boolean isEmpty() {
@@ -282,7 +336,7 @@ public final class ReleaseDiff {
                 if (!change.getBefore().isEmpty()) {
                     notes.append(" — ").append(change.getBefore());
                 }
-                notes.append('\n');
+                notes.append(kindOf(change)).append('\n');
             }
         }
         for (Change kind : new Change[] {Change.ADDED, Change.OBSOLETED, Change.REDEFINED,
@@ -298,6 +352,7 @@ public final class ReleaseDiff {
                 if (!label.isEmpty()) {
                     notes.append(' ').append(label);
                 }
+                notes.append(kindOf(change));
                 if (kind == Change.RELABELLED || kind == Change.MOVED) {
                     notes.append(" — was ").append(
                             change.getBefore().isEmpty() ? "(none)" : change.getBefore());
@@ -315,16 +370,49 @@ public final class ReleaseDiff {
         return notes.toString();
     }
 
+    /**
+     * What sort of term a line in the notes is about: nothing for a class, which is what most
+     * lines are, and " (object property)" and so on for the rest - "specified by value" alone
+     * does not say it is a relation.
+     */
+    private static String kindOf(TermChange change) {
+        return change.getType() == EntityType.CLASS ? ""
+                : " (" + change.getType().getPrintName().toLowerCase(java.util.Locale.ROOT) + ")";
+    }
+
     // ---------------------------------------------------------------- reading an ontology
 
-    private static Set<IRI> classIrisOf(OWLOntology ontology) {
+    /**
+     * The terms of one kind this ontology mentions, its imports left out.
+     *
+     * <p>OWL's own vocabulary is nobody's term: {@code owl:Thing}, {@code rdfs:label} and the
+     * rest of what OWL API counts as built in, and anything else from the OWL, RDF, RDFS and XSD
+     * namespaces - the rule {@link ImportedTerms#termsOf} applies to what an import brings.
+     */
+    private static Set<IRI> termIrisOf(OWLOntology ontology, EntityType<?> type) {
         Set<IRI> iris = new LinkedHashSet<IRI>();
-        for (OWLClass owlClass : ontology.getClassesInSignature()) {
-            if (!owlClass.isOWLThing() && !owlClass.isOWLNothing()) {
-                iris.add(owlClass.getIRI());
+        // From the axioms, not getSignature(), which also counts the properties of the ontology's
+        // own header: a review found that changing dc:creator to dcterms:creator there refused
+        // the next release, for removing a "published term".
+        Set<OWLEntity> signature = new LinkedHashSet<OWLEntity>();
+        for (org.semanticweb.owlapi.model.OWLAxiom axiom : ontology.getAxioms()) {
+            signature.addAll(axiom.getSignature());
+        }
+        for (OWLEntity entity : signature) {
+            if (entity.isType(type) && !entity.isBuiltIn()
+                    && !isStandardVocabulary(entity.getIRI())) {
+                iris.add(entity.getIRI());
             }
         }
         return iris;
+    }
+
+    private static boolean isStandardVocabulary(IRI iri) {
+        String text = iri.toString();
+        return text.startsWith("http://www.w3.org/2002/07/owl#")
+                || text.startsWith("http://www.w3.org/1999/02/22-rdf-syntax-ns#")
+                || text.startsWith("http://www.w3.org/2000/01/rdf-schema#")
+                || text.startsWith("http://www.w3.org/2001/XMLSchema#");
     }
 
     private static boolean isObsolete(OWLOntology ontology, IRI iri) {
@@ -384,17 +472,22 @@ public final class ReleaseDiff {
      *
      * <p>Sorted rather than first-found: a term with two labels would otherwise appear to change
      * between two runs over identical files, purely because a hash set iterated differently.
+     *
+     * <p><b>English first, the way the board chooses.</b> Sorting alone put a German label ahead
+     * of the English one whenever it sorted first, and imported modules carry both: a tester's
+     * release notes listed "Länge", "Trennen" and "Material" for three terms the board showed as
+     * length, separating and material. So the choice is {@link DisplayLabels}' - English, then no
+     * language, then any other, each sorted - and the notes name a term as the board does.
      */
     private static String annotationText(OWLOntology ontology, IRI iri, IRI property) {
-        List<String> values = new ArrayList<String>();
+        List<OWLAnnotation> values = new ArrayList<OWLAnnotation>();
         for (OWLAnnotationAssertionAxiom axiom : ontology.getAnnotationAssertionAxioms(iri)) {
-            if (property.equals(axiom.getProperty().getIRI())
-                    && axiom.getValue() instanceof OWLLiteral) {
-                values.add(((OWLLiteral) axiom.getValue()).getLiteral());
+            if (property.equals(axiom.getProperty().getIRI())) {
+                values.add(axiom.getAnnotation());
             }
         }
-        Collections.sort(values);
-        return values.isEmpty() ? "" : values.get(0);
+        String chosen = DisplayLabels.chooseFrom(values);
+        return chosen == null ? "" : chosen;
     }
 
     /** Asserted named parents only; an anonymous superclass is a restriction, not a place. */

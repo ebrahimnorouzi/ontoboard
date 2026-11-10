@@ -378,7 +378,8 @@ class SchemaGraphTest {
                 new CanvasLayout());
 
         assertTrue(person == graph.getCellForId(PERSON));
-        assertEquals("Human", ((mxCell) person).getValue());
+        assertEquals("Human\nPerson", ((mxCell) person).getValue(),
+                "what it is called, then the name in its IRI, which now says something else");
     }
 
     @Test
@@ -409,5 +410,31 @@ class SchemaGraphTest {
 
         assertEquals(900.0, ((mxCell) graph.getCellForId(AGENT)).getGeometry().getX());
         assertEquals(700.0, ((mxCell) graph.getCellForId(AGENT)).getGeometry().getY());
+    }
+
+    /**
+     * One moment for all the routing one action does: the board routed when it is already past
+     * has its relation drawn by the plain connector, says so, and is routed in full by the next call
+     * that brings time - though the board did not change, which otherwise costs nothing.
+     */
+    @Test
+    void aRoutingOutOfTimeSaysSoAndIsDoneWhenThereIsTime() {
+        CanvasLayout layout = new CanvasLayout();
+        layout.nodes.put(PERSON, new CanvasLayout.NodeLayout(0, 0));
+        layout.nodes.put(AGENT, new CanvasLayout.NodeLayout(400, 300));
+        SchemaGraph graph = new SchemaGraph();
+        graph.render(new Projection(
+                Arrays.asList(new CanvasNode(PERSON, NodeKind.CLASS, "Person"),
+                        new CanvasNode(AGENT, NodeKind.CLASS, "Agent")),
+                Collections.singletonList(new CanvasEdge("rel|1", PERSON, AGENT, "∃ knows",
+                        CanvasEdge.Kind.OBJECT_PROPERTY))), layout);
+
+        graph.routeEdges(System.nanoTime() - 1);
+        assertFalse(graph.isFullyRouted());
+        assertNull(graph.routeOf(graph.getCellForId("rel|1")));
+
+        graph.routeEdges();
+        assertTrue(graph.isFullyRouted());
+        assertNotNull(graph.routeOf(graph.getCellForId("rel|1")));
     }
 }

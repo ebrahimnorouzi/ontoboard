@@ -63,12 +63,36 @@ public final class InProcessTargets {
         private final String failure;
         private final List<String> transcript;
         private final List<File> written;
+        private final List<String> warnings;
+        private final List<String> passingChecks;
 
         Outcome(boolean ok, String failure, List<String> transcript, List<File> written) {
+            this(ok, failure, transcript, written, Collections.<String>emptyList(),
+                    Collections.<String>emptyList());
+        }
+
+        Outcome(boolean ok, String failure, List<String> transcript, List<File> written,
+                List<String> warnings, List<String> passingChecks) {
             this.ok = ok;
             this.failure = failure;
             this.transcript = transcript;
             this.written = written;
+            this.warnings = warnings;
+            this.passingChecks = passingChecks;
+        }
+
+        /** What passed but should be read: said in the result, not only in the transcript. */
+        public List<String> getWarnings() {
+            return warnings;
+        }
+
+        /**
+         * The project's own checks by file name, when they ran and every one passed; empty
+         * otherwise (1.135.1). The build's result names them above its log: a passing test's
+         * PASS was the ninth line of a log box that shows six, and the box cannot grow.
+         */
+        public List<String> getPassingChecks() {
+            return passingChecks;
         }
 
         public boolean isOk() {
@@ -167,13 +191,16 @@ public final class InProcessTargets {
         log.add("Running " + name + " inside Protege - no make, no robot, no container.");
         log.add("Steps: " + steps);
 
+        List<String> warnings = new ArrayList<String>();
+        List<String> passing = new ArrayList<String>();
         for (String step : steps) {
-            String failure = runStep(step, editFile, root, ontology, reasonerFactory, log, written);
+            String failure = runStep(step, editFile, root, ontology, reasonerFactory, log, written,
+                    warnings, passing);
             if (failure != null) {
-                return new Outcome(false, failure, log, written);
+                return new Outcome(false, failure, log, written, warnings, passing);
             }
         }
-        return new Outcome(true, null, log, written);
+        return new Outcome(true, null, log, written, warnings, passing);
     }
 
     /** What a composite target expands to, matching the generated Makefile's dependencies. */
@@ -188,15 +215,22 @@ public final class InProcessTargets {
     }
 
     private static String runStep(String step, File editFile, File root, OWLOntology ontology,
-            OWLReasonerFactory reasonerFactory, List<String> log, List<File> written) {
+            OWLReasonerFactory reasonerFactory, List<String> log, List<File> written,
+            List<String> warnings, List<String> passing) {
         if ("reason".equals(step)) {
-            return reason(editFile, ontology, reasonerFactory, log, written);
+            String failure = reason(editFile, ontology, reasonerFactory, log, written);
+            String second = failure == null ? secondOpinion(ontology, reasonerFactory) : null;
+            if (second != null) {
+                log.add("reason: " + second);
+                warnings.add(second);
+            }
+            return failure;
         }
         if ("report".equals(step)) {
             return report(editFile, ontology, log, written);
         }
         if ("sparql_test".equals(step)) {
-            return sparqlTest(root, ontology, log);
+            return sparqlTest(root, ontology, log, passing);
         }
         if ("validate_profile".equals(step)) {
             return validateProfile(ontology, log);
@@ -224,13 +258,28 @@ public final class InProcessTargets {
             return "Could not take a working copy of the ontology: " + cannotCopy.getMessage();
         }
         try {
+            // Reasoned on the open ontology, whose imports are loaded: RobotTransform puts their
+            // closure behind its copy. The working copy's imports are declarations nothing loads,
+            // so a class made unsatisfiable by an imported range passed this step and the release
+            // then refused - found by a tester running both releases through HermiT and ELK. The
+            // inferred axioms are then added to the working copy, which is what is written.
             RobotTransform.Diff inferred =
-                    RobotTransform.preview(copy, RobotTransform.Kind.REASON, reasonerFactory);
-            copy.getOWLOntologyManager().applyChanges(inferred.getChanges());
-            log.add("reason: " + inferred.getAdded() + " inferred axioms written in");
+                    RobotTransform.preview(ontology, RobotTransform.Kind.REASON, reasonerFactory);
+            for (org.semanticweb.owlapi.model.OWLOntologyChange change : inferred.getChanges()) {
+                if (change.isAddAxiom()) {
+                    copy.getOWLOntologyManager().addAxiom(copy, change.getAxiom());
+                } else if (change.isRemoveAxiom()) {
+                    copy.getOWLOntologyManager().removeAxiom(copy, change.getAxiom());
+                }
+            }
+            // A whole sentence: this read "0 inferred axioms written in" and stopped there.
+            log.add("reason: " + inferred.getAdded() + " inferred axiom"
+                    + (inferred.getAdded() == 1 ? "" : "s") + " added.");
         } catch (RuntimeException cannotReason) {
-            return "The reasoner could not finish, so nothing was written: "
-                    + cannotReason.getMessage();
+            return RobotTransform.isAboutTheModel(cannotReason)
+                    ? cannotReason.getMessage() + " Nothing was written."
+                    : "The reasoner could not finish, so nothing was written: "
+                            + cannotReason.getMessage();
         }
         File output = new File(editFile.getParentFile(), Release.ontologyIdFrom(editFile) + ".owl");
         try {
@@ -241,6 +290,95 @@ public final class InProcessTargets {
         log.add("reason: wrote " + output.getAbsolutePath());
         written.add(output);
         return null;
+    }
+
+    /** How long HermiT is given for a second opinion before the build goes on without it. */
+    static final long SECOND_OPINION_MILLIS = 10_000;
+
+    /** Beyond this many logical axioms, HermiT is not asked in passing. */
+    static final int SECOND_OPINION_AXIOMS = 20_000;
+
+    /**
+     * What HermiT finds that ELK cannot see, or null: asked only after ELK reasoned, and only
+     * when the ontology and its imports go beyond OWL 2 EL - inverse properties, universal
+     * restrictions, cardinalities - which ELK ignores without a word.
+     *
+     * <p>Found by a tester: <i>quality of</i> picked for a value's relation made the class
+     * unsatisfiable through the inverse <i>has quality</i>, whose range is a quality. HermiT said
+     * so; ELK, which the build uses as ODK's does, did not, so the test passed and the class was
+     * released. A warning, not a failure: the build keeps the verdict ODK's would give, and says
+     * what a fuller reasoner adds. Not asked for a large ontology, and given ten seconds.
+     */
+    public static String secondOpinion(OWLOntology ontology, OWLReasonerFactory used) {
+        if (ontology == null || used == null
+                || !used.getClass().getName().toLowerCase(java.util.Locale.ROOT).contains("elk")
+                || ProfileCheck.isIn(ontology, ProfileCheck.Target.EL)) {
+            return null;
+        }
+        int axioms = 0;
+        for (OWLOntology part : ontology.getImportsClosure()) {
+            axioms += part.getLogicalAxiomCount();
+        }
+        if (axioms > SECOND_OPINION_AXIOMS) {
+            return null;
+        }
+        final org.semanticweb.owlapi.reasoner.OWLReasoner hermit;
+        try {
+            hermit = new org.semanticweb.HermiT.ReasonerFactory().createNonBufferingReasoner(
+                    ontology, new org.semanticweb.owlapi.reasoner.SimpleConfiguration(
+                            SECOND_OPINION_MILLIS));
+        } catch (RuntimeException | LinkageError unavailable) {
+            return null;
+        }
+        java.util.concurrent.ExecutorService asking =
+                java.util.concurrent.Executors.newSingleThreadExecutor(work -> {
+                    Thread thread = new Thread(work, "OntoBoard: HermiT's second opinion");
+                    thread.setDaemon(true);
+                    return thread;
+                });
+        try {
+            java.util.concurrent.Future<java.util.List<String>> answer = asking.submit(() -> {
+                java.util.List<String> found = new ArrayList<String>();
+                if (!hermit.isConsistent()) {
+                    found.add(null);
+                    return found;
+                }
+                for (org.semanticweb.owlapi.model.OWLClass cls
+                        : hermit.getUnsatisfiableClasses().getEntitiesMinusBottom()) {
+                    found.add(de.fizkarlsruhe.ise.ontoboard.model.DisplayLabels.forEntity(
+                            ontology, cls));
+                }
+                return found;
+            });
+            java.util.List<String> found = answer.get(SECOND_OPINION_MILLIS + 2_000,
+                    java.util.concurrent.TimeUnit.MILLISECONDS);
+            if (found.isEmpty()) {
+                return null;
+            }
+            String what;
+            // "Added to it" followed a list of classes (1.135.1 review); the ontology is one.
+            String toWhat = " to it";
+            if (found.contains(null)) {
+                what = "that the ontology is inconsistent";
+            } else {
+                Collections.sort(found, String.CASE_INSENSITIVE_ORDER);
+                String names = found.size() <= 5 ? String.join(", ", found)
+                        : String.join(", ", found.subList(0, 5)) + " and " + (found.size() - 5)
+                                + " more";
+                what = "that " + names + " can have no members";
+                toWhat = found.size() == 1 ? " to it" : " to one of them";
+            }
+            return "HermiT finds " + what + ". ELK, the reasoner this build uses as ODK's does,"
+                    + " does not see inverse properties and the rest of OWL beyond its EL"
+                    + " profile, so the build passes as ODK's would. A relation or parent added"
+                    + toWhat + " is the usual cause:" + RobotTransform.TAKE_IT_OUT;
+        } catch (Exception notAnswered) {
+            hermit.interrupt();
+            return null;
+        } finally {
+            asking.shutdownNow();
+            hermit.dispose();
+        }
     }
 
     /** {@code robot report}, with the project's own profile.txt, exactly as the recipe does. */
@@ -335,7 +473,8 @@ public final class InProcessTargets {
      * <p><b>A check that cannot run fails.</b> It used to count as zero violations, so a query
      * with a syntax error passed the build - a test that cannot fail is not a test.
      */
-    private static String sparqlTest(File root, OWLOntology ontology, List<String> log) {
+    private static String sparqlTest(File root, OWLOntology ontology, List<String> log,
+            List<String> passing) {
         List<File> checks = SparqlQuery.checksIn(root);
         if (checks.isEmpty()) {
             log.add("sparql_test: no .rq files under " + SparqlQuery.CHECKS_DIRECTORY
@@ -347,46 +486,144 @@ public final class InProcessTargets {
             byName.put(check.getName(), check);
         }
         List<String> failed = new ArrayList<String>();
+        List<String> passed = new ArrayList<String>();
         for (SparqlQuery.Check check : SparqlQuery.verify(ontology, checks)) {
             if (check.getFailure() != null) {
                 log.add("sparql_test: ERROR " + check.getName() + " could not run: "
                         + check.getFailure());
-                failed.add(check.getName() + " could not run (" + check.getFailure() + ")");
+                failed.add(check.getName() + " could not run (" + check.getFailure() + ").");
                 continue;
             }
             log.add("sparql_test: " + (check.isPassed() ? "PASS " : "FAIL ") + check.getName()
                     + ": " + check.getViolations() + " violation(s)");
             if (check.isPassed()) {
+                passed.add(check.getName());
                 continue;
             }
             String rule = ruleOf(byName.get(check.getName()));
             if (rule != null) {
                 log.add("sparql_test:   rule: " + rule);
             }
+            // By its label where the check returns one: the log keeps the IRI (1.135.1).
+            int labelColumn = check.getAnswer().getColumns().indexOf("label");
             List<String> offenders = new ArrayList<String>();
             for (List<String> row : check.getAnswer().getRows()) {
                 if (offenders.size() >= ROWS_SHOWN) {
                     break;
                 }
                 String shown = join(row);
-                offenders.add(shown);
+                String label = labelColumn > 0 && labelColumn < row.size()
+                        ? row.get(labelColumn) : null;
+                offenders.add(label != null && !label.trim().isEmpty() ? label : shown);
                 log.add("sparql_test:   " + shown);
             }
             if (check.getViolations() > offenders.size()) {
                 log.add("sparql_test:   ... and " + (check.getViolations() - offenders.size())
                         + " more");
             }
+            String gone = goneFrom(ontology, check.getAnswer().getRows());
+            if (gone != null) {
+                gone = gone + " is not in the ontology any more. If its class was deleted, the "
+                        + "test is about nothing: delete " + SparqlQuery.CHECKS_DIRECTORY + "/"
+                        + check.getName() + ".";
+                log.add("sparql_test:   " + gone);
+            }
             failed.add(check.getName() + (rule == null ? "" : " (" + rule + ")") + ": "
                     + join(offenders)
-                    + (check.getViolations() > offenders.size() ? ", ..." : ""));
+                    + (check.getViolations() > offenders.size() ? ", ..." : "")
+                    + (gone == null ? ". " + adviceFor(byName.get(check.getName()), ontology)
+                            : " - " + gone));
         }
         if (failed.isEmpty()) {
+            passing.addAll(passed);
             return null;
         }
-        return "sparql_test failed - " + join(failed, "; ") + ". Each listed term breaks the "
-                + "rule beside it: fix the term (a missing label is added in Protege under "
-                + "Annotations), or edit the check in " + SparqlQuery.CHECKS_DIRECTORY
-                + " if the rule does not apply to this project.";
+        return "sparql_test failed - " + join(failed, " ");
+    }
+
+    /** The scaffold's own check, the one the label advice was written for. */
+    static final String LABEL_CHECK = "check_labels.rq";
+
+    /**
+     * What to do about a failing check, chosen by the check (1.135.1, Windows study rehearsal).
+     *
+     * <p>One sentence ended every failure: "fix the term (a missing label is added in Protege
+     * under Annotations)". It was written when the label check was a project's only check; a test
+     * written from a question is not answered by a label, and the egg guide's T6 sent participants
+     * to add one nobody was missing. The template that wrote a test is read back from its query.
+     */
+    static String adviceFor(File check, OWLOntology ontology) {
+        String text = null;
+        if (check != null) {
+            try {
+                text = new String(java.nio.file.Files.readAllBytes(check.toPath()),
+                        java.nio.charset.StandardCharsets.UTF_8);
+            } catch (java.io.IOException unreadable) {
+                text = null;
+            }
+        }
+        de.fizkarlsruhe.ise.ontoboard.robot.QuestionTests.Template template =
+                de.fizkarlsruhe.ise.ontoboard.robot.QuestionTests.templateOf(text);
+        if ((check != null && LABEL_CHECK.equals(check.getName())) || template
+                == de.fizkarlsruhe.ise.ontoboard.robot.QuestionTests.Template.EVERY_ONE_HAS_A_LABEL) {
+            return "Each listed term breaks the rule beside it: fix the term (a missing label is"
+                    + " added in Protege under Annotations), or edit the check in "
+                    + SparqlQuery.CHECKS_DIRECTORY + " if the rule does not apply to this project.";
+        }
+        if (template == null) {
+            return "Each listed term breaks the rule beside it: change the model so it does not,"
+                    + " or edit the check in " + SparqlQuery.CHECKS_DIRECTORY + " if the rule does"
+                    + " not apply to this project.";
+        }
+        IRI cls = de.fizkarlsruhe.ise.ontoboard.robot.QuestionTests.classIn(text);
+        IRI property = de.fizkarlsruhe.ise.ontoboard.robot.QuestionTests.propertyIn(text);
+        if (template == de.fizkarlsruhe.ise.ontoboard.robot.QuestionTests.Template
+                .EVERY_SUBCLASS_HAS_SOME && cls != null && property != null && ontology != null) {
+            org.semanticweb.owlapi.model.OWLDataFactory df =
+                    ontology.getOWLOntologyManager().getOWLDataFactory();
+            String about = de.fizkarlsruhe.ise.ontoboard.model.DisplayLabels.forEntity(ontology,
+                    df.getOWLClass(cls));
+            if (ontology.containsDataPropertyInSignature(property,
+                    org.semanticweb.owlapi.model.parameters.Imports.INCLUDED)) {
+                return "The model does not answer this question yet. To make it answer, add '"
+                        + de.fizkarlsruhe.ise.ontoboard.model.DisplayLabels.forEntity(ontology,
+                                df.getOWLDataProperty(property))
+                        + " some' and the value's type (such as xsd:decimal) to " + about
+                        + "'s SubClass Of, in Protege's Classes tab; then save and build again.";
+            }
+            return "The model does not answer this question yet. To make it answer, right-click "
+                    + about + " on the board, choose Relate to another term…, pick the class"
+                    + " it relates to and set Property to "
+                    + de.fizkarlsruhe.ise.ontoboard.model.DisplayLabels.forEntity(ontology,
+                            df.getOWLObjectProperty(property))
+                    + "; then save and build again.";
+        }
+        return "The model does not answer this question yet: change it so that none of the"
+                + " listed terms breaks the rule, then save and build again.";
+    }
+
+    /**
+     * The first term a failing check lists that the ontology does not have at all, or null.
+     *
+     * <p>A test written from a question on a class that was then deleted listed the class's bare
+     * IRI as breaking its rule - the zero-length step of {@code rdfs:subClassOf*} matches an IRI
+     * whether or not anything says it exists - and so failed every build after, naming a term
+     * that was nowhere to be found. Tests written since say {@code ?term a owl:Class} and pass
+     * instead; this is for the ones written before, and for any hand-written check that does the
+     * same.
+     */
+    static String goneFrom(OWLOntology ontology, List<List<String>> rows) {
+        for (List<String> row : rows) {
+            String first = row.isEmpty() ? "" : row.get(0);
+            if (first.startsWith("http://") || first.startsWith("https://")) {
+                if (!ontology.containsEntityInSignature(
+                        org.semanticweb.owlapi.model.IRI.create(first),
+                        org.semanticweb.owlapi.model.parameters.Imports.INCLUDED)) {
+                    return first;
+                }
+            }
+        }
+        return null;
     }
 
     /**

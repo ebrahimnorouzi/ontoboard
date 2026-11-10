@@ -159,6 +159,36 @@ class TermExtractTest {
         }
     }
 
+    /**
+     * A module names the annotation properties it uses, with the source's label. A tester's IAO
+     * import declared 22 of them and named none, so Imported terms listed them by identifier.
+     */
+    @Test
+    void theModuleNamesTheAnnotationPropertiesItUses() {
+        org.semanticweb.owlapi.model.OWLAnnotationProperty definition =
+                factory.getOWLAnnotationProperty(
+                        IRI.create("http://purl.obolibrary.org/obo/IAO_0000115"));
+        add(factory.getOWLDeclarationAxiom(definition));
+        add(factory.getOWLAnnotationAssertionAxiom(factory.getRDFSLabel(), definition.getIRI(),
+                factory.getOWLLiteral("definition", "en")));
+        add(factory.getOWLAnnotationAssertionAxiom(definition, cls("Polymer").getIRI(),
+                factory.getOWLLiteral("A substance made of repeating units.")));
+
+        OWLOntology module = TermExtract.run(source, terms("Polymer"), TermExtract.Method.BOT,
+                null).getModule();
+
+        assertTrue(module.containsAnnotationPropertyInSignature(definition.getIRI()),
+                "the module uses the property, which is the case this is about");
+        List<String> named = new java.util.ArrayList<String>();
+        for (org.semanticweb.owlapi.model.OWLAnnotationAssertionAxiom axiom
+                : module.getAnnotationAssertionAxioms(definition.getIRI())) {
+            if (axiom.getProperty().isLabel()) {
+                named.add(axiom.getValue().asLiteral().get().getLiteral());
+            }
+        }
+        assertEquals(Arrays.asList("definition"), named);
+    }
+
     @Test
     void theModuleIsItsOwnOntologyRatherThanTheSource() {
         TermExtract.Result result = TermExtract.run(source, terms("Polymer"),

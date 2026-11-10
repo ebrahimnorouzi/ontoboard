@@ -2,6 +2,7 @@ package de.fizkarlsruhe.ise.ontoboard.layout;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -54,10 +55,10 @@ public final class FramedGroup {
      * every other node.
      */
     static final double GAP = 40;
-    static final double PADDING = 40;
+    public static final double PADDING = 40;
 
     /** Room at the top of the frame for its label, so the first row does not sit under it. */
-    static final double LABEL_BAND = 40;
+    public static final double LABEL_BAND = 40;
 
     /** Clear of whatever is already on the board. */
     static final double MARGIN = 60;
@@ -130,6 +131,35 @@ public final class FramedGroup {
      */
     public static Placement plan(String label, List<String> iris, CanvasLayout existing,
             Map<String, double[]> sizes) {
+        return plan(label, iris, existing, sizes, Collections.<String, String>emptyMap(),
+                Collections.<String, String>emptyMap());
+    }
+
+    /**
+     * The same, drawn as the hierarchy it is: each class above its subclasses, by {@code parents} -
+     * a term's parent among them, by IRI - rather than in a grid. See {@link HierarchyColumns}. A
+     * group in which nothing is the parent of anything has no hierarchy to draw, and is a grid.
+     *
+     * @param names what each box says, which decides the order of siblings
+     */
+    public static Placement plan(String label, List<String> iris, CanvasLayout existing,
+            Map<String, double[]> sizes, Map<String, String> parents, Map<String, String> names) {
+        return plan(label, iris, existing, sizes, parents, names,
+                Collections.<String, List<PropertiesBeside.Item>>emptyMap());
+    }
+
+    /**
+     * The same, each class's properties of {@code beside} beside it in the frame - see
+     * {@link PropertiesBeside} - the class and they one block, so the frame grows to hold them
+     * (1.135.1). Found by the maintainer on the pizza ontologies: every property stood in a
+     * section under the frames, joined to nothing until it was clicked. A class the board already
+     * has keeps its properties where they are, and so does a property the board already has.
+     *
+     * @param beside what stands beside each class, by class: {@link BoardSections#itemsBeside}
+     */
+    public static Placement plan(String label, List<String> iris, CanvasLayout existing,
+            Map<String, double[]> sizes, Map<String, String> parents, Map<String, String> names,
+            Map<String, List<PropertiesBeside.Item>> beside) {
         Map<String, CanvasLayout.NodeLayout> placed =
                 new LinkedHashMap<String, CanvasLayout.NodeLayout>();
         List<String> already = new ArrayList<String>();
@@ -147,13 +177,18 @@ public final class FramedGroup {
         if (fresh.isEmpty()) {
             return new Placement(null, placed, already);
         }
+        Map<String, List<PropertiesBeside.Item>> besideHere = besideFresh(fresh, existing, beside);
+        if (anyIsAParent(fresh, parents)) {
+            return asHierarchy(label, fresh, already, existing, sizes, parents, names, besideHere);
+        }
 
         int columns = columnsFor(fresh.size());
         int rows = (fresh.size() + columns - 1) / columns;
         double[] columnW = new double[columns];
         double[] rowH = new double[rows];
+        Map<String, Map<String, double[]>> stacks = new HashMap<String, Map<String, double[]>>();
         for (int at = 0; at < fresh.size(); at++) {
-            double[] size = sizes.get(fresh.get(at));
+            double[] size = blockOf(fresh.get(at), sizes, besideHere, stacks);
             // Rounded up to the 20px snap grid, so every box still starts on it.
             columnW[at % columns] = Math.max(columnW[at % columns],
                     Math.ceil((size == null ? NODE_W : size[0]) / 20) * 20);
@@ -195,6 +230,122 @@ public final class FramedGroup {
             node.w = size == null ? NODE_W : size[0];
             node.h = size == null ? NODE_H : size[1];
             placed.put(fresh.get(at), node);
+            putBeside(fresh.get(at), x, y, stacks, besideHere, placed);
+        }
+        return new Placement(frame, placed, already);
+    }
+
+    /**
+     * What stands beside each of the classes placed here: its properties of {@code beside} the
+     * board has no place for yet.
+     */
+    private static Map<String, List<PropertiesBeside.Item>> besideFresh(List<String> fresh,
+            CanvasLayout existing, Map<String, List<PropertiesBeside.Item>> beside) {
+        Map<String, List<PropertiesBeside.Item>> here =
+                new HashMap<String, List<PropertiesBeside.Item>>();
+        for (String iri : fresh) {
+            List<PropertiesBeside.Item> items = beside == null ? null : beside.get(iri);
+            if (items == null) {
+                continue;
+            }
+            List<PropertiesBeside.Item> free = new ArrayList<PropertiesBeside.Item>();
+            for (PropertiesBeside.Item item : items) {
+                if (existing == null || !existing.nodes.containsKey(item.getId())) {
+                    free.add(item);
+                }
+            }
+            if (!free.isEmpty()) {
+                here.put(iri, free);
+            }
+        }
+        return here;
+    }
+
+    /**
+     * How much room a class takes: its own box - null for a size not given, as before - or with
+     * properties beside it the block they make together, see {@link PropertiesBeside#stack}; where
+     * the properties stand in it is kept in {@code stacks}.
+     */
+    private static double[] blockOf(String iri, Map<String, double[]> sizes,
+            Map<String, List<PropertiesBeside.Item>> beside,
+            Map<String, Map<String, double[]>> stacks) {
+        double[] fitted = sizes.get(iri);
+        List<PropertiesBeside.Item> items = beside.get(iri);
+        if (items == null) {
+            return fitted;
+        }
+        double[] block = new double[2];
+        stacks.put(iri, PropertiesBeside.stack(fitted == null ? NODE_W : fitted[0],
+                fitted == null ? NODE_H : fitted[1], items, block));
+        return block;
+    }
+
+    /** The properties beside a class whose box is placed at ({@code x}, {@code y}). */
+    private static void putBeside(String iri, double x, double y,
+            Map<String, Map<String, double[]>> stacks,
+            Map<String, List<PropertiesBeside.Item>> beside,
+            Map<String, CanvasLayout.NodeLayout> placed) {
+        Map<String, double[]> stack = stacks.get(iri);
+        if (stack == null) {
+            return;
+        }
+        for (PropertiesBeside.Item item : beside.get(iri)) {
+            for (String id : item.getIds()) {
+                double[] at = stack.get(id);
+                double[] size = item.sizeOf(id);
+                CanvasLayout.NodeLayout node = new CanvasLayout.NodeLayout(x + at[0], y + at[1]);
+                node.w = size[0];
+                node.h = size[1];
+                placed.put(id, node);
+            }
+        }
+    }
+
+    private static boolean anyIsAParent(List<String> terms, Map<String, String> parents) {
+        for (String term : terms) {
+            String parent = parents.get(term);
+            if (parent != null && !parent.equals(term) && terms.contains(parent)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static Placement asHierarchy(String label, List<String> fresh, List<String> already,
+            CanvasLayout existing, Map<String, double[]> sizes, Map<String, String> parents,
+            Map<String, String> names, Map<String, List<PropertiesBeside.Item>> beside) {
+        List<HierarchyColumns.Term> terms = new ArrayList<HierarchyColumns.Term>();
+        Map<String, double[]> size = new LinkedHashMap<String, double[]>();
+        Map<String, Map<String, double[]>> stacks = new HashMap<String, Map<String, double[]>>();
+        for (String iri : fresh) {
+            double[] fitted = sizes.get(iri);
+            double[] wh = {fitted == null ? NODE_W : fitted[0], fitted == null ? NODE_H : fitted[1]};
+            size.put(iri, wh);
+            double[] block = beside.containsKey(iri) ? blockOf(iri, sizes, beside, stacks) : wh;
+            terms.add(new HierarchyColumns.Term(iri, names.containsKey(iri) ? names.get(iri) : iri,
+                    block[0], block[1]));
+        }
+        HierarchyColumns.Placed inside = HierarchyColumns.place(terms, parents, 0, 0);
+        double innerW = inside.right;
+        double innerH = inside.bottom;
+        double[] origin = freeSpotFor(existing, innerW + 2 * PADDING,
+                innerH + 2 * PADDING + LABEL_BAND);
+        CanvasLayout.FrameLayout frame = new CanvasLayout.FrameLayout();
+        frame.label = label == null || label.trim().isEmpty() ? "Imported pattern" : label.trim();
+        frame.x = origin[0];
+        frame.y = origin[1];
+        frame.w = innerW + 2 * PADDING;
+        frame.h = innerH + 2 * PADDING + LABEL_BAND;
+        Map<String, CanvasLayout.NodeLayout> placed =
+                new LinkedHashMap<String, CanvasLayout.NodeLayout>();
+        for (String iri : fresh) {
+            double[] at = inside.positions.get(iri);
+            CanvasLayout.NodeLayout node = new CanvasLayout.NodeLayout(
+                    frame.x + PADDING + at[0], frame.y + PADDING + LABEL_BAND + at[1]);
+            node.w = size.get(iri)[0];
+            node.h = size.get(iri)[1];
+            placed.put(iri, node);
+            putBeside(iri, node.x, node.y, stacks, beside, placed);
         }
         return new Placement(frame, placed, already);
     }
@@ -243,6 +394,87 @@ public final class FramedGroup {
             }
             x += frame.w + MARGIN;
             rowHeight = Math.max(rowHeight, frame.h);
+        }
+        return width;
+    }
+
+    /**
+     * The same, keeping the rows a board already has: each frame named in {@code rows} - by label,
+     * its row's index - goes back in its row, in the order given; a frame not named joins the last
+     * row while it fits, and starts a new one when it does not. A row is as tall as its tallest
+     * frame, so a frame that grew pushes the rows under it down and its neighbours along, and no
+     * frame changes row because another one grew.
+     *
+     * @return the width new rows were folded at
+     */
+    public static double wrap(List<Placement> placements, Map<String, Integer> rows) {
+        if (rows == null || rows.isEmpty()) {
+            return wrap(placements);
+        }
+        double area = 0;
+        double widest = 0;
+        for (Placement placement : placements) {
+            CanvasLayout.FrameLayout frame = placement.getFrame();
+            if (frame != null) {
+                area += frame.w * frame.h;
+                widest = Math.max(widest, frame.w);
+            }
+        }
+        double width = Math.max(widest, Math.max(1600, Math.sqrt(area * 1.6) * 1.2));
+        java.util.TreeMap<Integer, List<Placement>> byRow =
+                new java.util.TreeMap<Integer, List<Placement>>();
+        List<Placement> joining = new ArrayList<Placement>();
+        for (Placement placement : placements) {
+            CanvasLayout.FrameLayout frame = placement.getFrame();
+            if (frame == null) {
+                continue;
+            }
+            Integer row = rows.get(frame.label);
+            if (row == null) {
+                joining.add(placement);
+                continue;
+            }
+            List<Placement> inRow = byRow.get(row);
+            if (inRow == null) {
+                inRow = new ArrayList<Placement>();
+                byRow.put(row, inRow);
+            }
+            inRow.add(placement);
+        }
+        List<List<Placement>> ordered = new ArrayList<List<Placement>>(byRow.values());
+        if (ordered.isEmpty()) {
+            ordered.add(new ArrayList<Placement>());
+        }
+        for (Placement placement : joining) {
+            List<Placement> last = ordered.get(ordered.size() - 1);
+            double used = 0;
+            for (Placement already : last) {
+                used += already.getFrame().w + MARGIN;
+            }
+            if (!last.isEmpty() && used + placement.getFrame().w > width) {
+                last = new ArrayList<Placement>();
+                ordered.add(last);
+            }
+            last.add(placement);
+        }
+        double y = MARGIN;
+        for (List<Placement> row : ordered) {
+            double x = MARGIN;
+            double rowHeight = 0;
+            for (Placement placement : row) {
+                CanvasLayout.FrameLayout frame = placement.getFrame();
+                double dx = x - frame.x;
+                double dy = y - frame.y;
+                frame.x += dx;
+                frame.y += dy;
+                for (CanvasLayout.NodeLayout node : placement.getNodes().values()) {
+                    node.x += dx;
+                    node.y += dy;
+                }
+                x += frame.w + MARGIN;
+                rowHeight = Math.max(rowHeight, frame.h);
+            }
+            y += rowHeight + (row.isEmpty() ? 0 : MARGIN);
         }
         return width;
     }

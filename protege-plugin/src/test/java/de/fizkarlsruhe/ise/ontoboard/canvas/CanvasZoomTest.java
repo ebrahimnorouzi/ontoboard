@@ -3,6 +3,9 @@ package de.fizkarlsruhe.ise.ontoboard.canvas;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.awt.Point;
+import java.awt.Rectangle;
+import java.util.Arrays;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -114,5 +117,102 @@ class CanvasZoomTest {
         // reads as a broken widget rather than as the state it is reporting.
         assertEquals("100%", CanvasZoom.readout(0));
         assertEquals("100%", CanvasZoom.readout(Double.NaN));
+    }
+
+    /**
+     * With nothing selected, a zoom keeps a box still rather than the empty band between two
+     * frames (1.135.1, Windows study rehearsal): three presses of + after Fit slid the classes
+     * out of view around a point where nothing was.
+     */
+    @Test
+    void withNothingSelectedAZoomKeepsABoxStillRatherThanTheGapBetweenTwoFrames() {
+        Rectangle view = new Rectangle(0, 0, 710, 480);
+        Rectangle content = new Rectangle(10, 10, 660, 360);
+        java.util.List<Rectangle> boxes = Arrays.asList(new Rectangle(40, 30, 50, 15),
+                new Rectangle(380, 150, 50, 15), new Rectangle(60, 250, 50, 15),
+                new Rectangle(420, 330, 50, 15));
+        assertEquals(new Point(405, 157), CanvasZoom.anchor(view, null, content, boxes));
+    }
+
+    @Test
+    void aSelectionInViewStaysStillAndTheAnswerIsInTheWindowsPixels() {
+        Rectangle view = new Rectangle(300, 200, 710, 480);
+        assertEquals(new Point(280, 230), CanvasZoom.anchor(view,
+                new Rectangle(500, 400, 160, 60), new Rectangle(300, 200, 2000, 2000),
+                Arrays.<Rectangle>asList()));
+        assertEquals(new Point(125, 107), CanvasZoom.anchor(new Rectangle(0, 0, 710, 480),
+                new Rectangle(2000, 2000, 160, 60), new Rectangle(0, 0, 3000, 3000),
+                Arrays.asList(new Rectangle(100, 100, 50, 15))));
+        assertEquals(new Point(355, 240), CanvasZoom.anchor(new Rectangle(0, 0, 710, 480), null,
+                null, Arrays.<Rectangle>asList()));
+    }
+
+    /** The status line that named a zoom names the one the board is at now. */
+    @Test
+    void aStatusLineThatNamedAZoomNamesTheOneTheBoardIsAt() {
+        assertEquals("Zoomed to 46%.", CanvasZoom.afterZoom("Fitted the board to the window at 26%.", 0.4577));
+        assertEquals("Zoomed to 37%.", CanvasZoom.afterZoom("Zoomed to 31%.", 0.3744));
+        assertEquals("Zoomed to 100%.", CanvasZoom.afterZoom(
+                "Arranged and fitted to the window at 26%: Outline - classes as a tree,"
+                        + " properties by their class.", 1.0));
+        assertEquals("Fitted the board to the window at 26%.",
+                CanvasZoom.afterZoom("Fitted the board to the window at 26%.", 0.2649));
+    }
+
+    /** Every line Fit and Arrange write about the zoom follows it, as the zoom's own line does. */
+    @Test
+    void everyLineFitAndArrangeWriteFollowsTheZoom() {
+        for (String said : new String[] {"Fitted the selection to the window at 120%.",
+            "Fitted 3 selected to the window at 80%.",
+            "Fitted the frame Measurement and setpoint to the window at 64%.",
+            "Arranged and fitted to the window at 31%: Hierarchical (SubClassOf tree).",
+            "Arranged and fitted to the window at 31%: Organic (force-directed)."
+                    + " The 4 terms inside frames stay where they are.",
+            "Arranged, at 50% so it can be read; Fit shows all of it: Grid."
+                    + " The term inside a frame stays where it is.",
+            "Arranged, at 50% so it can be read; Fit shows all of it: Circle.",
+            CanvasZoom.fitted("the frame Heated to 100%", 0.64), CanvasZoom.zoomed(0.31)}) {
+            assertEquals("Zoomed to 90%.", CanvasZoom.afterZoom(said, 0.9), said);
+        }
+        assertEquals("Fitted the frame Heated to 100% to the window at 64%.",
+                CanvasZoom.fitted("the frame Heated to 100%", 0.64));
+        assertEquals("Fitted the frame Heated to 100% to the window at 64%.",
+                CanvasZoom.afterZoom("Fitted the frame Heated to 100% to the window at 64%.", 0.64),
+                "the zoom it names, not the label's");
+    }
+
+    /**
+     * A zoom leaves a line it did not write alone, even one that names a zoom (1.135.1 review).
+     * After Relate the line said "...both ends in view at 80%. File > Save keeps it."; the next turn
+     * of the wheel made it "Zoomed to 90%.", and File > Save then had no line asking for a save to
+     * turn into "Saved.". A Find line quoting a label such as "heated to 100%" went the same way.
+     */
+    @Test
+    void aZoomLeavesALineItDidNotWriteAloneThoughItNamesAZoom() {
+        java.util.List<String> rewritten = new java.util.ArrayList<String>();
+        for (String said : new String[] {
+            "Related egg boiling to raw egg by has specified input: both ends in view at 80%."
+                    + " File > Save keeps it.",
+            "(1 of 2) heated to 100% - https://example.org/eggboil/EGGBOIL_0001007",
+            "heated to 100% - https://example.org/eggboil/EGGBOIL_0001007",
+            "heated to 100% is in this ontology but not on the board - Ctrl+Enter adds it.",
+            "Added heated to 100% to the board.",
+            "No term matching \"cooled to 4%\" - not on the board, and not in this ontology."}) {
+            String after = CanvasZoom.afterZoom(said, 0.9);
+            if (!said.equals(after)) {
+                rewritten.add("\"" + said + "\" became \"" + after + "\"");
+            }
+        }
+        assertTrue(rewritten.isEmpty(), String.join("; ", rewritten));
+    }
+
+    @Test
+    void aZoomLeavesEveryOtherStatusLineAlone() {
+        for (String said : new String[] {"Defined egg boiling. File > Save keeps it.",
+            "(1 of 3) egg boiling - https://example.org/eggboil/EGGBOIL_0001000",
+            "Added 50% fat milk to the board.", " "}) {
+            assertEquals(said, CanvasZoom.afterZoom(said, 0.46));
+        }
+        assertEquals(null, CanvasZoom.afterZoom(null, 0.46));
     }
 }

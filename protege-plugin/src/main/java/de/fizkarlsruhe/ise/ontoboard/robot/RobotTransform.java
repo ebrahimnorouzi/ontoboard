@@ -307,11 +307,13 @@ public final class RobotTransform {
                     kind.getLabel() + " could not run against this Protege's OWL API. Protege 5.6 "
                             + "or newer is expected to work.", incompatible);
         } catch (RuntimeException failed) {
-            throw new RobotException(
-                    kind.getLabel() + " failed: " + failed.getMessage(), failed);
+            String why = whyItFailed(ontology, copy, failed, reasonerFactory);
+            throw new RobotException(isAboutTheModel(failed) ? why
+                    : kind.getLabel() + " failed: " + why, failed);
         } catch (Exception failed) {
-            throw new RobotException(
-                    kind.getLabel() + " failed: " + failed.getMessage(), failed);
+            String why = whyItFailed(ontology, copy, failed, reasonerFactory);
+            throw new RobotException(isAboutTheModel(failed) ? why
+                    : kind.getLabel() + " failed: " + why, failed);
         }
 
         // getAxioms(), not INCLUDED: the shadow import holds the closure, and a change aimed at
@@ -396,6 +398,258 @@ public final class RobotTransform {
             }
         }
         return unresolved;
+    }
+
+    /**
+     * What to say when an operation failed. ROBOT's {@code IncoherentTBoxException} has no message,
+     * so a reasoner that found a class that can have no members said "Reason failed: null" - a
+     * dead end found by a tester, one step before a release. The classes are named instead, by
+     * label, from the copy the operation ran on.
+     */
+    /**
+     * Whether a failure is something the reasoner found in the ontology - a class or property that
+     * can have no members, an inconsistency - rather than the operation going wrong. Its message is
+     * then a whole sentence for the user, and "could not finish" would be untrue: it finished.
+     */
+    public static boolean isAboutTheModel(Throwable failed) {
+        for (Throwable at = failed; at != null; at = at.getCause()) {
+            if (at instanceof org.obolibrary.robot.exceptions.IncoherentTBoxException
+                    || at instanceof org.obolibrary.robot.exceptions.IncoherentRBoxException
+                    || at instanceof org.obolibrary.robot.exceptions.InconsistentOntologyException) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * How to take out what a failed reasoning step found, said once. Never Undo alone (1.135.1,
+     * Windows study rehearsal): Undo takes back the last change, and a tester whose wrong relation
+     * was not the last one pressed it six times, losing their latest work each time.
+     */
+    public static final String TAKE_IT_OUT = " right-click it on the board and choose Delete axiom"
+            + " from ontology… to take it out; Edit > Undo takes back only the last change.";
+
+    /** The same, after "Take out the one that is wrong". */
+    private static final String WHICH_ONE = " right-click it on the board and choose Delete axiom"
+            + " from ontology…; Edit > Undo takes back only the last change.";
+
+    /** How long a failed build looks for what makes a class empty before it says less. */
+    static final long CAUSES_MILLIS = 4_000;
+
+    static String whyItFailed(OWLOntology ontology, OWLOntology copy, Exception failed,
+            org.semanticweb.owlapi.reasoner.OWLReasonerFactory reasonerFactory) {
+        String usual = " A relation or parent added to it is the usual cause:" + TAKE_IT_OUT;
+        if (failed instanceof org.obolibrary.robot.exceptions.InconsistentOntologyException) {
+            return "The ontology is inconsistent: an individual belongs to a class that can have"
+                    + " no members. A type or relation added to it is the usual cause:"
+                    + TAKE_IT_OUT;
+        }
+        if (failed instanceof org.obolibrary.robot.exceptions.IncoherentTBoxException
+                && reasonerFactory != null && copy != null) {
+            java.util.Map<String, org.semanticweb.owlapi.model.OWLClass> byName =
+                    new java.util.TreeMap<String, org.semanticweb.owlapi.model.OWLClass>(
+                            String.CASE_INSENSITIVE_ORDER);
+            org.semanticweb.owlapi.reasoner.OWLReasoner reasoner = null;
+            try {
+                reasoner = reasonerFactory.createReasoner(copy);
+                for (org.semanticweb.owlapi.model.OWLClass unsatisfiable
+                        : reasoner.getUnsatisfiableClasses().getEntitiesMinusBottom()) {
+                    byName.put(de.fizkarlsruhe.ise.ontoboard.model.DisplayLabels.forEntity(ontology,
+                            unsatisfiable), unsatisfiable);
+                }
+            } catch (RuntimeException cannotTell) {
+                byName.clear();
+            } finally {
+                disposeOf(reasoner);
+            }
+            List<String> names = new ArrayList<String>(byName.keySet());
+            if (names.size() > 5) {
+                int more = names.size() - 4;
+                names = new ArrayList<String>(names.subList(0, 4));
+                names.add(more + " more");
+            }
+            String said = names.isEmpty() ? "A class can have no members."
+                    : names.size() == 1 ? names.get(0) + " can have no members."
+                    : "These classes can have no members: " + String.join(", ", names) + ".";
+            String cause;
+            try {
+                cause = causeOf(ontology, copy, byName, reasonerFactory);
+            } catch (RuntimeException cannotTell) {
+                // A failure while the cause is sought costs the cause, not the diagnosis (1.135.1
+                // review): it escaped from preview's own failure handling, and the build said the
+                // reasoner could not finish about a class it had found empty.
+                cause = null;
+            }
+            if (cause == null && names.size() > 1) {
+                return said + " A relation or parent added to one of them is the usual cause:"
+                        + TAKE_IT_OUT;
+            }
+            return said + (cause != null ? cause : usual);
+        }
+        if (failed instanceof org.obolibrary.robot.exceptions.IncoherentRBoxException) {
+            return "An object property can have no members. A property axiom added to it is the"
+                    + " usual cause:" + TAKE_IT_OUT;
+        }
+        return failed.getMessage() != null ? failed.getMessage()
+                : failed.getClass().getSimpleName();
+    }
+
+    /**
+     * What makes an empty class empty, in the board's words, and how to take it out; null when
+     * that cannot be told. A cause is one of the class's own parents or arrows: taken out, the
+     * class can have members again. The first class, by name, with such a cause is the one
+     * explained; its subclasses are empty because it is.
+     */
+    static String causeOf(OWLOntology ontology, OWLOntology copy,
+            java.util.Map<String, org.semanticweb.owlapi.model.OWLClass> empty,
+            org.semanticweb.owlapi.reasoner.OWLReasonerFactory reasonerFactory) {
+        return causeOf(ontology, copy, empty, reasonerFactory,
+                System.nanoTime() + CAUSES_MILLIS * 1_000_000L);
+    }
+
+    /** {@link #causeOf}, looking until {@code deadline}, a {@link System#nanoTime} reading. */
+    static String causeOf(OWLOntology ontology, OWLOntology copy,
+            java.util.Map<String, org.semanticweb.owlapi.model.OWLClass> empty,
+            org.semanticweb.owlapi.reasoner.OWLReasonerFactory reasonerFactory, long deadline) {
+        java.util.Set<org.semanticweb.owlapi.model.OWLClass> all =
+                new HashSet<org.semanticweb.owlapi.model.OWLClass>(empty.values());
+        for (java.util.Map.Entry<String, org.semanticweb.owlapi.model.OWLClass> named
+                : empty.entrySet()) {
+            List<OWLAxiom> found = causes(copy, named.getValue(), all, reasonerFactory, deadline);
+            if (found == null) {
+                // The deadline came before every one was tried. What was found may be one cause
+                // of several, and named alone it is the one people take out: a correct parent, as
+                // often as not (1.135.1 review).
+                return null;
+            }
+            List<String> causes = new ArrayList<String>();
+            boolean arrows = true;
+            for (OWLAxiom cause : found) {
+                String said = inBoardWords(ontology, cause);
+                if (said == null) {
+                    return null;
+                }
+                causes.add(said);
+                arrows &= said.startsWith("the arrow");
+            }
+            if (causes.isEmpty()) {
+                continue;
+            }
+            String which = empty.size() == 1 ? "it" : named.getKey();
+            if (causes.size() == 1) {
+                return " What makes " + which + " so: " + causes.get(0) + ". Right-click that "
+                        + (arrows ? "arrow" : "line") + " on the board and choose Delete axiom from"
+                        + " ontology… to take it out; Edit > Undo takes back only the last"
+                        + " change.";
+            }
+            return " What makes " + which + " so, together: " + String.join("; ", causes)
+                    + ". Take out the one that is wrong:" + WHICH_ONE;
+        }
+        return null;
+    }
+
+    /**
+     * The class's own parents and arrows without which it can have members, each tried alone on
+     * the throwaway copy; null when the deadline came before all of them were tried. A parent that
+     * is empty itself is left out: what makes it empty is that class's own cause. So is an arrow to
+     * a class that is empty itself, unless taking it out gives that class members too (1.135.1
+     * review): egg boiling, which has specified input some raw egg, is empty because raw egg is,
+     * and the build told people to delete that correct arrow.
+     *
+     * <p>A failure while trying one is thrown, not passed over: passed over, the others were named
+     * as if they were all. The caller then names no cause.
+     */
+    static List<OWLAxiom> causes(OWLOntology copy, org.semanticweb.owlapi.model.OWLClass cls,
+            java.util.Set<org.semanticweb.owlapi.model.OWLClass> empty,
+            org.semanticweb.owlapi.reasoner.OWLReasonerFactory reasonerFactory, long deadline) {
+        List<OWLAxiom> found = new ArrayList<OWLAxiom>();
+        OWLOntologyManager manager = copy.getOWLOntologyManager();
+        for (org.semanticweb.owlapi.model.OWLSubClassOfAxiom axiom
+                : copy.getSubClassAxiomsForSubClass(cls)) {
+            org.semanticweb.owlapi.model.OWLClassExpression above = axiom.getSuperClass();
+            if (!above.isAnonymous() && empty.contains(above.asOWLClass())) {
+                continue;
+            }
+            if (System.nanoTime() > deadline) {
+                return null;
+            }
+            org.semanticweb.owlapi.model.OWLClass emptyFiller = null;
+            if (above instanceof org.semanticweb.owlapi.model.OWLObjectSomeValuesFrom) {
+                org.semanticweb.owlapi.model.OWLClassExpression filler =
+                        ((org.semanticweb.owlapi.model.OWLObjectSomeValuesFrom) above).getFiller();
+                if (!filler.isAnonymous() && empty.contains(filler.asOWLClass())) {
+                    emptyFiller = filler.asOWLClass();
+                }
+            }
+            manager.removeAxiom(copy, axiom);
+            org.semanticweb.owlapi.reasoner.OWLReasoner reasoner = null;
+            try {
+                reasoner = reasonerFactory.createReasoner(copy);
+                if (reasoner.isSatisfiable(cls)
+                        && (emptyFiller == null || reasoner.isSatisfiable(emptyFiller))) {
+                    found.add(axiom);
+                }
+            } finally {
+                // Put back before the reasoner is put away, so a failure there leaves the copy
+                // whole.
+                try {
+                    manager.addAxiom(copy, axiom);
+                } finally {
+                    if (reasoner != null) {
+                        reasoner.dispose();
+                    }
+                }
+            }
+        }
+        return found;
+    }
+
+    /** Puts a reasoner away; one that fails to has still answered what it was asked. */
+    private static void disposeOf(org.semanticweb.owlapi.reasoner.OWLReasoner reasoner) {
+        if (reasoner == null) {
+            return;
+        }
+        try {
+            reasoner.dispose();
+        } catch (RuntimeException cannotPutAway) {
+            // Its answers were read before this; the reasoner is the throwaway copy's.
+        }
+    }
+
+    /** A parent or an arrow as the board shows it; null for anything else. */
+    static String inBoardWords(OWLOntology ontology, OWLAxiom axiom) {
+        if (!(axiom instanceof org.semanticweb.owlapi.model.OWLSubClassOfAxiom)) {
+            return null;
+        }
+        org.semanticweb.owlapi.model.OWLSubClassOfAxiom sub =
+                (org.semanticweb.owlapi.model.OWLSubClassOfAxiom) axiom;
+        if (sub.getSubClass().isAnonymous()) {
+            return null;
+        }
+        String below = de.fizkarlsruhe.ise.ontoboard.model.DisplayLabels.forEntity(ontology,
+                sub.getSubClass().asOWLClass());
+        org.semanticweb.owlapi.model.OWLClassExpression above = sub.getSuperClass();
+        if (!above.isAnonymous()) {
+            return below + " is a kind of " + de.fizkarlsruhe.ise.ontoboard.model.DisplayLabels
+                    .forEntity(ontology, above.asOWLClass());
+        }
+        if (above instanceof org.semanticweb.owlapi.model.OWLQuantifiedObjectRestriction) {
+            org.semanticweb.owlapi.model.OWLQuantifiedObjectRestriction restriction =
+                    (org.semanticweb.owlapi.model.OWLQuantifiedObjectRestriction) above;
+            boolean some = above instanceof org.semanticweb.owlapi.model.OWLObjectSomeValuesFrom;
+            boolean only = above instanceof org.semanticweb.owlapi.model.OWLObjectAllValuesFrom;
+            if ((some || only) && !restriction.getProperty().isAnonymous()
+                    && !restriction.getFiller().isAnonymous()) {
+                return "the arrow " + (some ? "∃ " : "∀ ")
+                        + de.fizkarlsruhe.ise.ontoboard.model.DisplayLabels.forEntity(ontology,
+                                restriction.getProperty().asOWLObjectProperty())
+                        + " from " + below + " to "
+                        + de.fizkarlsruhe.ise.ontoboard.model.DisplayLabels.forEntity(ontology,
+                                restriction.getFiller().asOWLClass());
+            }
+        }
+        return null;
     }
 
     /**

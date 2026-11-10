@@ -112,7 +112,10 @@ class PatternLibraryTest {
         //
         // 1,520 until 1.129.0, when OWL's built-in classes stopped being counted: owl:Thing in 47
         // patterns and owl:Nothing in affordance, a term of none of them. No pattern changed.
-        assertEquals(1472, classes, "the measured total across the collection");
+        //
+        // 1,472 until 1.135.1, when pmdco-scalar-value-specification got back the two classes
+        // between datum label and continuant that its extraction had left out.
+        assertEquals(1474, classes, "the measured total across the collection");
     }
 
     /**
@@ -176,10 +179,12 @@ class PatternLibraryTest {
     void theyGroupByPublisher() {
         Map<String, List<DesignPattern>> groups = PatternLibrary.byPublisher();
 
-        assertEquals(17, groups.size(),
-                "thirteen behind the ODP portal, the three pattern pages harvested in 1.87.0, "
+        assertEquals(16, groups.size(),
+                "twelve behind the ODP portal, the three pattern pages harvested in 1.87.0, "
                         + "and basic-formal-ontology.org for the four extracted in 1.96.0");
         assertTrue(groups.containsKey("ontologydesignpatterns.org"));
+        // The airline patterns' was "unknown" until 1.135.1 gave them back their IRI.
+        assertFalse(groups.containsKey(PatternIndex.UNKNOWN_PUBLISHER));
         int total = 0;
         for (List<DesignPattern> group : groups.values()) {
             total += group.size();
@@ -215,9 +220,11 @@ class PatternLibraryTest {
             }
         }
         // Nine since contentops was removed in 1.128.0; it was the tenth, pointing at
-        // actuation-actuator-effect, whose ontology file it had been given by mistake.
-        assertEquals(9, duplicates);
+        // actuation-actuator-effect, whose ontology file it had been given by mistake. Ten again
+        // in 1.135.1: with its IRI given back, Airline.owl is the same submission as Airline.
+        assertEquals(10, duplicates);
         assertEquals("agent-role", PatternLibrary.find("agentrole").getSameAs());
+        assertEquals("airline", PatternLibrary.find("airline-owl").getSameAs());
     }
 
     // ---------- search ----------

@@ -29,54 +29,76 @@ public final class EdgeAxioms {
 
         /** {@code SubClassOf(A ObjectSomeValuesFrom(R B))} - every A relates to some B. */
         EXISTENTIAL("Existential", "A ⊑ ∃R.B",
-                "Every {source} is related to some {target}. Usually what an arrow means."),
+                "Every {source} {property} some {target}. Usually what an arrow means.",
+                "is related to"),
 
         /** {@code SubClassOf(ObjectSomeValuesFrom(R B) A)} - only A's relate to B via R. */
         SCOPED_DOMAIN("Scoped domain", "∃R.B ⊑ A",
-                "Anything that relates to a {target} via R must be a {source}."),
+                "Anything that relates to a {target} via {property} must be a {source}.", "R"),
 
         /** {@code SubClassOf(A ObjectAllValuesFrom(R B))} - A relates only to B's. */
         SCOPED_RANGE("Scoped range", "A ⊑ ∀R.B",
-                "When a {source} relates via R, it relates only to {target}."),
+                "When a {source} relates via {property}, it relates only to {target}.", "R"),
 
         /** {@code ObjectPropertyDomain(R A)} - global, and intersects across edges. */
         GLOBAL_DOMAIN("Global domain", "∃R.⊤ ⊑ A",
-                "Anything with an R at all is a {source}. Global: a second edge with the "
-                        + "same property narrows the domain to the intersection."),
+                "Anything that relates via {property} at all is a {source}. Global: a second edge"
+                        + " with the same property narrows the domain to the intersection.", "R"),
 
         /** {@code ObjectPropertyRange(R B)} - global, and intersects across edges. */
         GLOBAL_RANGE("Global range", "⊤ ⊑ ∀R.B",
-                "Every R points at a {target}. Global: a second edge with the same "
-                        + "property narrows the range to the intersection."),
+                "Everything reached via {property} is a {target}. Global: a second edge with the"
+                        + " same property narrows the range to the intersection.", "R"),
 
         /** {@code SubClassOf(A ObjectMaxCardinality(1 R B))} - at most one B per A. */
         // Not "Functionality": that word names FunctionalObjectProperty(R), which holds for every
         // use of R, and this is a restriction on A alone - a curator who picked it reasonably
         // believed R had become functional.
         FUNCTIONALITY("At most one", "A ⊑ ≤1 R.B",
-                "A {source} relates to at most one {target} via R.");
+                "A {source} relates to at most one {target} via {property}.", "R");
+
+        /** The explanation with the two terms filled in, and no property named. */
+        public String explainedFor(String source, String target) {
+            return explainedFor(source, null, target);
+        }
+
+        private static final java.util.regex.Pattern PLACEHOLDER =
+                java.util.regex.Pattern.compile("\\{(source|property|target)\\}");
 
         /**
-         * The explanation with the two terms filled in.
+         * The explanation with the terms and the property filled in (1.135.1, Windows study
+         * rehearsal): it said "Every boiled egg is related to some egg boiling" whatever property
+         * was chosen, so a participant who picked the wrong one read nothing that said so.
          *
          * <p>Here rather than in the dialog so the placeholders and the substitution cannot drift
-         * apart, and done in one pass so a label inserted for {@code {source}} is never rescanned
-         * for {@code {target}}.
+         * apart, and done in one pass so a label inserted for one placeholder is never rescanned
+         * for another.
          */
-        public String explainedFor(String source, String target) {
-            return explanation
-                    .replace("{source}", source == null ? "A" : source)
-                    .replace("{target}", target == null ? "B" : target);
+        public String explainedFor(String source, String property, String target) {
+            java.util.regex.Matcher found = PLACEHOLDER.matcher(explanation);
+            StringBuffer said = new StringBuffer();
+            while (found.find()) {
+                String name = found.group(1);
+                String with = "source".equals(name) ? (source == null ? "A" : source)
+                        : "target".equals(name) ? (target == null ? "B" : target)
+                        : (property == null || property.trim().isEmpty() ? withoutProperty : property);
+                found.appendReplacement(said, java.util.regex.Matcher.quoteReplacement(with));
+            }
+            found.appendTail(said);
+            return said.toString();
         }
 
         private final String displayName;
         private final String dlNotation;
         private final String explanation;
+        private final String withoutProperty;
 
-        Candidate(String displayName, String dlNotation, String explanation) {
+        Candidate(String displayName, String dlNotation, String explanation,
+                String withoutProperty) {
             this.displayName = displayName;
             this.dlNotation = dlNotation;
             this.explanation = explanation;
+            this.withoutProperty = withoutProperty;
         }
 
         public String getDisplayName() {

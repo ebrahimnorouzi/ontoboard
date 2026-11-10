@@ -32,6 +32,15 @@ public final class PatternSummary {
      */
     public static String asHtml(DesignPattern pattern, PatternLibrary.Contents contents,
             String whySuggested) {
+        return asHtml(pattern, contents, whySuggested, null);
+    }
+
+    /**
+     * The same, with something about this pattern and this ontology said first: that it is
+     * imported already, or which of its terms a search found it by. Plain text; it is escaped.
+     */
+    public static String asHtml(DesignPattern pattern, PatternLibrary.Contents contents,
+            String whySuggested, String sayFirst) {
         StringBuilder html = new StringBuilder("<html><body style='font-family:sans-serif'>");
         html.append("<h2 style='margin-bottom:2px'>").append(escape(pattern.getName()))
             .append("</h2>");
@@ -40,14 +49,24 @@ public final class PatternSummary {
             .append(escape(pattern.getPublisher())).append(" &middot; ")
             .append(escape(pattern.getCategory())).append(" &middot; ")
             .append(escape(pattern.getDomain())).append("</div>");
+        if (sayFirst != null && !sayFirst.trim().isEmpty()) {
+            html.append(note(escape(sayFirst.trim())));
+        }
         if (whySuggested != null && !whySuggested.trim().isEmpty()) {
             html.append("<div style='background:#E8F1FB;padding:6px;margin:6px 0'><b>Suggested:"
                     + "</b> ").append(escape(whySuggested)).append("</div>");
         }
 
-        if (pattern.isDuplicate()) {
+        if (pattern.isDuplicate() && PatternLibrary.twinNote(pattern).startsWith("same as")) {
             html.append(note("This is <b>" + escape(pattern.getSameAs()) + "</b> under a second "
                     + "name. Importing both would import the same terms twice."));
+        } else if (pattern.isDuplicate()) {
+            DesignPattern twin = PatternLibrary.find(pattern.getSameAs());
+            html.append(note("<b>" + escape(pattern.getSameAs()) + "</b> declares the same"
+                    + " ontology IRI with other terms: this one has "
+                    + pattern.getTermIris().size() + ", " + escape(pattern.getSameAs()) + " has "
+                    + (twin == null ? "others" : String.valueOf(twin.getTermIris().size()))
+                    + ". Import the one whose terms you need, not both."));
         }
 
         // WHAT A REASONER FOUND, before the import rather than after. Four of the bundled

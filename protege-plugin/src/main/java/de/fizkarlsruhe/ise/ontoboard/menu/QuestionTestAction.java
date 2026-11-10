@@ -152,11 +152,15 @@ public class QuestionTestAction extends ProtegeOWLAction {
         if (root != null) {
             File file = new File(new File(root, "src/sparql"),
                     QuestionTests.fileNameFor(question.getText()));
-            if (file.exists()) {
-                JOptionPane.showMessageDialog(getOWLWorkspace(), file.getName() + " is there "
-                        + "already, and this would replace it. Word the question differently, or "
-                        + "remove the old test first.", "Not saved",
-                        JOptionPane.WARNING_MESSAGE);
+            // Replaced when asked to, not refused: a test is named after its question, so the way
+            // to change a test is to ask the same question again - and nothing in Protege removes
+            // one, so a refusal left a test whose class had been deleted failing every build, with
+            // the file in src/sparql as the only way out.
+            Object[] choices = {"Replace it", "Cancel"};
+            if (file.exists() && JOptionPane.showOptionDialog(getOWLWorkspace(), file.getName()
+                    + " is there already,\nfrom a question worded the same way. Replace it with "
+                    + "this test?", "Replace the test?", JOptionPane.DEFAULT_OPTION,
+                    JOptionPane.QUESTION_MESSAGE, null, choices, choices[0]) != 0) {
                 return;
             }
             try {

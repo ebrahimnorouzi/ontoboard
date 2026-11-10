@@ -3,6 +3,7 @@
 # "which aircraft are in a given airline's fleet?". The property keeps the pattern's own
 # namespace.
 
+@prefix airline: <http://www.ontologydesignpatterns.org/ekp/owl/Airline.owl#> .
 @prefix ontology: <http://dbpedia.org/ontology/> .
 @prefix ex: <https://w3id.org/ontoboard/example/airline-owl#> .
 @prefix owl: <http://www.w3.org/2002/07/owl#> .
@@ -10,7 +11,7 @@
 
 ex:KLM a owl:NamedIndividual , ontology:Airline ;
     rdfs:label "KLM Royal Dutch Airlines" ;
-    <file:/C:/Users/eno/Documents/Git_repo/ebrahimnorouzi_github/ISE-FIZKarlsruhe/ontoboard/protege-plugin/../patterns/airline-owl/pattern.owl#hasAircraft> ex:Boeing737800 ,
+    airline:hasAircraft ex:Boeing737800 ,
         ex:Boeing777300ER .
 
 ex:Boeing737800 a owl:NamedIndividual , ontology:Aircraft ;

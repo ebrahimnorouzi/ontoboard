@@ -23,6 +23,30 @@ import org.junit.jupiter.api.Test;
 class ShortcutsPanelTest {
 
     /**
+     * The footer says what the board's own Undo covers - and in Protégé 5.6.9's look and feel on
+     * Windows its theme grey, {@code Label.disabledForeground}, is near white on the panel.
+     */
+    @Test
+    void theFooterCanBeReadWhenTheThemeGreyIsNearWhite() {
+        javax.swing.UIManager.put("Label.disabledForeground", new javax.swing.plaf.ColorUIResource(220, 220, 220));
+        try {
+            ShortcutsPanel panel = new ShortcutsPanel();
+            javax.swing.JLabel footer = null;
+            for (javax.swing.JLabel label : Wcag.labelsIn(panel)) {
+                if (label.getText() != null && label.getText().startsWith("Undo here")) {
+                    footer = label;
+                }
+            }
+            assertTrue(footer != null, "the footer about Undo is on the panel");
+            double ratio = Wcag.contrast(footer.getForeground(), panel.getBackground());
+            assertTrue(ratio >= Wcag.READABLE, String.format("the footer reads at %.2f:1, %s on %s",
+                    ratio, footer.getForeground(), panel.getBackground()));
+        } finally {
+            javax.swing.UIManager.put("Label.disabledForeground", null);
+        }
+    }
+
+    /**
      * Both halves of the gesture mode are documented, and so is the switch between them.
      *
      * <p>What a plain drag does has been decided in both directions: it panned until 1.68.0,

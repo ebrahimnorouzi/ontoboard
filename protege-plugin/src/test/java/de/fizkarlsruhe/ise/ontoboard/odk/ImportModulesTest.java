@@ -206,4 +206,21 @@ class ImportModulesTest {
         assertNull(ImportModules.patternIn(written));
         assertNull(ImportModules.patternIn(new File(dir, "nothing_terms.txt")));
     }
+
+    /**
+     * A term list's CURIE is read as the term it stands for, as ROBOT reads it for make: read as
+     * an IRI it named nothing, and a review found every rebuild here dropped that term.
+     */
+    @Test
+    void aCurieOnATermListIsTheTermItStandsFor(@TempDir File where) throws Exception {
+        File list = new File(where, "iao_terms.txt");
+        Files.write(list.toPath(), Arrays.asList("IAO:0000088 # report",
+                "http://purl.obolibrary.org/obo/IAO_0000109 # measurement datum"),
+                StandardCharsets.UTF_8);
+
+        List<IRI> terms = ImportModules.readTerms(list);
+
+        assertEquals(Arrays.asList(IRI.create("http://purl.obolibrary.org/obo/IAO_0000088"),
+                IRI.create("http://purl.obolibrary.org/obo/IAO_0000109")), terms);
+    }
 }

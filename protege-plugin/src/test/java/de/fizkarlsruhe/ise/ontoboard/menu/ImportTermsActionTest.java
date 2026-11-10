@@ -91,4 +91,89 @@ class ImportTermsActionTest {
                 manager.createOntology(), copy, "anonymous"),
                 "a pattern with no IRI records none; its # Pattern: line says where it came from");
     }
+
+    private static final org.semanticweb.owlapi.model.IRI MODULE =
+            org.semanticweb.owlapi.model.IRI.create(
+                    "https://example.org/myont/imports/x_import.owl");
+
+    /** A module holding one subclass axiom per name given, saved to {@code file}. */
+    private static org.semanticweb.owlapi.model.OWLOntology moduleOf(File file, String... names)
+            throws Exception {
+        org.semanticweb.owlapi.model.OWLOntologyManager manager =
+                org.semanticweb.owlapi.apibinding.OWLManager.createOWLOntologyManager();
+        org.semanticweb.owlapi.model.OWLDataFactory factory = manager.getOWLDataFactory();
+        org.semanticweb.owlapi.model.OWLOntology module = manager.createOntology(MODULE);
+        for (String name : names) {
+            manager.addAxiom(module, factory.getOWLSubClassOfAxiom(
+                    factory.getOWLClass(org.semanticweb.owlapi.model.IRI.create(
+                            "https://example.org/x#" + name)),
+                    factory.getOWLClass(org.semanticweb.owlapi.model.IRI.create(
+                            "https://example.org/x#Thing"))));
+        }
+        manager.saveOntology(module, org.semanticweb.owlapi.model.IRI.create(file.toURI()));
+        return module;
+    }
+
+    /** What a file says, read by a manager of its own, as Protege reads it on reopening. */
+    private static java.util.Set<org.semanticweb.owlapi.model.OWLAxiom> readBack(File file)
+            throws Exception {
+        return org.semanticweb.owlapi.apibinding.OWLManager.createOWLOntologyManager()
+                .loadOntologyFromOntologyDocument(file).getAxioms();
+    }
+
+    /**
+     * Importing again from a source already imported changes the module the manager has; it does
+     * not swap it for another.
+     *
+     * <p>Protege's model manager keeps the ontologies in view in a list of its own, so an ontology
+     * removed from the OWL API manager behind its back stays in that list - detached, its manager
+     * gone - and every view asking it anything threw IllegalStateException until a restart. Found
+     * by importing the same pattern twice in a rehearsal of the study.
+     */
+    @Test
+    void importingAgainChangesTheModuleTheManagerHasInPlace(
+            @org.junit.jupiter.api.io.TempDir File folder) throws Exception {
+        File file = new File(folder, "x_import.owl");
+        moduleOf(file, "A");
+        org.semanticweb.owlapi.model.OWLOntologyManager protege =
+                org.semanticweb.owlapi.apibinding.OWLManager.createOWLOntologyManager();
+        org.semanticweb.owlapi.model.OWLOntology held =
+                protege.loadOntologyFromOntologyDocument(file);
+
+        moduleOf(file, "A", "B");
+        org.semanticweb.owlapi.model.OWLOntology now = ImportTermsAction.intoManager(protege,
+                MODULE, file, changes -> protege.applyChanges(changes));
+
+        assertTrue(now == held, "the ontology everything else holds is the one that changed");
+        assertTrue(held.getOWLOntologyManager() == protege, "and it is still the manager's");
+        assertEquals(readBack(file), held.getAxioms(), "it says what the file says now");
+        assertEquals(1, protege.getOntologies().size());
+    }
+
+    /** A module the manager does not have yet is loaded from the file just written. */
+    @Test
+    void aModuleNotOpenYetIsLoaded(@org.junit.jupiter.api.io.TempDir File folder)
+            throws Exception {
+        File file = new File(folder, "x_import.owl");
+        moduleOf(file, "A");
+        org.semanticweb.owlapi.model.OWLOntologyManager protege =
+                org.semanticweb.owlapi.apibinding.OWLManager.createOWLOntologyManager();
+
+        org.semanticweb.owlapi.model.OWLOntology now = ImportTermsAction.intoManager(protege,
+                MODULE, file, changes -> {
+                    throw new AssertionError("nothing to change in place");
+                });
+
+        assertTrue(protege.getOntologies().contains(now));
+        assertEquals(readBack(file), now.getAxioms());
+    }
+
+    /** "604 axioms for 1 terms" was the first sentence a participant read after importing one. */
+    @Test
+    void oneTermIsOneTerm() {
+        assertEquals("Wrote a module of 604 axioms for 1 term, and imported it.",
+                ImportTermsAction.moduleSummary(604, 1));
+        assertEquals("Wrote a module of 1 axiom for 2 terms, and imported it.",
+                ImportTermsAction.moduleSummary(1, 2));
+    }
 }

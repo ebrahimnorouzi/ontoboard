@@ -87,14 +87,16 @@ public final class ResultDialog {
         status.setAlignmentX(Component.LEFT_ALIGNMENT);
         header.add(status);
 
-        JLabel summary = new JLabel("<html><body style='width:460px'>"
+        // 390, not 460: Swing draws a CSS pixel 1.3 screen pixels wide, so 460 asked for 598 px in a
+        // 520 px panel, and a tester found every failed build's message cut off at the right.
+        JLabel summary = new JLabel("<html><body style='width:390px'>"
                 + escape(result.getSummary()) + "</body></html>");
         summary.setAlignmentX(Component.LEFT_ALIGNMENT);
         summary.setBorder(BorderFactory.createEmptyBorder(4, 0, 0, 0));
         header.add(summary);
 
         if (!result.getFiles().isEmpty()) {
-            StringBuilder written = new StringBuilder("<html><body style='width:460px'>Wrote: ");
+            StringBuilder written = new StringBuilder("<html><body style='width:390px'>Wrote: ");
             for (File file : result.getFiles()) {
                 written.append("<br>").append(escape(file.getAbsolutePath()));
             }

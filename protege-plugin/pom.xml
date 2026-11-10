@@ -6,7 +6,7 @@
 
   <groupId>de.fizkarlsruhe.ise</groupId>
   <artifactId>ontoboard</artifactId>
-  <version>1.135.0</version>
+  <version>1.135.1</version>
   <packaging>bundle</packaging>
 
   <name>OntoBoard</name>
@@ -194,6 +194,11 @@
             PatternSoundnessTest. 16 KB.
           -->
           <include>soundness.tsv</include>
+          <!--
+            What each pattern's terms are called, so the library can be searched by them.
+            Generated and checked by PatternLabelsTest.
+          -->
+          <include>labels.tsv</include>
           <include>*/pattern.owl</include>
           <!--
             The Turtle beside each one. The plugin loads the RDF/XML; this is for a person -

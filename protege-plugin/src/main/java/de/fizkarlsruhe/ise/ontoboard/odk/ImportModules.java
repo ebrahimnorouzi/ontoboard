@@ -210,6 +210,16 @@ public final class ImportModules {
      */
     public static File writeTerms(File projectRoot, String name, List<IRI> terms, String source,
             String pattern) throws IOException {
+        return writeTerms(projectRoot, name, terms, source, pattern,
+                java.util.Collections.<IRI, String>emptyMap());
+    }
+
+    /**
+     * The same, each term followed by what it is called, as a comment - what a person editing the
+     * list reads, and what ROBOT's term file format skips.
+     */
+    public static File writeTerms(File projectRoot, String name, List<IRI> terms, String source,
+            String pattern, java.util.Map<IRI, String> labels) throws IOException {
         File file = termsFileFor(projectRoot, name);
         File directory = file.getParentFile();
         if (directory != null && !directory.isDirectory() && !directory.mkdirs()) {
@@ -232,7 +242,12 @@ public final class ImportModules {
             text.append("# edit it and re-run the import to change what the module contains.\n");
         }
         for (String iri : sortedUnique(terms)) {
-            text.append(iri).append('\n');
+            String label = labels.get(IRI.create(iri));
+            text.append(iri);
+            if (label != null && !label.trim().isEmpty()) {
+                text.append(" # ").append(label.trim().replace('\n', ' '));
+            }
+            text.append('\n');
         }
         Files.write(file.toPath(), text.toString().getBytes(StandardCharsets.UTF_8));
         return file;
@@ -246,12 +261,28 @@ public final class ImportModules {
      * reports them, so nothing is silently dropped.
      */
     public static List<IRI> readTerms(File termsFile) throws IOException {
-        List<IRI> terms = new ArrayList<IRI>();
+        List<String> written = new ArrayList<String>();
         for (String line : linesOf(termsFile)) {
             String term = termOn(line);
             if (term != null) {
-                terms.add(IRI.create(term));
+                written.add(term);
             }
+        }
+        // A CURIE - IAO:0000088 - is a term too, as ROBOT reads the list for make: read as an IRI
+        // it named nothing, and a review found every rebuild here dropped that term from the
+        // module, label and parents with it.
+        List<String> curies = new ArrayList<String>();
+        for (String term : written) {
+            if (!term.contains("//") && term.matches("[A-Za-z][A-Za-z0-9_.-]*:\\S+")) {
+                curies.add(term);
+            }
+        }
+        java.util.Map<String, IRI> expanded = curies.isEmpty() ? Collections.<String, IRI>emptyMap()
+                : de.fizkarlsruhe.ise.ontoboard.robot.TermList.resolve(curies, null);
+        List<IRI> terms = new ArrayList<IRI>();
+        for (String term : written) {
+            IRI iri = expanded.get(term);
+            terms.add(iri != null ? iri : IRI.create(term));
         }
         return terms;
     }

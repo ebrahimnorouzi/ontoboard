@@ -71,7 +71,7 @@ that tell you the ontology does its job.
 ### 3. Start from a design pattern
 
 **What you do.** *OntoBoard → Reuse → Pattern library...*, search with the words of your questions,
-pick a pattern, *Import terms...*, OK.
+pick a pattern, *Import terms...*, *Add them*.
 
 **Why.** A pattern is a small, proven piece of ontology for a problem many people have had —
 parts and wholes, roles, classifications, prices. You start from a design others have tested,

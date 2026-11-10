@@ -6,7 +6,7 @@
   "domain": "transportation",
   "scenarios": "",
   "competency_questions": "Which aircraft are in a given airline's fleet?; Which airlines have a particular aircraft in their fleet?",
-  "pattern_iri": "file:///C:/Users/eno/Documents/Git_repo/ebrahimnorouzi_github/ISE-FIZKarlsruhe/ontoboard/patterns-repository/Airline.owl/Airline.owl",
+  "pattern_iri": "http://www.ontologydesignpatterns.org/ekp/owl/Airline.owl",
   "source": "https://ontologydesignpatterns.org/wiki/Submissions:Airline.owl",
   "references": "https://ontologydesignpatterns.org/wiki/Submissions:Airline.owl",
   "class_count": 2,

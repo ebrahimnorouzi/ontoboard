@@ -4,6 +4,7 @@
 # the military operation that emptied that homeland in 1944, its singers, writers and office
 # holders, and the neighbouring Kven minority.
 
+@prefix ethnicgroup: <http://www.ontologydesignpatterns.org/ekp/owl/EthnicGroup.owl#> .
 @prefix ontology: <http://dbpedia.org/ontology/> .
 @prefix ex: <https://w3id.org/ontoboard/example/ethnicgroup#> .
 @prefix owl: <http://www.w3.org/2002/07/owl#> .
@@ -11,20 +12,20 @@
 
 ex:SamiPeople a owl:NamedIndividual , ontology:EthnicGroup ;
     rdfs:label "the Sámi people" ;
-    <file:/C:/Users/eno/Documents/Git_repo/ebrahimnorouzi_github/ISE-FIZKarlsruhe/ontoboard/protege-plugin/../patterns/ethnicgroup/pattern.owl#linksToAdministrativeRegion> ex:Finnmark ;
-    <file:/C:/Users/eno/Documents/Git_repo/ebrahimnorouzi_github/ISE-FIZKarlsruhe/ontoboard/protege-plugin/../patterns/ethnicgroup/pattern.owl#linksToCity> ex:Tromso ;
-    <file:/C:/Users/eno/Documents/Git_repo/ebrahimnorouzi_github/ISE-FIZKarlsruhe/ontoboard/protege-plugin/../patterns/ethnicgroup/pattern.owl#linksToContinent> ex:Europe ;
-    <file:/C:/Users/eno/Documents/Git_repo/ebrahimnorouzi_github/ISE-FIZKarlsruhe/ontoboard/protege-plugin/../patterns/ethnicgroup/pattern.owl#linksToCountry> ex:Norway ;
-    <file:/C:/Users/eno/Documents/Git_repo/ebrahimnorouzi_github/ISE-FIZKarlsruhe/ontoboard/protege-plugin/../patterns/ethnicgroup/pattern.owl#linksToEthnicGroup> ex:KvenPeople ;
-    <file:/C:/Users/eno/Documents/Git_repo/ebrahimnorouzi_github/ISE-FIZKarlsruhe/ontoboard/protege-plugin/../patterns/ethnicgroup/pattern.owl#linksToIsland> ex:Soroya ;
-    <file:/C:/Users/eno/Documents/Git_repo/ebrahimnorouzi_github/ISE-FIZKarlsruhe/ontoboard/protege-plugin/../patterns/ethnicgroup/pattern.owl#linksToLanguage> ex:NorthernSami ;
-    <file:/C:/Users/eno/Documents/Git_repo/ebrahimnorouzi_github/ISE-FIZKarlsruhe/ontoboard/protege-plugin/../patterns/ethnicgroup/pattern.owl#linksToMilitaryConflict> ex:BurningOfFinnmark1944 ;
-    <file:/C:/Users/eno/Documents/Git_repo/ebrahimnorouzi_github/ISE-FIZKarlsruhe/ontoboard/protege-plugin/../patterns/ethnicgroup/pattern.owl#linksToMusicalArtist> ex:MariBoine ;
-    <file:/C:/Users/eno/Documents/Git_repo/ebrahimnorouzi_github/ISE-FIZKarlsruhe/ontoboard/protege-plugin/../patterns/ethnicgroup/pattern.owl#linksToOfficeHolder> ex:SiljeKarineMuotka ;
-    <file:/C:/Users/eno/Documents/Git_repo/ebrahimnorouzi_github/ISE-FIZKarlsruhe/ontoboard/protege-plugin/../patterns/ethnicgroup/pattern.owl#linksToPresident> ex:OleHenrikMagga ;
-    <file:/C:/Users/eno/Documents/Git_repo/ebrahimnorouzi_github/ISE-FIZKarlsruhe/ontoboard/protege-plugin/../patterns/ethnicgroup/pattern.owl#linksToRiver> ex:TanaRiver ;
-    <file:/C:/Users/eno/Documents/Git_repo/ebrahimnorouzi_github/ISE-FIZKarlsruhe/ontoboard/protege-plugin/../patterns/ethnicgroup/pattern.owl#linksToTown> ex:Karasjok ;
-    <file:/C:/Users/eno/Documents/Git_repo/ebrahimnorouzi_github/ISE-FIZKarlsruhe/ontoboard/protege-plugin/../patterns/ethnicgroup/pattern.owl#linksToWriter> ex:NilsAslakValkeapaa .
+    ethnicgroup:linksToAdministrativeRegion ex:Finnmark ;
+    ethnicgroup:linksToCity ex:Tromso ;
+    ethnicgroup:linksToContinent ex:Europe ;
+    ethnicgroup:linksToCountry ex:Norway ;
+    ethnicgroup:linksToEthnicGroup ex:KvenPeople ;
+    ethnicgroup:linksToIsland ex:Soroya ;
+    ethnicgroup:linksToLanguage ex:NorthernSami ;
+    ethnicgroup:linksToMilitaryConflict ex:BurningOfFinnmark1944 ;
+    ethnicgroup:linksToMusicalArtist ex:MariBoine ;
+    ethnicgroup:linksToOfficeHolder ex:SiljeKarineMuotka ;
+    ethnicgroup:linksToPresident ex:OleHenrikMagga ;
+    ethnicgroup:linksToRiver ex:TanaRiver ;
+    ethnicgroup:linksToTown ex:Karasjok ;
+    ethnicgroup:linksToWriter ex:NilsAslakValkeapaa .
 
 ex:KvenPeople a owl:NamedIndividual , ontology:EthnicGroup ;
     rdfs:label "the Kven, the neighbouring minority of Finnish descent" .

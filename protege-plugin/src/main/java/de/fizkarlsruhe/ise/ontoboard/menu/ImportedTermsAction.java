@@ -144,7 +144,8 @@ public class ImportedTermsAction extends ProtegeOWLAction {
                 ImportedTerms.Source source = (ImportedTerms.Source) value;
                 String counts = source.getModule() == null
                         ? source.getTerms().size() + " terms, imported whole"
-                        : source.countChosen() + " chosen, " + source.getTerms().size()
+                        : (source.getOntology() == null ? "not imported now - " : "")
+                                + source.countChosen() + " chosen, " + source.getTerms().size()
                                 + " in all";
                 return super.getListCellRendererComponent(list, "<html><b>"
                         + escape(source.getName()) + "</b><br><font color=gray>" + counts
@@ -263,6 +264,7 @@ public class ImportedTermsAction extends ProtegeOWLAction {
             }
             dialog.dispose();
         });
+        DialogKeys.escapePresses(dialog.getRootPane(), close);
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         buttons.add(stop);
         buttons.add(findTerms);
@@ -332,14 +334,18 @@ public class ImportedTermsAction extends ProtegeOWLAction {
                 text.append(", from ").append(escape(source.getFrom()));
             }
             text.append(" (").append(source.getMethod().getLabel()).append(").");
+            // Said first, for a pattern's module too: after Edit > Undo of an import, its row
+            // read as if it were imported - a tester's finding.
+            if (source.getOntology() == null) {
+                text.append(" <b>Your ontology does not import it at the moment</b>: its files are"
+                        + " still in the project.");
+            }
             if (source.getPattern() != null) {
                 text.append(" From OntoBoard's pattern library: it changes when the pattern is "
                         + "imported again (OntoBoard &gt; Reuse &gt; Pattern library...).");
             } else if (source.getFrom() == null) {
                 text.append(" Its term list does not say where it comes from, so it cannot be "
                         + "rebuilt here.");
-            } else if (source.getOntology() == null) {
-                text.append(" Your ontology does not import it at the moment.");
             }
         }
         heading.setText(text.append("</html>").toString());
@@ -447,7 +453,7 @@ public class ImportedTermsAction extends ProtegeOWLAction {
             return;
         }
         String before = read(source.getModule().getTermsFile());
-        String after = ImportedTerms.withoutTerms(before, out);
+        String after = ImportedTerms.withoutTerms(before, out, ImportedTerms.prefixesOf(active()));
         if (de.fizkarlsruhe.ise.ontoboard.odk.TermFile.termsIn(after).isEmpty()) {
             JOptionPane.showMessageDialog(dialog, "That would leave " + source.getName()
                     + " with no terms at all. To stop importing it, remove the import "

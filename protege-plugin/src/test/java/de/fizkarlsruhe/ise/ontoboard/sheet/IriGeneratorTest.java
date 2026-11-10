@@ -119,6 +119,22 @@ class IriGeneratorTest {
         assertFalse(hossein.equals(joerg));
     }
 
+    /**
+     * A sheet row is not given an identifier a release has carried, as a new class on the board
+     * is not: the term may have been deleted since, but the identifier still means it.
+     */
+    @Test
+    void anIdentifierThatWasReleasedIsSkipped(@TempDir File dir) throws Exception {
+        File ontology = rangesBeside(dir);
+        File release = new File(dir, "releases/1.0.0/mwo.owl");
+        assertTrue(release.getParentFile().mkdirs());
+        Files.write(release.toPath(), ("<owl:Class rdf:about=\"" + MWO + "0010000\"/>\n")
+                .getBytes("UTF-8"));
+
+        assertEquals(MWO + "0010001", IriGenerator.using(IriGenerator.Source.ID_RANGES,
+                mwoSheets(), null, ontology, "joergwa").mint(1).get(0));
+    }
+
     @Test
     void severalAtOnceAreConsecutiveAndDistinct(@TempDir File dir) throws Exception {
         List<String> minted = IriGenerator.using(IriGenerator.Source.ID_RANGES, mwoSheets(),

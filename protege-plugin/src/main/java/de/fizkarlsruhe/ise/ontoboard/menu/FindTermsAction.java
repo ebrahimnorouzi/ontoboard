@@ -271,6 +271,7 @@ public class FindTermsAction extends ProtegeOWLAction {
             }
             dialog.dispose();
         });
+        DialogKeys.escapePresses(dialog.getRootPane(), close);
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         buttons.add(importButton);
         buttons.add(close);
@@ -586,12 +587,17 @@ public class FindTermsAction extends ProtegeOWLAction {
         text.append("OntoBoard will:\n")
                 .append("  - cut them out of ").append(loadedFrom).append(", with the terms "
                         + "they need, into\n      ")
-                .append(new java.io.File(imports, name + "_import.owl").getPath()).append('\n')
+                // Relative to the edit file: the whole path made the dialog 1,446 px wide on a
+                // tester's machine, past the edge of a laptop screen at 150%.
+                .append("imports").append(java.io.File.separator).append(name)
+                .append("_import.owl, beside your edit file\n")
                 .append("  - list them in ").append(list.getName()).append(", so the import can "
                         + "be rebuilt and changed later\n      (OntoBoard > Reuse > Imported terms...)\n")
                 .append("  - import that module into your ontology, with a catalog entry "
                         + "beside it\n");
-        if (list.isFile()) {
+        // Not for a list an undone import left behind: that import is not in force (1.135.1).
+        if (list.isFile() && !ImportTermsAction.leftByAnImportTakenBack(yours, list,
+                new java.io.File(imports, name + "_import.owl"))) {
             text.append("\n").append(name).append(" is imported already: these join the terms "
                     + "it has, and none of those is taken out.\n");
         }

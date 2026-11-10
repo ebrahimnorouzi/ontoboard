@@ -136,7 +136,9 @@ Only Protégé is needed - it brings its own Java. No ROBOT, no ODK, no Docker, 
 
 *OntoBoard → Run self-test* checks this on your machine: it builds a throwaway project with the
 `test` target and lists whether `robot`, `make`, `docker`, `podman` and `odk` are on the PATH -
-none of them is used. *OntoBoard → Check requirements...* lists the rest.
+none of them is used. *OntoBoard → Check requirements...* lists the rest. The self-test's result
+starts with the OntoBoard version, such as "OntoBoard 1.135.1"; give that number when you report
+a problem.
 
 ## The web application, archived
 

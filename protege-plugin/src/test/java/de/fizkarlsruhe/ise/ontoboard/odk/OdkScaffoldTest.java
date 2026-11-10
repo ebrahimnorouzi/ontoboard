@@ -803,6 +803,35 @@ class OdkScaffoldTest {
     }
 
     /**
+     * An address typed after the one filled in, not over it, is refused.
+     *
+     * <p>The field fills itself from the ID, so that is the likeliest slip on the form, and it
+     * passed every rule: it starts with http and ends in the ID. A study rehearsal made such a
+     * project, with every term it would mint named under the two addresses run together.
+     */
+    @Test
+    void aSecondAddressInTheBaseIriIsRefused(@TempDir Path dir) {
+        for (String garbled : new String[] {
+            "http://purl.obolibrary.org/obo/abc.owlhttps://example.org/abc/abc.owl",
+            "http://purl.obolibrary.org/obo/https://example.org/abc/abc.owlabc.owl"}) {
+            IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class,
+                    () -> new OdkProjectConfig("abc", "ABC", "", garbled, CC0, dir.toFile())
+                            .validate(), garbled);
+            assertTrue(thrown.getMessage().contains("second address"), thrown.getMessage());
+            assertTrue(thrown.getMessage().contains("Replace the address"), thrown.getMessage());
+        }
+    }
+
+    /** A space cannot be part of an IRI, and every term is named under this one. */
+    @Test
+    void aSpaceInTheBaseIriIsRefused(@TempDir Path dir) {
+        IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class,
+                () -> new OdkProjectConfig("abc", "ABC", "", "https://example.org/my abc/abc.owl",
+                        CC0, dir.toFile()).validate());
+        assertTrue(thrown.getMessage().contains("space"), thrown.getMessage());
+    }
+
+    /**
      * A project must not fail its own CI on its first push.
      *
      * <p>ROBOT's default profile - which this scaffold writes out in full - treats
@@ -867,5 +896,103 @@ class OdkScaffoldTest {
                         + "Protege would report against different rules");
         assertFalse(OdkScaffold.ROBOT_VERSION.contains("${"),
                 "resource filtering did not run: ROBOT_VERSION is still a placeholder");
+    }
+
+    /**
+     * A new project's release page describes the releases OntoBoard writes (1.135.1): numbered,
+     * with a version IRI of the form stem/1.0.0. It described dated ones, stem/releases/YYYY-MM-DD,
+     * which Release... has not proposed since semantic versions became its default.
+     */
+    @Test
+    void theReleasePageDescribesNumberedReleases(@TempDir Path dir) throws Exception {
+        OdkProjectConfig config = new OdkProjectConfig("eggboil", "Test kitchen ontology",
+                "Boiling eggs", "https://example.org/eggboil/eggboil.owl", CC0, dir.toFile());
+        OdkScaffold.create(config);
+        String release = read(new File(new File(config.getProjectRoot(), "docs"), "release.md"));
+        assertFalse(release.contains("YYYY-MM-DD"), release);
+        assertTrue(release.contains("`https://example.org/eggboil/eggboil/1.0.0`"), release);
+        assertTrue(release.contains("releases/1.0.0/eggboil.owl"), release);
+        assertFalse(release.contains("docs/eggboil.owl"), "not on GitHub Pages: " + release);
+    }
+
+    /**
+     * On GitHub Pages the release page says what makes the IRIs answer: copies into docs/, which
+     * Release... does not make (1.135.1). Found publishing the egg boiling example.
+     */
+    @Test
+    void onGitHubPagesTheReleasePageSaysWhatToCopyIntoDocs(@TempDir Path dir) throws Exception {
+        OdkProjectConfig config = new OdkProjectConfig("eggboil", "Test kitchen ontology",
+                "Boiling eggs", "https://someone.github.io/eggboil/eggboil.owl", CC0, dir.toFile());
+        OdkScaffold.create(config);
+        String release = read(new File(new File(config.getProjectRoot(), "docs"), "release.md"));
+        assertTrue(release.contains("docs/eggboil.owl"), release);
+        assertTrue(release.contains("docs/eggboil/1.0.0"), release);
+    }
+
+    /** The page as a project created on GitHub Pages gets it, step 3 of the release steps. */
+    private static String pagesStep(String id, String baseIri) {
+        String release = OdkScaffold.documentationFiles(new OdkProjectConfig(id,
+                "Test kitchen ontology", "Boiling eggs", baseIri, CC0, new File("unused")))
+                .get("docs/release.md");
+        int start = release.indexOf("\n3. ") + 1;
+        return release.substring(start, release.indexOf("\n4. ", start) + 1);
+    }
+
+    /**
+     * The usual layout, https://user.github.io/repo/id.owl, says what it said (1.135.1 review).
+     */
+    @Test
+    void onAProjectSiteTheUsualLayoutIsCopiedToTheTopOfDocs() {
+        assertEquals("3. GitHub Pages serves `docs/`, so copy the release there for its IRIs to\n"
+                + "   answer: `eggboil.owl` to `docs/eggboil.owl`, and `releases/1.0.0/eggboil.owl`\n"
+                + "   to `docs/eggboil/1.0.0`, with no extension.\n",
+                pagesStep("eggboil", "https://ebrahimnorouzi.github.io/eggboil/eggboil.owl"));
+    }
+
+    /**
+     * A project site serves docs/X at https://user.github.io/repo/X, so an IRI deeper in the
+     * repository is copied to the same path under docs/ (1.135.1 review). It said docs/egg.owl
+     * for https://user.github.io/repo/ontology/egg.owl, where the IRI would not answer.
+     */
+    @Test
+    void onAProjectSiteADeeperIriIsCopiedToItsOwnPathUnderDocs() {
+        String step = pagesStep("egg", "https://user.github.io/repo/ontology/egg.owl");
+
+        assertFalse(step.contains("`docs/egg.owl`"), step);
+        assertFalse(step.contains("`docs/egg/1.0.0`"), step);
+        assertEquals("3. GitHub Pages serves `docs/`, so copy the release there for its IRIs to\n"
+                + "   answer: `egg.owl` to `docs/ontology/egg.owl`, and `releases/1.0.0/egg.owl`\n"
+                + "   to `docs/ontology/egg/1.0.0`, with no extension.\n", step);
+    }
+
+    /** A user site, https://user.github.io/x.owl, has no repository in its path. */
+    @Test
+    void onAUserSiteTheIriIsCopiedToTheTopOfDocs() {
+        String step = pagesStep("egg", "https://user.github.io/egg.owl");
+
+        assertTrue(step.contains("`egg.owl` to `docs/egg.owl`"), step);
+        assertTrue(step.contains("to `docs/egg/1.0.0`"), step);
+    }
+
+    /** The README says all four steps make test runs, as the build's own table does (1.135.1). */
+    @Test
+    void theReadmeNamesEveryStepOfTest(@TempDir Path dir) throws Exception {
+        OdkProjectConfig config = config(dir.toFile());
+        OdkScaffold.create(config);
+        String readme = read(new File(config.getProjectRoot(), "README.md"));
+        assertTrue(readme.contains("reason, report, sparql_test and validate_profile"), readme);
+    }
+
+    /**
+     * Documentation... writes its page to build/ by default, and Commit everything committed it
+     * (1.135.1).
+     */
+    @Test
+    void theDocumentationBuildIsNotCommitted(@TempDir Path dir) throws Exception {
+        OdkProjectConfig config = config(dir.toFile());
+        OdkScaffold.create(config);
+        String ignored = read(new File(config.getProjectRoot(), ".gitignore"));
+        assertTrue(ignored.contains(String.valueOf((char) 10) + "build/" + String.valueOf((char) 10)),
+                ignored);
     }
 }

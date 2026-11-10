@@ -38,8 +38,13 @@ public final class StartPanel extends JPanel {
      * this panel is not the canvas, it is the thing standing in front of it.
      */
     private static final Color INK = uiColour("Label.foreground", 0x1A, 0x1D, 0x21);
-    private static final Color MUTED = uiColour("Label.disabledForeground", 0x5A, 0x64, 0x70);
     private static final Color CARD = cardColour();
+    /**
+     * The theme's quiet grey only where it can be read on the card: in Protégé 5.6.9's look and
+     * feel on Windows, {@code Label.disabledForeground} is near white, and every line below the
+     * heading was all but invisible (see {@link ReadableText}).
+     */
+    private static final Color MUTED = ReadableText.muted(CARD);
     private static final Color EDGE = uiColour("controlShadow", 0xD8, 0xDD, 0xE3);
 
     /** A look-and-feel colour, or the given fallback when the theme does not define it. */

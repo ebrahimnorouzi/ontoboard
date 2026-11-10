@@ -101,6 +101,14 @@ public final class ImportedPatterns {
             }
         }
 
+        // An ontology that imports patterns says which it uses, and only those are framed. Testers
+        // found a frame for a pattern nobody imported, twice: "publication", because the terms of
+        // an IAO import and of NFDIcore's dataset pattern were most of its distinctive ones, and
+        // "Classification", because Task execution's module holds its Concept. The namespace and
+        // the content are for a release that merged its imports, or an ontology opened as it is.
+        if (!patterns.isEmpty()) {
+            return sortedByLabel(found, patterns, byPattern);
+        }
         for (OWLEntity entity : ontology.getClassesInSignature(Imports.INCLUDED)) {
             String iri = entity.getIRI().toString();
             DesignPattern pattern = patternNamed(namespaceOf(iri));
@@ -120,7 +128,12 @@ public final class ImportedPatterns {
         // Merged in by content: a pattern written in the ontology's own terms - as the patterns
         // harvested from published ontologies are - has no namespace of its own to be found by.
         reusedByContent(ontology, patterns, byPattern, placed);
+        return sortedByLabel(found, patterns, byPattern);
+    }
 
+    private static List<Found> sortedByLabel(List<Found> found,
+            java.util.Map<String, DesignPattern> patterns,
+            java.util.Map<String, List<String>> byPattern) {
         for (java.util.Map.Entry<String, List<String>> entry : byPattern.entrySet()) {
             DesignPattern pattern = patterns.get(entry.getKey());
             found.add(new Found(pattern, inPatternOrder(pattern, entry.getValue())));
@@ -218,8 +231,11 @@ public final class ImportedPatterns {
         }
     }
 
-    /** The library pattern a module was cut from, or null when it is not one. */
-    static DesignPattern patternOf(OWLOntology module) {
+    /**
+     * The library pattern a module was cut from, or null when it is not one. Public for the board,
+     * which takes off the frame of a pattern whose import Edit &gt; Undo took back, and only that.
+     */
+    public static DesignPattern patternOf(OWLOntology module) {
         File moduleFile = fileOf(module);
         if (moduleFile != null && moduleFile.getName().endsWith(MODULE_SUFFIX)) {
             String name = moduleFile.getName();

@@ -140,9 +140,11 @@ SPARQL panel (1.33.0) used to be on this list and are now features - they are de
   *Project → Update project files...* (tick *Write the changes*), which also rewrites the other
   generated files.
 - ***Build...* checks consistency with ELK, and so does *Release...* unless another reasoner is
-  chosen.** ELK does not reason over data ranges, cardinalities or negation, so an ontology only
-  a DL reasoner finds inconsistent passes both. Run HermiT, or *Check and test → Explain...*,
-  before releasing an ontology that uses them.
+  chosen.** ELK does not reason over inverse properties, data ranges, cardinalities or negation, so
+  an ontology only a DL reasoner finds inconsistent passes both, as it does in ODK. When the
+  ontology uses them and has at most 20,000 logical axioms, both also ask HermiT, for ten seconds,
+  and warn with any class it finds can have no members; the verdict stays ELK's. For a larger
+  ontology, run HermiT, or *Check and test → Explain...*, before releasing.
 - ***Template...* types a value only when the cell says so** (`2026-11-01T18:00:00^^xsd:dateTime`).
   It warns about an untyped value only when the property declares a datatype range, so a date
   typed without its datatype becomes a plain string, silently, under a property with no range -

@@ -49,6 +49,21 @@ public final class AroundFrames implements mxEdgeStyle.mxEdgeStyleFunction {
     @Override
     public void apply(mxCellState edge, mxCellState source, mxCellState target,
             List<mxPoint> points, List<mxPoint> result) {
+        // The route worked out for the whole board, while it still describes where the ends are.
+        if (edge.getView().getGraph() instanceof SchemaGraph && (points == null || points.isEmpty())) {
+            List<double[]> routed = ((SchemaGraph) edge.getView().getGraph()).routeOf(edge.getCell());
+            if (routed != null) {
+                for (double[] bend : routed) {
+                    result.add(edge.getView().transformControlPoint(edge,
+                            new mxPoint(bend[0], bend[1])));
+                }
+                return;
+            }
+        }
+        if (source != null && source == target) {
+            mxEdgeStyle.Loop.apply(edge, source, target, points, result);
+            return;
+        }
         int before = result.size();
         mxEdgeStyle.OrthConnector.apply(edge, source, target, points, result);
         // Bends somebody placed by hand are theirs; a loop is not this function's to draw.

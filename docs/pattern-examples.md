@@ -116,7 +116,7 @@ the ODP wiki's index page with another pattern's ontology attached. The extra en
 |---|---|---|
 | Patterns declaring **no object property with both a domain and a range** | 63 | **39** |
 | Patterns with no example at all | 163 | 1 |
-| Patterns whose IRIs are a **local file path** rather than a real IRI | 3 | 3 |
+| Patterns whose IRIs are a **local file path** rather than a real IRI | 3 | 0 |
 | Patterns whose `.owl` and `.ttl` disagree | 68 | 68 |
 
 A pattern in the first row is a list of classes with no edges between them: a term list, not a
@@ -143,13 +143,13 @@ directions of the same inverse pair. Rewriting every `.owl` from its `.ttl` woul
 axioms. `tools/sync-pattern-owl.py` therefore syncs only the patterns the current tree has
 edited, and reports the rest.
 
-It is 68 and not 70. Two more *appeared* to disagree and did not: `airline` and `airline-owl`
-have no ontology IRI, so each of their terms is named after the file it was read from, and the
-two files spell that path differently - `file:/C:/…/protege-plugin/../patterns/…` against
-`file:///C:/…/patterns/…`. 32 triples each side, 17 differing on each, every one of them the same
-triple twice. The check normalises `file:` IRIs before comparing, because the alternative is to
-pick a spelling for somebody else's term IRIs - and these should not be local paths at all,
-which is the third row of the table.
+It is 68 and not 70. Two more *appeared* to disagree and did not: until 1.135.1 `airline` and
+`airline-owl` had no ontology IRI, so each of their terms was named after the file it was read
+from, and the two files spelt that path differently - `file:/C:/…/protege-plugin/../patterns/…`
+against `file:///C:/…/patterns/…`. 32 triples each side, 17 differing on each, every one of them
+the same triple twice. The check normalises `file:` IRIs before comparing. In 1.135.1 both were
+given back the IRI their submission declares, `http://www.ontologydesignpatterns.org/ekp/owl/Airline.owl`,
+as Ethnicgroup's was before them, which empties the third row of the table.
 
 Fixed along the way, each found by inventorying the library rather than by reading a file:
 
