@@ -5,6 +5,7 @@ import de.fizkarlsruhe.ise.ontoboard.proc.ProcessRunner;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -189,6 +190,19 @@ public class BuildAction extends OntoBoardAction {
                 de.fizkarlsruhe.ise.ontoboard.odk.InProcessTargets.run(editFile, ontology,
                         reasoner().newFactory(), target);
         long seconds = (System.currentTimeMillis() - started) / 1000;
+        return inProcessResult(result, target, editFile, outcome, seconds);
+    }
+
+    /**
+     * What an in-process build reports, apart from running it, so a test can read it.
+     *
+     * <p>The summary says what passed and what to read (1.135.1, Windows study rehearsal). It is
+     * the part nobody scrolls to: the result dialog cannot be resized, its log box shows six lines,
+     * and a passing test's PASS was the ninth and HermiT's warning the seventh.
+     */
+    static OperationResult inProcessResult(OperationResult.Builder result, String target,
+            File editFile, de.fizkarlsruhe.ise.ontoboard.odk.InProcessTargets.Outcome outcome,
+            long seconds) {
         for (String line : outcome.getTranscript()) {
             result.note(line);
         }
@@ -198,15 +212,47 @@ public class BuildAction extends OntoBoardAction {
         for (String warning : outcome.getWarnings()) {
             result.warn(warning);
         }
+        String tests = testsSaid(outcome.getPassingChecks());
         if (!outcome.isOk()) {
-            return result.failed(outcome.getFailure()).build();
+            return result.failed(outcome.getFailure() + tests).build();
         }
         String reload = MakeRun.reloadHint(target, editFile);
         if (reload != null) {
             result.warn(reload);
         }
         return result.summary(target + " finished in " + seconds
-                + "s, inside Protege - nothing was installed or started.").build();
+                + "s, inside Protege - nothing was installed or started." + tests
+                + warningsSaid(outcome.getWarnings())).build();
+    }
+
+    /** How many passing tests the summary names before it counts the rest. */
+    static final int TESTS_NAMED = 4;
+
+    /** The tests that passed, for the summary: {@code " Tests: PASS a.rq, PASS b.rq."}. */
+    static String testsSaid(List<String> passing) {
+        if (passing == null || passing.isEmpty()) {
+            return "";
+        }
+        List<String> named = new ArrayList<String>();
+        for (String check : passing.subList(0, Math.min(TESTS_NAMED, passing.size()))) {
+            named.add("PASS " + check);
+        }
+        int more = passing.size() - named.size();
+        return " Tests: " + String.join(", ", named) + (more > 0 ? " and " + more + " more" : "")
+                + ".";
+    }
+
+    /** The first warning's first sentence, for the summary; the whole of each is in the log. */
+    static String warningsSaid(List<String> warnings) {
+        if (warnings == null || warnings.isEmpty()) {
+            return "";
+        }
+        String first = warnings.get(0).trim();
+        int end = first.indexOf(". ");
+        String sentence = end < 0 ? first : first.substring(0, end + 1);
+        return " " + sentence + (warnings.size() == 1 ? " More in the log."
+                : " That and " + (warnings.size() - 1) + " more warning"
+                        + (warnings.size() == 2 ? "" : "s") + " in the log.");
     }
 
     /** The reasoner the in-process build uses. ELK, as the generated recipe specifies. */

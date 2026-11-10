@@ -6,7 +6,7 @@
    xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
    xmlns:skos="http://www.w3.org/2004/02/skos/core#"
 >
-  <rdf:Description rdf:about="file:/C:/Users/eno/Documents/Git_repo/ebrahimnorouzi_github/ISE-FIZKarlsruhe/ontoboard/protege-plugin/../patterns/airline-owl/pattern.owl">
+  <rdf:Description rdf:about="http://www.ontologydesignpatterns.org/ekp/owl/Airline.owl">
     <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#Ontology"/>
     <ns1:extractedFrom rdf:resource="http://dbpedia.org/"/>
     <ns1:extractedFrom rdf:resource="http://en.wikipedia.org/"/>
@@ -15,9 +15,9 @@
     <ns1:hasAuthor>Valentina Presutti</ns1:hasAuthor>
     <ns1:hasIntent>To represent the encyclopedic knowledge expressed by an object typed as Airline</ns1:hasIntent>
     <rdfs:comment>Airline Encyclopedic Knowledge Pattern</rdfs:comment>
-    <owl:imports rdf:resource="file:/schemas/cpannotationschema.owl"/>
+    <owl:imports rdf:resource="http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl"/>
   </rdf:Description>
-  <rdf:Description rdf:about="file:/C:/Users/eno/Documents/Git_repo/ebrahimnorouzi_github/ISE-FIZKarlsruhe/ontoboard/protege-plugin/../patterns/airline-owl/pattern.owl#hasAircraft">
+  <rdf:Description rdf:about="http://www.ontologydesignpatterns.org/ekp/owl/Airline.owl#hasAircraft">
     <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#AnnotationProperty"/>
     <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#ObjectProperty"/>
     <rdfs:label xml:lang="en">has Aircraft</rdfs:label>

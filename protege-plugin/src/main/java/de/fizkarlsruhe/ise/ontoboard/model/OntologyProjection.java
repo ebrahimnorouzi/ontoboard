@@ -336,6 +336,11 @@ public final class OntologyProjection {
                         org.semanticweb.owlapi.model.OWLClass above =
                                 axiom.getSuperClass().asOWLClass();
                         String up = above.getIRI().toString();
+                        if (up.equals(at)) {
+                            // SubClassOf(A A) is no step up. Taken when A sorted before its real
+                            // superclass, it ended the climb at A, and A left its frame (1.135.1).
+                            continue;
+                        }
                         if (framed.contains(up)) {
                             found = up;
                         } else if (ontology.isDeclared(above, Imports.EXCLUDED)
@@ -723,7 +728,10 @@ public final class OntologyProjection {
 
     private static void addSubPropertyEdge(Set<String> on, List<CanvasEdge> edges, IRI sub,
             IRI sup) {
-        if (!isOn(on, sub) || !isOn(on, sup)) {
+        // SubPropertyOf(p p) is true of every property and says nothing about this one: PMDco's
+        // Fundamental property module states it for has part, and the board drew an is-a loop on
+        // the box (1.135.1, the egg-boiling study board).
+        if (sub.equals(sup) || !isOn(on, sub) || !isOn(on, sup)) {
             return;
         }
         edges.add(new CanvasEdge("subprop|" + iri(sub) + "|" + iri(sup), iri(sub), iri(sup),
@@ -1094,7 +1102,7 @@ public final class OntologyProjection {
             if (!drawable || links.isEmpty()) {
                 continue;
             }
-            String chainId = EXPRESSION_PREFIX + digestOf(axiom.toString());
+            String chainId = chainNodeId(axiom);
             CanvasNode chain = new CanvasNode(chainId, NodeKind.EXPRESSION, reads.toString());
             if (!nodes.contains(chain)) {
                 nodes.add(chain);
@@ -1205,12 +1213,22 @@ public final class OntologyProjection {
      * expression.
      */
     private static String expressionNode(OWLClassExpression expression, List<CanvasNode> nodes) {
-        String id = EXPRESSION_PREFIX + digestOf(expression.toString());
+        String id = expressionNodeId(expression);
         CanvasNode node = new CanvasNode(id, NodeKind.EXPRESSION, operatorOf(expression));
         if (!nodes.contains(node)) {
             nodes.add(node);
         }
         return id;
+    }
+
+    /** The id of the node {@link #expressionNode} mints, for {@link AxiomOnBoard} to find. */
+    static String expressionNodeId(OWLClassExpression expression) {
+        return EXPRESSION_PREFIX + digestOf(expression.toString());
+    }
+
+    /** The id of a property chain's node: a digest of its axiom, the same way. */
+    static String chainNodeId(org.semanticweb.owlapi.model.OWLSubPropertyChainOfAxiom axiom) {
+        return EXPRESSION_PREFIX + digestOf(axiom.toString());
     }
 
     /** A short stable hash. SHA-1 of the syntax, first twelve hex characters. */
@@ -1537,6 +1555,13 @@ public final class OntologyProjection {
             OWLClassExpression sup = axiom.getSuperClass();
 
             if (sub.isAnonymous()) {
+                // The same expression on both sides is a tautology: no line, and no box either.
+                // OWL API compares expressions by structure, so B and A is A and B. The box used
+                // to be made before this was noticed, and stayed, hanging off its operands
+                // (1.135.1). An expression another axiom uses gets its box from that axiom.
+                if (sup.equals(sub)) {
+                    continue;
+                }
                 if (!sup.isAnonymous() && isScopedDomain(sub)) {
                     scopedDomain(ontology, on, sub, sup.asOWLClass().getIRI(), edges);
                 } else if (drawExpressions) {
@@ -1554,8 +1579,8 @@ public final class OntologyProjection {
                     } else {
                         continue;
                     }
-                    addUnlessAlreadyThere(edges, new CanvasEdge("gci|" + from + "|" + to, from,
-                            to, "", CanvasEdge.Kind.SUBCLASS));
+                    addUnlessAlreadyThere(edges, new CanvasEdge("gci|" + from + "|" + to,
+                            from, to, "", CanvasEdge.Kind.SUBCLASS));
                 }
                 continue;
             }
@@ -1565,7 +1590,8 @@ public final class OntologyProjection {
             }
             if (!sup.isAnonymous()) {
                 IRI supIri = sup.asOWLClass().getIRI();
-                if (isOn(on, supIri)) {
+                // SubClassOf(A A) says nothing about A, and was an is-a loop on its box.
+                if (isOn(on, supIri) && !subIri.equals(supIri)) {
                     edges.add(new CanvasEdge("sub|" + subIri + "|" + supIri,
                             iri(subIri), iri(supIri), "", CanvasEdge.Kind.SUBCLASS));
                 }
@@ -1717,7 +1743,8 @@ public final class OntologyProjection {
                 }
             }
             for (IRI part : parts) {
-                if (isOn(on, whole)) {
+                // The class itself among its parts: "A is a kind of A" is no line.
+                if (isOn(on, whole) && !part.equals(whole)) {
                     addUnlessAlreadyThere(edges, new CanvasEdge("sub|" + part + "|" + whole,
                             iri(part), iri(whole), "", CanvasEdge.Kind.SUBCLASS));
                 }

@@ -1,10 +1,10 @@
-@prefix : <file:/C:/Users/eno/Documents/Git_repo/ebrahimnorouzi_github/ISE-FIZKarlsruhe/ontoboard/protege-plugin/../patterns/airline-owl/pattern.owl#> .
+@prefix : <http://www.ontologydesignpatterns.org/ekp/owl/Airline.owl#> .
 @prefix ns1: <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl#> .
 @prefix owl: <http://www.w3.org/2002/07/owl#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix skos: <http://www.w3.org/2004/02/skos/core#> .
 
-<file:/C:/Users/eno/Documents/Git_repo/ebrahimnorouzi_github/ISE-FIZKarlsruhe/ontoboard/protege-plugin/../patterns/airline-owl/pattern.owl> a owl:Ontology ;
+<http://www.ontologydesignpatterns.org/ekp/owl/Airline.owl> a owl:Ontology ;
     ns1:extractedFrom <http://dbpedia.org/>,
         <http://en.wikipedia.org/> ;
     ns1:hasAuthor "Aldo Gangemi",
@@ -12,7 +12,7 @@
         "Valentina Presutti" ;
     ns1:hasIntent "To represent the encyclopedic knowledge expressed by an object typed as Airline" ;
     rdfs:comment "Airline Encyclopedic Knowledge Pattern" ;
-    owl:imports <file:/schemas/cpannotationschema.owl> .
+    owl:imports <http://www.ontologydesignpatterns.org/schemas/cpannotationschema.owl> .
 
 :hasAircraft a owl:AnnotationProperty,
         owl:ObjectProperty ;

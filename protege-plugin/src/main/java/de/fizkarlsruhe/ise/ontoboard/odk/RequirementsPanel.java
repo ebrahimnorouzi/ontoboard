@@ -36,7 +36,6 @@ public final class RequirementsPanel extends JPanel {
     private static final Color AMBER = new Color(0xB2, 0x6A, 0x00);
     private static final Color GREY = new Color(0x8A, 0x90, 0x99);
     private static final Color INK = new Color(0x1A, 0x1D, 0x21);
-    private static final Color MUTED = new Color(0x5A, 0x64, 0x70);
 
     public RequirementsPanel(Toolchain.Report report) {
         super(new BorderLayout(0, 12));
@@ -149,8 +148,8 @@ public final class RequirementsPanel extends JPanel {
         return themed != null ? themed : INK;
     }
 
+    /** Readable on the panel: the theme's disabled grey is near white on Windows. */
     private static Color muted() {
-        Color themed = UIManager.getColor("Label.disabledForeground");
-        return themed != null ? themed : MUTED;
+        return de.fizkarlsruhe.ise.ontoboard.canvas.ReadableText.muted(UIManager.getColor("Panel.background"));
     }
 }

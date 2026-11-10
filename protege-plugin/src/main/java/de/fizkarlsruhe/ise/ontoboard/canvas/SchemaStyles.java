@@ -172,21 +172,32 @@ public final class SchemaStyles {
      * <p>Resolved once at class initialisation, and falling back to the logical family, which always
      * exists. Probed headless on Windows 11: 223 families available including Segoe UI, so a CI
      * render and the design-proof test resolve the same way a desktop does.
+     *
+     * <p>The family is the look, and it is never skipped for lacking a symbol. Segoe UI has no
+     * {@code ∃}, {@code ∀}, {@code ⊔}, {@code ⊓}, {@code ∧} or {@code ▸}; {@link FallbackTextShape}
+     * draws those from a font that has them, glyph by glyph (1.135.1). Choosing a family by its
+     * symbols would give Windows Arial's shorter lines, or whatever stray font has them all, and
+     * move every box.
      */
     private static String resolveFont() {
+        try {
+            return resolveFont(new HashSet<String>(Arrays.asList(
+                    GraphicsEnvironment.getLocalGraphicsEnvironment()
+                            .getAvailableFontFamilyNames(Locale.ENGLISH))));
+        } catch (Throwable noFontsAvailable) {
+            // A headless or font-less JRE. The logical family always exists.
+            return Font.SANS_SERIF;
+        }
+    }
+
+    /** The first preferred family that is installed; the logical sans-serif family if none is. */
+    static String resolveFont(Set<String> installed) {
         String[] preferred = {"Segoe UI", "Inter", "Helvetica Neue", "Roboto",
                 "DejaVu Sans", "Liberation Sans", "Arial"};
-        try {
-            Set<String> installed = new HashSet<String>(Arrays.asList(
-                    GraphicsEnvironment.getLocalGraphicsEnvironment()
-                            .getAvailableFontFamilyNames(Locale.ENGLISH)));
-            for (String family : preferred) {
-                if (installed.contains(family)) {
-                    return family;
-                }
+        for (String family : preferred) {
+            if (installed.contains(family)) {
+                return family;
             }
-        } catch (Throwable noFontsAvailable) {
-            // A headless or font-less JRE. The logical family below always exists.
         }
         return Font.SANS_SERIF;
     }
@@ -195,6 +206,10 @@ public final class SchemaStyles {
         mxStyleRegistry.putValue(AroundFrames.NAME, AroundFrames.INSTANCE);
         com.mxgraph.canvas.mxGraphics2DCanvas.putShape(DefinedClassShape.NAME,
                 new DefinedClassShape());
+        // Every label on the board and in an exported PNG: the family above, with the symbols it
+        // has no glyph for drawn from a font that has them - Segoe UI has no ∃ (1.135.1).
+        com.mxgraph.canvas.mxGraphics2DCanvas.putTextShape(
+                com.mxgraph.canvas.mxGraphics2DCanvas.TEXT_SHAPE_DEFAULT, new FallbackTextShape());
     }
 
     private SchemaStyles() {

@@ -231,8 +231,11 @@ public final class ImportedPatterns {
         }
     }
 
-    /** The library pattern a module was cut from, or null when it is not one. */
-    static DesignPattern patternOf(OWLOntology module) {
+    /**
+     * The library pattern a module was cut from, or null when it is not one. Public for the board,
+     * which takes off the frame of a pattern whose import Edit &gt; Undo took back, and only that.
+     */
+    public static DesignPattern patternOf(OWLOntology module) {
         File moduleFile = fileOf(module);
         if (moduleFile != null && moduleFile.getName().endsWith(MODULE_SUFFIX)) {
             String name = moduleFile.getName();

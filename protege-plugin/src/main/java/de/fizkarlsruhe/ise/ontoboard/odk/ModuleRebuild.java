@@ -6,17 +6,23 @@ import de.fizkarlsruhe.ise.ontoboard.robot.TermExtract;
 import de.fizkarlsruhe.ise.ontoboard.robot.WebOntology;
 import java.io.File;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import org.semanticweb.owlapi.apibinding.OWLManager;
 import org.semanticweb.owlapi.model.AddAxiom;
 import org.semanticweb.owlapi.model.AddImport;
 import org.semanticweb.owlapi.model.AddOntologyAnnotation;
+import org.semanticweb.owlapi.model.EntityType;
 import org.semanticweb.owlapi.model.IRI;
 import org.semanticweb.owlapi.model.MissingImportHandlingStrategy;
 import org.semanticweb.owlapi.model.OWLAnnotation;
 import org.semanticweb.owlapi.model.OWLAxiom;
+import org.semanticweb.owlapi.model.OWLDataFactory;
+import org.semanticweb.owlapi.model.OWLEntity;
 import org.semanticweb.owlapi.model.OWLImportsDeclaration;
 import org.semanticweb.owlapi.model.OWLOntology;
 import org.semanticweb.owlapi.model.OWLOntologyChange;
@@ -40,6 +46,9 @@ import org.semanticweb.owlapi.util.AutoIRIMapper;
  *   <li><b>What Prot&eacute;g&eacute; has open changes with the file.</b> Writing only the file
  *       left the open copy as it was until the project was reopened, so a term just added could
  *       not be used yet. {@link #changesToMatch} is what turns the open copy into the rebuilt one.
+ *   <li><b>The module declares what it uses.</b> Its file does, because the writer adds the
+ *       declarations an extraction leaves out; a rebuilt copy without them took them out of the
+ *       open one, and the next build failed the OWL 2 DL check (1.135.1).
  * </ul>
  *
  * <p>Pure OWL API; no Prot&eacute;g&eacute; types and no Swing.
@@ -86,7 +95,76 @@ public final class ModuleRebuild {
         OWLOntology module = extracted.getModule();
         module.getOWLOntologyManager().applyChanges(
                 ImportProvenance.stamp(module, upstream, isoDate));
+        module.getOWLOntologyManager().applyChanges(declarationsMissingFrom(module));
         return extracted;
+    }
+
+    /**
+     * A declaration for each entity the module uses and does not declare (1.135.1, Windows study
+     * rehearsal).
+     *
+     * <p>An extraction declares the terms it cuts, not the annotation properties their annotations
+     * use, nor dcterms' and prov's that the provenance stamp adds. The OWL API writer declares those
+     * when it saves, so the file has them - and {@link #changesToMatch} then took them out of the
+     * copy Prot&eacute;g&eacute; has open, to match the extraction. A tester took one term out of
+     * IAO's module, its copy went from 664 axioms with 22 annotation properties declared to 622
+     * with none, and the next test build failed with 375 "Use of undeclared annotation property".
+     * With these the open copy is what its file says.
+     *
+     * <p>A legal pun - a class that is also an individual, say - is declared as each thing it is,
+     * as the writer declares it. It was declared neither way (1.135.1 review), so matching the open
+     * copy took the file's declarations out of it, and the DL check reported "Use of undeclared
+     * class". What OWL 2 DL does not allow one IRI to be at once is not declared: no declaration
+     * makes that legal, the DL check names the pun itself, and the 4.5.9 writer's file of it reads
+     * back other axioms than were written - a data property's domain lost, an annotation turned
+     * into a data property value.
+     */
+    static List<OWLOntologyChange> declarationsMissingFrom(OWLOntology module) {
+        Set<OWLEntity> used = new LinkedHashSet<OWLEntity>(module.getSignature());
+        for (OWLAnnotation annotation : module.getAnnotations()) {
+            used.addAll(annotation.getSignature());
+        }
+        Map<IRI, Set<EntityType<?>>> kinds = new HashMap<IRI, Set<EntityType<?>>>();
+        for (OWLEntity entity : used) {
+            Set<EntityType<?>> of = kinds.get(entity.getIRI());
+            if (of == null) {
+                of = new HashSet<EntityType<?>>();
+                kinds.put(entity.getIRI(), of);
+            }
+            of.add(entity.getEntityType());
+        }
+        OWLDataFactory factory = module.getOWLOntologyManager().getOWLDataFactory();
+        List<OWLOntologyChange> changes = new ArrayList<OWLOntologyChange>();
+        for (OWLEntity entity : used) {
+            if (!entity.isBuiltIn() && !module.isDeclared(entity)
+                    && !punnedIllegally(entity.getEntityType(), kinds.get(entity.getIRI()))) {
+                changes.add(new AddAxiom(module, factory.getOWLDeclarationAxiom(entity)));
+            }
+        }
+        return changes;
+    }
+
+    /**
+     * Whether OWL 2 DL forbids one IRI to be {@code kind} and one of the {@code others} at once:
+     * two of object, data and annotation property, or a class and a datatype. Every other pun is
+     * legal.
+     */
+    static boolean punnedIllegally(EntityType<?> kind, Set<EntityType<?>> others) {
+        for (EntityType<?> other : others) {
+            if (isProperty(kind) && isProperty(other) && !kind.equals(other)) {
+                return true;
+            }
+            if (EntityType.CLASS.equals(kind) && EntityType.DATATYPE.equals(other)
+                    || EntityType.DATATYPE.equals(kind) && EntityType.CLASS.equals(other)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean isProperty(EntityType<?> kind) {
+        return EntityType.OBJECT_PROPERTY.equals(kind) || EntityType.DATA_PROPERTY.equals(kind)
+                || EntityType.ANNOTATION_PROPERTY.equals(kind);
     }
 
     /**

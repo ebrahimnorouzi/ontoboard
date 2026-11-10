@@ -116,6 +116,116 @@ public final class CanvasZoom {
         return Math.round(safe * 100) + "%";
     }
 
+    /**
+     * The point, in the window's pixels, that + and - keep still: the selection when it is in view,
+     * else the box nearest the middle of what is in view, else that middle (1.135.1, Windows
+     * study rehearsal). The middle of what is in view lay in the empty band between two frames
+     * after Fit, and three presses of + slid the classes out of view around a point where nothing
+     * was.
+     *
+     * @param view the visible part of the board, in its pixels
+     * @param boxes the terms' boxes, in the same pixels
+     */
+    public static java.awt.Point anchor(java.awt.Rectangle view, java.awt.geom.Rectangle2D selection,
+            java.awt.geom.Rectangle2D content,
+            java.util.Collection<? extends java.awt.geom.Rectangle2D> boxes) {
+        java.awt.Point middle = new java.awt.Point(view.width / 2, view.height / 2);
+        if (selection != null && view.contains(selection.getCenterX(), selection.getCenterY())) {
+            return new java.awt.Point((int) selection.getCenterX() - view.x,
+                    (int) selection.getCenterY() - view.y);
+        }
+        if (content == null || content.isEmpty()) {
+            return middle;
+        }
+        java.awt.geom.Rectangle2D seen = view.createIntersection(content);
+        if (seen.isEmpty()) {
+            return middle;
+        }
+        java.awt.geom.Rectangle2D at = seen;
+        double nearest = Double.MAX_VALUE;
+        if (boxes != null) {
+            for (java.awt.geom.Rectangle2D box : boxes) {
+                if (box == null || !view.contains(box.getCenterX(), box.getCenterY())) {
+                    continue;
+                }
+                double distance = java.awt.geom.Point2D.distanceSq(box.getCenterX(),
+                        box.getCenterY(), seen.getCenterX(), seen.getCenterY());
+                if (distance < nearest) {
+                    nearest = distance;
+                    at = box;
+                }
+            }
+        }
+        return new java.awt.Point((int) at.getCenterX() - view.x, (int) at.getCenterY() - view.y);
+    }
+
+    /** What Fit says: "Fitted the board to the window at 26%." */
+    public static String fitted(String what, double scale) {
+        return "Fitted " + what + " to the window at " + readout(scale) + ".";
+    }
+
+    /**
+     * What Arrange says, before the sentence about the terms it left in frames: "Arranged and fitted
+     * to the window at 31%: Grid." - or, where fitting would leave the board too small to read,
+     * "Arranged, at 50% so it can be read; Fit shows all of it: Grid."
+     */
+    public static String arranged(boolean fitted, double scale, CanvasLayouts.Algorithm algorithm) {
+        return (fitted ? "Arranged and fitted to the window at " + readout(scale)
+                : "Arranged, at " + readout(scale) + " so it can be read; Fit shows all of it")
+                + ": " + algorithm.getDisplayName() + ".";
+    }
+
+    /** What a zoom says in place of one of the lines above: "Zoomed to 46%." */
+    public static String zoomed(double scale) {
+        return "Zoomed to " + readout(scale) + ".";
+    }
+
+    /**
+     * The lines the zoom, Fit and Arrange write, each with the zoom it names as group 1 - and only
+     * those. Any line naming a zoom used to count, so the next turn of the wheel replaced what
+     * Relate said, "...both ends in view at 80%. File > Save keeps it.", and a save no longer said
+     * "Saved."; a Find line quoting a label such as "heated to 100%" went the same way (1.135.1
+     * review). The sentence after an arrangement is SchemaCanvasView.inFramesSentence's.
+     */
+    private static final java.util.List<java.util.regex.Pattern> ZOOMS_OWN = zoomsOwn();
+
+    private static java.util.List<java.util.regex.Pattern> zoomsOwn() {
+        StringBuilder names = new StringBuilder();
+        for (CanvasLayouts.Algorithm algorithm : CanvasLayouts.Algorithm.values()) {
+            names.append(names.length() == 0 ? "" : "|")
+                    .append(java.util.regex.Pattern.quote(algorithm.getDisplayName()));
+        }
+        String percent = "(\\d{1,3}%)";
+        String arrangement = ": (?:" + names + ")\\.(?: The term inside a frame stays where it"
+                + " is\\.| The \\d+ terms inside frames stay where they are\\.)?";
+        return java.util.Arrays.asList(
+                java.util.regex.Pattern.compile("Zoomed to " + percent + "\\."),
+                java.util.regex.Pattern.compile("Fitted (?:the board|the selection|\\d+ selected"
+                        + "|the frame .*) to the window at " + percent + "\\."),
+                java.util.regex.Pattern.compile("Arranged and fitted to the window at " + percent
+                        + arrangement),
+                java.util.regex.Pattern.compile("Arranged, at " + percent
+                        + " so it can be read; Fit shows all of it" + arrangement));
+    }
+
+    /**
+     * The status line after a zoom: one the zoom, Fit or Arrange wrote names the zoom the board is
+     * at now, and every other is left alone (1.135.1). "...fitted to the window at 26%" stayed on
+     * with the board at 46%.
+     */
+    public static String afterZoom(String said, double scale) {
+        if (said == null) {
+            return null;
+        }
+        for (java.util.regex.Pattern own : ZOOMS_OWN) {
+            java.util.regex.Matcher line = own.matcher(said);
+            if (line.matches()) {
+                return line.group(1).equals(readout(scale)) ? said : zoomed(scale);
+            }
+        }
+        return said;
+    }
+
     private static boolean positive(double value) {
         return !Double.isNaN(value) && !Double.isInfinite(value) && value > 0;
     }

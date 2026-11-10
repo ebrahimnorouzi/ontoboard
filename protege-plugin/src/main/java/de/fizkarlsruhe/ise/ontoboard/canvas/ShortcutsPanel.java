@@ -34,7 +34,7 @@ public final class ShortcutsPanel extends JPanel {
     /** {key, what it does}. Order is by how early somebody needs it, not alphabetical. */
     private static final String[][] ROWS = {
         {"Ctrl+F", "Find a term on the board"},
-        {"Enter", "Go to the next match; Shift+Enter for the previous"},
+        {"Enter", "Go to the match; again for the next, Shift+Enter for the previous"},
         {"Ctrl+Enter", "Add a match that is in the ontology but not yet on the board"},
         {"Double-click", "On empty board: a new class. On a term: expand its neighbours."},
         {"Tab", "A new subclass of the selected class, beside it"},
@@ -68,7 +68,8 @@ public final class ShortcutsPanel extends JPanel {
         setBorder(BorderFactory.createEmptyBorder(16, 18, 18, 18));
 
         Color ink = uiColour("Label.foreground", 0x1A, 0x1D, 0x21);
-        Color muted = uiColour("Label.disabledForeground", 0x5A, 0x64, 0x70);
+        // Readable on this panel: the theme's disabled grey is near white on Windows.
+        Color muted = ReadableText.muted(getBackground());
 
         GridBagConstraints at = new GridBagConstraints();
         at.gridx = 0;

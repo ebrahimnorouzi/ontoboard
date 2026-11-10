@@ -473,4 +473,59 @@ class SchemaCanvasViewTest {
         assertEquals("", layout.ontologyIri, "no ontology means no IRI, not a crash");
         assertTrue(layout.onCanvas.isEmpty(), "and the board is cleared as it would be otherwise");
     }
+
+    /**
+     * Arrange says which terms it left alone, so nobody looks for a pattern's classes to have
+     * moved with the rest (1.135.1).
+     */
+    @Test
+    void arrangeSaysWhatStayedInFrames() {
+        assertEquals("", SchemaCanvasView.inFramesSentence(0));
+        assertEquals(" The term inside a frame stays where it is.",
+                SchemaCanvasView.inFramesSentence(1));
+        assertEquals(" The 12 terms inside frames stay where they are.",
+                SchemaCanvasView.inFramesSentence(12));
+    }
+
+    /**
+     * What Relate says outlives a zoom, and File &gt; Save still turns it into "Saved." (1.135.1
+     * review): a turn of the wheel after Relate made the line "Zoomed to 90%.", which asks for no
+     * save, so after the save the board went on saying nothing about it.
+     */
+    @Test
+    void aRelateLineOutlivesAZoomAndTheSaveSaysSaved() {
+        String related = SchemaCanvasView.relatedStatus(
+                "egg boiling to raw egg by has specified input", 0.8);
+        assertEquals("Related egg boiling to raw egg by has specified input: both ends in view"
+                + " at 80%. File > Save keeps it.", related);
+        String zoomed = de.fizkarlsruhe.ise.ontoboard.canvas.CanvasZoom.afterZoom(related, 0.9);
+        assertEquals(related, zoomed);
+        assertEquals("Saved.", SavedStatus.afterSave(zoomed, false));
+        assertEquals("Saved.", SavedStatus.afterSave(SchemaCanvasView.relatedStatus(
+                "egg boiling to raw egg by has specified input", Double.NaN), false));
+    }
+
+    /**
+     * What Arrange writes, with its sentence about the frames, is a line the zoom follows: the
+     * zoom recognises its own lines exactly, so this pins the two together.
+     */
+    @Test
+    void theZoomFollowsWhatArrangeWrites() {
+        for (de.fizkarlsruhe.ise.ontoboard.canvas.CanvasLayouts.Algorithm algorithm
+                : de.fizkarlsruhe.ise.ontoboard.canvas.CanvasLayouts.Algorithm.values()) {
+            for (int kept : new int[] {0, 1, 12}) {
+                for (boolean fitted : new boolean[] {true, false}) {
+                    String said = de.fizkarlsruhe.ise.ontoboard.canvas.CanvasZoom.arranged(fitted,
+                            fitted ? 0.31 : 0.5, algorithm) + SchemaCanvasView.inFramesSentence(kept);
+                    assertEquals("Zoomed to 90%.",
+                            de.fizkarlsruhe.ise.ontoboard.canvas.CanvasZoom.afterZoom(said, 0.9),
+                            said);
+                    assertEquals(said,
+                            de.fizkarlsruhe.ise.ontoboard.canvas.CanvasZoom.afterZoom(said,
+                                    fitted ? 0.31 : 0.5),
+                            "already at the zoom it names: " + said);
+                }
+            }
+        }
+    }
 }

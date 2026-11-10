@@ -62,4 +62,31 @@ class SelfTestActionTest {
         assertSame(thrown, assertThrows(IllegalArgumentException.class,
                 () -> SelfTestAction.close(tabThatThrows(thrown))));
     }
+
+    /**
+     * The quality report's row says its findings are the sample's, and expected: "6 findings, 2
+     * of them errors" in a row marked ok read as a failure (1.135.1, Windows study rehearsal).
+     */
+    @Test
+    void theQualityReportRowSaysItsFindingsAreTheSamplesAsExpected() {
+        String said = SelfTestAction.reported(SelfTestAction.QUALITY_ROW, "6 findings, 2 of them errors");
+        assertEquals("the sample's 6 findings, as expected", said);
+        assertTrue(said.length() <= 40, said);
+        assertEquals("1 row", SelfTestAction.reported("Check and test > SPARQL...", "1 row"));
+        assertEquals("No violations.", SelfTestAction.reported(SelfTestAction.QUALITY_ROW,
+                "No violations."));
+    }
+
+    /**
+     * No findings on the sample are not "as expected" (1.135.1 review): the sample is built to
+     * have some, so a report that silently stopped finding anything read "the sample's 0
+     * findings, as expected" in a row marked ok.
+     */
+    @Test
+    void noFindingsOnTheSampleAreNotCalledExpected() {
+        assertEquals("0 findings, 0 of them errors", SelfTestAction.reported(
+                SelfTestAction.QUALITY_ROW, "0 findings, 0 of them errors"));
+        assertEquals("the sample's 12 findings, as expected", SelfTestAction.reported(
+                SelfTestAction.QUALITY_ROW, "12 findings, 0 of them errors"));
+    }
 }

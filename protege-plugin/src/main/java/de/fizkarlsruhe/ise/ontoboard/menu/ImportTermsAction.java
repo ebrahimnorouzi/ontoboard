@@ -434,12 +434,23 @@ public class ImportTermsAction extends OntoBoardAction {
      */
     private java.util.List<IRI> withWhatWasImportedBefore(OWLOntology ontology,
             OWLOntology source, java.util.List<IRI> requested, OperationResult.Builder result) {
+        listStartsAfresh = false;
         File projectRoot = projectRootFor(ontology);
         if (outcome == Outcome.ADD_AXIOMS || projectRoot == null
                 || patternBeingImported() != null) {
             return requested;
         }
         File list = ImportModules.termsFileFor(projectRoot, TermExtract.shortNameOf(source));
+        File module = ImportModules.moduleFileFor(projectRoot, TermExtract.shortNameOf(source));
+        File written = moduleFileFor(ontology, source);
+        if (written != null && module.getAbsoluteFile().equals(written.getAbsoluteFile())
+                && leftByAnImportTakenBack(ontology, list, module)) {
+            listStartsAfresh = true;
+            result.note(list.getName() + " was left by an import of "
+                    + TermExtract.shortNameOf(source) + " that is not in force now - taken back"
+                    + " with Edit > Undo, or removed - so it is written afresh.");
+            return requested;
+        }
         java.util.List<IRI> before;
         try {
             before = list.isFile() ? ImportModules.readTerms(list)
@@ -463,6 +474,50 @@ public class ImportTermsAction extends OntoBoardAction {
                                 + "OntoBoard > Reuse > Imported terms..."));
         return new ArrayList<IRI>(all);
     }
+
+    /**
+     * Whether a term list was left by an import of its module that is not in force now: taken
+     * back with Edit &gt; Undo, or removed (1.135.1, Windows study rehearsal). A tester imported
+     * the wrong IAO term, undid it and imported report; the list still named the wrong term, so
+     * the import said "iao is imported already", cut both, and wrote 641 axioms for 2 terms where
+     * the guide says 622 for 1. Undo deletes nothing on disk, so that Redo still finds the module;
+     * such a list is simply not "imported before".
+     *
+     * <p>Only a list OntoBoard wrote for that module, beside the module, which the ontology
+     * neither has open nor imports.
+     */
+    static boolean leftByAnImportTakenBack(OWLOntology ontology, File list, File module) {
+        if (ontology == null || list == null || module == null || !list.isFile()
+                || !module.isFile()) {
+            return false;
+        }
+        try (java.io.BufferedReader reader = java.nio.file.Files.newBufferedReader(list.toPath(),
+                java.nio.charset.StandardCharsets.UTF_8)) {
+            String first = reader.readLine();
+            if (first == null || !first.trim().startsWith("# Terms extracted into "
+                    + module.getName())) {
+                return false;
+            }
+        } catch (IOException unreadable) {
+            return false;
+        }
+        if (ModuleRebuild.openFrom(ontology, module) != null) {
+            return false;
+        }
+        for (org.semanticweb.owlapi.model.OWLImportsDeclaration imported
+                : ontology.getImportsDeclarations()) {
+            if (imported.getIRI().toString().endsWith("/" + module.getName())) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Set while an import writes its term list afresh, because the list on disk was left by an
+     * import that is not in force now.
+     */
+    private volatile boolean listStartsAfresh;
 
     /** Both boxes, combined, with this ontology's prefixes so its own CURIEs resolve. */
     private TermList readTerms(OWLOntology ontology) {
@@ -791,7 +846,7 @@ public class ImportTermsAction extends OntoBoardAction {
             String pattern = patternBeingImported();
             File existing = ImportModules.termsFileFor(projectRoot,
                     TermExtract.shortNameOf(source));
-            if (existing.isFile() && pattern == null) {
+            if (existing.isFile() && pattern == null && !listStartsAfresh) {
                 // Spliced, not rewritten, so its comments and its order stay as they were.
                 String before = new String(java.nio.file.Files.readAllBytes(existing.toPath()),
                         java.nio.charset.StandardCharsets.UTF_8);

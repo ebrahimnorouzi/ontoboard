@@ -64,23 +64,35 @@ public final class InProcessTargets {
         private final List<String> transcript;
         private final List<File> written;
         private final List<String> warnings;
+        private final List<String> passingChecks;
 
         Outcome(boolean ok, String failure, List<String> transcript, List<File> written) {
-            this(ok, failure, transcript, written, Collections.<String>emptyList());
+            this(ok, failure, transcript, written, Collections.<String>emptyList(),
+                    Collections.<String>emptyList());
         }
 
         Outcome(boolean ok, String failure, List<String> transcript, List<File> written,
-                List<String> warnings) {
+                List<String> warnings, List<String> passingChecks) {
             this.ok = ok;
             this.failure = failure;
             this.transcript = transcript;
             this.written = written;
             this.warnings = warnings;
+            this.passingChecks = passingChecks;
         }
 
         /** What passed but should be read: said in the result, not only in the transcript. */
         public List<String> getWarnings() {
             return warnings;
+        }
+
+        /**
+         * The project's own checks by file name, when they ran and every one passed; empty
+         * otherwise (1.135.1). The build's result names them above its log: a passing test's
+         * PASS was the ninth line of a log box that shows six, and the box cannot grow.
+         */
+        public List<String> getPassingChecks() {
+            return passingChecks;
         }
 
         public boolean isOk() {
@@ -180,14 +192,15 @@ public final class InProcessTargets {
         log.add("Steps: " + steps);
 
         List<String> warnings = new ArrayList<String>();
+        List<String> passing = new ArrayList<String>();
         for (String step : steps) {
             String failure = runStep(step, editFile, root, ontology, reasonerFactory, log, written,
-                    warnings);
+                    warnings, passing);
             if (failure != null) {
-                return new Outcome(false, failure, log, written, warnings);
+                return new Outcome(false, failure, log, written, warnings, passing);
             }
         }
-        return new Outcome(true, null, log, written, warnings);
+        return new Outcome(true, null, log, written, warnings, passing);
     }
 
     /** What a composite target expands to, matching the generated Makefile's dependencies. */
@@ -203,7 +216,7 @@ public final class InProcessTargets {
 
     private static String runStep(String step, File editFile, File root, OWLOntology ontology,
             OWLReasonerFactory reasonerFactory, List<String> log, List<File> written,
-            List<String> warnings) {
+            List<String> warnings, List<String> passing) {
         if ("reason".equals(step)) {
             String failure = reason(editFile, ontology, reasonerFactory, log, written);
             String second = failure == null ? secondOpinion(ontology, reasonerFactory) : null;
@@ -217,7 +230,7 @@ public final class InProcessTargets {
             return report(editFile, ontology, log, written);
         }
         if ("sparql_test".equals(step)) {
-            return sparqlTest(root, ontology, log);
+            return sparqlTest(root, ontology, log, passing);
         }
         if ("validate_profile".equals(step)) {
             return validateProfile(ontology, log);
@@ -343,6 +356,8 @@ public final class InProcessTargets {
                 return null;
             }
             String what;
+            // "Added to it" followed a list of classes (1.135.1 review); the ontology is one.
+            String toWhat = " to it";
             if (found.contains(null)) {
                 what = "that the ontology is inconsistent";
             } else {
@@ -351,11 +366,12 @@ public final class InProcessTargets {
                         : String.join(", ", found.subList(0, 5)) + " and " + (found.size() - 5)
                                 + " more";
                 what = "that " + names + " can have no members";
+                toWhat = found.size() == 1 ? " to it" : " to one of them";
             }
             return "HermiT finds " + what + ". ELK, the reasoner this build uses as ODK's does,"
                     + " does not see inverse properties and the rest of OWL beyond its EL"
-                    + " profile, so the build passes as ODK's would. The relation or parent added"
-                    + " last is the usual cause; Edit > Undo takes it back.";
+                    + " profile, so the build passes as ODK's would. A relation or parent added"
+                    + toWhat + " is the usual cause:" + RobotTransform.TAKE_IT_OUT;
         } catch (Exception notAnswered) {
             hermit.interrupt();
             return null;
@@ -457,7 +473,8 @@ public final class InProcessTargets {
      * <p><b>A check that cannot run fails.</b> It used to count as zero violations, so a query
      * with a syntax error passed the build - a test that cannot fail is not a test.
      */
-    private static String sparqlTest(File root, OWLOntology ontology, List<String> log) {
+    private static String sparqlTest(File root, OWLOntology ontology, List<String> log,
+            List<String> passing) {
         List<File> checks = SparqlQuery.checksIn(root);
         if (checks.isEmpty()) {
             log.add("sparql_test: no .rq files under " + SparqlQuery.CHECKS_DIRECTORY
@@ -469,29 +486,35 @@ public final class InProcessTargets {
             byName.put(check.getName(), check);
         }
         List<String> failed = new ArrayList<String>();
+        List<String> passed = new ArrayList<String>();
         for (SparqlQuery.Check check : SparqlQuery.verify(ontology, checks)) {
             if (check.getFailure() != null) {
                 log.add("sparql_test: ERROR " + check.getName() + " could not run: "
                         + check.getFailure());
-                failed.add(check.getName() + " could not run (" + check.getFailure() + ")");
+                failed.add(check.getName() + " could not run (" + check.getFailure() + ").");
                 continue;
             }
             log.add("sparql_test: " + (check.isPassed() ? "PASS " : "FAIL ") + check.getName()
                     + ": " + check.getViolations() + " violation(s)");
             if (check.isPassed()) {
+                passed.add(check.getName());
                 continue;
             }
             String rule = ruleOf(byName.get(check.getName()));
             if (rule != null) {
                 log.add("sparql_test:   rule: " + rule);
             }
+            // By its label where the check returns one: the log keeps the IRI (1.135.1).
+            int labelColumn = check.getAnswer().getColumns().indexOf("label");
             List<String> offenders = new ArrayList<String>();
             for (List<String> row : check.getAnswer().getRows()) {
                 if (offenders.size() >= ROWS_SHOWN) {
                     break;
                 }
                 String shown = join(row);
-                offenders.add(shown);
+                String label = labelColumn > 0 && labelColumn < row.size()
+                        ? row.get(labelColumn) : null;
+                offenders.add(label != null && !label.trim().isEmpty() ? label : shown);
                 log.add("sparql_test:   " + shown);
             }
             if (check.getViolations() > offenders.size()) {
@@ -508,15 +531,75 @@ public final class InProcessTargets {
             failed.add(check.getName() + (rule == null ? "" : " (" + rule + ")") + ": "
                     + join(offenders)
                     + (check.getViolations() > offenders.size() ? ", ..." : "")
-                    + (gone == null ? "" : " - " + gone));
+                    + (gone == null ? ". " + adviceFor(byName.get(check.getName()), ontology)
+                            : " - " + gone));
         }
         if (failed.isEmpty()) {
+            passing.addAll(passed);
             return null;
         }
-        return "sparql_test failed - " + join(failed, "; ") + ". Each listed term breaks the "
-                + "rule beside it: fix the term (a missing label is added in Protege under "
-                + "Annotations), or edit the check in " + SparqlQuery.CHECKS_DIRECTORY
-                + " if the rule does not apply to this project.";
+        return "sparql_test failed - " + join(failed, " ");
+    }
+
+    /** The scaffold's own check, the one the label advice was written for. */
+    static final String LABEL_CHECK = "check_labels.rq";
+
+    /**
+     * What to do about a failing check, chosen by the check (1.135.1, Windows study rehearsal).
+     *
+     * <p>One sentence ended every failure: "fix the term (a missing label is added in Protege
+     * under Annotations)". It was written when the label check was a project's only check; a test
+     * written from a question is not answered by a label, and the egg guide's T6 sent participants
+     * to add one nobody was missing. The template that wrote a test is read back from its query.
+     */
+    static String adviceFor(File check, OWLOntology ontology) {
+        String text = null;
+        if (check != null) {
+            try {
+                text = new String(java.nio.file.Files.readAllBytes(check.toPath()),
+                        java.nio.charset.StandardCharsets.UTF_8);
+            } catch (java.io.IOException unreadable) {
+                text = null;
+            }
+        }
+        de.fizkarlsruhe.ise.ontoboard.robot.QuestionTests.Template template =
+                de.fizkarlsruhe.ise.ontoboard.robot.QuestionTests.templateOf(text);
+        if ((check != null && LABEL_CHECK.equals(check.getName())) || template
+                == de.fizkarlsruhe.ise.ontoboard.robot.QuestionTests.Template.EVERY_ONE_HAS_A_LABEL) {
+            return "Each listed term breaks the rule beside it: fix the term (a missing label is"
+                    + " added in Protege under Annotations), or edit the check in "
+                    + SparqlQuery.CHECKS_DIRECTORY + " if the rule does not apply to this project.";
+        }
+        if (template == null) {
+            return "Each listed term breaks the rule beside it: change the model so it does not,"
+                    + " or edit the check in " + SparqlQuery.CHECKS_DIRECTORY + " if the rule does"
+                    + " not apply to this project.";
+        }
+        IRI cls = de.fizkarlsruhe.ise.ontoboard.robot.QuestionTests.classIn(text);
+        IRI property = de.fizkarlsruhe.ise.ontoboard.robot.QuestionTests.propertyIn(text);
+        if (template == de.fizkarlsruhe.ise.ontoboard.robot.QuestionTests.Template
+                .EVERY_SUBCLASS_HAS_SOME && cls != null && property != null && ontology != null) {
+            org.semanticweb.owlapi.model.OWLDataFactory df =
+                    ontology.getOWLOntologyManager().getOWLDataFactory();
+            String about = de.fizkarlsruhe.ise.ontoboard.model.DisplayLabels.forEntity(ontology,
+                    df.getOWLClass(cls));
+            if (ontology.containsDataPropertyInSignature(property,
+                    org.semanticweb.owlapi.model.parameters.Imports.INCLUDED)) {
+                return "The model does not answer this question yet. To make it answer, add '"
+                        + de.fizkarlsruhe.ise.ontoboard.model.DisplayLabels.forEntity(ontology,
+                                df.getOWLDataProperty(property))
+                        + " some' and the value's type (such as xsd:decimal) to " + about
+                        + "'s SubClass Of, in Protege's Classes tab; then save and build again.";
+            }
+            return "The model does not answer this question yet. To make it answer, right-click "
+                    + about + " on the board, choose Relate to another term…, pick the class"
+                    + " it relates to and set Property to "
+                    + de.fizkarlsruhe.ise.ontoboard.model.DisplayLabels.forEntity(ontology,
+                            df.getOWLObjectProperty(property))
+                    + "; then save and build again.";
+        }
+        return "The model does not answer this question yet: change it so that none of the"
+                + " listed terms breaks the rule, then save and build again.";
     }
 
     /**

@@ -6,7 +6,7 @@
   "domain": "transportation",
   "scenarios": "",
   "competency_questions": "Which aircraft does a given airline fly?; Which airlines operate a particular aircraft?",
-  "pattern_iri": "file:///C:/Users/eno/Documents/Git_repo/ebrahimnorouzi_github/ISE-FIZKarlsruhe/ontoboard/patterns-repository/Airline/Airline.owl",
+  "pattern_iri": "http://www.ontologydesignpatterns.org/ekp/owl/Airline.owl",
   "source": "https://ontologydesignpatterns.org/wiki/Submissions:Airline",
   "references": "https://ontologydesignpatterns.org/wiki/Submissions:Airline",
   "class_count": 2,

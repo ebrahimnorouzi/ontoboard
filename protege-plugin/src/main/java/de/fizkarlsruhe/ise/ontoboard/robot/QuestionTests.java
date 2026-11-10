@@ -134,6 +134,56 @@ public final class QuestionTests {
         }
     }
 
+    /**
+     * Which template wrote this query, read back from a line only that template writes; null for
+     * a check written by hand, or the scaffold's label check (1.135.1). A failed build gives
+     * advice by it: the label check's "a missing label is added under Annotations" told a
+     * participant whose question was not answered yet to add a label nobody was missing.
+     */
+    public static Template templateOf(String sparql) {
+        if (sparql == null) {
+            return null;
+        }
+        if (sparql.contains("?above rdfs:subClassOf|owl:equivalentClass ?r")) {
+            return Template.EVERY_SUBCLASS_HAS_SOME;
+        }
+        if (sparql.contains("HAVING (COUNT(DISTINCT ?value) > ")) {
+            return Template.NO_MORE_THAN;
+        }
+        if (sparql.contains("UNION { ?term rdf:type/rdfs:subClassOf* <")) {
+            return Template.EVERY_ONE_HAS_A_LABEL;
+        }
+        if (sparql.contains("FILTER NOT EXISTS { ?term <")) {
+            return Template.EVERY_INDIVIDUAL_HAS;
+        }
+        String both = "?term rdf:type/rdfs:subClassOf* <";
+        int first = sparql.indexOf(both);
+        if (first >= 0 && sparql.indexOf(both, first + both.length()) >= 0) {
+            return Template.NOTHING_IS_BOTH;
+        }
+        return null;
+    }
+
+    private static final java.util.regex.Pattern CLASS_IN =
+            java.util.regex.Pattern.compile("\\?term (?:rdf:type/)?rdfs:subClassOf\\* <([^>\\s]+)>");
+    private static final java.util.regex.Pattern PROPERTY_IN = java.util.regex.Pattern.compile(
+            "owl:onProperty <([^>\\s]+)>|\\?term <([^>\\s]+)> \\?value");
+
+    /** The class a test written from a question is about, or null. */
+    public static IRI classIn(String sparql) {
+        java.util.regex.Matcher found = sparql == null ? null : CLASS_IN.matcher(sparql);
+        return found != null && found.find() ? IRI.create(found.group(1)) : null;
+    }
+
+    /** The property a test written from a question asks about, or null. */
+    public static IRI propertyIn(String sparql) {
+        java.util.regex.Matcher found = sparql == null ? null : PROPERTY_IN.matcher(sparql);
+        if (found == null || !found.find()) {
+            return null;
+        }
+        return IRI.create(found.group(1) != null ? found.group(1) : found.group(2));
+    }
+
     /** A file name for the test from the question: {@code every_pizza_has_a_base.rq}. */
     public static String fileNameFor(String question) {
         String name = oneLine(question).toLowerCase(java.util.Locale.ROOT)

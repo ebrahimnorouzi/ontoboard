@@ -19,9 +19,9 @@ import org.semanticweb.owlapi.model.IRI;
 /**
  * The "new project" form and the ODK repository it produces.
  *
- * <p>Swing, so untestable headlessly. Every decision it collects - validation, IRI
- * normalisation, the file tree - lives in {@link OdkProjectConfig} and {@link OdkScaffold},
- * which are covered.
+ * <p>The dialog is {@code JOptionPane}'s; the form in it is built by {@link #form}, which a test
+ * lays out headlessly. Every decision it collects - validation, IRI normalisation, the file
+ * tree - lives in {@link OdkProjectConfig} and {@link OdkScaffold}, which are covered.
  */
 public final class ProjectWizard {
 
@@ -93,41 +93,9 @@ public final class ProjectWizard {
             }
         });
 
-        JPanel folderRow = new JPanel(new BorderLayout(6, 0));
-        folderRow.add(folder, BorderLayout.CENTER);
-        folderRow.add(browse, BorderLayout.EAST);
-
-        JPanel fields = new JPanel(new GridLayout(0, 2, 6, 6));
-        fields.add(new JLabel("Ontology ID:"));
-        fields.add(id);
-        fields.add(new JLabel("Title:"));
-        fields.add(title);
-        fields.add(new JLabel("Description:"));
-        fields.add(description);
-        fields.add(new JLabel("Base IRI:"));
-        fields.add(iri);
-        fields.add(new JLabel("License URL:"));
-        fields.add(license);
-        fields.add(new JLabel("Create in folder:"));
-        fields.add(folderRow);
-
-        // The rules said exactly, and the Base IRI said in a sentence: "one you own" meant nothing
-        // to somebody who had never published an ontology, and the ID rule was learnt from the
-        // error after the first try.
-        JLabel hint = new JLabel("<html><i><b>ID</b>: a short name for file names - a lowercase "
-                + "letter first, then lowercase letters, digits or underscores, e.g. <b>myont</b>"
-                + " or <b>shop_ontology</b>.<br><b>Base IRI</b>: the web address your ontology "
-                + "and its terms will be named under; it must end in the ID followed by .owl. "
-                + "OBO's address is filled in, which is right only for an ontology registered "
-                + "with the OBO Foundry. Otherwise use an address on a domain you or your "
-                + "group control, e.g. <b>https://w3id.org/myont/myont.owl</b> - every term "
-                + "is named under it, so it is hard to change later.</i></html>");
-        hint.setBorder(BorderFactory.createEmptyBorder(8, 0, 0, 0));
-
         // Where a rejected value is explained, in the dialog rather than on top of it. Hidden
         // until there is something to say, so a first attempt looks no different from before.
         JLabel problem = new JLabel();
-        problem.setBorder(BorderFactory.createEmptyBorder(0, 0, 8, 0));
         problem.setVisible(false);
 
         // START FROM WHAT IS OPEN. The likeliest start - an ontology somebody already has - had no
@@ -149,14 +117,7 @@ public final class ProjectWizard {
             }
         });
 
-        JPanel north = new JPanel(new BorderLayout());
-        north.add(problem, BorderLayout.NORTH);
-        north.add(adopt, BorderLayout.SOUTH);
-        JPanel panel = new JPanel(new BorderLayout());
-        panel.add(north, BorderLayout.NORTH);
-        panel.add(fields, BorderLayout.CENTER);
-        panel.add(hint, BorderLayout.SOUTH);
-        panel.setPreferredSize(new Dimension(560, openFile == null ? 260 : 290));
+        JPanel panel = form(id, title, description, iri, license, folder, browse, problem, adopt);
 
         // Until it is accepted or abandoned. Every field this form collects is rejectable -
         // OdkProjectConfig.validate has eight rules, and two of them ("base IRI must end in the
@@ -187,8 +148,7 @@ public final class ProjectWizard {
             try {
                 written = OdkScaffold.create(config);
             } catch (IllegalArgumentException invalid) {
-                problem.setText(problemHtml(invalid.getMessage()));
-                problem.setVisible(true);
+                refuse(problem, invalid.getMessage());
                 continue;
             } catch (RuntimeException failure) {
                 JOptionPane.showMessageDialog(parent,
@@ -204,6 +164,89 @@ public final class ProjectWizard {
             }
             return;
         }
+    }
+
+    /** As wide as the form has always been. Only the width is fixed, not the height. */
+    static final int FORM_WIDTH = 560;
+
+    /**
+     * Where the form's sentences wrap, in CSS pixels. Swing draws a CSS pixel 1.3 screen pixels
+     * wide, so 420 is 546 px, inside the 560 px form - what {@code ResultDialog} found for a
+     * build's message. The banner asked for 520, which is 676 px, and a tester read a refusal with
+     * the end of each line cut off: "Replace the add ... in rather than typing after it".
+     */
+    static final int TEXT_WIDTH_CSS = 420;
+
+    /**
+     * The form the dialog shows: above the six rows, the banner that says why OK was refused and
+     * the box that starts from the open ontology; below them, the hint.
+     *
+     * <p>Only its width is fixed. The whole panel used to be 560x260, and every pass of the loop
+     * in {@link #show} packs a new dialog around it that cannot be resized, as no
+     * {@code JOptionPane} dialog can - so a refusal took its banner's lines from the six fields. A
+     * tester on Windows measured them at 8 px of the 22 they need, their text cut, after "The Base
+     * IRI holds a second address". Now the dialog for the next attempt is packed around the
+     * banner, and every row keeps its height.
+     *
+     * <p>Package-visible, so a test can lay it out without a display.
+     */
+    static JPanel form(JTextField id, JTextField title, JTextField description, JTextField iri,
+            JTextField license, JTextField folder, JButton browse, JLabel problem,
+            Component adopt) {
+        JPanel folderRow = new JPanel(new BorderLayout(6, 0));
+        folderRow.add(folder, BorderLayout.CENTER);
+        folderRow.add(browse, BorderLayout.EAST);
+
+        JPanel fields = new JPanel(new GridLayout(0, 2, 6, 6));
+        fields.add(new JLabel("Ontology ID:"));
+        fields.add(id);
+        fields.add(new JLabel("Title:"));
+        fields.add(title);
+        fields.add(new JLabel("Description:"));
+        fields.add(description);
+        fields.add(new JLabel("Base IRI:"));
+        fields.add(iri);
+        fields.add(new JLabel("License URL:"));
+        fields.add(license);
+        fields.add(new JLabel("Create in folder:"));
+        fields.add(folderRow);
+
+        // The rules said exactly, and the Base IRI said in a sentence: "one you own" meant nothing
+        // to somebody who had never published an ontology, and the ID rule was learnt from the
+        // error after the first try. With a width of its own, because an HTML label without one
+        // reports its two unwrapped lines until it is first painted and six after: a form sized
+        // from it before then comes out four lines short.
+        JLabel hint = new JLabel("<html><body style='width:" + TEXT_WIDTH_CSS + "px'><i>"
+                + "<b>ID</b>: a short name for file names - a lowercase "
+                + "letter first, then lowercase letters, digits or underscores, e.g. <b>myont</b>"
+                + " or <b>shop_ontology</b>.<br><b>Base IRI</b>: the web address your ontology "
+                + "and its terms will be named under; it must end in the ID followed by .owl. "
+                + "OBO's address is filled in, which is right only for an ontology registered "
+                + "with the OBO Foundry. Otherwise use an address on a domain you or your "
+                + "group control, e.g. <b>https://w3id.org/myont/myont.owl</b> - every term "
+                + "is named under it, so it is hard to change later.</i></body></html>");
+        hint.setBorder(BorderFactory.createEmptyBorder(8, 0, 0, 0));
+        problem.setBorder(BorderFactory.createEmptyBorder(0, 0, 8, 0));
+
+        JPanel north = new JPanel(new BorderLayout());
+        north.add(problem, BorderLayout.NORTH);
+        north.add(adopt, BorderLayout.SOUTH);
+        JPanel panel = new JPanel(new BorderLayout()) {
+            @Override
+            public Dimension getPreferredSize() {
+                return new Dimension(FORM_WIDTH, super.getPreferredSize().height);
+            }
+        };
+        panel.add(north, BorderLayout.NORTH);
+        panel.add(fields, BorderLayout.CENTER);
+        panel.add(hint, BorderLayout.SOUTH);
+        return panel;
+    }
+
+    /** Says in the form why OK was refused. The dialog the loop makes next is packed around it. */
+    static void refuse(JLabel problem, String message) {
+        problem.setText(problemHtml(message));
+        problem.setVisible(true);
     }
 
     /** The open ontology, if it has an IRI and a file and is not a project's edit file already. */
@@ -257,14 +300,8 @@ public final class ProjectWizard {
                     IRI.create(config.getEditFile()));
             modelManager.save(open);
             JOptionPane.showMessageDialog(parent,
-                    wrapped("Created " + fileCount + " files in\n"
-                            + config.getProjectRoot().getAbsolutePath()
-                            + "\n\nYour ontology is now the project's edit file, "
-                            + config.getEditFile().getName() + " - the file you work in from now"
-                            + " on, with its address and every term as they were. "
-                            + from.getName() + " is left as it was."
-                            + "\n\nNext: OntoBoard > Start here: the guide... walks you through"
-                            + " the rest. Nothing else needs installing."),
+                    wrapped(adoptedMessage(fileCount, config.getProjectRoot(),
+                            config.getEditFile().getName(), from.getName())),
                     "Project created", JOptionPane.INFORMATION_MESSAGE);
         } catch (Exception cannotSave) {
             JOptionPane.showMessageDialog(parent,
@@ -292,8 +329,11 @@ public final class ProjectWizard {
     static String problemHtml(String message) {
         String text = message == null || message.trim().isEmpty()
                 ? "Something about these values was rejected." : message;
-        return "<html><body style='width:520px'><b>Not created.</b> " + escaped(text)
-                + "</body></html>";
+        // Broken after a / once a word is longer than a line: the rejected address is quoted whole,
+        // and a word wider than the width sets the width - shop_ontology, the hint's own example,
+        // typed after the address filled in, is one word of 102 characters.
+        return "<html><body style='width:" + TEXT_WIDTH_CSS + "px'><b>Not created.</b> "
+                + breakable(escaped(text)) + "</body></html>";
     }
 
     /**
@@ -430,6 +470,33 @@ public final class ProjectWizard {
     }
 
     /**
+     * What "Project created" says about a new project.
+     *
+     * <p>No "Next: OntoBoard &gt; Start here: the guide... walks you through the rest" any more.
+     * A study participant, with a guide of their own in hand, read it as a second guide to follow
+     * (egg A, 1.135.1). Nobody is left without one: the board this names is empty now, and its
+     * first button is "New to this? Start the guide...".
+     */
+    static String createdMessage(int fileCount, File root, String editFile) {
+        return "Created " + fileCount + " files in\n" + root.getAbsolutePath()
+                + "\n\nEditing " + editFile + " - the file you work in. It is on the OntoBoard tab"
+                + " now.\n\n" + CHECK_ANY_TIME;
+    }
+
+    /** What "Project created" says when the open ontology became the project's edit file. */
+    static String adoptedMessage(int fileCount, File root, String editFile, String from) {
+        return "Created " + fileCount + " files in\n" + root.getAbsolutePath()
+                + "\n\nYour ontology is now the project's edit file, " + editFile
+                + " - the file you work in from now on, with its address and every term as they"
+                + " were. " + from + " is left as it was.\n\n" + CHECK_ANY_TIME;
+    }
+
+    /** The last paragraph of both: how to check the ontology, and that nothing else is needed. */
+    private static final String CHECK_ANY_TIME = "To check the ontology at any time,"
+            + " OntoBoard > Build and release > Build... and choose test."
+            + " Nothing else needs installing.";
+
+    /**
      * Opens the generated edit file so the user lands in the ontology they just described.
      *
      * <p>If loading fails the project is still on disk and intact, so the message says where
@@ -445,14 +512,8 @@ public final class ProjectWizard {
                             IRI.create(config.getBaseIri())));
             showTheBoard(parent);
             JOptionPane.showMessageDialog(parent,
-                    wrapped("Created " + fileCount + " files in\n"
-                            + config.getProjectRoot().getAbsolutePath()
-                            + "\n\nEditing " + config.getEditFile().getName()
-                            + " - the file you work in. It is on the OntoBoard tab now."
-                            + "\n\nNext: OntoBoard > Start here: the guide... walks you through"
-                            + " the rest. To check the ontology at any time,"
-                            + " OntoBoard > Build and release > Build... and choose test."
-                            + " Nothing else needs installing."),
+                    wrapped(createdMessage(fileCount, config.getProjectRoot(),
+                            config.getEditFile().getName())),
                     "Project created", JOptionPane.INFORMATION_MESSAGE);
         } catch (Exception couldNotOpen) {
             JOptionPane.showMessageDialog(parent,

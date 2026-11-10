@@ -595,7 +595,9 @@ public class FindTermsAction extends ProtegeOWLAction {
                         + "be rebuilt and changed later\n      (OntoBoard > Reuse > Imported terms...)\n")
                 .append("  - import that module into your ontology, with a catalog entry "
                         + "beside it\n");
-        if (list.isFile()) {
+        // Not for a list an undone import left behind: that import is not in force (1.135.1).
+        if (list.isFile() && !ImportTermsAction.leftByAnImportTakenBack(yours, list,
+                new java.io.File(imports, name + "_import.owl"))) {
             text.append("\n").append(name).append(" is imported already: these join the terms "
                     + "it has, and none of those is taken out.\n");
         }

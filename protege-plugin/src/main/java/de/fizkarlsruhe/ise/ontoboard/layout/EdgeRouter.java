@@ -107,6 +107,18 @@ public final class EdgeRouter {
     private static final double THROUGH_AN_ARROWHEAD = 500;
 
     /**
+     * What each point under a frame's name costs a line a selection shows, on top of the band's own
+     * cost: crossing the words reads as striking them out. A review of 1.135.1 found "denoted by"'s
+     * domain and range drawn up through "Object properties" on the study board, because the band
+     * cost the same wherever the name was written and crossing it cost less than a bend and the
+     * way round. Only for those lines, so the board's own are routed as before.
+     */
+    private static final double THROUGH_A_NAME = 500;
+
+    /** Kept clear round a frame's name by the lines a selection shows. */
+    private static final double ROUND_A_NAME = 4;
+
+    /**
      * How far back from where a subclass line meets its class a line may not cross it cheaply: the
      * head is 13 px long, and at 16 px a line crossing the stem 4 px under it still read as touching
      * it, on the cookbook board. One grid step more keeps a crossing clear of the head.
@@ -131,6 +143,16 @@ public final class EdgeRouter {
 
     /** How long routing may hold up the board, in nanoseconds; what is left keeps the plain connector. */
     public static final long MOST_TIME = 2_000_000_000L;
+
+    /**
+     * How many states a search for a line a selection shows may take, and how long that line may
+     * take in all: more than one of the board's own lines, of which there are hundreds, as it is
+     * the one somebody asked to see and the alternative is a line straight through the boxes. A
+     * review of 1.135.1 found a property's range to a class 19 such lines met at needing 322,000 -
+     * round the whole board, past the 18 there before it - and left to the plain connector.
+     */
+    private static final int SHOWN_STEPS = 4 * MOST_STEPS;
+    private static final long ONE_SHOWN_LINE = MOST_TIME / 4;
 
     /**
      * How much more than the least it could be the search takes what is left of a route to cost.
@@ -409,6 +431,244 @@ public final class EdgeRouter {
     }
 
     /**
+     * Routes {@code links} among lines routed already, which keep their routes and their labels'
+     * places: the lines a selection shows, while the lines on the board stay where they are.
+     *
+     * <p>Found on the egg-boiling study board (1.135.1): a property's domain and range wait until
+     * one of their ends is selected, the board was routed without them, and nothing routed them
+     * when they were shown - the dashed "domain" of has specified input ran straight up through a
+     * frame and sideways through three boxes. Routing the whole board again with them would move
+     * the lines already drawn on every click. So those lines are fixed here, standing in the way
+     * as the boxes do, and only the new ones are looked for, the way {@link #route} looks, at the
+     * same costs: round the boxes, off the other lines and their labels, clear of the frames that
+     * hold neither end.
+     *
+     * @param fixed the lines already routed, and {@code routed} their routes by id; a line without
+     *     a route there is left out
+     * @param deadline {@link System#nanoTime()} past which no further line is looked for
+     * @return the route of every one of {@code links} it can route, and of no other line
+     */
+    public static Map<String, Route> routeAmong(List<Box> boxes, List<Box> frames,
+            List<Link> fixed, Map<String, Route> routed, List<Link> links, long deadline) {
+        return routeAmong(boxes, frames, Collections.<Box>emptyList(), fixed, routed, links,
+                deadline, new ArrayList<String>());
+    }
+
+    /**
+     * The same, the lines kept off the frames' names as well, and those it looked for and found no
+     * way for said.
+     *
+     * <p>The first line is always begun, and each begun has {@link #ONE_SHOWN_LINE} and
+     * {@link #SHOWN_STEPS} a search: so a call makes headway however little time it is given, and
+     * the lines it did not get to are the ones it neither routed nor put in {@code noWay} - for a
+     * later call, which a click on a term many lines meet leaves the rest of its routing to
+     * (1.135.1 review).
+     *
+     * @param names where the frames' names are written, as boxes; crossing one costs
+     *     {@link #THROUGH_A_NAME} a point
+     * @param noWay receives the id of every one of {@code links} it looked for and could not route
+     */
+    public static Map<String, Route> routeAmong(List<Box> boxes, List<Box> frames,
+            List<Box> names, List<Link> fixed, Map<String, Route> routed, List<Link> links,
+            long deadline, java.util.Collection<String> noWay) {
+        final Map<String, Box> byId = new HashMap<String, Box>();
+        Map<String, Integer> numbers = new HashMap<String, Integer>();
+        for (Box box : boxes) {
+            byId.put(box.id, box);
+            if (!numbers.containsKey(box.id)) {
+                numbers.put(box.id, numbers.size() + 1);
+            }
+        }
+        Grid grid = Grid.over(boxes, frames);
+        if (grid != null) {
+            grid.keepOff(names);
+            grid.mostSteps = SHOWN_STEPS;
+        }
+        List<Drawn> drawn = new ArrayList<Drawn>();
+        Map<String, Integer> loops = new HashMap<String, Integer>();
+        // The lines already drawn that leave or arrive at a point of a box, by box: not a loop,
+        // which leaves no point, nor a lane of the hierarchy, which the box's points were worked
+        // out round when the board was routed.
+        Map<Box, List<Drawn>> atPoints = new LinkedHashMap<Box, List<Drawn>>();
+        for (Link link : fixed) {
+            Route route = routed.get(link.id);
+            Box source = byId.get(link.source);
+            Box target = byId.get(link.target);
+            if (route == null || source == null || target == null) {
+                continue;
+            }
+            int owner = link.hierarchy && source != target ? numbers.get(link.target) : -1;
+            Drawn line = new Drawn(link, source, target, owner,
+                    new ArrayList<double[]>(route.bends));
+            line.labelAt = route.labelAt;
+            line.chip = chipAt(line);
+            drawn.add(line);
+            if (source == target) {
+                loops.put(link.source, loops.getOrDefault(link.source, 0) + 1);
+            } else if (!line.bends.isEmpty() && !isLane(line, boxes, frames)) {
+                for (Box end : new Box[] {source, target}) {
+                    List<Drawn> there = atPoints.get(end);
+                    if (there == null) {
+                        there = new ArrayList<Drawn>();
+                        atPoints.put(end, there);
+                    }
+                    there.add(line);
+                }
+            }
+            if (grid != null) {
+                grid.occupy(line.points, owner);
+                grid.markHead(line.points, owner);
+                grid.cover(line.chip, 1);
+            }
+        }
+        if (grid != null) {
+            // Found by a review of 1.135.1: worked out with these lines already on the grid, the
+            // points of a busy class were every one beside a line and never offered, and a
+            // property's range to it was drawn straight through five boxes.
+            for (Map.Entry<Box, List<Drawn>> box : atPoints.entrySet()) {
+                grid.claim(box.getKey(), box.getValue());
+            }
+        }
+        List<Drawn> added = new ArrayList<Drawn>();
+        List<Link> others = new ArrayList<Link>();
+        for (Link link : links) {
+            Box source = byId.get(link.source);
+            Box target = byId.get(link.target);
+            if (source == null || target == null || grid == null) {
+                noWay.add(link.id);
+                continue;
+            }
+            if (source != target) {
+                others.add(link);
+                continue;
+            }
+            int before = loops.getOrDefault(link.source, 0);
+            loops.put(link.source, before + 1);
+            Drawn loop = new Drawn(link, source, target, -1, Collections.<double[]>emptyList());
+            loop.give(loop(source, before, link, boxes, loop, grid, drawn));
+            drawn.add(loop);
+            added.add(loop);
+            grid.occupy(loop.points, -1);
+            grid.cover(loop.chip, 1);
+        }
+        // Shortest first, as the board's own lines were.
+        Collections.sort(others, new Comparator<Link>() {
+            @Override
+            public int compare(Link one, Link other) {
+                if (one.hierarchy != other.hierarchy) {
+                    return one.hierarchy ? -1 : 1;
+                }
+                int order = Double.compare(reach(one, byId), reach(other, byId));
+                return order != 0 ? order : one.id.compareTo(other.id);
+            }
+        });
+        if (grid != null) {
+            List<Drawn> searched = new ArrayList<Drawn>();
+            boolean first = true;
+            for (Link link : others) {
+                if (!first && System.nanoTime() > deadline) {
+                    break;
+                }
+                first = false;
+                int owner = link.hierarchy ? numbers.get(link.target) : -1;
+                Drawn line = new Drawn(link, byId.get(link.source), byId.get(link.target), owner,
+                        Collections.<double[]>emptyList());
+                if (grid.give(line, frames, System.nanoTime() + ONE_SHOWN_LINE, drawn, boxes)) {
+                    drawn.add(line);
+                    searched.add(line);
+                    added.add(line);
+                    grid.occupy(line.points, owner);
+                    grid.cover(line.chip, 1);
+                } else {
+                    noWay.add(link.id);
+                }
+            }
+            // Only the new lines are looked at again: the others are where they are drawn.
+            grid.rerouteWhatRunsTogether(searched, drawn, frames, deadline,
+                    grid.work + Math.max(grid.work, MOST_STEPS), boxes);
+        }
+        placeLabelsAmong(added, drawn, boxes, frames);
+        Map<String, Route> routes = new LinkedHashMap<String, Route>();
+        for (Drawn line : added) {
+            routes.put(line.link.id, new Route(line.bends, line.labelAt));
+        }
+        return routes;
+    }
+
+    /**
+     * Where the label of a routed line stands, x1, y1, x2, y2, as {@link #bestSpot} put it there:
+     * {@code labelAt} of the way along the line drawn. Null for a line without a label.
+     */
+    private static double[] chipAt(Drawn line) {
+        double[][] points = line.points;
+        if (line.link.labelW <= 0 || points.length < 2) {
+            return null;
+        }
+        double total = 0;
+        for (int i = 1; i < points.length; i++) {
+            total += Math.abs(points[i][0] - points[i - 1][0])
+                    + Math.abs(points[i][1] - points[i - 1][1]);
+        }
+        if (total <= 0) {
+            return null;
+        }
+        double w = line.link.labelW + 2 * AIR;
+        double h = line.link.labelH + 2 * AIR;
+        double left = line.labelAt * total;
+        for (int i = 1; i < points.length; i++) {
+            double dx = points[i][0] - points[i - 1][0];
+            double dy = points[i][1] - points[i - 1][1];
+            double length = Math.abs(dx) + Math.abs(dy);
+            if (length > 0 && (left <= length || i == points.length - 1)) {
+                double along = Math.min(left, length) / length;
+                double cx = points[i - 1][0] + dx * along;
+                double cy = points[i - 1][1] + dy * along;
+                return new double[] {cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2};
+            }
+            left -= length;
+        }
+        return null;
+    }
+
+    /**
+     * The labels of {@code added}, placed as {@link #placeLabels} places them, round the labels of
+     * all the other lines, which stay where they are.
+     */
+    private static void placeLabelsAmong(List<Drawn> added, List<Drawn> drawn, List<Box> boxes,
+            List<Box> frames) {
+        List<Drawn> labelled = new ArrayList<Drawn>();
+        for (Drawn line : added) {
+            if (line.link.labelW > 0 && line.points.length >= 2) {
+                labelled.add(line);
+            }
+        }
+        List<double[]> chips = new ArrayList<double[]>();
+        for (Drawn line : drawn) {
+            if (!added.contains(line) && line.chip != null) {
+                chips.add(line.chip);
+            }
+        }
+        int kept = chips.size();
+        for (int k = 0; k < labelled.size(); k++) {
+            chips.add(null);
+        }
+        double[] costs = new double[labelled.size()];
+        for (int round = 0; round < 2; round++) {
+            for (int k = 0; k < labelled.size(); k++) {
+                if (round == 1 && costs[k] < ON_A_LINE) {
+                    continue;
+                }
+                chips.set(kept + k, null);
+                double[] spot = bestSpot(labelled.get(k).points, labelled.get(k).link, drawn,
+                        labelled.get(k), boxes, frames, chips);
+                labelled.get(k).labelAt = spot[0];
+                costs[k] = spot[1];
+                chips.set(kept + k, new double[] {spot[2], spot[3], spot[4], spot[5]});
+            }
+        }
+    }
+
+    /**
      * A term related to itself: out of one side of its box and back, far enough out that its label
      * sits on the far stretch clear of the box, and each loop of a box on a side of its own - the
      * right, the top, the bottom, the left - where nothing else stands. Left to JGraphX every loop on
@@ -532,6 +792,15 @@ public final class EdgeRouter {
             }
         }
         return bends;
+    }
+
+    /** Whether this line runs where {@link #route} puts a lane of the hierarchy: see treeLane. */
+    private static boolean isLane(Drawn line, List<Box> boxes, List<Box> frames) {
+        if (!line.link.hierarchy || frameOf(line.source, frames) != frameOf(line.target, frames)) {
+            return false;
+        }
+        List<double[]> lane = treeLane(line.source, line.target, boxes);
+        return lane != null && same(lane, line.bends);
     }
 
     /** The whole line, ends included, as JGraphX will draw it. */
@@ -860,6 +1129,8 @@ public final class EdgeRouter {
         final boolean[] border;
         /** In the band at the top of a frame where its name stands. */
         final boolean[] title;
+        /** Under a frame's name itself, for the lines a selection shows: null for the board's own. */
+        boolean[] named;
         /** Under the arrowhead of a subclass line: the number of its class, or 0. */
         final int[] head;
         /**
@@ -891,6 +1162,8 @@ public final class EdgeRouter {
         final Heap open = new Heap();
         /** How many states all searches so far have taken from their queues. */
         long work;
+        /** How many states one search may take: {@link #MOST_STEPS}, or {@link #SHOWN_STEPS}. */
+        int mostSteps = MOST_STEPS;
 
         private Grid(double x0, double y0, double pitch, int columns, int rows) {
             this.x0 = x0;
@@ -1023,6 +1296,66 @@ public final class EdgeRouter {
         /** Counts the line on every step it runs along. */
         void occupy(double[][] points, int owner) {
             count(points, owner, 1);
+        }
+
+        /** Marks the points under each of these names, and {@link #ROUND_A_NAME} round them. */
+        void keepOff(List<Box> names) {
+            for (Box name : names) {
+                if (named == null) {
+                    named = new boolean[columns * rows];
+                }
+                int i1 = Math.max(0, columnAtOrAfter(name.x - ROUND_A_NAME));
+                int i2 = Math.min(columns - 1, columnAtOrBefore(name.right() + ROUND_A_NAME));
+                int j1 = Math.max(0, rowAtOrAfter(name.y - ROUND_A_NAME));
+                int j2 = Math.min(rows - 1, rowAtOrBefore(name.bottom() + ROUND_A_NAME));
+                for (int i = i1; i <= i2; i++) {
+                    for (int j = j1; j <= j2; j++) {
+                        named[i * rows + j] = true;
+                    }
+                }
+            }
+        }
+
+        /**
+         * The points of this box, worked out as they were before these lines were drawn, and each
+         * of them counted as used by the line of these that leaves or arrives there: so a line
+         * routed after them has the spare points between theirs, and theirs to share where nothing
+         * else is left, as on the board, whose routing works a box's points out before its lines
+         * are routed. Worked out after them, every point beside one of their stubs was dropped, and
+         * a busy box was left with none.
+         *
+         * <p>A point is the one its line's stub runs along, whatever its length: a line that left
+         * by a stub of one pitch, because when it was routed a whole one was not to be had, uses
+         * the point a whole one is offered at now.
+         */
+        void claim(Box box, List<Drawn> lines) {
+            if (ports.containsKey(box.id)) {
+                return;
+            }
+            for (Drawn line : lines) {
+                count(line.points, line.owner, -1);
+            }
+            Port[] found = portsOf(box);
+            for (Drawn line : lines) {
+                count(line.points, line.owner, 1);
+            }
+            for (Drawn line : lines) {
+                double[] end = line.source == box ? line.bends.get(0)
+                        : line.bends.get(line.bends.size() - 1);
+                boolean level = end[1] >= box.y && end[1] <= box.bottom();
+                boolean under = end[0] >= box.x && end[0] <= box.right();
+                int side = level && end[0] > box.right() ? RIGHT : level && end[0] < box.x ? LEFT
+                        : under && end[1] < box.y ? TOP : under && end[1] > box.bottom() ? BOTTOM
+                        : -1;
+                for (Port port : found) {
+                    if (port.side == side && (side == RIGHT || side == LEFT
+                            ? port.point % rows == row(end[1])
+                            : port.point / rows == column(end[0]))) {
+                        port.uses++;
+                        break;
+                    }
+                }
+            }
         }
 
         /**
@@ -1496,7 +1829,7 @@ public final class EdgeRouter {
                     continue;
                 }
                 work++;
-                if (++pops > MOST_STEPS || (pops & 1023) == 0 && System.nanoTime() > deadline) {
+                if (++pops > mostSteps || (pops & 1023) == 0 && System.nanoTime() > deadline) {
                     return OUT_OF_TIME;
                 }
                 if (goalSeen[point] == goalStamp
@@ -1534,6 +1867,9 @@ public final class EdgeRouter {
                     }
                     if (title[next]) {
                         through += pitch * IN_A_TITLE;
+                    }
+                    if (named != null && named[next]) {
+                        through += THROUGH_A_NAME;
                     }
                     if (head[next] > 0 && head[next] != owner) {
                         through += THROUGH_AN_ARROWHEAD;

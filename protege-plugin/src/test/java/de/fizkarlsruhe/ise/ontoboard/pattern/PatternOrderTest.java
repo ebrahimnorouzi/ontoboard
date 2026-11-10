@@ -1,6 +1,7 @@
 package de.fizkarlsruhe.ise.ontoboard.pattern;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
@@ -36,31 +37,32 @@ class PatternOrderTest {
     }
 
     /**
-     * The patterns with no publisher come last.
-     *
-     * <p>Two of them, the airline patterns, because their only IRI is an absolute path from the
-     * machine the harvest ran on. There were three until Ethnicgroup's file was given back the base
-     * it misspelt as {@code xmlns:base}. A bucket named for an absence should not sit between two
-     * real ones.
+     * Every bundled pattern has a publisher (1.135.1). The airline patterns had none because their
+     * only IRI was an absolute path from the machine the harvest ran on, as Ethnicgroup's had until
+     * its file was given back the base it misspelt as {@code xmlns:base}; theirs was given back in
+     * 1.135.1.
      */
     @Test
-    void theUnknownPublisherSortsLast() {
-        List<DesignPattern> sorted = PatternOrder.sorted(PatternLibrary.all(),
-                PatternOrder.BY_PUBLISHER);
-
-        int firstUnknown = -1;
-        for (int at = 0; at < sorted.size(); at++) {
-            boolean unknown = PatternIndex.UNKNOWN_PUBLISHER.equals(sorted.get(at).getPublisher());
-            if (unknown && firstUnknown < 0) {
-                firstUnknown = at;
-            }
-            if (!unknown) {
-                assertTrue(firstUnknown < 0,
-                        sorted.get(at).getId() + " is after an unknown-publisher pattern");
-            }
+    void noBundledPatternIsWithoutAPublisher() {
+        for (DesignPattern pattern : PatternLibrary.all()) {
+            assertFalse(PatternIndex.UNKNOWN_PUBLISHER.equals(pattern.getPublisher()),
+                    pattern.getId() + " has no publisher");
         }
-        assertTrue(firstUnknown > 0, "there are two of them");
-        assertEquals(sorted.size(), firstUnknown + 2);
+    }
+
+    /**
+     * A pattern with no publisher comes last: a contributed one can have none. A bucket named for
+     * an absence should not sit between two real ones.
+     */
+    @Test
+    void theUnknownPublisherSortsLast() throws Exception {
+        List<DesignPattern> patterns = new java.util.ArrayList<DesignPattern>(PatternLibrary.all());
+        DesignPattern unknown = PatternIndex.read(new java.io.StringReader(
+                "nobody\tNobody's pattern\todp\t" + PatternIndex.UNKNOWN_PUBLISHER
+                        + "\tstructural\tgeneral\t\t\t\t\n")).get(0);
+        patterns.add(0, unknown);
+        List<DesignPattern> sorted = PatternOrder.sorted(patterns, PatternOrder.BY_PUBLISHER);
+        assertEquals(unknown, sorted.get(sorted.size() - 1));
     }
 
     /** By name ignores case and never depends on index order. */

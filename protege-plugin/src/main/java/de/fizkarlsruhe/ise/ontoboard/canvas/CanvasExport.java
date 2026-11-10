@@ -10,9 +10,11 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.List;
+import java.util.Locale;
 import javax.imageio.ImageIO;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
+import org.w3c.dom.NodeList;
 
 /**
  * PNG and SVG export of the current diagram, with its key.
@@ -28,6 +30,12 @@ import org.w3c.dom.Element;
  * export, and for those it is the right answer - they are transient, or they belong to a
  * session. A key is not transient. It is the part of the diagram that makes the rest of it
  * mean something.
+ *
+ * <p><b>Every line the board shows is in the picture, routed.</b> A click on a class many lines
+ * meet routes what it shows for a moment and the rest a slice at a time, and a line is not drawn
+ * until it is routed - so a picture taken in that moment left out the lines still waiting: 14 of
+ * the 19 a click showed (1.135.1 review). Both formats finish that routing first, on the calling
+ * thread, with {@link SchemaGraph#routeWaitingLinesNow}.
  */
 public final class CanvasExport {
 
@@ -104,6 +112,8 @@ public final class CanvasExport {
         if (scale <= 0) {
             throw new IllegalArgumentException("export scale must be positive, got " + scale);
         }
+        // Every line shown, routed, and the bounds framed round them: see the class comment.
+        graph.routeWaitingLinesNow();
         BufferedImage diagram = mxCellRenderer.createBufferedImage(
                 graph, null, scale, BACKGROUND, true, framed(graph, scale));
         if (diagram == null) {
@@ -133,6 +143,8 @@ public final class CanvasExport {
     public static void writeSvg(SchemaGraph graph, File target,
             List<CanvasLegend.Entry> entries, List<CanvasLegend.Namespace> namespaces)
             throws IOException {
+        // Every line shown, routed, and the bounds framed round them: see the class comment.
+        graph.routeWaitingLinesNow();
         Document document = mxCellRenderer.createSvgDocument(
                 graph, null, SCALE, BACKGROUND, framed(graph, SCALE));
         if (document == null) {
@@ -142,6 +154,14 @@ public final class CanvasExport {
             return;
         }
         Element root = document.getDocumentElement();
+        // Before the key goes in: its text already names a generic family.
+        NodeList texts = root.getElementsByTagName("text");
+        for (int i = 0; i < texts.getLength(); i++) {
+            Element text = (Element) texts.item(i);
+            if (text.hasAttribute("font-family")) {
+                text.setAttribute("font-family", cssFamily(text.getAttribute("font-family")));
+            }
+        }
         LegendLayout.Key key = LegendLayout.of(entries, namespaces,
                 keyWidthFor(widthOf(root), 1.0));
         if (!key.isEmpty()) {
@@ -157,6 +177,31 @@ public final class CanvasExport {
         }
         Files.write(target.toPath(),
                 mxXmlUtils.getXml(root).getBytes(StandardCharsets.UTF_8));
+    }
+
+    /**
+     * A font as CSS names it, for an SVG: a family with a generic family after it, and Java's
+     * logical families as the generic ones they stand for. JGraphX writes the board's family as it
+     * is - {@code font-family="Segoe UI"} - so a viewer without Segoe UI drew the whole diagram in
+     * its serif default, and {@code SansSerif} means nothing to CSS (1.135.1).
+     */
+    static String cssFamily(String javaFamily) {
+        String family = javaFamily == null ? "" : javaFamily.trim();
+        String lower = family.toLowerCase(Locale.ROOT);
+        if (lower.equals("sansserif") || lower.equals("dialog") || lower.equals("sans-serif")) {
+            return "sans-serif";
+        }
+        if (lower.equals("serif")) {
+            return "serif";
+        }
+        if (lower.equals("monospaced") || lower.equals("dialoginput") || lower.equals("monospace")) {
+            return "monospace";
+        }
+        if (family.isEmpty() || family.indexOf(',') >= 0) {
+            // Nothing to name, or already a list.
+            return family;
+        }
+        return "'" + family.replace("'", "") + "', sans-serif";
     }
 
     /** The diagram with the key under it, on one canvas. */

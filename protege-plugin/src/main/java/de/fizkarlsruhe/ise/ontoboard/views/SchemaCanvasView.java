@@ -214,16 +214,23 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
      *
      * <p>The projection is kept because search asks a question only the drawn board can answer -
      * "which of these is on screen" - and rebuilding it per keystroke would re-walk the ontology on
-     * every letter typed. {@code ontologyTerms} is the wider index, built on the first search that
-     * finds nothing on the board and dropped on the next refresh, because the answer to "is this term
-     * in the ontology at all" changes whenever the ontology does.
+     * every letter typed. {@code termsToFind} is the wider index, built on the first search that
+     * finds nothing on the board and dropped when the ontology changes in a way that changes the
+     * answer to "is this term in the ontology at all" - see {@link TermsToFind}.
      */
     private javax.swing.JTextField searchField;
     private javax.swing.JLabel searchCount;
     private Projection rendered;
     private List<CanvasNode> searchMatches = Collections.emptyList();
     private int searchCursor;
-    private List<CanvasNode> ontologyTerms;
+
+    /**
+     * Whether Enter was pressed since the query last changed. Typing has already gone to the best
+     * match, so the first Enter confirms it rather than skipping it (1.135.1).
+     */
+    private boolean searchStepped;
+    private final TermsToFind termsToFind = new TermsToFind(ontology -> OntologyProjection
+            .everyTermWorthShowing(ontology, org.semanticweb.owlapi.model.parameters.Imports.INCLUDED));
 
     /** The zoom readout in the status bar. A button, because clicking it returns to 100%. */
     private JButton zoomReadout;
@@ -508,7 +515,8 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             // within 800ms of the first - move one node, immediately move another, press Ctrl+Z, and
             // both went back with no way to take back only the second.
             if (!movingProgrammatically) {
-                rememberBoard("moving things on the board");
+                rememberBoard(mxEvent.CELLS_RESIZED.equals(event.getName())
+                        ? "resizing things on the board" : "moving things on the board");
                 sayOnceThatMovesStayHere();
                 layout.arrangedByHand = Boolean.TRUE;
             }
@@ -523,7 +531,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                 positionSaveTimer.restart();
             }
         };
-        graph.addListener(mxEvent.CELLS_MOVED, cellsMovedListener);
+        listenForMovesAndResizes(graph, cellsMovedListener);
         installFrameDragging();
 
         // Without this an in-place edit is lost at the next refresh, which any edit anywhere in
@@ -577,6 +585,8 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             }
             stampEditsMadeElsewhere(changes);
             sayWhenAnImportIsTakenBack(changes);
+            sayWhenSavedNoLongerHolds(changes);
+            termsToFind.changed(changes, getOWLModelManager().getActiveOntology());
             refreshSoon();
         };
         getOWLModelManager().addOntologyChangeListener(changeListener);
@@ -586,6 +596,13 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         // fires no axiom change; classifying fires no axiom change either. See
         // shouldRefreshFor for which of them matter and why.
         modelManagerListener = event -> {
+            // A reload, a load, another ontology: Find's list of the ontology's terms is built
+            // again when next asked for. Not for a classification or a save, which change no term.
+            if (!event.isType(EventType.ONTOLOGY_CLASSIFIED)
+                    && !event.isType(EventType.REASONER_CHANGED)
+                    && !event.isType(EventType.ONTOLOGY_SAVED)) {
+                termsToFind.forget();
+            }
             if (event.isType(EventType.ACTIVE_ONTOLOGY_CHANGED)) {
                 switchToActiveOntology();
             } else if (event.isType(EventType.ONTOLOGY_SAVED)) {
@@ -1292,13 +1309,30 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
 
     /**
      * After a save, a status line still asking for one no longer does: a tester read "Defined X.
-     * File > Save keeps it." after pressing File > Save.
+     * File > Save keeps it." after pressing File > Save. Not while the open ontology is unsaved,
+     * though: Imported terms... saves the module it rebuilt, and Protege reports that as a save.
      */
     private void saidSaved() {
-        if (boardStatus != null && boardStatus.getText() != null
-                && (boardStatus.getText().contains("File > Save keeps")
-                        || boardStatus.getText().contains("File > Save to keep"))) {
-            setStatus("Saved.");
+        String now = boardStatus == null ? null : boardStatus.getText();
+        OWLOntology open = getOWLModelManager().getActiveOntology();
+        String next = SavedStatus.afterSave(now,
+                open != null && getOWLModelManager().getDirtyOntologies().contains(open));
+        if (next != null && !next.equals(now)) {
+            setStatus(next);
+        }
+    }
+
+    /**
+     * "Saved." is about the open ontology, and the next change to it ends it - Edit > Undo above
+     * all, which reaches the board only as a change: a tester read "Saved." after an Undo while
+     * Build asked "Save first?" (1.135.1, Windows study rehearsal).
+     */
+    private void sayWhenSavedNoLongerHolds(List<? extends OWLOntologyChange> changes) {
+        String now = boardStatus == null ? null : boardStatus.getText();
+        String next = SavedStatus.afterChanges(now, changes,
+                getOWLModelManager().getActiveOntology());
+        if (next != null && !next.equals(now)) {
+            setStatus(next);
         }
     }
 
@@ -1329,6 +1363,18 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         say(boardStatus,
                 de.fizkarlsruhe.ise.ontoboard.collab.SessionNotices.MOVES_ARE_LOCAL,
                 de.fizkarlsruhe.ise.ontoboard.collab.SessionNotices.MOVES_ARE_LOCAL_DETAIL);
+    }
+
+    /**
+     * What a term, a note or a frame dragged somewhere else on the board is followed by - and one
+     * resized by its handles, which JGraphX tells apart. A review of 1.135.1 found only moves
+     * listened for: after a box was widened, a line a selection showed ran through it, the board's
+     * own lines at it lost their routes, and the resize was not kept.
+     */
+    static void listenForMovesAndResizes(com.mxgraph.view.mxGraph graph,
+            mxIEventListener listener) {
+        graph.addListener(mxEvent.CELLS_MOVED, listener);
+        graph.addListener(mxEvent.CELLS_RESIZED, listener);
     }
 
     /**
@@ -2225,6 +2271,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         String query = searchField == null ? "" : searchField.getText();
         searchMatches = CanvasSearch.matches(query, termsOnTheBoard());
         searchCursor = 0;
+        searchStepped = false;
 
         if (query.trim().isEmpty()) {
             say(searchCount, " ", null);
@@ -2238,7 +2285,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             }
             return;
         }
-        reportNothingFoundOnTheBoard(query);
+        reportNothingFoundOnTheBoard(query, true);
     }
 
     /**
@@ -2249,21 +2296,28 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
      * not been added to the board. Distinguishing them is the whole reason this looks past the board
      * at all.
      */
-    private void reportNothingFoundOnTheBoard(String query) {
+    private void reportNothingFoundOnTheBoard(String query, boolean inTheStatusLineToo) {
         List<CanvasNode> inTheOntology = CanvasSearch.matches(query, termsInTheOntology(), 1);
         if (inTheOntology.isEmpty()) {
             say(searchCount, "no match", "Nothing in this ontology matches that either.");
-            setStatus("No term matching \"" + query.trim() + "\" - not on the board, and not in "
-                    + "this ontology.");
+            if (inTheStatusLineToo) {
+                setStatus("No term matching \"" + query.trim() + "\" - not on the board, and not in "
+                        + "this ontology.");
+            }
             return;
         }
         String name = CanvasSearch.nameOf(inTheOntology.get(0));
         say(searchCount, "not on board",
                 name + " is in the ontology. Ctrl+Enter puts it on the board.");
-        setStatus(name + " is in this ontology but not on the board - Ctrl+Enter adds it.");
+        if (inTheStatusLineToo) {
+            setStatus(name + " is in this ontology but not on the board - Ctrl+Enter adds it.");
+        }
     }
 
-    /** Enter and Shift+Enter: the next match, wrapping. */
+    /**
+     * Enter and Shift+Enter: the next match, wrapping - except that the first Enter after typing
+     * stays on the match typing went to (1.135.1). See CanvasSearch.step.
+     */
     private void stepThroughMatches(int delta) {
         if (searchMatches.isEmpty()) {
             // Enter on a query that matched nothing on the board does the obvious thing instead of
@@ -2271,7 +2325,8 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             addBestMatchFromTheOntology();
             return;
         }
-        searchCursor = (searchCursor + delta + searchMatches.size()) % searchMatches.size();
+        searchCursor = CanvasSearch.step(searchCursor, searchMatches.size(), delta, searchStepped);
+        searchStepped = true;
         goToCurrentMatch();
     }
 
@@ -2386,8 +2441,35 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         }
         searchMatches = Collections.emptyList();
         searchCursor = 0;
+        searchStepped = false;
         say(searchCount, " ", null);
         graphComponent.requestFocusInWindow();
+    }
+
+    /**
+     * The query in the Find box run again on the board as now drawn, without moving the view or
+     * the status line (1.135.1, Windows study rehearsal). The count was worked out only as the box
+     * was typed in, so after an import brought the term in it still said "no match".
+     */
+    private void searchAgainQuietly() {
+        String query = searchField == null ? "" : searchField.getText();
+        if (query.trim().isEmpty()) {
+            return;
+        }
+        String wasOn = searchMatches.isEmpty() ? null
+                : searchMatches.get(Math.min(searchCursor, searchMatches.size() - 1)).getId();
+        searchMatches = CanvasSearch.matches(query, termsOnTheBoard());
+        int still = CanvasSearch.indexOf(searchMatches, wasOn);
+        searchCursor = Math.max(0, still);
+        if (still < 0) {
+            searchStepped = false;
+        }
+        if (searchMatches.isEmpty()) {
+            reportNothingFoundOnTheBoard(query, false);
+        } else {
+            say(searchCount, searchMatches.size() == 1 ? "1 match"
+                    : searchMatches.size() + " matches", null);
+        }
     }
 
     /** The terms drawn on the board, which is what Find searches first. */
@@ -2396,22 +2478,104 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
     }
 
     /**
-     * Every term in the ontology, built on demand and kept until the next refresh.
+     * Every term in the ontology, built on demand and kept while nothing changes what it holds.
      *
      * <p>Only reached when the board has no match, so the common case - searching for something that
-     * is on screen - never walks the ontology. {@link #refresh} drops it, and refresh runs on every
-     * ontology change, so this cannot answer with a term that has since been deleted.
+     * is on screen - never walks the ontology. Imports included, so "not on the board" is answered
+     * about the ontology the user is working in rather than about the edit file alone - and so
+     * Ctrl+Enter can draw an imported term, which it now can.
      */
     private List<CanvasNode> termsInTheOntology() {
-        if (ontologyTerms == null) {
-            // Imports included, so "not on the board" is answered about the ontology the user is
-            // working in rather than about the edit file alone - and so Ctrl+Enter can draw an
-            // imported term, which it now can.
-            ontologyTerms = OntologyProjection.everyTermWorthShowing(
-                    getOWLModelManager().getActiveOntology(),
-                    org.semanticweb.owlapi.model.parameters.Imports.INCLUDED);
+        return termsToFind.of(getOWLModelManager().getActiveOntology());
+    }
+
+    /**
+     * Every term in an ontology, with its label, for Find: built when first asked for and kept until
+     * an edit can change it (1.135.1 review). Every drawing of the board threw it away, and a
+     * drawing follows every edit, so with a query in the Find box that nothing on the board matched,
+     * each edit anywhere in Protégé read the label of every term in the imports closure again, on
+     * the event thread.
+     *
+     * <p>An edit can change it when it adds a term or takes the last mention of one away, or adds or
+     * takes away an rdfs:label, in the ontology or anything it imports; and any change that is not an
+     * axiom's - an import, above all - is taken to. The board's own listener reports each edit to
+     * {@link #changed}; another ontology made active is built for afresh.
+     */
+    static final class TermsToFind {
+        private final java.util.function.Function<OWLOntology, List<CanvasNode>> build;
+        // Volatile, and no lock: an import's changes are heard on the thread that applied them,
+        // which may hold the ontology's lock. A list dropped meanwhile is only built once more.
+        private volatile List<CanvasNode> terms;
+        private volatile java.util.Set<String> ids;
+        private volatile OWLOntology builtFor;
+
+        TermsToFind(java.util.function.Function<OWLOntology, List<CanvasNode>> build) {
+            this.build = build;
         }
-        return ontologyTerms;
+
+        List<CanvasNode> of(OWLOntology active) {
+            List<CanvasNode> listed = terms;
+            if (listed == null || builtFor != active) {
+                listed = build.apply(active);
+                java.util.Set<String> named = new java.util.HashSet<String>();
+                for (CanvasNode term : listed) {
+                    named.add(term.getId());
+                }
+                ids = named;
+                builtFor = active;
+                terms = listed;
+            }
+            return listed;
+        }
+
+        /** These changes, applied: the list goes when they can change it. */
+        void changed(List<? extends OWLOntologyChange> changes, OWLOntology active) {
+            if (terms != null && (builtFor != active || changeWhatFindFinds(changes, active, ids))) {
+                forget();
+            }
+        }
+
+        void forget() {
+            terms = null;
+            ids = null;
+            builtFor = null;
+        }
+
+        /** Whether these changes, applied already, can change what {@link #of} holds. */
+        static boolean changeWhatFindFinds(List<? extends OWLOntologyChange> changes,
+                OWLOntology active, java.util.Set<String> listed) {
+            if (active == null || listed == null || changes == null) {
+                return true;
+            }
+            java.util.Set<OWLOntology> closure = active.getImportsClosure();
+            for (OWLOntologyChange change : changes) {
+                if (!closure.contains(change.getOntology())) {
+                    continue;
+                }
+                if (!(change instanceof org.semanticweb.owlapi.model.OWLAxiomChange)) {
+                    return true;
+                }
+                org.semanticweb.owlapi.model.OWLAxiom axiom =
+                        ((org.semanticweb.owlapi.model.OWLAxiomChange) change).getAxiom();
+                if (axiom instanceof org.semanticweb.owlapi.model.OWLAnnotationAssertionAxiom
+                        && ((org.semanticweb.owlapi.model.OWLAnnotationAssertionAxiom) axiom)
+                                .getProperty().isLabel()) {
+                    return true;
+                }
+                for (OWLEntity entity : axiom.getSignature()) {
+                    if (!entity.isOWLClass() && !entity.isOWLNamedIndividual()
+                            && !entity.isOWLObjectProperty() && !entity.isOWLDataProperty()) {
+                        continue;
+                    }
+                    boolean present = active.containsEntityInSignature(entity,
+                            org.semanticweb.owlapi.model.parameters.Imports.INCLUDED);
+                    if (present != listed.contains(entity.getIRI().toString())) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
     }
 
     /** Text and tooltip together, because a label whose text is cut off needs the tooltip. */
@@ -2483,7 +2647,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                 (int) (bounds.getX() * ratio), (int) (bounds.getY() * ratio),
                 (int) (bounds.getWidth() * ratio), (int) (bounds.getHeight() * ratio)));
         updateZoomReadout();
-        setStatus("Fitted " + what + " to the window at " + CanvasZoom.readout(fitted) + ".");
+        setStatus(CanvasZoom.fitted(what, fitted));
     }
 
     /**
@@ -2502,8 +2666,19 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
 
     /** Puts the current scale in the status bar. */
     private void updateZoomReadout() {
+        double scale = graph.getView().getScale();
         if (zoomReadout != null) {
-            zoomReadout.setText(CanvasZoom.readout(graph.getView().getScale()));
+            zoomReadout.setText(CanvasZoom.readout(scale));
+        }
+        // A line the zoom, Fit or Arrange wrote names this zoom: "...at 26%" stayed with the board
+        // at 46% (1.135.1). Fit and Arrange say theirs after the zoom, so theirs win. Any other
+        // line is left as it is, Relate's "...at 80%. File > Save keeps it." too (1.135.1 review).
+        if (boardStatus != null) {
+            String said = boardStatus.getText();
+            String now = CanvasZoom.afterZoom(said, scale);
+            if (now != null && !now.equals(said)) {
+                setStatus(now);
+            }
         }
     }
 
@@ -2604,25 +2779,27 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
      * the 100% button went to the board's top-left corner rather than to the box selected.
      */
     private java.awt.Point zoomAnchor() {
-        javax.swing.JViewport port = graphComponent.getViewport();
-        java.awt.Rectangle view = port.getViewRect();
-        java.awt.Point middle = new java.awt.Point(port.getWidth() / 2, port.getHeight() / 2);
+        // A box rather than the middle of what is in view (1.135.1, Windows study rehearsal):
+        // after Fit that middle lay in the empty band between two frames. See CanvasZoom.anchor.
+        java.awt.Rectangle view = graphComponent.getViewport().getViewRect();
         Object[] selected = graph.getSelectionCells();
         com.mxgraph.util.mxRectangle around = selected != null && selected.length > 0
                 ? graph.getView().getBoundingBox(selected) : null;
-        if (around != null && view.contains(around.getCenterX(), around.getCenterY())) {
-            return new java.awt.Point((int) around.getCenterX() - view.x,
-                    (int) around.getCenterY() - view.y);
-        }
         com.mxgraph.util.mxRectangle content = graph.getView().getGraphBounds();
-        if (content == null || content.getWidth() <= 0) {
-            return middle;
+        List<java.awt.Rectangle> boxes = new ArrayList<java.awt.Rectangle>();
+        for (CanvasNode node : termsOnTheBoard()) {
+            Object cell = graph.getCellForId(node.getId());
+            // Boxes only: a property drawn as an arrow is an edge, as wide as the board.
+            if (cell == null || !graph.getModel().isVertex(cell)) {
+                continue;
+            }
+            com.mxgraph.view.mxCellState state = graph.getView().getState(cell);
+            if (state != null) {
+                boxes.add(state.getRectangle());
+            }
         }
-        java.awt.Rectangle seen = view.intersection(content.getRectangle());
-        if (seen.isEmpty()) {
-            return middle;
-        }
-        return new java.awt.Point((int) seen.getCenterX() - view.x, (int) seen.getCenterY() - view.y);
+        return CanvasZoom.anchor(view, around == null ? null : around.getRectangle(),
+                content == null || content.getWidth() <= 0 ? null : content.getRectangle(), boxes);
     }
 
     /**
@@ -4466,10 +4643,12 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         // on a narrow one.
         searchField.setMinimumSize(new Dimension(140, searchField.getPreferredSize().height));
         searchField.setToolTipText("<html><b>Find a term on the board</b> by label or IRI."
-                + "<br>Enter: next match &nbsp; Shift+Enter: previous"
+                + "<br>Enter: go to the match, again for the next &nbsp; Shift+Enter: previous"
                 + "<br>Ctrl+Enter: add a match that is in the ontology but not on the board"
                 + "<br>Escape: clear &nbsp; Ctrl+F: come back here</html>");
         caption.setLabelFor(searchField);
+        // Clicking back in selects the last query, so typing replaces it (1.135.1).
+        CanvasSearch.selectAllOnFocus(searchField);
 
         searchCount = new javax.swing.JLabel(" ");
         searchCount.setFont(searchCount.getFont().deriveFont(
@@ -4623,7 +4802,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                 if (algorithm == CanvasLayouts.Algorithm.SECTIONS) {
                     sections = CanvasLayouts.applySections(graph);
                 } else {
-                    CanvasLayouts.apply(graph, algorithm);
+                    keptInFrames = CanvasLayouts.apply(graph, algorithm);
                 }
             } finally {
                 movingProgrammatically = false;
@@ -4632,6 +4811,15 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             if (sections != null) {
                 frameSections(sections);
                 refresh();
+            } else {
+                // The outline's frames went with the outline; drawn again from the board they
+                // would enclose nothing (1.135.1).
+                int frames = layout.frames.size();
+                frameSections(java.util.Collections
+                        .<de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Section>emptyList());
+                if (layout.frames.size() != frames) {
+                    refresh();
+                }
             }
             saveLayoutTo(layoutFile);
         }
@@ -4646,11 +4834,22 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             zoomAround(LEGIBLE, zoomAnchor());
             updateZoomReadout();
         }
-        setStatus((fitted ? "Arranged and fitted to the window at "
-                        + CanvasZoom.readout(graph.getView().getScale())
-                        : "Arranged, at " + CanvasZoom.readout(LEGIBLE)
-                                + " so it can be read; Fit shows all of it")
-                + ": " + algorithm.getDisplayName() + ".");
+        setStatus(CanvasZoom.arranged(fitted, fitted ? graph.getView().getScale() : LEGIBLE,
+                algorithm)
+                + inFramesSentence(algorithm == CanvasLayouts.Algorithm.SECTIONS ? 0 : keptInFrames));
+        keptInFrames = 0;
+    }
+
+    /** How many terms the last arrangement left in their frames. */
+    private int keptInFrames;
+
+    /** What Arrange says about the terms it left in frames, so nobody looks for them moved. */
+    static String inFramesSentence(int kept) {
+        if (kept <= 0) {
+            return "";
+        }
+        return kept == 1 ? " The term inside a frame stays where it is."
+                : " The " + kept + " terms inside frames stay where they are.";
     }
 
     /** The smallest zoom Arrange leaves a board at: labels can still be read. */
@@ -5137,12 +5336,25 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         hideWhatFoldedClassesHeld(getOWLModelManager().getActiveOntology());
         boolean gained = includeNewTerms();
         boolean lost = dropGoneTerms();
-        if ((gained || lost) && !arranging && arrangesItself()) {
+        // An import taken back takes its pattern's frame off, and counts as a loss: the sidecar
+        // reload had already dropped its terms, so a self-arranging board saw nothing go (1.135.1).
+        boolean takenAway = importTakenAway;
+        importTakenAway = false;
+        // Only the frames of the patterns whose imports went (1.135.1 review).
+        java.util.Set<String> patternsGone = new java.util.HashSet<String>(patternsTakenAway);
+        patternsTakenAway.clear();
+        boolean unframed = takenAway && unframePatternsNoLongerImported(patternsGone);
+        if ((gained || lost || (takenAway && !layout.onCanvas.isEmpty())) && !arranging
+                && arrangesItself()) {
             rememberBoard("arranging the board");
             arrangeEverything(getOWLModelManager().getActiveOntology(), true);
             return;
         }
         dropEmptyPatternFrames();
+        if (unframed) {
+            // A board arranged by hand keeps the frame gone across a restart.
+            saveLayoutTo(layoutFile);
+        }
 
         Projection projection = OntologyProjection.project(
                 getOWLModelManager().getActiveOntology(),
@@ -5170,9 +5382,9 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         // be, saying something true about something no longer on the board.
         ((CollaborativeGraphComponent) graphComponent).getPins()
                 .keepOnly(graph.tooltips().keySet());
-        // What search matches against, and what it can no longer assume about the ontology.
+        // What search matches against. The ontology's terms for Find are not dropped here: the
+        // change listener drops them when an edit changes them (TermsToFind, 1.135.1 review).
         rendered = projection;
-        ontologyTerms = null;
         autoArrangeIfUnpositioned();
         showAppropriateCard();
         // The content just changed, so what there is to pan over has too.
@@ -5187,6 +5399,11 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             sayOnceIfNotAllRouted();
         }
         applyFocus();
+        // What the Find box says is about the board as now drawn: an import that brought the term
+        // in left it saying "no match" (1.135.1).
+        if (!arranging) {
+            searchAgainQuietly();
+        }
     }
 
     /** Whether this session has said that some lines could not be routed. */
@@ -5325,11 +5542,15 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         staying.addAll(layout.nodes.keySet());
         layout.arrangedByHand = Boolean.FALSE;
         java.util.List<de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Section> sections;
+        // Where the boxes stand before the drawing moves each pattern's terms into its frame: a
+        // line it moved keeps no bend from another arrangement either (1.135.1 review).
+        java.util.Map<String, double[]> before = CanvasLayouts.boxesOf(graph);
         arranging = true;
         movingProgrammatically = true;
         try {
             refresh();
             sections = CanvasLayouts.applySections(graph, staying, false);
+            CanvasLayouts.dropBendsOfLinesMovedSince(graph, before);
         } finally {
             movingProgrammatically = false;
             arranging = false;
@@ -5447,6 +5668,11 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                     : de.fizkarlsruhe.ise.ontoboard.menu.ReleaseAction.projectRootOf(file);
             for (de.fizkarlsruhe.ise.ontoboard.odk.ImportedTerms.Source source
                     : de.fizkarlsruhe.ise.ontoboard.odk.ImportedTerms.of(ontology, root, directory)) {
+                // A term list whose module is not imported now chooses nothing: Edit > Undo
+                // leaves the list on disk so that Redo works (1.135.1).
+                if (source.getOntology() == null) {
+                    continue;
+                }
                 for (de.fizkarlsruhe.ise.ontoboard.odk.ImportedTerms.Term term : source.getTerms()) {
                     (term.getHow() == de.fizkarlsruhe.ise.ontoboard.odk.ImportedTerms.How.BROUGHT_ALONG
                             ? brought : chosen).add(term.getIri().toString());
@@ -5822,6 +6048,15 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
                 getOWLModelManager().getActiveOntology());
         if (!gone.isEmpty()) {
             setStatus(takenBackStatus(gone));
+            importTakenAway = true;
+            patternsTakenAway.addAll(patternsTakenBack(changes,
+                    getOWLModelManager().getActiveOntology()));
+        }
+        java.util.List<String> back = importsBroughtBack(changes,
+                getOWLModelManager().getActiveOntology());
+        if (!back.isEmpty() && boardStatus != null && boardStatus.getText() != null
+                && boardStatus.getText().startsWith("No longer imported")) {
+            setStatus(broughtBackStatus(back));
         }
     }
 
@@ -5862,6 +6097,193 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
     static String takenBackStatus(java.util.List<String> names) {
         return "No longer imported: " + String.join(", ", names) + ". Its terms left the board;"
                 + " its files stay in the project (see Imported terms...).";
+    }
+
+    /**
+     * The imports of {@code active} these changes bring back, by name - Edit &gt; Redo of an
+     * import, as a rule. An import removed and added in the same step has not come back.
+     */
+    static java.util.List<String> importsBroughtBack(
+            java.util.List<? extends org.semanticweb.owlapi.model.OWLOntologyChange> changes,
+            OWLOntology active) {
+        java.util.Set<String> added = new java.util.LinkedHashSet<String>();
+        java.util.Set<String> removed = new java.util.HashSet<String>();
+        for (org.semanticweb.owlapi.model.OWLOntologyChange change : changes) {
+            if (change instanceof org.semanticweb.owlapi.model.AddImport
+                    && change.getOntology().equals(active)) {
+                added.add(((org.semanticweb.owlapi.model.AddImport) change)
+                        .getImportDeclaration().getIRI().toString());
+            } else if (change instanceof org.semanticweb.owlapi.model.RemoveImport
+                    && change.getOntology().equals(active)) {
+                removed.add(((org.semanticweb.owlapi.model.RemoveImport) change)
+                        .getImportDeclaration().getIRI().toString());
+            }
+        }
+        added.removeAll(removed);
+        java.util.List<String> back = new java.util.ArrayList<String>();
+        for (String iri : added) {
+            back.add(takenBackName(iri));
+        }
+        return back;
+    }
+
+    /**
+     * What the line says when an import taken back comes back (1.135.1, Windows study rehearsal):
+     * it went on saying "No longer imported: iao" after Edit &gt; Redo had brought it back.
+     */
+    static String broughtBackStatus(java.util.List<String> names) {
+        return "Imported again: " + String.join(", ", names) + ". File > Save keeps it.";
+    }
+
+    /** Set when an import was taken back; the next drawing takes its pattern's frame off. */
+    private boolean importTakenAway;
+
+    /** The patterns whose imports were taken back since the last drawing, by id. */
+    private final java.util.Set<String> patternsTakenAway = new java.util.LinkedHashSet<String>();
+
+    /**
+     * The frames of patterns no longer imported, taken off the board with their shared notes and -
+     * on a board that shows everything - the terms only they put there (1.135.1, Windows study
+     * rehearsal). After Edit &gt; Undo of a pattern import, its frame stayed until the next import
+     * arranged the board again, and three terms it had put there stayed to the end of the study.
+     *
+     * @param inUse the ids and labels of the patterns the ontology imports now
+     * @param shown what a board showing everything lists now; null for a board of hand-picked terms,
+     *     which keeps what somebody put on it
+     * @param termsOf a pattern's own terms, by its id
+     * @return the labels of the frames taken off
+     */
+    static java.util.List<String> unframePatternsNotInUse(CanvasLayout board,
+            java.util.Set<String> inUse, java.util.Set<String> shown,
+            java.util.function.Function<String, java.util.Collection<String>> termsOf) {
+        java.util.List<String> gone = new java.util.ArrayList<String>();
+        java.util.Iterator<CanvasLayout.FrameLayout> frames = board.frames.iterator();
+        while (frames.hasNext()) {
+            final CanvasLayout.FrameLayout frame = frames.next();
+            if (frame == null || frame.pattern == null || inUse.contains(frame.pattern)
+                    || (frame.label != null && inUse.contains(frame.label))) {
+                continue;
+            }
+            if (shown != null) {
+                java.util.Set<String> brought =
+                        new java.util.LinkedHashSet<String>(termsOf.apply(frame.pattern));
+                for (java.util.Map.Entry<String, CanvasLayout.NodeLayout> node
+                        : board.nodes.entrySet()) {
+                    CanvasLayout.NodeLayout at = node.getValue();
+                    if (at != null && contains(frame, at.x + at.w / 2, at.y + at.h / 2)) {
+                        brought.add(node.getKey());
+                    }
+                }
+                for (String iri : brought) {
+                    if (shown.contains(iri) || CanvasLayout.isDerived(iri)
+                            || SchemaGraph.isAnnotationId(iri)) {
+                        continue;
+                    }
+                    board.onCanvas.remove(iri);
+                    board.nodes.remove(iri);
+                }
+            }
+            frames.remove();
+            board.notes.removeIf(note -> note != null && note.id != null
+                    && note.id.startsWith(SHARED_NOTE_PREFIX)
+                    && contains(frame, note.x + note.w / 2, note.y + note.h / 2));
+            gone.add(frame.label == null ? frame.pattern : frame.label);
+        }
+        return gone;
+    }
+
+    /** {@link #unframePatternsNotInUse} on this board, for the ontology open now. */
+    private boolean unframePatternsNoLongerImported(java.util.Set<String> takenBack) {
+        boolean anyPatternFrame = false;
+        for (CanvasLayout.FrameLayout frame : layout.frames) {
+            anyPatternFrame |= frame != null && frame.pattern != null;
+        }
+        OWLOntology active = getOWLModelManager().getActiveOntology();
+        if (!anyPatternFrame || active == null) {
+            return false;
+        }
+        java.util.Set<String> shown = Boolean.TRUE.equals(layout.showsEverything)
+                ? new java.util.HashSet<String>(OntologyProjection.termsToShow(active,
+                        layout.hidden, broughtAlongBy(active)))
+                : null;
+        return !unframePatternsTakenBack(layout, active, takenBack, shown, id -> {
+            de.fizkarlsruhe.ise.ontoboard.pattern.DesignPattern pattern =
+                    de.fizkarlsruhe.ise.ontoboard.pattern.PatternLibrary.find(id);
+            return pattern == null ? Collections.<String>emptyList() : pattern.getTermIris();
+        }).isEmpty();
+    }
+
+    /**
+     * {@link #unframePatternsNotInUse} after imports were taken back: only the frames of the
+     * patterns whose imports they were (1.135.1 review). As soon as the ontology imports one
+     * pattern, the ones it uses are taken to be the imported ones only - so Edit &gt; Undo of an IAO
+     * import took off the frame of a pattern added with "Copy the axioms straight into this
+     * ontology", which nothing had taken back.
+     *
+     * @param takenBack the ids of the library patterns whose imports were taken back
+     * @return the labels of the frames taken off
+     */
+    static java.util.List<String> unframePatternsTakenBack(CanvasLayout board, OWLOntology active,
+            java.util.Set<String> takenBack, java.util.Set<String> shown,
+            java.util.function.Function<String, java.util.Collection<String>> termsOf) {
+        if (takenBack == null || takenBack.isEmpty()) {
+            return java.util.Collections.emptyList();
+        }
+        java.util.Set<String> inUse = new java.util.HashSet<String>();
+        for (de.fizkarlsruhe.ise.ontoboard.pattern.ImportedPatterns.Found found
+                : de.fizkarlsruhe.ise.ontoboard.pattern.ImportedPatterns.in(active)) {
+            inUse.add(found.getPattern().getId());
+            inUse.add(found.getLabel());
+        }
+        // A pattern whose import was not taken back is as much in use as it was.
+        for (CanvasLayout.FrameLayout frame : board.frames) {
+            if (frame != null && frame.pattern != null && !takenBack.contains(frame.pattern)) {
+                inUse.add(frame.pattern);
+            }
+        }
+        return unframePatternsNotInUse(board, inUse, shown, termsOf);
+    }
+
+    /**
+     * The ids of the library patterns whose imports these changes take back: known by the module,
+     * as {@code ImportedPatterns} knew it - its term list's {@code # Pattern:} line, or its name -
+     * and by the name alone when the module is no longer loaded. Agent Role's module is
+     * {@code agentrole_import.owl}, and "agentrole" is another pattern. An import removed and added
+     * again in the same step - a module rebuilt - has not been taken back.
+     */
+    static java.util.Set<String> patternsTakenBack(
+            java.util.List<? extends org.semanticweb.owlapi.model.OWLOntologyChange> changes,
+            OWLOntology active) {
+        java.util.Map<IRI, org.semanticweb.owlapi.model.OWLImportsDeclaration> removed =
+                new java.util.LinkedHashMap<IRI, org.semanticweb.owlapi.model.OWLImportsDeclaration>();
+        java.util.Set<IRI> added = new java.util.HashSet<IRI>();
+        for (org.semanticweb.owlapi.model.OWLOntologyChange change : changes) {
+            if (change instanceof org.semanticweb.owlapi.model.RemoveImport
+                    && change.getOntology().equals(active)) {
+                org.semanticweb.owlapi.model.OWLImportsDeclaration declaration =
+                        ((org.semanticweb.owlapi.model.RemoveImport) change).getImportDeclaration();
+                removed.put(declaration.getIRI(), declaration);
+            } else if (change instanceof org.semanticweb.owlapi.model.AddImport
+                    && change.getOntology().equals(active)) {
+                added.add(((org.semanticweb.owlapi.model.AddImport) change).getImportDeclaration()
+                        .getIRI());
+            }
+        }
+        removed.keySet().removeAll(added);
+        java.util.Set<String> ids = new java.util.LinkedHashSet<String>();
+        for (org.semanticweb.owlapi.model.OWLImportsDeclaration declaration : removed.values()) {
+            OWLOntology module = active.getOWLOntologyManager().getImportedOntology(declaration);
+            de.fizkarlsruhe.ise.ontoboard.pattern.DesignPattern pattern = module == null ? null
+                    : de.fizkarlsruhe.ise.ontoboard.pattern.ImportedPatterns.patternOf(module);
+            if (pattern == null) {
+                pattern = de.fizkarlsruhe.ise.ontoboard.pattern.PatternLibrary.find(
+                        takenBackName(declaration.getIRI().toString()));
+            }
+            if (pattern != null) {
+                ids.add(pattern.getId());
+            }
+        }
+        return ids;
     }
 
     /**
@@ -5979,6 +6401,10 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             if (box != null) {
                 note.x = box[0];
                 note.y = box[1];
+                // Its size too (1.135.1): a note resized by its handles was drawn at its old size
+                // again at the next refresh, saved at it, and put back at it by Redo.
+                note.w = box[2];
+                note.h = box[3];
             }
         }
         for (CanvasLayout.FrameLayout frame : layout.frames) {
@@ -6563,8 +6989,10 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         String targetLabel = DisplayLabels.forEntity(ontology,
                 factory.getOWLClass(IRI.create(targetIri)));
 
-        RelationDialog.Choice choice =
-                RelationDialog.ask(this, ontology, sourceLabel, targetLabel);
+        // The classes, not their labels: the dialog checks the relation against the property's
+        // domain and range before OK (1.135.1).
+        RelationDialog.Choice choice = RelationDialog.ask(this, ontology,
+                factory.getOWLClass(IRI.create(sourceIri)), factory.getOWLClass(IRI.create(targetIri)));
         if (choice == null) {
             return;
         }
@@ -6622,6 +7050,74 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         // therefore appears only because the axiom exists - if the change were rejected,
         // no edge would be drawn.
         getOWLModelManager().applyChanges(changes);
+        showTheRelationJustDrawn(sourceIri, targetIri, sourceLabel + " to " + targetLabel + " by "
+                + DisplayLabels.forEntity(ontology, property));
+    }
+
+    /**
+     * The new arrow and both its boxes in view, as large as the window allows and never past 100%
+     * (1.135.1, Windows study rehearsal). A tester relating egg boiling to raw egg saw nothing
+     * happen: raw egg stood 1,160 px away, off the window, and the arrow with it. Only the view
+     * moves; when both ends are already on screen at a readable zoom, nothing does.
+     */
+    private void showTheRelationJustDrawn(String sourceIri, String targetIri, String named) {
+        if (!isShowing() || graphComponent.getViewport() == null) {
+            return;
+        }
+        // The change listener only scheduled one; the arrow has to be on the board to be shown.
+        refresh();
+        Object[] cells = de.fizkarlsruhe.ise.ontoboard.canvas.RelationInView.cellsOf(graph,
+                sourceIri, targetIri);
+        if (cells.length == 0) {
+            return;
+        }
+        com.mxgraph.util.mxRectangle box = graph.getView().getBoundingBox(cells);
+        if (box == null) {
+            return;
+        }
+        java.awt.Rectangle visible = graphComponent.getViewport().getViewRect();
+        double scale = graph.getView().getScale() <= 0 ? 1 : graph.getView().getScale();
+        double target = de.fizkarlsruhe.ise.ontoboard.canvas.RelationInView.scaleToShow(box.getWidth() / scale,
+                box.getHeight() / scale, visible.width, visible.height, scale,
+                visible.contains(box.getRectangle()));
+        if (!Double.isNaN(target)) {
+            centreOn(cells, target);
+        }
+        setStatus(relatedStatus(named, target));
+    }
+
+    /**
+     * What Relate says: "Related egg boiling to raw egg by has specified input: both ends in view at
+     * 80%. File > Save keeps it." - without the zoom when the view did not move. Without the arrow's
+     * symbol, which Segoe UI drew as a box; and in words saidSaved() knows. Not a line a zoom
+     * rewrites (1.135.1 review): see CanvasZoom.afterZoom.
+     */
+    static String relatedStatus(String named, double target) {
+        return "Related " + named + (Double.isNaN(target) ? "."
+                : ": both ends in view at " + CanvasZoom.readout(target) + ".")
+                + " File > Save keeps it.";
+    }
+
+    /** These cells in the middle of the window at this zoom. */
+    private void centreOn(final Object[] cells, double target) {
+        if (target != graph.getView().getScale()) {
+            graphComponent.zoomTo(target, false);
+            giveTheBoardRoomToPan(false);
+        }
+        // After zoomTo's own deferred scroll-bar upkeep, as zoomAround does.
+        javax.swing.SwingUtilities.invokeLater(() -> {
+            com.mxgraph.util.mxRectangle box = graph.getView().getBoundingBox(cells);
+            javax.swing.JViewport port = graphComponent.getViewport();
+            if (box == null || port == null) {
+                return;
+            }
+            java.awt.Dimension board = graphComponent.getGraphControl().getPreferredSize();
+            int x = (int) Math.round(box.getCenterX() - port.getWidth() / 2.0);
+            int y = (int) Math.round(box.getCenterY() - port.getHeight() / 2.0);
+            x = Math.max(0, Math.min(x, Math.max(0, board.width - port.getWidth())));
+            y = Math.max(0, Math.min(y, Math.max(0, board.height - port.getHeight())));
+            port.setViewPosition(new java.awt.Point(x, y));
+        });
     }
 
     /**

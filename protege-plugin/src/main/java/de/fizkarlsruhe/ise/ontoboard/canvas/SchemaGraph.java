@@ -6,6 +6,7 @@ import com.mxgraph.util.mxConstants;
 import com.mxgraph.util.mxUtils;
 import com.mxgraph.view.mxGraph;
 import de.fizkarlsruhe.ise.ontoboard.layout.CanvasLayout;
+import de.fizkarlsruhe.ise.ontoboard.layout.EdgeRouter;
 import de.fizkarlsruhe.ise.ontoboard.model.CanvasEdge;
 import de.fizkarlsruhe.ise.ontoboard.model.CanvasNode;
 import de.fizkarlsruhe.ise.ontoboard.model.Projection;
@@ -108,6 +109,17 @@ public class SchemaGraph extends mxGraph {
         setCellsEditable(true);
         setDropEnabled(false);
         setSplitEnabled(false);
+        // Counted so that a line a selection shows is not drawn along a route worked out for boxes
+        // that stood elsewhere: see routeOf.
+        getModel().addListener(com.mxgraph.util.mxEvent.EXECUTE, (sender, event) -> {
+            Object change = event.getProperty("change");
+            if (change instanceof mxGraphModel.mxGeometryChange && getModel().isVertex(
+                    ((mxGraphModel.mxGeometryChange) change).getCell())
+                    || change instanceof mxGraphModel.mxChildChange && getModel().isVertex(
+                            ((mxGraphModel.mxChildChange) change).getChild())) {
+                boxChanges++;
+            }
+        });
     }
 
     /**
@@ -482,6 +494,53 @@ public class SchemaGraph extends mxGraph {
      */
     private long cutShortAfter = Long.MIN_VALUE;
 
+    /** The route each line of the last routing was given, its label's place with it, by id. */
+    private final Map<String, EdgeRouter.Route> routedLines =
+            new HashMap<String, EdgeRouter.Route>();
+
+    /** Where the boxes stood when the board was last routed, as {@link #boxesOnTheBoard} says it. */
+    private String routedBoxes = "";
+
+    /**
+     * The route of each line a selection shows, its label's place with it, by id, and where its two
+     * ends stood: kept while the line stays shown and the board's own lines stay as they were
+     * routed, so that a line on the screen does not move when the selection changes - see
+     * {@link #routeShown}.
+     */
+    private final Map<String, EdgeRouter.Route> shownLines = new HashMap<String, EdgeRouter.Route>();
+    private final Map<String, double[]> shownEnds = new HashMap<String, double[]>();
+
+    /** Lines a selection shows that are not routed yet: not drawn until they are, a moment later. */
+    private final Set<String> waiting = new java.util.LinkedHashSet<String>();
+
+    /** Lines a selection shows that have no way round the boxes: drawn by the plain connector. */
+    private final Set<String> noWay = new HashSet<String>();
+
+    /** How many times the board's own lines have been routed. */
+    private int routings;
+
+    /** Which of those routings the shown lines were routed among, and where the boxes stood then. */
+    private int shownAmong = -1;
+    private String shownBoxes = "";
+
+    /** How many times a box has moved, changed size, come or gone; see {@link #boxesNow}. */
+    private long boxChanges;
+    private long boxesAskedAt = -1;
+    private String boxesAsked = "";
+
+    /** What a selection shows that one moment did not route, routed a slice at a time. */
+    private javax.swing.Timer later;
+
+    /**
+     * How long the routing a click starts may hold up the board, in nanoseconds; what is left is
+     * routed in slices of {@link #SLICE_TIME}, {@link #BETWEEN_SLICES} ms apart, so that whatever
+     * a person does meanwhile is answered first. A review of 1.135.1 measured 2 seconds for a click
+     * on a class 19 lines met at, with the board held up throughout.
+     */
+    static final long CLICK_TIME = 200_000_000L;
+    static final long SLICE_TIME = 150_000_000L;
+    private static final int BETWEEN_SLICES = 25;
+
     /**
      * The route of this line while it still describes where its ends are, or null - a box has moved
      * and the line is drawn by the plain connector until {@link #routeEdges} has run again.
@@ -489,10 +548,20 @@ public class SchemaGraph extends mxGraph {
     java.util.List<double[]> routeOf(Object edge) {
         String id = getIdForCell(edge);
         java.util.List<double[]> route = id == null ? null : routes.get(id);
+        double[] ends = route == null ? null : routedEnds.get(id);
+        if (route == null && id != null && shownLines.containsKey(id)) {
+            // A line a selection shows, routed among the others when it was shown - while every box
+            // stands where it stood then: a box resized or moved since may stand in its way, and its
+            // own two ends are not all it was routed round (1.135.1 review).
+            if (!boxesNow().equals(shownBoxes)) {
+                return null;
+            }
+            route = shownLines.get(id).bends;
+            ends = shownEnds.get(id);
+        }
         if (route == null) {
             return null;
         }
-        double[] ends = routedEnds.get(id);
         com.mxgraph.model.mxGeometry from = getModel().getGeometry(getModel().getTerminal(edge, true));
         com.mxgraph.model.mxGeometry to = getModel().getGeometry(getModel().getTerminal(edge, false));
         if (from == null || to == null || ends == null || ends[0] != from.getX()
@@ -533,37 +602,23 @@ public class SchemaGraph extends mxGraph {
                 new java.util.ArrayList<de.fizkarlsruhe.ise.ontoboard.layout.EdgeRouter.Box>();
         java.util.List<de.fizkarlsruhe.ise.ontoboard.layout.EdgeRouter.Link> links =
                 new java.util.ArrayList<de.fizkarlsruhe.ise.ontoboard.layout.EdgeRouter.Link>();
-        StringBuilder signature = new StringBuilder();
+        String placed = boxesOnTheBoard(boxes, frames);
+        StringBuilder signature = new StringBuilder(placed);
         Object parent = getDefaultParent();
-        java.awt.FontMetrics label = mxUtils.getFontMetrics(mxUtils.getFont(
-                getStylesheet().getCellStyle(SchemaStyles.OBJECT_PROPERTY,
-                        getStylesheet().getDefaultEdgeStyle())));
-        for (int i = 0; i < getModel().getChildCount(parent); i++) {
-            Object cell = getModel().getChildAt(parent, i);
-            String id = getIdForCell(cell);
-            com.mxgraph.model.mxGeometry at = getModel().getGeometry(cell);
-            if (id == null || !getModel().isVertex(cell) || at == null) {
-                continue;
-            }
-            de.fizkarlsruhe.ise.ontoboard.layout.EdgeRouter.Box box =
-                    new de.fizkarlsruhe.ise.ontoboard.layout.EdgeRouter.Box(id, at.getX(), at.getY(),
-                            at.getWidth(), at.getHeight());
-            (SchemaStyles.FRAME.equals(baseStyleOf(cell)) ? frames : boxes).add(box);
-            signature.append(id).append(at.getX()).append(',').append(at.getY()).append(',')
-                    .append(at.getWidth()).append(',').append(at.getHeight()).append(';');
-        }
+        java.awt.FontMetrics label = labelMetrics();
         for (int i = 0; i < getModel().getChildCount(parent); i++) {
             Object cell = getModel().getChildAt(parent, i);
             String id = getIdForCell(cell);
             Object from = getModel().getTerminal(cell, true);
             Object to = getModel().getTerminal(cell, false);
+            // Not a line that waits for a selection, whether one is made or not: a selection that
+            // routed the board again moved the lines already drawn. See routeShown (1.135.1).
             if (id == null || !getModel().isEdge(cell) || from == null || to == null
-                    || isHiddenUntilInFocus(cell)) {
+                    || waitsForFocus(cell)) {
                 continue;
             }
             String kind = baseStyleOf(cell);
-            boolean hierarchy = SchemaStyles.SUBCLASS.equals(kind)
-                    || SchemaStyles.SUB_PROPERTY.equals(kind) || SchemaStyles.TYPE.equals(kind);
+            boolean hierarchy = isHierarchyLine(kind);
             if (dense && !hierarchy) {
                 continue;
             }
@@ -572,16 +627,7 @@ public class SchemaGraph extends mxGraph {
             } else {
                 betweenFrames.remove(id);
             }
-            String[] lines = convertValueToString(cell).split("\n");
-            double wide = 0;
-            for (String line : lines) {
-                wide = Math.max(wide, label.stringWidth(line));
-            }
-            // The chip as JGraphX draws it, measured: the text, its 2px spacing and the hairline
-            // round it - 6px wider and 5.3px taller than the text. The height was 1.3px short.
-            double high = lines.length * label.getHeight();
-            links.add(new de.fizkarlsruhe.ise.ontoboard.layout.EdgeRouter.Link(id, getIdForCell(from),
-                    getIdForCell(to), hierarchy, wide <= 0 ? 0 : wide + 6, high + 6));
+            links.add(lineOf(cell, id, hierarchy, label));
             signature.append(id).append('|');
         }
         String now = signature.toString();
@@ -591,11 +637,18 @@ public class SchemaGraph extends mxGraph {
         // call's budget came out a few microseconds longer than the last one's.
         if (now.equals(routedFor) && (cutShortAfter == Long.MIN_VALUE
                 || budget <= cutShortAfter + CLEARLY_MORE)) {
+            if (routeShown(Math.min(deadline, System.nanoTime() + firstLook()))) {
+                refresh();
+            }
+            routeTheRest();
             return;
         }
         routedFor = now;
+        routedBoxes = placed;
+        routings++;
         routes.clear();
         routedEnds.clear();
+        routedLines.clear();
         linesToRoute = links.size();
         Map<String, de.fizkarlsruhe.ise.ontoboard.layout.EdgeRouter.Route> found =
                 de.fizkarlsruhe.ise.ontoboard.layout.EdgeRouter.route(boxes, frames, links, deadline);
@@ -612,6 +665,7 @@ public class SchemaGraph extends mxGraph {
             com.mxgraph.model.mxGeometry to = getModel().getGeometry(
                     getModel().getTerminal(edge, false));
             routes.put(routed.getKey(), routed.getValue().bends);
+            routedLines.put(routed.getKey(), routed.getValue());
             routedEnds.put(routed.getKey(), new double[] {from.getX(), from.getY(), from.getWidth(),
                 from.getHeight(), to.getX(), to.getY(), to.getWidth(), to.getHeight()});
             // Where on the line its label sits: -1 at the source to 1 at the target. Directly on
@@ -623,7 +677,307 @@ public class SchemaGraph extends mxGraph {
                 geometry.setOffset(null);
             }
         }
+        routeShown(Math.min(deadline, System.nanoTime() + firstLook()));
+        routeTheRest();
         refresh();
+    }
+
+    /**
+     * Routes the lines a selection shows - a property's domain and range, a class's disjointness,
+     * a rule's parts - among the lines already on the board, which keep their routes and their
+     * labels' places: see {@link EdgeRouter#routeAmong}. Returns whether a route changed.
+     *
+     * <p>Found on the egg-boiling study board (1.135.1): these lines were left out of the routing,
+     * and selecting a term did not route again, so a line it showed had no route of its own - the
+     * dashed "domain" of has specified input ran from the property section straight up through a
+     * frame and sideways through three boxes. Routing the board again with them would have moved
+     * the lines already drawn on every click, and a board whose arrows jump when a term is
+     * selected reads worse than one whose new lines cut across it.
+     *
+     * <p>Only on a board routed as it stands: while an arrangement moves the boxes there is
+     * nothing to route among, and {@link #routeEdges} routes these at its end. Not on a board of
+     * more than {@link #DENSE} lines, which routes the hierarchy only: there these keep the plain
+     * connector, as its relations do.
+     *
+     * <p><b>No jumping, for these lines too</b> (1.135.1 review). Every line a selection showed
+     * was routed again on every change of it, shortest first, so a line still on the screen gave
+     * its lane to a shorter one shown now: click "has specified output" on the study board, then
+     * "completely executed planned process", its domain's other end, and the line was drawn
+     * elsewhere, its label 850 px away. Now a line keeps its route and its label's place for as
+     * long as it stays shown and the board's own lines stay as they are, and only the lines a
+     * change shows anew are routed, round both. What is no longer shown gives its route up.
+     *
+     * <p>Routes what is waiting until {@code deadline}, the first line always, and leaves the rest
+     * waiting: see {@link #routeTheRest}. A waiting line is not drawn.
+     */
+    private boolean routeShown(long deadline) {
+        java.util.List<EdgeRouter.Box> boxes = new java.util.ArrayList<EdgeRouter.Box>();
+        java.util.List<EdgeRouter.Box> frames = new java.util.ArrayList<EdgeRouter.Box>();
+        if (focused.isEmpty() || dense || !boxesOnTheBoard(boxes, frames).equals(routedBoxes)) {
+            boolean had = !shownLines.isEmpty() || !waiting.isEmpty() || !noWay.isEmpty();
+            forgetShown();
+            return had;
+        }
+        boolean changed = false;
+        if (shownAmong != routings) {
+            // The board's own lines routed again: what is shown is routed again among them.
+            changed = !shownLines.isEmpty() || !noWay.isEmpty();
+            forgetShown();
+            shownAmong = routings;
+            shownBoxes = routedBoxes;
+        }
+        java.awt.FontMetrics label = labelMetrics();
+        java.util.List<EdgeRouter.Link> fixed = new java.util.ArrayList<EdgeRouter.Link>();
+        Map<String, EdgeRouter.Route> routed = new HashMap<String, EdgeRouter.Route>();
+        Map<String, Object> shown = new java.util.LinkedHashMap<String, Object>();
+        Object parent = getDefaultParent();
+        for (int i = 0; i < getModel().getChildCount(parent); i++) {
+            Object cell = getModel().getChildAt(parent, i);
+            String id = getIdForCell(cell);
+            if (id == null || !getModel().isEdge(cell)
+                    || getModel().getTerminal(cell, true) == null
+                    || getModel().getTerminal(cell, false) == null) {
+                continue;
+            }
+            if (waitsForFocus(cell)) {
+                if (touchesFocus(cell)) {
+                    shown.put(id, cell);
+                }
+            } else if (routedLines.containsKey(id) && routeOf(cell) != null) {
+                fixed.add(lineOf(cell, id, isHierarchyLine(baseStyleOf(cell)), label));
+                routed.put(id, routedLines.get(id));
+            }
+        }
+        changed |= shownLines.keySet().retainAll(shown.keySet());
+        shownEnds.keySet().retainAll(shown.keySet());
+        changed |= noWay.retainAll(shown.keySet());
+        waiting.retainAll(shown.keySet());
+        for (String id : shown.keySet()) {
+            if (!shownLines.containsKey(id) && !noWay.contains(id) && waiting.add(id)) {
+                changed = true;
+            }
+        }
+        if (waiting.isEmpty() || System.nanoTime() >= deadline) {
+            return changed;
+        }
+        // The lines shown already stay where they are drawn: the new ones go round them as round
+        // the board's own.
+        for (Map.Entry<String, EdgeRouter.Route> one : shownLines.entrySet()) {
+            fixed.add(lineOf(shown.get(one.getKey()), one.getKey(), false, label));
+            routed.put(one.getKey(), one.getValue());
+        }
+        java.util.List<EdgeRouter.Link> links = new java.util.ArrayList<EdgeRouter.Link>();
+        for (String id : waiting) {
+            links.add(lineOf(shown.get(id), id, false, label));
+        }
+        Set<String> failed = new HashSet<String>();
+        Map<String, EdgeRouter.Route> found = EdgeRouter.routeAmong(boxes, frames, framesNames(),
+                fixed, routed, links, deadline, failed);
+        for (Map.Entry<String, EdgeRouter.Route> one : found.entrySet()) {
+            Object edge = shown.get(one.getKey());
+            if (edge == null || !waiting.remove(one.getKey())) {
+                continue;
+            }
+            com.mxgraph.model.mxGeometry from = getModel().getGeometry(
+                    getModel().getTerminal(edge, true));
+            com.mxgraph.model.mxGeometry to = getModel().getGeometry(
+                    getModel().getTerminal(edge, false));
+            shownLines.put(one.getKey(), one.getValue());
+            shownEnds.put(one.getKey(), new double[] {from.getX(), from.getY(), from.getWidth(),
+                from.getHeight(), to.getX(), to.getY(), to.getWidth(), to.getHeight()});
+            labelAt(edge, 2 * one.getValue().labelAt - 1);
+        }
+        if (found.isEmpty() && failed.isEmpty()) {
+            // Not a call that routes the first line it is given, which every call is: a line
+            // waiting for ever would never be drawn.
+            failed.addAll(waiting);
+        }
+        for (String id : failed) {
+            if (waiting.remove(id)) {
+                noWay.add(id);
+                labelAt(shown.get(id), 0);
+            }
+        }
+        return true;
+    }
+
+    /** Where on the line its label sits, -1 at the source to 1 at the target. */
+    private void labelAt(Object edge, double at) {
+        // Directly on the geometry and not through the model, which would be a change to undo.
+        com.mxgraph.model.mxGeometry geometry = edge == null ? null : getModel().getGeometry(edge);
+        if (geometry != null) {
+            geometry.setX(at);
+            geometry.setY(0);
+            geometry.setOffset(null);
+        }
+    }
+
+    /** The lines a selection shows given up: none routed, none waiting. */
+    private void forgetShown() {
+        shownLines.clear();
+        shownEnds.clear();
+        waiting.clear();
+        noWay.clear();
+        if (later != null) {
+            later.stop();
+        }
+    }
+
+    /**
+     * How long the routing of what a selection shows may take before the board is drawn: a moment
+     * on the Swing thread, where somebody is waiting for the board; elsewhere, all the time a
+     * routing has.
+     */
+    private static long firstLook() {
+        return javax.swing.SwingUtilities.isEventDispatchThread() ? CLICK_TIME : EdgeRouter.MOST_TIME;
+    }
+
+    /**
+     * Routes what a selection shows and one moment left waiting: on the Swing thread a slice at a
+     * time, each drawn as it is routed, whatever else is to be done going first in between; off
+     * it, at once.
+     */
+    private void routeTheRest() {
+        if (waiting.isEmpty()) {
+            if (later != null) {
+                later.stop();
+            }
+            return;
+        }
+        if (!javax.swing.SwingUtilities.isEventDispatchThread()) {
+            // Each call routes or gives up the first line waiting, so this ends.
+            for (int tries = waiting.size(); tries > 0 && !waiting.isEmpty(); tries--) {
+                routeShown(System.nanoTime() + EdgeRouter.MOST_TIME);
+            }
+            return;
+        }
+        if (later == null) {
+            later = new javax.swing.Timer(BETWEEN_SLICES, event -> {
+                if (routeShown(System.nanoTime() + SLICE_TIME)) {
+                    // The lines that came, drawn: those on the board keep what they have.
+                    getView().validate();
+                    repaint();
+                }
+                routeTheRest();
+            });
+            later.setRepeats(false);
+        }
+        later.restart();
+    }
+
+    /**
+     * Routes every line a selection shows that still waits for its slice, as the slices would but
+     * at once and on the calling thread, and draws them: for a caller that needs every shown line
+     * now, as an export does. A picture exported in the moment after a click on a class many lines
+     * meet had only the lines that moment routed - 5 of the 19 a click showed on a board of 150
+     * boxes (1.135.1 review). Whatever a selection shows after this is routed in slices as before.
+     */
+    public void routeWaitingLinesNow() {
+        if (waiting.isEmpty()) {
+            return;
+        }
+        // Each call routes or gives up the first line waiting, so this ends.
+        for (int tries = waiting.size(); tries > 0 && !waiting.isEmpty(); tries--) {
+            routeShown(System.nanoTime() + EdgeRouter.MOST_TIME);
+        }
+        // With nothing left, the slices' timer stops.
+        routeTheRest();
+        // The lines that came, drawn: those on the board keep what they have.
+        getView().validate();
+        repaint();
+    }
+
+    /**
+     * Where each frame's name is written, as the board draws it: what the lines a selection shows
+     * keep off.
+     */
+    private java.util.List<EdgeRouter.Box> framesNames() {
+        java.util.List<EdgeRouter.Box> names = new java.util.ArrayList<EdgeRouter.Box>();
+        Object parent = getDefaultParent();
+        for (int i = 0; i < getModel().getChildCount(parent); i++) {
+            Object cell = getModel().getChildAt(parent, i);
+            com.mxgraph.model.mxGeometry at = getModel().getGeometry(cell);
+            if (at == null || !getModel().isVertex(cell)
+                    || !SchemaStyles.FRAME.equals(baseStyleOf(cell))) {
+                continue;
+            }
+            String name = getLabel(cell);
+            if (name == null || name.trim().isEmpty()) {
+                continue;
+            }
+            com.mxgraph.util.mxRectangle text = mxUtils.getLabelPaintBounds(name,
+                    getCellStyle(cell), false, new com.mxgraph.util.mxPoint(),
+                    new com.mxgraph.util.mxRectangle(at.getX(), at.getY(), at.getWidth(),
+                            at.getHeight()), 1);
+            names.add(new EdgeRouter.Box(getIdForCell(cell), text.getX(), text.getY(),
+                    text.getWidth(), text.getHeight()));
+        }
+        return names;
+    }
+
+    /**
+     * Where the boxes stand, as {@link #boxesOnTheBoard} says it: worked out again only after a
+     * box has moved, changed size, come or gone.
+     */
+    private String boxesNow() {
+        if (boxesAskedAt != boxChanges) {
+            boxesAsked = boxesOnTheBoard(new java.util.ArrayList<EdgeRouter.Box>(),
+                    new java.util.ArrayList<EdgeRouter.Box>());
+            boxesAskedAt = boxChanges;
+        }
+        return boxesAsked;
+    }
+
+    /**
+     * Every box and frame on the board, as the router takes them, into {@code boxes} and
+     * {@code frames}; returns what they are and where they stand, as text.
+     */
+    private String boxesOnTheBoard(java.util.List<EdgeRouter.Box> boxes,
+            java.util.List<EdgeRouter.Box> frames) {
+        StringBuilder signature = new StringBuilder();
+        Object parent = getDefaultParent();
+        for (int i = 0; i < getModel().getChildCount(parent); i++) {
+            Object cell = getModel().getChildAt(parent, i);
+            String id = getIdForCell(cell);
+            com.mxgraph.model.mxGeometry at = getModel().getGeometry(cell);
+            if (id == null || !getModel().isVertex(cell) || at == null) {
+                continue;
+            }
+            EdgeRouter.Box box = new EdgeRouter.Box(id, at.getX(), at.getY(), at.getWidth(),
+                    at.getHeight());
+            (SchemaStyles.FRAME.equals(baseStyleOf(cell)) ? frames : boxes).add(box);
+            signature.append(id).append(at.getX()).append(',').append(at.getY()).append(',')
+                    .append(at.getWidth()).append(',').append(at.getHeight()).append(';');
+        }
+        return signature.toString();
+    }
+
+    /** How an arrow's label is measured: in the font an arrow's label is drawn in. */
+    private java.awt.FontMetrics labelMetrics() {
+        return mxUtils.getFontMetrics(mxUtils.getFont(getStylesheet().getCellStyle(
+                SchemaStyles.OBJECT_PROPERTY, getStylesheet().getDefaultEdgeStyle())));
+    }
+
+    /** A line as the router takes it: its two ends, whether it is the hierarchy, its label's size. */
+    private EdgeRouter.Link lineOf(Object cell, String id, boolean hierarchy,
+            java.awt.FontMetrics label) {
+        String[] lines = convertValueToString(cell).split("\n");
+        double wide = 0;
+        for (String line : lines) {
+            wide = Math.max(wide, label.stringWidth(line));
+        }
+        // The chip as JGraphX draws it, measured: the text, its 2px spacing and the hairline
+        // round it - 6px wider and 5.3px taller than the text. The height was 1.3px short.
+        double high = lines.length * label.getHeight();
+        return new EdgeRouter.Link(id, getIdForCell(getModel().getTerminal(cell, true)),
+                getIdForCell(getModel().getTerminal(cell, false)), hierarchy,
+                wide <= 0 ? 0 : wide + 6, high + 6);
+    }
+
+    /** Whether a line of this kind is the hierarchy: a subclass, sub-property or type line. */
+    private static boolean isHierarchyLine(String kind) {
+        return SchemaStyles.SUBCLASS.equals(kind) || SchemaStyles.SUB_PROPERTY.equals(kind)
+                || SchemaStyles.TYPE.equals(kind);
     }
 
     private double[] at(Object box) {
@@ -699,6 +1053,7 @@ public class SchemaGraph extends mxGraph {
             // reloaded anyway, after every drawing - 180ms each time on a board of 660 terms.
             return;
         }
+        Set<String> before = new HashSet<String>(focused);
         focused.clear();
         lit.clear();
         if (ids != null) {
@@ -720,6 +1075,14 @@ public class SchemaGraph extends mxGraph {
                 }
             }
         }
+        // What the selection shows, routed round the boxes and the lines already drawn, which
+        // stay where they are (1.135.1): for a moment, and what that leaves a moment later, so a
+        // click on a class many lines meet does not hold the board up (1.135.1 review). The same
+        // selection again, while lines it shows still wait, leaves them to the slices.
+        if (!focused.equals(before) || waiting.isEmpty()) {
+            routeShown(System.nanoTime() + firstLook());
+        }
+        routeTheRest();
         refresh();
     }
 
@@ -786,12 +1149,19 @@ public class SchemaGraph extends mxGraph {
      * about the term it touches, so that is when it is drawn.
      */
     private boolean isHiddenUntilInFocus(Object cell) {
-        if (focused == null || !getModel().isEdge(cell)) {
+        if (focused == null || waiting == null || !getModel().isEdge(cell)) {
             return false;
         }
+        // Shown by the selection and not routed yet: drawn a moment later, when it is, rather than
+        // straight through the boxes meanwhile (1.135.1 review).
+        return waitsForFocus(cell) && (!touchesFocus(cell) || waiting.contains(getIdForCell(cell)));
+    }
+
+    /** Whether this line is of a kind that waits until one of its ends is selected - see above. */
+    private boolean waitsForFocus(Object cell) {
         String kind = baseStyleOf(cell);
-        return (SchemaStyles.DISJOINT.equals(kind) || SchemaStyles.DOMAIN_RANGE.equals(kind)
-                || SchemaStyles.RULE_PART.equals(kind)) && !touchesFocus(cell);
+        return SchemaStyles.DISJOINT.equals(kind) || SchemaStyles.DOMAIN_RANGE.equals(kind)
+                || SchemaStyles.RULE_PART.equals(kind);
     }
 
     private int strengthOf(Object cell) {
@@ -872,6 +1242,14 @@ public class SchemaGraph extends mxGraph {
 
     public Object getCellForId(String id) {
         return id == null ? null : cellsById.get(id);
+    }
+
+    /** Takes a frame or a note off the board, its entry in the index with it. */
+    void removeAnnotation(String id) {
+        Object cell = isAnnotationId(id) ? cellsById.remove(id) : null;
+        if (cell != null) {
+            removeCells(new Object[] {cell}, false);
+        }
     }
 
     /**

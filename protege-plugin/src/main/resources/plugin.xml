@@ -456,7 +456,7 @@
   <extension id="menu.OntoBoard.project.release"
              point="org.protege.editor.core.application.EditorKitMenuAction">
     <name value="Release..."/>
-    <toolTip value="Produce the published version: check it, classify it, stamp a dated version IRI"/>
+    <toolTip value="Produce the published version: check it, classify it, stamp a numbered version IRI"/>
     <class value="de.fizkarlsruhe.ise.ontoboard.menu.ReleaseAction"/>
     <path value="ontoboard.menu.OntoBoard.release/SlotA-B"/>
     <editorKitId value="OWLEditorKit"/>

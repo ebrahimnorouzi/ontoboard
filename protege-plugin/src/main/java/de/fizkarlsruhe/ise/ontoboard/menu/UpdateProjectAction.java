@@ -48,10 +48,13 @@ public class UpdateProjectAction extends OntoBoardAction {
     protected boolean configure() {
         Map<String, String> chosen = ParameterDialog.show(getOWLWorkspace(),
                 "Update project files",
+                // Not "the report profile, the SPARQL check": those are written once, when the
+                // project is made, and never re-rendered (1.135.1).
                 "Re-renders the generated files of this ODK project - the Makefile, the CI "
-                        + "workflow, the report profile, the SPARQL check, the .gitignore and the "
-                        + "README - from the project's own " + "<id>-odk.yaml. Your ontology, your "
-                        + "custom Makefile, your ID ranges and your catalog are never touched.",
+                        + "workflows, the .gitattributes, the .gitignore and the README - from the "
+                        + "project's own <id>-odk.yaml. Your ontology, your custom Makefile, your "
+                        + "report profile, your tests, your ID ranges and your catalog are never "
+                        + "touched.",
                 Arrays.asList(
                         Parameter.of(OPTION_WRITE, "Write the changes", Parameter.Kind.FLAG)
                                 .defaultValue("false")

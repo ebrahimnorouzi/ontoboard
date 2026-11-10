@@ -2,6 +2,7 @@
 # airline, an aircraft, and the relation between them, which is what answers "which
 # aircraft does a given airline fly?". The property keeps the pattern's own namespace.
 
+@prefix airline: <http://www.ontologydesignpatterns.org/ekp/owl/Airline.owl#> .
 @prefix ontology: <http://dbpedia.org/ontology/> .
 @prefix ex: <https://w3id.org/ontoboard/example/airline#> .
 @prefix owl: <http://www.w3.org/2002/07/owl#> .
@@ -9,7 +10,7 @@
 
 ex:Lufthansa a owl:NamedIndividual , ontology:Airline ;
     rdfs:label "Deutsche Lufthansa AG" ;
-    <file:/C:/Users/eno/Documents/Git_repo/ebrahimnorouzi_github/ISE-FIZKarlsruhe/ontoboard/protege-plugin/../patterns/airline/pattern.owl#hasAircraft> ex:AirbusA320200 ,
+    airline:hasAircraft ex:AirbusA320200 ,
         ex:AirbusA350900 .
 
 ex:AirbusA320200 a owl:NamedIndividual , ontology:Aircraft ;
