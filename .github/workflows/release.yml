@@ -89,7 +89,11 @@ jobs:
 
       - name: Test
         working-directory: protege-plugin
-        run: mvn -B clean test
+        # Under a virtual display, as build.yml runs the same suite: the canvas component cannot be
+        # built without one - mxGraphHandler constructs a java.awt.dnd.DragSource, which throws
+        # HeadlessException. Run plainly here, the v1.135.1 release stopped on FrameInsidePansTest
+        # with that exception after the pull request's checks had passed under xvfb.
+        run: xvfb-run -a mvn -B clean test
 
       - name: Package
         working-directory: protege-plugin
