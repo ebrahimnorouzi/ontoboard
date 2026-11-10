@@ -368,6 +368,11 @@ public class SchemaGraph extends mxGraph {
             if (insertedBox && !notes.isEmpty()) {
                 orderCells(false, notes.toArray());
             }
+            // Which domain lines are drawn always is read again from the board as drawn now. They
+            // are relations on a dense board - see routeEdges and strengthOf - but not counted:
+            // short lines beside their class, they would tip pizza-bfo, 145 lines and 18
+            // properties beside their class, over DENSE, every relation then drawn straight.
+            drawnAlwaysAt = -1;
         } finally {
             getModel().endUpdate();
         }
@@ -1157,11 +1162,46 @@ public class SchemaGraph extends mxGraph {
         return waitsForFocus(cell) && (!touchesFocus(cell) || waiting.contains(getIdForCell(cell)));
     }
 
-    /** Whether this line is of a kind that waits until one of its ends is selected - see above. */
+    /**
+     * Whether this line is of a kind that waits until one of its ends is selected - see above -
+     * but for the domain line of a property beside its class, which is drawn always, and a line
+     * between two properties, which waits only when they stand apart (1.135.1).
+     */
     private boolean waitsForFocus(Object cell) {
         String kind = baseStyleOf(cell);
-        return SchemaStyles.DISJOINT.equals(kind) || SchemaStyles.DOMAIN_RANGE.equals(kind)
-                || SchemaStyles.RULE_PART.equals(kind);
+        if (SchemaStyles.DOMAIN_RANGE.equals(kind)) {
+            return !domainLinesDrawnAlways().contains(getIdForCell(cell));
+        }
+        if (SchemaStyles.SUB_PROPERTY.equals(kind) || SchemaStyles.INVERSE.equals(kind)) {
+            return standApart(getModel().getTerminal(cell, true),
+                    getModel().getTerminal(cell, false));
+        }
+        return SchemaStyles.DISJOINT.equals(kind) || SchemaStyles.RULE_PART.equals(kind);
+    }
+
+    /**
+     * Whether two properties stand apart: one beside a class, its domain line drawn always, and
+     * the other not beside that class - beside another, or in its section (1.135.1). A line
+     * between two such would cross the board from the one place to the other, as a range does,
+     * and waits for a selection as a range does.
+     *
+     * <p>Found on the egg-boiling board: has role stood beside independent continuant in a
+     * pattern's frame at the top, has characteristic, its super-property, with no domain class on
+     * the board, in the Object properties frame at the bottom, and their is-a line ran 1,000 to
+     * 1,900 px down the board, the parent below its child. Keeping has role in the section with
+     * its super-property instead sent pizza's has base and has topping back there as well, under
+     * has component, which has no domain. Two properties beside the same class, or both in their
+     * section, stand together, and the line between them is drawn as it always was; so is a
+     * chain's line, which ends at the chain's node.
+     */
+    private boolean standApart(Object one, Object other) {
+        if (one == null || other == null || !isPropertyBox(one) || !isPropertyBox(other)) {
+            return false;
+        }
+        domainLinesDrawnAlways();
+        String here = standingBeside.get(getIdForCell(one));
+        String there = standingBeside.get(getIdForCell(other));
+        return here == null ? there != null : !here.equals(there);
     }
 
     private int strengthOf(Object cell) {
@@ -1178,10 +1218,12 @@ public class SchemaGraph extends mxGraph {
             if (betweenFrames.contains(id)) {
                 return QUIET;
             }
+            // A domain line shown without a selection is one drawn always, a relation (1.135.1).
             return dense && (SchemaStyles.OBJECT_PROPERTY.equals(kind)
                     || SchemaStyles.ONLY.equals(kind) || SchemaStyles.COUNT.equals(kind)
                     || SchemaStyles.NOT.equals(kind) || SchemaStyles.DATA_PROPERTY.equals(kind)
-                    || SchemaStyles.INVERSE.equals(kind) || lengthOf(cell) > LONG) ? QUIET : 100;
+                    || SchemaStyles.INVERSE.equals(kind) || SchemaStyles.DOMAIN_RANGE.equals(kind)
+                    || lengthOf(cell) > LONG) ? QUIET : 100;
         }
         return focused.isEmpty() || lit.contains(id) ? 100 : FADED;
     }
@@ -1379,6 +1421,129 @@ public class SchemaGraph extends mxGraph {
                 // Opacity for an imported term - the one channel the four above leave free, and the
                 // only one that also survives a PNG or SVG export.
                 + (node.isImported() ? ";opacity=" + SchemaStyles.IMPORTED_OPACITY : "");
+    }
+
+    /**
+     * Each property on the board whose domain lines reach exactly one class box, with that class,
+     * by property: which properties stand beside a class, as the board's lines say it - see
+     * {@link de.fizkarlsruhe.ise.ontoboard.layout.PropertiesBeside#classes}. Every line counts,
+     * drawn or waiting for a selection.
+     */
+    public Map<String, String> propertiesBesideTheirClass() {
+        java.util.List<String[]> domains = new java.util.ArrayList<String[]>();
+        for (Object edge : mxGraphModel.getChildCells(getModel(), getDefaultParent(), false,
+                true)) {
+            Object from = getModel().getTerminal(edge, true);
+            Object to = getModel().getTerminal(edge, false);
+            if (from == null || to == null || !de.fizkarlsruhe.ise.ontoboard.layout
+                    .PropertiesBeside.isDomainLine(getIdForCell(edge))) {
+                continue;
+            }
+            String property = baseStyleOf(from);
+            if ((SchemaStyles.OBJECT_PROPERTY_NODE.equals(property)
+                    || SchemaStyles.DATA_PROPERTY_NODE.equals(property))
+                    && SchemaStyles.CLASS.equals(baseStyleOf(to))) {
+                domains.add(new String[] {getIdForCell(from), getIdForCell(to)});
+            }
+        }
+        return de.fizkarlsruhe.ise.ontoboard.layout.PropertiesBeside.classes(domains);
+    }
+
+    private boolean isPropertyBox(Object cell) {
+        String style = baseStyleOf(cell);
+        return SchemaStyles.OBJECT_PROPERTY_NODE.equals(style)
+                || SchemaStyles.DATA_PROPERTY_NODE.equals(style);
+    }
+
+    /** The domain lines drawn whatever is selected, and the box changes they were found at. */
+    private Set<String> drawnAlways = new HashSet<String>();
+    /** The class each property whose domain line is drawn always stands beside, by property. */
+    private Map<String, String> standingBeside = new HashMap<String, String>();
+    private long drawnAlwaysAt = -1;
+
+    /**
+     * The domain lines of the properties standing beside their class: a property's line to the
+     * one class it stands beside, while its box stands where the arrangement puts it beside that
+     * class - see {@link de.fizkarlsruhe.ise.ontoboard.layout.PropertiesBeside#standsBeside} -
+     * and the two stand in the same frame or both in none (1.135.1).
+     *
+     * <p>Not every such property's line. A board saved by an earlier build keeps its places until
+     * it is arranged, and there a property whose domain is one class stands in the Object
+     * properties frame, far from its class: its line waits for a selection, as it did, rather than
+     * crossing the board for good. So does the line of a property Hierarchical, Organic, Circle or
+     * Grid placed, or a hand moved away. Worked out again when a box has moved, changed size,
+     * come or gone, and after every drawing.
+     */
+    private Set<String> domainLinesDrawnAlways() {
+        if (drawnAlways != null && standingBeside != null && drawnAlwaysAt == boxChanges) {
+            return drawnAlways;
+        }
+        Set<String> found = new HashSet<String>();
+        Map<String, String> standing = new HashMap<String, String>();
+        Map<String, String> beside = propertiesBesideTheirClass();
+        if (!beside.isEmpty()) {
+            java.util.List<EdgeRouter.Box> frames = new java.util.ArrayList<EdgeRouter.Box>();
+            for (Object cell : getChildVertices(getDefaultParent())) {
+                com.mxgraph.model.mxGeometry at = getModel().getGeometry(cell);
+                if (at != null && SchemaStyles.FRAME.equals(baseStyleOf(cell))) {
+                    frames.add(new EdgeRouter.Box(getIdForCell(cell), at.getX(), at.getY(),
+                            at.getWidth(), at.getHeight()));
+                }
+            }
+            // How far down each class's properties may reach: one height for each property.
+            Map<String, java.util.List<Double>> heights =
+                    new HashMap<String, java.util.List<Double>>();
+            for (Map.Entry<String, String> property : beside.entrySet()) {
+                Object box = getCellForId(property.getKey());
+                com.mxgraph.model.mxGeometry at = box == null ? null : getModel().getGeometry(box);
+                if (at != null) {
+                    java.util.List<Double> of = heights.get(property.getValue());
+                    if (of == null) {
+                        of = new java.util.ArrayList<Double>();
+                        heights.put(property.getValue(), of);
+                    }
+                    of.add(at.getHeight());
+                }
+            }
+            for (Object edge : mxGraphModel.getChildCells(getModel(), getDefaultParent(), false,
+                    true)) {
+                String id = getIdForCell(edge);
+                Object from = getModel().getTerminal(edge, true);
+                Object to = getModel().getTerminal(edge, false);
+                String cls = from == null ? null : beside.get(getIdForCell(from));
+                if (to != null && cls != null && cls.equals(getIdForCell(to))
+                        && de.fizkarlsruhe.ise.ontoboard.layout.PropertiesBeside.isDomainLine(id)
+                        && standsBeside(from, to, heights.get(cls))
+                        && sameFrame(at(from), at(to), frames)) {
+                    found.add(id);
+                    standing.put(getIdForCell(from), cls);
+                }
+            }
+        }
+        drawnAlways = found;
+        standingBeside = standing;
+        drawnAlwaysAt = boxChanges;
+        return found;
+    }
+
+    /** Whether a property's box stands beside a class's box, as the Outline puts it there. */
+    private boolean standsBeside(Object property, Object cls, java.util.List<Double> heights) {
+        com.mxgraph.model.mxGeometry p = getModel().getGeometry(property);
+        com.mxgraph.model.mxGeometry c = getModel().getGeometry(cls);
+        return p != null && c != null && heights != null
+                && de.fizkarlsruhe.ise.ontoboard.layout.PropertiesBeside.standsBeside(
+                        new double[] {p.getX(), p.getY(), p.getWidth(), p.getHeight()},
+                        new double[] {c.getX(), c.getY(), c.getWidth(), c.getHeight()}, heights);
+    }
+
+    /** The style a node is drawn with, without its colours: what kind of box it is. */
+    static String nodeStyle(CanvasNode node) {
+        return baseStyleFor(node);
+    }
+
+    /** The style a line is drawn with. */
+    static String lineStyle(CanvasEdge edge) {
+        return styleFor(edge);
     }
 
     private static String baseStyleFor(CanvasNode node) {

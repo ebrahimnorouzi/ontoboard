@@ -43,7 +43,8 @@ Each automatic arrangement is a step *Undo* on the board takes back.
 | Classes - the TBox | a class, and its subclasses below it, one under the other and indented, more columns when there are more of them than a column holds (520 px), each column filled before the next, so a subclass added moves only those after it; trees side by side in label order, in a block the shape of a screen |
 | A class's restrictions, unions, enumerations | a grey node below the class, with its subclasses |
 | Individuals - the ABox | a band below all the classes: each class's individuals under that class, in a column; an individual's values right below it, the column as wide as they reach |
-| Object properties, data properties | each a frame of its own, as its property hierarchy: right of the classes, or below them when that gives the board more nearly a screen's shape. Two properties that are each other's inverse stand side by side, so the line between them is short, and two hierarchies that mirror each other stand side by side with their tops level; where there is no room beside, the partner goes into a band below. The same ontology gets the same arrangement whatever order its axioms come in. A data property's datatype stands under it |
+| A property whose domains name one class on the board | beside that class, since 1.135.1: 80 px right of its box, the first level with its top, a class's properties one under the other, object properties before data properties, each by label, a sub-property under its super-property when both stand beside the class, and a data property's datatype under it. Inside the class's frame - a pattern's, or one you drew - which grows to hold them; where that would put them or the frame on a box, a note or another frame, nothing is moved to make room and the property stays in its section. Or with the class in the outline. The class and its properties take their room together, so its subclasses stand below them. A sub-property stands beside its own class wherever its super-property stands; the line between two properties that stand apart waits for a selection - see [On a large board](#on-a-large-board) |
+| Every other object property and data property | each a frame of its own, Object properties and Data properties, as its property hierarchy: right of the classes, or below them when that gives the board more nearly a screen's shape. Here stand the properties with no domain, with `owl:Thing`, a class expression, a class not on the board, or two classes on it - a super-property's domain does not count; a frame with none is not drawn. Two properties that are each other's inverse stand side by side, so the line between them is short, and two hierarchies that mirror each other stand side by side with their tops level; where there is no room beside, the partner goes into a band below. The same ontology gets the same arrangement whatever order its axioms come in. A data property's datatype stands under it |
 
 Lines are routed around the boxes, at right angles, on a board of up to 150 drawn lines. No two
 lines share a stretch or run closer than 12 px, except at a box with no point left, where two lines
@@ -155,7 +156,18 @@ reasoner still uses it.
 ## On a large board
 
 On any board, disjointness, domains and ranges, and a rule's lines are drawn for the term in focus -
-select it - rather than all at once (106 and 118 lines on MWO). They are routed round the boxes and
+select it - rather than all at once (106 and 118 lines on MWO). The one exception, since 1.135.1,
+is the line from a property to the one class its domains name, while the property stands beside
+that class where the Outline puts it, in the same frame or both in none: it is drawn always, routed
+with the board's own lines, while the property's range waits like the others. A property anywhere
+else has both its lines waiting - in its section, moved away by hand, placed by Hierarchical,
+Organic, Circle or Grid, and on a board saved by an earlier build any property, until
+*Arrange → Outline*. So does the is-a or inverse line between two properties that stand apart, one
+beside its class and the other beside another class or elsewhere, which would cross the board as a
+range does; between two beside the same class, or two not beside a class, it is drawn. With
+*Focus* switched off, the lines that wait are not drawn at all. The lines a selection shows are
+routed
+round the boxes and
 off the frames' names when they appear, among the lines already drawn, which keep their routes; and
 one that stays shown when the selection changes - its other end clicked, a second term added - stays
 where it is. A click answers at once: on a class many lines meet, its lines appear over a moment as
@@ -167,7 +179,9 @@ click on empty board ends that, and *Focus* on the toolbar turns it off.
 
 More than 150 relations, and lines drawn alike become a mesh across the whole board. So on a board
 that size, the other relations, and any line longer than 1,600 px, are drawn faintly until one of
-their ends is selected.
+their ends is selected; so is the domain line of a property beside its class, which keeps the
+straight connector there too. It does not count towards the 150: short and beside its class, it is
+no part of a mesh, and counted it made pizza-bfo such a board.
 
 *More → Show on the board* switches object properties, data properties, individuals, imported
 terms and rules off and on. A class can be folded - right-click, *Collapse subclasses* - and then

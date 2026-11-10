@@ -13,6 +13,55 @@ release notes on
 [the releases page](https://github.com/ebrahimnorouzi/ontoboard/releases), carries the same
 record for that version.
 
+- **A property stood apart from the classes it describes, fixed in 1.135.1.** Found by the
+  maintainer on the pizza ontologies: "the properties that are not connected, and they just stray in
+  the canvas". Every property stood in the Object properties or Data properties frame - on pizza-bfo
+  about 1,800 px below *pizza* - joined to nothing until it was clicked, because its domain line
+  waited for a selection as its range does. A property whose asserted domains name exactly one class
+  on the board now stands beside that class, 80 px right of its box, the first level with its top, a
+  class's properties one under the other - a sub-property under its super-property when both stand
+  beside it - and a data property's datatype under its property: in the class's frame, which grows
+  to hold them - a pattern's, planned from the ontology, decides the same
+  as the outline does from the board - or with the class in the outline, the class and its
+  properties taking their room together so that its subclasses stand below them. Its domain line is
+  drawn always and routed with the board's own lines; its range still waits. A property with no
+  domain, `owl:Thing`, a class expression, a class not on the board or two classes on it stays in
+  its section, and so does one whose class stays in a frame that could not grow to hold it without
+  covering a box, a note or another frame: nothing of yours is moved to make room. A line between
+  two properties that stand apart - one beside its class, the other beside another class or in its
+  section - waits for a selection, as a range does; between two beside the same class, or both in
+  their section, it is drawn as before. The egg boiling board arranged by the first such build had
+  *has role* beside *independent continuant* in a pattern's frame at the top and *has
+  characteristic*, its super-property, with no domain class on the board, in the Object properties
+  frame at the bottom: their is-a line ran 1,000 to 1,900 px down the board, the one is-a line
+  whose parent stood below its child, after every task from the pattern's import on. Keeping *has
+  role* in the section with its super-property instead sent pizza's *has base* and *has topping*
+  back there too, under *has component*, which has no domain: what the maintainer had found. A
+  review of that change found that whether a property and its class stood in one frame was all
+  that was asked: on a board with no frames - arranged by Hierarchical, Organic, Circle or Grid -
+  every property whose domain names one class counted as beside it wherever it stood, its domain
+  line drawn across the board and its is-a lines waiting. A property stands beside its class now
+  only where the Outline puts it, give or take a step of the grid. A
+  board saved by an earlier build keeps its places until *Arrange > Outline*, which
+  the Arrange menu now calls *Outline - classes as a tree, properties by their class*: it said
+  "properties apart". The two release files arranged by the Outline: pizza has 7 of its 12
+  properties beside their class, *has base* and *has topping* beside *Pizza*, and pizza-bfo 18 of
+  27, and both are routed in full: pizza's 154 lines and pizza-bfo's 155, 8 fewer than with the
+  lines between properties that stand apart drawn always. On 40
+  ontologies made up at random no box lies on another or out of its frame, every property the rule
+  puts beside a class stands beside it, and the same ontology gives the same board whatever order
+  its axioms come in. The domain lines drawn always do not count towards the 150 lines that make a
+  board dense: counted, pizza-bfo's 18 took its 145 lines over, and every relation on it was drawn
+  straight through the boxes. Arranged in Protégé 5.6.9 on Windows, pizza-bfo first had "inheres
+  in" above "specifically depends on", its super-property, both beside specifically dependent
+  continuant, as their labels sort: the one is-a line on the board whose parent stood below its
+  child. `PropertyBesideItsDomainClassTest`, `PropertyBesideItsClassInAFrameTest`,
+  `PropertiesBesideTheirClassOnTheBoardTest`, `PropertyBesideAClassInAFrameSomebodyDrewTest`,
+  `DomainLineBesideItsClassIsDrawnTest`, `PropertiesBesideAgreeOnEveryPathTest`,
+  `PropertiesBesideOnRandomBoardsTest`, `NothingElseMovesForAPropertyBesideItsClassTest`,
+  `SubPropertyBesideItsClassUnderItsSuperPropertyTest`,
+  `LinesBetweenPropertiesStandingApartWaitTest`, `ArrangeMenuSaysWhatOutlineDoesTest`, red first.
+
 - **On Windows the board drew its logic symbols as empty boxes, fixed in 1.135.1.** Found by the
   testers of the egg boiling guide, and by the maintainer: every relation's label read "□ has
   specified input". The board's family on Windows is Segoe UI, which has no `∃ ∀ ⊔ ⊓ ∧ ▸`, and Java
@@ -65,8 +114,13 @@ record for that version.
   hierarchies that mirror each other stand side by side with their tops level, and a partner with no
   room beside goes into a band below, so a block of joined trees keeps a screen's shape rather than
   growing into one long row. The same ontology gets the same arrangement whatever order its axioms come
-  in. A board saved by an earlier build keeps its places until *Arrange > Outline*.
-  `InversePartnersSideBySideTest`, `JoinedPropertyTreesTest`, red first.
+  in. A board saved by an earlier build keeps its places until *Arrange > Outline*. The Linux build
+  then found one more: there DejaVu Sans makes a property's box one line tall, 40px against Segoe
+  UI's 60px, and a partner could stand left of a sub-property, the side its is-a line leaves for
+  the tree's trunk, where a box that short has no room for a second line - the line from
+  *capability of* went over the top of *has capability* with three bends. A partner now stands right
+  of a sub-property wherever the block has room there. `InversePartnersSideBySideTest`,
+  `JoinedPropertyTreesTest`, `InversePartnerOnTheFreeSideTest`, red first.
 
 - **A property's description could not find its lines on the board, fixed in 1.135.1.** Found by a
   review of the board: a click on a row of a property's description - *Domains*, *Ranges*,

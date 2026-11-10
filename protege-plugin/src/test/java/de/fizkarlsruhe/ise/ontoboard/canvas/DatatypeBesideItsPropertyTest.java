@@ -31,6 +31,11 @@ class DatatypeBesideItsPropertyTest {
 
     private static final String O = "http://example.org/price#";
 
+    /**
+     * The property has no domain, so that it stands in its section: since 1.135.1 a property whose
+     * domain names one class on the board stands beside that class, its datatype under it - see
+     * {@code PropertiesBesideTheirClassOnTheBoardTest}.
+     */
     @Test
     void aRangeWaitingForASelectionKeepsItsDatatypeInTheDataPropertiesSection() throws Exception {
         OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
@@ -39,7 +44,7 @@ class DatatypeBesideItsPropertyTest {
         OWLClass price = df.getOWLClass(IRI.create(O + "Price"));
         OWLDataProperty hasValue = df.getOWLDataProperty(IRI.create(O + "hasValue"));
         manager.addAxiom(ontology, df.getOWLDeclarationAxiom(price));
-        manager.addAxiom(ontology, df.getOWLDataPropertyDomainAxiom(hasValue, price));
+        manager.addAxiom(ontology, df.getOWLDeclarationAxiom(hasValue));
         manager.addAxiom(ontology, df.getOWLDataPropertyRangeAxiom(hasValue,
                 df.getOWLDatatype(OWL2Datatype.XSD_FLOAT.getIRI())));
 

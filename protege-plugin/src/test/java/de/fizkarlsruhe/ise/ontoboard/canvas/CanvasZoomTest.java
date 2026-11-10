@@ -153,8 +153,8 @@ class CanvasZoomTest {
         assertEquals("Zoomed to 46%.", CanvasZoom.afterZoom("Fitted the board to the window at 26%.", 0.4577));
         assertEquals("Zoomed to 37%.", CanvasZoom.afterZoom("Zoomed to 31%.", 0.3744));
         assertEquals("Zoomed to 100%.", CanvasZoom.afterZoom(
-                "Arranged and fitted to the window at 26%: Outline - classes as a tree, properties apart.",
-                1.0));
+                "Arranged and fitted to the window at 26%: Outline - classes as a tree,"
+                        + " properties by their class.", 1.0));
         assertEquals("Fitted the board to the window at 26%.",
                 CanvasZoom.afterZoom("Fitted the board to the window at 26%.", 0.2649));
     }

@@ -3620,6 +3620,29 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         java.util.Map<String, String> parents = ontology == null
                 ? new java.util.HashMap<String, String>()
                 : OntologyProjection.superclassesAmong(ontology, allOfThem);
+        // A property whose domain names one class on the board stands beside it, in its frame
+        // (1.135.1): worked out from the board as it will be drawn, as the Outline works it out
+        // from the board drawn - the framed classes, which stay, left out as it leaves them out -
+        // so that each puts a property where the other would.
+        java.util.Map<String, java.util.List<de.fizkarlsruhe.ise.ontoboard.layout.PropertiesBeside
+                .Item>> beside = new java.util.HashMap<String, java.util.List<
+                        de.fizkarlsruhe.ise.ontoboard.layout.PropertiesBeside.Item>>();
+        java.util.Set<String> hanging = new java.util.HashSet<String>();
+        if (ontology != null) {
+            java.util.Set<String> drawn = drawnMembers(ontology);
+            drawn.addAll(allOfThem);
+            java.util.Set<String> framed = new java.util.HashSet<String>(allOfThem);
+            framed.addAll(staying);
+            beside = CanvasLayouts.besideTheirClass(
+                    OntologyProjection.project(ontology, drawn, showExpressions), graph, framed);
+            for (java.util.List<de.fizkarlsruhe.ise.ontoboard.layout.PropertiesBeside.Item> items
+                    : beside.values()) {
+                for (de.fizkarlsruhe.ise.ontoboard.layout.PropertiesBeside.Item item : items) {
+                    java.util.List<String> ids = item.getIds();
+                    hanging.addAll(ids.subList(1, ids.size()));
+                }
+            }
+        }
         java.util.List<de.fizkarlsruhe.ise.ontoboard.layout.FramedGroup.Placement> planned =
                 new java.util.ArrayList<de.fizkarlsruhe.ise.ontoboard.layout.FramedGroup.Placement>();
         java.util.Map<de.fizkarlsruhe.ise.ontoboard.layout.FramedGroup.Placement, String> notes =
@@ -3642,7 +3665,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             }
             de.fizkarlsruhe.ise.ontoboard.layout.FramedGroup.Placement placement =
                     de.fizkarlsruhe.ise.ontoboard.layout.FramedGroup.plan(
-                            pattern.getLabel(), members, row, sizes, parents, names);
+                            pattern.getLabel(), members, row, sizes, parents, names, beside);
             if (placement.isEmpty()) {
                 // No frame: every class is in an earlier one. Said so, rather than counted as in
                 // a frame that was never made.
@@ -3734,7 +3757,10 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             for (java.util.Map.Entry<String, CanvasLayout.NodeLayout> entry
                     : placement.getNodes().entrySet()) {
                 layout.nodes.put(entry.getKey(), entry.getValue());
-                membership.add(entry.getKey());
+                // A datatype under a property is no term of the board's.
+                if (!hanging.contains(entry.getKey())) {
+                    membership.add(entry.getKey());
+                }
             }
             String text = notes.get(placement);
             if (text != null) {
@@ -4426,8 +4452,9 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         focusButton = new javax.swing.JToggleButton("Focus", new CanvasIcons.Marquee());
         focusButton.setToolTipText("<html><b>Focus on the selection</b><br>Selecting a term "
                 + "brings it and everything it is connected to forward,<br>and fades the rest. "
-                + "On a large board, its disjointness, domains<br>and ranges appear only "
-                + "then.</html>");
+                + "Its disjointness, domains, ranges and rules, and a line<br>to a property "
+                + "standing elsewhere, appear only then - with Focus off,<br>not at all."
+                + "</html>");
         focusButton.setSelected(focusOnSelection);
         focusButton.addActionListener(a -> {
             focusOnSelection = focusButton.isSelected();
@@ -5449,8 +5476,9 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
 
     /**
      * Every term of the ontology on a board that shows everything, the first time it is opened:
-     * the patterns framed along the top, the rest as an outline under them, the properties in
-     * sections of their own. Returns false, and does nothing, for any other board.
+     * the patterns framed along the top, the rest as an outline under them, each property beside
+     * the one class its domain names and the others in sections of their own. Returns false, and
+     * does nothing, for any other board.
      */
     private boolean fillTheBoardIfNew() {
         OWLOntology ontology = getOWLModelManager().getActiveOntology();

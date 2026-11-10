@@ -69,8 +69,8 @@ answers match.
 
 **A board of the whole ontology** — every class, property and individual as soon as the tab opens,
 laid out as an outline: design patterns framed along the top - imported, or merged in and
-recognised by their terms - classes as a tree, properties in
-sections of their own. Drawn from the axioms you actually wrote — restrictions, unions, domains and
+recognised by their terms - classes as a tree, each property beside its domain class, the
+rest in sections. Drawn from the axioms you actually wrote — restrictions, unions, domains and
 ranges, disjointness, property chains, SWRL rules: every logical axiom of two published BFO-based
 ontologies. Select a term and its relations come forward while the rest fades; fold a class; jump
 between frames; press Tab for a new subclass. Switch on the reasoner's conclusions, then right-click

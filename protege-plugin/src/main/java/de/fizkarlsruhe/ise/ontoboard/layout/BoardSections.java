@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 
 /**
  * Where every term goes on a board that shows a whole ontology.
@@ -30,8 +31,10 @@ import java.util.Set;
  *       "separate TBox from ABox, ABox below TBox, instances below the class they are typed".
  *   <li><b>What hangs off a class</b> - a restriction it is drawn with, a datatype - is placed
  *       below it with its subclasses.
- *   <li><b>Object and data properties are sections of their own</b>, to the right, each its
- *       property hierarchy laid out the same way.
+ *   <li><b>A property stands beside the one class its domain names</b>, when that class is on
+ *       the board - see {@link PropertiesBeside}.
+ *   <li><b>The other object and data properties are sections of their own</b>, to the right,
+ *       each its property hierarchy laid out the same way.
  * </ul>
  *
  * <p>Pure geometry: no Swing, no JGraphX, no OWL API.
@@ -140,18 +143,48 @@ public final class BoardSections {
      */
     public static Plan plan(List<Term> terms, List<Edge> edges, double left, double top,
             double framesRight, double sectionsTop) {
+        return plan(terms, edges, left, top, framesRight, sectionsTop,
+                Collections.<String, String>emptyMap());
+    }
+
+    /**
+     * The same, each property of {@code beside} standing beside its class there - see
+     * {@link PropertiesBeside} - when that class is among {@code terms}, what hangs off the
+     * property with it; the sections hold the rest (1.135.1).
+     *
+     * @param beside the class each property stands beside, by property - see
+     *     {@link PropertiesBeside#classes}
+     */
+    public static Plan plan(List<Term> terms, List<Edge> edges, double left, double top,
+            double framesRight, double sectionsTop, Map<String, String> beside) {
         Map<String, Term> byId = new LinkedHashMap<String, Term>();
         for (Term term : terms) {
             byId.put(term.id, term);
         }
         Map<String, String> parent = parents(byId, edges);
         Plan plan = new Plan();
+        Map<String, List<PropertiesBeside.Item>> besideHere =
+                new LinkedHashMap<String, List<PropertiesBeside.Item>>();
+        Set<String> standBeside = new HashSet<String>();
+        for (Map.Entry<String, List<PropertiesBeside.Item>> cls
+                : itemsBeside(terms, edges, beside).entrySet()) {
+            Term term = byId.get(cls.getKey());
+            if (term != null && term.kind == Kind.CLASS) {
+                besideHere.put(cls.getKey(), cls.getValue());
+                for (PropertiesBeside.Item item : cls.getValue()) {
+                    standBeside.addAll(item.getIds());
+                }
+            }
+        }
 
         List<Term> classes = new ArrayList<Term>();
         List<Term> individuals = new ArrayList<Term>();
         List<Term> objectProperties = new ArrayList<Term>();
         List<Term> dataProperties = new ArrayList<Term>();
         for (Term term : terms) {
+            if (standBeside.contains(term.id)) {
+                continue;
+            }
             Kind section = sectionOf(term, parent, byId);
             if (section == Kind.OBJECT_PROPERTY) {
                 objectProperties.add(term);
@@ -163,7 +196,7 @@ public final class BoardSections {
                 classes.add(term);
             }
         }
-        double[] tbox = forest(classes, parent, left, top, plan);
+        double[] tbox = forest(classes, parent, left, top, plan, besideHere);
         double right = tbox[2];
         double bottom = classes.isEmpty() ? top : tbox[3];
         if (!individuals.isEmpty()) {
@@ -252,6 +285,81 @@ public final class BoardSections {
         plan.sections.addAll(moved);
     }
 
+    /**
+     * Each property of {@code beside} among {@code terms}, with what hangs off it there - a
+     * datatype, a range's expression: what would stand under it in its section - by the class it
+     * stands beside, whether or not that class is among them. Classes in id order.
+     */
+    public static Map<String, List<PropertiesBeside.Item>> itemsBeside(List<Term> terms,
+            List<Edge> edges, Map<String, String> beside) {
+        Map<String, Term> byId = new LinkedHashMap<String, Term>();
+        for (Term term : terms) {
+            byId.put(term.id, term);
+        }
+        Map<String, String> parent = parents(byId, edges);
+        Map<String, PropertiesBeside.Item> items =
+                new LinkedHashMap<String, PropertiesBeside.Item>();
+        Map<String, List<PropertiesBeside.Item>> byClass =
+                new TreeMap<String, List<PropertiesBeside.Item>>();
+        for (Term term : terms) {
+            String cls = beside.get(term.id);
+            if (cls == null
+                    || term.kind != Kind.OBJECT_PROPERTY && term.kind != Kind.DATA_PROPERTY) {
+                continue;
+            }
+            PropertiesBeside.Item item = new PropertiesBeside.Item(term.id, term.kind, term.label,
+                    term.w, term.h);
+            items.put(term.id, item);
+            List<PropertiesBeside.Item> list = byClass.get(cls);
+            if (list == null) {
+                list = new ArrayList<PropertiesBeside.Item>();
+                byClass.put(cls, list);
+            }
+            list.add(item);
+        }
+        for (Term term : terms) {
+            if (term.kind != Kind.VALUE && term.kind != Kind.EXPRESSION) {
+                continue;
+            }
+            PropertiesBeside.Item item = items.get(hangsOff(term.id, parent, byId));
+            if (item != null) {
+                item.with(term.id, term.label, term.w, term.h, parent.get(term.id));
+            }
+        }
+        // A sub-property beside the class its super-property stands beside goes under it - see
+        // PropertiesBeside#stack - by every such line, not by the first a property has, so that
+        // the order of the lines does not decide it.
+        for (Edge edge : edges) {
+            PropertiesBeside.Item item = items.get(edge.source);
+            if (edge.link == Link.SUB_PROPERTY && item != null
+                    && items.containsKey(edge.target) && !edge.source.equals(edge.target)) {
+                item.supers.add(edge.target);
+            }
+        }
+        return byClass;
+    }
+
+    /**
+     * The property a value or an expression hangs off: the first property up its tree, with only
+     * values and expressions between; null when a class or an individual comes first.
+     */
+    private static String hangsOff(String id, Map<String, String> parent, Map<String, Term> byId) {
+        Set<String> seen = new HashSet<String>();
+        for (String at = parent.get(id); at != null && seen.add(at); at = parent.get(at)) {
+            Term term = byId.get(at);
+            if (term == null) {
+                return null;
+            }
+            if (term.kind == Kind.OBJECT_PROPERTY || term.kind == Kind.DATA_PROPERTY) {
+                return at;
+            }
+            if (term.kind != Kind.VALUE && term.kind != Kind.EXPRESSION) {
+                return null;
+            }
+        }
+        return null;
+    }
+
     /** An individual, or what hangs off one - the ABox, which goes below the classes. */
     private static boolean isAbox(Term term, Map<String, String> parent, Map<String, Term> byId) {
         Term at = term;
@@ -335,12 +443,38 @@ public final class BoardSections {
      */
     private static double[] forest(List<Term> members, Map<String, String> allParents,
             double left, double top, Plan plan) {
+        return forest(members, allParents, left, top, plan,
+                Collections.<String, List<PropertiesBeside.Item>>emptyMap());
+    }
+
+    /**
+     * The same, a class with properties beside it placed as one block with them - see
+     * {@link PropertiesBeside#stack} - and they put beside it where it lands.
+     */
+    private static double[] forest(List<Term> members, Map<String, String> allParents,
+            double left, double top, Plan plan, Map<String, List<PropertiesBeside.Item>> beside) {
         List<HierarchyColumns.Term> boxes = new ArrayList<HierarchyColumns.Term>();
+        Map<String, Map<String, double[]>> stacks =
+                new LinkedHashMap<String, Map<String, double[]>>();
         for (Term term : members) {
-            boxes.add(new HierarchyColumns.Term(term.id, term.label, term.w, term.h));
+            List<PropertiesBeside.Item> items = beside.get(term.id);
+            if (items == null || items.isEmpty()) {
+                boxes.add(new HierarchyColumns.Term(term.id, term.label, term.w, term.h));
+                continue;
+            }
+            double[] block = new double[2];
+            stacks.put(term.id, PropertiesBeside.stack(term.w, term.h, items, block));
+            boxes.add(new HierarchyColumns.Term(term.id, term.label, block[0], block[1]));
         }
         HierarchyColumns.Placed placed = HierarchyColumns.place(boxes, allParents, left, top);
         plan.positions.putAll(placed.positions);
+        for (Map.Entry<String, Map<String, double[]>> stack : stacks.entrySet()) {
+            double[] at = placed.positions.get(stack.getKey());
+            for (Map.Entry<String, double[]> box : stack.getValue().entrySet()) {
+                plan.positions.put(box.getKey(), new double[] {at[0] + box.getValue()[0],
+                    at[1] + box.getValue()[1]});
+            }
+        }
         return new double[] {left, top, placed.right, placed.bottom};
     }
 
@@ -615,7 +749,8 @@ public final class BoardSections {
                     && (joining == leading || partner.equals(rootOf.get(partner))
                             && placing.equals(rootOf.get(placing)));
             double[] spot = spotFor(partner, placing, tree, byId, at, placed, room, high, band,
-                    mirror);
+                    mirror, !mirror && !placing.equals(rootOf.get(placing))
+                            && partner.equals(rootOf.get(partner)));
             put(tree, spot[0], spot[1], at, placed);
             placedRoots.add(rootOf.get(placing));
         }
@@ -643,10 +778,20 @@ public final class BoardSections {
      * left; a new band is started below everything only when that one is full. With
      * {@code beside}, the tree goes right of the block, level, however wide the block grows and
      * whatever stands between the two: their line is routed round it.
+     *
+     * <p>With {@code partnerOnItsRight} - {@code placing} a sub-property, {@code partner} a tree's
+     * root - the tree goes left of the partner first, where it can, so that the partner stands
+     * right of the sub-property. A sub-property's is-a line leaves its left side for the trunk of
+     * its tree, and a box one line tall has no room there for a second line 12px from it: found by
+     * the Linux build of 1.135.1, whose DejaVu Sans makes property boxes 40px tall where Segoe UI
+     * makes them 60px. The block had room on either side, the tree went right of "capability of",
+     * and the line from it to "has capability" went over the top of that box with three bends -
+     * see {@code InversePartnerOnTheFreeSideTest}. Where the left will not do, as in a tree of two
+     * columns whose second stands in the way, the order is as before.
      */
     private static double[] spotFor(String partner, String placing, HierarchyColumns.Placed tree,
             Map<String, Term> byId, Map<String, double[]> at, List<double[]> placed, double room,
-            double high, double[] band, boolean beside) {
+            double high, double[] band, boolean beside, boolean partnerOnItsRight) {
         double[] p = at.get(partner);
         double[] q = tree.positions.get(placing);
         Term from = byId.get(partner);
@@ -658,16 +803,20 @@ public final class BoardSections {
         boolean fits = Math.max(block[3], y + tree.bottom) - Math.min(block[1], y)
                 <= Math.max(high, block[3] - block[1]);
         double level = Math.min(from.h, to.h);
+        double left = slide(p[0] - HierarchyColumns.COLUMNS - to.w - q[0], y, tree, placed, -1);
+        boolean leftWillDo = fits && block[2] - Math.min(block[0], left) <= wide
+                && clear(left + q[0] + to.w, p[0], p[1], p[1] + level, partner, placing, at, byId,
+                        tree, left, y);
+        if (partnerOnItsRight && leftWillDo) {
+            return new double[] {left, y};
+        }
         double right = slide(p[0] + from.w + HierarchyColumns.COLUMNS - q[0], y, tree, placed, 1);
         if (fits && (beside || Math.max(block[2], right + tree.right) - block[0] <= wide
                 && clear(p[0] + from.w, right + q[0], p[1], p[1] + level, partner, placing, at,
                         byId, tree, right, y))) {
             return new double[] {right, y};
         }
-        double left = slide(p[0] - HierarchyColumns.COLUMNS - to.w - q[0], y, tree, placed, -1);
-        if (fits && block[2] - Math.min(block[0], left) <= wide
-                && clear(left + q[0] + to.w, p[0], p[1], p[1] + level, partner, placing, at, byId,
-                        tree, left, y)) {
+        if (leftWillDo) {
             return new double[] {left, y};
         }
         double end = block[0] + wide;

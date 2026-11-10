@@ -8,6 +8,7 @@ import com.mxgraph.layout.mxIGraphLayout;
 import com.mxgraph.model.mxGeometry;
 import com.mxgraph.model.mxGraphModel;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -42,9 +43,13 @@ public final class CanvasLayouts {
     /** Vertical pitch for that block, and how far under the diagram it starts. */
     private static final double LOOSE_PITCH_Y = 100;
 
-    /** Names match the web app's menu so existing users recognise them. */
+    /**
+     * Names match the web app's menu so existing users recognise them. Outline's name said
+     * "properties apart" until a property whose domain names one class on the board came to stand
+     * beside that class (1.135.1); its first word, by which the docs reach it, stays.
+     */
     public enum Algorithm {
-        SECTIONS("Outline - classes as a tree, properties apart"),
+        SECTIONS("Outline - classes as a tree, properties by their class"),
         HIERARCHICAL("Hierarchical (SubClassOf tree)"),
         ORGANIC("Organic (force-directed)"),
         CIRCLE("Circle"),
@@ -407,6 +412,9 @@ public final class CanvasLayouts {
             SchemaGraph graph, java.util.Set<String> staying, boolean route) {
         List<de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Section> sections;
         Map<String, double[]> before = boxesOf(graph);
+        // Read off the whole board, the classes in frames too: a property stands beside its class
+        // wherever that class stands (1.135.1).
+        Map<String, String> beside = graph.propertiesBesideTheirClass();
         graph.getModel().beginUpdate();
         try {
             List<mxGeometry> frames = new ArrayList<mxGeometry>();
@@ -422,8 +430,9 @@ public final class CanvasLayouts {
                     framesRight = Math.max(framesRight, frame.getX() + frame.getWidth());
                 }
             }
-            List<de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Term> terms =
-                    new ArrayList<de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Term>();
+            Map<String, de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Term> terms =
+                    new LinkedHashMap<String,
+                            de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Term>();
             Map<String, Object> cells = new LinkedHashMap<String, Object>();
             for (Object vertex : graph.getChildVertices(graph.getDefaultParent())) {
                 mxGeometry geometry = graph.getModel().getGeometry(vertex);
@@ -442,7 +451,7 @@ public final class CanvasLayouts {
                     sized.setHeight(fitted[1]);
                     graph.getModel().setGeometry(vertex, sized);
                 }
-                terms.add(new de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Term(id,
+                terms.put(id, new de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Term(id,
                         kindOf(graph.getModel().getStyle(vertex)), label,
                         fitted[0], fitted[1]));
             }
@@ -462,9 +471,29 @@ public final class CanvasLayouts {
                             linkOf(graph.getModel().getStyle(edge))));
                 }
             }
+            List<de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Term> outlined =
+                    new ArrayList<de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Term>(
+                            terms.values());
+            Set<String> besideAFramedClass = besideClassesThatStay(graph, outlined, edges,
+                    beside, cells);
+            if (!besideAFramedClass.isEmpty()) {
+                terms.keySet().removeAll(besideAFramedClass);
+                // Under the frames as they are now: one may have grown to hold a property.
+                for (Object vertex : graph.getChildVertices(graph.getDefaultParent())) {
+                    String id = graph.getIdForCell(vertex);
+                    if (id != null && id.startsWith(SchemaGraph.FRAME_ID_PREFIX)
+                            && !id.startsWith(SECTION_PREFIX)) {
+                        mxGeometry frame = graph.getModel().getGeometry(vertex);
+                        top = Math.max(top, frame.getY() + frame.getHeight() + BELOW_FRAMES);
+                        framesRight = Math.max(framesRight, frame.getX() + frame.getWidth());
+                    }
+                }
+            }
             de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Plan plan =
-                    de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.plan(terms, edges, MARGIN,
-                            top, framesRight, MARGIN);
+                    de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.plan(
+                            new ArrayList<de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Term>(
+                                    terms.values()), edges, MARGIN, top, framesRight, MARGIN,
+                            beside);
             for (Map.Entry<String, double[]> placed : plan.positions.entrySet()) {
                 Object cell = cells.get(placed.getKey());
                 mxGeometry moved = (mxGeometry) graph.getModel().getGeometry(cell).clone();
@@ -482,6 +511,230 @@ public final class CanvasLayouts {
             graph.routeEdges();
         }
         return sections;
+    }
+
+    /**
+     * The properties whose class stays in its frame - a pattern's, or one somebody drew - put
+     * beside it there, the frame grown to hold them (1.135.1); returns what was put. Found by the
+     * maintainer on the pizza ontologies: the Outline leaves what stands in a frame where it is,
+     * and a property whose domain is such a class went to the Object properties section with the
+     * rest, joined to nothing.
+     *
+     * <p>Only where nothing that stays stands in the way - a box in the frame, a note - and the
+     * frame, grown, meets nothing it did not hold before: somebody's own arrangement is not moved
+     * to make room. A property that has no room stays in its section, its lines waiting there.
+     *
+     * @param outline the boxes the Outline places, by id: what does not stay
+     */
+    private static Set<String> besideClassesThatStay(SchemaGraph graph,
+            List<de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Term> terms,
+            List<de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Edge> edges,
+            Map<String, String> beside, Map<String, Object> outline) {
+        Set<String> put = new HashSet<String>();
+        Map<String, List<de.fizkarlsruhe.ise.ontoboard.layout.PropertiesBeside.Item>> byClass =
+                de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.itemsBeside(terms, edges,
+                        beside);
+        List<double[]> fixed = new ArrayList<double[]>();
+        List<Object> frames = new ArrayList<Object>();
+        for (Object vertex : graph.getChildVertices(graph.getDefaultParent())) {
+            String id = graph.getIdForCell(vertex);
+            mxGeometry at = graph.getModel().getGeometry(vertex);
+            if (at == null || outline.containsKey(id)
+                    || id != null && id.startsWith(SECTION_PREFIX)) {
+                continue;
+            }
+            if (id != null && id.startsWith(SchemaGraph.FRAME_ID_PREFIX)) {
+                frames.add(vertex);
+            } else {
+                fixed.add(new double[] {at.getX(), at.getY(), at.getWidth(), at.getHeight()});
+            }
+        }
+        for (Map.Entry<String, List<de.fizkarlsruhe.ise.ontoboard.layout.PropertiesBeside.Item>>
+                cls : byClass.entrySet()) {
+            Object classCell = graph.getCellForId(cls.getKey());
+            if (classCell == null || outline.containsKey(cls.getKey())) {
+                continue;
+            }
+            mxGeometry c = graph.getModel().getGeometry(classCell);
+            double[] block = new double[2];
+            Map<String, double[]> stack = de.fizkarlsruhe.ise.ontoboard.layout.PropertiesBeside
+                    .stack(c.getWidth(), c.getHeight(), cls.getValue(), block);
+            double[] room = {c.getX() + c.getWidth(), c.getY(), block[0] - c.getWidth(),
+                block[1]};
+            double[] clear = {room[0], room[1], room[2] + SIBLINGS, room[3] + SIBLINGS};
+            if (meetsAny(clear, fixed)) {
+                continue;
+            }
+            Object frame = innermostFrame(graph, frames, c);
+            mxGeometry grown = null;
+            if (frame == null && meetsAny(clear, rectsOf(graph, frames))) {
+                continue;
+            } else if (frame != null) {
+                mxGeometry was = graph.getModel().getGeometry(frame);
+                double right = Math.max(was.getX() + was.getWidth(),
+                        room[0] + room[2] + PADDING);
+                double bottom = Math.max(was.getY() + was.getHeight(),
+                        room[1] + room[3] + PADDING);
+                if (right > was.getX() + was.getWidth() || bottom > was.getY() + was.getHeight()) {
+                    grown = (mxGeometry) was.clone();
+                    grown.setWidth(right - was.getX());
+                    grown.setHeight(bottom - was.getY());
+                    if (meetsWhatItDidNot(graph, frame, was, grown, frames, fixed)) {
+                        continue;
+                    }
+                }
+            }
+            if (grown != null) {
+                graph.getModel().setGeometry(frame, grown);
+            }
+            for (Map.Entry<String, double[]> box : stack.entrySet()) {
+                Object cell = outline.get(box.getKey());
+                mxGeometry moved = (mxGeometry) graph.getModel().getGeometry(cell).clone();
+                moved.setX(c.getX() + box.getValue()[0]);
+                moved.setY(c.getY() + box.getValue()[1]);
+                graph.getModel().setGeometry(cell, moved);
+                put.add(box.getKey());
+            }
+            fixed.add(room);
+        }
+        return put;
+    }
+
+    /** Between two siblings: what a property beside a class keeps clear of what stays. */
+    private static final double SIBLINGS =
+            de.fizkarlsruhe.ise.ontoboard.layout.HierarchyColumns.SIBLINGS;
+
+    /** Between a frame's edge and what it holds. */
+    private static final double PADDING = de.fizkarlsruhe.ise.ontoboard.layout.FramedGroup.PADDING;
+
+    private static boolean meetsAny(double[] box, List<double[]> others) {
+        for (double[] other : others) {
+            if (meets(box, other)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean meets(double[] one, double[] other) {
+        return one[0] < other[0] + other[2] && other[0] < one[0] + one[2]
+                && one[1] < other[1] + other[3] && other[1] < one[1] + one[3];
+    }
+
+    private static double[] rect(mxGeometry at) {
+        return new double[] {at.getX(), at.getY(), at.getWidth(), at.getHeight()};
+    }
+
+    private static List<double[]> rectsOf(SchemaGraph graph, List<Object> cells) {
+        List<double[]> rects = new ArrayList<double[]>();
+        for (Object cell : cells) {
+            rects.add(rect(graph.getModel().getGeometry(cell)));
+        }
+        return rects;
+    }
+
+    /** The smallest of {@code frames} the box stands in; null for none. */
+    private static Object innermostFrame(SchemaGraph graph, List<Object> frames, mxGeometry box) {
+        Object found = null;
+        double area = Double.MAX_VALUE;
+        for (Object frame : frames) {
+            mxGeometry at = graph.getModel().getGeometry(frame);
+            if (insideAny(java.util.Collections.singletonList(at), box)
+                    && at.getWidth() * at.getHeight() < area) {
+                found = frame;
+                area = at.getWidth() * at.getHeight();
+            }
+        }
+        return found;
+    }
+
+    /** Whether a frame grown meets another frame, or a box, it did not meet as it was. */
+    private static boolean meetsWhatItDidNot(SchemaGraph graph, Object frame, mxGeometry was,
+            mxGeometry grown, List<Object> frames, List<double[]> boxes) {
+        for (Object other : frames) {
+            if (other != frame) {
+                double[] at = rect(graph.getModel().getGeometry(other));
+                if (meets(rect(grown), at) && !meets(rect(was), at)) {
+                    return true;
+                }
+            }
+        }
+        for (double[] box : boxes) {
+            if (meets(rect(grown), box) && !meets(rect(was), box)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * What stands beside each class on a board drawn from {@code projection}: each property its
+     * domain lines join to one class, with what hangs off it, by that class - read off the
+     * projection as {@link #applySections} reads them off the drawn board, so that a pattern's
+     * frame, planned before the board is drawn, puts each where the Outline would (1.135.1).
+     *
+     * @param sizer the board, which measures each box as it will draw it
+     */
+    public static Map<String, List<de.fizkarlsruhe.ise.ontoboard.layout.PropertiesBeside.Item>>
+            besideTheirClass(de.fizkarlsruhe.ise.ontoboard.model.Projection projection,
+                    SchemaGraph sizer) {
+        return besideTheirClass(projection, sizer, java.util.Collections.<String>emptySet());
+    }
+
+    /**
+     * The same, {@code staying} - the classes frames will hold - left out of what decides what
+     * hangs off a property, as the Outline leaves them out: a datatype a framed class's
+     * restriction also points at hangs off the property there, so here too, and goes beside the
+     * class with it rather than being left for the Outline with no parent.
+     */
+    public static Map<String, List<de.fizkarlsruhe.ise.ontoboard.layout.PropertiesBeside.Item>>
+            besideTheirClass(de.fizkarlsruhe.ise.ontoboard.model.Projection projection,
+                    SchemaGraph sizer, Set<String> staying) {
+        Map<String, String> styles = new HashMap<String, String>();
+        List<de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Term> terms =
+                new ArrayList<de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Term>();
+        for (de.fizkarlsruhe.ise.ontoboard.model.CanvasNode node : projection.getNodes()) {
+            String style = SchemaGraph.nodeStyle(node);
+            styles.put(node.getId(), style);
+            if (staying.contains(node.getId()) && SchemaStyles.CLASS.equals(style)) {
+                continue;
+            }
+            de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Kind kind = kindOf(style);
+            String label = de.fizkarlsruhe.ise.ontoboard.model.Curies.displayLabel(
+                    node.getCurie(), node.getLabel(), node.getId());
+            // Only what may stand beside a class is measured: a property, what hangs off one.
+            boolean measured =
+                    kind != de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Kind.CLASS
+                    && kind != de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Kind.INDIVIDUAL;
+            double[] size = measured ? sizer.fittedSize(label, style) : new double[2];
+            terms.add(new de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Term(node.getId(),
+                    kind, label, size[0], size[1]));
+        }
+        List<de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Edge> edges =
+                new ArrayList<de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Edge>();
+        List<String[]> domains = new ArrayList<String[]>();
+        for (de.fizkarlsruhe.ise.ontoboard.model.CanvasEdge edge : projection.getEdges()) {
+            String from = styles.get(edge.getSourceId());
+            String to = styles.get(edge.getTargetId());
+            // As the board draws it: a line whose two ends are both on it.
+            if (from == null || to == null) {
+                continue;
+            }
+            String style = SchemaGraph.lineStyle(edge);
+            edges.add(new de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.Edge(
+                    edge.getSourceId(), edge.getTargetId(), linkOf(style)));
+            if (de.fizkarlsruhe.ise.ontoboard.layout.PropertiesBeside.isDomainLine(edge.getId())
+                    && isPropertyBox(from) && SchemaStyles.CLASS.equals(to)) {
+                domains.add(new String[] {edge.getSourceId(), edge.getTargetId()});
+            }
+        }
+        return de.fizkarlsruhe.ise.ontoboard.layout.BoardSections.itemsBeside(terms, edges,
+                de.fizkarlsruhe.ise.ontoboard.layout.PropertiesBeside.classes(domains));
+    }
+
+    private static boolean isPropertyBox(String style) {
+        return SchemaStyles.OBJECT_PROPERTY_NODE.equals(style)
+                || SchemaStyles.DATA_PROPERTY_NODE.equals(style);
     }
 
     private static boolean insideAny(List<mxGeometry> frames, mxGeometry box) {
