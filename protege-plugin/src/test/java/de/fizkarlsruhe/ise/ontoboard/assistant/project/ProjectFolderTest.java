@@ -196,9 +196,10 @@ class ProjectFolderTest {
 
     /**
      * The 1.148.0 recorder reviewer's notes: the canonical form of the path as opened was worked
-     * out before any clone was tried, so its failure cost the real path's clone its rules too. A
-     * File that cannot give its canonical form stands in for such a path; the clone is made by
-     * hand, as git lays one out, so that no git is needed.
+     * out before any clone was tried, so its failure cost the real path's clone its rules too.
+     * Since 1.153.0 the path as opened is no longer the canonical one (GitExclude.asOpened): a
+     * way of reading its names that fails stands in for such a path; the clone is made by hand,
+     * as git lays one out, so that no git is needed.
      */
     @Test
     void aPathWithoutACanonicalFormStillGivesTheRealPathsCloneItsRules() throws IOException {
@@ -211,27 +212,17 @@ class ProjectFolderTest {
         File conversations = new File(new File(new File(repo, "onto"), "assistant"),
                 "conversations");
         conversations.mkdirs();
-        final File unresolvable = new File(conversations.getAbsolutePath()) {
-            private static final long serialVersionUID = 1L;
-
-            @Override
-            public File getAbsoluteFile() {
-                return this;
-            }
-
-            @Override
-            public File getCanonicalFile() throws IOException {
-                throw new IOException("made up: no canonical form here");
-            }
-
-            @Override
-            public String getCanonicalPath() throws IOException {
-                throw new IOException("made up: no canonical form here");
-            }
+        GitExclude.Follow before = GitExclude.spelled;
+        GitExclude.spelled = folder -> {
+            throw new SecurityException("made up: no canonical form here");
         };
-
-        IOException failed = org.junit.jupiter.api.Assertions.assertThrows(IOException.class,
-                () -> GitExclude.keepOutOfGit(unresolvable));
+        IOException failed;
+        try {
+            failed = org.junit.jupiter.api.Assertions.assertThrows(IOException.class,
+                    () -> GitExclude.keepOutOfGit(conversations));
+        } finally {
+            GitExclude.spelled = before;
+        }
 
         File exclude = new File(new File(git, "info"), "exclude");
         assertTrue(exclude.isFile(), "the real path's clone got no rules: " + failed);

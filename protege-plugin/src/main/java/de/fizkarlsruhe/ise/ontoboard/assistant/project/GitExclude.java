@@ -110,8 +110,8 @@ final class GitExclude {
         // reviewer's declined notes). The views below then start from the path as written.
         Path opened;
         try {
-            opened = absolute.getCanonicalFile().toPath();
-        } catch (IOException | RuntimeException failed) {
+            opened = asOpened(absolute);
+        } catch (RuntimeException failed) {
             unresolved = unresolved(absolute, failed);
             opened = absolute.toPath().normalize();
         }
@@ -160,9 +160,9 @@ final class GitExclude {
                     // folder through it: the path as opened goes on from where it leads, and the
                     // views before it, which led through it, are dropped. Kept, the clone that
                     // holds it was warned about though git there never lists a conversation, and
-                    // given rules it does not need. getCanonicalFile resolves such links
-                    // elsewhere already; on Windows it keeps them, as it keeps junctions, which
-                    // Git for Windows does go into (1.150.0, review 1.149.0 recorder-03).
+                    // given rules it does not need. asOpened resolves such links elsewhere
+                    // already; on Windows it keeps them, as it keeps junctions, which Git for
+                    // Windows does go into (1.150.0, review 1.149.0 recorder-03).
                     views.clear();
                     unfollowed = null;
                     // Where it leads as written in it, walked as the path as opened is: a junction
@@ -262,6 +262,39 @@ final class GitExclude {
         if (unresolved != null) {
             throw unresolved;
         }
+    }
+
+    /**
+     * How the names of a path that exists are spelled on disk. On Windows with no link followed:
+     * each name's case, and the long name for an 8.3 short one, as getCanonicalFile gave them up
+     * to JDK 23. Elsewhere the canonical path, as before: it follows symbolic links, which git
+     * there does not go into, and there are no junctions. A test replaces it, as {@link #follow}.
+     */
+    static Follow spelled = System.getProperty("os.name", "").toLowerCase(java.util.Locale.ROOT)
+            .startsWith("windows") ? folder -> folder.toRealPath(LinkOption.NOFOLLOW_LINKS)
+                    : folder -> folder.toFile().getCanonicalFile().toPath();
+
+    /**
+     * The path as the person opened it: absolute, "." and ".." taken out, the deepest part that
+     * exists spelled as on disk ({@link #spelled}) and the rest as written, every link and
+     * junction on the way kept. It was the canonical path, which kept them on Windows up to JDK
+     * 23 and resolves them from JDK 24 on: no junction was met on the way, and the clone that
+     * holds one got no rules though Git for Windows goes into it (CI on JDK 25, 2026-11-09). A
+     * part whose names cannot be read - its parent may be entered but not listed - is kept as
+     * written, as the canonical form kept it.
+     */
+    static Path asOpened(File folder) {
+        Path path = folder.getAbsoluteFile().toPath().normalize();
+        for (Path at = path; at != null; at = at.getParent()) {
+            Path onDisk;
+            try {
+                onDisk = spelled.of(at);
+            } catch (IOException notThere) {
+                continue;
+            }
+            return at.equals(path) ? onDisk : onDisk.resolve(at.relativize(path));
+        }
+        return path;
     }
 
     /** Why a view of the folder could not be worked out, naming where. */
