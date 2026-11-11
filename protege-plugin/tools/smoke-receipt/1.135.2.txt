@@ -1,0 +1,101 @@
+OntoBoard 1.135.2 - host smoke receipt
+
+What the egg boiling guide, the maintainer's pizza boards and an application ontology built on PMDco
+found on 1.135.1, fixed before the usability study: labels that lay on lines when zoomed out, defined
+classes standing apart from their superclass, 1.135.0's empty pattern frames pushing the outline away,
+routing that gave up lines on a busy machine, a competency question that could not be red, sheets
+checks that counted differently, a datatype written twice, and Find terms' labels and module names.
+See WHAT THIS RELEASE ADDS.
+
+Produced on Windows 11 Pro (10.0.26100), with tools/smoke.ps1 and -Dontoboard.selftest=true, the
+verdict read from what Protege logged. Protege 5.6.9 is the maintainer's own install, with the
+previous ontoboard jar moved to plugins\ontoboard-replaced and this jar the only ontoboard-*.jar in
+plugins; Protege 5.5.0 is a throwaway copy of the install, the same way. smoke.ps1 ran under
+Windows PowerShell 5.1, with -WaitSeconds 300, and opened no ontology.
+
+  2026-11-11  Protege 5.6.9  OWL API 4.5.29  JRE 11.0.25+9    -Xmx2G    PASS  check 10/10  test 12/12
+  2026-11-11  Protege 5.6.9  OWL API 4.5.29  JRE 11.0.25+9    -Xmx500M  PASS  check 10/10
+  2026-11-11  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121    -Xmx2G    PASS  check 10/10  test 12/12
+
+The self-test's summary starts with the version it tested: "OntoBoard 1.135.2: 12 of 12 checks
+ran". In 5.5.0 two other plugins of the install, cellfie 2.2.4 and swrltab 2.1.3, failed to
+install; neither is OntoBoard's.
+
+The study runs on Windows. There, in Protege 5.6.9 with its own Java at -Xmx500M (what a
+double-clicked Protege.exe gets) and with Windows' order of mouse events, the participants' guide -
+boiling eggs, on PMDco and NFDIcore patterns - was run by a script through the real windows and
+menus, with the board measured after every task:
+
+  2026-11-11  this jar 5ce408e3  T0-T9 PASS  after every task no box on another, no line through a
+              box, none sharing a stretch or closer than 12 px, no label on a box, a label or a
+              line, no parent below its child; 0 log errors; 9 of 9 tasks in its files
+
+The same run on the jar built before the second verification's fixes (e60d9095) gave the same.
+
+The maintainer's pizza board, saved by 1.135.0 with two empty pattern frames ("Objectrole Pattern"
+and "dataset", their imports taken back) and kept so by 1.135.1, opened with this jar:
+
+  2026-11-11  this jar 5ce408e3  both frames recognised as their patterns' when the board was read
+              ("2 pattern frame(s) saved by 1.135.0 recognised by their title") and gone; after
+              Arrange > Outline the board is 3,035 x 2,792 px (8,649 x 7,431 with 1.135.1), with no
+              box on another and no line through a box, and only the frames of the patterns it
+              imports
+
+The jar: sha256 5ce408e3256e42fa83897caf14960da6645afa33e25a16a032d717b6d46fd603, built on Windows by
+mvn -o -B clean package from this release's tree; it is the jar the smoke runs, the egg run and the
+pizza board above loaded. The unit suite in that build, on Java 11: 3,218 tests, 0 failures, 0
+errors, 3 skipped - PinchZoomTest; KoncludeTest's executable-bit test, which needs a file system
+with one and runs on CI's Linux job; and BundleConfigurationTest, the manifest check, which a clean
+build reaches before the jar exists (run against this jar afterwards, its 18 tests passed, and its
+Import-Package lists the same 254 packages as 1.135.1's). The 14 tests that run ROBOT and the ODK
+build in the obolibrary/odkfull Docker image (RobotCliParityTest 9, RobotParityTest 3, OdkBuildTest
+2), skipped in 1.135.1's build for want of the image, ran and passed. With DejaVu Sans first in the
+board's font list, as CI's Linux draws, the same 3,218 tests: 0 errors and one failure, the font
+check that edit breaks. With every core three times over busy, the three routing-time tests pass.
+
+
+WHAT THIS RELEASE ADDS
+
+- Zoomed out, a relation's label lay on the line beside it: JGraphX placed it on a slightly
+  different line and measured it in a font scaled to the zoom, up to 26 px wider at 21%. A routed
+  line's label is now drawn at the router's place, at its size at 100%; on the egg boards no label
+  touches a line, a box or a label at any zoom from 10% to 200%.
+- A defined class stood apart from its superclass, below every frame: the class a definition starts
+  from, C = A and ..., now counts as its superclass for frames, trees and placing. On pizza-bfo after
+  Arrange > Outline the defined pizzas stand under pizza.
+- A board saved by 1.135.0 kept its patterns' empty frames, which pushed the outline away: such a
+  frame is the pattern's again when the board is read - its title a library pattern's name, the
+  pattern imported once, and none of the project's classes in it - and an empty one goes. The pizza
+  board after Arrange > Outline: 3,035 x 2,792 px with this jar, instead of 8,649 x 7,431.
+- On a busy machine routing gave up lines a quiet one routes: its budgets now count the routing
+  thread's processor time, and stop on the wall clock at three times the budget.
+- Write a test from a question... has a rule that names what the property points to, "Every kind of
+  X has some P that is a Y", for a class deep in an imported ontology, where "has some P" passed at
+  once; it refuses a data property, for which such a test could never pass.
+- Check sheets... and Template... count the same names, the names the sheets use - class
+  expressions' too - and a comment is no longer taken for a name. A date written with its datatype in
+  a typed column is reported, where it went into the graph as text.
+- Find terms searches every label of a term and IAO's alternative label, says which name it found a
+  term by, and shows it by the label the board shows. A new module is named after the prefix the
+  ontology asks for or a recognisable part of its address - pmdco, not co - and never after another
+  import's module; a project that imports a PMDco pattern is offered PMDco and TTO.
+- An independent review of these fixes found 16 problems; the important ones and most minor ones
+  are fixed, each with a test that failed first. A 1.135.2 candidate had routed boards of up to 500
+  lines; that is taken back - the whole board was routed again at every drag - and a board of more
+  than 150 lines draws its relations straight, as in 1.135.1 (docs/limitations.md). A second,
+  read-only verification of the fixes found 19 more, 2 important: the same ontology read from
+  another address got a second module, and a class expression's cell was not read as ROBOT reads
+  it. Both are fixed, with 5 minor ones in code and 3 in the notes' wording; 9 minor ones, rare or
+  older than this release, are left.
+
+
+WHAT THIS RECEIPT DOES NOT COVER
+
+- The scripted run sends mouse events to the components directly, so focus, hover, drag and the
+  native file dialogs were not exercised with a real mouse on this jar.
+- Linux and macOS: not run on this jar; CI runs the unit suite on Linux.
+- Protégé's "Ontology sources changed" dialog after a Find terms import, reported once with a 1.135.1
+  candidate, did not appear in a live Find terms import with 1.135.1's release nor with an earlier
+  1.135.2 build; the probe sends no window-focus events, so a check that a focus change triggers is
+  not ruled out.
+- A board of more than 150 lines: its relations keep the straight connector, through boxes too.
