@@ -1,0 +1,6 @@
+# Terms extracted into mini_import.owl
+# Source: https://example.org/mini.owl
+# One term per line. This file is what makes the module rebuildable:
+# edit it and re-run the import to change what the module contains.
+https://example.org/mini/MINI_0000005 # dataset
+https://example.org/mini/MINI_0000101 # has part

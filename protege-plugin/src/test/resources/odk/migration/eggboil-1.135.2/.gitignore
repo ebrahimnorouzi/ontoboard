@@ -1,0 +1,28 @@
+# Build products only.
+#
+# The release artefact - <id>.owl at the project ROOT, written by
+# `make prepare_release` - is deliberately not here. That one is the
+# product, and ODK projects commit it so a PURL resolves to something.
+#
+# Import modules under src/ontology/imports/ are not here either. A
+# module is not reproducible output: it is a few dozen axioms this
+# project chose to copy from a much larger ontology at a particular
+# release. Ignore it and the catalog entry beside it points at a file
+# nobody else has.
+#
+# src/ontology/mirror/ IS ignored, unlike imports/. A mirror is a
+# downloaded copy of an upstream ontology - a large one is hundreds of
+# megabytes - and it is reproducible from the source each term list
+# records. Reuse > Refresh imports... rebuilds it. The modules under
+# imports/ are NOT reproducible that way, which is why those are
+# committed and this is not.
+src/ontology/mirror/
+tmp_*
+report.tsv
+validate-profile.txt
+# robot verify writes one CSV per failing query into src/ontology.
+src/ontology/*.csv
+*.bak
+src/ontology/eggboil.owl
+build/
+notes/

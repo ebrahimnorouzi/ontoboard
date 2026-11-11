@@ -1,0 +1,12 @@
+# Line endings are pinned so this project is the same bytes on every machine.
+#
+# Git is often configured with core.autocrlf=true, which rewrites text files to
+# CRLF on checkout. Everything OntoBoard generates is LF, so without this a
+# Windows clone gets CRLF in the working tree - and then any byte comparison
+# against regenerated content differs on that machine and nowhere else.
+* text=auto eol=lf
+
+# Not text: these are binary or effectively so.
+*.png binary
+*.jpg binary
+*.zip binary

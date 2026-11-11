@@ -1,0 +1,171 @@
+<?xml version="1.0"?>
+<rdf:RDF xmlns="https://example.org/mini.owl#"
+     xml:base="https://example.org/mini.owl"
+     xmlns:obo="http://purl.obolibrary.org/obo/"
+     xmlns:owl="http://www.w3.org/2002/07/owl#"
+     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+     xmlns:xml="http://www.w3.org/XML/1998/namespace"
+     xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
+     xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#">
+    <owl:Ontology rdf:about="https://example.org/mini.owl"/>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Annotation properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://purl.obolibrary.org/obo/IAO_0000115 -->
+
+    <owl:AnnotationProperty rdf:about="http://purl.obolibrary.org/obo/IAO_0000115">
+        <rdfs:label xml:lang="en">definition</rdfs:label>
+    </owl:AnnotationProperty>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Object Properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- https://example.org/mini/MINI_0000101 -->
+
+    <owl:ObjectProperty rdf:about="https://example.org/mini/MINI_0000101">
+        <obo:IAO_0000115 xml:lang="en">Relates a whole to one of its parts.</obo:IAO_0000115>
+        <rdfs:label xml:lang="en">has part</rdfs:label>
+    </owl:ObjectProperty>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Classes
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- https://example.org/mini/MINI_0000001 -->
+
+    <owl:Class rdf:about="https://example.org/mini/MINI_0000001">
+        <obo:IAO_0000115 xml:lang="en">Anything that exists or has existed.</obo:IAO_0000115>
+        <rdfs:label xml:lang="en">entity</rdfs:label>
+    </owl:Class>
+    
+
+
+    <!-- https://example.org/mini/MINI_0000002 -->
+
+    <owl:Class rdf:about="https://example.org/mini/MINI_0000002">
+        <rdfs:subClassOf rdf:resource="https://example.org/mini/MINI_0000001"/>
+        <obo:IAO_0000115 xml:lang="en">An entity that has some portion of matter as a part.</obo:IAO_0000115>
+        <rdfs:label xml:lang="en">material entity</rdfs:label>
+    </owl:Class>
+    
+
+
+    <!-- https://example.org/mini/MINI_0000003 -->
+
+    <owl:Class rdf:about="https://example.org/mini/MINI_0000003">
+        <rdfs:subClassOf rdf:resource="https://example.org/mini/MINI_0000001"/>
+        <obo:IAO_0000115 xml:lang="en">An entity that happens, unfolding in time.</obo:IAO_0000115>
+        <rdfs:label xml:lang="en">process</rdfs:label>
+    </owl:Class>
+    
+
+
+    <!-- https://example.org/mini/MINI_0000004 -->
+
+    <owl:Class rdf:about="https://example.org/mini/MINI_0000004">
+        <rdfs:subClassOf rdf:resource="https://example.org/mini/MINI_0000001"/>
+        <obo:IAO_0000115 xml:lang="en">An entity that is about something else.</obo:IAO_0000115>
+        <rdfs:label xml:lang="en">information content entity</rdfs:label>
+    </owl:Class>
+    
+
+
+    <!-- https://example.org/mini/MINI_0000005 -->
+
+    <owl:Class rdf:about="https://example.org/mini/MINI_0000005">
+        <rdfs:subClassOf rdf:resource="https://example.org/mini/MINI_0000004"/>
+        <rdfs:subClassOf>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="https://example.org/mini/MINI_0000101"/>
+                <owl:someValuesFrom rdf:resource="https://example.org/mini/MINI_0000006"/>
+            </owl:Restriction>
+        </rdfs:subClassOf>
+        <obo:IAO_0000115 xml:lang="en">An information content entity that collects data.</obo:IAO_0000115>
+        <rdfs:label xml:lang="en">dataset</rdfs:label>
+    </owl:Class>
+    
+
+
+    <!-- https://example.org/mini/MINI_0000006 -->
+
+    <owl:Class rdf:about="https://example.org/mini/MINI_0000006">
+        <rdfs:subClassOf rdf:resource="https://example.org/mini/MINI_0000004"/>
+        <obo:IAO_0000115 xml:lang="en">An information content entity that records one value.</obo:IAO_0000115>
+        <rdfs:label xml:lang="en">datum</rdfs:label>
+    </owl:Class>
+    
+
+
+    <!-- https://example.org/mini/MINI_0000007 -->
+
+    <owl:Class rdf:about="https://example.org/mini/MINI_0000007">
+        <rdfs:subClassOf rdf:resource="https://example.org/mini/MINI_0000002"/>
+        <obo:IAO_0000115 xml:lang="en">A material entity made to perform a function.</obo:IAO_0000115>
+        <rdfs:label xml:lang="en">device</rdfs:label>
+    </owl:Class>
+    
+
+
+    <!-- https://example.org/mini/MINI_0000008 -->
+
+    <owl:Class rdf:about="https://example.org/mini/MINI_0000008">
+        <rdfs:subClassOf rdf:resource="https://example.org/mini/MINI_0000003"/>
+        <obo:IAO_0000115 xml:lang="en">A process that produces a datum about a quality.</obo:IAO_0000115>
+        <rdfs:label xml:lang="en">measurement</rdfs:label>
+    </owl:Class>
+    
+
+
+    <!-- https://example.org/mini/MINI_0000009 -->
+
+    <owl:Class rdf:about="https://example.org/mini/MINI_0000009">
+        <rdfs:subClassOf rdf:resource="https://example.org/mini/MINI_0000001"/>
+        <obo:IAO_0000115 xml:lang="en">How hot or cold something is.</obo:IAO_0000115>
+        <rdfs:label xml:lang="en">temperature</rdfs:label>
+    </owl:Class>
+    
+
+
+    <!-- https://example.org/mini/MINI_0000010 -->
+
+    <owl:Class rdf:about="https://example.org/mini/MINI_0000010">
+        <rdfs:subClassOf rdf:resource="https://example.org/mini/MINI_0000001"/>
+        <obo:IAO_0000115 xml:lang="en">How long a process lasts.</obo:IAO_0000115>
+        <rdfs:label xml:lang="en">duration</rdfs:label>
+    </owl:Class>
+</rdf:RDF>
+
+
+
+<!-- Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi -->
+
