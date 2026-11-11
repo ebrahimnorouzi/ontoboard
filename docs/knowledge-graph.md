@@ -59,9 +59,12 @@ column is, and every row after that is one thing.
   for `https://example.org/kg/` when the IDs say `kg:` - names it (since 1.134.0).
 - `AL rdfs:label@en` gives the row its name in English. (`A rdfs:label@en` looks the same and gives
   no name at all - *Template...* says so.)
-- **Dates and numbers**: write the type in the cell - `2026-11-01T18:00:00^^xsd:dateTime`. ROBOT
-  does not take it from the property, so a date typed plainly becomes text; *Template...* warns
-  when the property says its values are dates.
+- **Dates and numbers**: in an `I <property>` column, write the type in the cell -
+  `2026-11-01T18:00:00^^xsd:dateTime`. ROBOT does not take it from the property, so a date typed
+  plainly becomes text; *Template...* warns when the property says its values are dates. A column
+  that types its values itself - `AT dcterms:date^^xsd:date` - takes the value alone: ROBOT reads
+  no type in its cells, so `2026-01-15^^xsd:date` there stays text, *2026-01-15^^xsd:date*, which
+  is no date. *Check sheets...* and *Template...* say so (since 1.135.2).
 
 *Spreadsheets → Template...* → *Write me a template to start from* writes a sheet with the
 columns most terms need, to copy.
@@ -83,8 +86,16 @@ graph's own individuals, so do not delete a built row from its sheet and then ge
 
 *Spreadsheets → Check sheets...* reads the whole folder against the open ontology and lists, cell
 by cell: names that point at nothing or at two things, a template placeholder left in a cell,
-pasted whitespace, a curly quote where a plain one was meant - each with the correction where there
-is an obvious one. Nothing is changed. The sheet editor marks the same problems where you type.
+a type written in a cell whose column already gives one, pasted whitespace, a curly quote where a
+plain one was meant - each with the correction where there is an obvious one. Nothing is changed.
+The sheet editor marks the same problems where you type.
+
+A name is a row's label - `LABEL`, or `A`, `AL` or `AT` on `rdfs:label` - because that is what
+ROBOT resolves a name by. A comment, a definition or a synonym names nothing, so two rows that
+share a comment are fine. A name that means two things is listed where the sheets use it: a label
+a row is given, or a name a cell refers to. A label that only the imported ontologies give two
+terms, and no sheet uses, is not the sheets' concern. *Template...* counts these names the same
+way before it builds, and says how many (since 1.135.2).
 
 ## 4. Build the graph
 
