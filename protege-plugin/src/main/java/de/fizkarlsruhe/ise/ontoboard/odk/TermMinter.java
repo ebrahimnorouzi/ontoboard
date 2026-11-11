@@ -175,6 +175,117 @@ public final class TermMinter {
         return ranges;
     }
 
+    /** The {@code -idranges.owl} minted from, or null when naming from the typed name. */
+    public File getRangesFile() {
+        return rangesFile;
+    }
+
+    /**
+     * Whether this editor has to claim one of ODK's placeholder ranges before the first term.
+     *
+     * <p>ODK seeds a project's ranges allocated to {@code ONTOLOGY-CREATOR} and
+     * {@code ADDITIONAL EDITOR}, for the people who start it to put their names in. Nobody mints
+     * under a placeholder, so every new term in such a project was refused until somebody edited
+     * the file by hand; the board asks instead. Only while every range is a placeholder: once one
+     * carries a name the project has begun allocating, and a further editor is given a range the
+     * way that project gives them - ID ranges... - and told so when minting is refused.
+     */
+    public boolean needsClaim() {
+        return isNumeric() && ranges.isOdkPlaceholders() && ranges.rangeFor(editor) == null;
+    }
+
+    /** The placeholders the question offers, in the file's order; none unless all are. */
+    public static List<String> claimable(IdRanges ranges) {
+        Set<String> placeholders = new java.util.LinkedHashSet<String>();
+        if (ranges != null && ranges.isOdkPlaceholders()) {
+            for (IdRanges.Range range : ranges.getRanges()) {
+                placeholders.add(range.getAllocatedTo());
+            }
+        }
+        return new ArrayList<String>(placeholders);
+    }
+
+    /**
+     * One answer to the question, with what comes with it:
+     * {@code ONTOLOGY-CREATOR: 0 to 999999 (EGGBOIL_0000000 to EGGBOIL_0999999)} - the numbers
+     * as the file states them, and the identifiers a user will see on the board.
+     */
+    public static String claimChoice(IdRanges ranges, String placeholder) {
+        IdRanges.Range range = ranges == null ? null : ranges.rangeFor(placeholder);
+        if (range == null) {
+            return placeholder;
+        }
+        return placeholder + ": " + range.getLower() + " to " + range.getUpper() + " ("
+                + localPart(ranges.iriFor(range.getLower())) + " to "
+                + localPart(ranges.iriFor(range.getUpper())) + ")";
+    }
+
+    private static String localPart(String iri) {
+        return iri.substring(Math.max(iri.lastIndexOf('/'), iri.lastIndexOf('#')) + 1);
+    }
+
+    /**
+     * The question asked before the first term, for a dialog titled "Which range is yours?".
+     *
+     * <p>It says what Cancel does, because Cancel does nothing at all - no name is written and
+     * no term is made - and a dialog that closes without a word otherwise reads as a failure.
+     *
+     * @param term what is being made: "class", "individual", "property"
+     */
+    public static String claimQuestion(String editor, String rangesFileName, String term) {
+        return "This project's ID ranges are still the two placeholders ODK seeds a project with,"
+                + " allocated to nobody yet. Which range is yours?\n\n"
+                + "OntoBoard writes \"" + editor + "\" into the one you choose, in "
+                + rangesFileName + ", and makes the new " + term + " from it. Commit "
+                + rangesFileName + " so that nobody else claims the same range.\n\n"
+                + "Cancel writes nothing and makes no " + term + ".";
+    }
+
+    /**
+     * What ID ranges... says of a file whose ranges are all ODK's placeholders, or null for any
+     * other. Its usual advice - allocate a block to yourself - would add a third range beside the
+     * two that are waiting for a name.
+     */
+    public static String unclaimedNote(IdRanges ranges, String editor) {
+        if (ranges == null || !ranges.isOdkPlaceholders()) {
+            return null;
+        }
+        return "These are the placeholders ODK seeds a project with - "
+                + String.join(" and ", claimable(ranges)) + " - allocated to nobody yet. The "
+                + "first new term you make on the board asks which one is yours and writes \""
+                + editor + "\" into it.";
+    }
+
+    /**
+     * Writes this editor's name into the range allocated to {@code placeholder} and returns the
+     * minter that mints from it.
+     *
+     * <p>The file is read again first, so the claim is made on it as it is now: a range somebody
+     * else has claimed since is refused by {@link IdRanges#claim}, not written over. It is read
+     * strictly as UTF-8, so that writing it back gives every other byte as it was; a file that is
+     * not UTF-8 is refused rather than rewritten.
+     *
+     * @throws IllegalStateException when this editor has nothing to claim
+     * @throws IllegalArgumentException when {@link IdRanges#claim} refuses
+     * @throws IOException when the file cannot be read as UTF-8, or written
+     */
+    public TermMinter claim(String placeholder) throws IOException {
+        if (!needsClaim()) {
+            throw new IllegalStateException("'" + editor + "' has nothing to claim: "
+                    + (isNumeric() ? "the ranges in " + rangesFile.getName() + " are not all "
+                            + "ODK's placeholders, or one is theirs already"
+                            : "this project has no ID ranges") + ".");
+        }
+        String before = StandardCharsets.UTF_8.newDecoder()
+                .onMalformedInput(java.nio.charset.CodingErrorAction.REPORT)
+                .onUnmappableCharacter(java.nio.charset.CodingErrorAction.REPORT)
+                .decode(java.nio.ByteBuffer.wrap(Files.readAllBytes(rangesFile.toPath())))
+                .toString();
+        String after = IdRanges.claim(before, placeholder, editor);
+        Files.write(rangesFile.toPath(), after.getBytes(StandardCharsets.UTF_8));
+        return new TermMinter(Style.NUMERIC, IdRanges.parse(after), editor, rangesFile);
+    }
+
     /**
      * One line describing what will happen, for a dialog to show before the user commits.
      *
@@ -185,6 +296,12 @@ public final class TermMinter {
         if (!isNumeric()) {
             return "New terms are named from what you type - 'tensile test' becomes TensileTest,"
                     + " labelled 'tensile test' - in the namespace this ontology's terms use.";
+        }
+        if (needsClaim()) {
+            return "New terms get numeric identifiers, with what you type as the label. This "
+                    + "project's ID ranges are still ODK's placeholders - "
+                    + String.join(" and ", claimable(ranges)) + " - so OntoBoard first asks which "
+                    + "one is yours and writes \"" + editor + "\" into it.";
         }
         IdRanges.Range mine = ranges.rangeFor(editor);
         if (mine == null) {

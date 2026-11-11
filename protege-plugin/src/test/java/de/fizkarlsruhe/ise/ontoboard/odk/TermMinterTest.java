@@ -1,5 +1,6 @@
 package de.fizkarlsruhe.ise.ontoboard.odk;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -7,10 +8,12 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import de.fizkarlsruhe.ise.ontoboard.axiom.EntityFactory;
+import de.fizkarlsruhe.ise.ontoboard.odk.seed.Goldens;
 import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -300,5 +303,152 @@ class TermMinterTest {
 
         assertTrue(TermMinter.forOntologyFile(ontologyFile, "alice").describe()
                 .contains("what you type"));
+    }
+
+    // ---------- ODK's placeholder ranges ----------
+
+    /**
+     * ODK's own seeded project, as far as minting sees it: the edit file with its root node
+     * EGGBOIL_0000000, and the ranges file allocated to ONTOLOGY-CREATOR and ADDITIONAL EDITOR.
+     * From the goldens, so the test is on the file ODK writes.
+     */
+    private static File seededProject(Path dir) throws Exception {
+        File ontologyDirectory = new File(dir.toFile(), "src/ontology");
+        assertTrue(ontologyDirectory.mkdirs());
+        java.util.Map<String, byte[]> seed = Goldens.seedTree("eggboil");
+        for (String name : new String[] {"eggboil-edit.owl", "eggboil-idranges.owl"}) {
+            Files.write(new File(ontologyDirectory, name).toPath(),
+                    seed.get("src/ontology/" + name));
+        }
+        return new File(ontologyDirectory, "eggboil-edit.owl");
+    }
+
+    /**
+     * Nobody mints under a placeholder's name, so a seeded project refused every new term until
+     * somebody edited the ranges file by hand. Now it asks which range is yours.
+     */
+    @Test
+    void aSeededProjectAsksBeforeItsFirstTerm(@TempDir Path dir) throws Exception {
+        TermMinter minter = TermMinter.forOntologyFile(seededProject(dir), "eno");
+
+        assertTrue(minter.needsClaim());
+        assertEquals(Arrays.asList("ONTOLOGY-CREATOR", "ADDITIONAL EDITOR"),
+                TermMinter.claimable(minter.getRanges()));
+    }
+
+    /** The root node holds 0000000, so the first term minted after the claim is 0000001. */
+    @Test
+    void afterTheClaimTheFirstTermIsOne(@TempDir Path dir) throws Exception {
+        File editFile = seededProject(dir);
+        OWLOntology seeded = manager.loadOntologyFromOntologyDocument(editFile);
+
+        TermMinter claimed = TermMinter.forOntologyFile(editFile, "eno").claim("ONTOLOGY-CREATOR");
+
+        assertFalse(claimed.needsClaim());
+        assertEquals("https://example.org/eggboil/EGGBOIL_0000001",
+                claimed.mintFor(seeded, "boiled egg").toString());
+        TermMinter later = TermMinter.forOntologyFile(editFile, "eno");
+        assertFalse(later.needsClaim(), "the claim was written to the file");
+        assertEquals(0, later.getRanges().rangeFor("eno").getLower());
+    }
+
+    /**
+     * Ranges that carry names are the project's own allocation; nothing is asked, and an editor
+     * without a range is refused as before, by name.
+     */
+    @Test
+    void aProjectWithNamedRangesNeverAsks(@TempDir Path dir) throws Exception {
+        File editFile = odkProject(dir, "alice");
+
+        assertFalse(TermMinter.forOntologyFile(editFile, "alice").needsClaim());
+        TermMinter bob = TermMinter.forOntologyFile(editFile, "bob");
+        assertFalse(bob.needsClaim());
+        assertTrue(TermMinter.claimable(bob.getRanges()).isEmpty());
+        assertThrows(IdRanges.NoRangeException.class, () -> bob.mintFor(ontology, "Thing"));
+    }
+
+    @Test
+    void aProjectWithoutIdRangesNeverAsks(@TempDir Path dir) throws Exception {
+        File ontologyFile = new File(dir.toFile(), "plain.owl");
+        Files.write(ontologyFile.toPath(), "<rdf:RDF/>".getBytes(StandardCharsets.UTF_8));
+
+        TermMinter minter = TermMinter.forOntologyFile(ontologyFile, "alice");
+
+        assertFalse(minter.needsClaim());
+        assertTrue(TermMinter.claimable(minter.getRanges()).isEmpty());
+        assertEquals("http://purl.obolibrary.org/obo/mwo.owl#Thing",
+                minter.mintFor(ontology, "Thing").toString());
+    }
+
+    /** What the question offers: each placeholder with the numbers that come with it. */
+    @Test
+    void eachPlaceholderIsOfferedWithItsBounds(@TempDir Path dir) throws Exception {
+        IdRanges ranges = TermMinter.forOntologyFile(seededProject(dir), "eno").getRanges();
+
+        assertEquals("ONTOLOGY-CREATOR: 0 to 999999 (EGGBOIL_0000000 to EGGBOIL_0999999)",
+                TermMinter.claimChoice(ranges, "ONTOLOGY-CREATOR"));
+        assertEquals("ADDITIONAL EDITOR: 1000000 to 1999999 (EGGBOIL_1000000 to EGGBOIL_1999999)",
+                TermMinter.claimChoice(ranges, "ADDITIONAL EDITOR"));
+    }
+
+    /** The question says whose name goes where, and what Cancel does: nothing at all. */
+    @Test
+    void theQuestionSaysWhatIsWrittenAndThatCancellingWritesNothing() {
+        String question = TermMinter.claimQuestion("eno", "eggboil-idranges.owl", "class");
+
+        assertTrue(question.contains("Which range is yours?"), question);
+        assertTrue(question.contains("\"eno\""), question);
+        assertTrue(question.contains("eggboil-idranges.owl"), question);
+        assertTrue(question.contains("Cancel writes nothing and makes no class."), question);
+    }
+
+    /** Shown in the name prompt, before anything is asked or written. */
+    @Test
+    void theDescriptionOfASeededProjectSaysItWillAsk(@TempDir Path dir) throws Exception {
+        String described = TermMinter.forOntologyFile(seededProject(dir), "eno").describe();
+
+        assertTrue(described.contains("ONTOLOGY-CREATOR"), described);
+        assertTrue(described.contains("which one is yours"), described);
+    }
+
+    /** ID ranges... says the same, rather than telling the user to allocate a third block. */
+    @Test
+    void theIdRangesViewSaysThePlaceholdersAreClaimedOnTheBoard(@TempDir Path dir)
+            throws Exception {
+        String note = TermMinter.unclaimedNote(
+                TermMinter.forOntologyFile(seededProject(dir), "eno").getRanges(), "eno");
+
+        assertTrue(note.contains("ONTOLOGY-CREATOR"), note);
+        assertTrue(note.contains("ADDITIONAL EDITOR"), note);
+        assertTrue(note.contains("\"eno\""), note);
+        assertNull(TermMinter.unclaimedNote(TermMinter.forOntologyFile(
+                odkProject(dir, "alice"), "alice").getRanges(), "alice"));
+    }
+
+    /** Claiming where there is nothing to claim is refused, and the file stays as it was. */
+    @Test
+    void aMinterThatNeedsNoClaimRefusesOne(@TempDir Path dir) throws Exception {
+        File editFile = odkProject(dir, "alice");
+        File rangesFile = new File(dir.toFile(), "mwo-idranges.owl");
+        byte[] before = Files.readAllBytes(rangesFile.toPath());
+
+        assertThrows(IllegalStateException.class,
+                () -> TermMinter.forOntologyFile(editFile, "alice").claim("ONTOLOGY-CREATOR"));
+        assertArrayEquals(before, Files.readAllBytes(rangesFile.toPath()));
+    }
+
+    /** Written into the file as IdRanges.claim gives it: a CRLF checkout stays CRLF. */
+    @Test
+    void theClaimIsWrittenIntoTheFileAndNothingElseChanges(@TempDir Path dir) throws Exception {
+        File editFile = seededProject(dir);
+        File rangesFile = new File(editFile.getParentFile(), "eggboil-idranges.owl");
+        String crlf = new String(Files.readAllBytes(rangesFile.toPath()), StandardCharsets.UTF_8)
+                .replace("\n", "\r\n");
+        Files.write(rangesFile.toPath(), crlf.getBytes(StandardCharsets.UTF_8));
+
+        TermMinter.forOntologyFile(editFile, "eno").claim("ADDITIONAL EDITOR");
+
+        assertEquals(IdRanges.claim(crlf, "ADDITIONAL EDITOR", "eno"), new String(
+                Files.readAllBytes(rangesFile.toPath()), StandardCharsets.UTF_8));
     }
 }
