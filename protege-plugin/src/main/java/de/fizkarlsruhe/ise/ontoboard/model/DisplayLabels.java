@@ -83,15 +83,27 @@ public final class DisplayLabels {
      * alone, and listed German labels for terms the board showed in English.
      */
     public static String chooseFrom(Collection<OWLAnnotation> annotations) {
+        List<OWLLiteral> literals = new ArrayList<OWLLiteral>();
+        for (OWLAnnotation annotation : annotations) {
+            if (annotation.getValue().asLiteral().isPresent()) {
+                literals.add(annotation.getValue().asLiteral().get());
+            }
+        }
+        return chooseFromLiterals(literals);
+    }
+
+    /**
+     * The best of a set of labels, as {@link #chooseFrom} chooses: English, then a label with no
+     * language, then the smallest of the others. Public so that Find terms names a term the way
+     * the board does (1.135.2 review): it took an en-us label before the others, so it listed
+     * "mold" for a term the board drew as "Form".
+     */
+    public static String chooseFromLiterals(Collection<OWLLiteral> labels) {
         List<String> preferred = new ArrayList<String>();
         List<String> unlanguaged = new ArrayList<String>();
         List<String> other = new ArrayList<String>();
 
-        for (OWLAnnotation annotation : annotations) {
-            if (!annotation.getValue().asLiteral().isPresent()) {
-                continue;
-            }
-            OWLLiteral literal = annotation.getValue().asLiteral().get();
+        for (OWLLiteral literal : labels) {
             String text = literal.getLiteral();
             if (text == null || text.trim().isEmpty()) {
                 continue;

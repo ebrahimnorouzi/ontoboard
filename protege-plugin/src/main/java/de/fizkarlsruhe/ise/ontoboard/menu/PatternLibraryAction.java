@@ -699,9 +699,15 @@ public class PatternLibraryAction extends ProtegeOWLAction {
                 ? new String[] {"Add the " + selected.size() + " selected",
                     "Add all " + all.size(), "Advanced...", "Cancel"}
                 : new String[] {"Add them", "Advanced...", "Cancel"};
+        // As the import will name it: not a name another import has (1.135.2 review).
+        File editFile = editFile();
+        String module = de.fizkarlsruhe.ise.ontoboard.odk.ImportModules.nameForPattern(
+                editFile == null ? null : ReleaseAction.projectRootOf(editFile),
+                moduleNameFor(chosen, mirror), chosen.getId(),
+                PatternLibrary.copyFor(chosen, mirror).toURI().toString());
         int answer = JOptionPane.showOptionDialog(dialog, whatAddingWrites(chosen.getName(),
                         classes, wanted.size() - classes, narrowed ? all.size() : 0,
-                        moduleNameFor(chosen, mirror), imported),
+                        module, imported),
                 "Add " + chosen.getName(), JOptionPane.DEFAULT_OPTION,
                 JOptionPane.QUESTION_MESSAGE, null, options, options[0]);
         if (narrowed && answer == 1) {

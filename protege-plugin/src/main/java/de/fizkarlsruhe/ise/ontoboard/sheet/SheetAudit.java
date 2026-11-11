@@ -57,6 +57,15 @@ public final class SheetAudit {
         /** A column with data in it that the template row ignores. */
         UNUSED_COLUMN,
         /**
+         * A cell that writes a datatype its column's template string already gives (1.135.2).
+         *
+         * <p>ROBOT reads no datatype in such a cell - the column gives it - so the suffix stays in
+         * the text: {@code 2026-01-15^^xsd:date} in a column {@code AT dcterms:date^^xsd:date}
+         * becomes the literal {@code "2026-01-15^^xsd:date"^^xsd:date}, which is no date. Found on
+         * a knowledge graph built from sheets, where nothing said a word about it.
+         */
+        DATATYPE_TWICE,
+        /**
          * Two sheets are the subject of one identifier and disagree about what it is.
          *
          * <p>Not the same thing as two sheets being the subject of one identifier, which is
@@ -88,9 +97,15 @@ public final class SheetAudit {
         private final String cell;
         private final String message;
         private final String suggestion;
+        private final String name;
 
         Finding(Kind kind, String sheet, int row, int column, String heading, String cell,
                 String message, String suggestion) {
+            this(kind, sheet, row, column, heading, cell, message, suggestion, "");
+        }
+
+        Finding(Kind kind, String sheet, int row, int column, String heading, String cell,
+                String message, String suggestion, String name) {
             this.kind = kind;
             this.sheet = sheet;
             this.row = row;
@@ -99,6 +114,15 @@ public final class SheetAudit {
             this.cell = cell == null ? "" : cell;
             this.message = message;
             this.suggestion = suggestion == null ? "" : suggestion;
+            this.name = name == null ? "" : name;
+        }
+
+        /**
+         * The name that means more than one thing, for an {@link Kind#AMBIGUOUS_NAME}; empty for
+         * every other finding. Not the cell: a cell can hold several names, split.
+         */
+        public String getName() {
+            return name;
         }
 
         public Kind getKind() {
@@ -419,8 +443,90 @@ public final class SheetAudit {
         cellByCell(sheet, rows, columns, headings, index, findings);
         unusedColumns(sheet, rows, columns, findings);
         nearDuplicateNames(sheet, rows, columns, findings);
-        ambiguousNames(sheet, rows, columns, index, findings);
+        if (index != null) {
+            ambiguities(sheet, rows, columns, headings, byLabel(index), findings);
+        }
         return findings;
+    }
+
+    /**
+     * The names these sheets use that mean more than one thing, worst first: a label a row is
+     * given, or a name a cell refers to, that the sheets and the ontology give two things. What
+     * Check sheets... and Template... count, from the same scan that makes the
+     * {@link Kind#AMBIGUOUS_NAME} findings of {@link #of}: the count a warning gives is the number
+     * of names the list shows (1.135.2).
+     *
+     * <p>Found on a knowledge graph built from sheets: Template... counted more names that mean
+     * more than one thing than Check sheets... listed. Both counted every label the index held
+     * twice - comments taken for names, and labels the imported ontologies each give two terms,
+     * which no sheet uses - while the list held only what the sheets' own rows are named. A label
+     * the ontology gives two things is the sheets' problem only where a cell names it: that cell
+     * gets whichever ROBOT picks, so it is listed and counted.
+     *
+     * @param sheets every sheet in play, name to rows, both header rows included
+     * @param index every name in play, the sheets' and the ontology's
+     */
+    public static List<LabelIndex.Ambiguity> ambiguousNamesIn(
+            Map<String, List<List<String>>> sheets, LabelIndex index) {
+        List<LabelIndex.Ambiguity> used = new ArrayList<LabelIndex.Ambiguity>();
+        if (sheets == null || index == null) {
+            return used;
+        }
+        Map<String, LabelIndex.Ambiguity> ambiguous = byLabel(index);
+        Set<String> names = new java.util.HashSet<String>();
+        for (Map.Entry<String, List<List<String>>> sheet : sheets.entrySet()) {
+            List<List<String>> rows = sheet.getValue();
+            if (rows == null || rows.size() < 2) {
+                continue;
+            }
+            List<Finding> found = new ArrayList<Finding>();
+            ambiguities(sheet.getKey(), rows, TemplateColumns.of(rows), rows.get(0), ambiguous,
+                    found);
+            for (Finding finding : found) {
+                names.add(finding.getName());
+            }
+        }
+        for (LabelIndex.Ambiguity ambiguity : index.ambiguous()) {
+            if (names.contains(ambiguity.getLabel())) {
+                used.add(ambiguity);
+            }
+        }
+        return used;
+    }
+
+    /**
+     * The cells of one sheet that write a datatype their column already gives - see
+     * {@link Kind#DATATYPE_TWICE} - for Template... to warn of before it builds the sheet.
+     */
+    public static List<Finding> datatypesWrittenTwice(String sheetName, List<List<String>> rows) {
+        List<Finding> findings = new ArrayList<Finding>();
+        if (rows == null || rows.size() < 2) {
+            return findings;
+        }
+        String sheet = sheetName == null || sheetName.trim().isEmpty() ? "this sheet"
+                : sheetName.trim();
+        TemplateColumns columns = TemplateColumns.of(rows);
+        for (int rowIndex = 2; rowIndex < rows.size(); rowIndex++) {
+            List<String> row = rows.get(rowIndex);
+            for (TemplateColumns.Column column : columns.getColumns()) {
+                String raw = cell(row, column.getNumber());
+                if (!raw.trim().isEmpty()) {
+                    datatypeTwice(sheet, rowIndex + 1, column,
+                            heading(rows.get(0), column.getNumber()), raw, findings);
+                }
+            }
+        }
+        return findings;
+    }
+
+    /** Each label that names more than one thing, by the label. */
+    private static Map<String, LabelIndex.Ambiguity> byLabel(LabelIndex index) {
+        Map<String, LabelIndex.Ambiguity> ambiguous =
+                new LinkedHashMap<String, LabelIndex.Ambiguity>();
+        for (LabelIndex.Ambiguity ambiguity : index.ambiguous()) {
+            ambiguous.put(ambiguity.getLabel(), ambiguity);
+        }
+        return ambiguous;
     }
 
     private static String heading(List<String> headings, int column) {
@@ -511,6 +617,7 @@ public final class SheetAudit {
                 whitespace(sheet, number, column, name, raw, findings);
                 typography(sheet, number, column, name, raw, findings);
                 placeholder(sheet, number, column, name, raw, findings);
+                datatypeTwice(sheet, number, column, name, raw, findings);
                 // Class expressions are left to ROBOT. A cell there is Manchester syntax
                 // rather than a name - `'has disposition' some %` is not something to look up
                 // - and ROBOT already reports a bad one properly, with the row, the column and
@@ -583,6 +690,55 @@ public final class SheetAudit {
                             + "ontology exactly as it stands.", ""));
             return;
         }
+    }
+
+    /**
+     * A datatype written into a cell whose column's template string gives one - see
+     * {@link Kind#DATATYPE_TWICE}. Only in an {@code AT} column, where ROBOT was seen to keep the
+     * suffix as text; elsewhere a {@code ^^} is how a cell is typed - {@code 8^^xsd:decimal} in an
+     * {@code I} column for a data property, which ROBOT reads as a decimal - and is right.
+     */
+    private static void datatypeTwice(String sheet, int row, TemplateColumns.Column column,
+            String heading, String raw, List<Finding> findings) {
+        if (column.getKind() != TemplateColumns.Kind.ANNOTATION_TYPED
+                || column.getDatatype().isEmpty() || raw.indexOf("^^") < 0) {
+            return;
+        }
+        String datatype = column.getDatatype();
+        String written = "";
+        String cellType = "";
+        StringBuilder alone = new StringBuilder();
+        List<String> parts = split(raw, column.getSplit());
+        for (int at = 0; at < parts.size(); at++) {
+            String part = parts.get(at);
+            int caret = part.indexOf("^^");
+            if (caret >= 0 && written.isEmpty()) {
+                written = part.trim();
+                cellType = part.substring(caret + 2).trim();
+            }
+            alone.append(at == 0 ? "" : column.getSplit())
+                    .append(caret < 0 ? part : withoutQuotes(part.substring(0, caret)));
+        }
+        findings.add(new Finding(Kind.DATATYPE_TWICE, sheet, row, column.getNumber(), heading,
+                raw,
+                "The template row already gives this column the datatype " + datatype + " (\""
+                        + column.getSpec() + "\"), so ROBOT reads none in the cell: \"^^"
+                        + cellType + "\" stays part of the text, and the value written is \""
+                        + written + "\" typed as " + datatype + ", which is not a valid one."
+                        + (cellType.equals(datatype) ? "" : " A value of another type than "
+                                + datatype + " needs a column of its own.")
+                        + " Write the value alone.",
+                alone.toString()));
+    }
+
+    /** The text before a {@code ^^}, without the quotes a Turtle literal puts around it. */
+    private static String withoutQuotes(String value) {
+        String end = value.replaceAll("\\s+$", "");
+        String core = end.trim();
+        if (core.length() >= 2 && core.startsWith("\"") && core.endsWith("\"")) {
+            return end.substring(0, end.indexOf('"')) + core.substring(1, core.length() - 1);
+        }
+        return end;
     }
 
     private static void reference(String sheet, int row, TemplateColumns.Column column,
@@ -682,7 +838,7 @@ public final class SheetAudit {
     private static void nearDuplicateNames(String sheet, List<List<String>> rows,
             TemplateColumns columns, List<Finding> findings) {
         TemplateColumns.Column id = columns.firstOf(TemplateColumns.Kind.ID);
-        List<TemplateColumns.Column> labels = labelColumns(columns);
+        List<TemplateColumns.Column> labels = columns.labelColumns();
         if (id == null || labels.isEmpty()) {
             return;
         }
@@ -722,54 +878,141 @@ public final class SheetAudit {
         }
     }
 
-    private static void ambiguousNames(String sheet, List<List<String>> rows,
-            TemplateColumns columns, LabelIndex index, List<Finding> findings) {
-        if (index == null) {
+    /**
+     * The names in one sheet that mean more than one thing: a label a row is given, at the first
+     * row that gives it, and a name a cell refers to, at every such cell - each of those gets
+     * whichever thing ROBOT picks, so each needs its IRI written. Names are labels, as
+     * {@link TemplateColumns#labelColumns} says: a comment two rows share names nothing (1.135.2).
+     * A class expression's cell refers to names too - see {@link #namesInExpressions} (1.135.2
+     * review) - and an IRI or a CURIE is no name.
+     */
+    private static void ambiguities(String sheet, List<List<String>> rows,
+            TemplateColumns columns, List<String> headings,
+            Map<String, LabelIndex.Ambiguity> ambiguous, List<Finding> findings) {
+        if (ambiguous.isEmpty()) {
             return;
         }
-        TemplateColumns.Column id = columns.firstOf(TemplateColumns.Kind.ID);
-        List<TemplateColumns.Column> labels = labelColumns(columns);
-        if (id == null || labels.isEmpty()) {
-            return;
-        }
+        boolean named = columns.firstOf(TemplateColumns.Kind.ID) != null;
         Set<String> reported = new LinkedHashSet<String>();
         for (int rowIndex = 2; rowIndex < rows.size(); rowIndex++) {
-            for (TemplateColumns.Column column : labels) {
-                String label = cell(rows.get(rowIndex), column.getNumber()).trim();
-                if (label.isEmpty() || !reported.add(label)) {
-                    continue;
-                }
-                for (LabelIndex.Ambiguity ambiguity : index.ambiguous()) {
-                    if (!ambiguity.getLabel().equals(label)) {
-                        continue;
-                    }
+            List<String> row = rows.get(rowIndex);
+            for (TemplateColumns.Column column : named ? columns.labelColumns()
+                    : Collections.<TemplateColumns.Column>emptyList()) {
+                String label = cell(row, column.getNumber()).trim();
+                LabelIndex.Ambiguity ambiguity = ambiguous.get(label);
+                if (ambiguity != null && reported.add(label)) {
                     findings.add(new Finding(Kind.AMBIGUOUS_NAME, sheet, rowIndex + 1,
                             column.getNumber(), column.getHeading(), label,
-                            ambiguity.describe(), ""));
+                            ambiguity.describe(), "", label));
+                }
+            }
+            for (TemplateColumns.Column column : columns.getColumns()) {
+                if (!column.namesATerm()) {
+                    continue;
+                }
+                String raw = cell(row, column.getNumber());
+                for (String name
+                        : column.getKind() == TemplateColumns.Kind.CLASS_EXPRESSION
+                                ? namesInExpressions(raw, column) : namesReferredTo(raw, column)) {
+                    LabelIndex.Ambiguity ambiguity = ambiguous.get(name);
+                    if (ambiguity != null) {
+                        findings.add(new Finding(Kind.AMBIGUOUS_NAME, sheet, rowIndex + 1,
+                                column.getNumber(), heading(headings, column.getNumber()), raw,
+                                ambiguity.describe(), "", name));
+                    }
                 }
             }
         }
     }
 
-    private static List<TemplateColumns.Column> labelColumns(TemplateColumns columns) {
-        List<TemplateColumns.Column> found = new ArrayList<TemplateColumns.Column>();
-        for (TemplateColumns.Column column : columns.getColumns()) {
-            if (column.getKind() == TemplateColumns.Kind.LABEL
-                    || column.getKind() == TemplateColumns.Kind.ANNOTATION_LANGUAGE) {
-                found.add(column);
-                continue;
-            }
-            if (column.getKind() != TemplateColumns.Kind.ANNOTATION) {
-                continue;
-            }
-            String property = column.getProperty();
-            int cut = Math.max(property.lastIndexOf('#'), property.lastIndexOf(':'));
-            String local = property.substring(cut + 1);
-            if ("label".equals(local) || local.startsWith("label@")) {
-                found.add(column);
+    /** The names a cell refers to: each of its values but an IRI, a CURIE or a quoted one. */
+    private static List<String> namesReferredTo(String raw, TemplateColumns.Column column) {
+        List<String> names = new ArrayList<String>();
+        if (raw.trim().isEmpty()) {
+            return names;
+        }
+        for (String part : split(raw, column.getSplit())) {
+            String value = part.trim();
+            if (!value.isEmpty() && !looksLikeAnIri(value)
+                    && !(value.length() > 1 && value.startsWith("'") && value.endsWith("'"))) {
+                names.add(value);
             }
         }
-        return found;
+        return names;
+    }
+
+    /** The words of Manchester syntax, which name no term. */
+    private static final Set<String> KEYWORDS = new java.util.HashSet<String>(
+            java.util.Arrays.asList("and", "or", "not", "some", "only", "value", "min", "max",
+                    "exactly", "that", "inverse", "self", "true", "false"));
+
+    /**
+     * The names a class expression's cell refers to - in {@code C}, {@code SC}, {@code EC},
+     * {@code DC}, {@code DOMAIN} and {@code RANGE} columns, where ROBOT resolves each by its label
+     * and picks one of two silently (1.135.2 review) - read as ROBOT 1.9.8 reads the cell
+     * (QuotedEntityChecker.wrap): a cell that starts with a quote or a bracket is an expression,
+     * and each quoted name in it, and each word that is no keyword, IRI, CURIE or number, is a
+     * name; any other cell with a space in it is one name, quoted whole, its keywords, commas and
+     * brackets included - "measured value", or "plan and not area", which nothing is called and
+     * ROBOT fails on; a cell of one word is one name, or an expression when it holds a bracket.
+     * A literal, a full IRI in angle brackets and a datatype's facets in square ones name nothing.
+     */
+    private static List<String> namesInExpressions(String raw, TemplateColumns.Column column) {
+        List<String> names = new ArrayList<String>();
+        if (raw.trim().isEmpty()) {
+            return names;
+        }
+        for (String part : split(raw, column.getSplit())) {
+            String value = part.trim();
+            if (value.isEmpty()) {
+                continue;
+            }
+            char first = value.charAt(0);
+            if (first == '\'' || first == '"' || first == '(') {
+                names.addAll(namesInExpression(value));
+            } else if (value.matches("(?s).*\\s.*")) {
+                names.add(value);
+            } else if (value.matches(".*[(){}\\[\\]].*")) {
+                names.addAll(namesInExpression(value));
+            } else if (!looksLikeAnIri(value)) {
+                names.add(value);
+            }
+        }
+        return names;
+    }
+
+    private static List<String> namesInExpression(String text) {
+        List<String> names = new ArrayList<String>();
+        int at = 0;
+        while (at < text.length()) {
+            char c = text.charAt(at);
+            if (c == '\'' || c == '"' || c == '<' || c == '[') {
+                char close = c == '<' ? '>' : c == '[' ? ']' : c;
+                int end = text.indexOf(close, at + 1);
+                if (end < 0) {
+                    break;
+                }
+                String quoted = text.substring(at + 1, end).trim();
+                if (c == '\'' && !quoted.isEmpty()) {
+                    names.add(quoted);
+                }
+                at = end + 1;
+            } else if (Character.isLetter(c) || c == '_') {
+                int start = at;
+                while (at < text.length() && !Character.isWhitespace(text.charAt(at))
+                        && "()[]{},'\"<>^".indexOf(text.charAt(at)) < 0) {
+                    at++;
+                }
+                String word = text.substring(start, at);
+                if (!KEYWORDS.contains(word.toLowerCase(java.util.Locale.ROOT))
+                        && !looksLikeAnIri(word)) {
+                    names.add(word);
+                }
+            } else {
+                at++;
+            }
+        }
+        return names;
     }
 
     /** The closest known name, or empty when nothing is close enough to be worth offering. */

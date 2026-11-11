@@ -577,6 +577,24 @@ public final class InProcessTargets {
         }
         IRI cls = de.fizkarlsruhe.ise.ontoboard.robot.QuestionTests.classIn(text);
         IRI property = de.fizkarlsruhe.ise.ontoboard.robot.QuestionTests.propertyIn(text);
+        IRI filler = de.fizkarlsruhe.ise.ontoboard.robot.QuestionTests.fillerIn(text);
+        if (template == de.fizkarlsruhe.ise.ontoboard.robot.QuestionTests.Template
+                .EVERY_SUBCLASS_HAS_SOME_THAT_IS && cls != null && property != null
+                && filler != null && ontology != null) {
+            org.semanticweb.owlapi.model.OWLDataFactory df =
+                    ontology.getOWLOntologyManager().getOWLDataFactory();
+            return "The model does not answer this question yet. To make it answer, right-click "
+                    + de.fizkarlsruhe.ise.ontoboard.model.DisplayLabels.forEntity(ontology,
+                            df.getOWLClass(cls))
+                    + " on the board, choose Relate to another term…, pick "
+                    + de.fizkarlsruhe.ise.ontoboard.model.DisplayLabels.forEntity(ontology,
+                            df.getOWLClass(filler))
+                    + " and set Property to "
+                    + de.fizkarlsruhe.ise.ontoboard.model.DisplayLabels.forEntity(ontology,
+                            df.getOWLObjectProperty(property))
+                    + "; then save and build again. A class above it that takes something"
+                    + " broader does not answer it.";
+        }
         if (template == de.fizkarlsruhe.ise.ontoboard.robot.QuestionTests.Template
                 .EVERY_SUBCLASS_HAS_SOME && cls != null && property != null && ontology != null) {
             org.semanticweb.owlapi.model.OWLDataFactory df =

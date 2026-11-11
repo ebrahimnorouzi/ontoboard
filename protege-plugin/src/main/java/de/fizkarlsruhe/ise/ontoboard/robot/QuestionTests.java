@@ -29,6 +29,10 @@ public final class QuestionTests {
     public enum Template {
         /** Every kind of X says it has some P - read from the classes. */
         EVERY_SUBCLASS_HAS_SOME("Every kind of <class> has some <property>", true, true, false),
+        /** Every kind of X says some P that is a Y, or a kind of Y - read from the classes. */
+        EVERY_SUBCLASS_HAS_SOME_THAT_IS(
+                "Every kind of <class> has some <property> that is a <second class>", true, true,
+                true),
         /** Every individual of X has a value for P - read from the data. */
         EVERY_INDIVIDUAL_HAS("Every <class> in the data has a <property>", true, true, false),
         /** No individual is both an A and a B. */
@@ -104,6 +108,27 @@ public final class QuestionTests {
                         + "  }\n"
                         + "  OPTIONAL { ?term rdfs:label ?label }\n"
                         + "}\n";
+            case EVERY_SUBCLASS_HAS_SOME_THAT_IS:
+                // As above, but only "P some F", F the class asked for or a kind of it, answers -
+                // also inside a definition's intersection (1.135.2). Found on an application
+                // ontology's own class deep in a domain ontology: the classes above it already
+                // said P some broader thing, so "has some P" was green before anything was drawn,
+                // and no question about it could be red. P is an object property: a data
+                // property's value is no class, so the action refuses one for this rule.
+                return head + "SELECT DISTINCT ?term ?label WHERE {\n"
+                        + "  ?term rdfs:subClassOf* <" + cls + "> .\n"
+                        + "  ?term a owl:Class .\n"
+                        + "  FILTER(isIRI(?term))\n"
+                        + "  FILTER NOT EXISTS {\n"
+                        + "    ?term rdfs:subClassOf* ?above .\n"
+                        + "    ?above (rdfs:subClassOf|owl:equivalentClass)"
+                        + "/(owl:intersectionOf/rdf:rest*/rdf:first)? ?r .\n"
+                        + "    ?r owl:onProperty <" + property + "> .\n"
+                        + "    ?r owl:someValuesFrom ?filler .\n"
+                        + "    ?filler rdfs:subClassOf* <" + second + "> .\n"
+                        + "  }\n"
+                        + "  OPTIONAL { ?term rdfs:label ?label }\n"
+                        + "}\n";
             case EVERY_INDIVIDUAL_HAS:
                 return head + "SELECT DISTINCT ?term ?label WHERE {\n"
                         + "  ?term rdf:type/rdfs:subClassOf* <" + cls + "> .\n"
@@ -144,6 +169,9 @@ public final class QuestionTests {
         if (sparql == null) {
             return null;
         }
+        if (sparql.contains("?r owl:someValuesFrom ?filler")) {
+            return Template.EVERY_SUBCLASS_HAS_SOME_THAT_IS;
+        }
         if (sparql.contains("?above rdfs:subClassOf|owl:equivalentClass ?r")) {
             return Template.EVERY_SUBCLASS_HAS_SOME;
         }
@@ -172,6 +200,15 @@ public final class QuestionTests {
     /** The class a test written from a question is about, or null. */
     public static IRI classIn(String sparql) {
         java.util.regex.Matcher found = sparql == null ? null : CLASS_IN.matcher(sparql);
+        return found != null && found.find() ? IRI.create(found.group(1)) : null;
+    }
+
+    private static final java.util.regex.Pattern FILLER_IN =
+            java.util.regex.Pattern.compile("\\?filler rdfs:subClassOf\\* <([^>\\s]+)>");
+
+    /** What the property of a test written from a question must point to, or null. */
+    public static IRI fillerIn(String sparql) {
+        java.util.regex.Matcher found = sparql == null ? null : FILLER_IN.matcher(sparql);
         return found != null && found.find() ? IRI.create(found.group(1)) : null;
     }
 

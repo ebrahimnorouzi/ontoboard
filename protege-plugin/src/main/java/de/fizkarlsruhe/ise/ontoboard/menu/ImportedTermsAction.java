@@ -505,11 +505,13 @@ public class ImportedTermsAction extends ProtegeOWLAction {
                         ? source.getOntology().getOntologyID().getOntologyIRI().get()
                         : ModuleRebuild.declaredIriOf(moduleFile);
                 if (moduleIri == null) {
+                    // Called what its file is: pmdco, not the source's own short name, co
+                    // (1.135.2 review).
                     OWLOntology yours = active();
                     moduleIri = TermExtract.moduleIriIn(
                             yours.getOntologyID().getOntologyIRI().isPresent()
                                     ? yours.getOntologyID().getOntologyIRI().get() : null,
-                            upstream);
+                            upstream, source.getName());
                 }
                 publish("Cutting " + wanted.size() + " terms out of " + source.getFrom() + "...");
                 return ModuleRebuild.extract(upstream, wanted, source.getMethod(), moduleIri,

@@ -143,6 +143,51 @@ public class ImportTermsAction extends OntoBoardAction {
         return seededPattern != null && seededSource.equals(sourceText) ? seededPattern : null;
     }
 
+    /** What this run calls the module, decided once the source is loaded; null before. */
+    private volatile String moduleName;
+
+    /** The module's name: its files, its IRI, its product and what the messages call it. */
+    private String moduleName(OWLOntology source) {
+        return moduleName != null ? moduleName : TermExtract.shortNameOf(source);
+    }
+
+    /**
+     * What a module of {@code source} is called in the project at {@code projectRoot}
+     * (1.135.2): the name the project already has for it, or a recognisable one for a source new
+     * to it - {@code pmdco} for PMDco, which was {@code co}. Find terms says it before adding.
+     *
+     * @param typed where the source was read from, as typed
+     */
+    static String moduleNameFor(File projectRoot, final OWLOntology source, String typed) {
+        java.util.List<String> sources = new ArrayList<String>();
+        if (typed != null) {
+            sources.add(typed.trim());
+            try {
+                IRI asIri = OntologySource.toIri(typed);
+                if (asIri != null) {
+                    sources.add(asIri.toString());
+                }
+            } catch (RuntimeException gone) {
+                // The file it was read from has gone since - moved, renamed - and Find terms names
+                // the module before the import: by what was typed and the ontology's own IRIs
+                // (1.135.2 review). It threw on the Swing thread, and the confirmation never came.
+            }
+        }
+        if (source != null) {
+            if (source.getOntologyID().getOntologyIRI().isPresent()) {
+                sources.add(source.getOntologyID().getOntologyIRI().get().toString());
+            }
+            if (source.getOntologyID().getVersionIRI().isPresent()) {
+                sources.add(source.getOntologyID().getVersionIRI().get().toString());
+            }
+        }
+        // What the source declares tells its lists from another's, whatever address each recorded.
+        return ImportModules.nameFor(projectRoot, TermExtract.shortNameOf(source),
+                TermExtract.recognisableNameOf(source), sources, source == null ? null
+                        : iri -> source.containsEntityInSignature(iri,
+                                org.semanticweb.owlapi.model.parameters.Imports.INCLUDED));
+    }
+
     /**
      * What a term list records as its source: the IRI the terms were taken from, or for a
      * pattern, the pattern's own IRI - not the working copy the library made on this machine,
@@ -353,9 +398,18 @@ public class ImportTermsAction extends OntoBoardAction {
             return result.failed("None of the terms could be read as an IRI or a CURIE.").build();
         }
 
+        // A pattern's module keeps the name the library gives it; any other is what the project
+        // already calls it, or a name a reader recognises (1.135.2). Neither takes a name another
+        // import has (1.135.2 review).
+        moduleName = patternBeingImported() != null
+                ? de.fizkarlsruhe.ise.ontoboard.odk.ImportModules.nameForPattern(
+                        projectRootFor(ontology), TermExtract.shortNameOf(source),
+                        patternBeingImported(), sourceText)
+                : moduleNameFor(projectRootFor(ontology), source, sourceText);
         IRI moduleIri = TermExtract.moduleIriIn(
                 ontology.getOntologyID().getOntologyIRI().isPresent()
-                        ? ontology.getOntologyID().getOntologyIRI().get() : null, source);
+                        ? ontology.getOntologyID().getOntologyIRI().get() : null, source,
+                moduleName);
         // A module already on disk keeps the IRI it declares: the one its import statement and
         // catalog entry already use. A newly made-up IRI would name neither.
         if (outcome != Outcome.ADD_AXIOMS) {
@@ -440,14 +494,14 @@ public class ImportTermsAction extends OntoBoardAction {
                 || patternBeingImported() != null) {
             return requested;
         }
-        File list = ImportModules.termsFileFor(projectRoot, TermExtract.shortNameOf(source));
-        File module = ImportModules.moduleFileFor(projectRoot, TermExtract.shortNameOf(source));
+        File list = ImportModules.termsFileFor(projectRoot, moduleName(source));
+        File module = ImportModules.moduleFileFor(projectRoot, moduleName(source));
         File written = moduleFileFor(ontology, source);
         if (written != null && module.getAbsoluteFile().equals(written.getAbsoluteFile())
                 && leftByAnImportTakenBack(ontology, list, module)) {
             listStartsAfresh = true;
             result.note(list.getName() + " was left by an import of "
-                    + TermExtract.shortNameOf(source) + " that is not in force now - taken back"
+                    + moduleName(source) + " that is not in force now - taken back"
                     + " with Edit > Undo, or removed - so it is written afresh.");
             return requested;
         }
@@ -466,7 +520,7 @@ public class ImportTermsAction extends OntoBoardAction {
         java.util.LinkedHashSet<IRI> all = new java.util.LinkedHashSet<IRI>(before);
         all.addAll(requested);
         int joining = all.size() - before.size();
-        result.note(TermExtract.shortNameOf(source) + " was imported before, with " + before.size()
+        result.note(moduleName(source) + " was imported before, with " + before.size()
                 + (before.size() == 1 ? " term. " : " terms. ")
                 + (joining == 0 ? "These are all among them, so the module is rebuilt as it was."
                         : joining + (joining == 1 ? " joins" : " join") + " them; nothing "
@@ -838,14 +892,14 @@ public class ImportTermsAction extends OntoBoardAction {
         if (projectRoot == null) {
             result.warn("No term list was written: this ontology has not been saved, so there is "
                     + "no project directory to put one in. Without imports/"
-                    + TermExtract.shortNameOf(source) + "_terms.txt nobody can rebuild this "
+                    + moduleName(source) + "_terms.txt nobody can rebuild this "
                     + "module.");
             return;
         }
         try {
             String pattern = patternBeingImported();
             File existing = ImportModules.termsFileFor(projectRoot,
-                    TermExtract.shortNameOf(source));
+                    moduleName(source));
             if (existing.isFile() && pattern == null && !listStartsAfresh) {
                 // Spliced, not rewritten, so its comments and its order stay as they were.
                 String before = new String(java.nio.file.Files.readAllBytes(existing.toPath()),
@@ -866,7 +920,7 @@ public class ImportTermsAction extends OntoBoardAction {
             for (IRI term : terms) {
                 labels.put(term, labelIn(source, term));
             }
-            File written = ImportModules.writeTerms(projectRoot, TermExtract.shortNameOf(source),
+            File written = ImportModules.writeTerms(projectRoot, moduleName(source),
                     terms, recordedSource(source, sourceIri, pattern), pattern, labels);
             result.wrote(written);
         } catch (IOException cannotWrite) {
@@ -916,7 +970,7 @@ public class ImportTermsAction extends OntoBoardAction {
             return;
         }
 
-        String id = TermExtract.shortNameOf(source);
+        String id = moduleName(source);
         if (ImportProducts.named(ImportProducts.declaredIn(ontologyDirectory), id) != null) {
             result.note(id + " is already declared in import_group.products, so the list was "
                     + "left alone.");
@@ -975,7 +1029,7 @@ public class ImportTermsAction extends OntoBoardAction {
             return null;
         }
         return new File(new File(ontologyFile.getParentFile(), "imports"),
-                TermExtract.shortNameOf(source) + "_import.owl");
+                moduleName(source) + "_import.owl");
     }
 
     /**

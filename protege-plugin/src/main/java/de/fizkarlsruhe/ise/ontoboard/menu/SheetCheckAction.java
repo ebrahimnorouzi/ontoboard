@@ -68,8 +68,9 @@ public class SheetCheckAction extends OntoBoardAction {
         Map<String, String> chosen = ParameterDialog.show(getOWLWorkspace(), "Check sheets",
                 "Looks for the mistakes that do not stop a template from building: a name that "
                         + "means two different things, two rows for one thing, a reference that "
-                        + "points at nothing, text a template left behind, and whitespace or "
-                        + "curly quotes that came in with a paste.\n\nEvery .tsv and .csv in the "
+                        + "points at nothing, text a template left behind, a datatype written in "
+                        + "a cell whose column already gives one, and whitespace or curly quotes "
+                        + "that came in with a paste.\n\nEvery .tsv and .csv in the "
                         + "folder is read, and the names in all of them - and in the ontology "
                         + "you have open - are indexed together, because a reference in one "
                         + "sheet usually names a row in another.",
@@ -169,13 +170,7 @@ public class SheetCheckAction extends OntoBoardAction {
             }
         }
 
-        List<LabelIndex.Ambiguity> ambiguous = index.ambiguous();
-        if (!ambiguous.isEmpty()) {
-            result.warn(ambiguous.size() + (ambiguous.size() == 1 ? " name means" : " names mean")
-                    + " more than one thing across these sheets. A reference to such a name "
-                    + "resolves to whichever one the builder happens to pick, so the sheet "
-                    + "builds and the graph is wrong. The worst is " + describe(ambiguous.get(0)));
-        }
+        warnAmbiguous(sheets, index, result);
 
         List<SheetAudit.Finding> shown = select(findings);
         if (shown.isEmpty()) {
@@ -211,6 +206,23 @@ public class SheetCheckAction extends OntoBoardAction {
         return result.summary(findings.size() + " findings across " + sheets.size()
                 + " sheets, " + fixable + " of them with an obvious correction. Nothing was "
                 + "changed.").build();
+    }
+
+    /**
+     * How many names mean more than one thing, and the worst of them: the names the sheets use,
+     * as the list below shows them and as Template... counts them (1.135.2). The index's every
+     * label given twice was counted before - the imports' among them - and Template... counted
+     * more than this listed.
+     */
+    static void warnAmbiguous(Map<String, List<List<String>>> sheets, LabelIndex index,
+            OperationResult.Builder result) {
+        List<LabelIndex.Ambiguity> ambiguous = SheetAudit.ambiguousNamesIn(sheets, index);
+        if (!ambiguous.isEmpty()) {
+            result.warn(ambiguous.size() + (ambiguous.size() == 1 ? " name means" : " names mean")
+                    + " more than one thing across these sheets. A reference to such a name "
+                    + "resolves to whichever one the builder happens to pick, so the sheet "
+                    + "builds and the graph is wrong. The worst is " + describe(ambiguous.get(0)));
+        }
     }
 
     /** Every sheet in the folder, by name, skipping what cannot be read. */
@@ -291,6 +303,8 @@ public class SheetCheckAction extends OntoBoardAction {
                 return "quoted name";
             case UNUSED_COLUMN:
                 return "column is ignored";
+            case DATATYPE_TWICE:
+                return "datatype written twice";
             default:
                 return kind.name();
         }

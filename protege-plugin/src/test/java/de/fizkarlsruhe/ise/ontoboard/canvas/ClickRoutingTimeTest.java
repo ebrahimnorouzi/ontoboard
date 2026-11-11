@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import de.fizkarlsruhe.ise.ontoboard.layout.CanvasLayout;
+import de.fizkarlsruhe.ise.ontoboard.layout.EdgeRouter;
 import de.fizkarlsruhe.ise.ontoboard.layout.FramedGroup;
 import de.fizkarlsruhe.ise.ontoboard.model.CanvasEdge;
 import de.fizkarlsruhe.ise.ontoboard.model.CanvasNode;
@@ -31,6 +32,13 @@ import org.junit.jupiter.api.Test;
  * and ranges meet at two upper classes, as in a BFO-based application ontology, a click on one of
  * them held the board for 2 seconds and still left 3 of its 19 lines drawn straight through 8
  * boxes; selecting every term held it for 2.2 seconds.
+ *
+ * <p>How long the board is held is counted in the Swing thread's processor time, as the router
+ * counts its budgets in its own (1.135.2). On the wall clock it counted whatever else the machine
+ * ran: under a full test suite a line a click shows lost its half second to other programs and was
+ * drawn straight through the boxes, and the test failed for a board that did no more work. A router
+ * grown slower still holds the thread longer and still runs out of its budgets, leaving a line
+ * unrouted: shown failing against a deliberately slowed router.
  */
 class ClickRoutingTimeTest {
 
@@ -38,6 +46,16 @@ class ClickRoutingTimeTest {
 
     /** Longer than this and a click, or the routing that follows it, is felt as the board stuck. */
     private static final long FELT = 1000;
+
+    /** The threads' processor time, which the router counts its budgets in. */
+    private static final java.lang.management.ThreadMXBean THREADS =
+            java.lang.management.ManagementFactory.getThreadMXBean();
+
+    /** How long thread {@code id} has run, in ns: its processor time, else the wall clock. */
+    private static long ranSoFar(long id) {
+        long ran = THREADS.isThreadCpuTimeSupported() ? THREADS.getThreadCpuTime(id) : -1;
+        return ran >= 0 ? ran : System.nanoTime();
+    }
 
     /**
      * 6 frames of 20 classes, 30 relations, and a section of 30 properties under them, two thirds
@@ -210,16 +228,19 @@ class ClickRoutingTimeTest {
 
     /**
      * Selects {@code ids} on the Swing thread, as a click does, and follows what happens after:
-     * how long the click took, how long the board was busy at the longest while the lines came,
-     * every line drawn without a route meanwhile, and every line that moved once it was drawn.
+     * how long the click took, how long the board was busy at the longest while the lines came -
+     * both in the Swing thread's processor time - every line drawn without a route meanwhile, and
+     * every line that moved once it was drawn.
      */
     private static void clickAndFollow(SchemaGraph graph, List<String> ids, String what)
             throws Exception {
         long[] took = new long[1];
+        long[] swing = new long[1];
         SwingUtilities.invokeAndWait(() -> {
-            long started = System.nanoTime();
+            swing[0] = Thread.currentThread().getId();
+            long started = EdgeRouter.now();
             graph.setFocus(ids);
-            took[0] = (System.nanoTime() - started) / 1_000_000;
+            took[0] = (EdgeRouter.now() - started) / 1_000_000;
             graph.getView().validate();
         });
         Set<String> plain = new LinkedHashSet<String>();
@@ -227,10 +248,13 @@ class ClickRoutingTimeTest {
         Map<String, String> first = new HashMap<String, String>();
         Set<String> moved = new LinkedHashSet<String>();
         long busiest = 0;
+        // What the Swing thread runs between two looks - a slice of the routing, and the look -
+        // counted in its own processor time, so that other programs' time is not counted as the
+        // board's.
+        long ran = ranSoFar(swing[0]);
         long started = System.nanoTime();
         long until = started + 60_000_000_000L;
         while (System.nanoTime() < until) {
-            long asked = System.nanoTime();
             SwingUtilities.invokeAndWait(() -> {
                 graph.getView().validate();
                 plain.addAll(drawnPlain(graph));
@@ -245,7 +269,9 @@ class ClickRoutingTimeTest {
                 left.clear();
                 left.addAll(notYetRouted(graph, ids));
             });
-            busiest = Math.max(busiest, (System.nanoTime() - asked) / 1_000_000);
+            long now = ranSoFar(swing[0]);
+            busiest = Math.max(busiest, (now - ran) / 1_000_000);
+            ran = now;
             if (left.isEmpty()) {
                 break;
             }

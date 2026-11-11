@@ -334,9 +334,11 @@ public class FindTermsAction extends ProtegeOWLAction {
                 editFile = null;
             }
             java.io.File root = editFile == null ? null : ReleaseAction.projectRootOf(editFile);
+            List<String> patterns = new ArrayList<String>();
             for (de.fizkarlsruhe.ise.ontoboard.odk.ImportedTerms.Source source
                     : de.fizkarlsruhe.ise.ontoboard.odk.ImportedTerms.of(yours, root,
                             editFile == null ? null : editFile.getParentFile())) {
+                patterns.add(source.getPattern());
                 String from = source.getFrom();
                 boolean fromTheWeb = from != null && (from.startsWith("http://")
                         || from.startsWith("https://"));
@@ -347,6 +349,7 @@ public class FindTermsAction extends ProtegeOWLAction {
                             : "imported whole by your ontology");
                 }
             }
+            offerWhatPatternsAreCutFrom(sources, patterns);
         }
         sources.putIfAbsent("http://purl.obolibrary.org/obo/bfo/2020/bfo.owl",
                 "BFO 2020 - a top-level ontology many others build on");
@@ -359,6 +362,49 @@ public class FindTermsAction extends ProtegeOWLAction {
         sources.putIfAbsent("http://www.w3.org/2004/02/skos/core",
                 "SKOS - concepts and vocabularies");
         return sources;
+    }
+
+    /** Where PMDco is read from: its namespace, which its w3id address answers. */
+    static final String PMDCO = "https://w3id.org/pmd/co/";
+
+    /** Where TTO is read from, likewise. */
+    static final String TTO = "https://w3id.org/pmd/tto/";
+
+    /**
+     * The ontologies the library patterns imported here are cut from, offered by name (1.135.2).
+     *
+     * <p>Found building an application ontology on PMDco: its patterns were imported, the list
+     * offered BFO, RO, IAO, PROV-O, OWL-Time and SKOS, and the user typed
+     * https://w3id.org/pmd/co/ - the ontology whose terms such a project wants next. TTO comes
+     * with it: PMD's ontology of the tensile test, built on PMDco, which materials projects build
+     * on too. Only for a project that imports a PMDco pattern, known from the library's own record
+     * of the pattern's collection: for anybody else they would be two more lines to read past.
+     *
+     * @param patterns the library ids of the patterns imported; null entries are skipped
+     */
+    static void offerWhatPatternsAreCutFrom(Map<String, String> sources,
+            java.util.Collection<String> patterns) {
+        for (String id : patterns) {
+            de.fizkarlsruhe.ise.ontoboard.pattern.DesignPattern pattern = id == null ? null
+                    : de.fizkarlsruhe.ise.ontoboard.pattern.PatternLibrary.find(id);
+            if (pattern != null && "pmdco".equalsIgnoreCase(pattern.getCollection())) {
+                sources.putIfAbsent(PMDCO, "PMDco - materials science; your PMDco patterns are"
+                        + " cut from it");
+                sources.putIfAbsent(TTO, "TTO - the tensile test, built on PMDco");
+                return;
+            }
+        }
+    }
+
+    /**
+     * What the Label column says for a term found by {@code query}: its label, and the name the
+     * search found it by when that is another - "mould - found as "mold"" (1.135.2).
+     */
+    static String shownLabel(TermSearch.Term term, String query, boolean yours) {
+        String matched = term.nameMatching(query);
+        return term.getLabel() + (matched.isEmpty() ? "" : " - found as \"" + matched + "\"")
+                + (term.isObsolete() ? " (obsolete)" : "")
+                + (yours ? " - already yours" : "");
     }
 
     /** Not one of OntoBoard's own pattern IRIs, which name no address on the web. */
@@ -563,7 +609,6 @@ public class FindTermsAction extends ProtegeOWLAction {
 
     /** What "Add them" will do, file by file, for the confirmation. */
     private String whatAddingWrites() {
-        String name = de.fizkarlsruhe.ise.ontoboard.robot.TermExtract.shortNameOf(loaded);
         OWLOntology yours = getOWLModelManager().getActiveOntology();
         java.io.File editFile = null;
         try {
@@ -574,6 +619,11 @@ public class FindTermsAction extends ProtegeOWLAction {
         } catch (RuntimeException notAFile) {
             editFile = null;
         }
+        // The name the import will give the module: the project's own for this source, or a
+        // recognisable one - "Add 1 term from co" named PMDco by the last part of its IRI.
+        String name = ImportTermsAction.moduleNameFor(
+                editFile == null ? null : ReleaseAction.projectRootOf(editFile), loaded,
+                loadedFrom);
         StringBuilder text = new StringBuilder("Add " + chosen.size()
                 + (chosen.size() == 1 ? " term" : " terms") + " from " + name
                 + " to your ontology.\n\n");
@@ -652,8 +702,8 @@ public class FindTermsAction extends ProtegeOWLAction {
                 case 0:
                     return chosen.containsKey(term.getIri());
                 case 1:
-                    return term.getLabel() + (term.isObsolete() ? " (obsolete)" : "")
-                            + (alreadyYours.contains(term.getIri()) ? " - already yours" : "");
+                    return shownLabel(term, search.getText(),
+                            alreadyYours.contains(term.getIri()));
                 case 2:
                     return term.getKind();
                 case 3:

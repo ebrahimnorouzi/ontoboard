@@ -146,14 +146,15 @@ class DomainLineBesideItsClassIsDrawnTest {
     }
 
     /**
-     * On a board of more than 150 lines a domain line drawn always is a relation like the others:
-     * the plain connector, drawn faintly until one of its ends is selected.
+     * On a board of more than {@link SchemaGraph#DENSE} lines a domain line drawn always is a
+     * relation like the others: the plain connector, drawn faintly until one of its ends is
+     * selected. Counted from DENSE (150), which a 1.135.2 candidate raised to 500 for a while.
      */
     @Test
     void onADenseBoardADomainLineDrawnAlwaysIsARelation() {
-        SchemaGraph graph = withRelations(151);
+        SchemaGraph graph = withRelations(SchemaGraph.DENSE + 1);
 
-        assertTrue(graph.isDense(), "151 relations: dense");
+        assertTrue(graph.isDense(), (SchemaGraph.DENSE + 1) + " relations: dense");
         Object domain = graph.getCellForId(DOMAIN);
         assertTrue(graph.isCellVisible(domain), "the domain line drawn");
         assertNull(graph.routeOf(graph.getCellForId("rel|0")), "a relation keeps the connector");
@@ -164,15 +165,17 @@ class DomainLineBesideItsClassIsDrawnTest {
     }
 
     /**
-     * The board's count of lines is what it was: 150 relations and a domain line drawn always
-     * beside its class are not a dense board. Counted, they tipped pizza-bfo - 145 lines and 18
-     * properties beside their class - over 150, and every relation was drawn straight.
+     * The board's count of lines is what it was: {@link SchemaGraph#DENSE} relations and a domain
+     * line drawn always beside its class are not a dense board. Counted, they tipped pizza-bfo -
+     * 145 lines and 18 properties beside their class - over 150, and every relation was drawn
+     * straight.
      */
     @Test
     void domainLinesDrawnAlwaysDoNotMakeABoardDense() {
-        SchemaGraph graph = withRelations(150);
+        SchemaGraph graph = withRelations(SchemaGraph.DENSE);
 
-        assertFalse(graph.isDense(), "150 relations and a domain line beside its class");
+        assertFalse(graph.isDense(), SchemaGraph.DENSE + " relations and a domain line beside its"
+                + " class");
         assertNotNull(graph.routeOf(graph.getCellForId(DOMAIN)), "the domain line routed");
     }
 }

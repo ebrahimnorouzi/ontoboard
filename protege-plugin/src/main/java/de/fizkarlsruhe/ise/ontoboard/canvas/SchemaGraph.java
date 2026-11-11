@@ -3,8 +3,12 @@ package de.fizkarlsruhe.ise.ontoboard.canvas;
 import com.mxgraph.model.mxCell;
 import com.mxgraph.model.mxGraphModel;
 import com.mxgraph.util.mxConstants;
+import com.mxgraph.util.mxPoint;
+import com.mxgraph.util.mxRectangle;
 import com.mxgraph.util.mxUtils;
+import com.mxgraph.view.mxCellState;
 import com.mxgraph.view.mxGraph;
+import com.mxgraph.view.mxGraphView;
 import de.fizkarlsruhe.ise.ontoboard.layout.CanvasLayout;
 import de.fizkarlsruhe.ise.ontoboard.layout.EdgeRouter;
 import de.fizkarlsruhe.ise.ontoboard.model.CanvasEdge;
@@ -29,8 +33,15 @@ public class SchemaGraph extends mxGraph {
      * More relations than a board can draw as lines and still be read. Measured on two published
      * ontologies with every term shown: 528 and 1,139 edges, and the relations between classes,
      * drawn at full strength, were a mesh across the whole board.
+     *
+     * <p>A 1.135.2 candidate raised it to 500, so that a board of a few hundred lines is routed
+     * rather than drawn straight through its boxes. But the whole board is routed again, on the
+     * Swing thread, whenever a box moves: on a made-up board of 270 lines every drag then held
+     * the board for about two seconds. It stays 150 until routing can follow a move without
+     * routing the whole board again - see docs/limitations.md. Public so that the status line
+     * saying a board is dense names this number, not its own.
      */
-    static final int DENSE = 150;
+    public static final int DENSE = 150;
 
     /**
      * How strongly what is not in focus is drawn, in percent.
@@ -120,6 +131,59 @@ public class SchemaGraph extends mxGraph {
                 boxChanges++;
             }
         });
+    }
+
+    /**
+     * JGraphX's view, but a routed line's label is drawn where the router placed it and as large
+     * as it made room for, on the board, at every zoom - as a box is.
+     *
+     * <p>Found on the egg-boiling study board (1.135.1): "∃ concretizes" lay on the is-a line
+     * from egg boiling at 31%, where Fit put the board, and later "∃ has specified output" on two
+     * is-a lines at 49%. At 100% the router had put each 2px clear of them, as it puts every
+     * label; JGraphX drew them elsewhere and bigger. Elsewhere: it puts a label at a share of the
+     * line it draws, which stops 3px before the target for the arrowhead and whose ends it rounds
+     * to whole pixels on the screen, while the router's share is of the line from box to box -
+     * "∃ concretizes" stood 1.7px off its place, 0.3px from the is-a line. Bigger: it measures a
+     * label at each zoom in the font scaled to it, whose glyph widths are rounded to whole pixels,
+     * so on that board a chip was 5px wider at 31% than at 100%, and 26px wider at 21%.
+     *
+     * <p>The text stays inside the chip measured at 100%: {@link FallbackTextShape} draws it in
+     * the whole points below the scaled font. Measured on that board from 10% to 200%, it reached
+     * past the chip only at 25% and below, by less than half a pixel on the screen, and at 10% by
+     * one.
+     */
+    @Override
+    protected mxGraphView createGraphView() {
+        return new mxGraphView(this) {
+            @Override
+            public void updateEdgeState(mxCellState state, com.mxgraph.model.mxGeometry geometry) {
+                super.updateEdgeState(state, geometry);
+                double[] place = labelPlace(state.getCell());
+                if (place != null) {
+                    state.setAbsoluteOffset(transformControlPoint(state,
+                            new mxPoint(place[0], place[1])));
+                }
+            }
+
+            @Override
+            public void updateLabelBounds(mxCellState state) {
+                super.updateLabelBounds(state);
+                Map<String, Object> style = state.getStyle();
+                String overflow = mxUtils.getString(style, mxConstants.STYLE_OVERFLOW, "");
+                if (getScale() == 1 || state.getLabel() == null || state.getLabelBounds() == null
+                        || !graph.getModel().isEdge(state.getCell())
+                        || graph.isHtmlLabel(state.getCell()) || overflow.equals("fill")
+                        || overflow.equals("width")) {
+                    return;
+                }
+                // What JGraphX's getLabelPaintBounds does for a line's label, with the size it
+                // measures at 100% in place of the one it measures at this zoom.
+                mxRectangle size = mxUtils.getLabelSize(state.getLabel(), style, false, 1, 0);
+                mxPoint at = state.getAbsoluteOffset();
+                state.setLabelBounds(mxUtils.getScaledLabelBounds(at.getX(), at.getY(), size, 0,
+                        0, style, getScale()));
+            }
+        };
     }
 
     /**
@@ -540,7 +604,8 @@ public class SchemaGraph extends mxGraph {
      * How long the routing a click starts may hold up the board, in nanoseconds; what is left is
      * routed in slices of {@link #SLICE_TIME}, {@link #BETWEEN_SLICES} ms apart, so that whatever
      * a person does meanwhile is answered first. A review of 1.135.1 measured 2 seconds for a click
-     * on a class 19 lines met at, with the board held up throughout.
+     * on a class 19 lines met at, with the board held up throughout. Counted, as every routing
+     * budget is, on {@link EdgeRouter#now()}: the routing thread's processor time (1.135.2).
      */
     static final long CLICK_TIME = 200_000_000L;
     static final long SLICE_TIME = 150_000_000L;
@@ -585,14 +650,15 @@ public class SchemaGraph extends mxGraph {
      * saved, and a board with too many lines to route keeps the hierarchy's lanes only.
      */
     public void routeEdges() {
-        routeEdges(System.nanoTime() + de.fizkarlsruhe.ise.ontoboard.layout.EdgeRouter.MOST_TIME);
+        routeEdges(EdgeRouter.now() + EdgeRouter.MOST_TIME);
     }
 
     /**
-     * The same, with no line looked for after {@code deadline}, a {@link System#nanoTime()}: one
-     * moment for everything one action does, however often it routes. In 1.135.0 each routing had
-     * two seconds of its own, and a single New subclass... routed up to three times on the Swing
-     * thread: on a board of 45 classes and 139 lines, 1.3 seconds each time.
+     * The same, with no line looked for after {@code deadline}, a reading of
+     * {@link EdgeRouter#now()}: one moment for everything one action does, however often it
+     * routes. In 1.135.0 each routing had two seconds of its own, and a single New subclass...
+     * routed up to three times on the Swing thread: on a board of 45 classes and 139 lines, 1.3
+     * seconds each time.
      *
      * <p>A board routed in full, or as far as the same time took it, is not routed again until
      * something on it changes; one cut short is, when a later call brings more time.
@@ -636,13 +702,13 @@ public class SchemaGraph extends mxGraph {
             signature.append(id).append('|');
         }
         String now = signature.toString();
-        long budget = deadline - System.nanoTime();
+        long budget = deadline - EdgeRouter.now();
         // "More time" means clearly more: a review found that every refresh of an unchanged board
         // the router could not finish routed it again for the whole two seconds, because one
         // call's budget came out a few microseconds longer than the last one's.
         if (now.equals(routedFor) && (cutShortAfter == Long.MIN_VALUE
                 || budget <= cutShortAfter + CLEARLY_MORE)) {
-            if (routeShown(Math.min(deadline, System.nanoTime() + firstLook()))) {
+            if (routeShown(Math.min(deadline, EdgeRouter.now() + firstLook()))) {
                 refresh();
             }
             routeTheRest();
@@ -657,7 +723,7 @@ public class SchemaGraph extends mxGraph {
         linesToRoute = links.size();
         Map<String, de.fizkarlsruhe.ise.ontoboard.layout.EdgeRouter.Route> found =
                 de.fizkarlsruhe.ise.ontoboard.layout.EdgeRouter.route(boxes, frames, links, deadline);
-        cutShortAfter = found.size() < links.size() && System.nanoTime() > deadline ? budget
+        cutShortAfter = found.size() < links.size() && EdgeRouter.now() > deadline ? budget
                 : Long.MIN_VALUE;
         for (Map.Entry<String, de.fizkarlsruhe.ise.ontoboard.layout.EdgeRouter.Route> routed
                 : found.entrySet()) {
@@ -682,7 +748,7 @@ public class SchemaGraph extends mxGraph {
                 geometry.setOffset(null);
             }
         }
-        routeShown(Math.min(deadline, System.nanoTime() + firstLook()));
+        routeShown(Math.min(deadline, EdgeRouter.now() + firstLook()));
         routeTheRest();
         refresh();
     }
@@ -762,7 +828,7 @@ public class SchemaGraph extends mxGraph {
                 changed = true;
             }
         }
-        if (waiting.isEmpty() || System.nanoTime() >= deadline) {
+        if (waiting.isEmpty() || EdgeRouter.now() >= deadline) {
             return changed;
         }
         // The lines shown already stay where they are drawn: the new ones go round them as round
@@ -804,6 +870,24 @@ public class SchemaGraph extends mxGraph {
             }
         }
         return true;
+    }
+
+    /**
+     * Where the router put the label of a line drawn along its route, on the board; null for a
+     * line drawn otherwise - a box moved since, or bends somebody placed - or without a label.
+     * The same test {@link AroundFrames} makes before it draws the route.
+     */
+    private double[] labelPlace(Object edge) {
+        String id = getIdForCell(edge);
+        EdgeRouter.Route route = id == null ? null
+                : routedLines.containsKey(id) ? routedLines.get(id) : shownLines.get(id);
+        com.mxgraph.model.mxGeometry geometry = getModel().getGeometry(edge);
+        if (route == null || Double.isNaN(route.labelX) || geometry == null
+                || geometry.getPoints() != null && !geometry.getPoints().isEmpty()
+                || routeOf(edge) == null) {
+            return null;
+        }
+        return new double[] {route.labelX, route.labelY};
     }
 
     /** Where on the line its label sits, -1 at the source to 1 at the target. */
@@ -852,13 +936,13 @@ public class SchemaGraph extends mxGraph {
         if (!javax.swing.SwingUtilities.isEventDispatchThread()) {
             // Each call routes or gives up the first line waiting, so this ends.
             for (int tries = waiting.size(); tries > 0 && !waiting.isEmpty(); tries--) {
-                routeShown(System.nanoTime() + EdgeRouter.MOST_TIME);
+                routeShown(EdgeRouter.now() + EdgeRouter.MOST_TIME);
             }
             return;
         }
         if (later == null) {
             later = new javax.swing.Timer(BETWEEN_SLICES, event -> {
-                if (routeShown(System.nanoTime() + SLICE_TIME)) {
+                if (routeShown(EdgeRouter.now() + SLICE_TIME)) {
                     // The lines that came, drawn: those on the board keep what they have.
                     getView().validate();
                     repaint();
@@ -883,7 +967,7 @@ public class SchemaGraph extends mxGraph {
         }
         // Each call routes or gives up the first line waiting, so this ends.
         for (int tries = waiting.size(); tries > 0 && !waiting.isEmpty(); tries--) {
-            routeShown(System.nanoTime() + EdgeRouter.MOST_TIME);
+            routeShown(EdgeRouter.now() + EdgeRouter.MOST_TIME);
         }
         // With nothing left, the slices' timer stops.
         routeTheRest();
@@ -1085,7 +1169,7 @@ public class SchemaGraph extends mxGraph {
         // click on a class many lines meet does not hold the board up (1.135.1 review). The same
         // selection again, while lines it shows still wait, leaves them to the slices.
         if (!focused.equals(before) || waiting.isEmpty()) {
-            routeShown(System.nanoTime() + firstLook());
+            routeShown(EdgeRouter.now() + firstLook());
         }
         routeTheRest();
         refresh();

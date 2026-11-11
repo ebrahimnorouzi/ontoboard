@@ -1,0 +1,104 @@
+# The egg-boiling study board right after T3 (egg boiling takes a raw egg and gives a boiled
+# egg), as OntoBoard 1.135.1's release jar drew it on Windows on 11 Nov 2026, in a scripted run
+# of the study's participant guide: every frame, note and box where it stood, the boxes in the
+# projection's order, and every line drawn. Projected from that project's ontology and saved
+# board; routed from this, every line and label comes out where the live board had it.
+# Rows, tab-separated: prefix; frame id x y w h title pattern; note id x y w h text;
+# box id kind local|imported x y w h label curie; line id kind source target label.
+prefix	obo:	http://purl.obolibrary.org/obo/
+prefix	pmd:	https://w3id.org/pmd/co/
+prefix	nfdi:	https://nfdi.fiz-karlsruhe.de/ontology/
+prefix	egg:	https://example.org/eggboil/
+frame	ontoboard-frame-eb0b7e03	60	60	3580	812	Measurement and setpoint	pmdco-measurement-and-setpoint
+frame	ontoboard-frame-section-object-properties	40	1062	1370	339	Object properties	
+box	obo:BFO_0000030	CLASS	local	180	340	180	60	object	obo:BFO_0000030
+box	obo:COB_0000035	CLASS	local	2160	240	320	60	completely executed planned process	obo:COB_0000035
+box	egg:EGGBOIL_0001000	CLASS	local	2200	772	180	60	egg boiling	
+box	egg:EGGBOIL_0001001	CLASS	local	220	600	180	60	raw egg	
+box	egg:EGGBOIL_0001002	CLASS	local	220	440	180	60	boiled egg	
+box	obo:BFO_0000004	CLASS	imported	100	140	220	60	independent continuant	obo:BFO_0000004
+box	obo:BFO_0000017	CLASS	imported	3340	240	180	60	realizable entity	obo:BFO_0000017
+box	obo:BFO_0000019	CLASS	imported	2980	420	180	60	quality	obo:BFO_0000019
+box	obo:BFO_0000020	CLASS	imported	2940	140	300	60	specifically dependent continuant	obo:BFO_0000020
+box	obo:BFO_0000023	CLASS	imported	3380	420	180	60	role	obo:BFO_0000023
+box	obo:BFO_0000040	CLASS	imported	140	240	180	60	material entity	obo:BFO_0000040
+box	obo:COB_0000082	CLASS	imported	2120	140	180	60	planned process	obo:COB_0000082
+box	obo:IAO_0000027	CLASS	imported	760	316	180	60	data entity	obo:IAO_0000027
+box	obo:IAO_0000030	CLASS	imported	720	140	240	60	information content entity	obo:IAO_0000030
+box	obo:IAO_0000033	CLASS	imported	760	496	240	60	directive information entity	obo:IAO_0000033
+box	obo:IAO_0000104	CLASS	imported	800	596	180	60	plan specification	obo:IAO_0000104
+box	obo:IAO_0000109	CLASS	imported	800	416	200	60	measurement datum	obo:IAO_0000109
+box	obo:OBI_0000067	CLASS	imported	3420	520	180	60	evaluant role	obo:OBI_0000067
+box	obo:OBI_0000070	CLASS	imported	2200	492	180	60	assay	obo:OBI_0000070
+box	obo:OBI_0000260	CLASS	imported	3380	340	180	60	plan	obo:OBI_0000260
+box	obo:OBI_0001931	CLASS	imported	1500	492	220	60	scalar value specification	obo:OBI_0001931
+box	obo:OBI_0001933	CLASS	imported	1460	316	180	60	value specification	obo:OBI_0001933
+box	pmd:PMD_0000638	CLASS	imported	2280	692	220	60	fatigue testing process	
+box	pmd:PMD_0000773	CLASS	imported	2980	240	160	60	hardness	
+box	pmd:PMD_0000789	CLASS	imported	3020	340	200	60	indentation hardness	
+box	pmd:PMD_0000849	CLASS	imported	2240	592	320	60	mechanical property analyzing process	
+box	pmd:PMD_0020176	CLASS	imported	220	520	160	60	plate	
+box	pmd:PMD_0060009	CLASS	imported	800	676	200	60	specification datum	
+box	obo:OBI_0000293	OBJECT_PROPERTY	local	2560	316	220	60	has specified input	obo:OBI_0000293
+box	obo:OBI_0000299	OBJECT_PROPERTY	local	2560	392	220	60	has specified output	obo:OBI_0000299
+box	obo:BFO_0000055	OBJECT_PROPERTY	imported	1135	1106	220	60	realizes	obo:BFO_0000055
+box	obo:IAO_0000039	OBJECT_PROPERTY	imported	735	1106	280	60	has measurement unit label	obo:IAO_0000039
+box	obo:IAO_0000136	OBJECT_PROPERTY	imported	1040	216	200	60	is about	obo:IAO_0000136
+box	obo:IAO_0000221	OBJECT_PROPERTY	imported	1080	416	260	60	is quality measurement of	obo:IAO_0000221
+box	obo:IAO_0000419	OBJECT_PROPERTY	imported	735	1266	220	60	quality is specified as	obo:IAO_0000419
+box	obo:OBI_0000417	OBJECT_PROPERTY	imported	2560	240	260	60	achieves_planned_objective	obo:OBI_0000417
+box	obo:OBI_0001927	OBJECT_PROPERTY	imported	1720	316	200	60	specifies value of	obo:OBI_0001927
+box	obo:OBI_0001938	OBJECT_PROPERTY	imported	1040	140	240	60	has value specification	obo:OBI_0001938
+box	obo:RO_0000053	OBJECT_PROPERTY	imported	95	1186	200	60	has characteristic	obo:RO_0000053
+box	obo:RO_0000058	OBJECT_PROPERTY	imported	415	1106	200	60	is concretized as	obo:RO_0000058
+box	obo:RO_0000059	OBJECT_PROPERTY	imported	95	1106	200	60	concretizes	obo:RO_0000059
+box	obo:RO_0000086	OBJECT_PROPERTY	imported	135	1286	200	60	has quality	obo:RO_0000086
+box	obo:RO_0000087	OBJECT_PROPERTY	imported	400	140	200	60	has role	obo:RO_0000087
+box	obo:RO_0009006	OBJECT_PROPERTY	imported	2460	492	280	60	assay measures characteristic	obo:RO_0009006
+box	pmd:PMD_0000004	OBJECT_PROPERTY	imported	735	1186	180	60	is subject of	
+box	obo:OBI_0001937	DATA_PROPERTY	imported	1720	392	280	60	has specified numeric value	obo:OBI_0001937
+line	sub|egg:EGGBOIL_0001000|obo:COB_0000035	SUBCLASS	egg:EGGBOIL_0001000	obo:COB_0000035	
+line	rest|some|egg:EGGBOIL_0001000|obo:OBI_0000293|egg:EGGBOIL_0001001	OBJECT_PROPERTY	egg:EGGBOIL_0001000	egg:EGGBOIL_0001001	∃ has specified input
+line	sub|egg:EGGBOIL_0001001|obo:BFO_0000030	SUBCLASS	egg:EGGBOIL_0001001	obo:BFO_0000030	
+line	sub|egg:EGGBOIL_0001002|obo:BFO_0000030	SUBCLASS	egg:EGGBOIL_0001002	obo:BFO_0000030	
+line	rest|some|egg:EGGBOIL_0001000|obo:OBI_0000299|egg:EGGBOIL_0001002	OBJECT_PROPERTY	egg:EGGBOIL_0001000	egg:EGGBOIL_0001002	∃ has specified output
+line	sub|pmd:PMD_0000638|pmd:PMD_0000849	SUBCLASS	pmd:PMD_0000638	pmd:PMD_0000849	
+line	pe|subin|some|obo:OBI_0000070|obo:OBI_0000293|obo:BFO_0000040	OBJECT_PROPERTY	obo:OBI_0000070	obo:BFO_0000040	∃ has specified input
+line	pe|subin|some|obo:OBI_0000070|obo:OBI_0000299|obo:IAO_0000027	OBJECT_PROPERTY	obo:OBI_0000070	obo:IAO_0000027	∃ has specified output
+line	sub|obo:OBI_0000067|obo:BFO_0000023	SUBCLASS	obo:OBI_0000067	obo:BFO_0000023	
+line	sub|obo:COB_0000035|obo:COB_0000082	SUBCLASS	obo:COB_0000035	obo:COB_0000082	
+line	sub|pmd:PMD_0000789|pmd:PMD_0000773	SUBCLASS	pmd:PMD_0000789	pmd:PMD_0000773	
+line	sub|obo:BFO_0000030|obo:BFO_0000040	SUBCLASS	obo:BFO_0000030	obo:BFO_0000040	
+line	sub|obo:BFO_0000019|obo:BFO_0000020	SUBCLASS	obo:BFO_0000019	obo:BFO_0000020	
+line	sub|obo:IAO_0000033|obo:IAO_0000030	SUBCLASS	obo:IAO_0000033	obo:IAO_0000030	
+line	sub|obo:BFO_0000017|obo:BFO_0000020	SUBCLASS	obo:BFO_0000017	obo:BFO_0000020	
+line	sub|obo:OBI_0001931|obo:OBI_0001933	SUBCLASS	obo:OBI_0001931	obo:OBI_0001933	
+line	rest|some|obo:IAO_0000033|obo:IAO_0000136|obo:BFO_0000017	OBJECT_PROPERTY	obo:IAO_0000033	obo:BFO_0000017	∃ is about
+line	sub|obo:OBI_0000070|obo:COB_0000035	SUBCLASS	obo:OBI_0000070	obo:COB_0000035	
+line	sub|obo:BFO_0000023|obo:BFO_0000017	SUBCLASS	obo:BFO_0000023	obo:BFO_0000017	
+line	rest|some|obo:OBI_0000070|obo:BFO_0000055|obo:OBI_0000067	OBJECT_PROPERTY	obo:OBI_0000070	obo:OBI_0000067	∃ realizes
+line	sub|obo:IAO_0000027|obo:IAO_0000030	SUBCLASS	obo:IAO_0000027	obo:IAO_0000030	
+line	rest|some|obo:OBI_0000260|obo:RO_0000059|obo:IAO_0000104	OBJECT_PROPERTY	obo:OBI_0000260	obo:IAO_0000104	∃ concretizes
+line	sub|pmd:PMD_0000773|obo:BFO_0000020	SUBCLASS	pmd:PMD_0000773	obo:BFO_0000020	
+line	sub|obo:OBI_0000260|obo:BFO_0000017	SUBCLASS	obo:OBI_0000260	obo:BFO_0000017	
+line	rest|some|obo:IAO_0000109|obo:OBI_0001938|obo:OBI_0001933	OBJECT_PROPERTY	obo:IAO_0000109	obo:OBI_0001933	∃ has value specification
+line	rest|some|obo:COB_0000035|obo:BFO_0000055|obo:OBI_0000260	OBJECT_PROPERTY	obo:COB_0000035	obo:OBI_0000260	∃ realizes
+line	sub|obo:OBI_0001933|obo:IAO_0000030	SUBCLASS	obo:OBI_0001933	obo:IAO_0000030	
+line	sub|pmd:PMD_0020176|obo:BFO_0000030	SUBCLASS	pmd:PMD_0020176	obo:BFO_0000030	
+line	sub|obo:IAO_0000109|obo:IAO_0000027	SUBCLASS	obo:IAO_0000109	obo:IAO_0000027	
+line	sub|obo:BFO_0000040|obo:BFO_0000004	SUBCLASS	obo:BFO_0000040	obo:BFO_0000004	
+line	sub|obo:IAO_0000104|obo:IAO_0000033	SUBCLASS	obo:IAO_0000104	obo:IAO_0000033	
+line	sub|pmd:PMD_0060009|obo:IAO_0000033	SUBCLASS	pmd:PMD_0060009	obo:IAO_0000033	
+line	sub|pmd:PMD_0000849|obo:OBI_0000070	SUBCLASS	pmd:PMD_0000849	obo:OBI_0000070	
+line	subprop|obo:RO_0000086|obo:RO_0000053	SUB_PROPERTY	obo:RO_0000086	obo:RO_0000053	rdfs:subPropertyOf
+line	domain|obo:OBI_0000293|obo:COB_0000035	DOMAIN_RANGE	obo:OBI_0000293	obo:COB_0000035	domain
+line	domain|obo:OBI_0000299|obo:COB_0000035	DOMAIN_RANGE	obo:OBI_0000299	obo:COB_0000035	domain
+line	domain|obo:IAO_0000136|obo:IAO_0000030	DOMAIN_RANGE	obo:IAO_0000136	obo:IAO_0000030	domain
+line	domain|obo:IAO_0000221|obo:IAO_0000109	DOMAIN_RANGE	obo:IAO_0000221	obo:IAO_0000109	domain
+line	domain|obo:OBI_0000417|obo:COB_0000035	DOMAIN_RANGE	obo:OBI_0000417	obo:COB_0000035	domain
+line	domain|obo:OBI_0001927|obo:OBI_0001933	DOMAIN_RANGE	obo:OBI_0001927	obo:OBI_0001933	domain
+line	domain|obo:OBI_0001938|obo:IAO_0000030	DOMAIN_RANGE	obo:OBI_0001938	obo:IAO_0000030	domain
+line	domain|obo:RO_0000087|obo:BFO_0000004	DOMAIN_RANGE	obo:RO_0000087	obo:BFO_0000004	domain
+line	domain|obo:RO_0009006|obo:OBI_0000070	DOMAIN_RANGE	obo:RO_0009006	obo:OBI_0000070	domain
+line	domain|obo:OBI_0001937|obo:OBI_0001933	DOMAIN_RANGE	obo:OBI_0001937	obo:OBI_0001933	domain
+line	inv|obo:RO_0000058|obo:RO_0000059	INVERSE	obo:RO_0000058	obo:RO_0000059	

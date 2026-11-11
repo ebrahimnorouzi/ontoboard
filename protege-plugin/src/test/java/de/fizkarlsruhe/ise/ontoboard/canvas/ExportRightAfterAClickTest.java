@@ -31,6 +31,11 @@ import org.w3c.dom.NodeList;
  * drew the board as it stood - so a picture taken in that moment left out every line still waiting.
  * Here, exported straight after a click on the class most ranges meet: 14 of its 19 lines, and the
  * picture was 76 by 101 px smaller than the board they were drawn on a moment later.
+ *
+ * <p>On a busy machine as on a quiet one, because the router counts its budgets in its own
+ * processor time (1.135.2). On the wall clock, with every core three times over busy, a line the
+ * click shows lost its half second to other programs, was given up, and was exported without a
+ * route of its own; a router grown slower still runs out of the half second and fails this.
  */
 class ExportRightAfterAClickTest {
 

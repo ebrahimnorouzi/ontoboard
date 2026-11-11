@@ -394,12 +394,17 @@ public final class TemplateColumns {
      * third got it wrong: a check for {@code Kind.LABEL} alone finds nothing in that workbook,
      * so a cross-sheet comparison of labels written that way silently compared no labels at all
      * and reported that they always agreed.
+     *
+     * <p>A label and nothing else (1.135.2). A name is what a sheet uses to find a row, and ROBOT
+     * resolves a name in a cell by {@code rdfs:label} alone - not by a comment, a definition or a
+     * synonym. Every {@code AL} column used to count, whatever its property: on a knowledge graph
+     * built from sheets two rows sharing the comment in {@code AL rdfs:comment@en} were reported
+     * as one name for two things, and the comment was offered as a name to complete.
      */
     public List<Column> labelColumns() {
         List<Column> labels = new ArrayList<Column>();
         for (Column column : getColumns()) {
-            if (column.getKind() == Kind.LABEL || column.getKind() == Kind.ANNOTATION_LANGUAGE
-                    || isALabelAnnotation(column)) {
+            if (column.getKind() == Kind.LABEL || isALabelAnnotation(column)) {
                 labels.add(column);
             }
         }
@@ -421,7 +426,8 @@ public final class TemplateColumns {
      * it completed whether or not the column that holds it is written correctly.
      */
     private static boolean isALabelAnnotation(Column column) {
-        if (column.getKind() != Kind.ANNOTATION && column.getKind() != Kind.ANNOTATION_TYPED) {
+        if (column.getKind() != Kind.ANNOTATION && column.getKind() != Kind.ANNOTATION_LANGUAGE
+                && column.getKind() != Kind.ANNOTATION_TYPED) {
             return false;
         }
         String property = column.getProperty();

@@ -3787,7 +3787,7 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
     }
 
     /** The id every note that says where the rest of a pattern is starts with. */
-    static final String SHARED_NOTE_PREFIX = SchemaGraph.NOTE_ID_PREFIX + "pattern-also-";
+    static final String SHARED_NOTE_PREFIX = CanvasLayout.PATTERN_NOTE_PREFIX;
 
     /** How wide that note is at least, and the room between it and the frame's first box. */
     private static final double SHARED_NOTE_W = 260;
@@ -5445,8 +5445,8 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
         if (!saidNotAllRouted && !graph.isFullyRouted()) {
             saidNotAllRouted = true;
             setStatus(graph.isDense()
-                    ? "This board has over 150 lines: relation arrows are drawn straight and faded"
-                            + " until you select a term."
+                    ? "This board has over " + SchemaGraph.DENSE + " lines: relation arrows are"
+                            + " drawn straight and faded until you select a term."
                     : "Some lines could not be routed around the boxes and are drawn straight."
                             + " Select a term to bring its own lines forward.");
         }
@@ -6533,6 +6533,26 @@ public class SchemaCanvasView extends AbstractOWLViewComponent {
             } else if (stored.belongsTo(ontologyIriOf(ontology))) {
                 layout = stored;
                 pruneStaleMembers(ontology, layout);
+                // A 1.135.0 board's pattern frames: titled with the pattern's name, without the
+                // pattern field. That pattern's again, so an empty one goes at the next drawing as
+                // an empty pattern frame does, rather than pushing the outline (1.135.2).
+                // Modules go beside the edit file, term lists to the project's imports directory:
+                // the same folder only when the edit file is in src/ontology (1.135.2 review).
+                java.io.File root =
+                        de.fizkarlsruhe.ise.ontoboard.menu.ReleaseAction.projectRootOf(
+                                currentOntologyFile);
+                final java.util.List<java.io.File> imports = java.util.Arrays.asList(
+                        new java.io.File(currentOntologyFile.getParentFile(), "imports"),
+                        root == null ? null
+                                : de.fizkarlsruhe.ise.ontoboard.odk.ImportModules
+                                        .importsDirectoryIn(root));
+                int adopted = layout.adoptPatternFramesSavedBy1350(SchemaCanvasView::patternIdNamed,
+                        id -> de.fizkarlsruhe.ise.ontoboard.odk.ImportModules
+                                .patternImportedOnceIn(imports, id));
+                if (adopted > 0) {
+                    LOGGER.info("OntoBoard: {} pattern frame(s) saved by 1.135.0 recognised by"
+                            + " their title", adopted);
+                }
                 // Saved before 1.135.1, which did not say whether a person arranged it. One that
                 // holds positions keeps them: arranging it at its first new class would throw
                 // somebody's work away, with nothing to undo it with. Arrange > Outline opts in.
