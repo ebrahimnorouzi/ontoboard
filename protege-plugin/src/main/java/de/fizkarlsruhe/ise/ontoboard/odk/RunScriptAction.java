@@ -73,16 +73,30 @@ public class RunScriptAction extends ProtegeOWLAction {
         boolean onPath = chosen.getInterpreter() != null
                 && ProcessRunner.isAvailable(ProcessRunner.real(), chosen.getInterpreter(),
                         "--version");
+        // The image for this project that is on this machine, or none: a runtime handed a name
+        // it does not have downloads it, five gigabytes, without a word.
+        OdkImage.Choice image = runtime == null ? null
+                : OdkImage.forProject(ontologyDirectory,
+                        OdkImage.probe(runtime, ProcessRunner.real()));
+        String reference = image == null ? null : image.reference();
         final ScriptRun.Plan plan = ScriptRun.planFor(chosen, ontologyDirectory, runtime,
                 Toolchain.activationScript(Toolchain.nativeEnvironment()), onPath,
-                choice.arguments);
+                choice.arguments, reference,
+                reference == null ? OdkContainer.Host.unknown()
+                        : OdkContainer.Host.detect(runtime, ProcessRunner.real()),
+                reference == null ? null : passThroughRunSh());
 
         if (plan.getRoute() == ScriptRun.Route.NOT_RUNNABLE) {
-            JOptionPane.showMessageDialog(getOWLWorkspace(), plan.getAdvice(),
+            // A runtime but no image: the image is the reason, and its note says what to do.
+            JOptionPane.showMessageDialog(getOWLWorkspace(),
+                    image != null && reference == null ? image.note() : plan.getAdvice(),
                     "Cannot run " + chosen.getName(), JOptionPane.WARNING_MESSAGE);
             return;
         }
-        if (!confirmed(chosen, plan, choice.arguments)) {
+        // Why the image is not the project's own ODK, when it is not.
+        final String imageNote = plan.getRoute() == ScriptRun.Route.IN_CONTAINER && image != null
+                ? image.note() : null;
+        if (!confirmed(chosen, plan, choice.arguments, imageNote)) {
             return;
         }
 
@@ -91,7 +105,7 @@ public class RunScriptAction extends ProtegeOWLAction {
                 new java.util.concurrent.Callable<OperationResult>() {
                     @Override
                     public OperationResult call() {
-                        return runIt(plan, workingDirectory);
+                        return runIt(plan, workingDirectory, imageNote);
                     }
                 },
                 new java.util.function.Consumer<OperationResult>() {
@@ -156,9 +170,21 @@ public class RunScriptAction extends ProtegeOWLAction {
         }
     }
 
+    /**
+     * The pass-through run.sh for the container, or null when it cannot be written - the script
+     * then runs as it did before there was one.
+     */
+    private static File passThroughRunSh() {
+        try {
+            return OdkContainer.passThroughStub();
+        } catch (RuntimeException cannotWrite) {
+            return null;
+        }
+    }
+
     /** Shows the exact command, and any warning, and waits for a yes. */
     private boolean confirmed(ProjectScripts.Script script, ScriptRun.Plan plan,
-            List<String> arguments) {
+            List<String> arguments, String imageNote) {
         StringBuilder message = new StringBuilder("<html><b>")
                 .append(script.getName()).append("</b> will run ")
                 .append(describe(plan.getRoute())).append(".<br><br>")
@@ -169,6 +195,9 @@ public class RunScriptAction extends ProtegeOWLAction {
             // Spelled out, because quoting is where a typed argument line goes wrong and the
             // count is the fact that says whether it did.
             message.append("<br><br>").append(escape(ScriptArguments.describe(arguments)));
+        }
+        if (imageNote != null) {
+            message.append("<br><br>").append(escape(imageNote));
         }
         String warning = ScriptRun.warningFor(script, plan.getRoute());
         if (warning != null) {
@@ -201,8 +230,20 @@ public class RunScriptAction extends ProtegeOWLAction {
 
     /** Runs it, and reports what it said. Off the event thread. */
     static OperationResult runIt(ScriptRun.Plan plan, File workingDirectory) {
+        return runIt(plan, workingDirectory, null);
+    }
+
+    /**
+     * The same, with what there is to say about the image it runs in.
+     *
+     * @param imageNote why the image is not the project's own ODK, or null
+     */
+    static OperationResult runIt(ScriptRun.Plan plan, File workingDirectory, String imageNote) {
         OperationResult.Builder result = OperationResult.of("Run a project script");
         result.note("Route: " + describe(plan.getRoute()));
+        if (imageNote != null) {
+            result.warn(imageNote);
+        }
         result.note("Command: " + plan.asCommandLine());
         try {
             ProcessRunner.Outcome outcome = ProcessRunner.real().run(workingDirectory,

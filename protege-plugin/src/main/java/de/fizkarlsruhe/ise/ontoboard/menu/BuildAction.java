@@ -1,6 +1,8 @@
 package de.fizkarlsruhe.ise.ontoboard.menu;
 
 import de.fizkarlsruhe.ise.ontoboard.odk.MakeRun;
+import de.fizkarlsruhe.ise.ontoboard.odk.OdkContainer;
+import de.fizkarlsruhe.ise.ontoboard.odk.OdkImage;
 import de.fizkarlsruhe.ise.ontoboard.proc.ProcessRunner;
 import java.io.File;
 import java.io.IOException;
@@ -43,11 +45,17 @@ public class BuildAction extends OntoBoardAction {
     /** Decided in {@link #configure()} so the run does not probe the machine a second time. */
     private volatile MakeRun.Route route = MakeRun.Route.NOT_RUNNABLE;
 
-    /** The ODK image this project pins, when the build goes through a container. */
+    /** The ODK image that runs this project, when the build goes through a container. */
     private volatile String image = MakeRun.DEFAULT_IMAGE;
+
+    /** Why that image is not the project's own ODK, for the transcript; null when it is. */
+    private volatile String imageNote;
 
     /** {@code docker} or {@code podman}, decided with the route. */
     private volatile String runtime = "docker";
+
+    /** The machine, asked once: its memory decides Java's when the project names none. */
+    private volatile OdkContainer.Host host = OdkContainer.Host.unknown();
 
     @Override
     protected String operationName() {
@@ -67,7 +75,6 @@ public class BuildAction extends OntoBoardAction {
             return false;
         }
         route = MakeRun.routeFor(editFile, ProcessRunner.real());
-        image = MakeRun.imageFor(MakeRun.workingDirectory(editFile));
         String found = MakeRun.containerRuntime(ProcessRunner.real());
         runtime = found == null ? "docker" : found;
         String why = MakeRun.whyNotRunnable(editFile, ProcessRunner.real());
@@ -75,6 +82,21 @@ public class BuildAction extends OntoBoardAction {
             javax.swing.JOptionPane.showMessageDialog(getOWLWorkspace(), why,
                     "Cannot build", javax.swing.JOptionPane.INFORMATION_MESSAGE);
             return false;
+        }
+        imageNote = null;
+        if (route == MakeRun.Route.ODK_IN_CONTAINER) {
+            // An image that is on this machine, or none: a runtime handed a name it does not
+            // have downloads it, five gigabytes, without a word.
+            OdkImage.Choice choice = OdkImage.forProject(MakeRun.workingDirectory(editFile),
+                    OdkImage.probe(runtime, ProcessRunner.real()));
+            if (choice.reference() == null) {
+                javax.swing.JOptionPane.showMessageDialog(getOWLWorkspace(), choice.note(),
+                        "Cannot build", javax.swing.JOptionPane.INFORMATION_MESSAGE);
+                return false;
+            }
+            image = choice.reference();
+            imageNote = choice.note();
+            host = OdkContainer.Host.detect(runtime, ProcessRunner.real());
         }
         List<String> targets = route == MakeRun.Route.IN_PROCESS
                 ? de.fizkarlsruhe.ise.ontoboard.odk.InProcessTargets.TARGETS
@@ -122,6 +144,11 @@ public class BuildAction extends OntoBoardAction {
         }
 
         List<String> command = commandForRoute(directory, editFile);
+        if (route == MakeRun.Route.ODK_IN_CONTAINER && imageNote != null) {
+            // Not the ODK that wrote this project's Makefile: said, because a build that
+            // differs from the project's CI is otherwise a riddle.
+            result.warn(imageNote);
+        }
         // In the transcript, before anything runs. A build that fails is diagnosed by running the
         // same command in a terminal, and until now the user had no way to know what it was.
         result.note("Command: " + join(command));
@@ -165,7 +192,7 @@ public class BuildAction extends OntoBoardAction {
     /** The command this route runs, already decided in {@link #configure()}. */
     private List<String> commandForRoute(File directory, File editFile) {
         if (route == MakeRun.Route.ODK_IN_CONTAINER) {
-            return MakeRun.containerCommand(runtime, directory, image, target);
+            return MakeRun.containerCommand(runtime, directory, image, host, target);
         }
         if (route == MakeRun.Route.ODK_NATIVE) {
             return de.fizkarlsruhe.ise.ontoboard.odk.Toolchain.nativeCommand(

@@ -178,29 +178,9 @@ class MakeRunTest {
                 () -> MakeRun.dockerCommand(null, null, "all"));
     }
 
-    /**
-     * The project's own pinned image is used, not a guess.
-     *
-     * <p>go-ontology pins {@code obolibrary/odkfull:v1.5.4} and its comment says the version must
-     * be coordinated with its pipeline; MWO's run.bat names the image with no tag. Building
-     * somebody's ontology against a different ODK than their CI uses is how a release stops being
-     * reproducible, so the pin is read rather than assumed.
-     */
-    @Test
-    void theImageIsReadFromTheProjectsOwnRunner() {
-        assertEquals("obolibrary/odkfull:v1.5.4", MakeRun.imageFrom(
-                "docker run -m 12g -v $PWD/../../:/work --rm -ti obolibrary/odkfull:v1.5.4 \"$@\""));
-        assertEquals("obolibrary/odkfull", MakeRun.imageFrom(
-                "docker run -v %cd%\\..\\..\\:/work --rm -ti obolibrary/odkfull %*"));
-        assertEquals("obolibrary/odklite:v1.4", MakeRun.imageFrom(
-                "IMAGE=odklite\ndocker run --rm obolibrary/odklite:v1.4 \"$@\""));
-        // A tagged mention beats an earlier bare one: run.sh composes $ODK_IMAGE:$ODK_TAG and
-        // often names the plain image in a comment above it.
-        assertEquals("obolibrary/odkfull:v1.6", MakeRun.imageFrom(
-                "# see obolibrary/odkfull for details\ndocker run obolibrary/odkfull:v1.6 \"$@\""));
-        assertEquals(MakeRun.DEFAULT_IMAGE, MakeRun.imageFrom("docker run something-else"));
-        assertEquals(MakeRun.DEFAULT_IMAGE, MakeRun.imageFrom(null));
-    }
+    // Which image runs a project - its own pin, the ODK that wrote its Makefile, or the pinned
+    // one - is OdkImage's to decide now, and OdkImageTest's to check: a tag written out in the
+    // project's run.sh (go-ontology's v1.5.4) is still its pin.
 
     private static ProcessRunner.Outcome failedWith(String... lines) {
         return new ProcessRunner.Outcome(2, Arrays.asList(lines), false);

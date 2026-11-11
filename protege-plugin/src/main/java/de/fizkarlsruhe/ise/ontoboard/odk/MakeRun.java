@@ -171,8 +171,9 @@ public final class MakeRun {
      * </ul>
      *
      * <p>The mount mirrors the project's own wrapper: repository root at {@code /work}, working
-     * directory {@code /work/src/ontology}. Heap settings match {@code run.bat}. {@code --rm}
-     * because a container per build would otherwise accumulate silently.
+     * directory {@code /work/src/ontology}. The rest is {@link OdkContainer#command}, which
+     * issues what {@code run.sh} issues. {@code --rm} because a container per build would
+     * otherwise accumulate silently.
      */
     public static List<String> dockerCommand(File ontologyDirectory, String image, String target) {
         return containerCommand("docker", ontologyDirectory, image, target);
@@ -181,10 +182,20 @@ public final class MakeRun {
     /** The same, naming the runtime - {@code docker} or {@code podman}. */
     public static List<String> containerCommand(String runtime, File ontologyDirectory,
             String image, String target) {
+        return containerCommand(runtime, ontologyDirectory, image, OdkContainer.Host.unknown(),
+                target);
+    }
+
+    /**
+     * The same, on a machine that has been asked about itself: its memory decides Java's when
+     * the project names none, and on Linux and macOS the files made belong to the user.
+     */
+    public static List<String> containerCommand(String runtime, File ontologyDirectory,
+            String image, OdkContainer.Host host, String target) {
         if (target == null || target.trim().isEmpty()) {
             throw new IllegalArgumentException("no target to make");
         }
-        return containerCommandFor(runtime, ontologyDirectory, image,
+        return containerCommandFor(runtime, ontologyDirectory, image, host,
                 java.util.Arrays.asList("make", target.trim()));
     }
 
@@ -202,6 +213,13 @@ public final class MakeRun {
      */
     public static List<String> containerCommandFor(String runtime, File ontologyDirectory,
             String image, List<String> inContainer) {
+        return containerCommandFor(runtime, ontologyDirectory, image,
+                OdkContainer.Host.unknown(), inContainer);
+    }
+
+    /** The same, on a machine that has been asked about itself. */
+    public static List<String> containerCommandFor(String runtime, File ontologyDirectory,
+            String image, OdkContainer.Host host, List<String> inContainer) {
         if (inContainer == null || inContainer.isEmpty()) {
             throw new IllegalArgumentException("no command to run in the container");
         }
@@ -214,76 +232,17 @@ public final class MakeRun {
             throw new IllegalArgumentException(
                     "expected <project>/src/ontology, got " + ontologyDirectory.getAbsolutePath());
         }
-        List<String> command = new ArrayList<String>();
-        command.add(runtime == null || runtime.trim().isEmpty() ? "docker" : runtime.trim());
-        command.add("run");
-        command.add("--rm");
-        command.add("-v");
-        // Forward slashes: Docker Desktop accepts them on Windows, and they keep a backslash from
-        // being read as an escape inside the colon-separated bind specification.
-        command.add(root.getAbsolutePath().replace(BACKSLASH, '/') + ":/work");
-        command.add("-w");
-        command.add("/work/src/ontology");
-        // The project's own setting, not a hardcoded one. These are passed with -e, which wins
-        // over anything in the environment, so a project declaring robot_java_args: "-Xmx16G"
-        // used to get 8G with nothing to say so - and on a large ontology that is the difference
-        // between a build that finishes and one that dies. Defaults to the value this plugin
-        // always used, so a project without the key behaves exactly as before.
-        String heap = OdkBuildSettings.robotJavaArgs(ontologyDirectory);
-        command.add("-e");
-        command.add("ROBOT_JAVA_ARGS=" + heap);
-        command.add("-e");
-        command.add("JAVA_OPTS=" + heap);
-        command.add(image == null || image.trim().isEmpty() ? DEFAULT_IMAGE : image.trim());
-        command.addAll(inContainer);
-        return command;
-    }
-
-    /** The path separator Windows uses and a Docker bind specification cannot carry. */
-    private static final char BACKSLASH = '\\';
-
-    /**
-     * The ODK image a project pins, read from its own runner.
-     *
-     * <p>Worth reading rather than assuming: go-ontology pins {@code obolibrary/odkfull:v1.5.4}
-     * and says in a comment that the version must be coordinated with its pipeline, while MWO's
-     * {@code run.bat} names {@code obolibrary/odkfull} with no tag at all. Building somebody's
-     * ontology against a different ODK than their CI uses is how a release stops being
-     * reproducible.
-     *
-     * <p>A tagged mention beats an untagged one wherever both appear, because {@code run.sh}
-     * composes its reference from {@code $ODK_IMAGE:$ODK_TAG} and may name the bare image in a
-     * comment first.
-     */
-    static String imageFrom(String runnerScript) {
-        if (runnerScript == null) {
-            return DEFAULT_IMAGE;
-        }
-        java.util.regex.Matcher mentions = java.util.regex.Pattern
-                .compile("obolibrary/(?:odkfull|odklite)(?::[A-Za-z0-9._-]+)?")
-                .matcher(runnerScript);
-        String found = null;
-        while (mentions.find()) {
-            String candidate = mentions.group();
-            if (found == null || (candidate.indexOf(':') >= 0 && found.indexOf(':') < 0)) {
-                found = candidate;
-            }
-        }
-        return found == null ? DEFAULT_IMAGE : found;
-    }
-
-    /** The image this project pins, read from its runner, or the default. */
-    public static String imageFor(File ontologyDirectory) {
-        File runner = odkRunner(ontologyDirectory);
-        if (runner == null) {
-            return DEFAULT_IMAGE;
-        }
-        try {
-            return imageFrom(new String(
-                    java.nio.file.Files.readAllBytes(runner.toPath()), "UTF-8"));
-        } catch (IOException unreadable) {
-            return DEFAULT_IMAGE;
-        }
+        // The project's own setting, not a hardcoded one. It is passed with -e, which wins over
+        // anything in the environment, so a project declaring robot_java_args: "-Xmx16G" used to
+        // get 8G with nothing to say so - and on a large ontology that is the difference between
+        // a build that finishes and one that dies. A project that declares none gets what
+        // run.sh would give it: nine tenths of the runtime's memory.
+        String declared = OdkBuildSettings.scalarAt(ontologyDirectory, "robot_java_args");
+        return OdkContainer.command(
+                runtime == null || runtime.trim().isEmpty() ? "docker" : runtime,
+                root,
+                image == null || image.trim().isEmpty() ? DEFAULT_IMAGE : image,
+                host, declared, inContainer);
     }
 
     /** Where the build runs: the directory holding the Makefile, beside the edit file. */
