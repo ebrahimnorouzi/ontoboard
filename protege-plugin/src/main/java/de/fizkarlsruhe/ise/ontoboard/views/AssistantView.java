@@ -124,6 +124,10 @@ public class AssistantView extends AbstractOWLViewComponent {
      * they are next needed, once, rather than on every selection change after it.
      */
     private final OWLOntologyChangeListener changeListener = changes -> {
+        // A new ontology IRI or version IRI keeps the conversation: under the old ID, the column
+        // showed it while every problem and board term went to a new one (review 1.153.0
+        // reasoner-01).
+        de.fizkarlsruhe.ise.ontoboard.assistant.host.OntologyIds.follow(sessions, changes);
         search = null;
         // A change to the logic leaves a problem chip to be asked about again before it is sent:
         // it told the model the ontology was inconsistent after the repair too (1.151.0, asked by
