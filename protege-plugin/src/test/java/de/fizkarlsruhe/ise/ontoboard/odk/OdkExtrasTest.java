@@ -61,6 +61,10 @@ class OdkExtrasTest {
         for (String said : new String[] {"`reason_test`", "`sparql_test`", "`robot_reports`",
             "`validate_idranges`", "`test`", "`test_fast`", "`sh run.sh make test`",
             "`ONTOLOGY-CREATOR`", "`ADDITIONAL EDITOR`", "ODK v1.6.1",
+            // Whole, on one line: a path broken over two is one nobody finds by searching,
+            // and MenuPathsInMessagesTest reads it as a menu item that is not there.
+            "**OntoBoard > Project > ID ranges...**",
+            "**OntoBoard > Build and release > Build...**",
             "`src/ontology/eggboil-odk.yaml`", "`src/ontology/profile.txt`"}) {
             assertTrue(page.contains(said), said + " is not on the page:\n" + page);
         }
