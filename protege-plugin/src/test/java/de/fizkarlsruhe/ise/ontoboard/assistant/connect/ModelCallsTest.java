@@ -114,6 +114,41 @@ class ModelCallsTest {
         assertTrue(failure.getMessage().contains("(your key)"), failure.getMessage());
     }
 
+    /** A key of no known shape, which only the known-key net would catch, whole. */
+    static final String UNSHAPED_KEY = "Mx7pLq2Rt9Vw4Yz8Ab3Cd6Ef1Gh5Jk0Qr";
+
+    /** About 180 characters of a server's words, then the key it was sent. */
+    static String explanationEndingIn(String key) {
+        StringBuilder words = new StringBuilder();
+        while (words.length() < 180) {
+            words.append("The credentials in this request were not accepted. ");
+        }
+        return words.substring(0, 180) + " " + key;
+    }
+
+    /** Whether any eight characters of the key in a row are in the text. */
+    static boolean holdsPartOf(String text, String key) {
+        for (int i = 0; i + 8 <= key.length(); i++) {
+            if (text.contains(key.substring(i, i + 8))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Review 1.153.0 keys-01: the server's words were cut at 200 characters and the key blanked
+     * only after that, where it was still whole. A key quoted across the cut kept its first part,
+     * in the chat, a saved conversation and the benchmark's files, where no redaction knows it.
+     */
+    @Test
+    void aKeyQuotedAcrossTheCutLeavesNoPartOfItself() throws IOException {
+        ModelCallException failure = ModelCalls.translate(refused(401, "{\"error\":{\"message\":\""
+                + explanationEndingIn(UNSHAPED_KEY) + "\"}}"), claude, UNSHAPED_KEY);
+
+        assertFalse(holdsPartOf(failure.getMessage(), UNSHAPED_KEY), failure.getMessage());
+    }
+
     @Test
     void aStoppedCallIsStopped() {
         assertEquals(ModelCallException.Kind.STOPPED,

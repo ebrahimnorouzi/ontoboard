@@ -93,7 +93,7 @@ public final class AnthropicClient extends AbstractModelClient {
                 } else if ("error".equals(type)) {
                     throw new ModelCallException(ModelCallException.Kind.SERVER,
                             connection.getHost() + " reported an error while answering: "
-                                    + ModelCalls.serverMessage(event.getData()) + ".");
+                                    + ModelCalls.serverMessage(event.getData(), apiKey) + ".");
                 }
             }
         } catch (IOException failure) {

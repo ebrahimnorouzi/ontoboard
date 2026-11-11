@@ -37,7 +37,7 @@ public final class ModelCalls {
      */
     public static ModelCallException translate(IOException failure, Connection connection,
             String apiKey) {
-        ModelCallException translated = classify(failure, connection);
+        ModelCallException translated = classify(failure, connection, apiKey);
         String key = apiKey == null ? "" : apiKey.trim();
         if (key.isEmpty() || !translated.getMessage().contains(key)) {
             return translated;
@@ -123,7 +123,8 @@ public final class ModelCalls {
         return String.format(java.util.Locale.ROOT, "%.1f seconds", millis / 1000.0);
     }
 
-    private static ModelCallException classify(IOException failure, Connection connection) {
+    private static ModelCallException classify(IOException failure, Connection connection,
+            String apiKey) {
         if (failure instanceof ModelCallException) {
             return (ModelCallException) failure;
         }
@@ -134,7 +135,7 @@ public final class ModelCalls {
         if (failure instanceof HttpsOpener.Refused) {
             HttpsOpener.Refused refused = (HttpsOpener.Refused) failure;
             int status = refused.getStatus();
-            String said = serverMessage(refused.getBody());
+            String said = serverMessage(refused.getBody(), apiKey);
             if (status == 401 || status == 403) {
                 return new ModelCallException(ModelCallException.Kind.UNAUTHORIZED, host
                         + " refused the key (" + status + "): " + said
@@ -199,6 +200,18 @@ public final class ModelCalls {
      * most {@value #MAX_SAID} characters.
      */
     public static String serverMessage(String body) {
+        return serverMessage(body, null);
+    }
+
+    /**
+     * As {@link #serverMessage(String)}, with the key blanked out before the excerpt is cut. Cut
+     * first, a key the server quoted across the cut kept its first part - in the chat, a saved
+     * conversation and the benchmark's files - where no later redaction, which knows only the
+     * whole key, could find it (review 1.153.0 keys-01).
+     *
+     * @param apiKey the key sent, or null when there is none
+     */
+    public static String serverMessage(String body, String apiKey) {
         if (body == null || body.trim().isEmpty()) {
             return "no explanation given";
         }
@@ -226,6 +239,10 @@ public final class ModelCalls {
                     .replace("&nbsp;", " ");
         }
         said = said.replaceAll("\\s+", " ").trim();
+        String key = apiKey == null ? "" : apiKey.trim();
+        if (!key.isEmpty()) {
+            said = said.replace(key, "(your key)");
+        }
         if (said.isEmpty()) {
             return "no explanation given";
         }

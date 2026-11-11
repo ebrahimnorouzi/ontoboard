@@ -101,6 +101,19 @@ class OllamaClientTest {
         assertTrue(failure.getMessage().contains("more system memory"), failure.getMessage());
     }
 
+    /** Review 1.153.0 keys-01, for an error line in the middle of an answer. */
+    @Test
+    void anErrorLineQuotingTheKeyAcrossTheCutLeavesNoPartOfIt() {
+        String key = ModelCallsTest.UNSHAPED_KEY;
+        server.respond("/api/chat", 200, NDJSON, line("Half"),
+                "{\"error\":\"" + ModelCallsTest.explanationEndingIn(key) + "\"}\n");
+
+        ModelCallException failure = assertThrows(ModelCallException.class,
+                () -> new OllamaClient(connection, key).chat(request(), d -> { }));
+
+        assertFalse(ModelCallsTest.holdsPartOf(failure.getMessage(), key), failure.getMessage());
+    }
+
     @Test
     void anUnknownModelSaysPickOne() {
         server.respond("/api/chat", 404, "application/json",

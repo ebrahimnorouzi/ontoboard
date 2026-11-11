@@ -176,4 +176,18 @@ class OpenAiCompatibleClientTest {
         assertEquals(ModelCallException.Kind.UNAUTHORIZED, failure.getKind());
         assertFalse(failure.getMessage().contains("sk-o"), failure.getMessage());
     }
+
+    /** Review 1.153.0 keys-01, for an error reported in the middle of an answer. */
+    @Test
+    void anErrorInTheStreamQuotingTheKeyAcrossTheCutLeavesNoPartOfIt() {
+        String key = ModelCallsTest.UNSHAPED_KEY;
+        server.respond("/v1/chat/completions", 200, SSE, piece("Half"),
+                data("{\"error\":{\"message\":\"" + ModelCallsTest.explanationEndingIn(key)
+                        + "\"}}"));
+
+        ModelCallException failure = assertThrows(ModelCallException.class,
+                () -> new OpenAiCompatibleClient(connection, key).chat(request(), d -> { }));
+
+        assertFalse(ModelCallsTest.holdsPartOf(failure.getMessage(), key), failure.getMessage());
+    }
 }

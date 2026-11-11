@@ -132,6 +132,20 @@ class AnthropicClientTest {
         assertTrue(failure.getMessage().contains("Overloaded"), failure.getMessage());
     }
 
+    /** Review 1.153.0 keys-01, for an error event in the middle of an answer. */
+    @Test
+    void anErrorEventQuotingTheKeyAcrossTheCutLeavesNoPartOfIt() {
+        String key = ModelCallsTest.UNSHAPED_KEY;
+        server.respond("/v1/messages", 200, SSE, start(1), delta("Half"),
+                event("error", "{\"type\":\"error\",\"error\":{\"type\":\"overloaded_error\","
+                        + "\"message\":\"" + ModelCallsTest.explanationEndingIn(key) + "\"}}"));
+
+        ModelCallException failure = assertThrows(ModelCallException.class,
+                () -> new AnthropicClient(connection, key).chat(request(), d -> { }));
+
+        assertFalse(ModelCallsTest.holdsPartOf(failure.getMessage(), key), failure.getMessage());
+    }
+
     @Test
     void listsModels() throws Exception {
         server.respond("/v1/models", 200, "application/json",

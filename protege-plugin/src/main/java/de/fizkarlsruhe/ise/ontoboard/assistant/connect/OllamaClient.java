@@ -75,7 +75,7 @@ public final class OllamaClient extends AbstractModelClient {
                 if (data.has("error")) {
                     throw new ModelCallException(ModelCallException.Kind.SERVER,
                             connection.getHost() + " reported an error while answering: "
-                                    + ModelCalls.serverMessage(line) + ".");
+                                    + ModelCalls.serverMessage(line, apiKey) + ".");
                 }
                 String piece = data.path("message").path("content").asText("");
                 if (!piece.isEmpty()) {

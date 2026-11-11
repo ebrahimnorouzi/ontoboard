@@ -107,7 +107,7 @@ public final class OpenAiCompatibleClient extends AbstractModelClient {
                 if (data.has("error")) {
                     throw new ModelCallException(ModelCallException.Kind.SERVER,
                             connection.getHost() + " reported an error while answering: "
-                                    + ModelCalls.serverMessage(event.getData()) + ".");
+                                    + ModelCalls.serverMessage(event.getData(), apiKey) + ".");
                 }
                 JsonNode choices = data.path("choices");
                 if (choices.size() > 0) {
