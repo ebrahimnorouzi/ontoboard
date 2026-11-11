@@ -12,7 +12,15 @@ their own licenses:
   ROBOT (robot-core)     BSD-3-Clause    https://github.com/ontodev/robot
   JGraphX                BSD-3-Clause    https://github.com/jgraph/jgraphx
   Widoco                 Apache-2.0      https://github.com/dgarijo/Widoco
+  ODK (its templates)    BSD-3-Clause    https://github.com/INCATools/ontology-development-kit
 
 The ontology design patterns bundled under patterns-repository/ originate from
 the Ontology Design Patterns community (ontologydesignpatterns.org) and remain
 under their respective original licenses.
+
+The Ontology Development Kit's project templates are bundled unchanged, as its
+image obolibrary/odkfull holds them (protege-plugin/src/main/odk/, with ODK's
+license text and the image they were copied from), Copyright (c) 2015, Gene
+Ontology Consortium. One of those files is ROBOT's standard report profile.
+ODK's sample configurations under protege-plugin/src/test/resources/odk/ are
+used by the tests only and are not part of the plugin.

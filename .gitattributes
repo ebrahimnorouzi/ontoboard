@@ -2,3 +2,10 @@
 # SHA-256 of the file it was generated from (line endings normalised, so a CRLF checkout still
 # matches), but the snapshot itself should be exactly the file the cases were made from.
 benchmarks/assistant/ontologies/*.owl -text
+
+# ODK's own templates, copied out of the ODK image, and the goldens made in that image. A project
+# OntoBoard creates must equal what `odk.py seed` writes byte for byte, and these are what that is
+# rendered from and compared with - so git must not touch their line endings. With
+# core.autocrlf=true and without these lines a Windows checkout turns every one of them into CRLF.
+protege-plugin/src/main/odk/** -text
+protege-plugin/src/test/resources/odk/** -text

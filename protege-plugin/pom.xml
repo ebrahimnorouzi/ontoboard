@@ -208,6 +208,20 @@
           <include>*/pattern.ttl</include>
         </includes>
       </resource>
+      <resource>
+        <!--
+          ODK's own templates, exactly as the pinned ODK image holds them (PROVENANCE.txt in
+          there says which image). A project created without Docker is rendered from these and
+          must equal what `odk.py seed` writes, byte for byte.
+
+          A directory of its own, not src/main/resources, because that one is filtered: ODK's
+          Makefile template is full of ${...} and $(...), and Maven's filter would rewrite the
+          first kind silently. Filtering is off here and must stay off.
+        -->
+        <directory>${project.basedir}/src/main/odk</directory>
+        <targetPath>odk</targetPath>
+        <filtering>false</filtering>
+      </resource>
     </resources>
 
     <plugins>
