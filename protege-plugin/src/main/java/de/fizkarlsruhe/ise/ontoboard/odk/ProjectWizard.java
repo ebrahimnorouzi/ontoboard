@@ -117,7 +117,13 @@ public final class ProjectWizard {
             }
         });
 
-        JPanel panel = form(id, title, description, iri, license, folder, browse, problem, adopt);
+        // The first commit, said before it is made and there to be declined: OntoBoard commits
+        // nothing in anybody's project unseen. Ticked, because a project recorded from its first
+        // file is what ODK's own seed leaves behind.
+        final javax.swing.JCheckBox git = new javax.swing.JCheckBox(GIT_BOX, true);
+
+        JPanel panel = form(id, title, description, iri, license, folder, browse, problem, adopt,
+                git);
 
         // Until it is accepted or abandoned. Every field this form collects is rejectable -
         // OdkProjectConfig.validate has eight rules, and two of them ("base IRI must end in the
@@ -126,10 +132,9 @@ public final class ProjectWizard {
         // price of a typo in the last field was retyping the other five. The components are built
         // once above and reused here, so everything typed survives a rejection.
         //
-        // Safe because OdkScaffold.create validates before it creates anything - config.validate()
-        // is its first statement, ahead of the first mkdirs - so a rejected attempt has written
-        // nothing and there is nothing to undo before the next one. A failure from the writing
-        // half is different, because part of the tree may exist, so that one still stops.
+        // Every rule is asked here, before anything is started, so a rejected attempt has
+        // written nothing and there is nothing to undo before the next one. Writing the project
+        // comes after, off this thread: ODK's container takes its time over a seed.
         while (true) {
             if (JOptionPane.showConfirmDialog(parent, panel, "New ODK project",
                     JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE)
@@ -137,33 +142,73 @@ public final class ProjectWizard {
                 return;
             }
 
-            OdkProjectConfig config = new OdkProjectConfig(id.getText(), title.getText(),
+            final OdkProjectConfig config = new OdkProjectConfig(id.getText(), title.getText(),
                     description.getText(), iri.getText(), license.getText(),
                     folder.getText().trim().isEmpty() ? null : new File(folder.getText().trim()));
             if (adopt.isSelected()) {
                 config.adopting();
             }
-
-            List<File> written;
             try {
-                written = OdkScaffold.create(config);
+                config.validate();
+                OdkConfigWriter.forNewProject(config);
             } catch (IllegalArgumentException invalid) {
                 refuse(problem, invalid.getMessage());
                 continue;
-            } catch (RuntimeException failure) {
-                JOptionPane.showMessageDialog(parent,
-                        "Could not write the project: " + failure.getMessage(),
-                        "Failed", JOptionPane.ERROR_MESSAGE);
-                return;
             }
-
-            if (config.isAdopted()) {
-                adoptInto(parent, modelManager, open, openFile, config, written.size());
-            } else {
-                openGenerated(parent, modelManager, config, written.size());
-            }
+            create(parent, modelManager, config, open, config.isAdopted() ? openFile : null,
+                    git.isSelected());
             return;
         }
+    }
+
+    /** What the form's last box says. */
+    static final String GIT_BOX = "Make it a git repository, with these files as its first commit";
+
+    /**
+     * Writes the project off the event thread, then opens it.
+     *
+     * <p>Stopping it is safe: {@link OdkCreate} takes back what it wrote, so the same answers can
+     * be given again.
+     */
+    private static void create(final Component parent, final OWLModelManager modelManager,
+            final OdkProjectConfig config, final org.semanticweb.owlapi.model.OWLOntology open,
+            final File adopted, final boolean recordInGit) {
+        final java.util.concurrent.atomic.AtomicReference<OdkCreate.Created> made =
+                new java.util.concurrent.atomic.AtomicReference<OdkCreate.Created>();
+        de.fizkarlsruhe.ise.ontoboard.menu.BackgroundRun.execute(parent, "New ODK project",
+                new java.util.concurrent.Callable<
+                        de.fizkarlsruhe.ise.ontoboard.menu.OperationResult>() {
+                    @Override
+                    public de.fizkarlsruhe.ise.ontoboard.menu.OperationResult call() {
+                        made.set(OdkCreate.create(config, adopted,
+                                de.fizkarlsruhe.ise.ontoboard.proc.ProcessRunner.real(),
+                                recordInGit));
+                        return de.fizkarlsruhe.ise.ontoboard.menu.OperationResult
+                                .of("New ODK project").summary("Created.").build();
+                    }
+                },
+                new java.util.function.Consumer<
+                        de.fizkarlsruhe.ise.ontoboard.menu.OperationResult>() {
+                    @Override
+                    public void accept(de.fizkarlsruhe.ise.ontoboard.menu.OperationResult result) {
+                        OdkCreate.Created created = made.get();
+                        if (created == null || !result.isSuccess()) {
+                            JOptionPane.showMessageDialog(parent,
+                                    wrapped(notCreatedMessage(result.getSummary())),
+                                    "Not created", JOptionPane.ERROR_MESSAGE);
+                        } else if (config.isAdopted()) {
+                            adoptInto(parent, modelManager, open, adopted, config, created);
+                        } else {
+                            openGenerated(parent, modelManager, config, created);
+                        }
+                    }
+                });
+    }
+
+    /** What is said when the project could not be written, or its writing was stopped. */
+    static String notCreatedMessage(String why) {
+        return "The project was not created, and nothing is left of the attempt.\n\n"
+                + (why == null || why.trim().isEmpty() ? "No reason was given." : why.trim());
     }
 
     /** As wide as the form has always been. Only the width is fixed, not the height. */
@@ -193,6 +238,17 @@ public final class ProjectWizard {
     static JPanel form(JTextField id, JTextField title, JTextField description, JTextField iri,
             JTextField license, JTextField folder, JButton browse, JLabel problem,
             Component adopt) {
+        return form(id, title, description, iri, license, folder, browse, problem, adopt, null);
+    }
+
+    /**
+     * The same, with the box that says the project becomes a git repository.
+     *
+     * @param git the box, under the fields it follows from; null for a form without it
+     */
+    static JPanel form(JTextField id, JTextField title, JTextField description, JTextField iri,
+            JTextField license, JTextField folder, JButton browse, JLabel problem,
+            Component adopt, Component git) {
         JPanel folderRow = new JPanel(new BorderLayout(6, 0));
         folderRow.add(folder, BorderLayout.CENTER);
         folderRow.add(browse, BorderLayout.EAST);
@@ -239,7 +295,14 @@ public final class ProjectWizard {
         };
         panel.add(north, BorderLayout.NORTH);
         panel.add(fields, BorderLayout.CENTER);
-        panel.add(hint, BorderLayout.SOUTH);
+        if (git == null) {
+            panel.add(hint, BorderLayout.SOUTH);
+        } else {
+            JPanel south = new JPanel(new BorderLayout());
+            south.add(git, BorderLayout.NORTH);
+            south.add(hint, BorderLayout.CENTER);
+            panel.add(south, BorderLayout.SOUTH);
+        }
         return panel;
     }
 
@@ -294,14 +357,20 @@ public final class ProjectWizard {
      */
     private static void adoptInto(Component parent, OWLModelManager modelManager,
             org.semanticweb.owlapi.model.OWLOntology open, File from, OdkProjectConfig config,
-            int fileCount) {
+            OdkCreate.Created created) {
         try {
             modelManager.getOWLOntologyManager().setOntologyDocumentIRI(open,
                     IRI.create(config.getEditFile()));
-            modelManager.save(open);
+            // The seed has put the ontology's file there, byte for byte. It is saved again only
+            // when the window holds changes that file does not: a save writes the whole file
+            // afresh, and the working copy would differ from the first commit in its layout
+            // alone.
+            if (modelManager.getDirtyOntologies().contains(open)) {
+                modelManager.save(open);
+            }
             JOptionPane.showMessageDialog(parent,
-                    wrapped(adoptedMessage(fileCount, config.getProjectRoot(),
-                            config.getEditFile().getName(), from.getName())),
+                    wrapped(adoptedMessage(created.written().size(), config.getProjectRoot(),
+                            config.getEditFile().getName(), from.getName(), created.summary())),
                     "Project created", JOptionPane.INFORMATION_MESSAGE);
         } catch (Exception cannotSave) {
             JOptionPane.showMessageDialog(parent,
@@ -478,17 +547,36 @@ public final class ProjectWizard {
      * first button is "New to this? Start the guide...".
      */
     static String createdMessage(int fileCount, File root, String editFile) {
-        return "Created " + fileCount + " files in\n" + root.getAbsolutePath()
+        return createdMessage(fileCount, root, editFile, null);
+    }
+
+    /**
+     * The same, with how the project was made: by ODK's container or from ODK's templates, and
+     * whether git has it ({@link OdkCreate.Created#summary}). It ends the first paragraph, so
+     * the message keeps its three.
+     */
+    static String createdMessage(int fileCount, File root, String editFile, String how) {
+        return "Created " + fileCount + " files in\n" + root.getAbsolutePath() + made(how)
                 + "\n\nEditing " + editFile + " - the file you work in. It is on the OntoBoard tab"
                 + " now.\n\n" + CHECK_ANY_TIME;
     }
 
     /** What "Project created" says when the open ontology became the project's edit file. */
     static String adoptedMessage(int fileCount, File root, String editFile, String from) {
-        return "Created " + fileCount + " files in\n" + root.getAbsolutePath()
+        return adoptedMessage(fileCount, root, editFile, from, null);
+    }
+
+    /** The same, with how the project was made. */
+    static String adoptedMessage(int fileCount, File root, String editFile, String from,
+            String how) {
+        return "Created " + fileCount + " files in\n" + root.getAbsolutePath() + made(how)
                 + "\n\nYour ontology is now the project's edit file, " + editFile
                 + " - the file you work in from now on, with its address and every term as they"
                 + " were. " + from + " is left as it was.\n\n" + CHECK_ANY_TIME;
+    }
+
+    private static String made(String how) {
+        return how == null || how.trim().isEmpty() ? "" : "\n" + how.trim();
     }
 
     /** The last paragraph of both: how to check the ontology, and that nothing else is needed. */
@@ -503,7 +591,7 @@ public final class ProjectWizard {
      * it is rather than implying the whole operation failed.
      */
     private static void openGenerated(Component parent, OWLModelManager modelManager,
-            OdkProjectConfig config, int fileCount) {
+            OdkProjectConfig config, OdkCreate.Created created) {
         try {
             modelManager.getOWLOntologyManager()
                     .loadOntologyFromOntologyDocument(config.getEditFile());
@@ -512,8 +600,8 @@ public final class ProjectWizard {
                             IRI.create(config.getBaseIri())));
             showTheBoard(parent);
             JOptionPane.showMessageDialog(parent,
-                    wrapped(createdMessage(fileCount, config.getProjectRoot(),
-                            config.getEditFile().getName())),
+                    wrapped(createdMessage(created.written().size(), config.getProjectRoot(),
+                            config.getEditFile().getName(), created.summary())),
                     "Project created", JOptionPane.INFORMATION_MESSAGE);
         } catch (Exception couldNotOpen) {
             JOptionPane.showMessageDialog(parent,

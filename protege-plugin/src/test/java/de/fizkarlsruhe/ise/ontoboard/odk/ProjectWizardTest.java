@@ -95,9 +95,15 @@ class ProjectWizardTest {
         final JTextField folder = new JTextField("C:\\Users\\participant\\Documents\\study");
         final JLabel problem = new JLabel();
         final JCheckBox adopt;
+        /** The box that makes the project a git repository, as {@code show} makes it; or null. */
+        final JCheckBox git;
         final JPanel form;
 
         Widgets(String ontologyId, String address, boolean canAdopt) {
+            this(ontologyId, address, canAdopt, false);
+        }
+
+        Widgets(String ontologyId, String address, boolean canAdopt, boolean withGitBox) {
             id.setText(ontologyId);
             iri.setText(address);
             folder.setEditable(false);
@@ -105,8 +111,12 @@ class ProjectWizardTest {
             adopt = new JCheckBox(canAdopt
                     ? "Start from shop.owl - keep its address and everything in it" : "");
             adopt.setVisible(canAdopt);
-            form = ProjectWizard.form(id, title, description, iri, license, folder,
-                    new JButton("Choose..."), problem, adopt);
+            git = withGitBox ? new JCheckBox(ProjectWizard.GIT_BOX, true) : null;
+            form = withGitBox
+                    ? ProjectWizard.form(id, title, description, iri, license, folder,
+                            new JButton("Choose..."), problem, adopt, git)
+                    : ProjectWizard.form(id, title, description, iri, license, folder,
+                            new JButton("Choose..."), problem, adopt);
         }
 
         List<JTextField> six() {
@@ -200,6 +210,49 @@ class ProjectWizardTest {
             assertTrue(after > before, "the banner's lines have to be added to the form, which "
                     + "stayed " + before + " px high");
         }
+    }
+
+    /**
+     * The box that says the project becomes a git repository is on the form, whole, and takes
+     * nothing from the fields - on the first attempt and after a refusal has made the form
+     * taller. It is how the first commit is shown before it is made: a box nobody can see, or
+     * read to its end, would be a commit nobody agreed to.
+     */
+    @Test
+    void theGitBoxIsShownWholeAndTakesNothingFromTheFields() {
+        for (boolean canAdopt : new boolean[] {false, true}) {
+            Widgets widgets = new Widgets(EGG, EGG_TYPED_AFTER, canAdopt, true);
+            shown(widgets.form);
+            assertEveryFieldWhole(widgets, "with the git box, on the first attempt");
+            assertGitBoxWhole(widgets, "on the first attempt");
+
+            widgets.refused();
+            shown(widgets.form);
+
+            assertEveryFieldWhole(widgets, "with the git box, after the refusal");
+            assertGitBoxWhole(widgets, "after the refusal");
+        }
+    }
+
+    private static void assertGitBoxWhole(Widgets widgets, String when) {
+        JCheckBox git = widgets.git;
+        Dimension wanted = git.getPreferredSize();
+        assertTrue(git.isSelected(), "it is ticked until somebody unticks it");
+        assertTrue(git.isShowing() || git.isVisible(), when + " the git box is not shown");
+        assertTrue(git.getHeight() >= wanted.height, when + " the git box is " + git.getHeight()
+                + " px high of the " + wanted.height + " it needs");
+        assertTrue(wanted.width <= ProjectWizard.FORM_WIDTH, "its sentence needs " + wanted.width
+                + " px and the form is " + ProjectWizard.FORM_WIDTH + " wide: the end is cut off");
+        Rectangle at = SwingUtilities.convertRectangle(git.getParent(), git.getBounds(),
+                widgets.form);
+        assertTrue(at.x >= 0 && at.y >= 0 && at.x + wanted.width <= widgets.form.getWidth()
+                && at.y + at.height <= widgets.form.getHeight(), when + " the git box is at " + at
+                + " in a form of " + widgets.form.getSize());
+        // Under the six fields, which it follows from, and above nothing it could be taken for.
+        Rectangle folder = SwingUtilities.convertRectangle(widgets.folder.getParent(),
+                widgets.folder.getBounds(), widgets.form);
+        assertTrue(at.y >= folder.y + folder.height, when + " the git box is at y=" + at.y
+                + ", not under the last field, which ends at " + (folder.y + folder.height));
     }
 
     private static void assertEveryFieldWhole(Widgets widgets, String when) {
