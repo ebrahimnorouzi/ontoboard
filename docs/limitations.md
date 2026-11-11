@@ -35,10 +35,19 @@ SPARQL panel (1.33.0) used to be on this list and are now features - they are de
       into an ODK repository…* runs `git init`, commits and tags every version, and prints the
       two commands that publish it.
     - Bring to front and send to back for frames and notes on the board.
-- **Mappings, DOSDP patterns, pattern mining and an assistant are not built.** There is no SSSOM
+- **Mappings, DOSDP patterns and pattern mining are not built, and the assistant edits little.**
+  There is no SSSOM
   support: a mapping can be written only as an annotation - in Protégé's annotation editor, or
   as an `AI skos:exactMatch` column of a sheet. DOSDP pattern files are neither read nor written.
-  Nothing extracts design patterns across ontologies, and there is no LLM assistant.
+  Nothing extracts design patterns across ontologies. The [assistant](assistant.md) (since
+  1.136.0) answers questions and explains reasoner problems. Since 1.137.0 it suggests
+  definitions, wordings and changes to axioms - a removal, a replacement or an addition, written
+  from a sentence with **Write as OWL…** - as cards you accept or reject. It does not build
+  hierarchies or import terms. On Protégé 5.5.0 on macOS it can reach only local models.
+- **A reasoner problem is checked again by running the reasoner.** Once the ontology's logic has
+  changed, the assistant asks the reasoner again about a problem it explained, before the next
+  question goes with it (since 1.151.0): on a large ontology, that question waits for the
+  reasoner, as **Explain the reasoner problem…** does.
 - **Turning an ontology into an ODK repository records earlier versions as they were
   published.** They are not rebuilt, and their imports are not turned into modules. A version
   that says no date is committed at the time of the conversion, so converting again gives a
@@ -125,6 +134,21 @@ SPARQL panel (1.33.0) used to be on this list and are now features - they are de
   answers there it writes the rest of the page and leaves the word `null` in the changelog
   section. Since 1.134.0 *Documentation...* says so in one sentence instead of showing Widoco's
   ERROR lines.
+- **Some clones get no exclude rules for the assistant's private conversations.** OntoBoard
+  writes them into every clone it can find where git would list the conversations, but not into
+  one that holds a link to the project you did not open it through, nor into one passed through
+  only by a junction's target as written in it (a junction made to `B\x\j2\sub`, where
+  `B\x\j2` is itself a junction): Java gives OntoBoard a junction's target only fully resolved.
+  A directory symbolic link's target is read as written, so since 1.151.0 a junction it names
+  gives its clone the rules. A clone that holds a directory symbolic link to the project gets no rules and
+  needs none: git does not go into such a link. A project opened through a `subst` drive, or a network drive or share whose root lies
+  inside a clone, is not followed above that root, and nothing says so; open it by its own path.
+  On Linux, a bind mount is not seen at all. Such a clone lists your private conversations only
+  after someone deletes the shared `assistant/.gitignore`.
+- **A built-in role's file named in other capitals is a role of its own.** A hand-named
+  `Ontology-Expert.md` next to the ontology is listed beside the built-in Ontology expert, and on
+  Windows and macOS **Save** of the built-in writes into that file while the assistant keeps using
+  the shipped text. Name role files as OntoBoard does, in lower case.
 - **Authorship of edits made outside the board is stamped by the board.** The listener that stamps
   `dcterms:contributor` and dates on edits made in Protégé's own editors belongs to the Schema
   Canvas view, so edits made before the OntoBoard tab has been shown in a session are not stamped.

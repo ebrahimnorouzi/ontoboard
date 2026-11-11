@@ -1,0 +1,43 @@
+OntoBoard 1.143.0 - host smoke receipt
+
+The rest of the 1.141.0 review is fixed, each with a test that failed first:
+- A role saved in the project is redacted for every key OntoBoard knows, not only for text
+  shaped like a key. A remembered key typed into a role had been written to
+  assistant/roles/ontology-expert.md, which is committed with the project. Groq (gsk_), xAI
+  (xai-) and Hugging Face (hf_) keys are now key-shaped too.
+- In the repair benchmark, an answer the reasoner cannot handle is that row's error. The run
+  goes on and the answer is kept, in run and in score.
+- When an axiom cannot be read either way, the card names the name that is missing, not a word
+  of a label that exists.
+- Only classes, properties and individuals become chips from a sentence: an annotation property,
+  or a labelled IRI that is not a term, no longer hides a class (in MWO, dcterms:license hid
+  'license'). No shipped case changed.
+- A safety check that runs out of time is the row's error, not a silent "unsafe".
+- A run into a folder that holds an earlier run keeps that run's files as
+  replies.previous.jsonl, results.previous.csv and summary.previous.md.
+
+Produced on Windows 11 Pro (10.0.26100), with tools/smoke.ps1 and -Dontoboard.selftest=true. The
+verdict was read from what Protege logged. Protege 5.6.9 is the maintainer's own install, with
+ontoboard-1.141.0.jar moved to ~/Documents/ontoboard-jar-backup (1.142.0 was never installed
+there); Protege 5.5.0 is the throwaway copy. In each, this jar was the only ontoboard-*.jar in
+plugins. Each run was given pizzabfo-edit.owl from a fresh local clone of the
+pizza-bfo test project.
+
+  2026-11-07  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121    -Xmx2G    PASS  check 10/10  test 12/12
+  2026-11-07  Protege 5.6.9  OWL API 4.5.29  JRE 11.0.25+9    -Xmx2G    PASS  check 10/10  test 12/12
+  2026-11-07  Protege 5.6.9  OWL API 4.5.29  JRE 11.0.25+9    -Xmx500M  PASS  check 10/10
+
+The self-test reported "opened, [SchemaCanvasView, AssistantView] built without throwing, and
+closed again".
+
+The jar is sha256 69600fa04c947feea1114b8bd8dd2052d1f81cc57e3e5ecaf48a81241149f2d0, built by
+mvn -o clean package in a copy of the tree. Its unit suite ran on Java 11:
+- 3,293 tests, 0 failures, 0 errors, 3 skipped (3,282 in 1.142.0). The three skipped are as
+  before.
+- BundleConfigurationTest, run against this jar afterwards, passed its 18 tests.
+- The bundle's Import-Package is identical to 1.142.0's (262 entries).
+
+No live benchmark was run: the host's CPU still runs at about half its clock.
+
+A fresh-context review of 1.142.0 and 1.143.0 together followed; 1.144.0 acts on it (see its
+receipt).

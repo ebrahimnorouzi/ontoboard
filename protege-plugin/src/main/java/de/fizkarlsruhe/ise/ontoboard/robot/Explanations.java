@@ -121,6 +121,16 @@ public final class Explanations {
      * @throws RobotException if the reasoner or the explanation generator cannot run here
      */
     public static Result run(OWLOntology ontology, OWLReasonerFactory factory, int perClass) {
+        return run(ontology, factory, perClass, null);
+    }
+
+    /**
+     * As {@link #run(OWLOntology, OWLReasonerFactory, int)}, with the justification axioms
+     * written by {@code render} - the assistant's, which writes a literal with its type
+     * ({@code assistant/context/AssistantRendering}). Null means this class's own rendering.
+     */
+    public static Result run(OWLOntology ontology, OWLReasonerFactory factory, int perClass,
+            java.util.function.Function<org.semanticweb.owlapi.model.OWLObject, String> render) {
         if (ontology == null || factory == null) {
             throw new IllegalArgumentException("an ontology and a reasoner are both required");
         }
@@ -134,7 +144,7 @@ public final class Explanations {
             if (!consistent) {
                 Set<Explanation<OWLAxiom>> found =
                         ExplainOperation.explainInconsistent(ontology, factory, wanted);
-                return new Result(describe(found, ontology), impact(found, ontology),
+                return new Result(describe(found, ontology, render), impact(found, ontology),
                         new ArrayList<String>(), false);
             }
 
@@ -153,7 +163,8 @@ public final class Explanations {
 
             Set<Explanation<OWLAxiom>> found = ExplainOperation.explainUnsatisfiableClasses(
                     ontology, reasoner, factory, wanted);
-            return new Result(describe(found, ontology), impact(found, ontology), unsatisfiable,
+            return new Result(describe(found, ontology, render), impact(found, ontology),
+                    unsatisfiable,
                     true);
         } catch (RuntimeException | LinkageError cannotExplain) {
             throw new RobotException("The explanation could not be computed: "
@@ -200,13 +211,20 @@ public final class Explanations {
      */
     public static List<Justification> forEntailment(OWLOntology ontology,
             OWLReasonerFactory factory, OWLAxiom entailment, int max) {
+        return forEntailment(ontology, factory, entailment, max, null);
+    }
+
+    /** As the four-argument form, with the axioms written by {@code render} (null: this class's). */
+    public static List<Justification> forEntailment(OWLOntology ontology,
+            OWLReasonerFactory factory, OWLAxiom entailment, int max,
+            java.util.function.Function<org.semanticweb.owlapi.model.OWLObject, String> render) {
         if (ontology == null || factory == null || entailment == null) {
             throw new IllegalArgumentException(
                     "an ontology, a reasoner factory and an entailment are all required");
         }
         try {
             return describe(ExplainOperation.explain(entailment, ontology, factory,
-                    max < 1 ? 1 : max), ontology);
+                    max < 1 ? 1 : max), ontology, render);
         } catch (RuntimeException | LinkageError cannotExplain) {
             throw new RobotException("The explanation could not be computed: "
                     + describe(cannotExplain), cannotExplain);
@@ -237,17 +255,20 @@ public final class Explanations {
      * between runs cannot be worked through one row at a time.
      */
     private static List<Justification> describe(Set<Explanation<OWLAxiom>> found,
-            OWLOntology ontology) {
-        ManchesterOWLSyntaxOWLObjectRendererImpl renderer = renderer(ontology);
+            OWLOntology ontology,
+            java.util.function.Function<org.semanticweb.owlapi.model.OWLObject, String> render) {
+        final ManchesterOWLSyntaxOWLObjectRendererImpl renderer = renderer(ontology);
+        java.util.function.Function<org.semanticweb.owlapi.model.OWLObject, String> writer =
+                render != null ? render : object -> tidy(renderer.render(object));
         List<Justification> justifications = new ArrayList<Justification>();
         for (Explanation<OWLAxiom> explanation : found) {
             List<String> axioms = new ArrayList<String>();
             for (OWLAxiom axiom : explanation.getAxioms()) {
-                axioms.add(tidy(renderer.render(axiom)));
+                axioms.add(writer.apply(axiom));
             }
             Collections.sort(axioms);
-            justifications.add(new Justification(
-                    tidy(renderer.render(explanation.getEntailment())), axioms));
+            justifications.add(new Justification(writer.apply(explanation.getEntailment()),
+                    axioms));
         }
         Collections.sort(justifications, new Comparator<Justification>() {
             @Override

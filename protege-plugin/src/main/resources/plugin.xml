@@ -50,6 +50,15 @@
     <category value="@org.protege.ontologycategory"/>
   </extension>
 
+  <!-- The LLM assistant (1.136.0): the right-hand column of the OntoBoard tab, and a view any
+       tab can place from Window > Views. -->
+  <extension id="AssistantView" point="org.protege.editor.core.application.ViewComponent">
+    <label value="Assistant"/>
+    <class value="de.fizkarlsruhe.ise.ontoboard.views.AssistantView"/>
+    <headerColor value="@org.protege.ontologycolor"/>
+    <category value="@org.protege.ontologycategory"/>
+  </extension>
+
 
   <!-- ============================================================================
        The OntoBoard menu.

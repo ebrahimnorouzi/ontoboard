@@ -165,8 +165,16 @@ The steps below are the ODK workflow as it was given to OntoBoard, in order.
 
 - **Writing `.xlsx`.** Reading a workbook is four parts of the format; writing one Excel will
   open is the whole of it. Imported tabs become `.tsv`, which is what ROBOT reads.
-- **An LLM assistant.** Discussed, not built. It would need a key per user, a prompt that does
-  not leak the ontology, and a way to show what it is unsure about.
+- **An LLM assistant that writes OWL.** Since 1.136.0 there is an [assistant](assistant.md),
+  which works with a cloud key or a local model through Ollama. It answers questions about the
+  selected term and explains a reasoner problem. It asks for the terms it needs instead of
+  guessing, and shows exactly what it sends. Since 1.137.0 it suggests definitions, wordings and
+  the removal of an axiom behind a reasoner problem, as cards you accept (one undo) or reject;
+  removals are checked by the reasoner first. Since 1.139.0 it also adds and replaces axioms,
+  including OWL written from a sentence you type ("Write as OWL…"), each checked by the reasoner
+  before Accept. Since 1.140.0 its benchmark measures sentence-to-axiom on NFDIcore and MWO,
+  judged by the reasoner rather than by spelling. Hierarchies and terms from lookup services are
+  planned.
 - **SSSOM mappings.** The most-converged gap in the earlier review and still open.
 - **DOSDP templates.** Separate from the pattern library and not read.
 - **OBO Foundry submission metadata.** Not generated.

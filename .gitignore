@@ -84,3 +84,12 @@ build/bfo-notime.owl
 # like private/: kept on the maintainer's machine, out of git and out of the site (mkdocs.yml
 # exclude_docs). Until 1.134.0 they were tracked; earlier versions remain in the history.
 /docs/superpowers/
+
+# The assistant benchmark's models file and results, where its README puts them
+/my-models.json
+/results/
+/rescored/
+
+# Working ledgers of the development process (the superpowers skills write them here). Internal,
+# like private/: kept on the maintainer's machine, out of git.
+/.superpowers/

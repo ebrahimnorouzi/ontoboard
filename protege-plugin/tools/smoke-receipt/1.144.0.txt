@@ -1,0 +1,67 @@
+OntoBoard 1.144.0 - host smoke receipt
+
+Saved conversations are each person's own choice, and the 1.142.0/1.143.0 review is acted on.
+Before anything was fixed, each finding was checked by two independent agents: one reproduced
+it, the other tried to refute it. The design for saved conversations was also probed on real
+git. Each change has a test that failed first:
+- Saved conversations: "Keep private" or "Release with the project" is each person's choice,
+  kept in their Protege preferences and not in the shared project.properties. Before, one
+  person's Release made git see every colleague's conversations.
+  - Released conversations go to assistant/conversations/released/.
+  - A fixed block in assistant/.gitignore keeps everything else out of git. The block is the
+    same whoever writes it, and it stays the last lines of the file, so a later line cannot
+    take a private conversation back.
+  - The same rules go into the clone's own .git/info/exclude, which is never committed. A
+    colleague who deletes the shared file exposes nothing.
+  - Switching while a conversation is open: to private, the released copy stops at once. To
+    Release, only what is said afterwards is released.
+  - The first save of each conversation says where it went. Settings re-reads its "This
+    project" part whenever the tab is shown.
+- Keys:
+  - a known key with an invisible character, a no-break space or a line break inside is
+    redacted;
+  - GitHub, Perplexity and Fireworks keys are recognised by their shape;
+  - an address is never shown with a name and password, and an address that holds them is
+    refused when a connection is saved and when the benchmark reads its models file.
+- Settings fits a 300 px column and a 1.5x font.
+  - A label goes above its field when the field would get under 160 px.
+  - "Fetch the list" has a line of its own.
+  - Check-box text wraps, and clicking it ticks the box.
+  - "Test the connection" is now "Test connection".
+- Benchmark:
+  - earlier runs are kept whole in previous-1/, previous-2/, ..., and nothing is ever replaced;
+  - score skips a reply line a stopped run left half-written, and keeps results it would
+    overwrite.
+- Text to axiom also says min, max, exactly, a value and a typed value. A new fixture,
+  restrictions, has each shape once: 7 cases. Every shipped case passes with its own held-back
+  axiom, and adding the shapes changed no existing case.
+
+Produced on Windows 11 Pro (10.0.26100), with tools/smoke.ps1 and -Dontoboard.selftest=true. The
+verdict was read from what Protege logged. Protege 5.6.9 is the maintainer's own install, with
+ontoboard-1.143.0.jar moved to ~/Documents/ontoboard-jar-backup; Protege 5.5.0 is the throwaway
+copy. In each, this jar was the only ontoboard-*.jar in plugins. Each run was given
+pizzabfo-edit.owl from a fresh local clone of the pizza-bfo test project.
+
+  2026-11-07  Protege 5.6.9  OWL API 4.5.29  JRE 11.0.25+9    -Xmx2G    PASS  check 10/10  test 12/12
+  2026-11-07  Protege 5.6.9  OWL API 4.5.29  JRE 11.0.25+9    -Xmx500M  PASS  check 10/10
+  2026-11-07  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121    -Xmx2G    PASS  check 10/10  test 12/12
+
+On both hosts the self-test reported "opened, [SchemaCanvasView, AssistantView] built without
+throwing, and closed again".
+
+The jar is sha256 9d28d9c26afd8af5de113709d590ddee3f19578b8cf714636cccdfc77cd18465, built by
+mvn -o clean package in a copy of the tree. Its unit suite ran on Java 11:
+- 3,327 tests, 0 failures, 0 errors, 3 skipped (3,293 in 1.143.0). The three skipped are as
+  before.
+- BundleConfigurationTest, run against this jar afterwards, passed its 18 tests.
+- Import-Package has one new entry, javax.accessibility;resolution:=optional, which gives the
+  check boxes a name for screen readers. No import is new and mandatory. The smokes show it
+  resolves on both hosts.
+
+OWL API 4.5.29 was compared with 4.5.9 by an agent, outside Protege. For the chips and for
+reading proposals, the results were byte-identical: namedIn on MWO and NFDIcore, every shape
+quoted and unquoted, and a round trip over 1,293 real axioms.
+
+No live benchmark was run. The host check failed: the CPU ran at about 73 % of its clock, and
+one recorded 1,500-token request got no reply in 6 minutes, so every case would have hit the
+5-minute read timeout before its first word.

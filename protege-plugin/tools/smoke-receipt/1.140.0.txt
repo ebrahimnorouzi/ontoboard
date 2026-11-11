@@ -1,0 +1,71 @@
+OntoBoard 1.140.0 - host smoke receipt
+
+The assistant benchmark measures text to axiom, and the 1.139.0 review's findings are fixed.
+Each change has a test that failed first:
+- text-to-axiom: an axiom of a class is held back and said as a sentence. HermiT judges the
+  model's axiom: does it say at least that, without making a class empty? Cases come from
+  NFDIcore 3.0.4 and MWO 3.0.0 (snapshots, CC0), pizza-bfo and the fixtures. NFDIcore and MWO
+  define their classes with EquivalentTo, so a definition becomes a sentence that states both
+  directions, and only an answer that states both passes.
+- A card shows the axiom as Accept writes it, under the ontology's names. Text after a data
+  range, a term named twice, and a class labelled "Thing" are refused rather than rewritten.
+- Accepting one card leaves the same answer's axiom cards valid, and Revise on an axiom card
+  names the axiom.
+- A reasoner check ends within its minute, or on Stop, even when HermiT loses an interrupt or a
+  reasoner ignores it; a check's ontology copy is let go at once.
+- A name with a space, written without its quotes, is read; the card shows what was read.
+
+Produced on Windows 11 Pro (10.0.26100), with tools/smoke.ps1 and -Dontoboard.selftest=true. The
+verdict was read from what Protege logged. Protege 5.6.9 is the maintainer's own install, with
+ontoboard-1.139.0.jar moved to ~/Documents/ontoboard-jar-backup and this jar the only
+ontoboard-*.jar in plugins; Protege 5.5.0 is the throwaway copy. Each run was given
+pizzabfo-edit.owl from a fresh local clone of the pizza-bfo test project.
+
+  2026-11-06  Protege 5.6.9  OWL API 4.5.29  JRE 11.0.25+9    -Xmx2G    PASS  check 10/10  test 12/12
+  2026-11-06  Protege 5.6.9  OWL API 4.5.29  JRE 11.0.25+9    -Xmx500M  PASS  check 10/10
+  2026-11-06  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121    -Xmx2G    PASS  check 10/10  test 12/12
+
+On both hosts the self-test reported "opened, [SchemaCanvasView, AssistantView] built without
+throwing, and closed again".
+
+The jar is sha256 969ec7a11b6d75437474b03fcb1487eb60c8d00927f31dcd3157a135e69fcc60, built by
+mvn -o clean package in a copy of the tree. Its unit suite ran on Java 11:
+- 3,225 tests, 0 failures, 0 errors, 3 skipped (3,192 in 1.139.0). The three skipped are as
+  before.
+- BundleConfigurationTest, run against this jar afterwards, passed its 18 tests.
+- The bundle's Import-Package is identical to 1.139.0's (262 entries).
+
+The benchmark ran against a local model: Ollama, qwen2.5:7b-instruct, one repeat. Recorded in
+private/release/1.140.0/live-qwen2.5-7b/.
+
+  text-to-axiom     fixtures   NFDIcore   MWO    pizza-bfo
+                    1/2        0/2        0/4    2/5          (3/13)
+
+Of the ten failures:
+- Five name a property that does not exist (hasReinforcement for 'reinforced with', hasTopping
+  for 'has topping'). OntoBoard refuses them and declares nothing. The model was shown only the
+  subject's block, so nothing told it that 'reinforced with' is a property. 1.141.0 sends the
+  terms the sentence names.
+- Four are not Manchester syntax ("And", "some" before the property).
+- One writes SubClassOf for a sentence that states both directions. It is valid, but it says
+  half of what was asked.
+No answer invented an IRI.
+
+The 1.139.0 repair answers were scored again offline with this jar's code. The pizza case is now
+solved in round 1: the model had written 'has value' without its quotes. The other recorded
+repairs score as before.
+
+A fresh-context review of 1.140.0 found no Critical issue. It confirmed that each case's
+request is byte-identical to what "Write as OWL..." sends, and that 300 Stop races ended without
+a hang. It found three Important issues and, by their effect, three of its Minor ones were
+raised to Important. All are fixed in 1.141.0 with a test each:
+- An "only" answer passed where "some" was held back whenever the rest of the ontology made it
+  imply "some". A case now passes only on an answer equivalent to the held-back axiom.
+- One answer the reasoner could not handle, such as an unsupported facet, ended a whole run, and
+  every recorded answer was lost.
+- The request told the model to ask for missing terms, but the terms the sentence names were not
+  in the context. 1.141.0 sends them, and an answer that asks is reported as such.
+- Putting quotes back around names could change or refuse an axiom that was valid as written.
+- The second axiom of an add-axiom ("with:") was dropped silently.
+- An API key cleaned of invisible characters could escape redaction in the benchmark's output.
+This version is therefore not one to release; 1.141.0 is its successor.

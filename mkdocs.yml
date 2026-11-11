@@ -157,6 +157,7 @@ nav:
       - 'From spreadsheets to a knowledge graph': knowledge-graph.md
       - What the canvas draws: canvas.md
       - Collaboration: collaboration.md
+      - Assistant: assistant.md
       - Conflicts and concurrent editing: conflicts.md
       - Testing collaboration locally: testing-collaboration-locally.md
   - About:

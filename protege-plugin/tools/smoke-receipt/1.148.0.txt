@@ -1,0 +1,54 @@
+OntoBoard 1.148.0 - host smoke receipt
+
+The fresh review of 1.147.0 is acted on. Four reviewers read the code, one area each, and an
+independent checker reproduced each serious finding and tried to refute it. Two agents fixed keys
+and the role editor, each test-first in its own copy of the tree, and a reviewer read each diff;
+the keys reviewer found two more gaps in the address rule, closed before the merge. Each change
+has a test that failed first:
+- Keys:
+  - A connection can no longer be renamed onto another saved connection's name. Before, the
+    other connection's remembered key stayed under the name and went to the renamed
+    connection's host in every chat.
+  - The benchmark's models check refuses a UUID key, and a token split by - or _, in place of a
+    variable's name again.
+- Saved text:
+  - The address rule leaves ordinary text whole again - CSV rows, single-quoted code, Turtle
+    literals, Markdown links, lists - with one or more e-mail addresses after a local address.
+  - It still hides a password after a user name with an apostrophe, a letter outside ASCII or a
+    Windows domain (CORP\alice). The accepted miss, as in 1.146.0: a password that begins with
+    digits and then one of ' ) , ; | ] } is read as a port.
+  - Key shapes are found in linear time: 100,000 characters of "sk-" take a fraction of a
+    second, where 1.147.0 took more than a minute, on every save. A crafted address with
+    thousands of "@" no longer overflows the stack.
+- Roles: a text typed on a role of your own comes back after another ontology was active, even
+  when the folder does not hold that role yet, and so does the "Where edits go has changed"
+  warning.
+- Saved conversations: when another clone's exclude file cannot be written, the project's own
+  clone still gets the rules.
+- Benchmark: a definition repeated with a no-break or zero-width space is one card, and a set and
+  an add of it are two. The documents describe repair as it is: removals, replacements and
+  additions are applied.
+
+Produced on Windows 11 Pro (10.0.26100), with tools/smoke.ps1 and -Dontoboard.selftest=true. The
+verdict was read from what Protege logged. Protege 5.6.9 is the maintainer's own install, with
+ontoboard-1.147.0.jar moved to ~/Documents/ontoboard-jar-backup; Protege 5.5.0 is the throwaway
+copy. In each, this jar was the only ontoboard-*.jar in plugins. Each run was given
+pizzabfo-edit.owl from a clean local clone of the pizza-bfo test project.
+
+  2026-11-09  Protege 5.6.9  OWL API 4.5.29  JRE 11.0.25+9    -Xmx2G    PASS  check 10/10  test 12/12
+  2026-11-09  Protege 5.6.9  OWL API 4.5.29  JRE 11.0.25+9    -Xmx500M  PASS  check 10/10
+  2026-11-09  Protege 5.5.0  OWL API 4.5.9   JRE 1.8.0_121    -Xmx2G    PASS  check 10/10  test 12/12
+
+On both hosts the self-test reported "opened, [SchemaCanvasView, AssistantView] built without
+throwing, and closed again".
+
+The jar is sha256 bcd88e244c4f399b21e7887ffb7b1455773ab75e54ddc3ebb3c0a57ffb336959, built by
+mvn -o clean package in a copy of the tree. Its unit suite ran on Java 11:
+- 3,448 tests, 0 failures, 0 errors, 3 skipped (3,432 in 1.147.0). The three skipped are as
+  before.
+- BundleConfigurationTest, run against this jar afterwards, passed its 18 tests.
+- Import-Package is unchanged: 263 packages, none added or removed, and no new mandatory
+  import.
+
+No live benchmark was run: on this laptop one real request takes about 5 minutes, the bench's
+read timeout. A live run needs a GPU host or a smaller model.

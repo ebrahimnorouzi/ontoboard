@@ -37,6 +37,16 @@ import javax.net.ssl.TrustManagerFactory;
  * against no checking at all - the pinned SHA-256 would catch altered bytes anyway, but a
  * download that silently trusts anybody is not something to ship. macOS's Java offers no
  * equivalent, so there the failure is reported and the user downloads the file by hand.
+ *
+ * <p><b>{@link #send} is for the assistant's model connections</b> (1.136.0): a request with a
+ * method, headers and a body, the same trust-store fallback, and an answer whose body is handed
+ * back unread so a streamed reply can be read as it arrives. <b>It follows no redirect at
+ * all.</b> {@code HttpURLConnection} turns a redirected POST into a GET, so following one would
+ * send a different request from the one shown to the person; and a redirect could carry the API
+ * key in its headers to a host nobody chose. No model API redirects a request, so a 3xx is
+ * reported, not followed. Plain http is allowed only as far as the request's
+ * {@link HttpRequest.PlainHttp} says: to this machine for Ollama's default address, to another
+ * host only when the person marked the server as on their network.
  */
 public final class HttpsOpener implements Download.Opener {
 
@@ -90,8 +100,21 @@ public final class HttpsOpener implements Download.Opener {
             throw new IOException("OntoBoard downloads tools over HTTPS only, and " + url
                     + " is not an HTTPS address.");
         }
+        return withTrustFallback(factory -> openWith(start, factory));
+    }
+
+    /** One attempt at a connection, with another trust store's factory or the JVM's own (null). */
+    private interface Attempt<T> {
+        T with(SSLSocketFactory factory) throws IOException;
+    }
+
+    /**
+     * Tries once with the JVM's trust store and, after a certificate-path failure and only then,
+     * once with each of the operating system's.
+     */
+    private static <T> T withTrustFallback(Attempt<T> attempt) throws IOException {
         try {
-            return openWith(start, null);
+            return attempt.with(null);
         } catch (IOException first) {
             if (!isCertificatePathFailure(first)) {
                 throw first;
@@ -105,7 +128,7 @@ public final class HttpsOpener implements Download.Opener {
                     continue;
                 }
                 try {
-                    return openWith(start, factory);
+                    return attempt.with(factory);
                 } catch (IOException again) {
                     if (!isCertificatePathFailure(again)) {
                         throw again;
@@ -116,6 +139,168 @@ public final class HttpsOpener implements Download.Opener {
             // The certificate failure, not a later one: it is what the message has to explain.
             throw last;
         }
+    }
+
+    /** The most of an error body kept: enough for any API's explanation, not a whole HTML page. */
+    static final int MAX_ERROR_CHARS = 4000;
+
+    /** What came back from {@link #send}: a status below 300, and the body, not yet read. */
+    public static final class Answer {
+        private final int status;
+        private final InputStream body;
+        private final String contentType;
+
+        Answer(int status, InputStream body, String contentType) {
+            this.status = status;
+            this.body = body;
+            this.contentType = contentType == null ? "" : contentType;
+        }
+
+        public int getStatus() {
+            return status;
+        }
+
+        /** The caller reads and closes it; {@link HttpsOpener#stop} closes it from elsewhere. */
+        public InputStream getBody() {
+            return body;
+        }
+
+        /** Never null. */
+        public String getContentType() {
+            return contentType;
+        }
+    }
+
+    /**
+     * The server answered 400 or above. The status and the server's own words, which is where a
+     * model API says what was wrong - "invalid x-api-key", "model not found".
+     *
+     * <p>The message names only the host, the status and the path. The body may echo what was
+     * sent, so it is kept apart for a caller that knows what to blank out of it.
+     */
+    public static final class Refused extends IOException {
+        private static final long serialVersionUID = 1L;
+        private final int status;
+        private final String body;
+
+        public Refused(URL url, int status, String body) {
+            super(url.getHost() + " answered " + status + " for " + url.getPath() + ".");
+            this.status = status;
+            this.body = body == null ? "" : body;
+        }
+
+        public int getStatus() {
+            return status;
+        }
+
+        /** At most {@value HttpsOpener#MAX_ERROR_CHARS} characters, never null. */
+        public String getBody() {
+            return body;
+        }
+    }
+
+    /**
+     * Sends one request, follows no redirect, and hands back the answer with its body unread.
+     *
+     * @throws Refused for a status of 400 or above, with the server's own words
+     * @throws IOException for a redirect, a plain-http address the request's policy does not
+     *     allow, a connection failure, or {@link #stop}
+     */
+    public Answer send(HttpRequest request) throws IOException {
+        final URL url = new URL(request.getUrl());
+        refuseUnlessAllowed(url, request.getPlainHttp());
+        return withTrustFallback(factory -> sendWith(url, request, factory));
+    }
+
+    private Answer sendWith(URL url, HttpRequest request, SSLSocketFactory factory)
+            throws IOException {
+        if (stopped) {
+            throw new IOException("The request was stopped.");
+        }
+        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+        current = connection;
+        // As in openWith: either stop() sees the published connection or this sees stop().
+        if (stopped) {
+            connection.disconnect();
+            throw new IOException("The request was stopped.");
+        }
+        if (factory != null && connection instanceof HttpsURLConnection) {
+            ((HttpsURLConnection) connection).setSSLSocketFactory(factory);
+        }
+        connection.setInstanceFollowRedirects(false);
+        connection.setUseCaches(false);
+        connection.setConnectTimeout(CONNECT_MILLIS);
+        connection.setReadTimeout(request.getReadTimeoutMillis());
+        connection.setRequestMethod(request.getMethod());
+        connection.setRequestProperty("User-Agent", "OntoBoard");
+        for (java.util.Map.Entry<String, String> header : request.getHeaders().entrySet()) {
+            connection.setRequestProperty(header.getKey(), header.getValue());
+        }
+        byte[] body = request.getBody();
+        if (body != null) {
+            // Not setFixedLengthStreamingMode, although the length is known. In streaming mode
+            // the JDK answers a 401 by disconnecting and throwing HttpRetryException, so the
+            // server's own explanation ("invalid x-api-key") never reaches getErrorStream -
+            // measured, the body came back empty. A request body here is a few hundred
+            // kilobytes at most, so letting HttpURLConnection buffer it costs nothing.
+            connection.setDoOutput(true);
+            try (java.io.OutputStream out = connection.getOutputStream()) {
+                out.write(body);
+            }
+        }
+        int code = connection.getResponseCode();
+        if (code >= 300 && code < 400) {
+            connection.disconnect();
+            throw new IOException(url.getHost() + " answered " + code + " for " + url.getPath()
+                    + "; a request to a model is not redirected.");
+        }
+        if (code >= 400) {
+            String said = errorText(connection);
+            connection.disconnect();
+            throw new Refused(url, code, said);
+        }
+        return new Answer(code, connection.getInputStream(), connection.getContentType());
+    }
+
+    /** The error body as UTF-8 text, cut at {@link #MAX_ERROR_CHARS}; empty when there is none. */
+    private static String errorText(HttpURLConnection connection) {
+        InputStream in = connection.getErrorStream();
+        if (in == null) {
+            return "";
+        }
+        StringBuilder text = new StringBuilder();
+        try (java.io.Reader reader =
+                new java.io.InputStreamReader(in, java.nio.charset.StandardCharsets.UTF_8)) {
+            char[] buffer = new char[1024];
+            int read;
+            while (text.length() < MAX_ERROR_CHARS && (read = reader.read(buffer)) != -1) {
+                text.append(buffer, 0, Math.min(read, MAX_ERROR_CHARS - text.length()));
+            }
+        } catch (IOException unreadable) {
+            // What arrived before the failure is still the best explanation there is.
+        }
+        return text.toString();
+    }
+
+    /** Refuses plain http beyond what the request's policy allows, before connecting. */
+    private static void refuseUnlessAllowed(URL url, HttpRequest.PlainHttp policy)
+            throws IOException {
+        String protocol = url.getProtocol().toLowerCase(Locale.ROOT);
+        if ("https".equals(protocol)) {
+            return;
+        }
+        if ("http".equals(protocol)) {
+            if (policy == HttpRequest.PlainHttp.NETWORK) {
+                return;
+            }
+            if (policy == HttpRequest.PlainHttp.THIS_MACHINE
+                    && Hosts.isThisMachine(url.getHost())) {
+                return;
+            }
+        }
+        throw new IOException("OntoBoard sends to " + url.getHost() + " over HTTPS only. Plain"
+                + " http is allowed to this machine, or to a server you marked as on your"
+                + " network.");
     }
 
     private Download.Opened openWith(URL url, SSLSocketFactory factory) throws IOException {
