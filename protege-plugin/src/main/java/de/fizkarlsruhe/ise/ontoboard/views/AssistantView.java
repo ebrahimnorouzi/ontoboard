@@ -65,7 +65,6 @@ import org.semanticweb.owlapi.model.OWLEntity;
 import org.semanticweb.owlapi.model.OWLOntology;
 import org.semanticweb.owlapi.model.OWLOntologyChangeListener;
 import org.semanticweb.owlapi.model.OWLOntologyID;
-import org.semanticweb.owlapi.model.parameters.Imports;
 import org.semanticweb.owlapi.reasoner.OWLReasoner;
 import org.semanticweb.owlapi.reasoner.OWLReasonerFactory;
 
@@ -501,16 +500,11 @@ public class AssistantView extends AbstractOWLViewComponent {
                     return;
                 }
                 panel.onNotice(" ");
-                if (result.isConsistent()) {
-                    // A chip the reasoner no longer bears out goes now, not only at the next
-                    // question (1.151.0, asked by the person).
-                    for (ContextItem item : session.context()) {
-                        if (item.getKind() == ContextItem.Kind.PROBLEM
-                                && (item.getSubject() == null
-                                        || result.getUnsatisfiable().isEmpty())) {
-                            session.removeContext(item);
-                        }
-                    }
+                // A chip the reasoner no longer bears out goes now, not only at the next
+                // question (1.151.0, asked by the person) - a class's too while another class is
+                // still unsatisfiable (review 1.153.0 reasoner-02).
+                for (ContextItem item : Problems.noLongerFound(session.context(), result)) {
+                    session.removeContext(item);
                 }
                 if (!result.isConsistent()) {
                     session.addContext(Problems.inconsistency(ontology, result,
@@ -520,13 +514,18 @@ public class AssistantView extends AbstractOWLViewComponent {
                     panel.onNotice("The reasoner finds no problem: the ontology is consistent and"
                             + " every class is satisfiable.");
                 } else {
-                    List<String> labels = result.getUnsatisfiable();
-                    Object chosen = JOptionPane.showInputDialog(AssistantView.this,
-                            "These classes can have no instances. Which one should the"
-                                    + " assistant explain?", "Explain the reasoner problem",
-                            JOptionPane.QUESTION_MESSAGE, null, labels.toArray(), labels.get(0));
-                    OWLClass cls = chosen == null ? null : classLabelled(ontology,
-                            chosen.toString());
+                    // Each with its class: chosen by its label, of two classes labelled alike
+                    // the satisfiable one could be explained (review 1.153.0 reasoner-03).
+                    List<Problems.Unsatisfiable> choices = Problems.choices(result);
+                    Object chosen = choices.isEmpty() ? null : JOptionPane.showInputDialog(
+                            AssistantView.this, "These classes can have no instances. Which one"
+                                    + " should the assistant explain?",
+                            "Explain the reasoner problem", JOptionPane.QUESTION_MESSAGE, null,
+                            choices.toArray(), choices.get(0));
+                    OWLClass cls = chosen instanceof Problems.Unsatisfiable
+                            ? ontology.getOWLOntologyManager().getOWLDataFactory().getOWLClass(
+                                    ((Problems.Unsatisfiable) chosen).getIri())
+                            : null;
                     if (cls != null) {
                         explainClass(ontology, reasoner, cls, session);
                     }
@@ -576,15 +575,6 @@ public class AssistantView extends AbstractOWLViewComponent {
     private static String cause(Exception failed) {
         Throwable cause = failed.getCause() == null ? failed : failed.getCause();
         return cause.getMessage() == null ? cause.getClass().getSimpleName() : cause.getMessage();
-    }
-
-    private static OWLClass classLabelled(OWLOntology ontology, String label) {
-        for (OWLClass cls : ontology.getClassesInSignature(Imports.INCLUDED)) {
-            if (label.equals(DisplayLabels.forEntity(ontology, cls))) {
-                return cls;
-            }
-        }
-        return null;
     }
 
     /** What the panel asks of Protégé. */

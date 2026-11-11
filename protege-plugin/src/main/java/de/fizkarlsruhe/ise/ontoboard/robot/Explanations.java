@@ -78,13 +78,26 @@ public final class Explanations {
         private final List<Justification> justifications;
         private final String impactSummary;
         private final List<String> unsatisfiable;
+        private final List<org.semanticweb.owlapi.model.IRI> unsatisfiableIris;
         private final boolean consistent;
 
         Result(List<Justification> justifications, String impactSummary,
-                List<String> unsatisfiable, boolean consistent) {
+                List<OWLClass> unsatisfiable, OWLOntology ontology, boolean consistent) {
             this.justifications = Collections.unmodifiableList(justifications);
             this.impactSummary = impactSummary;
-            this.unsatisfiable = Collections.unmodifiableList(unsatisfiable);
+            List<String> labels = new ArrayList<String>();
+            List<org.semanticweb.owlapi.model.IRI> iris =
+                    new ArrayList<org.semanticweb.owlapi.model.IRI>();
+            for (OWLClass bad : unsatisfiable) {
+                // forEntity, not shortNameOf: the justifications beside this list are rendered
+                // with labels, so naming the same class ImpossiblePizza here and "impossible
+                // pizza" three lines down made one class look like two. It is also the name
+                // robot explain writes.
+                labels.add(DisplayLabels.forEntity(ontology, bad));
+                iris.add(bad.getIRI());
+            }
+            this.unsatisfiable = Collections.unmodifiableList(labels);
+            this.unsatisfiableIris = Collections.unmodifiableList(iris);
             this.consistent = consistent;
         }
 
@@ -99,6 +112,14 @@ public final class Explanations {
 
         public List<String> getUnsatisfiable() {
             return unsatisfiable;
+        }
+
+        /**
+         * The same classes, in the same order, as IRIs: two classes can share a label, and the
+         * assistant explained the wrong one of two (review 1.153.0 reasoner-03).
+         */
+        public List<org.semanticweb.owlapi.model.IRI> getUnsatisfiableIris() {
+            return unsatisfiableIris;
         }
 
         public boolean isConsistent() {
@@ -145,27 +166,26 @@ public final class Explanations {
                 Set<Explanation<OWLAxiom>> found =
                         ExplainOperation.explainInconsistent(ontology, factory, wanted);
                 return new Result(describe(found, ontology, render), impact(found, ontology),
-                        new ArrayList<String>(), false);
+                        new ArrayList<OWLClass>(), ontology, false);
             }
 
-            List<String> unsatisfiable = new ArrayList<String>();
-            for (OWLClass bad : reasoner.getUnsatisfiableClasses().getEntitiesMinusBottom()) {
-                // forEntity, not shortNameOf: the justifications beside this list are rendered
-                // with labels, so naming the same class ImpossiblePizza here and "impossible
-                // pizza" three lines down made one class look like two. It is also the name
-                // robot explain writes.
-                unsatisfiable.add(DisplayLabels.forEntity(ontology, bad));
-            }
-            Collections.sort(unsatisfiable);
+            List<OWLClass> unsatisfiable = new ArrayList<OWLClass>(
+                    reasoner.getUnsatisfiableClasses().getEntitiesMinusBottom());
+            // By the name shown, as before; two of one name by their IRIs, so the order is fixed.
+            Collections.sort(unsatisfiable, (a, b) -> {
+                int byName = DisplayLabels.forEntity(ontology, a)
+                        .compareTo(DisplayLabels.forEntity(ontology, b));
+                return byName != 0 ? byName : a.getIRI().compareTo(b.getIRI());
+            });
             if (unsatisfiable.isEmpty()) {
-                return new Result(new ArrayList<Justification>(), "", unsatisfiable, true);
+                return new Result(new ArrayList<Justification>(), "", unsatisfiable, ontology,
+                        true);
             }
 
             Set<Explanation<OWLAxiom>> found = ExplainOperation.explainUnsatisfiableClasses(
                     ontology, reasoner, factory, wanted);
             return new Result(describe(found, ontology, render), impact(found, ontology),
-                    unsatisfiable,
-                    true);
+                    unsatisfiable, ontology, true);
         } catch (RuntimeException | LinkageError cannotExplain) {
             throw new RobotException("The explanation could not be computed: "
                     + describe(cannotExplain), cannotExplain);

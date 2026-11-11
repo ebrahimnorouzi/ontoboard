@@ -152,6 +152,64 @@ class ProblemsTest {
                 .getTitle());
     }
 
+    /** Labels a class, as rdfs:label in English. */
+    private void label(OWLClass cls, String text) {
+        manager.addAxiom(pizza, factory.getOWLAnnotationAssertionAxiom(cls.getIRI(),
+                factory.getOWLAnnotation(factory.getRDFSLabel(),
+                        factory.getOWLLiteral(text, "en"))));
+    }
+
+    /**
+     * Review 1.153.0 reasoner-03: the reasoner's list named classes by label alone, and the
+     * class chosen was looked up by its label - the first class in the signature with it. With a
+     * satisfiable class of the same label, "Explain the reasoner problem..." could explain that
+     * one: "HermiT finds Sample satisfiable now", of a class it had just listed. Each choice
+     * carries its own class.
+     */
+    @Test
+    void eachUnsatisfiableClassIsChosenAsItself() {
+        OWLClass bad = cls("Bad");
+        OWLClass fine = cls("Fine");
+        manager.addAxiom(pizza, factory.getOWLSubClassOfAxiom(bad, cls("VegetarianTopping")));
+        manager.addAxiom(pizza, factory.getOWLSubClassOfAxiom(bad, cls("MeatTopping")));
+        manager.addAxiom(pizza, factory.getOWLSubClassOfAxiom(fine, cls("MeatTopping")));
+        label(bad, "Sample");
+        label(fine, "Sample");
+
+        java.util.List<Problems.Unsatisfiable> choices =
+                Problems.choices(Problems.diagnose(pizza, hermit));
+
+        assertEquals(1, choices.size(), choices.toString());
+        assertEquals("Sample", choices.get(0).toString());
+        assertEquals(bad.getIRI(), choices.get(0).getIri());
+    }
+
+    /**
+     * Review 1.153.0 reasoner-02: a class's problem chip the reasoner no longer bears out stayed
+     * while another class was still unsatisfiable - removed only when none was, though the
+     * reasoner had just been asked.
+     */
+    @Test
+    void aClassProblemTheReasonerNoLongerFindsGoesWhileAnotherStays() {
+        OWLClass fixed = cls("Fixed");
+        OWLClass bad = cls("Bad");
+        org.semanticweb.owlapi.model.OWLAxiom wrong =
+                factory.getOWLSubClassOfAxiom(fixed, cls("MeatTopping"));
+        manager.addAxiom(pizza, factory.getOWLSubClassOfAxiom(fixed, cls("VegetarianTopping")));
+        manager.addAxiom(pizza, wrong);
+        manager.addAxiom(pizza, factory.getOWLSubClassOfAxiom(bad, cls("VegetarianTopping")));
+        manager.addAxiom(pizza, factory.getOWLSubClassOfAxiom(bad, cls("MeatTopping")));
+        ContextItem fixedChip = Problems.unsatisfiable(pizza, hermit, fixed, "HermiT");
+        ContextItem badChip = Problems.unsatisfiable(pizza, hermit, bad, "HermiT");
+        ContextItem term = ContextItem.term(MiniPizza.iri("Pizza"), false);
+        manager.removeAxiom(pizza, wrong);
+
+        java.util.List<ContextItem> gone = Problems.noLongerFound(
+                java.util.Arrays.asList(term, fixedChip, badChip), Problems.diagnose(pizza, hermit));
+
+        assertEquals(java.util.Collections.singletonList(fixedChip), gone);
+    }
+
     @Test
     void noJustificationIsNotNoReason() {
         String text = Problems.describe("ELK", "Bad is unsatisfiable.",

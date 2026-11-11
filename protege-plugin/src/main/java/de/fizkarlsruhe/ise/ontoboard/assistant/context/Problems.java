@@ -37,6 +37,65 @@ public final class Problems {
     /** The inconsistency chip's title. */
     public static final String INCONSISTENT = "Why the ontology is inconsistent";
 
+    /** An unsatisfiable class as the person chooses it: its label, and the class it is. */
+    public static final class Unsatisfiable {
+        private final org.semanticweb.owlapi.model.IRI iri;
+        private final String label;
+
+        Unsatisfiable(org.semanticweb.owlapi.model.IRI iri, String label) {
+            this.iri = iri;
+            this.label = label;
+        }
+
+        public org.semanticweb.owlapi.model.IRI getIri() {
+            return iri;
+        }
+
+        /** The label, as the list shows it. */
+        @Override
+        public String toString() {
+            return label;
+        }
+    }
+
+    /**
+     * The unsatisfiable classes the reasoner found, each with its class. The class chosen was
+     * looked up by its label, the first in the signature with it, and of two classes labelled
+     * alike the satisfiable one could be explained: "HermiT finds Sample satisfiable now", of a
+     * class the list had just named (review 1.153.0 reasoner-03).
+     */
+    public static List<Unsatisfiable> choices(Explanations.Result result) {
+        List<Unsatisfiable> choices = new java.util.ArrayList<Unsatisfiable>();
+        List<String> labels = result.getUnsatisfiable();
+        List<org.semanticweb.owlapi.model.IRI> iris = result.getUnsatisfiableIris();
+        for (int i = 0; i < labels.size() && i < iris.size(); i++) {
+            choices.add(new Unsatisfiable(iris.get(i), labels.get(i)));
+        }
+        return choices;
+    }
+
+    /**
+     * The problem chips among these that the reasoner, as {@code result} found the ontology, no
+     * longer bears out: the inconsistency, and each class no longer unsatisfiable, once the
+     * ontology is consistent. A class's chip was dropped only when no class at all was
+     * unsatisfiable, so one fixed beside another still broken stayed, saying it was not (review
+     * 1.153.0 reasoner-02).
+     */
+    public static List<ContextItem> noLongerFound(List<ContextItem> context,
+            Explanations.Result result) {
+        List<ContextItem> gone = new java.util.ArrayList<ContextItem>();
+        if (!result.isConsistent()) {
+            return gone;
+        }
+        for (ContextItem item : context) {
+            if (item.getKind() == ContextItem.Kind.PROBLEM && (item.getSubject() == null
+                    || !result.getUnsatisfiableIris().contains(item.getSubject()))) {
+                gone.add(item);
+            }
+        }
+        return gone;
+    }
+
     /**
      * The problem as the reasoner finds it now, asked first and explained only when it holds:
      * the inconsistency, when the ontology is inconsistent - every class is unsatisfiable then,
