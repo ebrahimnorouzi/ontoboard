@@ -1,0 +1,16 @@
+id: obim
+title: "OBO imports test ontology"
+github_org: example-org
+repo: obim
+import_group:
+  products:
+    - id: ro
+    - id: iao
+      module_type: slme
+      module_type_slme: TOP
+    - id: bfo
+      module_type: mirror
+    - id: pato
+      is_large: TRUE
+      mirror_from: http://purl.obolibrary.org/obo/pato/pato-base.owl
+robot_java_args: '-Xmx8G'

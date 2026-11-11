@@ -1,0 +1,17 @@
+[
+[
+"data",
+"# Sparql checks\n\n[SPARQL](https://www.w3.org/TR/rdf-sparql-query/) is a W3C standard\nquery language for RDF. This directory contains useful SPARQL queries\nfor perfoming over the ontology.\n\nSPARQL can be executed on a triplestore or directly on any OWL\nfile. The queries here are all executed on either ",
+1
+],
+[
+"variable",
+"project.id",
+8
+],
+[
+"data",
+"-edit.obo or\ndownstream products in the [ontology](../ontology/) folder. We use\n`robot` as this allows easy execution over any Obo-format or OWL file.\n\nWe break the queries into 3 categories:\n\n## Constraint Violation checks\n\nThese are all named `*violation.sparql`. A subset of these are\nconfigured to be executed via travis. If these return any results,\nthen the build will fail.\n\nConsult the individual sparql files to see the intent of the check\n\n## Construct queries\n\nThese are named `construct*.sparql`, and always have the form `CONSTRUCT ...`.\n\nThese are used to generate new OWL axioms that can be inserted back\ninto the ontology.\n\n## Reports\n\nThe remaining SPARQL queries are for informative purposes. A subset\nmay be executed with each release.",
+8
+]
+]

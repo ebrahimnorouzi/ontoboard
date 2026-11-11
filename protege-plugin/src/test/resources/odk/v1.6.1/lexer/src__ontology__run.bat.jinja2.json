@@ -1,0 +1,67 @@
+[
+[
+"data",
+"docker run -v %cd%\\..\\..\\:/work -w /work/src/ontology ",
+1
+],
+[
+"block",
+"if project.robot_java_args is defined",
+1
+],
+[
+"data",
+"-e 'ROBOT_JAVA_ARGS=",
+1
+],
+[
+"variable",
+"project.robot_java_args",
+1
+],
+[
+"data",
+"' -e 'JAVA_OPTS=",
+1
+],
+[
+"variable",
+"project.robot_java_args",
+1
+],
+[
+"data",
+"'",
+1
+],
+[
+"block",
+"endif",
+1
+],
+[
+"data",
+" ",
+1
+],
+[
+"block",
+"if project.use_external_date is sameas True",
+1
+],
+[
+"data",
+"-e TODAY=`date +%Y-%m-%d` ",
+1
+],
+[
+"block",
+"endif",
+1
+],
+[
+"data",
+"--rm -ti obolibrary/odkfull %*",
+1
+]
+]

@@ -1,0 +1,28 @@
+# PURL configuration for http://purl.obolibrary.org/obo/eggboil
+
+idspace: EGGBOIL
+base_url: /obo/eggboil
+
+products:
+- eggboil.owl: https://raw.githubusercontent.com//noname/main/eggboil.owl
+- eggboil.obo: https://raw.githubusercontent.com//noname/main/eggboil.obo
+
+term_browser: ontobee
+example_terms:
+- EGGBOIL_0000000
+
+entries:
+
+- prefix: /releases/
+  replacement: https://raw.githubusercontent.com//noname/v
+
+- prefix: /tracker/
+  replacement: https://github.com//noname/issues
+
+- prefix: /about/
+  replacement: http://www.ontobee.org/ontology/EGGBOIL?iri=http://purl.obolibrary.org/obo/
+
+## generic fall-through, serve direct from github by default
+- prefix: /
+  replacement: https://raw.githubusercontent.com//noname/main/
+

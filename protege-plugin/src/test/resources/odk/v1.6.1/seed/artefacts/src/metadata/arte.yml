@@ -1,0 +1,28 @@
+# PURL configuration for http://purl.obolibrary.org/obo/arte
+
+idspace: ARTE
+base_url: /obo/arte
+
+products:
+- arte.owl: https://raw.githubusercontent.com//noname/main/arte.owl
+- arte.obo: https://raw.githubusercontent.com//noname/main/arte.obo
+
+term_browser: ontobee
+example_terms:
+- ARTE_0000000
+
+entries:
+
+- prefix: /releases/
+  replacement: https://raw.githubusercontent.com//noname/v
+
+- prefix: /tracker/
+  replacement: https://github.com//noname/issues
+
+- prefix: /about/
+  replacement: http://www.ontobee.org/ontology/ARTE?iri=http://purl.obolibrary.org/obo/
+
+## generic fall-through, serve direct from github by default
+- prefix: /
+  replacement: https://raw.githubusercontent.com//noname/main/
+

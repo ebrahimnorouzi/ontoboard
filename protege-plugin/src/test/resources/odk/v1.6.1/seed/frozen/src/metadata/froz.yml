@@ -1,0 +1,28 @@
+# PURL configuration for http://purl.obolibrary.org/obo/froz
+
+idspace: FROZ
+base_url: /obo/froz
+
+products:
+- froz.owl: https://raw.githubusercontent.com//noname/main/froz.owl
+- froz.obo: https://raw.githubusercontent.com//noname/main/froz.obo
+
+term_browser: ontobee
+example_terms:
+- FROZ_0000000
+
+entries:
+
+- prefix: /releases/
+  replacement: https://raw.githubusercontent.com//noname/v
+
+- prefix: /tracker/
+  replacement: https://github.com//noname/issues
+
+- prefix: /about/
+  replacement: http://www.ontobee.org/ontology/FROZ?iri=http://purl.obolibrary.org/obo/
+
+## generic fall-through, serve direct from github by default
+- prefix: /
+  replacement: https://raw.githubusercontent.com//noname/main/
+

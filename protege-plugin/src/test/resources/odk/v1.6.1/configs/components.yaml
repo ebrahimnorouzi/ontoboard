@@ -1,0 +1,15 @@
+id: comp
+title: "Components test ontology"
+github_org: example-org
+repo: comp
+use_templates: TRUE
+components:
+  products:
+    - filename: manual.owl
+    - filename: fetched.owl
+      source: https://example.org/fetched.owl
+    - filename: fromtemplate.owl
+      use_template: TRUE
+      templates:
+        - first.tsv
+        - second.tsv

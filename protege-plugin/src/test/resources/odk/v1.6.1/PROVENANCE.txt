@@ -1,0 +1,24 @@
+Goldens for OntoBoard's ODK tests, made by protege-plugin/tools/odk-goldens/generate.py
+in the ODK image. Regenerate, never edit; .gitattributes marks this folder -text.
+
+## seed
+Image:        obolibrary/odkfull:latest
+Image id:     sha256:731aaa3c781f365f6b96704e0336e000dfe4c8f11868f0cb22cb48a3deb25181
+Repo digests: obolibrary/odkfull@sha256:73364755375f2adc69f5a6df0f55ffb8bc444fcb6bb044785493d2d543d3c3a7
+Built:        2026-03-10T13:03:31.608100545Z
+ODK_VERSION=v1.6.1
+ROBOT version 1.9.10
+Jinja2 3.1.6, PyYAML 6.0.3
+Made on:      2026-11-11
+Command:      odk.py seed --skipgit -C <config> -D <out>; odk.py export-project -C <config> -o <out>
+
+## corpus
+Image:        obolibrary/odkfull:latest
+Image id:     sha256:731aaa3c781f365f6b96704e0336e000dfe4c8f11868f0cb22cb48a3deb25181
+Repo digests: obolibrary/odkfull@sha256:73364755375f2adc69f5a6df0f55ffb8bc444fcb6bb044785493d2d543d3c3a7
+Built:        2026-03-10T13:03:31.608100545Z
+ODK_VERSION=v1.6.1
+ROBOT version 1.9.10
+Jinja2 3.1.6, PyYAML 6.0.3
+Made on:      2026-11-11
+Command:      odk.py seed --skipgit -C <config> -D <out>; odk.py export-project -C <config> -o <out>
