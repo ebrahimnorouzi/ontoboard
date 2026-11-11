@@ -288,10 +288,12 @@ public class RefreshImportsAction extends OntoBoardAction {
             // the next release.
             IRI moduleIri = ModuleRebuild.declaredIriOf(module.getModuleFile());
             if (moduleIri == null) {
+                // Called what its file is: pmdco, not the source's own short name, co (1.135.2
+                // review).
                 moduleIri = TermExtract.moduleIriIn(
                         ontology.getOntologyID().getOntologyIRI().isPresent()
                                 ? ontology.getOntologyID().getOntologyIRI().get() : null,
-                        upstream);
+                        upstream, module.getName());
             }
             TermExtract.Result extracted = ModuleRebuild.extract(upstream, terms, method,
                     moduleIri, de.fizkarlsruhe.ise.ontoboard.prov.Provenance.today());

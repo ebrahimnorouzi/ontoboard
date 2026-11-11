@@ -51,8 +51,10 @@ lines share a stretch or run closer than 12 px, except at a box with no point le
 share its last point's stub or arrive 10 px apart. A subclass line runs down a lane of its own on
 the left of its subclasses, or joins its parent's trunk under the parent. A label sits on its own
 line, clear of boxes, other labels and other lines wherever its line has room for it, and off a frame's
-outline and its name. No line runs through the arrowhead of another class's subclass line where it can
-go round, and lines keep off a frame's name. On a board of
+outline and its name - at every zoom, where it keeps the place and the size it has at 100% (since
+1.135.2; before, zoomed out, a label could stand a few pixels off its place and be drawn up to 26 px
+wider, onto the line beside it). No line runs through the arrowhead of another class's subclass
+line where it can go round, and lines keep off a frame's name. On a board of
 more than 150 lines, relation arrows keep a straight connector and are drawn faintly until one of
 their ends is selected; the status line says so once.
 
@@ -60,10 +62,9 @@ their ends is selected; the status line says so once.
 patterns together - the three scenarios' among them - and a made-up board of 120 boxes: no two boxes
 overlap and no line passes through a box on any of them, and every line is routed. On the boards of
 several patterns nothing runs together and no label touches anything. Over every pattern alone,
-lines run on top of each other for 0.4% of all line length and closer than 12 px for 2.4%, mostly
-where a box has more lines than room (1.8% in all before subclass columns were made to fill one at a
-time, so that adding a subclass no longer rearranges its frame, and lines were kept clear of
-arrowheads); 77 of 650 labels touch something, all in crowded spots. On the study's board, a
+lines run on top of each other for 0.3% of all line length and closer than 12 px for 1.5% (in
+1.135.2, drawn in Segoe UI), mostly where a box has more lines than room; 78 of 650 labels touch
+something - 77 in DejaVu Sans, as Linux draws them - all in crowded spots. On the study's board, a
 pass of the router takes 20 to 65 ms. On pizza (86 terms) and MWO (660, with 21 frames), measured in
 Protégé 5.6.9 before 1.135.1: no two boxes overlap, and no line passes through a frame neither of its
 ends is in.

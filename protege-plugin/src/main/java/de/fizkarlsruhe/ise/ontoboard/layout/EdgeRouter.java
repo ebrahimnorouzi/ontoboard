@@ -144,6 +144,58 @@ public final class EdgeRouter {
     /** How long routing may hold up the board, in nanoseconds; what is left keeps the plain connector. */
     public static final long MOST_TIME = 2_000_000_000L;
 
+    /** Whether the JVM can say how much processor time a thread has had: see {@link #now()}. */
+    private static final boolean PROCESSOR_TIME = processorTimeCanBeRead();
+
+    /**
+     * Now, in nanoseconds, on the clock routing's time is counted on: the processor time of the
+     * calling thread where the JVM keeps it, the wall clock where it does not (1.135.2). A deadline
+     * is a reading of it on the thread that checks it, never on another thread.
+     *
+     * <p>On the wall clock, the time routing was given shrank with every other program the machine
+     * ran. With every core busy - a full test suite, a CI runner - a line a click shows had its
+     * half second but a share of the processor, was given up and drawn straight through the boxes,
+     * and boards of the pattern library were left "148 of 150 routed": lines a quiet machine
+     * routes. The budgets say how much work routing may do before the board is drawn, so they are
+     * counted in the work's own time, and a board is routed the same way however busy the machine
+     * is; a router grown slower still runs out of them. Windows counts a thread's processor time in
+     * steps of about 16 ms, close enough for budgets of 150 ms and more.
+     */
+    public static long now() {
+        if (PROCESSOR_TIME) {
+            long ran = ProcessorClock.read();
+            if (ran >= 0) {
+                return ran;
+            }
+        }
+        return System.nanoTime();
+    }
+
+    private static boolean processorTimeCanBeRead() {
+        try {
+            return ProcessorClock.read() >= 0;
+        } catch (LinkageError | RuntimeException unavailable) {
+            // A runtime without java.management, or one that will not say: the wall clock, as
+            // before 1.135.2.
+            return false;
+        }
+    }
+
+    /**
+     * The JVM's count of a thread's processor time, in a class of its own: where java.management
+     * is missing only this class fails to load, and routing counts on the wall clock.
+     */
+    private static final class ProcessorClock {
+        private static final java.lang.management.ThreadMXBean THREADS =
+                java.lang.management.ManagementFactory.getThreadMXBean();
+
+        /** The calling thread's processor time in nanoseconds, or -1 when it is not kept. */
+        static long read() {
+            return THREADS.isCurrentThreadCpuTimeSupported() ? THREADS.getCurrentThreadCpuTime()
+                    : -1;
+        }
+    }
+
     /**
      * How many states a search for a line a selection shows may take, and how long that line may
      * take in all: more than one of the board's own lines, of which there are hundreds, as it is
@@ -241,10 +293,20 @@ public final class EdgeRouter {
     public static final class Route {
         public final List<double[]> bends;
         public final double labelAt;
+        /**
+         * The middle of the place the label was given, on the board: where it is to be drawn, at
+         * every zoom. {@link #labelAt} is a share of the line from box to box, and the line drawn
+         * is not that line to the pixel (1.135.2). NaN for a line without a label.
+         */
+        public final double labelX;
+        public final double labelY;
 
-        Route(List<double[]> bends, double labelAt) {
-            this.bends = Collections.unmodifiableList(bends);
-            this.labelAt = labelAt;
+        Route(Drawn line) {
+            this.bends = Collections.unmodifiableList(line.bends);
+            this.labelAt = line.labelAt;
+            double[] chip = chipAt(line);
+            this.labelX = chip == null ? Double.NaN : (chip[0] + chip[2]) / 2;
+            this.labelY = chip == null ? Double.NaN : (chip[1] + chip[3]) / 2;
         }
     }
 
@@ -300,7 +362,7 @@ public final class EdgeRouter {
 
     /** The same, in the time {@link #MOST_TIME} gives from now. */
     public static Map<String, Route> route(List<Box> boxes, List<Box> frames, List<Link> links) {
-        return route(boxes, frames, links, System.nanoTime() + MOST_TIME);
+        return route(boxes, frames, links, now() + MOST_TIME);
     }
 
     /**
@@ -312,10 +374,41 @@ public final class EdgeRouter {
      * two seconds of its own, and one arrangement routed up to three times.
      *
      * @param frames regions a line should go around when neither of its ends is in them
-     * @param deadline {@link System#nanoTime()} past which no further line is looked for
+     * @param deadline {@link #now()} past which no further line is looked for
      */
     public static Map<String, Route> route(List<Box> boxes, List<Box> frames, List<Link> links,
             long deadline) {
+        return route(boxes, frames, links, deadline,
+                System.nanoTime() + wallTimeFor(deadline - now()));
+    }
+
+    /**
+     * How many times its budget routing may take on the wall clock (1.135.2 review). A budget is
+     * counted in the routing thread's processor time - see {@link #now()} - which says nothing of
+     * how long the board is held meanwhile: a thread given half a core held it twice as long, one
+     * waiting for the garbage collector longer still. On a quiet machine the wall clock never
+     * decides; with the thread given less than a third of a core it does, and what is left keeps
+     * the plain connector, as everything did when time ran out before 1.135.2.
+     */
+    private static final int WALL_SLACK = 3;
+
+    /**
+     * How long on the wall clock a budget of processor time may take: {@link #WALL_SLACK} times
+     * it, and never more than a whole board's routing may - so a deadline read on another clock,
+     * which looks like a budget of hours, still ends.
+     */
+    static long wallTimeFor(long budget) {
+        return WALL_SLACK * Math.max(0L, Math.min(budget, MOST_TIME));
+    }
+
+    /**
+     * The same, stopped on the wall clock too.
+     *
+     * @param wallCap a reading of {@link System#nanoTime()} past which no further line is looked
+     *     for either; see {@link #wallTimeFor}
+     */
+    static Map<String, Route> route(List<Box> boxes, List<Box> frames, List<Link> links,
+            long deadline, long wallCap) {
         Map<String, Box> byId = new HashMap<String, Box>();
         Map<String, Integer> numbers = new HashMap<String, Integer>();
         for (Box box : boxes) {
@@ -337,6 +430,9 @@ public final class EdgeRouter {
             }
         }
         Grid grid = Grid.over(boxes, frames);
+        if (grid != null) {
+            grid.wallCap = wallCap;
+        }
         List<Drawn> drawn = new ArrayList<Drawn>();
         Map<String, Integer> loops = new HashMap<String, Integer>();
         List<Link> lanes = new ArrayList<Link>();
@@ -403,7 +499,7 @@ public final class EdgeRouter {
         if (grid != null) {
             List<Drawn> searched = new ArrayList<Drawn>();
             for (Link link : others) {
-                if (System.nanoTime() > deadline) {
+                if (now() > deadline || System.nanoTime() > wallCap) {
                     break;
                 }
                 Box source = byId.get(link.source);
@@ -425,7 +521,7 @@ public final class EdgeRouter {
         placeLabels(drawn, boxes, frames);
         Map<String, Route> routes = new LinkedHashMap<String, Route>();
         for (Drawn line : drawn) {
-            routes.put(line.link.id, new Route(line.bends, line.labelAt));
+            routes.put(line.link.id, new Route(line));
         }
         return routes;
     }
@@ -445,7 +541,7 @@ public final class EdgeRouter {
      *
      * @param fixed the lines already routed, and {@code routed} their routes by id; a line without
      *     a route there is left out
-     * @param deadline {@link System#nanoTime()} past which no further line is looked for
+     * @param deadline {@link #now()} past which no further line is looked for
      * @return the route of every one of {@code links} it can route, and of no other line
      */
     public static Map<String, Route> routeAmong(List<Box> boxes, List<Box> frames,
@@ -471,6 +567,20 @@ public final class EdgeRouter {
     public static Map<String, Route> routeAmong(List<Box> boxes, List<Box> frames,
             List<Box> names, List<Link> fixed, Map<String, Route> routed, List<Link> links,
             long deadline, java.util.Collection<String> noWay) {
+        return routeAmong(boxes, frames, names, fixed, routed, links, deadline,
+                System.nanoTime() + wallTimeFor(deadline - now()), noWay);
+    }
+
+    /**
+     * The same, stopped on the wall clock too: no line after the first is begun past
+     * {@code wallCap}, and each begun has {@link #wallTimeFor} its {@link #ONE_SHOWN_LINE} of its
+     * own.
+     *
+     * @param wallCap a reading of {@link System#nanoTime()}
+     */
+    static Map<String, Route> routeAmong(List<Box> boxes, List<Box> frames,
+            List<Box> names, List<Link> fixed, Map<String, Route> routed, List<Link> links,
+            long deadline, long wallCap, java.util.Collection<String> noWay) {
         final Map<String, Box> byId = new HashMap<String, Box>();
         Map<String, Integer> numbers = new HashMap<String, Integer>();
         for (Box box : boxes) {
@@ -566,14 +676,15 @@ public final class EdgeRouter {
             List<Drawn> searched = new ArrayList<Drawn>();
             boolean first = true;
             for (Link link : others) {
-                if (!first && System.nanoTime() > deadline) {
+                if (!first && (now() > deadline || System.nanoTime() > wallCap)) {
                     break;
                 }
                 first = false;
                 int owner = link.hierarchy ? numbers.get(link.target) : -1;
                 Drawn line = new Drawn(link, byId.get(link.source), byId.get(link.target), owner,
                         Collections.<double[]>emptyList());
-                if (grid.give(line, frames, System.nanoTime() + ONE_SHOWN_LINE, drawn, boxes)) {
+                grid.wallCap = System.nanoTime() + wallTimeFor(ONE_SHOWN_LINE);
+                if (grid.give(line, frames, now() + ONE_SHOWN_LINE, drawn, boxes)) {
                     drawn.add(line);
                     searched.add(line);
                     added.add(line);
@@ -584,13 +695,14 @@ public final class EdgeRouter {
                 }
             }
             // Only the new lines are looked at again: the others are where they are drawn.
+            grid.wallCap = wallCap;
             grid.rerouteWhatRunsTogether(searched, drawn, frames, deadline,
                     grid.work + Math.max(grid.work, MOST_STEPS), boxes);
         }
         placeLabelsAmong(added, drawn, boxes, frames);
         Map<String, Route> routes = new LinkedHashMap<String, Route>();
         for (Drawn line : added) {
-            routes.put(line.link.id, new Route(line.bends, line.labelAt));
+            routes.put(line.link.id, new Route(line));
         }
         return routes;
     }
@@ -1164,6 +1276,8 @@ public final class EdgeRouter {
         long work;
         /** How many states one search may take: {@link #MOST_STEPS}, or {@link #SHOWN_STEPS}. */
         int mostSteps = MOST_STEPS;
+        /** The {@link System#nanoTime()} past which no search goes on: see wallTimeFor. */
+        long wallCap = Long.MAX_VALUE;
 
         private Grid(double x0, double y0, double pitch, int columns, int rows) {
             this.x0 = x0;
@@ -1829,7 +1943,8 @@ public final class EdgeRouter {
                     continue;
                 }
                 work++;
-                if (++pops > mostSteps || (pops & 1023) == 0 && System.nanoTime() > deadline) {
+                if (++pops > mostSteps || (pops & 1023) == 0
+                        && (now() > deadline || System.nanoTime() > wallCap)) {
                     return OUT_OF_TIME;
                 }
                 if (goalSeen[point] == goalStamp
@@ -1990,7 +2105,7 @@ public final class EdgeRouter {
                 }
                 boolean moved = false;
                 for (Drawn line : again) {
-                    if (work > most || System.nanoTime() > deadline) {
+                    if (work > most || now() > deadline || System.nanoTime() > wallCap) {
                         return;
                     }
                     count(line.points, line.owner, -1);

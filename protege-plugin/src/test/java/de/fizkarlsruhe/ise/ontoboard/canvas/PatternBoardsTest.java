@@ -35,6 +35,11 @@ import org.semanticweb.owlapi.model.OWLOntology;
  * <p>Asked for: no overlaps on the board, a clear hierarchy, arrows that do not run over things. A
  * test of the geometry on made-up boxes says the method works; this says it works on what people
  * actually import, all of it, not only the patterns somebody happened to look at.
+ *
+ * <p>Each board is routed in full within the router's two seconds, counted in its own processor
+ * time (1.135.2). On the wall clock a busy machine left boards "148 of 150 routed" and this failed
+ * under a full suite though the boards were no harder; a router grown slower still runs out of the
+ * two seconds and fails it.
  */
 class PatternBoardsTest {
 

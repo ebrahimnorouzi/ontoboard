@@ -308,8 +308,18 @@ public final class TermExtract {
      * @param projectIri the importing ontology's own IRI, or null to fall back to the source's
      */
     public static IRI moduleIriIn(IRI projectIri, OWLOntology source) {
+        return moduleIriIn(projectIri, source, shortNameOf(source));
+    }
+
+    /**
+     * The same, for a module called {@code name} - see {@link #recognisableNameOf}. Without the
+     * project's IRI the module goes under the source's, still called {@code name} (1.135.2
+     * review): named after the source alone, an import statement named another module than the
+     * file it was given.
+     */
+    public static IRI moduleIriIn(IRI projectIri, OWLOntology source, String name) {
         if (projectIri == null) {
-            return moduleIriFor(source);
+            return moduleIriFor(source, name);
         }
         // The project's namespace, which is its IRI minus any .owl - not its parent. Cutting
         // at the last slash published the module one level up: for .../obo/mwo.owl it produced
@@ -318,9 +328,21 @@ public final class TermExtract {
         // collision the javadoc above says this naming exists to prevent.
         String stem = de.fizkarlsruhe.ise.ontoboard.odk.ProjectIri.stemOf(projectIri.toString());
         if (stem == null) {
+            return moduleIriFor(source, name);
+        }
+        return IRI.create(stem + "/imports/" + name + "_import.owl");
+    }
+
+    /** {@link #moduleIriFor(OWLOntology)}, the module called {@code name} when there is one. */
+    private static IRI moduleIriFor(OWLOntology source, String name) {
+        if (name == null || name.trim().isEmpty()) {
             return moduleIriFor(source);
         }
-        return IRI.create(stem + "/imports/" + shortNameOf(source) + "_import.owl");
+        String base = source.getOntologyID().getOntologyIRI().isPresent()
+                ? source.getOntologyID().getOntologyIRI().get().toString()
+                : "http://www.ontoboard.org/extract";
+        String stem = de.fizkarlsruhe.ise.ontoboard.odk.ProjectIri.stemOf(base);
+        return IRI.create((stem == null ? base : stem) + "/imports/" + name + "_import.owl");
     }
 
     /**
@@ -372,6 +394,57 @@ public final class TermExtract {
         String name = de.fizkarlsruhe.ise.ontoboard.odk.ProjectIri.nameOf(
                 source.getOntologyID().getOntologyIRI().get().toString());
         return name == null || name.isEmpty() ? "extract" : name;
+    }
+
+    /** The annotation an ontology states the prefix it is to be known by with. */
+    private static final String PREFERRED_PREFIX =
+            "http://purl.org/vocab/vann/preferredNamespacePrefix";
+
+    /**
+     * A name for a new module from {@code source} that a reader recognises (1.135.2): the prefix
+     * the ontology asks to be known by, {@code vann:preferredNamespacePrefix}; otherwise
+     * {@link #shortNameOf} - unless that is two letters or fewer and the ontology's IRI is a
+     * namespace, {@code https://w3id.org/pmd/co/}, when the part of the IRI before it comes first:
+     * {@code pmdco}.
+     *
+     * <p>Found building an application ontology on PMDco: terms found in it went into
+     * {@code co_import.owl}, and Find terms offered to "Add 1 term from co". An OBO id is short by
+     * design and its IRI names a file, {@code .../obo/ro.owl}: it stays {@code ro}. A module the
+     * project has keeps its name - see {@code ImportModules.nameFor}.
+     */
+    public static String recognisableNameOf(OWLOntology source) {
+        String before = shortNameOf(source);
+        if (source == null) {
+            return before;
+        }
+        for (org.semanticweb.owlapi.model.OWLAnnotation annotation : source.getAnnotations()) {
+            if (PREFERRED_PREFIX.equals(annotation.getProperty().getIRI().toString())
+                    && annotation.getValue().asLiteral().isPresent()) {
+                String prefix = asName(annotation.getValue().asLiteral().get().getLiteral());
+                if (!prefix.isEmpty()) {
+                    return prefix;
+                }
+            }
+        }
+        if (before.length() <= 2 && source.getOntologyID().getOntologyIRI().isPresent()) {
+            String iri = source.getOntologyID().getOntologyIRI().get().toString();
+            if (iri.endsWith("/") || iri.endsWith("#")) {
+                // https://w3id.org/pmd/co -> "https:", "", "w3id.org", "pmd", "co": a part before
+                // the name that is not the host.
+                String[] parts = iri.substring(0, iri.length() - 1).split("/");
+                String parent = parts.length >= 5 ? asName(parts[parts.length - 2]) : "";
+                if (!parent.isEmpty()) {
+                    return parent + asName(before);
+                }
+            }
+        }
+        return before;
+    }
+
+    /** Text as a module name: lower case, letters, digits, - and _ only. */
+    private static String asName(String text) {
+        return text.trim().toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9_-]+", "_")
+                .replaceAll("^_+|_+$", "");
     }
 
     /**

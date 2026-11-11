@@ -13,6 +13,136 @@ release notes on
 [the releases page](https://github.com/ebrahimnorouzi/ontoboard/releases), carries the same
 record for that version.
 
+- **Zoomed out, a relation's label lay on the line beside it, fixed in 1.135.2.** Found by the
+  scripted run of the egg boiling guide on 1.135.1's release jar, which measures the board after
+  every task at the zoom Fit gives: after T3 "∃ concretizes" (plan to plan specification) lay on the
+  is-a line from egg boiling up to completely executed planned process, at 31%; after T6 to T8 "∃ has
+  specified output" (assay to data entity) on the is-a lines from plate and raw egg up to object, at
+  49%. At 100% neither touched anything. The router had put each label 2 px clear of every other
+  line, as it puts every label, and JGraphX drew it elsewhere and bigger. Elsewhere: it puts a label
+  at a share of the line it draws, which stops 3 px before the target for the arrowhead and whose
+  ends it rounds to whole screen pixels, while the router's share is of the line from box to box -
+  "∃ concretizes" stood 1.7 px off its place, 0.3 px from the is-a line. Bigger: it measures a
+  label at each zoom in the font scaled to it, whose glyph widths round to whole pixels, so on that
+  board a label was up to 5 px wider at 31% than at 100%, and up to 26 px wider at 21%. A routed
+  line's label is now drawn at the middle of the place the router gave it, and its chip is the one
+  measured at 100%, scaled as a box is: on the egg boards no label lies on a line, a box or a label
+  at any zoom from 10% to 200%, the guide's run measures nothing after any task, and the routes and
+  the places the router chooses are the same as before. `LabelsStayOffLinesAtEveryZoomTest`, red
+  first.
+- **A defined class stood apart from its superclass, at the bottom of the board, fixed in 1.135.2.**
+  Found by the maintainer on the pizza and pizza-bfo boards: after *Arrange > Outline*, cheesy
+  pizza, meaty pizza, spicy pizza and spicy topping - each defined, as "a pizza that has some cheese
+  topping" - stood at the bottom left, below every frame, their is-a lines running up the board:
+  6,000 px up to pizza on the pizza board. The board drew the is-a line from the definition, but
+  where a class stands - which frame it belongs in, its parent in the frame's tree, where a new
+  class goes on a board arranged by hand - was decided from `SubClassOf(C, A)` alone. The class a
+  definition starts from, `C = A and ...`, and a class named in an intersection that a class is a
+  subclass of, `SubClassOf(C, A and ...)`, now count as its superclass there too; two named classes
+  said to be equivalent, or a union, do not. On pizza-bfo after *Arrange > Outline* the three
+  pizzas stand under pizza in its frame and spicy topping under pizza topping, and the board is
+  4,165 x 2,702 px instead of 4,220 x 3,002; on pizza they stand under pizza in the Componency
+  frame. `DefinedClassStandsUnderItsGenusTest`, red first.
+- **A board saved by 1.135.0 kept its patterns' empty frames, and they pushed the outline away,
+  fixed in 1.135.2.** Found by the maintainer on the pizza board: two frames, "Objectrole Pattern"
+  and "dataset", stood empty far down the board, their imports long taken back, and *Arrange >
+  Outline* put everything below and right of them - 8,649 x 7,431 px. 1.135.0 titled a pattern's
+  frame with the pattern's name and did not record which pattern it was, so 1.135.1 took it for a
+  frame somebody drew: never dropped when empty, never unframed when its import went. Such a frame
+  is now that pattern's frame again when the board is read - only when its title is a library
+  pattern's name, the pattern was imported into the project once - its term list says so, or its
+  module is named after it - and it holds none of the project's terms and none of its notes - and
+  an empty one goes as an empty pattern frame does; a frame somebody drew, or one holding their
+  classes or notes, stays, whatever its title. The same board after *Arrange > Outline*: 2,915 x 2,952 px once they went, 3,035 x 2,792 px
+  with the rest of 1.135.2's fixes. `PatternFramesSavedBy1350Test`,
+  `APatternImportedOnceIsKnownByItsListTest`, red first.
+- **On a busy machine routing gave up lines a quiet one routes, fixed in 1.135.2.** Found as three
+  tests that failed under the whole test suite and passed alone - and on CI's slower runners:
+  `ExportRightAfterAClickTest`, `PatternBoardsTest` and `ClickRoutingTimeTest`. Routing's budgets -
+  two seconds for a board, half a second for a line a click shows, a fifth of a second for the
+  click itself - were counted on the wall clock, so with every core busy the router had its time
+  but a share of the processor: with three busy programs per core, a line the click shows was
+  given up and drawn without a route, and two pattern boards were left "148 of 150 routed" and "131
+  of 140 routed". The budgets are now counted in the routing thread's own processor time, where
+  the JVM keeps it, and on the wall clock where it does not; their sizes are unchanged. A board
+  is routed the same way on a busy machine as on a quiet one, and a router grown slower still runs
+  out of them: the three tests fail against one made slower on purpose - the pattern library's
+  boards routed in 11.2 s where they take 2.0 s. `ClickRoutingTimeTest` counts how long the board
+  is held in the Swing thread's processor time too. On a busy machine, the lines a selection shows
+  come later, but routed: with every core three times over busy the three tests pass, the last of
+  the lines "every term" shows routed 5.7 s after the click, and the board is never held more than
+  0.4 s at a time. Each routing still stops on the wall clock at three times its budget -
+  six seconds for a whole board, a second and a half for a line a click shows - so a thread given
+  less than a third of a core, or waiting for the garbage collector, holds the board for seconds
+  rather than without end: a box moved with a term selected routes the board and then the lines
+  the selection shows, up to about eight seconds of search together, and placing the labels comes
+  on top. What is left keeps the straight connector, as before. `RoutingKeepsAWallClockLimitTest`,
+  red first.
+- **A competency question about a class deep in an imported ontology was answered before anything
+  was drawn, fixed in 1.135.2.** Found building an application ontology on a domain ontology: a
+  question "every kind of *class* has some *property*", about a class of the application's own,
+  passed at once, because the classes above it in the domain ontology already said *property*
+  some broader thing. No such question about a class that deep could be red, so the test-first
+  step showed nothing. *Write a test from a question...* now has a rule that names what the
+  property points to, "Every kind of *class* has some *property* that is a *class*": only
+  *property* some of that class, or of a kind of it, answers - on the class, a class above it, or
+  in a definition's intersection - and a failing build says which class to pick in *Relate to
+  another term...*. The rule takes an object property and refuses a data property, whose value is
+  no class, rather than write a test that could never pass.
+  `QuestionThatNamesWhatThePropertyPointsToTest`, `QuestionWithAFillerInTheBuildTest`,
+  `AQuestionAboutWhatADataPropertyPointsToTest`, red first.
+- **Check sheets took a comment for a name, and Template... counted names Check sheets did not
+  list, fixed in 1.135.2.** Found by the maintainer on a knowledge graph built from sheets. Two
+  rows share a comment, and *Check sheets...* reported it as a name that means two things: every
+  `AL` column counted as a label column, `AL rdfs:comment@en` too, although ROBOT resolves a name
+  by `rdfs:label` alone. A name is now a row's label - `LABEL`, or `A`, `AL` or `AT` on
+  `rdfs:label` - in the index the sheet editor completes from as well. *Template...* then warned
+  of more names that mean more than one thing than the *Check sheets...* it pointed to listed:
+  both warnings counted every label the index held twice, the comments and labels the imported
+  ontologies each give two terms, while the list held only the labels the sheets' own rows are
+  given. Both now count, with the same audit, the names the sheets use: a label a row is given, or
+  a name a cell refers to - a cell naming a label the imports give two terms is listed now, where
+  before only the count knew of it; in a class expression's cell (`SC`, `EC`, `DOMAIN`...) too,
+  read as ROBOT reads it - the whole cell as one name, `measured value` included, or in a cell that
+  starts with a quote or a bracket each name in the expression. That graph's sheets give no
+  finding and no warning now. `ACommentIsNotANameTest`, `TemplateSaysWhatCheckSheetsListsTest`, red
+  first.
+- **A date written `2026-01-15^^xsd:date` in a column `AT dcterms:date^^xsd:date` went into the
+  graph as text, fixed in 1.135.2.** Found by the maintainer on the same graph. The column gives
+  every cell its datatype, so ROBOT reads none in the cell and keeps the suffix: the value written
+  is "2026-01-15^^xsd:date", typed as a date, which is no date - and neither *Check sheets...* nor
+  *Template...* said a word. *Check sheets...* now reports such a cell, "datatype written twice",
+  with the value alone as its correction, and *Template...* warns before it builds the sheet. A
+  `^^` in a column whose template does not type it - `8^^xsd:decimal` in an `I` column for a data
+  property - is how such a cell is typed, and is left alone. `ADatatypeInATypedColumnTest`, red
+  first.
+- **Find terms searched one label of each term, fixed in 1.135.2.** Found by the maintainer while
+  building an application ontology on PMDco: PMDco's mould, `PMD_0000075`, is labelled
+  "mold"@en-us and "mould"@en, and Find terms listed it as "mold" and searched only that - "mould"
+  found the three moulding processes, by their synonyms, and not the mould. The first English
+  label was kept and every other dropped, and OBO's alternative label, `IAO_0000118`, which PMDco
+  and TTO use, was no synonym it searched. Every label is now searched, in every language, and
+  every synonym; a term found by another name than the one shown says which, *mould - found as
+  "mold"*; and the label shown is the one the board shows, chosen the same way - one tagged `en`
+  first, then one with no language, then the smallest of the others, `en-us` and `en-gb` among
+  them - the same every time; a term with no label is shown, and found first, by its IRI's last
+  part. Live, on PMDco 3.1.2: "mould" finds the mould. `TermSearchFindsEveryNameTest`, red first.
+- **Find terms named PMDco's module "co" and did not offer PMDco, fixed in 1.135.2.** Found by the
+  maintainer on the same project: the PMDco patterns were imported, the list offered BFO, RO, IAO,
+  PROV-O, OWL-Time and SKOS, and the PMDco address had to be typed; its terms then went into
+  `co_import.owl`, with "Add 1 term from co" - the last part of https://w3id.org/pmd/co/. A
+  project that imports a PMDco pattern is now offered PMDco and TTO, PMD's ontology of the tensile
+  test. A new module is named after the prefix the ontology asks for, when it states one, or after
+  its address - the part before a name of two letters or fewer coming first, so PMDco's is
+  `pmdco_import.owl`; an OBO id such as `ro` stays as it is, and an import the project has keeps
+  its name, also when the same ontology is read from another address - its terms tell. A name
+  another import has - a pattern's module, another source's, or a module with no term list - is
+  not given to a new one, which gets the next free name, `time-2`; before, a pattern cut from a
+  file called time.owl and OWL-Time shared `time_import.owl`, and whichever came second overwrote
+  the other's module and spliced its terms into the other's list. Protégé's "Ontology sources changed"
+  dialog, which stopped *File > Save* after a Find terms import with a 1.135.1 candidate, did not
+  appear with 1.135.1's release, nor now. `FindTermsOffersWhatPatternsAreCutFromTest`,
+  `ANewModuleIsNamedRecognisablyTest`, red first.
 - **A property stood apart from the classes it describes, fixed in 1.135.1.** Found by the
   maintainer on the pizza ontologies: "the properties that are not connected, and they just stray in
   the canvas". Every property stood in the Object properties or Data properties frame - on pizza-bfo

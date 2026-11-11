@@ -3,6 +3,7 @@ package de.fizkarlsruhe.ise.ontoboard.menu;
 import de.fizkarlsruhe.ise.ontoboard.prov.Provenance;
 import de.fizkarlsruhe.ise.ontoboard.prov.ProvenanceSettings;
 import de.fizkarlsruhe.ise.ontoboard.robot.TemplateSheet;
+import de.fizkarlsruhe.ise.ontoboard.sheet.SheetAudit;
 import de.fizkarlsruhe.ise.ontoboard.sheet.SheetBook;
 import java.io.File;
 import java.io.IOException;
@@ -148,7 +149,8 @@ public class TemplateAction extends OntoBoardAction {
                     + "from'.").build();
         }
         Map<String, List<List<String>>> sheets = sheetsBeside(file, result);
-        warnAmbiguous(sheets, ontology, result);
+        warnAboutTheSheets(sheets, outcome == Outcome.FOLDER ? null : file.getName(), ontology,
+                result);
         if (outcome == Outcome.FOLDER) {
             return addFolder(ontology, sheets, result);
         }
@@ -346,9 +348,48 @@ public class TemplateAction extends OntoBoardAction {
     }
 
     /**
+     * What to say about the sheets before any is built.
+     *
+     * @param building the sheet about to be built, by file name; null for every sheet
+     */
+    static void warnAboutTheSheets(Map<String, List<List<String>>> sheets, String building,
+            OWLOntology ontology, OperationResult.Builder result) {
+        warnAmbiguous(sheets, ontology, result);
+        warnDatatypesWrittenTwice(sheets, building, result);
+    }
+
+    /**
+     * A cell that writes a datatype its column already gives keeps it as text, and the value is
+     * not a valid one - see {@link SheetAudit.Kind#DATATYPE_TWICE} (1.135.2). Said of the sheets
+     * being built: the others only lend the names of their rows.
+     */
+    private static void warnDatatypesWrittenTwice(Map<String, List<List<String>>> sheets,
+            String building, OperationResult.Builder result) {
+        List<SheetAudit.Finding> twice = new ArrayList<SheetAudit.Finding>();
+        for (Map.Entry<String, List<List<String>>> sheet : sheets.entrySet()) {
+            if (building == null || building.equals(sheet.getKey())) {
+                twice.addAll(SheetAudit.datatypesWrittenTwice(sheet.getKey(), sheet.getValue()));
+            }
+        }
+        if (twice.isEmpty()) {
+            return;
+        }
+        SheetAudit.Finding first = twice.get(0);
+        result.warn(twice.size() + (twice.size() == 1 ? " cell writes" : " cells write")
+                + " a datatype its column already gives, and ROBOT keeps it as part of the text, "
+                + "so the value written is not a valid one: " + first.where() + " says \""
+                + first.getCell() + "\"; write \"" + first.getSuggestion() + "\". "
+                + "Spreadsheets > Check sheets... lists every one.");
+    }
+
+    /**
      * A name two sheets - or a sheet and the ontology - give to different things resolves to
      * whichever ROBOT happens to pick. Measured on a real workbook: one institute's label carried
      * two IRIs across sheets, and nine cells named it.
+     *
+     * <p>Counted as Check sheets... counts and lists them, with the same audit: the names the
+     * sheets use (1.135.2). Every label the index held twice was counted before, the imports'
+     * among them, and this counted more names than Check sheets... listed.
      */
     private static void warnAmbiguous(Map<String, List<List<String>>> sheets,
             OWLOntology ontology, OperationResult.Builder result) {
@@ -358,7 +399,7 @@ public class TemplateAction extends OntoBoardAction {
         for (Map.Entry<String, List<List<String>>> sheet : sheets.entrySet()) {
             index = index.plus(sheet.getKey(), sheet.getValue());
         }
-        int ambiguous = index.ambiguous().size();
+        int ambiguous = SheetAudit.ambiguousNamesIn(sheets, index).size();
         if (ambiguous > 0) {
             result.warn(ambiguous + (ambiguous == 1 ? " name means" : " names mean") + " more "
                     + "than one thing across these sheets, and a cell naming one gets whichever "

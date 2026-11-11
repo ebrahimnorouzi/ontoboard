@@ -429,7 +429,7 @@ class SchemaGraphTest {
                 Collections.singletonList(new CanvasEdge("rel|1", PERSON, AGENT, "∃ knows",
                         CanvasEdge.Kind.OBJECT_PROPERTY))), layout);
 
-        graph.routeEdges(System.nanoTime() - 1);
+        graph.routeEdges(de.fizkarlsruhe.ise.ontoboard.layout.EdgeRouter.now() - 1);
         assertFalse(graph.isFullyRouted());
         assertNull(graph.routeOf(graph.getCellForId("rel|1")));
 

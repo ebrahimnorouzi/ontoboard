@@ -447,12 +447,12 @@ class EdgeRouterTest {
         List<EdgeRouter.Link> links = Arrays.asList(
                 new EdgeRouter.Link("is-a", "child", "parent", true, 0, 0), arrow("r", "a", "b"));
         Map<String, EdgeRouter.Route> late = EdgeRouter.route(boxes,
-                Collections.<EdgeRouter.Box>emptyList(), links, System.nanoTime() - 1);
+                Collections.<EdgeRouter.Box>emptyList(), links, EdgeRouter.now() - 1);
         assertTrue(late.containsKey("is-a"));
         assertFalse(late.containsKey("r"));
         Map<String, EdgeRouter.Route> inTime = EdgeRouter.route(boxes,
                 Collections.<EdgeRouter.Box>emptyList(), links,
-                System.nanoTime() + EdgeRouter.MOST_TIME);
+                EdgeRouter.now() + EdgeRouter.MOST_TIME);
         assertTrue(inTime.containsKey("r"));
     }
 

@@ -29,11 +29,22 @@ import org.semanticweb.owlapi.vocab.OWLRDFVocabulary;
  * type when they know the term is "the one with 'temperature' in it". Ranked so that what they
  * most likely mean comes first: the label exactly, then a label starting with it, then a label
  * containing it, then a synonym, then the IRI.
+ *
+ * <p>Every label, in every language, since 1.135.2. Found building an application ontology on
+ * PMDco: PMDco's mould is labelled "mold"@en-us and "mould"@en, and only the first English label
+ * was kept - the term was listed as "mold", and "mould" found nothing. The label shown is the one
+ * the board shows, chosen the same deterministic way; what else a search matched is said beside
+ * it.
  */
 public final class TermSearch {
 
-    /** Annotation properties a synonym is commonly given with. */
+    /**
+     * Annotation properties a synonym is commonly given with: OBO's alternative label
+     * ({@code IAO_0000118}, which PMDco and TTO use, since 1.135.2), oboInOwl's synonyms and
+     * SKOS's labels.
+     */
     private static final Set<String> SYNONYMS = new LinkedHashSet<String>(java.util.Arrays.asList(
+            "http://purl.obolibrary.org/obo/IAO_0000118",
             "http://www.geneontology.org/formats/oboInOwl#hasExactSynonym",
             "http://www.geneontology.org/formats/oboInOwl#hasRelatedSynonym",
             "http://www.geneontology.org/formats/oboInOwl#hasBroadSynonym",
@@ -51,6 +62,7 @@ public final class TermSearch {
     public static final class Term {
         private final String iri;
         private final String label;
+        private final List<String> labels;
         private final String kind;
         private final String definition;
         private final List<String> synonyms;
@@ -58,16 +70,22 @@ public final class TermSearch {
         private final boolean described;
         private String shortIri;
 
-        Term(String iri, String label, String kind, String definition, List<String> synonyms,
-                boolean obsolete, boolean described) {
+        Term(String iri, String label, List<String> labels, String kind, String definition,
+                List<String> synonyms, boolean obsolete, boolean described) {
             this.iri = iri;
             this.label = label;
+            this.labels = labels;
             this.kind = kind;
             this.definition = definition;
             this.synonyms = synonyms;
             this.obsolete = obsolete;
             this.described = described;
             this.shortIri = localName(iri);
+        }
+
+        /** Every label it has, in every language, the one shown first. */
+        public List<String> getLabels() {
+            return labels;
         }
 
         public String getIri() {
@@ -114,6 +132,43 @@ public final class TermSearch {
         public String getShortIri() {
             return shortIri;
         }
+
+        /**
+         * The name {@code query} found this term by, when it is not the label shown: another of
+         * its labels - "mold" for PMDco's mould - or a synonym. Empty when the label shown
+         * matches as well as any, and when only the IRI does.
+         */
+        public String nameMatching(String query) {
+            String wanted = query == null ? "" : query.trim().toLowerCase(Locale.ROOT);
+            if (wanted.isEmpty()) {
+                return "";
+            }
+            int shown = rankOfName(label, wanted);
+            String best = "";
+            int bestRank = shown < 0 ? Integer.MAX_VALUE : shown;
+            for (String other : labels) {
+                int rank = rankOfName(other, wanted);
+                if (rank >= 0 && rank < bestRank) {
+                    best = other;
+                    bestRank = rank;
+                }
+            }
+            if (best.isEmpty() && shown < 0) {
+                for (String synonym : synonyms) {
+                    if (synonym.toLowerCase(Locale.ROOT).contains(wanted)) {
+                        return synonym;
+                    }
+                }
+            }
+            return best;
+        }
+    }
+
+    /** 0 for the name exactly, 1 for a name starting with it, 2 containing it, -1 for none. */
+    private static int rankOfName(String name, String wanted) {
+        String folded = name.toLowerCase(Locale.ROOT);
+        return folded.equals(wanted) ? 0 : folded.startsWith(wanted) ? 1
+                : folded.contains(wanted) ? 2 : -1;
     }
 
     private final List<Term> terms;
@@ -206,20 +261,26 @@ public final class TermSearch {
         return find(query, Integer.MAX_VALUE, withObsolete).size();
     }
 
-    /** 0 for the label exactly, 1 for a label starting with it, ... -1 for no match at all. */
+    /**
+     * 0 for a label exactly, 1 for a label starting with it, ... -1 for no match at all. Any of
+     * the term's labels, in any language: "mould" finds the term shown as "mold" (1.135.2).
+     */
     private static int rankOf(Term term, String wanted) {
         if (wanted.isEmpty()) {
             return 0;
         }
-        String label = term.label.toLowerCase(Locale.ROOT);
-        if (label.equals(wanted)) {
-            return 0;
+        int best = -1;
+        // A term with no label is ranked by the name it is shown under, its IRI's last part
+        // (1.135.2 review): it fell behind every label that merely began with the words.
+        for (String label : term.labels.isEmpty() ? Collections.singletonList(term.label)
+                : term.labels) {
+            int rank = rankOfName(label, wanted);
+            if (rank >= 0 && (best < 0 || rank < best)) {
+                best = rank;
+            }
         }
-        if (label.startsWith(wanted)) {
-            return 1;
-        }
-        if (label.contains(wanted)) {
-            return 2;
+        if (best >= 0) {
+            return best;
         }
         for (String synonym : term.synonyms) {
             if (synonym.toLowerCase(Locale.ROOT).contains(wanted)) {
@@ -246,8 +307,7 @@ public final class TermSearch {
     }
 
     private static Term termFor(OWLOntology source, OWLEntity entity, String kind) {
-        String label = null;
-        String englishLabel = null;
+        List<OWLLiteral> named = new ArrayList<OWLLiteral>();
         String definition = "";
         List<String> synonyms = new ArrayList<String>();
         boolean obsolete = false;
@@ -264,12 +324,8 @@ public final class TermSearch {
                 OWLLiteral literal = (OWLLiteral) axiom.getValue();
                 IRI property = axiom.getProperty().getIRI();
                 if (OWLRDFVocabulary.RDFS_LABEL.getIRI().equals(property)) {
-                    if (label == null) {
-                        label = literal.getLiteral();
-                    }
-                    if (englishLabel == null && (literal.getLang().isEmpty()
-                            || literal.getLang().toLowerCase(Locale.ROOT).startsWith("en"))) {
-                        englishLabel = literal.getLiteral();
+                    if (!literal.getLiteral().trim().isEmpty()) {
+                        named.add(literal);
                     }
                 } else if (SYNONYMS.contains(property.toString())) {
                     synonyms.add(literal.getLiteral());
@@ -283,10 +339,44 @@ public final class TermSearch {
                 }
             }
         }
-        String shown = englishLabel != null ? englishLabel
-                : label != null ? label : localName(entity.getIRI().toString());
-        return new Term(entity.getIRI().toString(), shown, kind, definition,
+        String chosen = de.fizkarlsruhe.ise.ontoboard.model.DisplayLabels.chooseFromLiterals(named);
+        List<String> labels = labelsInOrder(named);
+        if (chosen != null) {
+            labels.remove(chosen);
+            labels.add(0, chosen);
+        }
+        String shown = labels.isEmpty() ? localName(entity.getIRI().toString()) : labels.get(0);
+        return new Term(entity.getIRI().toString(), shown,
+                Collections.unmodifiableList(labels), kind, definition,
                 Collections.unmodifiableList(synonyms), obsolete, described);
+    }
+
+    /**
+     * Every label: English, then one with no language, then another English - en-us, en-gb -
+     * then any other; the smallest within each, so the same ontology lists a term the same way
+     * every time. The one shown is put first by the caller, chosen as the board chooses it.
+     */
+    private static List<String> labelsInOrder(List<OWLLiteral> named) {
+        List<OWLLiteral> sorted = new ArrayList<OWLLiteral>(named);
+        Collections.sort(sorted, new Comparator<OWLLiteral>() {
+            @Override
+            public int compare(OWLLiteral one, OWLLiteral other) {
+                int byLanguage = rankOfLanguage(one) - rankOfLanguage(other);
+                return byLanguage != 0 ? byLanguage
+                        : one.getLiteral().compareTo(other.getLiteral());
+            }
+        });
+        Set<String> labels = new LinkedHashSet<String>();
+        for (OWLLiteral literal : sorted) {
+            labels.add(literal.getLiteral());
+        }
+        return new ArrayList<String>(labels);
+    }
+
+    private static int rankOfLanguage(OWLLiteral literal) {
+        String language = literal.getLang().toLowerCase(Locale.ROOT);
+        return language.equals("en") ? 0 : language.isEmpty() ? 1
+                : language.startsWith("en-") ? 2 : 3;
     }
 
     /** The IRI up to and including its last {@code #} or {@code /}. */

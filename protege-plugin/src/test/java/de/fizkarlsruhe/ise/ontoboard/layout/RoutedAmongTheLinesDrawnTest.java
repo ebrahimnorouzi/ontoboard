@@ -68,17 +68,17 @@ class RoutedAmongTheLinesDrawnTest {
                 new EdgeRouter.Link("rel|a1", "a1", "busy", false, 60, 22),
                 new EdgeRouter.Link("rel|a2", "a2", "busy", false, 60, 22)));
         Map<String, EdgeRouter.Route> routed = EdgeRouter.route(boxes, frames, drawn,
-                System.nanoTime() + FAR);
+                EdgeRouter.now() + FAR);
         assertEquals(5, routed.size(), "the board's own lines, every one routed");
         EdgeRouter.Link range = new EdgeRouter.Link("range|property|busy", "property", "busy",
                 false, 36, 22);
         List<EdgeRouter.Link> all = new ArrayList<EdgeRouter.Link>(drawn);
         all.add(range);
-        assertNotNull(EdgeRouter.route(boxes, frames, all, System.nanoTime() + FAR).get(range.id),
+        assertNotNull(EdgeRouter.route(boxes, frames, all, EdgeRouter.now() + FAR).get(range.id),
                 "routed with the board, the line has a way");
 
         Map<String, EdgeRouter.Route> among = EdgeRouter.routeAmong(boxes, frames, drawn, routed,
-                Collections.singletonList(range), System.nanoTime() + FAR);
+                Collections.singletonList(range), EdgeRouter.now() + FAR);
 
         EdgeRouter.Route route = among.get(range.id);
         assertNotNull(route, "routed among the lines drawn, the range has a way too");

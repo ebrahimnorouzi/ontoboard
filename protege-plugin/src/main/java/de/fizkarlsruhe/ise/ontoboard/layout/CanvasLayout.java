@@ -187,6 +187,74 @@ public class CanvasLayout {
         return removed;
     }
 
+    /**
+     * The pattern frames a 1.135.0 board saved, given back their pattern (1.135.2); how many.
+     *
+     * <p>1.135.0 titled a pattern's frame with the pattern's name and wrote no {@link
+     * FrameLayout#pattern}, so 1.135.1 read it as a frame somebody drew: never dropped once empty,
+     * never unframed once its import went, and the outline placed below and right of it. Found on
+     * the maintainer's pizza board: "Objectrole Pattern" and "dataset", empty, their imports
+     * taken back - 8,649 x 7,431 px after Arrange &gt; Outline, 2,915 x 2,952 once they went.
+     *
+     * <p>A frame with no pattern is adopted only when its title is a library pattern's name, that
+     * pattern was imported into this project once - which is how 1.135.0 came to draw it - and it
+     * holds none of the project's terms and none of its notes: those are somebody's arrangement
+     * whatever the frame is called, and taken for a pattern's frame, Arrange &gt; Outline would
+     * have removed it and moved what it held, and an empty one would have been dropped with its
+     * notes left loose (1.135.2 review). What it holds is read as an empty pattern frame is: a term or a
+     * note whose middle is inside it. 1.135.0 put no note in a pattern's frame; the note 1.135.1
+     * gives one ({@link #PATTERN_NOTE_PREFIX}) is the pattern's, and the place of a node the
+     * ontology does not declare - a restriction's, kept after its import went - is no term. Read
+     * once the positions of terms the ontology no longer declares are gone.
+     *
+     * @param patternIdNamed the id of the library pattern with this name, or null
+     * @param importedOnce whether the pattern with this id was ever imported into the project
+     */
+    public int adoptPatternFramesSavedBy1350(
+            java.util.function.Function<String, String> patternIdNamed,
+            java.util.function.Predicate<String> importedOnce) {
+        int adopted = 0;
+        for (FrameLayout frame : frames) {
+            if (frame == null || frame.pattern != null || frame.label == null) {
+                continue;
+            }
+            String id = patternIdNamed.apply(frame.label);
+            if (id != null && !holdsSomebodysWork(frame) && importedOnce.test(id)) {
+                frame.pattern = id;
+                adopted++;
+            }
+        }
+        return adopted;
+    }
+
+    /**
+     * How the id of the note a pattern's frame carries begins: the board's note prefix and
+     * "pattern-also-". The view's notes use it, so the two cannot drift apart.
+     */
+    public static final String PATTERN_NOTE_PREFIX = "ontoboard-note-pattern-also-";
+
+    /** Whether the middle of a term's box, or of a note not the pattern's, is inside the frame. */
+    private boolean holdsSomebodysWork(FrameLayout frame) {
+        for (Map.Entry<String, NodeLayout> node : nodes.entrySet()) {
+            NodeLayout at = node.getValue();
+            if (at != null && !isDerived(node.getKey())
+                    && inside(frame, at.x + at.w / 2, at.y + at.h / 2)) {
+                return true;
+            }
+        }
+        for (NoteLayout note : notes) {
+            if (note != null && (note.id == null || !note.id.startsWith(PATTERN_NOTE_PREFIX))
+                    && inside(frame, note.x + note.w / 2, note.y + note.h / 2)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean inside(FrameLayout frame, double x, double y) {
+        return x >= frame.x && x <= frame.x + frame.w && y >= frame.y && y <= frame.y + frame.h;
+    }
+
     public static class NodeLayout {
         public double x;
         public double y;

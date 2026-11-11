@@ -117,10 +117,9 @@ public final class OntologyProjection {
                 ontology.getOWLOntologyManager().getOWLDataFactory();
         List<IRI> parents = new ArrayList<IRI>();
         for (OWLOntology part : ontology.getImportsClosure()) {
-            for (OWLSubClassOfAxiom axiom : part.getSubClassAxiomsForSubClass(df.getOWLClass(term))) {
-                if (!axiom.getSuperClass().isAnonymous()) {
-                    parents.add(axiom.getSuperClass().asOWLClass().getIRI());
-                }
+            // A definition's genus among them (1.135.2), as for every other is-a line drawn.
+            for (OWLClass above : toldSuperclasses(part, df.getOWLClass(term))) {
+                parents.add(above.getIRI());
             }
             for (OWLClassAssertionAxiom axiom
                     : part.getClassAssertionAxioms(df.getOWLNamedIndividual(term))) {
@@ -178,12 +177,10 @@ public final class OntologyProjection {
         for (String iri : among) {
             List<String> found = new ArrayList<String>();
             for (OWLOntology part : ontology.getImportsClosure()) {
-                for (OWLSubClassOfAxiom axiom
-                        : part.getSubClassAxiomsForSubClass(df.getOWLClass(IRI.create(iri)))) {
-                    if (axiom.getSuperClass().isAnonymous()) {
-                        continue;
-                    }
-                    String up = axiom.getSuperClass().asOWLClass().getIRI().toString();
+                // A definition's genus too (1.135.2): cheesy pizza is drawn under pizza in the
+                // frame, not in a column at its edge with its is-a line across it.
+                for (OWLClass above : toldSuperclasses(part, df.getOWLClass(IRI.create(iri)))) {
+                    String up = above.getIRI().toString();
                     if (among.contains(up) && !up.equals(iri) && !found.contains(up)) {
                         found.add(up);
                     }
@@ -239,11 +236,8 @@ public final class OntologyProjection {
         OWLClass of = ontology.getOWLOntologyManager().getOWLDataFactory()
                 .getOWLClass(IRI.create(iri));
         for (OWLOntology part : ontology.getImportsClosure()) {
-            for (OWLSubClassOfAxiom axiom : part.getSubClassAxiomsForSubClass(of)) {
-                if (axiom.getSuperClass().isAnonymous() || axiom.getSuperClass().isOWLThing()) {
-                    continue;
-                }
-                String up = axiom.getSuperClass().asOWLClass().getIRI().toString();
+            for (OWLClass above : toldSuperclasses(part, of)) {
+                String up = above.getIRI().toString();
                 if (!up.equals(iri) && !found.contains(up)) {
                     found.add(up);
                 }
@@ -251,6 +245,48 @@ public final class OntologyProjection {
         }
         java.util.Collections.sort(found);
         return found;
+    }
+
+    /**
+     * The named classes one ontology says a class is a kind of, not owl:Thing: SubClassOf(C A),
+     * the named operands of SubClassOf(C, A and ...), and the genus of a definition, C = A and ...
+     * - the same is-a lines {@link #walk} draws (1.135.2).
+     *
+     * <p>Found on the pizza boards: cheesy pizza, defined as pizza and has topping some cheese
+     * topping, had its is-a line to pizza drawn and no superclass for where it stands, so it went
+     * among the classes with none - at the bottom of the board, below every frame, its lines
+     * running a thousand pixels up. Two named classes said to be equivalent are not one above the
+     * other, and a union names classes below the one it defines: neither gives a superclass.
+     */
+    static List<OWLClass> toldSuperclasses(OWLOntology part, OWLClass of) {
+        List<OWLClass> told = new ArrayList<OWLClass>();
+        List<OWLClassExpression> above = new ArrayList<OWLClassExpression>();
+        for (OWLSubClassOfAxiom axiom : part.getSubClassAxiomsForSubClass(of)) {
+            above.add(axiom.getSuperClass());
+        }
+        for (org.semanticweb.owlapi.model.OWLEquivalentClassesAxiom axiom
+                : part.getEquivalentClassesAxioms(of)) {
+            for (OWLClassExpression side : axiom.getClassExpressions()) {
+                if (side instanceof org.semanticweb.owlapi.model.OWLObjectIntersectionOf) {
+                    above.add(side);
+                }
+            }
+        }
+        for (OWLClassExpression expression : above) {
+            List<OWLClassExpression> operands = expression
+                    instanceof org.semanticweb.owlapi.model.OWLObjectIntersectionOf
+                    ? new ArrayList<OWLClassExpression>(
+                            ((org.semanticweb.owlapi.model.OWLObjectIntersectionOf) expression)
+                                    .getOperands())
+                    : java.util.Collections.singletonList(expression);
+            for (OWLClassExpression operand : operands) {
+                if (!operand.isAnonymous() && !operand.isOWLThing() && !operand.equals(of)
+                        && !told.contains(operand.asOWLClass())) {
+                    told.add(operand.asOWLClass());
+                }
+            }
+        }
+        return told;
     }
 
     /**
@@ -329,24 +365,22 @@ public final class OntologyProjection {
             String found = null;
             while (at != null && seen.add(at) && found == null) {
                 String next = null;
-                for (OWLSubClassOfAxiom axiom : ontology.getSubClassAxiomsForSubClass(
+                // Told superclasses, a definition's genus among them (1.135.2): cheesy pizza,
+                // defined as a pizza with some cheese topping, belongs in pizza's frame too.
+                for (org.semanticweb.owlapi.model.OWLClass above : toldSuperclasses(ontology,
                         ontology.getOWLOntologyManager().getOWLDataFactory()
                                 .getOWLClass(IRI.create(at)))) {
-                    if (!axiom.getSuperClass().isAnonymous()) {
-                        org.semanticweb.owlapi.model.OWLClass above =
-                                axiom.getSuperClass().asOWLClass();
-                        String up = above.getIRI().toString();
-                        if (up.equals(at)) {
-                            // SubClassOf(A A) is no step up. Taken when A sorted before its real
-                            // superclass, it ended the climb at A, and A left its frame (1.135.1).
-                            continue;
-                        }
-                        if (framed.contains(up)) {
-                            found = up;
-                        } else if (ontology.isDeclared(above, Imports.EXCLUDED)
-                                && (next == null || up.compareTo(next) < 0)) {
-                            next = up;
-                        }
+                    String up = above.getIRI().toString();
+                    if (up.equals(at)) {
+                        // SubClassOf(A A) is no step up. Taken when A sorted before its real
+                        // superclass, it ended the climb at A, and A left its frame (1.135.1).
+                        continue;
+                    }
+                    if (framed.contains(up)) {
+                        found = up;
+                    } else if (ontology.isDeclared(above, Imports.EXCLUDED)
+                            && (next == null || up.compareTo(next) < 0)) {
+                        next = up;
                     }
                 }
                 at = next;

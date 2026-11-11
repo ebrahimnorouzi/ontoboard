@@ -11,7 +11,12 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -56,6 +61,21 @@ class NeutralExamplesTest {
             "matwerk|\\bmwo\\b|\\bnfdi|pmdco|\\bpmd\\b|helmholtz|go-ontology"
                     + "|environmental-exposure|chebi",
             Pattern.CASE_INSENSITIVE);
+
+    /**
+     * The literals that name one of those ontologies as what it is rather than as an example, by
+     * file, each exactly as written.
+     *
+     * <p>Find terms offers PMDco and TTO, by their addresses, to a project that imports a PMDco
+     * pattern, which it knows by the pattern's library collection, {@code pmdco} (1.135.2): a
+     * source to load and a collection the library ships - as BFO is, above - not a stand-in for the
+     * user's own ontology. Listed one by one, so that any other use of the names still fails.
+     */
+    private static final Map<String, Set<String>> SOURCES = Collections.singletonMap(
+            "FindTermsAction.java", new HashSet<String>(Arrays.asList(
+                    "https://w3id.org/pmd/co/", "https://w3id.org/pmd/tto/", "pmdco",
+                    "PMDco - materials science; your PMDco patterns are",
+                    "TTO - the tensile test, built on PMDco")));
 
     /** One string literal, and where it is. */
     static final class Literal {
@@ -161,9 +181,11 @@ class NeutralExamplesTest {
         List<String> findings = new ArrayList<String>();
         for (File source : sources) {
             String text = new String(Files.readAllBytes(source.toPath()), StandardCharsets.UTF_8);
+            Set<String> sourcesHere = SOURCES.containsKey(source.getName())
+                    ? SOURCES.get(source.getName()) : Collections.<String>emptySet();
             for (Literal literal : literalsIn(source.getName(), text)) {
                 scanned++;
-                if (NAMED.matcher(literal.text).find()) {
+                if (NAMED.matcher(literal.text).find() && !sourcesHere.contains(literal.text)) {
                     findings.add(literal.toString());
                 }
             }

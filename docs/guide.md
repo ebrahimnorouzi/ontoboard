@@ -89,9 +89,14 @@ imports are merged.
 **What you do.** *OntoBoard → Reuse → Find terms in another ontology...*: give its web address or a
 file
 - or pick one from the list, which has your own imports' sources and a few widely used
-ontologies - **Load**, then type part of a label. Tick the terms you want — the ticks stay while
+ontologies, and PMDco and TTO when you have imported a PMDco pattern - **Load**, then type part of
+a name. Every label a term has is searched, in every language, and its synonyms - OBO's
+alternative label, `skos:altLabel`, oboInOwl's synonyms - and a term found by another name than
+the one shown says so: *mould - found as "mold"*. Tick the terms you want — the ticks stay while
 you search for more — and **Import**: one confirmation names the files it writes, and **Add them**
-does it (*Advanced...* chooses how much comes with the terms, and where the module goes). Terms
+does it (*Advanced...* chooses how much comes with the terms, and where the module goes). The
+module is named after the ontology - `pmdco_import.owl` for PMDco - and an import you already
+have keeps its name. Terms
 already in your ontology are marked, and obsolete ones are hidden unless asked for. A term the
 ontology only refers to, rather than defines, comes after its own terms and says where it is from
 — `schema.org/Person` beside a vocabulary's own *Person* — and the whole address is in its
@@ -140,9 +145,13 @@ with your team.
 what *breaks* the rule — "every pizza has a base" becomes "the pizzas with no base". An empty
 answer passes. You do not have to write the SPARQL: the guide's **Write a test** button - also
 *Check and test → Write a test from a question...* - offers the rules a first ontology tends to need
-(every kind of pizza has some base; every pizza in the data has a price; nothing is both vegetarian
-and meaty; everything has a label; no pizza has more than N bases), lets you pick the terms by
-their labels, saves the test in `src/sparql/` and runs it at once, naming whatever breaks the rule.
+(every kind of pizza has some base; every kind of pizza has some topping that is a cheese topping;
+every pizza in the data has a price; nothing is both vegetarian and meaty; everything has a label;
+no pizza has more than N bases), lets you pick the terms by their labels, saves the test in
+`src/sparql/` and runs it at once, naming whatever breaks the rule. A class deep in an imported
+ontology often inherits "has some *property*" from a class above it, so that question passes before
+you have drawn anything; ask for what the property points to - "that is a *class*" - and it is red
+until your class says so.
 
 **Why.** A test catches next month's mistake before a user does, and passing tests are how you
 know the ontology answers what it was built for.

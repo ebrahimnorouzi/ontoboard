@@ -123,6 +123,309 @@ public final class ImportModules {
         return new File(projectRoot, IMPORTS_DIRECTORY);
     }
 
+    /**
+     * What the module of a source is called in this project (1.135.2): what the project already
+     * calls it, or {@code recognisable} for a source new to it.
+     *
+     * <p>Already called: the term list whose {@code # Source:} is one of {@code sources}; or the
+     * list called {@code before} - the name a module was given until 1.135.2 - when it says
+     * nothing of its source, as lists from before they did; or a module called that with no list.
+     * Existing modules keep their names, so their import statements, catalog entries and products
+     * stay as they are: a project that has {@code co_import.owl} for PMDco keeps it.
+     *
+     * <p>A name another import has - its list a pattern's, or naming another source - is not
+     * given to this one: the first name nothing has is, {@code time-2} and on (1.135.2 review).
+     * Its terms were spliced into that list and the module cut again from this source. A list
+     * that says nothing of its source, as ODK's own do, is taken as this source's.
+     *
+     * @param before the name a module of this source was given until 1.135.2
+     * @param recognisable the name a new module gets
+     * @param sources what the source is known by: where it is read from, its ontology IRI and its
+     *     version IRI
+     */
+    public static String nameFor(File projectRoot, String before, String recognisable,
+            java.util.Collection<String> sources) {
+        return nameFor(projectRoot, before, recognisable, sources, null);
+    }
+
+    /**
+     * The same, with what the source declares (1.135.2 review): a list that names no pattern and
+     * holds terms most of which {@code fromSource} accepts is this source's, whatever address it
+     * recorded - the same ontology read from a local copy first and its address later, or over
+     * http and then https, keeps its module - and a list that records no source but holds another
+     * vocabulary's terms, as an ODK project's may, is not.
+     *
+     * @param fromSource whether the source declares a term; null to judge by addresses alone
+     */
+    public static String nameFor(File projectRoot, String before, String recognisable,
+            java.util.Collection<String> sources, java.util.function.Predicate<IRI> fromSource) {
+        String fresh = recognisable == null || recognisable.isEmpty() ? before : recognisable;
+        if (projectRoot == null) {
+            return fresh;
+        }
+        java.util.Set<String> known = new java.util.HashSet<String>();
+        for (String source : sources) {
+            if (source != null && !source.trim().isEmpty()) {
+                known.add(withoutDelimiter(source.trim()));
+            }
+        }
+        File[] found = importsDirectoryIn(projectRoot).listFiles();
+        List<File> lists = new ArrayList<File>();
+        if (found != null) {
+            java.util.Arrays.sort(found);
+            for (File list : found) {
+                if (list.isFile() && list.getName().endsWith(TERMS_SUFFIX)) {
+                    lists.add(list);
+                }
+            }
+        }
+        for (File list : lists) {
+            try {
+                String source = sourceIn(list);
+                if (source != null && patternIn(list) == null
+                        && known.contains(withoutDelimiter(source))) {
+                    return nameOfList(list);
+                }
+            } catch (IOException unreadable) {
+                // A list that cannot be read names no source.
+            }
+        }
+        for (File list : lists) {
+            try {
+                if (patternIn(list) == null
+                        && Boolean.TRUE.equals(holdsTermsOf(list, fromSource))) {
+                    return nameOfList(list);
+                }
+            } catch (IOException unreadable) {
+                // Nor does it hold anything.
+            }
+        }
+        File old = termsFileFor(projectRoot, before);
+        try {
+            if (old.isFile() ? sourceIn(old) == null && patternIn(old) == null
+                    && !Boolean.FALSE.equals(holdsTermsOf(old, fromSource))
+                    : moduleFileFor(projectRoot, before).isFile()) {
+                return before;
+            }
+        } catch (IOException unreadable) {
+            return before;
+        }
+        return takenByAnother(projectRoot, fresh, fromSource) ? freeName(projectRoot, fresh)
+                : fresh;
+    }
+
+    private static String nameOfList(File list) {
+        String name = list.getName();
+        return name.substring(0, name.length() - TERMS_SUFFIX.length());
+    }
+
+    /**
+     * Whether most of the terms a list holds are the source's: null when nothing can tell - no
+     * way to ask the source, or no term in the list.
+     */
+    private static Boolean holdsTermsOf(File list, java.util.function.Predicate<IRI> fromSource)
+            throws IOException {
+        if (fromSource == null) {
+            return null;
+        }
+        List<IRI> terms = readTerms(list);
+        if (terms.isEmpty()) {
+            return null;
+        }
+        int theirs = 0;
+        for (IRI term : terms) {
+            if (fromSource.test(term)) {
+                theirs++;
+            }
+        }
+        return 2 * theirs > terms.size();
+    }
+
+    /**
+     * Whether the library pattern {@code patternId} was ever imported into the project whose
+     * imports are in {@code importsDirectory} (1.135.2 review): a term list there says so on its
+     * {@code # Pattern:} line, whatever its module is called, or a module is named after the
+     * pattern and no list beside it says it is another pattern's.
+     *
+     * <p>A pattern's module is named after the IRI the pattern declares, not after its id: 48 of
+     * the library's patterns have a module named otherwise, Agent Role's {@code agentrole}, and
+     * "agentrole" is another pattern's id. Files an undone import left behind count: the question
+     * is whether it was imported once, not whether it is now.
+     */
+    public static boolean patternImportedOnce(File importsDirectory, String patternId) {
+        return patternImportedOnceIn(java.util.Collections.singletonList(importsDirectory),
+                patternId);
+    }
+
+    /**
+     * The same, looking in each of {@code directories}: where modules are written beside an edit
+     * file outside {@code src/ontology}, the term lists are in the project's own imports
+     * directory. A list written before 1.133.0 names no pattern, and its source - the pattern's
+     * copy in {@code mirror/} - names it; a list beside a module named after the pattern that
+     * names another source is a plain import's, not the pattern's (1.135.2 review).
+     */
+    public static boolean patternImportedOnceIn(java.util.Collection<File> directories,
+            String patternId) {
+        if (directories == null || patternId == null) {
+            return false;
+        }
+        boolean module = false;
+        File list = null;
+        for (File directory : directories) {
+            File[] files = directory == null ? null : directory.listFiles();
+            if (files == null) {
+                continue;
+            }
+            for (File file : files) {
+                String name = file.getName();
+                if (!file.isFile()) {
+                    continue;
+                }
+                module |= name.equals(patternId + MODULE_SUFFIX);
+                if (!name.endsWith(TERMS_SUFFIX)) {
+                    continue;
+                }
+                if (list == null && name.equals(patternId + TERMS_SUFFIX)) {
+                    list = file;
+                }
+                try {
+                    String pattern = patternIn(file);
+                    if (patternId.equals(pattern)
+                            || pattern == null && isCopyOf(sourceIn(file), patternId)) {
+                        return true;
+                    }
+                } catch (IOException unreadable) {
+                    // A list that cannot be read says nothing of a pattern.
+                }
+            }
+        }
+        if (!module) {
+            return false;
+        }
+        if (list == null) {
+            return true;
+        }
+        try {
+            String claimed = patternIn(list);
+            String source = sourceIn(list);
+            return claimed != null ? claimed.equals(patternId)
+                    : source == null || isCopyOf(source, patternId);
+        } catch (IOException unreadable) {
+            return true;
+        }
+    }
+
+    /** Whether an address is the library's copy of this pattern: .../mirror/{@code id}.owl. */
+    private static boolean isCopyOf(String source, String patternId) {
+        String path = source == null ? "" : withoutDelimiter(source.trim()).replace('\\', '/');
+        int slash = path.lastIndexOf('/');
+        if (slash <= 0) {
+            return false;
+        }
+        String file = path.substring(slash + 1);
+        int dot = file.lastIndexOf('.');
+        String parent = path.substring(path.lastIndexOf('/', slash - 1) + 1, slash);
+        return dot > 0 && file.substring(0, dot).equals(patternId) && "mirror".equals(parent);
+    }
+
+    /**
+     * An address from {@code mirror/} on, so the same copy is known in a clone at another path;
+     * the whole address when it is not in a {@code mirror/}.
+     */
+    private static String fromMirror(String address) {
+        String path = withoutDelimiter(address.trim()).replace('\\', '/');
+        int at = path.lastIndexOf("/mirror/");
+        return at < 0 ? path : path.substring(at + 1);
+    }
+
+    /**
+     * What the module of the library pattern {@code patternId} is called in this project (1.135.2
+     * review): the module the project has for it - its term list's {@code # Pattern:} line names
+     * the pattern - or {@code named}, the name the library gives it, when no other import has that
+     * name; otherwise the first name nothing has, {@code named-2} and on. A pattern cut from a file
+     * called time.owl and OWL-Time are both "time", and whichever came second overwrote the
+     * other's module and spliced its terms into the other's list.
+     */
+    public static String nameForPattern(File projectRoot, String named, String patternId) {
+        return nameForPattern(projectRoot, named, patternId, null);
+    }
+
+    /**
+     * The same, a list that names no pattern taken as this one's when its source is
+     * {@code copiedFrom}, the pattern's copy beside the project: what a list recorded for a pattern
+     * until 1.133.0 wrote the {@code # Pattern:} line. The copy is compared from {@code mirror/}
+     * on, so a clone at another path still knows it.
+     */
+    public static String nameForPattern(File projectRoot, String named, String patternId,
+            String copiedFrom) {
+        if (projectRoot == null) {
+            return named;
+        }
+        String copy = copiedFrom == null || copiedFrom.trim().isEmpty() ? null
+                : fromMirror(copiedFrom);
+        File[] lists = importsDirectoryIn(projectRoot).listFiles();
+        if (lists != null && patternId != null) {
+            java.util.Arrays.sort(lists);
+            for (File list : lists) {
+                String name = list.getName();
+                try {
+                    if (!list.isFile() || !name.endsWith(TERMS_SUFFIX)) {
+                        continue;
+                    }
+                    String pattern = patternIn(list);
+                    String source = sourceIn(list);
+                    if (patternId.equals(pattern) || pattern == null && copy != null
+                            && source != null && copy.equals(fromMirror(source))) {
+                        return nameOfList(list);
+                    }
+                } catch (IOException unreadable) {
+                    // A list that cannot be read names no pattern.
+                }
+            }
+        }
+        // Any list or module under that name is another import's: this pattern's would have been
+        // found, and a module with no list cannot say whose it is (1.135.2 review).
+        return termsFileFor(projectRoot, named).isFile()
+                || moduleFileFor(projectRoot, named).isFile() ? freeName(projectRoot, named)
+                : named;
+    }
+
+    /**
+     * Whether the name is another import's, once the lists of the source being imported have been
+     * looked through: its list is a pattern's, names a source, or holds another source's terms;
+     * or a module has the name and no list says whose it is (1.135.2 review).
+     */
+    private static boolean takenByAnother(File projectRoot, String name,
+            java.util.function.Predicate<IRI> fromSource) {
+        File list = termsFileFor(projectRoot, name);
+        if (!list.isFile()) {
+            return moduleFileFor(projectRoot, name).isFile();
+        }
+        try {
+            return patternIn(list) != null || sourceIn(list) != null
+                    || Boolean.FALSE.equals(holdsTermsOf(list, fromSource));
+        } catch (IOException unreadable) {
+            return true;
+        }
+    }
+
+    /** {@code name-2}, {@code name-3}... the first that has neither a term list nor a module. */
+    private static String freeName(File projectRoot, String name) {
+        for (int number = 2;; number++) {
+            String candidate = name + "-" + number;
+            if (!termsFileFor(projectRoot, candidate).exists()
+                    && !moduleFileFor(projectRoot, candidate).exists()) {
+                return candidate;
+            }
+        }
+    }
+
+    /** An address without the / or # it ends in: https://w3id.org/pmd/co/ is .../pmd/co. */
+    private static String withoutDelimiter(String address) {
+        return address.endsWith("/") || address.endsWith("#")
+                ? address.substring(0, address.length() - 1) : address;
+    }
+
     /** Where the term list for {@code name} belongs. */
     public static File termsFileFor(File projectRoot, String name) {
         return new File(importsDirectoryIn(projectRoot), name + TERMS_SUFFIX);

@@ -48,14 +48,20 @@ public class QuestionTestAction extends ProtegeOWLAction {
     public void dispose() {
     }
 
-    /** A term in a list: its label, and the IRI behind it. */
+    /** A term in a list: its label, the IRI behind it, and whether it is a data property. */
     private static final class Choice implements Comparable<Choice> {
         final IRI iri;
         final String label;
+        final boolean data;
 
         Choice(IRI iri, String label) {
+            this(iri, label, false);
+        }
+
+        Choice(IRI iri, String label, boolean data) {
             this.iri = iri;
             this.label = label;
+            this.data = data;
         }
 
         @Override
@@ -83,7 +89,7 @@ public class QuestionTestAction extends ProtegeOWLAction {
             if (entity.isOWLClass()) {
                 classes.add(new Choice(entity.getIRI(), label));
             } else if (entity.isOWLObjectProperty() || entity.isOWLDataProperty()) {
-                properties.add(new Choice(entity.getIRI(), label));
+                properties.add(new Choice(entity.getIRI(), label, entity.isOWLDataProperty()));
             }
         }
         Collections.sort(classes);
@@ -142,6 +148,13 @@ public class QuestionTestAction extends ProtegeOWLAction {
                     + "ontology has none yet.", "Write a test", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
+        String refusal = refusalFor(chosen,
+                chosen.needsProperty() && ((Choice) property.getSelectedItem()).data);
+        if (refusal != null) {
+            JOptionPane.showMessageDialog(getOWLWorkspace(), refusal, "Write a test",
+                    JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
         String sparql = QuestionTests.query(chosen, question.getText(),
                 ((Choice) cls.getSelectedItem()).iri,
                 chosen.needsProperty() ? ((Choice) property.getSelectedItem()).iri : null,
@@ -189,6 +202,21 @@ public class QuestionTestAction extends ProtegeOWLAction {
                 sparql + "\n# " + answer.replace("\n", "\n# "), 16, 70)) : null;
         JOptionPane.showMessageDialog(getOWLWorkspace(), shown != null ? shown : saved + answer,
                 "Write a test from a question", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    /**
+     * Why this rule cannot be written for this property, or null when it can (1.135.2 review).
+     * "Every kind of X has some P that is a Y" asks for a filler that is a kind of Y: a data
+     * property's value is never one, so the test would stay red for ever.
+     */
+    static String refusalFor(QuestionTests.Template template, boolean dataProperty) {
+        if (template == QuestionTests.Template.EVERY_SUBCLASS_HAS_SOME_THAT_IS && dataProperty) {
+            return "That rule asks what the property points to, and a data property points to a "
+                    + "value, never to a class - so the test could never pass. Pick an object "
+                    + "property, or \"Every kind of <class> has some <property>\" for a data "
+                    + "property.";
+        }
+        return null;
     }
 
     private static String labelOf(OWLOntology ontology, String iri) {
