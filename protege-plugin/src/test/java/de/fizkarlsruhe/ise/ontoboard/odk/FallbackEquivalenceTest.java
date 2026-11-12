@@ -1,6 +1,7 @@
 package de.fizkarlsruhe.ise.ontoboard.odk;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import de.fizkarlsruhe.ise.ontoboard.odk.seed.Goldens;
@@ -56,8 +57,11 @@ class FallbackEquivalenceTest {
         allOfTheSameAge(top);
         Map<String, String> before = hashes(top);
 
+        // The engine as an operation calls it: with the programs OntoBoard has.
+        assertNull(OdkEngine.whyNot(new File(ontology, "eggboil-edit.owl"), "test_fast",
+                AS_RECORDED), "asked beforehand, it can");
         OdkEngine.Outcome outcome = OdkEngine.run(new File(ontology, "eggboil-edit.owl"),
-                "test_fast", AS_RECORDED, OdkTools.forProject(), null);
+                "test_fast", AS_RECORDED, null);
 
         List<String> ours = lines(String.join("\n", outcome.getTranscript()));
         keep("test_fast.transcript.txt", ours);

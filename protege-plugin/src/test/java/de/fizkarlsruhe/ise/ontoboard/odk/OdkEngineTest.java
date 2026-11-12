@@ -237,6 +237,34 @@ class OdkEngineTest {
                 "make: \\*\\*\\* \\[Makefile:\\d+: test_fast\\] Error 2"), log.get(log.size() - 1));
     }
 
+    /**
+     * A program that breaks - an error of its own, not a failure it reports - fails its line,
+     * as any program that fails does. It is not OntoBoard's operation that breaks.
+     */
+    @Test
+    void aProgramThatBreaksFailsItsLine() {
+        Map<String, RecipeShell.Tool> tools = tools();
+        final RecipeShell.Tool usual = tools.get("robot");
+        tools.put("robot", new RecipeShell.Tool() {
+            @Override
+            public String whyNot(List<String> arguments) {
+                return usual.whyNot(arguments);
+            }
+
+            @Override
+            public int run(RecipeShell.Call call) {
+                throw new IllegalStateException("the reasoner fell over");
+            }
+        });
+
+        OdkEngine.Outcome outcome = run("test_fast", Goldens.makeFixedVariables(), tools);
+
+        assertFalse(outcome.isOk());
+        assertTrue(outcome.getFailure().contains("the reasoner fell over"), outcome.getFailure());
+        assertTrue(String.join("\n", outcome.getTranscript()).contains("] Error 1"),
+                "make's own word on the target that failed");
+    }
+
     /** What the engine cannot do is known before the first line runs: nothing half done. */
     @Test
     void aProgramWithoutAStandInIsRefusedBeforeAnythingRuns() {

@@ -66,6 +66,28 @@ public final class OdkEngine {
     }
 
     /**
+     * Runs a target with the programs OntoBoard has for ODK's recipes ({@link OdkTools}): ROBOT
+     * inside this JVM, and the stand-ins for the other programs of ODK's image.
+     *
+     * @param editFile    the project's edit file, in {@code src/ontology}
+     * @param commandLine the variables of this run, as on make's command line
+     * @param stopped     asked before each line: whether the person has stopped the run; may be
+     *                    null
+     */
+    public static Outcome run(File editFile, String goal, Map<String, String> commandLine,
+            BooleanSupplier stopped) {
+        return run(editFile, goal, commandLine, OdkTools.forProject(), stopped);
+    }
+
+    /**
+     * Why this target is not run here, or null when it is - with the programs OntoBoard has.
+     * Nothing is run to find out.
+     */
+    public static String whyNot(File editFile, String goal, Map<String, String> commandLine) {
+        return whyNot(editFile, goal, commandLine, OdkTools.forProject());
+    }
+
+    /**
      * Runs a target.
      *
      * @param editFile    the project's edit file, in {@code src/ontology}
@@ -112,8 +134,17 @@ public final class OdkEngine {
                             }
                             ran[0] = true;
                             int before = transcript.size();
-                            int status = RecipeShell.parse(step.command()).run(tools, ontology,
-                                    transcript);
+                            int status;
+                            try {
+                                status = RecipeShell.parse(step.command()).run(tools, ontology,
+                                        transcript);
+                            } catch (RuntimeException | LinkageError broke) {
+                                // A program that breaks fails its line, as one that fails
+                                // does: make says so and stops, and the run ends in order.
+                                transcript.add(broke.getMessage() == null ? broke.toString()
+                                        : broke.getMessage());
+                                status = 1;
+                            }
                             if (status != 0) {
                                 complaint[0] = lastOf(transcript, before);
                             }

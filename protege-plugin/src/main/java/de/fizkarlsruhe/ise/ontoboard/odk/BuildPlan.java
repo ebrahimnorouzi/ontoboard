@@ -69,6 +69,17 @@ public final class BuildPlan {
     }
 
     /**
+     * The plan when OntoBoard's own engine runs the build, with the programs OntoBoard has for
+     * ODK's recipes ({@link OdkTools}).
+     *
+     * @param whyNoContainer why ODK's container does not run it, as the start of a sentence:
+     *                       "Docker is not running"
+     */
+    public static BuildPlan inProcess(File editFile, String whyNoContainer) {
+        return inProcess(editFile, OdkTools.forProject(), whyNoContainer);
+    }
+
+    /**
      * The plan when OntoBoard's own engine runs the build.
      *
      * @param tools          the programs the engine has
