@@ -126,6 +126,72 @@ public final class Goldens {
         return chunks;
     }
 
+    // ------------------------------------------------------------- GNU make's answers
+
+    /**
+     * {@code make-n/targets.txt}: each label, in the file's order, with the arguments make was
+     * given for it - goals and {@code NAME=value} words, e.g. {@code test-fast} -> {@code test
+     * IMP=false PAT=false COMP=false MIR=false}.
+     */
+    public static Map<String, List<String>> makeLabels() {
+        Map<String, List<String>> labels = new java.util.LinkedHashMap<String, List<String>>();
+        for (String line : text(new File(root(), "make-n/targets.txt")).split("\n")) {
+            if (line.trim().isEmpty()) {
+                continue;
+            }
+            String[] words = line.trim().split(" +");
+            labels.put(words[0], Arrays.asList(words).subList(1, words.length));
+        }
+        return labels;
+    }
+
+    /**
+     * The variables every recorded run had on its command line after the label's own arguments,
+     * in that order: {@code VERSION=1.0.0 TODAY=2026-11-11 OBODATE="11:11:2026 12:00"}.
+     */
+    public static Map<String, String> makeFixedVariables() {
+        Map<String, String> fixed = new java.util.LinkedHashMap<String, String>();
+        fixed.put("VERSION", "1.0.0");
+        fixed.put("TODAY", "2026-11-11");
+        fixed.put("OBODATE", "11:11:2026 12:00");
+        return fixed;
+    }
+
+    /** What {@code make -n} printed for a seed and a label: {@code make-n/<name>-<label>.txt}. */
+    public static String makeDryRun(String name, String label) {
+        return text(new File(root(), "make-n/" + name + "-" + label + ".txt"));
+    }
+
+    /**
+     * Every name {@code make -n -d} considered or pruned for a seed and a label, sorted as the
+     * file has them: {@code closure/<name>-<label>.txt}.
+     */
+    public static List<String> makeClosure(String name, String label) {
+        List<String> names = new ArrayList<String>();
+        for (String line : text(new File(root(), "closure/" + name + "-" + label + ".txt"))
+                .split("\n")) {
+            if (!line.isEmpty()) {
+                names.add(line);
+            }
+        }
+        return names;
+    }
+
+    /** The seeded projects the make goldens were recorded for: the folders under {@code seed/}. */
+    public static List<String> seedNames() {
+        List<String> names = new ArrayList<String>();
+        File[] children = new File(root(), "seed").listFiles();
+        if (children != null) {
+            for (File child : children) {
+                if (child.isDirectory()) {
+                    names.add(child.getName());
+                }
+            }
+        }
+        java.util.Collections.sort(names);
+        return names;
+    }
+
     // ------------------------------------------------------------- comparing
 
     /**
