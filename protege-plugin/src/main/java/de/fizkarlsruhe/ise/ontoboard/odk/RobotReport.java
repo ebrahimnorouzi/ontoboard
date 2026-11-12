@@ -1,17 +1,37 @@
 package de.fizkarlsruhe.ise.ontoboard.odk;
 
 import de.fizkarlsruhe.ise.ontoboard.robot.QualityFinding;
+import de.fizkarlsruhe.ise.ontoboard.robot.ReportQueries;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.PrintStream;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
+import org.apache.jena.query.Dataset;
+import org.apache.jena.query.QueryExecution;
+import org.apache.jena.query.QueryExecutionFactory;
+import org.apache.jena.query.QuerySolution;
+import org.apache.jena.query.ResultSet;
+import org.apache.jena.rdf.model.RDFNode;
 import org.obolibrary.robot.IOHelper;
 import org.obolibrary.robot.OntologyHelper;
+import org.obolibrary.robot.ReportOperation;
 import org.obolibrary.robot.export.RendererType;
 import org.obolibrary.robot.providers.CURIEShortFormProvider;
 import org.obolibrary.robot.providers.QuotedAnnotationValueShortFormProvider;
@@ -25,10 +45,11 @@ import org.semanticweb.owlapi.util.ShortFormProvider;
 /**
  * ROBOT's report as ROBOT 1.9 writes and prints it, made from the rows OntoBoard's engine found.
  *
- * <p>ROBOT's own {@code report} does not run inside Protégé ({@link OdkRobot} says why); the
- * engine runs ROBOT's rules and hands over every row with the terms it bound
- * ({@link de.fizkarlsruhe.ise.ontoboard.robot.QualityReport#rows}). What ROBOT makes of the rows
- * is here, read from robot-core 1.9.8's bytecode and kept in ROBOT's order:
+ * <p>ROBOT's own {@code report} does not run inside Protégé ({@link OdkRobot} says why). What it
+ * does is here, read from robot-core 1.9.8's bytecode and kept in ROBOT's order:
+ * {@code ReportOperation.getProfile} reads the profile, {@code getReportQueries} finds each
+ * rule's query - ROBOT's own, or a file of the project's - and {@code getReport} runs them over
+ * the ontology as ROBOT's dataset holds it, failing where ROBOT fails, in ROBOT's words;
  * {@code ReportOperation.getViolationsFromResults} reads a row, {@code Report.addToTable} writes
  * its cells with the short forms {@code Report.getProvider} chooses, {@code Table.toList} and
  * {@code IOHelper.writeTable} (opencsv's CSVWriter) make the file, and
@@ -219,6 +240,243 @@ final class RobotReport {
             levels.put(level, count);
         }
         return new Table(table, levels, rules);
+    }
+
+    // ------------------------------------------------------------------ the rules ROBOT runs
+
+    /**
+     * ROBOT's profile as {@code ReportOperation.getProfile} reads it: rule to level, in a
+     * HashMap as ROBOT's (the order ROBOT's sets of rules are made in follows it), and the rules
+     * in the order of their first lines, which is the order they are run in here.
+     */
+    static final class Profile {
+        private final Map<String, String> levels;
+        private final List<String> order;
+
+        private Profile(Map<String, String> levels, List<String> order) {
+            this.levels = levels;
+            this.order = order;
+        }
+    }
+
+    /** One of ROBOT's report queries ({@code ReportQuery}): its name, level and query. */
+    static final class Rule {
+        private final String name;
+        private final String level;
+        private final String query;
+
+        private Rule(String name, String level, String query) {
+            this.name = name;
+            this.level = level;
+            this.query = query;
+        }
+    }
+
+    /**
+     * The profile, read as ROBOT reads it: the file given, else ROBOT's own; each line trimmed
+     * and split at tabs, its first field a level - INFO, WARN or ERROR in any case - and its
+     * second the rule. Anything else fails in ROBOT's words: a blank line and a comment too are
+     * levels ROBOT does not know. A level without a rule fails as ROBOT's does, with the JVM's
+     * word for a field that is not there; a file that is not there as the JVM says it.
+     */
+    static Profile profile(String path) throws IOException {
+        InputStream in = path == null
+                ? ReportOperation.class.getResourceAsStream("/report_profile.txt")
+                : new FileInputStream(path);
+        Map<String, String> levels = new HashMap<String, String>();
+        List<String> order = new ArrayList<String>();
+        BufferedReader reader = new BufferedReader(new InputStreamReader(in,
+                StandardCharsets.UTF_8));
+        try {
+            for (String line = reader.readLine(); line != null; line = reader.readLine()) {
+                String[] parts = line.trim().split("\t");
+                String level = parts[0].toUpperCase(Locale.ROOT);
+                if (!"INFO".equals(level) && !"WARN".equals(level) && !"ERROR".equals(level)) {
+                    throw new IllegalArgumentException(String.format(
+                            "report#REPORT LEVEL ERROR '%s' is not a valid reporting level.",
+                            parts[0]));
+                }
+                String rule = parts[1];
+                if (!levels.containsKey(rule)) {
+                    order.add(rule);
+                }
+                levels.put(rule, level);
+            }
+        } finally {
+            reader.close();
+        }
+        return new Profile(levels, order);
+    }
+
+    /**
+     * The profile's rules with their queries, found as {@code getReportQueries} finds them:
+     * first every name ROBOT ships a query for, failing in ROBOT's words when one is not
+     * (all such names, in the order of ROBOT's HashSet); then every {@code file:} rule's file,
+     * failing when one is not there; a {@code file:} rule is named after its file, without the
+     * folder and the extension.
+     *
+     * @throws IllegalStateException for a {@code file:} rule by a path that does not start at a
+     *                               root - refused before the line runs ({@link #whyNotRules});
+     *                               here only should the profile have changed in between
+     */
+    static List<Rule> rules(Profile profile) throws Exception {
+        Set<String> shipped = new HashSet<String>();
+        Set<String> own = new HashSet<String>();
+        split(profile, shipped, own);
+        Map<String, String> queries = new HashMap<String, String>();
+        for (String rule : new ArrayList<String>(shipped)) {
+            String query = shipped(rule);
+            if (query != null) {
+                queries.put(rule, query);
+                shipped.remove(rule);
+            }
+        }
+        if (!shipped.isEmpty()) {
+            throw new IOException(String.format("report#UNKNOWN REPORT QUERY one or more rule "
+                    + "names ('%s') are not valid default rules", String.join(", ", shipped)));
+        }
+        for (String rule : own) {
+            File file = queryFile(rule);
+            if (!file.isAbsolute()) {
+                throw new IllegalStateException(notHere(rule));
+            }
+            if (!file.exists()) {
+                throw new IOException(String.format(
+                        "report#MISSING QUERY ERROR query at '%s' does not exist.",
+                        file.getPath()));
+            }
+            queries.put(rule, new String(Files.readAllBytes(file.toPath()),
+                    StandardCharsets.UTF_8));
+        }
+        List<Rule> rules = new ArrayList<Rule>();
+        for (String key : profile.order) {
+            String name = key.startsWith("file:")
+                    ? key.substring(key.lastIndexOf("/") + 1, key.lastIndexOf(".")) : key;
+            rules.add(new Rule(name, profile.levels.get(key), queries.get(key)));
+        }
+        return rules;
+    }
+
+    /**
+     * Why the profile's rules cannot be run here as ROBOT runs them, or null: a {@code file:}
+     * rule by a path that does not start at a root, which ROBOT reads against the folder it
+     * runs in. Null as well where ROBOT fails before it gets to that rule - a profile it cannot
+     * read, a rule it does not ship, a file before it that is not there: the line then runs and
+     * fails as ROBOT fails.
+     */
+    static String whyNotRules(String path) {
+        Set<String> shipped = new HashSet<String>();
+        Set<String> own = new HashSet<String>();
+        try {
+            split(profile(path), shipped, own);
+            for (String rule : shipped) {
+                if (shipped(rule) == null) {
+                    return null;
+                }
+            }
+            for (String rule : own) {
+                File file = queryFile(rule);
+                if (!file.isAbsolute()) {
+                    return notHere(rule);
+                }
+                if (!file.exists()) {
+                    return null;
+                }
+            }
+        } catch (Exception failsWhenRun) {
+            return null;
+        }
+        return null;
+    }
+
+    private static String notHere(String rule) {
+        return "The profile's rule '" + rule + "' names its query by a path that does not start "
+                + "at a root. ROBOT reads such a path against the folder it runs in, which inside "
+                + "Protege is not the project's folder, so the report is not run here. Give the "
+                + "path from its root, or run this in ODK's container.";
+    }
+
+    /** The profile's rules as ROBOT sorts them: names it ships, and {@code file:} rules. */
+    private static void split(Profile profile, Set<String> shipped, Set<String> own) {
+        for (String rule : profile.levels.keySet()) {
+            if (rule.startsWith("file:")) {
+                own.add(rule);
+            } else {
+                shipped.add(rule);
+            }
+        }
+    }
+
+    /**
+     * The query ROBOT ships under exactly this name, from its first "PREFIX" on, as
+     * {@code getDefaultQueryStrings} keeps it; null for a name it ships none under.
+     */
+    private static String shipped(String rule) {
+        if (rule.isEmpty() || !rule.equals(rule.trim()) || rule.indexOf('/') >= 0
+                || rule.indexOf('\\') >= 0) {
+            return null;
+        }
+        String query = ReportQueries.queryFor(rule);
+        return query == null ? null : query.substring(query.indexOf("PREFIX"));
+    }
+
+    /** A {@code file:} rule's file: a {@code file:///} URL, else the path after "file:". */
+    private static File queryFile(String rule) throws Exception {
+        if (rule.startsWith("file:///")) {
+            return new File(new URL(rule).toURI());
+        }
+        return new File(rule.substring(5));
+    }
+
+    /**
+     * Every rule's query over the dataset, as {@code getReport} runs it: the lines that start
+     * with "#" left out, each row's terms as ROBOT reads them. A query that cannot be parsed or
+     * run, or a row without {@code ?entity}, fails the report in ROBOT's words; a row that
+     * cannot be read ends its query's rows, as in ROBOT.
+     */
+    static List<QualityFinding> rows(List<Rule> rules, Dataset dataset) {
+        List<QualityFinding> rows = new ArrayList<QualityFinding>();
+        for (Rule rule : rules) {
+            List<String> kept = new ArrayList<String>();
+            for (String line : rule.query.split("\n")) {
+                if (!line.startsWith("#")) {
+                    kept.add(line);
+                }
+            }
+            try {
+                QueryExecution execution = QueryExecutionFactory.create(String.join("\n", kept),
+                        dataset);
+                try {
+                    ResultSet results = execution.execSelect();
+                    while (results.hasNext()) {
+                        QuerySolution row;
+                        try {
+                            row = results.next();
+                        } catch (RuntimeException cannotRead) {
+                            break;
+                        }
+                        String entity = term(row, "entity");
+                        if (entity == null) {
+                            throw missingEntity(rule.name);
+                        }
+                        rows.add(new QualityFinding(QualityFinding.Severity.of(rule.level),
+                                rule.name, entity, "", "", "", new QualityFinding.Bound(entity,
+                                        term(row, "property"), term(row, "value"))));
+                    }
+                } finally {
+                    execution.close();
+                }
+            } catch (RuntimeException cannotRun) {
+                throw missingEntity(rule.name);
+            }
+        }
+        return rows;
+    }
+
+    /** A term of a row as ROBOT reads it: Jena's {@code RDFNode.toString()}, null if unbound. */
+    private static String term(QuerySolution row, String variable) {
+        RDFNode node = row.get(variable);
+        return node == null ? null : node.toString();
     }
 
     private static boolean inOneOf(String entity, Collection<String> bases) {

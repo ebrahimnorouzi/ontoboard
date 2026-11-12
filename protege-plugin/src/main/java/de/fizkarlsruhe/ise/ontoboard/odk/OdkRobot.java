@@ -1,6 +1,5 @@
 package de.fizkarlsruhe.ise.ontoboard.odk;
 
-import de.fizkarlsruhe.ise.ontoboard.robot.QualityReport;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
@@ -27,11 +26,6 @@ import org.obolibrary.robot.CommandManager;
 import org.obolibrary.robot.CommandState;
 import org.obolibrary.robot.IOHelper;
 import org.obolibrary.robot.ReportOperation;
-import org.semanticweb.owlapi.apibinding.OWLManager;
-import org.semanticweb.owlapi.model.AddOntologyAnnotation;
-import org.semanticweb.owlapi.model.OWLAnnotation;
-import org.semanticweb.owlapi.model.OWLOntology;
-import org.semanticweb.owlapi.model.OWLOntologyCreationException;
 
 /**
  * ROBOT's command line, and ODK's ROBOT plugin, run inside this JVM.
@@ -659,11 +653,13 @@ public final class OdkRobot {
          * the level of {@code --fail-on} as ROBOT fails.
          *
          * <p>In ROBOT's order ({@code ReportCommand.execute}, {@code ReportOperation.report}):
-         * the options are ROBOT's defaults with what the line gives; the rows are read whole
-         * before anything is said; the counts are printed, then {@code --print} is read, the
-         * first rows printed, the file written; {@code --fail-on} is judged last.
+         * the options are ROBOT's defaults with what the line gives; the profile is read and
+         * every rule's query found, ROBOT's own or a file of the project's, and the rules run -
+         * failing, before anything is said, where ROBOT fails and in its words; the counts are
+         * printed, then {@code --print} is read, the first rows printed, the file written;
+         * {@code --fail-on} is read and judged last.
          */
-        private CommandState report(CommandState state, CommandLine line) throws IOException {
+        private CommandState report(CommandState state, CommandLine line) throws Exception {
             IOHelper io = CommandLineHelper.getIOHelper(line);
             CommandState now = CommandLineHelper.updateInputOntology(io, state, line);
             Map<String, String> options = ReportOperation.getDefaultOptions();
@@ -675,12 +671,19 @@ public final class OdkRobot {
             for (String base : CommandLineHelper.getBaseNamespaces(line, io)) {
                 io.addBaseNamespace(base);
             }
-            Map<String, String> profile = new LinkedHashMap<String, String>();
-            if (options.get("profile") != null) {
-                profile.put(QualityReport.OPTION_PROFILE, options.get("profile"));
+            // getReport: the profile, the rules' queries, then the ontology as ROBOT's dataset
+            // holds it - its own statements, under its name and as the default graph.
+            List<RobotReport.Rule> queries = RobotReport.rules(RobotReport.profile(
+                    options.get("profile")));
+            org.apache.jena.query.Dataset dataset = RobotQuery.datasetOf(now.getOntology(),
+                    false);
+            List<de.fizkarlsruhe.ise.ontoboard.robot.QualityFinding> rows;
+            try {
+                rows = RobotReport.rows(queries, dataset);
+            } finally {
+                dataset.close();
             }
-            RobotReport.Table table = RobotReport.table(
-                    QualityReport.rows(alone(now.getOntology()), profile),
+            RobotReport.Table table = RobotReport.table(rows,
                     new RobotReport.Cells(now.getOntology(), io,
                             RobotReport.isTrue(options.get("labels"))),
                     io.getBaseNamespaces());
@@ -697,7 +700,14 @@ public final class OdkRobot {
             Files.write(output.toPath(), RobotReport.text(table.rows(), separator)
                     .getBytes(StandardCharsets.UTF_8));
 
-            String failOn = line.getOptionValue("fail-on", "error").toUpperCase(Locale.ROOT);
+            // --fail-on is read only now, after the file, as processReport reads it.
+            String given = options.get("fail-on") == null ? "ERROR" : options.get("fail-on");
+            if (!given.equalsIgnoreCase("none") && !given.equalsIgnoreCase("ERROR")
+                    && !given.equalsIgnoreCase("WARN") && !given.equalsIgnoreCase("INFO")) {
+                throw new IllegalArgumentException(String.format(
+                        "report#FAIL ON ERROR '%s' is not a valid fail-on level.", given));
+            }
+            String failOn = given.toUpperCase(Locale.ROOT);
             Map<String, Integer> rules = new LinkedHashMap<String, Integer>();
             int count = 0;
             for (Map.Entry<String, Integer> rule : table.rules().entrySet()) {
@@ -777,30 +787,6 @@ public final class OdkRobot {
                 throw new Judged();
             }
             return now;
-        }
-
-        /**
-         * The ontology without its imports: what ROBOT's report and verify look at, unless told
-         * otherwise. (OntoBoard's own Quality report looks at the imports too, which is why
-         * its engine would otherwise merge them in.)
-         */
-        private static OWLOntology alone(OWLOntology ontology) throws IOException {
-            if (ontology.getImportsDeclarations().isEmpty()) {
-                return ontology;
-            }
-            try {
-                OWLOntology copy = OWLManager.createOWLOntologyManager()
-                        .createOntology(ontology.getOntologyID());
-                copy.getOWLOntologyManager().addAxioms(copy, ontology.getAxioms());
-                for (OWLAnnotation annotation : ontology.getAnnotations()) {
-                    copy.getOWLOntologyManager().applyChange(
-                            new AddOntologyAnnotation(copy, annotation));
-                }
-                return copy;
-            } catch (OWLOntologyCreationException cannotCopy) {
-                throw new IOException("The ontology could not be copied without its imports: "
-                        + cannotCopy.getMessage(), cannotCopy);
-            }
         }
 
         private CommandLine parse(String[] args) {
@@ -884,10 +870,10 @@ public final class OdkRobot {
                 if (unported != null) {
                     throw new Refused(unported);
                 }
-                String failOn = line.getOptionValue("fail-on", "error").toUpperCase(Locale.ROOT);
-                if (!failOn.equals("NONE") && !LEVELS.contains(failOn)) {
-                    throw new Refused("'report --fail-on " + line.getOptionValue("fail-on")
-                            + "': ROBOT knows none, INFO, WARN and ERROR.");
+                // A rule of the project's own by a relative path: ROBOT's folder is not known.
+                String unrun = RobotReport.whyNotRules(line.getOptionValue("profile"));
+                if (unrun != null) {
+                    throw new Refused(unrun);
                 }
             }
             if (name.equals("verify")) {
