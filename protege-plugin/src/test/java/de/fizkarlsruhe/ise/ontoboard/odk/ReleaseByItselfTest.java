@@ -170,7 +170,30 @@ class ReleaseByItselfTest {
                 .run(Arrays.asList("sh", "release.sh"), true);
 
         assertFalse(ran.isSuccess());
-        assertTrue(String.join("\n", ran.getOutput()).contains("release.sh"), ran.getOutput()
-                .toString());
+        String said = String.join("\n", ran.getOutput());
+        assertTrue(said.contains("'sh release.sh' is no target of make"), "it is not handed to "
+                + "make as if it were one of its targets: " + said);
+    }
+
+    /**
+     * What OntoBoard itself does not build - here a Makefile somebody changed by hand, which is
+     * no longer ODK's - is not built, and the release says why: the engine's own reason, since
+     * nothing was run that could have said anything.
+     */
+    @Test
+    void whatOntoBoardItselfDoesNotBuildIsSaidWithItsReason() throws Exception {
+        File makefile = new File(edit.getParentFile(), "Makefile");
+        Files.write(makefile.toPath(), (new String(Files.readAllBytes(makefile.toPath()),
+                StandardCharsets.UTF_8) + "\n# a line of their own\n")
+                .getBytes(StandardCharsets.UTF_8));
+
+        OdkRelease.Outcome outcome = release(VersionIriShape.of(VersionIriShape.Kind.ODK));
+
+        assertFalse(outcome.isOk());
+        String log = String.join("\n", outcome.getTranscript());
+        assertTrue(log.contains("This project's Makefile is not the one ODK"),
+                "why nothing was run is in the log: " + log);
+        assertFalse(new File(root, "eggboil.owl").exists());
+        assertEquals(new ArrayList<List<String>>(), gitRan);
     }
 }
