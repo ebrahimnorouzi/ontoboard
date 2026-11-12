@@ -1,0 +1,5 @@
+for dir in mirror tmp target ; do      \
+	reldir=$(realpath --relative-to=$(pwd) $dir) ;    \
+	case $reldir in .*|"") ;; *) rm -rf $reldir/* ;; esac \
+done
+rm -f   shop.obo  shop.owl   shop-base.obo  shop-base.owl   shop-full.obo  shop-full.owl  tmp/merged-shop-edit.ofn tmp/shop-preprocess.owl

@@ -1,0 +1,17 @@
+../templates/first.tsv
+../templates/second.tsv
+Makefile
+comp-edit.owl
+comp.Makefile
+component-download-fetched.owl
+components
+components/fetched.owl
+components/fromtemplate.owl
+components/manual.owl
+reports
+sparql_test
+tmp
+tmp/comp-preprocess.owl
+tmp/merged-comp-edit.ofn
+tmp/stamp-component-fetched.owl
+tmp/stamp-component-fromtemplate.owl

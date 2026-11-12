@@ -1,0 +1,7 @@
+Makefile
+obim-edit.owl
+obim.Makefile
+reports
+sparql_test
+tmp/merged-obim-edit.ofn
+tmp/obim-preprocess.owl

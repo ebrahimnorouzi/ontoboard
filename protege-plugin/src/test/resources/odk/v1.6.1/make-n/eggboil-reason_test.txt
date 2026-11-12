@@ -1,0 +1,3 @@
+robot --catalog catalog-v001.xml convert --input eggboil-edit.owl --format ofn --output tmp/eggboil-preprocess.owl
+robot --catalog catalog-v001.xml reason --input tmp/eggboil-preprocess.owl --reasoner ELK --equivalent-classes-allowed asserted-only \
+	--exclude-tautologies structural --output test.owl && rm test.owl

@@ -1,0 +1,14 @@
+robot --catalog catalog-v001.xml convert --input shop-edit.owl --format ofn --output tmp/shop-preprocess.owl
+robot --catalog catalog-v001.xml remove --input tmp/shop-preprocess.owl --select imports --trim false \
+	 merge  \
+	       --output tmp/merged-shop-edit.ofn
+mkdir -p reports
+robot --catalog catalog-v001.xml report -i tmp/merged-shop-edit.ofn   --fail-on WARN --base-iri https://w3id.org/shop/SHOP_ --base-iri https://w3id.org/shop/terms/ --print 5 -o reports/shop-edit.owl-obo-report.tsv
+robot --catalog catalog-v001.xml merge --input tmp/shop-preprocess.owl  \
+	reason --reasoner ELK --equivalent-classes-allowed asserted-only --exclude-tautologies structural \
+	relax --include-subclass-of true \
+	reduce -r ELK --include-subproperties true \
+	 annotate --ontology-iri https://w3id.org/shop/shop/shop-full.owl annotate -V https://w3id.org/shop/shop/releases/1.0.0/shop-full.owl --annotation owl:versionInfo 1.0.0 --output shop-full.owl.tmp.owl && mv shop-full.owl.tmp.owl shop-full.owl
+robot --catalog catalog-v001.xml annotate --input shop-full.owl --ontology-iri https://w3id.org/shop/shop.owl annotate -V https://w3id.org/shop/shop/releases/1.0.0/shop.owl --annotation owl:versionInfo 1.0.0 \
+	convert -o shop.owl.tmp.owl && mv shop.owl.tmp.owl shop.owl
+robot --catalog catalog-v001.xml report -i shop.owl   --fail-on WARN --base-iri https://w3id.org/shop/SHOP_ --base-iri https://w3id.org/shop/terms/ --print 5 -o reports/shop.owl-obo-report.tsv

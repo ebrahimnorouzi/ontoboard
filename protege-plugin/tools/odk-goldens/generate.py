@@ -18,9 +18,13 @@ Stages, each writing under protege-plugin/src/test/resources/odk/v1.6.1/:
              hashes, not the files) and corpus/model/<name>.yaml
     lexer    how Jinja2 3.1.6 cuts each bundled template -> lexer/*.json (lexer_fixture.py; needs
              that Jinja2 on the host)
+    make     what GNU make does with each seeded project's Makefile (make_goldens.py): for every
+             seed/<name> and every target OntoBoard may run without Docker, `make -n <target>` ->
+             make-n/<name>-<target>.txt and the targets `make -n -d` considered ->
+             closure/<name>-<target>.txt. Run `seed` first; this reads its output.
 
-Nothing here downloads anything: `seed --skipgit` renders templates and stops. One container
-start does all the seeding, so a full run takes about a minute.
+Nothing here downloads anything: `seed --skipgit` renders templates and stops, and `make -n` runs
+no recipe. One container start does all the seeding, so a full run takes about a minute.
 """
 import argparse
 import datetime
@@ -32,6 +36,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import lexer_fixture  # noqa: E402
+import make_goldens  # noqa: E402
 import odkimage  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -93,9 +98,13 @@ def log_tail(name, kind):
     return lines[-1] if lines else "(no output)"
 
 
-def provenance(tool, image, what):
+SEED_COMMAND = "odk.py seed --skipgit -C <config> -D <out>; odk.py export-project -C <config> -o <out>"
+
+
+def provenance(tool, image, what, versions=None, command=SEED_COMMAND):
     about = odkimage.describe(tool, image)
-    versions = read(os.path.join(WORK, "out", "versions.txt")).decode("utf-8").splitlines()
+    if versions is None:
+        versions = read(os.path.join(WORK, "out", "versions.txt")).decode("utf-8").splitlines()
     path = os.path.join(RES, "PROVENANCE.txt")
     kept = []
     if os.path.isfile(path):
@@ -112,7 +121,7 @@ def provenance(tool, image, what):
         "Repo digests: " + ", ".join(about["digests"]),
         "Built:        " + about["created"]] + versions + [
         "Made on:      " + datetime.date.today().isoformat(),
-        "Command:      odk.py seed --skipgit -C <config> -D <out>; odk.py export-project -C <config> -o <out>",
+        "Command:      " + command,
         ""])
     odkimage.write_text(path, text)
 
@@ -205,19 +214,34 @@ def stage_lexer():
     lexer_fixture.main(TEMPLATES, target)
 
 
+def stage_make(tool, image):
+    names, written, failed, versions = make_goldens.run(
+        tool, image, RES, os.path.join(PLUGIN, "target", "odk-goldens-make"))
+    for line in failed:
+        print("make   " + line)
+    print("make   %d projects x %d targets: %d files; make itself refused %d dry runs"
+          % (len(names), len(make_goldens.TARGETS), written, len(failed)))
+    provenance(tool, image, "make", versions,
+               "make -n <target> and make -n -d <target>, each with VERSION=%s TODAY=%s OBODATE=\"%s\", "
+               "in /tmp/odk/<name>/src/ontology on a copy of seed/<name>"
+               % (make_goldens.VERSION, make_goldens.DATE, make_goldens.OBODATE))
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("stage", choices=["seed", "corpus", "lexer", "all"])
+    parser.add_argument("stage", choices=["seed", "corpus", "lexer", "make", "all"])
     parser.add_argument("--odk-checkout", help="a git clone of INCATools/ontology-development-kit "
                         "holding tag " + odkimage.PIN + " (for the corpus)")
     options = parser.parse_args()
-    if options.stage in ("seed", "corpus", "all"):
+    if options.stage in ("seed", "corpus", "make", "all"):
         tool = odkimage.runtime()
         image = odkimage.pinned_image(tool)
         if options.stage in ("seed", "all"):
             stage_seed(tool, image)
         if options.stage in ("corpus", "all"):
             stage_corpus(tool, image, options.odk_checkout)
+        if options.stage in ("make", "all"):
+            stage_make(tool, image)
     if options.stage in ("lexer", "all"):
         stage_lexer()
 

@@ -1,0 +1,7 @@
+Makefile
+froz-edit.owl
+froz.Makefile
+reports
+sparql_test
+tmp/froz-preprocess.owl
+tmp/merged-froz-edit.ofn

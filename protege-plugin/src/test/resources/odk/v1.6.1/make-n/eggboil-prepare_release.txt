@@ -1,0 +1,50 @@
+echo "ODK Makefile v1.6.1"
+odk-info --tools
+if [ "$(tr -d '\r' < eggboil-odk.yaml | sha256sum | cut -c1-64)" = "a81fc47872a0c2e141199ba4502d9282358f029e8bef23dde0420943b4c71d6d" ]; then \
+	echo "Repository is up-to-date." ; else \
+	echo "Your ODK configuration has changed since this Makefile was generated. You may need to run 'make update_repo'." ; fi
+if [ -f eggboil-idranges.owl ]; then \
+	dicer-cli policy --assume-manchester --show-owlapi-error eggboil-idranges.owl ; \
+fi
+robot --catalog catalog-v001.xml convert --input eggboil-edit.owl --format ofn --output tmp/eggboil-preprocess.owl
+robot --catalog catalog-v001.xml reason --input tmp/eggboil-preprocess.owl --reasoner ELK --equivalent-classes-allowed asserted-only \
+	--exclude-tautologies structural --output test.owl && rm test.owl
+robot --catalog catalog-v001.xml remove --input tmp/eggboil-preprocess.owl --select imports --trim false \
+	 merge  \
+	       --output tmp/merged-eggboil-edit.ofn
+mkdir -p reports
+robot --catalog catalog-v001.xml verify -i tmp/merged-eggboil-edit.ofn --queries ../sparql/owldef-self-reference-violation.sparql ../sparql/iri-range-violation.sparql ../sparql/label-with-iri-violation.sparql ../sparql/multiple-replaced_by-violation.sparql ../sparql/check_labels-violation.sparql -O reports
+robot --catalog catalog-v001.xml report -i tmp/merged-eggboil-edit.ofn -l true --profile profile.txt --fail-on ERROR --print 5 -o reports/eggboil-edit.owl-obo-report.tsv
+robot --catalog catalog-v001.xml merge --input tmp/eggboil-preprocess.owl  \
+	reason --reasoner ELK --equivalent-classes-allowed asserted-only --exclude-tautologies structural \
+	relax --include-subclass-of true \
+	reduce -r ELK --include-subproperties true \
+	 annotate --ontology-iri https://example.org/eggboil/eggboil/eggboil-full.owl annotate -V https://example.org/eggboil/eggboil/releases/1.0.0/eggboil-full.owl --annotation owl:versionInfo 1.0.0 --output eggboil-full.owl.tmp.owl && mv eggboil-full.owl.tmp.owl eggboil-full.owl
+robot --catalog catalog-v001.xml annotate --input eggboil-full.owl --ontology-iri https://example.org/eggboil/eggboil.owl annotate -V https://example.org/eggboil/eggboil/releases/1.0.0/eggboil.owl --annotation owl:versionInfo 1.0.0 \
+	convert -o eggboil.owl.tmp.owl && mv eggboil.owl.tmp.owl eggboil.owl
+robot --catalog catalog-v001.xml merge -i eggboil.owl convert -f ofn -o tmp/validate.ofn
+robot --catalog catalog-v001.xml validate-profile --profile DL -i tmp/validate.ofn -o reports/validate_profile_owl2dl_eggboil.owl.txt || { cat reports/validate_profile_owl2dl_eggboil.owl.txt && exit 1; }
+echo "Finished running all tests successfully."
+robot --catalog catalog-v001.xml query -f tsv --use-graphs true -i tmp/eggboil-preprocess.owl -s ../sparql/basic-report.sparql reports/basic-report.tsv -s ../sparql/class-count-by-prefix.sparql reports/class-count-by-prefix.tsv -s ../sparql/edges.sparql reports/edges.tsv -s ../sparql/xrefs.sparql reports/xrefs.tsv -s ../sparql/obsoletes.sparql reports/obsoletes.tsv -s ../sparql/synonyms.sparql reports/synonyms.tsv
+robot --catalog catalog-v001.xml convert --input eggboil.owl --check false -f obo --clean-obo "strict drop-untranslatable-axioms" -o eggboil.obo
+robot --catalog catalog-v001.xml merge --input tmp/eggboil-preprocess.owl  \
+reason --reasoner ELK --equivalent-classes-allowed asserted-only --exclude-tautologies structural --annotate-inferred-axioms false \
+relax --include-subclass-of true \
+reduce -r ELK --include-subproperties true \
+remove --base-iri https://example.org/eggboil/EGGBOIL --axioms external --preserve-structure false --trim false \
+ \
+annotate --link-annotation http://purl.org/dc/elements/1.1/type http://purl.obolibrary.org/obo/IAO_8000001 \
+	--ontology-iri https://example.org/eggboil/eggboil/eggboil-base.owl annotate -V https://example.org/eggboil/eggboil/releases/1.0.0/eggboil-base.owl --annotation owl:versionInfo 1.0.0 \
+	--output eggboil-base.owl.tmp.owl && mv eggboil-base.owl.tmp.owl eggboil-base.owl
+robot --catalog catalog-v001.xml convert --input eggboil-base.owl --check false -f obo --clean-obo "strict drop-untranslatable-axioms" -o eggboil-base.obo
+robot --catalog catalog-v001.xml convert --input eggboil-full.owl --check false -f obo --clean-obo "strict drop-untranslatable-axioms" -o eggboil-full.obo
+check-rdfxml  eggboil.owl
+check-rdfxml  eggboil-base.owl
+check-rdfxml  eggboil-full.owl
+make copy_release_files
+make[1]: Entering directory '/tmp/odk/eggboil/src/ontology'
+rsync -R   eggboil.obo  eggboil.owl   eggboil-base.obo  eggboil-base.owl   eggboil-full.obo  eggboil-full.owl   ../..
+make[1]: Leaving directory '/tmp/odk/eggboil/src/ontology'
+rm -f   eggboil.obo  eggboil.owl   eggboil-base.obo  eggboil-base.owl   eggboil-full.obo  eggboil-full.owl  tmp/merged-eggboil-edit.ofn tmp/eggboil-preprocess.owl
+echo "Release files are now in ../.. - now you should commit, push and make a release \
+        on your git hosting site such as GitHub or GitLab"

@@ -1,0 +1,8 @@
+Makefile
+plain-edit.owl
+plain.Makefile
+reports
+reports/plain-edit.owl-obo-report.tsv
+robot_reports
+tmp/merged-plain-edit.ofn
+tmp/plain-preprocess.owl

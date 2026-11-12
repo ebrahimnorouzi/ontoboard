@@ -1,0 +1,9 @@
+make IMP=true MIR=true PAT=false IMP_LARGE=true clean all_imports
+make[1]: Entering directory '/tmp/odk/eggboil/src/ontology'
+for dir in mirror tmp target ; do      \
+	reldir=$(realpath --relative-to=$(pwd) $dir) ;    \
+	case $reldir in .*|"") ;; *) rm -rf $reldir/* ;; esac \
+done
+rm -f   eggboil.obo  eggboil.owl   eggboil-base.obo  eggboil-base.owl   eggboil-full.obo  eggboil-full.owl  tmp/merged-eggboil-edit.ofn tmp/eggboil-preprocess.owl
+make[1]: Nothing to be done for 'all_imports'.
+make[1]: Leaving directory '/tmp/odk/eggboil/src/ontology'

@@ -1,0 +1,7 @@
+Makefile
+plain-edit.owl
+plain.Makefile
+reports
+sparql_test
+tmp/merged-plain-edit.ofn
+tmp/plain-preprocess.owl

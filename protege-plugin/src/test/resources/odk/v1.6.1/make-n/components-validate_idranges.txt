@@ -1,0 +1,3 @@
+if [ -f comp-idranges.owl ]; then \
+	dicer-cli policy --assume-manchester --show-owlapi-error comp-idranges.owl ; \
+fi

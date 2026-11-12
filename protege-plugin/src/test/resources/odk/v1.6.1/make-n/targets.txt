@@ -1,0 +1,12 @@
+test_fast test_fast
+test-fast test IMP=false PAT=false COMP=false MIR=false
+test test
+reason_test reason_test
+sparql_test sparql_test
+robot_reports robot_reports
+validate_idranges validate_idranges
+prepare_release_fast prepare_release_fast
+prepare_release prepare_release
+refresh-imports refresh-imports
+all all
+clean clean

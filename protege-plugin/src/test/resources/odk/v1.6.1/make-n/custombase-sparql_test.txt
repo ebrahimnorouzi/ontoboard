@@ -1,0 +1,6 @@
+robot --catalog catalog-v001.xml convert --input shop-edit.owl --format ofn --output tmp/shop-preprocess.owl
+robot --catalog catalog-v001.xml remove --input tmp/shop-preprocess.owl --select imports --trim false \
+	 merge  \
+	       --output tmp/merged-shop-edit.ofn
+mkdir -p reports
+robot --catalog catalog-v001.xml verify -i tmp/merged-shop-edit.ofn --queries ../sparql/owldef-self-reference-violation.sparql ../sparql/dc-properties-violation.sparql ../sparql/iri-range-advanced-violation.sparql -O reports
