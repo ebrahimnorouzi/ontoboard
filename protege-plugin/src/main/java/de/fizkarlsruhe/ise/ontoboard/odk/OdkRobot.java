@@ -240,7 +240,7 @@ public final class OdkRobot {
             }
             String[] line = log.keeping(arguments);
             try {
-                log.quiet();
+                log.asOnRobotsCommandLine(arguments);
                 Run plan = plan(line);
                 return plan.refusal != null ? plan.refusal : plan.failure;
             } finally {
@@ -301,7 +301,7 @@ public final class OdkRobot {
             }
             String[] line = log.keeping(arguments);
             try {
-                log.quiet();
+                log.asOnRobotsCommandLine(arguments);
                 return run(line);
             } finally {
                 log.restore();
@@ -380,30 +380,57 @@ public final class OdkRobot {
      * changes while it runs, and nothing of the host's own log is lost - and the level is set
      * back when it has run, whatever it was.
      *
-     * <p>And ROBOT itself says, for the length of a run, what it says on its own command line:
-     * errors. It logs "Subcommand Timing: convert took 0.05 seconds" at WARN for every command;
-     * with the host logging from INFO up, to a console the run's transcript is taken from,
-     * every build would carry a line of that per command.
+     * <p>And for the length of a run, what the run's own thread logs is what ROBOT's command
+     * line lets through: errors, unless the line asks for more ({@code -v} the warnings,
+     * {@code -vv} what is said for information, {@code -vvv} everything). ROBOT logs
+     * "Subcommand Timing: convert took 0.05 seconds" at WARN for every command, and a reasoner
+     * says each of its stages at INFO; with the host logging from INFO up, to a console the
+     * run's transcript is taken from, a build would carry a line per command and forty per
+     * call of the reasoner, none of which ODK's own log has. What the host's other threads log
+     * is the host's, and is not touched. What is held back is held back from the host's log
+     * file as well, as it is from ROBOT's own output.
      */
     private static final class HostLog {
-        private static final String ROBOTS = "org.obolibrary.robot";
-
         private final ch.qos.logback.classic.Logger root;
         private final ch.qos.logback.classic.Level level;
-        private final ch.qos.logback.classic.Logger robots;
-        private final ch.qos.logback.classic.Level robotsLevel;
+        private OfTheRun held;
 
         private HostLog(ch.qos.logback.classic.Logger root) {
             this.root = root;
             this.level = root.getLevel();
-            this.robots = root.getLoggerContext().getLogger(ROBOTS);
-            // null when nothing set one: the logger then follows the root, and will again.
-            this.robotsLevel = robots.getLevel();
         }
 
-        /** From here to {@link #restore}: ROBOT's own loggers say errors only. */
-        void quiet() {
-            robots.setLevel(ch.qos.logback.classic.Level.ERROR);
+        /**
+         * From here to {@link #restore}: the thread this is called on logs what ROBOT's own
+         * command line would let through for these arguments.
+         */
+        void asOnRobotsCommandLine(List<String> arguments) {
+            try {
+                OfTheRun filter = new OfTheRun(Thread.currentThread(), saidFrom(arguments));
+                filter.start();
+                root.getLoggerContext().addTurboFilter(filter);
+                held = filter;
+            } catch (LinkageError noFilters) {
+                // A logback without them: the run goes on, and its transcript carries what
+                // the host logs meanwhile.
+                held = null;
+            }
+        }
+
+        /** The level from which ROBOT says things for a line: by its most talkative flag. */
+        private static int saidFrom(List<String> arguments) {
+            int from = ch.qos.logback.classic.Level.ERROR_INT;
+            for (String argument : arguments) {
+                if (argument.equals("-vvv") || argument.equals("--very-very-verbose")) {
+                    return ch.qos.logback.classic.Level.DEBUG_INT;
+                } else if (argument.equals("-vv") || argument.equals("--very-verbose")) {
+                    from = ch.qos.logback.classic.Level.INFO_INT;
+                } else if ((argument.equals("-v") || argument.equals("--verbose"))
+                        && from > ch.qos.logback.classic.Level.WARN_INT) {
+                    from = ch.qos.logback.classic.Level.WARN_INT;
+                }
+            }
+            return from;
         }
 
         /** The host's root logger when it is logback's; null when ROBOT's cast would fail. */
@@ -432,8 +459,34 @@ public final class OdkRobot {
         }
 
         void restore() {
+            if (held != null) {
+                root.getLoggerContext().getTurboFilterList().remove(held);
+                held = null;
+            }
             root.setLevel(level);
-            robots.setLevel(robotsLevel);
+        }
+    }
+
+    /**
+     * Holds back what one thread logs below a level; says nothing of any other thread, so the
+     * host's own logging goes on as it is.
+     */
+    private static final class OfTheRun extends ch.qos.logback.classic.turbo.TurboFilter {
+        private final Thread thread;
+        private final int from;
+
+        OfTheRun(Thread thread, int from) {
+            this.thread = thread;
+            this.from = from;
+        }
+
+        @Override
+        public ch.qos.logback.core.spi.FilterReply decide(org.slf4j.Marker marker,
+                ch.qos.logback.classic.Logger logger, ch.qos.logback.classic.Level level,
+                String format, Object[] params, Throwable thrown) {
+            return Thread.currentThread() == thread && level != null && level.toInt() < from
+                    ? ch.qos.logback.core.spi.FilterReply.DENY
+                    : ch.qos.logback.core.spi.FilterReply.NEUTRAL;
         }
     }
 

@@ -205,6 +205,182 @@ class OdkRobotTest {
         }
     }
 
+    /**
+     * A reasoner says what it is doing as it goes - "Property Saturation Initialization",
+     * "Taxonomy Construction" - at INFO, and Protege logs from INFO up, to a console the run's
+     * transcript is taken from: the first build inside a Protege carried forty such lines for
+     * one call of the reasoner. On ROBOT's own command line nobody sees them, because there
+     * everything logs errors only. So for the length of a run, what the run's own thread logs
+     * is what ROBOT's command line lets through - whichever logger it is. Afterwards the thread
+     * logs as before.
+     */
+    @Test
+    void whatARunLogsBelowErrorStaysOutOfTheHostsLogAndTheTranscript(@TempDir File temp)
+            throws Exception {
+        ch.qos.logback.classic.Logger root = (ch.qos.logback.classic.Logger)
+                org.slf4j.LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME);
+        ch.qos.logback.classic.Level before = root.getLevel();
+        ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi.ILoggingEvent> seen =
+                new ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi
+                        .ILoggingEvent>();
+        seen.setContext(root.getLoggerContext());
+        seen.start();
+        root.addAppender(seen);
+        File a = ontology(temp, "a.ofn", "https://example.org/e/a.owl",
+                "Declaration(Class(:Egg))\nDeclaration(Class(:BoiledEgg))\n"
+                        + "SubClassOf(:BoiledEgg :Egg)\n");
+        try {
+            root.setLevel(ch.qos.logback.classic.Level.INFO);
+
+            OdkRobot.Result ran = OdkRobot.run(Arrays.asList("reason", "--input", path(a),
+                    "--reasoner", "ELK", "--output", path(new File(temp, "out.ofn"))));
+
+            assertTrue(ran.ok(), String.valueOf(ran.failure()));
+            for (ch.qos.logback.classic.spi.ILoggingEvent event : seen.list) {
+                assertTrue(event.getLevel().isGreaterOrEqual(ch.qos.logback.classic.Level.ERROR),
+                        "logged by the run: " + event.getLevel() + " " + event.getLoggerName()
+                                + " " + event.getFormattedMessage());
+            }
+            assertEquals(java.util.Collections.<String>emptyList(), ran.output(),
+                    "a reasoner call that finds nothing says nothing, as in ODK's own log");
+
+            org.slf4j.LoggerFactory.getLogger("after.the.run").info("said after the run");
+            assertEquals(1, seen.list.size(), "after the run the thread logs as before");
+            assertEquals("said after the run", seen.list.get(0).getFormattedMessage());
+        } finally {
+            root.detachAppender(seen);
+            root.setLevel(before);
+        }
+    }
+
+    /**
+     * Errors are what ROBOT's command line lets through, and one of them is how anybody learns
+     * what is wrong with an ontology: when the reasoner finds classes that can have no members,
+     * ROBOT logs which, as errors, and fails. Those lines are in the run's output - and so in a
+     * build's log - as they are in ODK's.
+     */
+    @Test
+    void whatRobotLogsAsAnErrorIsInTheOutput(@TempDir File temp) throws Exception {
+        ch.qos.logback.classic.Logger root = (ch.qos.logback.classic.Logger)
+                org.slf4j.LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME);
+        ch.qos.logback.classic.Level before = root.getLevel();
+        File a = ontology(temp, "a.ofn", "https://example.org/e/a.owl",
+                "Declaration(Class(:Egg))\nDeclaration(Class(:Stone))\n"
+                        + "Declaration(Class(:StoneEgg))\nDisjointClasses(:Egg :Stone)\n"
+                        + "SubClassOf(:StoneEgg :Egg)\nSubClassOf(:StoneEgg :Stone)\n");
+        try {
+            root.setLevel(ch.qos.logback.classic.Level.INFO);
+
+            OdkRobot.Result ran = OdkRobot.run(Arrays.asList("reason", "--input", path(a),
+                    "--reasoner", "ELK", "--output", path(new File(temp, "out.ofn"))));
+
+            assertFalse(ran.ok(), "a class that can have no members fails ROBOT's reason");
+            String said = String.join("\n", ran.output());
+            assertTrue(said.contains("unsatisfiable"), said);
+            assertTrue(said.contains("https://example.org/e/StoneEgg"),
+                    "which class it is: " + said);
+            assertFalse(said.contains("Taxonomy Construction"),
+                    "and the reasoner's own progress is still not in it: " + said);
+        } finally {
+            root.setLevel(before);
+        }
+    }
+
+    /**
+     * A line that asks ROBOT to say more - {@code -v}, {@code -vv}, {@code -vvv} - gets what
+     * ROBOT says for it: with {@code -v} the warnings, and ROBOT's own line on how long each
+     * command took is one.
+     */
+    @Test
+    void aLineThatAsksForMoreGetsWhatRobotSaysForIt(@TempDir File temp) throws Exception {
+        ch.qos.logback.classic.Logger root = (ch.qos.logback.classic.Logger)
+                org.slf4j.LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME);
+        ch.qos.logback.classic.Level before = root.getLevel();
+        File a = ontology(temp, "a.ofn", "https://example.org/e/a.owl",
+                "Declaration(Class(:Egg))\n");
+        try {
+            root.setLevel(ch.qos.logback.classic.Level.INFO);
+
+            OdkRobot.Result quiet = OdkRobot.run(Arrays.asList("convert", "--input", path(a),
+                    "--format", "ofn", "--output", path(new File(temp, "quiet.ofn"))));
+            OdkRobot.Result verbose = OdkRobot.run(Arrays.asList("-v", "convert", "--input",
+                    path(a), "--format", "ofn", "--output", path(new File(temp, "said.ofn"))));
+
+            assertTrue(quiet.ok(), String.valueOf(quiet.failure()));
+            assertTrue(verbose.ok(), String.valueOf(verbose.failure()));
+            assertFalse(String.join("\n", quiet.output()).contains("Subcommand Timing"),
+                    quiet.output().toString());
+            assertTrue(String.join("\n", verbose.output()).contains("Subcommand Timing"),
+                    "with -v ROBOT says how long the command took: " + verbose.output());
+            assertEquals("INFO", root.getLevel().toString(), "and the host logs as it did");
+        } finally {
+            root.setLevel(before);
+        }
+    }
+
+    /**
+     * Only the run's own thread is held to what ROBOT's command line lets through. Protege's
+     * other threads - a reasoner somebody started, the editor itself - log as they did, also
+     * while a build runs.
+     *
+     * <p>Seen from inside the run: the appender is told of ROBOT's timing line (the line asks
+     * for {@code -v}) on the run's thread, while the run is still going, and has another thread
+     * log at INFO then.
+     */
+    @Test
+    void whatOtherThreadsLogDuringARunIsNotHeldBack(@TempDir File temp) throws Exception {
+        final ch.qos.logback.classic.Logger root = (ch.qos.logback.classic.Logger)
+                org.slf4j.LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME);
+        ch.qos.logback.classic.Level before = root.getLevel();
+        final List<String> seen = java.util.Collections.synchronizedList(
+                new java.util.ArrayList<String>());
+        ch.qos.logback.core.UnsynchronizedAppenderBase<ch.qos.logback.classic.spi.ILoggingEvent>
+                during = new ch.qos.logback.core.UnsynchronizedAppenderBase<ch.qos.logback
+                        .classic.spi.ILoggingEvent>() {
+                    private boolean asked;
+
+                    @Override
+                    protected void append(ch.qos.logback.classic.spi.ILoggingEvent event) {
+                        seen.add(event.getLevel() + " " + event.getFormattedMessage());
+                        if (!asked && event.getFormattedMessage().contains("Subcommand Timing")) {
+                            asked = true;
+                            Thread other = new Thread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    org.slf4j.LoggerFactory.getLogger("another.thread")
+                                            .info("said by another thread meanwhile");
+                                }
+                            });
+                            other.start();
+                            try {
+                                other.join(10_000);
+                            } catch (InterruptedException interrupted) {
+                                Thread.currentThread().interrupt();
+                            }
+                        }
+                    }
+                };
+        during.setContext(root.getLoggerContext());
+        during.start();
+        root.addAppender(during);
+        File a = ontology(temp, "a.ofn", "https://example.org/e/a.owl",
+                "Declaration(Class(:Egg))\n");
+        try {
+            root.setLevel(ch.qos.logback.classic.Level.INFO);
+
+            OdkRobot.Result ran = OdkRobot.run(Arrays.asList("-v", "convert", "--input",
+                    path(a), "--format", "ofn", "--output", path(new File(temp, "out.ofn"))));
+
+            assertTrue(ran.ok(), String.valueOf(ran.failure()));
+            assertTrue(seen.contains("INFO said by another thread meanwhile"), seen.toString());
+            assertFalse(String.join("\n", ran.output()).contains("another thread"),
+                    "and it is not in the run's transcript: " + ran.output());
+        } finally {
+            root.detachAppender(during);
+            root.setLevel(before);
+        }
+    }
+
     // ------------------------------------------------------------------ what would end the JVM
 
     @ParameterizedTest
