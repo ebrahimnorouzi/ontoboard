@@ -536,8 +536,8 @@ class OdkRobotTest {
 
     /**
      * ROBOT's report as a table: its five columns, ROBOT's own rule names, and the property and
-     * value its query bound. (In ROBOT's container the subject is shortened to a CURIE; here it
-     * is the IRI.)
+     * value its query bound - without --labels each a CURIE by ROBOT's own prefixes, or the IRI
+     * where none of them fits (OdkRobotReportTest has the rest).
      */
     @Test
     void theReportIsWrittenAsRobotsTable(@TempDir File temp) throws Exception {
@@ -555,7 +555,7 @@ class OdkRobotTest {
         boolean found = false;
         for (String row : rows) {
             found |= row.startsWith("ERROR\tmultiple_labels\thttps://example.org/e/Egg\t"
-                    + "http://www.w3.org/2000/01/rdf-schema#label\t");
+                    + "rdfs:label\t");
         }
         assertTrue(found, "two labels on one class is ROBOT's multiple_labels: " + rows);
         assertTrue(String.join("\n", result.output()).contains("Violations: "),

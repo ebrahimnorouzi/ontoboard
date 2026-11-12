@@ -1,6 +1,5 @@
 package de.fizkarlsruhe.ise.ontoboard.odk;
 
-import de.fizkarlsruhe.ise.ontoboard.robot.QualityFinding;
 import de.fizkarlsruhe.ise.ontoboard.robot.QualityReport;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -26,6 +25,8 @@ import org.obolibrary.robot.Command;
 import org.obolibrary.robot.CommandLineHelper;
 import org.obolibrary.robot.CommandManager;
 import org.obolibrary.robot.CommandState;
+import org.obolibrary.robot.IOHelper;
+import org.obolibrary.robot.ReportOperation;
 import org.semanticweb.owlapi.apibinding.OWLManager;
 import org.semanticweb.owlapi.model.AddOntologyAnnotation;
 import org.semanticweb.owlapi.model.OWLAnnotation;
@@ -55,8 +56,10 @@ import org.semanticweb.owlapi.model.OWLOntologyCreationException;
  * does not have (its RDF4J renderer), and the first two exit when they find something. Here they
  * take the same options and the same input, apply ROBOT's own rules and the queries given,
  * write the files ROBOT writes, and fail where ROBOT fails: at the level of {@code --fail-on},
- * or on a query that returns rows. {@code verify} says ROBOT's PASS and FAIL line per query;
- * {@code query} runs as ODK's recipes use it and refuses the rest by name ({@link RobotQuery}).
+ * or on a query that returns rows. {@code report} writes and prints its table as ROBOT does -
+ * labels, CURIEs, the counts and the first rows ({@link RobotReport}); {@code verify} says
+ * ROBOT's PASS and FAIL line per query; {@code query} runs as ODK's recipes use it and refuses
+ * the rest by name ({@link RobotQuery}).
  * {@code expand}, which needs the same part of the OWL API, is not run here at all and says so.
  *
  * <p><b>Asked before anything runs.</b> {@link #whyNot} goes through a line as {@link #run} does
@@ -598,68 +601,57 @@ public final class OdkRobot {
 
         /**
          * {@code robot report}: ROBOT's rules, at the levels of the profile given, over the
-         * ontology's own statements - written as ROBOT writes its table, and failing at the
-         * level of {@code --fail-on} as ROBOT fails.
+         * ontology's own statements, on OntoBoard's engine; the rows read, written and printed
+         * as ROBOT reads, writes and prints them ({@link RobotReport}), and the line failing at
+         * the level of {@code --fail-on} as ROBOT fails.
+         *
+         * <p>In ROBOT's order ({@code ReportCommand.execute}, {@code ReportOperation.report}):
+         * the options are ROBOT's defaults with what the line gives; the rows are read whole
+         * before anything is said; the counts are printed, then {@code --print} is read, the
+         * first rows printed, the file written; {@code --fail-on} is judged last.
          */
         private CommandState report(CommandState state, CommandLine line) throws IOException {
-            CommandState now = input(state, line);
-            Map<String, String> options = new LinkedHashMap<String, String>();
-            if (line.getOptionValue("profile") != null) {
-                options.put(QualityReport.OPTION_PROFILE, line.getOptionValue("profile"));
+            IOHelper io = CommandLineHelper.getIOHelper(line);
+            CommandState now = CommandLineHelper.updateInputOntology(io, state, line);
+            Map<String, String> options = ReportOperation.getDefaultOptions();
+            for (String option : new ArrayList<String>(options.keySet())) {
+                if (line.hasOption(option)) {
+                    options.put(option, line.getOptionValue(option));
+                }
             }
-            if (line.getOptionValues("base-iri") != null) {
-                options.put(QualityReport.OPTION_BASE_IRI,
-                        String.join(" ", line.getOptionValues("base-iri")));
+            for (String base : CommandLineHelper.getBaseNamespaces(line, io)) {
+                io.addBaseNamespace(base);
             }
-            List<QualityFinding> findings = QualityReport.run(alone(now.getOntology()), options);
+            Map<String, String> profile = new LinkedHashMap<String, String>();
+            if (options.get("profile") != null) {
+                profile.put(QualityReport.OPTION_PROFILE, options.get("profile"));
+            }
+            RobotReport.Table table = RobotReport.table(
+                    QualityReport.rows(alone(now.getOntology()), profile),
+                    new RobotReport.Cells(now.getOntology(), io,
+                            RobotReport.isTrue(options.get("labels"))),
+                    io.getBaseNamespaces());
 
-            char delimiter = delimiterOf(line);
-            StringBuilder table = new StringBuilder("Level").append(delimiter)
-                    .append("Rule Name").append(delimiter).append("Subject").append(delimiter)
-                    .append("Property").append(delimiter).append("Value").append('\n');
-            Map<String, Integer> levels = new LinkedHashMap<String, Integer>();
-            for (String level : new String[] {"ERROR", "WARN", "INFO"}) {
-                levels.put(level, 0);
-            }
-            for (QualityFinding finding : findings) {
-                String level = finding.getSeverity().toString();
-                levels.put(level, levels.containsKey(level) ? levels.get(level) + 1 : 1);
-                table.append(level).append(delimiter).append(cell(finding.getRule(), delimiter))
-                        .append(delimiter).append(cell(finding.getSubject(), delimiter))
-                        .append(delimiter).append(cell(finding.getProperty(), delimiter))
-                        .append(delimiter).append(cell(finding.getValue(), delimiter))
-                        .append('\n');
-            }
+            RobotReport.printCounts(table, System.out);
+            int print = RobotReport.print(options.get("print"));
             File output = new File(line.getOptionValue("output"));
-            Files.write(output.toPath(), table.toString().getBytes(StandardCharsets.UTF_8));
-
-            // ROBOT's own summary, and with --print the first rows of the table.
-            System.out.println("Violations: " + findings.size());
-            System.out.println("-----------------");
-            for (Map.Entry<String, Integer> level : levels.entrySet()) {
-                System.out.println(level.getKey() + ":" + "      ".substring(level.getKey().length())
-                        + level.getValue());
+            String separator = RobotReport.separator(RobotReport.format(options.get("format"),
+                    line.getOptionValue("output")));
+            if (print > 0) {
+                RobotReport.printFirst(table.rows(), print, separator, System.out);
             }
-            int print = 0;
-            try {
-                print = Integer.parseInt(line.getOptionValue("print", "0"));
-            } catch (NumberFormatException notANumber) {
-                print = 0;
-            }
-            String[] rows = table.toString().split("\n");
-            for (int i = 0; i < rows.length && i <= print && print > 0; i++) {
-                System.out.println(rows[i]);
-            }
+            // ROBOT's FileWriter writes in the JVM's charset, which in ODK's image is UTF-8.
+            Files.write(output.toPath(), RobotReport.text(table.rows(), separator)
+                    .getBytes(StandardCharsets.UTF_8));
 
             String failOn = line.getOptionValue("fail-on", "error").toUpperCase(Locale.ROOT);
             Map<String, Integer> rules = new LinkedHashMap<String, Integer>();
             int count = 0;
-            for (QualityFinding finding : findings) {
-                String level = finding.getSeverity().toString();
+            for (Map.Entry<String, Integer> rule : table.rules().entrySet()) {
+                String level = rule.getKey().substring(0, rule.getKey().indexOf(' '));
                 if (!failOn.equals("NONE") && LEVELS.indexOf(level) >= LEVELS.indexOf(failOn)) {
-                    String rule = level + " " + finding.getRule();
-                    rules.put(rule, rules.containsKey(rule) ? rules.get(rule) + 1 : 1);
-                    count++;
+                    rules.put(rule.getKey(), rule.getValue());
+                    count += rule.getValue();
                 }
             }
             if (count > 0) {
@@ -674,16 +666,6 @@ public final class OdkRobot {
                 throw new Judged();
             }
             return now;
-        }
-
-        /** A cell of the table: quoted when it holds the delimiter, a quote or a line break. */
-        private static String cell(String text, char delimiter) {
-            String value = text == null ? "" : text;
-            if (value.indexOf(delimiter) < 0 && value.indexOf('"') < 0 && value.indexOf('\n') < 0
-                    && value.indexOf('\r') < 0) {
-                return value;
-            }
-            return '"' + value.replace("\"", "\"\"") + '"';
         }
 
         /**
@@ -844,7 +826,11 @@ public final class OdkRobot {
                     throw new Refused("'report' without --output cannot be judged afterwards, "
                             + "and with --fail-on it would end Protege. Give it an output.");
                 }
-                delimiterOf(line);
+                String unported = RobotReport.whyNot(RobotReport.format(
+                        line.getOptionValue("format"), line.getOptionValue("output")));
+                if (unported != null) {
+                    throw new Refused(unported);
+                }
                 String failOn = line.getOptionValue("fail-on", "error").toUpperCase(Locale.ROOT);
                 if (!failOn.equals("NONE") && !LEVELS.contains(failOn)) {
                     throw new Refused("'report --fail-on " + line.getOptionValue("fail-on")
@@ -858,25 +844,6 @@ public final class OdkRobot {
                             + "a folder for its results it cannot be judged afterwards.");
                 }
             }
-        }
-
-        /** Tab or comma, by the report's format; other formats are not judged, so not run. */
-        private char delimiterOf(CommandLine line) {
-            String output = line.getOptionValue("output");
-            String format = line.getOptionValue("format");
-            if (format == null) {
-                int dot = output.lastIndexOf('.');
-                format = dot < 0 ? "tsv" : output.substring(dot + 1);
-            }
-            format = format.toLowerCase(Locale.ROOT);
-            if (format.equals("tsv")) {
-                return '\t';
-            }
-            if (format.equals("csv")) {
-                return ',';
-            }
-            throw new Refused("'report' as " + format + " cannot be judged afterwards; inside "
-                    + "Protege a report is written as .tsv or .csv, as ODK's Makefile does.");
         }
     }
 
