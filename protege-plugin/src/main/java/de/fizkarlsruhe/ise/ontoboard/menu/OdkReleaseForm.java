@@ -265,7 +265,7 @@ final class OdkReleaseForm {
                     .defaultValue(values.get(PRIOR))
                     .required()
                     .help("The script has a line PRIOR_VERSION=, which its own steps use - "
-                            + "nfdicore's writes it into the ontology as the version this one "
+                            + "a script may write it into the ontology as the version this one "
                             + "follows. Normally the last release.")
                     .build());
         }
