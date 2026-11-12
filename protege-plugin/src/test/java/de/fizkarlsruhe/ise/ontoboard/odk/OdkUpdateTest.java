@@ -215,6 +215,113 @@ class OdkUpdateTest {
                 plan.warnings().toString());
     }
 
+    // ------------------------------------------------------------------ before ODK's own update
+
+    /**
+     * Before ODK's own update runs in its container, what would stop it half way is looked for
+     * here. Looking writes nothing, and leaves nothing behind.
+     */
+    @Test
+    void theCheckBeforeAnUpdateLeavesTheProjectAsItWas() {
+        Map<String, byte[]> before = UpdateCases.before("egg-changed");
+        UpdateCases.write(before, root);
+
+        OdkUpdate.check(root, OdkUpdate.plan(root));
+
+        assertSameTree(before, Goldens.tree(root));
+    }
+
+    @Test
+    void theCheckFindsAnImportThatCannotBeLoaded() {
+        Map<String, byte[]> before = UpdateCases.before("egg-unloadable");
+        UpdateCases.write(before, root);
+        OdkUpdate.Plan plan = OdkUpdate.plan(root);
+
+        OdkUpdate.Refused refused = assertThrows(OdkUpdate.Refused.class,
+                () -> OdkUpdate.check(root, plan));
+
+        assertTrue(refused.getMessage().contains("whole.owl"), refused.getMessage());
+        assertSameTree(before, Goldens.tree(root));
+    }
+
+    /** In a container it is ODK's own program, in the folder ODK runs it in. */
+    @Test
+    void inAContainerItIsOdksOwnUpdateInTheFolderOdkRunsItIn() {
+        UpdateCases.write(UpdateCases.before("egg-unchanged"), root);
+
+        List<String> command = OdkUpdate.containerCommand("docker", "an-image:v1",
+                OdkContainer.Host.unknown(), root);
+
+        assertEquals("docker", command.get(0));
+        assertEquals(java.util.Arrays.asList("odk.py", "update"),
+                command.subList(command.size() - 2, command.size()));
+        assertEquals("an-image:v1", command.get(command.size() - 3));
+        assertEquals("/work/src/ontology", command.get(command.indexOf("-w") + 1));
+    }
+
+    /** A container that does what it is told and says what it is told. */
+    private static de.fizkarlsruhe.ise.ontoboard.proc.ProcessRunner.Runner container(
+            final List<List<String>> ran, final int status, final Runnable does,
+            final String... says) {
+        return new de.fizkarlsruhe.ise.ontoboard.proc.ProcessRunner.Runner() {
+            @Override
+            public de.fizkarlsruhe.ise.ontoboard.proc.ProcessRunner.Outcome run(
+                    File workingDirectory, List<String> command, long timeoutMinutes,
+                    de.fizkarlsruhe.ise.ontoboard.proc.ProcessRunner.Sink sink) {
+                ran.add(command);
+                does.run();
+                return new de.fizkarlsruhe.ise.ontoboard.proc.ProcessRunner.Outcome(status,
+                        java.util.Arrays.asList(says), false);
+            }
+        };
+    }
+
+    /**
+     * ODK's own update stops at its last step when an import cannot be loaded, with every
+     * other file written. So the container is not even started for such a project.
+     */
+    @Test
+    void theContainerIsNotStartedWhenAnImportCannotBeLoaded() {
+        UpdateCases.write(UpdateCases.before("egg-unloadable"), root);
+        List<List<String>> ran = new ArrayList<List<String>>();
+        OdkUpdate.Plan plan = OdkUpdate.plan(root);
+
+        assertThrows(OdkUpdate.Refused.class, () -> OdkUpdate.inContainer("docker",
+                "an-image:v1", OdkContainer.Host.unknown(), root, plan,
+                container(ran, 0, () -> { })));
+
+        assertEquals(new ArrayList<List<String>>(), ran);
+    }
+
+    /** When ODK's own update stops all the same, what it had written by then is named. */
+    @Test
+    void whenOdksOwnUpdateStopsWhatItWroteIsNamed() throws Exception {
+        UpdateCases.write(UpdateCases.before("egg-changed"), root);
+        List<List<String>> ran = new ArrayList<List<String>>();
+        final File makefile = new File(root, "src/ontology/Makefile");
+
+        OdkUpdate.Ran stopped = OdkUpdate.inContainer("docker", "an-image:v1",
+                OdkContainer.Host.unknown(), root, OdkUpdate.plan(root), container(ran, 1,
+                        () -> {
+                            try {
+                                java.nio.file.Files.write(makefile.toPath(),
+                                        "# half an update\n".getBytes(StandardCharsets.UTF_8));
+                            } catch (java.io.IOException cannotWrite) {
+                                throw new java.io.UncheckedIOException(cannotWrite);
+                            }
+                        }, "INFO:root:Applying templates", "Error: something gave way", ""));
+
+        assertFalse(stopped.isOk());
+        assertTrue(stopped.getFailure().contains("Error: something gave way"),
+                stopped.getFailure());
+        assertTrue(stopped.getFailure().contains("1 file was written before it stopped"),
+                stopped.getFailure());
+        assertEquals(java.util.Collections.singletonList(makefile), stopped.getWritten());
+        assertEquals(1, ran.size());
+        assertTrue(stopped.getTranscript().get(0).startsWith("$ docker "),
+                stopped.getTranscript().get(0));
+    }
+
     // ------------------------------------------------------------------ comparing
 
     private void assertSameProject(Map<String, byte[]> expected, Map<String, byte[]> actual)

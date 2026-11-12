@@ -9,6 +9,7 @@ import de.fizkarlsruhe.ise.ontoboard.odk.seed.OdkProjectModel;
 import de.fizkarlsruhe.ise.ontoboard.odk.seed.Py;
 import de.fizkarlsruhe.ise.ontoboard.odk.seed.PyNone;
 import de.fizkarlsruhe.ise.ontoboard.odk.seed.PyObject;
+import de.fizkarlsruhe.ise.ontoboard.proc.ProcessRunner;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
@@ -55,6 +56,9 @@ public final class OdkUpdate {
     private static final String GITIGNORE = ".gitignore";
     private static final String CATALOG = ONTOLOGY + "/catalog-v001.xml";
     private static final String SUFFIX = "-odk.yaml";
+    /** What is written on the side while the edit file's imports are tried; removed again. */
+    private static final String STAGED_CATALOG = ".ontoboard-update-catalog.xml";
+    private static final String STAGED_EDIT = ".ontoboard-update-edit";
 
     private OdkUpdate() {
     }
@@ -351,9 +355,8 @@ public final class OdkUpdate {
     public static List<File> apply(File projectRoot, Plan plan) {
         File root = projectRoot.getAbsoluteFile();
         File ontology = new File(root, ONTOLOGY);
-        File stagedCatalog = new File(ontology, ".ontoboard-update-catalog.xml");
-        File stagedEdit = new File(ontology, ".ontoboard-update-edit"
-                + (plan.obo ? ".obo" : ".ofn"));
+        File stagedCatalog = new File(ontology, STAGED_CATALOG);
+        File stagedEdit = new File(ontology, STAGED_EDIT + (plan.obo ? ".obo" : ".ofn"));
         try {
             boolean editChanges = false;
             if (plan.editFile != null) {
@@ -427,6 +430,130 @@ public final class OdkUpdate {
                     + "(ODK's own update stops at the same place, with its other files written "
                     + "already.)");
         }
+    }
+
+    // ------------------------------------------------------------------ ODK's own, in its container
+
+    /** What ODK's own update did, run in its container. */
+    public static final class Ran {
+        private final String failure;
+        private final List<String> transcript;
+        private final List<File> written;
+
+        Ran(String failure, List<String> transcript, List<File> written) {
+            this.failure = failure;
+            this.transcript = Collections.unmodifiableList(transcript);
+            this.written = Collections.unmodifiableList(written);
+        }
+
+        public boolean isOk() {
+            return failure == null;
+        }
+
+        /** Why the update did not finish, for a person to read; null when it did. */
+        public String getFailure() {
+            return failure;
+        }
+
+        /** The command, and what ODK's update said. */
+        public List<String> getTranscript() {
+            return transcript;
+        }
+
+        /** The files it made or changed. */
+        public List<File> getWritten() {
+            return written;
+        }
+    }
+
+    /**
+     * Looks for what would stop an update half way - an import of the edit file that cannot be
+     * loaded - without writing anything: the edit file is rewritten on the side, as the update
+     * will rewrite it, and what was made for that is removed again.
+     *
+     * @throws Refused when the edit file cannot be read with all its imports
+     */
+    public static void check(File projectRoot, Plan plan) {
+        if (plan.editFile == null) {
+            return;
+        }
+        File ontology = new File(projectRoot.getAbsoluteFile(), ONTOLOGY);
+        File stagedCatalog = new File(ontology, STAGED_CATALOG);
+        File stagedEdit = new File(ontology, STAGED_EDIT + (plan.obo ? ".obo" : ".ofn"));
+        try {
+            write(stagedCatalog, plan.catalog);
+            rewriteImports(plan, stagedCatalog, stagedEdit);
+        } finally {
+            stagedCatalog.delete();
+            stagedEdit.delete();
+        }
+    }
+
+    /**
+     * ODK's own update as its container is asked for it: {@code odk.py update} in the
+     * project's {@code src/ontology}, which is what ODK's {@code sh run.sh odk.py update} runs.
+     */
+    public static List<String> containerCommand(String runtime, String image,
+            OdkContainer.Host host, File projectRoot) {
+        return MakeRun.containerCommandFor(runtime,
+                new File(projectRoot.getAbsoluteFile(), ONTOLOGY), image, host,
+                Arrays.asList("odk.py", "update"));
+    }
+
+    /**
+     * Updates the project with ODK's own update, in ODK's container.
+     *
+     * <p>What would stop ODK's update half way is looked for first ({@link #check}), since
+     * ODK's own stops at its last step with every other file written. Then ODK does it all.
+     *
+     * @param plan what an update would do, made by {@link #plan} just before: it says which
+     *             files to look at afterwards
+     * @throws Refused when the edit file cannot be read with all its imports; nothing has been
+     *                 written then
+     */
+    public static Ran inContainer(String runtime, String image, OdkContainer.Host host,
+            File projectRoot, Plan plan, ProcessRunner.Runner runner) {
+        check(projectRoot, plan);
+        File root = projectRoot.getAbsoluteFile();
+        List<File> looked = new ArrayList<File>();
+        for (Change change : plan.changes) {
+            looked.add(new File(root, change.path().replace('/', File.separatorChar)));
+        }
+        if (plan.editFile != null) {
+            looked.add(plan.editFile);
+        }
+        List<byte[]> before = new ArrayList<byte[]>();
+        for (File file : looked) {
+            before.add(file.isFile() ? read(file) : null);
+        }
+        List<String> command = containerCommand(runtime, image, host, root);
+        List<String> transcript = new ArrayList<String>();
+        transcript.add("$ " + ReleaseRun.shown(command));
+        ProcessRunner.Outcome outcome;
+        try {
+            outcome = runner.run(new File(root, ONTOLOGY), command, MakeRun.TIMEOUT_MINUTES,
+                    null);
+        } catch (IOException cannotStart) {
+            return new Ran("ODK's own update could not be started: " + cannotStart.getMessage()
+                    + ". Nothing was written.", transcript, new ArrayList<File>());
+        }
+        transcript.addAll(outcome.getOutput());
+        List<File> written = new ArrayList<File>();
+        for (int i = 0; i < looked.size(); i++) {
+            File file = looked.get(i);
+            if (file.isFile() && !Arrays.equals(before.get(i), read(file))) {
+                written.add(file);
+            }
+        }
+        if (outcome.isSuccess()) {
+            return new Ran(null, transcript, written);
+        }
+        String last = outcome.lastMeaningfulLine();
+        return new Ran("ODK's own update stopped" + (last == null || last.trim().isEmpty() ? ""
+                : ": " + last.trim()) + (written.isEmpty() ? " Nothing was written."
+                : " " + written.size() + (written.size() == 1 ? " file was" : " files were")
+                        + " written before it stopped; they are listed, and the log has what "
+                        + "ODK said."), transcript, written);
     }
 
     // ------------------------------------------------------------------ bytes and text
