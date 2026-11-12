@@ -160,6 +160,40 @@ class MakeFileTest {
         assertEquals(Arrays.asList("make inner"), dry(makefile, "viaother"));
     }
 
+    /**
+     * A dry run stops at a line that only expands to make; a real run does not. ODK's
+     * {@code test_fast} is {@code $(MAKE_FAST) test}: what it runs is what the run's plan says.
+     */
+    @Test
+    void aRunsPlanFollowsALineThatOnlyExpandsToMakeToo() {
+        String makefile = "FAST = $(MAKE) X=1\nouter:\n\t$(FAST) inner\n\techo after\n"
+                + "inner:\n\techo in $(X)\n";
+
+        List<MakeFile.Step> dry = read(disk(makefile)).plan("outer");
+        List<MakeFile.Step> run = read(disk(makefile)).runPlan("outer");
+
+        assertEquals(MakeFile.Step.Kind.COMMAND, dry.get(0).kind());
+        assertEquals(0, dry.get(0).steps().size());
+        assertEquals(2, run.size());
+        assertEquals(MakeFile.Step.Kind.SUB_MAKE, run.get(0).kind());
+        assertEquals("make X=1 inner", run.get(0).command());
+        assertEquals(1, run.get(0).steps().size());
+        assertEquals("echo in 1", run.get(0).steps().get(0).command());
+        assertEquals(1, run.get(0).steps().get(0).level());
+        assertEquals("echo after", run.get(1).command());
+    }
+
+    /** A line that runs make and something else is not one a run's plan can follow: refused. */
+    @Test
+    void aRunsPlanRefusesALineThatRunsMakeAndMore() {
+        MakeFile make = read(disk("outer:\n\tmake inner && echo done\ninner:\n\techo in\n"));
+
+        assertEquals(Arrays.asList("make inner && echo done"), make.dryRun("outer"));
+        MakeFile.MakeException refused = assertThrows(MakeFile.MakeException.class,
+                () -> make.runPlan("outer"));
+        assertTrue(refused.getMessage().contains("Makefile:2"), refused.getMessage());
+    }
+
     @Test
     void thePlanSaysWhereEachCommandComesFrom() {
         List<MakeFile.Step> plan = read(disk("X = 1\nall:\n\t@echo a\n\t-rm x\n")).plan("all");

@@ -40,6 +40,7 @@ final class MakeRunner {
     private final int level;
     private final List<String> assumeNew;
     private final String makefile;
+    private final boolean everyMake;
 
     private MakeDatabase db;
     private MakeExpander expander;
@@ -55,12 +56,23 @@ final class MakeRunner {
      */
     MakeRunner(MakeFile.Disk disk, MakeFile.Shell shell, Map<String, String> commandLine,
             int level, List<String> assumeNew, String makefile) {
+        this(disk, shell, commandLine, level, assumeNew, makefile, false);
+    }
+
+    /**
+     * @param everyMake follow every recipe line that runs make, as a real run does - also one
+     *                  that only expands to it ({@code $(MAKE_FAST) test}), which a dry run
+     *                  prints and leaves
+     */
+    MakeRunner(MakeFile.Disk disk, MakeFile.Shell shell, Map<String, String> commandLine,
+            int level, List<String> assumeNew, String makefile, boolean everyMake) {
         this.disk = disk;
         this.shell = shell;
         this.commandLine = new LinkedHashMap<String, String>(commandLine);
         this.level = level;
         this.assumeNew = new ArrayList<String>(assumeNew);
         this.makefile = makefile;
+        this.everyMake = everyMake;
     }
 
     /** Reads the makefiles as make does before it decides anything; the goals are known first. */
@@ -92,7 +104,7 @@ final class MakeRunner {
         String name = makefile != null ? makefile : defaultMakefile();
         String text = disk.read(name);
         if (text == null) {
-            throw new MakeFile.MakeException(prefix() + name + ": No such file or directory");
+            throw MakeFile.MakeException.stop(prefix() + name + ": No such file or directory");
         }
         reader.readMakefile(name, text);
         snapDeps();
@@ -110,7 +122,7 @@ final class MakeRunner {
         List<String> wanted = new ArrayList<String>(goals);
         if (wanted.isEmpty()) {
             if (db.defaultGoal == null) {
-                throw new MakeFile.MakeException(prefix() + "No targets.");
+                throw MakeFile.MakeException.stop(prefix() + "No targets.");
             }
             wanted.add(db.defaultGoal);
         }
@@ -155,7 +167,7 @@ final class MakeRunner {
                 return candidate;
             }
         }
-        throw new MakeFile.MakeException(prefix()
+        throw MakeFile.MakeException.stop(prefix()
                 + "*** No targets specified and no makefile found.");
     }
 
@@ -307,7 +319,7 @@ final class MakeRunner {
     private void remake(FileEntry file) {
         if (file.cmds == null) {
             if (!file.phony && !file.isTarget) {
-                throw new MakeFile.MakeException(prefix() + (file.parent != null
+                throw MakeFile.MakeException.stop(prefix() + (file.parent != null
                         ? "No rule to make target '" + file.name + "', needed by '"
                                 + file.parent.name + "'."
                         : "No rule to make target '" + file.name + "'."));
@@ -403,7 +415,7 @@ final class MakeRunner {
         }
         commandsStarted++;
         boolean silent = (flags & Recipe.SILENT) != 0;
-        if ((flags & Recipe.RECURSE) == 0) {
+        if ((flags & Recipe.RECURSE) == 0 && !(everyMake && runsMake(command))) {
             steps.add(new MakeFile.Step(MakeFile.Step.Kind.COMMAND, command, file.name,
                     line.file(), line.number(), silent, noError, level, disk.folder(),
                     Collections.<MakeFile.Step>emptyList()));
@@ -498,6 +510,13 @@ final class MakeRunner {
 
     // ------------------------------------------------------------- sub-makes
 
+    /** Whether a command, as expanded, is make itself with its arguments. */
+    private boolean runsMake(String command) {
+        String make = db.variable("MAKE").value;
+        return command.equals(make) || command.startsWith(make + " ")
+                || command.startsWith(make + "\t");
+    }
+
     /**
      * A recipe line make runs even under -n: it must be {@code make} with variables, goals and
      * {@code --assume-new}, as ODK's recipes are. Followed by a make one level down, with this
@@ -535,7 +554,8 @@ final class MakeRunner {
                 }
             }
         }
-        MakeRunner child = new MakeRunner(disk, shell, variables, level + 1, newFiles, null);
+        MakeRunner child = new MakeRunner(disk, shell, variables, level + 1, newFiles, null,
+                everyMake);
         Result result = child.run(goals);
         considered.addAll(result.considered);
         return result.steps;

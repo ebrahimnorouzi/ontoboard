@@ -373,8 +373,28 @@ public final class MakeFile {
     public static final class MakeException extends RuntimeException {
         private static final long serialVersionUID = 1L;
 
+        private final boolean makesOwn;
+
         public MakeException(String message) {
+            this(message, false);
+        }
+
+        private MakeException(String message, boolean makesOwn) {
             super(message);
+            this.makesOwn = makesOwn;
+        }
+
+        /** A stop of make's own, worded as make words it: no rule for a target, no makefile. */
+        static MakeException stop(String message) {
+            return new MakeException(message, true);
+        }
+
+        /**
+         * Whether make itself would stop here - "No rule to make target" - and not only this
+         * reader, which also refuses what it does not read. make would stop wherever it runs.
+         */
+        public boolean isMakesOwn() {
+            return makesOwn;
         }
 
         /** A message with the makefile and line it is about, as make gives them. */
@@ -444,6 +464,24 @@ public final class MakeFile {
      */
     public List<Step> plan(String goal) {
         return run(goal).steps;
+    }
+
+    /**
+     * What a real run of the goal would do, where {@link #plan} says what a dry run prints.
+     *
+     * <p>One difference: every recipe line that runs make is followed, also a line that only
+     * expands to it. ODK's {@code test_fast} is such a line - {@code $(MAKE_FAST) test} - and
+     * {@code make -n test_fast} prints it and stops, while {@code make test_fast} runs the
+     * tests. A followed line is a {@link Step.Kind#SUB_MAKE} with that make's steps.
+     *
+     * <p>Like a dry run, this decides on the disk as it is now. A real run decides each
+     * sub-make when it gets there, so whoever runs the steps asks again at each sub-make.
+     *
+     * @throws MakeException also for a line that runs make in a way this reader cannot follow
+     */
+    public List<Step> runPlan(String goal) {
+        return new MakeRunner(disk, shell, commandLine, 0, Collections.<String>emptyList(),
+                makefilePath, true).run(Collections.singletonList(goal)).steps;
     }
 
     /** Every rule of the makefiles, in the order make read them. */
