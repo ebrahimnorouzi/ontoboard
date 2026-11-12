@@ -424,6 +424,37 @@ class MakeRunTest {
         assertTrue(explanation.contains("-Xmx"), explanation);
     }
 
+    /**
+     * ODK's full targets fetch the project's imports. Without the network they stop in the
+     * middle of a download, and what make says last names a mirror file, not the cause. The
+     * fast targets build from the imports as they are: that is what to run instead.
+     */
+    @Test
+    void aDownloadThatFailsOffersTheFastTarget() {
+        for (String cause : new String[] {
+            "curl: (6) Could not resolve host: purl.obolibrary.org",
+            "curl: (7) Failed to connect to purl.obolibrary.org port 80: Connection refused",
+            "curl: (28) Operation timed out after 200001 milliseconds with 0 bytes received",
+            "java.net.UnknownHostException: purl.obolibrary.org",
+            "java.net.SocketTimeoutException: connect timed out"}) {
+            String explanation = MakeRun.explain("test", failedWith(
+                    "curl -L http://purl.obolibrary.org/obo/ro.owl --create-dirs -o "
+                            + "tmp/ro-download.owl --retry 4 --max-time 200", cause,
+                    "make: *** [Makefile:397: mirror-ro] Error 6"));
+
+            assertTrue(explanation.contains("test_fast"), cause + " -> " + explanation);
+            assertTrue(explanation.contains("download"), explanation);
+        }
+        assertTrue(MakeRun.explain("prepare_release", failedWith(
+                "curl: (6) Could not resolve host: purl.obolibrary.org"))
+                .contains("prepare_release_fast"));
+        assertTrue(MakeRun.explain("refresh-imports", failedWith(
+                "curl: (6) Could not resolve host: purl.obolibrary.org"))
+                .contains("network"), "a refresh is the download: there is no fast one");
+        assertFalse(MakeRun.explain("refresh-imports", failedWith(
+                "curl: (6) Could not resolve host: purl.obolibrary.org")).contains("_fast"));
+    }
+
     @Test
     void aTargetThatNoLongerExistsSaysTheMakefileMayHaveChanged() {
         String explanation = MakeRun.explain("gone",

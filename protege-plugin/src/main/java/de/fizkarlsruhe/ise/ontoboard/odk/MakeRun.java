@@ -412,6 +412,12 @@ public final class MakeRun {
                         + "afterwards so it picks up the new PATH.";
     }
 
+    /** What a transcript says, in lower case, when a download failed for want of the network. */
+    private static final java.util.regex.Pattern NO_NETWORK = java.util.regex.Pattern.compile(
+            "could not resolve host|curl: \\((?:6|7|28|35|52|56)\\)|unknownhostexception"
+                    + "|connect timed out|connection timed out|network is unreachable"
+                    + "|temporary failure in name resolution|no route to host");
+
     /**
      * What a failed build most likely means, in terms a user can act on.
      *
@@ -457,6 +463,19 @@ public final class MakeRun {
                     + "OntoBoard passes that value into the container, so setting "
                     + "ROBOT_JAVA_ARGS in your own shell has no effect on it. "
                     + "Project > Project configuration... edits the key.";
+        }
+        if (NO_NETWORK.matcher(transcript).find()) {
+            // make's last line names a mirror file, not the cause. ODK's full targets fetch the
+            // project's imports; the fast ones build from the imports as they are.
+            String fast = target.equals("test") || target.equals("prepare_release")
+                    || target.equals("all") ? target.equals("all") ? "test_fast"
+                            : target + "_fast" : null;
+            return "The build could not download what it fetches from the web - the "
+                    + "project's imports - so it stopped: the network, or the server, did not "
+                    + "answer." + (fast == null ? " Run it again when the network is back."
+                            : " Run " + fast + " instead, which builds from the imports as "
+                                    + "they are, or " + target + " again when the network is "
+                                    + "back.");
         }
         if (transcript.contains("violation") && transcript.contains("report")) {
             return "The quality report found violations the project treats as failures. Run "
