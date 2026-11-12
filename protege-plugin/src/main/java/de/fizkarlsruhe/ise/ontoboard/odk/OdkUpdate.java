@@ -22,6 +22,7 @@ import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -121,10 +122,13 @@ public final class OdkUpdate {
         private final byte[] catalog;
         private final Set<String> executable;
         private final List<String> warnings;
+        private final List<ImportGuard.Undeclared> undeclared;
+        private final Set<String> agreed;
 
         Plan(List<Change> changes, String fromVersion, File editFile, boolean obo,
                 List<String> imports, byte[] catalog, Set<String> executable,
-                List<String> warnings) {
+                List<String> warnings, List<ImportGuard.Undeclared> undeclared,
+                Set<String> agreed) {
             this.changes = Collections.unmodifiableList(changes);
             this.fromVersion = fromVersion;
             this.editFile = editFile;
@@ -133,6 +137,8 @@ public final class OdkUpdate {
             this.catalog = catalog;
             this.executable = executable;
             this.warnings = Collections.unmodifiableList(warnings);
+            this.undeclared = Collections.unmodifiableList(undeclared);
+            this.agreed = agreed;
         }
 
         /** Every file ODK's update writes for this project, changed by it or not, in its order. */
@@ -171,6 +177,36 @@ public final class OdkUpdate {
         /** What ODK's update says at its end that a person has to see to. */
         public List<String> warnings() {
             return warnings;
+        }
+
+        /**
+         * The imports of the edit file that the configuration does not declare: the update
+         * would take them out. Empty where ODK leaves the edit file's imports alone.
+         */
+        public List<ImportGuard.Undeclared> undeclared() {
+            return undeclared;
+        }
+
+        /**
+         * The same plan, with it agreed that the update takes these imports out - because
+         * that is wanted, or because each has been declared and its module takes its place.
+         */
+        public Plan removing(Collection<String> imports) {
+            Set<String> all = new TreeSet<String>(agreed);
+            all.addAll(imports);
+            return new Plan(changes, fromVersion, editFile, obo, this.imports, catalog,
+                    executable, warnings, undeclared, all);
+        }
+
+        /** The imports the update would take out and nobody agreed to. */
+        List<String> undecided() {
+            List<String> left = new ArrayList<String>();
+            for (ImportGuard.Undeclared item : undeclared) {
+                if (!agreed.contains(item.iri())) {
+                    left.add(item.iri());
+                }
+            }
+            return left;
         }
     }
 
@@ -228,6 +264,7 @@ public final class OdkUpdate {
         File editFile = null;
         boolean obo = false;
         List<String> imports = new ArrayList<String>();
+        List<ImportGuard.Undeclared> undeclared = new ArrayList<ImportGuard.Undeclared>();
         byte[] catalog = null;
         if (Py.truthy(project.get("manage_import_declarations"))) {
             try {
@@ -241,6 +278,16 @@ public final class OdkUpdate {
             obo = !format.equals("owl");
             editFile = new File(ontology, Py.str(project.get("id")) + "-edit." + format);
             imports = importsOf(project);
+            if (editFile.isFile()) {
+                try {
+                    undeclared = ImportGuard.undeclared(editFile, imports,
+                            new File(root, CATALOG));
+                } catch (IOException unreadable) {
+                    throw new Refused(unreadable.getMessage() + " ODK's update brings its "
+                            + "import declarations in line with the configuration, so it "
+                            + "has to be read first.");
+                }
+            }
         } else {
             warnings.add("You may need to update the -edit file and the XML catalog if you have "
                     + "added, removed or modified any import or component.");
@@ -252,7 +299,8 @@ public final class OdkUpdate {
                     + "the ODK version number in .github/workflows/qc.yml");
         }
         return new Plan(changes, from, editFile, obo, imports, catalog,
-                new TreeSet<String>(installed.executable()), warnings);
+                new TreeSet<String>(installed.executable()), warnings, undeclared,
+                new TreeSet<String>());
     }
 
     /** The one {@code *-odk.yaml} of the folder ODK's update runs in. */
@@ -283,9 +331,7 @@ public final class OdkUpdate {
      * the merged one), each component, and the pattern files.
      */
     private static List<String> importsOf(PyObject project) {
-        Object suffix = project.get("uribase_suffix");
-        String base = Py.str(project.get("uribase")) + "/"
-                + Py.str(suffix instanceof PyNone ? project.get("id") : suffix);
+        String base = ontbase(project);
         List<String> imports = new ArrayList<String>();
         Object group = project.get("import_group");
         if (group instanceof PyObject) {
@@ -312,6 +358,13 @@ public final class OdkUpdate {
             }
         }
         return imports;
+    }
+
+    /** What ODK's Makefile calls ONTBASE: where the project's own files have their IRIs. */
+    static String ontbase(PyObject project) {
+        Object suffix = project.get("uribase_suffix");
+        return Py.str(project.get("uribase")) + "/"
+                + Py.str(suffix instanceof PyNone ? project.get("id") : suffix);
     }
 
     private static Iterable<Object> productsOf(PyObject group) {
@@ -361,6 +414,9 @@ public final class OdkUpdate {
      *                 written then
      */
     public static List<File> apply(File projectRoot, Plan plan) {
+        if (!plan.undecided().isEmpty()) {
+            throw new ImportGuard.Undecided(plan.undecided());
+        }
         File root = projectRoot.getAbsoluteFile();
         File ontology = new File(root, ONTOLOGY);
         File stagedCatalog = new File(ontology, STAGED_CATALOG);
@@ -523,6 +579,9 @@ public final class OdkUpdate {
      */
     public static Ran inContainer(String runtime, String image, OdkContainer.Host host,
             File projectRoot, Plan plan, ProcessRunner.Runner runner) {
+        if (!plan.undecided().isEmpty()) {
+            throw new ImportGuard.Undecided(plan.undecided());
+        }
         check(projectRoot, plan);
         File root = projectRoot.getAbsoluteFile();
         List<File> looked = new ArrayList<File>();

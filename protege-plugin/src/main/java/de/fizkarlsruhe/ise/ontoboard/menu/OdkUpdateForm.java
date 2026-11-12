@@ -1,6 +1,7 @@
 package de.fizkarlsruhe.ise.ontoboard.menu;
 
 import de.fizkarlsruhe.ise.ontoboard.odk.Catalog;
+import de.fizkarlsruhe.ise.ontoboard.odk.ImportGuard;
 import de.fizkarlsruhe.ise.ontoboard.odk.OdkContainer;
 import de.fizkarlsruhe.ise.ontoboard.odk.OdkRoute;
 import de.fizkarlsruhe.ise.ontoboard.odk.OdkUpdate;
@@ -25,6 +26,12 @@ import java.util.Map;
  * makes it itself ({@link OdkUpdate}), with the same result. What would change is worked out
  * by OntoBoard in either case, so that it can be shown before anything is written - ODK's own
  * update has no such look.
+ *
+ * <p>One thing ODK's own update does without a word is not done without one here: it takes
+ * out of the edit file every import the configuration does not declare. Those imports are
+ * named when looking, and before writing whoever has the project open is asked what is to
+ * become of each ({@link ImportGuard}): kept - declared in the configuration, with a module -
+ * or taken out.
  *
  * <p>No Protege types and no Swing: whoever has the project open is a {@link Session}.
  */
@@ -119,6 +126,71 @@ final class OdkUpdateForm {
          * @return why that did not work, or null when it did
          */
         String readAgain(File editFile, Map<String, File> imports);
+
+        /**
+         * Asks what is to become of the imports the update would take out.
+         *
+         * @return a decision for each finding, in their order; null when nothing was said
+         */
+        List<ImportGuard.Decision> decide(List<ImportGuard.Finding> findings);
+    }
+
+    // ------------------------------------------------------------------ the question's words
+
+    /** The sentence above the question about the imports. */
+    static String importsExplanation() {
+        return "ODK's update gives the edit file the imports the project's configuration "
+                + "declares, and no others. The edit file imports what is listed here without "
+                + "the configuration declaring it, so the update would take it out. Say what "
+                + "is to become of each. Nothing is written if you cancel.";
+    }
+
+    /**
+     * What can become of an import, as the question offers it: the choice's words to what it
+     * means, the first the one the question starts with. Taking out is never the first where
+     * keeping is possible, and a module of the terms used is not offered where none is used -
+     * it would be empty.
+     */
+    static LinkedHashMap<String, ImportGuard.Decision> choicesFor(
+            ImportGuard.Finding finding) {
+        LinkedHashMap<String, ImportGuard.Decision> choices =
+                new LinkedHashMap<String, ImportGuard.Decision>();
+        if (finding.isReadable()) {
+            int used = finding.termsUsed();
+            if (used > 0) {
+                choices.put("Keep what the ontology uses of it: a module of " + used
+                        + (used == 1 ? " term" : " terms"), ImportGuard.Decision.MODULE);
+            }
+            choices.put("Keep all of it: the whole ontology as its module",
+                    ImportGuard.Decision.WHOLE);
+        }
+        choices.put("Take the import out", ImportGuard.Decision.REMOVE);
+        return choices;
+    }
+
+    /** What the question says of one import, behind its question mark. */
+    static String helpFor(ImportGuard.Finding finding, File projectRoot) {
+        ImportGuard.Undeclared item = finding.item();
+        StringBuilder help = new StringBuilder(item.iri()).append(" is imported by the edit "
+                + "file and not declared in the project's configuration.");
+        if (!finding.isReadable()) {
+            return help.append("\n\nNo module can be made of it: ")
+                    .append(finding.whyUnreadable()).append(". It can only be taken out. To "
+                            + "keep it, cancel, put the import right, and update again.")
+                    .toString();
+        }
+        help.append("\n\nThe ontology's own axioms use ").append(finding.termsUsed())
+                .append(" of its terms.");
+        help.append("\n\nKept, it becomes the product '").append(finding.name())
+                .append("' in the configuration, with the module src/ontology/imports/")
+                .append(finding.name()).append("_import.owl, and the edit file imports the "
+                        + "module from then on.");
+        help.append(finding.isFrozen() ? "\n\nIt is read from " + relative(
+                projectRoot.getAbsoluteFile(), item.localFileOrNull()) + ", a file of the "
+                + "project, so there is no address ODK could fetch it from again: ODK keeps "
+                + "the module as it is." : "\n\nODK fetches it again from its address whenever "
+                + "the imports are refreshed.");
+        return help.toString();
     }
 
     // ------------------------------------------------------------------ the update
@@ -149,7 +221,8 @@ final class OdkUpdateForm {
         boolean editFileChanges;
         try {
             plan = OdkUpdate.plan(root);
-            // Also what stops ODK's own update half way: found here, before anybody writes.
+            // Also what stops ODK's own update half way: found here, before anybody writes
+            // and before anybody is asked anything.
             editFileChanges = OdkUpdate.check(root, plan);
         } catch (OdkUpdate.Refused refused) {
             return result.failed(refused.getMessage()).build();
@@ -158,10 +231,96 @@ final class OdkUpdateForm {
                     + ". Nothing was written.").build();
         }
         result.note("Project: " + root.getPath());
+
+        // The imports the update would take out: named when looking, decided before writing.
+        List<File> declared = new ArrayList<File>();
+        int toDecide = plan.undeclared().size();
+        if (toDecide > 0 && !write) {
+            for (ImportGuard.Undeclared item : plan.undeclared()) {
+                result.note("The edit file imports " + item.iri() + (item.localFileOrNull()
+                        == null ? "" : " (read from " + relative(root, item.localFileOrNull())
+                        + ")") + ", which the configuration does not declare: ODK's update "
+                        + "would take this import out. With 'Write the changes' on you are "
+                        + "asked first what is to become of it.");
+            }
+        }
+        if (toDecide > 0 && write) {
+            List<String> takenOut = new ArrayList<String>();
+            for (ImportGuard.Undeclared item : plan.undeclared()) {
+                takenOut.add(item.iri());
+            }
+            if (session == null) {
+                return result.failed(ImportGuard.sentenceFor(takenOut)).build();
+            }
+            if (session.stopped()) {
+                result.note("Nothing was written - you stopped waiting before it finished.");
+                return result.summary("Nothing was written: this was abandoned.").build();
+            }
+            ImportGuard.Reading reading;
+            List<ImportGuard.Finding> findings;
+            try {
+                reading = ImportGuard.read(root, plan.editFile());
+                findings = reading.findings(plan.undeclared());
+            } catch (IOException | RuntimeException unreadable) {
+                return result.failed("The imports the update would take out could not be "
+                        + "looked at: " + said(unreadable) + ". Nothing was written.").build();
+            }
+            List<ImportGuard.Decision> decisions = session.decide(findings);
+            if (decisions == null || decisions.size() != findings.size()) {
+                result.note("Nothing was written - what is to become of the imports the update "
+                        + "would take out was not said.");
+                return result.summary("Nothing was written.").build();
+            }
+            for (int i = 0; i < findings.size(); i++) {
+                ImportGuard.Finding finding = findings.get(i);
+                ImportGuard.Decision decision = decisions.get(i);
+                try {
+                    for (File file : reading.declare(finding, decision)) {
+                        if (!declared.contains(file)) {
+                            declared.add(file);
+                        }
+                    }
+                } catch (IOException | RuntimeException notDeclared) {
+                    for (File file : declared) {
+                        result.wrote(file);
+                    }
+                    return result.failed(finding.item().iri() + " could not be declared: "
+                            + said(notDeclared) + ". The update was not made."
+                            + (declared.isEmpty() ? "" : " What had been written for the "
+                                    + "imports before it is listed.")).build();
+                }
+                result.note(decision == ImportGuard.Decision.REMOVE
+                        ? finding.item().iri() + ": the update takes this import out, as you "
+                                + "said."
+                        : finding.item().iri() + ": declared as the product " + finding.name()
+                                + (decision == ImportGuard.Decision.MODULE
+                                        ? ", its module the " + finding.termsUsed()
+                                                + (finding.termsUsed() == 1 ? " term"
+                                                        : " terms") + " of it the ontology uses"
+                                        : ", its module the whole ontology")
+                                + (finding.isFrozen() ? "; ODK keeps the module as it is - it "
+                                        + "is read from a file of the project, so there is no "
+                                        + "address to fetch it from again" : "; ODK fetches it "
+                                        + "again from its address when the imports are "
+                                        + "refreshed") + ".");
+            }
+            try {
+                // Again: the configuration has changed. What was undeclared is taken out by
+                // the update now - agreed to, or with its module in its place.
+                plan = OdkUpdate.plan(root).removing(takenOut);
+                editFileChanges = OdkUpdate.check(root, plan);
+            } catch (RuntimeException notPlanned) {
+                for (File file : declared) {
+                    result.wrote(file);
+                }
+                return result.failed(said(notPlanned) + (declared.isEmpty() ? ""
+                        : " What had been written for the imports is listed.")).build();
+            }
+        }
+
         result.note("ODK: " + (plan.fromVersion() == null ? "the project's Makefile does not "
                 + "say which wrote it" : "the project's files are " + plan.fromVersion() + "'s")
                 + "; the update writes " + plan.toVersion() + "'s.");
-
         int changing = 0;
         int fresh = 0;
         for (OdkUpdate.Change change : plan.changes()) {
@@ -185,7 +344,7 @@ final class OdkUpdateForm {
             result.note("ODK's update says: " + said);
         }
 
-        if (changing == 0) {
+        if (changing == 0 && declared.isEmpty()) {
             return result.summary("Already up to date: the project's files are what ODK "
                     + plan.toVersion() + " writes for its configuration.").build();
         }
@@ -199,10 +358,18 @@ final class OdkUpdateForm {
                             : "With it on, OntoBoard itself writes them, as ODK's own "
                                     + "update does; no container is used.");
             return result.summary(count + " would change"
-                    + (fresh == 0 ? "" : ", " + fresh + " of them new") + ".").build();
+                    + (fresh == 0 ? "" : ", " + fresh + " of them new")
+                    + (toDecide == 0 ? "." : "; " + toDecide + (toDecide == 1 ? " import"
+                            : " imports") + " the update would take out, to decide about "
+                            + "first.")).build();
+        }
+        for (File file : declared) {
+            result.wrote(file);
         }
         if (session != null && session.stopped()) {
-            result.note("Nothing was written - you stopped waiting before it finished.");
+            result.note(declared.isEmpty() ? "Nothing was written - you stopped waiting before "
+                    + "it finished." : "The update was not made - you stopped waiting before "
+                    + "it finished. What had been written for the imports is listed.");
             return result.summary(count + " would have changed, but this was abandoned.")
                     .build();
         }
@@ -240,8 +407,12 @@ final class OdkUpdateForm {
                                         + "now - update again once the cause is put right.");
             }
         }
+        int all = declared.size();
         for (File file : written) {
-            result.wrote(file);
+            if (!declared.contains(file)) {
+                result.wrote(file);
+                all++;
+            }
         }
         if (editFile != null && written.contains(editFile) && session != null
                 && session.isOpen(editFile)) {
@@ -261,10 +432,9 @@ final class OdkUpdateForm {
         }
         result.note("Commit these as a change of their own, so that the update can be told "
                 + "from your work.");
-        return result.summary("Updated " + written.size()
-                + (written.size() == 1 ? " file" : " files") + (way.inContainer()
-                        ? " with ODK's own update, in its container." : ", by OntoBoard itself.")
-        ).build();
+        return result.summary("Updated " + all + (all == 1 ? " file" : " files")
+                + (way.inContainer() ? " with ODK's own update, in its container."
+                        : ", by OntoBoard itself.")).build();
     }
 
     /** The file of the project its catalog serves each import from; null where from none. */
@@ -315,7 +485,7 @@ final class OdkUpdateForm {
     }
 
     /** A failure's own words, without a full stop to run into the next sentence. */
-    private static String said(RuntimeException failure) {
+    private static String said(Exception failure) {
         String message = failure.getMessage() == null ? failure.getClass().getSimpleName()
                 : failure.getMessage().trim();
         return message.endsWith(".") ? message.substring(0, message.length() - 1) : message;

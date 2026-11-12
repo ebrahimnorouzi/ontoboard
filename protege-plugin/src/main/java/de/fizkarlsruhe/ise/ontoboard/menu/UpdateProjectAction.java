@@ -1,5 +1,6 @@
 package de.fizkarlsruhe.ise.ontoboard.menu;
 
+import de.fizkarlsruhe.ise.ontoboard.odk.ImportGuard;
 import de.fizkarlsruhe.ise.ontoboard.odk.MakeRun;
 import de.fizkarlsruhe.ise.ontoboard.odk.OdkContainer;
 import de.fizkarlsruhe.ise.ontoboard.odk.OdkImage;
@@ -13,7 +14,10 @@ import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Files;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import javax.swing.SwingUtilities;
 import org.protege.editor.owl.model.OWLModelManager;
@@ -169,7 +173,7 @@ public class UpdateProjectAction extends OntoBoardAction {
                         + "saved, so there is no project to update.");
             }
             return OdkUpdateForm.run(operationName(), projectRoot, write, way,
-                    ProcessRunner.real(), new Open());
+                    ProcessRunner.real(), new Open(projectRoot));
         }
         OperationResult.Builder result = OperationResult.of(operationName())
                 .columns("File", "State", "Lines differing");
@@ -259,6 +263,12 @@ public class UpdateProjectAction extends OntoBoardAction {
      */
     private final class Open implements OdkUpdateForm.Session {
 
+        private final File root;
+
+        Open(File root) {
+            this.root = root;
+        }
+
         @Override
         public boolean stopped() {
             return BackgroundRun.abandoned();
@@ -267,6 +277,50 @@ public class UpdateProjectAction extends OntoBoardAction {
         @Override
         public boolean isOpen(File editFile) {
             return loadedFrom(editFile) != null;
+        }
+
+        /**
+         * The question about the imports the update would take out: a choice for each, the
+         * one that keeps it first; Cancel answers nothing, and nothing is written then. Asked
+         * on the dispatch thread, while the update waits.
+         */
+        @Override
+        public List<ImportGuard.Decision> decide(final List<ImportGuard.Finding> findings) {
+            final List<Parameter> fields = new ArrayList<Parameter>();
+            final List<LinkedHashMap<String, ImportGuard.Decision>> meanings =
+                    new ArrayList<LinkedHashMap<String, ImportGuard.Decision>>();
+            for (int i = 0; i < findings.size(); i++) {
+                LinkedHashMap<String, ImportGuard.Decision> choices =
+                        OdkUpdateForm.choicesFor(findings.get(i));
+                meanings.add(choices);
+                String[] words = choices.keySet().toArray(new String[0]);
+                fields.add(Parameter.of("import." + i, findings.get(i).item().iri(),
+                        Parameter.Kind.CHOICE)
+                        .choices(words)
+                        .defaultValue(words[0])
+                        .help(OdkUpdateForm.helpFor(findings.get(i), root))
+                        .build());
+            }
+            final List<ImportGuard.Decision> decided = new ArrayList<ImportGuard.Decision>();
+            onDispatchThread(new Step() {
+                @Override
+                public void take() {
+                    Map<String, String> chosen = ParameterDialog.show(getOWLWorkspace(),
+                            "Imports the update would take out",
+                            OdkUpdateForm.importsExplanation(), fields);
+                    if (chosen == null) {
+                        return;
+                    }
+                    for (int i = 0; i < findings.size(); i++) {
+                        ImportGuard.Decision decision =
+                                meanings.get(i).get(chosen.get("import." + i));
+                        if (decision != null) {
+                            decided.add(decision);
+                        }
+                    }
+                }
+            });
+            return decided.size() == findings.size() ? decided : null;
         }
 
         /**

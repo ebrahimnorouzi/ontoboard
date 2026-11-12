@@ -103,6 +103,20 @@ public final class UpdateCases {
         return project;
     }
 
+    /**
+     * The plan of an update with it agreed that the imports the configuration does not declare
+     * are taken out - which is what ODK's own update did, without a word, when the cases were
+     * recorded. OntoBoard's does not until somebody says so ({@link ImportGuard}).
+     */
+    public static OdkUpdate.Plan planAsOdkDoes(File root) {
+        OdkUpdate.Plan plan = OdkUpdate.plan(root);
+        java.util.List<String> out = new java.util.ArrayList<String>();
+        for (ImportGuard.Undeclared item : plan.undeclared()) {
+            out.add(item.iri());
+        }
+        return plan.removing(out);
+    }
+
     /** What ODK's update printed. */
     public static String transcript(String name) {
         return text(new File(caseFolder(name), "transcript.txt"));

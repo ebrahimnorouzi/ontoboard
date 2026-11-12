@@ -69,10 +69,10 @@ class OdkUpdateLiveTest {
 
         long started = System.currentTimeMillis();
         OdkUpdate.Ran inContainer = OdkUpdate.inContainer(runtime, image, host, theirs,
-                OdkUpdate.plan(theirs), ProcessRunner.real());
+                UpdateCases.planAsOdkDoes(theirs), ProcessRunner.real());
         long odkTook = System.currentTimeMillis() - started;
         started = System.currentTimeMillis();
-        List<File> written = OdkUpdate.apply(ours, OdkUpdate.plan(ours));
+        List<File> written = OdkUpdate.apply(ours, UpdateCases.planAsOdkDoes(ours));
         long ontoBoardTook = System.currentTimeMillis() - started;
 
         assertTrue(inContainer.isOk(), inContainer.getFailure() + "\n"

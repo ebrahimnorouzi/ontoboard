@@ -569,6 +569,21 @@ public final class OdkYaml {
     }
 
     /**
+     * What a path holds: {@code "list"}, {@code "mapping"}, or {@code "other"} for a value or a
+     * key with nothing under it; null when the text has no such path or is not YAML.
+     */
+    static String kindOf(String text, String path) {
+        Node node;
+        try {
+            node = resolve(rootOf(text), path);
+        } catch (RuntimeException notYaml) {
+            return null;
+        }
+        return node == null ? null : node instanceof SequenceNode ? "list"
+                : node instanceof MappingNode ? "mapping" : "other";
+    }
+
+    /**
      * The node a path names, or null.
      *
      * <p>Accepts {@code id}, {@code robot_report.fail_on} and {@code export_formats[1]}, and

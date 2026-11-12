@@ -47,7 +47,7 @@ class OdkUpdateTest {
     void anUpdatedProjectIsWhatOdksUpdateLeaves(String name) throws Exception {
         UpdateCases.write(UpdateCases.before(name), root);
 
-        OdkUpdate.apply(root, OdkUpdate.plan(root));
+        OdkUpdate.apply(root, UpdateCases.planAsOdkDoes(root));
 
         assertSameProject(UpdateCases.after(name), Goldens.tree(root));
     }
@@ -58,7 +58,7 @@ class OdkUpdateTest {
         Map<String, byte[]> before = UpdateCases.before("egg-changed");
         UpdateCases.write(before, root);
 
-        OdkUpdate.Plan plan = OdkUpdate.plan(root);
+        OdkUpdate.Plan plan = UpdateCases.planAsOdkDoes(root);
 
         Set<String> changing = new TreeSet<String>();
         for (OdkUpdate.Change change : plan.changes()) {
@@ -83,7 +83,7 @@ class OdkUpdateTest {
         UpdateCases.write(UpdateCases.before("egg-changed"), root);
 
         Map<String, OdkUpdate.Change> changes = new TreeMap<String, OdkUpdate.Change>();
-        for (OdkUpdate.Change change : OdkUpdate.plan(root).changes()) {
+        for (OdkUpdate.Change change : UpdateCases.planAsOdkDoes(root).changes()) {
             changes.put(change.path(), change);
         }
 
@@ -97,10 +97,10 @@ class OdkUpdateTest {
     @Test
     void aSecondUpdateChangesNothing() throws Exception {
         UpdateCases.write(UpdateCases.before("egg-changed"), root);
-        OdkUpdate.apply(root, OdkUpdate.plan(root));
+        OdkUpdate.apply(root, UpdateCases.planAsOdkDoes(root));
         Map<String, byte[]> once = Goldens.tree(root);
 
-        OdkUpdate.Plan again = OdkUpdate.plan(root);
+        OdkUpdate.Plan again = UpdateCases.planAsOdkDoes(root);
         for (OdkUpdate.Change change : again.changes()) {
             assertFalse(change.isChanged(), change.path());
         }
@@ -116,7 +116,7 @@ class OdkUpdateTest {
     void anImportThatCannotBeLoadedStopsItBeforeAnythingIsWritten() {
         Map<String, byte[]> before = UpdateCases.before("egg-unloadable");
         UpdateCases.write(before, root);
-        OdkUpdate.Plan plan = OdkUpdate.plan(root);
+        OdkUpdate.Plan plan = UpdateCases.planAsOdkDoes(root);
 
         OdkUpdate.Refused refused = assertThrows(OdkUpdate.Refused.class,
                 () -> OdkUpdate.apply(root, plan));
@@ -138,7 +138,7 @@ class OdkUpdateTest {
         UpdateCases.write(project, root);
 
         OdkUpdate.Refused refused = assertThrows(OdkUpdate.Refused.class,
-                () -> OdkUpdate.plan(root));
+                () -> UpdateCases.planAsOdkDoes(root));
 
         assertTrue(refused.getMessage().contains("v1.7.0"), refused.getMessage());
         assertTrue(refused.getMessage().contains("v1.6.1"), refused.getMessage());
@@ -150,14 +150,14 @@ class OdkUpdateTest {
         byte[] config = project.remove("src/ontology/eggboil-odk.yaml");
         UpdateCases.write(project, root);
         OdkUpdate.Refused none = assertThrows(OdkUpdate.Refused.class,
-                () -> OdkUpdate.plan(root));
+                () -> UpdateCases.planAsOdkDoes(root));
         assertTrue(none.getMessage().contains("-odk.yaml"), none.getMessage());
 
         project.put("src/ontology/eggboil-odk.yaml", config);
         project.put("src/ontology/other-odk.yaml", config);
         UpdateCases.write(project, root);
         OdkUpdate.Refused two = assertThrows(OdkUpdate.Refused.class,
-                () -> OdkUpdate.plan(root));
+                () -> UpdateCases.planAsOdkDoes(root));
         assertTrue(two.getMessage().contains("eggboil-odk.yaml")
                 && two.getMessage().contains("other-odk.yaml"), two.getMessage());
     }
@@ -176,7 +176,7 @@ class OdkUpdateTest {
         }
         UpdateCases.write(project, root);
 
-        OdkUpdate.Plan plan = OdkUpdate.plan(root);
+        OdkUpdate.Plan plan = UpdateCases.planAsOdkDoes(root);
         for (OdkUpdate.Change change : plan.changes()) {
             if (change.path().equals("src/ontology/Makefile")) {
                 assertFalse(change.isChanged(), "the Makefile, but for its line endings");
@@ -203,7 +203,7 @@ class OdkUpdateTest {
                 .getBytes(StandardCharsets.UTF_8));
         UpdateCases.write(project, root);
 
-        OdkUpdate.Plan plan = OdkUpdate.plan(root);
+        OdkUpdate.Plan plan = UpdateCases.planAsOdkDoes(root);
         OdkUpdate.apply(root, plan);
 
         assertFalse(plan.editFileWillBeRewritten());
@@ -226,7 +226,7 @@ class OdkUpdateTest {
         Map<String, byte[]> before = UpdateCases.before("egg-changed");
         UpdateCases.write(before, root);
 
-        boolean editFileWouldChange = OdkUpdate.check(root, OdkUpdate.plan(root));
+        boolean editFileWouldChange = OdkUpdate.check(root, UpdateCases.planAsOdkDoes(root));
 
         assertTrue(editFileWouldChange, "it imports something the configuration does not "
                 + "declare, which the update takes out");
@@ -237,16 +237,16 @@ class OdkUpdateTest {
     @Test
     void afterAnUpdateTheCheckSaysTheEditFileStaysAsItIs() {
         UpdateCases.write(UpdateCases.before("egg-changed"), root);
-        OdkUpdate.apply(root, OdkUpdate.plan(root));
+        OdkUpdate.apply(root, UpdateCases.planAsOdkDoes(root));
 
-        assertFalse(OdkUpdate.check(root, OdkUpdate.plan(root)));
+        assertFalse(OdkUpdate.check(root, UpdateCases.planAsOdkDoes(root)));
     }
 
     @Test
     void theCheckFindsAnImportThatCannotBeLoaded() {
         Map<String, byte[]> before = UpdateCases.before("egg-unloadable");
         UpdateCases.write(before, root);
-        OdkUpdate.Plan plan = OdkUpdate.plan(root);
+        OdkUpdate.Plan plan = UpdateCases.planAsOdkDoes(root);
 
         OdkUpdate.Refused refused = assertThrows(OdkUpdate.Refused.class,
                 () -> OdkUpdate.check(root, plan));
@@ -295,7 +295,7 @@ class OdkUpdateTest {
     void theContainerIsNotStartedWhenAnImportCannotBeLoaded() {
         UpdateCases.write(UpdateCases.before("egg-unloadable"), root);
         List<List<String>> ran = new ArrayList<List<String>>();
-        OdkUpdate.Plan plan = OdkUpdate.plan(root);
+        OdkUpdate.Plan plan = UpdateCases.planAsOdkDoes(root);
 
         assertThrows(OdkUpdate.Refused.class, () -> OdkUpdate.inContainer("docker",
                 "an-image:v1", OdkContainer.Host.unknown(), root, plan,
@@ -312,7 +312,7 @@ class OdkUpdateTest {
         final File makefile = new File(root, "src/ontology/Makefile");
 
         OdkUpdate.Ran stopped = OdkUpdate.inContainer("docker", "an-image:v1",
-                OdkContainer.Host.unknown(), root, OdkUpdate.plan(root), container(ran, 1,
+                OdkContainer.Host.unknown(), root, UpdateCases.planAsOdkDoes(root), container(ran, 1,
                         () -> {
                             try {
                                 java.nio.file.Files.write(makefile.toPath(),

@@ -602,6 +602,121 @@ public final class ImportProducts {
         return new Declaration(fields, null);
     }
 
+    /**
+     * A product ODK keeps as it is: ODK's Makefile does not build its module and fetches nothing
+     * for it ({@code module_type: custom}, {@code mirror_type: no_mirror}).
+     */
+    public static java.util.LinkedHashMap<String, String> frozen(String id) {
+        java.util.LinkedHashMap<String, String> fields =
+                new java.util.LinkedHashMap<String, String>();
+        fields.put("id", id);
+        fields.put("module_type", "custom");
+        fields.put("mirror_type", NO_MIRROR);
+        return fields;
+    }
+
+    /**
+     * The configuration with one more import product.
+     *
+     * <p>Added to {@code import_group.products} where the configuration has that list. A project
+     * that imports nothing has no {@code import_group} at all - ODK's seed writes none - so the
+     * group and its list are written where they are missing: the group at the end of the file, a
+     * list under a group that has none where the group ends, at the indent its own keys have.
+     * Nothing else in the file is touched, and its line endings are kept.
+     *
+     * @param fields the product's keys and values in the order they are written; the first goes
+     *     on the line with the dash
+     * @throws OdkYaml.UnreadableException when the group is written in a way that is not added
+     *     to: on one line, or with a {@code products} key that holds no list
+     */
+    public static String withProduct(String yaml,
+            java.util.LinkedHashMap<String, String> fields) {
+        // A file whose every line break is a Windows one is edited with Unix ones and turned
+        // back, so that what is added has the file's own.
+        boolean windows = yaml.contains("\r\n") && !yaml.replace("\r\n", "").contains("\n");
+        String text = windows ? yaml.replace("\r\n", "\n") : yaml;
+        String added;
+        String group = OdkYaml.kindOf(text, "import_group");
+        String list = OdkYaml.kindOf(text, PRODUCTS);
+        if ("list".equals(list)) {
+            added = OdkYaml.appendBlockTo(text, PRODUCTS, fields);
+        } else if (group == null) {
+            added = text + (text.isEmpty() || text.endsWith("\n") ? "" : "\n")
+                    + "import_group:\n  products:\n" + blockOf("    ", fields);
+        } else if ("mapping".equals(group) && list == null) {
+            added = withListUnder(text, fields);
+        } else if (list != null) {
+            throw new OdkYaml.UnreadableException("'" + PRODUCTS + "' is there and holds no "
+                    + "list, so a product cannot be added to it.");
+        } else {
+            throw new OdkYaml.UnreadableException("'import_group' is there and is not written "
+                    + "as a group of keys over several lines, so a product cannot be added to "
+                    + "it.");
+        }
+        return windows ? added.replace("\n", "\r\n") : added;
+    }
+
+    /**
+     * The text with a {@code products} list as the last lines of its {@code import_group}: after
+     * the last line of the group that says something, at the indent the group's keys have.
+     */
+    private static String withListUnder(String text,
+            java.util.LinkedHashMap<String, String> fields) {
+        List<String> lines = new ArrayList<String>(java.util.Arrays.asList(text.split("\n", -1)));
+        int group = -1;
+        for (int at = 0; at < lines.size() && group < 0; at++) {
+            if (lines.get(at).matches("import_group\\s*:\\s*(#.*)?")) {
+                group = at;
+            }
+        }
+        if (group < 0) {
+            throw new OdkYaml.UnreadableException("'import_group' is there and is not written "
+                    + "as a group of keys over several lines, so a product cannot be added to "
+                    + "it.");
+        }
+        String indent = null;
+        int last = group;
+        for (int at = group + 1; at < lines.size(); at++) {
+            String line = lines.get(at);
+            if (line.trim().isEmpty()) {
+                continue;
+            }
+            String body = line.replaceAll("^[ \\t]+", "");
+            if (body.length() == line.length()) {
+                break;
+            }
+            if (indent == null) {
+                indent = line.substring(0, line.length() - body.length());
+            }
+            last = at;
+        }
+        if (indent == null) {
+            indent = "  ";
+        }
+        String block = indent + "products:\n" + blockOf(indent + "  ", fields);
+        lines.addAll(last + 1, java.util.Arrays.asList(
+                block.substring(0, block.length() - 1).split("\n", -1)));
+        if (last + 1 + block.split("\n").length == lines.size()) {
+            // The group's last line was the file's last and had no line break: what is added
+            // ends with one.
+            lines.add("");
+        }
+        return String.join("\n", lines);
+    }
+
+    /** An item of a block list: the first field on the line with the dash. */
+    private static String blockOf(String indent,
+            java.util.LinkedHashMap<String, String> fields) {
+        StringBuilder block = new StringBuilder();
+        boolean first = true;
+        for (java.util.Map.Entry<String, String> field : fields.entrySet()) {
+            block.append(indent).append(first ? "- " : "  ").append(field.getKey()).append(": ")
+                    .append(OdkYaml.scalarFor(field.getValue())).append('\n');
+            first = false;
+        }
+        return block.toString();
+    }
+
     /** The product with this id, or null. */
     public static Product named(List<Product> products, String id) {
         for (Product product : products) {

@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
+import de.fizkarlsruhe.ise.ontoboard.odk.ImportGuard;
 import de.fizkarlsruhe.ise.ontoboard.odk.OdkContainer;
 import de.fizkarlsruhe.ise.ontoboard.odk.OdkRoute;
 import de.fizkarlsruhe.ise.ontoboard.odk.UpdateCases;
@@ -43,6 +44,11 @@ class OdkUpdateFormTest {
 
     /** What the container was asked to run. */
     private final List<List<String>> ran = new ArrayList<List<String>>();
+
+    /** Whoever has the project open and says of its imports what ODK's own update does. */
+    private static Open asOdkDoes() {
+        return new Open(false, null);
+    }
 
     private OdkUpdateForm.Way itself() {
         return OdkUpdateForm.way(OdkRoute.Use.AUTOMATIC, null, null, null, NONE, null);
@@ -120,7 +126,8 @@ class OdkUpdateFormTest {
     @Test
     void aProjectThatIsUpToDateIsSaidToBe() {
         UpdateCases.write(UpdateCases.before("egg-changed"), root);
-        OdkUpdateForm.run("Update project files", root, true, itself(), noContainer());
+        OdkUpdateForm.run("Update project files", root, true, itself(), noContainer(),
+                asOdkDoes());
 
         OperationResult again = OdkUpdateForm.run("Update project files", root, false,
                 itself(), noContainer());
@@ -139,7 +146,7 @@ class OdkUpdateFormTest {
         UpdateCases.write(UpdateCases.before("egg-changed"), root);
 
         OperationResult result = OdkUpdateForm.run("Update project files", root, true,
-                itself(), noContainer());
+                itself(), noContainer(), asOdkDoes());
 
         assertTrue(result.isSuccess(), result.getSummary());
         assertEquals(12, result.getFiles().size(), result.getFiles().toString());
@@ -177,7 +184,8 @@ class OdkUpdateFormTest {
 
         OperationResult result = OdkUpdateForm.run("Update project files", root, true,
                 OdkUpdateForm.way(OdkRoute.Use.AUTOMATIC, "docker", "an-image:v1",
-                        OdkContainer.Host.unknown(), null, null), container);
+                        OdkContainer.Host.unknown(), null, null), container,
+                asOdkDoes());
 
         assertTrue(result.isSuccess(), result.getSummary());
         assertEquals(1, ran.size());
@@ -208,7 +216,8 @@ class OdkUpdateFormTest {
 
         OperationResult result = OdkUpdateForm.run("Update project files", root, true,
                 OdkUpdateForm.way(OdkRoute.Use.AUTOMATIC, "docker", "an-image:v1",
-                        OdkContainer.Host.unknown(), null, null), container);
+                        OdkContainer.Host.unknown(), null, null), container,
+                asOdkDoes());
 
         assertEquals(OperationResult.Status.FAILED, result.getStatus());
         assertTrue(result.getSummary().contains("RuntimeError: it stopped"),
@@ -239,7 +248,7 @@ class OdkUpdateFormTest {
                 + "read-only all the same");
         try {
             OperationResult result = OdkUpdateForm.run("Update project files", root, true,
-                    itself(), noContainer());
+                    itself(), noContainer(), asOdkDoes());
 
             assertEquals(OperationResult.Status.FAILED, result.getStatus());
             assertTrue(result.getSummary().contains(locked.getName()), result.getSummary());
@@ -283,7 +292,7 @@ class OdkUpdateFormTest {
             assumeTrue(!read, "a lock stops nobody from reading on this machine");
 
             OperationResult result = OdkUpdateForm.run("Update project files", root, true,
-                    itself(), noContainer());
+                    itself(), noContainer(), asOdkDoes());
 
             assertEquals(OperationResult.Status.FAILED, result.getStatus());
             assertTrue(result.getSummary().contains("Makefile"), result.getSummary());
@@ -303,6 +312,11 @@ class OdkUpdateFormTest {
         private boolean open = true;
         private int readAgain;
         private Map<String, File> imports;
+        /** What is answered about the imports; null to answer nothing. */
+        private List<ImportGuard.Decision> decisions;
+        private boolean answers = true;
+        private int asked;
+        private List<ImportGuard.Finding> askedAbout;
 
         Open(boolean stopped, String cannotReadAgain) {
             this.stopped = stopped;
@@ -317,6 +331,24 @@ class OdkUpdateFormTest {
         @Override
         public boolean isOpen(File editFile) {
             return open;
+        }
+
+        /** Without an answer of its own: each is taken out, as ODK's own update does. */
+        @Override
+        public List<ImportGuard.Decision> decide(List<ImportGuard.Finding> findings) {
+            asked++;
+            askedAbout = findings;
+            if (!answers) {
+                return null;
+            }
+            if (decisions != null) {
+                return decisions;
+            }
+            List<ImportGuard.Decision> out = new ArrayList<ImportGuard.Decision>();
+            for (int i = 0; i < findings.size(); i++) {
+                out.add(ImportGuard.Decision.REMOVE);
+            }
+            return out;
         }
 
         @Override
@@ -407,6 +439,240 @@ class OdkUpdateFormTest {
         assertTrue(log.contains("an import could not be loaded"), log);
         assertTrue(log.contains("Close the project and open it again"),
                 "what to do about it: " + log);
+    }
+
+    // ------------------------------------------------------------------ the imports it would take out
+
+    private static final String WHOLE = "https://example.invalid/whole.owl";
+
+    /** The recorded project, its edit file made to use a term of what it imports. */
+    private void theProjectUsingTheSpoon() throws IOException {
+        UpdateCases.write(UpdateCases.before("egg-changed"), root);
+        File edit = new File(root, EDIT);
+        String ofn = new String(Files.readAllBytes(edit.toPath()), StandardCharsets.UTF_8);
+        int end = ofn.lastIndexOf(')');
+        Files.write(edit.toPath(), (ofn.substring(0, end) + "SubClassOf(<https://example.org/"
+                + "eggboil/EGGBOIL_0000001> <https://example.invalid/whole#Spoon>)\n"
+                + ofn.substring(end)).getBytes(StandardCharsets.UTF_8));
+    }
+
+    private ImportGuard.Finding theFinding() throws IOException {
+        return ImportGuard.read(root, new File(root, EDIT)).findings(
+                de.fizkarlsruhe.ise.ontoboard.odk.OdkUpdate.plan(root).undeclared()).get(0);
+    }
+
+    @Test
+    void lookingNamesTheImportTheUpdateWouldTakeOut() {
+        Map<String, byte[]> before = UpdateCases.before("egg-changed");
+        UpdateCases.write(before, root);
+        Open open = asOdkDoes();
+
+        OperationResult result = OdkUpdateForm.run("Update project files", root, false,
+                itself(), noContainer(), open);
+
+        assertTrue(result.isSuccess(), result.getSummary());
+        String log = String.join("\n", result.getLog());
+        assertTrue(log.contains(WHOLE), log);
+        assertTrue(log.contains("would take this import out"), log);
+        assertTrue(log.contains("src/ontology/whole.owl"), "where it is read from: " + log);
+        assertTrue(result.getSummary().contains("1 import the update would take out"),
+                result.getSummary());
+        assertEquals(0, open.asked, "nobody is asked while only looking");
+        assertSameTree(before);
+    }
+
+    @Test
+    void withNobodyToAskTheUpdateIsNotMade() {
+        Map<String, byte[]> before = UpdateCases.before("egg-changed");
+        UpdateCases.write(before, root);
+
+        OperationResult result = OdkUpdateForm.run("Update project files", root, true,
+                itself(), noContainer());
+
+        assertEquals(OperationResult.Status.FAILED, result.getStatus());
+        assertTrue(result.getSummary().contains(WHOLE), result.getSummary());
+        assertSameTree(before);
+    }
+
+    @Test
+    void whenNothingIsSaidAboutThemNothingIsWritten() {
+        Map<String, byte[]> before = UpdateCases.before("egg-changed");
+        UpdateCases.write(before, root);
+        Open open = asOdkDoes();
+        open.answers = false;
+
+        OperationResult result = OdkUpdateForm.run("Update project files", root, true,
+                itself(), noContainer(), open);
+
+        assertEquals(1, open.asked);
+        assertEquals(WHOLE, open.askedAbout.get(0).item().iri());
+        assertTrue(String.join("\n", result.getLog()).contains("Nothing was written"),
+                result.getLog().toString());
+        assertEquals(new ArrayList<File>(), result.getFiles());
+        assertEquals(0, open.readAgain);
+        assertSameTree(before);
+    }
+
+    /** Kept, the import is declared, and the update puts its module in its place. */
+    @Test
+    void anImportThatIsKeptIsDeclaredAndItsModuleTakesItsPlace() throws IOException {
+        UpdateCases.write(UpdateCases.before("egg-changed"), root);
+        Open open = asOdkDoes();
+        open.decisions = java.util.Collections.singletonList(ImportGuard.Decision.WHOLE);
+
+        OperationResult result = OdkUpdateForm.run("Update project files", root, true,
+                itself(), noContainer(), open);
+
+        assertTrue(result.isSuccess(), result.getSummary());
+        File module = new File(root, "src/ontology/imports/whole_import.owl");
+        File config = new File(root, "src/ontology/eggboil-odk.yaml");
+        assertTrue(result.getFiles().contains(module.getAbsoluteFile()),
+                result.getFiles().toString());
+        assertTrue(result.getFiles().contains(config.getAbsoluteFile()),
+                result.getFiles().toString());
+        String edit = new String(Files.readAllBytes(new File(root, EDIT).toPath()),
+                StandardCharsets.UTF_8);
+        assertTrue(edit.contains("Import(<https://example.org/eggboil/eggboil/imports/"
+                + "whole_import.owl>)"), "the module is imported");
+        assertFalse(edit.contains("Import(<" + WHOLE + ">)"), "in the place of the import");
+        String log = String.join("\n", result.getLog());
+        assertTrue(log.contains("declared as the product whole"), log);
+        assertEquals(1, open.readAgain);
+        assertEquals(new File(root, "src/ontology/imports/whole_import.owl").getAbsoluteFile(),
+                open.imports.get("https://example.org/eggboil/eggboil/imports/"
+                        + "whole_import.owl"), "its module is among what is read again");
+        // And nothing is left to ask about.
+        Open again = asOdkDoes();
+        OperationResult second = OdkUpdateForm.run("Update project files", root, true,
+                itself(), noContainer(), again);
+        assertTrue(second.getSummary().startsWith("Already up to date"), second.getSummary());
+        assertEquals(0, again.asked);
+    }
+
+    /** The files written for an import are listed with the update's own, once each. */
+    @Test
+    void whatWasWrittenForAnImportIsListedWithTheUpdatesFiles() throws IOException {
+        theProjectUsingTheSpoon();
+        Open open = asOdkDoes();
+        open.decisions = java.util.Collections.singletonList(ImportGuard.Decision.MODULE);
+
+        OperationResult result = OdkUpdateForm.run("Update project files", root, true,
+                itself(), noContainer(), open);
+
+        assertTrue(result.isSuccess(), result.getSummary());
+        List<File> files = result.getFiles();
+        assertEquals(new java.util.HashSet<File>(files).size(), files.size(),
+                "no file twice: " + files);
+        for (String path : new String[] {"src/ontology/imports/whole_import.owl",
+            "src/ontology/imports/whole_terms.txt", "src/ontology/eggboil-odk.yaml", EDIT,
+            "src/ontology/Makefile"}) {
+            assertTrue(files.contains(new File(root, path).getAbsoluteFile()), path + " in "
+                    + files);
+        }
+        assertTrue(result.getSummary().startsWith("Updated " + files.size() + " files"),
+                result.getSummary());
+    }
+
+    /** ODK's own update would take it out without a word: the question comes before it. */
+    @Test
+    void theQuestionComesBeforeOdksOwnUpdateToo() {
+        Map<String, byte[]> before = UpdateCases.before("egg-changed");
+        UpdateCases.write(before, root);
+        Open open = asOdkDoes();
+        open.answers = false;
+
+        OdkUpdateForm.run("Update project files", root, true,
+                OdkUpdateForm.way(OdkRoute.Use.AUTOMATIC, "docker", "an-image:v1",
+                        OdkContainer.Host.unknown(), null, null), noContainer(), open);
+
+        assertEquals(1, open.asked);
+        assertEquals(new ArrayList<List<String>>(), ran);
+        assertSameTree(before);
+    }
+
+    /**
+     * An import that cannot be read stops the update as it stops ODK's own - said before the
+     * question, which could only offer what would not work.
+     */
+    @Test
+    void anImportThatCannotBeReadStopsItBeforeTheQuestion() {
+        Map<String, byte[]> before = UpdateCases.before("egg-unloadable");
+        UpdateCases.write(before, root);
+        Open open = asOdkDoes();
+
+        OperationResult result = OdkUpdateForm.run("Update project files", root, true,
+                itself(), noContainer(), open);
+
+        assertEquals(OperationResult.Status.FAILED, result.getStatus());
+        assertTrue(result.getSummary().contains("whole.owl"), result.getSummary());
+        assertEquals(0, open.asked);
+        assertSameTree(before);
+    }
+
+    /** Who stopped waiting is not asked either. */
+    @Test
+    void whoStoppedWaitingIsNotAsked() {
+        Map<String, byte[]> before = UpdateCases.before("egg-changed");
+        UpdateCases.write(before, root);
+        Open open = new Open(true, null);
+
+        OdkUpdateForm.run("Update project files", root, true, itself(), noContainer(), open);
+
+        assertEquals(0, open.asked);
+        assertSameTree(before);
+    }
+
+    // ------------------------------------------------------------------ what the question offers
+
+    @Test
+    void whatIsUsedCanBeKeptAsAModuleOrWholeOrTakenOut() throws IOException {
+        theProjectUsingTheSpoon();
+
+        Map<String, ImportGuard.Decision> choices = OdkUpdateForm.choicesFor(theFinding());
+
+        assertEquals(Arrays.asList(ImportGuard.Decision.MODULE, ImportGuard.Decision.WHOLE,
+                ImportGuard.Decision.REMOVE),
+                new ArrayList<ImportGuard.Decision>(choices.values()));
+        String first = choices.keySet().iterator().next();
+        assertTrue(first.contains("1 term") && !first.contains("1 terms"), first);
+    }
+
+    /** A module of the terms used would be empty: it is not offered. */
+    @Test
+    void whatIsNotUsedIsKeptWholeOrTakenOut() throws IOException {
+        UpdateCases.write(UpdateCases.before("egg-changed"), root);
+
+        Map<String, ImportGuard.Decision> choices = OdkUpdateForm.choicesFor(theFinding());
+
+        assertEquals(Arrays.asList(ImportGuard.Decision.WHOLE, ImportGuard.Decision.REMOVE),
+                new ArrayList<ImportGuard.Decision>(choices.values()));
+    }
+
+    @Test
+    void whatCannotBeReadCanOnlyBeTakenOut() throws IOException {
+        UpdateCases.write(UpdateCases.before("egg-unloadable"), root);
+        ImportGuard.Finding finding = theFinding();
+
+        Map<String, ImportGuard.Decision> choices = OdkUpdateForm.choicesFor(finding);
+
+        assertEquals(Arrays.asList(ImportGuard.Decision.REMOVE),
+                new ArrayList<ImportGuard.Decision>(choices.values()));
+        assertTrue(OdkUpdateForm.helpFor(finding, root).contains("could not be read"),
+                OdkUpdateForm.helpFor(finding, root));
+    }
+
+    /** What the question says of an import: what it would be called, and whether ODK fetches it. */
+    @Test
+    void theQuestionSaysWhatBecomesOfAKeptImport() throws IOException {
+        theProjectUsingTheSpoon();
+
+        String help = OdkUpdateForm.helpFor(theFinding(), root);
+
+        assertTrue(help.contains(WHOLE), help);
+        assertTrue(help.contains("1 of its terms"), help);
+        assertTrue(help.contains("src/ontology/imports/whole_import.owl"), help);
+        assertTrue(help.contains("src/ontology/whole.owl"), "the file it is read from: " + help);
+        assertTrue(help.contains("keeps the module as it is"), help);
     }
 
     // ------------------------------------------------------------------ who makes it
