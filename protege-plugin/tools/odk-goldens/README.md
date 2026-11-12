@@ -10,6 +10,8 @@ tests compare with. The tests themselves need no Docker.
 | `generate.py seed` | `src/test/resources/odk/v1.6.1/seed/<name>/` and `model/<name>.yaml` for every config in `configs/` | the image |
 | `generate.py corpus --odk-checkout <clone>` | `corpus/`: ODK's own 79 sample configs, each one's seed as a manifest of hashes, and its filled-in model | the image, a clone of ODK holding the tag |
 | `generate.py lexer` | `lexer/`: how Jinja2 3.1.6 itself cuts each template | Python with Jinja2 3.1.6 |
+| `generate.py make` | `make-n/` and `closure/`: GNU make's own dry runs of every seeded project, and what it considers for each | the image |
+| `generate.py equivalence` | `equivalence/egg/<target>/`: what ODK's `make test_fast` and `make prepare_release_fast` print and write for a small project with work in it (`seed/eggboil` with `equivalence/egg/overlay` over it), and `equivalence/egg/query/`: what `robot query` gives in the forms ODK's other targets use | the image |
 
 Run them from the repository root with Python 3.8 or later; `generate.py all --odk-checkout <clone>`
 does everything and takes about a quarter of an hour on Windows (the bind mount is slow).

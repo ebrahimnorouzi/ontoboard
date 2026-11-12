@@ -35,6 +35,7 @@ import subprocess
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import equivalence_goldens  # noqa: E402
 import lexer_fixture  # noqa: E402
 import make_goldens  # noqa: E402
 import odkimage  # noqa: E402
@@ -227,13 +228,27 @@ def stage_make(tool, image):
                % (make_goldens.VERSION, make_goldens.DATE, make_goldens.OBODATE))
 
 
+def stage_equivalence(tool, image):
+    said, versions = equivalence_goldens.run(
+        tool, image, RES, os.path.join(PLUGIN, "target", "odk-goldens-equivalence"))
+    for line in said:
+        print("equiv  " + line)
+    provenance(tool, image, "equivalence", versions,
+               "make <target> VERSION=%s TODAY=%s OBODATE=\"%s\" for %s, each on a fresh copy of "
+               "seed/eggboil with equivalence/egg/overlay over it, in /tmp/odk/egg/src/ontology; "
+               "then the forms of robot query that ODK's other targets use"
+               % (equivalence_goldens.VERSION, equivalence_goldens.DATE,
+                  equivalence_goldens.OBODATE, ", ".join(equivalence_goldens.TARGETS)))
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("stage", choices=["seed", "corpus", "lexer", "make", "all"])
+    parser.add_argument("stage", choices=["seed", "corpus", "lexer", "make", "equivalence",
+                                          "all"])
     parser.add_argument("--odk-checkout", help="a git clone of INCATools/ontology-development-kit "
                         "holding tag " + odkimage.PIN + " (for the corpus)")
     options = parser.parse_args()
-    if options.stage in ("seed", "corpus", "make", "all"):
+    if options.stage in ("seed", "corpus", "make", "equivalence", "all"):
         tool = odkimage.runtime()
         image = odkimage.pinned_image(tool)
         if options.stage in ("seed", "all"):
@@ -242,6 +257,8 @@ def main():
             stage_corpus(tool, image, options.odk_checkout)
         if options.stage in ("make", "all"):
             stage_make(tool, image)
+        if options.stage in ("equivalence", "all"):
+            stage_equivalence(tool, image)
     if options.stage in ("lexer", "all"):
         stage_lexer()
 

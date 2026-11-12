@@ -1,0 +1,28 @@
+# Every class this ontology describes carries an rdfs:label.
+#
+# An ODK check: make sparql_test (part of make test) runs it on the edit file
+# without its imports, and every row it returns fails the test. A class counts
+# when the edit file says something about it besides its type - a parent, a
+# definition - so a class that is only referred to, and labelled in an import,
+# is not reported. OWL's own vocabulary and deprecated classes are left out.
+PREFIX owl: <http://www.w3.org/2002/07/owl#>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+
+SELECT DISTINCT ?entity WHERE {
+  ?entity a owl:Class .
+  FILTER (!isBlank(?entity))
+  FILTER (!STRSTARTS(STR(?entity), "http://www.w3.org/2002/07/owl#"))
+  FILTER NOT EXISTS {
+    ?entity rdfs:label ?label .
+    FILTER (STR(?label) != "")
+  }
+  FILTER NOT EXISTS { ?entity owl:deprecated true }
+  FILTER EXISTS {
+    ?entity ?property ?object .
+    FILTER (?property != rdf:type)
+    FILTER (?property != owl:equivalentClass)
+    FILTER (?property != owl:disjointWith)
+  }
+}
+ORDER BY ?entity

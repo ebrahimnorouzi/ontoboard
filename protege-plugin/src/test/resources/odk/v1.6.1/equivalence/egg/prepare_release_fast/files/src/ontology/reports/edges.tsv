@@ -1,0 +1,6 @@
+?x	?p	?y
+<https://example.org/eggboil/EGGBOIL_0000005>	<https://example.org/eggboil/EGGBOIL_0000010>	<https://example.org/eggboil/EGGBOIL_0000003>
+<https://example.org/eggboil/EGGBOIL_0000005>	<http://www.w3.org/2000/01/rdf-schema#subClassOf>	<https://example.org/eggboil/EGGBOIL_0000001>
+<https://example.org/eggboil/EGGBOIL_0000003>	<http://www.w3.org/2000/01/rdf-schema#subClassOf>	<https://example.org/eggboil/EGGBOIL_0000002>
+<https://example.org/eggboil/EGGBOIL_0000002>	<http://www.w3.org/2000/01/rdf-schema#subClassOf>	<https://example.org/eggboil/EGGBOIL_0000000>
+<https://example.org/eggboil/EGGBOIL_0000001>	<http://www.w3.org/2000/01/rdf-schema#subClassOf>	<https://example.org/eggboil/EGGBOIL_0000000>

@@ -1,0 +1,7 @@
+?cls	?pred	?val	?synType
+<https://example.org/eggboil/EGGBOIL_0000005>	<http://www.w3.org/2000/01/rdf-schema#label>	"soft-boiled egg"@en	
+<https://example.org/eggboil/EGGBOIL_0000004>	<http://www.w3.org/2000/01/rdf-schema#label>	"boiled egg"@en	
+<https://example.org/eggboil/EGGBOIL_0000003>	<http://www.w3.org/2000/01/rdf-schema#label>	"gentle boiling"@en	
+<https://example.org/eggboil/EGGBOIL_0000002>	<http://www.w3.org/2000/01/rdf-schema#label>	"boiling"@en	
+<https://example.org/eggboil/EGGBOIL_0000001>	<http://www.w3.org/2000/01/rdf-schema#label>	"egg"@en	
+<https://example.org/eggboil/EGGBOIL_0000000>	<http://www.w3.org/2000/01/rdf-schema#label>	"root node"@en	

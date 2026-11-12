@@ -1,0 +1,50 @@
+format-version: 1.2
+data-version: https://example.org/eggboil/eggboil/releases/1.0.0/eggboil.owl
+idspace: dce http://purl.org/dc/elements/1.1/ 
+idspace: dcterms http://purl.org/dc/terms/ 
+ontology: https://example.org/eggboil/eggboil.owl
+property_value: dcterms:description "Application ontology for boiling eggs in a test kitchen" xsd:string
+property_value: dcterms:license https://creativecommons.org/licenses/by/4.0/
+property_value: dcterms:title "Test kitchen ontology" xsd:string
+property_value: owl:versionInfo "1.0.0" xsd:string
+
+[Term]
+id: EGGBOIL:0000000
+name: root node
+
+[Term]
+id: EGGBOIL:0000001
+name: egg
+def: "The egg of a hen, in its shell." []
+is_a: EGGBOIL:0000000 ! root node
+
+[Term]
+id: EGGBOIL:0000002
+name: boiling
+def: "A process in which something is kept in boiling water." []
+is_a: EGGBOIL:0000000 ! root node
+
+[Term]
+id: EGGBOIL:0000003
+name: gentle boiling
+is_a: EGGBOIL:0000002 ! boiling
+
+[Term]
+id: EGGBOIL:0000004
+name: boiled egg
+def: "an egg that is the output of a boiling." []
+is_a: EGGBOIL:0000001 ! egg
+intersection_of: EGGBOIL:0000001 ! egg
+intersection_of: EGGBOIL:0000010 EGGBOIL:0000002 ! is output of boiling
+relationship: EGGBOIL:0000010 EGGBOIL:0000002 ! is output of boiling
+
+[Term]
+id: EGGBOIL:0000005
+name: soft-boiled egg
+is_a: EGGBOIL:0000004 ! boiled egg
+relationship: EGGBOIL:0000010 EGGBOIL:0000003 ! is output of gentle boiling
+
+[Typedef]
+id: EGGBOIL:0000010
+name: is output of
+
