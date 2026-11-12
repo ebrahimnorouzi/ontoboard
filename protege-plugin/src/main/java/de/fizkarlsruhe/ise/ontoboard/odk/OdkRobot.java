@@ -215,6 +215,7 @@ public final class OdkRobot {
             }
             String[] line = log.keeping(arguments);
             try {
+                log.quiet();
                 return run(line);
             } finally {
                 log.restore();
@@ -285,14 +286,31 @@ public final class OdkRobot {
      * <p>So the line is given the flag that asks for the level the host has already - nothing
      * changes while it runs, and nothing of the host's own log is lost - and the level is set
      * back when it has run, whatever it was.
+     *
+     * <p>And ROBOT itself says, for the length of a run, what it says on its own command line:
+     * errors. It logs "Subcommand Timing: convert took 0.05 seconds" at WARN for every command;
+     * with the host logging from INFO up, to a console the run's transcript is taken from,
+     * every build would carry a line of that per command.
      */
     private static final class HostLog {
+        private static final String ROBOTS = "org.obolibrary.robot";
+
         private final ch.qos.logback.classic.Logger root;
         private final ch.qos.logback.classic.Level level;
+        private final ch.qos.logback.classic.Logger robots;
+        private final ch.qos.logback.classic.Level robotsLevel;
 
         private HostLog(ch.qos.logback.classic.Logger root) {
             this.root = root;
             this.level = root.getLevel();
+            this.robots = root.getLoggerContext().getLogger(ROBOTS);
+            // null when nothing set one: the logger then follows the root, and will again.
+            this.robotsLevel = robots.getLevel();
+        }
+
+        /** From here to {@link #restore}: ROBOT's own loggers say errors only. */
+        void quiet() {
+            robots.setLevel(ch.qos.logback.classic.Level.ERROR);
         }
 
         /** The host's root logger when it is logback's; null when ROBOT's cast would fail. */
@@ -322,6 +340,7 @@ public final class OdkRobot {
 
         void restore() {
             root.setLevel(level);
+            robots.setLevel(robotsLevel);
         }
     }
 

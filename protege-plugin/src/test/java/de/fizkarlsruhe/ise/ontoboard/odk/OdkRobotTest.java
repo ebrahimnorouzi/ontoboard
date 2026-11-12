@@ -154,6 +154,56 @@ class OdkRobotTest {
         }
     }
 
+    /**
+     * ROBOT logs "Subcommand Timing: convert took 0.05 seconds" at WARN for every command. On
+     * its own command line nobody sees that, because it logs errors only. Protege logs from INFO
+     * up, to its log file and its console - and the console is where a run's transcript is
+     * taken from - so every build would carry a line of it per command. For the length of a
+     * run ROBOT's own loggers say what they say on the command line: errors.
+     */
+    @Test
+    void robotsOwnChatterStaysOutOfTheHostsLogAndTheTranscript(@TempDir File temp)
+            throws Exception {
+        ch.qos.logback.classic.Logger root = (ch.qos.logback.classic.Logger)
+                org.slf4j.LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME);
+        ch.qos.logback.classic.Logger robots = (ch.qos.logback.classic.Logger)
+                org.slf4j.LoggerFactory.getLogger("org.obolibrary.robot");
+        ch.qos.logback.classic.Level before = root.getLevel();
+        ch.qos.logback.classic.Level robotsBefore = robots.getLevel();
+        ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi.ILoggingEvent> seen =
+                new ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi
+                        .ILoggingEvent>();
+        seen.setContext(root.getLoggerContext());
+        seen.start();
+        root.addAppender(seen);
+        File a = ontology(temp, "a.ofn", "https://example.org/e/a.owl",
+                "Declaration(Class(:Egg))\n");
+        try {
+            root.setLevel(ch.qos.logback.classic.Level.INFO);
+
+            OdkRobot.Result ran = OdkRobot.run(Arrays.asList("merge", "--input", path(a),
+                    "convert", "--format", "ofn", "--output", path(new File(temp, "out.ofn"))));
+
+            assertTrue(ran.ok(), String.valueOf(ran.failure()));
+            for (ch.qos.logback.classic.spi.ILoggingEvent event : seen.list) {
+                assertFalse(event.getLoggerName().startsWith("org.obolibrary.robot"),
+                        "ROBOT logged into the host's log: " + event.getLevel() + " "
+                                + event.getFormattedMessage());
+            }
+            assertFalse(String.join("\n", ran.output()).contains("Subcommand Timing"),
+                    ran.output().toString());
+            assertEquals(robotsBefore, robots.getLevel(), "and its loggers are as they were");
+            assertEquals("INFO", root.getLevel().toString());
+            // Asking what the level is changes nothing either: the self-check asks twice.
+            assertEquals("INFO", OdkRobot.hostLogLevel());
+            assertEquals(robotsBefore, robots.getLevel());
+        } finally {
+            root.detachAppender(seen);
+            root.setLevel(before);
+            robots.setLevel(robotsBefore);
+        }
+    }
+
     // ------------------------------------------------------------------ what would end the JVM
 
     @ParameterizedTest
