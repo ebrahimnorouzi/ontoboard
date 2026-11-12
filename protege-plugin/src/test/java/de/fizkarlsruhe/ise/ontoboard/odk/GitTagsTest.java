@@ -93,6 +93,26 @@ class GitTagsTest {
         assertNull(GitTags.fileAt(root, "v9.9.9", "eggboil.owl"));
     }
 
+    /**
+     * A project may be a folder of a larger repository. Its file is read from that folder, not
+     * from the repository's top, where a file of the same name is another thing.
+     */
+    @Test
+    void aProjectInAFolderOfARepositoryReadsItsOwnFile() throws IOException {
+        File project = new File(root, "ontologies/eggboil");
+        Files.createDirectories(project.toPath());
+        Files.write(new File(project, "eggboil.owl").toPath(),
+                "the folder's\n".getBytes(StandardCharsets.UTF_8));
+        git("add", "-f", "ontologies/eggboil/eggboil.owl");
+        git("commit", "-q", "-m", "release(3.0.0)");
+        git("tag", "-a", "v3.0.0", "-m", "eggboil 3.0.0");
+
+        assertArrayEquals("the folder's\n".getBytes(StandardCharsets.UTF_8),
+                GitTags.fileAt(project, "v3.0.0", "eggboil.owl"));
+        assertArrayEquals("two\n".getBytes(StandardCharsets.UTF_8),
+                GitTags.fileAt(root, "v3.0.0", "eggboil.owl"));
+    }
+
     /** A folder that is no repository, or a machine without git, has no releases - no error. */
     @Test
     void whereThereIsNoRepositoryThereAreNoReleases(@TempDir File plain) {

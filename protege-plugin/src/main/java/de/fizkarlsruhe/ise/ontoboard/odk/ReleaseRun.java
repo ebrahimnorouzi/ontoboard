@@ -1,5 +1,6 @@
 package de.fizkarlsruhe.ise.ontoboard.odk;
 
+import de.fizkarlsruhe.ise.ontoboard.git.GitRepo;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -268,14 +269,21 @@ public final class ReleaseRun {
 
     // ------------------------------------------------------------------ git
 
-    /** The git commands that record a release, and what they leave out. */
+    /** The git commands that record a release, where the commit goes, and what it leaves out. */
     public static final class Staging {
+        /** What git says in place of a branch's name when none is checked out. */
+        private static final String NO_BRANCH = "HEAD (no branch)";
+        /** What it says before the name of a branch that has no commit yet. */
+        private static final String UNBORN = "No commits yet on ";
+
         private final List<List<String>> commands;
         private final List<String> leftOut;
+        private final String head;
 
-        Staging(List<List<String>> commands, List<String> leftOut) {
+        Staging(List<List<String>> commands, List<String> leftOut, String head) {
             this.commands = Collections.unmodifiableList(commands);
             this.leftOut = Collections.unmodifiableList(leftOut);
+            this.head = head == null ? "" : head.trim();
         }
 
         /** The commands, in the order they are run, each from the project's root. */
@@ -288,21 +296,49 @@ public final class ReleaseRun {
             return leftOut;
         }
 
+        /**
+         * The branch the commit goes to: the one checked out. Null when git did not say, and
+         * when there is none - see {@link #onNoBranch()}.
+         */
+        public String branch() {
+            if (head.isEmpty() || onNoBranch()) {
+                return null;
+            }
+            return head.startsWith(UNBORN) ? head.substring(UNBORN.length()) : head;
+        }
+
+        /**
+         * Whether no branch is checked out - a detached HEAD. The commit is then on no branch,
+         * and only its tag leads back to it.
+         */
+        public boolean onNoBranch() {
+            return head.equals(NO_BRANCH);
+        }
+
         /** The commands as text, one a line, as they would be typed into a terminal. */
         public String shown() {
             StringBuilder text = new StringBuilder();
             for (List<String> command : commands) {
-                text.append(text.length() == 0 ? "" : "\n");
-                for (int i = 0; i < command.size(); i++) {
-                    String argument = command.get(i);
-                    text.append(i == 0 ? "" : " ").append(
-                            argument.matches("[A-Za-z0-9_./:=@%+,-]+") ? argument
-                                    : "\"" + argument.replace("\\", "\\\\").replace("\"", "\\\"")
-                                            .replace("$", "\\$").replace("`", "\\`") + "\"");
-                }
+                text.append(text.length() == 0 ? "" : "\n").append(ReleaseRun.shown(command));
             }
             return text.toString();
         }
+    }
+
+    /**
+     * A command as one line for a transcript, quoted the way a POSIX shell reads it back: an
+     * argument with a blank, a {@code $} or a quote in it stands between double quotes.
+     */
+    public static String shown(List<String> command) {
+        StringBuilder text = new StringBuilder();
+        for (int i = 0; i < command.size(); i++) {
+            String argument = command.get(i);
+            text.append(i == 0 ? "" : " ").append(
+                    argument.matches("[A-Za-z0-9_./:=@%+,-]+") ? argument
+                            : "\"" + argument.replace("\\", "\\\\").replace("\"", "\\\"")
+                                    .replace("$", "\\$").replace("`", "\\`") + "\"");
+        }
+        return text.toString();
     }
 
     /**
@@ -315,7 +351,8 @@ public final class ReleaseRun {
      * swept in; it is listed.
      *
      * @param assets     the release files at the project's root
-     * @param gitStatus  the lines of {@code git status --porcelain}, taken before
+     * @param gitStatus  the lines of {@code git status --porcelain=v1 --branch}
+     *                   ({@link GitRepo#statusCommand()}), taken before
      */
     public static Staging staging(File projectRoot, String ontologyId, String version,
             List<File> assets, List<String> gitStatus) {
@@ -338,21 +375,15 @@ public final class ReleaseRun {
         commands.add(Arrays.asList("git", "tag", "-a", GitTags.tagFor(version), "-m",
                 ontologyId + " " + version));
 
+        GitRepo.Status status = GitRepo.parseStatus(gitStatus);
         List<String> leftOut = new ArrayList<String>();
-        for (String line : gitStatus) {
-            if (!line.startsWith("?? ")) {
-                continue;
-            }
-            String path = line.substring(3).trim();
-            if (path.startsWith("\"") && path.endsWith("\"") && path.length() >= 2) {
-                path = path.substring(1, path.length() - 1);
-            }
+        for (String path : status.getUntracked()) {
             String folder = path.endsWith("/") ? path : path + "/";
             boolean added = names.contains(path) || (hasCopy && (kept + "/").startsWith(folder));
             if (!added) {
                 leftOut.add(path);
             }
         }
-        return new Staging(commands, leftOut);
+        return new Staging(commands, leftOut, status.getBranch());
     }
 }

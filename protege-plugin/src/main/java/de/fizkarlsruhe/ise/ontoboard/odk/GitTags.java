@@ -88,9 +88,11 @@ public final class GitTags {
         }
         File out = null;
         try {
-            // To a file, not through a pipe read as text: the bytes are the release's.
+            // To a file, not through a pipe read as text: the bytes are the release's. "./"
+            // makes git read the path from the folder it is run in: a project may be a folder
+            // of a larger repository, and a bare path would be taken from that one's top.
             out = File.createTempFile("ontoboard-tag", ".bin");
-            Process git = new ProcessBuilder("git", "show", tag + ":" + path)
+            Process git = new ProcessBuilder("git", "show", tag + ":./" + path)
                     .directory(projectRoot)
                     .redirectOutput(out)
                     .redirectError(ProcessBuilder.Redirect.appendTo(out.getAbsoluteFile()

@@ -268,6 +268,59 @@ class ReleaseRunTest {
     }
 
     /**
+     * The commit goes to the branch that is checked out, and the person is shown which. git's
+     * status names it in its first line - before the first commit too.
+     */
+    @Test
+    void theBranchTheCommitGoesToIsReadOffTheStatus(@TempDir File root) throws IOException {
+        List<File> assets = Collections.singletonList(write(root, "eggboil.owl", "owl"));
+
+        assertEquals("main", ReleaseRun.staging(root, "eggboil", "1.0.0", assets,
+                Arrays.asList("## main...origin/main [ahead 2]", "?? notes.txt")).branch());
+        assertEquals("release-1", ReleaseRun.staging(root, "eggboil", "1.0.0", assets,
+                Collections.singletonList("## release-1")).branch());
+        assertEquals("master", ReleaseRun.staging(root, "eggboil", "1.0.0", assets,
+                Collections.singletonList("## No commits yet on master")).branch());
+        ReleaseRun.Staging unsaid = ReleaseRun.staging(root, "eggboil", "1.0.0", assets,
+                Collections.<String>emptyList());
+        assertNull(unsaid.branch());
+        assertFalse(unsaid.onNoBranch(), "not known is not the same as none");
+    }
+
+    /** With no branch checked out the commit is on none, and only its tag leads back to it. */
+    @Test
+    void aDetachedHeadIsNoBranch(@TempDir File root) throws IOException {
+        ReleaseRun.Staging staging = ReleaseRun.staging(root, "eggboil", "1.0.0",
+                Collections.singletonList(write(root, "eggboil.owl", "owl")),
+                Collections.singletonList("## HEAD (no branch)"));
+
+        assertNull(staging.branch());
+        assertTrue(staging.onNoBranch());
+    }
+
+    /** A file name git had to quote - a blank, an umlaut - is listed as the name it is. */
+    @Test
+    void aQuotedFileNameIsListedUnquoted(@TempDir File root) throws IOException {
+        ReleaseRun.Staging staging = ReleaseRun.staging(root, "eggboil", "1.0.0",
+                Collections.singletonList(write(root, "eggboil.owl", "owl")),
+                Arrays.asList("?? \"my notes.txt\"", "?? \"B\\303\\244ume.txt\""));
+
+        assertEquals(Arrays.asList("my notes.txt", "Bäume.txt"), staging.leftOut());
+    }
+
+    /**
+     * make's arguments for another shape hold blanks and make's {@code $@}. In the transcript
+     * they stand so that a shell reads them back as the one argument they are.
+     */
+    @Test
+    void aCommandIsShownAsAShellReadsItBack() {
+        assertEquals("make prepare_release VERSION=1.0.0 \"ANNOTATE_ONTOLOGY_VERSION=annotate "
+                + "-V " + EGG + "/1.0.0/\\$@ --annotation owl:versionInfo 1.0.0\"",
+                ReleaseRun.shown(ReleaseRun.makeArguments("1.0.0",
+                        VersionIriShape.of(VersionIriShape.Kind.VERSION_AND_FILE), EGG, true)));
+    }
+
+    /**
      * The commands as the dialog shows them: one a line, and an argument a shell would not take
      * as one word - a blank in it, a parenthesis - in quotes, so that the lines can be pasted
      * into a terminal as they stand.
