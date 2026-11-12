@@ -56,6 +56,10 @@ TARGETS = [
 DRIVER = r"""#!/bin/sh
 # Dry runs of every target, for every project under /work/in/projects.
 rm -rf /tmp/odk && mkdir -p /tmp/odk && cp -r /work/in/projects/. /tmp/odk/ || exit 1
+# Every file the same age. make remakes a target that exists only when a prerequisite is newer,
+# and a copy gives each file the moment it was copied at: which of two seeded files is the
+# newer would be the order the disk happened to list them in.
+find /tmp/odk -exec touch -d "__DATE__ 12:00:00" {} +
 rm -rf /work/out && mkdir -p /work/out/make-n /work/out/closure /work/out/err
 make --version | head -1 > /work/out/versions.txt
 echo "ODK_VERSION=$ODK_VERSION" >> /work/out/versions.txt
