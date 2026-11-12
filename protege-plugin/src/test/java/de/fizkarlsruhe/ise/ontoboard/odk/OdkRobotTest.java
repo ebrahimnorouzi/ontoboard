@@ -2,6 +2,7 @@ package de.fizkarlsruhe.ise.ontoboard.odk;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -254,6 +255,31 @@ class OdkRobotTest {
                 "the row is in what ROBOT printed: " + result.output());
     }
 
+    /**
+     * ROBOT says a line per query, with the query's path as it was given: PASS, or FAIL and the
+     * rows. ODK's transcript reads {@code PASS Rule ../sparql/...: 0 violation(s)} from that.
+     */
+    @Test
+    void verifySaysWhatRobotSaysForEachRule(@TempDir File temp) throws Exception {
+        File a = ontology(temp, "a.ofn", "https://example.org/e/a.owl",
+                "Declaration(Class(:Egg))\nAnnotationAssertion(rdfs:comment :Egg \"no label\")\n");
+        File failing = file(temp, "check_labels-violation.sparql", OdkExtras.checkLabels());
+        File passing = file(temp, "nothing-violation.sparql",
+                "SELECT ?x WHERE { ?x a <https://example.org/e/NoSuchType> }\n");
+        String given = temp.getAbsolutePath() + File.separator + "sub/../nothing-violation.sparql";
+        assertTrue(new File(temp, "sub").mkdirs());
+
+        OdkRobot.Result result = OdkRobot.run(Arrays.asList("verify", "--input", path(a),
+                "--queries", given, path(failing), "--output-dir", path(new File(temp, "r"))));
+
+        assertFalse(result.ok());
+        assertTrue(result.output().contains("PASS Rule " + given + ": 0 violation(s)"),
+                result.output().toString());
+        assertTrue(result.output().contains("FAIL Rule " + path(failing) + ": 1 violation(s)"),
+                result.output().toString());
+        assertTrue(passing.isFile());
+    }
+
     @Test
     void aVerifyThatFindsNothingIsOkAndLeavesNoStaleResult(@TempDir File temp) throws Exception {
         File a = ontology(temp, "a.ofn", "https://example.org/e/a.owl",
@@ -335,6 +361,119 @@ class OdkRobotTest {
         assertThrows(IllegalArgumentException.class, () -> OdkRobot.run(Arrays.asList("convert",
                 "-i", "a.ofn", "--format", "ofn", "-o", path(new File(temp, "out.ofn")))));
         assertFalse(new File("out.ofn").exists());
+    }
+
+    // ------------------------------------------------------------------ asked before anything runs
+
+    /**
+     * {@code whyNot} is asked of every line of a target before any of them runs, so it finds what
+     * {@code run} would refuse without running a command, reading an input or writing a file -
+     * none of the paths here exist.
+     */
+    @Test
+    void whyNotIsNullForALineThatRuns(@TempDir File temp) {
+        assertNull(OdkRobot.whyNot(Arrays.asList("--catalog", path(new File(temp, "c.xml")),
+                "merge", "--input", path(new File(temp, "a.ofn")), "reason", "--reasoner", "ELK",
+                "annotate", "-V", "https://example.org/e/1.0/a.owl", "convert", "--format", "ofn",
+                "--output", path(new File(temp, "out.ofn")))));
+        assertFalse(new File(temp, "out.ofn").exists());
+    }
+
+    @Test
+    void whyNotNamesACommandRobotDoesNotHave(@TempDir File temp) {
+        String why = OdkRobot.whyNot(Arrays.asList("merge", "--input",
+                path(new File(temp, "a.ofn")), "frobnicate"));
+
+        assertNotNull(why);
+        assertTrue(why.contains("frobnicate"), why);
+    }
+
+    @Test
+    void whyNotNamesExpand(@TempDir File temp) {
+        String why = OdkRobot.whyNot(Arrays.asList("expand", "--input",
+                path(new File(temp, "a.ofn"))));
+
+        assertNotNull(why);
+        assertTrue(why.contains("'expand'"), why);
+    }
+
+    /** What ROBOT's own parser rejects: an option without its value, one it does not know. */
+    @Test
+    void whyNotSaysWhatRobotsParserRejects(@TempDir File temp) {
+        String missing = OdkRobot.whyNot(Arrays.asList("convert", "--input"));
+        String unknown = OdkRobot.whyNot(Arrays.asList("convert", "--input",
+                path(new File(temp, "a.ofn")), "--frobnicate", "x"));
+
+        assertNotNull(missing);
+        assertNotNull(unknown);
+        assertTrue(unknown.contains("--frobnicate"), unknown);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"--help", "-h", "--version", "help", "version"})
+    void whyNotNamesWhatWouldEndTheJvm(String argument) {
+        String why = OdkRobot.whyNot(Arrays.asList("merge", argument));
+
+        assertNotNull(why);
+        assertTrue(why.contains(argument), why);
+    }
+
+    @Test
+    void whyNotNamesJsonOnJava8(@TempDir File temp) {
+        String why = OdkRobot.whyNot(Arrays.asList("convert", "--input",
+                path(new File(temp, "a.ofn")), "--output", path(new File(temp, "a.json"))));
+
+        if (System.getProperty("java.specification.version").startsWith("1.")) {
+            assertNotNull(why);
+            assertTrue(why.contains("Java 11"), why);
+        } else {
+            assertNull(why);
+        }
+    }
+
+    @Test
+    void whyNotNamesAReportWithoutAnOutput(@TempDir File temp) {
+        String why = OdkRobot.whyNot(Arrays.asList("report", "--input",
+                path(new File(temp, "a.ofn")), "--fail-on", "ERROR"));
+
+        assertNotNull(why);
+        assertTrue(why.contains("--output"), why);
+    }
+
+    @Test
+    void whyNotNamesARelativePath(@TempDir File temp) {
+        String why = OdkRobot.whyNot(Arrays.asList("convert", "--input", "a.ofn", "--output",
+                path(new File(temp, "out.ofn"))));
+
+        assertNotNull(why);
+        assertTrue(why.contains("a.ofn") && why.contains("absolute"), why);
+    }
+
+    /** What robot query does not run here (OdkRobotQueryTest has each of them). */
+    @Test
+    void whyNotNamesWhatQueryDoesNotRun(@TempDir File temp) {
+        String why = OdkRobot.whyNot(Arrays.asList("query", "--input",
+                path(new File(temp, "a.ofn")), "--update", path(new File(temp, "u.ru"))));
+
+        assertNotNull(why);
+        assertTrue(why.contains("--update"), why);
+    }
+
+    /** Asking changes the host's logging no more than running does. */
+    @Test
+    void whyNotLeavesTheHostsLogLevelAlone(@TempDir File temp) {
+        ch.qos.logback.classic.Logger root = (ch.qos.logback.classic.Logger)
+                org.slf4j.LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME);
+        ch.qos.logback.classic.Level before = root.getLevel();
+        try {
+            root.setLevel(ch.qos.logback.classic.Level.INFO);
+
+            OdkRobot.whyNot(Arrays.asList("merge", "--input", path(new File(temp, "a.ofn"))));
+
+            assertEquals("INFO", root.getLevel().toString());
+        } finally {
+            root.setLevel(before);
+        }
     }
 
     // ------------------------------------------------------------------ ODK's plugin
@@ -446,9 +585,12 @@ class OdkRobotTest {
         assertTrue(result.ok(), String.valueOf(result.failure()));
     }
 
-    /** What needs a part of the OWL API that Protege's does not have says so, by name. */
+    /**
+     * What needs a part of the OWL API that Protege's does not have says so, by name. (query
+     * needed it too, and runs on OntoBoard's engine now: OdkRobotQueryTest.)
+     */
     @ParameterizedTest
-    @ValueSource(strings = {"query", "expand"})
+    @ValueSource(strings = {"expand"})
     void aCommandThatCannotRunHereSaysSo(String command, @TempDir File temp) throws Exception {
         File a = ontology(temp, "a.ofn", "https://example.org/e/a.owl",
                 "Declaration(Class(:Egg))\n");

@@ -1,6 +1,5 @@
 package de.fizkarlsruhe.ise.ontoboard.odk;
 
-import de.fizkarlsruhe.ise.ontoboard.robot.OntologyDataset;
 import de.fizkarlsruhe.ise.ontoboard.robot.QualityFinding;
 import de.fizkarlsruhe.ise.ontoboard.robot.QualityReport;
 import java.io.ByteArrayOutputStream;
@@ -20,6 +19,7 @@ import java.util.Locale;
 import java.util.Map;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.DefaultParser;
+import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.obolibrary.robot.Command;
@@ -50,13 +50,18 @@ import org.semanticweb.owlapi.model.OWLOntologyCreationException;
  * and exiting, so every command is wrapped: what goes wrong is kept, the rest of the line is
  * not run, and the {@link Result} says what failed - as the exit status would have.
  *
- * <p><b>{@code report} and {@code verify} run on OntoBoard's own engines</b>, behind ROBOT's
- * arguments. ROBOT's go through a part of the OWL API that Protégé 5.5's version does not have
- * (its RDF4J renderer), and they exit when they find something. Here they take the same
- * options and the same input, apply ROBOT's own rules and the queries given, write the files
- * ROBOT writes, and fail where ROBOT fails: at the level of {@code --fail-on}, or on a query
- * that returns rows. {@code query} and {@code expand}, which need the same part of the OWL API,
- * are not run here at all and say so.
+ * <p><b>{@code report}, {@code verify} and {@code query} run on OntoBoard's own engines</b>,
+ * behind ROBOT's arguments. ROBOT's go through a part of the OWL API that Protégé 5.5's version
+ * does not have (its RDF4J renderer), and the first two exit when they find something. Here they
+ * take the same options and the same input, apply ROBOT's own rules and the queries given,
+ * write the files ROBOT writes, and fail where ROBOT fails: at the level of {@code --fail-on},
+ * or on a query that returns rows. {@code verify} says ROBOT's PASS and FAIL line per query;
+ * {@code query} runs as ODK's recipes use it and refuses the rest by name ({@link RobotQuery}).
+ * {@code expand}, which needs the same part of the OWL API, is not run here at all and says so.
+ *
+ * <p><b>Asked before anything runs.</b> {@link #whyNot} goes through a line as {@link #run} does
+ * before running it - ROBOT's own manager and parsers, nothing loaded - and gives the reason run
+ * would refuse it, or null.
  *
  * <p><b>The host's logging is left as it was</b>: see {@link HostLog}.
  *
@@ -72,8 +77,8 @@ import org.semanticweb.owlapi.model.OWLOntologyCreationException;
  * run here, and says so.
  *
  * <p>ROBOT reads a path that does not start at a root against the JVM's working folder. The
- * caller gives absolute paths; for the options that name an input, an output or the catalog
- * this is checked.
+ * caller gives absolute paths ({@link RobotPaths} makes a recipe's so); for every option whose
+ * value names a file, by RobotPaths' table, this is checked.
  */
 public final class OdkRobot {
 
@@ -132,14 +137,10 @@ public final class OdkRobot {
     private static final List<String> EXITS = Arrays.asList("--help", "-h", "--version", "help",
             "version");
 
-    /** Options whose value is a file or folder, by their long names. */
-    private static final List<String> PATHS = Arrays.asList("input", "output", "output-dir",
-            "catalog", "queries");
-
     private static final List<String> LEVELS = Arrays.asList("INFO", "WARN", "ERROR");
 
     /** ROBOT's commands that need the OWL API's RDF4J renderer and have no stand-in here. */
-    private static final List<String> NOT_HERE = Arrays.asList("query", "expand");
+    private static final List<String> NOT_HERE = Arrays.asList("expand");
 
     /** One chain at a time: the output of a run is taken from the JVM's own streams. */
     private static final Object ONE_AT_A_TIME = new Object();
@@ -174,6 +175,92 @@ public final class OdkRobot {
                 + "container.";
     }
 
+    /** The live options of each command run here, by name; filled on first use. */
+    private static Map<String, Options> commandOptions;
+
+    private static synchronized Map<String, Options> commandOptions() {
+        if (commandOptions == null) {
+            Map<String, Options> options = new LinkedHashMap<String, Options>();
+            for (String[] robot : ROBOTS) {
+                options.put(robot[0], robot(robot).getOptions());
+            }
+            for (String[] odk : ODKS) {
+                Command command = plugin(odk[1]);
+                if (command != null) {
+                    options.put(odk[0], command.getOptions());
+                }
+            }
+            commandOptions = Collections.unmodifiableMap(options);
+        }
+        return commandOptions;
+    }
+
+    /** The commands a line can name here: ROBOT's own, and ODK's plugin's when it is there. */
+    static List<String> commandNames() {
+        return new ArrayList<String>(commandOptions().keySet());
+    }
+
+    /** A command's live options, as its parser reads them; null for no command run here. */
+    static Options options(String command) {
+        return commandOptions().get(command);
+    }
+
+    private static Command robot(String[] robot) {
+        try {
+            return (Command) Class.forName("org.obolibrary.robot." + robot[1])
+                    .getDeclaredConstructor().newInstance();
+        } catch (ReflectiveOperationException notInThisRobot) {
+            throw new IllegalStateException("ROBOT's " + robot[0] + " command is not in this "
+                    + "build", notInThisRobot);
+        }
+    }
+
+    /**
+     * Why this command line would be refused, or null: asked before anything is run.
+     *
+     * <p>The same refusals {@link #run} makes, for the same reasons, found the way run finds them
+     * before it runs anything: ROBOT's own manager cuts the line into commands and each command's
+     * own parser reads its options, and nothing is loaded, run or written. What is refused: what
+     * would end the JVM; a command ROBOT does not have, and {@code expand}; what ROBOT's parser
+     * rejects; JSON on Java 8; a {@code report} or {@code verify} that could not be judged
+     * afterwards; a path that is not absolute; and what {@code query} does not run here.
+     */
+    public static String whyNot(List<String> arguments) {
+        String exits = exits(arguments);
+        if (exits != null) {
+            return exits;
+        }
+        synchronized (ONE_AT_A_TIME) {
+            HostLog log = HostLog.find();
+            if (log == null) {
+                return NO_LOGBACK;
+            }
+            String[] line = log.keeping(arguments);
+            try {
+                log.quiet();
+                Run plan = plan(line);
+                return plan.refusal != null ? plan.refusal : plan.failure;
+            } finally {
+                log.restore();
+            }
+        }
+    }
+
+    private static final String NO_LOGBACK = "ROBOT's command line cannot run here: it sets the "
+            + "level of logback's root logger on every command, and this program does not log "
+            + "through logback.";
+
+    /** Why the line would end the JVM, or null. */
+    private static String exits(List<String> arguments) {
+        for (String argument : arguments) {
+            if (EXITS.contains(argument)) {
+                return "'" + argument + "' makes ROBOT print and exit, which inside Protege "
+                        + "would end Protege. It is not run here.";
+            }
+        }
+        return null;
+    }
+
     /** Whether ODK's ROBOT plugin is in this build, so that the {@code odk:} commands run. */
     public static boolean hasOdkPlugin() {
         return plugin(ODKS[0][1]) != null;
@@ -200,18 +287,14 @@ public final class OdkRobot {
      *                                  be judged afterwards; nothing has run then
      */
     public static Result run(List<String> arguments) {
-        for (String argument : arguments) {
-            if (EXITS.contains(argument)) {
-                throw new IllegalArgumentException("'" + argument + "' makes ROBOT print and "
-                        + "exit, which inside Protege would end Protege. It is not run here.");
-            }
+        String exits = exits(arguments);
+        if (exits != null) {
+            throw new IllegalArgumentException(exits);
         }
         synchronized (ONE_AT_A_TIME) {
             HostLog log = HostLog.find();
             if (log == null) {
-                return new Result(false, Collections.<String>emptyList(), "ROBOT's command "
-                        + "line cannot run here: it sets the level of logback's root logger on "
-                        + "every command, and this program does not log through logback.");
+                return new Result(false, Collections.<String>emptyList(), NO_LOGBACK);
             }
             String[] line = log.keeping(arguments);
             try {
@@ -223,20 +306,27 @@ public final class OdkRobot {
         }
     }
 
-    private static Result run(String[] line) {
-        // First without doing anything: ROBOT's own manager cuts the line into commands, and
-        // what it would run is checked before any of it runs.
+    /**
+     * The line, gone through without doing anything: ROBOT's own manager cuts it into commands,
+     * and what each would run is checked. The run's {@code refusal} is what makes {@link #run}
+     * throw, its {@code failure} what makes it fail before anything has run.
+     */
+    private static Run plan(String[] line) {
         Run plan = new Run(true);
         try {
             manager(plan).execute(null, line);
         } catch (Exception notACommandLine) {
             // The manager's own word on the line: a command it does not know, an option
             // without its value.
-            return new Result(false, Collections.<String>emptyList(), describe(notACommandLine));
+            plan.failure = describe(notACommandLine);
         } catch (LinkageError cannotRun) {
-            return new Result(false, Collections.<String>emptyList(),
-                    "ROBOT could not run here: " + cannotRun + ".");
+            plan.failure = "ROBOT could not run here: " + cannotRun + ".";
         }
+        return plan;
+    }
+
+    private static Result run(String[] line) {
+        Run plan = plan(line);
         if (plan.refusal != null) {
             throw new IllegalArgumentException(plan.refusal);
         }
@@ -347,14 +437,7 @@ public final class OdkRobot {
     private static CommandManager manager(Run run) {
         CommandManager manager = new CommandManager();
         for (String[] robot : ROBOTS) {
-            try {
-                Command command = (Command) Class.forName("org.obolibrary.robot." + robot[1])
-                        .getDeclaredConstructor().newInstance();
-                manager.addCommand(robot[0], new Wrapped(robot[0], command, run));
-            } catch (ReflectiveOperationException notInThisRobot) {
-                throw new IllegalStateException("ROBOT's " + robot[0] + " command is not in "
-                        + "this build", notInThisRobot);
-            }
+            manager.addCommand(robot[0], new Wrapped(robot[0], robot(robot), run));
         }
         for (String[] odk : ODKS) {
             Command command = plugin(odk[1]);
@@ -365,10 +448,16 @@ public final class OdkRobot {
         return manager;
     }
 
+    /**
+     * What went wrong, in ROBOT's words: its message without the page of ROBOT's documentation
+     * it starts with ("errors#UNKNOWN ARG ERROR ..."), as ROBOT's ExceptionHelper prints it.
+     */
     private static String describe(Throwable failed) {
         String said = failed.getMessage();
-        return said == null || said.trim().isEmpty() ? failed.getClass().getSimpleName()
-                : said.trim();
+        if (said == null || said.trim().isEmpty()) {
+            return failed.getClass().getSimpleName();
+        }
+        return said.trim().replaceFirst("^[a-z][a-z-]*#", "");
     }
 
     // ------------------------------------------------------------------ one run
@@ -475,12 +564,30 @@ public final class OdkRobot {
             if (name.equals("verify")) {
                 return verify(state, line);
             }
+            if (name.equals("query")) {
+                return query(state, line);
+            }
             if (NOT_HERE.contains(name)) {
-                throw new IllegalStateException("ROBOT's '" + name + "' is not run inside "
-                        + "Protege: it goes through a part of the OWL API that Protege's own "
-                        + "version does not have. A recipe that needs it needs ODK's container.");
+                throw new IllegalStateException(notHere(name));
             }
             return real.execute(state, args);
+        }
+
+        private static String notHere(String name) {
+            return "ROBOT's '" + name + "' is not run inside Protege: it goes through a part of "
+                    + "the OWL API that Protege's own version does not have. A recipe that needs "
+                    + "it needs ODK's container.";
+        }
+
+        /**
+         * {@code robot query}: ROBOT's options and ROBOT's loading of the input (the catalog
+         * used), the queries on OntoBoard's engine, each output written as ROBOT writes it.
+         */
+        private CommandState query(CommandState state, CommandLine line) throws IOException {
+            CommandState now = input(state, line);
+            RobotQuery.run(now.getOntology(), line,
+                    CommandLineHelper.getBooleanValue(line, "use-graphs", false));
+            return now;
         }
 
         /** The ontology the command works on: the chain's, or its own {@code --input}. */
@@ -580,14 +687,17 @@ public final class OdkRobot {
         }
 
         /**
-         * {@code robot verify}: each query over the ontology's own statements. A query that
-         * returns rows has violations; its rows go where ROBOT puts them - printed, and into
-         * {@code <name>.csv} in the output folder - and the line fails.
+         * {@code robot verify}: each query over the ontology's own statements, as ROBOT's
+         * {@code QueryOperation.runVerify} runs it. ROBOT says a line per query, with its path as
+         * it was given: {@code PASS Rule <path>: 0 violation(s)}, or {@code FAIL Rule <path>: N
+         * violation(s)} and the rows on its error stream. A query that returns rows has
+         * violations; its rows also go into {@code <name>.csv} in the output folder, and the
+         * line fails.
          */
         private CommandState verify(CommandState state, CommandLine line) throws IOException {
             CommandState now = input(state, line);
-            org.apache.jena.rdf.model.Model model =
-                    OntologyDataset.modelOf(alone(now.getOntology()));
+            org.apache.jena.query.Dataset dataset = RobotQuery.datasetOf(now.getOntology(),
+                    false);
             File folder = new File(line.getOptionValue("output-dir"));
             Files.createDirectories(folder.toPath());
             StringBuilder failed = new StringBuilder();
@@ -603,18 +713,20 @@ public final class OdkRobot {
                 org.apache.jena.query.QueryExecution execution =
                         org.apache.jena.query.QueryExecutionFactory.create(new String(
                                 Files.readAllBytes(query.toPath()), StandardCharsets.UTF_8),
-                                model);
+                                dataset);
                 try {
                     org.apache.jena.query.ResultSetRewindable rows =
                             org.apache.jena.query.ResultSetFactory.copyResults(
                                     execution.execSelect());
                     if (rows.size() == 0) {
+                        System.out.println("PASS Rule " + path + ": 0 violation(s)");
                         continue;
                     }
-                    System.err.println("Rule " + query.getAbsolutePath() + ": " + rows.size()
+                    System.out.println("FAIL Rule " + path + ": " + rows.size()
                             + " violation(s)");
                     ByteArrayOutputStream csv = new ByteArrayOutputStream();
-                    org.apache.jena.query.ResultSetFormatter.outputAsCSV(csv, rows);
+                    org.apache.jena.riot.ResultSetMgr.write(csv, rows,
+                            org.apache.jena.riot.Lang.CSV);
                     System.err.print(new String(csv.toByteArray(), StandardCharsets.UTF_8));
                     Files.write(result.toPath(), csv.toByteArray());
                     failed.append(failed.length() == 0 ? "" : ", ").append(check).append(" (")
@@ -623,6 +735,7 @@ public final class OdkRobot {
                     execution.close();
                 }
             }
+            dataset.close();
             if (failed.length() > 0) {
                 run.failure = "ROBOT's verify found violations: " + failed + ". The rows are in "
                         + folder.getAbsolutePath() + ".";
@@ -685,16 +798,39 @@ public final class OdkRobot {
 
         /** What must hold before the line is run at all. */
         private void check(CommandLine line) {
-            for (String option : PATHS) {
-                String[] values = real.getOptions().hasLongOption(option)
-                        ? line.getOptionValues(option) : null;
-                for (String value : values == null ? new String[0] : values) {
-                    if (!new File(value).isAbsolute()) {
-                        throw new Refused("'" + name + " --" + option + " " + value + "': a "
+            if (NOT_HERE.contains(name)) {
+                // A failure, as when it was found only while running: nothing has run.
+                throw new IllegalStateException(notHere(name));
+            }
+            // Every value that names a file - by RobotPaths' table of every option - is absolute.
+            for (Option option : line.getOptions()) {
+                RobotPaths.Kind kind;
+                try {
+                    kind = RobotPaths.kind(name, option);
+                } catch (RobotPaths.Unknown unknown) {
+                    throw new Refused(unknown.getMessage());
+                }
+                if (kind != RobotPaths.Kind.FILE && kind != RobotPaths.Kind.FILES
+                        && kind != RobotPaths.Kind.FILE_PAIRS) {
+                    continue;
+                }
+                for (String value : option.getValues() == null ? new String[0]
+                        : option.getValues()) {
+                    String lower = value.toLowerCase(Locale.ROOT);
+                    if (!new File(value).isAbsolute() && !lower.startsWith("http:")
+                            && !lower.startsWith("https:") && !lower.startsWith("file:")) {
+                        throw new Refused("'" + name + " --" + (option.getLongOpt() != null
+                                ? option.getLongOpt() : option.getOpt()) + " " + value + "': a "
                                 + "path given to ROBOT inside Protege has to be absolute. A "
                                 + "relative one is read against the folder Protege was started "
                                 + "from.");
                     }
+                }
+            }
+            if (name.equals("query")) {
+                String why = RobotQuery.whyNot(line);
+                if (why != null) {
+                    throw new Refused(why);
                 }
             }
             if (!name.equals("report") && !name.equals("verify") && writesJson(line)) {

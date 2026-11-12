@@ -177,6 +177,23 @@ public final class Goldens {
         return names;
     }
 
+    // ------------------------------------------------------------- the equivalence runs
+
+    /**
+     * The project ODK's make ran in for {@code equivalence/egg}: the eggboil seed, with the
+     * overlay's files laid over it - path with {@code /} to bytes.
+     */
+    public static Map<String, byte[]> eggProject() {
+        Map<String, byte[]> files = new TreeMap<String, byte[]>(seedTree("eggboil"));
+        files.putAll(tree(new File(root(), "equivalence/egg/overlay")));
+        return files;
+    }
+
+    /** A file of the equivalence runs: {@code equivalence/egg/<path>}, as bytes. */
+    public static byte[] equivalence(String path) {
+        return bytes(new File(root(), "equivalence/egg/" + path));
+    }
+
     /** The seeded projects the make goldens were recorded for: the folders under {@code seed/}. */
     public static List<String> seedNames() {
         List<String> names = new ArrayList<String>();
