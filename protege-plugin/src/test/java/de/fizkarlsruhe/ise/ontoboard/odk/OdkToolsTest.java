@@ -98,6 +98,28 @@ class OdkToolsTest {
         assertFalse(new File("tmp/myont-preprocess.owl").exists(), "not in the JVM's folder");
     }
 
+    /**
+     * A report's profile may name a check of the project's own by a path from the folder make
+     * runs in ({@code file:../sparql/...}). ROBOT reads such a path against its own folder;
+     * here that is the recipe's.
+     */
+    @Test
+    void aCheckTheProfileNamesFromTheRecipesFolderIsRun() throws IOException {
+        write("myont-edit.ofn", ONTOLOGY);
+        write("../sparql/every-label.rq", "PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>\n"
+                + "SELECT ?entity ?property ?value WHERE {\n"
+                + "  VALUES ?property { rdfs:label }\n  ?entity ?property ?value .\n}\n");
+        write("profile.txt", "INFO\tfile:../sparql/every-label.rq\n");
+        write("reports/.gitkeep", "");
+
+        assertEquals(0, run("robot report -i myont-edit.ofn --profile profile.txt "
+                + "--fail-on ERROR -o reports/report.tsv"), said.toString());
+
+        String report = new String(Files.readAllBytes(
+                new File(folder, "reports/report.tsv").toPath()), StandardCharsets.UTF_8);
+        assertTrue(report.contains("INFO\tevery-label\t"), report);
+    }
+
     @Test
     void robotSaysAFailureWithThePathsAsWritten() {
         assertEquals(1, run("robot convert --input not-there.owl --format ofn --output x.ofn"));

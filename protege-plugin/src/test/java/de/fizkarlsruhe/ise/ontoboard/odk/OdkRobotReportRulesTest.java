@@ -326,6 +326,43 @@ class OdkRobotReportRulesTest {
                 + "names ('kitchen_rule') are not valid default rules");
     }
 
+    /**
+     * Told the folder the line runs in - for a recipe, the folder make runs in - a relative
+     * path is read against it, as ROBOT reads it against its own folder: the rule is run.
+     */
+    @Test
+    void toldTheFolderTheLineRunsInARelativeRuleIsReadAgainstIt(@TempDir File temp)
+            throws Exception {
+        File folder = new File(temp, "src/ontology");
+        file(temp, "src/sparql/kitchen-comments.rq", COMMENTS);
+        File profile = file(folder, "profile.txt",
+                "WARN\tfile:../sparql/kitchen-comments.rq\n");
+        File report = new File(folder, "report.tsv");
+        List<String> line = line(temp, profile, report, "none");
+
+        assertNull(OdkRobot.whyNot(line, folder), "nothing stands in its way");
+        OdkRobot.Result result = OdkRobot.run(line, folder);
+
+        assertTrue(result.ok(), String.valueOf(result.failure()));
+        assertEquals(HEADER + "\n"
+                + "WARN\tkitchen-comments\thttps://example.org/e/Pan\trdfs:comment\tno label\n",
+                text(report));
+    }
+
+    /** One that is not there fails as ROBOT fails, naming the path as the profile has it. */
+    @Test
+    void aRelativeRuleThatIsNotThereFailsWithThePathAsTheProfileHasIt(@TempDir File temp)
+            throws Exception {
+        File folder = new File(temp, "src/ontology");
+        File profile = file(folder, "profile.txt", "WARN\tfile:../sparql/not-there.rq\n");
+        File report = new File(folder, "report.tsv");
+
+        OdkRobot.Result result = OdkRobot.run(line(temp, profile, report, "none"), folder);
+
+        failedBeforeAnything(result, report, "MISSING QUERY ERROR query at '"
+                + new File("../sparql/not-there.rq").getPath() + "' does not exist.");
+    }
+
     // ------------------------------------------------------------------ a query that cannot run
 
     @Test

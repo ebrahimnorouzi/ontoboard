@@ -313,13 +313,17 @@ final class RobotReport {
      * first every name ROBOT ships a query for, failing in ROBOT's words when one is not
      * (all such names, in the order of ROBOT's HashSet); then every {@code file:} rule's file,
      * failing when one is not there; a {@code file:} rule is named after its file, without the
-     * folder and the extension.
+     * folder and the extension. A path that does not start at a root is read against the folder
+     * the line runs in, as ROBOT reads it against its own.
      *
+     * @param folder the folder the line runs in - for a recipe, the folder make runs in - or
+     *               null when it is not known
      * @throws IllegalStateException for a {@code file:} rule by a path that does not start at a
-     *                               root - refused before the line runs ({@link #whyNotRules});
-     *                               here only should the profile have changed in between
+     *                               root when the folder is not known - refused before the line
+     *                               runs ({@link #whyNotRules}); here only should the profile
+     *                               have changed in between
      */
-    static List<Rule> rules(Profile profile) throws Exception {
+    static List<Rule> rules(Profile profile, File folder) throws Exception {
         Set<String> shipped = new HashSet<String>();
         Set<String> own = new HashSet<String>();
         split(profile, shipped, own);
@@ -336,14 +340,16 @@ final class RobotReport {
                     + "names ('%s') are not valid default rules", String.join(", ", shipped)));
         }
         for (String rule : own) {
-            File file = queryFile(rule);
-            if (!file.isAbsolute()) {
+            // ROBOT's own word on the file is its path as the profile has it.
+            File named = queryFile(rule);
+            File file = where(named, folder);
+            if (file == null) {
                 throw new IllegalStateException(notHere(rule));
             }
             if (!file.exists()) {
                 throw new IOException(String.format(
                         "report#MISSING QUERY ERROR query at '%s' does not exist.",
-                        file.getPath()));
+                        named.getPath()));
             }
             queries.put(rule, new String(Files.readAllBytes(file.toPath()),
                     StandardCharsets.UTF_8));
@@ -360,11 +366,13 @@ final class RobotReport {
     /**
      * Why the profile's rules cannot be run here as ROBOT runs them, or null: a {@code file:}
      * rule by a path that does not start at a root, which ROBOT reads against the folder it
-     * runs in. Null as well where ROBOT fails before it gets to that rule - a profile it cannot
-     * read, a rule it does not ship, a file before it that is not there: the line then runs and
-     * fails as ROBOT fails.
+     * runs in, when that folder is not known. Null as well where ROBOT fails before it gets to
+     * that rule - a profile it cannot read, a rule it does not ship, a file before it that is
+     * not there: the line then runs and fails as ROBOT fails.
+     *
+     * @param folder the folder the line runs in, or null when it is not known
      */
-    static String whyNotRules(String path) {
+    static String whyNotRules(String path, File folder) {
         Set<String> shipped = new HashSet<String>();
         Set<String> own = new HashSet<String>();
         try {
@@ -375,8 +383,8 @@ final class RobotReport {
                 }
             }
             for (String rule : own) {
-                File file = queryFile(rule);
-                if (!file.isAbsolute()) {
+                File file = where(queryFile(rule), folder);
+                if (file == null) {
                     return notHere(rule);
                 }
                 if (!file.exists()) {
@@ -391,9 +399,20 @@ final class RobotReport {
 
     private static String notHere(String rule) {
         return "The profile's rule '" + rule + "' names its query by a path that does not start "
-                + "at a root. ROBOT reads such a path against the folder it runs in, which inside "
-                + "Protege is not the project's folder, so the report is not run here. Give the "
-                + "path from its root, or run this in ODK's container.";
+                + "at a root. ROBOT reads such a path against the folder it runs in, and for this "
+                + "line that folder is not known here, so the report is not run. Give the path "
+                + "from its root.";
+    }
+
+    /**
+     * Where a rule's file is: where its path says when that starts at a root, else in the folder
+     * the line runs in; null when the path does not start at a root and no folder is known.
+     */
+    private static File where(File named, File folder) {
+        if (named.isAbsolute()) {
+            return named;
+        }
+        return folder == null ? null : new File(folder, named.getPath());
     }
 
     /** The profile's rules as ROBOT sorts them: names it ships, and {@code file:} rules. */

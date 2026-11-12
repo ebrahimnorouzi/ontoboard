@@ -65,7 +65,7 @@ final class OdkTools {
         @Override
         public String whyNot(List<String> arguments) {
             try {
-                String why = OdkRobot.whyNot(RobotPaths.absolute(arguments, ASKING));
+                String why = OdkRobot.whyNot(RobotPaths.absolute(arguments, ASKING), ASKING);
                 return why == null ? null : asWritten(why, ASKING);
             } catch (RobotPaths.Unknown unknown) {
                 return unknown.getMessage();
@@ -77,7 +77,7 @@ final class OdkTools {
             File folder = call.folder();
             OdkRobot.Result result;
             try {
-                result = OdkRobot.run(RobotPaths.absolute(call.arguments(), folder));
+                result = OdkRobot.run(RobotPaths.absolute(call.arguments(), folder), folder);
             } catch (IllegalArgumentException refused) {
                 // RobotPaths' Unknown among them. Asked before, so only what changed since.
                 call.complain(asWritten(String.valueOf(refused.getMessage()), folder));

@@ -223,6 +223,14 @@ public final class OdkRobot {
      * afterwards; a path that is not absolute; and what {@code query} does not run here.
      */
     public static String whyNot(List<String> arguments) {
+        return whyNot(arguments, null);
+    }
+
+    /**
+     * Why this command line would be refused, or null, when it runs in a folder: see
+     * {@link #run(List, File)}.
+     */
+    public static String whyNot(List<String> arguments, File folder) {
         String exits = exits(arguments);
         if (exits != null) {
             return exits;
@@ -235,7 +243,7 @@ public final class OdkRobot {
             String[] line = log.keeping(arguments);
             try {
                 log.asOnRobotsCommandLine(arguments);
-                Run plan = plan(line);
+                Run plan = plan(line, folder);
                 return plan.refusal != null ? plan.refusal : plan.failure;
             } finally {
                 log.restore();
@@ -284,6 +292,21 @@ public final class OdkRobot {
      *                                  be judged afterwards; nothing has run then
      */
     public static Result run(List<String> arguments) {
+        return run(arguments, null);
+    }
+
+    /**
+     * Runs one ROBOT command line that runs in a folder, as a recipe's line runs in the folder
+     * make runs in.
+     *
+     * <p>The line's own paths are absolute all the same ({@link RobotPaths} makes a recipe's
+     * so). The folder is for the paths ROBOT finds inside a file it reads and takes against the
+     * folder it runs in: a report profile's {@code file:../sparql/mine.rq}. Without a folder
+     * such a path cannot be read, and the line is refused.
+     *
+     * @param folder the folder the line runs in, or null when there is none to name
+     */
+    public static Result run(List<String> arguments, File folder) {
         String exits = exits(arguments);
         if (exits != null) {
             throw new IllegalArgumentException(exits);
@@ -296,7 +319,7 @@ public final class OdkRobot {
             String[] line = log.keeping(arguments);
             try {
                 log.asOnRobotsCommandLine(arguments);
-                return run(line);
+                return run(line, folder);
             } finally {
                 log.restore();
             }
@@ -308,8 +331,8 @@ public final class OdkRobot {
      * and what each would run is checked. The run's {@code refusal} is what makes {@link #run}
      * throw, its {@code failure} what makes it fail before anything has run.
      */
-    private static Run plan(String[] line) {
-        Run plan = new Run(true);
+    private static Run plan(String[] line, File folder) {
+        Run plan = new Run(true, folder);
         try {
             manager(plan).execute(null, line);
         } catch (Exception notACommandLine) {
@@ -322,8 +345,8 @@ public final class OdkRobot {
         return plan;
     }
 
-    private static Result run(String[] line) {
-        Run plan = plan(line);
+    private static Result run(String[] line, File folder) {
+        Run plan = plan(line, folder);
         if (plan.refusal != null) {
             throw new IllegalArgumentException(plan.refusal);
         }
@@ -331,7 +354,7 @@ public final class OdkRobot {
             return new Result(false, Collections.<String>emptyList(), plan.failure);
         }
 
-        Run run = new Run(false);
+        Run run = new Run(false, folder);
         ByteArrayOutputStream printed = new ByteArrayOutputStream();
         PrintStream out = System.out;
         PrintStream err = System.err;
@@ -534,8 +557,12 @@ public final class OdkRobot {
         /** Why the line is not run at all: said by the pass that only looks. */
         String refusal;
 
-        Run(boolean dry) {
+        /** The folder the line runs in, for paths inside the files it reads; or null. */
+        final File folder;
+
+        Run(boolean dry, File folder) {
             this.dry = dry;
+            this.folder = folder;
         }
     }
 
@@ -674,7 +701,7 @@ public final class OdkRobot {
             // getReport: the profile, the rules' queries, then the ontology as ROBOT's dataset
             // holds it - its own statements, under its name and as the default graph.
             List<RobotReport.Rule> queries = RobotReport.rules(RobotReport.profile(
-                    options.get("profile")));
+                    options.get("profile")), run.folder);
             org.apache.jena.query.Dataset dataset = RobotQuery.datasetOf(now.getOntology(),
                     false);
             List<de.fizkarlsruhe.ise.ontoboard.robot.QualityFinding> rows;
@@ -871,7 +898,8 @@ public final class OdkRobot {
                     throw new Refused(unported);
                 }
                 // A rule of the project's own by a relative path: ROBOT's folder is not known.
-                String unrun = RobotReport.whyNotRules(line.getOptionValue("profile"));
+                String unrun = RobotReport.whyNotRules(line.getOptionValue("profile"),
+                        run.folder);
                 if (unrun != null) {
                     throw new Refused(unrun);
                 }
