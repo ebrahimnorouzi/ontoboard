@@ -248,6 +248,68 @@ public final class OdkRelease {
         };
     }
 
+    /**
+     * OntoBoard itself in ODK's place, for a machine where ODK's container does not run:
+     * make's targets are run by OntoBoard's own engine ({@link OdkEngine}) - ODK's Makefile
+     * read and run as make runs it, ROBOT inside this JVM, no container, no make, no shell.
+     *
+     * <p>What is no target of make is not run this way: a project's own release script is a
+     * shell script, and what it does between its calls of make is the shell's to do.
+     *
+     * @param stopped asked before each line of a recipe: whether the person has stopped the
+     *                run; may be null
+     */
+    public static Odk byOntoBoardItself(final File editFile,
+            final java.util.function.BooleanSupplier stopped) {
+        return new Odk() {
+            @Override
+            public ProcessRunner.Outcome run(List<String> command, boolean passThroughRunSh) {
+                if (command.isEmpty() || !command.get(0).equals("make")) {
+                    return refused("'" + String.join(" ", command) + "' is no target of make. "
+                            + "OntoBoard itself runs ODK's Makefile; a script of the project's "
+                            + "own is run by a shell, in ODK's container.");
+                }
+                String goal = null;
+                Map<String, String> variables = new LinkedHashMap<String, String>();
+                for (String word : command.subList(1, command.size())) {
+                    int equals = word.indexOf('=');
+                    if (word.equals("-s")) {
+                        // make's "say no recipe line": asked for where only what a recipe
+                        // prints is wanted. The lines make says are told apart by whoever
+                        // reads the output.
+                        continue;
+                    } else if (equals > 0
+                            && word.substring(0, equals).matches("[A-Za-z_][A-Za-z0-9_.-]*")) {
+                        variables.put(word.substring(0, equals), word.substring(equals + 1));
+                    } else if (goal == null && !word.startsWith("-")) {
+                        goal = word;
+                    } else {
+                        return refused("'" + word + "' on make's command line is not read by "
+                                + "OntoBoard's own engine: it takes one target and variables.");
+                    }
+                }
+                if (goal == null) {
+                    return refused("make without a target is not run by OntoBoard's own engine.");
+                }
+                OdkEngine.Outcome outcome = OdkEngine.run(editFile, goal, variables, stopped);
+                List<String> said = new ArrayList<String>(outcome.getTranscript());
+                if (!outcome.isOk()) {
+                    said.add(outcome.getFailure());
+                }
+                return new ProcessRunner.Outcome(outcome.isOk() ? 0 : 2, said, false);
+            }
+
+            @Override
+            public String shown(List<String> command, boolean passThroughRunSh) {
+                return ReleaseRun.shown(command) + "   (run by OntoBoard itself, inside Protege)";
+            }
+
+            private ProcessRunner.Outcome refused(String why) {
+                return new ProcessRunner.Outcome(1, Collections.singletonList(why), false);
+            }
+        };
+    }
+
     // ------------------------------------------------------------------ what came of it
 
     /** What a release did. */

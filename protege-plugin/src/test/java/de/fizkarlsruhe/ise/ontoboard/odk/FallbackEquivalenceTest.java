@@ -1,6 +1,8 @@
 package de.fizkarlsruhe.ise.ontoboard.odk;
 
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -22,10 +24,12 @@ import java.util.TreeSet;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.api.io.TempDir;
 import org.semanticweb.owlapi.apibinding.OWLManager;
 import org.semanticweb.owlapi.model.OWLOntology;
 import org.semanticweb.owlapi.model.parameters.Imports;
+import org.semanticweb.owlapi.util.VersionInfo;
 
 /**
  * A whole target, run by OntoBoard's own engine, held against the same target as ODK's own make
@@ -97,6 +101,141 @@ class FallbackEquivalenceTest {
         }
     }
 
+    /**
+     * ODK's fast release - the release without fetching the imports again - run by OntoBoard's
+     * own engine: the tests first, then ODK's tables of the ontology, the products in OWL and
+     * in OBO, copied to the top of the project as ODK copies them.
+     */
+    @Test
+    void theFastReleaseRunsHereAsItRanInOdksImage() throws Exception {
+        File ontology = EggFixture.write(top, false);
+        allOfTheSameAge(top);
+        Map<String, String> before = hashes(top);
+        File edit = new File(ontology, "eggboil-edit.owl");
+
+        assertNull(OdkEngine.whyNot(edit, "prepare_release_fast", AS_RECORDED),
+                "asked beforehand, it can");
+        OdkEngine.Outcome outcome = OdkEngine.run(edit, "prepare_release_fast", AS_RECORDED,
+                null);
+
+        List<String> ours = lines(String.join("\n", outcome.getTranscript()));
+        keep("prepare_release_fast.transcript.txt", ours);
+        assertTrue(outcome.isOk(), outcome.getFailure() + "\n" + String.join("\n", ours));
+        List<String> recorded = lines(text("prepare_release_fast/transcript.txt"));
+
+        assertEquals(String.join("\n", saidByMake(recorded)), String.join("\n", saidByMake(ours)),
+                "every recipe line make said, in the order it ran them");
+        assertEquals(starting("PASS Rule ", recorded), starting("PASS Rule ", ours),
+                "what ROBOT said of each check");
+
+        Set<String> made = madeSince(before, top);
+        keep("prepare_release_fast.made.txt", new ArrayList<String>(made));
+        assertEquals(recordedFiles("prepare_release_fast"), made,
+                "the files the release made: the products at the top, the tables, the verdict");
+
+        for (String table : new String[] {"basic-report", "class-count-by-prefix", "edges",
+            "obsoletes", "synonyms", "xrefs", "eggboil-edit.owl-obo-report"}) {
+            String path = "src/ontology/reports/" + table + ".tsv";
+            String here = read(new File(top, path));
+            assertEquals(rows(text("prepare_release_fast/files/" + path)), rows(here),
+                    table + ": its header, and its rows in any order");
+            assertFalse(here.contains("\r"), table + ": lines end as in ODK's table");
+        }
+
+        String verdict = "src/ontology/reports/validate_profile_owl2dl_eggboil.owl.txt";
+        assertEquals(text("prepare_release_fast/files/" + verdict).trim(),
+                read(new File(top, verdict)).trim(), "the profile's verdict");
+
+        List<Executable> products = new ArrayList<Executable>();
+        for (final String product : new String[] {"eggboil.owl", "eggboil-base.owl",
+            "eggboil-full.owl", "eggboil.obo", "eggboil-base.obo", "eggboil-full.obo",
+            "src/ontology/tmp/validate.ofn"}) {
+            File kept = new File("target/fallback-equivalence/prepare_release_fast."
+                    + new File(product).getName());
+            Files.copy(new File(top, product).toPath(), kept.toPath(),
+                    java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            final File theirs = new File(top, "recorded/" + product);
+            Files.createDirectories(theirs.getParentFile().toPath());
+            Files.write(theirs.toPath(),
+                    Goldens.equivalence("prepare_release_fast/files/" + product));
+            products.add(new Executable() {
+                @Override
+                public void execute() throws Throwable {
+                    assertSameProduct(product, theirs, new File(top, product));
+                }
+            });
+        }
+        assertAll("the release's products, each held against ODK's", products);
+    }
+
+    // ------------------------------------------------------------------ the products
+
+    /**
+     * ODK's ROBOT writes with OWL API 4.5.29. Protege 5.6.9 has the same one; Protege 5.5.0
+     * has 4.5.9, which is also what these tests run on unless told otherwise
+     * ({@code -Dowlapi.version=4.5.29}).
+     */
+    private static boolean onOdksOwlApi() {
+        return VersionInfo.getVersionInfo().getVersion().startsWith("4.5.29");
+    }
+
+    /**
+     * A product of the release against ODK's, as closely as the OWL API this runs on allows.
+     *
+     * <p>On ODK's own OWL API the file is ODK's character for character, but for the one line
+     * in which the OWL API names its own build. On the older one the content is the same and
+     * the writing differs where that OWL API writes otherwise: in OBO the header names the
+     * Dublin Core properties in full where ODK's declares short names for them; in RDF/XML a
+     * plain string carries its datatype - so there the ontologies are compared, not the text.
+     */
+    private static void assertSameProduct(String name, File theirs, File ours) throws Exception {
+        if (onOdksOwlApi()) {
+            assertEquals(butForTheLineOfTheOwlApi(read(theirs)),
+                    butForTheLineOfTheOwlApi(read(ours)), name + ": ODK's file, character for "
+                            + "character but for the line in which the OWL API names its build");
+        } else if (name.endsWith(".obo")) {
+            assertEquals(String.join("\n", withItsShortNamesInFull(lines(read(theirs)))),
+                    String.join("\n", lines(read(ours))), name + ": ODK's file, the short names "
+                            + "of its header written in full as the older OWL API writes them");
+        } else {
+            assertSameOntology(name, theirs, ours);
+        }
+    }
+
+    private static String butForTheLineOfTheOwlApi(String text) {
+        return text.replaceAll("<!-- Generated by the OWL API \\(version [^)]*\\) "
+                + "https://github.com/owlcs/owlapi -->", "<!-- Generated by the OWL API -->");
+    }
+
+    /**
+     * An OBO file's lines without its {@code idspace} lines, and with every header property
+     * they give a short name to written by its whole IRI.
+     */
+    private static List<String> withItsShortNamesInFull(List<String> obo) {
+        Map<String, String> spaces = new LinkedHashMap<String, String>();
+        for (String line : obo) {
+            if (line.startsWith("idspace: ")) {
+                String[] parts = line.split(" ");
+                spaces.put(parts[1] + ":", parts[2]);
+            }
+        }
+        List<String> inFull = new ArrayList<String>();
+        for (String line : obo) {
+            if (line.startsWith("idspace: ")) {
+                continue;
+            }
+            String written = line;
+            for (Map.Entry<String, String> space : spaces.entrySet()) {
+                if (line.startsWith("property_value: " + space.getKey())) {
+                    written = "property_value: " + space.getValue()
+                            + line.substring(("property_value: " + space.getKey()).length());
+                }
+            }
+            inFull.add(written);
+        }
+        return inFull;
+    }
+
     // ------------------------------------------------------------------ what is compared
 
     /**
@@ -107,12 +246,12 @@ class FallbackEquivalenceTest {
     private static List<String> saidByMake(List<String> transcript) {
         List<String> said = new ArrayList<String>();
         for (String line : transcript) {
-            if (line.startsWith("make[1]: Entering directory")
-                    || line.startsWith("make[1]: Leaving directory")) {
+            if (line.matches("make\\[\\d+\\]: (Entering|Leaving) directory .*")) {
                 said.add(line.substring(0, line.indexOf("directory") + "directory".length()));
             } else if (line.startsWith("robot ") || line.startsWith("mkdir ")
                     || line.startsWith("if [") || line.equals("fi") || line.startsWith("echo ")
-                    || line.startsWith("make ") || line.startsWith("\t")) {
+                    || line.startsWith("make ") || line.startsWith("rsync ")
+                    || line.startsWith("rm ") || line.startsWith("\t")) {
                 said.add(line);
             }
         }
