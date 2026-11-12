@@ -2,12 +2,16 @@ package de.fizkarlsruhe.ise.ontoboard.menu;
 
 import de.fizkarlsruhe.ise.ontoboard.odk.MakeRun;
 import de.fizkarlsruhe.ise.ontoboard.odk.OdkContainer;
+import de.fizkarlsruhe.ise.ontoboard.odk.OdkEngine;
 import de.fizkarlsruhe.ise.ontoboard.odk.OdkImage;
 import de.fizkarlsruhe.ise.ontoboard.odk.OdkRelease;
+import de.fizkarlsruhe.ise.ontoboard.odk.OdkRoute;
 import de.fizkarlsruhe.ise.ontoboard.odk.OntologyVersion;
 import de.fizkarlsruhe.ise.ontoboard.odk.Release;
 import de.fizkarlsruhe.ise.ontoboard.odk.ReleaseDiff;
+import de.fizkarlsruhe.ise.ontoboard.odk.ReleaseRoute;
 import de.fizkarlsruhe.ise.ontoboard.odk.ReleaseRun;
+import de.fizkarlsruhe.ise.ontoboard.odk.Toolchain;
 import de.fizkarlsruhe.ise.ontoboard.proc.ProcessRunner;
 import de.fizkarlsruhe.ise.ontoboard.prov.EditorNotes;
 import de.fizkarlsruhe.ise.ontoboard.robot.QualityFinding;
@@ -75,6 +79,10 @@ public class ReleaseAction extends OntoBoardAction {
     private volatile String image = MakeRun.DEFAULT_IMAGE;
     private volatile String imageNote;
     private volatile OdkContainer.Host host = OdkContainer.Host.unknown();
+
+    /** Who builds the release of an ODK project, decided when Release... is chosen. */
+    private volatile ReleaseRoute odkRoute;
+    private volatile File odkEditFile;
 
     @Override
     protected String operationName() {
@@ -174,30 +182,64 @@ public class ReleaseAction extends OntoBoardAction {
     }
 
     /**
-     * Release... for an ODK project: where ODK can run, then the form.
+     * Release... for an ODK project: who builds it, then the form.
      *
-     * <p>What cannot work is said here, before the form: a release script OntoBoard cannot
-     * run, no container runtime, no ODK image on the machine. An image is never fetched on the
-     * quiet - it is five gigabytes.
+     * <p>ODK's own tools where they are installed on the machine, else ODK in its container,
+     * else OntoBoard itself with ODK's Makefile ({@link ReleaseRoute}). What cannot work is
+     * said here, before the form: a release script that cannot be run; the setting "always in
+     * a container" without one; a project OntoBoard itself does not build. An image is never
+     * fetched on the quiet - it is five gigabytes.
      */
     private boolean configureOdk(File editFile, OntologyVersion declared, String today) {
         ProcessRunner.Runner real = ProcessRunner.real();
         OdkReleaseForm.Start start = OdkReleaseForm.start(editFile, declared, today, real);
+        if (start.refusal() != null) {
+            javax.swing.JOptionPane.showMessageDialog(getOWLWorkspace(),
+                    wrapped(start.refusal()), "Cannot release",
+                    javax.swing.JOptionPane.INFORMATION_MESSAGE);
+            return false;
+        }
         String found = MakeRun.containerRuntime(real);
         OdkImage.Choice choice = found == null ? null : OdkImage.forProject(
                 start.facts().ontology(), OdkImage.probe(found, real));
-        String cannot = start.refusal() != null ? start.refusal()
-                : found == null ? OdkReleaseForm.NO_RUNTIME
-                        : choice.reference() == null ? choice.note() : null;
-        if (cannot != null) {
-            javax.swing.JOptionPane.showMessageDialog(getOWLWorkspace(), wrapped(cannot),
-                    "Cannot release", javax.swing.JOptionPane.INFORMATION_MESSAGE);
+        boolean container = choice != null && choice.reference() != null;
+        OdkRoute.Use use = OdkRoute.use();
+        boolean nativeEnvironment = Toolchain.nativeEnvironment() != null;
+        String script = start.script() == null ? null : start.script().file().getName();
+        String noContainer = container ? null
+                : found == null ? OdkRoute.noContainerBecause(real)
+                        : "ODK's image is not on this machine";
+        // OntoBoard's own engine is asked only where it would be the one to build: reading
+        // the Makefile through for two targets takes a moment.
+        String whyNotFast = null;
+        String whyNotFull = null;
+        if (!container && script == null && OdkRoute.mayRunWithoutContainer(use)
+                && !nativeEnvironment) {
+            Map<String, String> variables = java.util.Collections.singletonMap("VERSION",
+                    OdkReleaseForm.defaults(start).get(OdkReleaseForm.VERSION));
+            whyNotFast = OdkEngine.whyNot(editFile, "prepare_release_fast", variables);
+            whyNotFull = whyNotFast != null ? whyNotFast
+                    : OdkEngine.whyNot(editFile, "prepare_release", variables);
+        }
+        ReleaseRoute route = ReleaseRoute.decide(nativeEnvironment, container, use, noContainer,
+                container || choice == null ? null : choice.note(), script, whyNotFast,
+                whyNotFull);
+        if (route.refusal() != null) {
+            javax.swing.JOptionPane.showMessageDialog(getOWLWorkspace(),
+                    wrapped(route.refusal()), "Cannot release",
+                    javax.swing.JOptionPane.INFORMATION_MESSAGE);
             return false;
         }
-        runtime = found;
-        image = choice.reference();
-        imageNote = choice.note();
-        host = OdkContainer.Host.detect(found, real);
+        start = start.withRoute(route);
+        odkRoute = route;
+        odkEditFile = editFile;
+        imageNote = null;
+        if (route.kind() == ReleaseRoute.Kind.CONTAINER) {
+            runtime = found;
+            image = choice.reference();
+            imageNote = choice.note();
+            host = OdkContainer.Host.detect(found, real);
+        }
 
         // Before the build, not in the question after it: a release's commit leaves new files
         // out, and a tag without a new import module is a project that does not build.
@@ -253,12 +295,28 @@ public class ReleaseAction extends OntoBoardAction {
         return text;
     }
 
-    /** The release of an ODK project, on the worker thread. */
+    /** The release of an ODK project, on the worker thread, by whoever builds it. */
     private OperationResult releaseWithOdk() {
         final OdkReleaseForm.Start start = odkStart;
-        return OdkReleaseForm.run(operationName(), start, odkChosen,
-                OdkRelease.inContainer(runtime, image, host, start.facts().ontology(),
-                        ProcessRunner.real(), null),
+        ReleaseRoute.Kind by = odkRoute == null ? ReleaseRoute.Kind.CONTAINER : odkRoute.kind();
+        OdkRelease.Odk odk;
+        if (by == ReleaseRoute.Kind.ITSELF) {
+            odk = OdkRelease.byOntoBoardItself(odkEditFile,
+                    new java.util.function.BooleanSupplier() {
+                        @Override
+                        public boolean getAsBoolean() {
+                            return BackgroundRun.abandoned();
+                        }
+                    });
+        } else if (by == ReleaseRoute.Kind.NATIVE) {
+            odk = OdkRelease.inNativeEnvironment(
+                    Toolchain.activationScript(Toolchain.nativeEnvironment()),
+                    start.facts().ontology(), ProcessRunner.real(), null);
+        } else {
+            odk = OdkRelease.inContainer(runtime, image, host, start.facts().ontology(),
+                    ProcessRunner.real(), null);
+        }
+        return OdkReleaseForm.run(operationName(), start, odkChosen, odk,
                 ProcessRunner.real(), new OdkRelease.Asks() {
                     @Override
                     public boolean commit(ReleaseRun.Staging staging) {

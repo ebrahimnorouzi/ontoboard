@@ -4,6 +4,7 @@ import de.fizkarlsruhe.ise.ontoboard.git.GitRepo;
 import de.fizkarlsruhe.ise.ontoboard.odk.GitTags;
 import de.fizkarlsruhe.ise.ontoboard.odk.OdkRelease;
 import de.fizkarlsruhe.ise.ontoboard.odk.OntologyVersion;
+import de.fizkarlsruhe.ise.ontoboard.odk.ReleaseRoute;
 import de.fizkarlsruhe.ise.ontoboard.odk.ReleaseRun;
 import de.fizkarlsruhe.ise.ontoboard.odk.VersionIriShape;
 import de.fizkarlsruhe.ise.ontoboard.proc.ProcessRunner;
@@ -36,11 +37,6 @@ final class OdkReleaseForm {
     /** The choice that makes the pattern field count. */
     static final String OWN_PATTERN = "The pattern typed below";
 
-    /** Said when Release... is chosen on a machine where ODK's container cannot run. */
-    static final String NO_RUNTIME = "A release of an ODK project is built by ODK itself, in "
-            + "its container, and neither Docker nor Podman is running on this machine. Start "
-            + "Docker Desktop - or Podman - and choose Release... again.";
-
     /** How many released versions the help of the version field names. */
     private static final int VERSIONS_NAMED = 5;
 
@@ -68,11 +64,22 @@ final class OdkReleaseForm {
         private final String refusal;
         /** The working tree as git sees it; null without a repository or without git. */
         private final GitRepo.Status status;
+        /** Who builds the release; null for ODK in its container, the route of old. */
+        private final ReleaseRoute route;
 
         private Start(File editFile, OdkRelease.Facts facts, List<String> tags,
                 List<OntologyVersion> released, OdkRelease.Proposal proposal,
                 ReleaseRun.Script script, OntologyVersion declared, String today,
                 String refusal, GitRepo.Status status) {
+            this(editFile, facts, tags, released, proposal, script, declared, today, refusal,
+                    status, null);
+        }
+
+        private Start(File editFile, OdkRelease.Facts facts, List<String> tags,
+                List<OntologyVersion> released, OdkRelease.Proposal proposal,
+                ReleaseRun.Script script, OntologyVersion declared, String today,
+                String refusal, GitRepo.Status status, ReleaseRoute route) {
+            this.route = route;
             this.status = status;
             this.editFile = editFile;
             this.facts = facts;
@@ -97,6 +104,25 @@ final class OdkReleaseForm {
         /** The project's own release script, or null when ODK's target releases it. */
         ReleaseRun.Script script() {
             return script;
+        }
+
+        /**
+         * The same project, with who builds its release: ODK in a native environment, ODK in
+         * its container, or OntoBoard itself. The form says which, and offers what that route
+         * can do.
+         */
+        Start withRoute(ReleaseRoute route) {
+            return new Start(editFile, facts, tags, released, proposal, script, declared, today,
+                    refusal, status, route);
+        }
+
+        /** Whether the release may fetch the imported ontologies again first. */
+        boolean mayRefreshImports() {
+            return route == null || route.refreshesImports();
+        }
+
+        private boolean isBuiltBy(ReleaseRoute.Kind kind) {
+            return route != null && route.kind() == kind;
         }
     }
 
@@ -220,7 +246,9 @@ final class OdkReleaseForm {
             if (start.facts.ontbase() != null) {
                 values.put(PATTERN, shape.pattern());
             }
-            values.put(REFRESH, "true");
+            if (start.mayRefreshImports()) {
+                values.put(REFRESH, "true");
+            }
         } else if (start.script.priorVersion() != null) {
             OntologyVersion before = newest(start, proposed.getScheme());
             values.put(PRIOR, before == null ? start.script.priorVersion().trim()
@@ -262,11 +290,21 @@ final class OdkReleaseForm {
                     + (annotate == null ? "it sets none of its own, so ODK's is written."
                             : annotate + ".") + git;
         }
-        return "Builds the release with ODK's prepare_release, in ODK's container: the "
-                + "reasoner, the quality report and the project's tests run first, then the "
-                + "release files are written to the top of the project"
+        String what = "the reasoner, the quality report and the project's tests run first, "
+                + "then the release files are written to the top of the project"
                 + (ReleaseRun.keepsReleasesFolder(start.facts.root())
-                        ? " and copied to releases/<version>/." : ".") + git;
+                        ? " and copied to releases/<version>/." : ".");
+        if (start.isBuiltBy(ReleaseRoute.Kind.ITSELF)) {
+            // Said first, so that nobody takes this for a run of ODK's container.
+            return start.route.noContainer() + ", so OntoBoard builds the release itself, "
+                    + "inside Protege, with ODK's own Makefile (prepare_release): " + what
+                    + (start.mayRefreshImports() ? "" : " The import modules are used as they "
+                            + "are: fetching the imported ontologies again is not something "
+                            + "OntoBoard itself does.") + git;
+        }
+        return "Builds the release with ODK's prepare_release, "
+                + (start.isBuiltBy(ReleaseRoute.Kind.NATIVE) ? "in the native ODK environment"
+                        : "in ODK's container") + ": " + what + git;
     }
 
     /** The form, with whatever was typed last time already in it. */
@@ -295,15 +333,17 @@ final class OdkReleaseForm {
                                 + "for example {ontbase}/v{version}/{file}.")
                         .build());
             }
-            parameters.add(Parameter.of(REFRESH, "Refresh the imports first",
-                    Parameter.Kind.FLAG)
-                    .defaultValue(values.get(REFRESH))
-                    .help("Fetches the ontologies this project imports again and rebuilds its "
-                            + "import modules before the release is built, as ODK's "
-                            + "prepare_release does. That needs the network and takes longest. "
-                            + "Off builds from the import modules as they are "
-                            + "(prepare_release_fast).")
-                    .build());
+            if (start.mayRefreshImports()) {
+                parameters.add(Parameter.of(REFRESH, "Refresh the imports first",
+                        Parameter.Kind.FLAG)
+                        .defaultValue(values.get(REFRESH))
+                        .help("Fetches the ontologies this project imports again and rebuilds "
+                                + "its import modules before the release is built, as ODK's "
+                                + "prepare_release does. That needs the network and takes "
+                                + "longest. Off builds from the import modules as they are "
+                                + "(prepare_release_fast).")
+                        .build());
+            }
         } else if (start.script.priorVersion() != null) {
             parameters.add(Parameter.of(PRIOR, "Previous version", Parameter.Kind.TEXT)
                     .defaultValue(values.get(PRIOR))
@@ -433,7 +473,7 @@ final class OdkReleaseForm {
     static OdkRelease.Request request(Start start, Map<String, String> chosen) {
         return new OdkRelease.Request(start.editFile, versionIn(chosen, VERSION),
                 start.script == null ? shape(start, chosen) : null,
-                !"false".equalsIgnoreCase(chosen.get(REFRESH)),
+                start.mayRefreshImports() && !"false".equalsIgnoreCase(chosen.get(REFRESH)),
                 !"false".equalsIgnoreCase(chosen.get(REFUSE)));
     }
 

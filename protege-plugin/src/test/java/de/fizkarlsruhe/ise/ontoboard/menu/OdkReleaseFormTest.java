@@ -591,4 +591,82 @@ class OdkReleaseFormTest {
         assertTrue(String.join("\n", result.getLog()).contains("reason_test] Error 1"));
         assertNotNull(result.getSummary());
     }
+
+    // ------------------------------------------------------------------ who builds it
+
+    private static final String NO_CONTAINER = "Neither Docker nor Podman answers on this machine";
+
+    private static de.fizkarlsruhe.ise.ontoboard.odk.ReleaseRoute itself(String whyNotFull) {
+        return de.fizkarlsruhe.ise.ontoboard.odk.ReleaseRoute.decide(false, false,
+                de.fizkarlsruhe.ise.ontoboard.odk.OdkRoute.Use.AUTOMATIC, NO_CONTAINER, null,
+                null, null, whyNotFull);
+    }
+
+    /**
+     * Without a container OntoBoard builds the release itself. The form says so, and why, so
+     * that nobody thinks ODK's container ran; everything else of it is as ever.
+     */
+    @Test
+    void builtByOntoBoardItselfTheFormSaysSoAndWhy() {
+        OdkReleaseForm.Start start = start().withRoute(itself(null));
+
+        String explanation = OdkReleaseForm.explanation(start);
+
+        assertTrue(explanation.startsWith(NO_CONTAINER + ", so OntoBoard builds the release "
+                + "itself"), explanation);
+        assertTrue(explanation.contains("prepare_release"), explanation);
+        assertFalse(explanation.contains("in ODK's container"), explanation);
+        assertTrue(explanation.contains("Nothing is pushed."), explanation);
+        assertTrue(keys(OdkReleaseForm.parameters(start, OdkReleaseForm.defaults(start)))
+                .contains(OdkReleaseForm.REFRESH), "nothing has to be fetched for this project, "
+                        + "so the full release is on offer");
+        assertTrue(OdkReleaseForm.request(start, chosen(start)).refreshesImports());
+    }
+
+    /**
+     * The full release fetches the imported ontologies again, which OntoBoard itself does not
+     * do. The form then does not offer it, says that the import modules are used as they are,
+     * and the release is the fast one whatever was left in the form.
+     */
+    @Test
+    void whereTheImportsCannotBeFetchedAgainTheFormDoesNotOfferIt() {
+        OdkReleaseForm.Start start = start().withRoute(
+                itself("it fetches the project's imports again"));
+
+        assertFalse(keys(OdkReleaseForm.parameters(start, OdkReleaseForm.defaults(start)))
+                .contains(OdkReleaseForm.REFRESH));
+        assertFalse(OdkReleaseForm.defaults(start).containsKey(OdkReleaseForm.REFRESH));
+        assertFalse(OdkReleaseForm.request(start,
+                chosen(start, OdkReleaseForm.REFRESH, "true")).refreshesImports());
+        String explanation = OdkReleaseForm.explanation(start);
+        assertTrue(explanation.contains("import modules are used as they are"), explanation);
+    }
+
+    /** With ODK's own tools installed on the machine, the form names that. */
+    @Test
+    void inANativeEnvironmentTheFormSaysSo() {
+        OdkReleaseForm.Start start = start().withRoute(
+                de.fizkarlsruhe.ise.ontoboard.odk.ReleaseRoute.decide(true, false,
+                        de.fizkarlsruhe.ise.ontoboard.odk.OdkRoute.Use.AUTOMATIC, NO_CONTAINER,
+                        null, null, null, null));
+
+        String explanation = OdkReleaseForm.explanation(start);
+
+        assertTrue(explanation.contains("in the native ODK environment"), explanation);
+        assertFalse(explanation.contains("in ODK's container"), explanation);
+        assertTrue(keys(OdkReleaseForm.parameters(start, OdkReleaseForm.defaults(start)))
+                .contains(OdkReleaseForm.REFRESH));
+    }
+
+    /** Built in the container - the route when nothing else is said - the form is as it was. */
+    @Test
+    void inTheContainerTheFormIsAsItWas() {
+        OdkReleaseForm.Start start = start();
+
+        assertTrue(OdkReleaseForm.explanation(start).contains("in ODK's container"));
+        assertEquals(OdkReleaseForm.explanation(start), OdkReleaseForm.explanation(
+                start.withRoute(de.fizkarlsruhe.ise.ontoboard.odk.ReleaseRoute.decide(false,
+                        true, de.fizkarlsruhe.ise.ontoboard.odk.OdkRoute.Use.AUTOMATIC, null,
+                        null, null, null, null))));
+    }
 }

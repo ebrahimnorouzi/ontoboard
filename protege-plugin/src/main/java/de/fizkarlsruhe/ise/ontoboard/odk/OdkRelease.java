@@ -222,6 +222,38 @@ public final class OdkRelease {
         boolean commit(ReleaseRun.Staging staging);
     }
 
+    /**
+     * ODK's own tools installed on this machine - ODK Core's native environment, on Linux and
+     * macOS: the same commands, run in a shell after the environment's activation script, as
+     * Build runs a target there.
+     *
+     * <p>Each word is quoted for that shell. A version IRI's pattern reaches make with make's
+     * {@code $@} in it, which a shell would otherwise take for its own.
+     *
+     * @param activationScript the environment's {@code activate-odk-environment.sh}
+     */
+    public static Odk inNativeEnvironment(final File activationScript,
+            final File ontologyDirectory, final ProcessRunner.Runner runner,
+            final ProcessRunner.Sink sink) {
+        return new Odk() {
+            @Override
+            public ProcessRunner.Outcome run(List<String> command, boolean passThroughRunSh)
+                    throws IOException {
+                StringBuilder line = new StringBuilder();
+                for (String word : command) {
+                    line.append(line.length() == 0 ? "" : " ").append(Toolchain.quote(word));
+                }
+                return runner.run(ontologyDirectory, Toolchain.nativeCommandFor(activationScript,
+                        line.toString()), MakeRun.TIMEOUT_MINUTES, sink);
+            }
+
+            @Override
+            public String shown(List<String> command, boolean passThroughRunSh) {
+                return ReleaseRun.shown(command) + "   (in the native ODK environment)";
+            }
+        };
+    }
+
     /** ODK's container on this machine. */
     public static Odk inContainer(final String runtime, final String image,
             final OdkContainer.Host host, final File ontologyDirectory,

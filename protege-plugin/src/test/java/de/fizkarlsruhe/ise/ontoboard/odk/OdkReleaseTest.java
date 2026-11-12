@@ -201,6 +201,45 @@ class OdkReleaseTest {
                 .contains("docker run --rm ... make prepare_release VERSION=1.0.0"));
     }
 
+    /**
+     * With ODK's own tools installed on the machine (ODK Core's native environment), ODK's
+     * commands run in a shell, after the environment's activation script. Each word is quoted
+     * for that shell: make's {@code $@} in a version IRI's pattern is for make to read.
+     */
+    @Test
+    void inANativeEnvironmentTheCommandsRunAfterTheActivationScript() throws Exception {
+        final List<List<String>> ran = new ArrayList<List<String>>();
+        final List<File> where = new ArrayList<File>();
+        ProcessRunner.Runner shell = new ProcessRunner.Runner() {
+            @Override
+            public ProcessRunner.Outcome run(File workingDirectory, List<String> command,
+                    long timeoutMinutes, ProcessRunner.Sink sink) {
+                ran.add(command);
+                where.add(workingDirectory);
+                return ok("made");
+            }
+        };
+        File script = new File(temp, "odk env/bin/activate-odk-environment.sh");
+        List<String> make = Arrays.asList("make", "prepare_release", "VERSION=1.0.0",
+                "ANNOTATE_ONTOLOGY_VERSION=annotate -V https://example.org/eggboil/eggboil/"
+                        + "1.0.0/$@ --annotation owl:versionInfo 1.0.0");
+
+        OdkRelease.Odk odk = OdkRelease.inNativeEnvironment(script, ontology, shell, null);
+        ProcessRunner.Outcome outcome = odk.run(make, false);
+
+        assertTrue(outcome.isSuccess());
+        assertEquals(ontology, where.get(0), "where make is to run");
+        assertEquals(Arrays.asList("sh", "-c"), ran.get(0).subList(0, 2));
+        String line = ran.get(0).get(2);
+        assertTrue(line.startsWith(". '" + script.getAbsolutePath() + "' && "), line);
+        assertTrue(line.endsWith(" && 'make' 'prepare_release' 'VERSION=1.0.0' "
+                + "'ANNOTATE_ONTOLOGY_VERSION=annotate -V https://example.org/eggboil/eggboil/"
+                + "1.0.0/$@ --annotation owl:versionInfo 1.0.0'"), line);
+        String shown = odk.shown(make, false);
+        assertTrue(shown.contains("make prepare_release VERSION=1.0.0"), shown);
+        assertTrue(shown.contains("native ODK environment"), shown);
+    }
+
     @Test
     void theShapeChosenAndTheFastBuildReachMake() {
         release("1.0.0", VersionIriShape.of(VersionIriShape.Kind.VERSION_AND_FILE), false);
