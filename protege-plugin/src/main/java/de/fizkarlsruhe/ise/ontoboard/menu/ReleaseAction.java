@@ -199,6 +199,20 @@ public class ReleaseAction extends OntoBoardAction {
         imageNote = choice.note();
         host = OdkContainer.Host.detect(found, real);
 
+        // Before the build, not in the question after it: a release's commit leaves new files
+        // out, and a tag without a new import module is a project that does not build.
+        String notice = OdkReleaseForm.newFilesNotice(start);
+        if (notice != null) {
+            Object[] options = {"Cancel, to commit first", "Release anyway"};
+            int answer = javax.swing.JOptionPane.showOptionDialog(getOWLWorkspace(),
+                    wrapped(notice), "New files that are not committed",
+                    javax.swing.JOptionPane.DEFAULT_OPTION,
+                    javax.swing.JOptionPane.WARNING_MESSAGE, null, options, options[0]);
+            if (answer != 1) {
+                return false;
+            }
+        }
+
         // Re-shown with what was typed, as the older form is: a correction, not a new start.
         Map<String, String> values = OdkReleaseForm.defaults(start);
         while (true) {

@@ -53,6 +53,8 @@ class OdkReleaseFormTest {
     private File ontology;
     private File edit;
     private List<String> tags = new ArrayList<String>();
+    /** What git says of the working tree: clean, on main. */
+    private List<String> status = Arrays.asList("## main");
 
     /** What the script held when ODK was asked to run it. */
     private String scriptAsRun;
@@ -97,7 +99,7 @@ class OdkReleaseFormTest {
                     return new ProcessRunner.Outcome(0, tags, false);
                 }
                 if (command.contains("status")) {
-                    return new ProcessRunner.Outcome(0, Arrays.asList("## main"), false);
+                    return new ProcessRunner.Outcome(0, status, false);
                 }
                 return new ProcessRunner.Outcome(0, Arrays.asList("git version 2.47.0"), false);
             }
@@ -390,6 +392,82 @@ class OdkReleaseFormTest {
 
         assertEquals(1, problems.size());
         assertTrue(problems.get(0).contains("'the last one'"), problems.get(0));
+    }
+
+    // ------------------------------------------------------------------ work that is not committed
+
+    /**
+     * A release's commit takes changed files with it and leaves new ones out, as decided: a
+     * stray file stays where it is. But a new import module that the changed edit file
+     * imports, left out, makes a tag whose project does not build - seen in a live run, where
+     * the pattern library had just written one. So new files are said before the release is
+     * built, with the way to commit them, instead of only in the question after it.
+     */
+    @Test
+    void newFilesAreSaidBeforeTheReleaseIsBuilt() {
+        status = Arrays.asList("## main", " M src/ontology/eggboil-edit.owl",
+                " M src/ontology/catalog-v001.xml", "?? src/ontology/imports/",
+                "?? \"my notes.txt\"");
+
+        String notice = OdkReleaseForm.newFilesNotice(start());
+
+        assertTrue(notice.contains("2 new files"), notice);
+        assertTrue(notice.contains("src/ontology/imports/") && notice.contains("my notes.txt"),
+                notice);
+        assertTrue(notice.contains("OntoBoard > Share > Git..."), notice);
+        assertTrue(notice.contains("Commit everything, with a message"), notice);
+        assertFalse(notice.contains("eggboil-edit.owl"), "a changed file goes along and is not "
+                + "what this is about: " + notice);
+    }
+
+    @Test
+    void oneNewFileIsSaidInTheSingular() {
+        status = Arrays.asList("## main", "?? src/sparql/every_egg_has_a_timer-violation.sparql");
+
+        String notice = OdkReleaseForm.newFilesNotice(start());
+
+        assertTrue(notice.contains("1 new file in this project: "
+                + "src/sparql/every_egg_has_a_timer-violation.sparql."), notice);
+        assertTrue(notice.contains("leaves it out"), notice);
+    }
+
+    /** A dozen new files are not a dozen lines: the first five are named. */
+    @Test
+    void manyNewFilesAreCountedAndTheFirstNamed() {
+        List<String> lines = new ArrayList<String>(Arrays.asList("## main"));
+        for (int i = 1; i <= 12; i++) {
+            lines.add("?? new-" + i + ".txt");
+        }
+        status = lines;
+
+        String notice = OdkReleaseForm.newFilesNotice(start());
+
+        assertTrue(notice.contains("12 new files"), notice);
+        assertTrue(notice.contains("new-5.txt and 7 more"), notice);
+        assertFalse(notice.contains("new-6.txt"), notice);
+    }
+
+    @Test
+    void withNothingNewThereIsNothingToSay() {
+        status = Arrays.asList("## main", " M src/ontology/eggboil-edit.owl");
+
+        assertNull(OdkReleaseForm.newFilesNotice(start()));
+    }
+
+    /** No repository, or no git: nothing is committed there, so nothing can be left out. */
+    @Test
+    void withoutGitThereIsNothingToSay() {
+        OdkReleaseForm.Start start = OdkReleaseForm.start(edit, null, "2026-11-12",
+                new ProcessRunner.Runner() {
+                    @Override
+                    public ProcessRunner.Outcome run(File workingDirectory, List<String> command,
+                            long timeoutMinutes, ProcessRunner.Sink sink) throws IOException {
+                        throw new IOException("Cannot run program \"git\"");
+                    }
+                });
+
+        assertNull(OdkReleaseForm.newFilesNotice(start));
+        assertEquals("1.0.0", OdkReleaseForm.defaults(start).get(OdkReleaseForm.VERSION));
     }
 
     // ------------------------------------------------------------------ before git records it

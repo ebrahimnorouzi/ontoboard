@@ -1,5 +1,6 @@
 package de.fizkarlsruhe.ise.ontoboard.menu;
 
+import de.fizkarlsruhe.ise.ontoboard.git.GitRepo;
 import de.fizkarlsruhe.ise.ontoboard.odk.GitTags;
 import de.fizkarlsruhe.ise.ontoboard.odk.OdkRelease;
 import de.fizkarlsruhe.ise.ontoboard.odk.OntologyVersion;
@@ -43,6 +44,9 @@ final class OdkReleaseForm {
     /** How many released versions the help of the version field names. */
     private static final int VERSIONS_NAMED = 5;
 
+    /** How many new files the notice before a release names before it counts the rest. */
+    private static final int NEW_FILES_NAMED = 5;
+
     /** How many files the commit leaves out are named before the rest is counted. */
     private static final int LEFT_OUT_NAMED = 10;
 
@@ -62,11 +66,14 @@ final class OdkReleaseForm {
         private final OntologyVersion declared;
         private final String today;
         private final String refusal;
+        /** The working tree as git sees it; null without a repository or without git. */
+        private final GitRepo.Status status;
 
         private Start(File editFile, OdkRelease.Facts facts, List<String> tags,
                 List<OntologyVersion> released, OdkRelease.Proposal proposal,
                 ReleaseRun.Script script, OntologyVersion declared, String today,
-                String refusal) {
+                String refusal, GitRepo.Status status) {
+            this.status = status;
             this.editFile = editFile;
             this.facts = facts;
             this.tags = tags;
@@ -112,8 +119,45 @@ final class OdkReleaseForm {
         } catch (IllegalStateException unreadable) {
             refusal = unreadable.getMessage();
         }
+        GitRepo.Status status = null;
+        try {
+            ProcessRunner.Outcome asked = git.run(facts.root(), GitRepo.statusCommand(), 1, null);
+            status = asked.isSuccess() ? GitRepo.parseStatus(asked.getOutput()) : null;
+        } catch (IOException noGit) {
+            status = null;
+        } catch (RuntimeException noGit) {
+            status = null;
+        }
         return new Start(editFile, facts, tags, OdkRelease.released(facts, tags),
-                OdkRelease.proposal(editFile, tags), script, declared, today, refusal);
+                OdkRelease.proposal(editFile, tags), script, declared, today, refusal, status);
+    }
+
+    // ------------------------------------------------------------------ work that is not committed
+
+    /**
+     * What to say, before the release is built, of files git has never tracked; null when
+     * there are none, or no repository to have them.
+     */
+    static String newFilesNotice(Start start) {
+        List<String> fresh = start.status == null ? new ArrayList<String>()
+                : start.status.getUntracked();
+        if (fresh.isEmpty()) {
+            return null;
+        }
+        boolean one = fresh.size() == 1;
+        String named = String.join(", ", fresh.subList(0, Math.min(NEW_FILES_NAMED,
+                fresh.size())));
+        if (fresh.size() > NEW_FILES_NAMED) {
+            named += " and " + (fresh.size() - NEW_FILES_NAMED) + " more";
+        }
+        return "Git has never been told about " + fresh.size() + " new file" + (one ? "" : "s")
+                + " in this project: " + named + ". The commit of a release takes changed "
+                + "files with it and leaves " + (one ? "it" : "new files") + " out, so the "
+                + "release's tag would not hold " + (one ? "it" : "them") + " - and a new "
+                + "import module or test that is missing there breaks the project for whoever "
+                + "fetches it. To have " + (one ? "it" : "them") + " in the release, commit "
+                + "your work first: OntoBoard > Share > Git..., and there \"Commit everything, "
+                + "with a message\".";
     }
 
     // ------------------------------------------------------------------ what is proposed
