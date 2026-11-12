@@ -226,9 +226,20 @@ class OdkUpdateTest {
         Map<String, byte[]> before = UpdateCases.before("egg-changed");
         UpdateCases.write(before, root);
 
-        OdkUpdate.check(root, OdkUpdate.plan(root));
+        boolean editFileWouldChange = OdkUpdate.check(root, OdkUpdate.plan(root));
 
+        assertTrue(editFileWouldChange, "it imports something the configuration does not "
+                + "declare, which the update takes out");
         assertSameTree(before, Goldens.tree(root));
+    }
+
+    /** Once updated, the check says that the edit file would stay as it is. */
+    @Test
+    void afterAnUpdateTheCheckSaysTheEditFileStaysAsItIs() {
+        UpdateCases.write(UpdateCases.before("egg-changed"), root);
+        OdkUpdate.apply(root, OdkUpdate.plan(root));
+
+        assertFalse(OdkUpdate.check(root, OdkUpdate.plan(root)));
     }
 
     @Test

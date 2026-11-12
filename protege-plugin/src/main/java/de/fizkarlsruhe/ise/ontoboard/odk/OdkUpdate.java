@@ -15,6 +15,9 @@ import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.AccessDeniedException;
+import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.FileSystemException;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
@@ -153,6 +156,11 @@ public final class OdkUpdate {
          */
         public boolean editFileWillBeRewritten() {
             return editFile != null;
+        }
+
+        /** The edit file ROBOT rewrites; null when the update leaves it alone. */
+        public File editFile() {
+            return editFile;
         }
 
         /** What the edit file imports after the update; empty when it is not rewritten. */
@@ -379,11 +387,10 @@ public final class OdkUpdate {
             }
             if (editChanges) {
                 try {
-                    Files.move(stagedEdit.toPath(), plan.editFile.toPath(),
-                            StandardCopyOption.REPLACE_EXISTING);
+                    replace(plan.editFile, stagedEdit);
                 } catch (IOException notMoved) {
-                    throw new UncheckedIOException("The edit file could not be replaced: "
-                            + notMoved.getMessage(), notMoved);
+                    throw new UncheckedIOException(plan.editFile + " could not be replaced: "
+                            + why(notMoved), notMoved);
                 }
                 written.add(plan.editFile);
             }
@@ -471,11 +478,12 @@ public final class OdkUpdate {
      * loaded - without writing anything: the edit file is rewritten on the side, as the update
      * will rewrite it, and what was made for that is removed again.
      *
+     * @return whether the update would change the edit file
      * @throws Refused when the edit file cannot be read with all its imports
      */
-    public static void check(File projectRoot, Plan plan) {
+    public static boolean check(File projectRoot, Plan plan) {
         if (plan.editFile == null) {
-            return;
+            return false;
         }
         File ontology = new File(projectRoot.getAbsoluteFile(), ONTOLOGY);
         File stagedCatalog = new File(ontology, STAGED_CATALOG);
@@ -483,6 +491,8 @@ public final class OdkUpdate {
         try {
             write(stagedCatalog, plan.catalog);
             rewriteImports(plan, stagedCatalog, stagedEdit);
+            return !plan.editFile.isFile()
+                    || !Arrays.equals(read(plan.editFile), read(stagedEdit));
         } finally {
             stagedCatalog.delete();
             stagedEdit.delete();
@@ -562,8 +572,8 @@ public final class OdkUpdate {
         try {
             return Files.readAllBytes(file.toPath());
         } catch (IOException unreadable) {
-            throw new UncheckedIOException(file + " could not be read: "
-                    + unreadable.getMessage(), unreadable);
+            throw new UncheckedIOException(file + " could not be read: " + why(unreadable),
+                    unreadable);
         }
     }
 
@@ -572,9 +582,40 @@ public final class OdkUpdate {
             Files.createDirectories(file.getParentFile().toPath());
             Files.write(file.toPath(), bytes);
         } catch (IOException notWritten) {
-            throw new UncheckedIOException(file + " could not be written: "
-                    + notWritten.getMessage(), notWritten);
+            throw new UncheckedIOException(file + " could not be written: " + why(notWritten),
+                    notWritten);
         }
+    }
+
+    /**
+     * Puts the rewritten edit file in the place of the edit file, in one step: the file is the
+     * old one or the new one, and never missing. The plain way to replace a file takes the old
+     * one away first, and an edit file that then cannot be put there - Windows refuses while
+     * another program looks at the new file - would be gone, with work in it nobody committed.
+     */
+    private static void replace(File editFile, File rewritten) throws IOException {
+        try {
+            Files.move(rewritten.toPath(), editFile.toPath(), StandardCopyOption.ATOMIC_MOVE,
+                    StandardCopyOption.REPLACE_EXISTING);
+        } catch (AtomicMoveNotSupportedException notInOneStep) {
+            // A file system that cannot: written over in place, which at least never takes
+            // the file away.
+            Files.write(editFile.toPath(), Files.readAllBytes(rewritten.toPath()));
+        }
+    }
+
+    /** What went wrong with a file, without the file's path a second time. */
+    private static String why(IOException failure) {
+        if (failure instanceof AccessDeniedException) {
+            return "access was denied - it may be read-only, open in another program, or a "
+                    + "folder";
+        }
+        if (failure instanceof FileSystemException
+                && ((FileSystemException) failure).getReason() != null) {
+            return ((FileSystemException) failure).getReason();
+        }
+        return failure.getMessage() == null ? failure.getClass().getSimpleName()
+                : failure.getMessage();
     }
 
     private static String text(byte[] bytes) {

@@ -25,7 +25,7 @@ import java.util.TreeMap;
  * recorded hashes of that project are checked here, so that a test never compares with the
  * update of another project than the one it built.
  */
-final class UpdateCases {
+public final class UpdateCases {
 
     private UpdateCases() {
     }
@@ -35,14 +35,14 @@ final class UpdateCases {
     }
 
     /** The egg fixture: path from the project's root, with {@code /}, to bytes. */
-    static Map<String, byte[]> eggProject() {
+    public static Map<String, byte[]> eggProject() {
         Map<String, byte[]> project = new TreeMap<String, byte[]>(Goldens.seedTree("eggboil"));
         project.putAll(Goldens.tree(new File(Goldens.root(), "equivalence/egg/overlay")));
         return project;
     }
 
     /** The project of a case as it was before ODK's update. */
-    static Map<String, byte[]> before(String name) {
+    public static Map<String, byte[]> before(String name) {
         Map<String, byte[]> project = composed(name);
         // Is it the project the image saw?
         String recorded = text(new File(caseFolder(name), "before.sha256"));
@@ -92,7 +92,7 @@ final class UpdateCases {
     }
 
     /** The same project as ODK's update left it. */
-    static Map<String, byte[]> after(String name) {
+    public static Map<String, byte[]> after(String name) {
         Map<String, byte[]> project = before(name);
         project.putAll(Goldens.tree(new File(caseFolder(name), "after/files")));
         for (String line : text(new File(caseFolder(name), "after/gone.txt")).split("\n")) {
@@ -104,12 +104,12 @@ final class UpdateCases {
     }
 
     /** What ODK's update printed. */
-    static String transcript(String name) {
+    public static String transcript(String name) {
         return text(new File(caseFolder(name), "transcript.txt"));
     }
 
     /** A file of a tree as text; fails when the tree has no such file. */
-    static String text(Map<String, byte[]> tree, String path) {
+    public static String text(Map<String, byte[]> tree, String path) {
         byte[] bytes = tree.get(path);
         if (bytes == null) {
             fail("no " + path + " among " + tree.keySet());
@@ -118,7 +118,7 @@ final class UpdateCases {
     }
 
     /** Writes a tree into a folder. */
-    static void write(Map<String, byte[]> tree, File root) {
+    public static void write(Map<String, byte[]> tree, File root) {
         try {
             for (Map.Entry<String, byte[]> file : tree.entrySet()) {
                 File target = new File(root, file.getKey());

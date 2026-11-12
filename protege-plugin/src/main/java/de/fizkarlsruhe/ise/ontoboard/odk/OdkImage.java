@@ -87,6 +87,20 @@ public final class OdkImage {
     }
 
     /**
+     * Why the pinned ODK's container is not used where its image is not on the machine, as the
+     * start of a sentence - for what wants that image and no other.
+     */
+    public static String pinnedIsNotHere() {
+        return "ODK " + OdkPin.VERSION + "'s image (" + OdkPin.IMAGE_REPOSITORY + ":"
+                + OdkPin.VERSION + ") is not on this machine";
+    }
+
+    /** What to do about an image that is not on the machine: it is never fetched unasked. */
+    public static String howToFetch() {
+        return ADVICE;
+    }
+
+    /**
      * {@code obolibrary/odkfull} of one ODK version: the image tagged with it, else an image
      * under another tag whose own environment says it is that version, else null.
      */

@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.fizkarlsruhe.ise.ontoboard.odk.seed.OdkPin;
 import de.fizkarlsruhe.ise.ontoboard.proc.ProcessRunner;
 import java.io.File;
 import java.io.IOException;
@@ -270,6 +271,16 @@ class OdkImageTest {
         assertEquals("obolibrary/odkfull:latest", OdkImage.pinned(probe));
         assertTrue(asked.contains("podman image inspect --format {{.Id}} "
                 + "obolibrary/odkfull:v1.6.1"), asked.toString());
+    }
+
+    /** For what wants the pinned ODK's image and no other: which one is missing, and what to do. */
+    @Test
+    void aMissingPinnedImageIsNamedWithWhatToDoAboutIt() {
+        assertEquals("ODK " + OdkPin.VERSION + "'s image (obolibrary/odkfull:" + OdkPin.VERSION
+                + ") is not on this machine", OdkImage.pinnedIsNotHere());
+        assertTrue(OdkImage.howToFetch().contains("does not download an image on its own"),
+                OdkImage.howToFetch());
+        assertTrue(OdkImage.howToFetch().contains("Check requirements"), OdkImage.howToFetch());
     }
 
     /** A runtime that cannot be started at all is a machine with no images, not a crash. */
