@@ -71,7 +71,8 @@ public final class OdkContainer {
             String user = windows ? null : number(runner, "id", "-u");
             String group = windows ? null : number(runner, "id", "-g");
             // Docker has the figure at the top of what it reports; Podman one level down.
-            boolean podman = "podman".equals(runtime);
+            // By the program's own name: the runtime may be a path somebody chose.
+            boolean podman = OdkRoute.isPodman(runtime);
             String memory = number(runner, runtime, "info", "--format",
                     podman ? "{{.Host.MemTotal}}" : "{{.MemTotal}}");
             if (memory == null) {

@@ -121,20 +121,9 @@ public final class MakeRun {
     }
 
     /**
-     * Whether Docker can actually run something, which is not the same as being installed.
-     *
-     * <p>{@code docker --version} answers from the CLI alone and says nothing about the engine. On
-     * the machine this was written for, the CLI reported 29.5.2 while the daemon was down and
-     * every command failed with "failed to connect to the docker API at
-     * npipe:////./pipe/dockerDesktopLinuxEngine". {@code docker info} is the one that needs the
-     * daemon, so it is the one asked.
-     */
-    static boolean dockerUsable(ProcessRunner.Runner runner) {
-        return ProcessRunner.isAvailable(runner, "docker", "info");
-    }
-
-    /**
-     * Which container runtime can actually run something, or null.
+     * Which container runtime can actually run something, or null - by what the person has
+     * settled in OntoBoard's settings ({@link OdkRoute}): whether a container is used at all,
+     * and which program runs it. Left open, the search is the one described here.
      *
      * <p>Podman is accepted because its command line is Docker's: the same {@code run --rm -v
      * host:container -w dir image command} works unchanged, so supporting it costs a name rather
@@ -145,10 +134,7 @@ public final class MakeRun {
      * <p>Docker first only because it is the one ODK's own documentation names.
      */
     public static String containerRuntime(ProcessRunner.Runner runner) {
-        if (dockerUsable(runner)) {
-            return "docker";
-        }
-        return ProcessRunner.isAvailable(runner, "podman", "info") ? "podman" : null;
+        return OdkRoute.runtime(runner);
     }
 
     /**
