@@ -268,7 +268,8 @@ public final class ReleaseHistory {
      * numbered ones.
      *
      * <p>At most two git processes, however many releases there are: the tags, and one question
-     * for all of them whether they hold the file.
+     * for all of them whether they hold the file - and none while the repository's tag refs are
+     * as they were when git last answered, or where there is no repository ({@link ReleaseTags}).
      *
      * @param id the ontology's id: a release holds {@code <id>.owl}
      */
@@ -302,17 +303,14 @@ public final class ReleaseHistory {
         }
         Map<String, String> tags = new HashMap<String, String>();
         Map<String, String> blobs = new HashMap<String, String>();
-        List<String> named = GitTags.releases(projectRoot, git);
-        if (!named.isEmpty()) {
-            for (Map.Entry<String, String> held
-                    : GitTags.holding(projectRoot, named, id + ".owl").entrySet()) {
-                OntologyVersion version = OntologyVersion.of(GitTags.versionOf(held.getKey()));
-                if (!tags.containsKey(version.getText())
-                        || held.getKey().equals(GitTags.tagFor(version.getText()))) {
-                    tags.put(version.getText(), held.getKey());
-                    blobs.put(version.getText(), held.getValue());
-                    versions.put(version.getText(), version);
-                }
+        for (Map.Entry<String, String> held
+                : ReleaseTags.holding(projectRoot, id, git).entrySet()) {
+            OntologyVersion version = OntologyVersion.of(GitTags.versionOf(held.getKey()));
+            if (!tags.containsKey(version.getText())
+                    || held.getKey().equals(GitTags.tagFor(version.getText()))) {
+                tags.put(version.getText(), held.getKey());
+                blobs.put(version.getText(), held.getValue());
+                versions.put(version.getText(), version);
             }
         }
         List<OntologyVersion> newestFirst = new ArrayList<OntologyVersion>(versions.values());

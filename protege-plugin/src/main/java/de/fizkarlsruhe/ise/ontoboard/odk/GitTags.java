@@ -30,6 +30,14 @@ public final class GitTags {
     /** The letter a release's tag starts with. */
     private static final String PREFIX = "v";
 
+    private static final java.util.concurrent.atomic.AtomicInteger HOLDING_ASKED =
+            new java.util.concurrent.atomic.AtomicInteger();
+
+    /** How many times {@link #holding} started git. For tests. */
+    static int holdingAsked() {
+        return HOLDING_ASKED.get();
+    }
+
     private GitTags() {
     }
 
@@ -54,12 +62,21 @@ public final class GitTags {
      * tag put on an old commit later is still the old release.
      */
     public static List<String> releases(File projectRoot, ProcessRunner.Runner runner) {
+        List<String> tags = releasesOrNull(projectRoot, runner);
+        return tags == null ? new ArrayList<String>() : tags;
+    }
+
+    /**
+     * {@link #releases}, or null when git could not be asked or did not answer - which an empty
+     * list does not tell apart from a repository without release tags.
+     */
+    static List<String> releasesOrNull(File projectRoot, ProcessRunner.Runner runner) {
         List<String> tags = new ArrayList<String>();
         try {
             ProcessRunner.Outcome listed = runner.run(projectRoot,
                     Arrays.asList("git", "tag", "--list", PREFIX + "*"), 1, null);
             if (!listed.isSuccess()) {
-                return tags;
+                return null;
             }
             for (String line : listed.getOutput()) {
                 if (versionOf(line.trim()) != null) {
@@ -67,9 +84,9 @@ public final class GitTags {
                 }
             }
         } catch (IOException noGit) {
-            return tags;
+            return null;
         } catch (RuntimeException noGit) {
-            return tags;
+            return null;
         }
         Collections.sort(tags, new Comparator<String>() {
             @Override
@@ -133,6 +150,15 @@ public final class GitTags {
      * @return tag to blob id, in the order the tags were given
      */
     public static Map<String, String> holding(File projectRoot, List<String> tags, String path) {
+        Map<String, String> held = heldOrNull(projectRoot, tags, path);
+        return held == null ? new LinkedHashMap<String, String>() : held;
+    }
+
+    /**
+     * {@link #holding}, or null when git could not be asked or did not answer every question -
+     * which an empty map does not tell apart from tags that hold no such file.
+     */
+    static Map<String, String> heldOrNull(File projectRoot, List<String> tags, String path) {
         Map<String, String> held = new LinkedHashMap<String, String>();
         List<String> asked = new ArrayList<String>();
         for (String tag : tags) {
@@ -153,6 +179,7 @@ public final class GitTags {
         File out = null;
         try {
             out = File.createTempFile("ontoboard-tags", ".txt");
+            HOLDING_ASKED.incrementAndGet();
             Process git = new ProcessBuilder("git", "cat-file", "--batch-check")
                     .directory(projectRoot)
                     .redirectOutput(out)
@@ -163,14 +190,17 @@ public final class GitTags {
             }
             if (!git.waitFor(60, TimeUnit.SECONDS)) {
                 git.destroyForcibly();
-                return held;
+                return null;
             }
             if (git.exitValue() != 0) {
-                return held;
+                return null;
             }
             // One answer a line, in the order asked: "<id> blob <size>", or "<asked> missing".
             List<String> answers = Files.readAllLines(out.toPath(), StandardCharsets.UTF_8);
-            for (int at = 0; at < asked.size() && at < answers.size(); at++) {
+            if (answers.size() < asked.size()) {
+                return null;
+            }
+            for (int at = 0; at < asked.size(); at++) {
                 String[] words = answers.get(at).trim().split(" ");
                 if (words.length == 3 && "blob".equals(words[1])) {
                     held.put(asked.get(at), words[0]);
@@ -178,10 +208,10 @@ public final class GitTags {
             }
             return held;
         } catch (IOException noGit) {
-            return new LinkedHashMap<String, String>();
+            return null;
         } catch (InterruptedException interrupted) {
             Thread.currentThread().interrupt();
-            return new LinkedHashMap<String, String>();
+            return null;
         } finally {
             if (out != null) {
                 out.delete();

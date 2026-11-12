@@ -361,8 +361,8 @@ public final class TermMinter {
      * makes as well as the folders under {@code releases/}. Every {@code .owl} in every folder is
      * read, as before; of a release that is only a tag, {@code <id>.owl} as the tag holds it. That
      * file is read from git once a session - git names it by its content, so it cannot change
-     * unnoticed - and every new term asks git only which tags there are and which hold the file:
-     * two processes, however many releases.
+     * unnoticed - and which tags there are and which hold the file is asked of git again only
+     * when the repository's tags have changed ({@link ReleaseTags}).
      *
      * @param rangesFile the {@code -idranges.owl} beside the edit file; the releases are under
      *     the project root that file's directory belongs to
