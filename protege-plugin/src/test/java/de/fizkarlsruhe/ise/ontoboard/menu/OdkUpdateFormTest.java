@@ -302,6 +302,7 @@ class OdkUpdateFormTest {
         private final String cannotReadAgain;
         private boolean open = true;
         private int readAgain;
+        private Map<String, File> imports;
 
         Open(boolean stopped, String cannotReadAgain) {
             this.stopped = stopped;
@@ -319,8 +320,9 @@ class OdkUpdateFormTest {
         }
 
         @Override
-        public String readAgain(File editFile) {
+        public String readAgain(File editFile, Map<String, File> imports) {
             readAgain++;
+            this.imports = imports;
             return cannotReadAgain;
         }
     }
@@ -352,6 +354,13 @@ class OdkUpdateFormTest {
         assertTrue(result.isSuccess(), result.getSummary());
         assertEquals(OperationResult.Status.SUCCEEDED, result.getStatus());
         assertEquals(1, open.readAgain);
+        Map<String, File> served = new LinkedHashMap<String, File>();
+        served.put("https://example.org/eggboil/eggboil/imports/ro_import.owl",
+                new File(root, "src/ontology/imports/ro_import.owl").getAbsoluteFile());
+        served.put("https://example.org/eggboil/eggboil/imports/utensils_import.owl",
+                new File(root, "src/ontology/imports/utensils_import.owl").getAbsoluteFile());
+        assertEquals(served, open.imports, "what the edit file imports now, and the file "
+                + "the catalog serves each from: whoever has it open loads what is new");
         assertTrue(String.join("\n", result.getLog()).contains("read again"),
                 result.getLog().toString());
 
@@ -396,7 +405,8 @@ class OdkUpdateFormTest {
         assertTrue(result.getSummary().startsWith("Updated 12 files"), result.getSummary());
         String log = String.join("\n", result.getLog());
         assertTrue(log.contains("an import could not be loaded"), log);
-        assertTrue(log.contains("File > Reload"), "what to do about it: " + log);
+        assertTrue(log.contains("Close the project and open it again"),
+                "what to do about it: " + log);
     }
 
     // ------------------------------------------------------------------ who makes it

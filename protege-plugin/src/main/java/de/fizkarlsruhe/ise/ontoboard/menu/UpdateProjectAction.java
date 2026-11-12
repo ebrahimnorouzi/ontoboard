@@ -17,8 +17,14 @@ import java.util.Arrays;
 import java.util.Map;
 import javax.swing.SwingUtilities;
 import org.protege.editor.owl.model.OWLModelManager;
-import org.protege.editor.owl.model.io.OntologySourcesManager;
+import org.protege.editor.owl.model.OntologyManagerFactory;
+import org.semanticweb.owlapi.io.IRIDocumentSource;
+import org.semanticweb.owlapi.model.IRI;
+import org.semanticweb.owlapi.model.MissingImportHandlingStrategy;
 import org.semanticweb.owlapi.model.OWLOntology;
+import org.semanticweb.owlapi.model.OWLOntologyLoaderConfiguration;
+import org.semanticweb.owlapi.model.OWLOntologyManager;
+import org.semanticweb.owlapi.model.parameters.OntologyCopy;
 
 /**
  * Project &gt; Update project files - bring the files of an existing project in line with its
@@ -36,7 +42,8 @@ import org.semanticweb.owlapi.model.OWLOntology;
  * <p><b>An ODK project</b> is updated as ODK updates it ({@link OdkUpdateForm}): by ODK's own
  * {@code odk.py update} in its container where that runs and the pinned ODK's image is on the
  * machine, else by OntoBoard itself, with the same files. ODK's update rewrites the edit file's
- * import declarations on disk, so the ontology is saved before it and read again after it.
+ * import declarations on disk, so the ontology is saved before it and read again after it
+ * ({@link Open#readAgain}).
  *
  * <p><b>A project of OntoBoard's older layout</b> - its Makefile written by OntoBoard 1.135 or
  * before - is re-rendered as it always was, until it has been migrated. What that will not
@@ -263,47 +270,101 @@ public class UpdateProjectAction extends OntoBoardAction {
         }
 
         /**
-         * As Protege does it when it is told that a file changed outside of it and to read it
-         * again: it notes the files' times, so that it does not ask about the change that is
-         * being read, and patches what is open to what the file now holds. On the dispatch
-         * thread, where Protege does it - it shows its own progress while it reads.
+         * Three steps, each the way Protege does it itself (read from the classes of 5.5.0
+         * and 5.6.9, which agree).
+         *
+         * <p>The catalog first ({@code OntologyCatalogManager.reloadFolder}): the update wrote
+         * it, and Protege keeps what it read of it when the project was opened.
+         *
+         * <p>Then what the edit file imports now and Protege has not loaded: read from its
+         * file in a manager on the side and moved into Protege's own, as Protege does when an
+         * import is added by hand ({@code AddImportsStrategy}). Protege's reload reads the
+         * edit file in a manager without the catalog, where an import resolves only if
+         * Protege has it loaded already; a new one was looked for on the web and the reload
+         * failed (seen in a running Protege: "Could not load imported ontology").
+         *
+         * <p>Then Protege's own reload ({@code OWLModelManager.reload}), on the dispatch
+         * thread, where it shows its progress: what is open is patched to what the file now
+         * holds. The files' times are not noted beforehand: a reload that works notes the
+         * edit file's itself, and after one that does not Protege goes on to ask about the
+         * file that changed outside of it - which is then the truth.
          */
         @Override
-        public String readAgain(File editFile) {
+        public String readAgain(File editFile, Map<String, File> imports) {
             final OWLOntology open = loadedFrom(editFile);
             if (open == null) {
                 return null;
             }
-            final String[] failure = new String[1];
-            Runnable reload = new Runnable() {
+            final OWLModelManager manager = getOWLModelManager();
+            final File folder = editFile.getAbsoluteFile().getParentFile();
+            // What goes wrong in the first two steps shows in the third, in Protege's words.
+            onDispatchThread(new Step() {
                 @Override
-                public void run() {
-                    try {
-                        OWLModelManager manager = getOWLModelManager();
-                        OntologySourcesManager sources = manager.get(OntologySourcesManager.ID);
-                        if (sources != null) {
-                            sources.markSources();
-                        }
-                        manager.reload(open);
-                    } catch (Exception | LinkageError cannot) {
-                        failure[0] = said(cannot);
-                    }
+                public void take() throws Exception {
+                    manager.getOntologyCatalogManager().reloadFolder(folder);
                 }
-            };
-            if (SwingUtilities.isEventDispatchThread()) {
-                reload.run();
-                return failure[0];
+            });
+            OWLOntologyManager owl = manager.getOWLOntologyManager();
+            for (Map.Entry<String, File> served : imports.entrySet()) {
+                if (served.getValue() == null || owl.contains(IRI.create(served.getKey()))) {
+                    continue;
+                }
+                try {
+                    OWLOntologyManager aside = OntologyManagerFactory.createManager();
+                    aside.getIRIMappers().add(owl.getIRIMappers());
+                    aside.loadOntologyFromOntologyDocument(
+                            new IRIDocumentSource(IRI.create(served.getValue())),
+                            new OWLOntologyLoaderConfiguration().setMissingImportHandlingStrategy(
+                                    MissingImportHandlingStrategy.SILENT));
+                    for (OWLOntology loaded : aside.getOntologies()) {
+                        if (!owl.contains(loaded.getOntologyID())) {
+                            owl.copyOntology(loaded, OntologyCopy.MOVE);
+                        }
+                    }
+                } catch (Exception | LinkageError notLoaded) {
+                    // Said by the reload below.
+                }
             }
-            try {
-                SwingUtilities.invokeAndWait(reload);
-            } catch (InterruptedException interrupted) {
-                Thread.currentThread().interrupt();
-                return "the wait for it was interrupted";
-            } catch (InvocationTargetException thrown) {
-                return said(thrown.getCause() == null ? thrown : thrown.getCause());
+            return onDispatchThread(new Step() {
+                @Override
+                public void take() throws Exception {
+                    manager.reload(open);
+                }
+            });
+        }
+    }
+
+    /** Something to do that may fail. */
+    private interface Step {
+        void take() throws Exception;
+    }
+
+    /** Does it on the dispatch thread and waits; why it failed, or null. */
+    private static String onDispatchThread(final Step step) {
+        final String[] failure = new String[1];
+        Runnable work = new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    step.take();
+                } catch (Exception | LinkageError cannot) {
+                    failure[0] = said(cannot);
+                }
             }
+        };
+        if (SwingUtilities.isEventDispatchThread()) {
+            work.run();
             return failure[0];
         }
+        try {
+            SwingUtilities.invokeAndWait(work);
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+            return "the wait for it was interrupted";
+        } catch (InvocationTargetException thrown) {
+            return said(thrown.getCause() == null ? thrown : thrown.getCause());
+        }
+        return failure[0];
     }
 
     /** The ontology Protege has loaded from a file, or null when it has none from there. */

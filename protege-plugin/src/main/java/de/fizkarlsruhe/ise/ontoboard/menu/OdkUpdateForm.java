@@ -1,15 +1,19 @@
 package de.fizkarlsruhe.ise.ontoboard.menu;
 
+import de.fizkarlsruhe.ise.ontoboard.odk.Catalog;
 import de.fizkarlsruhe.ise.ontoboard.odk.OdkContainer;
 import de.fizkarlsruhe.ise.ontoboard.odk.OdkRoute;
 import de.fizkarlsruhe.ise.ontoboard.odk.OdkUpdate;
 import de.fizkarlsruhe.ise.ontoboard.proc.ProcessRunner;
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Update project files for an ODK project: what would change, shown first and nothing written;
@@ -108,9 +112,13 @@ final class OdkUpdateForm {
         /**
          * Reads the edit file again from disk.
          *
+         * @param imports what the edit file imports now, each with the file of the project
+         *                its catalog serves it from, or null where it serves it from none.
+         *                Some may be new, and so not loaded by whoever has the project
+         *                open - and the catalog was written by the update too
          * @return why that did not work, or null when it did
          */
-        String readAgain(File editFile);
+        String readAgain(File editFile, Map<String, File> imports);
     }
 
     // ------------------------------------------------------------------ the update
@@ -237,16 +245,15 @@ final class OdkUpdateForm {
         }
         if (editFile != null && written.contains(editFile) && session != null
                 && session.isOpen(editFile)) {
-            String notRead = session.readAgain(editFile);
+            String notRead = session.readAgain(editFile, servedFrom(root, plan.imports()));
             if (notRead == null) {
                 result.note("The edit file was rewritten on disk, and the ontology was read "
                         + "again from it.");
             } else {
                 result.warn("The edit file was rewritten on disk, and reading it again did "
                         + "not work: " + notRead + ". What is open is behind the file now. "
-                        + "Read it again with File > Reload, or close the project and open it "
-                        + "again, before you edit - saving what is open would write the old "
-                        + "import declarations back.");
+                        + "Close the project and open it again before you edit - saving "
+                        + "what is open would write the old import declarations back.");
             }
         }
         if (failure != null) {
@@ -258,6 +265,21 @@ final class OdkUpdateForm {
                 + (written.size() == 1 ? " file" : " files") + (way.inContainer()
                         ? " with ODK's own update, in its container." : ", by OntoBoard itself.")
         ).build();
+    }
+
+    /** The file of the project its catalog serves each import from; null where from none. */
+    private static Map<String, File> servedFrom(File root, List<String> imports) {
+        File catalog = new File(root, "src/ontology/catalog-v001.xml");
+        byte[] bytes = bytesOrNull(catalog);
+        String text = bytes == null ? null : new String(bytes, StandardCharsets.UTF_8);
+        Map<String, File> served = new LinkedHashMap<String, File>();
+        for (String iri : imports) {
+            String path = Catalog.entryFor(text, iri);
+            File file = path == null || path.contains(":") ? null
+                    : new File(catalog.getParentFile(), path.replace('/', File.separatorChar));
+            served.put(iri, file != null && file.isFile() ? file.getAbsoluteFile() : null);
+        }
+        return served;
     }
 
     /**
