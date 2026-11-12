@@ -177,4 +177,62 @@ class BuildPlanTest {
 
         assertEquals(Arrays.asList("owldef-self-reference", "check_labels"), passing);
     }
+
+    // ------------------------------------------------------------------ without a container
+
+    private static final String NONE_ANSWERS = "Neither Docker nor Podman answers on this machine";
+
+    /**
+     * No container for an ODK project: OntoBoard's own engine builds - unless the person has
+     * settled that ODK's targets run in a container only. Then nothing runs, and the reason
+     * names the setting.
+     */
+    @Test
+    void withoutAContainerTheEngineBuildsUnlessTheSettingIsAlways() throws IOException {
+        project("eggboil", "eggboil");
+
+        BuildPlan.WithoutContainer left = BuildPlan.withoutContainer(edit,
+                OdkRoute.Use.AUTOMATIC, NONE_ANSWERS, null, tools());
+        assertNull(left.refusal());
+        assertTrue(left.plan().isInProcess());
+        assertTrue(left.plan().targets().contains("test_fast"), left.plan().targets().toString());
+        assertTrue(left.plan().explanation().startsWith(NONE_ANSWERS), left.plan().explanation());
+
+        BuildPlan.WithoutContainer always = BuildPlan.withoutContainer(edit,
+                OdkRoute.Use.ALWAYS_CONTAINER, NONE_ANSWERS, null, tools());
+        assertNull(always.plan());
+        assertTrue(always.refusal().startsWith(NONE_ANSWERS), always.refusal());
+        assertTrue(always.refusal().contains(OdkRoute.Use.ALWAYS_CONTAINER.label()),
+                always.refusal());
+    }
+
+    /** When the image is what is missing, how to get it is said with the refusal. */
+    @Test
+    void whenTheImageIsWhatIsMissingTheRefusalSaysHowToGetIt() throws IOException {
+        project("eggboil", "eggboil");
+
+        BuildPlan.WithoutContainer always = BuildPlan.withoutContainer(edit,
+                OdkRoute.Use.ALWAYS_CONTAINER, "ODK's image is not on this machine",
+                "Fetch it once with: docker pull an-image (about 5 GB).", tools());
+
+        assertTrue(always.refusal().contains("docker pull an-image"), always.refusal());
+    }
+
+    /** A project the engine runs nothing of: that is the refusal, with the first reason. */
+    @Test
+    void whenTheEngineRunsNothingOfTheProjectThatIsTheRefusal() throws IOException {
+        project("eggboil", "eggboil");
+        File makefile = new File(ontology, "Makefile");
+        Files.write(makefile.toPath(), (new String(Files.readAllBytes(makefile.toPath()),
+                StandardCharsets.UTF_8) + "\n# a line of their own\n")
+                .getBytes(StandardCharsets.UTF_8));
+        sameAge(temp);
+
+        BuildPlan.WithoutContainer left = BuildPlan.withoutContainer(edit,
+                OdkRoute.Use.AUTOMATIC, NONE_ANSWERS, null, tools());
+
+        assertNull(left.plan());
+        assertTrue(left.refusal().startsWith(NONE_ANSWERS), left.refusal());
+        assertTrue(left.refusal().contains("Makefile"), left.refusal());
+    }
 }

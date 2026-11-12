@@ -184,6 +184,22 @@ class OdkRouteTest {
         assertTrue(OdkRoute.whyNoContainer(answering()).contains("Docker"));
     }
 
+    /** For a sentence that goes on: "..., so OntoBoard runs ODK's own recipes itself". */
+    @Test
+    void whyThereIsNoneAsTheStartOfASentence() {
+        assertEquals("A container is switched off in OntoBoard's settings",
+                OdkRoute.noContainerBecause(OdkRoute.Use.NEVER_CONTAINER, null, NO_PLACES,
+                        answering("docker")));
+        assertEquals("Neither Docker nor Podman answers on this machine",
+                OdkRoute.noContainerBecause(OdkRoute.Use.AUTOMATIC, null, NO_PLACES,
+                        answering()));
+        String chosen = OdkRoute.noContainerBecause(OdkRoute.Use.AUTOMATIC,
+                "C:/tools/podman.exe", NO_PLACES, answering("docker"));
+        assertTrue(chosen.contains("C:/tools/podman.exe") && !chosen.endsWith("."), chosen);
+        assertNull(OdkRoute.noContainerBecause(OdkRoute.Use.AUTOMATIC, null, NO_PLACES,
+                answering("docker")), "one answers");
+    }
+
     // ------------------------------------------------------------------ what is said
 
     /** Podman's command line is Docker's but for a few options: which it is, the name says. */

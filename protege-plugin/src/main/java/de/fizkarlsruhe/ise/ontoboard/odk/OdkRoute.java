@@ -211,6 +211,32 @@ public final class OdkRoute {
                 + "program in OntoBoard's settings.";
     }
 
+    /**
+     * Why no container is used on this machine, as the start of a sentence that goes on ("...,
+     * so OntoBoard runs ODK's own recipes itself"); null when one is.
+     */
+    public static String noContainerBecause(ProcessRunner.Runner runner) {
+        if (noSettings()) {
+            return noContainerBecause(Use.AUTOMATIC, null, new ArrayList<String>(), runner);
+        }
+        return noContainerBecause(use(), containerProgram(), usualPlaces(), runner);
+    }
+
+    static String noContainerBecause(Use use, String chosen, List<String> usualPlaces,
+            ProcessRunner.Runner runner) {
+        if (use == Use.NEVER_CONTAINER) {
+            return "A container is switched off in OntoBoard's settings";
+        }
+        if (runtime(use, chosen, usualPlaces, runner) != null) {
+            return null;
+        }
+        if (chosen != null) {
+            return "The program chosen in OntoBoard's settings to run containers with, " + chosen
+                    + ", does not answer";
+        }
+        return "Neither Docker nor Podman answers on this machine";
+    }
+
     /** Where Docker and Podman are usually installed to on this kind of machine. */
     static List<String> usualPlaces() {
         List<String> places = new ArrayList<String>();

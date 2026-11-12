@@ -54,6 +54,12 @@ public class BuildAction extends OntoBoardAction {
     /** {@code docker} or {@code podman}, decided with the route. */
     private volatile String runtime = "docker";
 
+    /**
+     * Set when OntoBoard's own engine builds an ODK project - no container runs it: what the
+     * engine offers for the project. Null for every other route.
+     */
+    private volatile de.fizkarlsruhe.ise.ontoboard.odk.BuildPlan engine;
+
     /** The machine, asked once: its memory decides Java's when the project names none. */
     private volatile OdkContainer.Host host = OdkContainer.Host.unknown();
 
@@ -77,28 +83,52 @@ public class BuildAction extends OntoBoardAction {
         route = MakeRun.routeFor(editFile, ProcessRunner.real());
         String found = MakeRun.containerRuntime(ProcessRunner.real());
         runtime = found == null ? "docker" : found;
-        String why = MakeRun.whyNotRunnable(editFile, ProcessRunner.real());
-        if (why != null) {
-            javax.swing.JOptionPane.showMessageDialog(getOWLWorkspace(), why,
-                    "Cannot build", javax.swing.JOptionPane.INFORMATION_MESSAGE);
-            return false;
-        }
         imageNote = null;
+        engine = null;
+        // An ODK project that no container runs is built by OntoBoard's own engine - ODK's
+        // Makefile and recipes, inside Protege - unless the person settled otherwise.
+        String noContainer = null;
+        String howToGetOne = null;
         if (route == MakeRun.Route.ODK_IN_CONTAINER) {
             // An image that is on this machine, or none: a runtime handed a name it does not
             // have downloads it, five gigabytes, without a word.
             OdkImage.Choice choice = OdkImage.forProject(MakeRun.workingDirectory(editFile),
                     OdkImage.probe(runtime, ProcessRunner.real()));
             if (choice.reference() == null) {
-                javax.swing.JOptionPane.showMessageDialog(getOWLWorkspace(), choice.note(),
+                noContainer = "ODK's image is not on this machine";
+                howToGetOne = choice.note();
+            } else {
+                image = choice.reference();
+                imageNote = choice.note();
+                host = OdkContainer.Host.detect(runtime, ProcessRunner.real());
+            }
+        } else if (route == MakeRun.Route.NOT_RUNNABLE
+                && de.fizkarlsruhe.ise.ontoboard.odk.OdkRelease.isOdkProject(editFile)) {
+            noContainer = de.fizkarlsruhe.ise.ontoboard.odk.OdkRoute.noContainerBecause(
+                    ProcessRunner.real());
+        }
+        if (noContainer != null) {
+            de.fizkarlsruhe.ise.ontoboard.odk.BuildPlan.WithoutContainer without =
+                    de.fizkarlsruhe.ise.ontoboard.odk.BuildPlan.withoutContainer(editFile,
+                            de.fizkarlsruhe.ise.ontoboard.odk.OdkRoute.use(), noContainer,
+                            howToGetOne);
+            if (without.plan() == null) {
+                javax.swing.JOptionPane.showMessageDialog(getOWLWorkspace(),
+                        ReleaseAction.commandsShown(without.refusal()), "Cannot build",
+                        javax.swing.JOptionPane.INFORMATION_MESSAGE);
+                return false;
+            }
+            engine = without.plan();
+        } else {
+            String why = MakeRun.whyNotRunnable(editFile, ProcessRunner.real());
+            if (why != null) {
+                javax.swing.JOptionPane.showMessageDialog(getOWLWorkspace(), why,
                         "Cannot build", javax.swing.JOptionPane.INFORMATION_MESSAGE);
                 return false;
             }
-            image = choice.reference();
-            imageNote = choice.note();
-            host = OdkContainer.Host.detect(runtime, ProcessRunner.real());
         }
-        List<String> targets = route == MakeRun.Route.IN_PROCESS
+        List<String> targets = engine != null ? engine.targets()
+                : route == MakeRun.Route.IN_PROCESS
                 ? de.fizkarlsruhe.ise.ontoboard.odk.InProcessTargets.TARGETS
                 : MakeRun.targetsFor(editFile);
         if (targets.isEmpty()) {
@@ -114,15 +144,18 @@ public class BuildAction extends OntoBoardAction {
                         .choices(targets.toArray(new String[0]))
                         // test, which the guide and the docs say to run: it is the one that runs
                         // your own tests as well. all came first in the list and was preselected.
-                        .defaultValue(targets.contains("test") ? "test" : targets.get(0))
+                        .defaultValue(engine != null ? engine.defaultTarget()
+                                : targets.contains("test") ? "test" : targets.get(0))
                         .required()
-                        .help(helpFor())
+                        .help(engine != null ? engine.help() : helpFor())
                         .build());
 
         Map<String, String> chosen = ParameterDialog.show(getOWLWorkspace(), "Build",
-                "Checks the ontology. test runs the reasoner, the quality report, your own tests "
-                        + "and the OWL profile check, inside Protege - nothing else needs "
-                        + "installing. The whole log is kept, and can be saved from the result.",
+                engine != null ? engine.explanation()
+                        : "Checks the ontology. test runs the reasoner, the quality report, your "
+                                + "own tests and the OWL profile check, inside Protege - nothing "
+                                + "else needs installing. The whole log is kept, and can be saved "
+                                + "from the result.",
                 parameters);
         if (chosen == null) {
             return false;
@@ -139,6 +172,9 @@ public class BuildAction extends OntoBoardAction {
         result.note("Target: " + target);
         result.note("Directory: " + directory.getAbsolutePath());
 
+        if (engine != null) {
+            return runWithTheEngine(editFile, result);
+        }
         if (route == MakeRun.Route.IN_PROCESS) {
             return runHere(editFile, ontology, result);
         }
@@ -187,6 +223,53 @@ public class BuildAction extends OntoBoardAction {
             result.warn(reload);
         }
         return result.summary("make " + target + " succeeded in " + seconds + "s.").build();
+    }
+
+    /**
+     * An ODK project's target, run by OntoBoard's own engine: ODK's Makefile read and run as
+     * make runs it, ROBOT inside Protege, no container and no other program. The transcript
+     * reads as make's own; a run can be stopped between two lines.
+     */
+    private OperationResult runWithTheEngine(File editFile, OperationResult.Builder result) {
+        result.note("Run by OntoBoard itself: ODK's own Makefile and recipes, inside Protege, "
+                + "without a container.");
+        long started = System.currentTimeMillis();
+        de.fizkarlsruhe.ise.ontoboard.odk.OdkEngine.Outcome outcome =
+                de.fizkarlsruhe.ise.ontoboard.odk.OdkEngine.run(editFile, target,
+                        java.util.Collections.<String, String>emptyMap(),
+                        new java.util.function.BooleanSupplier() {
+                            @Override
+                            public boolean getAsBoolean() {
+                                return BackgroundRun.abandoned();
+                            }
+                        });
+        long seconds = (System.currentTimeMillis() - started) / 1000;
+
+        List<String> transcript = outcome.getTranscript();
+        int shown = 0;
+        for (String line : transcript) {
+            if (shown++ >= MAX_LINES) {
+                break;
+            }
+            result.note(line);
+        }
+        if (transcript.size() > MAX_LINES) {
+            result.warn("Transcript cut after " + MAX_LINES + " of " + transcript.size()
+                    + " lines.");
+        }
+        result.note("Took " + seconds + "s, " + transcript.size() + " lines of output.");
+        if (!outcome.isOk()) {
+            return result.failed(outcome.getFailure()).build();
+        }
+        String reload = MakeRun.reloadHint(target, editFile);
+        if (reload != null) {
+            result.warn(reload);
+        }
+        List<String> passing =
+                de.fizkarlsruhe.ise.ontoboard.odk.BuildPlan.passingChecks(transcript);
+        return result.summary(target + " succeeded in " + seconds + "s, run by OntoBoard "
+                + "itself" + (passing.isEmpty() ? "." : "; " + passing.size() + " of ODK's and "
+                + "your checks passed.")).build();
     }
 
     /** The command this route runs, already decided in {@link #configure()}. */

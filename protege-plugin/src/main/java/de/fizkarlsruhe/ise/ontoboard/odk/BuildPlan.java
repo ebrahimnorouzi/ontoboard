@@ -112,6 +112,56 @@ public final class BuildPlan {
                 whyNoContainer);
     }
 
+    /**
+     * What Build does for an ODK project that no container runs: the plan of OntoBoard's own
+     * engine, or why nothing runs.
+     */
+    public static final class WithoutContainer {
+        private final BuildPlan plan;
+        private final String refusal;
+
+        private WithoutContainer(BuildPlan plan, String refusal) {
+            this.plan = plan;
+            this.refusal = refusal;
+        }
+
+        /** The engine's plan; null when nothing runs. */
+        public BuildPlan plan() {
+            return plan;
+        }
+
+        /** Why nothing runs, for a person to read; null when the engine builds. */
+        public String refusal() {
+            return refusal;
+        }
+    }
+
+    /**
+     * For an ODK project that no container runs, with the programs OntoBoard has.
+     *
+     * @param use         what the person settled about containers
+     * @param noContainer why no container runs the build, as the start of a sentence
+     * @param howToGetOne what to do to have one, said with a refusal; or null
+     */
+    public static WithoutContainer withoutContainer(File editFile, OdkRoute.Use use,
+            String noContainer, String howToGetOne) {
+        return withoutContainer(editFile, use, noContainer, howToGetOne, OdkTools.forProject());
+    }
+
+    static WithoutContainer withoutContainer(File editFile, OdkRoute.Use use,
+            String noContainer, String howToGetOne, Map<String, RecipeShell.Tool> tools) {
+        if (!OdkRoute.mayRunWithoutContainer(use)) {
+            return new WithoutContainer(null, noContainer + ", and OntoBoard's setting for "
+                    + "ODK's targets is \"" + use.label() + "\": nothing is run."
+                    + (howToGetOne == null ? "" : "\n\n" + howToGetOne));
+        }
+        BuildPlan plan = inProcess(editFile, tools, noContainer);
+        if (plan.targets().isEmpty()) {
+            return new WithoutContainer(null, plan.whyNothing());
+        }
+        return new WithoutContainer(plan, null);
+    }
+
     /** Whether OntoBoard's own engine runs the build, not ODK's container. */
     public boolean isInProcess() {
         return inProcess;
