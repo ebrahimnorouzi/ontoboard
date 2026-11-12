@@ -24,6 +24,17 @@ public final class OdkPin {
     /** Where the bundle keeps this version's files, as a class-path prefix. */
     public static final String RESOURCES = "odk/" + VERSION + "/";
 
+    /**
+     * The ODK ROBOT plugin this version's image carries as {@code /tools/robot-plugins/odk.jar},
+     * whose commands ({@code odk:normalize}, {@code odk:import}, {@code odk:subset}) its Makefile
+     * calls. The bundle carries the same jar; the pom's {@code odk.robot.plugin.version} is this.
+     */
+    public static final String ROBOT_PLUGIN_VERSION = "0.3.1";
+
+    /** That jar's SHA-256, as read from the image. */
+    public static final String ROBOT_PLUGIN_SHA256 =
+            "35f8ea55185bebd0c3c6bef17620975803aeb98d095d99cc2b75182bdd705312";
+
     private OdkPin() {
     }
 }

@@ -30,6 +30,8 @@
       literal in Java.
     -->
     <robot.version>1.9.8</robot.version>
+    <!-- ODK's ROBOT plugin, at the version the pinned ODK image carries (odk/seed/OdkPin). -->
+    <odk.robot.plugin.version>0.3.1</odk.robot.plugin.version>
     <junit.version>5.10.2</junit.version>
     <github.repo>ebrahimnorouzi/ontoboard</github.repo>
   </properties>
@@ -96,8 +98,47 @@
         <version>18.0</version>
         <scope>provided</scope>
       </dependency>
+      <!-- Logback: the host's, for the same reason. Protege logs through logback (5.5.0 ships
+           1.1.3, 5.6.9 ships 1.2.13, both exporting ch.qos.logback.classic), and ROBOT's command
+           line casts the root logger slf4j hands it to ch.qos.logback.classic.Logger on every
+           command (CommandLineHelper.maybeGetCommandLine). With a logback of its own in the
+           bundle that cast met a second copy of the class and every command failed. The copy
+           was no use besides: robot-core dragged in logback-classic 1.5.6, which needs slf4j 2
+           and Java 11, beside the host's logback-core 1.1.3 and slf4j 1.7. Pinned to what the
+           older host ships, as OWL API and Guava are. -->
+      <dependency>
+        <groupId>ch.qos.logback</groupId>
+        <artifactId>logback-classic</artifactId>
+        <version>1.1.3</version>
+        <scope>provided</scope>
+      </dependency>
+      <dependency>
+        <groupId>ch.qos.logback</groupId>
+        <artifactId>logback-core</artifactId>
+        <version>1.1.3</version>
+        <scope>provided</scope>
+      </dependency>
     </dependencies>
   </dependencyManagement>
+
+  <!--
+    One artifact is not on Maven Central: ODK's ROBOT plugin. It is kept in this repository, in
+    Maven's own layout, and resolved from there like any other.
+  -->
+  <repositories>
+    <repository>
+      <id>ontoboard-local</id>
+      <name>Artifacts kept with OntoBoard's sources</name>
+      <url>file:///${project.basedir}/local-repo</url>
+      <releases>
+        <enabled>true</enabled>
+        <checksumPolicy>fail</checksumPolicy>
+      </releases>
+      <snapshots>
+        <enabled>false</enabled>
+      </snapshots>
+    </repository>
+  </repositories>
 
   <dependencies>
     <!-- provided: supplied by the Protege runtime, never embedded.
@@ -119,6 +160,51 @@
       <groupId>org.obolibrary.robot</groupId>
       <artifactId>robot-core</artifactId>
       <version>${robot.version}</version>
+    </dependency>
+
+    <!--
+      ROBOT's command line, beside its operations. Without Docker, OntoBoard runs ODK's recipes
+      itself, and a recipe is a ROBOT command line; run through ROBOT's own command layer
+      (odk/OdkRobot) each option means what it means in ODK's container. 120 KB.
+
+      It comes alone. Of what its pom names, commons-cli is in the bundle already, at the same
+      version. commons-io is too, older (2.4), and has every method robot-command calls
+      (FileUtils.readFileToString, writeLines; FilenameUtils.getExtension, getBaseName):
+      taking 2.14.0 with it would change that library under a hundred other embedded jars for
+      nothing. javax.inject and caffeine it never references; the host has its own of both,
+      and a second javax.inject in the bundle would be a second set of the classes OWL API's
+      signatures are written in.
+    -->
+    <dependency>
+      <groupId>org.obolibrary.robot</groupId>
+      <artifactId>robot-command</artifactId>
+      <version>${robot.version}</version>
+      <exclusions>
+        <exclusion>
+          <groupId>commons-io</groupId>
+          <artifactId>commons-io</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>javax.inject</groupId>
+          <artifactId>javax.inject</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>com.github.ben-manes.caffeine</groupId>
+          <artifactId>caffeine</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+
+    <!--
+      ODK's ROBOT plugin: odk:import, odk:normalize and odk:subset, which ODK's Makefile calls.
+      It is the jar the ODK image carries as /tools/robot-plugins/odk.jar, kept in local-repo/
+      because Maven Central does not have it (OdkRobotTest checks its checksum). 42 KB, Java 8
+      class files, BSD-3-Clause; it needs nothing but robot-command.
+    -->
+    <dependency>
+      <groupId>org.incenp</groupId>
+      <artifactId>odk-robot-plugin</artifactId>
+      <version>${odk.robot.plugin.version}</version>
     </dependency>
 
     <!--
@@ -262,16 +348,19 @@
             <!--
               Suppress the generated `Require-Capability: osgi.ee=JavaSE version=11`.
               bnd computes that from the HIGHEST class-file version across the whole
-              bundle, and three embedded jars (logback-classic 1.5.6, obographs-core and
-              obographs-owlapi 0.3.1) carry Java 11 classes. Protege 5.5.0 runs on its
+              bundle, and embedded jars (obographs-core and obographs-owlapi 0.3.1; until
+              1.153.0 also a logback-classic 1.5.6, which is the host's now and no longer
+              embedded) carry Java 11 classes. Protege 5.5.0 runs on its
               bundled Java 8 JRE, so the requirement is unsatisfiable and Felix refuses
               to resolve the bundle - which is why 1.0.1 installed but never started.
 
               OntoBoard's own classes are Java 8 (enforced by maven.compiler.release and
-              guarded by a test). The Java 11 classes belong to a logging backend Protege
-              already provides and to a ROBOT JSON format this release does not call; if
-              such a class were ever loaded it would throw UnsupportedClassVersionError,
-              the same trade-off already accepted for the optional import tail.
+              guarded by a test). The Java 11 classes are obographs', which writes ROBOT's
+              JSON form of an ontology; loaded on Java 8, one throws
+              UnsupportedClassVersionError. ROBOT loaded one of them on every save - found
+              when its command line first ran inside Protege 5.5 (1.153.0) - so OntoBoard
+              carries that one class compiled for Java 8 (the Export-Package comment below),
+              and odk/OdkRobot refuses JSON output on Java 8 by name.
             -->
             <_noee>true</_noee>
             <!--
@@ -292,6 +381,19 @@
             <!-- Do NOT set Bundle-ClassPath; Embed-Dependency manages it. -->
             <Embed-Dependency>*;scope=compile|runtime;artifactId=!log4j-api</Embed-Dependency>
             <Embed-Transitive>true</Embed-Transitive>
+            <!--
+              OntoBoard's own packages are exported, every one, as they were by default - written
+              out as a pattern because of the one package of its sources that is somebody else's
+              name: org.geneontology.obographs.owlapi, where OntoBoard keeps one class compiled
+              for Java 8 (see that class). That one is not exported: another plugin asking for
+              obographs must not be handed OntoBoard's one class. And it is taken from
+              OntoBoard's sources alone ("first"): left to the default, every jar's classes of
+              the package are merged into the bundle's own, which copied obographs' six Java 11
+              classes in beside it. (An exclusion in front of {local-packages} does not do it:
+              the package was exported all the same. BundleConfigurationTest holds both.)
+            -->
+            <Export-Package>de.fizkarlsruhe.ise.ontoboard.*</Export-Package>
+            <Private-Package>org.geneontology.obographs.owlapi;-split-package:=first</Private-Package>
             <!-- version="5.5.0" means [5.5.0, infinity), so this also loads on 5.6.x -->
             <!--
               `!java.*` is load-bearing. OSGi forbids Import-Package entries for java.*

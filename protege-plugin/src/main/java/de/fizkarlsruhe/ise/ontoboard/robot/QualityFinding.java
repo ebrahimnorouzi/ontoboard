@@ -43,12 +43,35 @@ public final class QualityFinding {
     private final String rule;
     private final String subject;
     private final String message;
+    private final String property;
+    private final String value;
 
     public QualityFinding(Severity severity, String rule, String subject, String message) {
+        this(severity, rule, subject, message, "", "");
+    }
+
+    /**
+     * A finding with what ROBOT's query bound beside the entity: the property and the value,
+     * which are the fourth and fifth columns of ROBOT's own report file.
+     */
+    public QualityFinding(Severity severity, String rule, String subject, String message,
+            String property, String value) {
         this.severity = severity;
         this.rule = rule;
         this.subject = subject;
         this.message = message;
+        this.property = property == null ? "" : property;
+        this.value = value == null ? "" : value;
+    }
+
+    /** The property the rule's query bound, as an IRI; empty when it bound none. */
+    public String getProperty() {
+        return property;
+    }
+
+    /** The value the rule's query bound; empty when it bound none. */
+    public String getValue() {
+        return value;
     }
 
     public Severity getSeverity() {

@@ -144,7 +144,7 @@ public final class RuleRunner {
                     continue;
                 }
                 found.add(new QualityFinding(QualityFinding.Severity.of(severity), rule, subject,
-                        message(row)));
+                        message(row), text(row, PROPERTY), text(row, VALUE)));
             }
         } finally {
             execution.close();

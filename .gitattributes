@@ -9,3 +9,7 @@ benchmarks/assistant/ontologies/*.owl -text
 # core.autocrlf=true and without these lines a Windows checkout turns every one of them into CRLF.
 protege-plugin/src/main/odk/** -text
 protege-plugin/src/test/resources/odk/** -text
+
+# The ODK ROBOT plugin's jar, kept in the repository as a Maven artifact because Maven Central
+# does not carry it. It is the jar the ODK image holds, and a test checks its checksum.
+protege-plugin/local-repo/** -text
