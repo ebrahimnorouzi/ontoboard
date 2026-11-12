@@ -1,6 +1,10 @@
 package de.fizkarlsruhe.ise.ontoboard.menu;
 
 import de.fizkarlsruhe.ise.ontoboard.odk.ImportModules;
+import de.fizkarlsruhe.ise.ontoboard.odk.OdkBuildSettings;
+import de.fizkarlsruhe.ise.ontoboard.odk.OdkChecks;
+import de.fizkarlsruhe.ise.ontoboard.odk.OdkExtras;
+import de.fizkarlsruhe.ise.ontoboard.odk.OdkRelease;
 import de.fizkarlsruhe.ise.ontoboard.pattern.ImportedPatterns;
 import java.io.File;
 import java.util.ArrayList;
@@ -304,12 +308,17 @@ public final class Guide {
         facts.hasRequirements = hasAQuestion(new File(root, "docs/requirements.md"))
                 || hasAQuestion(new File(root, "docs/xd/requirements.md"));
         facts.importModules = ImportModules.modulesIn(root).size();
-        File[] sparql = new File(root, "src/sparql").listFiles();
-        if (sparql != null) {
-            for (File query : sparql) {
-                if (query.getName().endsWith(".rq") && !query.getName().equals("check_labels.rq")
-                        && !isTheTemplate(query)) {
-                    facts.ownTests++;
+        if (OdkRelease.isOdkProject(editFile)) {
+            facts.ownTests = ownChecks(root, ontologyDirectory);
+        } else {
+            File[] sparql = new File(root, "src/sparql").listFiles();
+            if (sparql != null) {
+                for (File query : sparql) {
+                    if (query.getName().endsWith(".rq")
+                            && !query.getName().equals("check_labels.rq")
+                            && !isTheTemplate(query)) {
+                        facts.ownTests++;
+                    }
                 }
             }
         }
@@ -411,6 +420,34 @@ public final class Guide {
             return false;
         }
         return false;
+    }
+
+    /**
+     * In an ODK project, the tests of the project's own: the checks its configuration lists whose
+     * file is there - what ODK's test runs - other than ODK's own and the label check every
+     * project starts with. A query in src/sparql that no list names is not run, so not counted.
+     */
+    static int ownChecks(File root, File ontologyDirectory) {
+        File yaml = OdkBuildSettings.yamlIn(ontologyDirectory);
+        if (yaml == null) {
+            return 0;
+        }
+        int own = 0;
+        try {
+            String config = new String(java.nio.file.Files.readAllBytes(yaml.toPath()),
+                    java.nio.charset.StandardCharsets.UTF_8);
+            for (File check : OdkChecks.filesIn(root, config)) {
+                String name = check.getName().substring(0,
+                        check.getName().length() - OdkChecks.SUFFIX.length());
+                if (!OdkChecks.ODK_SHIPS.contains(name) && !OdkExtras.LABEL_CHECK.equals(name)
+                        && !isTheTemplate(check)) {
+                    own++;
+                }
+            }
+        } catch (java.io.IOException | RuntimeException unreadable) {
+            return 0;
+        }
+        return own;
     }
 
     /** Whether a test is still the guide's template, its rule not yet written. */

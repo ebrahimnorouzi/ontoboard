@@ -132,4 +132,49 @@ class GuideTest {
         assertTrue(!facts.hasRequirements, "an empty question table is not requirements");
         assertEquals(0, facts.ownTests, "the template is not a test");
     }
+
+    /**
+     * In an ODK project a test of one's own is a check the configuration lists, with its file:
+     * what ODK's test runs. ODK's own checks and the label check are not one, and nor is a query
+     * in src/sparql that no list names.
+     */
+    @Test
+    void inAnOdkProjectTheTestsAreTheListedChecks(@TempDir File temp) throws Exception {
+        File root = new File(temp, "eggboil");
+        for (Map.Entry<String, byte[]> file : de.fizkarlsruhe.ise.ontoboard.odk.seed.Goldens
+                .seedTree("eggboil").entrySet()) {
+            File target = new File(root, file.getKey());
+            target.getParentFile().mkdirs();
+            Files.write(target.toPath(), file.getValue());
+        }
+        File edit = new File(root, "src/ontology/eggboil-edit.owl");
+        File yaml = new File(root, "src/ontology/eggboil-odk.yaml");
+        String config = de.fizkarlsruhe.ise.ontoboard.odk.seed.Goldens.config("eggboil");
+        write(yaml, config);
+        write(new File(root, "src/sparql/check_labels-violation.sparql"), "SELECT * {}");
+        write(new File(root, "src/sparql/mine.rq"), "SELECT * {}");
+        write(new File(root, "src/sparql/other-violation.sparql"), "SELECT * {}");
+
+        assertEquals(0, Guide.factsOf(edit, null).ownTests,
+                "ODK's own, the label check, and two queries nobody runs");
+
+        config = de.fizkarlsruhe.ise.ontoboard.odk.OdkChecks.add(config, "dc-properties");
+        write(yaml, config);
+        write(new File(root, "src/sparql/dc-properties-violation.sparql"), "SELECT * {}");
+        assertEquals(0, Guide.factsOf(edit, null).ownTests, "one of ODK's own checks");
+
+        config = de.fizkarlsruhe.ise.ontoboard.odk.OdkChecks.add(config, "no_file_yet");
+        write(yaml, config);
+        assertEquals(0, Guide.factsOf(edit, null).ownTests, "listed, with no file");
+
+        config = de.fizkarlsruhe.ise.ontoboard.odk.OdkChecks.add(config,
+                "every_dataset_has_part");
+        write(yaml, config);
+        write(new File(root, "src/sparql/every_dataset_has_part-violation.sparql"),
+                "SELECT * {}");
+        Guide.Facts facts = Guide.factsOf(edit, null);
+        assertEquals(1, facts.ownTests, "a question's check");
+        assertEquals(Guide.State.DONE, Guide.progress(Guide.steps(Guide.Start.NEW), facts)
+                .get("tests"));
+    }
 }
