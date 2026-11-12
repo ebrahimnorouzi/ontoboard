@@ -41,6 +41,8 @@ final class MakeRunner {
     private final List<String> assumeNew;
     private final String makefile;
     private final boolean everyMake;
+    /** Who runs the recipe lines; null for a dry run, which only says what they are. */
+    private final MakeFile.Executor executor;
 
     private MakeDatabase db;
     private MakeExpander expander;
@@ -66,6 +68,17 @@ final class MakeRunner {
      */
     MakeRunner(MakeFile.Disk disk, MakeFile.Shell shell, Map<String, String> commandLine,
             int level, List<String> assumeNew, String makefile, boolean everyMake) {
+        this(disk, shell, commandLine, level, assumeNew, makefile, everyMake, null);
+    }
+
+    /**
+     * @param executor runs the recipe lines: a real run, which decides as it goes and stops at
+     *                 a line that fails ({@link Stopped}); null for a dry run
+     */
+    MakeRunner(MakeFile.Disk disk, MakeFile.Shell shell, Map<String, String> commandLine,
+            int level, List<String> assumeNew, String makefile, boolean everyMake,
+            MakeFile.Executor executor) {
+        this.executor = executor;
         this.disk = disk;
         this.shell = shell;
         this.commandLine = new LinkedHashMap<String, String>(commandLine);
@@ -142,9 +155,14 @@ final class MakeRunner {
             int before = commandsStarted;
             updateFile(file);
             if (commandsStarted == before) {
-                steps.add(message(file.phony || file.cmds == null
+                String nothing = file.phony || file.cmds == null
                         ? "Nothing to be done for '" + goal + "'."
-                        : "'" + goal + "' is up to date."));
+                        : "'" + goal + "' is up to date.";
+                if (executor != null) {
+                    executor.say(prefix() + nothing);
+                } else {
+                    steps.add(message(nothing));
+                }
             }
         }
         return new Result(steps, considered);
@@ -340,10 +358,14 @@ final class MakeRunner {
         if (ran && !file.phony) {
             int i = 0;
             if (file.cmds != null) {
-                file.cmds.chop();
-                for (i = file.cmds.flags.length; i > 0; --i) {
-                    if ((file.cmds.flags[i - 1] & Recipe.RECURSE) == 0) {
-                        break;
+                // A real run looks at the file again: its recipe ran, and may or may not have
+                // made it. Only a dry run has to assume.
+                if (executor == null) {
+                    file.cmds.chop();
+                    for (i = file.cmds.flags.length; i > 0; --i) {
+                        if ((file.cmds.flags[i - 1] & Recipe.RECURSE) == 0) {
+                            break;
+                        }
                     }
                 }
             } else if (file.isTarget) {
@@ -415,7 +437,28 @@ final class MakeRunner {
         }
         commandsStarted++;
         boolean silent = (flags & Recipe.SILENT) != 0;
-        if ((flags & Recipe.RECURSE) == 0 && !(everyMake && runsMake(command))) {
+        boolean subMake = (flags & Recipe.RECURSE) != 0 || (everyMake && runsMake(command));
+        if (executor != null) {
+            // The real thing: said, run, and judged by its exit status.
+            if (!silent) {
+                executor.say(command);
+            }
+            int status = subMake ? (enterSubMake(command, line) ? 0 : 2)
+                    : executor.run(new MakeFile.Step(MakeFile.Step.Kind.COMMAND, command,
+                            file.name, line.file(), line.number(), silent, noError, level,
+                            disk.folder(), Collections.<MakeFile.Step>emptyList()));
+            if (status != 0) {
+                String where = "[" + line.file() + ":" + line.number() + ": " + file.name
+                        + "] Error " + status;
+                if (!noError) {
+                    executor.say(prefix() + "*** " + where);
+                    throw new Stopped();
+                }
+                executor.say(prefix() + where + " (ignored)");
+            }
+            return;
+        }
+        if (!subMake) {
             steps.add(new MakeFile.Step(MakeFile.Step.Kind.COMMAND, command, file.name,
                     line.file(), line.number(), silent, noError, level, disk.folder(),
                     Collections.<MakeFile.Step>emptyList()));
@@ -523,6 +566,62 @@ final class MakeRunner {
      * make's command-line variables passed on and the line's own beating them.
      */
     private List<MakeFile.Step> followSubMake(String command, MakeFile.Line line) {
+        List<String> goals = new ArrayList<String>();
+        MakeRunner child = subMake(command, line, goals);
+        Result result = child.run(goals);
+        considered.addAll(result.considered);
+        return result.steps;
+    }
+
+    /**
+     * The same line in a real run: the make one level down runs its goals now, on the disk as
+     * the lines before it left it.
+     *
+     * @return whether it made them; false when it stopped, which it has said
+     */
+    private boolean enterSubMake(String command, MakeFile.Line line) {
+        List<String> goals = new ArrayList<String>();
+        MakeRunner child = subMake(command, line, goals);
+        executor.say(child.prefix() + "Entering directory '" + disk.folder() + "'");
+        boolean made = true;
+        try {
+            child.run(goals);
+        } catch (Stopped stopped) {
+            made = false;
+        } catch (MakeFile.MakeException stop) {
+            if (!stop.isMakesOwn()) {
+                throw stop;
+            }
+            executor.say(asMakeStops(stop.getMessage()));
+            made = false;
+        }
+        executor.say(child.prefix() + "Leaving directory '" + disk.folder() + "'");
+        considered.addAll(child.considered);
+        return made;
+    }
+
+    /**
+     * A stop of make's own as make words it on its last line:
+     * {@code make: *** No rule to make target 'x', needed by 'y'.  Stop.}
+     */
+    static String asMakeStops(String message) {
+        int colon = message.indexOf(": ");
+        String who = colon < 0 ? "" : message.substring(0, colon + 2);
+        String what = colon < 0 ? message : message.substring(colon + 2);
+        return who + (what.startsWith("*** ") ? "" : "*** ") + what + "  Stop.";
+    }
+
+    /** A real run ended at a recipe line that failed; make has said which. */
+    static final class Stopped extends RuntimeException {
+        private static final long serialVersionUID = 1L;
+
+        Stopped() {
+            super(null, null, false, false);
+        }
+    }
+
+    /** The make one level down for a recipe line that runs make; its goals are added to goals. */
+    private MakeRunner subMake(String command, MakeFile.Line line, List<String> goals) {
         List<String> words = shellWords(command, line);
         String make = db.variable("MAKE").value;
         if (words.isEmpty() || !words.get(0).equals(make)) {
@@ -530,7 +629,6 @@ final class MakeRunner {
                     + "' even under -n, and it is not a sub-make this reader can follow");
         }
         Map<String, String> variables = new LinkedHashMap<String, String>(commandLine);
-        List<String> goals = new ArrayList<String>();
         List<String> newFiles = new ArrayList<String>();
         for (int k = 1; k < words.size(); k++) {
             String word = words.get(k);
@@ -554,11 +652,8 @@ final class MakeRunner {
                 }
             }
         }
-        MakeRunner child = new MakeRunner(disk, shell, variables, level + 1, newFiles, null,
-                everyMake);
-        Result result = child.run(goals);
-        considered.addAll(result.considered);
-        return result.steps;
+        return new MakeRunner(disk, shell, variables, level + 1, newFiles, null, everyMake,
+                executor);
     }
 
     /**

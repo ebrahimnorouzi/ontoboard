@@ -68,6 +68,16 @@ final class MemoryDisk implements MakeFile.Disk {
         return this;
     }
 
+    /** Takes a file away, as a recipe's {@code rm} does; nothing happens when it is not there. */
+    MemoryDisk remove(String path) {
+        String key = key(path);
+        if (key != null) {
+            files.remove(key);
+            times.remove(key);
+        }
+        return this;
+    }
+
     @Override
     public String folder() {
         return folder;

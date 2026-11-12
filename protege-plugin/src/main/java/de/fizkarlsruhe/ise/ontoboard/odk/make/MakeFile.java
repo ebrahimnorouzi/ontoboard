@@ -484,6 +484,50 @@ public final class MakeFile {
                 makefilePath, true).run(Collections.singletonList(goal)).steps;
     }
 
+    /** Whoever runs the recipe lines of a real run, in the shell's place. */
+    public interface Executor {
+        /** One recipe line, as make hands it to the shell; its exit status, 0 for success. */
+        int run(Step step);
+
+        /**
+         * A line make itself prints: a recipe line before it is run (unless it is written with
+         * {@code @}), a directory entered or left, an error.
+         */
+        void say(String line);
+    }
+
+    /**
+     * Runs the goal as {@code make <goal>} does: decides as it goes, on the disk as each
+     * recipe leaves it, hands every recipe line to the executor in make's order, and stops at
+     * the first line that fails and is not written with {@code -}.
+     *
+     * <p>Where {@link #runPlan} says what a run would do, seen from before it, this is the
+     * run. They differ where a recipe does not make its target, or removes what a later
+     * target needs - ODK's refresh of the imports cleans and then builds.
+     *
+     * @return whether the goal was made; false when make stopped, which it has then said
+     * @throws MakeException where this reader cannot follow the makefile - not for a stop of
+     *                       make's own, which is said and returned as false
+     */
+    public boolean run(String goal, Executor executor) {
+        if (executor == null) {
+            throw new IllegalArgumentException("a run needs somebody to run its recipe lines");
+        }
+        try {
+            new MakeRunner(disk, shell, commandLine, 0, Collections.<String>emptyList(),
+                    makefilePath, true, executor).run(Collections.singletonList(goal));
+            return true;
+        } catch (MakeRunner.Stopped stopped) {
+            return false;
+        } catch (MakeException stop) {
+            if (!stop.isMakesOwn()) {
+                throw stop;
+            }
+            executor.say(MakeRunner.asMakeStops(stop.getMessage()));
+            return false;
+        }
+    }
+
     /** Every rule of the makefiles, in the order make read them. */
     public List<Rule> rules() {
         return Collections.unmodifiableList(database.rules);
