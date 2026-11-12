@@ -216,11 +216,14 @@ public final class Toolchain {
                         "not configured",
                         isWindows()
                                 ? "Not available on Windows - ODK supports native environments on "
-                                        + "Linux and macOS only. Use Docker or Podman here."
-                                : "Install the odk-core Python package "
-                                        + "('python -m pip install odk-core'), run "
-                                        + "'odk install /path/to/env', then point OntoBoard at "
-                                        + "that directory with the Choose button."));
+                                        + "Linux and macOS only. Not needed either: OntoBoard "
+                                        + "builds an ODK project itself, or in a container."
+                                : "Not needed: OntoBoard builds an ODK project itself, or in a "
+                                        + "container. To have one all the same, install the "
+                                        + "odk-core Python package ('python -m pip install "
+                                        + "odk-core'), run 'odk install /path/to/env', then "
+                                        + "point OntoBoard at that directory with Set native ODK "
+                                        + "environment... below."));
 
         boolean dockerThere = ProcessRunner.isAvailable(runner, "docker", "--version");
         boolean dockerWorks = dockerThere && ProcessRunner.isAvailable(runner, "docker", "info");
@@ -261,12 +264,12 @@ public final class Toolchain {
         boolean make = ProcessRunner.isAvailable(runner, "make", "--version");
         tools.add(new Tool("GNU make", make ? State.PRESENT : State.ABSENT,
                 make ? "on the PATH" : "not found",
+                // ODK's Makefile and OntoBoard's own are read and run by OntoBoard itself; a
+                // make of the machine's own runs only what is neither.
                 make ? ""
-                        : isWindows()
-                                ? "'choco install make' or 'scoop install make'. Only needed for "
-                                        + "a project OntoBoard did not scaffold."
-                                : "Install it with your package manager - 'apt install make' or "
-                                        + "'brew install make'."));
+                        : "Only needed to run a Makefile that is neither ODK's nor OntoBoard's: "
+                                + (isWindows() ? "'choco install make' or 'scoop install make'."
+                                        : "'apt install make' or 'brew install make'.")));
 
         boolean shell = ProcessRunner.isAvailable(runner, "sh", "--version");
         tools.add(new Tool("POSIX shell", shell ? State.PRESENT : State.ABSENT,

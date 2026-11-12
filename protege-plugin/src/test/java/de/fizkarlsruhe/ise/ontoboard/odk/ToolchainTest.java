@@ -31,4 +31,41 @@ class ToolchainTest {
                 "someone without a model can still do everything the toolchain offers");
         assertEquals(1, report.getTools().size(), "the original report is unchanged");
     }
+
+    /**
+     * On a machine where no program answers at all - no container program, no make, no shell,
+     * no ODK - nothing OntoBoard does is out of reach, and no row sends anybody to install one
+     * of them in order to work: each says what it would be for.
+     */
+    @Test
+    void withNothingInstalledNothingIsOutOfReachAndNoRowSaysOtherwise() {
+        Toolchain.Report report = Toolchain.probe(
+                new de.fizkarlsruhe.ise.ontoboard.proc.ProcessRunner.Runner() {
+                    @Override
+                    public de.fizkarlsruhe.ise.ontoboard.proc.ProcessRunner.Outcome run(
+                            java.io.File workingDirectory, List<String> command,
+                            long timeoutMinutes,
+                            de.fizkarlsruhe.ise.ontoboard.proc.ProcessRunner.Sink sink)
+                            throws java.io.IOException {
+                        throw new java.io.IOException("Cannot run program \"" + command.get(0)
+                                + "\"");
+                    }
+                });
+
+        assertTrue(report.isEverythingAvailable(), Toolchain.asText(report));
+        for (Toolchain.Tool tool : report.getTools()) {
+            String remedy = tool.getRemedy();
+            assertTrue(!remedy.contains("Use Docker or Podman here")
+                    && !remedy.contains("is the only route"), tool.getName() + ": " + remedy);
+            if (tool.getName().equals("GNU make")) {
+                assertTrue(remedy.contains("neither ODK's nor OntoBoard's"),
+                        "what a make of the machine's own would be for: " + remedy);
+            }
+            if (tool.getName().equals("Native ODK environment")) {
+                assertTrue(remedy.contains("OntoBoard builds an ODK project itself")
+                        || remedy.contains("Set native ODK environment..."),
+                        "not needed, or how to set one: " + remedy);
+            }
+        }
+    }
 }
