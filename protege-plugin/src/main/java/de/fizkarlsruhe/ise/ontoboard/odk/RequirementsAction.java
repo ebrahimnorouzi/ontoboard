@@ -73,6 +73,11 @@ public class RequirementsAction extends ProtegeOWLAction {
         choose.setToolTipText("The directory 'odk install' created. Linux and macOS only.");
         choose.addActionListener(a -> chooseNativeEnvironment());
 
+        JButton container = new JButton("Container settings...");
+        container.setToolTipText("Whether ODK's targets run in a container, and which program "
+                + "runs it.");
+        container.addActionListener(a -> chooseContainerSettings());
+
         JButton copy = new JButton("Copy as text");
         copy.setToolTipText("For pasting into an issue report.");
         copy.addActionListener(a -> {
@@ -83,7 +88,37 @@ public class RequirementsAction extends ProtegeOWLAction {
         JOptionPane.showOptionDialog(getOWLWorkspace(), new RequirementsPanel(report),
                 "OntoBoard requirements", JOptionPane.DEFAULT_OPTION,
                 JOptionPane.PLAIN_MESSAGE, null,
-                new Object[] {choose, copy, "Close"}, "Close");
+                new Object[] {container, choose, copy, "Close"}, "Close");
+    }
+
+    /**
+     * The two things a person can settle about ODK's container ({@link OdkRoute}): whether one
+     * is used, and which program runs it. Asked again until what is chosen can be kept - a
+     * program that is named has to be a file - or the person gives up.
+     */
+    private void chooseContainerSettings() {
+        OdkRoutePanel panel = new OdkRoutePanel(OdkRoute.use(), OdkRoute.containerProgram(), null);
+        while (true) {
+            int answer = JOptionPane.showConfirmDialog(getOWLWorkspace(), panel,
+                    "Container for ODK's targets", JOptionPane.OK_CANCEL_OPTION,
+                    JOptionPane.PLAIN_MESSAGE);
+            if (answer != JOptionPane.OK_OPTION) {
+                return;
+            }
+            String why = panel.whyNot();
+            if (why == null) {
+                break;
+            }
+            JOptionPane.showMessageDialog(getOWLWorkspace(), why, "Container for ODK's targets",
+                    JOptionPane.WARNING_MESSAGE);
+        }
+        OdkRoute.setUse(panel.use());
+        OdkRoute.setContainerProgram(panel.program());
+        JOptionPane.showMessageDialog(getOWLWorkspace(),
+                "Kept: " + panel.use().label() + (panel.program() == null ? ""
+                        : ", with " + panel.program()) + ".\n\nRe-run Check requirements to "
+                        + "see what answers now.",
+                "Container for ODK's targets", JOptionPane.INFORMATION_MESSAGE);
     }
 
     /**

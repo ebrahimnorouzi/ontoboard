@@ -70,7 +70,7 @@ public final class OdkRoute {
     }
 
     public static Use use() {
-        return use(node());
+        return noSettings() ? Use.AUTOMATIC : use(node());
     }
 
     static Use use(Preferences node) {
@@ -97,7 +97,7 @@ public final class OdkRoute {
 
     /** The program a person chose to run containers with, or null when they left it open. */
     public static String containerProgram() {
-        return containerProgram(node());
+        return noSettings() ? null : containerProgram(node());
     }
 
     static String containerProgram(Preferences node) {

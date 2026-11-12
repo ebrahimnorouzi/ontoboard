@@ -571,37 +571,56 @@ class InProcessTargetsTest {
     @Test
     void capabilitiesDoNotDemandToolsThatAreNotNeeded() {
         List<Toolchain.Capability> bare =
-                Toolchain.capabilities(false, false, false, false);
-
-        int available = 0;
-        for (Toolchain.Capability capability : bare) {
-            if (capability.isAvailable()) {
-                available++;
-            }
-        }
-        assertTrue(available >= 3,
-                "editing, scaffolding and building a scaffolded project need nothing installed");
+                Toolchain.capabilities(false, null, OdkRoute.Use.AUTOMATIC, false);
 
         for (Toolchain.Capability capability : bare) {
-            if (capability.getName().startsWith("Build an existing ODK")) {
-                assertFalse(capability.isAvailable(),
-                        "with no native env and no container, an ODK repo cannot be built");
-                assertTrue(capability.getHow().toLowerCase(java.util.Locale.ROOT)
-                        .contains("docker"), capability.getHow());
+            assertTrue(capability.isAvailable(), capability.getName() + ": editing, making a "
+                    + "project and building one need nothing installed - " + capability.getHow());
+        }
+        Toolchain.Capability odk = buildingAnOdkProject(bare);
+        assertTrue(odk.getHow().contains("OntoBoard itself"), odk.getHow());
+    }
+
+    private static Toolchain.Capability buildingAnOdkProject(List<Toolchain.Capability> all) {
+        for (Toolchain.Capability capability : all) {
+            if (capability.getName().equals("Build an ODK project")) {
+                return capability;
             }
         }
+        throw new AssertionError("no row for building an ODK project in " + all);
     }
 
     /** A native environment is preferred over a container, and said so. */
     @Test
     void aNativeEnvironmentIsPreferredOverAContainer() {
-        for (Toolchain.Capability capability
-                : Toolchain.capabilities(true, true, true, true)) {
-            if (capability.getName().startsWith("Build an existing ODK")) {
-                assertTrue(capability.isAvailable());
-                assertTrue(capability.getHow().contains("no container"), capability.getHow());
-            }
-        }
+        Toolchain.Capability odk = buildingAnOdkProject(
+                Toolchain.capabilities(true, "docker", OdkRoute.Use.AUTOMATIC, true));
+
+        assertTrue(odk.isAvailable());
+        assertTrue(odk.getHow().contains("no container"), odk.getHow());
+    }
+
+    /** The program that answers is named by what it is, also when it is a path. */
+    @Test
+    void theContainerProgramIsNamedByWhatItIs() {
+        assertTrue(buildingAnOdkProject(Toolchain.capabilities(false, "docker",
+                OdkRoute.Use.AUTOMATIC, false)).getHow().contains("Docker"));
+        assertTrue(buildingAnOdkProject(Toolchain.capabilities(false,
+                "C:\\Program Files\\RedHat\\Podman\\podman.exe", OdkRoute.Use.AUTOMATIC, false))
+                .getHow().contains("Podman"));
+    }
+
+    /**
+     * Somebody who settled "Always in a container" and has none cannot build an ODK project
+     * now: that is said, with the setting's name, since the setting is what stands in the way.
+     */
+    @Test
+    void alwaysInAContainerWithoutOneIsSaidAsNotPossibleNow() {
+        Toolchain.Capability odk = buildingAnOdkProject(Toolchain.capabilities(false, null,
+                OdkRoute.Use.ALWAYS_CONTAINER, false));
+
+        assertFalse(odk.isAvailable());
+        assertTrue(odk.getHow().contains(OdkRoute.Use.ALWAYS_CONTAINER.label()), odk.getHow());
     }
 
     /**
