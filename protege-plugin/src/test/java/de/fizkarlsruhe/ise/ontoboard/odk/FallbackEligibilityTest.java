@@ -131,7 +131,7 @@ class FallbackEligibilityTest {
 
         assertTrue(why.contains("eggboil.Makefile:3"), why);
         assertTrue(why.contains("reason_test"), why);
-        assertTrue(why.contains("Docker"), why);
+        assertNamesTheOtherWays(why);
     }
 
     @Test
@@ -223,7 +223,7 @@ class FallbackEligibilityTest {
         String why = why("test_fast");
 
         assertTrue(why.contains("eggboil.Makefile:2"), why);
-        assertTrue(why.contains("Docker"), why);
+        assertNamesTheOtherWays(why);
     }
 
     // ------------------------------------------------------------------ whose Makefile it is
@@ -237,6 +237,7 @@ class FallbackEligibilityTest {
         String why = why("test_fast");
 
         assertTrue(why.contains("ODK v1.5.4"), why);
+        assertNamesTheOtherWays(why);
         assertTrue(why.contains("OntoBoard > Project > Update project files..."), why);
     }
 
@@ -290,8 +291,21 @@ class FallbackEligibilityTest {
         assertTrue(new File(ontology, "eggboil-odk.yaml").delete());
         assertTrue(why("test_fast").contains("eggboil-odk.yaml") || why("test_fast")
                 .contains("configuration"), why("test_fast"));
+        assertNamesTheOtherWays(why("test_fast"));
 
         assertTrue(new File(ontology, "Makefile").delete());
         assertTrue(why("test_fast").contains("Makefile"), why("test_fast"));
+    }
+
+    /**
+     * What OntoBoard's own engine does not run can be run otherwise, and a refusal says how:
+     * in ODK's container, or with ODK's own tools where they are installed. A container is
+     * one way among them, never the only advice.
+     */
+    private static void assertNamesTheOtherWays(String why) {
+        assertTrue(why.contains("ODK's container"), why);
+        assertTrue(why.contains("ODK's own tools"), why);
+        assertTrue(why.contains("OntoBoard > Check requirements..."), why);
+        assertFalse(why.toLowerCase(java.util.Locale.ROOT).contains("start docker"), why);
     }
 }

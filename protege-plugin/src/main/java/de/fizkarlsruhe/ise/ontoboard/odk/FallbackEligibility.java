@@ -38,9 +38,17 @@ public final class FallbackEligibility {
 
     private static final String MAKEFILE = "Makefile";
 
+    /**
+     * What else runs a target that OntoBoard's own engine does not: said with every refusal,
+     * so that a container is one way among others and never the only advice.
+     */
+    static final String OTHER_WAYS = " It can be run in ODK's container (Docker or Podman "
+            + "with ODK's image) or, on Linux and macOS, with ODK's own tools installed on "
+            + "the machine; OntoBoard > Check requirements... shows what is there.";
+
     private static final String CONTAINER = " What a project adds to ODK's Makefile is run by "
-            + "make, in ODK's container, and not by OntoBoard's own engine: start Docker - or "
-            + "Podman - to run this target.";
+            + "make and not by OntoBoard's own engine, which runs ODK's Makefile as ODK "
+            + "writes it." + OTHER_WAYS;
 
     private FallbackEligibility() {
     }
@@ -93,8 +101,8 @@ public final class FallbackEligibility {
         if (config == null || !config.isFile()) {
             return refused("There is no ODK configuration (<id>-odk.yaml) beside the Makefile "
                     + "in " + ontology.getAbsolutePath() + ", so OntoBoard cannot tell whether "
-                    + "the Makefile is the one ODK writes for this project. It runs in ODK's "
-                    + "container only: start Docker - or Podman.");
+                    + "the Makefile is the one ODK writes for this project, and its own engine "
+                    + "does not run it." + OTHER_WAYS);
         }
         String own;
         try {
@@ -111,8 +119,7 @@ public final class FallbackEligibility {
         } catch (RuntimeException notRendered) {
             return refused("OntoBoard cannot tell what ODK would write for this project's "
                     + "configuration (" + notRendered.getMessage() + "), so its own engine "
-                    + "does not run it. It runs in ODK's container only: start Docker - or "
-                    + "Podman.");
+                    + "does not run it." + OTHER_WAYS);
         }
 
         // The reader takes Windows line endings out itself: a checkout that has them is
@@ -130,8 +137,7 @@ public final class FallbackEligibility {
                         + "name something that is not there and that nothing makes.");
             }
             return refused("OntoBoard's own engine cannot follow this project's Makefile for '"
-                    + goal + "': " + notRead.getMessage() + ". make can, in ODK's container: "
-                    + "start Docker - or Podman - to run this target.");
+                    + goal + "': " + notRead.getMessage() + ". make can." + OTHER_WAYS);
         }
         MakeFile.Step theirs = firstOfTheirs(plan);
         if (theirs != null) {
@@ -165,8 +171,8 @@ public final class FallbackEligibility {
         String version = OdkImage.versionOf(written);
         if (version != null && !version.equals(OdkPin.VERSION)) {
             return "This project's Makefile was written by ODK " + version + ", and OntoBoard's "
-                    + "own engine runs what ODK " + OdkPin.VERSION + " writes. It runs in ODK's "
-                    + "container: start Docker - or Podman. To bring the project to ODK "
+                    + "own engine runs what ODK " + OdkPin.VERSION + " writes." + OTHER_WAYS
+                    + " To bring the project to ODK "
                     + OdkPin.VERSION + ", use "
                     + "OntoBoard > Project > Update project files...";
         }

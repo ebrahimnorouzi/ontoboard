@@ -292,6 +292,11 @@ class OdkMergesTest {
                         + "xmlns:y=\"https://example.org/y\">"
                         + "<uri y:note=\"mine\" name=\"c\" uri=\"c.owl\"/></catalog>"));
         assertTrue(marked.getMessage().contains("https://example.org/y"), marked.getMessage());
+        for (String said : new String[] {foreign.getMessage(), marked.getMessage()}) {
+            assertTrue(said.contains("ODK's container"), said);
+            assertFalse(said.contains("Start Docker"), "a container is one way, not an "
+                    + "order: " + said);
+        }
     }
 
     /**
@@ -307,6 +312,8 @@ class OdkMergesTest {
                         + "<catalog xmlns=\"urn:oasis:names:tc:entity:xmlns:xml:catalog\"/>"));
         assertTrue(refused.getMessage().contains("<!DOCTYPE"), refused.getMessage());
         assertTrue(refused.getMessage().contains("catalog-v001.xml"), refused.getMessage());
+        assertTrue(refused.getMessage().contains("ODK's container"), refused.getMessage());
+        assertFalse(refused.getMessage().contains("Start Docker"), refused.getMessage());
 
         IllegalArgumentException entity = assertThrows(IllegalArgumentException.class,
                 () -> CatalogMerge.merge(TEMPLATE, "<!DOCTYPE catalog [<!ENTITY e \"x\">]>\n"

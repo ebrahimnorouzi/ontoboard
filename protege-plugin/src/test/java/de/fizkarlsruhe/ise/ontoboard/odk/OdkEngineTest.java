@@ -406,6 +406,11 @@ class OdkEngineTest {
         String release = OdkEngine.whyNot(edit, "prepare_release_fast",
                 Goldens.makeFixedVariables(), without);
         assertTrue(release.contains("check-rdfxml"), release);
+        assertTrue(release.contains("ODK's container") && release.contains("ODK's own tools")
+                && release.contains("OntoBoard > Check requirements..."),
+                "a refusal names what else runs it: " + release);
+        assertFalse(release.toLowerCase(java.util.Locale.ROOT).contains("start docker"),
+                release);
         assertEquals(release, run("prepare_release_fast", Goldens.makeFixedVariables(), without)
                 .getFailure());
 

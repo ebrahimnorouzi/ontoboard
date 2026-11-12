@@ -158,8 +158,8 @@ public final class OdkEngine {
                     });
         } catch (MakeFile.MakeException cannotFollow) {
             return new Outcome("OntoBoard's own engine cannot follow this project's Makefile "
-                    + "for '" + goal + "': " + cannotFollow.getMessage() + ". make can, in "
-                    + "ODK's container: start Docker - or Podman.", transcript, ran[0]);
+                    + "for '" + goal + "': " + cannotFollow.getMessage() + ". make can."
+                    + FallbackEligibility.OTHER_WAYS, transcript, ran[0]);
         }
         if (made) {
             return new Outcome(null, transcript, ran[0]);
@@ -187,8 +187,8 @@ public final class OdkEngine {
         // Can it? Every line of the run, as it looks from here.
         String cannot = firstRefusal(verdict.plan(), tools);
         return cannot == null ? null : "'" + goal + "' needs something OntoBoard's own engine "
-                + "does not do: " + cannot + ". Nothing was run. In ODK's container it runs as "
-                + "it is: start Docker - or Podman.";
+                + "does not do: " + cannot + ". Nothing was run."
+                + FallbackEligibility.OTHER_WAYS;
     }
 
     private static final String MAKEFILE = "Makefile";

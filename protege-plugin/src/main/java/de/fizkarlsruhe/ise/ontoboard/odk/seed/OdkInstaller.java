@@ -172,8 +172,8 @@ public final class OdkInstaller {
         if (Py.truthy(project.get("export_project_yaml"))) {
             throw new OdkConfigException("The configuration sets export_project_yaml, which "
                     + "makes ODK write a project.yaml when it seeds the project. OntoBoard's own "
-                    + "seed does not write that file. Start Docker, so that ODK's own seed "
-                    + "runs, or take the line out.");
+                    + "seed does not write that file. ODK's own seed does, in ODK's container "
+                    + "(Docker or Podman with ODK's image) - or take the line out.");
         }
         Installation run = installation(project, seedPolicies(project), new Predicate<String>() {
             @Override

@@ -41,8 +41,8 @@ public final class CatalogMerge {
     private static final String XML_NS = "http://www.w3.org/XML/1998/namespace";
     private static final String MANAGED = "odk-managed-catalog";
     private static final String SPACE = "  ";
-    private static final String ODKS_OWN_CAN = "Start Docker, so that ODK's own update does "
-            + "this, or ";
+    private static final String ODKS_OWN_CAN = "ODK's own update merges such a catalog, in "
+            + "ODK's container (Docker or Podman with ODK's image) - or ";
 
     private CatalogMerge() {
     }

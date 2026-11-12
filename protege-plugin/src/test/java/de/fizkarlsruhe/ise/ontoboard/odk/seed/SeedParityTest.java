@@ -119,6 +119,9 @@ class SeedParityTest {
                         + "export_project_yaml: true\n"));
 
         assertTrue(refused.getMessage().contains("export_project_yaml"), refused.getMessage());
+        assertTrue(refused.getMessage().contains("ODK's container"), refused.getMessage());
+        assertFalse(refused.getMessage().contains("Start Docker"), "a container is one way, "
+                + "not an order: " + refused.getMessage());
     }
 
     /** A config comes from wherever the project came from; its names must stay in the project. */
