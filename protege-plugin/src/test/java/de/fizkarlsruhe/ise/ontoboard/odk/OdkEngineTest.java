@@ -359,6 +359,33 @@ class OdkEngineTest {
                 + "said: " + outcome.getFailure());
     }
 
+    // ------------------------------------------------------------------ asked, not run
+
+    /**
+     * For a list of targets to offer: whether one would be refused, found without running a
+     * line. It is the sentence a run would refuse with.
+     */
+    @Test
+    void whetherATargetCanRunIsAskedWithoutRunningIt() throws IOException {
+        Map<String, RecipeShell.Tool> all = tools();
+        assertNull(OdkEngine.whyNot(edit, "test_fast", Goldens.makeFixedVariables(), all));
+        assertNull(OdkEngine.whyNot(edit, "clean", Goldens.makeFixedVariables(), all));
+
+        Map<String, RecipeShell.Tool> without = tools();
+        without.remove("check-rdfxml");
+        assertNull(OdkEngine.whyNot(edit, "test_fast", Goldens.makeFixedVariables(), without),
+                "the fast test checks no RDF/XML");
+        String release = OdkEngine.whyNot(edit, "prepare_release_fast",
+                Goldens.makeFixedVariables(), without);
+        assertTrue(release.contains("check-rdfxml"), release);
+        assertEquals(release, run("prepare_release_fast", Goldens.makeFixedVariables(), without)
+                .getFailure());
+
+        assertEquals(0, robot.size());
+        assertEquals(0, others.size());
+        assertFalse(file("tmp/eggboil-preprocess.owl").exists());
+    }
+
     // ------------------------------------------------------------------ other targets
 
     @Test

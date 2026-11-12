@@ -77,18 +77,10 @@ public final class OdkEngine {
             final Map<String, RecipeShell.Tool> tools, final BooleanSupplier stopped) {
         final List<String> transcript = new ArrayList<String>();
 
-        // 1. May it? The Makefile is ODK's, and nothing of the project's own is in the way.
-        FallbackEligibility.Verdict verdict = FallbackEligibility.of(editFile, goal,
-                commandLine);
-        if (!verdict.allowed()) {
-            return new Outcome(verdict.why(), transcript, false);
-        }
-        // 2. Can it? Every line of the run, as it looks from here, asked before one runs.
-        String cannot = firstRefusal(verdict.plan(), tools);
-        if (cannot != null) {
-            return new Outcome("'" + goal + "' needs something OntoBoard's own engine does not "
-                    + "do: " + cannot + ". Nothing was run. In ODK's container it runs as it "
-                    + "is: start Docker - or Podman.", transcript, false);
+        // 1. and 2. May it, and can it? Asked before one line runs.
+        String refused = whyNot(editFile, goal, commandLine, tools);
+        if (refused != null) {
+            return new Outcome(refused, transcript, false);
         }
 
         // 3. make runs.
@@ -147,6 +139,25 @@ public final class OdkEngine {
                     + "the target clean first if that matters.", transcript, ran[0]);
         }
         return new Outcome(whyItStopped(goal, transcript, complaint[0]), transcript, ran[0]);
+    }
+
+    /**
+     * Why this target is not run here, or null when it is: what {@link #run} would refuse
+     * before its first line, found without running anything. For a list of targets to offer.
+     */
+    static String whyNot(File editFile, String goal, Map<String, String> commandLine,
+            Map<String, RecipeShell.Tool> tools) {
+        // May it? The Makefile is ODK's, and nothing of the project's own is in the way.
+        FallbackEligibility.Verdict verdict = FallbackEligibility.of(editFile, goal,
+                commandLine);
+        if (!verdict.allowed()) {
+            return verdict.why();
+        }
+        // Can it? Every line of the run, as it looks from here.
+        String cannot = firstRefusal(verdict.plan(), tools);
+        return cannot == null ? null : "'" + goal + "' needs something OntoBoard's own engine "
+                + "does not do: " + cannot + ". Nothing was run. In ODK's container it runs as "
+                + "it is: start Docker - or Podman.";
     }
 
     private static final String MAKEFILE = "Makefile";
