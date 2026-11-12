@@ -249,7 +249,8 @@ public final class Guide {
                         + "number tells them what kind of change to expect.",
                 "This is ODK's release step, with the version scheme explained as you choose "
                         + "it.",
-                "releases/ holds at least one version.",
+                "The project has a release: a git tag such as v1.0.0 that holds the ontology, "
+                        + "or a copy under releases/.",
                 MENU + "ReleaseAction", "Release...", false, false));
         steps.add(new Step("history", "See how it evolved",
                 "Every release side by side: what each holds, what was added, obsoleted or "
@@ -322,7 +323,9 @@ public final class Guide {
                 }
             }
         }
-        facts.releases = CompareReleasesAction.releasesOf(editFile).size();
+        // Its git tags as well as releases/: a project ODK released has only the tags.
+        facts.releases = de.fizkarlsruhe.ise.ontoboard.odk.ReleaseHistory.releasesOf(root,
+                de.fizkarlsruhe.ise.ontoboard.odk.Release.ontologyIdFrom(editFile)).size();
         facts.gitRepository = new File(root, ".git").exists();
         return facts;
     }

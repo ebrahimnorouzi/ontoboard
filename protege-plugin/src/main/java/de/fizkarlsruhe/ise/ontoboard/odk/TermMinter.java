@@ -134,6 +134,14 @@ public final class TermMinter {
         return READ.size();
     }
 
+    /** How many times a tagged release's file was read from git. For tests. */
+    static int tagFilesRead() {
+        return TAG_FILES_READ.get();
+    }
+
+    private static final java.util.concurrent.atomic.AtomicInteger TAG_FILES_READ =
+            new java.util.concurrent.atomic.AtomicInteger();
+
     /**
      * The {@code *-idranges.owl} beside {@code ontologyFile}, or null.
      *
@@ -349,6 +357,13 @@ public final class TermMinter {
      * match that is not really an identifier costs one unused number; a miss would hand an
      * identifier out twice. Each file is read again only when it changes.
      *
+     * <p>The releases are those {@link ReleaseHistory#releasesOf} lists: the git tags ODK's release
+     * makes as well as the folders under {@code releases/}. Every {@code .owl} in every folder is
+     * read, as before; of a release that is only a tag, {@code <id>.owl} as the tag holds it. That
+     * file is read from git once a session - git names it by its content, so it cannot change
+     * unnoticed - and every new term asks git only which tags there are and which hold the file:
+     * two processes, however many releases.
+     *
      * @param rangesFile the {@code -idranges.owl} beside the edit file; the releases are under
      *     the project root that file's directory belongs to
      */
@@ -358,10 +373,7 @@ public final class TermMinter {
         if (directory == null || ranges == null || ranges.getIdPrefix().isEmpty()) {
             return released;
         }
-        File[] versions = new File(projectRootAbove(directory), "releases").listFiles();
-        if (versions == null) {
-            return released;
-        }
+        File root = projectRootAbove(directory);
         String prefix = ranges.getIdPrefix();
         int cut = Math.max(prefix.lastIndexOf('/'), prefix.lastIndexOf('#')) + 1;
         String local = prefix.substring(cut);
@@ -370,7 +382,8 @@ public final class TermMinter {
         Pattern identifier = Pattern.compile(local.isEmpty()
                 ? Pattern.quote(prefix) + "([0-9]+)"
                 : "(?<![A-Za-z0-9])" + Pattern.quote(local) + "([0-9]+)");
-        for (File version : versions) {
+        File[] versions = new File(root, "releases").listFiles();
+        for (File version : versions == null ? new File[0] : versions) {
             File[] files = version.isDirectory() ? version.listFiles() : null;
             if (files == null) {
                 continue;
@@ -383,7 +396,54 @@ public final class TermMinter {
                 }
             }
         }
+        String id = idOf(rangesFile);
+        if (id != null) {
+            for (ReleaseHistory.Entry release : ReleaseHistory.releasesOf(root, id)) {
+                // A folder that holds the file was read above.
+                if (release.tag() != null && release.file() == null) {
+                    for (String digits : numbersIn(release, identifier)) {
+                        released.add(prefix + digits);
+                    }
+                }
+            }
+        }
         return released;
+    }
+
+    /** The ontology's id, from its {@code <id>-idranges.owl}; null when the name has none. */
+    private static String idOf(File rangesFile) {
+        String name = rangesFile.getName();
+        String suffix = "-idranges.owl";
+        return name.toLowerCase(Locale.ROOT).endsWith(suffix) && name.length() > suffix.length()
+                ? name.substring(0, name.length() - suffix.length()) : null;
+    }
+
+    /**
+     * The numbers a tagged release's file holds: read from git the first time, remembered by the
+     * file's blob id - what git names it by, from its content - for the rest of the session.
+     */
+    private static Set<String> numbersIn(ReleaseHistory.Entry release, Pattern identifier) {
+        String key = "git blob " + release.blob() + '|' + identifier.pattern();
+        Set<String> found = READ.get(key);
+        if (found != null) {
+            return found;
+        }
+        byte[] held;
+        try {
+            TAG_FILES_READ.incrementAndGet();
+            held = release.bytes();
+        } catch (IOException unreadable) {
+            // Not remembered, so the next new term tries again.
+            return new HashSet<String>();
+        }
+        found = new HashSet<String>();
+        // As for a file: a byte that is not UTF-8 is replaced, never thrown on.
+        Matcher match = identifier.matcher(new String(held, StandardCharsets.UTF_8));
+        while (match.find()) {
+            found.add(match.group(1));
+        }
+        READ.put(key, Collections.unmodifiableSet(found));
+        return found;
     }
 
     /**

@@ -3,8 +3,17 @@ package de.fizkarlsruhe.ise.ontoboard.menu;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
+import de.fizkarlsruhe.ise.ontoboard.odk.ReleaseDiff;
+import de.fizkarlsruhe.ise.ontoboard.proc.ProcessRunner;
 import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -33,5 +42,59 @@ class CompareReleasesActionTest {
         File edit = new File(project, "src/ontology/menu-edit.owl");
 
         assertEquals("[0.10.0, 0.9.0, 0.2.0]", CompareReleasesAction.releasesOf(edit).toString());
+    }
+
+    /**
+     * A release that is only a git tag - ODK's kind - is offered as a choice beside the folders,
+     * and compared as what the tag holds.
+     */
+    @Test
+    void aTaggedReleaseIsOfferedAndCompared(@TempDir File root) throws Exception {
+        assumeTrue(ProcessRunner.isAvailable(ProcessRunner.real(), "git", "--version"),
+                "git is not installed");
+        File edit = new File(root, "src/ontology/demo-edit.owl");
+        write(edit, "<rdf:RDF/>");
+        write(new File(root, "releases/0.9.0/demo.owl"), demo());
+        git(root, "init", "-q");
+        for (String[] release : new String[][] {{"1.0.0", "Egg"}, {"1.1.0", "Egg", "Pan"}}) {
+            write(new File(root, "demo.owl"),
+                    demo(Arrays.copyOfRange(release, 1, release.length)));
+            git(root, "add", "-f", "demo.owl");
+            git(root, "commit", "-q", "-m", "release(" + release[0] + ")");
+            git(root, "tag", "-a", "v" + release[0], "-m", "demo " + release[0]);
+        }
+        write(new File(root, "demo.owl"), demo("Egg", "Pan", "Lid"));
+
+        assertEquals("[1.1.0, 1.0.0, 0.9.0]", CompareReleasesAction.releasesOf(edit).toString());
+
+        ReleaseDiff diff = ReleaseDiff.between(CompareReleasesAction.release(edit, "1.0.0"),
+                CompareReleasesAction.release(edit, "1.1.0"));
+        assertEquals(1, diff.getChanges().size(), diff.summary());
+        assertEquals(ReleaseDiff.Change.ADDED, diff.getChanges().get(0).getChange());
+        assertEquals("https://example.org/demo#Pan", diff.getChanges().get(0).getIri().toString(),
+                "Lid is in the root's demo.owl now, not in either release");
+    }
+
+    private static String demo(String... classes) {
+        StringBuilder text = new StringBuilder("Prefix(:=<https://example.org/demo#>)\n"
+                + "Ontology(<https://example.org/demo.owl>\n");
+        for (String name : classes) {
+            text.append("Declaration(Class(:").append(name).append("))\n");
+        }
+        return text.append(")\n").toString();
+    }
+
+    private static void write(File file, String text) throws IOException {
+        file.getParentFile().mkdirs();
+        Files.write(file.toPath(), text.getBytes(StandardCharsets.UTF_8));
+    }
+
+    private static void git(File root, String... arguments) throws IOException {
+        List<String> command = new ArrayList<String>(Arrays.asList("git", "-c",
+                "user.name=Test", "-c", "user.email=test@example.org", "-c",
+                "core.autocrlf=false"));
+        command.addAll(Arrays.asList(arguments));
+        ProcessRunner.Outcome outcome = ProcessRunner.real().run(root, command, 1, null);
+        assertTrue(outcome.isSuccess(), command + ": " + outcome.getOutput());
     }
 }

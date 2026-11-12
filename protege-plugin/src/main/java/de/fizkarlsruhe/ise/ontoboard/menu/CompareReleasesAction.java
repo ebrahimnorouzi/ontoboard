@@ -1,7 +1,9 @@
 package de.fizkarlsruhe.ise.ontoboard.menu;
 
+import de.fizkarlsruhe.ise.ontoboard.odk.GitTags;
 import de.fizkarlsruhe.ise.ontoboard.odk.Release;
 import de.fizkarlsruhe.ise.ontoboard.odk.ReleaseDiff;
+import de.fizkarlsruhe.ise.ontoboard.odk.ReleaseHistory;
 import de.fizkarlsruhe.ise.ontoboard.robot.AxiomDiff;
 import de.fizkarlsruhe.ise.ontoboard.robot.RobotException;
 import de.fizkarlsruhe.ise.ontoboard.robot.OntologySource;
@@ -80,9 +82,9 @@ public class CompareReleasesAction extends OntoBoardAction {
                         .choices(fromChoices.toArray(new String[0]))
                         .defaultValue(fromChoices.get(0))
                         .required()
-                        .help("The earlier version. Releases are listed newest first, read from "
-                                + "the dated copies under releases/ - which is why keeping those "
-                                + "rather than overwriting one file matters.")
+                        .help("The earlier version. Releases are listed newest first: the "
+                                + "project's git tags such as v1.0.0 that hold the ontology - "
+                                + "what ODK's release makes - and the copies under releases/.")
                         .build(),
                 Parameter.of(OPTION_TO, "To", Parameter.Kind.CHOICE)
                         .choices(laterChoices.toArray(new String[0]))
@@ -180,12 +182,14 @@ public class CompareReleasesAction extends OntoBoardAction {
 
         OWLOntology earlier;
         OWLOntology later;
+        ReleaseHistory.Entry laterRelease;
         try {
+            List<ReleaseHistory.Entry> releases = ReleaseHistory.releasesOf(projectRoot, id);
             earlier = publishedUrl.isEmpty()
-                    ? load(Release.releaseFile(projectRoot, id, from))
+                    ? load(find(releases, from, id))
                     : loadPublished(publishedUrl, result);
-            later = WORKING_COPY.equals(to) ? ontology
-                    : load(Release.releaseFile(projectRoot, id, to));
+            laterRelease = WORKING_COPY.equals(to) ? null : find(releases, to, id);
+            later = laterRelease == null ? ontology : load(laterRelease);
         } catch (RobotException cannotLoad) {
             return result.failed(cannotLoad.getMessage()).build();
         }
@@ -209,9 +213,11 @@ public class CompareReleasesAction extends OntoBoardAction {
                     + "reference; removing it does not.");
         }
 
-        if (writeNotes && !WORKING_COPY.equals(to)) {
-            File notes = new File(Release.releaseFile(projectRoot, id, to).getParentFile(),
-                    "CHANGES.md");
+        if (writeNotes && laterRelease != null && laterRelease.folder() == null) {
+            result.note("No notes written: " + to + " is a git tag with no folder under "
+                    + "releases/, so there is nowhere beside it to put them.");
+        } else if (writeNotes && laterRelease != null) {
+            File notes = new File(laterRelease.folder(), "CHANGES.md");
             try {
                 java.nio.file.Files.write(notes.toPath(),
                         diff.asReleaseNotes(to, later).getBytes("UTF-8"));
@@ -308,7 +314,45 @@ public class CompareReleasesAction extends OntoBoardAction {
         }
     }
 
-    private OWLOntology load(File release) {
+    /**
+     * The release {@code version} of the project {@code editFile} is in, loaded: its folder's
+     * file, or what its git tag holds.
+     */
+    static OWLOntology release(File editFile, String version) {
+        return load(find(projectReleasesOf(editFile), version, Release.ontologyIdFrom(editFile)));
+    }
+
+    private static List<ReleaseHistory.Entry> projectReleasesOf(File editFile) {
+        return ReleaseHistory.releasesOf(ReleaseAction.projectRootOf(editFile),
+                Release.ontologyIdFrom(editFile));
+    }
+
+    private static ReleaseHistory.Entry find(List<ReleaseHistory.Entry> releases, String version,
+            String id) {
+        for (ReleaseHistory.Entry release : releases) {
+            if (release.version().equals(version)) {
+                return release;
+            }
+        }
+        throw new RobotException("There is no release " + version + " of " + id
+                + ": no folder releases/" + version + "/ and no git tag "
+                + GitTags.tagFor(version) + " holding " + id + ".owl.");
+    }
+
+    private static OWLOntology load(ReleaseHistory.Entry release) {
+        if (release.file() != null || release.tag() == null) {
+            return load(new File(release.folder(), release.id() + ".owl"));
+        }
+        try {
+            return release.load();
+        } catch (org.semanticweb.owlapi.model.OWLOntologyCreationException unreadable) {
+            throw new RobotException("Could not read release " + release.version()
+                    + " from the git tag " + release.tag() + ": " + unreadable.getMessage(),
+                    unreadable);
+        }
+    }
+
+    private static OWLOntology load(File release) {
         if (!release.isFile()) {
             throw new RobotException("There is no release at " + release.getAbsolutePath());
         }
@@ -326,38 +370,21 @@ public class CompareReleasesAction extends OntoBoardAction {
                 : one.compareTo(other) < 0;
     }
 
-    /** The dated releases this project has kept, newest first. */
+    /**
+     * The releases this project has, newest first: its git tags {@code v<version>} - ODK's
+     * releases - and its folders under {@code releases/}, either convention (2026-10-12, 3.0.2).
+     * Newest first because the comparison people want is nearly always against the last release;
+     * by number, not as text, or 3.9.0 would be offered ahead of 3.10.0.
+     */
     static List<String> releasesOf(File editFile) {
-        List<String> dates = new ArrayList<String>();
+        List<String> versions = new ArrayList<String>();
         if (editFile == null) {
-            return dates;
+            return versions;
         }
-        File releases = new File(ReleaseAction.projectRootOf(editFile), "releases");
-        File[] directories = releases.listFiles();
-        if (directories == null) {
-            return dates;
+        for (ReleaseHistory.Entry release : projectReleasesOf(editFile)) {
+            versions.add(release.version());
         }
-        java.util.List<de.fizkarlsruhe.ise.ontoboard.odk.OntologyVersion> found =
-                new ArrayList<de.fizkarlsruhe.ise.ontoboard.odk.OntologyVersion>();
-        for (File directory : directories) {
-            // Either convention - releases/2026-10-12 or releases/3.0.2. Listing only dated
-            // directories made a project on semantic versions look as though it had never
-            // released anything, so "compare with the last release" offered nothing at all.
-            de.fizkarlsruhe.ise.ontoboard.odk.OntologyVersion version = directory.isDirectory()
-                    ? de.fizkarlsruhe.ise.ontoboard.odk.OntologyVersion
-                            .parseOrNull(directory.getName())
-                    : null;
-            if (version != null) {
-                found.add(version);
-            }
-        }
-        // Newest first: the comparison people want is nearly always against the last release.
-        // By number, not as text, or 3.9.0 would be offered ahead of 3.10.0.
-        for (de.fizkarlsruhe.ise.ontoboard.odk.OntologyVersion version
-                : de.fizkarlsruhe.ise.ontoboard.odk.OntologyVersion.newestFirst(found)) {
-            dates.add(version.getText());
-        }
-        return dates;
+        return versions;
     }
 
     /** The ontology's own file, or null when it has never been saved. */

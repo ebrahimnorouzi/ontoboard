@@ -1,8 +1,11 @@
 package de.fizkarlsruhe.ise.ontoboard.menu;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
+import de.fizkarlsruhe.ise.ontoboard.proc.ProcessRunner;
 import de.fizkarlsruhe.ise.ontoboard.robot.SparqlQuery;
 import java.io.File;
 import java.nio.charset.StandardCharsets;
@@ -176,5 +179,49 @@ class GuideTest {
         assertEquals(1, facts.ownTests, "a question's check");
         assertEquals(Guide.State.DONE, Guide.progress(Guide.steps(Guide.Start.NEW), facts)
                 .get("tests"));
+    }
+
+    /**
+     * A project ODK released has git tags {@code v<version>} and no releases/ folder. Its
+     * releases count, and what the guide says it counts is true of it.
+     */
+    @Test
+    void theGuideCountsTaggedReleases(@TempDir File root) throws Exception {
+        assumeTrue(ProcessRunner.isAvailable(ProcessRunner.real(), "git", "--version"),
+                "git is not installed");
+        File edit = new File(root, "src/ontology/demo-edit.owl");
+        write(edit, "<rdf:RDF/>");
+        git(root, "init", "-q");
+        for (String version : new String[] {"1.0.0", "1.1.0"}) {
+            write(new File(root, "demo.owl"), "Ontology(<https://example.org/demo.owl>\n"
+                    + "Annotation(<http://www.w3.org/2002/07/owl#versionInfo> \"" + version
+                    + "\"))\n");
+            git(root, "add", "-f", "demo.owl");
+            git(root, "commit", "-q", "-m", "release(" + version + ")");
+            git(root, "tag", "-a", "v" + version, "-m", "demo " + version);
+        }
+
+        Guide.Facts facts = Guide.factsOf(edit, null);
+
+        assertFalse(new File(root, "releases").exists());
+        assertEquals(2, facts.releases);
+        Map<String, Guide.State> states = Guide.progress(Guide.steps(Guide.Start.NEW), facts);
+        assertEquals(Guide.State.DONE, states.get("release"));
+        assertEquals(Guide.State.DONE, states.get("history"));
+        for (Guide.Step step : Guide.steps(Guide.Start.NEW)) {
+            if (step.getId().equals("release") || step.getId().equals("history")) {
+                assertFalse(step.getDoneWhen().contains("releases/")
+                        && !step.getDoneWhen().contains("tag"), step.getDoneWhen());
+            }
+        }
+    }
+
+    private static void git(File root, String... arguments) throws Exception {
+        java.util.List<String> command = new java.util.ArrayList<String>(java.util.Arrays.asList(
+                "git", "-c", "user.name=Test", "-c", "user.email=test@example.org", "-c",
+                "core.autocrlf=false"));
+        command.addAll(java.util.Arrays.asList(arguments));
+        ProcessRunner.Outcome outcome = ProcessRunner.real().run(root, command, 1, null);
+        assertTrue(outcome.isSuccess(), command + ": " + outcome.getOutput());
     }
 }

@@ -451,4 +451,89 @@ class TermMinterTest {
         assertEquals(IdRanges.claim(crlf, "ADDITIONAL EDITOR", "eno"), new String(
                 Files.readAllBytes(rangesFile.toPath()), StandardCharsets.UTF_8));
     }
+
+    // ---------- a release that is a git tag ----------
+
+    /** A project as ODK lays it out: src/ontology/demo-edit.owl, its ID ranges beside it. */
+    private static File demoProject(File root) throws Exception {
+        File edit = new File(root, "src/ontology/demo-edit.owl");
+        assertTrue(edit.getParentFile().mkdirs());
+        Files.write(edit.toPath(), "<rdf:RDF/>".getBytes(StandardCharsets.UTF_8));
+        Files.write(new File(edit.getParentFile(), "demo-idranges.owl").toPath(), IdRanges
+                .create("https://example.org/demo/demo-idranges.owl", "DEMO",
+                        "https://example.org/DEMO_", 7)
+                .withRange("alice", 1000, 1002)
+                .toManchester().getBytes(StandardCharsets.UTF_8));
+        return edit;
+    }
+
+    /** demo.owl at the project's root with these classes, committed and tagged v{@code version}. */
+    private static void taggedRelease(File root, String version, String... identifiers)
+            throws Exception {
+        StringBuilder text = new StringBuilder("Prefix(:=<https://example.org/>)\n"
+                + "Ontology(<https://example.org/demo.owl>\n");
+        for (String identifier : identifiers) {
+            text.append("Declaration(Class(:").append(identifier).append("))\n");
+        }
+        Files.write(new File(root, "demo.owl").toPath(),
+                text.append(")\n").toString().getBytes(StandardCharsets.UTF_8));
+        ReleaseHistoryTest.git(root, "add", "-f", "demo.owl");
+        ReleaseHistoryTest.git(root, "commit", "-q", "-m", "release(" + version + ")");
+        ReleaseHistoryTest.git(root, "tag", "-a", "v" + version, "-m", "demo " + version);
+    }
+
+    /**
+     * An identifier a release carried is not given out again when the release is a git tag, as
+     * ODK makes one, and there is no releases/ folder: a class released in v1.0.0 and deleted
+     * from the edit file since.
+     */
+    @Test
+    void anIdentifierAReleaseCarriedIsNotMintedAgain(@TempDir Path dir) throws Exception {
+        ReleaseHistoryTest.assumeGit();
+        File root = dir.toFile();
+        File edit = demoProject(root);
+        ReleaseHistoryTest.git(root, "init", "-q");
+        taggedRelease(root, "1.0.0", "DEMO_0001000");
+        Files.write(new File(root, "demo.owl").toPath(),
+                "Ontology(<https://example.org/demo.owl>)\n".getBytes(StandardCharsets.UTF_8));
+        OWLOntology open = OWLManager.createOWLOntologyManager()
+                .createOntology(IRI.create("https://example.org/demo.owl"));
+
+        TermMinter minter = TermMinter.forOntologyFile(edit, "alice");
+
+        assertFalse(new File(root, "releases").exists(), "the tag is the only release");
+        assertEquals("https://example.org/DEMO_0001001", minter.mintFor(open, "pan").toString(),
+                "DEMO_0001000 was released in v1.0.0");
+    }
+
+    /**
+     * What a tag holds does not change, so it is read from git once a session. Every new term
+     * still asks git which tags there are - a release made since counts - but not for the file
+     * of each release again.
+     */
+    @Test
+    void aTaggedReleaseIsReadOnceASession(@TempDir Path dir) throws Exception {
+        ReleaseHistoryTest.assumeGit();
+        File root = dir.toFile();
+        File rangesFile = TermMinter.findRangesFile(demoProject(root));
+        IdRanges ranges = IdRanges.parse(new String(Files.readAllBytes(rangesFile.toPath()),
+                StandardCharsets.UTF_8));
+        ReleaseHistoryTest.git(root, "init", "-q");
+        taggedRelease(root, "1.0.0", "DEMO_0001000", "DEMO_0001002");
+        int before = TermMinter.tagFilesRead();
+
+        java.util.Set<String> first = TermMinter.releasedIdentifiers(rangesFile, ranges);
+        java.util.Set<String> second = TermMinter.releasedIdentifiers(rangesFile, ranges);
+
+        assertEquals(new java.util.TreeSet<String>(Arrays.asList(
+                "https://example.org/DEMO_0001000", "https://example.org/DEMO_0001002")),
+                new java.util.TreeSet<String>(first));
+        assertEquals(first, second);
+        assertEquals(before + 1, TermMinter.tagFilesRead(), "read from git once");
+
+        taggedRelease(root, "1.1.0", "DEMO_0001001");
+        assertTrue(TermMinter.releasedIdentifiers(rangesFile, ranges)
+                .contains("https://example.org/DEMO_0001001"), "a release made since counts");
+        assertEquals(before + 2, TermMinter.tagFilesRead(), "and only the new one was read");
+    }
 }
