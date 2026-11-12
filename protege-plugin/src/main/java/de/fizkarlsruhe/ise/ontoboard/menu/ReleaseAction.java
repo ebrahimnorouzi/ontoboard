@@ -1,8 +1,14 @@
 package de.fizkarlsruhe.ise.ontoboard.menu;
 
+import de.fizkarlsruhe.ise.ontoboard.odk.MakeRun;
+import de.fizkarlsruhe.ise.ontoboard.odk.OdkContainer;
+import de.fizkarlsruhe.ise.ontoboard.odk.OdkImage;
+import de.fizkarlsruhe.ise.ontoboard.odk.OdkRelease;
 import de.fizkarlsruhe.ise.ontoboard.odk.OntologyVersion;
 import de.fizkarlsruhe.ise.ontoboard.odk.Release;
 import de.fizkarlsruhe.ise.ontoboard.odk.ReleaseDiff;
+import de.fizkarlsruhe.ise.ontoboard.odk.ReleaseRun;
+import de.fizkarlsruhe.ise.ontoboard.proc.ProcessRunner;
 import de.fizkarlsruhe.ise.ontoboard.prov.EditorNotes;
 import de.fizkarlsruhe.ise.ontoboard.robot.QualityFinding;
 import de.fizkarlsruhe.ise.ontoboard.robot.QualityReport;
@@ -61,6 +67,15 @@ public class ReleaseAction extends OntoBoardAction {
     private volatile boolean merge;
     private volatile boolean strip;
 
+    /** Set in {@link #configure()} when the project is an ODK project; null for the older layout. */
+    private volatile OdkReleaseForm.Start odkStart;
+    private volatile Map<String, String> odkChosen;
+    /** Where ODK runs, decided with the form so that the run does not ask the machine again. */
+    private volatile String runtime = "docker";
+    private volatile String image = MakeRun.DEFAULT_IMAGE;
+    private volatile String imageNote;
+    private volatile OdkContainer.Host host = OdkContainer.Host.unknown();
+
     @Override
     protected String operationName() {
         return "Release";
@@ -68,11 +83,25 @@ public class ReleaseAction extends OntoBoardAction {
 
     @Override
     protected boolean configure() {
+        odkStart = null;
+        File editFile = null;
+        try {
+            editFile = openOntologyOrNull() == null ? null : fileOf(openOntologyOrNull());
+        } catch (RuntimeException notSaved) {
+            editFile = null;
+        }
+        // An ODK project is released by ODK - its Makefile, or the project's own script - from
+        // the file on disk. A project of OntoBoard's older layout is released here, from what
+        // is open, until it has been converted.
+        boolean odk = editFile != null && OdkRelease.isOdkProject(editFile);
         // A release is made from what is open, so unsaved changes went into it while the edit
         // file never had them: a release nobody could make again from the project, and one a "No"
         // on quitting would make permanent. Build asked this; Release did not.
         if (SaveFirst.isNeeded(getOWLModelManager()) && SaveFirst.ask(getOWLWorkspace(),
-                getOWLModelManager(), "The ontology has changes that are not saved yet. A release "
+                getOWLModelManager(), odk ? "The ontology has changes that are not saved yet. "
+                        + "ODK builds the release from the file on disk, so it would not have "
+                        + "them."
+                        : "The ontology has changes that are not saved yet. A release "
                         + "is made from what is open, so it would have them and your edit file "
                         + "would not.",
                 "Save and release", null, "Cannot release") != SaveFirst.Answer.SAVED) {
@@ -80,11 +109,8 @@ public class ReleaseAction extends OntoBoardAction {
         }
         String today = LocalDate.now().toString();
         OntologyVersion declared = Release.declaredVersionOf(openOntologyOrNull());
-        File editFile = null;
-        try {
-            editFile = openOntologyOrNull() == null ? null : fileOf(openOntologyOrNull());
-        } catch (RuntimeException notSaved) {
-            editFile = null;
+        if (odk) {
+            return configureOdk(editFile, declared, today);
         }
         final File projectRoot = editFile == null ? null : projectRootOf(editFile);
         final String ontologyId = editFile == null ? null : Release.ontologyIdFrom(editFile);
@@ -145,6 +171,133 @@ public class ReleaseAction extends OntoBoardAction {
         merge = "true".equalsIgnoreCase(chosen.get(OPTION_MERGE));
         strip = "true".equalsIgnoreCase(chosen.get(OPTION_STRIP));
         return true;
+    }
+
+    /**
+     * Release... for an ODK project: where ODK can run, then the form.
+     *
+     * <p>What cannot work is said here, before the form: a release script OntoBoard cannot
+     * run, no container runtime, no ODK image on the machine. An image is never fetched on the
+     * quiet - it is five gigabytes.
+     */
+    private boolean configureOdk(File editFile, OntologyVersion declared, String today) {
+        ProcessRunner.Runner real = ProcessRunner.real();
+        OdkReleaseForm.Start start = OdkReleaseForm.start(editFile, declared, today, real);
+        String found = MakeRun.containerRuntime(real);
+        OdkImage.Choice choice = found == null ? null : OdkImage.forProject(
+                start.facts().ontology(), OdkImage.probe(found, real));
+        String cannot = start.refusal() != null ? start.refusal()
+                : found == null ? OdkReleaseForm.NO_RUNTIME
+                        : choice.reference() == null ? choice.note() : null;
+        if (cannot != null) {
+            javax.swing.JOptionPane.showMessageDialog(getOWLWorkspace(), wrapped(cannot),
+                    "Cannot release", javax.swing.JOptionPane.INFORMATION_MESSAGE);
+            return false;
+        }
+        runtime = found;
+        image = choice.reference();
+        imageNote = choice.note();
+        host = OdkContainer.Host.detect(found, real);
+
+        // Re-shown with what was typed, as the older form is: a correction, not a new start.
+        Map<String, String> values = OdkReleaseForm.defaults(start);
+        while (true) {
+            Map<String, String> chosen = ParameterDialog.show(getOWLWorkspace(), "Release",
+                    OdkReleaseForm.explanation(start), OdkReleaseForm.parameters(start, values));
+            if (chosen == null) {
+                return false;
+            }
+            values = chosen;
+            List<String> problems = OdkReleaseForm.problems(start, chosen);
+            if (problems.isEmpty()) {
+                break;
+            }
+            StringBuilder message = new StringBuilder();
+            for (String problem : problems) {
+                message.append("- ").append(problem).append('\n');
+            }
+            javax.swing.JOptionPane.showMessageDialog(getOWLWorkspace(),
+                    wrapped(message.toString().trim()), "The release needs changing",
+                    javax.swing.JOptionPane.WARNING_MESSAGE);
+        }
+        odkChosen = values;
+        odkStart = start;
+        return true;
+    }
+
+    /** A long sentence as a message a dialog shows at a readable width. */
+    private static javax.swing.JComponent wrapped(String message) {
+        javax.swing.JTextArea text = new javax.swing.JTextArea(message);
+        text.setEditable(false);
+        text.setLineWrap(true);
+        text.setWrapStyleWord(true);
+        text.setOpaque(false);
+        text.setColumns(52);
+        text.setFont(javax.swing.UIManager.getFont("Label.font"));
+        text.setSize(text.getPreferredSize().width, Short.MAX_VALUE);
+        return text;
+    }
+
+    /** The release of an ODK project, on the worker thread. */
+    private OperationResult releaseWithOdk() {
+        final OdkReleaseForm.Start start = odkStart;
+        return OdkReleaseForm.run(operationName(), start, odkChosen,
+                OdkRelease.inContainer(runtime, image, host, start.facts().ontology(),
+                        ProcessRunner.real(), null),
+                ProcessRunner.real(), new OdkRelease.Asks() {
+                    @Override
+                    public boolean commit(ReleaseRun.Staging staging) {
+                        return askToCommit(staging, start.facts().root());
+                    }
+                }, imageNote);
+    }
+
+    /**
+     * Shows the git commands a release is about to run, and asks.
+     *
+     * <p>Called from the worker; the question is put on the event thread and waited for. It
+     * is owned by the window that is in front - the progress dialog, which is modal - so that
+     * it cannot open behind it.
+     */
+    private boolean askToCommit(final ReleaseRun.Staging staging, final File root) {
+        if (BackgroundRun.abandoned()) {
+            return false;
+        }
+        final boolean[] agreed = new boolean[1];
+        Runnable ask = new Runnable() {
+            @Override
+            public void run() {
+                javax.swing.JTextArea text = new javax.swing.JTextArea(
+                        OdkReleaseForm.confirmation(staging, root));
+                text.setEditable(false);
+                text.setFont(new java.awt.Font(java.awt.Font.MONOSPACED, java.awt.Font.PLAIN,
+                        text.getFont().getSize()));
+                text.setCaretPosition(0);
+                javax.swing.JScrollPane scroll = new javax.swing.JScrollPane(text);
+                scroll.setPreferredSize(new java.awt.Dimension(680, 300));
+                Object[] options = {"Commit and tag", "Not now"};
+                java.awt.Window front = java.awt.KeyboardFocusManager
+                        .getCurrentKeyboardFocusManager().getActiveWindow();
+                agreed[0] = javax.swing.JOptionPane.showOptionDialog(
+                        front != null ? front : getOWLWorkspace(), scroll,
+                        "Record the release in git", javax.swing.JOptionPane.YES_NO_OPTION,
+                        javax.swing.JOptionPane.QUESTION_MESSAGE, null, options, options[0])
+                        == javax.swing.JOptionPane.YES_OPTION;
+            }
+        };
+        try {
+            if (javax.swing.SwingUtilities.isEventDispatchThread()) {
+                ask.run();
+            } else {
+                javax.swing.SwingUtilities.invokeAndWait(ask);
+            }
+        } catch (InterruptedException stopped) {
+            Thread.currentThread().interrupt();
+            return false;
+        } catch (java.lang.reflect.InvocationTargetException failed) {
+            return false;
+        }
+        return agreed[0] && !BackgroundRun.abandoned();
     }
 
     /** The ontology Protege has open, or null - read in {@link #configure} before any work. */
@@ -357,6 +510,9 @@ public class ReleaseAction extends OntoBoardAction {
 
     @Override
     protected OperationResult run(OWLOntology ontology) {
+        if (odkStart != null) {
+            return releaseWithOdk();
+        }
         OperationResult.Builder result = OperationResult.of(operationName());
 
         File editFile = fileOf(ontology);

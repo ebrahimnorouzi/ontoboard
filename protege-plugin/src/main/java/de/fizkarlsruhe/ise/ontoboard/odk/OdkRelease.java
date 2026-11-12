@@ -44,6 +44,9 @@ public final class OdkRelease {
     /** How many earlier releases are asked for their file before giving up on comparing. */
     private static final int RELEASES_TRIED = 5;
 
+    /** How much of a released file is read for its header. */
+    private static final int HEAD_BYTES = 256 * 1024;
+
     private OdkRelease() {
     }
 
@@ -176,6 +179,26 @@ public final class OdkRelease {
             this.shape = shape == null ? VersionIriShape.of(VersionIriShape.Kind.ODK) : shape;
             this.refreshImports = refreshImports;
             this.refuseRemovedTerms = refuseRemovedTerms;
+        }
+
+        public File editFile() {
+            return editFile;
+        }
+
+        public String version() {
+            return version;
+        }
+
+        public VersionIriShape shape() {
+            return shape;
+        }
+
+        public boolean refreshesImports() {
+            return refreshImports;
+        }
+
+        public boolean refusesRemovedTerms() {
+            return refuseRemovedTerms;
         }
     }
 
@@ -403,8 +426,8 @@ public final class OdkRelease {
             return log.failed("The release was built, but 'make show_release_assets' did not "
                     + "say which files it is made of (" + why + "), so nothing was copied, "
                     + "committed or tagged. The files are at the top of the project: commit "
-                    + "them yourself, or bring the project's Makefile up to date with Project "
-                    + "> Update project files... and release again.");
+                    + "them yourself, or bring the project's Makefile up to date with "
+                    + "OntoBoard > Project > Update project files... and release again.");
         }
         log.written.addAll(assets);
 
@@ -486,8 +509,11 @@ public final class OdkRelease {
 
     // ------------------------------------------------------------------ the project's script
 
-    /** Why the project's release script is not run for this version, or null when it is. */
-    static String whyNotThisScript(ReleaseRun.Script script, String version) {
+    /**
+     * Why the project's release script cannot be run from here whatever the version, or null
+     * when it can: its line endings, or no version to read in it.
+     */
+    public static String whyNotAScriptToRun(ReleaseRun.Script script) {
         String name = script.file().getName();
         if (script.hasWindowsLineEndings()) {
             return name + " has Windows line endings. The shell in ODK's container reads the "
@@ -502,8 +528,19 @@ public final class OdkRelease {
             return "This project is released by its own " + name + ", and that script has no "
                     + "line VERSION=<version> to read, so OntoBoard cannot tell which version "
                     + "it would release - and would tag the wrong one. Run the script in a "
-                    + "terminal, or give it a line VERSION=" + version + ".";
+                    + "terminal, or give it a line such as VERSION=1.0.0 for OntoBoard to set.";
         }
+        return null;
+    }
+
+    /** Why the project's release script is not run for this version, or null when it is. */
+    static String whyNotThisScript(ReleaseRun.Script script, String version) {
+        String name = script.file().getName();
+        String never = whyNotAScriptToRun(script);
+        if (never != null) {
+            return never;
+        }
+        String scripted = script.version();
         if (!scripted.trim().equals(version)) {
             return "This project is released by its own " + name + ", which says VERSION="
                     + scripted.trim() + ", and this release is " + version + ". Set the line "
@@ -592,6 +629,28 @@ public final class OdkRelease {
             this.bytes = bytes;
         }
 
+        /** The start of the file as text: where an ontology's header is, whatever its size. */
+        String head() throws IOException {
+            byte[] start = new byte[HEAD_BYTES];
+            int length = 0;
+            if (bytes != null) {
+                length = Math.min(bytes.length, HEAD_BYTES);
+                System.arraycopy(bytes, 0, start, 0, length);
+            } else {
+                java.io.InputStream in = new java.io.FileInputStream(file);
+                try {
+                    int read;
+                    while (length < HEAD_BYTES
+                            && (read = in.read(start, length, HEAD_BYTES - length)) > 0) {
+                        length += read;
+                    }
+                } finally {
+                    in.close();
+                }
+            }
+            return new String(start, 0, length, StandardCharsets.UTF_8);
+        }
+
         OWLOntology load() {
             if (file != null) {
                 return OdkRelease.load(file);
@@ -632,24 +691,16 @@ public final class OdkRelease {
     private static Last lastRelease(Facts facts, List<String> tags, String version) {
         OntologyVersion releasing = version == null ? null : OntologyVersion.parseOrNull(version);
         List<OntologyVersion> earlier = new ArrayList<OntologyVersion>();
-        String[] folders = new File(facts.root(), "releases").list();
-        List<String> names = new ArrayList<String>(
-                folders == null ? Collections.<String>emptyList() : Arrays.asList(folders));
-        for (String tag : tags) {
-            names.add(GitTags.versionOf(tag));
-        }
-        for (String name : names) {
-            OntologyVersion found = name == null ? null : OntologyVersion.parseOrNull(name);
-            if (found == null || earlier.contains(found) || (releasing != null
-                    && (found.getScheme() != releasing.getScheme()
-                            || found.compareTo(releasing) >= 0))) {
+        for (OntologyVersion found : released(facts, tags)) {
+            if (releasing != null && (found.getScheme() != releasing.getScheme()
+                            || found.compareTo(releasing) >= 0)) {
                 continue;
             }
             earlier.add(found);
         }
         String main = facts.id() + ".owl";
         int tried = 0;
-        for (OntologyVersion candidate : OntologyVersion.newestFirst(earlier)) {
+        for (OntologyVersion candidate : earlier) {
             File folder = new File(facts.root(), "releases/" + candidate.getText() + "/" + main);
             if (folder.isFile()) {
                 return new Last(candidate.getText(), folder, null);
@@ -663,6 +714,34 @@ public final class OdkRelease {
             }
         }
         return null;
+    }
+
+    /**
+     * The versions this project has released, newest first: the folders under
+     * {@code releases/} and the release tags, each version once.
+     *
+     * @param tags the project's release tags ({@link GitTags#releases})
+     */
+    public static List<OntologyVersion> released(Facts facts, List<String> tags) {
+        List<String> names = new ArrayList<String>();
+        File[] folders = new File(facts.root(), "releases").listFiles();
+        for (File folder : folders == null ? new File[0] : folders) {
+            String[] inside = folder.list();
+            if (inside != null && inside.length > 0) {
+                names.add(folder.getName());
+            }
+        }
+        for (String tag : tags) {
+            names.add(GitTags.versionOf(tag));
+        }
+        List<OntologyVersion> versions = new ArrayList<OntologyVersion>();
+        for (String name : names) {
+            OntologyVersion found = name == null ? null : OntologyVersion.parseOrNull(name);
+            if (found != null && !versions.contains(found)) {
+                versions.add(found);
+            }
+        }
+        return OntologyVersion.newestFirst(versions);
     }
 
     private static String named(ReleaseDiff.TermChange removed) {
@@ -716,22 +795,70 @@ public final class OdkRelease {
         }
     }
 
-    /** Reads the project's last release. Loads a file, so not for the event thread. */
-    public static Proposal proposal(File editFile, ProcessRunner.Runner git) {
+    /**
+     * Reads the project's last release for what a dialog proposes.
+     *
+     * <p>Only the start of the released file is read, where its header is: this is asked when
+     * the dialog opens, and a release can be hundreds of megabytes.
+     *
+     * @param tags the project's release tags ({@link GitTags#releases})
+     * @throws IllegalStateException when the file is not in an ODK project
+     */
+    public static Proposal proposal(File editFile, List<String> tags) {
         VersionIriShape odk = VersionIriShape.of(VersionIriShape.Kind.ODK);
         Facts facts = Facts.of(editFile);
-        Last last = lastRelease(facts, GitTags.releases(facts.root(), git), null);
+        Last last = lastRelease(facts, tags, null);
         if (last == null) {
             return new Proposal(null, null, odk);
         }
         try {
-            IRI versionIri = Release.versionIriOf(last.load());
-            VersionIriShape shape = versionIri == null ? null : VersionIriShape.detect(
-                    versionIri.toString(), facts.ontbase(), last.version, facts.id() + ".owl");
-            return new Proposal(last.version, versionIri == null ? null : versionIri.toString(),
-                    shape == null ? odk : shape);
+            String versionIri = versionIriIn(last.head());
+            VersionIriShape shape = VersionIriShape.detect(versionIri, facts.ontbase(),
+                    last.version, facts.id() + ".owl");
+            return new Proposal(last.version, versionIri, shape == null ? odk : shape);
+        } catch (IOException unreadable) {
+            return new Proposal(last.version, null, odk);
         } catch (RuntimeException unreadable) {
             return new Proposal(last.version, null, odk);
+        }
+    }
+
+    /** {@link #proposal(File, List)}, asking git for the tags. */
+    public static Proposal proposal(File editFile, ProcessRunner.Runner git) {
+        return proposal(editFile, GitTags.releases(Facts.of(editFile).root(), git));
+    }
+
+    /** How an ontology's header says its version IRI, in the syntaxes a release comes in. */
+    private static final Pattern[] VERSION_IRI = {
+        // RDF/XML, which is what ODK writes an .owl in
+        Pattern.compile("<owl:versionIRI\\s+rdf:resource\\s*=\\s*[\"']([^\"'\\s]+)[\"']"),
+        // Turtle
+        Pattern.compile("owl:versionIRI\\s+<([^>\\s]+)>"),
+        // functional and Manchester syntax: the second IRI of the header
+        Pattern.compile("Ontology\\s*[(:]\\s*<[^>\\s]+>\\s*<([^>\\s]+)>"),
+    };
+
+    /** The version IRI in the start of an ontology file, or null when it shows none. */
+    static String versionIriIn(String head) {
+        for (Pattern syntax : VERSION_IRI) {
+            Matcher header = syntax.matcher(head);
+            if (header.find()) {
+                return header.group(1).replace("&amp;", "&");
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Whether the file is the edit file of an ODK project: one built by ODK's Makefile. A
+     * project of OntoBoard's older layout has a Makefile as well - OntoBoard wrote it and
+     * builds it itself - and is not released this way until it has been converted.
+     */
+    public static boolean isOdkProject(File editFile) {
+        try {
+            return !MakeRun.writtenByOntoBoard(Facts.of(editFile).ontology());
+        } catch (IllegalStateException notOne) {
+            return false;
         }
     }
 

@@ -763,6 +763,72 @@ class OdkReleaseTest {
                 OdkRelease.proposedShape(edit, git()).kind());
     }
 
+    /**
+     * The dialog reads the last release's version IRI when it opens, from the start of the
+     * file only: a release may be hundreds of megabytes. ODK writes RDF/XML; a release made
+     * another way may be in another syntax.
+     */
+    @Test
+    void theVersionIriIsReadFromTheStartOfAReleaseInAnySyntax() {
+        assertEquals("https://example.org/x/releases/1.0.0/x.owl", OdkRelease.versionIriIn(
+                "<?xml version=\"1.0\"?>\n<rdf:RDF xmlns=\"https://example.org/x.owl#\">\n"
+                        + "    <owl:Ontology rdf:about=\"https://example.org/x.owl\">\n"
+                        + "        <owl:versionIRI rdf:resource=\"https://example.org/x/"
+                        + "releases/1.0.0/x.owl\"/>\n"));
+        assertEquals("https://example.org/x/1.0.0/x.ttl", OdkRelease.versionIriIn(
+                "<https://example.org/x.owl> rdf:type owl:Ontology ;\n"
+                        + "    owl:versionIRI <https://example.org/x/1.0.0/x.ttl> ;\n"));
+        assertEquals("https://example.org/x/1.0.0", OdkRelease.versionIriIn(
+                "Prefix(:=<https://example.org/x#>)\n\nOntology(<https://example.org/x.owl>\n"
+                        + "<https://example.org/x/1.0.0>\n"));
+        assertEquals("https://example.org/x/1.0.0", OdkRelease.versionIriIn(
+                "Prefix: : <https://example.org/x#>\n\nOntology: <https://example.org/x.owl>\n"
+                        + "<https://example.org/x/1.0.0>\n"));
+        assertNull(OdkRelease.versionIriIn("Ontology(<https://example.org/x.owl>\n"
+                + "Declaration(Class(<https://example.org/x#A>))\n)"), "a header without one");
+    }
+
+    /**
+     * A project of OntoBoard's older layout has a Makefile too, one OntoBoard wrote and builds
+     * itself. It is released the older way until it has been converted.
+     */
+    @Test
+    void anOdkProjectIsOneWithOdksMakefile() throws IOException {
+        assertTrue(OdkRelease.isOdkProject(edit));
+
+        File makefile = new File(ontology, "Makefile");
+        write(makefile, OdkScaffold.GENERATED_MAKEFILE_HEADER + "\n" + new String(
+                Files.readAllBytes(makefile.toPath()), StandardCharsets.UTF_8));
+        assertFalse(OdkRelease.isOdkProject(edit), "a Makefile OntoBoard's old scaffold wrote");
+
+        assertTrue(makefile.delete());
+        assertFalse(OdkRelease.isOdkProject(edit), "no Makefile");
+        assertFalse(OdkRelease.isOdkProject(new File(temp, "loose.owl")), "a file on its own");
+        assertFalse(OdkRelease.isOdkProject(null));
+    }
+
+    /** What has been released: the folders and the tags, each version once, newest first. */
+    @Test
+    void whatHasBeenReleasedIsTheFoldersAndTheTags() throws IOException {
+        write(new File(root, "releases/1.0.0/eggboil.owl"), owl("Egg"));
+        write(new File(root, "releases/1.2.0/eggboil.owl"), owl("Egg"));
+        assertTrue(new File(root, "releases/9.9.9").mkdirs(), "an empty folder is no release");
+        assertTrue(new File(root, "releases/latest").mkdirs());
+
+        List<OntologyVersion> released = OdkRelease.released(OdkRelease.Facts.of(edit),
+                Arrays.asList("v1.10.0", "v1.2.0"));
+
+        assertEquals(Arrays.asList("1.10.0", "1.2.0", "1.0.0"), texts(released));
+    }
+
+    private static List<String> texts(List<OntologyVersion> versions) {
+        List<String> texts = new ArrayList<String>();
+        for (OntologyVersion version : versions) {
+            texts.add(version.getText());
+        }
+        return texts;
+    }
+
     @Test
     void theProjectsNamesAreReadFromItsMakefile() {
         OdkRelease.Facts facts = OdkRelease.Facts.of(edit);
