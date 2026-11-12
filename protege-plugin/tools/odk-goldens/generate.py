@@ -39,6 +39,7 @@ import equivalence_goldens  # noqa: E402
 import lexer_fixture  # noqa: E402
 import make_goldens  # noqa: E402
 import odkimage  # noqa: E402
+import update_goldens  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 PLUGIN = os.path.normpath(os.path.join(HERE, "..", ".."))
@@ -241,14 +242,25 @@ def stage_equivalence(tool, image):
                   equivalence_goldens.OBODATE, ", ".join(equivalence_goldens.TARGETS)))
 
 
+def stage_update(tool, image):
+    said, versions = update_goldens.run(
+        tool, image, RES, os.path.join(PLUGIN, "target", "odk-goldens-update"))
+    for line in said:
+        print("update " + line)
+    provenance(tool, image, "update", versions,
+               "odk.py update, twice, in /tmp/odk/egg/src/ontology, on a copy of seed/eggboil "
+               "with equivalence/egg/overlay and then update/<case>/ laid over it, for "
+               + ", ".join(update_goldens.CASES))
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("stage", choices=["seed", "corpus", "lexer", "make", "equivalence",
-                                          "all"])
+                                          "update", "all"])
     parser.add_argument("--odk-checkout", help="a git clone of INCATools/ontology-development-kit "
                         "holding tag " + odkimage.PIN + " (for the corpus)")
     options = parser.parse_args()
-    if options.stage in ("seed", "corpus", "make", "equivalence", "all"):
+    if options.stage in ("seed", "corpus", "make", "equivalence", "update", "all"):
         tool = odkimage.runtime()
         image = odkimage.pinned_image(tool)
         if options.stage in ("seed", "all"):
@@ -259,6 +271,8 @@ def main():
             stage_make(tool, image)
         if options.stage in ("equivalence", "all"):
             stage_equivalence(tool, image)
+        if options.stage in ("update", "all"):
+            stage_update(tool, image)
     if options.stage in ("lexer", "all"):
         stage_lexer()
 

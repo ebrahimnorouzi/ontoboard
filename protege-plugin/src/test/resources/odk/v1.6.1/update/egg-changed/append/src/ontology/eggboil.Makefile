@@ -1,0 +1,3 @@
+
+mytarget:
+	echo mine

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<catalog prefer="public" xmlns="urn:oasis:names:tc:entity:xmlns:xml:catalog">
+  <group id="odk-managed-catalog" prefer="public">
+    <uri name="https://example.org/eggboil/eggboil/imports/old_import.owl" uri="imports/old_import.owl"/>
+  </group>
+  <uri id="User Entered Import Resolution" name="https://example.invalid/whole.owl" uri="whole.owl"/>
+  <uri name="https://example.org/eggboil/eggboil/imports/ro_import.owl" uri="imports/ro_import.owl"/>
+  <group id="mine" prefer="public" xml:base="">
+    <uri name="https://example.org/other.owl" uri="other &amp; more.owl"/>
+  </group>
+</catalog>

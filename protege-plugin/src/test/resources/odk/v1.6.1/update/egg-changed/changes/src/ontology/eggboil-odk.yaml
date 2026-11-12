@@ -1,0 +1,26 @@
+# ODK configuration for Test kitchen ontology, written by OntoBoard for ODK v1.6.1.
+# After changing it, run OntoBoard > Project > Update project files... (ODK: sh run.sh update_repo).
+id: eggboil
+title: "Test kitchen ontology"
+description: "Application ontology for boiling eggs in a test kitchen"
+uribase: https://example.org/eggboil
+license: https://creativecommons.org/licenses/by/4.0/
+repo: eggboil
+import_group:
+  products:
+    - id: ro
+    - id: utensils
+      module_type: custom
+      mirror_type: no_mirror
+robot_report:
+  use_labels: TRUE
+  fail_on: ERROR
+  custom_profile: TRUE
+  report_on:
+    - edit
+  custom_sparql_checks:
+    - owldef-self-reference
+    - iri-range
+    - label-with-iri
+    - multiple-replaced_by
+    - check_labels

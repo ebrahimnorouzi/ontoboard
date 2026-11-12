@@ -1,0 +1,9 @@
+Prefix(owl:=<http://www.w3.org/2002/07/owl#>)
+Prefix(rdfs:=<http://www.w3.org/2000/01/rdf-schema#>)
+
+
+Ontology(<https://example.invalid/whole.owl>
+
+Declaration(Class(<https://example.invalid/whole#Spoon>))
+AnnotationAssertion(rdfs:label <https://example.invalid/whole#Spoon> "spoon"@en)
+)

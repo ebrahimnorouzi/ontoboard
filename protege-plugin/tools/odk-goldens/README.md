@@ -12,6 +12,7 @@ tests compare with. The tests themselves need no Docker.
 | `generate.py lexer` | `lexer/`: how Jinja2 3.1.6 itself cuts each template | Python with Jinja2 3.1.6 |
 | `generate.py make` | `make-n/` and `closure/`: GNU make's own dry runs of every seeded project, and what it considers for each | the image |
 | `generate.py equivalence` | `equivalence/egg/<target>/`: what ODK's `make test_fast` and `make prepare_release_fast` print and write for a small project with work in it (`seed/eggboil` with `equivalence/egg/overlay` over it), and `equivalence/egg/query/`: what `robot query` gives in the forms ODK's other targets use | the image |
+| `generate.py update` | `update/<case>/`: what ODK's own `odk.py update` writes - run twice - for the egg project as it is (`egg-unchanged`), with work in it (`egg-changed`: an import declared, a README of their own, own ignore rules and catalog entries, an import nobody declared, ODK's files edited, two files deleted) and with an import that cannot be loaded (`egg-unloadable`: ODK's update stops at its last step) | the image |
 
 Run them from the repository root with Python 3.8 or later; `generate.py all --odk-checkout <clone>`
 does everything and takes about a quarter of an hour on Windows (the bind mount is slow).

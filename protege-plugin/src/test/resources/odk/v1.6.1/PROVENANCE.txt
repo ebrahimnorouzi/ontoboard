@@ -43,3 +43,15 @@ ODK_VERSION=v1.6.1
 ROBOT version 1.9.10
 Made on:      2026-11-12
 Command:      make <target> VERSION=1.0.0 TODAY=2026-11-11 OBODATE="11:11:2026 12:00" for test_fast, prepare_release_fast, each on a fresh copy of seed/eggboil with equivalence/egg/overlay over it, in /tmp/odk/egg/src/ontology; then the forms of robot query that ODK's other targets use
+
+## update
+Image:        obolibrary/odkfull:latest
+Image id:     sha256:731aaa3c781f365f6b96704e0336e000dfe4c8f11868f0cb22cb48a3deb25181
+Repo digests: obolibrary/odkfull@sha256:73364755375f2adc69f5a6df0f55ffb8bc444fcb6bb044785493d2d543d3c3a7
+Built:        2026-03-10T13:03:31.608100545Z
+ODK_VERSION=v1.6.1
+ROBOT version 1.9.10
+Jinja2 3.1.6, PyYAML 6.0.3
+Python 3.12.3
+Made on:      2026-11-12
+Command:      odk.py update, twice, in /tmp/odk/egg/src/ontology, on a copy of seed/eggboil with equivalence/egg/overlay and then update/<case>/ laid over it, for egg-unchanged, egg-changed, egg-unloadable
