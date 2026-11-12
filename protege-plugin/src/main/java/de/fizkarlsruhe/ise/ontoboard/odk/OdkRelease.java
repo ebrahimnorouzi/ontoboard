@@ -256,6 +256,7 @@ public final class OdkRelease {
         private final List<String> transcript;
         private final List<File> written;
         private final List<String> warnings;
+        private final List<String> later;
         private final boolean committed;
         private final String tag;
         private final String summary;
@@ -265,6 +266,7 @@ public final class OdkRelease {
             this.transcript = Collections.unmodifiableList(new ArrayList<String>(log.transcript));
             this.written = Collections.unmodifiableList(new ArrayList<File>(log.written));
             this.warnings = Collections.unmodifiableList(new ArrayList<String>(log.warnings));
+            this.later = Collections.unmodifiableList(new ArrayList<String>(log.later));
             this.committed = committed;
             this.tag = tag;
             this.summary = summary;
@@ -307,6 +309,14 @@ public final class OdkRelease {
         public String getSummary() {
             return summary;
         }
+
+        /**
+         * The git commands that were not run, each a line to copy, under a line that says
+         * where to run them; empty when the release is recorded.
+         */
+        public List<String> getLater() {
+            return later;
+        }
     }
 
     /** What is said along the way. */
@@ -314,6 +324,21 @@ public final class OdkRelease {
         private final List<String> transcript = new ArrayList<String>();
         private final List<File> written = new ArrayList<File>();
         private final List<String> warnings = new ArrayList<String>();
+        private final List<String> later = new ArrayList<String>();
+
+        /**
+         * The git commands that were not run, kept as lines to copy. The sentence that says
+         * where they are goes into the summary: what a dialog shows as a sentence cannot be
+         * copied, and a summary of ten lines leaves the log no room.
+         */
+        String leftForLater(String heading, List<List<String>> commands) {
+            later.add(heading);
+            for (List<String> command : commands) {
+                later.add(ReleaseRun.shown(command));
+            }
+            later.add("git push --follow-tags");
+            return " The git commands for that are at the end of the log.";
+        }
 
         void note(String line) {
             transcript.add(line);
@@ -752,17 +777,17 @@ public final class OdkRelease {
     private static String whyTermsAreMissed(List<ReleaseDiff.TermChange> removals,
             String previous) {
         boolean one = removals.size() == 1;
+        String it = one ? "it" : "them";
+        // Short: the dialog that shows it keeps the build's log on screen below. Every term
+        // that is gone is a line of that log.
         return (one ? "1 term that the " + previous + " release published is gone from this "
                 + "one: " + named(removals.get(0)) + "."
                 : removals.size() + " terms that the " + previous + " release published are "
                         + "gone from this one, " + named(removals.get(0)) + " among them.")
-                + " The release files are built - ODK builds them before this can be seen - "
-                + "but nothing was copied, committed or tagged. Obsolete "
-                + (one ? "it" : "them") + " instead: bring " + (one ? "it" : "them")
-                + " back, mark " + (one ? "it" : "them") + " owl:deprecated and name a "
-                + "replacement, so that everything that imported " + (one ? "it" : "them")
-                + " still resolves; then release again. To drop " + (one ? "it" : "them")
-                + " anyway, untick \"" + REFUSE_LABEL + "\".";
+                + " ODK built the release files, but nothing was copied, committed or tagged. "
+                + "Bring " + it + " back and mark " + it + " owl:deprecated with a replacement, "
+                + "so that what imported " + it + " still resolves; then release again. To "
+                + "drop " + it + " anyway, untick \"" + REFUSE_LABEL + "\".";
     }
 
     // ------------------------------------------------------------------ what the dialog proposes
@@ -887,7 +912,7 @@ public final class OdkRelease {
             log.warn("git is not installed, or not on the PATH Protege was started with, so "
                     + "the release was not committed and no tag " + tag + " was made.");
             return new Outcome(null, log, false, null, done + ". Not committed: git is not "
-                    + "installed." + later(later, where));
+                    + "installed." + log.leftForLater(forLater(where), later.commands()));
         }
         List<String> status;
         try {
@@ -904,7 +929,7 @@ public final class OdkRelease {
             log.warn("git would not say what state the repository is in (" + cannotAsk.getMessage()
                     + "), so the release was not committed and no tag " + tag + " was made.");
             return new Outcome(null, log, false, null, done + ". Not committed: git status "
-                    + "failed." + later(later, where));
+                    + "failed." + log.leftForLater(forLater(where), later.commands()));
         }
         ReleaseRun.Staging staging = ReleaseRun.staging(facts.root(), facts.id(), version,
                 assets, status);
@@ -914,11 +939,11 @@ public final class OdkRelease {
                     + String.join(", ", conflicted) + " - so the release was not committed: a "
                     + "commit now would record the conflict markers. Finish that first.");
             return new Outcome(null, log, false, null, done + ". Not committed: a merge is "
-                    + "unfinished." + later(staging, where));
+                    + "unfinished." + log.leftForLater(forLater(where), staging.commands()));
         }
         if (asks == null || !asks.commit(staging)) {
             return new Outcome(null, log, false, null, done + ". Not committed."
-                    + later(staging, where));
+                    + log.leftForLater(forLater(where), staging.commands()));
         }
         List<List<String>> commands = staging.commands();
         for (int i = 0; i < commands.size(); i++) {
@@ -935,13 +960,11 @@ public final class OdkRelease {
             }
             if (why != null) {
                 boolean isCommitted = "tag".equals(command.get(1));
-                StringBuilder left = new StringBuilder();
-                for (List<String> next : commands.subList(i, commands.size())) {
-                    left.append('\n').append(ReleaseRun.shown(next));
-                }
                 String failure = (isCommitted ? "The release is committed, but the tag " + tag
                         + " was not made: " : "The release is written, but git did not record "
-                        + "it: ") + why + " When that is sorted out, in " + where + ":" + left;
+                        + "it: ") + why + " When that is sorted out, run what was not run."
+                        + log.leftForLater("Not run yet, in " + where + ":",
+                                commands.subList(i, commands.size()));
                 return new Outcome(failure, log, isCommitted, null, failure);
             }
         }
@@ -953,9 +976,8 @@ public final class OdkRelease {
                 + "git push --follow-tags");
     }
 
-    /** The commands a release that was not recorded leaves for later. */
-    private static String later(ReleaseRun.Staging staging, String where) {
-        return " To record it later, in " + where + ":\n" + staging.shown()
-                + "\nand then: git push --follow-tags";
+    /** The line above the commands of a release that was not recorded. */
+    private static String forLater(String where) {
+        return "To record the release later, in " + where + ":";
     }
 }

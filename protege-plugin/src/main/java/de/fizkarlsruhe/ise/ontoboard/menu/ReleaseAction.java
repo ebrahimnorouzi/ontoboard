@@ -232,6 +232,7 @@ public class ReleaseAction extends OntoBoardAction {
         text.setLineWrap(true);
         text.setWrapStyleWord(true);
         text.setOpaque(false);
+        text.setBorder(javax.swing.BorderFactory.createEmptyBorder());
         text.setColumns(52);
         text.setFont(javax.swing.UIManager.getFont("Label.font"));
         text.setSize(text.getPreferredSize().width, Short.MAX_VALUE);
@@ -252,6 +253,22 @@ public class ReleaseAction extends OntoBoardAction {
                 }, imageNote);
     }
 
+    /** The git commands of a release as the question shows them, in a view that scrolls. */
+    static javax.swing.JScrollPane commandsShown(String commands) {
+        javax.swing.JTextArea text = new javax.swing.JTextArea(commands);
+        text.setEditable(false);
+        text.setFont(new java.awt.Font(java.awt.Font.MONOSPACED, java.awt.Font.PLAIN,
+                text.getFont().getSize()));
+        // The line that adds the release's files is long. Wrapped, all of it is on screen; a
+        // wrapped line is still one line of the text, so it copies as the command it is.
+        text.setLineWrap(true);
+        text.setWrapStyleWord(true);
+        text.setCaretPosition(0);
+        javax.swing.JScrollPane scroll = new javax.swing.JScrollPane(text);
+        scroll.setPreferredSize(new java.awt.Dimension(680, 300));
+        return scroll;
+    }
+
     /**
      * Shows the git commands a release is about to run, and asks.
      *
@@ -267,14 +284,8 @@ public class ReleaseAction extends OntoBoardAction {
         Runnable ask = new Runnable() {
             @Override
             public void run() {
-                javax.swing.JTextArea text = new javax.swing.JTextArea(
-                        OdkReleaseForm.confirmation(staging, root));
-                text.setEditable(false);
-                text.setFont(new java.awt.Font(java.awt.Font.MONOSPACED, java.awt.Font.PLAIN,
-                        text.getFont().getSize()));
-                text.setCaretPosition(0);
-                javax.swing.JScrollPane scroll = new javax.swing.JScrollPane(text);
-                scroll.setPreferredSize(new java.awt.Dimension(680, 300));
+                javax.swing.JScrollPane scroll =
+                        commandsShown(OdkReleaseForm.confirmation(staging, root));
                 Object[] options = {"Commit and tag", "Not now"};
                 java.awt.Window front = java.awt.KeyboardFocusManager
                         .getCurrentKeyboardFocusManager().getActiveWindow();

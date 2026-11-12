@@ -466,6 +466,10 @@ final class OdkReleaseForm {
         if (rewritten != null) {
             result.warn(rewritten);
         }
+        // Last, where the summary says they are: the git commands that were not run.
+        for (String line : outcome.getLater()) {
+            result.note(line);
+        }
         if (!outcome.isOk()) {
             return result.failed(outcome.getFailure()).build();
         }

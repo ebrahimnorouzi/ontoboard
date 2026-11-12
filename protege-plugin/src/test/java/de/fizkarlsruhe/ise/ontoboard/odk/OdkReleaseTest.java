@@ -303,8 +303,22 @@ class OdkReleaseTest {
         assertEquals(Collections.<List<String>>emptyList(), gitRan);
         assertTrue(new File(root, "eggboil.owl").isFile());
         assertTrue(new File(root, "releases/1.0.0/eggboil.owl").isFile());
-        assertTrue(outcome.getSummary().contains("git add -f -- eggboil.obo eggboil.owl"),
-                "the commands are in the result, to run later: " + outcome.getSummary());
+        // The commands to run later are lines of their own, to be copied: a sentence in a
+        // dialog's label cannot be. The summary stays a sentence and says where they are.
+        assertEquals(Arrays.asList("To record the release later, in " + root.getAbsolutePath()
+                + ":", "git add -u", "git add -f -- eggboil.obo eggboil.owl eggboil-base.owl",
+                "git add -- releases/1.0.0", "git commit -m \"release(1.0.0)\"",
+                "git tag -a v1.0.0 -m \"eggboil 1.0.0\"", "git push --follow-tags"),
+                outcome.getLater());
+        assertFalse(outcome.getSummary().contains("git add"), outcome.getSummary());
+        assertFalse(outcome.getSummary().contains("\n"), outcome.getSummary());
+        assertTrue(outcome.getSummary().contains("Not committed")
+                && outcome.getSummary().contains("end of the log"), outcome.getSummary());
+    }
+
+    @Test
+    void aReleaseThatIsRecordedLeavesNothingForLater() {
+        assertEquals(Collections.<String>emptyList(), release("1.0.0").getLater());
     }
 
     /** Review focus 5: a machine without git still gets its release, and is told. */
@@ -348,6 +362,27 @@ class OdkReleaseTest {
         assertFalse(outcome.isCommitted());
         assertTrue(new File(root, "releases/1.0.0/eggboil.owl").isFile(), "the release itself "
                 + "is there");
+        assertEquals(Arrays.asList("Not run yet, in " + root.getAbsolutePath() + ":",
+                "git commit -m \"release(1.0.0)\"", "git tag -a v1.0.0 -m \"eggboil 1.0.0\"",
+                "git push --follow-tags"), outcome.getLater());
+    }
+
+    /**
+     * What stops a release is said in a few sentences: the dialog that shows it keeps the
+     * build's log on screen below it.
+     */
+    @Test
+    void aRefusalIsShortEnoughToLeaveTheLogItsRoom() throws IOException {
+        write(new File(root, "releases/0.9.0/eggboil.owl"), owl("Egg", "Pan", "Timer", "Spoon"));
+
+        OdkRelease.Outcome outcome = release("1.0.0");
+        String failure = outcome.getFailure();
+
+        assertTrue(failure.contains("2 terms") && failure.contains("among them"), failure);
+        assertTrue(failure.length() < 480, failure.length() + " characters: " + failure);
+        assertTrue(outcome.getWarnings().toString().contains("Removed: Timer")
+                && outcome.getWarnings().toString().contains("Removed: Spoon"),
+                "each of them is a line of the log: " + outcome.getWarnings());
     }
 
     // ------------------------------------------------------------------ whose project it is
@@ -650,8 +685,12 @@ class OdkReleaseTest {
         assertTrue(outcome.isCommitted());
         assertNull(outcome.getTag());
         assertTrue(outcome.getFailure().contains("is committed"), outcome.getFailure());
-        assertTrue(outcome.getFailure().contains("git tag -a v1.0.0 -m \"eggboil 1.0.0\""),
-                "what is left to run: " + outcome.getFailure());
+        assertTrue(outcome.getFailure().contains("no tag message"), "git's own reason: "
+                + outcome.getFailure());
+        assertEquals(Arrays.asList("Not run yet, in " + root.getAbsolutePath() + ":",
+                "git tag -a v1.0.0 -m \"eggboil 1.0.0\"", "git push --follow-tags"),
+                outcome.getLater());
+        assertTrue(outcome.getFailure().contains("end of the log"), outcome.getFailure());
     }
 
     // ------------------------------------------------------------------ with git itself

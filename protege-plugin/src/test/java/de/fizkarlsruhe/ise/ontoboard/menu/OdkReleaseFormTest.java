@@ -447,6 +447,28 @@ class OdkReleaseFormTest {
         assertNull(scriptAsRun, "no script in this project, none written");
     }
 
+    /**
+     * Not committed: the commands to run later are the last lines of the log, below whatever
+     * the release warned of, where they can be found and copied.
+     */
+    @Test
+    void whenNotCommittedTheCommandsAreTheLastLinesOfTheLog() {
+        buildRewritesTheEditFile = true;
+        OdkReleaseForm.Start start = start();
+
+        OperationResult result = OdkReleaseForm.run("Release", start, chosen(start), odk(),
+                git(), staging -> false, null);
+
+        List<String> log = result.getLog();
+        assertEquals(Arrays.asList("git commit -m \"release(1.0.0)\"",
+                "git tag -a v1.0.0 -m \"eggboil 1.0.0\"", "git push --follow-tags"),
+                log.subList(log.size() - 3, log.size()));
+        assertTrue(log.indexOf("To record the release later, in " + root.getAbsolutePath()
+                + ":") > log.size() - 9, log.toString());
+        assertTrue(result.getSummary().contains("Not committed"), result.getSummary());
+        assertFalse(result.getSummary().contains("git add"), result.getSummary());
+    }
+
     /** The image is not the ODK that wrote the project's Makefile: said, as Build says it. */
     @Test
     void anImageThatIsNotTheProjectsOwnIsSaid() {
