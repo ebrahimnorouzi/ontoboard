@@ -76,6 +76,9 @@ class FallbackEquivalenceTest {
                 "every recipe line make said, in the order it ran them");
         assertEquals(starting("PASS Rule ", recorded), starting("PASS Rule ", ours),
                 "what ROBOT said of each check");
+        assertEquals(String.join("\n", saidByTheReport(recorded)),
+                String.join("\n", saidByTheReport(ours)), "what ROBOT's report said: of its "
+                        + "rules, then the counts and the first findings");
         assertEquals("Finished running all tests successfully.", ours.get(ours.size() - 2),
                 "the recipe's own last word, before make leaves the folder");
 
@@ -256,6 +259,29 @@ class FallbackEquivalenceTest {
             }
         }
         return said;
+    }
+
+    /**
+     * What ROBOT's report printed: the lines between its own line and ROBOT's next. What it
+     * says of its rules as it runs them comes sorted here, since ROBOT keeps its rules in a set
+     * and runs them in no fixed order; the counts and the findings after them are in theirs.
+     */
+    private static List<String> saidByTheReport(List<String> transcript) {
+        List<String> ofItsRules = new ArrayList<String>();
+        List<String> after = new ArrayList<String>();
+        boolean inside = false;
+        for (String line : transcript) {
+            if (inside && line.startsWith("robot ")) {
+                break;
+            }
+            if (inside) {
+                (line.startsWith("WARN: '") ? ofItsRules : after).add(line);
+            }
+            inside |= line.startsWith("robot ") && line.contains(" report ");
+        }
+        Collections.sort(ofItsRules);
+        ofItsRules.addAll(after);
+        return ofItsRules;
     }
 
     private static List<String> starting(String with, List<String> transcript) {

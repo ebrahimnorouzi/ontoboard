@@ -90,9 +90,18 @@ class OdkRobotReportRulesTest {
     /** The line failed as ROBOT fails before it says anything: nothing printed, no file. */
     private static void failedBeforeAnything(OdkRobot.Result result, File report,
             String failure) {
+        failedBeforeItsCounts(result, report, failure);
+    }
+
+    /**
+     * The line failed as ROBOT fails while it runs its rules: no counts, no file - only what it
+     * said of the rules that ran before the one that failed.
+     */
+    private static void failedBeforeItsCounts(OdkRobot.Result result, File report,
+            String failure, String... saidOfRulesBefore) {
         assertFalse(result.ok());
         assertEquals(failure, result.failure());
-        assertEquals(Collections.<String>emptyList(), result.output());
+        assertEquals(Arrays.asList(saidOfRulesBefore), result.output());
         assertFalse(report.exists(), "ROBOT fails before it writes the file");
     }
 
@@ -256,7 +265,8 @@ class OdkRobotReportRulesTest {
                 + "ERROR\tmissing_label\thttps://example.org/e/Pan\trdfs:label\t\n"
                 + "WARN\tkitchen-comments\thttps://example.org/e/Pan\trdfs:comment\tno label\n",
                 text(report));
-        assertEquals(Arrays.asList("Violations: 2", "-----------------", "ERROR:      1",
+        assertEquals(Arrays.asList("WARN: 'missing_label' query is missing ?value variable",
+                "Violations: 2", "-----------------", "ERROR:      1",
                 "WARN:       1", "INFO:       0", "", "First 2 violations:",
                 "ERROR\tmissing_label\thttps://example.org/e/Pan\trdfs:label\t",
                 "WARN\tkitchen-comments\thttps://example.org/e/Pan\trdfs:comment\tno label"),
@@ -363,6 +373,60 @@ class OdkRobotReportRulesTest {
                 + new File("../sparql/not-there.rq").getPath() + "' does not exist.");
     }
 
+    // ------------------------------------------------------------------ what ROBOT says of a query
+
+    /**
+     * ROBOT in ODK's image (1.9.10) says, once for a rule, that a row of its query binds no
+     * {@code ?property}, or no {@code ?value} - on its standard output, as the rules run, so
+     * before the counts. The ROBOT inside OntoBoard (1.9.8, the last that runs on Java 8) is
+     * the same in everything else of the report and does not say this. ODK's log has the
+     * lines, so they are said here as 1.9.10 says them (read from its bytecode:
+     * {@code ReportOperation.getViolationsFromResults}).
+     */
+    @Test
+    void aRuleWhoseRowsBindNoPropertyOrNoValueIsSaidOnceForTheRule(@TempDir File temp)
+            throws Exception {
+        File bare = file(temp, "sparql/every-class.rq", "PREFIX owl: "
+                + "<http://www.w3.org/2002/07/owl#>\nSELECT ?entity WHERE { ?entity a owl:Class }\n"
+                + "ORDER BY ?entity\n");
+        File profile = file(temp, "profile.txt", "INFO\tfile:" + slashed(bare)
+                + "\nWARN\tmissing_label\n");
+        File report = new File(temp, "report.tsv");
+
+        OdkRobot.Result result = OdkRobot.run(line(temp, profile, report, "none"));
+
+        assertTrue(result.ok(), String.valueOf(result.failure()));
+        assertEquals(Arrays.asList(
+                "WARN: 'every-class' query is missing ?property variable",
+                "WARN: 'every-class' query is missing ?value variable",
+                "WARN: 'missing_label' query is missing ?value variable",
+                "Violations: 3", "-----------------", "ERROR:      0", "WARN:       1",
+                "INFO:       2", "", "First 1 violations:",
+                "WARN\tmissing_label\thttps://example.org/e/Pan\trdfs:label\t"),
+                result.output(), "two classes without a property or a value: said once each");
+    }
+
+    /**
+     * ROBOT looks at a row's property and value only when it reports the row: a row about a
+     * term of OWL or RDF Schema is passed over before that, and says nothing.
+     */
+    @Test
+    void aRowThatIsNotReportedSaysNothingOfItsQuery(@TempDir File temp) throws Exception {
+        File bare = file(temp, "sparql/only-thing.rq", "PREFIX owl: "
+                + "<http://www.w3.org/2002/07/owl#>\n"
+                + "SELECT ?entity WHERE { VALUES ?entity { owl:Thing } }\n");
+        File profile = file(temp, "profile.txt", "INFO\tfile:" + slashed(bare) + "\n");
+        File report = new File(temp, "report.tsv");
+
+        OdkRobot.Result result = OdkRobot.run(line(temp, profile, report, "none"));
+
+        assertTrue(result.ok(), String.valueOf(result.failure()));
+        for (String said : result.output()) {
+            assertFalse(said.startsWith("WARN: '"), result.output().toString());
+        }
+        assertEquals(HEADER + "\n", text(report));
+    }
+
     // ------------------------------------------------------------------ a query that cannot run
 
     @Test
@@ -374,8 +438,9 @@ class OdkRobotReportRulesTest {
 
         OdkRobot.Result result = OdkRobot.run(line(temp, profile, report, "none"));
 
-        failedBeforeAnything(result, report,
-                "MISSING ENTITY BINDING query 'broken' must include an '?entity'");
+        failedBeforeItsCounts(result, report,
+                "MISSING ENTITY BINDING query 'broken' must include an '?entity'",
+                "WARN: 'missing_label' query is missing ?value variable");
     }
 
     @Test
@@ -423,7 +488,8 @@ class OdkRobotReportRulesTest {
 
         assertFalse(result.ok());
         assertEquals("FAIL ON ERROR 'Sometimes' is not a valid fail-on level.", result.failure());
-        assertEquals("Violations: 1", result.output().get(0));
+        assertEquals(Arrays.asList("WARN: 'missing_label' query is missing ?value variable",
+                "Violations: 1"), result.output().subList(0, 2));
         assertEquals(HEADER + "\n" + "ERROR\tmissing_label\thttps://example.org/e/Pan\t"
                 + "rdfs:label\t\n", text(report));
     }

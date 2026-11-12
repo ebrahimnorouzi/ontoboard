@@ -249,7 +249,10 @@ class OdkRobotReportTest {
                 + "ERROR\tdeprecated_class_reference\tblank node\towl:someValuesFrom\told egg\n"
                 + "ERROR\tmissing_label\tex:Pan\trdfs:label\t\n", text(all));
         assertEquals(HEADER + "\n" + "ERROR\tmissing_label\tex:Pan\trdfs:label\t\n", text(own));
-        assertEquals("Violations: 1", ours.output().get(0), ours.output().toString());
+        // Of the rule whose row it reports ROBOT says that it binds no value; of the blank
+        // node's rule nothing, since no row of that is reported within the base.
+        assertEquals(Arrays.asList("WARN: 'missing_label' query is missing ?value variable",
+                "Violations: 1"), ours.output().subList(0, 2), ours.output().toString());
     }
 
     /** A term of RDF Schema's or OWL's own is not reported, and not counted. */
@@ -361,7 +364,9 @@ class OdkRobotReportTest {
                 "ERROR", "--print", "2", "-o", path(report));
 
         assertFalse(result.ok(), "missing_label is an ERROR");
-        assertEquals(Arrays.asList("Violations: 4", "-----------------", "ERROR:      1",
+        assertEquals(Arrays.asList("WARN: 'missing_superclass' query is missing ?value variable",
+                "WARN: 'missing_label' query is missing ?value variable",
+                "Violations: 4", "-----------------", "ERROR:      1",
                 "WARN:       0", "INFO:       3", "", "First 2 violations:",
                 "ERROR\tmissing_label\thttps://example.org/e/Pan\trdfs:label\t",
                 "INFO\tlowercase_definition\tboiled egg\tdefinition\t"
@@ -378,7 +383,9 @@ class OdkRobotReportTest {
                 "--print", " 10 ", "-o", path(report));
 
         assertTrue(result.ok(), String.valueOf(result.failure()));
-        assertEquals(Arrays.asList("Violations: 4", "-----------------", "ERROR:      1",
+        assertEquals(Arrays.asList("WARN: 'missing_superclass' query is missing ?value variable",
+                "WARN: 'missing_label' query is missing ?value variable",
+                "Violations: 4", "-----------------", "ERROR:      1",
                 "WARN:       0", "INFO:       3", "", "First 4 violations:",
                 "ERROR,missing_label,https://example.org/e/Pan,rdfs:label,",
                 "INFO,lowercase_definition,https://example.org/e/Egg,IAO:0000115,"
@@ -400,7 +407,10 @@ class OdkRobotReportTest {
         assertFalse(result.ok());
         assertEquals("PRINT NUMBER ERROR --print argument 'five' must be an integer.",
                 result.failure());
-        assertEquals("Violations: 4", result.output().get(0));
+        assertEquals(Arrays.asList("WARN: 'missing_superclass' query is missing ?value variable",
+                "WARN: 'missing_label' query is missing ?value variable",
+                "Violations: 4"), result.output().subList(0, 3), "what it says of its rules, "
+                + "and the counts, are said before --print is read");
         assertFalse(report.exists(), "ROBOT fails before it writes the file");
     }
 
@@ -428,19 +438,26 @@ class OdkRobotReportTest {
                 "test_fast/files/src/ontology/" + report), StandardCharsets.UTF_8),
                 text(new File(ontology, report)));
         List<String> printed = new ArrayList<String>();
+        List<String> ofItsRules = new ArrayList<String>();
         boolean inside = false;
         for (String line : new String(de.fizkarlsruhe.ise.ontoboard.odk.seed.Goldens.equivalence(
                 "test_fast/transcript.txt"), StandardCharsets.UTF_8).split("\n")) {
             if (inside && line.startsWith("robot ")) {
                 break;
             }
-            if (inside && !line.startsWith("WARN: '")) {
-                printed.add(line);
+            if (inside) {
+                (line.startsWith("WARN: '") ? ofItsRules : printed).add(line);
             }
             inside |= line.startsWith("robot ") && line.contains(" report ");
         }
         assertEquals(12, printed.size(), printed.toString());
-        assertEquals(printed, result.output());
+        assertEquals(2, ofItsRules.size(), ofItsRules.toString());
+        // First what ROBOT says of its rules as it runs them - in no fixed order, ROBOT keeps
+        // them in a set - then the counts and the first findings.
+        List<String> said = result.output();
+        assertEquals(new java.util.TreeSet<String>(ofItsRules),
+                new java.util.TreeSet<String>(said.subList(0, 2)), said.toString());
+        assertEquals(printed, said.subList(2, said.size()));
     }
 
     // ------------------------------------------------------------------ rows ROBOT reads

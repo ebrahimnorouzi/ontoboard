@@ -203,10 +203,7 @@ final class RobotReport {
             if (entity == null) {
                 throw missingEntity(rule);
             }
-            if (entity.contains("/rdf-schema#") || entity.contains("/owl#")) {
-                continue;
-            }
-            if (!bases.isEmpty() && !inOneOf(entity, bases)) {
+            if (!reported(entity, bases)) {
                 continue;
             }
             String subject = cells.subject(entity);
@@ -452,10 +449,21 @@ final class RobotReport {
      * with "#" left out, each row's terms as ROBOT reads them. A query that cannot be parsed or
      * run, or a row without {@code ?entity}, fails the report in ROBOT's words; a row that
      * cannot be read ends its query's rows, as in ROBOT.
+     *
+     * <p>As the rules run, ROBOT 1.9.10 - the one in ODK's image - says once for a rule that a
+     * row it reports binds no {@code ?property}, and once that one binds no {@code ?value}
+     * ({@code getViolationsFromResults}). ROBOT 1.9.8, whose report is the same in everything
+     * else, does not; ODK's log has the lines, so they are said here.
+     *
+     * @param bases the base namespaces of {@code --base-iri}; empty for none
+     * @param out   where ROBOT says it: its standard output
      */
-    static List<QualityFinding> rows(List<Rule> rules, Dataset dataset) {
+    static List<QualityFinding> rows(List<Rule> rules, Dataset dataset, Collection<String> bases,
+            PrintStream out) {
         List<QualityFinding> rows = new ArrayList<QualityFinding>();
         for (Rule rule : rules) {
+            boolean saidOfProperty = false;
+            boolean saidOfValue = false;
             List<String> kept = new ArrayList<String>();
             for (String line : rule.query.split("\n")) {
                 if (!line.startsWith("#")) {
@@ -478,9 +486,23 @@ final class RobotReport {
                         if (entity == null) {
                             throw missingEntity(rule.name);
                         }
+                        String property = term(row, "property");
+                        String value = term(row, "value");
+                        if (reported(entity, bases)) {
+                            if (property == null && !saidOfProperty) {
+                                out.println("WARN: '" + rule.name
+                                        + "' query is missing ?property variable");
+                                saidOfProperty = true;
+                            }
+                            if (value == null && !saidOfValue) {
+                                out.println("WARN: '" + rule.name
+                                        + "' query is missing ?value variable");
+                                saidOfValue = true;
+                            }
+                        }
                         rows.add(new QualityFinding(QualityFinding.Severity.of(rule.level),
                                 rule.name, entity, "", "", "", new QualityFinding.Bound(entity,
-                                        term(row, "property"), term(row, "value"))));
+                                        property, value)));
                     }
                 } finally {
                     execution.close();
@@ -496,6 +518,17 @@ final class RobotReport {
     private static String term(QuerySolution row, String variable) {
         RDFNode node = row.get(variable);
         return node == null ? null : node.toString();
+    }
+
+    /**
+     * Whether ROBOT reports a row about this entity: not a term of RDF Schema or OWL, and -
+     * when there are base namespaces - one of theirs.
+     */
+    private static boolean reported(String entity, Collection<String> bases) {
+        if (entity.contains("/rdf-schema#") || entity.contains("/owl#")) {
+            return false;
+        }
+        return bases.isEmpty() || inOneOf(entity, bases);
     }
 
     private static boolean inOneOf(String entity, Collection<String> bases) {

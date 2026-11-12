@@ -706,7 +706,7 @@ public final class OdkRobot {
                     false);
             List<de.fizkarlsruhe.ise.ontoboard.robot.QualityFinding> rows;
             try {
-                rows = RobotReport.rows(queries, dataset);
+                rows = RobotReport.rows(queries, dataset, io.getBaseNamespaces(), System.out);
             } finally {
                 dataset.close();
             }
