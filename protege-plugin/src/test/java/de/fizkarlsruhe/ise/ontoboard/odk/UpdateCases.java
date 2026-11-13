@@ -1,8 +1,11 @@
 package de.fizkarlsruhe.ise.ontoboard.odk;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.fail;
 
 import de.fizkarlsruhe.ise.ontoboard.odk.seed.Goldens;
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
@@ -11,8 +14,22 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
+import java.util.TreeSet;
+import org.semanticweb.owlapi.apibinding.OWLManager;
+import org.semanticweb.owlapi.io.StreamDocumentSource;
+import org.semanticweb.owlapi.model.IRI;
+import org.semanticweb.owlapi.model.MissingImportHandlingStrategy;
+import org.semanticweb.owlapi.model.OWLOntology;
+import org.semanticweb.owlapi.model.OWLOntologyIRIMapper;
+import org.semanticweb.owlapi.model.OWLOntologyLoaderConfiguration;
+import org.semanticweb.owlapi.model.OWLOntologyManager;
+import org.semanticweb.owlapi.model.parameters.Imports;
 
 /**
  * The projects ODK's own update was recorded on ({@code update/<case>/} among the goldens), put
@@ -162,5 +179,80 @@ public final class UpdateCases {
         } catch (NoSuchAlgorithmException impossible) {
             throw new IllegalStateException(impossible);
         }
+    }
+
+    // ------------------------------------------------------------------ two updates compared
+
+    /** The egg fixture's edit file, which ROBOT writes during an update. */
+    public static final String EDIT = "src/ontology/eggboil-edit.owl";
+
+    /**
+     * Fails unless two projects that came of an update - ODK's, OntoBoard's - hold the same
+     * files: every file byte for byte, the edit file, which ROBOT writes, by what it says.
+     * {@code OdkUpdateLiveTest} and {@code SideBySideLiveTest} compare with it.
+     *
+     * @param scratch a folder for the file an edit file's imports are looked for in (and not
+     *     found: it is not there)
+     */
+    public static void assertSameProjects(File scratch, File theirs, File ours) throws Exception {
+        Map<String, byte[]> odks = Goldens.tree(theirs);
+        Map<String, byte[]> ontoBoards = Goldens.tree(ours);
+        assertEquals(new TreeSet<String>(odks.keySet()), new TreeSet<String>(ontoBoards.keySet()),
+                "the files of the two projects");
+        for (Map.Entry<String, byte[]> file : odks.entrySet()) {
+            if (file.getKey().equals(EDIT)) {
+                assertSameOntology(scratch, file.getValue(), ontoBoards.get(EDIT));
+            } else {
+                assertArrayEquals(file.getValue(), ontoBoards.get(file.getKey()), file.getKey());
+            }
+        }
+    }
+
+    /** Files of a project, from its root, with {@code /}. */
+    public static Set<String> relative(File root, List<File> files) {
+        Set<String> paths = new TreeSet<String>();
+        for (File file : files) {
+            paths.add(root.toPath().relativize(file.toPath()).toString().replace('\\', '/'));
+        }
+        return paths;
+    }
+
+    private static void assertSameOntology(File temp, byte[] expected, byte[] actual)
+            throws Exception {
+        OWLOntology theirs = load(temp, expected);
+        OWLOntology ours = load(temp, actual);
+        assertEquals(theirs.getOntologyID(), ours.getOntologyID());
+        assertEquals(sorted(theirs.getImportsDeclarations()),
+                sorted(ours.getImportsDeclarations()), "the imports of the edit file");
+        assertEquals(sorted(theirs.getAnnotations()), sorted(ours.getAnnotations()));
+        assertEquals(sorted(theirs.getAxioms(Imports.EXCLUDED)),
+                sorted(ours.getAxioms(Imports.EXCLUDED)));
+    }
+
+    /** Reads an ontology by itself: its imports are looked for in a file that is not there. */
+    private static OWLOntology load(File temp, byte[] bytes) throws Exception {
+        OWLOntologyManager manager = OWLManager.createOWLOntologyManager();
+        final IRI nowhere = IRI.create(new File(temp, "not-there.owl"));
+        manager.getIRIMappers().add(new OWLOntologyIRIMapper() {
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            public IRI getDocumentIRI(IRI ontologyIri) {
+                return nowhere;
+            }
+        });
+        return manager.loadOntologyFromOntologyDocument(
+                new StreamDocumentSource(new ByteArrayInputStream(bytes)),
+                new OWLOntologyLoaderConfiguration().setMissingImportHandlingStrategy(
+                        MissingImportHandlingStrategy.SILENT));
+    }
+
+    private static String sorted(Set<?> things) {
+        List<String> sorted = new ArrayList<String>();
+        for (Object thing : things) {
+            sorted.add(thing.toString());
+        }
+        Collections.sort(sorted);
+        return String.join("\n", sorted);
     }
 }
