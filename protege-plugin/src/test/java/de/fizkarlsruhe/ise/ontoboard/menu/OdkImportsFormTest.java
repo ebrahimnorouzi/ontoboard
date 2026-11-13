@@ -311,7 +311,45 @@ class OdkImportsFormTest {
         assertEquals(Collections.<String>emptyList(), asked.notes());
     }
 
+    /** Their own rule builds a custom module, from whatever it reads: no mirror is asked for. */
+    @Test
+    void aCustomModuleOrOneWithoutAMirrorIsNotFetchedForItsMirror() throws IOException {
+        aFreshProject();
+        List<ImportProducts.Product> theirs = ImportProducts.declaredIn("id: loim\n"
+                + "import_group:\n  products:\n    - id: bespoke\n      module_type: custom\n"
+                + "    - id: local\n      mirror_type: no_mirror\n");
+
+        assertEquals(Collections.singletonList("no-mirror-refresh-imports"),
+                OdkImportsForm.asked(theirs, OdkImportsForm.ALL, false, ontology).targets());
+    }
+
+    /** An import the configuration does not declare is asked of ODK's Makefile as it is. */
+    @Test
+    void anImportThatIsNotDeclaredIsAskedOfMakeAsItIs() throws IOException {
+        aFreshProject();
+
+        assertEquals(Collections.singletonList("no-mirror-refresh-xyz"),
+                OdkImportsForm.asked(declared, "xyz", false, ontology).targets());
+        assertEquals(Collections.singletonList("refresh-xyz"),
+                OdkImportsForm.asked(declared, "xyz", true, ontology).targets());
+    }
+
     // ------------------------------------------------------------------ the run
+
+    /** make's variables, where a caller has some, follow the target on each command line. */
+    @Test
+    void theVariablesFollowTheTargetOnMakesCommandLine() throws IOException {
+        aRefreshedProjectWithOneMoreTermAskedFor();
+        assertTrue(new File(ontology, "mirror/iao.owl").delete());
+        Scripted odk = new Scripted();
+
+        OdkImportsForm.refresh(edit,
+                OdkImportsForm.asked(declared, "iao", false, ontology),
+                Arrays.asList("IMP_LARGE=false", "OBODATE=11:11:2026 12:00"), odk, session);
+
+        assertEquals(Collections.singletonList(Arrays.asList("make", "refresh-iao",
+                "IMP_LARGE=false", "OBODATE=11:11:2026 12:00")), odk.ran);
+    }
 
     /** Without a container: OntoBoard's own engine, ODK's Makefile, the recording's project. */
     @Test
@@ -406,6 +444,9 @@ class OdkImportsFormTest {
             public void run() {
                 try {
                     Files.write(module.toPath(), "Ontology()\n".getBytes(StandardCharsets.UTF_8));
+                    // And a file of the folder that is no module: not Protege's to read.
+                    Files.write(new File(module.getParentFile(), "ro_terms.txt").toPath(),
+                            "http://example.org/other\n".getBytes(StandardCharsets.UTF_8));
                 } catch (IOException impossible) {
                     throw new IllegalStateException(impossible);
                 }

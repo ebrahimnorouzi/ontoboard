@@ -58,6 +58,12 @@ class SimpleStringsTest {
         assertEquals(ofn("AnnotationAssertion(rdfs:label :A \"a thing\")"),
                 SimpleStrings.simplified(ofn("AnnotationAssertion(rdfs:label :A \"a thing\""
                         + "^^<http://www.w3.org/2001/XMLSchema#string>)")));
+
+        // A file that declares no prefix starts with the ontology.
+        String bare = "Ontology(<https://example.org/a>\nAnnotation(<https://example.org/p> "
+                + "\"v\"^^<http://www.w3.org/2001/XMLSchema#string>)\n)\n";
+        assertEquals(bare.replace("^^<http://www.w3.org/2001/XMLSchema#string>", ""),
+                SimpleStrings.simplified(bare));
     }
 
     /** What is no string, or has a language, is what it was. */
@@ -197,11 +203,19 @@ class SimpleStringsTest {
     @Test
     void textThatSaysTheAttributeStaysWhatItIs() {
         String said = "        <rdfs:comment>write" + STRING + " to name it, or a > b</rdfs:comment>";
-        String comment = "    <!-- <rdfs:label" + STRING + ">not a tag</rdfs:label> -->";
+        String comment = "    <!-- a > b: <rdfs:label" + STRING + ">not a tag</rdfs:label> -->";
 
         assertEquals(rdfXml(comment, said, "        <rdfs:label>a thing</rdfs:label>"),
                 SimpleStrings.simplified(rdfXml(comment, said,
                         "        <rdfs:label" + STRING + ">a thing</rdfs:label>")));
+    }
+
+    /** A tag ends at its own angle bracket, not at one inside a value. */
+    @Test
+    void aTagWhoseValueHoldsAnAngleBracket() {
+        assertEquals(rdfXml("<rdfs:label rdfs:note=\"a > b\">a thing</rdfs:label>"),
+                SimpleStrings.simplified(rdfXml("<rdfs:label rdfs:note=\"a > b\"" + STRING
+                        + ">a thing</rdfs:label>")));
     }
 
     /** The OWL API can write a namespace as an entity of the document. */
