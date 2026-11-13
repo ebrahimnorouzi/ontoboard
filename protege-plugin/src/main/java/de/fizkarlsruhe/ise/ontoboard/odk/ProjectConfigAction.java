@@ -353,12 +353,46 @@ public class ProjectConfigAction extends ProtegeOWLAction {
             what.append(changed.isEmpty() ? "" : ", and ").append(session.structuralEdits)
                     .append(session.structuralEdits == 1 ? " list change" : " list changes");
         }
+        final String saved = what.append(" to ").append(yaml.getName()).append(".").toString();
+        final File editFile = editFileOrNull();
+        if (editFile != null && OdkRelease.isOdkProject(editFile)) {
+            // An ODK project's Makefile, catalog and import declarations are written from
+            // this file: they follow it now, as Update project files writes them, and the
+            // message says what came of that.
+            de.fizkarlsruhe.ise.ontoboard.menu.ConfigSync.afterConfigChange(getOWLWorkspace(),
+                    getOWLModelManager(), editFile, new java.util.function.Consumer<
+                            de.fizkarlsruhe.ise.ontoboard.menu.ConfigSync.Done>() {
+                        @Override
+                        public void accept(
+                                de.fizkarlsruhe.ise.ontoboard.menu.ConfigSync.Done synced) {
+                            JOptionPane.showMessageDialog(getOWLWorkspace(),
+                                    ProjectWizard.wrapped(saved + "\n\n" + synced.said()),
+                                    "Project configuration",
+                                    JOptionPane.INFORMATION_MESSAGE);
+                        }
+                    });
+            return;
+        }
         JOptionPane.showMessageDialog(getOWLWorkspace(),
-                what.append(" to ").append(yaml.getName())
-                        .append(".\n\nODK reads this file when it regenerates the repository, so "
-                                + "run the project's own update step for it to take effect.")
-                        .toString(),
+                saved + "\n\nODK reads this file when it regenerates the repository, so "
+                        + "run the project's own update step for it to take effect.",
                 "Project configuration", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    /** The file the open ontology is saved in; null when it is saved in none. */
+    private File editFileOrNull() {
+        try {
+            org.semanticweb.owlapi.model.OWLOntology ontology =
+                    getOWLModelManager().getActiveOntology();
+            org.semanticweb.owlapi.model.IRI document = ontology == null ? null
+                    : getOWLModelManager().getOWLOntologyManager()
+                            .getOntologyDocumentIRI(ontology);
+            java.net.URI uri = document == null ? null : document.toURI();
+            return uri != null && "file".equalsIgnoreCase(uri.getScheme())
+                    ? new File(uri).getAbsoluteFile() : null;
+        } catch (RuntimeException notAFile) {
+            return null;
+        }
     }
 
     /**

@@ -42,6 +42,49 @@ class WhatARunWroteTest {
         assertEquals(Collections.<String>emptyList(), plan.notRead());
     }
 
+    /** An ontology as the OWL API has it: equal by its ID, and the ID can change. */
+    private static final class Changing {
+        private String id;
+
+        Changing(String id) {
+            this.id = id;
+        }
+
+        @Override
+        public boolean equals(Object other) {
+            return other instanceof Changing && ((Changing) other).id.equals(id);
+        }
+
+        @Override
+        public int hashCode() {
+            return id.hashCode();
+        }
+    }
+
+    /**
+     * Reading a module again can give it another ID - ODK's build of a module has a
+     * version IRI with the day in it, OntoBoard's own extraction has none - and with it
+     * another place in a hash map. The file to say it by is still its file. Found live:
+     * Build's full test built a module again and ended in a NullPointerException.
+     */
+    @Test
+    void anOntologyThatIsAnotherAfterReadingItAgainStillHasItsFile() {
+        Changing edit = new Changing("obim");
+        Changing module = new Changing("ro_import, no version");
+        Map<Changing, File> open = new LinkedHashMap<Changing, File>();
+        open.put(edit, EDIT);
+        open.put(module, RO);
+        WhatARunWrote.Plan<Changing> plan = WhatARunWrote.plan(open,
+                Collections.<Changing>emptySet(), Arrays.asList(RO, EDIT));
+
+        module.id = "ro_import, version 2026-11-13";
+
+        assertNull(open.get(module), "the map no longer finds it");
+        assertEquals(RO, plan.fileOf(module));
+        assertEquals(EDIT, plan.fileOf(edit));
+        assertNull(plan.fileOf(new Changing("obim")), "by what it is, not by its name");
+    }
+
     @Test
     void whatTheRunDidNotWriteIsNotReadAgain() {
         WhatARunWrote.Plan<String> plan = WhatARunWrote.plan(open(),

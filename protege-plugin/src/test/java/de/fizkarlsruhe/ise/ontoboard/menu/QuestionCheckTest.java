@@ -174,6 +174,57 @@ class QuestionCheckTest {
         assertTrue(message.contains(NAME), message);
     }
 
+    /**
+     * The configuration changed, so the project's files follow it at once - and the dialog
+     * says that instead of sending the person to Update project files.
+     */
+    @Test
+    void whereTheProjectsFilesFollowedTheDialogSaysSo(@TempDir File temp) throws IOException {
+        File root = odkProject(temp);
+        QuestionTestAction.Saved saved = QuestionTestAction.save(root, true, QUESTION, SPARQL);
+        assertTrue(saved.changedTheConfiguration(), "the list has one name more");
+
+        String message = QuestionTestAction.messageWith(saved, "Then the project's files were "
+                + "brought in line with it: Updated 1 file, by OntoBoard itself.", true);
+
+        assertTrue(message.contains("src/sparql/" + NAME + "-violation.sparql"), message);
+        assertTrue(message.contains("Updated 1 file, by OntoBoard itself."), message);
+        assertTrue(message.contains("ODK's test runs the new check from now on."), message);
+        assertFalse(message.contains("it runs the new check after"),
+                "nothing is left to do: " + message);
+        assertTrue(message.endsWith("\n\n"), "the test's answer follows");
+    }
+
+    /** Where nobody could bring them in line, the dialog says why and what does. */
+    @Test
+    void whereTheyDidNotTheDialogSaysWhyAndThatTheCheckDoesNotRunYet(@TempDir File temp)
+            throws IOException {
+        File root = odkProject(temp);
+        QuestionTestAction.Saved saved = QuestionTestAction.save(root, true, QUESTION, SPARQL);
+
+        String message = QuestionTestAction.messageWith(saved, "A container is switched off "
+                + "and this project is made with another ODK.", false);
+
+        assertTrue(message.contains("ODK's test does not run the new check yet."), message);
+        assertTrue(message.contains("A container is switched off and this project is made "
+                + "with another ODK."), message);
+        assertFalse(message.contains("from now on"), message);
+        assertTrue(message.endsWith("\n\n"));
+    }
+
+    /** A check the list names already changes no configuration: nothing has to follow. */
+    @Test
+    void aCheckListedAlreadyChangesNoConfiguration(@TempDir File temp) throws IOException {
+        File root = odkProject(temp);
+        QuestionTestAction.save(root, true, QUESTION, SPARQL);
+
+        QuestionTestAction.Saved again =
+                QuestionTestAction.save(root, true, QUESTION, SPARQL + "# again\n");
+
+        assertTrue(again.isListed());
+        assertFalse(again.changedTheConfiguration());
+    }
+
     /** In a project of the older layout the test is a .rq file and no configuration is touched. */
     @Test
     void inAProjectOfTheOlderLayoutNothingHasChanged(@TempDir File temp) throws IOException {

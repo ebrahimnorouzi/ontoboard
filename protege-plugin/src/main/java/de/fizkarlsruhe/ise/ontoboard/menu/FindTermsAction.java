@@ -643,8 +643,7 @@ public class FindTermsAction extends ProtegeOWLAction {
                 .append("_import.owl, beside your edit file\n")
                 .append("  - list them in ").append(list.getName()).append(", so the import can "
                         + "be rebuilt and changed later\n      (OntoBoard > Reuse > Imported terms...)\n")
-                .append("  - import that module into your ontology, with a catalog entry "
-                        + "beside it\n");
+                .append(importSteps(odkConfigurationOf(editFile)));
         // Not for a list an undone import left behind: that import is not in force (1.135.1).
         if (list.isFile() && !ImportTermsAction.leftByAnImportTakenBack(yours, list,
                 new java.io.File(imports, name + "_import.owl"))) {
@@ -653,6 +652,35 @@ public class FindTermsAction extends ProtegeOWLAction {
         }
         return text.append("\nAdvanced... lets you choose how much comes with them, and where "
                 + "the module goes.").toString();
+    }
+
+    /** The name of the configuration of the ODK project an edit file is in; else null. */
+    private static String odkConfigurationOf(java.io.File editFile) {
+        if (editFile == null
+                || !de.fizkarlsruhe.ise.ontoboard.odk.OdkRelease.isOdkProject(editFile)) {
+            return null;
+        }
+        java.io.File yaml = de.fizkarlsruhe.ise.ontoboard.odk.OdkBuildSettings.yamlIn(
+                editFile.getAbsoluteFile().getParentFile());
+        return yaml == null ? null : yaml.getName();
+    }
+
+    /**
+     * How the module becomes an import, for the confirmation: in an ODK project the way ODK
+     * does it - through the configuration, with the project's files following it - and
+     * elsewhere by an import statement and a catalog entry.
+     *
+     * @param odkConfiguration the name of the ODK project's configuration; null where the
+     *                         ontology is in no ODK project
+     */
+    static String importSteps(String odkConfiguration) {
+        if (odkConfiguration == null) {
+            return "  - import that module into your ontology, with a catalog entry beside it\n";
+        }
+        return "  - declare the import in " + odkConfiguration + ", which is how ODK imports;\n"
+                + "      the Makefile, the catalog and your edit file follow it\n"
+                + "      (as OntoBoard > Project > Update project files... writes them)\n"
+                + "  - have ODK's own refresh build the module from that list\n";
     }
 
     /** The terms found, with a box to tick each one. */

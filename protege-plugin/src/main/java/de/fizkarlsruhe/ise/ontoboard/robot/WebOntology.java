@@ -413,31 +413,35 @@ public final class WebOntology {
             if (attempt.isStopped()) {
                 throw stoppedOn(address);
             }
-            String host = url.getHost();
-            HttpURLConnection connection;
-            try {
-                connection = (HttpURLConnection) url.openConnection();
-            } catch (IOException | ClassCastException cannotOpen) {
-                throw new RobotException("Could not open " + url + ": " + cannotOpen.getMessage(),
-                        cannotOpen);
-            }
-            connection.setInstanceFollowRedirects(false);
-            connection.setConnectTimeout(attempt.connectMillis);
-            connection.setReadTimeout(attempt.silentMillis);
-            connection.setRequestProperty("Accept", ACCEPT);
-            connection.setRequestProperty("Accept-Encoding", "gzip");
-            connection.setRequestProperty("User-Agent", "OntoBoard (a Protege plugin)");
-            attempt.open = connection;
+            final String host = url.getHost();
+            final URL asked = url;
             try {
                 progress.said("Connecting to " + host + "...");
-                try {
-                    connection.connect();
-                } catch (SocketTimeoutException slow) {
-                    throw new RobotException(host + " did not accept a connection within "
-                            + Math.max(1, attempt.connectMillis / 1000) + " seconds. Check the "
-                            + "address, and your network connection.", slow);
-                }
-                progress.said("Waiting for " + host + " to answer...");
+                // With this Java's trust and, where it does not know the authority of the
+                // server's certificate, with the operating system's: Protege 5.5.0's Java
+                // predates several, and an OBO address then failed where it moves to.
+                HttpURLConnection connection = de.fizkarlsruhe.ise.ontoboard.tools.HttpsOpener
+                        .withOperatingSystemsTrust(new de.fizkarlsruhe.ise.ontoboard.tools
+                                .HttpsOpener.Trying<HttpURLConnection>() {
+                            @Override
+                            public HttpURLConnection with(
+                                    javax.net.ssl.SSLSocketFactory factory) throws IOException {
+                                HttpURLConnection one = opened(asked, attempt, factory);
+                                try {
+                                    one.connect();
+                                } catch (SocketTimeoutException slow) {
+                                    throw new RobotException(host + " did not accept a "
+                                            + "connection within "
+                                            + Math.max(1, attempt.connectMillis / 1000)
+                                            + " seconds. Check the address, and your network "
+                                            + "connection.", slow);
+                                }
+                                progress.said("Waiting for " + host + " to answer...");
+                                // The first word of the answer: a certificate is checked by now.
+                                one.getResponseCode();
+                                return one;
+                            }
+                        });
                 int code = connection.getResponseCode();
                 if (code >= 300 && code < 400 && code != 304) {
                     String location = connection.getHeaderField("Location");
@@ -466,6 +470,29 @@ public final class WebOntology {
         }
         throw new RobotException(address + " redirects more than " + MAX_REDIRECTS
                 + " times - it goes round in a circle, so nothing was read.");
+    }
+
+    /** A connection to one address, set up and not yet made. */
+    private static HttpURLConnection opened(URL url, Attempt attempt,
+            javax.net.ssl.SSLSocketFactory factory) {
+        HttpURLConnection connection;
+        try {
+            connection = (HttpURLConnection) url.openConnection();
+        } catch (IOException | ClassCastException cannotOpen) {
+            throw new RobotException("Could not open " + url + ": " + cannotOpen.getMessage(),
+                    cannotOpen);
+        }
+        if (factory != null && connection instanceof javax.net.ssl.HttpsURLConnection) {
+            ((javax.net.ssl.HttpsURLConnection) connection).setSSLSocketFactory(factory);
+        }
+        connection.setInstanceFollowRedirects(false);
+        connection.setConnectTimeout(attempt.connectMillis);
+        connection.setReadTimeout(attempt.silentMillis);
+        connection.setRequestProperty("Accept", ACCEPT);
+        connection.setRequestProperty("Accept-Encoding", "gzip");
+        connection.setRequestProperty("User-Agent", "OntoBoard (a Protege plugin)");
+        attempt.open = connection;
+        return connection;
     }
 
     private static Fetched save(HttpURLConnection connection, URL url, Attempt attempt,

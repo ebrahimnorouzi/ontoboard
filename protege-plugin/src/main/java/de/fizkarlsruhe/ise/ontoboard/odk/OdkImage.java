@@ -200,6 +200,29 @@ public final class OdkImage {
         return mention.find() ? mention.group() : null;
     }
 
+    /**
+     * The image of the very ODK that wrote this project's Makefile, where it is on this
+     * machine under whatever tag; else null. Unlike {@link #forProject}, never the pinned
+     * ODK's in its place: for what must not move a project to another ODK.
+     *
+     * @param ontologyDirectory the project's {@code src/ontology}
+     */
+    public static String ofProjectsOwnVersion(File ontologyDirectory, Probe probe) {
+        String version = versionOfProject(ontologyDirectory);
+        return version == null ? null : withVersion(version, probe);
+    }
+
+    /**
+     * The ODK version this project's Makefile was written by ({@code ODK_VERSION_MAKEFILE}), or
+     * null when it has no Makefile or the Makefile does not say.
+     *
+     * @param ontologyDirectory the project's {@code src/ontology}
+     */
+    public static String versionOfProject(File ontologyDirectory) {
+        String makefile = read(new File(ontologyDirectory, "Makefile"));
+        return makefile == null ? null : versionOf(makefile);
+    }
+
     /** The ODK that wrote a Makefile, as its {@code ODK_VERSION_MAKEFILE} line says, or null. */
     static String versionOf(String makefile) {
         Matcher line = Pattern

@@ -282,7 +282,7 @@ public class ReleaseAction extends OntoBoardAction {
     }
 
     /** A long sentence as a message a dialog shows at a readable width. */
-    private static javax.swing.JComponent wrapped(String message) {
+    static javax.swing.JComponent wrapped(String message) {
         javax.swing.JTextArea text = new javax.swing.JTextArea(message);
         text.setEditable(false);
         text.setLineWrap(true);

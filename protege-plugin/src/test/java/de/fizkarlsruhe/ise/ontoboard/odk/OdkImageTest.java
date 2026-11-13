@@ -165,6 +165,36 @@ class OdkImageTest {
                 MAKEFILE_16, "ODK_IMAGE='odklite'   # the small one\n"), machine).reference());
     }
 
+    /**
+     * For what must not move a project to another ODK - bringing its files in line after
+     * its configuration changed: the image of the very ODK that wrote its Makefile, or
+     * none. Never the pinned one in its place.
+     */
+    @Test
+    void theImageOfTheProjectsOwnOdkOrNone(@TempDir File root) throws IOException {
+        File ontology = project(root, MAKEFILE_16, null);
+
+        assertEquals("obolibrary/odkfull:v1.6", OdkImage.ofProjectsOwnVersion(ontology,
+                machine("obolibrary/odkfull:v1.6=v1.6", "obolibrary/odkfull:latest=v1.6.1")));
+        assertEquals("obolibrary/odkfull:older", OdkImage.ofProjectsOwnVersion(ontology,
+                machine("obolibrary/odkfull:older=v1.6", "obolibrary/odkfull:latest=v1.6.1")),
+                "under whatever tag");
+        assertNull(OdkImage.ofProjectsOwnVersion(ontology,
+                machine("obolibrary/odkfull:latest=v1.6.1")), "another ODK's is not its own");
+        assertEquals("v1.6", OdkImage.versionOfProject(ontology));
+    }
+
+    @Test
+    void aProjectWhoseMakefileDoesNotSayHasNoImageOfItsOwn(@TempDir File root)
+            throws IOException {
+        File ontology = project(root, "all: test\n", null);
+
+        assertNull(OdkImage.versionOfProject(ontology));
+        assertNull(OdkImage.ofProjectsOwnVersion(ontology,
+                machine("obolibrary/odkfull:latest=v1.6.1")));
+        assertNull(OdkImage.versionOfProject(new File(root, "no-such-folder")));
+    }
+
     /** Naming an image is a decision; OntoBoard neither downloads it nor swaps in another. */
     @Test
     void whatRunShConfNamesIsNotReplacedWhenItIsMissing(@TempDir File root) throws IOException {

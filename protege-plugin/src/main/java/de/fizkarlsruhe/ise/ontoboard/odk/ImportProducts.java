@@ -422,10 +422,12 @@ public final class ImportProducts {
 
         /** How to describe the declaration in a column. */
         public String describeDeclaration() {
-            if (product != null) {
-                return product.describeModuleType();
+            // A pattern is one whether or not a product is declared for its module: the
+            // declaration says "custom", which is how it is kept, not what it is.
+            if (verdict == Verdict.PATTERN) {
+                return "pattern library";
             }
-            return verdict == Verdict.PATTERN ? "pattern library" : "NOT DECLARED";
+            return product != null ? product.describeModuleType() : "NOT DECLARED";
         }
 
         /**
@@ -504,6 +506,14 @@ public final class ImportProducts {
         return rows;
     }
 
+    /**
+     * Whether the product is declared to be kept as it is - custom, and no mirror: nothing
+     * of ODK's builds its module or fetches anything for it.
+     */
+    public static boolean isKeptAsItIs(Product product) {
+        return isFrozen(product);
+    }
+
     /** Whether the product is declared to be kept as it is: custom, and no mirror. */
     private static boolean isFrozen(Product product) {
         return "custom".equalsIgnoreCase(product.getModuleType()) && !product.isMirrored();
@@ -557,7 +567,10 @@ public final class ImportProducts {
             return fields;
         }
 
-        /** Why this declaration will not build as written, or null when it will. */
+        /**
+         * What to know of this declaration that its fields do not say - why the module is
+         * kept as it is, where ODK does not build it; null where ODK builds it as declared.
+         */
         public String getCaveat() {
             return caveat;
         }
@@ -601,10 +614,63 @@ public final class ImportProducts {
         }
 
         if (method == null || method == TermExtract.Method.MIREOT) {
-            // ODK has no module_type that means MIREOT, so there is nothing truthful to write
-            // that `make` would act on. custom is ODK's own word for "the rule is hand-written",
-            // which is exactly the situation - and what a real project does: NFDIcore declares its
-            // MIREOT import as custom and writes the extract command in its own Makefile.
+            // ODK has no module_type that means MIREOT. Declared as kept as it is - custom, and
+            // no mirror - like a pattern's module: ODK's refresh leaves it (a custom module's
+            // rule has no prerequisites, so a module on disk is up to date and its error rule
+            // never runs), the default test and release do not stop on it, and importing the
+            // terms again is what builds it again. mirror_from stays as the record of where it
+            // came from.
+            fields.put("module_type", "custom");
+            fields.put("mirror_type", NO_MIRROR);
+            return new Declaration(fields, "ODK has no module type that means MIREOT, so "
+                    + id + " is declared as kept as it is: ODK's refresh leaves the module "
+                    + "alone, and importing the terms again is what builds it again.");
+        }
+        fields.put("module_type", DEFAULT_MODULE_TYPE);
+        fields.put("module_type_slme", method.getLabel());
+        return new Declaration(fields, null);
+    }
+
+    /**
+     * The declaration of what Import terms has just extracted, in an ODK project: as
+     * {@link #declarationFor}, except for a source that is a file of this machine.
+     */
+    public static Declaration declarationForImport(String id, String source,
+            TermExtract.Method method) {
+        // A file of this machine is an address on no other: written into the configuration,
+        // ODK's refresh would stop on it everywhere else - on the next person's machine and
+        // in continuous integration. Kept as it is instead, like a pattern's module, and no
+        // path goes into a file that is committed.
+        if (source != null && source.trim().toLowerCase(java.util.Locale.ROOT)
+                .startsWith("file:")) {
+            return new Declaration(frozen(id), id + " was taken from a file on this machine, "
+                    + "which is an address on no other, so it is declared as kept as it is: "
+                    + "ODK's refresh leaves the module alone, and importing the terms again "
+                    + "is what builds it again. Where the source has an address on the web, "
+                    + "import from that address and ODK refreshes the module itself.");
+        }
+        return declarationFor(id, source, method);
+    }
+
+    /**
+     * The declaration of an extraction in a project of OntoBoard's older layout, as
+     * 1.135.2 wrote it: the source it was taken from, a file of this machine too - that
+     * layout's own Refresh imports builds the module again from it - and a MIREOT
+     * extraction as {@code custom} with the source, said to need a rule of the project's
+     * own. {@link #declarationFor} is what an ODK project gets.
+     */
+    public static Declaration declarationAsBefore(String id, String source,
+            TermExtract.Method method) {
+        java.util.LinkedHashMap<String, String> fields =
+                new java.util.LinkedHashMap<String, String>();
+        fields.put("id", id);
+        String standard = OBO_BASE + "/" + id + ".owl";
+        if (source != null && !source.isEmpty() && !standard.equals(source)) {
+            fields.put("mirror_from", source);
+        }
+        if (method == null || method == TermExtract.Method.MIREOT) {
+            // custom is ODK's own word for "the rule is hand-written", which is what a
+            // MIREOT extraction is to a Makefile.
             fields.put("module_type", "custom");
             return new Declaration(fields, "ODK has no module_type for a MIREOT extraction, so "
                     + "this was declared as module_type: custom - ODK's own word for a rule that "

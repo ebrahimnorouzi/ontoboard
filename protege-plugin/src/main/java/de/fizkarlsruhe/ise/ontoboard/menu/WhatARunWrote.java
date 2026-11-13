@@ -29,6 +29,8 @@ final class WhatARunWrote {
     /** Which open ontologies to read again, and what is said of those that are not. */
     static final class Plan<T> {
         private final List<T> toRead = new ArrayList<T>();
+        /** The file of each of {@link #toRead}, at its place. */
+        private final List<File> files = new ArrayList<File>();
         private final List<String> notRead = new ArrayList<String>();
 
         /** In the order Protege has them. */
@@ -39,6 +41,20 @@ final class WhatARunWrote {
         /** A sentence for each written file that is not read again, and why. */
         List<String> notRead() {
             return Collections.unmodifiableList(notRead);
+        }
+
+        /**
+         * The file of one of those to read again; null for anything else. Found by what
+         * it is, not by what it is equal to: reading an ontology again can change its
+         * ID, and a map that keeps it by its hash then no longer finds it.
+         */
+        File fileOf(T one) {
+            for (int at = 0; at < toRead.size(); at++) {
+                if (toRead.get(at) == one) {
+                    return files.get(at);
+                }
+            }
+            return null;
         }
     }
 
@@ -64,6 +80,7 @@ final class WhatARunWrote {
                         + "replaces them with what the run wrote.");
             } else {
                 plan.toRead.add(one.getKey());
+                plan.files.add(one.getValue());
             }
         }
         return plan;

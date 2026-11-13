@@ -174,7 +174,7 @@ public class QuestionTestAction extends ProtegeOWLAction {
                 chosen.needsSecondClass() ? ((Choice) second.getSelectedItem()).iri : null,
                 (Integer) most.getValue());
 
-        String saved = "";
+        Saved kept = null;
         if (root != null) {
             File file = testFileFor(root, odk, question.getText());
             // Replaced when asked to, not refused: a test is named after its question, so the way
@@ -188,7 +188,7 @@ public class QuestionTestAction extends ProtegeOWLAction {
                     JOptionPane.QUESTION_MESSAGE, null, choices, choices[0]) != 0) {
                 return;
             }
-            saved = save(root, odk, question.getText(), sparql).getMessage();
+            kept = save(root, odk, question.getText(), sparql);
         }
         String answer;
         try {
@@ -206,7 +206,27 @@ public class QuestionTestAction extends ProtegeOWLAction {
         }
         JComponent shown = root == null ? new javax.swing.JScrollPane(new javax.swing.JTextArea(
                 sparql + "\n# " + answer.replace("\n", "\n# "), 16, 70)) : null;
-        JOptionPane.showMessageDialog(getOWLWorkspace(), shown != null ? shown : saved + answer,
+        final Saved saved = kept;
+        final String answered = answer;
+        if (saved != null && odk && saved.changedTheConfiguration()) {
+            // ODK's Makefile is written from the configuration, and it is what runs the
+            // checks: the project's files follow the new name now, as Update project files
+            // writes them, so that ODK's test runs the check the person has just written.
+            ConfigSync.afterConfigChange(getOWLWorkspace(), getOWLModelManager(), document,
+                    new java.util.function.Consumer<ConfigSync.Done>() {
+                        @Override
+                        public void accept(ConfigSync.Done synced) {
+                            JOptionPane.showMessageDialog(getOWLWorkspace(),
+                                    ReleaseAction.wrapped(messageWith(saved, synced.said(),
+                                            synced.inLine()) + answered),
+                                    "Write a test from a question",
+                                    JOptionPane.INFORMATION_MESSAGE);
+                        }
+                    });
+            return;
+        }
+        JOptionPane.showMessageDialog(getOWLWorkspace(), shown != null ? shown
+                : (saved == null ? "" : saved.getMessage()) + answer,
                 "Write a test from a question", JOptionPane.INFORMATION_MESSAGE);
     }
 
@@ -230,13 +250,28 @@ public class QuestionTestAction extends ProtegeOWLAction {
         private final File file;
         private final boolean written;
         private final boolean listed;
+        private final boolean changedTheConfiguration;
         private final String message;
 
         Saved(File file, boolean written, boolean listed, String message) {
+            this(file, written, listed, false, message);
+        }
+
+        Saved(File file, boolean written, boolean listed, boolean changedTheConfiguration,
+                String message) {
             this.file = file;
             this.written = written;
             this.listed = listed;
+            this.changedTheConfiguration = changedTheConfiguration;
             this.message = message;
+        }
+
+        /**
+         * In an ODK project: the configuration was written - the check's name is new in its
+         * list - so ODK's Makefile, which is written from it, is behind it now.
+         */
+        boolean changedTheConfiguration() {
+            return changedTheConfiguration;
         }
 
         /** Where the test is, or was to be. */
@@ -320,7 +355,7 @@ public class QuestionTestAction extends ProtegeOWLAction {
             if (!OdkChecks.isListed(before)) {
                 message += "\n" + defaultsListed(before, yaml.getName());
             }
-            return new Saved(file, true, true, message + "\n\n");
+            return new Saved(file, true, true, true, message + "\n\n");
         } catch (OdkYaml.UnreadableException | IOException cannot) {
             return new Saved(file, true, false,
                     notListed(path, yaml.getName(), name, cannot.getMessage()));
@@ -334,8 +369,29 @@ public class QuestionTestAction extends ProtegeOWLAction {
     static String savedMessage(String testPath, String configurationName) {
         return "Saved as " + testPath + " and listed in " + configurationName
                 + "\n(robot_report: custom_sparql_checks), which is how ODK's test finds it.\n"
-                + "ODK's Makefile is written from that file: it runs the new check after "
-                + "OntoBoard > Project > Update project files...";
+                + RUNS_AFTER_AN_UPDATE;
+    }
+
+    /**
+     * What is left to do where nobody brings the project's files in line: how
+     * {@link #savedMessage} ends.
+     */
+    private static final String RUNS_AFTER_AN_UPDATE = "ODK's Makefile is written from that "
+            + "file: it runs the new check after "
+            + "OntoBoard > Project > Update project files...";
+
+    /**
+     * What the dialog says of a check that was saved and listed once the project's files
+     * were - or were not - brought in line with the configuration at once.
+     *
+     * @param said   what came of bringing them in line
+     * @param inLine whether ODK's Makefile is what the configuration asks for now
+     */
+    static String messageWith(Saved saved, String said, boolean inLine) {
+        return saved.getMessage().replace(RUNS_AFTER_AN_UPDATE,
+                "ODK's Makefile is written from that file.\n" + said + "\n"
+                        + (inLine ? "ODK's test runs the new check from now on."
+                                : "ODK's test does not run the new check yet."));
     }
 
     /**

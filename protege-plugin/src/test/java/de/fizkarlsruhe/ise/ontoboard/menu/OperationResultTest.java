@@ -36,7 +36,7 @@ class OperationResultTest {
     void aBuiltResultCanBeAddedTo() {
         OperationResult built = OperationResult.of("Release").columns("File")
                 .row("a.owl").note("first").wrote(new File("a.owl"))
-                .summary("Released.").build();
+                .summary("Released.").at(new Date(0), 1234).build();
 
         OperationResult more = built.toBuilder().note("second").build();
         OperationResult warned = built.toBuilder().warn("careful").build();
@@ -47,7 +47,7 @@ class OperationResultTest {
         assertEquals(built.getRows(), more.getRows());
         assertEquals(built.getColumns(), more.getColumns());
         assertEquals(built.getFiles(), more.getFiles());
-        assertEquals(built.getMillis(), more.getMillis());
+        assertEquals(1234, more.getMillis(), "the time it took, not the time of saying more");
         assertEquals(OperationResult.Status.SUCCEEDED, more.getStatus());
         assertEquals(OperationResult.Status.SUCCEEDED_WITH_WARNINGS, warned.getStatus());
         assertEquals(java.util.Collections.singletonList("first"), built.getLog(),

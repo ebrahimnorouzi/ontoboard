@@ -37,6 +37,12 @@ import java.util.Map;
  */
 final class OdkUpdateForm {
 
+    /** How the summary of an update that had nothing to write begins. */
+    static final String ALREADY_UP_TO_DATE = "Already up to date";
+
+    /** How the summary of an update that wrote what it was to write begins. */
+    static final String UPDATED = "Updated";
+
     /** The form's one choice: whether to write. Off when the form opens. */
     static final String WRITE = "write";
 
@@ -126,6 +132,13 @@ final class OdkUpdateForm {
          * @return why that did not work, or null when it did
          */
         String readAgain(File editFile, Map<String, File> imports);
+
+        /**
+         * The update wrote the edit file again with what it held: the same bytes, a newer
+         * time. There is nothing to read again; whoever has it open notes the file's new
+         * time, so as not to take it for a change made behind its back.
+         */
+        void writtenAsItWas(File editFile);
 
         /**
          * Asks what is to become of the imports the update would take out.
@@ -350,7 +363,7 @@ final class OdkUpdateForm {
         }
 
         if (changing == 0 && declared.isEmpty()) {
-            return result.summary("Already up to date: the project's files are what ODK "
+            return result.summary(ALREADY_UP_TO_DATE + ": the project's files are what ODK "
                     + plan.toVersion() + " writes for its configuration.").build();
         }
         String count = changing + (changing == 1 ? " file" : " files");
@@ -381,7 +394,13 @@ final class OdkUpdateForm {
 
         List<File> written;
         String failure = null;
+        boolean editWrittenAsItWas = false;
         if (way.inContainer()) {
+            // ODK's own update writes the edit file again also where its imports are what
+            // the configuration asks for: the same bytes, a newer time.
+            de.fizkarlsruhe.ise.ontoboard.odk.FileStamps editBefore = editFile == null ? null
+                    : de.fizkarlsruhe.ise.ontoboard.odk.FileStamps.of(
+                            java.util.Collections.singletonList(editFile));
             OdkUpdate.Ran ran;
             try {
                 ran = OdkUpdate.inContainer(way.runtime, way.image, way.host, root, plan,
@@ -394,6 +413,8 @@ final class OdkUpdateForm {
             }
             written = ran.getWritten();
             failure = ran.getFailure();
+            editWrittenAsItWas = editBefore != null && !written.contains(editFile)
+                    && !editBefore.now().writtenSince(editBefore).isEmpty();
         } else {
             result.note("Made by OntoBoard itself, as ODK's own update makes it; no container "
                     + "was used.");
@@ -431,13 +452,17 @@ final class OdkUpdateForm {
                         + "Close the project and open it again before you edit - saving "
                         + "what is open would write the old import declarations back.");
             }
+        } else if (editWrittenAsItWas && session != null && session.isOpen(editFile)) {
+            // No change, so it is not listed and nothing is read again - but whoever has
+            // it open would take the newer time for one.
+            session.writtenAsItWas(editFile);
         }
         if (failure != null) {
             return result.failed(failure).build();
         }
         result.note("Commit these as a change of their own, so that the update can be told "
                 + "from your work.");
-        return result.summary("Updated " + all + (all == 1 ? " file" : " files")
+        return result.summary(UPDATED + " " + all + (all == 1 ? " file" : " files")
                 + (way.inContainer() ? " with ODK's own update, in its container."
                         : ", by OntoBoard itself.")).build();
     }

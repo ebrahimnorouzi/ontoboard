@@ -198,6 +198,90 @@ class OdkUpdateFormTest {
         assertTrue(log.contains("Ontology repository update successfully completed."), log);
     }
 
+    /**
+     * ODK's own update writes the edit file again also where its imports are what the
+     * configuration asks for: the same bytes, a newer time. That is no change - it is not
+     * listed and nothing is read again - but whoever has the file open is told, or takes
+     * the newer time for one ("An ontology has changed outside of Protege", seen live).
+     */
+    @Test
+    void anEditFileOdksOwnUpdateWroteAgainAsItWasIsToldToWhoeverHasItOpen()
+            throws IOException {
+        UpdateCases.write(UpdateCases.before("egg-changed"), root);
+        final File makefile = new File(root, "src/ontology/Makefile");
+        final File edit = new File(root, "src/ontology/eggboil-edit.owl");
+        assertTrue(edit.isFile());
+        ProcessRunner.Runner container = new ProcessRunner.Runner() {
+            @Override
+            public ProcessRunner.Outcome run(File workingDirectory, List<String> command,
+                    long timeoutMinutes, ProcessRunner.Sink sink) throws IOException {
+                ran.add(command);
+                Files.write(makefile.toPath(), "# ODK's own\n".getBytes(StandardCharsets.UTF_8));
+                Files.write(edit.toPath(), Files.readAllBytes(edit.toPath()));
+                Files.setLastModifiedTime(edit.toPath(), java.nio.file.attribute.FileTime
+                        .fromMillis(System.currentTimeMillis() + 60000));
+                return new ProcessRunner.Outcome(0, Arrays.asList(
+                        "Ontology repository update successfully completed."), false);
+            }
+        };
+        Open open = new Open(false, null);
+
+        OperationResult result = OdkUpdateForm.run("Update project files", root, true,
+                OdkUpdateForm.way(OdkRoute.Use.AUTOMATIC, "docker", "an-image:v1",
+                        OdkContainer.Host.unknown(), null, null), container, open);
+
+        assertTrue(result.isSuccess(), result.getSummary());
+        assertEquals(java.util.Collections.singletonList(makefile.getAbsoluteFile()),
+                result.getFiles(), "written as it was is no change: not listed");
+        assertEquals(0, open.readAgain, "what is open is what the file holds");
+        assertEquals(java.util.Collections.singletonList(edit.getAbsoluteFile()),
+                open.writtenAsItWas);
+    }
+
+    /** Where something else has the project open, there is nobody to tell. */
+    @Test
+    void anEditFileWrittenAgainAsItWasIsToldToNobodyWhereItIsNotOpen() throws IOException {
+        UpdateCases.write(UpdateCases.before("egg-changed"), root);
+        final File makefile = new File(root, "src/ontology/Makefile");
+        final File edit = new File(root, "src/ontology/eggboil-edit.owl");
+        ProcessRunner.Runner container = new ProcessRunner.Runner() {
+            @Override
+            public ProcessRunner.Outcome run(File workingDirectory, List<String> command,
+                    long timeoutMinutes, ProcessRunner.Sink sink) throws IOException {
+                Files.write(makefile.toPath(), "# ODK's own\n".getBytes(StandardCharsets.UTF_8));
+                Files.write(edit.toPath(), Files.readAllBytes(edit.toPath()));
+                Files.setLastModifiedTime(edit.toPath(), java.nio.file.attribute.FileTime
+                        .fromMillis(System.currentTimeMillis() + 60000));
+                return new ProcessRunner.Outcome(0, Arrays.asList(
+                        "Ontology repository update successfully completed."), false);
+            }
+        };
+        Open open = new Open(false, null);
+        open.open = false;
+
+        OperationResult result = OdkUpdateForm.run("Update project files", root, true,
+                OdkUpdateForm.way(OdkRoute.Use.AUTOMATIC, "docker", "an-image:v1",
+                        OdkContainer.Host.unknown(), null, null), container, open);
+
+        assertTrue(result.isSuccess(), result.getSummary());
+        assertEquals(new ArrayList<File>(), open.writtenAsItWas);
+        assertEquals(0, open.readAgain);
+    }
+
+    /** Where the update changed the edit file, it is read again and that is the whole of it. */
+    @Test
+    void anEditFileThatWasChangedIsReadAgainAndNotToldAsWrittenAsItWas() throws IOException {
+        UpdateCases.write(UpdateCases.before("egg-changed"), root);
+        Open open = new Open(false, null);
+
+        OperationResult result = OdkUpdateForm.run("Update project files", root, true, itself(),
+                noContainer(), open);
+
+        assertTrue(result.isSuccess(), result.getSummary());
+        assertEquals(1, open.readAgain);
+        assertEquals(new ArrayList<File>(), open.writtenAsItWas);
+    }
+
     /** ODK's own update that stops is a failed result, with what it had written by then. */
     @Test
     void aContainerRunThatStopsIsAFailedResultNamingWhatItWrote() {
@@ -311,6 +395,7 @@ class OdkUpdateFormTest {
         private final String cannotReadAgain;
         private boolean open = true;
         private int readAgain;
+        private final List<File> writtenAsItWas = new ArrayList<File>();
         private Map<String, File> imports;
         /** What is answered about the imports; null to answer nothing. */
         private List<ImportGuard.Decision> decisions;
@@ -349,6 +434,11 @@ class OdkUpdateFormTest {
                 out.add(ImportGuard.Decision.REMOVE);
             }
             return out;
+        }
+
+        @Override
+        public void writtenAsItWas(File editFile) {
+            writtenAsItWas.add(editFile);
         }
 
         @Override

@@ -1,6 +1,5 @@
 package de.fizkarlsruhe.ise.ontoboard.menu;
 
-import de.fizkarlsruhe.ise.ontoboard.odk.ImportGuard;
 import de.fizkarlsruhe.ise.ontoboard.odk.MakeRun;
 import de.fizkarlsruhe.ise.ontoboard.odk.OdkContainer;
 import de.fizkarlsruhe.ise.ontoboard.odk.OdkImage;
@@ -11,22 +10,11 @@ import de.fizkarlsruhe.ise.ontoboard.odk.OdkRoute;
 import de.fizkarlsruhe.ise.ontoboard.odk.OdkScaffold;
 import de.fizkarlsruhe.ise.ontoboard.proc.ProcessRunner;
 import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.protege.editor.owl.model.OWLModelManager;
-import org.protege.editor.owl.model.OntologyManagerFactory;
-import org.semanticweb.owlapi.io.IRIDocumentSource;
-import org.semanticweb.owlapi.model.IRI;
-import org.semanticweb.owlapi.model.MissingImportHandlingStrategy;
 import org.semanticweb.owlapi.model.OWLOntology;
-import org.semanticweb.owlapi.model.OWLOntologyLoaderConfiguration;
-import org.semanticweb.owlapi.model.OWLOntologyManager;
-import org.semanticweb.owlapi.model.parameters.OntologyCopy;
 
 /**
  * Project &gt; Update project files - bring the files of an existing project in line with its
@@ -171,7 +159,8 @@ public class UpdateProjectAction extends OntoBoardAction {
                         + "saved, so there is no project to update.");
             }
             return OdkUpdateForm.run(operationName(), projectRoot, write, way,
-                    ProcessRunner.real(), new Open(projectRoot));
+                    ProcessRunner.real(), new ProtegeSession(getOWLWorkspace(),
+                            getOWLModelManager(), projectRoot));
         }
         OperationResult.Builder result = OperationResult.of(operationName())
                 .columns("File", "State", "Lines differing");
@@ -250,153 +239,6 @@ public class UpdateProjectAction extends OntoBoardAction {
             return OdkProjectSettings.read(projectRoot).getConfig().getOntologyId();
         } catch (RuntimeException cannotRead) {
             return "<id>";
-        }
-    }
-
-    // ------------------------------------------------------------------ what is open
-
-    /**
-     * Protege, as the update form needs it: whether the person stopped waiting, and the edit
-     * file read again once the update has rewritten it on disk.
-     */
-    private final class Open implements OdkUpdateForm.Session {
-
-        private final File root;
-
-        Open(File root) {
-            this.root = root;
-        }
-
-        @Override
-        public boolean stopped() {
-            return BackgroundRun.abandoned();
-        }
-
-        @Override
-        public boolean isOpen(File editFile) {
-            return loadedFrom(editFile) != null;
-        }
-
-        /**
-         * The question about the imports the update would take out: a choice for each, the
-         * one that keeps it first; Cancel answers nothing, and nothing is written then. Asked
-         * on the dispatch thread, while the update waits.
-         */
-        @Override
-        public List<ImportGuard.Decision> decide(final List<ImportGuard.Finding> findings) {
-            final List<Parameter> fields = new ArrayList<Parameter>();
-            final List<LinkedHashMap<String, ImportGuard.Decision>> meanings =
-                    new ArrayList<LinkedHashMap<String, ImportGuard.Decision>>();
-            for (int i = 0; i < findings.size(); i++) {
-                LinkedHashMap<String, ImportGuard.Decision> choices =
-                        OdkUpdateForm.choicesFor(findings.get(i));
-                meanings.add(choices);
-                String[] words = choices.keySet().toArray(new String[0]);
-                fields.add(Parameter.of("import." + i, findings.get(i).item().iri(),
-                        Parameter.Kind.CHOICE)
-                        .choices(words)
-                        .defaultValue(words[0])
-                        .help(OdkUpdateForm.helpFor(findings.get(i), root))
-                        .build());
-            }
-            final List<ImportGuard.Decision> decided = new ArrayList<ImportGuard.Decision>();
-            onDispatchThread(new Step() {
-                @Override
-                public void take() {
-                    Map<String, String> chosen = ParameterDialog.show(getOWLWorkspace(),
-                            "Imports the update would take out",
-                            OdkUpdateForm.importsExplanation(), fields);
-                    if (chosen == null) {
-                        return;
-                    }
-                    for (int i = 0; i < findings.size(); i++) {
-                        ImportGuard.Decision decision =
-                                meanings.get(i).get(chosen.get("import." + i));
-                        if (decision != null) {
-                            decided.add(decision);
-                        }
-                    }
-                }
-            });
-            return decided.size() == findings.size() ? decided : null;
-        }
-
-        /**
-         * Three steps, each the way Protege does it itself (read from the classes of 5.5.0
-         * and 5.6.9, which agree).
-         *
-         * <p>The catalog first ({@code OntologyCatalogManager.reloadFolder}): the update wrote
-         * it, and Protege keeps what it read of it when the project was opened.
-         *
-         * <p>Then what the edit file imports now and Protege has not loaded: read from its
-         * file in a manager on the side and moved into Protege's own, as Protege does when an
-         * import is added by hand ({@code AddImportsStrategy}). Protege's reload reads the
-         * edit file in a manager without the catalog, where an import resolves only if
-         * Protege has it loaded already; a new one was looked for on the web and the reload
-         * failed (seen in a running Protege: "Could not load imported ontology").
-         *
-         * <p>Then Protege's own reload ({@code OWLModelManager.reload}), on the dispatch
-         * thread, where it shows its progress: what is open is patched to what the file now
-         * holds, and the file's time is noted afterwards ({@link #readAgainFromItsFile}).
-         * After a reload that fails nothing is noted, and Protege goes on to ask about the
-         * file that changed outside of it - which is then the truth.
-         */
-        @Override
-        public String readAgain(File editFile, Map<String, File> imports) {
-            final OWLOntology open = loadedFrom(editFile);
-            if (open == null) {
-                return null;
-            }
-            final OWLModelManager manager = getOWLModelManager();
-            final File folder = editFile.getAbsoluteFile().getParentFile();
-            // What goes wrong in the first two steps shows in the third, in Protege's words.
-            onDispatchThread(new Step() {
-                @Override
-                public void take() throws Exception {
-                    manager.getOntologyCatalogManager().reloadFolder(folder);
-                }
-            });
-            OWLOntologyManager owl = manager.getOWLOntologyManager();
-            for (Map.Entry<String, File> served : imports.entrySet()) {
-                if (served.getValue() == null || owl.contains(IRI.create(served.getKey()))) {
-                    continue;
-                }
-                try {
-                    OWLOntologyManager aside = OntologyManagerFactory.createManager();
-                    aside.getIRIMappers().add(owl.getIRIMappers());
-                    aside.loadOntologyFromOntologyDocument(
-                            new IRIDocumentSource(IRI.create(served.getValue())),
-                            new OWLOntologyLoaderConfiguration().setMissingImportHandlingStrategy(
-                                    MissingImportHandlingStrategy.SILENT));
-                    for (OWLOntology loaded : aside.getOntologies()) {
-                        if (!owl.contains(loaded.getOntologyID())) {
-                            owl.copyOntology(loaded, OntologyCopy.MOVE);
-                        }
-                    }
-                } catch (Exception | LinkageError notLoaded) {
-                    // Said by the reload below.
-                }
-            }
-            return readAgainFromItsFile(open);
-        }
-    }
-
-    /** The ontology Protege has loaded from a file, or null when it has none from there. */
-    private OWLOntology loadedFrom(File file) {
-        for (OWLOntology loaded : getOWLModelManager().getOntologies()) {
-            File document = fileOf(loaded);
-            if (document != null && sameFile(document, file)) {
-                return loaded;
-            }
-        }
-        return null;
-    }
-
-    private static boolean sameFile(File one, File other) {
-        try {
-            return Files.isSameFile(one.toPath(), other.toPath());
-        } catch (IOException | RuntimeException cannotTell) {
-            return one.getAbsoluteFile().equals(other.getAbsoluteFile());
         }
     }
 }

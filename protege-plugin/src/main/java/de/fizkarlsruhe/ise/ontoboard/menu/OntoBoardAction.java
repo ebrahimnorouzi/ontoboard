@@ -201,6 +201,12 @@ public abstract class OntoBoardAction extends ProtegeOWLAction {
      * because an ontology can be handed about between managers.
      */
     protected File fileOf(OWLOntology ontology) {
+        return fileOf(getOWLModelManager(), ontology);
+    }
+
+    /** {@link #fileOf(OWLOntology)}, for whoever holds Protege's model manager. */
+    static File fileOf(org.protege.editor.owl.model.OWLModelManager models,
+            OWLOntology ontology) {
         if (ontology == null) {
             return null;
         }
@@ -208,9 +214,7 @@ public abstract class OntoBoardAction extends ProtegeOWLAction {
         if (own != null) {
             return own;
         }
-        return getOWLModelManager() == null
-                ? null
-                : fileFrom(getOWLModelManager().getOWLOntologyManager(), ontology);
+        return models == null ? null : fileFrom(models.getOWLOntologyManager(), ontology);
     }
 
     /**
@@ -286,14 +290,20 @@ public abstract class OntoBoardAction extends ProtegeOWLAction {
      *
      * @return why it did not work, or null when it did
      */
-    protected String readAgainFromItsFile(final OWLOntology open) {
+    static String readAgainFromItsFile(final org.protege.editor.owl.model.OWLModelManager models,
+            final OWLOntology open) {
         return onDispatchThread(new Step() {
             @Override
             public void take() throws Exception {
-                getOWLModelManager().reload(open);
-                noteItsFileTime(open);
+                models.reload(open);
+                noteItsFileTime(models, open);
             }
         });
+    }
+
+    /** {@link #readAgainFromItsFile(org.protege.editor.owl.model.OWLModelManager, OWLOntology)}, here. */
+    protected String readAgainFromItsFile(OWLOntology open) {
+        return readAgainFromItsFile(getOWLModelManager(), open);
     }
 
     /**
@@ -303,21 +313,38 @@ public abstract class OntoBoardAction extends ProtegeOWLAction {
      * front, about an ontology that "has changed outside of Protege". On the dispatch
      * thread, where Protege's own question does the same.
      */
-    protected void noteItsFileTime(OWLOntology open) {
-        Object sources = getOWLModelManager().get(
-                org.protege.editor.owl.model.io.OntologySourcesManager.ID);
+    static void noteItsFileTime(org.protege.editor.owl.model.OWLModelManager models,
+            OWLOntology open) {
+        Object sources = models.get(org.protege.editor.owl.model.io.OntologySourcesManager.ID);
         if (sources instanceof org.protege.editor.owl.model.io.OntologySourcesManager) {
             ((org.protege.editor.owl.model.io.OntologySourcesManager) sources)
                     .ignoreUpdates(java.util.Collections.singleton(open));
         }
     }
 
+    /** {@link #noteItsFileTime(org.protege.editor.owl.model.OWLModelManager, OWLOntology)}, here. */
+    protected void noteItsFileTime(OWLOntology open) {
+        noteItsFileTime(getOWLModelManager(), open);
+    }
+
+    /** The ontology Protege has open from this file; null when it has none from it. */
+    protected OWLOntology openFrom(File file) {
+        java.nio.file.Path asked = file.getAbsoluteFile().toPath().normalize();
+        for (java.util.Map.Entry<OWLOntology, File> one
+                : openFromFiles(getOWLModelManager()).entrySet()) {
+            if (one.getValue().getAbsoluteFile().toPath().normalize().equals(asked)) {
+                return one.getKey();
+            }
+        }
+        return null;
+    }
+
     /** What Protege has open from a file, in its order, each with that file. */
-    private java.util.Map<OWLOntology, File> openFromFiles() {
+    private static java.util.Map<OWLOntology, File> openFromFiles(
+            org.protege.editor.owl.model.OWLModelManager models) {
         java.util.Map<OWLOntology, File> open = new java.util.LinkedHashMap<OWLOntology, File>();
-        for (OWLOntology loaded : new java.util.ArrayList<OWLOntology>(
-                getOWLModelManager().getOntologies())) {
-            File file = fileOf(loaded);
+        for (OWLOntology loaded : new java.util.ArrayList<OWLOntology>(models.getOntologies())) {
+            File file = fileOf(models, loaded);
             if (file != null) {
                 open.put(loaded, file);
             }
@@ -330,7 +357,8 @@ public abstract class OntoBoardAction extends ProtegeOWLAction {
      * ODK's make, to tell afterwards which of them it wrote.
      */
     protected de.fizkarlsruhe.ise.ontoboard.odk.FileStamps stampsOfWhatIsOpen() {
-        return de.fizkarlsruhe.ise.ontoboard.odk.FileStamps.of(openFromFiles().values());
+        return de.fizkarlsruhe.ise.ontoboard.odk.FileStamps.of(
+                openFromFiles(getOWLModelManager()).values());
     }
 
     /**
@@ -338,28 +366,38 @@ public abstract class OntoBoardAction extends ProtegeOWLAction {
      * one of them is read again its own way ({@link #readAgainFromItsFile}); one with
      * changes that are not saved is not ({@link WhatARunWrote}).
      */
-    protected ReadsAgain protegeReadsAgain() {
+    static ReadsAgain readsAgain(final org.protege.editor.owl.model.OWLModelManager models) {
         return new ReadsAgain() {
             @Override
             public WhatARunWrote.Done readAgain(java.util.List<File> written) {
-                java.util.Map<OWLOntology, File> open = openFromFiles();
+                java.util.Map<OWLOntology, File> open = openFromFiles(models);
                 WhatARunWrote.Plan<OWLOntology> plan = WhatARunWrote.plan(open,
-                        new java.util.HashSet<OWLOntology>(
-                                getOWLModelManager().getDirtyOntologies()), written);
+                        new java.util.HashSet<OWLOntology>(models.getDirtyOntologies()),
+                        written);
                 java.util.List<File> read = new java.util.ArrayList<File>();
                 java.util.List<String> notRead =
                         new java.util.ArrayList<String>(plan.notRead());
                 for (OWLOntology one : plan.toRead()) {
-                    String failure = readAgainFromItsFile(one);
+                    // From the plan, not from the map: reading an ontology again can
+                    // change its ID - ODK's build of a module has a version IRI with the
+                    // day in it - and a hash map then no longer finds it (seen live: a
+                    // NullPointerException at the end of Build's full test).
+                    File file = plan.fileOf(one);
+                    String failure = readAgainFromItsFile(models, one);
                     if (failure == null) {
-                        read.add(open.get(one));
+                        read.add(file);
                     } else {
-                        notRead.add(WhatARunWrote.notReadAgain(open.get(one), failure));
+                        notRead.add(WhatARunWrote.notReadAgain(file, failure));
                     }
                 }
                 return new WhatARunWrote.Done(read, notRead);
             }
         };
+    }
+
+    /** {@link #readsAgain(org.protege.editor.owl.model.OWLModelManager)}, here. */
+    protected ReadsAgain protegeReadsAgain() {
+        return readsAgain(getOWLModelManager());
     }
 
     /**

@@ -168,6 +168,61 @@ class ImportTermsActionTest {
         assertEquals(readBack(file), now.getAxioms());
     }
 
+    /** After ODK built a module: the terms asked for that it does not hold are named. */
+    @Test
+    void theTermsAModuleDoesNotHoldAreNamedInTheOrderAsked() throws Exception {
+        org.semanticweb.owlapi.model.OWLOntologyManager manager =
+                org.semanticweb.owlapi.apibinding.OWLManager.createOWLOntologyManager();
+        org.semanticweb.owlapi.model.OWLOntology module = manager.createOntology(
+                org.semanticweb.owlapi.model.IRI.create("http://example.org/module"));
+        org.semanticweb.owlapi.model.OWLDataFactory factory = manager.getOWLDataFactory();
+        manager.addAxiom(module, factory.getOWLDeclarationAxiom(factory.getOWLClass(
+                org.semanticweb.owlapi.model.IRI.create("http://example.org/A"))));
+        manager.addAxiom(module, factory.getOWLDeclarationAxiom(factory.getOWLObjectProperty(
+                org.semanticweb.owlapi.model.IRI.create("http://example.org/p"))));
+
+        assertEquals(java.util.Arrays.asList(
+                org.semanticweb.owlapi.model.IRI.create("http://example.org/C"),
+                org.semanticweb.owlapi.model.IRI.create("http://example.org/B")),
+                ImportTermsAction.notIn(module, java.util.Arrays.asList(
+                        org.semanticweb.owlapi.model.IRI.create("http://example.org/C"),
+                        org.semanticweb.owlapi.model.IRI.create("http://example.org/A"),
+                        org.semanticweb.owlapi.model.IRI.create("http://example.org/p"),
+                        org.semanticweb.owlapi.model.IRI.create("http://example.org/B"))));
+    }
+
+    /**
+     * In an ODK project the catalog is ODK's own, as its update writes it: one that serves
+     * the module from its place already is not written again in OntoBoard's form.
+     */
+    @Test
+    void aCatalogThatServesTheModuleFromItsPlaceIsKnown(
+            @org.junit.jupiter.api.io.TempDir File folder) throws Exception {
+        File catalog = new File(folder, "catalog-v001.xml");
+        java.nio.file.Files.write(catalog.toPath(), ("<?xml version=\"1.0\" encoding=\"UTF-8\" "
+                + "standalone=\"no\"?>\n"
+                + "<catalog prefer=\"public\" "
+                + "xmlns=\"urn:oasis:names:tc:entity:xmlns:xml:catalog\">\n"
+                + "    <group id=\"Folder Repository, directory=, recursive=false, "
+                + "Auto-Update=false, version=2\" prefer=\"public\" xml:base=\"\">\n"
+                + "        <uri name=\"http://example.org/x/imports/a_import.owl\" "
+                + "uri=\"imports/a_import.owl\"/>\n"
+                + "    </group>\n</catalog>\n")
+                .getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        org.semanticweb.owlapi.model.IRI module = org.semanticweb.owlapi.model.IRI.create(
+                "http://example.org/x/imports/a_import.owl");
+
+        assertTrue(ImportTermsAction.serves(catalog, module, "imports/a_import.owl"));
+        assertTrue(ImportTermsAction.serves(catalog, module, "imports\\a_import.owl"),
+                "however the path is written");
+        assertFalse(ImportTermsAction.serves(catalog, module, "elsewhere/a_import.owl"),
+                "served from another place");
+        assertFalse(ImportTermsAction.serves(catalog, org.semanticweb.owlapi.model.IRI.create(
+                "http://example.org/x/imports/b_import.owl"), "imports/b_import.owl"));
+        assertFalse(ImportTermsAction.serves(new File(folder, "none.xml"), module,
+                "imports/a_import.owl"), "no catalog");
+    }
+
     /** "604 axioms for 1 terms" was the first sentence a participant read after importing one. */
     @Test
     void oneTermIsOneTerm() {

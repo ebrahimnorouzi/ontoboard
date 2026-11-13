@@ -147,7 +147,8 @@ final class OdkTools {
          * Protege 5.5.0's Java is older than several of today's authorities.
          */
         static boolean failedOnACertificate(OdkRobot.Result result) {
-            return !result.ok() && HttpsOpener.saysCertificatePathFailure(result.failure());
+            // A line that went well has no failure sentence, so this alone answers.
+            return HttpsOpener.saysCertificatePathFailure(result.failure());
         }
 
         /**

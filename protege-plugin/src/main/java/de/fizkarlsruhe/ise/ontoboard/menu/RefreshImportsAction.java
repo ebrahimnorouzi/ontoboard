@@ -71,12 +71,8 @@ public class RefreshImportsAction extends OntoBoardAction {
     private volatile String which = OdkImportsForm.ALL;
     /** Who runs ODK's targets, decided with the form so that the run does not ask again. */
     private volatile OdkImportsForm.Way odkWay;
-    private volatile String runtime = "docker";
-    private volatile String image;
-    /** Why that image is not the project's own ODK, for the log; null when it is. */
-    private volatile String imageNote;
-    private volatile de.fizkarlsruhe.ise.ontoboard.odk.OdkContainer.Host host =
-            de.fizkarlsruhe.ise.ontoboard.odk.OdkContainer.Host.unknown();
+    /** The same, with what a run needs of it: found once, with the form. */
+    private volatile OdkImportsRoute route;
 
     /** How much of a run's log is shown, as for Build. */
     private static final int MAX_LINES = 4000;
@@ -160,25 +156,8 @@ public class RefreshImportsAction extends OntoBoardAction {
      * on the form; what cannot work is said before anything runs.
      */
     private boolean configureOdk(File editFile, List<ImportProducts.Product> declared) {
-        de.fizkarlsruhe.ise.ontoboard.proc.ProcessRunner.Runner real =
-                de.fizkarlsruhe.ise.ontoboard.proc.ProcessRunner.real();
-        File ontologyDirectory = editFile.getAbsoluteFile().getParentFile();
-        String found = de.fizkarlsruhe.ise.ontoboard.odk.MakeRun.containerRuntime(real);
-        // An image that is on this machine, or none: nothing is fetched to refresh imports.
-        de.fizkarlsruhe.ise.ontoboard.odk.OdkImage.Choice choice = found == null ? null
-                : de.fizkarlsruhe.ise.ontoboard.odk.OdkImage.forProject(ontologyDirectory,
-                        de.fizkarlsruhe.ise.ontoboard.odk.OdkImage.probe(found, real));
-        boolean container = choice != null && choice.reference() != null;
-        File environment = de.fizkarlsruhe.ise.ontoboard.odk.Toolchain.nativeEnvironment();
-        String noContainer = container ? null
-                : found == null
-                        ? de.fizkarlsruhe.ise.ontoboard.odk.OdkRoute.noContainerBecause(real)
-                        : "ODK's image is not on this machine";
-        OdkImportsForm.Way way = OdkImportsForm.way(environment == null ? null
-                : de.fizkarlsruhe.ise.ontoboard.odk.Toolchain.activationScript(environment),
-                de.fizkarlsruhe.ise.ontoboard.odk.OdkRoute.use(), container ? found : null,
-                container ? choice.reference() : null, noContainer,
-                container || choice == null ? null : choice.note());
+        OdkImportsRoute found = OdkImportsRoute.detect(editFile);
+        OdkImportsForm.Way way = found.way();
 
         String declares = declared.isEmpty()
                 ? "This project declares no imports in import_group.products."
@@ -195,6 +174,7 @@ public class RefreshImportsAction extends OntoBoardAction {
         which = chosen.get(OdkImportsForm.WHICH) == null ? OdkImportsForm.ALL
                 : chosen.get(OdkImportsForm.WHICH);
         odkWay = way;
+        route = found;
         if (!rebuild) {
             return true;
         }
@@ -214,38 +194,17 @@ public class RefreshImportsAction extends OntoBoardAction {
                 "Cannot refresh the imports") == SaveFirst.Answer.CANCELLED) {
             return false;
         }
-        imageNote = null;
-        if (way.kind() == OdkImportsForm.Way.Kind.CONTAINER) {
-            runtime = found;
-            image = choice.reference();
-            imageNote = choice.note();
-            host = de.fizkarlsruhe.ise.ontoboard.odk.OdkContainer.Host.detect(found, real);
-        }
         return true;
     }
 
     /** Who runs make for the imports, as decided with the form. */
     private de.fizkarlsruhe.ise.ontoboard.odk.OdkRelease.Odk odk(File editFile) {
-        File ontologyDirectory = editFile.getAbsoluteFile().getParentFile();
-        de.fizkarlsruhe.ise.ontoboard.proc.ProcessRunner.Runner real =
-                de.fizkarlsruhe.ise.ontoboard.proc.ProcessRunner.real();
-        if (odkWay.kind() == OdkImportsForm.Way.Kind.NATIVE) {
-            return de.fizkarlsruhe.ise.ontoboard.odk.OdkRelease.inNativeEnvironment(
-                    de.fizkarlsruhe.ise.ontoboard.odk.Toolchain.activationScript(
-                            de.fizkarlsruhe.ise.ontoboard.odk.Toolchain.nativeEnvironment()),
-                    ontologyDirectory, real, null);
-        }
-        if (odkWay.kind() == OdkImportsForm.Way.Kind.CONTAINER) {
-            return de.fizkarlsruhe.ise.ontoboard.odk.OdkRelease.inContainer(runtime, image,
-                    host, ontologyDirectory, real, null);
-        }
-        return de.fizkarlsruhe.ise.ontoboard.odk.OdkRelease.byOntoBoardItself(editFile,
-                new java.util.function.BooleanSupplier() {
-                    @Override
-                    public boolean getAsBoolean() {
-                        return BackgroundRun.abandoned();
-                    }
-                });
+        return route.odk(editFile, new java.util.function.BooleanSupplier() {
+            @Override
+            public boolean getAsBoolean() {
+                return BackgroundRun.abandoned();
+            }
+        });
     }
 
     @Override
@@ -436,9 +395,9 @@ public class RefreshImportsAction extends OntoBoardAction {
             result.note("Nothing was changed - 'Rebuild the modules' was off.");
             return result.summary(counted + ".").build();
         }
-        if (imageNote != null) {
+        if (route.imageNote() != null) {
             // Not the ODK that wrote this project's Makefile: said, as Build says it.
-            result.warn(imageNote);
+            result.warn(route.imageNote());
         }
         int shown = 0;
         for (String line : ran.transcript()) {
