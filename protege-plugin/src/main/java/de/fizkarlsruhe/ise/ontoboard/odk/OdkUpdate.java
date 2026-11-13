@@ -123,12 +123,13 @@ public final class OdkUpdate {
         private final Set<String> executable;
         private final List<String> warnings;
         private final List<ImportGuard.Undeclared> undeclared;
+        private final List<String> notImported;
         private final Set<String> agreed;
 
         Plan(List<Change> changes, String fromVersion, File editFile, boolean obo,
                 List<String> imports, byte[] catalog, Set<String> executable,
                 List<String> warnings, List<ImportGuard.Undeclared> undeclared,
-                Set<String> agreed) {
+                List<String> notImported, Set<String> agreed) {
             this.changes = Collections.unmodifiableList(changes);
             this.fromVersion = fromVersion;
             this.editFile = editFile;
@@ -138,6 +139,7 @@ public final class OdkUpdate {
             this.executable = executable;
             this.warnings = Collections.unmodifiableList(warnings);
             this.undeclared = Collections.unmodifiableList(undeclared);
+            this.notImported = Collections.unmodifiableList(notImported);
             this.agreed = agreed;
         }
 
@@ -195,7 +197,17 @@ public final class OdkUpdate {
             Set<String> all = new TreeSet<String>(agreed);
             all.addAll(imports);
             return new Plan(changes, fromVersion, editFile, obo, this.imports, catalog,
-                    executable, warnings, undeclared, all);
+                    executable, warnings, undeclared, notImported, all);
+        }
+
+        /**
+         * The modules in the project's imports folder that nothing imports - not the edit
+         * file as it is, and not the update for a product the configuration declares.
+         * They are named and left alone: neither declared nor deleted. Paths from the
+         * project's root, sorted; empty where ODK leaves the edit file's imports alone.
+         */
+        public List<String> notImported() {
+            return notImported;
         }
 
         /** The imports the update would take out and nobody agreed to. */
@@ -265,6 +277,7 @@ public final class OdkUpdate {
         boolean obo = false;
         List<String> imports = new ArrayList<String>();
         List<ImportGuard.Undeclared> undeclared = new ArrayList<ImportGuard.Undeclared>();
+        List<String> notImported = new ArrayList<String>();
         byte[] catalog = null;
         if (Py.truthy(project.get("manage_import_declarations"))) {
             try {
@@ -280,7 +293,9 @@ public final class OdkUpdate {
             imports = importsOf(project);
             if (editFile.isFile()) {
                 try {
-                    undeclared = ImportGuard.undeclared(editFile, imports,
+                    List<String> now = ImportGuard.importsOf(editFile);
+                    undeclared = ImportGuard.undeclared(now, imports, new File(root, CATALOG));
+                    notImported = ImportGuard.notImported(root, ontbase(project), imports, now,
                             new File(root, CATALOG));
                 } catch (IOException unreadable) {
                     throw new Refused(unreadable.getMessage() + " ODK's update brings its "
@@ -300,7 +315,7 @@ public final class OdkUpdate {
         }
         return new Plan(changes, from, editFile, obo, imports, catalog,
                 new TreeSet<String>(installed.executable()), warnings, undeclared,
-                new TreeSet<String>());
+                notImported, new TreeSet<String>());
     }
 
     /** The one {@code *-odk.yaml} of the folder ODK's update runs in. */

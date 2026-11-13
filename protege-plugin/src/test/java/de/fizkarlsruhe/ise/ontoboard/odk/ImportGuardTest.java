@@ -360,4 +360,81 @@ class ImportGuardTest {
 
         assertEquals("whole_2", finding.name());
     }
+
+    // ------------------------------------------------------------------ what nothing imports
+
+    /** A module on disk that nothing imports is named and left alone: not declared, not deleted. */
+    @Test
+    void aModuleNothingImportsIsNamedAndLeftAlone() throws IOException {
+        UpdateCases.write(UpdateCases.before("egg-changed"), root);
+        File unused = inOntology("imports/unused_import.owl");
+        Files.createDirectories(unused.getParentFile().toPath());
+        write(unused, "Ontology(<" + MODULES + "unused_import.owl>)\n");
+        byte[] before = Files.readAllBytes(unused.toPath());
+        // A product's module that is there before the edit file imports it is not one: the
+        // configuration declares it, and the update is about to import it.
+        write(inOntology("imports/ro_import.owl"), "Ontology(<" + MODULES
+                + "ro_import.owl>)\n");
+
+        OdkUpdate.Plan plan = UpdateCases.planAsOdkDoes(root);
+
+        assertEquals(Collections.singletonList("src/ontology/imports/unused_import.owl"),
+                plan.notImported());
+        OdkUpdate.apply(root, plan);
+        assertArrayEquals(before, Files.readAllBytes(unused.toPath()));
+        // The update made the modules the configuration declares, and the edit file imports
+        // them: of the three in the folder now, the one nothing imports is still the one.
+        assertTrue(inOntology("imports/ro_import.owl").isFile());
+        assertEquals(Collections.singletonList("src/ontology/imports/unused_import.owl"),
+                OdkUpdate.plan(root).notImported());
+        assertFalse(text(inOntology("eggboil-odk.yaml")).contains("unused"),
+                "it is not declared for them either");
+    }
+
+    /**
+     * A module the edit file imports without the configuration declaring it is an import to
+     * decide about, not a module nothing imports - also when the edit file imports it under
+     * another address that the catalog serves from that file.
+     */
+    @Test
+    void aModuleTheEditFileImportsIsNotOneNothingImports() throws IOException {
+        UpdateCases.write(UpdateCases.before("egg-changed"), root);
+        // What the edit file imports, kept where modules are kept.
+        File module = inOntology("imports/whole_import.owl");
+        Files.createDirectories(module.getParentFile().toPath());
+        Files.copy(inOntology("whole.owl").toPath(), module.toPath());
+        File catalog = inOntology("catalog-v001.xml");
+        write(catalog, text(catalog).replace("uri=\"whole.owl\"",
+                "uri=\"imports/whole_import.owl\""));
+
+        OdkUpdate.Plan plan = OdkUpdate.plan(root);
+
+        assertEquals(1, plan.undeclared().size());
+        assertEquals(new ArrayList<String>(), plan.notImported());
+
+        // And imported under the module's own address, with no product for it.
+        File edit = inOntology("eggboil-edit.owl");
+        write(edit, text(edit).replace("Import(<" + WHOLE + ">)",
+                "Import(<" + MODULES + "whole_import.owl>)"));
+        write(catalog, text(catalog).replace("name=\"" + WHOLE + "\"",
+                "name=\"https://example.org/elsewhere.owl\""));
+
+        OdkUpdate.Plan own = OdkUpdate.plan(root);
+
+        assertEquals(MODULES + "whole_import.owl", own.undeclared().get(0).iri());
+        assertEquals(new ArrayList<String>(), own.notImported());
+    }
+
+    /** Where ODK leaves the imports alone, nothing is named either. */
+    @Test
+    void whereOdkDoesNotLookAfterTheImportsNoModuleIsNamed() throws IOException {
+        UpdateCases.write(UpdateCases.before("egg-changed"), root);
+        File unused = inOntology("imports/unused_import.owl");
+        Files.createDirectories(unused.getParentFile().toPath());
+        write(unused, "Ontology(<" + MODULES + "unused_import.owl>)\n");
+        File config = inOntology("eggboil-odk.yaml");
+        write(config, text(config) + "manage_import_declarations: FALSE\n");
+
+        assertEquals(new ArrayList<String>(), OdkUpdate.plan(root).notImported());
+    }
 }

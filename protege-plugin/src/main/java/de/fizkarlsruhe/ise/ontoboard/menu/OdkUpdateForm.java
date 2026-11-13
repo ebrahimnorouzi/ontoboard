@@ -340,6 +340,11 @@ final class OdkUpdateForm {
                     + "update: the configuration declares no import." : "The edit file imports "
                     + "after the update: " + String.join(", ", plan.imports()));
         }
+        for (String module : plan.notImported()) {
+            result.note(module + " is a module nothing imports: the edit file does not import "
+                    + "it, and the configuration declares no product for it. The update "
+                    + "leaves it as it is.");
+        }
         for (String said : plan.warnings()) {
             result.note("ODK's update says: " + said);
         }

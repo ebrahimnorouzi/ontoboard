@@ -121,29 +121,77 @@ public final class ImportGuard {
     /**
      * The imports of the edit file that an update would take out.
      *
-     * @param editFile    the project's edit file
+     * @param importedNow the edit file's import declarations ({@link #importsOf})
      * @param declared    the import declarations ODK's update gives the edit file
      * @param catalogFile the project's catalog; it need not be there
-     * @throws IOException when the edit file cannot be read as an ontology
      */
-    static List<Undeclared> undeclared(File editFile, Collection<String> declared,
+    static List<Undeclared> undeclared(List<String> importedNow, Collection<String> declared,
             File catalogFile) throws IOException {
-        String catalog = catalogFile != null && catalogFile.isFile() ? new String(
-                Files.readAllBytes(catalogFile.toPath()), StandardCharsets.UTF_8) : null;
+        String catalog = textOf(catalogFile);
         List<Undeclared> found = new ArrayList<Undeclared>();
-        for (String iri : importsOf(editFile)) {
+        for (String iri : importedNow) {
             if (declared.contains(iri)) {
                 continue;
             }
-            File local = null;
-            String path = catalog == null ? null : mapped(catalog, iri);
-            if (path != null && !path.contains(":")) {
-                File candidate = new File(catalogFile.getParentFile(), path);
-                local = candidate.isFile() ? candidate : null;
-            }
-            found.add(new Undeclared(iri, local));
+            found.add(new Undeclared(iri, servedFrom(catalog, catalogFile, iri)));
         }
         return found;
+    }
+
+    /**
+     * The modules in the project's imports folder that nothing imports: not the edit file as
+     * it is - under the module's own address, or under another that the catalog serves from
+     * that file - and not ODK's update for a product the configuration declares. They are
+     * named and left alone, neither declared nor deleted: a module somebody keeps for later
+     * is theirs.
+     *
+     * @return their paths from the project's root, with {@code /}, sorted
+     */
+    static List<String> notImported(File projectRoot, String ontbase,
+            Collection<String> declared, List<String> importedNow, File catalogFile)
+            throws IOException {
+        List<String> unused = new ArrayList<String>();
+        File folder = new File(projectRoot, ImportModules.IMPORTS_DIRECTORY);
+        String[] names = folder.list();
+        if (names == null) {
+            return unused;
+        }
+        String catalog = textOf(catalogFile);
+        Set<File> served = new HashSet<File>();
+        for (String iri : importedNow) {
+            File from = servedFrom(catalog, catalogFile, iri);
+            if (from != null) {
+                served.add(from.getAbsoluteFile());
+            }
+        }
+        java.util.Arrays.sort(names);
+        for (String name : names) {
+            if (!name.endsWith("_import.owl")) {
+                continue;
+            }
+            String iri = ontbase + "/imports/" + name;
+            if (!declared.contains(iri) && !importedNow.contains(iri)
+                    && !served.contains(new File(folder, name).getAbsoluteFile())) {
+                unused.add(ImportModules.IMPORTS_DIRECTORY + "/" + name);
+            }
+        }
+        return unused;
+    }
+
+    /** The catalog's text; null when there is none. */
+    private static String textOf(File catalogFile) throws IOException {
+        return catalogFile != null && catalogFile.isFile() ? new String(
+                Files.readAllBytes(catalogFile.toPath()), StandardCharsets.UTF_8) : null;
+    }
+
+    /** The file of the project the catalog serves an import from; null when from none. */
+    private static File servedFrom(String catalog, File catalogFile, String iri) {
+        String path = catalog == null ? null : mapped(catalog, iri);
+        if (path == null || path.contains(":")) {
+            return null;
+        }
+        File candidate = new File(catalogFile.getParentFile(), path);
+        return candidate.isFile() ? candidate : null;
     }
 
     /** Where the catalog sends an IRI; null when it says nothing of it or cannot be read. */

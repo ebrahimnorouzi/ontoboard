@@ -622,6 +622,31 @@ class OdkUpdateFormTest {
         assertSameTree(before);
     }
 
+    /** A module nothing imports is named, when looking and when writing, and left as it is. */
+    @Test
+    void aModuleNothingImportsIsNamedAndLeftAsItIs() throws IOException {
+        UpdateCases.write(UpdateCases.before("egg-changed"), root);
+        File unused = new File(root, "src/ontology/imports/unused_import.owl");
+        Files.createDirectories(unused.getParentFile().toPath());
+        Files.write(unused.toPath(), ("Ontology(<https://example.org/eggboil/eggboil/imports/"
+                + "unused_import.owl>)\n").getBytes(StandardCharsets.UTF_8));
+        byte[] before = Files.readAllBytes(unused.toPath());
+
+        OperationResult look = OdkUpdateForm.run("Update project files", root, false,
+                itself(), noContainer(), asOdkDoes());
+        OperationResult made = OdkUpdateForm.run("Update project files", root, true,
+                itself(), noContainer(), asOdkDoes());
+
+        for (OperationResult result : new OperationResult[] {look, made}) {
+            String log = String.join("\n", result.getLog());
+            assertTrue(log.contains("src/ontology/imports/unused_import.owl"), log);
+            assertTrue(log.contains("nothing imports"), log);
+        }
+        assertTrue(made.isSuccess(), made.getSummary());
+        assertArrayEquals(before, Files.readAllBytes(unused.toPath()));
+        assertFalse(made.getFiles().contains(unused.getAbsoluteFile()), made.getFiles().toString());
+    }
+
     // ------------------------------------------------------------------ what the question offers
 
     @Test
