@@ -12,14 +12,12 @@ import de.fizkarlsruhe.ise.ontoboard.odk.OdkScaffold;
 import de.fizkarlsruhe.ise.ontoboard.proc.ProcessRunner;
 import java.io.File;
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import javax.swing.SwingUtilities;
 import org.protege.editor.owl.model.OWLModelManager;
 import org.protege.editor.owl.model.OntologyManagerFactory;
 import org.semanticweb.owlapi.io.IRIDocumentSource;
@@ -388,39 +386,6 @@ public class UpdateProjectAction extends OntoBoardAction {
         }
     }
 
-    /** Something to do that may fail. */
-    private interface Step {
-        void take() throws Exception;
-    }
-
-    /** Does it on the dispatch thread and waits; why it failed, or null. */
-    private static String onDispatchThread(final Step step) {
-        final String[] failure = new String[1];
-        Runnable work = new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    step.take();
-                } catch (Exception | LinkageError cannot) {
-                    failure[0] = said(cannot);
-                }
-            }
-        };
-        if (SwingUtilities.isEventDispatchThread()) {
-            work.run();
-            return failure[0];
-        }
-        try {
-            SwingUtilities.invokeAndWait(work);
-        } catch (InterruptedException interrupted) {
-            Thread.currentThread().interrupt();
-            return "the wait for it was interrupted";
-        } catch (InvocationTargetException thrown) {
-            return said(thrown.getCause() == null ? thrown : thrown.getCause());
-        }
-        return failure[0];
-    }
-
     /** The ontology Protege has loaded from a file, or null when it has none from there. */
     private OWLOntology loadedFrom(File file) {
         for (OWLOntology loaded : getOWLModelManager().getOntologies()) {
@@ -438,18 +403,5 @@ public class UpdateProjectAction extends OntoBoardAction {
         } catch (IOException | RuntimeException cannotTell) {
             return one.getAbsoluteFile().equals(other.getAbsoluteFile());
         }
-    }
-
-    /** A failure in its own words, down to the cause that says something. */
-    private static String said(Throwable failure) {
-        Throwable at = failure;
-        while (at.getCause() != null && at.getCause() != at
-                && (at.getMessage() == null || at.getMessage().trim().isEmpty()
-                        || at.getMessage().equals(at.getCause().toString()))) {
-            at = at.getCause();
-        }
-        String message = at.getMessage() == null || at.getMessage().trim().isEmpty()
-                ? at.getClass().getSimpleName() : at.getMessage().trim();
-        return message.endsWith(".") ? message.substring(0, message.length() - 1) : message;
     }
 }

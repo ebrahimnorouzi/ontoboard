@@ -247,6 +247,23 @@ final class RobotPaths {
      * @throws Unknown for what cannot be placed; the message names it
      */
     static List<String> absolute(List<String> arguments, File folder) {
+        return placed(arguments, folder, null);
+    }
+
+    /**
+     * The values of a line that name files, each as {@link #absolute} writes it: what the
+     * line reads and what it writes.
+     *
+     * @throws Unknown for what cannot be placed; the message names it
+     */
+    static List<String> files(List<String> arguments, File folder) {
+        List<String> files = new ArrayList<String>();
+        placed(arguments, folder, files);
+        return files;
+    }
+
+    private static List<String> placed(List<String> arguments, File folder,
+            List<String> named) {
         String prefix = folder.getAbsolutePath() + File.separator;
         List<String> line = new ArrayList<String>(arguments);
         String command = null;
@@ -274,6 +291,9 @@ final class RobotPaths {
                     && isArgument(arguments.get(at), options)) {
                 if (files) {
                     line.set(at, absolute(arguments.get(at), prefix));
+                    if (named != null) {
+                        named.add(line.get(at));
+                    }
                 }
                 taken++;
                 at++;

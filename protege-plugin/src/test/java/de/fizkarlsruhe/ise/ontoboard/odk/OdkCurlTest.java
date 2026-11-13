@@ -668,6 +668,9 @@ class OdkCurlTest {
 
         assertNotEquals(0, status);
         assertTrue(String.join("\n", said).contains("nothing.owl"), said.toString());
+        // In curl's own words for it, not in those of a copy that failed.
+        assertTrue(String.join("\n", said).contains("curl: (37) there is no file at "),
+                said.toString());
         assertFalse(new File(folder, "tmp/a.owl").exists());
     }
 

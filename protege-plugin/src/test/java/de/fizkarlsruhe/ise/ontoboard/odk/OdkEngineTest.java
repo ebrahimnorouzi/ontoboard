@@ -226,6 +226,7 @@ class OdkEngineTest {
 
         assertFalse(outcome.isOk());
         assertTrue(outcome.ranAnything());
+        assertFalse(outcome.wasStopped(), "it failed; nobody stopped it");
         assertEquals(Arrays.asList("convert", "reason"), robotCommands());
         assertTrue(outcome.getFailure().contains("reason_test"), outcome.getFailure());
         assertTrue(outcome.getFailure().contains("nothing can be an egg"), outcome.getFailure());
@@ -381,6 +382,7 @@ class OdkEngineTest {
         OdkEngine.Outcome outcome = run("test_fast");
 
         assertFalse(outcome.isOk());
+        assertTrue(outcome.wasStopped());
         assertEquals(3, robot.size());
         assertTrue(outcome.getFailure().contains("stopped"), outcome.getFailure());
         assertTrue(outcome.getFailure().contains("clean"), "what a half-done build leaves is "
@@ -419,6 +421,7 @@ class OdkEngineTest {
                 Goldens.makeFixedVariables(), tools, () -> stopped[0]);
 
         assertFalse(outcome.isOk());
+        assertTrue(outcome.wasStopped());
         assertEquals(2, calls[0], "nothing ran after it");
         assertTrue(outcome.getFailure().startsWith("You stopped 'test_fast'"),
                 outcome.getFailure());

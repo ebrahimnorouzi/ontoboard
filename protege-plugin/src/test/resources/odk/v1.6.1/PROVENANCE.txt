@@ -66,4 +66,4 @@ ODK_VERSION=v1.6.1
 ROBOT version 1.9.10
 curl 8.5.0 (x86_64-pc-linux-gnu) libcurl/8.5.0 OpenSSL/3.0.13 zlib/1.3 brotli/1.1.0 zstd/1.5.5 libidn2/2.3.7 libpsl/0.21.2 (+libidn2/2.3.7) libssh/0.10.6/openssl/zlib nghttp2/1.59.0 librtmp/2.3 OpenLDAP/2.6.10
 Made on:      2026-11-13
-Command:      make <target> OBOBASE=file:///work/in/upstream VERSION=1.0.0 TODAY=2026-11-11 OBODATE="11:11:2026 12:00" for refresh-imports, test, prepare_release, each on a fresh copy of seed/localimports with equivalence/loim/overlay over it, in /tmp/odk/loim/src/ontology, the ontologies to mirror being equivalence/loim/upstream
+Command:      make <target> OBOBASE=file:///work/in/upstream VERSION=1.0.0 TODAY=2026-11-11 OBODATE="11:11:2026 12:00" for refresh-imports fresh, test fresh, prepare_release fresh, refresh-ro fresh, no-mirror-refresh-imports refreshed, no-mirror-refresh-ro refreshed, each on a fresh copy of seed/localimports with equivalence/loim/overlay over it, in /tmp/odk/loim/src/ontology, the ontologies to mirror being equivalence/loim/upstream

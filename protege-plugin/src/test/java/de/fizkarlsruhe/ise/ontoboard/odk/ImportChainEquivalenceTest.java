@@ -1,11 +1,11 @@
 package de.fizkarlsruhe.ise.ontoboard.odk;
 
 import static de.fizkarlsruhe.ise.ontoboard.odk.RunComparisons.allOfTheSameAge;
+import static de.fizkarlsruhe.ise.ontoboard.odk.RunComparisons.assertSameFile;
 import static de.fizkarlsruhe.ise.ontoboard.odk.RunComparisons.assertSameOntology;
 import static de.fizkarlsruhe.ise.ontoboard.odk.RunComparisons.hashes;
 import static de.fizkarlsruhe.ise.ontoboard.odk.RunComparisons.lines;
 import static de.fizkarlsruhe.ise.ontoboard.odk.RunComparisons.madeSince;
-import static de.fizkarlsruhe.ise.ontoboard.odk.RunComparisons.onOdksOwlApi;
 import static de.fizkarlsruhe.ise.ontoboard.odk.RunComparisons.assertSameProduct;
 import static de.fizkarlsruhe.ise.ontoboard.odk.RunComparisons.read;
 import static de.fizkarlsruhe.ise.ontoboard.odk.RunComparisons.rows;
@@ -45,7 +45,8 @@ import org.junit.jupiter.api.io.TempDir;
  * ODK's import chain, run by OntoBoard's own engine without a container, held against the same
  * targets as ODK's own make ran them in ODK's image ({@code equivalence/loim}, recorded by
  * {@code tools/odk-goldens/imports_goldens.py}): the mirrors fetched, the modules cut from
- * them - and the full test and the full release, which build the imports first.
+ * them - and the full test and the full release, which build the imports first; one import
+ * alone; and the modules built again from the mirrors as they are, after a term was added.
  *
  * <p>The project is the recording's: {@code seed/localimports} with the overlay over it, an
  * ontology that uses a term of each of its three imports. The ontologies to mirror are the
@@ -68,34 +69,14 @@ class ImportChainEquivalenceTest {
 
     /** The recording's project, and the recording's command line with this machine's folder. */
     private void theProject() throws IOException {
+        edit = ImportCases.fresh(top);
         project = new File(top, "project");
-        Map<String, byte[]> files = new LinkedHashMap<String, byte[]>(
-                Goldens.seedTree("localimports"));
-        files.putAll(Goldens.tree(new File(Goldens.root(), "equivalence/loim/overlay")));
-        for (Map.Entry<String, byte[]> file : files.entrySet()) {
-            File to = new File(project, file.getKey());
-            Files.createDirectories(to.getParentFile().toPath());
-            Files.write(to.toPath(), file.getValue());
-        }
-        File upstream = new File(top, "upstream");
-        for (Map.Entry<String, byte[]> file : Goldens.tree(new File(Goldens.root(),
-                "equivalence/loim/upstream")).entrySet()) {
-            File to = new File(upstream, file.getKey());
-            Files.createDirectories(to.getParentFile().toPath());
-            Files.write(to.toPath(), file.getValue());
-        }
-        Files.createDirectories(new File(project, "src/ontology/tmp").toPath());
-        edit = new File(project, "src/ontology/loim-edit.owl");
-        commandLine.put("OBOBASE", here());
-        commandLine.put("VERSION", "1.0.0");
-        commandLine.put("TODAY", "2026-11-11");
-        commandLine.put("OBODATE", "11:11:2026 12:00");
+        commandLine.putAll(ImportCases.commandLine(top));
     }
 
     /** The folder of the ontologies to mirror, as an address. */
     private String here() {
-        String address = new File(top, "upstream").toURI().toString();
-        return address.endsWith("/") ? address.substring(0, address.length() - 1) : address;
+        return ImportCases.upstream(top);
     }
 
     private static String recorded(String path) {
@@ -124,6 +105,60 @@ class ImportChainEquivalenceTest {
             said.add(line.replace(upstream, "<UPSTREAM>"));
         }
         return said;
+    }
+
+    /**
+     * Where ODK's own refresh left the project, with one more term asked for in a term
+     * list: the start of somebody who has just added a term. The recording checked that
+     * its own start was exactly this.
+     */
+    private void theProjectRefreshedAndOneMoreTermAskedFor() throws IOException {
+        edit = ImportCases.refreshedAndOneMoreTermAskedFor(top);
+        project = new File(top, "project");
+        commandLine.putAll(ImportCases.commandLine(top));
+    }
+
+    private static final String PRE_SEED = "src/ontology/tmp/pre_seed.txt";
+
+    /**
+     * Runs a target here, on the project as it stands, and holds against ODK's recording
+     * of it what make said and which files the run made or changed. The rows of the
+     * query that collects the terms come in the order of the store they came from, in
+     * ODK's run as here: that file counts as changed when its rows are, in any order -
+     * which is how the recording counted it.
+     *
+     * @return what was said here, line by line
+     */
+    private List<String> runHeldAgainstTheRecording(String target) throws Exception {
+        allOfTheSameAge(project);
+        Map<String, String> before = hashes(project);
+        File preSeed = new File(project, PRE_SEED);
+        List<String> rowsBefore = preSeed.isFile() ? rows(read(preSeed)) : null;
+
+        assertNull(OdkEngine.whyNot(edit, target, commandLine), "asked beforehand, it can");
+        OdkEngine.Outcome outcome = OdkEngine.run(edit, target, commandLine, null);
+
+        List<String> ours = lines(String.join("\n", outcome.getTranscript()));
+        keep(target + ".transcript.txt", ours);
+        assertTrue(outcome.isOk(), outcome.getFailure() + "\n" + String.join("\n", ours));
+        assertEquals(String.join("\n", saidByMakeHere(lines(recorded(target
+                + "/transcript.txt")), RECORDED_UPSTREAM)),
+                String.join("\n", saidByMakeHere(ours, here())),
+                "every recipe line make said, in the order it ran them");
+
+        Set<String> made = madeSince(before, project);
+        if (rowsBefore != null && rowsBefore.equals(rows(read(preSeed)))) {
+            made.remove(PRE_SEED);
+        }
+        keep(target + ".made.txt", new ArrayList<String>(made));
+        assertEquals(recordedFiles(target), made, "the files the run made or changed");
+        return ours;
+    }
+
+    /** A file the run built, held against ODK's: the same ontology, and the same file. */
+    private void assertBuiltAsOdkBuiltIt(String target, String built) throws Exception {
+        assertSameOntology(built, theirs(target, built), new File(project, built));
+        assertSameFile(built, theirs(target, built), new File(project, built));
     }
 
     private static void keep(String name, List<String> lines) throws IOException {
@@ -216,18 +251,72 @@ class ImportChainEquivalenceTest {
                             + "-download.owl").toPath()), id + ": what curl fetched");
             for (String built : new String[] {"src/ontology/mirror/" + id + ".owl",
                 "src/ontology/imports/" + id + "_import.owl"}) {
-                assertSameOntology(built, theirs("refresh-imports", built),
-                        new File(project, built));
-                if (onOdksOwlApi()) {
-                    assertEquals(recorded("refresh-imports/files/" + built),
-                            read(new File(project, built)), built + ": on ODK's OWL API, the "
-                                    + "file itself");
-                }
+                assertBuiltAsOdkBuiltIt("refresh-imports", built);
             }
         }
         assertEquals(lines(recorded("refresh-imports/files/src/ontology/tmp/seed.txt")),
                 lines(read(new File(project, "src/ontology/tmp/seed.txt"))),
                 "the terms the modules are cut for");
+    }
+
+    /**
+     * ODK's refresh-<id>: one import - its mirror fetched again, its module built - and the
+     * others left as they are.
+     */
+    @Test
+    void oneImportIsRefreshedHereAsOdkRefreshedIt() throws Exception {
+        theProject();
+
+        List<String> ours = runHeldAgainstTheRecording("refresh-ro");
+
+        assertEquals(1, starting("curl ", ours).size(), "one fetch: " + starting("curl ", ours));
+        assertArrayEquals(Goldens.bytes(new File(Goldens.root(),
+                "equivalence/loim/upstream/ro.owl")), Files.readAllBytes(new File(project,
+                        "src/ontology/tmp/ro-download.owl").toPath()), "what curl fetched");
+        assertBuiltAsOdkBuiltIt("refresh-ro", "src/ontology/mirror/ro.owl");
+        assertBuiltAsOdkBuiltIt("refresh-ro", "src/ontology/imports/ro_import.owl");
+        assertEquals(lines(recorded("refresh-ro/files/src/ontology/tmp/seed.txt")),
+                lines(read(new File(project, "src/ontology/tmp/seed.txt"))),
+                "the terms the module is cut for");
+    }
+
+    /**
+     * ODK's no-mirror-refresh-imports, after a term was added to a term list: the modules
+     * that are cut by a term list are built again from the mirrors as they are - nothing is
+     * fetched - and the one that changes is the one whose list changed.
+     */
+    @Test
+    void theModulesAreBuiltAgainFromTheMirrorsAsTheyAreAsOdkBuiltThem() throws Exception {
+        theProjectRefreshedAndOneMoreTermAskedFor();
+
+        List<String> ours = runHeldAgainstTheRecording("no-mirror-refresh-imports");
+
+        assertEquals(new ArrayList<String>(), starting("curl ", ours), "nothing is fetched");
+        assertBuiltAsOdkBuiltIt("no-mirror-refresh-imports",
+                "src/ontology/imports/ro_import.owl");
+        assertTrue(read(new File(project, "src/ontology/imports/ro_import.owl"))
+                .contains("RO_0002577"), "the term that was added is in the module now");
+        // The edit file as it is prepared says of itself only what its imports do not say
+        // already: with the modules filled, fewer declarations than on a fresh project.
+        assertSameOntology("src/ontology/tmp/loim-preprocess.owl",
+                theirs("no-mirror-refresh-imports", "src/ontology/tmp/loim-preprocess.owl"),
+                new File(project, "src/ontology/tmp/loim-preprocess.owl"));
+    }
+
+    /** ODK's no-mirror-refresh-<id>: the same for one import. */
+    @Test
+    void oneModuleIsBuiltAgainFromItsMirrorAsItIsAsOdkBuiltIt() throws Exception {
+        theProjectRefreshedAndOneMoreTermAskedFor();
+
+        List<String> ours = runHeldAgainstTheRecording("no-mirror-refresh-ro");
+
+        assertEquals(new ArrayList<String>(), starting("curl ", ours), "nothing is fetched");
+        assertBuiltAsOdkBuiltIt("no-mirror-refresh-ro", "src/ontology/imports/ro_import.owl");
+        assertTrue(read(new File(project, "src/ontology/imports/ro_import.owl"))
+                .contains("RO_0002577"), "the term that was added is in the module now");
+        assertSameOntology("src/ontology/tmp/loim-preprocess.owl",
+                theirs("no-mirror-refresh-ro", "src/ontology/tmp/loim-preprocess.owl"),
+                new File(project, "src/ontology/tmp/loim-preprocess.owl"));
     }
 
     /**

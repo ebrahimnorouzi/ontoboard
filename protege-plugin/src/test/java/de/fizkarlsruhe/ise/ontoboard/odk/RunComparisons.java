@@ -57,24 +57,38 @@ final class RunComparisons {
     /**
      * A product of the release against ODK's, as closely as the OWL API this runs on allows.
      *
-     * <p>On ODK's own OWL API the file is ODK's character for character, but for the one line
-     * in which the OWL API names its own build. On the older one the content is the same and
-     * the writing differs where that OWL API writes otherwise: in OBO the header names the
-     * Dublin Core properties in full where ODK's declares short names for them; in RDF/XML a
-     * plain string carries its datatype - so there the ontologies are compared, not the text.
+     * <p>The file is ODK's character for character, but for the one line in which the OWL API
+     * names its own build - on ODK's own OWL API and, since OntoBoard's engine writes a
+     * string as ODK's OWL API writes it ({@code SimpleStrings}), on the older one as well.
+     * Only OBO differs there: its header names the Dublin Core properties in full where
+     * ODK's declares short names for them.
      */
     static void assertSameProduct(String name, File theirs, File ours) throws Exception {
-        if (onOdksOwlApi()) {
-            assertEquals(butForTheLineOfTheOwlApi(read(theirs)),
-                    butForTheLineOfTheOwlApi(read(ours)), name + ": ODK's file, character for "
-                            + "character but for the line in which the OWL API names its build");
-        } else if (name.endsWith(".obo")) {
+        if (!onOdksOwlApi() && name.endsWith(".obo")) {
             assertEquals(String.join("\n", withItsShortNamesInFull(lines(read(theirs)))),
                     String.join("\n", lines(read(ours))), name + ": ODK's file, the short names "
                             + "of its header written in full as the older OWL API writes them");
         } else {
-            assertSameOntology(name, theirs, ours);
+            assertSameFile(name, theirs, ours);
         }
+    }
+
+    /**
+     * A file ROBOT wrote here against the one ODK's ROBOT wrote: character for character,
+     * but for what shows the OWL API's version - the line in which it names its build and,
+     * on the older one, the default prefix of a file in functional syntax, which that one
+     * keeps from the file it read where ODK's takes it from the ontology's new name.
+     */
+    static void assertSameFile(String name, File theirs, File ours) throws Exception {
+        assertEquals(butForWhatShowsTheOwlApi(read(theirs)), butForWhatShowsTheOwlApi(
+                read(ours)), name + ": ODK's file, character for character but for what "
+                        + "shows the OWL API's version");
+    }
+
+    private static String butForWhatShowsTheOwlApi(String text) {
+        String generated = butForTheLineOfTheOwlApi(text);
+        return onOdksOwlApi() ? generated
+                : generated.replaceFirst("(?m)^Prefix\\(:=<[^>]*>\\)$", "Prefix(:=<...>)");
     }
 
     private static String butForTheLineOfTheOwlApi(String text) {

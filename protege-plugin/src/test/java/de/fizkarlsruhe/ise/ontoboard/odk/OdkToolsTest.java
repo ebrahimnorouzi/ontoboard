@@ -83,6 +83,35 @@ class OdkToolsTest {
 
     // ------------------------------------------------------------------ robot
 
+    /**
+     * The OWL API of Protege 5.5.0 writes a string in functional syntax with or without
+     * its datatype, by what the process loaded before; ODK's writes it without, always.
+     * So does a line run here - whatever the process has met.
+     */
+    @Test
+    void robotWritesAStringInItsSimpleFormWhateverTheProcessMetBefore() throws Exception {
+        // The process meets the string with its datatype named, and holds on to it.
+        org.semanticweb.owlapi.model.OWLOntology met =
+                org.semanticweb.owlapi.apibinding.OWLManager.createOWLOntologyManager()
+                        .loadOntologyFromOntologyDocument(
+                                new org.semanticweb.owlapi.io.StringDocumentSource(
+                                        "Prefix(xsd:=<http://www.w3.org/2001/XMLSchema#>)\n"
+                                        + "Prefix(owl:=<http://www.w3.org/2002/07/owl#>)\n"
+                                        + "Ontology(<https://example.org/met>\n"
+                                        + "Annotation(owl:versionInfo \"9.9.9-met\""
+                                        + "^^xsd:string)\n)\n"));
+        write("myont-edit.ofn", ONTOLOGY);
+
+        assertEquals(0, run("robot annotate --input myont-edit.ofn --annotation "
+                + "owl:versionInfo 9.9.9-met convert --format ofn --output out.ofn"),
+                said.toString());
+
+        String written = new String(Files.readAllBytes(new File(folder, "out.ofn").toPath()),
+                StandardCharsets.UTF_8);
+        assertTrue(written.contains("Annotation(owl:versionInfo \"9.9.9-met\")"), written);
+        assertEquals(1, met.getAnnotations().size(), "still held");
+    }
+
     @Test
     void robotRunsWithTheProjectsPathsAndSaysThemAsWritten() throws IOException {
         write("myont-edit.ofn", ONTOLOGY);

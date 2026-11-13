@@ -238,6 +238,52 @@ public abstract class OntoBoardAction extends ProtegeOWLAction {
         }
     }
 
+    /** Something to do that may fail. */
+    protected interface Step {
+        void take() throws Exception;
+    }
+
+    /** Does it on the dispatch thread and waits; why it failed, or null. */
+    protected static String onDispatchThread(final Step step) {
+        final String[] failure = new String[1];
+        Runnable work = new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    step.take();
+                } catch (Exception | LinkageError cannot) {
+                    failure[0] = said(cannot);
+                }
+            }
+        };
+        if (javax.swing.SwingUtilities.isEventDispatchThread()) {
+            work.run();
+            return failure[0];
+        }
+        try {
+            javax.swing.SwingUtilities.invokeAndWait(work);
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+            return "the wait for it was interrupted";
+        } catch (java.lang.reflect.InvocationTargetException thrown) {
+            return said(thrown.getCause() == null ? thrown : thrown.getCause());
+        }
+        return failure[0];
+    }
+
+    /** A failure in its own words, down to the cause that says something. */
+    protected static String said(Throwable failure) {
+        Throwable at = failure;
+        while (at.getCause() != null && at.getCause() != at
+                && (at.getMessage() == null || at.getMessage().trim().isEmpty()
+                        || at.getMessage().equals(at.getCause().toString()))) {
+            at = at.getCause();
+        }
+        String message = at.getMessage() == null || at.getMessage().trim().isEmpty()
+                ? at.getClass().getSimpleName() : at.getMessage().trim();
+        return message.endsWith(".") ? message.substring(0, message.length() - 1) : message;
+    }
+
     protected void applyOnEventThread(final java.util.List<OWLOntologyChange> changes) {
         if (javax.swing.SwingUtilities.isEventDispatchThread()) {
             getOWLModelManager().applyChanges(changes);

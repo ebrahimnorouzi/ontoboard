@@ -163,6 +163,21 @@ class ReleaseByItselfTest {
         assertEquals(new ArrayList<List<String>>(), gitRan);
     }
 
+    /**
+     * A run the person stopped comes back as stopped, as a process that was ended does:
+     * whoever reads the outcome says "you stopped it", not "make failed".
+     */
+    @Test
+    void aRunThatWasStoppedComesBackAsStopped() throws Exception {
+        ProcessRunner.Outcome ran = OdkRelease.byOntoBoardItself(edit, () -> true)
+                .run(Arrays.asList("make", "test_fast"), false);
+
+        assertFalse(ran.isSuccess());
+        assertTrue(ran.wasCancelled(), String.join("\n", ran.getOutput()));
+        assertTrue(MakeRun.explain("test_fast", ran).startsWith("You stopped the build"),
+                MakeRun.explain("test_fast", ran));
+    }
+
     /** A project's own release script is a shell script: it is not a target of make. */
     @Test
     void aScriptOfTheProjectsOwnIsNotRunThisWay() throws Exception {

@@ -88,7 +88,13 @@ final class OdkTools {
         public int run(RecipeShell.Call call) {
             File folder = call.folder();
             OdkRobot.Result result;
+            // The files the line names, as they are before it runs: what is another
+            // file afterwards, the line wrote.
+            Map<File, String> before = new LinkedHashMap<File, String>();
             try {
+                for (String named : RobotPaths.files(call.arguments(), folder)) {
+                    before.put(new File(named), stampOf(new File(named)));
+                }
                 result = OdkRobot.run(RobotPaths.absolute(call.arguments(), folder), folder);
             } catch (IllegalArgumentException refused) {
                 // RobotPaths' Unknown among them. Asked before, so only what changed since.
@@ -102,7 +108,38 @@ final class OdkTools {
                 call.complain(asWritten(result.failure(), folder));
                 return 1;
             }
+            // What ROBOT wrote says a string as ODK's OWL API says it, whatever this
+            // process loaded before (SimpleStrings).
+            for (Map.Entry<File, String> named : before.entrySet()) {
+                if (!named.getValue().equals(stampOf(named.getKey()))) {
+                    try {
+                        SimpleStrings.simplify(named.getKey());
+                    } catch (IOException | RuntimeException leftAsWritten) {
+                        // The file is ROBOT's, whole and valid; only the form of its
+                        // strings may differ from ODK's.
+                        call.complain(asWritten(named.getKey().getPath(), folder)
+                                + " was written; its strings were not brought to their "
+                                + "simple form (" + leftAsWritten.getMessage() + ")");
+                    }
+                }
+            }
             return 0;
+        }
+
+        /**
+         * Whether a file is there, and its time and length: other when it was written. The
+         * time as the file system has it - Java 8's own File gives whole seconds on Linux
+         * and macOS, and a line can write a file twice within one.
+         */
+        private static String stampOf(File file) {
+            if (!file.isFile()) {
+                return "";
+            }
+            try {
+                return Files.getLastModifiedTime(file.toPath()) + " " + file.length();
+            } catch (IOException | RuntimeException notRead) {
+                return file.lastModified() + " " + file.length();
+            }
         }
 
         /** The text with the folder's absolute path, and the separator after it, taken out. */

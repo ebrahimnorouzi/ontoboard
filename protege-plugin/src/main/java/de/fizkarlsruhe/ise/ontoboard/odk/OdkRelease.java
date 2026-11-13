@@ -328,7 +328,10 @@ public final class OdkRelease {
                 if (!outcome.isOk()) {
                     said.add(outcome.getFailure());
                 }
-                return new ProcessRunner.Outcome(outcome.isOk() ? 0 : 2, said, false);
+                // A run the person stopped is one that was ended, as a process is: who
+                // reads the outcome then says so, and not that make failed.
+                return new ProcessRunner.Outcome(outcome.isOk() ? 0 : 2, said, false,
+                        outcome.wasStopped());
             }
 
             @Override

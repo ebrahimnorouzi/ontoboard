@@ -775,7 +775,9 @@ class OdkRobotTest {
 
         assertFalse(result.ok());
         assertTrue(result.failure().contains("'" + command + "'"), result.failure());
-        assertTrue(result.failure().contains("container"), result.failure());
+        assertTrue(result.failure().contains("is not run inside Protege"), result.failure());
+        // What OntoBoard does not do is said here; who else does it, the engine adds.
+        assertFalse(result.failure().contains("container"), result.failure());
     }
 
     /** A line ends at the command that fails, as the process would: what follows is not run. */

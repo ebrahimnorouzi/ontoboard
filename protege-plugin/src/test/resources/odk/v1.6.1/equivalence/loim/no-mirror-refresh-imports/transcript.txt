@@ -1,0 +1,41 @@
+make --assume-new=loim-edit.owl \
+	--assume-new=imports/ro_terms.txt --assume-new=imports/iao_terms.txt --assume-new=imports/bfo_terms.txt \
+	IMP=true MIR=false PAT=false IMP_LARGE=true all_imports
+make[1]: Entering directory '/tmp/odk/loim/src/ontology'
+robot --catalog catalog-v001.xml convert --input loim-edit.owl --format ofn --output tmp/loim-preprocess.owl
+robot --catalog catalog-v001.xml remove --input tmp/loim-preprocess.owl --select imports --trim false \
+	 merge  \
+	       --output tmp/merged-loim-edit.ofn
+robot --catalog catalog-v001.xml query --input tmp/merged-loim-edit.ofn --format --csv \
+	       --query ../sparql/terms.sparql tmp/pre_seed.txt
+cat tmp/pre_seed.txt | sort | uniq > tmp/seed.txt
+robot --catalog catalog-v001.xml annotate --input mirror/ro.owl --remove-annotations \
+	 odk:normalize --add-source true \
+	 extract --term-file imports/ro_terms.txt --term-file tmp/seed.txt \
+	         --force true --copy-ontology-annotations true \
+	         --individuals include \
+	         --method BOT \
+	 remove  --term rdfs:label  --term IAO:0000115  --term OMO:0002000 \
+	        --term-file imports/ro_terms.txt --term-file tmp/seed.txt \
+	        --select complement --select annotation-properties \
+	 odk:normalize --base-iri http://purl.obolibrary.org/obo \
+	               --subset-decls true --synonym-decls true \
+	 repair --merge-axiom-annotations true \
+	 annotate --ontology-iri http://purl.obolibrary.org/obo/loim/imports/ro_import.owl annotate -V http://purl.obolibrary.org/obo/loim/releases/1.0.0/imports/ro_import.owl --annotation owl:versionInfo 1.0.0 convert -f ofn --output imports/ro_import.owl.tmp.owl && mv imports/ro_import.owl.tmp.owl imports/ro_import.owl
+robot --catalog catalog-v001.xml annotate --input mirror/iao.owl --remove-annotations \
+	 odk:normalize --add-source true \
+	 extract --term-file imports/iao_terms.txt --term-file tmp/seed.txt \
+	         --copy-ontology-annotations true --force true \
+	         --individuals include \
+	         --method TOP \
+	 remove  --term rdfs:label  --term IAO:0000115  --term OMO:0002000 \
+	        --term rdfs:label \
+	        --term IAO:0000115 \
+	        --term OMO:0002000 \
+	        --term-file imports/iao_terms.txt --term-file tmp/seed.txt \
+	        --select complement --select annotation-properties \
+	 odk:normalize --base-iri http://purl.obolibrary.org/obo \
+	               --subset-decls true --synonym-decls true \
+	 repair --merge-axiom-annotations true \
+	 annotate --ontology-iri http://purl.obolibrary.org/obo/loim/imports/iao_import.owl annotate -V http://purl.obolibrary.org/obo/loim/releases/1.0.0/imports/iao_import.owl --annotation owl:versionInfo 1.0.0 convert -f ofn --output imports/iao_import.owl.tmp.owl && mv imports/iao_import.owl.tmp.owl imports/iao_import.owl
+make[1]: Leaving directory '/tmp/odk/loim/src/ontology'

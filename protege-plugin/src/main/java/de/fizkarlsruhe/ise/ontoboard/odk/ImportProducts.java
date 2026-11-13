@@ -348,6 +348,13 @@ public final class ImportProducts {
         NO_SOURCE,
 
         /**
+         * Declared to be kept as it is: {@code module_type: custom} with
+         * {@code mirror_type: no_mirror}. ODK's refresh leaves such a module alone, and
+         * nothing about it is missing: it is how an import that is kept whole is declared.
+         */
+        FROZEN,
+
+        /**
          * On disk, and in no product.
          *
          * <p>ODK's {@code IMPORTS} list comes from {@code import_group.products}, so nothing
@@ -471,7 +478,11 @@ public final class ImportProducts {
             ImportModules.Module module = ImportModules.moduleFor(projectRoot, product.getId());
             String source = product.getSource();
             Verdict verdict;
-            if (needsTermList(product) && !module.isRebuildable()) {
+            if (isFrozen(product)) {
+                // A pattern is declared this way too, and is still called a pattern.
+                verdict = recordedPatternIn(module) != null ? Verdict.PATTERN
+                        : Verdict.FROZEN;
+            } else if (needsTermList(product) && !module.isRebuildable()) {
                 verdict = Verdict.NO_TERM_LIST;
             } else if (!product.isRebuildable()) {
                 verdict = Verdict.REFUSED;
@@ -491,6 +502,11 @@ public final class ImportProducts {
                     recordedPatternIn(module) != null ? Verdict.PATTERN : Verdict.UNDECLARED));
         }
         return rows;
+    }
+
+    /** Whether the product is declared to be kept as it is: custom, and no mirror. */
+    private static boolean isFrozen(Product product) {
+        return "custom".equalsIgnoreCase(product.getModuleType()) && !product.isMirrored();
     }
 
     /**

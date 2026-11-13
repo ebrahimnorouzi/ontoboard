@@ -38,11 +38,18 @@ public final class OdkEngine {
         private final String failure;
         private final List<String> transcript;
         private final boolean ranAnything;
+        private final boolean stopped;
 
         private Outcome(String failure, List<String> transcript, boolean ranAnything) {
+            this(failure, transcript, ranAnything, false);
+        }
+
+        private Outcome(String failure, List<String> transcript, boolean ranAnything,
+                boolean stopped) {
             this.failure = failure;
             this.transcript = Collections.unmodifiableList(new ArrayList<String>(transcript));
             this.ranAnything = ranAnything;
+            this.stopped = stopped;
         }
 
         public boolean isOk() {
@@ -62,6 +69,11 @@ public final class OdkEngine {
         /** False when the target was refused before its first line ran: nothing was touched. */
         public boolean ranAnything() {
             return ranAnything;
+        }
+
+        /** Whether the run ended because the person stopped it, not because a line failed. */
+        public boolean wasStopped() {
+            return stopped;
         }
     }
 
@@ -173,7 +185,7 @@ public final class OdkEngine {
         if (wasStopped[0]) {
             return new Outcome("You stopped '" + goal + "'. What it had written by then is "
                     + "still there, so the next run starts from a half-finished state - run "
-                    + "the target clean first if that matters.", transcript, ran[0]);
+                    + "the target clean first if that matters.", transcript, ran[0], true);
         }
         return new Outcome(whyItStopped(goal, transcript, complaint[0]), transcript, ran[0]);
     }

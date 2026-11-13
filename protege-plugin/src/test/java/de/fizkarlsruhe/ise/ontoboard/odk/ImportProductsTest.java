@@ -539,6 +539,59 @@ class ImportProductsTest {
         assertFalse(row.willRebuild());
     }
 
+    /**
+     * A module declared to be kept as it is - ODK's custom, and no mirror - is frozen: ODK's
+     * refresh does not touch it, and nothing is missing. It is how OntoBoard declares an
+     * import it keeps whole.
+     */
+    @Test
+    void aModuleDeclaredToBeKeptAsItIsIsFrozen(@TempDir File root) throws Exception {
+        projectHolding(root, "whole");
+
+        ImportProducts.Row row = ImportProducts.audit(
+                ImportProducts.declaredIn("import_group:\n  products:\n    - id: whole\n"
+                        + "      module_type: custom\n      mirror_type: no_mirror\n"),
+                ImportModules.modulesIn(root), root).get(0);
+
+        assertEquals(ImportProducts.Verdict.FROZEN, row.getVerdict());
+        assertFalse(row.willRebuild());
+        assertFalse(row.termListIsRead(), "its term list is not what makes it");
+    }
+
+    /** A custom module that has a mirror is their own rule's to build, as before. */
+    @Test
+    void aCustomModuleWithAMirrorIsNotFrozen(@TempDir File root) throws Exception {
+        projectHolding(root, "bespoke");
+
+        ImportProducts.Row row = ImportProducts.audit(
+                ImportProducts.declaredIn("import_group:\n  products:\n    - id: bespoke\n"
+                        + "      module_type: custom\n"),
+                ImportModules.modulesIn(root), root).get(0);
+
+        assertEquals(ImportProducts.Verdict.REFUSED, row.getVerdict());
+    }
+
+    /** A pattern from the library is still called a pattern once it is declared. */
+    @Test
+    void aDeclaredPatternIsStillCalledAPattern(@TempDir File root) throws Exception {
+        File imports = new File(root, ImportModules.IMPORTS_DIRECTORY);
+        assertTrue(imports.mkdirs());
+        Files.write(new File(imports, "componency_import.owl").toPath(),
+                "<rdf:RDF/>".getBytes(StandardCharsets.UTF_8));
+        Files.write(new File(imports, "componency_terms.txt").toPath(),
+                ("# Source: http://www.ontologydesignpatterns.org/cp/owl/componency.owl\n"
+                        + "# Pattern: componency\nhttp://example.org/A\n")
+                        .getBytes(StandardCharsets.UTF_8));
+
+        ImportProducts.Row row = ImportProducts.audit(
+                ImportProducts.declaredIn("import_group:\n  products:\n    - id: componency\n"
+                        + "      module_type: custom\n      mirror_type: no_mirror\n"),
+                ImportModules.modulesIn(root), root).get(0);
+
+        assertEquals(ImportProducts.Verdict.PATTERN, row.getVerdict());
+        assertFalse(row.willRebuild(), "nothing downloads a pattern");
+    }
+
     /** The declaration's order is kept, and the undeclared ones come after it. */
     @Test
     void declaredComeFirstInTheProjectsOrder(@TempDir File root) throws Exception {

@@ -45,6 +45,12 @@ import org.semanticweb.owlapi.model.OWLOntologyManager;
  * does not contain it, {@code make refresh-imports} never touches it, and nothing regenerates it;
  * three of the four projects have one.
  *
+ * <p><b>An ODK project's modules are built by ODK's own targets</b> (1.153.0):
+ * {@code refresh-imports}, {@code refresh-<id>} and their {@code no-mirror-} kin, run by ODK's
+ * tools on the machine, in ODK's container, or by OntoBoard itself with ODK's Makefile
+ * ({@link OdkImportsForm}) - not by the extraction below, which comes close to ODK's and is
+ * kept for projects of the older layout. What the run changed is read again by Protege.
+ *
  * <p>This plugin wrote modules without term lists until 1.38.0, so a project built with an earlier
  * version will report imports that cannot be rebuilt. Re-running <em>ROBOT &gt; Import terms...</em>
  * for those writes the missing list.
@@ -58,6 +64,22 @@ public class RefreshImportsAction extends OntoBoardAction {
 
     private volatile boolean rebuild;
     private volatile boolean updateMirror;
+
+    /** Set in {@link #configure()} for an ODK project: ODK's own targets build its modules. */
+    private volatile boolean odkProject;
+    /** Every import, or the id of one. */
+    private volatile String which = OdkImportsForm.ALL;
+    /** Who runs ODK's targets, decided with the form so that the run does not ask again. */
+    private volatile OdkImportsForm.Way odkWay;
+    private volatile String runtime = "docker";
+    private volatile String image;
+    /** Why that image is not the project's own ODK, for the log; null when it is. */
+    private volatile String imageNote;
+    private volatile de.fizkarlsruhe.ise.ontoboard.odk.OdkContainer.Host host =
+            de.fizkarlsruhe.ise.ontoboard.odk.OdkContainer.Host.unknown();
+
+    /** How much of a run's log is shown, as for Build. */
+    private static final int MAX_LINES = 4000;
 
     @Override
     protected String operationName() {
@@ -90,6 +112,12 @@ public class RefreshImportsAction extends OntoBoardAction {
                 ? "This project declares no imports in import_group.products."
                 : declared.size() + " import" + (declared.size() == 1 ? "" : "s") + " declared, "
                         + canRebuild + " of them a kind this can rebuild.";
+
+        odkProject = editFile != null
+                && de.fizkarlsruhe.ise.ontoboard.odk.OdkRelease.isOdkProject(editFile);
+        if (odkProject) {
+            return configureOdk(editFile, declared);
+        }
 
         Map<String, String> chosen = ParameterDialog.show(getOWLWorkspace(), "Refresh imports",
                 "An import module is meant to be regenerated from a committed list of terms, not "
@@ -127,6 +155,135 @@ public class RefreshImportsAction extends OntoBoardAction {
         return true;
     }
 
+    /**
+     * The form for an ODK project: who would run ODK's targets is found out first and said
+     * on the form; what cannot work is said before anything runs.
+     */
+    private boolean configureOdk(File editFile, List<ImportProducts.Product> declared) {
+        de.fizkarlsruhe.ise.ontoboard.proc.ProcessRunner.Runner real =
+                de.fizkarlsruhe.ise.ontoboard.proc.ProcessRunner.real();
+        File ontologyDirectory = editFile.getAbsoluteFile().getParentFile();
+        String found = de.fizkarlsruhe.ise.ontoboard.odk.MakeRun.containerRuntime(real);
+        // An image that is on this machine, or none: nothing is fetched to refresh imports.
+        de.fizkarlsruhe.ise.ontoboard.odk.OdkImage.Choice choice = found == null ? null
+                : de.fizkarlsruhe.ise.ontoboard.odk.OdkImage.forProject(ontologyDirectory,
+                        de.fizkarlsruhe.ise.ontoboard.odk.OdkImage.probe(found, real));
+        boolean container = choice != null && choice.reference() != null;
+        File environment = de.fizkarlsruhe.ise.ontoboard.odk.Toolchain.nativeEnvironment();
+        String noContainer = container ? null
+                : found == null
+                        ? de.fizkarlsruhe.ise.ontoboard.odk.OdkRoute.noContainerBecause(real)
+                        : "ODK's image is not on this machine";
+        OdkImportsForm.Way way = OdkImportsForm.way(environment == null ? null
+                : de.fizkarlsruhe.ise.ontoboard.odk.Toolchain.activationScript(environment),
+                de.fizkarlsruhe.ise.ontoboard.odk.OdkRoute.use(), container ? found : null,
+                container ? choice.reference() : null, noContainer,
+                container || choice == null ? null : choice.note());
+
+        String declares = declared.isEmpty()
+                ? "This project declares no imports in import_group.products."
+                : declared.size() + " import" + (declared.size() == 1 ? "" : "s")
+                        + " declared.";
+        Map<String, String> chosen = ParameterDialog.show(getOWLWorkspace(), "Refresh imports",
+                OdkImportsForm.explanation(declares, way),
+                OdkImportsForm.parameters(declared, way));
+        if (chosen == null) {
+            return false;
+        }
+        rebuild = "true".equalsIgnoreCase(chosen.get(OdkImportsForm.REBUILD));
+        updateMirror = "true".equalsIgnoreCase(chosen.get(OdkImportsForm.FETCH));
+        which = chosen.get(OdkImportsForm.WHICH) == null ? OdkImportsForm.ALL
+                : chosen.get(OdkImportsForm.WHICH);
+        odkWay = way;
+        if (!rebuild) {
+            return true;
+        }
+        if (way.refusal() != null) {
+            javax.swing.JOptionPane.showMessageDialog(getOWLWorkspace(),
+                    ReleaseAction.commandsShown(way.refusal()), "Cannot refresh the imports",
+                    javax.swing.JOptionPane.INFORMATION_MESSAGE);
+            return false;
+        }
+        // ODK's targets read the file, not the window: the terms the edit file uses decide
+        // what the modules hold.
+        if (SaveFirst.isNeeded(getOWLModelManager()) && SaveFirst.ask(getOWLWorkspace(),
+                getOWLModelManager(), "The ontology has changes that are not saved yet. The "
+                        + "refresh reads the file on disk - the terms it uses decide what "
+                        + "the modules hold - so it would not see them.",
+                "Save and refresh", "Refresh from the saved file",
+                "Cannot refresh the imports") == SaveFirst.Answer.CANCELLED) {
+            return false;
+        }
+        imageNote = null;
+        if (way.kind() == OdkImportsForm.Way.Kind.CONTAINER) {
+            runtime = found;
+            image = choice.reference();
+            imageNote = choice.note();
+            host = de.fizkarlsruhe.ise.ontoboard.odk.OdkContainer.Host.detect(found, real);
+        }
+        return true;
+    }
+
+    /** Who runs make for the imports, as decided with the form. */
+    private de.fizkarlsruhe.ise.ontoboard.odk.OdkRelease.Odk odk(File editFile) {
+        File ontologyDirectory = editFile.getAbsoluteFile().getParentFile();
+        de.fizkarlsruhe.ise.ontoboard.proc.ProcessRunner.Runner real =
+                de.fizkarlsruhe.ise.ontoboard.proc.ProcessRunner.real();
+        if (odkWay.kind() == OdkImportsForm.Way.Kind.NATIVE) {
+            return de.fizkarlsruhe.ise.ontoboard.odk.OdkRelease.inNativeEnvironment(
+                    de.fizkarlsruhe.ise.ontoboard.odk.Toolchain.activationScript(
+                            de.fizkarlsruhe.ise.ontoboard.odk.Toolchain.nativeEnvironment()),
+                    ontologyDirectory, real, null);
+        }
+        if (odkWay.kind() == OdkImportsForm.Way.Kind.CONTAINER) {
+            return de.fizkarlsruhe.ise.ontoboard.odk.OdkRelease.inContainer(runtime, image,
+                    host, ontologyDirectory, real, null);
+        }
+        return de.fizkarlsruhe.ise.ontoboard.odk.OdkRelease.byOntoBoardItself(editFile,
+                new java.util.function.BooleanSupplier() {
+                    @Override
+                    public boolean getAsBoolean() {
+                        return BackgroundRun.abandoned();
+                    }
+                });
+    }
+
+    /**
+     * Protege, asked to read module files again: each one it has loaded is reloaded its
+     * own way ({@code OWLModelManager.reload}, on the dispatch thread), which patches what
+     * is open to what the file now holds and notes the file's time, so that Protege does
+     * not ask about a file that changed outside of it. A module it has not loaded - one
+     * that was not there when the ontology was opened - is left for the next opening.
+     */
+    private final class Open implements OdkImportsForm.Session {
+        private final OWLOntology ontology;
+
+        Open(OWLOntology ontology) {
+            this.ontology = ontology;
+        }
+
+        @Override
+        public String readAgain(List<File> modules) {
+            List<String> failures = new java.util.ArrayList<String>();
+            for (File module : modules) {
+                final OWLOntology open = ModuleRebuild.openFrom(ontology, module);
+                if (open == null) {
+                    continue;
+                }
+                String failure = onDispatchThread(new Step() {
+                    @Override
+                    public void take() throws Exception {
+                        getOWLModelManager().reload(open);
+                    }
+                });
+                if (failure != null) {
+                    failures.add(module.getName() + ": " + failure);
+                }
+            }
+            return failures.isEmpty() ? null : String.join("; ", failures);
+        }
+    }
+
     @Override
     protected OperationResult run(OWLOntology ontology) {
         File root = projectRootOf(ontology);
@@ -145,6 +302,21 @@ public class RefreshImportsAction extends OntoBoardAction {
         List<ImportProducts.Product> declared = editFile == null
                 ? java.util.Collections.<ImportProducts.Product>emptyList()
                 : ImportProducts.declaredIn(editFile.getAbsoluteFile().getParentFile());
+
+        // An ODK project: ODK's own targets build the modules, before the table is made,
+        // so that the table shows the project as it is afterwards.
+        boolean odk = odkProject && odkWay != null && editFile != null;
+        OdkImportsForm.Asked asked = odk ? OdkImportsForm.asked(declared, which,
+                updateMirror, editFile.getAbsoluteFile().getParentFile()) : null;
+        OdkImportsForm.Ran ran = odk && rebuild ? OdkImportsForm.refresh(editFile, asked,
+                java.util.Collections.<String>emptyList(), odk(editFile), new Open(ontology))
+                : null;
+        Set<String> rebuiltByOdk = new LinkedHashSet<String>();
+        for (File changed : ran == null ? java.util.Collections.<File>emptyList()
+                : ran.changed()) {
+            rebuiltByOdk.add(changed.getName());
+        }
+
         List<ImportModules.Module> onDisk = ImportModules.modulesIn(root);
 
         if (declared.isEmpty() && onDisk.isEmpty()) {
@@ -168,7 +340,9 @@ public class RefreshImportsAction extends OntoBoardAction {
             ImportModules.Module module = row.getModule();
             result.row(row.getName(),
                     row.describeDeclaration(),
-                    module.hasModule() ? "present" : "not built",
+                    module.hasModule() && module.getModuleFile() != null
+                            && rebuiltByOdk.contains(module.getModuleFile().getName())
+                            ? "rebuilt" : module.hasModule() ? "present" : "not built",
                     module.isRebuildable() ? "present"
                             : (row.termListIsRead() ? "MISSING" : "not used"),
                     row.getSource() == null ? "unrecorded" : row.getSource());
@@ -185,7 +359,15 @@ public class RefreshImportsAction extends OntoBoardAction {
                     // Named rather than rebuilt approximately. Each reason is ODK's own rule for
                     // that module_type said in words, and the worst outcome here would be a module
                     // that looks right, differs from the repository's, and says nothing about it.
-                    result.note(row.getName() + ": " + row.getProduct().getRefusal());
+                    // Not for an ODK project: there ODK's own rule builds it.
+                    if (!odk) {
+                        result.note(row.getName() + ": " + row.getProduct().getRefusal());
+                    }
+                    break;
+                case FROZEN:
+                    result.note(row.getName() + " is declared to be kept as it is "
+                            + "(module_type custom, mirror_type no_mirror): nothing fetches "
+                            + "it, and a refresh leaves it alone.");
                     break;
                 case NO_SOURCE:
                     result.warn(row.getName() + " declares mirror_type: no_mirror, so there is no "
@@ -212,7 +394,7 @@ public class RefreshImportsAction extends OntoBoardAction {
             }
             if (row.willRebuild()) {
                 rebuildable++;
-                if (rebuild) {
+                if (rebuild && !odk) {
                     rebuilt += rebuildOne(ontology, module, row.getSource(), row.getMethod(),
                             root, result) ? 1 : 0;
                 }
@@ -244,6 +426,9 @@ public class RefreshImportsAction extends OntoBoardAction {
         String counted = declared.size() + " declared" + (undeclared == 0 ? ""
                 : ", " + undeclared + " on disk and undeclared")
                 + (patterns == 0 ? "" : ", " + patterns + " from the pattern library");
+        if (odk) {
+            return withOdk(result, counted, asked, ran);
+        }
         if (!rebuild) {
             result.note(ImportModules.hasMirror(root)
                     ? "This project has a mirror, so a rebuild would work offline."
@@ -258,6 +443,63 @@ public class RefreshImportsAction extends OntoBoardAction {
                 + "to one `make refresh-imports` produces.");
         return result.summary("Rebuilt " + rebuilt + " of " + rebuildable + " rebuildable, out of "
                 + counted + ".").build();
+    }
+
+    /**
+     * What the result says for an ODK project: what would be asked of ODK's Makefile, or
+     * what was - with the run's log - and what changed.
+     */
+    private OperationResult withOdk(OperationResult.Builder result, String counted,
+            OdkImportsForm.Asked asked, OdkImportsForm.Ran ran) {
+        String targets = "make " + String.join(", then make ", asked.targets());
+        for (String note : asked.notes()) {
+            result.note(note);
+        }
+        if (ran == null) {
+            result.note(odkWay.refusal() == null
+                    ? "With 'Rebuild the modules' on, this runs " + targets + " - ODK's own, "
+                            + odkWay.who() + "."
+                    : "With 'Rebuild the modules' on, this would run " + targets
+                            + " - but as things are: "
+                            + odkWay.refusal().replace("\n\n", " "));
+            result.note("Nothing was changed - 'Rebuild the modules' was off.");
+            return result.summary(counted + ".").build();
+        }
+        if (imageNote != null) {
+            // Not the ODK that wrote this project's Makefile: said, as Build says it.
+            result.warn(imageNote);
+        }
+        int shown = 0;
+        for (String line : ran.transcript()) {
+            if (shown++ >= MAX_LINES) {
+                break;
+            }
+            result.note(line);
+        }
+        if (ran.transcript().size() > MAX_LINES) {
+            result.warn("Transcript cut after " + MAX_LINES + " of " + ran.transcript().size()
+                    + " lines.");
+        }
+        for (File changed : ran.changed()) {
+            result.wrote(changed);
+        }
+        if (ran.notReadAgain() != null) {
+            result.warn("The modules were rebuilt on disk, but Protege could not read them "
+                    + "again (" + ran.notReadAgain() + "). Close the ontology and open it "
+                    + "again to see them.");
+        }
+        if (!ran.isOk()) {
+            return result.failed(ran.failure()).build();
+        }
+        int changed = ran.changed().size();
+        return result.summary("Refreshed the imports with ODK's own "
+                + String.join(" and ", asked.targets()) + ", " + odkWay.who() + ": "
+                + (changed == 0 ? "no module changed."
+                        : changed + " module" + (changed == 1 ? "" : "s") + " changed"
+                                + (ran.notReadAgain() == null
+                                        ? " and " + (changed == 1 ? "was" : "were")
+                                                + " read again."
+                                        : "."))).build();
     }
 
     /**
