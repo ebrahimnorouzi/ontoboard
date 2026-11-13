@@ -578,6 +578,50 @@ class OdkReleaseFormTest {
         assertTrue(log.contains("eggboil-edit.owl") && log.contains("reopen"), log);
     }
 
+    /**
+     * Where whoever has the project open reads again what the release rewrote, that is
+     * what is said - and nobody is told to reopen anything.
+     */
+    @Test
+    void aFileRewrittenUnderProtegeIsReadAgainWhereItCanBe() {
+        buildRewritesTheEditFile = true;
+        OdkReleaseForm.Start start = start();
+        final List<List<File>> asked = new ArrayList<List<File>>();
+
+        OperationResult result = OdkReleaseForm.run("Release", start, chosen(start), odk(),
+                git(), staging -> true, null, written -> {
+                    asked.add(written);
+                    return new WhatARunWrote.Done(written,
+                            java.util.Collections.<String>emptyList());
+                });
+
+        assertEquals(1, asked.size(), asked.toString());
+        assertTrue(asked.get(0).stream().anyMatch(
+                file -> file.getName().equals("eggboil-edit.owl")), asked.toString());
+        assertEquals(OperationResult.Status.SUCCEEDED, result.getStatus());
+        String log = String.join("\n", result.getLog());
+        assertTrue(log.contains("Protege has read again what the run rewrote: "
+                + "eggboil-edit.owl."), log);
+        assertFalse(log.contains("reopen"), log);
+    }
+
+    /** What could not be read again is said with its reason, as a warning. */
+    @Test
+    void aFileThatCouldNotBeReadAgainIsSaid() {
+        buildRewritesTheEditFile = true;
+        OdkReleaseForm.Start start = start();
+
+        OperationResult result = OdkReleaseForm.run("Release", start, chosen(start), odk(),
+                git(), staging -> true, null, written -> new WhatARunWrote.Done(
+                        java.util.Collections.<File>emptyList(), java.util.Collections
+                                .singletonList("eggboil-edit.owl could not be read again: "
+                                        + "it is in use.")));
+
+        assertEquals(OperationResult.Status.SUCCEEDED_WITH_WARNINGS, result.getStatus());
+        assertTrue(String.join("\n", result.getLog()).contains("eggboil-edit.owl could not "
+                + "be read again: it is in use."), result.getLog().toString());
+    }
+
     @Test
     void aReleaseThatFailsIsAFailedResultWithItsTranscript() {
         buildFails = true;

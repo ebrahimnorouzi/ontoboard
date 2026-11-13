@@ -2,6 +2,7 @@ package de.fizkarlsruhe.ise.ontoboard.odk;
 
 import de.fizkarlsruhe.ise.ontoboard.assistant.BuildInfo;
 import de.fizkarlsruhe.ise.ontoboard.odk.seed.OdkPin;
+import de.fizkarlsruhe.ise.ontoboard.tools.HttpsOpener;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -86,7 +87,7 @@ final class OdkTools {
 
         @Override
         public int run(RecipeShell.Call call) {
-            File folder = call.folder();
+            final File folder = call.folder();
             OdkRobot.Result result;
             // The files the line names, as they are before it runs: what is another
             // file afterwards, the line wrote.
@@ -95,7 +96,21 @@ final class OdkTools {
                 for (String named : RobotPaths.files(call.arguments(), folder)) {
                     before.put(new File(named), stampOf(new File(named)));
                 }
-                result = OdkRobot.run(RobotPaths.absolute(call.arguments(), folder), folder);
+                final List<String> line = RobotPaths.absolute(call.arguments(), folder);
+                // With this Java's certificates; and where it does not know a server's
+                // authority, once more with the operating system's as well.
+                result = HttpsOpener.alsoWithOperatingSystemsTrust(
+                        new HttpsOpener.Run<OdkRobot.Result>() {
+                            @Override
+                            public OdkRobot.Result run() {
+                                return OdkRobot.run(line, folder);
+                            }
+                        }, new java.util.function.Predicate<OdkRobot.Result>() {
+                            @Override
+                            public boolean test(OdkRobot.Result ran) {
+                                return failedOnACertificate(ran);
+                            }
+                        });
             } catch (IllegalArgumentException refused) {
                 // RobotPaths' Unknown among them. Asked before, so only what changed since.
                 call.complain(asWritten(String.valueOf(refused.getMessage()), folder));
@@ -124,6 +139,15 @@ final class OdkTools {
                 }
             }
             return 0;
+        }
+
+        /**
+         * Whether a line failed because this Java did not trust a server's certificate:
+         * ROBOT loads an ontology from its address itself, through the OWL API, and
+         * Protege 5.5.0's Java is older than several of today's authorities.
+         */
+        static boolean failedOnACertificate(OdkRobot.Result result) {
+            return !result.ok() && HttpsOpener.saysCertificatePathFailure(result.failure());
         }
 
         /**

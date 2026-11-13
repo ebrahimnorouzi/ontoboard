@@ -30,7 +30,7 @@ class BuildResultTest {
         InProcessTargets.Outcome outcome = InProcessTargets.run(edit, ontology,
                 Reasoners.Choice.ELK.newFactory(), "test");
 
-        String summary = BuildAction.inProcessResult(OperationResult.of("Build"), "test", edit,
+        String summary = BuildAction.inProcessResult(OperationResult.of("Build"), "test",
                 outcome, 1).getSummary();
 
         assertTrue(summary.startsWith("test finished in 1s"), summary);
@@ -65,7 +65,7 @@ class BuildResultTest {
         assertTrue(outcome.isOk() && !outcome.getWarnings().isEmpty(), outcome.getTranscript()
                 .toString());
 
-        String summary = BuildAction.inProcessResult(OperationResult.of("Build"), "reason", edit,
+        String summary = BuildAction.inProcessResult(OperationResult.of("Build"), "reason",
                 outcome, 1).getSummary();
 
         assertTrue(summary.contains("HermiT finds that egg mass value can have no members."),
@@ -86,7 +86,7 @@ class BuildResultTest {
                 Reasoners.Choice.ELK.newFactory(), "test");
         assertFalse(outcome.isOk());
 
-        String summary = BuildAction.inProcessResult(OperationResult.of("Build"), "test", edit,
+        String summary = BuildAction.inProcessResult(OperationResult.of("Build"), "test",
                 outcome, 1).getSummary();
 
         assertTrue(summary.contains("validate_profile found"), summary);

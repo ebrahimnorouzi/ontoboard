@@ -166,9 +166,20 @@ public class BuildAction extends OntoBoardAction {
 
     @Override
     protected OperationResult run(OWLOntology ontology) {
+        // What Protege has open, as it is before the target runs: what the run rewrites of
+        // it - the import modules ODK's full test builds again, a product somebody has
+        // open - is read again afterwards, whoever ran it.
+        de.fizkarlsruhe.ise.ontoboard.odk.FileStamps open = stampsOfWhatIsOpen();
+        OperationResult.Builder result = OperationResult.of(operationName());
+        OperationResult built = runTheTarget(ontology, result);
+        return readAgainWhatWasWritten(open, result) ? result.build() : built;
+    }
+
+    /** The target, run by whoever was decided; what came of it goes into the result. */
+    private OperationResult runTheTarget(OWLOntology ontology,
+            OperationResult.Builder result) {
         File editFile = fileOf(ontology);
         File directory = MakeRun.workingDirectory(editFile);
-        OperationResult.Builder result = OperationResult.of(operationName());
         result.note("Target: " + target);
         result.note("Directory: " + directory.getAbsolutePath());
 
@@ -218,10 +229,6 @@ public class BuildAction extends OntoBoardAction {
             return result.failed(failure).build();
         }
 
-        String reload = MakeRun.reloadHint(target, editFile);
-        if (reload != null) {
-            result.warn(reload);
-        }
         return result.summary("make " + target + " succeeded in " + seconds + "s.").build();
     }
 
@@ -261,10 +268,6 @@ public class BuildAction extends OntoBoardAction {
         if (!outcome.isOk()) {
             return result.failed(outcome.getFailure()).build();
         }
-        String reload = MakeRun.reloadHint(target, editFile);
-        if (reload != null) {
-            result.warn(reload);
-        }
         List<String> passing =
                 de.fizkarlsruhe.ise.ontoboard.odk.BuildPlan.passingChecks(transcript);
         return result.summary(target + " succeeded in " + seconds + "s, run by OntoBoard "
@@ -300,7 +303,7 @@ public class BuildAction extends OntoBoardAction {
                 de.fizkarlsruhe.ise.ontoboard.odk.InProcessTargets.run(editFile, ontology,
                         reasoner().newFactory(), target);
         long seconds = (System.currentTimeMillis() - started) / 1000;
-        return inProcessResult(result, target, editFile, outcome, seconds);
+        return inProcessResult(result, target, outcome, seconds);
     }
 
     /**
@@ -311,7 +314,7 @@ public class BuildAction extends OntoBoardAction {
      * and a passing test's PASS was the ninth and HermiT's warning the seventh.
      */
     static OperationResult inProcessResult(OperationResult.Builder result, String target,
-            File editFile, de.fizkarlsruhe.ise.ontoboard.odk.InProcessTargets.Outcome outcome,
+            de.fizkarlsruhe.ise.ontoboard.odk.InProcessTargets.Outcome outcome,
             long seconds) {
         for (String line : outcome.getTranscript()) {
             result.note(line);
@@ -325,10 +328,6 @@ public class BuildAction extends OntoBoardAction {
         String tests = testsSaid(outcome.getPassingChecks());
         if (!outcome.isOk()) {
             return result.failed(outcome.getFailure() + tests).build();
-        }
-        String reload = MakeRun.reloadHint(target, editFile);
-        if (reload != null) {
-            result.warn(reload);
         }
         return result.summary(target + " finished in " + seconds
                 + "s, inside Protege - nothing was installed or started." + tests
@@ -372,8 +371,8 @@ public class BuildAction extends OntoBoardAction {
 
     /** What the target chooser says about where the build will run. */
     private String helpFor() {
-        String common = " It writes files Protege will not notice changing, so reopen the "
-                + "ontology afterwards if the target rewrote it.";
+        String common = " What it rewrites that Protege has open is read again when it is "
+                + "done.";
         if (route == MakeRun.Route.IN_PROCESS) {
             return "This project was scaffolded by OntoBoard, so its build runs inside Protege "
                     + "against the embedded ROBOT - no make, no robot on your PATH, and no "

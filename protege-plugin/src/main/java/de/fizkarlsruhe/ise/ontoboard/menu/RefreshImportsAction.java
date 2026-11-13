@@ -248,42 +248,6 @@ public class RefreshImportsAction extends OntoBoardAction {
                 });
     }
 
-    /**
-     * Protege, asked to read module files again: each one it has loaded is reloaded its
-     * own way ({@code OWLModelManager.reload}, on the dispatch thread), which patches what
-     * is open to what the file now holds and notes the file's time, so that Protege does
-     * not ask about a file that changed outside of it. A module it has not loaded - one
-     * that was not there when the ontology was opened - is left for the next opening.
-     */
-    private final class Open implements OdkImportsForm.Session {
-        private final OWLOntology ontology;
-
-        Open(OWLOntology ontology) {
-            this.ontology = ontology;
-        }
-
-        @Override
-        public String readAgain(List<File> modules) {
-            List<String> failures = new java.util.ArrayList<String>();
-            for (File module : modules) {
-                final OWLOntology open = ModuleRebuild.openFrom(ontology, module);
-                if (open == null) {
-                    continue;
-                }
-                String failure = onDispatchThread(new Step() {
-                    @Override
-                    public void take() throws Exception {
-                        getOWLModelManager().reload(open);
-                    }
-                });
-                if (failure != null) {
-                    failures.add(module.getName() + ": " + failure);
-                }
-            }
-            return failures.isEmpty() ? null : String.join("; ", failures);
-        }
-    }
-
     @Override
     protected OperationResult run(OWLOntology ontology) {
         File root = projectRootOf(ontology);
@@ -309,12 +273,17 @@ public class RefreshImportsAction extends OntoBoardAction {
         OdkImportsForm.Asked asked = odk ? OdkImportsForm.asked(declared, which,
                 updateMirror, editFile.getAbsoluteFile().getParentFile()) : null;
         OdkImportsForm.Ran ran = odk && rebuild ? OdkImportsForm.refresh(editFile, asked,
-                java.util.Collections.<String>emptyList(), odk(editFile), new Open(ontology))
+                java.util.Collections.<String>emptyList(), odk(editFile), protegeReadsAgain())
                 : null;
         Set<String> rebuiltByOdk = new LinkedHashSet<String>();
+        Set<String> changedByOdk = new LinkedHashSet<String>();
+        for (File written : ran == null ? java.util.Collections.<File>emptyList()
+                : ran.written()) {
+            rebuiltByOdk.add(written.getName());
+        }
         for (File changed : ran == null ? java.util.Collections.<File>emptyList()
                 : ran.changed()) {
-            rebuiltByOdk.add(changed.getName());
+            changedByOdk.add(changed.getName());
         }
 
         List<ImportModules.Module> onDisk = ImportModules.modulesIn(root);
@@ -340,9 +309,11 @@ public class RefreshImportsAction extends OntoBoardAction {
             ImportModules.Module module = row.getModule();
             result.row(row.getName(),
                     row.describeDeclaration(),
-                    module.hasModule() && module.getModuleFile() != null
-                            && rebuiltByOdk.contains(module.getModuleFile().getName())
-                            ? "rebuilt" : module.hasModule() ? "present" : "not built",
+                    !module.hasModule() || module.getModuleFile() == null ? "not built"
+                            : changedByOdk.contains(module.getModuleFile().getName())
+                                    ? "rebuilt"
+                            : rebuiltByOdk.contains(module.getModuleFile().getName())
+                                    ? "rebuilt, the same" : "present",
                     module.isRebuildable() ? "present"
                             : (row.termListIsRead() ? "MISSING" : "not used"),
                     row.getSource() == null ? "unrecorded" : row.getSource());
@@ -480,26 +451,32 @@ public class RefreshImportsAction extends OntoBoardAction {
             result.warn("Transcript cut after " + MAX_LINES + " of " + ran.transcript().size()
                     + " lines.");
         }
-        for (File changed : ran.changed()) {
-            result.wrote(changed);
+        for (File written : ran.written()) {
+            result.wrote(written);
         }
-        if (ran.notReadAgain() != null) {
-            result.warn("The modules were rebuilt on disk, but Protege could not read them "
-                    + "again (" + ran.notReadAgain() + "). Close the ontology and open it "
-                    + "again to see them.");
+        for (String why : ran.readAgain().notRead()) {
+            result.warn(why);
         }
         if (!ran.isOk()) {
             return result.failed(ran.failure()).build();
         }
         int changed = ran.changed().size();
+        int written = ran.written().size();
         return result.summary("Refreshed the imports with ODK's own "
                 + String.join(" and ", asked.targets()) + ", " + odkWay.who() + ": "
-                + (changed == 0 ? "no module changed."
-                        : changed + " module" + (changed == 1 ? "" : "s") + " changed"
-                                + (ran.notReadAgain() == null
-                                        ? " and " + (changed == 1 ? "was" : "were")
-                                                + " read again."
-                                        : "."))).build();
+                + (written == 0 ? "no module was built again."
+                        : written + " module" + (written == 1 ? "" : "s") + " built again, "
+                                + (changed == 0 ? (written == 1 ? "and it did not change"
+                                        : "none of them changed")
+                                        : changed == written ? (written == 1 ? "and it "
+                                                + "changed" : "all of them changed")
+                                        : changed + " of them changed")
+                                + (ran.readAgain().read().size() == written
+                                        ? "; Protege has read " + (written == 1 ? "it"
+                                                : "them") + " again."
+                                        : ran.readAgain().read().isEmpty() ? "."
+                                        : "; Protege has read " + ran.readAgain().read().size()
+                                                + " of them again."))).build();
     }
 
     /**
@@ -545,15 +522,23 @@ public class RefreshImportsAction extends OntoBoardAction {
             result.wrote(module.getModuleFile());
             // And the copy Protege has open, so the session sees the rebuilt module now rather
             // than after the project is reopened.
-            OWLOntology open = ModuleRebuild.openFrom(ontology, module.getModuleFile());
+            final OWLOntology open = ModuleRebuild.openFrom(ontology, module.getModuleFile());
             if (open != null) {
                 List<org.semanticweb.owlapi.model.OWLOntologyChange> changes =
                         ModuleRebuild.changesToMatch(open, extracted.getModule());
-                if (!changes.isEmpty()) {
+                final boolean patched = !changes.isEmpty();
+                if (patched) {
                     applyOnEventThread(changes);
-                    javax.swing.SwingUtilities.invokeLater(
-                            () -> getOWLModelManager().setClean(open));
                 }
+                // What Protege holds is what the file holds now - patched, or the same - and
+                // the file is newer than Protege's record of it, which would make Protege ask
+                // about a module that changed outside of it.
+                javax.swing.SwingUtilities.invokeLater(() -> {
+                    if (patched) {
+                        getOWLModelManager().setClean(open);
+                    }
+                    noteItsFileTime(open);
+                });
             }
             for (IRI missing : extracted.getMissing()) {
                 result.warn(module.getName() + ": " + missing + " is in the term list but not in "

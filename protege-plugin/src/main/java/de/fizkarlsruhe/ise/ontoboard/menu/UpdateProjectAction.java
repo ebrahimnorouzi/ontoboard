@@ -337,8 +337,8 @@ public class UpdateProjectAction extends OntoBoardAction {
          *
          * <p>Then Protege's own reload ({@code OWLModelManager.reload}), on the dispatch
          * thread, where it shows its progress: what is open is patched to what the file now
-         * holds. The files' times are not noted beforehand: a reload that works notes the
-         * edit file's itself, and after one that does not Protege goes on to ask about the
+         * holds, and the file's time is noted afterwards ({@link #readAgainFromItsFile}).
+         * After a reload that fails nothing is noted, and Protege goes on to ask about the
          * file that changed outside of it - which is then the truth.
          */
         @Override
@@ -377,12 +377,7 @@ public class UpdateProjectAction extends OntoBoardAction {
                     // Said by the reload below.
                 }
             }
-            return onDispatchThread(new Step() {
-                @Override
-                public void take() throws Exception {
-                    manager.reload(open);
-                }
-            });
+            return readAgainFromItsFile(open);
         }
     }
 

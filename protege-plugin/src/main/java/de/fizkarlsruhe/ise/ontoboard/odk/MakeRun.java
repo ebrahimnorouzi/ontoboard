@@ -21,9 +21,9 @@ import java.util.Locale;
  * from the end; a result that reported only "make failed (exit 2)" would send somebody to the
  * terminal anyway, which is precisely what this is for.
  *
- * <p>Nothing here touches the ontology Protege has open. {@code make} writes files, and Protege
- * will not notice - {@link #reloadHint} says which ones, so a caller can tell the user rather than
- * leaving them looking at a stale window.
+ * <p>Nothing here touches the ontology Protege has open. {@code make} writes files behind
+ * Protege's back; the action that ran it has Protege read again what it has open of them
+ * ({@code menu.WhatARunWrote}).
  */
 public final class MakeRun {
 
@@ -470,30 +470,6 @@ public final class MakeRun {
         String tail = outcome.lastMeaningfulLine();
         return "make " + target + " failed (exit " + outcome.getExitCode() + ")"
                 + (tail.isEmpty() ? "." : ": " + tail);
-    }
-
-    /**
-     * The files this target is likely to have rewritten, so a caller can say so.
-     *
-     * <p>Protege holds the ontology in memory and knows nothing about a file changing underneath
-     * it. Somebody who runs a build that regenerates the very file they have open, and is not
-     * told, will carry on editing a stale copy and overwrite the build's output when they save.
-     */
-    public static String reloadHint(String target, File editFile) {
-        if (editFile == null || target == null) {
-            return null;
-        }
-        String lower = target.toLowerCase(Locale.ROOT);
-        if (lower.equals("reason") || lower.equals("all") || lower.startsWith("prepare_release")
-                || lower.equals("release")) {
-            String id = editFile.getName().replaceAll("(?i)-edit\\.(owl|obo)$", "");
-            return "This target rewrites " + id + ".owl. Protege will not notice a file changing "
-                    + "on disk - reopen it if you were looking at it.";
-        }
-        if (lower.startsWith("import")) {
-            return "This target rewrites the import modules. Reload the ontology to pick them up.";
-        }
-        return null;
     }
 
     private static String joined(List<String> lines) {

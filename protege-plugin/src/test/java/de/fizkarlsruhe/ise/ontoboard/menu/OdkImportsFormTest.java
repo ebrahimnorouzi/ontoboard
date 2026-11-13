@@ -44,11 +44,14 @@ class OdkImportsFormTest {
     /** Whoever has the project open: what it was asked to read again, and what it answers. */
     private final List<List<File>> readAgain = new ArrayList<List<File>>();
     private String cannotReadAgain;
-    private final OdkImportsForm.Session session = new OdkImportsForm.Session() {
+    private final ReadsAgain session = new ReadsAgain() {
         @Override
-        public String readAgain(List<File> modules) {
+        public WhatARunWrote.Done readAgain(List<File> modules) {
             readAgain.add(new ArrayList<File>(modules));
-            return cannotReadAgain;
+            return cannotReadAgain == null
+                    ? new WhatARunWrote.Done(modules, Collections.<String>emptyList())
+                    : new WhatARunWrote.Done(Collections.<File>emptyList(),
+                            Collections.singletonList(cannotReadAgain));
         }
     };
 
@@ -363,7 +366,8 @@ class OdkImportsFormTest {
         assertTrue(ran.isOk(), ran.failure() + "\n" + String.join("\n", ran.transcript()));
         assertEquals(Arrays.asList("bfo_import.owl", "iao_import.owl", "ro_import.owl"),
                 names(ran.changed()));
-        assertEquals(Collections.singletonList(ran.changed()), readAgain);
+        assertEquals(ran.changed(), ran.written());
+        assertEquals(Collections.singletonList(ran.written()), readAgain);
         assertTrue(ran.transcript().get(0).startsWith("$ make refresh-imports"),
                 ran.transcript().get(0));
         boolean fetched = false;
@@ -371,12 +375,17 @@ class OdkImportsFormTest {
             fetched |= line.startsWith("curl -L ");
         }
         assertTrue(fetched, "ODK's own line fetched: " + ran.transcript());
-        assertNull(ran.notReadAgain());
+        assertEquals(ran.written(), ran.readAgain().read());
+        assertEquals(Collections.<String>emptyList(), ran.readAgain().notRead());
     }
 
-    /** After a term was added: the module whose list changed is what is read again. */
+    /**
+     * After a term was added: the module whose list changed is the one that changed. ODK's
+     * target builds the other module with a term list again too, as it was - and Protege,
+     * which goes by a file's time, is handed both; the one the run did not write is not.
+     */
     @Test
-    void whatTheRunDidNotChangeIsNotReadAgain() throws IOException {
+    void whatTheRunWroteIsReadAgainAndWhatItDidNotWriteIsNot() throws IOException {
         aRefreshedProjectWithOneMoreTermAskedFor();
 
         OdkImportsForm.Ran ran = OdkImportsForm.refresh(edit,
@@ -384,15 +393,20 @@ class OdkImportsFormTest {
                 OdkRelease.byOntoBoardItself(edit, null), session);
 
         assertTrue(ran.isOk(), ran.failure() + "\n" + String.join("\n", ran.transcript()));
-        assertTrue(names(ran.changed()).contains("ro_import.owl"), ran.changed().toString());
-        assertFalse(names(ran.changed()).contains("bfo_import.owl"), "a mirrored import has no "
-                + "term list and was not built again: " + ran.changed());
-        assertEquals(Collections.singletonList(ran.changed()), readAgain);
+        assertEquals(Collections.singletonList("ro_import.owl"), names(ran.changed()));
+        assertEquals(Arrays.asList("iao_import.owl", "ro_import.owl"), names(ran.written()),
+                "a mirrored import has no term list and was not built again");
+        assertEquals(Collections.singletonList(ran.written()), readAgain);
     }
 
-    /** A second refresh from the same mirrors and lists writes the same modules: nothing to read. */
+    /**
+     * A second refresh from the same mirrors and lists writes the same modules again: no
+     * module changed. They are read again all the same: their files are newer than what
+     * Protege read, and it would ask about an ontology that "changed outside of Protege"
+     * (seen in a running Protege 5.5.0 after a refresh that changed nothing).
+     */
     @Test
-    void aRefreshThatChangesNothingReadsNothingAgain() throws IOException {
+    void aModuleWrittenAgainAsItWasIsNoChangeAndIsReadAgain() throws IOException {
         aFreshProject();
         OdkRelease.Odk itself = OdkRelease.byOntoBoardItself(edit, null);
         assertTrue(OdkImportsForm.refresh(edit, OdkImportsForm.asked(declared,
@@ -407,7 +421,8 @@ class OdkImportsFormTest {
         assertEquals(Collections.singletonList("no-mirror-refresh-imports"), again.targets());
         assertTrue(ran.isOk(), ran.failure() + "\n" + String.join("\n", ran.transcript()));
         assertEquals(Collections.<File>emptyList(), ran.changed());
-        assertEquals(Collections.<List<File>>emptyList(), readAgain);
+        assertEquals(Arrays.asList("iao_import.owl", "ro_import.owl"), names(ran.written()));
+        assertEquals(Collections.singletonList(ran.written()), readAgain);
     }
 
     /** Each target is one call of make, in order, wherever ODK runs. */
@@ -464,6 +479,7 @@ class OdkImportsFormTest {
         assertEquals(2, odk.ran.size(), "the third was not asked for: " + odk.ran);
         assertTrue(ran.failure().contains("could not download"), ran.failure());
         assertEquals(Collections.singletonList(module), ran.changed());
+        assertEquals(Collections.singletonList(module), ran.written());
         assertEquals(Collections.singletonList(Collections.singletonList(module)), readAgain);
         assertTrue(ran.transcript().contains("curl: (6) Could not resolve host: "
                 + "purl.obolibrary.org"), ran.transcript().toString());
@@ -503,6 +519,7 @@ class OdkImportsFormTest {
         assertFalse(ran.isOk());
         assertTrue(ran.failure().startsWith("You stopped"), ran.failure());
         assertEquals(Collections.<File>emptyList(), ran.changed());
+        assertEquals(Collections.<File>emptyList(), ran.written());
         assertEquals(Collections.<List<File>>emptyList(), readAgain);
     }
 
@@ -517,7 +534,9 @@ class OdkImportsFormTest {
                 OdkRelease.byOntoBoardItself(edit, null), session);
 
         assertTrue(ran.isOk(), ran.failure());
-        assertEquals("ro_import.owl could not be read again: it is in use.", ran.notReadAgain());
+        assertEquals(Collections.singletonList("ro_import.owl could not be read again: it is "
+                + "in use."), ran.readAgain().notRead());
+        assertEquals(Collections.<File>emptyList(), ran.readAgain().read());
     }
 
     /** ODK that cannot be started at all - no such program - is said with the target. */

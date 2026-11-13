@@ -84,6 +84,25 @@ class OdkToolsTest {
     // ------------------------------------------------------------------ robot
 
     /**
+     * ROBOT loads an ontology from its address itself, with this Java's certificates -
+     * and Protege 5.5.0's Java is older than several authorities. A line that failed on
+     * that is known as such, to be run again with the operating system's certificates.
+     */
+    @Test
+    void aLineThatFailedOnACertificateIsKnown() {
+        assertTrue(OdkTools.Robot.failedOnACertificate(new OdkRobot.Result(false,
+                Collections.<String>emptyList(), "java.io.IOException: org.semanticweb."
+                        + "owlapi.io.OWLOntologyCreationIOException: sun.security.validator."
+                        + "ValidatorException: PKIX path building failed: sun.security."
+                        + "provider.certpath.SunCertPathBuilderException: unable to find "
+                        + "valid certification path to requested target")));
+        assertFalse(OdkTools.Robot.failedOnACertificate(new OdkRobot.Result(false,
+                Collections.<String>emptyList(), "The ontology is inconsistent.")));
+        assertFalse(OdkTools.Robot.failedOnACertificate(new OdkRobot.Result(true,
+                Collections.<String>emptyList(), null)));
+    }
+
+    /**
      * The OWL API of Protege 5.5.0 writes a string in functional syntax with or without
      * its datatype, by what the process loaded before; ODK's writes it without, always.
      * So does a line run here - whatever the process has met.

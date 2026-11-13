@@ -322,7 +322,7 @@ public class ReleaseAction extends OntoBoardAction {
                     public boolean commit(ReleaseRun.Staging staging) {
                         return askToCommit(staging, start.facts().root());
                     }
-                }, imageNote);
+                }, imageNote, protegeReadsAgain());
     }
 
     /** The git commands of a release as the question shows them, in a view that scrolls. */

@@ -1,5 +1,6 @@
 package de.fizkarlsruhe.ise.ontoboard.menu;
 
+import de.fizkarlsruhe.ise.ontoboard.odk.FileStamps;
 import de.fizkarlsruhe.ise.ontoboard.odk.ImportProducts;
 import de.fizkarlsruhe.ise.ontoboard.odk.MakeRun;
 import de.fizkarlsruhe.ise.ontoboard.odk.OdkRelease;
@@ -7,15 +8,10 @@ import de.fizkarlsruhe.ise.ontoboard.odk.OdkRoute;
 import de.fizkarlsruhe.ise.ontoboard.proc.ProcessRunner;
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
 
 /**
  * Refresh imports for an ODK project: the modules are built by ODK's own targets for them -
@@ -27,9 +23,10 @@ import java.util.TreeMap;
  * Makefile with its own engine and fetches what the Makefile fetches. What the person settled
  * about containers is kept to.
  *
- * <p>What the run changed is on disk, and whoever has the project open still holds the modules
- * as they were: each module file that is no longer what it was is handed over to be read
- * again - also after a run that failed part way.
+ * <p>What the run wrote is on disk, and whoever has the project open still holds the modules
+ * as they were: each module file the run wrote is handed over to be read again - also after
+ * a run that failed part way, and also a file that was written again as it was: Protege
+ * goes by a file's time, and asks about an ontology that "has changed outside of Protege".
  *
  * <p>No Swing and nothing of Protege's: {@code RefreshImportsAction} shows what this decides.
  */
@@ -259,30 +256,21 @@ final class OdkImportsForm {
 
     // ------------------------------------------------------------------ the run
 
-    /** What the form needs of whoever has the project open. */
-    interface Session {
-
-        /**
-         * Reads these module files again from disk: the run changed them.
-         *
-         * @return why that did not work, or null when it did
-         */
-        String readAgain(List<File> modules);
-    }
-
     /** What a refresh did. */
     static final class Ran {
         private final String failure;
         private final List<String> transcript;
         private final List<File> changed;
-        private final String notReadAgain;
+        private final List<File> written;
+        private final WhatARunWrote.Done readAgain;
 
         private Ran(String failure, List<String> transcript, List<File> changed,
-                String notReadAgain) {
+                List<File> written, WhatARunWrote.Done readAgain) {
             this.failure = failure;
             this.transcript = Collections.unmodifiableList(transcript);
             this.changed = Collections.unmodifiableList(changed);
-            this.notReadAgain = notReadAgain;
+            this.written = Collections.unmodifiableList(written);
+            this.readAgain = readAgain;
         }
 
         boolean isOk() {
@@ -304,9 +292,17 @@ final class OdkImportsForm {
             return changed;
         }
 
-        /** Why what changed could not be read again; null when it was, or nothing changed. */
-        String notReadAgain() {
-            return notReadAgain;
+        /**
+         * The module files the run wrote: those that changed, and those that were built
+         * again as they were. All of them are newer than what was read before the run.
+         */
+        List<File> written() {
+            return written;
+        }
+
+        /** What whoever has the project open read again of what the run wrote. */
+        WhatARunWrote.Done readAgain() {
+            return readAgain;
         }
     }
 
@@ -319,9 +315,9 @@ final class OdkImportsForm {
      * @param odk       who runs make in the project's {@code src/ontology}
      */
     static Ran refresh(File editFile, Asked asked, List<String> variables, OdkRelease.Odk odk,
-            Session session) {
+            ReadsAgain session) {
         File imports = new File(editFile.getAbsoluteFile().getParentFile(), "imports");
-        Map<File, String> before = modulesIn(imports);
+        FileStamps before = FileStamps.inFolder(imports, "_import.owl");
         List<String> transcript = new ArrayList<String>();
         String failure = null;
         for (String target : asked.targets()) {
@@ -343,14 +339,12 @@ final class OdkImportsForm {
             }
         }
         // Also after a failure: what the targets before it wrote is on disk.
-        List<File> changed = new ArrayList<File>();
-        for (Map.Entry<File, String> module : modulesIn(imports).entrySet()) {
-            if (!module.getValue().equals(before.get(module.getKey()))) {
-                changed.add(module.getKey());
-            }
-        }
-        String notReadAgain = changed.isEmpty() ? null : session.readAgain(changed);
-        return new Ran(failure, transcript, changed, notReadAgain);
+        FileStamps after = before.now();
+        List<File> changed = after.changedSince(before);
+        List<File> written = after.writtenSince(before);
+        WhatARunWrote.Done readAgain = written.isEmpty() ? WhatARunWrote.Done.nothing()
+                : session.readAgain(written);
+        return new Ran(failure, transcript, changed, written, readAgain);
     }
 
     /** Why a target failed, in terms a person can act on; null when it did not. */
@@ -372,30 +366,4 @@ final class OdkImportsForm {
         return MakeRun.explain(target, outcome);
     }
 
-    /** The module files of the imports folder, each with what it holds, as a hash. */
-    private static Map<File, String> modulesIn(File imports) {
-        Map<File, String> modules = new TreeMap<File, String>();
-        File[] files = imports.listFiles();
-        for (File file : files == null ? new File[0] : files) {
-            if (file.isFile() && file.getName().endsWith("_import.owl")) {
-                modules.put(file, hashOf(file));
-            }
-        }
-        return modules;
-    }
-
-    private static String hashOf(File file) {
-        try {
-            byte[] digest = MessageDigest.getInstance("SHA-256")
-                    .digest(Files.readAllBytes(file.toPath()));
-            StringBuilder hex = new StringBuilder();
-            for (byte one : digest) {
-                hex.append(String.format("%02x", one));
-            }
-            return hex.toString();
-        } catch (IOException | NoSuchAlgorithmException unreadable) {
-            // Read as changed by whoever compares: a file that cannot be read is not the same.
-            return "unreadable: " + unreadable.getMessage() + System.nanoTime();
-        }
-    }
 }

@@ -515,9 +515,23 @@ final class OdkReleaseForm {
      *
      * @param imageNote why the image is not the ODK that wrote the project, or null
      */
+    /** The release, where nobody reads again what it rewrote: that is said instead. */
     static OperationResult run(String operation, Start start, Map<String, String> chosen,
             OdkRelease.Odk odk, ProcessRunner.Runner git, OdkRelease.Asks asks,
             String imageNote) {
+        return run(operation, start, chosen, odk, git, asks, imageNote, null);
+    }
+
+    /**
+     * The release.
+     *
+     * @param readsAgain whoever has the project open, asked to read again the edit file
+     *                   and the import modules where the release rewrote them; null to say
+     *                   instead that they were rewritten
+     */
+    static OperationResult run(String operation, Start start, Map<String, String> chosen,
+            OdkRelease.Odk odk, ProcessRunner.Runner git, OdkRelease.Asks asks,
+            String imageNote, ReadsAgain readsAgain) {
         OperationResult.Builder result = OperationResult.of(operation);
         OdkRelease.Request request = request(start, chosen);
         result.note("Project: " + start.facts.root().getAbsolutePath());
@@ -537,7 +551,8 @@ final class OdkReleaseForm {
                     request.version(), start.facts.id() + ".owl"));
         }
 
-        Map<File, String> before = stateOf(watched(start));
+        de.fizkarlsruhe.ise.ontoboard.odk.FileStamps before =
+                de.fizkarlsruhe.ise.ontoboard.odk.FileStamps.of(watched(start));
         OdkRelease.Outcome outcome = OdkRelease.run(request, odk, git, asks);
         for (String line : outcome.getTranscript()) {
             result.note(line);
@@ -548,9 +563,20 @@ final class OdkReleaseForm {
         for (String warning : outcome.getWarnings()) {
             result.warn(warning);
         }
-        String rewritten = rewrittenUnderProtege(start, before);
-        if (rewritten != null) {
-            result.warn(rewritten);
+        List<File> rewrittenFiles = before.now().writtenSince(before);
+        if (!rewrittenFiles.isEmpty() && readsAgain != null) {
+            WhatARunWrote.Done done = readsAgain.readAgain(rewrittenFiles);
+            if (done.said() != null) {
+                result.note(done.said());
+            }
+            for (String why : done.notRead()) {
+                result.warn(why);
+            }
+        } else {
+            String rewritten = rewrittenUnderProtege(start, rewrittenFiles);
+            if (rewritten != null) {
+                result.warn(rewritten);
+            }
         }
         // Last, where the summary says they are: the git commands that were not run.
         for (String line : outcome.getLater()) {
@@ -604,29 +630,19 @@ final class OdkReleaseForm {
         return files;
     }
 
-    private static Map<File, String> stateOf(List<File> files) {
-        Map<File, String> state = new LinkedHashMap<File, String>();
-        for (File file : files) {
-            state.put(file, file.lastModified() + ":" + file.length());
-        }
-        return state;
-    }
-
     /**
      * What to say when the release rewrote a file Protégé has open, or null. Protégé does not
      * notice a file changing under it, and its next save would put the old one back.
      */
-    private static String rewrittenUnderProtege(Start start, Map<File, String> before) {
-        Map<File, String> after = stateOf(new ArrayList<File>(before.keySet()));
+    private static String rewrittenUnderProtege(Start start, List<File> rewritten) {
+        File editFile = start.editFile.getAbsoluteFile().toPath().normalize().toFile();
         boolean edit = false;
         int modules = 0;
-        for (Map.Entry<File, String> was : before.entrySet()) {
-            if (!was.getValue().equals(after.get(was.getKey()))) {
-                if (was.getKey().equals(start.editFile)) {
-                    edit = true;
-                } else {
-                    modules++;
-                }
+        for (File file : rewritten) {
+            if (file.equals(editFile)) {
+                edit = true;
+            } else {
+                modules++;
             }
         }
         if (!edit && modules == 0) {

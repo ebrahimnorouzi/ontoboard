@@ -34,8 +34,8 @@ public final class BuildPlan {
     private static final String TEST = "test";
     private static final String FAST = "test_fast";
 
-    private static final String RELOAD = " It writes files Protege will not notice changing, "
-            + "so reopen the ontology afterwards if the target rewrote it.";
+    private static final String RELOAD = " What it rewrites that Protege has open is read "
+            + "again when it is done.";
 
     private final boolean inProcess;
     private final List<String> targets;

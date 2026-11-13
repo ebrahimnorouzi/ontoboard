@@ -26,9 +26,8 @@ import org.junit.jupiter.api.io.TempDir;
  *
  * <p>What is worth testing is not that {@code make} works. It is the surrounding judgement: that a
  * missing tool is reported as a setup problem rather than a broken project, that a failure points
- * at the part of a several-hundred-line transcript that explains it, and that a target which
- * rewrites the file Protege has open says so - because Protege will not notice, and somebody who
- * carries on editing will overwrite the build's output when they save.
+ * at the part of a several-hundred-line transcript that explains it. What a target rewrites of
+ * what Protege has open is read again by the action that ran it ({@code WhatARunWrote}).
  */
 class MakeRunTest {
 
@@ -490,44 +489,6 @@ class MakeRunTest {
 
         assertTrue(explanation.contains(String.valueOf(MakeRun.TIMEOUT_MINUTES)), explanation);
         assertTrue(explanation.contains("waiting for input"), explanation);
-    }
-
-    // ---------- Protege will not notice the file changing ----------
-
-    /**
-     * The one that costs work. A target that regenerates the open file leaves Protege holding a
-     * stale copy, and the next save overwrites what the build produced.
-     */
-    @Test
-    void aTargetThatRewritesTheOpenFileSaysSo(@TempDir File directory) throws Exception {
-        File ontology = projectWithMakefile(directory);
-
-        for (String target : new String[] {"all", "reason", "prepare_release", "release"}) {
-            String hint = MakeRun.reloadHint(target, ontology);
-            assertNotNull(hint, target + " rewrites the ontology and says nothing");
-            assertTrue(hint.contains("mwo.owl"), target + " -> " + hint);
-            assertTrue(hint.contains("will not notice"), target + " -> " + hint);
-        }
-    }
-
-    @Test
-    void anImportTargetSaysTheModulesChanged(@TempDir File directory) throws Exception {
-        String hint = MakeRun.reloadHint("imports", projectWithMakefile(directory));
-
-        assertNotNull(hint);
-        assertTrue(hint.contains("import modules"), hint);
-    }
-
-    @Test
-    void aTargetThatChangesNothingOpenSaysNothing(@TempDir File directory) throws Exception {
-        assertNull(MakeRun.reloadHint("report", projectWithMakefile(directory)));
-        assertNull(MakeRun.reloadHint("clean", projectWithMakefile(directory)));
-    }
-
-    @Test
-    void nothingToHintAboutIsNotAFailure() {
-        assertNull(MakeRun.reloadHint("all", null));
-        assertNull(MakeRun.reloadHint(null, new File("x-edit.owl")));
     }
 
     // ---------- the targets offered ----------

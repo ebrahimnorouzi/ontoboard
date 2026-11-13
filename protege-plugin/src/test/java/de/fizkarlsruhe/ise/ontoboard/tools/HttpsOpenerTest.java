@@ -3,8 +3,11 @@ package de.fizkarlsruhe.ise.ontoboard.tools;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import com.sun.net.httpserver.HttpServer;
 import java.io.ByteArrayOutputStream;
@@ -18,9 +21,16 @@ import java.net.InetSocketAddress;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
+import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLHandshakeException;
+import javax.net.ssl.SSLSocketFactory;
+import javax.net.ssl.X509TrustManager;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -178,6 +188,153 @@ class HttpsOpenerTest {
         assertTrue(HttpsOpener.isCertificatePathFailure(new IOException("wrapped", pkix)));
         assertFalse(HttpsOpener.isCertificatePathFailure(new ConnectException("refused")));
         assertFalse(HttpsOpener.isCertificatePathFailure(null));
+        // And in what somebody else's code made of it: a sentence.
+        assertTrue(HttpsOpener.saysCertificatePathFailure("java.io.IOException: "
+                + pkix.getMessage()));
+        assertFalse(HttpsOpener.saysCertificatePathFailure("Connection refused"));
+        assertFalse(HttpsOpener.saysCertificatePathFailure(null));
+    }
+
+    // ---------------------------------------------- what opens its own connections
+
+    private static boolean hasAStoreToFallBackOn() {
+        return !HttpsOpener.trustFallbacks(System.getProperty("os.name", ""),
+                HttpsOpener.LINUX_STORES).isEmpty();
+    }
+
+    /** What does not fail on a certificate is run once, with the default as it is. */
+    @Test
+    void whatDoesNotFailOnACertificateIsRunOnce() {
+        SSLSocketFactory before = HttpsURLConnection.getDefaultSSLSocketFactory();
+        final List<SSLSocketFactory> defaults = new ArrayList<SSLSocketFactory>();
+
+        String came = HttpsOpener.alsoWithOperatingSystemsTrust(new HttpsOpener.Run<String>() {
+            @Override
+            public String run() {
+                defaults.add(HttpsURLConnection.getDefaultSSLSocketFactory());
+                return "done";
+            }
+        }, result -> false);
+
+        assertEquals("done", came);
+        assertEquals(Collections.singletonList(before), defaults);
+        assertSame(before, HttpsURLConnection.getDefaultSSLSocketFactory());
+    }
+
+    /**
+     * After a certificate-path failure it is run again, with a default for this process's
+     * https connections that also trusts what the operating system trusts - for as long as
+     * that run takes, and no longer.
+     */
+    @Test
+    void afterACertificateFailureItIsRunAgainWithTheOperatingSystemsTrust() {
+        assumeTrue(hasAStoreToFallBackOn());
+        SSLSocketFactory before = HttpsURLConnection.getDefaultSSLSocketFactory();
+        final List<SSLSocketFactory> defaults = new ArrayList<SSLSocketFactory>();
+
+        String came = HttpsOpener.alsoWithOperatingSystemsTrust(new HttpsOpener.Run<String>() {
+            @Override
+            public String run() {
+                defaults.add(HttpsURLConnection.getDefaultSSLSocketFactory());
+                return defaults.size() == 1 ? "certificate" : "done";
+            }
+        }, result -> result.equals("certificate"));
+
+        assertEquals("done", came);
+        assertEquals(2, defaults.size());
+        assertSame(before, defaults.get(0), "first with the JVM's own");
+        assertNotSame(before, defaults.get(1), "then with another default");
+        assertSame(before, HttpsURLConnection.getDefaultSSLSocketFactory(), "put back");
+    }
+
+    @Test
+    void theDefaultIsPutBackAlsoWhenTheRunBreaks() {
+        assumeTrue(hasAStoreToFallBackOn());
+        SSLSocketFactory before = HttpsURLConnection.getDefaultSSLSocketFactory();
+        final int[] runs = {0};
+
+        assertThrows(IllegalStateException.class, () -> HttpsOpener
+                .alsoWithOperatingSystemsTrust(new HttpsOpener.Run<String>() {
+                    @Override
+                    public String run() {
+                        if (++runs[0] == 2) {
+                            throw new IllegalStateException("broke");
+                        }
+                        return "certificate";
+                    }
+                }, result -> true));
+
+        assertEquals(2, runs[0]);
+        assertSame(before, HttpsURLConnection.getDefaultSSLSocketFactory());
+    }
+
+    /** What no store trusts comes back as the failure it is, each store tried once. */
+    @Test
+    void whatNoStoreTrustsComesBackAsItsFailure() {
+        final int[] runs = {0};
+
+        String came = HttpsOpener.alsoWithOperatingSystemsTrust(new HttpsOpener.Run<String>() {
+            @Override
+            public String run() {
+                return "certificate " + (++runs[0]);
+            }
+        }, result -> true);
+
+        int stores = HttpsOpener.trustFallbacks(System.getProperty("os.name", ""),
+                HttpsOpener.LINUX_STORES).size();
+        assertEquals(1 + stores, runs[0]);
+        assertEquals("certificate " + (1 + stores), came);
+    }
+
+    /** A chain is trusted when either store trusts it; the first is asked first. */
+    @Test
+    void aChainIsTrustedWhenEitherTrustsIt() throws Exception {
+        Trusting yes = new Trusting(true);
+        Trusting no = new Trusting(false);
+        Trusting never = new Trusting(false);
+
+        HttpsOpener.trustingEither(no, yes).checkServerTrusted(new X509Certificate[0], "RSA");
+        assertEquals(1, no.asked);
+        assertEquals(1, yes.asked);
+
+        HttpsOpener.trustingEither(yes, never).checkServerTrusted(new X509Certificate[0],
+                "RSA");
+        assertEquals(0, never.asked, "the first trusted it");
+
+        CertificateException neither = assertThrows(CertificateException.class,
+                () -> HttpsOpener.trustingEither(no, never).checkServerTrusted(
+                        new X509Certificate[0], "RSA"));
+        assertEquals("not trusted by " + no, neither.getMessage(), "the first one's reason");
+    }
+
+    /** A store that trusts every chain, or none. */
+    private static final class Trusting implements X509TrustManager {
+        private final boolean trusts;
+        int asked;
+
+        Trusting(boolean trusts) {
+            this.trusts = trusts;
+        }
+
+        @Override
+        public void checkClientTrusted(X509Certificate[] chain, String authType)
+                throws CertificateException {
+            checkServerTrusted(chain, authType);
+        }
+
+        @Override
+        public void checkServerTrusted(X509Certificate[] chain, String authType)
+                throws CertificateException {
+            asked++;
+            if (!trusts) {
+                throw new CertificateException("not trusted by " + this);
+            }
+        }
+
+        @Override
+        public X509Certificate[] getAcceptedIssuers() {
+            return new X509Certificate[0];
+        }
     }
 
     @Test

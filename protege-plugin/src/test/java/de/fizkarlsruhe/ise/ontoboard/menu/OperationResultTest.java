@@ -28,6 +28,38 @@ import org.junit.jupiter.api.io.TempDir;
  */
 class OperationResultTest {
 
+    /**
+     * A result an action built, with more said afterwards: what it held, and the lines
+     * added. The result itself stays as it was.
+     */
+    @Test
+    void aBuiltResultCanBeAddedTo() {
+        OperationResult built = OperationResult.of("Release").columns("File")
+                .row("a.owl").note("first").wrote(new File("a.owl"))
+                .summary("Released.").build();
+
+        OperationResult more = built.toBuilder().note("second").build();
+        OperationResult warned = built.toBuilder().warn("careful").build();
+
+        assertEquals("Release", more.getOperation());
+        assertEquals("Released.", more.getSummary());
+        assertEquals(java.util.Arrays.asList("first", "second"), more.getLog());
+        assertEquals(built.getRows(), more.getRows());
+        assertEquals(built.getColumns(), more.getColumns());
+        assertEquals(built.getFiles(), more.getFiles());
+        assertEquals(built.getMillis(), more.getMillis());
+        assertEquals(OperationResult.Status.SUCCEEDED, more.getStatus());
+        assertEquals(OperationResult.Status.SUCCEEDED_WITH_WARNINGS, warned.getStatus());
+        assertEquals(java.util.Collections.singletonList("first"), built.getLog(),
+                "the result itself is as it was");
+
+        OperationResult failed = OperationResult.failed("Release", "no").toBuilder()
+                .warn("also this").build();
+        assertEquals(OperationResult.Status.FAILED, failed.getStatus(),
+                "a warning does not make a failure better");
+        assertEquals("no", failed.getSummary());
+    }
+
     private static Date on(int year, int month, int day, int hour, int minute, int second) {
         Calendar calendar = new GregorianCalendar(year, month - 1, day, hour, minute, second);
         return calendar.getTime();

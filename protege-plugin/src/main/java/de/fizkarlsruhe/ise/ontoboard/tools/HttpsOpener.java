@@ -9,6 +9,8 @@ import java.net.URL;
 import java.security.GeneralSecurityException;
 import java.security.KeyStore;
 import java.security.cert.CertPathBuilderException;
+import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -17,7 +19,9 @@ import java.util.Locale;
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLSocketFactory;
+import javax.net.ssl.TrustManager;
 import javax.net.ssl.TrustManagerFactory;
+import javax.net.ssl.X509TrustManager;
 
 /**
  * Opens a release download over HTTPS: GitHub's redirect followed, nothing else allowed.
@@ -160,6 +164,113 @@ public final class HttpsOpener implements Download.Opener {
                 return attempt.with(factory);
             }
         });
+    }
+
+    /** One run of something that opens https connections of its own. */
+    public interface Run<T> {
+        T run();
+    }
+
+    /** One at a time changes what this process's https connections trust by default. */
+    private static final Object DEFAULT_TRUST = new Object();
+
+    /**
+     * For code of others that opens its own https connections and cannot be handed a
+     * factory - ROBOT, loading an ontology from its address through the OWL API. The run
+     * is made once as it is, with the JVM's trust store. Only when what came of it is a
+     * certificate-path failure is it made again, once for each of the operating system's
+     * stores, with a default for this process's https connections that trusts what the
+     * JVM's store trusts and what that store trusts - for as long as that run takes; the
+     * default that was there is put back, whatever the run does.
+     *
+     * <p>The default is the process's, so while such a run goes on, any other https
+     * connection made here trusts the operating system's authorities too - which the
+     * machine's browser does all the time. Nothing is trusted that neither store knows.
+     *
+     * @param failedOnCertificatePath whether what a run gave back says such a failure
+     * @return what the first run gave back that is no such failure, else the last one's
+     */
+    public static <T> T alsoWithOperatingSystemsTrust(Run<T> run,
+            java.util.function.Predicate<T> failedOnCertificatePath) {
+        T came = run.run();
+        if (!failedOnCertificatePath.test(came)) {
+            return came;
+        }
+        for (String store : trustFallbacks(System.getProperty("os.name", ""), LINUX_STORES)) {
+            SSLSocketFactory factory;
+            try {
+                factory = socketFactoryTrustingAlso(store);
+            } catch (GeneralSecurityException | IOException cannotLoad) {
+                continue;
+            }
+            synchronized (DEFAULT_TRUST) {
+                SSLSocketFactory before = HttpsURLConnection.getDefaultSSLSocketFactory();
+                HttpsURLConnection.setDefaultSSLSocketFactory(factory);
+                try {
+                    came = run.run();
+                } finally {
+                    HttpsURLConnection.setDefaultSSLSocketFactory(before);
+                }
+            }
+            if (!failedOnCertificatePath.test(came)) {
+                return came;
+            }
+        }
+        return came;
+    }
+
+    /** Trusts a chain that either of the two trusts; the first is asked first. */
+    static X509TrustManager trustingEither(final X509TrustManager first,
+            final X509TrustManager second) {
+        return new X509TrustManager() {
+            @Override
+            public void checkClientTrusted(X509Certificate[] chain, String authType)
+                    throws CertificateException {
+                try {
+                    first.checkClientTrusted(chain, authType);
+                } catch (CertificateException notByTheFirst) {
+                    try {
+                        second.checkClientTrusted(chain, authType);
+                    } catch (CertificateException notByEither) {
+                        throw notByTheFirst;
+                    }
+                }
+            }
+
+            @Override
+            public void checkServerTrusted(X509Certificate[] chain, String authType)
+                    throws CertificateException {
+                try {
+                    first.checkServerTrusted(chain, authType);
+                } catch (CertificateException notByTheFirst) {
+                    try {
+                        second.checkServerTrusted(chain, authType);
+                    } catch (CertificateException notByEither) {
+                        // The first one's reason: it is the JVM's, which the message
+                        // has to explain.
+                        throw notByTheFirst;
+                    }
+                }
+            }
+
+            @Override
+            public X509Certificate[] getAcceptedIssuers() {
+                List<X509Certificate> issuers = new ArrayList<X509Certificate>(
+                        Arrays.asList(first.getAcceptedIssuers()));
+                issuers.addAll(Arrays.asList(second.getAcceptedIssuers()));
+                return issuers.toArray(new X509Certificate[0]);
+            }
+        };
+    }
+
+    /**
+     * Whether a sentence somebody else's code made of a failure says that the JVM did not
+     * trust a server's certificate chain: {@link #isCertificatePathFailure}, for where
+     * only the words are left.
+     */
+    public static boolean saysCertificatePathFailure(String message) {
+        return message != null && (message.contains("PKIX path building failed")
+                || message.contains("unable to find valid certification path"));
     }
 
     /** The most of an error body kept: enough for any API's explanation, not a whole HTML page. */
@@ -428,6 +539,23 @@ public final class HttpsOpener implements Download.Opener {
 
     private static SSLSocketFactory socketFactoryFrom(String store)
             throws GeneralSecurityException, IOException {
+        SSLContext context = SSLContext.getInstance("TLS");
+        context.init(null, trustManagersOf(keyStoreOf(store)), null);
+        return context.getSocketFactory();
+    }
+
+    /** A factory that trusts what the JVM's own store trusts, and what this store trusts. */
+    private static SSLSocketFactory socketFactoryTrustingAlso(String store)
+            throws GeneralSecurityException, IOException {
+        SSLContext context = SSLContext.getInstance("TLS");
+        context.init(null, new TrustManager[] {trustingEither(x509Of(trustManagersOf(null)),
+                x509Of(trustManagersOf(keyStoreOf(store))))}, null);
+        return context.getSocketFactory();
+    }
+
+    /** One of the operating system's trust stores, opened. */
+    private static KeyStore keyStoreOf(String store)
+            throws GeneralSecurityException, IOException {
         KeyStore trusted;
         if (WINDOWS_TRUST.equals(store)) {
             trusted = KeyStore.getInstance(WINDOWS_TRUST);
@@ -438,12 +566,26 @@ public final class HttpsOpener implements Download.Opener {
                 trusted.load(in, null);
             }
         }
+        return trusted;
+    }
+
+    /** The trust managers of a store; of the JVM's own for null. */
+    private static TrustManager[] trustManagersOf(KeyStore trusted)
+            throws GeneralSecurityException {
         TrustManagerFactory trust =
                 TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
         trust.init(trusted);
-        SSLContext context = SSLContext.getInstance("TLS");
-        context.init(null, trust.getTrustManagers(), null);
-        return context.getSocketFactory();
+        return trust.getTrustManagers();
+    }
+
+    private static X509TrustManager x509Of(TrustManager[] managers)
+            throws GeneralSecurityException {
+        for (TrustManager manager : managers) {
+            if (manager instanceof X509TrustManager) {
+                return (X509TrustManager) manager;
+            }
+        }
+        throw new GeneralSecurityException("no trust manager for X.509 certificates");
     }
 
     /**

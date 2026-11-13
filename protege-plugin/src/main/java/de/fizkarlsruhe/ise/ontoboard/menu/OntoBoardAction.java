@@ -271,6 +271,121 @@ public abstract class OntoBoardAction extends ProtegeOWLAction {
         return failure[0];
     }
 
+    /**
+     * Has Protege read an ontology again from its file, its own way
+     * ({@code OWLModelManager.reload}: what is open is patched to what the file now holds),
+     * on the dispatch thread - and brings Protege's record of the file's time up to date.
+     *
+     * <p>Protege's reload tells its listeners that a file was read only after a patch that
+     * changed something ({@code OntologyReloader.reload}, read in 5.5.0 and 5.6.9). A file
+     * that was written again as it was leaves the record at the old time, and the next
+     * time Protege's window comes to the front it asks about an ontology that "has
+     * changed outside of Protege" (seen in a running 5.6.9 after a refresh that built the
+     * same modules again). {@code OntologySourcesManager.ignoreUpdates} is what Protege's
+     * own question calls for the files it is told to leave: it notes their time.
+     *
+     * @return why it did not work, or null when it did
+     */
+    protected String readAgainFromItsFile(final OWLOntology open) {
+        return onDispatchThread(new Step() {
+            @Override
+            public void take() throws Exception {
+                getOWLModelManager().reload(open);
+                noteItsFileTime(open);
+            }
+        });
+    }
+
+    /**
+     * Brings Protege's record of the time of an ontology's file up to date: for a file that
+     * OntoBoard wrote while what Protege holds was patched to match it, or that Protege
+     * has just read again. Without it Protege asks, the next time its window comes to the
+     * front, about an ontology that "has changed outside of Protege". On the dispatch
+     * thread, where Protege's own question does the same.
+     */
+    protected void noteItsFileTime(OWLOntology open) {
+        Object sources = getOWLModelManager().get(
+                org.protege.editor.owl.model.io.OntologySourcesManager.ID);
+        if (sources instanceof org.protege.editor.owl.model.io.OntologySourcesManager) {
+            ((org.protege.editor.owl.model.io.OntologySourcesManager) sources)
+                    .ignoreUpdates(java.util.Collections.singleton(open));
+        }
+    }
+
+    /** What Protege has open from a file, in its order, each with that file. */
+    private java.util.Map<OWLOntology, File> openFromFiles() {
+        java.util.Map<OWLOntology, File> open = new java.util.LinkedHashMap<OWLOntology, File>();
+        for (OWLOntology loaded : new java.util.ArrayList<OWLOntology>(
+                getOWLModelManager().getOntologies())) {
+            File file = fileOf(loaded);
+            if (file != null) {
+                open.put(loaded, file);
+            }
+        }
+        return open;
+    }
+
+    /**
+     * The files of the ontologies Protege has open, as they are now: taken before a run of
+     * ODK's make, to tell afterwards which of them it wrote.
+     */
+    protected de.fizkarlsruhe.ise.ontoboard.odk.FileStamps stampsOfWhatIsOpen() {
+        return de.fizkarlsruhe.ise.ontoboard.odk.FileStamps.of(openFromFiles().values());
+    }
+
+    /**
+     * Protege, asked to read again the files a run wrote: each ontology it has open from
+     * one of them is read again its own way ({@link #readAgainFromItsFile}); one with
+     * changes that are not saved is not ({@link WhatARunWrote}).
+     */
+    protected ReadsAgain protegeReadsAgain() {
+        return new ReadsAgain() {
+            @Override
+            public WhatARunWrote.Done readAgain(java.util.List<File> written) {
+                java.util.Map<OWLOntology, File> open = openFromFiles();
+                WhatARunWrote.Plan<OWLOntology> plan = WhatARunWrote.plan(open,
+                        new java.util.HashSet<OWLOntology>(
+                                getOWLModelManager().getDirtyOntologies()), written);
+                java.util.List<File> read = new java.util.ArrayList<File>();
+                java.util.List<String> notRead =
+                        new java.util.ArrayList<String>(plan.notRead());
+                for (OWLOntology one : plan.toRead()) {
+                    String failure = readAgainFromItsFile(one);
+                    if (failure == null) {
+                        read.add(open.get(one));
+                    } else {
+                        notRead.add(WhatARunWrote.notReadAgain(open.get(one), failure));
+                    }
+                }
+                return new WhatARunWrote.Done(read, notRead);
+            }
+        };
+    }
+
+    /**
+     * After a run of ODK's make: Protege reads again what it has open of the files the
+     * run wrote, and the result says so.
+     *
+     * @param before what Protege had open, stamped before the run
+     * @return whether the result was told anything
+     */
+    protected boolean readAgainWhatWasWritten(
+            de.fizkarlsruhe.ise.ontoboard.odk.FileStamps before,
+            OperationResult.Builder result) {
+        java.util.List<File> written = before.now().writtenSince(before);
+        if (written.isEmpty()) {
+            return false;
+        }
+        WhatARunWrote.Done done = protegeReadsAgain().readAgain(written);
+        if (done.said() != null) {
+            result.note(done.said());
+        }
+        for (String why : done.notRead()) {
+            result.warn(why);
+        }
+        return done.said() != null || !done.notRead().isEmpty();
+    }
+
     /** A failure in its own words, down to the cause that says something. */
     protected static String said(Throwable failure) {
         Throwable at = failure;

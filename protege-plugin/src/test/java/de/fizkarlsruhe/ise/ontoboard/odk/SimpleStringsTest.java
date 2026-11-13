@@ -118,6 +118,20 @@ class SimpleStringsTest {
                         "AnnotationAssertion(rdfs:label :B \"5\\\" pipe\"^^xsd:string)")));
     }
 
+    /**
+     * A comment line is not read: what stands in it stays, and a quotation mark in it does
+     * not start a string that would hide the next one.
+     */
+    @Test
+    void aCommentLineSaysWhatItSaysAndHidesNothing() {
+        String typed = ofn("# Class: :A (\"named\"^^xsd:string)",
+                "# Class: :B (a 5\" pipe)",
+                "AnnotationAssertion(rdfs:label :B \"pipe\"^^xsd:string)");
+
+        assertEquals(typed.replace("\"pipe\"^^xsd:string", "\"pipe\""),
+                SimpleStrings.simplified(typed));
+    }
+
     /** The prefix is the file's own: another name for XML Schema, or xsd for something else. */
     @Test
     void thePrefixIsReadFromTheFile() {
@@ -173,6 +187,18 @@ class SimpleStringsTest {
                 + "   rdfs:seeAlso \"in full\" .\n";
 
         assertEquals(simple, SimpleStrings.simplified(typed));
+    }
+
+    /** A long string ends at three quotation marks, whatever stands in it. */
+    @Test
+    void aLongStringEndsAtThreeQuotationMarks() {
+        String head = "@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .\n"
+                + "@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .\n";
+        String typed = head + "<https://example.org/A> rdfs:comment \"\"\"one \" two"
+                + "\"\"\"^^xsd:string .\n";
+
+        assertEquals(head + "<https://example.org/A> rdfs:comment \"\"\"one \" two"
+                + "\"\"\" .\n", SimpleStrings.simplified(typed));
     }
 
     // ------------------------------------------------------------------ RDF/XML
