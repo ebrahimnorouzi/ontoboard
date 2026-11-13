@@ -1,6 +1,7 @@
 package de.fizkarlsruhe.ise.ontoboard.odk;
 
 import static de.fizkarlsruhe.ise.ontoboard.odk.RunComparisons.allOfTheSameAge;
+import static de.fizkarlsruhe.ise.ontoboard.odk.RunComparisons.assertSameFile;
 import static de.fizkarlsruhe.ise.ontoboard.odk.RunComparisons.assertSameOntology;
 import static de.fizkarlsruhe.ise.ontoboard.odk.RunComparisons.assertSameProduct;
 import static de.fizkarlsruhe.ise.ontoboard.odk.RunComparisons.hashes;
@@ -49,7 +50,10 @@ import org.semanticweb.owlapi.util.VersionInfo;
  * {@code equivalence/egg/overlay} over it), every file of it of the recording's age, and make's
  * command line is the recording's. What "the same" means for each task is what the tests of the
  * pieces already hold OntoBoard's side to ({@link RunComparisons}, {@code SeedLiveParityTest}):
- * here the other side is ODK running now instead of a recording.
+ * here the other side is ODK running now instead of a recording. The two rows that refresh
+ * imports run on the project ODK's import targets were recorded on ({@link ImportCases}, id
+ * loim), its upstream ontologies read from a folder inside the copy, as
+ * {@code ImportChainEquivalenceTest} holds OntoBoard's refresh against the recording.
  *
  * <p>Where OntoBoard's route refuses a task, the row says why and the test does not fail; where
  * both run, they must agree. Skipped unless a container program answers and ODK v1.6.1's image
@@ -111,6 +115,12 @@ class SideBySideLiveTest {
         rows.add(SideBySide.run("Update project files", "egg-changed", runs,
                 new File(temp, "update"), CHANGED, updatedInDocker(), updatedHere(),
                 asOdksUpdate(new File(temp, "update"))));
+        File imports = new File(temp, "reference-imports");
+        LOIM.writeTo(imports);
+        rows.add(refresh("Refresh imports", "refresh-imports", runs, temp,
+                new File(imports, "project")));
+        rows.add(refresh("Refresh one import", "refresh-ro", runs, temp,
+                new File(imports, "project")));
         rows.add(make("Test, fast", "test_fast", runs, temp, EGG, egg));
         rows.add(make("Test, full", "test", runs, temp, EGG, egg));
         rows.add(make("Release, fast", "prepare_release_fast", runs, temp, EGG, egg));
@@ -257,17 +267,193 @@ class SideBySideLiveTest {
 
     // ------------------------------------------------------------------ a target
 
-    /** What a run of a target left: how it ended, what it said, the project. */
+    /**
+     * What a run of a target left: how it ended, what it said, the project - and, for a refresh
+     * of imports, the address make was given for the folder of the ontologies to import.
+     */
     private static final class Made {
         final String failure;
         final List<String> transcript;
         final File root;
+        final String upstream;
 
         Made(String failure, List<String> transcript, File root) {
+            this(failure, transcript, root, null);
+        }
+
+        Made(String failure, List<String> transcript, File root, String upstream) {
             this.failure = failure;
             this.transcript = transcript;
             this.root = root;
+            this.upstream = upstream;
         }
+    }
+
+    // ------------------------------------------------------------------ refreshing imports
+
+    /** Where ODK's make in the container finds the ontologies to import: inside the copy. */
+    private static final String UPSTREAM_IN_DOCKER = "file:///work/upstream";
+
+    private static final String PRE_SEED = "src/ontology/tmp/pre_seed.txt";
+
+    /**
+     * ODK's seed of {@code configs/localimports.yaml} (id loim) with the recording's work in it
+     * ({@link ImportCases#fresh}), and the small ontologies it mirrors moved into it, under
+     * {@code project/upstream/}: the copy's project is what ODK's make sees as {@code /work},
+     * so they must be inside it to be read there.
+     */
+    private static final SideBySide.Fixture LOIM = new SideBySide.Fixture() {
+        @Override
+        public void writeTo(File folder) throws Exception {
+            ImportCases.fresh(folder);
+            Files.move(new File(folder, "upstream").toPath(),
+                    new File(folder, "project/upstream").toPath());
+            allOfTheSameAge(new File(folder, "project"));
+        }
+    };
+
+    private static SideBySide.Row refresh(String task, String target, int runs, File temp,
+            File reference) throws Exception {
+        return SideBySide.run(task, "loim", runs, new File(temp, target), LOIM,
+                refreshedInDocker(target), refreshedHere(target),
+                asOdksRefresh(target, reference));
+    }
+
+    /** ODK's make in its image, given the upstream folder inside the mounted copy. */
+    private static SideBySide.Route<Made> refreshedInDocker(final String target) {
+        return new SideBySide.Route<Made>() {
+            @Override
+            public Made run(File copy) throws Exception {
+                File project = new File(copy, "project");
+                List<String> line = new ArrayList<String>(Arrays.asList("make", target,
+                        "OBOBASE=" + UPSTREAM_IN_DOCKER));
+                for (Map.Entry<String, String> variable : AS_RECORDED.entrySet()) {
+                    line.add(variable.getKey() + "=" + variable.getValue());
+                }
+                ProcessRunner.Outcome outcome = ProcessRunner.real().run(null,
+                        MakeRun.containerCommandFor(runtime, new File(project, "src/ontology"),
+                                image, host, line),
+                        MakeRun.TIMEOUT_MINUTES, null);
+                return new Made(outcome.isSuccess() ? null : "exit " + outcome.getExitCode()
+                        + ": " + outcome.lastMeaningfulLine(), outcome.getOutput(), project,
+                        UPSTREAM_IN_DOCKER);
+            }
+        };
+    }
+
+    /** OntoBoard's engine, given the same upstream folder as a file: address. */
+    private static SideBySide.Route<Made> refreshedHere(final String target) {
+        return new SideBySide.Route<Made>() {
+            @Override
+            public Made run(File copy) throws Exception {
+                File project = new File(copy, "project");
+                String upstream = new File(project, "upstream").toURI().toString()
+                        .replaceFirst("/$", "");
+                Map<String, String> line = new LinkedHashMap<String, String>();
+                line.put("OBOBASE", upstream);
+                line.putAll(AS_RECORDED);
+                OdkEngine.Outcome outcome = OdkEngine.run(
+                        new File(project, "src/ontology/loim-edit.owl"), target, line, null);
+                if (!outcome.isOk() && !outcome.ranAnything()) {
+                    throw new SideBySide.Refused(outcome.getFailure());
+                }
+                return new Made(outcome.getFailure(), outcome.getTranscript(), project,
+                        upstream);
+            }
+        };
+    }
+
+    /**
+     * As ImportChainEquivalenceTest holds OntoBoard's refresh against ODK's recorded one: every
+     * line make said, in order, with the two upstream addresses written {@code <UPSTREAM>}; the
+     * files made or changed - the upstream folder not among them, and the terms collected for
+     * the modules counted as changed only when their rows are; each download byte for byte
+     * against the upstream file it came from; each mirror and module as the same ontology and
+     * the same file; the seed of terms by its lines, the collected terms by their rows in any
+     * order; any other file made as the targets' rows compare it.
+     */
+    private static SideBySide.Comparison<Made> asOdksRefresh(final String target,
+            final File reference) {
+        return SideBySide.byAssertions(new SideBySide.Check<Made>() {
+            @Override
+            public void check(Made odks, Made ours) throws Exception {
+                keep(target + ".odk.txt", odks.transcript);
+                keep(target + ".ontoboard.txt", ours.transcript);
+                assertNull(odks.failure, "ODK's make did not finish");
+                assertNull(ours.failure, "OntoBoard's run did not finish");
+                assertSameLines("every recipe line make said, in the order it ran them",
+                        placed(saidByMake(lines(String.join("\n", odks.transcript))),
+                                odks.upstream),
+                        placed(saidByMake(lines(String.join("\n", ours.transcript))),
+                                ours.upstream));
+                Set<String> made = refreshed(reference, odks.root);
+                assertEquals(made, refreshed(reference, ours.root),
+                        "the files the run made or changed");
+                for (String path : made) {
+                    File theirs = new File(odks.root, path);
+                    File here = new File(ours.root, path);
+                    if (path.endsWith("-download.owl")) {
+                        String id = path.substring(path.lastIndexOf('/') + 1,
+                                path.length() - "-download.owl".length());
+                        assertArrayEquals(Files.readAllBytes(new File(odks.root,
+                                "upstream/" + id + ".owl").toPath()),
+                                Files.readAllBytes(theirs.toPath()),
+                                path + ": what curl fetched in ODK's image");
+                        assertArrayEquals(Files.readAllBytes(new File(ours.root,
+                                "upstream/" + id + ".owl").toPath()),
+                                Files.readAllBytes(here.toPath()),
+                                path + ": what OntoBoard's stand-in for curl fetched");
+                    } else if (path.startsWith("src/ontology/mirror/")
+                            || path.startsWith("src/ontology/imports/")) {
+                        assertSameOntology(path, theirs, here);
+                        assertSameFile(path, theirs, here);
+                    } else if (path.equals(PRE_SEED)) {
+                        assertSameLines(path + ": its rows in any order", sortedLines(theirs),
+                                sortedLines(here));
+                    } else if (path.endsWith("/seed.txt")) {
+                        assertSameLines(path, lines(read(theirs)), lines(read(here)));
+                    } else {
+                        assertSameMadeFile(path, false, theirs, here);
+                    }
+                }
+            }
+        });
+    }
+
+    /** make's lines with the address of the upstream folder written {@code <UPSTREAM>}. */
+    private static List<String> placed(List<String> said, String upstream) {
+        List<String> placed = new ArrayList<String>();
+        for (String line : said) {
+            placed.add(line.replace(upstream, "<UPSTREAM>"));
+        }
+        return placed;
+    }
+
+    /**
+     * What a refresh made or changed in a copy, against the fixture as written: not the
+     * upstream folder, not ODK's plugin jars, and the collected terms only when their rows
+     * changed (their order is the store's) - for a file that was there before the run.
+     */
+    private static Set<String> refreshed(File reference, File root) throws Exception {
+        Set<String> made = madeSince(hashes(reference), root);
+        for (Iterator<String> path = made.iterator(); path.hasNext();) {
+            String next = path.next();
+            if (next.startsWith(PLUGINS) || next.startsWith("upstream/")) {
+                path.remove();
+            }
+        }
+        File before = new File(reference, PRE_SEED);
+        if (before.isFile() && made.contains(PRE_SEED)
+                && sortedLines(before).equals(sortedLines(new File(root, PRE_SEED)))) {
+            made.remove(PRE_SEED);
+        }
+        return made;
+    }
+
+    private static List<String> sortedLines(File file) throws Exception {
+        List<String> sorted = new ArrayList<String>(lines(read(file)));
+        java.util.Collections.sort(sorted);
+        return sorted;
     }
 
     private static SideBySide.Row make(String task, String target, int runs, File temp,
@@ -357,14 +543,14 @@ class SideBySideLiveTest {
                 }
                 assertEquals(made, madeSince(before, ours.root), "the files the run made");
                 for (String path : made) {
-                    assertSameFile(path, release, new File(odks.root, path),
+                    assertSameMadeFile(path, release, new File(odks.root, path),
                             new File(ours.root, path));
                 }
             }
         });
     }
 
-    private static void assertSameFile(String path, boolean release, File odks, File ours)
+    private static void assertSameMadeFile(String path, boolean release, File odks, File ours)
             throws Exception {
         if (path.endsWith(".tsv")) {
             String theirs = read(odks);

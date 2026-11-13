@@ -380,9 +380,11 @@ final class SideBySide {
      */
     static String report(List<Row> rows, Machine machine) {
         int runs = 0;
+        boolean refreshes = false;
         List<String> projects = new ArrayList<String>();
         for (Row row : rows) {
             runs = Math.max(runs, row.getRuns());
+            refreshes |= row.getTask().startsWith("Refresh");
             if (!projects.contains(row.getProject())) {
                 projects.add(row.getProject());
             }
@@ -396,9 +398,8 @@ final class SideBySide {
                                 + "counted, then " + runs + " counted.")
                 .append("\n\n")
                 .append(table(rows))
-                .append("\nNot in the table yet: Refresh imports - OntoBoard's side of it is not ")
-                .append("written.\n\n")
-                .append("## What the numbers are\n\n")
+                .append(refreshes ? "" : "\nNot in the table: Refresh imports.\n")
+                .append("\n## What the numbers are\n\n")
                 .append("- ODK in Docker: the wall-clock time of one `docker run`, from starting ")
                 .append("it to its exit - the container's start, the project mounted into it, ")
                 .append("ODK's program, the container's end.\n")
@@ -439,6 +440,14 @@ final class SideBySide {
                 .append("): how the two compare on a large ontology is not measured here.\n")
                 .append("- ROBOT is ").append(machine.robotHere).append(" inside OntoBoard and ")
                 .append(machine.robotInImage).append(" in the image.\n");
+        if (refreshes) {
+            report.append("- Refresh imports from the network: both ways read the ontologies to ")
+                    .append("import from local files here (make is given OBOBASE as a file: ")
+                    .append("address), so nothing was fetched over the network, and how either ")
+                    .append("does with a slow or failing server is not shown.\n")
+                    .append("- An import with mirror_from, which ROBOT loads by itself ")
+                    .append("(robot convert -I): the project here has none.\n");
+        }
         return report.toString();
     }
 

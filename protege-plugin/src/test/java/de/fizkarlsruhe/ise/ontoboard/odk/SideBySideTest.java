@@ -276,8 +276,32 @@ class SideBySideTest {
         assertTrue(tail.contains("- Release, full: OntoBoard's route refused it - it needs the "
                 + "network.\n"), tail);
         assertTrue(tail.contains("ROBOT is 1.9.8 inside OntoBoard and 1.9.10 in the image"), tail);
-        assertTrue(report.contains("Refresh imports"),
-                "not in the list yet, and the report says so");
+        assertTrue(report.contains("\nNot in the table: Refresh imports.\n"),
+                "not among these rows, and the report says so");
+    }
+
+    /**
+     * With the rows that refresh imports, the report says what they do not show: the network,
+     * which neither way reaches here, and an import ROBOT loads by itself.
+     */
+    @Test
+    void theRefreshRowsSayWhatTheyDoNotShow() throws Exception {
+        SideBySide.Machine machine = new SideBySide.Machine("os", "java", "docker", "image", "id",
+                "owlapi", "date", "1.9.8", "1.9.10");
+        List<SideBySide.Row> rows = new ArrayList<SideBySide.Row>(threeRows());
+        rows.add(SideBySide.run("Refresh imports", "loim", 0, new File(scratch, "d"), ONE_FILE,
+                saying("refreshed"), saying("refreshed"), TEXTS, clock(0L, 7000L, 7000L, 7400L)));
+
+        String report = SideBySide.report(rows, machine);
+
+        assertFalse(report.contains("Not in the table"), report);
+        String tail = report.substring(report.indexOf("## What this does not show"));
+        assertTrue(tail.contains("\n- Refresh imports from the network: both ways read the "
+                + "ontologies to import from local files here (make is given OBOBASE as a file: "
+                + "address), so nothing was fetched over the network, and how either does with a "
+                + "slow or failing server is not shown.\n"), tail);
+        assertTrue(tail.contains("\n- An import with mirror_from, which ROBOT loads by itself "
+                + "(robot convert -I): the project here has none.\n"), tail);
     }
 
     @Test
